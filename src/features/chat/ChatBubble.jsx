@@ -533,6 +533,7 @@ export default function ChatBubble({
           isMine={isMine}
           canDelete={canDeleteCallRecording}
           onDelete={onDeleteMessage ? () => onDeleteMessage(message.id) : null}
+          onTranscriptUpdated={onLinkPreviewReady}
           supabaseClient={supabaseClient}
           onOpen={() => {
             if (recordingMedia.length) openViewer(0)

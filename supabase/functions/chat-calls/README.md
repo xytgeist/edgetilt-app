@@ -22,7 +22,7 @@ supabase functions deploy chat-calls --project-ref jtjgtucumuoswnbauxry
 
 `verify_jwt = true` in `supabase/config.toml`.
 
-Recording finalize webhook is a separate function: **`livekit-egress-webhook`**.
+Recording finalize webhook is a separate function: **`livekit-egress-webhook`**. After a recording card is inserted, finalize best-effort enqueues **`chat-call-transcribe`** (requires **`DEEPGRAM_API_KEY`**).
 
 ## Actions
 

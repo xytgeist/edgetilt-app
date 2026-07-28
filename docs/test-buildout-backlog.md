@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-28: **Call recording transcripts (speaker labels):** Edge **`chat-call-transcribe`** (Deepgram diarization) → `link_preview.transcript` + auto map to participants; long-press **View transcript** modal with avatar/name + tap-to-reassign. Finalize enqueues best-effort; client Retry. Redeploy **`chat-call-transcribe`**, **`livekit-egress-webhook`**, **`chat-calls`**; set **`DEEPGRAM_API_KEY`** on test.
 - 2026-07-28: **Chat room Calls tab (Media / links / docs):** RPC **`chat_room_shared_calls`** (`20260728100000`) + **Calls** tab in **`ChatGroupMediaSheet`** (recordings + summaries → jump to message). Also restored Docs tab render path. Apply SQL on test.
 - 2026-07-28: **Call recording delete for room owners:** long-press recording card → **Delete** for recorder, group owner/admin, fan moderators, or either DM participant; **`lounge-chat` `delete_message`** allows the same for `content_encoding = call_recording` (+ existing R2 cleanup). Redeploy **`lounge-chat`** on test.
 - 2026-07-28: **Chat calling pin → featured recording layout:** custom RoomComposite template **`/call-egress.html`** (`src/call-egress/`); Record sends pinned LiveKit identity (else recorder); Edge `start_recording` uses `layout=focus:<id>` + secret **`CHAT_CALL_EGRESS_TEMPLATE_BASE_URL`**; SQL **`20260728090000`** `recording_featured_identity`. Encoding presets still deferred.

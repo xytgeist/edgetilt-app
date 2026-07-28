@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ensureCallRecordingPosterPersisted } from '../../utils/chatCallRecordingPoster.js'
+import ChatCallTranscriptModal from './ChatCallTranscriptModal.jsx'
 import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
 
 /**
@@ -39,6 +40,7 @@ import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
  *   isMine?: boolean,
  *   canDelete?: boolean,
  *   onDelete?: (() => void) | null,
+ *   onTranscriptUpdated?: (messageId: string, preview: object) => void,
  *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onOpen: () => void,
  * }} props
@@ -48,6 +50,7 @@ export default function ChatCallRecordingCard({
   isMine = false,
   canDelete = false,
   onDelete = null,
+  onTranscriptUpdated = null,
   supabaseClient = null,
   onOpen,
 }) {
@@ -58,6 +61,7 @@ export default function ChatCallRecordingCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState(/** @type {{ top: number, left: number } | null} */ (null))
   const [linkCopied, setLinkCopied] = useState(false)
+  const [transcriptOpen, setTranscriptOpen] = useState(false)
   const cardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const longPressTimer = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
   const suppressClickRef = useRef(false)
@@ -94,7 +98,9 @@ export default function ChatCallRecordingCard({
     if (!videoUrl || !cardRef.current) return
     const rect = cardRef.current.getBoundingClientRect()
     const menuW = 220
-    const menuH = canDelete && onDelete ? 180 : 140
+    const nativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+    const rows = 2 + (nativeShare ? 1 : 0) + (canDelete && onDelete ? 1 : 0) + (supabaseClient ? 1 : 0)
+    const menuH = 48 * rows + 16
     const left = Math.max(12, Math.min(rect.left + 8, window.innerWidth - menuW - 12))
     const top = Math.min(rect.bottom - 8, window.innerHeight - menuH)
     setMenuPos({ top: Math.max(12, top - (menuH - 40)), left })
@@ -108,7 +114,7 @@ export default function ChatCallRecordingCard({
     } catch {
       /* ignore */
     }
-  }, [videoUrl, canDelete, onDelete])
+  }, [videoUrl, canDelete, onDelete, supabaseClient])
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false)
@@ -325,6 +331,19 @@ export default function ChatCallRecordingCard({
                   <LinkIcon />
                   {linkCopied ? 'Copied' : 'Copy link'}
                 </button>
+                {supabaseClient ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-medium text-zinc-50 touch-manipulation active:bg-zinc-800/80"
+                    onClick={() => {
+                      closeMenu()
+                      setTranscriptOpen(true)
+                    }}
+                  >
+                    <TranscriptIcon />
+                    View transcript
+                  </button>
+                ) : null}
                 {canDelete && onDelete ? (
                   <button
                     type="button"
@@ -343,6 +362,16 @@ export default function ChatCallRecordingCard({
             document.body,
           )
         : null}
+
+      {transcriptOpen && supabaseClient ? (
+        <ChatCallTranscriptModal
+          open={transcriptOpen}
+          onClose={() => setTranscriptOpen(false)}
+          message={message}
+          supabaseClient={supabaseClient}
+          onPreviewUpdated={onTranscriptUpdated || undefined}
+        />
+      ) : null}
     </div>
   )
 }
@@ -432,6 +461,14 @@ function TrashIcon() {
       <path d="M8 6V4h8v2" />
       <path d="M19 6l-1 14H6L5 6" />
       <path d="M10 11v6M14 11v6" />
+    </svg>
+  )
+}
+
+function TranscriptIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M4 6h16M4 12h10M4 18h14" />
     </svg>
   )
 }

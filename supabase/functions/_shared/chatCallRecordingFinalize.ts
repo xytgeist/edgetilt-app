@@ -4,6 +4,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { loungeCfR2PublicUrl, readLoungeCfR2Config } from './loungeCfR2.ts'
+import { mergePreviewPreservingTranscript } from './chatCallTranscript.ts'
 
 export type ChatCallRecordingRow = {
   id: string
@@ -159,7 +160,7 @@ async function ensureCallRecordingMessage(
   admin: SupabaseClient,
   call: ChatCallRecordingRow,
   videoUrl: string,
-): Promise<void> {
+): Promise<{ message_id: string | null; created: boolean; should_transcribe: boolean }> {
   const roomId = String(call.chat_room_id || '').trim()
   if (!roomId) throw new Error('Missing chat_room_id for call recording.')
 
@@ -172,7 +173,7 @@ async function ensureCallRecordingMessage(
   // Global by video_url (unique index) — never post the same file into another room.
   const { data: existingAny } = await admin
     .from('chat_messages')
-    .select('id, room_id')
+    .select('id, room_id, link_preview')
     .eq('content_encoding', 'call_recording')
     .eq('video_url', videoUrl)
     .limit(1)
@@ -186,24 +187,87 @@ async function ensureCallRecordingMessage(
         existingAny.room_id,
         roomId,
       )
-      return
+      return { message_id: String(existingAny.id), created: false, should_transcribe: false }
     }
+    const merged = mergePreviewPreservingTranscript(
+      preview as unknown as Record<string, unknown>,
+      existingAny.link_preview,
+    )
+    const status = String(merged.transcript_status || '')
+    const shouldTranscribe = status !== 'ready' && status !== 'pending'
+    if (!status) merged.transcript_status = 'pending'
     await admin
       .from('chat_messages')
-      .update({ body, link_preview: preview })
+      .update({ body, link_preview: merged })
       .eq('id', existingAny.id)
-    return
+    return {
+      message_id: String(existingAny.id),
+      created: false,
+      should_transcribe: shouldTranscribe || !status,
+    }
   }
 
-  const { error: msgErr } = await admin.from('chat_messages').insert({
-    room_id: roomId,
-    sender_id: senderId,
-    body,
-    content_encoding: 'call_recording',
-    video_url: videoUrl,
-    link_preview: preview,
-  })
+  const insertPreview = {
+    ...preview,
+    transcript_status: 'pending' as const,
+    transcript_error: null,
+    transcript: null,
+  }
+  const { data: inserted, error: msgErr } = await admin
+    .from('chat_messages')
+    .insert({
+      room_id: roomId,
+      sender_id: senderId,
+      body,
+      content_encoding: 'call_recording',
+      video_url: videoUrl,
+      link_preview: insertPreview,
+    })
+    .select('id')
+    .maybeSingle()
   if (msgErr && !isUniqueViolation(msgErr)) throw new Error(msgErr.message)
+  if (inserted?.id) {
+    return { message_id: String(inserted.id), created: true, should_transcribe: true }
+  }
+
+  // Race: unique constraint — re-read.
+  const { data: raced } = await admin
+    .from('chat_messages')
+    .select('id, link_preview')
+    .eq('content_encoding', 'call_recording')
+    .eq('video_url', videoUrl)
+    .limit(1)
+    .maybeSingle()
+  const racedStatus =
+    raced?.link_preview && typeof raced.link_preview === 'object'
+      ? String((raced.link_preview as { transcript_status?: string }).transcript_status || '')
+      : ''
+  return {
+    message_id: raced?.id ? String(raced.id) : null,
+    created: false,
+    should_transcribe: racedStatus !== 'ready',
+  }
+}
+
+/** Best-effort: invoke chat-call-transcribe (isolate may exit; client can also trigger). */
+export function enqueueCallRecordingTranscript(messageId: string | null | undefined): void {
+  const id = String(messageId || '').trim()
+  if (!id) return
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim()
+  if (!supabaseUrl || !serviceKey) return
+  if (!Deno.env.get('DEEPGRAM_API_KEY')?.trim()) return
+  void fetch(`${supabaseUrl}/functions/v1/chat-call-transcribe`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${serviceKey}`,
+      apikey: serviceKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action: 'transcribe', message_id: id, async: true }),
+  }).catch(() => {
+    /* best-effort */
+  })
 }
 
 /**
@@ -214,7 +278,12 @@ export async function finalizeChatCallRecording(
   admin: SupabaseClient,
   call: ChatCallRecordingRow,
   opts: { failed?: boolean; errorDetail?: string | null; requireObject?: boolean } = {},
-): Promise<{ recording_status: string; video_url?: string | null; skipped?: boolean }> {
+): Promise<{
+  recording_status: string
+  video_url?: string | null
+  skipped?: boolean
+  message_id?: string | null
+}> {
   // Always re-read the call row so room_id / r2 key cannot drift from a stale payload.
   const { data: fresh, error: freshErr } = await admin
     .from('chat_calls')
@@ -258,14 +327,20 @@ export async function finalizeChatCallRecording(
   // Even if another worker already flipped to ready, still ensure the chat card exists
   // in THIS call's room (and never invent a card for a different room).
   if (current === 'ready') {
-    await ensureCallRecordingMessage(admin, fresh, videoUrl)
-    return { recording_status: 'ready', video_url: videoUrl, skipped: true }
+    const ensured = await ensureCallRecordingMessage(admin, fresh, videoUrl)
+    if (ensured.should_transcribe) enqueueCallRecordingTranscript(ensured.message_id)
+    return {
+      recording_status: 'ready',
+      video_url: videoUrl,
+      skipped: true,
+      message_id: ensured.message_id,
+    }
   }
   if (current === 'failed') {
     return { recording_status: 'failed', skipped: true }
   }
 
-  await ensureCallRecordingMessage(admin, fresh, videoUrl)
+  const ensured = await ensureCallRecordingMessage(admin, fresh, videoUrl)
 
   await admin
     .from('chat_calls')
@@ -273,5 +348,11 @@ export async function finalizeChatCallRecording(
     .eq('id', fresh.id)
     .in('recording_status', ['recording', 'stopping', 'ready', 'failed'])
 
-  return { recording_status: 'ready', video_url: videoUrl }
+  if (ensured.should_transcribe) enqueueCallRecordingTranscript(ensured.message_id)
+
+  return {
+    recording_status: 'ready',
+    video_url: videoUrl,
+    message_id: ensured.message_id,
+  }
 }

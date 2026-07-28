@@ -21,6 +21,10 @@ verify_jwt = true
 [functions.livekit-egress-webhook]
 verify_jwt = false
 
+# Call recording STT (Deepgram). Auth checked in-function (user JWT, service role, or callback secret).
+[functions.chat-call-transcribe]
+verify_jwt = false
+
 [functions.lounge-link-unfurl]
 verify_jwt = true
 

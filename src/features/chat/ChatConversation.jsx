@@ -2168,7 +2168,11 @@ export default function ChatConversation({
                   type="button"
                   disabled={chatCall.busy || Boolean(chatCall.activeCall)}
                   onClick={() => {
-                    void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName)
+                    void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName, {
+                      avatarUrl: peerAvatar,
+                      viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                      peerUserId,
+                    })
                   }}
                   aria-label="Start voice call"
                   title="Voice call"
@@ -2182,7 +2186,11 @@ export default function ChatConversation({
                   type="button"
                   disabled={chatCall.busy || Boolean(chatCall.activeCall)}
                   onClick={() => {
-                    void chatCall.startCall(activeRoom.id, 'video', headerDisplayName)
+                    void chatCall.startCall(activeRoom.id, 'video', headerDisplayName, {
+                      avatarUrl: peerAvatar,
+                      viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                      peerUserId,
+                    })
                   }}
                   aria-label="Start video call"
                   title="Video call"
@@ -2199,7 +2207,10 @@ export default function ChatConversation({
                 type="button"
                 disabled={chatCall.busy || Boolean(chatCall.activeCall)}
                 onClick={() => {
-                  void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName)
+                  void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName, {
+                    avatarUrl: activeRoom.avatar_url || null,
+                    viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                  })
                 }}
                 aria-label="Start group voice call"
                 title="Voice call"

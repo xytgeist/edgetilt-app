@@ -31,6 +31,7 @@ See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls
 
 - `src/features/chat/calls/` — session UI, incoming overlay (caller avatar + name), API, controller.
 - Header: DM Phone + Video; group Voice (absolute right). Avatar/title stay screen-centered; room options live in the name › sheet (no ⋯ menu).
+- **In-call / ringing chrome:** WhatsApp-style dark stage, large peer avatar while ringing/audio, bottom control pill (mute / video / speaker / hangup). Minimize (top-left) collapses to a **draggable** floating pill (app-wide via `ChatCallProvider` in AppShell; left control = peer avatar, tap to expand). **Video:** remote/active-speaker fullscreen + local round PiP; camera-off shows avatar; multi-remote strip with tap-to-pin.
 - **DM decline quick replies** (`chatCallDeclineQuickReplies.js`): incoming overlay dropdown + **Decline & send** (decline call, then `chatSendMessage`). Circle decline still ends the call with no message. Group voice invites do not show this UI.
 
 ## Guardrails

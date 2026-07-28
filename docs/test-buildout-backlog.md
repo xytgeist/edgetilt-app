@@ -938,6 +938,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-27: **Chat calling WhatsApp-style in-call UI:** ringing/active screens use large avatar + control pill; minimize → floating pill with avatar expand; DM video = remote fullscreen + local circle PiP, camera-off → avatar, multi-remote strip + tap-to-pin. Client only.
 - 2026-07-27: **Chat calling DM decline quick replies:** incoming overlay (DM only) dropdown... "I'll call you back." / "Call you back in 5." / "Call me back in 5." / "Can't talk right now." Circle decline = no message; **Decline & send** declines then posts the text in the DM. Client only.
 - 2026-07-27: **Push opt-in intent + quiet repair:** **`pushOptInIntent.js`** (`edge_push_opt_in_intent_v1:`) set on Enable / Settings on, cleared on Settings off; app open quiet-resubscribes when intent on + `Notification.permission === 'granted'` but PushManager/`push_subscriptions` missing; AppShell re-enable / blocked sheets only when silent repair fails or permission is denied (7-day cooldown). Client only.
 - 2026-07-27: **Chat calling in-app ring + OS suppress harden:** SW uses `WindowClient.visibilityState` + push-delivers `chat-call-invite-inapp` into open tabs (Realtime backup); migration **`20260728040000`** `chat_calls` **replica identity full** (test + prod). Force-close PWA for SW.

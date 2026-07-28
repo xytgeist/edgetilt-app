@@ -42,6 +42,9 @@ const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
  *   livekitUrl: string,
  *   title: string,
  *   isOutgoing?: boolean,
+ *   avatarUrl?: string | null,
+ *   viewerAvatarUrl?: string | null,
+ *   peerUserId?: string | null,
  * }} ActiveChatCall
  */
 
@@ -100,9 +103,11 @@ export function ChatCallProvider({
 }) {
   const [activeCall, setActiveCall] = useState(/** @type {ActiveChatCall | null} */ (null))
   const [incoming, setIncoming] = useState(/** @type {IncomingChatCall | null} */ (null))
-  /** @type {[{ roomId: string, mediaMode: ChatCallMediaMode, title: string, isVideo: boolean } | null, Function]} */
+  /** @type {[{ roomId: string, mediaMode: ChatCallMediaMode, title: string, isVideo: boolean, avatarUrl?: string | null } | null, Function]} */
   const [callbackPrompt, setCallbackPrompt] = useState(
-    /** @type {{ roomId: string, mediaMode: ChatCallMediaMode, title: string, isVideo: boolean } | null} */ (null),
+    /** @type {{ roomId: string, mediaMode: ChatCallMediaMode, title: string, isVideo: boolean, avatarUrl?: string | null } | null} */ (
+      null
+    ),
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -313,6 +318,8 @@ export function ChatCallProvider({
   // presentIncomingRef already declared above (realtime + deep link share it).
   const resolveTitleAsyncRef = useRef(resolveTitleAsync)
   resolveTitleAsyncRef.current = resolveTitleAsync
+  const resolveCallerProfileAsyncRef = useRef(resolveCallerProfileAsync)
+  resolveCallerProfileAsyncRef.current = resolveCallerProfileAsync
 
   // SW push backup when Edge is visible (Realtime RLS can miss on some projects).
   useEffect(() => {
@@ -351,13 +358,14 @@ export function ChatCallProvider({
             return
           }
           const roomId = String(call.chat_room_id || roomFromPush || '')
-          const title = await resolveTitleAsyncRef.current(roomId, call.started_by)
+          const profile = await resolveCallerProfileAsyncRef.current(roomId, call.started_by)
           onOpenRoomRef.current?.(roomId)
           const mediaMode = call.media_mode === 'video' ? 'video' : 'audio'
           setCallbackPrompt({
             roomId,
             mediaMode,
-            title,
+            title: profile.title,
+            avatarUrl: profile.avatarUrl,
             isVideo: call.kind === 'dm_av' && mediaMode === 'video',
           })
         } catch {
@@ -416,7 +424,8 @@ export function ChatCallProvider({
           return
         }
         const roomId = String(call.chat_room_id || stashed?.roomId || '')
-        const title = await resolveTitleAsyncRef.current(roomId, call.started_by)
+        const profile = await resolveCallerProfileAsyncRef.current(roomId, call.started_by)
+        const title = profile.title
         if (cancelled) return
 
         // Live invite → accept UI (unless this was an explicit missed-call tap).
@@ -443,6 +452,7 @@ export function ChatCallProvider({
           roomId,
           mediaMode,
           title,
+          avatarUrl: profile.avatarUrl,
           isVideo: call.kind === 'dm_av' && mediaMode === 'video',
         })
         shouldClear = true
@@ -463,13 +473,27 @@ export function ChatCallProvider({
     }
   }, [initialCallId, initialCallIntent, supabaseClient, viewerUserId, deepLinkRetry, showCallStatusToast])
 
+  /**
+   * @param {string} roomId
+   * @param {'audio' | 'video'} [mediaMode]
+   * @param {string} [title]
+   * @param {{ avatarUrl?: string | null, viewerAvatarUrl?: string | null, peerUserId?: string | null }} [opts]
+   */
   const startCall = useCallback(
-    async (roomId, mediaMode = 'audio', title = 'Chat call') => {
+    async (roomId, mediaMode = 'audio', title = 'Chat call', opts = {}) => {
       if (!supabaseClient || !viewerUserId) throw new Error('Sign in to call.')
       if (activeCallRef.current) throw new Error('Already in a call.')
       unlockChatCallAudio()
       setBusy(true)
       setError('')
+      const avatarFromOpts =
+        typeof opts?.avatarUrl === 'string' && opts.avatarUrl.trim() ? opts.avatarUrl.trim() : null
+      const viewerAvatarFromOpts =
+        typeof opts?.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
+          ? opts.viewerAvatarUrl.trim()
+          : null
+      const peerUserId =
+        typeof opts?.peerUserId === 'string' && opts.peerUserId.trim() ? opts.peerUserId.trim() : null
       try {
         const res = await chatStartCall(supabaseClient, roomId, mediaMode)
         const call = res.call
@@ -481,6 +505,11 @@ export function ChatCallProvider({
         })
         setIncoming(null)
         endingRef.current = false
+        let avatarUrl = avatarFromOpts
+        if (!avatarUrl && peerUserId) {
+          const profile = await resolveCallerProfileAsync(roomId, peerUserId)
+          avatarUrl = profile.avatarUrl
+        }
         setActiveCall({
           callId: call.id,
           roomId,
@@ -490,6 +519,9 @@ export function ChatCallProvider({
           livekitUrl: res.livekit_url,
           title,
           isOutgoing: true,
+          avatarUrl,
+          viewerAvatarUrl: viewerAvatarFromOpts,
+          peerUserId,
         })
         return call
       } catch (err) {
@@ -500,7 +532,7 @@ export function ChatCallProvider({
         setBusy(false)
       }
     },
-    [supabaseClient, viewerUserId, ensureBroadcast, showCallStatusToast],
+    [supabaseClient, viewerUserId, ensureBroadcast, showCallStatusToast, resolveCallerProfileAsync],
   )
 
   const acceptIncoming = useCallback(async () => {
@@ -516,6 +548,13 @@ export function ChatCallProvider({
       const res = await action(supabaseClient, snap.callId)
       ensureBroadcast(snap.roomId)?.emit('accept', { callId: snap.callId })
       onOpenRoom?.(snap.roomId)
+      let viewerAvatarUrl = null
+      try {
+        const viewerSnap = await resolveCallerProfileAsync(snap.roomId, viewerUserId)
+        viewerAvatarUrl = viewerSnap.avatarUrl
+      } catch {
+        /* optional */
+      }
       setActiveCall({
         callId: res.call.id,
         roomId: res.call.chat_room_id,
@@ -525,13 +564,24 @@ export function ChatCallProvider({
         livekitUrl: res.livekit_url,
         title: snap.title,
         isOutgoing: false,
+        avatarUrl: snap.avatarUrl || null,
+        viewerAvatarUrl,
+        peerUserId: snap.fromUserId || null,
       })
     } catch (err) {
       showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
     } finally {
       setBusy(false)
     }
-  }, [supabaseClient, incoming, ensureBroadcast, onOpenRoom, showCallStatusToast])
+  }, [
+    supabaseClient,
+    incoming,
+    ensureBroadcast,
+    onOpenRoom,
+    showCallStatusToast,
+    resolveCallerProfileAsync,
+    viewerUserId,
+  ])
 
   /**
    * @param {{ message?: string }} [opts]
@@ -662,13 +712,15 @@ export function ChatCallProvider({
           const prompt = callbackPrompt
           if (!prompt?.roomId) return
           setCallbackPrompt(null)
-          void startCall(prompt.roomId, prompt.mediaMode, prompt.title)
+          void startCall(prompt.roomId, prompt.mediaMode, prompt.title, {
+            avatarUrl: prompt.avatarUrl || null,
+          })
         }}
       />
       {activeCall ? (
         <Suspense
           fallback={
-            <div className="fixed inset-0 z-[128] flex items-center justify-center bg-zinc-950 text-zinc-300">
+            <div className="fixed inset-0 z-[128] flex items-center justify-center bg-[#09090b] text-[#a1a1aa]">
               Connecting...
             </div>
           }
@@ -681,6 +733,9 @@ export function ChatCallProvider({
             kind={activeCall.kind}
             title={activeCall.title}
             isOutgoing={Boolean(activeCall.isOutgoing)}
+            avatarUrl={activeCall.avatarUrl || null}
+            viewerAvatarUrl={activeCall.viewerAvatarUrl || null}
+            peerUserId={activeCall.peerUserId || null}
             onError={(msg) => showCallStatusToast(msg || 'Call connection failed')}
             onDisconnected={() => {
               // End DB call so a drop/disconnect cannot leave a stuck ringing row.

@@ -227,12 +227,12 @@ export default function LoungePostVideoInlineProgress({
       aria-live="polite"
       role="status"
     >
-      <div className="flex w-full max-w-[14rem] flex-col items-center gap-1.5">
-        <div className="text-[12px] font-semibold leading-snug text-zinc-50">{status}</div>
+      <div className="flex w-full max-w-[14rem] flex-col items-center gap-1.5 rounded-2xl border border-white/15 bg-black/70 px-3.5 py-3 shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md">
+        <div className="text-[12px] font-semibold leading-snug text-[#fafafa]">{status}</div>
         {detail ? (
-          <div className="max-w-full truncate text-[11px] leading-snug text-zinc-200/90">{detail}</div>
+          <div className="max-w-full truncate text-[11px] leading-snug text-[#e4e4e7]/95">{detail}</div>
         ) : null}
-        <div className="mt-0.5 w-full overflow-hidden rounded-full bg-zinc-800/90">
+        <div className="mt-0.5 w-full overflow-hidden rounded-full bg-[#27272a]/90">
           <div
             className="h-1 rounded-full bg-cyan-500 transition-[width] duration-700 ease-out"
             style={{ width: `${pct}%` }}
@@ -242,14 +242,14 @@ export default function LoungePostVideoInlineProgress({
             aria-valuemax={100}
           />
         </div>
-        <div className="text-[13px] font-bold tabular-nums text-cyan-200/95">{pct}%</div>
+        <div className="text-[13px] font-bold tabular-nums text-[#a5f3fc]">{pct}%</div>
         {footnote ? (
-          <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-amber-100/95">{footnote}</p>
+          <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-[#fef3c7]/95">{footnote}</p>
         ) : null}
         <div className="pointer-events-auto mt-2 flex max-w-[14rem] flex-wrap items-center justify-center gap-2">
           <button
             type="button"
-            className="touch-manipulation rounded-lg border border-zinc-500/70 bg-black/50 px-3 py-1.5 text-[11px] font-semibold text-zinc-100 hover:border-zinc-400 hover:bg-black/70"
+            className="touch-manipulation rounded-lg border border-white/35 bg-black/40 px-3 py-1.5 text-[11px] font-semibold text-[#f4f4f5] hover:border-white/55 hover:bg-black/55"
             onClick={onCancelClick}
           >
             {LOUNGE_PENDING_PUBLISH_CANCEL_LABEL}

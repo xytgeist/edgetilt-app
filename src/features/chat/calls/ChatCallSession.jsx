@@ -5,6 +5,7 @@ import {
   useTracks,
   useLocalParticipant,
   useParticipants,
+  useSpeakingParticipants,
   VideoTrack,
   useRoomContext,
 } from '@livekit/components-react'
@@ -218,6 +219,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
  *   avatarUrl?: string | null,
  *   viewerAvatarUrl?: string | null,
  *   peerUserId?: string | null,
+ *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onDisconnected: () => void,
  *   onHangup: () => void,
  *   onError?: (msg: string) => void,
@@ -233,6 +235,7 @@ export default function ChatCallSession({
   avatarUrl = null,
   viewerAvatarUrl = null,
   peerUserId = null,
+  supabaseClient = null,
   onDisconnected,
   onHangup,
   onError,
@@ -303,6 +306,7 @@ export default function ChatCallSession({
               avatarUrl={avatarUrl}
               viewerAvatarUrl={viewerAvatarUrl}
               peerUserId={peerUserId}
+              supabaseClient={supabaseClient}
               minimized={minimized}
               onMinimize={() => setMinimized(true)}
               onExpand={() => setMinimized(false)}
@@ -324,6 +328,7 @@ function CallChrome({
   avatarUrl,
   viewerAvatarUrl,
   peerUserId,
+  supabaseClient,
   minimized,
   onMinimize,
   onExpand,
@@ -332,6 +337,7 @@ function CallChrome({
   const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
   const participants = useParticipants()
+  const speakingParticipants = useSpeakingParticipants()
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(videoEnabled)
   /** false = earpiece (default); true = speakerphone */
@@ -346,6 +352,23 @@ function CallChrome({
   // Only ringback while waiting for first answer... never again after a remote joined
   // (callee hangup briefly drops remoteCount to 0 before we tear down).
   const awaitingAnswer = Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
+
+  const participantIds = useMemo(
+    () => participants.map((p) => p.identity).filter(Boolean),
+    [participants],
+  )
+  const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
+
+  const speakingIds = useMemo(() => {
+    const set = new Set()
+    for (const p of speakingParticipants || []) {
+      if (p?.identity) set.add(p.identity)
+    }
+    for (const p of participants) {
+      if (p?.isSpeaking && p.identity) set.add(p.identity)
+    }
+    return set
+  }, [speakingParticipants, participants])
 
   useEffect(() => {
     const t0 = Date.now()
@@ -388,7 +411,18 @@ function CallChrome({
     if (peerUserId && participant.identity === peerUserId) return avatarUrl
     // DM: any remote uses the peer avatar we already resolved.
     if (!isGroup) return avatarUrl
-    return null
+    const fromProfile = profileById.get(participant.identity)?.avatarUrl
+    return fromProfile || null
+  }
+
+  const resolveNameForParticipant = (participant) => {
+    if (!participant) return 'Caller'
+    if (participant.isLocal) return 'You'
+    const fromProfile = profileById.get(participant.identity)?.title
+    if (fromProfile) return fromProfile
+    if (participant.name) return participant.name
+    if (!isGroup) return title || 'Caller'
+    return participant.identity?.slice(0, 8) || 'Caller'
   }
 
   const participantHasLiveCamera = (participant) => {
@@ -625,6 +659,13 @@ function CallChrome({
             participantHasLiveCamera={participantHasLiveCamera}
             title={title}
           />
+        ) : isGroup && !awaitingAnswer ? (
+          <GroupAudioStage
+            participants={participants}
+            speakingIds={speakingIds}
+            resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
+          />
         ) : (
           <div className="flex h-full flex-col items-center justify-center pb-8">
             <CallAvatarCircle
@@ -634,11 +675,6 @@ function CallChrome({
               textClass="text-[48px]"
               ring
             />
-            {isGroup && !awaitingAnswer ? (
-              <p className="mt-6 max-w-xs text-center text-[13px] text-[#a1a1aa]">
-                {participants.length} in call
-              </p>
-            ) : null}
           </div>
         )}
       </div>
@@ -648,6 +684,86 @@ function CallChrome({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
         {controlPill}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | null | undefined} supabaseClient
+ * @param {string[]} identities
+ */
+function useCallParticipantProfiles(supabaseClient, identities) {
+  const [map, setMap] = useState(
+    () => /** @type {Map<string, { title: string | null, avatarUrl: string | null }>} */ (new Map()),
+  )
+  const idsKey = useMemo(() => [...new Set(identities.filter(Boolean))].sort().join(','), [identities])
+
+  useEffect(() => {
+    if (!supabaseClient || !idsKey) return undefined
+    const ids = idsKey.split(',').filter(Boolean)
+    let cancelled = false
+    ;(async () => {
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id, display_name, handle, avatar_url')
+        .in('id', ids)
+      if (cancelled || error || !data) return
+      setMap((prev) => {
+        const next = new Map(prev)
+        for (const row of data) {
+          const title = String(row.display_name || row.handle || '').trim() || null
+          const avatarUrl =
+            typeof row.avatar_url === 'string' && row.avatar_url.trim() ? row.avatar_url.trim() : null
+          next.set(row.id, { title, avatarUrl })
+        }
+        return next
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, idsKey])
+
+  return map
+}
+
+function GroupAudioStage({
+  participants,
+  speakingIds,
+  resolveAvatarForParticipant,
+  resolveNameForParticipant,
+}) {
+  const count = participants.length
+  const sizeClass = count <= 2 ? 'h-32 w-32' : count <= 4 ? 'h-28 w-28' : 'h-24 w-24'
+  const textClass = count <= 2 ? 'text-[36px]' : count <= 4 ? 'text-[30px]' : 'text-[26px]'
+  const tileWidth =
+    count <= 2 ? 'w-[42%] max-w-[11rem]' : count <= 4 ? 'w-[40%] max-w-[9.5rem]' : 'w-[30%] max-w-[7.5rem]'
+
+  return (
+    <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto px-1 py-4">
+      <div className="flex w-full max-w-lg flex-wrap content-center justify-center gap-x-4 gap-y-5">
+        {participants.map((p) => {
+          const name = resolveNameForParticipant(p)
+          const speaking = speakingIds.has(p.identity)
+          return (
+            <div
+              key={p.identity}
+              className={`flex flex-col items-center gap-2 ${tileWidth}`}
+            >
+              <CallAvatarCircle
+                avatarUrl={resolveAvatarForParticipant(p)}
+                title={name}
+                sizeClass={sizeClass}
+                textClass={textClass}
+                speaking={speaking}
+              />
+              <p className="w-full truncate text-center text-[13px] font-medium text-[#e4e4e7]">
+                {name}
+              </p>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -785,13 +901,18 @@ function CallAvatarCircle({
   sizeClass = 'h-28 w-28',
   textClass = 'text-[32px]',
   ring = false,
+  speaking = false,
 }) {
   const initial = (title || '?').trim().charAt(0).toUpperCase() || '?'
+  const ringClass = speaking
+    ? ' shadow-[0_0_0_3px_#25d366]'
+    : ring
+      ? ' shadow-[0_0_0_3px_rgba(255,255,255,0.12)]'
+      : ''
   return (
     <div
-      className={`flex items-center justify-center overflow-hidden rounded-full bg-[#2a3942] ${sizeClass}${
-        ring ? ' shadow-[0_0_0_3px_rgba(255,255,255,0.12)]' : ''
-      }`}
+      className={`flex items-center justify-center overflow-hidden rounded-full bg-[#2a3942] transition-[box-shadow] duration-150 ${sizeClass}${ringClass}`}
+      aria-label={speaking ? `${title || 'Caller'} speaking` : undefined}
     >
       {avatarUrl ? (
         <img src={avatarUrl} alt="" className="h-full w-full object-cover" />

@@ -739,6 +739,7 @@ export function ChatCallProvider({
             avatarUrl={activeCall.avatarUrl || null}
             viewerAvatarUrl={activeCall.viewerAvatarUrl || null}
             peerUserId={activeCall.peerUserId || null}
+            supabaseClient={supabaseClient}
             onError={(msg) => showCallStatusToast(msg || 'Call connection failed')}
             onDisconnected={() => {
               // End DB call so a drop/disconnect cannot leave a stuck ringing row.

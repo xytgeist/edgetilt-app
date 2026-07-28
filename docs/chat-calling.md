@@ -7,7 +7,7 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 | Surface | Media | UX |
 | --- | --- | --- |
 | DM (`chat_rooms.kind = dm`) | Audio or video | Ring / accept / decline / hangup; decline can optionally send a quick reply chat message |
-| Classic group (`kind = group`) | Audio only | Start voice call; members join/leave (one hangup does **not** end the call for everyone) |
+| Classic group (`kind = group`) | Audio only | Start voice call; members join/leave (one hangup does **not** end the call for everyone). In-call: avatar grid for all LiveKit participants; **green ring** on active speaker |
 | Topics / Private Subs | Out of scope | Fan Spaces later |
 
 **Vendor:** LiveKit Cloud (managed SFU). Do not peer-mesh WebRTC.

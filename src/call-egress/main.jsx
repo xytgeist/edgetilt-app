@@ -12,10 +12,6 @@ import { ConnectionState, Track } from 'livekit-client'
 import '@livekit/components-styles'
 import './callEgress.css'
 
-/** Match LiveKit default template; hard-start so Stop never races an endless wait. */
-const FRAME_DECODE_TIMEOUT_MS = 5000
-const HARD_START_MS = 4000
-
 function parseFeaturedIdentity(layout) {
   const raw = String(layout || '').trim()
   if (raw.startsWith('focus:')) {
@@ -55,7 +51,8 @@ function CallEgressApp() {
 }
 
 /**
- * Featured camera/screen large; remaining video tracks in a strip; audio via RoomAudioRenderer.
+ * Featured camera/screen large; remaining video tracks as bottom PiPs; EDGE watermark.
+ * Signals START_RECORDING as soon as the room is Connected (headless Chrome often never decodes frames).
  */
 function FocusComposite({ featuredIdentity }) {
   const room = useRoomContext()
@@ -100,70 +97,34 @@ function FocusComposite({ featuredIdentity }) {
   }, [room])
 
   useEffect(() => {
-    if (!room) return undefined
-    if (startedRef.current) return undefined
+    if (!room || startedRef.current) return undefined
 
-    const startTime = Date.now()
-    const markStarted = () => {
+    const start = () => {
       if (startedRef.current) return
       startedRef.current = true
-      EgressHelper.startRecording()
+      try {
+        EgressHelper.startRecording()
+      } catch {
+        /* ignore */
+      }
     }
 
-    // Fire as soon as Connected... don't wait on decode stats (headless Chrome often stalls).
+    // Immediate path once Connected.
     if (room.state === ConnectionState.Connected) {
-      window.setTimeout(markStarted, 300)
+      const t = window.setTimeout(start, 250)
+      return () => window.clearTimeout(t)
     }
 
-    const interval = window.setInterval(async () => {
-      if (startedRef.current) {
-        window.clearInterval(interval)
-        return
-      }
-      if (room.state === ConnectionState.Disconnected) return
-      if (room.state === ConnectionState.Connected && Date.now() - startTime > 300) {
-        window.clearInterval(interval)
-        markStarted()
-        return
-      }
-
-      let hasSubscribed = false
-      let hasVideo = false
-      let hasDecoded = false
-
-      for (const p of room.remoteParticipants.values()) {
-        for (const pub of p.trackPublications.values()) {
-          if (pub.isSubscribed) hasSubscribed = true
-          if (pub.kind === Track.Kind.Video && pub.videoTrack) {
-            hasVideo = true
-            try {
-              const stats = await pub.videoTrack.getRTCStatsReport()
-              if (stats) {
-                hasDecoded = Array.from(stats).some(
-                  (item) => item[1].type === 'inbound-rtp' && item[1].framesDecoded > 0,
-                )
-              }
-            } catch {
-              /* ignore */
-            }
-          }
-        }
-      }
-
-      const elapsed = Date.now() - startTime
-      const ready =
-        hasDecoded ||
-        (!hasVideo && hasSubscribed && elapsed > 500) ||
-        (hasSubscribed && elapsed > FRAME_DECODE_TIMEOUT_MS) ||
-        elapsed > HARD_START_MS
-
-      if (ready) {
-        window.clearInterval(interval)
-        markStarted()
-      }
-    }, 100)
-
-    return () => window.clearInterval(interval)
+    const onChange = (state) => {
+      if (state === ConnectionState.Connected) start()
+    }
+    room.on('connectionStateChanged', onChange)
+    // Absolute failsafe... never leave LiveKit waiting forever.
+    const failsafe = window.setTimeout(start, 2500)
+    return () => {
+      room.off('connectionStateChanged', onChange)
+      window.clearTimeout(failsafe)
+    }
   }, [room])
 
   if (room.state === ConnectionState.Disconnected) {
@@ -214,5 +175,4 @@ function FocusComposite({ featuredIdentity }) {
   )
 }
 
-// No StrictMode: LiveKit egress waits on a single START_RECORDING console signal.
 createRoot(document.getElementById('root')).render(<CallEgressApp />)

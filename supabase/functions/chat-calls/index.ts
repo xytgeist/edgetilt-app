@@ -962,11 +962,11 @@ Deno.serve(async (req) => {
 
       const startedAt = new Date().toISOString()
       const r2Key = `call-recordings/${callId}/${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}.mp4`
-      // Custom pin template (call-egress.html) was failing to emit START_RECORDING / write R2.
-      // Opt-in via CHAT_CALL_EGRESS_USE_CUSTOM=1 once the template is proven; default = LiveKit speaker.
-      const useCustomTemplate =
-        String(Deno.env.get('CHAT_CALL_EGRESS_USE_CUSTOM') || '').trim() === '1' &&
-        Boolean(templateBaseUrl)
+      // Pin-featured custom template (single-file /call-egress.html). Set
+      // CHAT_CALL_EGRESS_USE_CUSTOM=0 to force LiveKit built-in speaker layout.
+      const customDisabled =
+        String(Deno.env.get('CHAT_CALL_EGRESS_USE_CUSTOM') || '').trim() === '0'
+      const useCustomTemplate = Boolean(templateBaseUrl) && !customDisabled
       const egressLayout = useCustomTemplate ? `focus:${featuredIdentity}` : 'speaker'
 
       const { data: claimed, error: claimErr } = await admin

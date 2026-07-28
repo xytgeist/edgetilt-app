@@ -36,7 +36,8 @@ export default defineConfig({
       input: {
         main: path.resolve('index.html'),
         slotGuideForm: path.resolve('slot-guide-form.html'),
-        callEgress: path.resolve('call-egress.html'),
+        // call-egress.html is built separately (vite.call-egress.config.js) as a
+        // single-file bundle so LiveKit headless Chrome does not load shared app chunks.
       },
     },
   },

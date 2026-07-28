@@ -529,6 +529,7 @@ export default function ChatBubble({
         <ChatCallRecordingCard
           message={message}
           isMine={isMine}
+          supabaseClient={supabaseClient}
           onOpen={() => {
             if (recordingMedia.length) openViewer(0)
           }}

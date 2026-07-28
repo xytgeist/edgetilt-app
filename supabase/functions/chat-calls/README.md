@@ -34,6 +34,7 @@ Recording finalize webhook is a separate function: **`livekit-egress-webhook`**.
 | `end_call` | `{ call_id }` | Force-end for everyone + delete LiveKit room; stops active egress |
 | `start_recording` | `{ call_id }` | Video calls only; first-starter claim; RoomComposite → R2; max 600s |
 | `stop_recording` | `{ call_id }` | StopEgress; does **not** hang up the call |
+| `attach_recording_poster` | `{ message_id, poster_url, width?, height? }` | First room member to capture a frame wins; sets `stream_poster_url` on `call_recording` (R2 public host only) |
 | `token` | `{ call_id }` | Refresh for active participant |
 | `get_call` | `{ call_id }` | Status poll (includes `recording_*`; auto-stops if past 10m) |
 

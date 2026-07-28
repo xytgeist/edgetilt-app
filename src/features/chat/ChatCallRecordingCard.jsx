@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { ensureCallRecordingPosterPersisted } from '../../utils/chatCallRecordingPoster.js'
 import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
 
 /**
@@ -34,69 +35,42 @@ import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
  *     sender_id?: string | null,
  *   },
  *   isMine?: boolean,
+ *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onOpen: () => void,
  * }} props
  */
-export default function ChatCallRecordingCard({ message, isMine = false, onOpen }) {
+export default function ChatCallRecordingCard({
+  message,
+  isMine = false,
+  supabaseClient = null,
+  onOpen,
+}) {
   const videoUrl = String(message.video_url || '').trim()
   const storedPoster = String(message.stream_poster_url || '').trim()
   const meta = parseCallRecordingMeta(message.link_preview)
-  const [framePoster, setFramePoster] = useState(/** @type {string | null} */ (null))
-  const captureRef = useRef(/** @type {HTMLVideoElement | null} */ (null))
+  const [posterUrl, setPosterUrl] = useState(storedPoster)
 
   useEffect(() => {
-    if (storedPoster || !videoUrl || framePoster) return undefined
-    const video = document.createElement('video')
-    captureRef.current = video
-    video.muted = true
-    video.playsInline = true
-    video.preload = 'auto'
-    video.crossOrigin = 'anonymous'
+    setPosterUrl(storedPoster)
+  }, [storedPoster])
+
+  useEffect(() => {
+    if (storedPoster || !videoUrl || !supabaseClient || !message?.id) return undefined
     let cancelled = false
-
-    const cleanup = () => {
-      video.removeAttribute('src')
-      video.load()
-      captureRef.current = null
-    }
-
-    const capture = () => {
-      if (cancelled || !video.videoWidth || !video.videoHeight) return
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        ctx.drawImage(video, 0, 0)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
-        if (!cancelled && dataUrl.startsWith('data:image')) setFramePoster(dataUrl)
-      } catch {
-        /* CORS / tainted canvas — fall back to live video thumb */
-      }
-    }
-
-    const onLoaded = () => {
-      try {
-        video.currentTime = Math.min(0.35, Math.max(0.05, (video.duration || 1) * 0.02))
-      } catch {
-        capture()
-      }
-    }
-
-    video.addEventListener('loadeddata', onLoaded)
-    video.addEventListener('seeked', capture)
-    video.src = videoUrl
-
+    void (async () => {
+      const saved = await ensureCallRecordingPosterPersisted(supabaseClient, {
+        id: message.id,
+        video_url: videoUrl,
+        stream_poster_url: storedPoster || null,
+      })
+      if (cancelled || !saved?.posterUrl) return
+      setPosterUrl(saved.posterUrl)
+    })()
     return () => {
       cancelled = true
-      video.removeEventListener('loadeddata', onLoaded)
-      video.removeEventListener('seeked', capture)
-      cleanup()
     }
-  }, [videoUrl, storedPoster, framePoster])
+  }, [supabaseClient, message?.id, storedPoster, videoUrl])
 
-  const posterUrl = storedPoster || framePoster
   const durationSec = Number(meta?.duration_seconds) || 0
   const durationLabel = durationSec > 0 ? formatDuration(durationSec) : null
   const whenLabel = formatWhen(meta?.started_at || message.created_at)
@@ -123,15 +97,6 @@ export default function ChatCallRecordingCard({ message, isMine = false, onOpen 
         >
           {posterUrl ? (
             <img src={posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          ) : videoUrl ? (
-            <video
-              src={videoUrl}
-              muted
-              playsInline
-              preload="metadata"
-              className="absolute inset-0 h-full w-full object-cover"
-              aria-hidden
-            />
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
           )}

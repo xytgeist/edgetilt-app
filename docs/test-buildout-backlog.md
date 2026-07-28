@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-28: **Chat calling recording posters (iPhone + Android):** first viewer captures a frame (iOS muted `play()` prime), uploads JPEG to R2, Edge **`attach_recording_poster`** persists `stream_poster_url` on the `call_recording` message (first writer wins). Redeploy **`chat-calls`**.
 - 2026-07-28: **Chat calling durable call summary cards:** ended calls insert rich `call_summary` messages (`link_preview.kind = call_summary`, participants/duration/status) via **`ChatCallSummaryCard`**; removed ephemeral post-hangup composer recap. SQL **`20260728080000`** unique on `link_preview->>'call_id'`; redeploy **`chat-calls`**. Live Join bar unchanged while call is open.
 - 2026-07-28: **Chat calling group video + recording:** SQL **`20260728050000`** (group `media_mode=video`) + **`20260728060000`** (`recording_*`); Edge **`chat-calls`** `start_recording` / `stop_recording` (RoomComposite → R2, 10m); new **`livekit-egress-webhook`** → `call_recording` card; client Record/Stop + cues + group Video header. Test: apply SQL, redeploy both functions, configure LiveKit webhook; smoke checklist under Chat calling. Prod after Ryan sign-off.
 - 2026-07-28: **Chat calling push tap → Accept UI:** deep link no longer awaits caller profile before `presentIncoming` (PWA wake cancel left DM open with no overlay). notificationclick also posts **`chat-call-invite-inapp`**. Force-close PWA to pick up **`push-sw.js`**.

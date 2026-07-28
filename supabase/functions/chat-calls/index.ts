@@ -1121,6 +1121,92 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, call, ...recordingPublicFields(call) })
     }
 
+    if (action === 'attach_recording_poster') {
+      const messageId = String(body.message_id || '').trim()
+      const posterUrl = String(body.poster_url || '').trim()
+      const widthRaw = body.width
+      const heightRaw = body.height
+      if (!messageId) return json(400, { error: 'Missing message_id.' })
+      if (!posterUrl) return json(400, { error: 'Missing poster_url.' })
+
+      const r2 = readLoungeCfR2Config()
+      const publicBase = r2?.publicBaseUrl ? String(r2.publicBaseUrl).replace(/\/+$/, '') : ''
+      if (!publicBase || !posterUrl.startsWith(`${publicBase}/`)) {
+        return json(400, { error: 'Poster URL must be on the Lounge R2 public host.' })
+      }
+
+      const { data: msg, error: msgErr } = await admin
+        .from('chat_messages')
+        .select('id, room_id, content_encoding, stream_poster_url, stream_video_width, stream_video_height')
+        .eq('id', messageId)
+        .maybeSingle()
+      if (msgErr) throw new Error(msgErr.message)
+      if (!msg) return json(404, { error: 'Message not found.' })
+      if (String(msg.content_encoding || '') !== 'call_recording') {
+        return json(400, { error: 'Not a call recording message.' })
+      }
+      await assertMember(admin, msg.room_id, user.id)
+
+      const existingPoster = String(msg.stream_poster_url || '').trim()
+      if (existingPoster) {
+        return json(200, {
+          ok: true,
+          stream_poster_url: existingPoster,
+          stream_video_width: msg.stream_video_width ?? null,
+          stream_video_height: msg.stream_video_height ?? null,
+          already: true,
+        })
+      }
+
+      const width =
+        typeof widthRaw === 'number' && Number.isFinite(widthRaw) && widthRaw > 0
+          ? Math.round(widthRaw)
+          : null
+      const height =
+        typeof heightRaw === 'number' && Number.isFinite(heightRaw) && heightRaw > 0
+          ? Math.round(heightRaw)
+          : null
+
+      const patch: Record<string, unknown> = { stream_poster_url: posterUrl }
+      if (width && height) {
+        patch.stream_video_width = width
+        patch.stream_video_height = height
+      }
+
+      const { data: updated, error: upErr } = await admin
+        .from('chat_messages')
+        .update(patch)
+        .eq('id', messageId)
+        .eq('content_encoding', 'call_recording')
+        .or('stream_poster_url.is.null,stream_poster_url.eq.')
+        .select('id, stream_poster_url, stream_video_width, stream_video_height')
+        .maybeSingle()
+      if (upErr) throw new Error(upErr.message)
+
+      // Race: another client won — re-read.
+      if (!updated) {
+        const { data: again } = await admin
+          .from('chat_messages')
+          .select('id, stream_poster_url, stream_video_width, stream_video_height')
+          .eq('id', messageId)
+          .maybeSingle()
+        return json(200, {
+          ok: true,
+          stream_poster_url: String(again?.stream_poster_url || posterUrl),
+          stream_video_width: again?.stream_video_width ?? width,
+          stream_video_height: again?.stream_video_height ?? height,
+          already: true,
+        })
+      }
+
+      return json(200, {
+        ok: true,
+        stream_poster_url: updated.stream_poster_url,
+        stream_video_width: updated.stream_video_width ?? null,
+        stream_video_height: updated.stream_video_height ?? null,
+      })
+    }
+
     return json(400, { error: `Unknown action: ${action}` })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

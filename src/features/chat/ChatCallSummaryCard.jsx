@@ -48,11 +48,13 @@ export default function ChatCallSummaryCard({ message }) {
   const shown = participants.slice(0, 5)
   const overflow = Math.max(0, participants.length - shown.length)
 
-  const title = (() => {
-    const media = mediaMode === 'video' ? 'Video call' : 'Voice call'
-    if (status === 'missed') return mediaMode === 'video' ? 'Missed video call' : 'Missed voice call'
-    if (status === 'declined') return mediaMode === 'video' ? 'Video call declined' : 'Voice call declined'
-    return media
+  const title = mediaMode === 'video' ? 'Video call' : 'Voice call'
+  const outcomeLabel = (() => {
+    if (status === 'missed') return 'Missed call'
+    if (status === 'declined') return 'Call declined'
+    if (durationLabel) return durationLabel
+    if (message.body) return String(message.body)
+    return 'Call ended'
   })()
 
   const isMissedOrDeclined = status === 'missed' || status === 'declined'
@@ -78,20 +80,16 @@ export default function ChatCallSummaryCard({ message }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-semibold text-zinc-50">{title}</p>
-            <p className="mt-0.5 truncate text-[12px] text-zinc-400">
-              {durationLabel && !isMissedOrDeclined
-                ? durationLabel
-                : message.body
-                  ? String(message.body)
-                  : 'Call'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="min-w-0 flex-1 truncate text-[14px] font-semibold text-zinc-50">{title}</p>
+              {whenLabel ? (
+                <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-zinc-200">
+                  {whenLabel}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 truncate text-[12px] text-zinc-400">{outcomeLabel}</p>
           </div>
-          {whenLabel ? (
-            <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-zinc-200">
-              {whenLabel}
-            </span>
-          ) : null}
         </div>
 
         {shown.length > 0 ? (

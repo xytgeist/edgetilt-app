@@ -126,6 +126,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **DM audio + video** ring/accept/decline/hangup (`ChatCallProvider`, header Phone/Video).
 - [x] **Group audio** start/join (audio-only grants; multi-participant list UI).
+- [x] **Group leave ≠ end-for-all:** hangup → Edge **`leave_call`** (redeploy **`chat-calls`**); only DM / last remaining participant ends the room.
 - [x] **App-wide in-app ring:** `ChatCallProvider` in **`AppShell`** (any tab while signed in); accept opens Chat room.
 - [x] **Offline ring (wire):** `activity_events.chat_call_invite` immediate push; deep link `/?tab=chat&room=&call=`.
 - [x] **Phase 1 smoke — OS push when backgrounded/locked:** iPhone received system call push (Ryan 2026-07-27).
@@ -938,6 +939,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-27: **Chat calling group hangup leave:** one member leaving no longer ends the call for everyone. Client hangup → **`leave_call`**; Edge ends only for DM or when zero participants remain. Redeploy **`chat-calls`** (test then prod).
 - 2026-07-27: **Chat calling WhatsApp-style in-call UI:** ringing/active screens use large avatar + control pill; minimize → floating pill with avatar expand; DM video = remote fullscreen + local circle PiP, camera-off → avatar, multi-remote strip + tap-to-pin. Client only.
 - 2026-07-27: **Chat calling DM decline quick replies:** incoming overlay (DM only) dropdown... "I'll call you back." / "Call you back in 5." / "Call me back in 5." / "Can't talk right now." Circle decline = no message; **Decline & send** declines then posts the text in the DM. Client only.
 - 2026-07-27: **Push opt-in intent + quiet repair:** **`pushOptInIntent.js`** (`edge_push_opt_in_intent_v1:`) set on Enable / Settings on, cleared on Settings off; app open quiet-resubscribes when intent on + `Notification.permission === 'granted'` but PushManager/`push_subscriptions` missing; AppShell re-enable / blocked sheets only when silent repair fails or permission is denied (7-day cooldown). Client only.

@@ -12,9 +12,9 @@ import {
 import {
   chatAcceptCall,
   chatDeclineCall,
-  chatEndCall,
   chatGetCall,
   chatJoinCall,
+  chatLeaveCall,
   chatStartCall,
 } from '../../../utils/chatCallsApi.js'
 import { chatSendMessage } from '../chatApi.js'
@@ -630,8 +630,11 @@ export function ChatCallProvider({
     setBusy(true)
     try {
       if (supabaseClient) {
-        await chatEndCall(supabaseClient, current.callId)
-        ensureBroadcast(current.roomId)?.emit('end', { callId: current.callId })
+        // leave_call: group member exits alone; DM / last participant ends the room.
+        const result = await chatLeaveCall(supabaseClient, current.callId)
+        if (result?.call_ended !== false) {
+          ensureBroadcast(current.roomId)?.emit('end', { callId: current.callId })
+        }
       }
     } catch {
       /* still clear local */

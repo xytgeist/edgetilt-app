@@ -8,8 +8,9 @@ import {
   VideoTrack,
   useRoomContext,
 } from '@livekit/components-react'
-import { Track } from 'livekit-client'
+import { Track, Room, facingModeFromLocalTrack } from 'livekit-client'
 import '@livekit/components-styles'
+import { applyCallAudioOutput } from './chatCallAudioOutput.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
@@ -333,7 +334,9 @@ function CallChrome({
   const participants = useParticipants()
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(videoEnabled)
-  const [speakerOn, setSpeakerOn] = useState(true)
+  /** false = earpiece (default); true = speakerphone */
+  const [speakerOn, setSpeakerOn] = useState(false)
+  const [cameraBusy, setCameraBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
 
@@ -413,17 +416,67 @@ function CallChrome({
   const applySpeakerSink = async (nextOn) => {
     setSpeakerOn(nextOn)
     try {
-      const audios = document.querySelectorAll('[data-chat-call-session] audio')
-      for (const el of audios) {
-        if (el && typeof el.setSinkId === 'function') {
-          // Default device when "speaker on"; empty string is the browser default output.
-          await el.setSinkId('').catch(() => {})
-        }
-      }
+      await applyCallAudioOutput({ room, speakerphoneOn: nextOn })
     } catch {
       /* iOS / unsupported — UI state still toggles */
     }
-    void nextOn
+  }
+
+  // Default earpiece; re-apply when remotes/audio elements appear (RoomAudioRenderer mounts late).
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        await applyCallAudioOutput({ room, speakerphoneOn: speakerOn })
+      } catch {
+        /* ignore */
+      }
+    }
+    void run()
+    const t1 = window.setTimeout(() => {
+      if (!cancelled) void run()
+    }, 400)
+    const t2 = window.setTimeout(() => {
+      if (!cancelled) void run()
+    }, 1200)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [room, speakerOn, remoteCount])
+
+  const flipCamera = async () => {
+    if (!localParticipant || !camOn || cameraBusy) return
+    setCameraBusy(true)
+    try {
+      const pub = localParticipant.getTrackPublication?.(Track.Source.Camera)
+      const track = pub?.track
+      if (track && typeof track.restartTrack === 'function') {
+        const { facingMode: current } = facingModeFromLocalTrack(track)
+        const next = current === 'environment' ? 'user' : 'environment'
+        await track.restartTrack({ facingMode: next })
+        return
+      }
+      const devices = await Room.getLocalDevices('videoinput')
+      if (!room || devices.length < 2) return
+      const currentId =
+        room.getActiveDevice?.('videoinput') ||
+        track?.mediaStreamTrack?.getSettings?.()?.deviceId ||
+        ''
+      const idx = Math.max(
+        0,
+        devices.findIndex((d) => d.deviceId === currentId),
+      )
+      const nextDevice = devices[(idx + 1) % devices.length]
+      if (nextDevice?.deviceId) {
+        await room.switchActiveDevice('videoinput', nextDevice.deviceId)
+      }
+    } catch {
+      /* single camera / permission / unsupported */
+    } finally {
+      setCameraBusy(false)
+    }
   }
 
   const hangup = () => {
@@ -469,12 +522,28 @@ function CallChrome({
         </button>
       ) : null}
 
+      {videoEnabled ? (
+        <button
+          type="button"
+          disabled={!camOn || cameraBusy}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
+            camOn && !cameraBusy
+              ? 'bg-[#2a3942] text-[#f4f4f5] active:opacity-80'
+              : 'bg-[#2a3942]/50 text-[#71717a]'
+          }`}
+          aria-label="Switch camera"
+          onClick={() => void flipCamera()}
+        >
+          <FlipCameraIcon />
+        </button>
+      ) : null}
+
       <button
         type="button"
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-          speakerOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#2a3942] text-[#a1a1aa]'
+          speakerOn ? 'bg-[#25d366] text-white' : 'bg-[#2a3942] text-[#a1a1aa]'
         }`}
-        aria-label={speakerOn ? 'Speaker on' : 'Speaker off'}
+        aria-label={speakerOn ? 'Speakerphone on, tap for earpiece' : 'Earpiece, tap for speakerphone'}
         aria-pressed={speakerOn}
         onClick={() => void applySpeakerSink(!speakerOn)}
       >
@@ -613,9 +682,18 @@ function VideoCallStage({
     return others
   }, [remotes, localParticipant, fullId])
 
-  const localIsFullscreen = Boolean(localParticipant && fullId === localParticipant.identity)
-  const showLocalPip =
-    Boolean(localParticipant) && !localIsFullscreen && remotes.length <= 1
+  // 1:1: always show the non-fullscreen person as the round PiP so you can switch back.
+  const duoPipParticipant = useMemo(() => {
+    if (remotes.length !== 1) return null
+    const remote = remotes[0]
+    if (!fullId) return localParticipant || null
+    if (localParticipant && fullId === localParticipant.identity) return remote
+    if (fullId === remote.identity) return localParticipant || null
+    return localParticipant && localParticipant.identity !== fullId ? localParticipant : remote
+  }, [remotes, localParticipant, fullId])
+
+  const showDuoPip = Boolean(duoPipParticipant)
+  const showStrip = !showDuoPip && stripParticipants.length > 0
 
   return (
     <div className="relative h-full min-h-0 overflow-hidden rounded-2xl bg-[#111b21]">
@@ -635,23 +713,27 @@ function VideoCallStage({
         )}
       </div>
 
-      {showLocalPip ? (
+      {showDuoPip ? (
         <button
           type="button"
           className="absolute bottom-3 right-3 z-[2] h-[7.5rem] w-[7.5rem] overflow-hidden rounded-full border-2 border-white/35 bg-[#1f2c34] shadow-lg touch-manipulation active:opacity-90"
-          aria-label="Show your video fullscreen"
-          onClick={() => onPinIdentity(localParticipant.identity)}
+          aria-label={
+            duoPipParticipant.isLocal
+              ? 'Show your video fullscreen'
+              : `Show ${duoPipParticipant.name || title || 'caller'} fullscreen`
+          }
+          onClick={() => onPinIdentity(duoPipParticipant.identity)}
         >
-          {participantHasLiveCamera(localParticipant) &&
-          cameraByIdentity.get(localParticipant.identity) ? (
+          {participantHasLiveCamera(duoPipParticipant) &&
+          cameraByIdentity.get(duoPipParticipant.identity) ? (
             <VideoTrack
-              trackRef={cameraByIdentity.get(localParticipant.identity)}
+              trackRef={cameraByIdentity.get(duoPipParticipant.identity)}
               className="h-full w-full object-cover"
             />
           ) : (
             <CallAvatarCircle
-              avatarUrl={resolveAvatarForParticipant(localParticipant)}
-              title="You"
+              avatarUrl={resolveAvatarForParticipant(duoPipParticipant)}
+              title={duoPipParticipant.isLocal ? 'You' : duoPipParticipant.name || title || '?'}
               sizeClass="h-full w-full"
               textClass="text-[28px]"
             />
@@ -659,7 +741,7 @@ function VideoCallStage({
         </button>
       ) : null}
 
-      {stripParticipants.length > 1 || (remotes.length > 1 && stripParticipants.length > 0) ? (
+      {showStrip ? (
         <div className="absolute bottom-3 left-0 right-0 z-[2] flex justify-center px-3">
           <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {stripParticipants.map((p) => {
@@ -764,6 +846,18 @@ function VideoIcon({ off }) {
           <rect x="2" y="6" width="14" height="12" rx="2" />
         </>
       )}
+    </svg>
+  )
+}
+
+function FlipCameraIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m18 8 3-3-3-3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m6 16-3 3 3 3" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   )
 }

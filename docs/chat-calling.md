@@ -7,7 +7,7 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 | Surface | Media | UX |
 | --- | --- | --- |
 | DM (`chat_rooms.kind = dm`) | Audio or video | Ring / accept / decline / hangup; decline can optionally send a quick reply chat message |
-| Classic group (`kind = group`) | Audio only | Start voice call; members join/leave |
+| Classic group (`kind = group`) | Audio only | Start voice call; members join/leave (one hangup does **not** end the call for everyone) |
 | Topics / Private Subs | Out of scope | Fan Spaces later |
 
 **Vendor:** LiveKit Cloud (managed SFU). Do not peer-mesh WebRTC.
@@ -27,11 +27,13 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 
 See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls/README.md).
 
+Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, removes them from LiveKit. **Group** stays up if anyone remains. **DM** (or the last group member) runs the full end path (summary chip + delete LiveKit room). **`end_call`** still force-ends for everyone.
+
 ## Client
 
 - `src/features/chat/calls/` — session UI, incoming overlay (caller avatar + name), API, controller.
 - Header: DM Phone + Video; group Voice (absolute right). Avatar/title stay screen-centered; room options live in the name › sheet (no ⋯ menu).
-- **In-call / ringing chrome:** WhatsApp-style dark stage, large peer avatar while ringing/audio, bottom control pill (mute / video / speaker / hangup). Minimize (top-left) collapses to a **draggable** floating pill (app-wide via `ChatCallProvider` in AppShell; left control = peer avatar, tap to expand). **Video:** remote/active-speaker fullscreen + local round PiP; camera-off shows avatar; multi-remote strip with tap-to-pin.
+- **In-call / ringing chrome:** WhatsApp-style dark stage, large peer avatar while ringing/audio, bottom control pill (mute / video / flip camera / speaker / hangup). Flip camera (video calls, cam on) toggles front/back via LiveKit `restartTrack({ facingMode })`, with device-cycle fallback. **Speaker:** defaults to **earpiece**; button toggles **speakerphone** via `audiooutput` `setSinkId` / LiveKit `switchActiveDevice` when the OS exposes those devices (Chrome Android). iOS Safari/PWA often cannot route earpiece vs speakerphone from the web... button still toggles UI. Minimize (top-left) collapses to a **draggable** floating pill (app-wide via `ChatCallProvider` in AppShell; left control = peer avatar, tap to expand). **Video:** remote/active-speaker fullscreen + round PiP for the other person in 1:1 (swaps when you pin local so you can switch back); camera-off shows avatar; multi-remote strip with tap-to-pin.
 - **DM decline quick replies** (`chatCallDeclineQuickReplies.js`): incoming overlay dropdown + **Decline & send** (decline call, then `chatSendMessage`). Circle decline still ends the call with no message. Group voice invites do not show this UI.
 
 ## Guardrails

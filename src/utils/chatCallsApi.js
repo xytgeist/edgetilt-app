@@ -65,7 +65,18 @@ export function chatDeclineCall(supabase, callId) {
   return chatCallsInvoke(supabase, { action: 'decline_call', call_id: callId })
 }
 
-/** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
+/**
+ * Leave the call. Group: only this participant. DM (or last group member): ends the call.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ */
+export function chatLeaveCall(supabase, callId) {
+  return chatCallsInvoke(supabase, { action: 'leave_call', call_id: callId })
+}
+
+/**
+ * Force-end the call for everyone (prefer `chatLeaveCall` for hangup).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ */
 export function chatEndCall(supabase, callId) {
   return chatCallsInvoke(supabase, { action: 'end_call', call_id: callId })
 }

@@ -1,5 +1,5 @@
 /**
- * LiveKit chat calling: start / accept / join / decline / end / token refresh.
+ * LiveKit chat calling: start / accept / join / decline / leave / end / token refresh.
  * Membership source of truth: chat_rooms + chat_room_members.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -88,6 +88,21 @@ async function deleteLiveKitRoom(httpUrl: string, apiKey: string, apiSecret: str
     await svc.deleteRoom(roomName)
   } catch (err) {
     console.warn('chat-calls: deleteRoom failed', roomName, err)
+  }
+}
+
+async function removeLiveKitParticipant(
+  httpUrl: string,
+  apiKey: string,
+  apiSecret: string,
+  roomName: string,
+  identity: string,
+) {
+  try {
+    const svc = new RoomServiceClient(httpUrl, apiKey, apiSecret)
+    await svc.removeParticipant(roomName, identity)
+  } catch (err) {
+    console.warn('chat-calls: removeParticipant failed', roomName, identity, err)
   }
 }
 
@@ -621,6 +636,58 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, ...result })
     }
 
+    if (action === 'leave_call') {
+      const callId = String(body.call_id || '').trim()
+      if (!callId) return json(400, { error: 'Missing call_id.' })
+
+      const { data: call, error: callErr } = await admin
+        .from('chat_calls')
+        .select(
+          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+        )
+        .eq('id', callId)
+        .maybeSingle()
+      if (callErr) throw new Error(callErr.message)
+      if (!call) return json(404, { error: 'Call not found.' })
+      await assertMember(admin, call.chat_room_id, user.id)
+
+      if (['ended', 'missed', 'declined'].includes(call.status)) {
+        return json(200, { ok: true, left: true, call_ended: true, status: call.status })
+      }
+
+      const leftAt = new Date().toISOString()
+      await admin
+        .from('chat_call_participants')
+        .update({ left_at: leftAt })
+        .eq('call_id', callId)
+        .eq('user_id', user.id)
+        .is('left_at', null)
+
+      await removeLiveKitParticipant(
+        lk.httpUrl,
+        lk.apiKey,
+        lk.apiSecret,
+        call.livekit_room_name,
+        user.id,
+      )
+
+      const { count: remaining } = await admin
+        .from('chat_call_participants')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('call_id', callId)
+        .is('left_at', null)
+
+      // DM hangup ends for both. Group hangup only ends when nobody remains.
+      const shouldEndCall = call.kind === 'dm_av' || (remaining ?? 0) === 0
+      if (!shouldEndCall) {
+        return json(200, { ok: true, left: true, call_ended: false, status: call.status })
+      }
+
+      const result = await endCallRow(admin, call, 'hangup')
+      await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
+      return json(200, { ok: true, left: true, call_ended: true, ...result })
+    }
+
     if (action === 'end_call') {
       const callId = String(body.call_id || '').trim()
       if (!callId) return json(400, { error: 'Missing call_id.' })
@@ -636,9 +703,10 @@ Deno.serve(async (req) => {
       if (!call) return json(404, { error: 'Call not found.' })
       await assertMember(admin, call.chat_room_id, user.id)
 
+      // Force-end for everyone (DM hangup path; host tools). Prefer leave_call for group leave.
       const result = await endCallRow(admin, call, 'hangup')
       await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
-      return json(200, { ok: true, ...result })
+      return json(200, { ok: true, call_ended: true, ...result })
     }
 
     if (action === 'token') {

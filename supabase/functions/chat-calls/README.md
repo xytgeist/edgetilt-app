@@ -27,7 +27,8 @@ supabase functions deploy chat-calls --project-ref jtjgtucumuoswnbauxry
 | `start_call` | `{ room_id, media_mode: 'audio'\|'video' }` | DM: audio or video. Group: audio only. |
 | `accept_call` / `join_call` | `{ call_id }` | Mints LiveKit token |
 | `decline_call` | `{ call_id }` | DM ringing only |
-| `end_call` | `{ call_id }` | Hangup + delete LiveKit room |
+| `leave_call` | `{ call_id }` | Leave self. Group continues if others remain; DM / last participant ends + deletes LiveKit room |
+| `end_call` | `{ call_id }` | Force-end for everyone + delete LiveKit room |
 | `token` | `{ call_id }` | Refresh for active participant |
 | `get_call` | `{ call_id }` | Status poll |
 

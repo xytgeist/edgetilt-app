@@ -144,8 +144,11 @@ export default function ChatIncomingCallOverlay({
         </div>
       ) : null}
 
-      {/* Middle spacing: not flush, not justify-between across max-w-xs (~gap was too wide). */}
-      <div className={`flex items-center justify-center gap-24${showDeclineQuickReplies ? ' mt-10' : ' mt-12'}`}>
+      {/* Inline gap: Tailwind never emitted gap-24 when glued to `${` in the className template. */}
+      <div
+        className={`flex items-center justify-center ${showDeclineQuickReplies ? 'mt-10' : 'mt-12'}`}
+        style={{ gap: '4rem' }}
+      >
         <button
           type="button"
           disabled={busy}

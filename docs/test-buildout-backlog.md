@@ -140,7 +140,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [ ] **Phase 4 — declined/timeout edge cases + summary chip polish.**
 - [ ] **Phase 5 — group voice** multi-join push behavior.
 - [x] **First-open PWA mic prompt:** **Android PWA only**; after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v2:` (`pwaMicrophonePrompt.js`). iOS skipped.
-- [x] **Call summary chips** in thread (`content_encoding = call_summary`).
+- [x] **Call summary cards** in thread (`content_encoding = call_summary` + rich `link_preview`; was chips).
 - [x] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan; DM voice connect smoked).
 - [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; screen share; auto-record; audio-only recording.
 
@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-28: **Chat calling durable call summary cards:** ended calls insert rich `call_summary` messages (`link_preview.kind = call_summary`, participants/duration/status) via **`ChatCallSummaryCard`**; removed ephemeral post-hangup composer recap. SQL **`20260728080000`** unique on `link_preview->>'call_id'`; redeploy **`chat-calls`**. Live Join bar unchanged while call is open.
 - 2026-07-28: **Chat calling group video + recording:** SQL **`20260728050000`** (group `media_mode=video`) + **`20260728060000`** (`recording_*`); Edge **`chat-calls`** `start_recording` / `stop_recording` (RoomComposite → R2, 10m); new **`livekit-egress-webhook`** → `call_recording` card; client Record/Stop + cues + group Video header. Test: apply SQL, redeploy both functions, configure LiveKit webhook; smoke checklist under Chat calling. Prod after Ryan sign-off.
 - 2026-07-28: **Chat calling push tap → Accept UI:** deep link no longer awaits caller profile before `presentIncoming` (PWA wake cancel left DM open with no overlay). notificationclick also posts **`chat-call-invite-inapp`**. Force-close PWA to pick up **`push-sw.js`**.
 - 2026-07-27: **Chat calling UX batch → production:** merge `test` → `main` (WhatsApp in-call UI, leave_call / end-when-≤1, earpiece, speaking rings, late-join Join bar + avatars). Redeploy Edge **`chat-calls`** on **`jtjgtucumuoswnbauxry`**. No new SQL.

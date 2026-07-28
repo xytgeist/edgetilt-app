@@ -18,6 +18,7 @@ import {
   finalizeChatCallRecording,
   normalizeEgressStatus,
 } from '../_shared/chatCallRecordingFinalize.ts'
+import { ensureCallSummaryMessage } from '../_shared/chatCallSummary.ts'
 import { loungeCfR2PublicUrl, readLoungeCfR2Config } from '../_shared/loungeCfR2.ts'
 
 const corsHeaders = {
@@ -264,6 +265,7 @@ async function endCallRow(
     answered_at: string | null
     status: string
     kind: string
+    media_mode?: string | null
   },
   endedReason: string,
   statusOverride?: 'ended' | 'missed' | 'declined',
@@ -290,28 +292,28 @@ async function endCallRow(
     .eq('call_id', call.id)
     .is('left_at', null)
 
-  const durationMs = call.answered_at
-    ? Math.max(0, new Date(endedAt).getTime() - new Date(call.answered_at).getTime())
-    : 0
-  const mins = Math.floor(durationMs / 60000)
-  const secs = Math.floor((durationMs % 60000) / 1000)
-  const durationLabel = call.answered_at
-    ? mins > 0
-      ? `${mins}:${String(secs).padStart(2, '0')}`
-      : `0:${String(secs).padStart(2, '0')}`
-    : null
-
   let body = 'Call ended'
-  if (status === 'missed') body = 'Missed call'
-  else if (status === 'declined') body = 'Call declined'
-  else if (durationLabel) body = `Call · ${durationLabel}`
-
-  await admin.from('chat_messages').insert({
-    room_id: call.chat_room_id,
-    sender_id: call.started_by,
-    body,
-    content_encoding: 'call_summary',
-  })
+  try {
+    const summary = await ensureCallSummaryMessage(admin, call, status, endedAt)
+    body = summary.body
+  } catch (err) {
+    console.warn('chat-calls: call summary card failed', err)
+    // Fallback chip so the thread still records the end if meta insert fails.
+    if (status === 'missed') body = 'Missed call'
+    else if (status === 'declined') body = 'Call declined'
+    else if (call.answered_at) {
+      const durationMs = Math.max(0, new Date(endedAt).getTime() - new Date(call.answered_at).getTime())
+      const mins = Math.floor(durationMs / 60000)
+      const secs = Math.floor((durationMs % 60000) / 1000)
+      body = `Call · ${mins}:${String(secs).padStart(2, '0')}`
+    }
+    await admin.from('chat_messages').insert({
+      room_id: call.chat_room_id,
+      sender_id: call.started_by,
+      body,
+      content_encoding: 'call_summary',
+    })
+  }
 
   // Replace ringing OS notification with "Missed call" (same push tag via chat_call_id).
   if (status === 'missed') {

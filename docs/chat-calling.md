@@ -48,6 +48,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 - **In-call / ringing chrome:** WhatsApp-style dark stage, large peer avatar while ringing/audio, bottom control pill (mute / video / flip camera / **Record** on video / speaker / hangup). Flip camera (video calls, cam on) toggles front/back via LiveKit `restartTrack({ facingMode })`, with device-cycle fallback. **Speaker:** defaults to **earpiece**; button toggles **speakerphone**. Chrome Android has no `setSinkId`... we switch LiveKit **`audioinput`** between phantom devices labeled `Headset earpiece` / `Speakerphone` (that also routes playback). iOS / browsers without those devices often cannot switch from the web. Minimize (top-left) collapses to a **draggable** floating pill (app-wide via `ChatCallProvider` in AppShell; left control = peer avatar, tap to expand). **Video:** remote/active-speaker fullscreen + round PiP for the other person in 1:1 (swaps when you pin local so you can switch back); round PiP/strip uses `object-fit: cover` (no letterbox bars); camera-off / muted camera shows avatar (not black); multi-remote strip with tap-to-pin.
 - **Recording UX:** REC badge + elapsed status; starter sees Stop; non-starters see blank/disabled Record; countdown banners + cues at 1:00 / 0:15; auto `stop_recording` at 10:00 without hanging up.
 - **Call recording card:** `ChatCallRecordingCard` for `content_encoding === 'call_recording'`... poster (stored `stream_poster_url` or first-frame capture), duration, date/time, participant avatars, recorded-by. Meta lives in `link_preview` (`kind: call_recording`). Inbox preview `[call recording] · m:ss`.
+- **Call summary card (historical):** on call end, Edge inserts a durable `content_encoding = call_summary` message (`ChatCallSummaryCard`) with `link_preview.kind = call_summary` (status, media_mode, duration, participant avatars). Stays in the thread after leave/reopen. Live late-join Join bar is separate and only while the call is open. Unique index on `link_preview->>'call_id'` for call_summary.
 - **DM decline quick replies** (`chatCallDeclineQuickReplies.js`): incoming overlay dropdown + **Decline & send** (decline call, then `chatSendMessage`). Circle decline still ends the call with no message. Group invites do not show this UI.
 
 ## Guardrails
@@ -71,7 +72,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 ## Setup checklist
 
 1. Create LiveKit Cloud project; copy URL + API key/secret.
-2. Apply SQL `20260728000000`–`20260728060000` on test (then prod when promoting).
+2. Apply SQL `20260728000000`–`20260728080000` on test (then prod when promoting).
 3. Set Edge secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` on the project (**both** test + prod). Reuse Lounge R2 secrets for egress output (`LOUNGE_CF_R2_*` / Cloudflare account).
 4. Deploy `chat-calls` + `livekit-egress-webhook` + redeploy `lounge-send-activity-push` when invite push changes.
 5. LiveKit Cloud → Webhooks → `https://<project-ref>.supabase.co/functions/v1/livekit-egress-webhook` (at least **egress_ended**). Ensure the LiveKit project can write to the R2 bucket (S3-compatible).
@@ -81,4 +82,4 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 **Prod promote (2026-07-27, UX batch):** WhatsApp in-call polish, group leave semantics, earpiece/speaker, late-join Join bar + avatars → **`main`**; redeploy **`chat-calls`** on prod for **`leave_call`** / end-when-≤1-remains. No new SQL.
 
-**Group video + recording (test first):** SQL **`20260728050000`**, **`20260728060000`**; redeploy **`chat-calls`**; deploy **`livekit-egress-webhook`**; configure LiveKit webhook. Promote prod only after Ryan sign-off.
+**Group video + recording (test first):** SQL **`20260728050000`**, **`20260728060000`**, **`20260728070000`**, **`20260728080000`**; redeploy **`chat-calls`**; deploy **`livekit-egress-webhook`**; configure LiveKit webhook. Promote prod only after Ryan sign-off.

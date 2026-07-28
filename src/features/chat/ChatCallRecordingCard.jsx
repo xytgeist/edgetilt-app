@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ensureCallRecordingPosterPersisted } from '../../utils/chatCallRecordingPoster.js'
 import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
 
@@ -24,6 +25,7 @@ import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
 
 /**
  * Rich in-thread card for LiveKit call recordings.
+ * Long-press → Copy link / Share / Delete (owner or recorder).
  * @param {{
  *   message: {
  *     id: string,
@@ -35,6 +37,8 @@ import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
  *     sender_id?: string | null,
  *   },
  *   isMine?: boolean,
+ *   canDelete?: boolean,
+ *   onDelete?: (() => void) | null,
  *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onOpen: () => void,
  * }} props
@@ -42,6 +46,8 @@ import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
 export default function ChatCallRecordingCard({
   message,
   isMine = false,
+  canDelete = false,
+  onDelete = null,
   supabaseClient = null,
   onOpen,
 }) {
@@ -49,6 +55,12 @@ export default function ChatCallRecordingCard({
   const storedPoster = String(message.stream_poster_url || '').trim()
   const meta = parseCallRecordingMeta(message.link_preview)
   const [posterUrl, setPosterUrl] = useState(storedPoster)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState(/** @type {{ top: number, left: number } | null} */ (null))
+  const [linkCopied, setLinkCopied] = useState(false)
+  const cardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const longPressTimer = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
+  const suppressClickRef = useRef(false)
 
   useEffect(() => {
     setPosterUrl(storedPoster)
@@ -71,6 +83,120 @@ export default function ChatCallRecordingCard({
     }
   }, [supabaseClient, message?.id, storedPoster, videoUrl])
 
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  const openShareMenu = useCallback(() => {
+    if (!videoUrl || !cardRef.current) return
+    const rect = cardRef.current.getBoundingClientRect()
+    const menuW = 220
+    const menuH = canDelete && onDelete ? 180 : 140
+    const left = Math.max(12, Math.min(rect.left + 8, window.innerWidth - menuW - 12))
+    const top = Math.min(rect.bottom - 8, window.innerHeight - menuH)
+    setMenuPos({ top: Math.max(12, top - (menuH - 40)), left })
+    setLinkCopied(false)
+    setMenuOpen(true)
+    suppressClickRef.current = true
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(12)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [videoUrl, canDelete, onDelete])
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false)
+    setMenuPos(null)
+    setLinkCopied(false)
+  }, [])
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || !videoUrl) return undefined
+
+    let startX = 0
+    let startY = 0
+    let cancelled = false
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return
+      cancelled = false
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+      clearLongPressTimer()
+      longPressTimer.current = setTimeout(() => {
+        if (cancelled) return
+        openShareMenu()
+      }, 380)
+    }
+
+    const onTouchMove = (e) => {
+      if (e.touches.length !== 1 || cancelled) return
+      if (
+        Math.abs(e.touches[0].clientX - startX) > 8 ||
+        Math.abs(e.touches[0].clientY - startY) > 8
+      ) {
+        cancelled = true
+        clearLongPressTimer()
+      }
+    }
+
+    const onTouchEnd = () => {
+      clearLongPressTimer()
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true })
+
+    return () => {
+      clearLongPressTimer()
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [videoUrl, clearLongPressTimer, openShareMenu])
+
+  const copyLink = useCallback(async () => {
+    if (!videoUrl) return
+    try {
+      await navigator.clipboard?.writeText(videoUrl)
+      setLinkCopied(true)
+      window.setTimeout(() => closeMenu(), 700)
+    } catch {
+      closeMenu()
+    }
+  }, [videoUrl, closeMenu])
+
+  const shareLink = useCallback(async () => {
+    if (!videoUrl) return
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({
+          title: 'Call recording',
+          url: videoUrl,
+        })
+        closeMenu()
+        return
+      }
+    } catch (err) {
+      // User cancelled share sheet — keep menu closed either way.
+      if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') {
+        closeMenu()
+        return
+      }
+    }
+    await copyLink()
+  }, [videoUrl, closeMenu, copyLink])
+
   const durationSec = Number(meta?.duration_seconds) || 0
   const durationLabel = durationSec > 0 ? formatDuration(durationSec) : null
   const whenLabel = formatWhen(meta?.started_at || message.created_at)
@@ -81,15 +207,29 @@ export default function ChatCallRecordingCard({
   const mediaLabel = meta?.media_mode === 'audio' ? 'Voice' : 'Video'
   const shown = participants.slice(0, 5)
   const overflow = Math.max(0, participants.length - shown.length)
+  const canShareNative =
+    typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   return (
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} px-1 py-1`}>
       <div
+        ref={cardRef}
         className={`${CHAT_MESSAGE_COLUMN_WIDTH_CLASS} overflow-hidden rounded-2xl border border-zinc-700/80 bg-gradient-to-b from-zinc-900 to-zinc-950 shadow-lg shadow-black/20`}
+        onContextMenu={(e) => {
+          if (!videoUrl) return
+          e.preventDefault()
+          openShareMenu()
+        }}
       >
         <button
           type="button"
-          onClick={onOpen}
+          onClick={() => {
+            if (suppressClickRef.current) {
+              suppressClickRef.current = false
+              return
+            }
+            onOpen()
+          }}
           disabled={!videoUrl}
           className="relative block w-full touch-manipulation active:opacity-90 disabled:opacity-60"
           aria-label="Play call recording"
@@ -157,6 +297,52 @@ export default function ChatCallRecordingCard({
           ) : null}
         </div>
       </div>
+
+      {menuOpen && menuPos
+        ? createPortal(
+            <>
+              <div className="fixed inset-0 z-[108] bg-black/30" onClick={closeMenu} />
+              <div
+                className="chat-menu-glass fixed z-[109] w-[220px] overflow-hidden rounded-2xl"
+                style={{ top: menuPos.top, left: menuPos.left }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {canShareNative ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-medium text-zinc-50 touch-manipulation active:bg-zinc-800/80"
+                    onClick={() => void shareLink()}
+                  >
+                    <ShareIcon />
+                    Share
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-medium text-zinc-50 touch-manipulation active:bg-zinc-800/80"
+                  onClick={() => void copyLink()}
+                >
+                  <LinkIcon />
+                  {linkCopied ? 'Copied' : 'Copy link'}
+                </button>
+                {canDelete && onDelete ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-medium text-red-400 touch-manipulation active:bg-zinc-800/80"
+                    onClick={() => {
+                      closeMenu()
+                      onDelete()
+                    }}
+                  >
+                    <TrashIcon />
+                    Delete
+                  </button>
+                ) : null}
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }
@@ -216,5 +402,36 @@ function ParticipantAvatar({ participant }) {
         </div>
       )}
     </div>
+  )
+}
+
+function ShareIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
+    </svg>
+  )
+}
+
+function LinkIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
   )
 }

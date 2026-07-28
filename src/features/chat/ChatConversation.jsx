@@ -23,6 +23,7 @@ import {
   chatUnpinMessage,
   chatMessagesWindow,
   chatCanPinMessages,
+  chatCanDeleteCallRecording,
   chatIsGroupOwner,
   chatRoomReadReceipts,
 } from './chatApi.js'
@@ -2496,6 +2497,7 @@ export default function ChatConversation({
                         onTogglePin={handleTogglePin}
                         onReply={setReplyTarget}
                         onDeleteMessage={handleDelete}
+                        canDeleteCallRecording={chatCanDeleteCallRecording(activeRoom, viewerUserId, msg)}
                         onAddReaction={handleAddReaction}
                         onRemoveReaction={handleRemoveReaction}
                         reactionPillInteractive={isGroupRoom}

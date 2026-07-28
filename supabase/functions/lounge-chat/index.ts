@@ -500,13 +500,54 @@ Deno.serve(async (req) => {
 
     const { data: msg, error: mErr } = await admin
       .from('chat_messages')
-      .select('id, room_id, sender_id, deleted_at, stream_video_uid, stream_poster_url, video_url')
+      .select('id, room_id, sender_id, deleted_at, stream_video_uid, stream_poster_url, video_url, content_encoding')
       .eq('id', messageId)
       .maybeSingle()
     if (mErr || !msg) return json(404, { error: 'Message not found.' })
     if (msg.deleted_at) return json(200, { ok: true }) // already deleted
 
-    const canDelete = msg.sender_id === user.id || subscriberOrStaff(actorProfile)
+    let canDelete = msg.sender_id === user.id || subscriberOrStaff(actorProfile)
+    // Call recordings: room owner/admin (group), creator/mod (fan), or either DM participant.
+    if (!canDelete && String((msg as { content_encoding?: string | null }).content_encoding || '') === 'call_recording') {
+      const { data: room } = await admin
+        .from('chat_rooms')
+        .select('id, kind, created_by, creator_user_id')
+        .eq('id', msg.room_id)
+        .maybeSingle()
+      if (room?.kind === 'dm') {
+        const { data: mem } = await admin
+          .from('chat_room_members')
+          .select('room_id')
+          .eq('room_id', msg.room_id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (mem?.room_id) canDelete = true
+      } else if (room?.kind === 'group') {
+        if (room.created_by === user.id) {
+          canDelete = true
+        } else {
+          const { data: mem } = await admin
+            .from('chat_room_members')
+            .select('role')
+            .eq('room_id', msg.room_id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (mem?.role === 'admin') canDelete = true
+        }
+      } else if (room?.kind === 'creator_fan') {
+        if (room.creator_user_id === user.id || room.created_by === user.id) {
+          canDelete = true
+        } else {
+          const { data: mem } = await admin
+            .from('chat_room_members')
+            .select('role')
+            .eq('room_id', msg.room_id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          if (mem?.role === 'admin' || mem?.role === 'moderator') canDelete = true
+        }
+      }
+    }
     if (!canDelete) return json(403, { error: 'Cannot delete this message.' })
 
     const { error: dErr } = await admin

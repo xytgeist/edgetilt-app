@@ -175,6 +175,7 @@ function computeLayout(rect, isMine, { isDeleted = false, enableStar = false, en
  *   viewerUserId: string,
  *   onReply: (message: object) => void,
  *   onDeleteMessage: (messageId: string) => void,
+ *   canDeleteCallRecording?: boolean,
  *   onAddReaction: (messageId: string, emoji: string) => void,
  *   onRemoveReaction: (messageId: string, emoji: string) => void,
  *   reactionPillInteractive?: boolean,
@@ -201,6 +202,7 @@ export default function ChatBubble({
   viewerUserId,
   onReply,
   onDeleteMessage,
+  canDeleteCallRecording = false,
   onAddReaction,
   onRemoveReaction,
   reactionPillInteractive = false,
@@ -512,7 +514,7 @@ export default function ChatBubble({
   const closeViewer = useCallback(() => setMediaViewerIndex(null), [])
 
   const isCallRecording = String(message.content_encoding || '') === 'call_recording'
-  if (isCallRecording) {
+  if (isCallRecording && !isDeleted) {
     const recordingMedia = videoUrl
       ? [{
           type: 'video',
@@ -529,6 +531,8 @@ export default function ChatBubble({
         <ChatCallRecordingCard
           message={message}
           isMine={isMine}
+          canDelete={canDeleteCallRecording}
+          onDelete={onDeleteMessage ? () => onDeleteMessage(message.id) : null}
           supabaseClient={supabaseClient}
           onOpen={() => {
             if (recordingMedia.length) openViewer(0)

@@ -944,6 +944,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-28: **Chat room Calls tab (Media / links / docs):** RPC **`chat_room_shared_calls`** (`20260728100000`) + **Calls** tab in **`ChatGroupMediaSheet`** (recordings + summaries → jump to message). Also restored Docs tab render path. Apply SQL on test.
+- 2026-07-28: **Call recording delete for room owners:** long-press recording card → **Delete** for recorder, group owner/admin, fan moderators, or either DM participant; **`lounge-chat` `delete_message`** allows the same for `content_encoding = call_recording` (+ existing R2 cleanup). Redeploy **`lounge-chat`** on test.
 - 2026-07-28: **Chat calling pin → featured recording layout:** custom RoomComposite template **`/call-egress.html`** (`src/call-egress/`); Record sends pinned LiveKit identity (else recorder); Edge `start_recording` uses `layout=focus:<id>` + secret **`CHAT_CALL_EGRESS_TEMPLATE_BASE_URL`**; SQL **`20260728090000`** `recording_featured_identity`. Encoding presets still deferred.
 - 2026-07-28: **Chat calling recording posters (iPhone + Android):** first viewer captures a frame (iOS muted `play()` prime), uploads JPEG to R2, Edge **`attach_recording_poster`** persists `stream_poster_url` on the `call_recording` message (first writer wins). Redeploy **`chat-calls`**.
 - 2026-07-28: **Chat calling durable call summary cards:** ended calls insert rich `call_summary` messages (`link_preview.kind = call_summary`, participants/duration/status) via **`ChatCallSummaryCard`**; removed ephemeral post-hangup composer recap. SQL **`20260728080000`** unique on `link_preview->>'call_id'`; redeploy **`chat-calls`**. Live Join bar unchanged while call is open.

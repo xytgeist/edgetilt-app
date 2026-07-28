@@ -666,6 +666,15 @@ export function chatCanPinMessages(room, viewerUserId) {
   return chatIsGroupOwner(room, viewerUserId)
 }
 
+/** Sender, group owner/admin, fan moderators, or either DM participant. */
+export function chatCanDeleteCallRecording(room, viewerUserId, message) {
+  if (!room || !viewerUserId || !message) return false
+  if (message.sender_id === viewerUserId) return true
+  if (room.kind === 'dm') return true
+  if (room.kind === 'creator_fan') return chatCanModerateFanRoom(room, viewerUserId)
+  return chatIsGroupOwner(room, viewerUserId)
+}
+
 export async function chatSearchMessages(supabase, roomId, query, limit = 30) {
   const { data, error } = await supabase.rpc('chat_search_messages', {
     p_room_id: roomId,
@@ -700,6 +709,16 @@ export async function chatRoomSharedLinks(supabase, roomId, { docsOnly = false, 
     p_room_id: roomId,
     p_limit: limit,
     p_docs_only: docsOnly,
+    p_sender_id: senderUserId || null,
+  })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+export async function chatRoomSharedCalls(supabase, roomId, limit = 80, senderUserId = null) {
+  const { data, error } = await supabase.rpc('chat_room_shared_calls', {
+    p_room_id: roomId,
+    p_limit: limit,
     p_sender_id: senderUserId || null,
   })
   if (error) throw new Error(error.message)

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import {
   chatCanPinMessages,
   chatPinnedMessagesPage,
+  chatRoomSharedCalls,
   chatRoomSharedLinks,
   chatRoomSharedMedia,
   chatSearchMessages,
@@ -233,6 +234,7 @@ const MEDIA_TABS = [
   { id: 'media', label: 'Media' },
   { id: 'links', label: 'Links' },
   { id: 'docs', label: 'Docs' },
+  { id: 'calls', label: 'Calls' },
 ]
 
 /** @param {string | null | undefined} bodyPreview @param {object | null | undefined} linkPreview */
@@ -290,6 +292,135 @@ function SharedLinksList({ items, query, onJumpToMessage, onBack, itemLabel = 'l
 
 /**
  * @param {{
+ *   items: any[],
+ *   onJumpToMessage: (messageId: string) => void,
+ *   onBack: () => void,
+ * }} props
+ */
+function SharedCallsList({ items, onJumpToMessage, onBack }) {
+  return (
+    <ul className="space-y-2.5">
+      {items.map((item) => {
+        const encoding = String(item.content_encoding || '')
+        const isRecording = encoding === 'call_recording'
+        const preview = item.link_preview && typeof item.link_preview === 'object' ? item.link_preview : null
+        const mediaMode = preview?.media_mode === 'audio' ? 'audio' : 'video'
+        const durationSec = Number(preview?.duration_seconds) > 0 ? Number(preview.duration_seconds) : 0
+        const durationLabel = durationSec > 0 ? formatSharedCallDuration(durationSec) : null
+        const whenLabel = formatSharedCallWhen(item.created_at || preview?.ended_at || preview?.started_at)
+        const status = String(preview?.status || '')
+        const title = isRecording
+          ? 'Call recording'
+          : mediaMode === 'audio'
+            ? 'Voice call'
+            : 'Video call'
+        const subtitle = (() => {
+          if (isRecording) {
+            const parts = [mediaMode === 'audio' ? 'Voice' : 'Video']
+            if (durationLabel) parts.push(durationLabel)
+            if (whenLabel) parts.push(whenLabel)
+            return parts.join(' · ')
+          }
+          if (status === 'missed') return whenLabel ? `Missed · ${whenLabel}` : 'Missed call'
+          if (status === 'declined') return whenLabel ? `Declined · ${whenLabel}` : 'Call declined'
+          if (durationLabel && whenLabel) return `${durationLabel} · ${whenLabel}`
+          if (durationLabel) return durationLabel
+          if (whenLabel) return whenLabel
+          return String(item.body || 'Call ended')
+        })()
+        const poster = String(item.stream_poster_url || '').trim()
+
+        return (
+          <li key={item.message_id}>
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/80 px-2.5 py-2 text-left touch-manipulation active:bg-zinc-800"
+              onClick={() => {
+                onJumpToMessage(item.message_id)
+                onBack()
+              }}
+            >
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-zinc-800">
+                {isRecording && poster ? (
+                  <img src={poster} alt="" className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div
+                    className={`grid h-full w-full place-items-center ${
+                      status === 'missed' || status === 'declined'
+                        ? 'bg-amber-500/15 text-amber-300'
+                        : isRecording
+                          ? 'bg-[#ea4335]/15 text-[#ea4335]'
+                          : 'bg-[#25d366]/15 text-[#25d366]'
+                    }`}
+                  >
+                    {isRecording ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                    ) : mediaMode === 'video' ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <path d="M17 10.5V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3.5l4 4v-11l-4 4z" />
+                      </svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
+                      </svg>
+                    )}
+                  </div>
+                )}
+                {isRecording ? (
+                  <span className="absolute left-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                    Rec
+                  </span>
+                ) : null}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-semibold text-zinc-50">{title}</p>
+                <p className="mt-0.5 truncate text-[12px] text-zinc-400">{subtitle}</p>
+              </div>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                className="shrink-0 text-zinc-500"
+                aria-hidden
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** @param {number} totalSec */
+function formatSharedCallDuration(totalSec) {
+  const s = Math.max(0, Math.floor(totalSec))
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return `${m}:${String(r).padStart(2, '0')}`
+}
+
+/** @param {string | null | undefined} iso */
+function formatSharedCallWhen(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return ''
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+/**
+ * @param {{
  *   open: boolean,
  *   onBack: () => void,
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
@@ -314,9 +445,11 @@ export function ChatGroupMediaSheet({
   const [media, setMedia] = useState(/** @type {any[]} */ ([]))
   const [links, setLinks] = useState(/** @type {any[]} */ ([]))
   const [docs, setDocs] = useState(/** @type {any[]} */ ([]))
+  const [calls, setCalls] = useState(/** @type {any[]} */ ([]))
   const [loading, setLoading] = useState(false)
   const [loadErr, setLoadErr] = useState('')
   const [linksErr, setLinksErr] = useState('')
+  const [callsErr, setCallsErr] = useState('')
   const [linkSearch, setLinkSearch] = useState('')
 
   useEffect(() => {
@@ -327,6 +460,7 @@ export function ChatGroupMediaSheet({
     setLoading(true)
     setLoadErr('')
     setLinksErr('')
+    setCallsErr('')
     void (async () => {
       const mediaP = chatRoomSharedMedia(supabaseClient, roomId, 80, senderUserId)
         .then((m) => { setMedia(m); return m })
@@ -337,17 +471,22 @@ export function ChatGroupMediaSheet({
       const docsP = chatRoomSharedLinks(supabaseClient, roomId, { docsOnly: true, senderUserId })
         .then((d) => { setDocs(d); return d })
         .catch((e) => { setDocs([]); setLinksErr((prev) => prev || e?.message || 'Failed to load docs.'); return [] })
+      const callsP = chatRoomSharedCalls(supabaseClient, roomId, 80, senderUserId)
+        .then((c) => { setCalls(c); return c })
+        .catch((e) => { setCalls([]); setCallsErr(e?.message || 'Failed to load calls.'); return [] })
 
-      await Promise.all([mediaP, linksP, docsP])
+      await Promise.all([mediaP, linksP, docsP, callsP])
       setLoading(false)
     })()
   }, [open, roomId, supabaseClient, senderUserId])
 
   const showLinkSearch = tab === 'links' || tab === 'docs'
+  const tabError =
+    tab === 'media' ? loadErr : tab === 'calls' ? callsErr : tab === 'links' || tab === 'docs' ? linksErr : ''
 
   return (
     <AuxSheetShell open={open} title={title} onBack={onBack} zIndex={zIndex}>
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {MEDIA_TABS.map((t) => (
           <button
             key={t.id}
@@ -386,10 +525,8 @@ export function ChatGroupMediaSheet({
           />
         </div>
       ) : null}
-      {loadErr && tab === 'media' ? (
-        <p className="text-[13px] text-rose-400">{loadErr}</p>
-      ) : linksErr && tab !== 'media' ? (
-        <p className="text-[13px] text-rose-400">{linksErr}</p>
+      {tabError ? (
+        <p className="text-[13px] text-rose-400">{tabError}</p>
       ) : loading ? (
         <p className="text-[13px] text-zinc-500">Loading…</p>
       ) : tab === 'media' ? (
@@ -419,6 +556,28 @@ export function ChatGroupMediaSheet({
           <SharedLinksList
             items={links}
             query={linkSearch}
+            onJumpToMessage={onJumpToMessage}
+            onBack={onBack}
+          />
+        )
+      ) : tab === 'docs' ? (
+        docs.length === 0 ? (
+          <p className="text-[13px] text-zinc-500">No docs found.</p>
+        ) : (
+          <SharedLinksList
+            items={docs}
+            query={linkSearch}
+            onJumpToMessage={onJumpToMessage}
+            onBack={onBack}
+            itemLabel="docs"
+          />
+        )
+      ) : tab === 'calls' ? (
+        calls.length === 0 ? (
+          <p className="text-[13px] text-zinc-500">No calls yet.</p>
+        ) : (
+          <SharedCallsList
+            items={calls}
             onJumpToMessage={onJumpToMessage}
             onBack={onBack}
           />

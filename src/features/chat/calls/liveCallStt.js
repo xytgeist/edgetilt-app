@@ -52,8 +52,8 @@ export function createLiveCallSttSession(opts) {
   let processor = null
   /** @type {MediaStreamAudioSourceNode | null} */
   let source = null
-  /** @type {GainNode | null} */
-  let muteGain = null
+  /** @type {MediaStreamAudioDestinationNode | null} */
+  let silentDest = null
   /** @type {ReturnType<typeof setInterval> | null} */
   let keepAliveTimer = null
   /** @type {MediaStreamTrack | null} */
@@ -72,13 +72,13 @@ export function createLiveCallSttSession(opts) {
       /* ignore */
     }
     try {
-      muteGain?.disconnect()
+      silentDest?.disconnect()
     } catch {
       /* ignore */
     }
     processor = null
     source = null
-    muteGain = null
+    silentDest = null
     if (audioCtx) {
       void audioCtx.close().catch(() => {})
       audioCtx = null
@@ -123,8 +123,10 @@ export function createLiveCallSttSession(opts) {
     source = audioCtx.createMediaStreamSource(stream)
     // ScriptProcessor is deprecated but avoids a separate worklet asset for v1.
     processor = audioCtx.createScriptProcessor(4096, 1, 1)
-    muteGain = audioCtx.createGain()
-    muteGain.gain.value = 0
+    // Never connect to audioCtx.destination... that fights iPhone call playback
+    // and can thrash the OS audio session. MediaStreamDestination keeps the
+    // processor graph alive without speaker output.
+    silentDest = audioCtx.createMediaStreamDestination()
 
     processor.onaudioprocess = (event) => {
       if (closed || ws?.readyState !== WebSocket.OPEN) return
@@ -140,8 +142,7 @@ export function createLiveCallSttSession(opts) {
     }
 
     source.connect(processor)
-    processor.connect(muteGain)
-    muteGain.connect(audioCtx.destination)
+    processor.connect(silentDest)
     if (audioCtx.state === 'suspended') {
       void audioCtx.resume().catch(() => {})
     }

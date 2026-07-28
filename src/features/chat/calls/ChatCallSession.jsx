@@ -13,6 +13,7 @@ import {
 import { Track, Room, facingModeFromLocalTrack } from 'livekit-client'
 import '@livekit/components-styles'
 import { applyCallAudioOutput, canToggleCallAudioRoute } from './chatCallAudioOutput.js'
+import { enterCallAudioSession, exitCallAudioSession } from './chatCallAudioSession.js'
 import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
@@ -263,9 +264,51 @@ export default function ChatCallSession({
   onError,
 }) {
   const videoEnabled = mediaMode === 'video'
+  const isGroup = kind === 'group_audio'
+  // 1:1 voice: HTML <audio> is more reliable on iPhone. Group keeps webAudioMix
+  // so multi-remote mics don't stay silent under autoplay.
+  const useWebAudioMix = isGroup || videoEnabled
   const [connectError, setConnectError] = useState('')
   const [minimized, setMinimized] = useState(false)
   const didConnectRef = useRef(false)
+
+  // Ear/cheek against the glass was panning the page under the call overlay.
+  useEffect(() => {
+    if (minimized) return undefined
+    const html = document.documentElement
+    const body = document.body
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyOverflow = body.style.overflow
+    const prevHtmlOverscroll = html.style.overscrollBehavior
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    html.style.overscrollBehavior = 'none'
+
+    const onTouchMove = (event) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        event.preventDefault()
+        return
+      }
+      if (target.closest('[data-chat-call-interactive]')) return
+      event.preventDefault()
+    }
+    document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow
+      body.style.overflow = prevBodyOverflow
+      html.style.overscrollBehavior = prevHtmlOverscroll
+      document.removeEventListener('touchmove', onTouchMove, { capture: true })
+    }
+  }, [minimized])
+
+  // Reset iOS audio session when the whole session tree unmounts (hangup / drop).
+  useEffect(() => {
+    return () => {
+      exitCallAudioSession()
+    }
+  }, [])
 
   return (
     <div
@@ -274,7 +317,18 @@ export default function ChatCallSession({
           ? 'pointer-events-none fixed inset-0'
           : 'fixed inset-0 flex flex-col bg-[#0b141a]'
       }
-      style={{ zIndex: minimized ? CALL_MINIMIZED_Z : 128 }}
+      style={{
+        zIndex: minimized ? CALL_MINIMIZED_Z : 128,
+        ...(minimized
+          ? null
+          : {
+              width: '100vw',
+              height: '100dvh',
+              maxHeight: '100dvh',
+              touchAction: 'none',
+              overscrollBehavior: 'none',
+            }),
+      }}
       data-chat-feature
       data-chat-call-session
       data-lk-theme="default"
@@ -287,15 +341,15 @@ export default function ChatCallSession({
         connect={!connectError}
         audio
         video={videoEnabled}
-        // Mix remote mics in one AudioContext... avoids multi-<audio> autoplay where
-        // some group participants stay silent until someone leaves.
-        options={{ webAudioMix: true }}
+        options={{ webAudioMix: useWebAudioMix }}
         onConnected={() => {
           didConnectRef.current = true
           setConnectError('')
           unlockChatCallAudio()
+          enterCallAudioSession()
         }}
         onDisconnected={() => {
+          exitCallAudioSession()
           // Only auto-end after a real session. Failed connects stay on the error UI.
           if (didConnectRef.current) onDisconnected?.()
         }}
@@ -307,7 +361,10 @@ export default function ChatCallSession({
         className={minimized ? 'contents' : 'flex h-full min-h-0 flex-col'}
       >
         {connectError ? (
-          <div className="pointer-events-auto flex flex-1 flex-col items-center justify-center gap-4 bg-[#0b141a] px-6 text-center">
+          <div
+            data-chat-call-interactive=""
+            className="pointer-events-auto flex flex-1 flex-col items-center justify-center gap-4 bg-[#0b141a] px-6 text-center"
+          >
             <p className="text-[15px] font-semibold text-[#fca5a5]">Could not connect to call</p>
             <p className="max-w-sm text-[13px] text-[#a1a1aa]">{connectError}</p>
             <p className="max-w-sm text-[12px] text-[#71717a]">
@@ -327,7 +384,7 @@ export default function ChatCallSession({
               title={title}
               callId={callId}
               videoEnabled={videoEnabled}
-              isGroup={kind === 'group_audio'}
+              isGroup={isGroup}
               isOutgoing={isOutgoing}
               avatarUrl={avatarUrl}
               viewerAvatarUrl={viewerAvatarUrl}
@@ -364,8 +421,22 @@ function CallStartAudioGate() {
       className:
         'pointer-events-auto fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] z-[132] mx-auto block max-w-xs rounded-full bg-[#25d366] px-4 py-3 text-center text-[14px] font-semibold text-white shadow-lg touch-manipulation',
       type: 'button',
+      'data-chat-call-interactive': '',
     },
   })
+
+  // Keep kicking startAudio while blocked... iPhone often needs a second gesture-adjacent resume.
+  useEffect(() => {
+    if (!room || canPlayAudio) return undefined
+    const kick = () => {
+      unlockChatCallAudio()
+      void room.startAudio?.().catch(() => {})
+    }
+    kick()
+    const id = window.setInterval(kick, 2000)
+    return () => window.clearInterval(id)
+  }, [room, canPlayAudio])
+
   if (canPlayAudio) return null
   return <button {...mergedProps}>Tap for call audio</button>
 }
@@ -399,8 +470,8 @@ function CallChrome({
   const speakingParticipants = useSpeakingParticipants()
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(videoEnabled)
-  /** false = earpiece (default); true = speakerphone */
-  const [speakerOn, setSpeakerOn] = useState(false)
+  /** Voice defaults earpiece; video defaults speakerphone. */
+  const [speakerOn, setSpeakerOn] = useState(() => Boolean(videoEnabled))
   const [audioRouteSupported, setAudioRouteSupported] = useState(false)
   const [cameraBusy, setCameraBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -408,6 +479,8 @@ function CallChrome({
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
   /** Last pinned participant object so active-speaker cannot steal if the pin blips out of the roster. */
   const pinnedParticipantRef = useRef(/** @type {any | null} */ (null))
+  /** User manually toggled speaker... ignore cam-off / cam-on auto route flips. */
+  const speakerManualOverrideRef = useRef(false)
   const recWarn60Ref = useRef(false)
   const recWarn15Ref = useRef(false)
   const recAutoStopRef = useRef(false)
@@ -586,13 +659,16 @@ function CallChrome({
 
   const showVideoStage = videoEnabled && !awaitingAnswer
 
-  const applySpeakerSink = async (nextOn) => {
+  const applySpeakerSink = async (nextOn, { manual = false } = {}) => {
+    if (!audioRouteSupported && manual) return
+    if (manual) speakerManualOverrideRef.current = true
     setSpeakerOn(nextOn)
     try {
       const result = await applyCallAudioOutput({ room, speakerphoneOn: nextOn })
       if (result?.canRoute) setAudioRouteSupported(true)
+      else if (manual) setAudioRouteSupported(false)
     } catch {
-      /* iOS / unsupported — UI state still toggles */
+      /* unsupported */
     }
   }
 
@@ -601,14 +677,19 @@ function CallChrome({
     if (!room) return undefined
     const kick = () => {
       unlockChatCallAudio()
+      enterCallAudioSession()
       void room.startAudio?.().catch(() => {})
     }
     kick()
     const t = window.setTimeout(kick, 250)
-    return () => window.clearTimeout(t)
+    const t2 = window.setTimeout(kick, 1000)
+    return () => {
+      window.clearTimeout(t)
+      window.clearTimeout(t2)
+    }
   }, [room, remoteCount])
 
-  // Probe Android phantom routes once the room is up (not on every join/leave).
+  // Probe real sink switching once the room is up (not on every join/leave).
   useEffect(() => {
     if (!room) return undefined
     let cancelled = false
@@ -621,22 +702,20 @@ function CallChrome({
     }
   }, [room])
 
-  // Apply earpiece/speakerphone only on connect + speaker toggle.
+  // Apply earpiece/speakerphone only when the browser can actually switch.
   // Do NOT re-run when remotes join/leave... that was restarting the mic mid-call
   // and made group audio flaky (silent until someone dropped).
   useEffect(() => {
-    if (!room) return undefined
+    if (!room || !audioRouteSupported) return undefined
     let cancelled = false
     const run = async () => {
       try {
-        const result = await applyCallAudioOutput({ room, speakerphoneOn: speakerOn })
-        if (!cancelled && result?.canRoute) setAudioRouteSupported(true)
+        await applyCallAudioOutput({ room, speakerphoneOn: speakerOn })
       } catch {
         /* ignore */
       }
     }
     void run()
-    // One short retry after local mic publish settles... not a join/leave loop.
     const t1 = window.setTimeout(() => {
       if (!cancelled) void run()
     }, 500)
@@ -644,7 +723,7 @@ function CallChrome({
       cancelled = true
       window.clearTimeout(t1)
     }
-  }, [room, speakerOn])
+  }, [room, speakerOn, audioRouteSupported])
 
   const flipCamera = async () => {
     if (!localParticipant || !camOn || cameraBusy) return
@@ -680,12 +759,21 @@ function CallChrome({
   }
 
   const hangup = () => {
+    exitCallAudioSession()
     try {
       room?.disconnect()
     } catch {
       /* ignore */
     }
     onHangup()
+  }
+
+  const setCameraEnabled = (next) => {
+    setCamOn(next)
+    void localParticipant.setCameraEnabled(next)
+    if (!videoEnabled || speakerManualOverrideRef.current || !audioRouteSupported) return
+    // Cam off → earpiece intent; cam on → speakerphone again.
+    void applySpeakerSink(Boolean(next), { manual: false })
   }
 
   const controlButtons = (
@@ -712,11 +800,7 @@ function CallChrome({
             camOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
           }`}
           aria-label={camOn ? 'Turn camera off' : 'Turn camera on'}
-          onClick={() => {
-            const next = !camOn
-            setCamOn(next)
-            void localParticipant.setCameraEnabled(next)
-          }}
+          onClick={() => setCameraEnabled(!camOn)}
         >
           <VideoIcon off={!camOn} />
         </button>
@@ -787,28 +871,21 @@ function CallChrome({
         )
       ) : null}
 
-      <button
-        type="button"
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-          speakerOn ? 'bg-[#25d366] text-white' : 'bg-[#2a3942] text-[#a1a1aa]'
-        }`}
-        aria-label={
-          speakerOn
-            ? 'Speakerphone on, tap for earpiece'
-            : audioRouteSupported
-              ? 'Earpiece, tap for speakerphone'
-              : 'Speaker (routing may be limited on this device)'
-        }
-        aria-pressed={speakerOn}
-        title={
-          audioRouteSupported
-            ? undefined
-            : 'This browser may not support earpiece vs speakerphone switching'
-        }
-        onClick={() => void applySpeakerSink(!speakerOn)}
-      >
-        <SpeakerIcon />
-      </button>
+      {audioRouteSupported ? (
+        <button
+          type="button"
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
+            speakerOn ? 'bg-[#25d366] text-white' : 'bg-[#2a3942] text-[#a1a1aa]'
+          }`}
+          aria-label={
+            speakerOn ? 'Speakerphone on, tap for earpiece' : 'Earpiece, tap for speakerphone'
+          }
+          aria-pressed={speakerOn}
+          onClick={() => void applySpeakerSink(!speakerOn, { manual: true })}
+        >
+          <SpeakerIcon />
+        </button>
+      ) : null}
 
       <button
         type="button"
@@ -846,7 +923,10 @@ function CallChrome({
   }
 
   const controlPill = (
-    <div className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-2 rounded-[28px] bg-[#1f2c34]/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md">
+    <div
+      data-chat-call-interactive=""
+      className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-2 rounded-[28px] bg-[#1f2c34]/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md"
+    >
       {controlButtons}
     </div>
   )
@@ -870,6 +950,7 @@ function CallChrome({
       >
         <button
           type="button"
+          data-chat-call-interactive=""
           className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1f2c34]/90 text-[#f4f4f5] touch-manipulation active:opacity-80"
           aria-label="Minimize call"
           onClick={onMinimize}
@@ -1082,6 +1163,7 @@ function VideoCallStage({
         type="button"
         className="absolute inset-0 z-[1] overflow-hidden touch-manipulation"
         data-chat-call-main-video=""
+        data-chat-call-interactive=""
         aria-label={
           mainPinned
             ? 'Unpin this video for recording'
@@ -1120,6 +1202,7 @@ function VideoCallStage({
         <button
           type="button"
           data-chat-call-round-video=""
+          data-chat-call-interactive=""
           className={`absolute bottom-3 right-3 z-[2] h-[7.5rem] w-[7.5rem] overflow-hidden rounded-full border-2 bg-[#1f2c34] shadow-lg touch-manipulation active:opacity-90 ${
             pipPinned ? 'border-[#25d366]' : 'border-white/35'
           }`}
@@ -1161,6 +1244,7 @@ function VideoCallStage({
                   key={p.identity}
                   type="button"
                   data-chat-call-round-video=""
+                  data-chat-call-interactive=""
                   className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 bg-[#1f2c34] touch-manipulation ${
                     pinned ? 'border-[#25d366]' : 'border-white/25'
                   }`}

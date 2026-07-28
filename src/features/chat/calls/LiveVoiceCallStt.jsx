@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Track } from 'livekit-client'
-import { useLocalParticipant } from '@livekit/components-react'
+import { useLocalParticipant, useRoomContext } from '@livekit/components-react'
 import {
   chatAppendLiveCallTranscript,
   chatMintLiveCallSttGrant,
@@ -11,7 +11,8 @@ const FLUSH_MS = 2_000
 const MAX_BATCH = 12
 
 /**
- * Auto-starts Deepgram live STT for voice calls once a remote participant joins.
+ * Auto-starts Deepgram live STT for voice calls once a remote participant joins
+ * and call audio playback is unlocked (avoids racing iPhone AudioContext).
  * Streams only the local mic; Edge stamps user_id from the JWT.
  *
  * @param {{
@@ -27,15 +28,36 @@ export default function LiveVoiceCallStt({
   supabaseClient,
   awaitingAnswer = false,
 }) {
+  const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
+  const [audioReady, setAudioReady] = useState(() => Boolean(room?.canPlaybackAudio))
   const sessionRef = useRef(/** @type {ReturnType<typeof createLiveCallSttSession> | null} */ (null))
-  const pendingRef = useRef(/** @type {Array<{ id: string, start_ms: number, end_ms: number, text: string }> } */ ([]))
+  const pendingRef = useRef(
+    /** @type {Array<{ id: string, start_ms: number, end_ms: number, text: string }> } */ ([]),
+  )
   const flushTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
   const stoppedRef = useRef(false)
 
   useEffect(() => {
+    if (!room) {
+      setAudioReady(false)
+      return undefined
+    }
+    const sync = () => setAudioReady(Boolean(room.canPlaybackAudio))
+    sync()
+    const onChange = () => sync()
+    room.on?.('audioPlaybackStatusChanged', onChange)
+    // Poll briefly... some iOS builds fire late without the event.
+    const id = window.setInterval(sync, 1000)
+    return () => {
+      room.off?.('audioPlaybackStatusChanged', onChange)
+      window.clearInterval(id)
+    }
+  }, [room])
+
+  useEffect(() => {
     stoppedRef.current = false
-    if (!enabled || !callId || !supabaseClient || awaitingAnswer) {
+    if (!enabled || !callId || !supabaseClient || awaitingAnswer || !audioReady) {
       return undefined
     }
 
@@ -58,7 +80,6 @@ export default function LiveVoiceCallStt({
       try {
         await chatAppendLiveCallTranscript(supabaseClient, callId, batch)
       } catch (err) {
-        // Re-queue once; do not break the call UX.
         pendingRef.current = [...batch, ...pendingRef.current].slice(0, 80)
         console.warn('Live voice STT flush failed', err)
       }
@@ -102,9 +123,6 @@ export default function LiveVoiceCallStt({
       }
     })()
 
-    const onTrack = () => {
-      session.syncTrack()
-    }
     const syncTimer = window.setInterval(() => {
       if (!cancelled) session.syncTrack()
     }, 2000)
@@ -123,7 +141,7 @@ export default function LiveVoiceCallStt({
       })()
       sessionRef.current = null
     }
-  }, [enabled, callId, supabaseClient, awaitingAnswer, localParticipant])
+  }, [enabled, callId, supabaseClient, awaitingAnswer, audioReady, localParticipant])
 
   return null
 }

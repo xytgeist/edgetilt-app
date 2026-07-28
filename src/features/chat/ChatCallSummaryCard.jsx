@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
 import ChatCallTranscriptModal from './ChatCallTranscriptModal.jsx'
 
@@ -29,6 +30,7 @@ import ChatCallTranscriptModal from './ChatCallTranscriptModal.jsx'
 
 /**
  * Durable in-thread card for finished chat calls (group + DM).
+ * Voice: long-press → View transcript (live STT; no recording card).
  * @param {{
  *   message: {
  *     id: string,
@@ -47,6 +49,11 @@ export default function ChatCallSummaryCard({
   onTranscriptUpdated = null,
 }) {
   const [transcriptOpen, setTranscriptOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState(/** @type {{ top: number, left: number } | null} */ (null))
+  const cardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const longPressTimer = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
+
   const meta = parseCallSummaryMeta(message.link_preview)
   const fallback = parseCallSummaryBody(message.body)
   const status = meta?.status || fallback.status
@@ -75,18 +82,100 @@ export default function ChatCallSummaryCard({
     ? 'bg-amber-500/15 text-amber-300'
     : 'bg-[#25d366]/15 text-[#25d366]'
 
-  const transcriptStatus = String(meta?.transcript_status || '')
-  const hasTranscriptLines = Array.isArray(meta?.transcript?.utterances)
-    && meta.transcript.utterances.length > 0
-  const showTranscriptCta =
-    mediaMode === 'audio' &&
-    status === 'ended' &&
-    (hasTranscriptLines || transcriptStatus === 'ready' || transcriptStatus === 'pending' || transcriptStatus === 'failed')
+  const canOpenTranscript =
+    Boolean(supabaseClient) && mediaMode === 'audio' && status === 'ended'
+
+  const clearLongPressTimer = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  const openMenu = useCallback(() => {
+    if (!canOpenTranscript || !cardRef.current) return
+    const rect = cardRef.current.getBoundingClientRect()
+    const menuW = 220
+    const menuH = 48 + 16
+    const left = Math.max(12, Math.min(rect.left + 8, window.innerWidth - menuW - 12))
+    const top = Math.min(rect.bottom - 8, window.innerHeight - menuH)
+    setMenuPos({ top: Math.max(12, top - (menuH - 40)), left })
+    setMenuOpen(true)
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(12)
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [canOpenTranscript])
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false)
+    setMenuPos(null)
+  }, [])
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || !canOpenTranscript) return undefined
+
+    let startX = 0
+    let startY = 0
+    let cancelled = false
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return
+      cancelled = false
+      startX = e.touches[0].clientX
+      startY = e.touches[0].clientY
+      clearLongPressTimer()
+      longPressTimer.current = setTimeout(() => {
+        if (cancelled) return
+        openMenu()
+      }, 380)
+    }
+
+    const onTouchMove = (e) => {
+      if (e.touches.length !== 1 || cancelled) return
+      if (
+        Math.abs(e.touches[0].clientX - startX) > 8 ||
+        Math.abs(e.touches[0].clientY - startY) > 8
+      ) {
+        cancelled = true
+        clearLongPressTimer()
+      }
+    }
+
+    const onTouchEnd = () => {
+      clearLongPressTimer()
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true })
+
+    return () => {
+      clearLongPressTimer()
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [canOpenTranscript, clearLongPressTimer, openMenu])
 
   return (
     <div className="flex justify-center px-3 py-2">
       <div
-        className={`${CHAT_MESSAGE_COLUMN_WIDTH_CLASS} overflow-hidden rounded-2xl border border-zinc-700/80 bg-gradient-to-b from-zinc-900 to-zinc-950 px-3 py-3 shadow-lg shadow-black/20`}
+        ref={cardRef}
+        className={`${CHAT_MESSAGE_COLUMN_WIDTH_CLASS} overflow-hidden rounded-2xl border border-zinc-700/80 bg-gradient-to-b from-zinc-900 to-zinc-950 px-3 py-3 shadow-lg shadow-black/20 ${
+          canOpenTranscript ? 'touch-manipulation' : ''
+        }`}
+        onContextMenu={(e) => {
+          if (!canOpenTranscript) return
+          e.preventDefault()
+          openMenu()
+        }}
       >
         <div className="flex items-center gap-2.5">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
@@ -132,21 +221,33 @@ export default function ChatCallSummaryCard({
             </p>
           </div>
         ) : null}
-
-        {showTranscriptCta ? (
-          <button
-            type="button"
-            className="mt-2.5 w-full rounded-xl border border-zinc-700/80 bg-zinc-900/80 px-3 py-2 text-[12px] font-semibold text-zinc-100 touch-manipulation active:bg-zinc-800"
-            onClick={() => setTranscriptOpen(true)}
-          >
-            {transcriptStatus === 'pending' && !hasTranscriptLines
-              ? 'Transcript pending…'
-              : transcriptStatus === 'failed' && !hasTranscriptLines
-                ? 'Transcript unavailable'
-                : 'View transcript'}
-          </button>
-        ) : null}
       </div>
+
+      {menuOpen && menuPos
+        ? createPortal(
+            <>
+              <div className="fixed inset-0 z-[108] bg-black/30" onClick={closeMenu} />
+              <div
+                className="chat-menu-glass fixed z-[109] w-[220px] overflow-hidden rounded-2xl"
+                style={{ top: menuPos.top, left: menuPos.left }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-medium text-zinc-50 touch-manipulation active:bg-zinc-800/80"
+                  onClick={() => {
+                    closeMenu()
+                    setTranscriptOpen(true)
+                  }}
+                >
+                  <TranscriptIcon />
+                  View transcript
+                </button>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
 
       {transcriptOpen && supabaseClient ? (
         <ChatCallTranscriptModal
@@ -222,5 +323,13 @@ function ParticipantAvatar({ participant }) {
     <div className="grid h-7 w-7 place-items-center rounded-full border-2 border-zinc-950 bg-zinc-700 text-[10px] font-bold text-zinc-100">
       {initial}
     </div>
+  )
+}
+
+function TranscriptIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M4 6h16M4 12h10M4 18h14" strokeLinecap="round" />
+    </svg>
   )
 }

@@ -30,6 +30,7 @@ import {
   clearPendingChatCallDeepLink,
   peekPendingChatCallDeepLink,
 } from '../../../utils/pendingChatCallDeepLink.js'
+import { enterCallAudioSession } from './chatCallAudioSession.js'
 import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
 
 const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
@@ -572,6 +573,7 @@ export function ChatCallProvider({
       const id = String(callId || '').trim()
       if (!id) throw new Error('Missing call.')
       unlockChatCallAudio()
+      enterCallAudioSession()
       setBusy(true)
       setError('')
       try {
@@ -645,6 +647,7 @@ export function ChatCallProvider({
       if (!supabaseClient || !viewerUserId) throw new Error('Sign in to call.')
       if (activeCallRef.current) throw new Error('Already in a call.')
       unlockChatCallAudio()
+      enterCallAudioSession()
       setBusy(true)
       setError('')
       const avatarFromOpts =

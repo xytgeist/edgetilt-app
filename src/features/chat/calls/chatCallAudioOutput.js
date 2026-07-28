@@ -1,12 +1,13 @@
 /**
- * Route call audio between earpiece and speakerphone.
+ * Route call audio between earpiece and speakerphone when the browser can.
  *
  * Chrome Android does **not** support HTMLMediaElement.setSinkId. Instead it exposes
  * phantom `audioinput` devices labeled "Headset earpiece" / "Speakerphone" (from
  * Chromium AudioManagerAndroid). Switching the LiveKit mic to that deviceId also
  * routes remote playback to the matching path.
  *
- * Desktop / iOS: best-effort setSinkId / audiooutput when available; often no-op.
+ * iPhone (typical): no phantom routes and no setSinkId → `canToggleCallAudioRoute`
+ * is false. UI must hide the speaker button; use AudioSession play-and-record instead.
  */
 import { Room, Track } from 'livekit-client'
 
@@ -91,6 +92,40 @@ async function listAudioDevices() {
   }
 }
 
+function elementSupportsSetSinkId() {
+  try {
+    return typeof HTMLAudioElement !== 'undefined'
+      && typeof HTMLAudioElement.prototype.setSinkId === 'function'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True when we can actually switch earpiece ↔ speakerphone (not a UI lie).
+ * Android: phantom mic pair. Newer Safari/desktop: distinct audiooutput sinks + setSinkId.
+ * @returns {Promise<boolean>}
+ */
+export async function canToggleCallAudioRoute() {
+  try {
+    const devices = await listAudioDevices()
+    const ear = pickCallAudioRoute(devices, 'earpiece')
+    const speaker = pickCallAudioRoute(devices, 'speakerphone')
+    if (!ear?.deviceId || !speaker?.deviceId || ear.deviceId === speaker.deviceId) {
+      return false
+    }
+    // Phantom Android audioinput pair is enough (no setSinkId there).
+    if (ear.kind === 'audioinput' && speaker.kind === 'audioinput') return true
+    // Output-device path requires setSinkId support.
+    if (ear.kind === 'audiooutput' || speaker.kind === 'audiooutput') {
+      return elementSupportsSetSinkId()
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 /**
  * @param {{
  *   room?: {
@@ -110,6 +145,17 @@ export async function applyCallAudioOutput({
   rootSelector = '[data-chat-call-session]',
 }) {
   const prefer = speakerphoneOn ? 'speakerphone' : 'earpiece'
+  const canRoute = await canToggleCallAudioRoute()
+  if (!canRoute) {
+    return {
+      preferred: prefer,
+      routed: false,
+      method: 'unsupported',
+      deviceId: null,
+      canRoute: false,
+    }
+  }
+
   const devices = await listAudioDevices()
   const route = pickCallAudioRoute(devices, prefer)
 
@@ -187,20 +233,5 @@ export async function applyCallAudioOutput({
     method,
     deviceId: route?.deviceId || null,
     canRoute: Boolean(route),
-  }
-}
-
-/**
- * True when the browser exposes earpiece/speakerphone route devices (typical Android Chrome).
- * @returns {Promise<boolean>}
- */
-export async function canToggleCallAudioRoute() {
-  try {
-    const devices = await listAudioDevices()
-    const ear = pickCallAudioRoute(devices, 'earpiece')
-    const speaker = pickCallAudioRoute(devices, 'speakerphone')
-    return Boolean(ear?.deviceId && speaker?.deviceId && ear.deviceId !== speaker.deviceId)
-  } catch {
-    return false
   }
 }

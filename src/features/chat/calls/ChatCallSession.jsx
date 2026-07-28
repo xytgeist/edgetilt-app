@@ -395,6 +395,8 @@ function CallChrome({
     for (const trackRef of tracks) {
       if (trackRef.source !== Track.Source.Camera) continue
       if (!trackRef.publication?.track) continue
+      // Muted / camera-off still publishes a track... omit so UI can show avatars.
+      if (trackRef.publication.isMuted) continue
       map.set(trackRef.participant.identity, trackRef)
     }
     return map
@@ -429,7 +431,7 @@ function CallChrome({
   const participantHasLiveCamera = (participant) => {
     if (!participant) return false
     const pub = participant.getTrackPublication?.(Track.Source.Camera)
-    if (pub && pub.isMuted === false && pub.track) return true
+    if (!pub?.track || pub.isMuted) return false
     return cameraByIdentity.has(participant.identity)
   }
 
@@ -858,6 +860,7 @@ function VideoCallStage({
       {showDuoPip ? (
         <button
           type="button"
+          data-chat-call-round-video=""
           className="absolute bottom-3 right-3 z-[2] h-[7.5rem] w-[7.5rem] overflow-hidden rounded-full border-2 border-white/35 bg-[#1f2c34] shadow-lg touch-manipulation active:opacity-90"
           aria-label={
             duoPipParticipant.isLocal
@@ -870,7 +873,8 @@ function VideoCallStage({
           cameraByIdentity.get(duoPipParticipant.identity) ? (
             <VideoTrack
               trackRef={cameraByIdentity.get(duoPipParticipant.identity)}
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{ objectFit: 'cover' }}
             />
           ) : (
             <CallAvatarCircle
@@ -895,6 +899,7 @@ function VideoCallStage({
                 <button
                   key={p.identity}
                   type="button"
+                  data-chat-call-round-video=""
                   className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 bg-[#1f2c34] touch-manipulation ${
                     active ? 'border-[#25d366]' : 'border-white/25'
                   }`}
@@ -902,7 +907,11 @@ function VideoCallStage({
                   onClick={() => onPinIdentity(p.identity)}
                 >
                   {hasCam && track ? (
-                    <VideoTrack trackRef={track} className="h-full w-full object-cover" />
+                    <VideoTrack
+                      trackRef={track}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      style={{ objectFit: 'cover' }}
+                    />
                   ) : (
                     <CallAvatarCircle
                       avatarUrl={resolveAvatarForParticipant(p)}

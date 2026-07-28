@@ -4629,6 +4629,21 @@ html.light .reaction-pill {
   user-select: none;
 }
 
+/* Call round PiP / strip: crop video to fill the circle (no letterbox bars). */
+[data-chat-call-session] [data-chat-call-round-video] {
+  position: relative;
+}
+[data-chat-call-session] [data-chat-call-round-video] video {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  object-fit: cover !important;
+  object-position: center center;
+  background: #1f2c34;
+}
+
 [data-chat-composer-host] {
   background: transparent !important;
 }

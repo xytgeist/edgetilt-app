@@ -963,11 +963,11 @@ Deno.serve(async (req) => {
 
       const startedAt = new Date().toISOString()
       const r2Key = `call-recordings/${callId}/${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}.mp4`
-      // Pin template defaults on (R2-hosted). Set CHAT_CALL_EGRESS_USE_CUSTOM=0 for speaker.
-      const customDisabled =
-        String(Deno.env.get('CHAT_CALL_EGRESS_USE_CUSTOM') || '').trim() === '0'
-      const useCustomTemplate = Boolean(templateBaseUrl) && !customDisabled
-      const egressLayout = useCustomTemplate ? `focus:${featuredIdentity}` : 'speaker'
+      // Custom pin template still failing in LiveKit Chrome (React + R2). Force speaker until
+      // the single-file vanilla template is proven. Ignore CHAT_CALL_EGRESS_USE_CUSTOM for now.
+      const useCustomTemplate = false
+      const egressLayout = 'speaker'
+      void templateBaseUrl
 
       const { data: claimed, error: claimErr } = await admin
         .from('chat_calls')

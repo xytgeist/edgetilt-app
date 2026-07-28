@@ -1,9 +1,11 @@
 /**
- * Mirror the Vercel-built /call-egress.html (+ assets + logo) onto Lounge R2 so
- * LiveKit RoomComposite headless Chrome can load it without Vercel bot challenges.
+ * Mirror call-egress.html (+ assets + logo) onto Lounge R2 so LiveKit RoomComposite
+ * headless Chrome can load it without Vercel bot challenges.
  *
  * Auth: service role bearer only.
- * Body: { source_origin?: "https://lvslotpro.com" }
+ * Body:
+ *   { source_origin?: "https://lvslotpro.com" }
+ *   OR { html: "<!doctype...>", logo_base64?: "..." }  // direct upload (preferred for vanilla)
  */
 import {
   loungeCfR2PublicUrl,
@@ -48,7 +50,6 @@ function json(status: number, body: Record<string, unknown>) {
 async function fetchBytes(url: string): Promise<{ bytes: Uint8Array; contentType: string }> {
   const res = await fetch(url, {
     headers: {
-      // Prefer a non-browser UA so CDN bot walls are less likely to challenge us.
       'User-Agent': 'EdgeCallEgressPublisher/1.0',
       Accept: '*/*',
     },
@@ -60,6 +61,25 @@ async function fetchBytes(url: string): Promise<{ bytes: Uint8Array; contentType
   const buf = new Uint8Array(await res.arrayBuffer())
   const contentType = res.headers.get('content-type') || 'application/octet-stream'
   return { bytes: buf, contentType }
+}
+
+function assertEgressHtml(html: string, label: string) {
+  if (!/Edge call recording/i.test(html)) {
+    throw new Error(`${label} does not look like call-egress.html (missing title).`)
+  }
+  // External asset OR inlined module (vanilla single-file).
+  const hasAsset = /callEgress-/i.test(html)
+  const inlined = /<script type="module">[\s\S]*livekit/i.test(html) || /START_RECORDING/i.test(html)
+  if (!hasAsset && !inlined) {
+    throw new Error(`${label} is missing callEgress assets / inlined LiveKit template.`)
+  }
+}
+
+function b64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64)
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
 }
 
 Deno.serve(async (req) => {
@@ -92,57 +112,72 @@ Deno.serve(async (req) => {
     : 'https://lvslotpro.com'
   const origin = String(body.source_origin || defaultOrigin).replace(/\/+$/, '')
   const prefix = 'call-egress'
+  // HTML is overwritten in place — short cache so LiveKit Chrome picks up fixes.
+  const htmlCache = 'public, max-age=60'
 
   try {
-    const htmlUrl = `${origin}/call-egress.html`
-    const htmlRes = await fetchBytes(htmlUrl)
-    let html = new TextDecoder().decode(htmlRes.bytes)
-
-    const assetRe = /(?:src|href)="(\/assets\/callEgress-[^"]+)"/g
-    const assetPaths = new Set<string>()
-    let m: RegExpExecArray | null
-    while ((m = assetRe.exec(html)) != null) {
-      assetPaths.add(m[1])
-    }
-
     const uploaded: string[] = []
-    for (const assetPath of assetPaths) {
-      const abs = `${origin}${assetPath}`
-      const fileName = assetPath.split('/').pop() || 'asset'
-      const key = `${prefix}/${fileName}`
-      const file = await fetchBytes(abs)
-      const ct = fileName.endsWith('.css')
-        ? 'text/css; charset=utf-8'
-        : fileName.endsWith('.js')
-          ? 'application/javascript; charset=utf-8'
-          : file.contentType
-      await loungeCfR2PutObject(r2, key, file.bytes, ct)
-      const publicUrl = loungeCfR2PublicUrl(r2, key)
-      html = html.split(`"${assetPath}"`).join(`"${publicUrl}"`)
-      uploaded.push(publicUrl)
+    let html = ''
+
+    if (typeof body.html === 'string' && body.html.length > 500) {
+      html = body.html
+      assertEgressHtml(html, 'Direct html body')
+    } else {
+      const htmlUrl = `${origin}/call-egress.html`
+      const htmlRes = await fetchBytes(htmlUrl)
+      html = new TextDecoder().decode(htmlRes.bytes)
+      assertEgressHtml(html, `Source ${htmlUrl}`)
+
+      const assetRe = /(?:src|href)="(\/assets\/callEgress-[^"]+)"/g
+      const assetPaths = new Set<string>()
+      let m: RegExpExecArray | null
+      while ((m = assetRe.exec(html)) != null) {
+        assetPaths.add(m[1])
+      }
+      for (const assetPath of assetPaths) {
+        const abs = `${origin}${assetPath}`
+        const fileName = assetPath.split('/').pop() || 'asset'
+        const key = `${prefix}/${fileName}`
+        const file = await fetchBytes(abs)
+        const ct = fileName.endsWith('.css')
+          ? 'text/css; charset=utf-8'
+          : fileName.endsWith('.js')
+            ? 'application/javascript; charset=utf-8'
+            : file.contentType
+        await loungeCfR2PutObject(r2, key, file.bytes, ct)
+        const publicUrl = loungeCfR2PublicUrl(r2, key)
+        html = html.split(`"${assetPath}"`).join(`"${publicUrl}"`)
+        uploaded.push(publicUrl)
+      }
     }
 
-    const logo = await fetchBytes(`${origin}/edge-lounge-logo-transparent.png`)
-    // Sibling of HTML (relative logo) + site-root path (absolute /edge-lounge-logo… in older bundles).
+    let logoBytes: Uint8Array
+    if (typeof body.logo_base64 === 'string' && body.logo_base64.length > 32) {
+      logoBytes = b64ToBytes(body.logo_base64)
+    } else {
+      logoBytes = (await fetchBytes(`${origin}/edge-lounge-logo-transparent.png`)).bytes
+    }
     for (const logoKey of [
       `${prefix}/edge-lounge-logo-transparent.png`,
       'edge-lounge-logo-transparent.png',
     ]) {
-      await loungeCfR2PutObject(r2, logoKey, logo.bytes, 'image/png')
+      await loungeCfR2PutObject(r2, logoKey, logoBytes, 'image/png')
       uploaded.push(loungeCfR2PublicUrl(r2, logoKey))
     }
 
     const htmlKey = `${prefix}/call-egress.html`
     const htmlBytes = new TextEncoder().encode(html)
-    await loungeCfR2PutObject(r2, htmlKey, htmlBytes, 'text/html; charset=utf-8')
+    await loungeCfR2PutObject(r2, htmlKey, htmlBytes, 'text/html; charset=utf-8', htmlCache)
     const templateUrl = loungeCfR2PublicUrl(r2, htmlKey)
+    uploaded.push(templateUrl)
 
     return json(200, {
       ok: true,
       template_url: templateUrl,
       uploaded,
+      inlined: !/src="[^"]*callEgress-/i.test(html),
       hint:
-        'Set Edge secrets CHAT_CALL_EGRESS_TEMPLATE_BASE_URL=<template_url> and CHAT_CALL_EGRESS_USE_CUSTOM=1, then redeploy chat-calls.',
+        'Pin template is on R2. chat-calls currently forces speaker until custom is re-enabled after a successful smoke.',
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

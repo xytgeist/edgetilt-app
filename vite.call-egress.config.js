@@ -1,13 +1,10 @@
 import path from 'node:path'
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 
 /**
- * Isolated single-file build for LiveKit RoomComposite Chrome.
- * Must not share chunks with the main app (shared "general" chunks were a crash risk in headless).
+ * Single-file build for LiveKit Chrome: vanilla JS (no React), no shared app chunks.
  */
 export default defineConfig({
-  plugins: [react()],
   build: {
     emptyOutDir: false,
     cssCodeSplit: false,

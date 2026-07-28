@@ -8,7 +8,7 @@
     <style>
       html,
       body,
-      #root {
+      #app {
         margin: 0;
         width: 100%;
         height: 100%;
@@ -16,10 +16,72 @@
         overflow: hidden;
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       }
+      .main {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: #18181b;
+      }
+      #mainVideo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #09090b;
+      }
+      .waiting {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #a1a1aa;
+        font-size: 18px;
+      }
+      .brand {
+        pointer-events: none;
+        position: absolute;
+        left: 16px;
+        top: 16px;
+        z-index: 3;
+        padding: 8px 12px;
+        border-radius: 10px;
+        background: rgba(9, 9, 11, 0.45);
+      }
+      .brand img {
+        display: block;
+        height: 28px;
+        width: auto;
+        opacity: 0.92;
+      }
+      .pip {
+        pointer-events: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 18px;
+        z-index: 2;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 16px;
+      }
+      .pip-tile {
+        width: 112px;
+        height: 112px;
+        overflow: hidden;
+        border-radius: 18px;
+        background: #18181b;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        outline: 2px solid rgba(255, 255, 255, 0.14);
+      }
+      .pip-tile video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/call-egress/main.jsx"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/call-egress/vanilla.js"></script>
   </body>
 </html>

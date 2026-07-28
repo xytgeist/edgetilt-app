@@ -140,6 +140,7 @@ export async function loungeCfR2PutObject(
   objectKey: string,
   body: Uint8Array,
   contentType: string,
+  cacheControl: string = LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
 ): Promise<void> {
   const endpoint = loungeCfR2S3ObjectUrl(cfg, objectKey)
   const client = loungeCfR2AwsClient(cfg)
@@ -148,7 +149,7 @@ export async function loungeCfR2PutObject(
       method: 'PUT',
       headers: {
         'Content-Type': contentType || 'application/octet-stream',
-        'Cache-Control': LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
+        'Cache-Control': cacheControl || LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
       },
       body,
     }),

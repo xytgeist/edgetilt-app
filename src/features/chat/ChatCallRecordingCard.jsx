@@ -261,7 +261,11 @@ export default function ChatCallRecordingCard({
           aria-label="Play call recording"
         >
           {posterUrl ? (
-            <img src={posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img
+              src={posterUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
           ) : (
             <div className="absolute inset-0 bg-zinc-800" />
           )}

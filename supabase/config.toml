@@ -25,6 +25,10 @@ verify_jwt = false
 [functions.chat-call-transcribe]
 verify_jwt = false
 
+# Mirror call-egress.html from Vercel → R2 for LiveKit Chrome (service role bearer).
+[functions.publish-call-egress-template]
+verify_jwt = false
+
 [functions.lounge-link-unfurl]
 verify_jwt = true
 

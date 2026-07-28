@@ -11,8 +11,8 @@ LiveKit-backed **DM audio/video**, **group audio/video**, and **manual call reco
 | `LIVEKIT_API_SECRET` | LiveKit Cloud API secret |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Provided by Supabase |
 | Lounge R2 (`CLOUDFLARE_ACCOUNT_ID`, `LOUNGE_CF_R2_*`) | RoomComposite egress output + public URL (same as Lounge/chat media) |
-| `CHAT_CALL_EGRESS_TEMPLATE_BASE_URL` | Public URL of pin-focus template, e.g. `https://lvslotpro.com/call-egress.html` (test) / `https://edgetilt.com/call-egress.html` (prod) |
-| `CHAT_CALL_EGRESS_USE_CUSTOM` | Set `0` to force LiveKit built-in `speaker` layout. Default **on** (custom pin template at `CHAT_CALL_EGRESS_TEMPLATE_BASE_URL` / project default). |
+| `CHAT_CALL_EGRESS_TEMPLATE_BASE_URL` | Pin template HTML. Defaults: test `https://media-test.lvslotpro.com/call-egress/call-egress.html`, prod `https://media.edgetilt.com/call-egress/call-egress.html` (publish via `publish-call-egress-template`). |
+| `CHAT_CALL_EGRESS_USE_CUSTOM` | Set `0` to force LiveKit `speaker`. Default **on** (R2 pin template). |
 
 ## Deploy
 

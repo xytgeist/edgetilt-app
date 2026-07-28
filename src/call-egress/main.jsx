@@ -149,7 +149,7 @@ function FocusComposite({ featuredIdentity }) {
         )}
         <div className="ce-brand" aria-hidden>
           <img
-            src="/edge-lounge-logo-transparent.png"
+            src={new URL('edge-lounge-logo-transparent.png', window.location.href).href}
             alt=""
             className="ce-brand-logo"
           />

@@ -41,13 +41,14 @@ function readEgressTemplateBaseUrl(): string {
     .trim()
     .replace(/\/+$/, '')
   if (explicit) return explicit
-  // Sensible defaults when secret is unset (test sandbox vs production).
+  // Prefer R2-hosted template (LiveKit Chrome was blocked / flaky against Vercel HTML).
+  // Publish with: node scripts/publish-call-egress-template.mjs --target=test|production
   const supabaseUrl = String(Deno.env.get('SUPABASE_URL') || '')
   if (supabaseUrl.includes('kcosfvmreeiosdjdzycb')) {
-    return 'https://lvslotpro.com/call-egress.html'
+    return 'https://media-test.lvslotpro.com/call-egress/call-egress.html'
   }
   if (supabaseUrl.includes('jtjgtucumuoswnbauxry')) {
-    return 'https://edgetilt.com/call-egress.html'
+    return 'https://media.edgetilt.com/call-egress/call-egress.html'
   }
   return ''
 }
@@ -962,8 +963,7 @@ Deno.serve(async (req) => {
 
       const startedAt = new Date().toISOString()
       const r2Key = `call-recordings/${callId}/${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}.mp4`
-      // Pin-featured custom template (single-file /call-egress.html). Set
-      // CHAT_CALL_EGRESS_USE_CUSTOM=0 to force LiveKit built-in speaker layout.
+      // Pin template defaults on (R2-hosted). Set CHAT_CALL_EGRESS_USE_CUSTOM=0 for speaker.
       const customDisabled =
         String(Deno.env.get('CHAT_CALL_EGRESS_USE_CUSTOM') || '').trim() === '0'
       const useCustomTemplate = Boolean(templateBaseUrl) && !customDisabled

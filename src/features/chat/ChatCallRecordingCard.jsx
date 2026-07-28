@@ -140,11 +140,6 @@ export default function ChatCallRecordingCard({ message, isMine = false, onOpen 
             <span className="h-1.5 w-1.5 rounded-full bg-[#ea4335]" aria-hidden />
             Rec
           </div>
-          {durationLabel ? (
-            <div className="absolute bottom-3 right-3 rounded-md bg-black/65 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-white backdrop-blur-sm">
-              {durationLabel}
-            </div>
-          ) : null}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="grid h-14 w-14 place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur-md">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="white" aria-hidden className="ml-0.5">

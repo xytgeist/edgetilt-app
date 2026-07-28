@@ -80,12 +80,16 @@ export default function ChatCallSummaryCard({ message }) {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold text-zinc-50">{title}</p>
             <p className="mt-0.5 truncate text-[12px] text-zinc-400">
-              {whenLabel || (message.body ? String(message.body) : 'Call')}
+              {durationLabel && !isMissedOrDeclined
+                ? durationLabel
+                : message.body
+                  ? String(message.body)
+                  : 'Call'}
             </p>
           </div>
-          {durationLabel && !isMissedOrDeclined ? (
-            <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-bold tabular-nums text-zinc-200">
-              {durationLabel}
+          {whenLabel ? (
+            <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-zinc-200">
+              {whenLabel}
             </span>
           ) : null}
         </div>

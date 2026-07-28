@@ -104,12 +104,28 @@ function FocusComposite({ featuredIdentity }) {
     if (startedRef.current) return undefined
 
     const startTime = Date.now()
+    const markStarted = () => {
+      if (startedRef.current) return
+      startedRef.current = true
+      EgressHelper.startRecording()
+    }
+
+    // Fire as soon as Connected... don't wait on decode stats (headless Chrome often stalls).
+    if (room.state === ConnectionState.Connected) {
+      window.setTimeout(markStarted, 300)
+    }
+
     const interval = window.setInterval(async () => {
       if (startedRef.current) {
         window.clearInterval(interval)
         return
       }
       if (room.state === ConnectionState.Disconnected) return
+      if (room.state === ConnectionState.Connected && Date.now() - startTime > 300) {
+        window.clearInterval(interval)
+        markStarted()
+        return
+      }
 
       let hasSubscribed = false
       let hasVideo = false
@@ -135,7 +151,6 @@ function FocusComposite({ featuredIdentity }) {
       }
 
       const elapsed = Date.now() - startTime
-      // Official template logic + hard start so short Record→Stop still finalizes an MP4.
       const ready =
         hasDecoded ||
         (!hasVideo && hasSubscribed && elapsed > 500) ||
@@ -143,14 +158,12 @@ function FocusComposite({ featuredIdentity }) {
         elapsed > HARD_START_MS
 
       if (ready) {
-        startedRef.current = true
         window.clearInterval(interval)
-        EgressHelper.startRecording()
+        markStarted()
       }
     }, 100)
 
     return () => window.clearInterval(interval)
-    // Only re-bind when the Room instance changes... not when featured tile swaps.
   }, [room])
 
   if (room.state === ConnectionState.Disconnected) {

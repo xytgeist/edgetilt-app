@@ -921,12 +921,6 @@ Deno.serve(async (req) => {
         return json(500, { error: 'R2 is not configured for call recordings.' })
       }
       const templateBaseUrl = readEgressTemplateBaseUrl()
-      if (!templateBaseUrl) {
-        return json(500, {
-          error:
-            'CHAT_CALL_EGRESS_TEMPLATE_BASE_URL is not set (e.g. https://lvslotpro.com/call-egress.html).',
-        })
-      }
 
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
@@ -968,7 +962,12 @@ Deno.serve(async (req) => {
 
       const startedAt = new Date().toISOString()
       const r2Key = `call-recordings/${callId}/${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}.mp4`
-      const focusLayout = `focus:${featuredIdentity}`
+      // Custom pin template (call-egress.html) was failing to emit START_RECORDING / write R2.
+      // Opt-in via CHAT_CALL_EGRESS_USE_CUSTOM=1 once the template is proven; default = LiveKit speaker.
+      const useCustomTemplate =
+        String(Deno.env.get('CHAT_CALL_EGRESS_USE_CUSTOM') || '').trim() === '1' &&
+        Boolean(templateBaseUrl)
+      const egressLayout = useCustomTemplate ? `focus:${featuredIdentity}` : 'speaker'
 
       const { data: claimed, error: claimErr } = await admin
         .from('chat_calls')
@@ -1018,9 +1017,9 @@ Deno.serve(async (req) => {
           call.livekit_room_name,
           { file: fileOutput },
           {
-            layout: focusLayout,
+            layout: egressLayout,
             audioOnly: false,
-            customBaseUrl: templateBaseUrl,
+            ...(useCustomTemplate ? { customBaseUrl: templateBaseUrl } : {}),
           },
         )
         const egressId = String(info?.egressId || '').trim()

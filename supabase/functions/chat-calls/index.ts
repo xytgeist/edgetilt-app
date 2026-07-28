@@ -3,7 +3,16 @@
  * Membership source of truth: chat_rooms + chat_room_members.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { AccessToken, RoomServiceClient, TrackSource } from 'npm:livekit-server-sdk@2'
+import {
+  AccessToken,
+  EgressClient,
+  EncodedFileOutput,
+  EncodedFileType,
+  RoomServiceClient,
+  S3Upload,
+  TrackSource,
+} from 'npm:livekit-server-sdk@2'
+import { loungeCfR2PublicUrl, readLoungeCfR2Config } from '../_shared/loungeCfR2.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +23,11 @@ const MAX_CALL_DURATION_MS = 60 * 60 * 1000
 const MAX_GROUP_PARTICIPANTS = 12
 const START_CALL_RATE_WINDOW_MS = 60_000
 const START_CALL_RATE_MAX = 8
+/** Manual RoomComposite recording hard cap (product lock). */
+const MAX_RECORDING_SECONDS = 600
+
+const CALL_SELECT_BASE =
+  'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name, recording_status, recording_started_by, recording_started_at, recording_egress_id, recording_r2_key'
 
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -306,11 +320,49 @@ async function endCallRow(
   return { status, ended_reason: endedReason, body }
 }
 
-function publishSourcesForCall(kind: string, mediaMode: string): TrackSource[] {
-  if (kind === 'group_audio' || mediaMode === 'audio') {
+function publishSourcesForCall(_kind: string, mediaMode: string): TrackSource[] {
+  if (mediaMode === 'audio') {
     return [TrackSource.MICROPHONE]
   }
   return [TrackSource.MICROPHONE, TrackSource.CAMERA]
+}
+
+function egressClientFor(lk: { httpUrl: string; apiKey: string; apiSecret: string }) {
+  return new EgressClient(lk.httpUrl, lk.apiKey, lk.apiSecret)
+}
+
+async function stopActiveRecordingEgress(
+  admin: Admin,
+  lk: { httpUrl: string; apiKey: string; apiSecret: string },
+  call: {
+    id: string
+    recording_status?: string | null
+    recording_egress_id?: string | null
+  },
+) {
+  if (call.recording_status !== 'recording' && call.recording_status !== 'stopping') return
+  const egressId = String(call.recording_egress_id || '').trim()
+  if (egressId) {
+    try {
+      await egressClientFor(lk).stopEgress(egressId)
+    } catch (err) {
+      console.warn('chat-calls: stopEgress failed', call.id, egressId, err)
+    }
+  }
+  await admin
+    .from('chat_calls')
+    .update({ recording_status: 'stopping' })
+    .eq('id', call.id)
+    .in('recording_status', ['recording', 'stopping'])
+}
+
+function recordingPublicFields(call: Record<string, unknown>) {
+  return {
+    recording_status: call.recording_status || 'idle',
+    recording_started_by: call.recording_started_by || null,
+    recording_started_at: call.recording_started_at || null,
+    recording_max_seconds: MAX_RECORDING_SECONDS,
+  }
 }
 
 async function finalizeOutgoingCall(args: {
@@ -440,10 +492,6 @@ Deno.serve(async (req) => {
       if (room.kind !== 'dm' && room.kind !== 'group') {
         return json(400, { error: 'Unsupported chat room kind for calls.' })
       }
-      if (room.kind === 'group' && mediaMode === 'video') {
-        return json(400, { error: 'Group calls are audio-only in v1.' })
-      }
-
       if (room.kind === 'dm') {
         const parts = String(room.dm_key || '').split('::')
         const peerId = parts[0] === user.id ? parts[1] : parts[0]
@@ -460,13 +508,13 @@ Deno.serve(async (req) => {
             id: newId,
             chat_room_id: roomId,
             kind,
-            media_mode: kind === 'group_audio' ? 'audio' : mediaMode,
+            media_mode: mediaMode,
             status: 'ringing',
             started_by: user.id,
             livekit_room_name: `edge-call:${newId}`,
           })
           .select(
-            'id, chat_room_id, kind, media_mode, status, started_by, started_at, livekit_room_name',
+            'id, chat_room_id, kind, media_mode, status, started_by, started_at, livekit_room_name, recording_status, recording_started_by, recording_started_at, recording_egress_id, recording_r2_key',
           )
           .single()
       }
@@ -478,12 +526,13 @@ Deno.serve(async (req) => {
         const { data: existing } = await admin
           .from('chat_calls')
           .select(
-            'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+            CALL_SELECT_BASE,
           )
           .eq('chat_room_id', roomId)
           .in('status', ['ringing', 'active'])
           .maybeSingle()
         if (existing && existing.started_by === user.id && existing.status === 'ringing') {
+          await stopActiveRecordingEgress(admin, lk, existing)
           await endCallRow(admin, existing, 'reclaim')
           await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, existing.livekit_room_name)
           ;({ data: inserted, error: insertErr } = await insertCallRow())
@@ -516,7 +565,7 @@ Deno.serve(async (req) => {
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
         .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+          CALL_SELECT_BASE,
         )
         .eq('id', callId)
         .maybeSingle()
@@ -597,7 +646,7 @@ Deno.serve(async (req) => {
       const { data: fresh } = await admin
         .from('chat_calls')
         .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+          CALL_SELECT_BASE,
         )
         .eq('id', callId)
         .single()
@@ -617,7 +666,7 @@ Deno.serve(async (req) => {
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
         .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+          CALL_SELECT_BASE,
         )
         .eq('id', callId)
         .maybeSingle()
@@ -631,6 +680,7 @@ Deno.serve(async (req) => {
         return json(400, { error: 'Caller cannot decline; end the call instead.' })
       }
 
+      await stopActiveRecordingEgress(admin, lk, call)
       const result = await endCallRow(admin, call, 'declined', 'declined')
       await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
       return json(200, { ok: true, ...result })
@@ -643,7 +693,7 @@ Deno.serve(async (req) => {
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
         .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+          CALL_SELECT_BASE,
         )
         .eq('id', callId)
         .maybeSingle()
@@ -683,6 +733,7 @@ Deno.serve(async (req) => {
         return json(200, { ok: true, left: true, call_ended: false, status: call.status })
       }
 
+      await stopActiveRecordingEgress(admin, lk, call)
       const result = await endCallRow(admin, call, 'hangup')
       await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
       return json(200, { ok: true, left: true, call_ended: true, ...result })
@@ -695,7 +746,7 @@ Deno.serve(async (req) => {
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
         .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+          CALL_SELECT_BASE,
         )
         .eq('id', callId)
         .maybeSingle()
@@ -704,6 +755,7 @@ Deno.serve(async (req) => {
       await assertMember(admin, call.chat_room_id, user.id)
 
       // Force-end for everyone (DM hangup path; host tools). Prefer leave_call for group leave.
+      await stopActiveRecordingEgress(admin, lk, call)
       const result = await endCallRow(admin, call, 'hangup')
       await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, call.livekit_room_name)
       return json(200, { ok: true, call_ended: true, ...result })
@@ -716,7 +768,7 @@ Deno.serve(async (req) => {
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
         .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name',
+          CALL_SELECT_BASE,
         )
         .eq('id', callId)
         .maybeSingle()
@@ -758,20 +810,193 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, call, livekit_url: lk.url, token })
     }
 
+    if (action === 'start_recording') {
+      const callId = String(body.call_id || '').trim()
+      if (!callId) return json(400, { error: 'Missing call_id.' })
+
+      const r2 = readLoungeCfR2Config()
+      if (!r2) {
+        return json(500, { error: 'R2 is not configured for call recordings.' })
+      }
+
+      const { data: call, error: callErr } = await admin
+        .from('chat_calls')
+        .select(CALL_SELECT_BASE)
+        .eq('id', callId)
+        .maybeSingle()
+      if (callErr) throw new Error(callErr.message)
+      if (!call) return json(404, { error: 'Call not found.' })
+      await assertMember(admin, call.chat_room_id, user.id)
+
+      if (!['ringing', 'active'].includes(call.status)) {
+        return json(409, { error: 'This call is no longer available.' })
+      }
+      if (call.media_mode !== 'video') {
+        return json(400, { error: 'Recording is only available on video calls.' })
+      }
+      if (call.recording_status === 'recording' || call.recording_status === 'stopping') {
+        return json(409, { error: 'A recording is already in progress.', ...recordingPublicFields(call) })
+      }
+
+      const { data: part } = await admin
+        .from('chat_call_participants')
+        .select('user_id')
+        .eq('call_id', callId)
+        .eq('user_id', user.id)
+        .is('left_at', null)
+        .maybeSingle()
+      if (!part?.user_id) {
+        return json(403, { error: 'Join the call before starting a recording.' })
+      }
+
+      const startedAt = new Date().toISOString()
+      const r2Key = `call-recordings/${callId}/${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}.mp4`
+
+      const { data: claimed, error: claimErr } = await admin
+        .from('chat_calls')
+        .update({
+          recording_status: 'recording',
+          recording_started_by: user.id,
+          recording_started_at: startedAt,
+          recording_r2_key: r2Key,
+          recording_egress_id: null,
+        })
+        .eq('id', callId)
+        .in('recording_status', ['idle', 'ready', 'failed'])
+        .in('status', ['ringing', 'active'])
+        .select(CALL_SELECT_BASE)
+        .maybeSingle()
+      if (claimErr) throw new Error(claimErr.message)
+      if (!claimed) {
+        const { data: again } = await admin.from('chat_calls').select(CALL_SELECT_BASE).eq('id', callId).maybeSingle()
+        return json(409, {
+          error: 'A recording is already in progress.',
+          ...recordingPublicFields(again || call),
+        })
+      }
+
+      try {
+        const fileOutput = new EncodedFileOutput({
+          fileType: EncodedFileType.MP4,
+          filepath: r2Key,
+          disableManifest: true,
+          output: {
+            case: 's3',
+            value: new S3Upload({
+              accessKey: r2.accessKeyId,
+              secret: r2.secretAccessKey,
+              bucket: r2.bucket,
+              region: 'auto',
+              endpoint: `https://${r2.accountId}.r2.cloudflarestorage.com`,
+              forcePathStyle: true,
+              metadata: {
+                'Cache-Control': 'public, max-age=31536000, immutable',
+              },
+            }),
+          },
+        })
+        const info = await egressClientFor(lk).startRoomCompositeEgress(
+          call.livekit_room_name,
+          { file: fileOutput },
+          { layout: 'grid', audioOnly: false },
+        )
+        const egressId = String(info?.egressId || '').trim()
+        if (!egressId) throw new Error('LiveKit did not return an egress id.')
+
+        const { data: withEgress, error: egErr } = await admin
+          .from('chat_calls')
+          .update({ recording_egress_id: egressId })
+          .eq('id', callId)
+          .eq('recording_status', 'recording')
+          .select(CALL_SELECT_BASE)
+          .single()
+        if (egErr) throw new Error(egErr.message)
+
+        return json(200, {
+          ok: true,
+          call: withEgress,
+          ...recordingPublicFields(withEgress),
+          public_url_preview: loungeCfR2PublicUrl(r2, r2Key),
+        })
+      } catch (err) {
+        await admin
+          .from('chat_calls')
+          .update({
+            recording_status: 'failed',
+            recording_egress_id: null,
+            recording_r2_key: null,
+            recording_started_by: null,
+            recording_started_at: null,
+          })
+          .eq('id', callId)
+        throw err
+      }
+    }
+
+    if (action === 'stop_recording') {
+      const callId = String(body.call_id || '').trim()
+      if (!callId) return json(400, { error: 'Missing call_id.' })
+
+      const { data: call, error: callErr } = await admin
+        .from('chat_calls')
+        .select(CALL_SELECT_BASE)
+        .eq('id', callId)
+        .maybeSingle()
+      if (callErr) throw new Error(callErr.message)
+      if (!call) return json(404, { error: 'Call not found.' })
+      await assertMember(admin, call.chat_room_id, user.id)
+
+      if (call.recording_status !== 'recording' && call.recording_status !== 'stopping') {
+        return json(200, { ok: true, already_stopped: true, ...recordingPublicFields(call) })
+      }
+
+      // Cap enforcement: anyone in the call may stop; auto-stop also uses this action.
+      if (call.recording_started_at) {
+        const elapsedSec = (Date.now() - new Date(call.recording_started_at).getTime()) / 1000
+        if (elapsedSec > MAX_RECORDING_SECONDS + 30) {
+          // Stale row; force stop path anyway.
+        }
+      }
+
+      await stopActiveRecordingEgress(admin, lk, call)
+      const { data: updated } = await admin
+        .from('chat_calls')
+        .select(CALL_SELECT_BASE)
+        .eq('id', callId)
+        .maybeSingle()
+      return json(200, { ok: true, ...recordingPublicFields(updated || { ...call, recording_status: 'stopping' }) })
+    }
+
     if (action === 'get_call') {
       const callId = String(body.call_id || '').trim()
       if (!callId) return json(400, { error: 'Missing call_id.' })
       const { data: call, error: callErr } = await admin
         .from('chat_calls')
         .select(
-          'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, ended_at, ended_reason, livekit_room_name',
+          `${CALL_SELECT_BASE}, ended_at, ended_reason`,
         )
         .eq('id', callId)
         .maybeSingle()
       if (callErr) throw new Error(callErr.message)
       if (!call) return json(404, { error: 'Call not found.' })
       await assertMember(admin, call.chat_room_id, user.id)
-      return json(200, { ok: true, call })
+
+      // Server-side recording cap: if still "recording" past max, stop egress (call continues).
+      if (
+        call.recording_status === 'recording' &&
+        call.recording_started_at &&
+        Date.now() - new Date(call.recording_started_at).getTime() >= MAX_RECORDING_SECONDS * 1000
+      ) {
+        await stopActiveRecordingEgress(admin, lk, call)
+        const { data: refreshed } = await admin
+          .from('chat_calls')
+          .select(`${CALL_SELECT_BASE}, ended_at, ended_reason`)
+          .eq('id', callId)
+          .maybeSingle()
+        return json(200, { ok: true, call: refreshed || call, ...recordingPublicFields(refreshed || call) })
+      }
+
+      return json(200, { ok: true, call, ...recordingPublicFields(call) })
     }
 
     return json(400, { error: `Unknown action: ${action}` })

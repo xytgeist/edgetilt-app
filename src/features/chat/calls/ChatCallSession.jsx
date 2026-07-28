@@ -13,7 +13,9 @@ import {
 import { Track, Room, facingModeFromLocalTrack } from 'livekit-client'
 import '@livekit/components-styles'
 import { applyCallAudioOutput, canToggleCallAudioRoute } from './chatCallAudioOutput.js'
+import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
+import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -220,9 +222,16 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
  *   avatarUrl?: string | null,
  *   viewerAvatarUrl?: string | null,
  *   peerUserId?: string | null,
+ *   viewerUserId?: string | null,
+ *   recordingStatus?: 'idle' | 'recording' | 'stopping' | 'ready' | 'failed',
+ *   recordingStartedBy?: string | null,
+ *   recordingStartedAt?: string | null,
+ *   recordingMaxSeconds?: number,
  *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onDisconnected: () => void,
  *   onHangup: () => void,
+ *   onStartRecording?: () => void,
+ *   onStopRecording?: () => void,
  *   onError?: (msg: string) => void,
  * }} props
  */
@@ -236,12 +245,19 @@ export default function ChatCallSession({
   avatarUrl = null,
   viewerAvatarUrl = null,
   peerUserId = null,
+  viewerUserId = null,
+  recordingStatus = 'idle',
+  recordingStartedBy = null,
+  recordingStartedAt = null,
+  recordingMaxSeconds = CHAT_CALL_RECORDING_MAX_SECONDS,
   supabaseClient = null,
   onDisconnected,
   onHangup,
+  onStartRecording,
+  onStopRecording,
   onError,
 }) {
-  const videoEnabled = kind === 'dm_av' && mediaMode === 'video'
+  const videoEnabled = mediaMode === 'video'
   const [connectError, setConnectError] = useState('')
   const [minimized, setMinimized] = useState(false)
   const didConnectRef = useRef(false)
@@ -310,11 +326,18 @@ export default function ChatCallSession({
               avatarUrl={avatarUrl}
               viewerAvatarUrl={viewerAvatarUrl}
               peerUserId={peerUserId}
+              viewerUserId={viewerUserId}
+              recordingStatus={recordingStatus}
+              recordingStartedBy={recordingStartedBy}
+              recordingStartedAt={recordingStartedAt}
+              recordingMaxSeconds={recordingMaxSeconds}
               supabaseClient={supabaseClient}
               minimized={minimized}
               onMinimize={() => setMinimized(true)}
               onExpand={() => setMinimized(false)}
               onHangup={onHangup}
+              onStartRecording={onStartRecording}
+              onStopRecording={onStopRecording}
             />
             <RoomAudioRenderer />
             <CallStartAudioGate />
@@ -348,11 +371,18 @@ function CallChrome({
   avatarUrl,
   viewerAvatarUrl,
   peerUserId,
+  viewerUserId,
+  recordingStatus = 'idle',
+  recordingStartedBy = null,
+  recordingStartedAt = null,
+  recordingMaxSeconds = CHAT_CALL_RECORDING_MAX_SECONDS,
   supabaseClient,
   minimized,
   onMinimize,
   onExpand,
   onHangup,
+  onStartRecording,
+  onStopRecording,
 }) {
   const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
@@ -365,7 +395,15 @@ function CallChrome({
   const [audioRouteSupported, setAudioRouteSupported] = useState(false)
   const [cameraBusy, setCameraBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
+  const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
+  const recWarn60Ref = useRef(false)
+  const recWarn15Ref = useRef(false)
+  const recAutoStopRef = useRef(false)
+
+  const recordingActive = recordingStatus === 'recording' || recordingStatus === 'stopping'
+  const isRecordingStarter =
+    Boolean(viewerUserId) && Boolean(recordingStartedBy) && viewerUserId === recordingStartedBy
 
   const remoteCount = participants.filter((p) => !p.isLocal).length
   const hadRemoteRef = useRef(false)
@@ -398,6 +436,48 @@ function CallChrome({
   }, [])
 
   useEffect(() => {
+    if (recordingStatus !== 'recording' || !recordingStartedAt) {
+      setRecCountdownLabel(null)
+      recWarn60Ref.current = false
+      recWarn15Ref.current = false
+      recAutoStopRef.current = false
+      return undefined
+    }
+    const maxSec = Math.max(1, Number(recordingMaxSeconds) || CHAT_CALL_RECORDING_MAX_SECONDS)
+    const startedMs = Date.parse(recordingStartedAt)
+    if (!Number.isFinite(startedMs)) return undefined
+
+    const tick = () => {
+      const elapsedRec = Math.max(0, Math.floor((Date.now() - startedMs) / 1000))
+      const left = Math.max(0, maxSec - elapsedRec)
+      if (left <= 60 && left > 15) {
+        setRecCountdownLabel(`Recording ends in ${left}s`)
+        if (!recWarn60Ref.current) {
+          recWarn60Ref.current = true
+          playChatCallRecordingCue('warn_60')
+        }
+      } else if (left <= 15 && left > 0) {
+        setRecCountdownLabel(`Recording ends in ${left}s`)
+        if (!recWarn15Ref.current) {
+          recWarn15Ref.current = true
+          playChatCallRecordingCue('warn_15')
+        }
+      } else if (left <= 0) {
+        setRecCountdownLabel('Stopping recording…')
+        if (!recAutoStopRef.current) {
+          recAutoStopRef.current = true
+          onStopRecording?.()
+        }
+      } else {
+        setRecCountdownLabel(null)
+      }
+    }
+    tick()
+    const id = window.setInterval(tick, 500)
+    return () => window.clearInterval(id)
+  }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording])
+
+  useEffect(() => {
     if (!awaitingAnswer) return undefined
     unlockChatCallAudio()
     const tone = startChatCallTone('ringback')
@@ -426,7 +506,9 @@ function CallChrome({
   const ss = String(elapsed % 60).padStart(2, '0')
   const statusLabel = awaitingAnswer
     ? 'Ringing…'
-    : `${mm}:${ss}${!awaitingAnswer && isGroup ? ` · ${participants.length} in call` : ''}`
+    : `${mm}:${ss}${!awaitingAnswer && isGroup ? ` · ${participants.length} in call` : ''}${
+        recordingActive ? ' · REC' : ''
+      }`
 
   const resolveAvatarForParticipant = (participant) => {
     if (!participant) return null
@@ -622,6 +704,41 @@ function CallChrome({
         </button>
       ) : null}
 
+      {videoEnabled && !awaitingAnswer ? (
+        recordingActive ? (
+          isRecordingStarter || recordingStatus === 'stopping' ? (
+            <button
+              type="button"
+              disabled={recordingStatus === 'stopping'}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80 disabled:opacity-50"
+              aria-label="Stop recording"
+              title="Stop recording"
+              onClick={() => onStopRecording?.()}
+            >
+              <RecordStopIcon />
+            </button>
+          ) : (
+            <div
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/40 text-[#71717a]"
+              aria-hidden
+              title="Recording in progress"
+            >
+              <RecordDotIcon dimmed />
+            </div>
+          )
+        ) : (
+          <button
+            type="button"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942] text-[#f4f4f5] touch-manipulation active:opacity-80"
+            aria-label="Start recording"
+            title="Record call"
+            onClick={() => onStartRecording?.()}
+          >
+            <RecordDotIcon />
+          </button>
+        )
+      ) : null}
+
       <button
         type="button"
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
@@ -701,6 +818,15 @@ function CallChrome({
         <div className="min-w-0 flex-1 px-3 text-center">
           <p className="truncate text-[18px] font-semibold text-[#fafafa]">{title}</p>
           <p className="mt-0.5 text-[13px] text-[#a1a1aa]">{statusLabel}</p>
+          {recordingActive ? (
+            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#ea4335]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#fca5a5]">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ea4335]" aria-hidden />
+              Recording
+            </p>
+          ) : null}
+          {recCountdownLabel ? (
+            <p className="mt-1 text-[12px] font-semibold text-[#fbbf24]">{recCountdownLabel}</p>
+          ) : null}
         </div>
         <div className="h-10 w-10 shrink-0" aria-hidden />
       </div>
@@ -1050,6 +1176,29 @@ function FlipCameraIcon() {
       <path d="m18 8 3-3-3-3" strokeLinecap="round" strokeLinejoin="round" />
       <path d="m6 16-3 3 3 3" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+/** @param {{ dimmed?: boolean }} props */
+function RecordDotIcon({ dimmed = false }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle
+        cx="12"
+        cy="12"
+        r="7"
+        fill={dimmed ? 'currentColor' : '#ea4335'}
+        opacity={dimmed ? 0.55 : 1}
+      />
+    </svg>
+  )
+}
+
+function RecordStopIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <rect x="6" y="6" width="12" height="12" rx="2" />
     </svg>
   )
 }

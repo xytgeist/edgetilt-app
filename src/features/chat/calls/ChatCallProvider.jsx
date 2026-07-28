@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react'
 import {
+  CHAT_CALL_RECORDING_MAX_SECONDS,
   chatAcceptCall,
   chatDeclineCall,
   chatFetchActiveRoomCall,
@@ -17,7 +18,10 @@ import {
   chatJoinCall,
   chatLeaveCall,
   chatStartCall,
+  chatStartRecording,
+  chatStopRecording,
 } from '../../../utils/chatCallsApi.js'
+import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { chatSendMessage } from '../chatApi.js'
 import { subscribeToChatCallBroadcast } from './chatCallBroadcast.js'
 import ChatIncomingCallOverlay from './ChatIncomingCallOverlay.jsx'
@@ -46,8 +50,28 @@ const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
  *   avatarUrl?: string | null,
  *   viewerAvatarUrl?: string | null,
  *   peerUserId?: string | null,
+ *   recordingStatus?: 'idle' | 'recording' | 'stopping' | 'ready' | 'failed',
+ *   recordingStartedBy?: string | null,
+ *   recordingStartedAt?: string | null,
+ *   recordingMaxSeconds?: number,
  * }} ActiveChatCall
  */
+
+function recordingFieldsFromCall(call) {
+  const status = String(call?.recording_status || 'idle')
+  const ok = ['idle', 'recording', 'stopping', 'ready', 'failed'].includes(status)
+  return {
+    recordingStatus: /** @type {ActiveChatCall['recordingStatus']} */ (ok ? status : 'idle'),
+    recordingStartedBy: call?.recording_started_by ? String(call.recording_started_by) : null,
+    recordingStartedAt: call?.recording_started_at ? String(call.recording_started_at) : null,
+    recordingMaxSeconds: CHAT_CALL_RECORDING_MAX_SECONDS,
+  }
+}
+
+function patchActiveRecording(prev, patch) {
+  if (!prev) return prev
+  return { ...prev, ...patch }
+}
 
 /**
  * @typedef {{
@@ -222,6 +246,41 @@ export function ChatCallProvider({
           if (activeCallRef.current?.callId === callId) {
             setActiveCall(null)
           }
+          return
+        }
+
+        if (
+          event === 'recording_started' ||
+          event === 'recording_stopping' ||
+          event === 'recording_ready' ||
+          event === 'recording_failed'
+        ) {
+          if (activeCallRef.current?.callId !== callId) return
+          const status =
+            event === 'recording_started'
+              ? 'recording'
+              : event === 'recording_stopping'
+                ? 'stopping'
+                : event === 'recording_ready'
+                  ? 'ready'
+                  : 'failed'
+          setActiveCall((prev) =>
+            patchActiveRecording(prev, {
+              recordingStatus: status,
+              recordingStartedBy:
+                payload.startedBy != null ? String(payload.startedBy) : prev?.recordingStartedBy || null,
+              recordingStartedAt:
+                payload.startedAt != null ? String(payload.startedAt) : prev?.recordingStartedAt || null,
+              recordingMaxSeconds:
+                Number(payload.maxSeconds) > 0
+                  ? Number(payload.maxSeconds)
+                  : prev?.recordingMaxSeconds || CHAT_CALL_RECORDING_MAX_SECONDS,
+            }),
+          )
+          if (event === 'recording_started') playChatCallRecordingCue('started')
+          if (event === 'recording_ready' || event === 'recording_failed') {
+            playChatCallRecordingCue('stopped')
+          }
         }
       })
       broadcastByRoomRef.current.set(roomId, sub)
@@ -302,6 +361,10 @@ export function ChatCallProvider({
           if (['ended', 'missed', 'declined'].includes(row.status)) {
             if (incomingRef.current?.callId === row.id) setIncoming(null)
             if (activeCallRef.current?.callId === row.id) setActiveCall(null)
+            return
+          }
+          if (activeCallRef.current?.callId === row.id && row.recording_status) {
+            setActiveCall((prev) => patchActiveRecording(prev, recordingFieldsFromCall(row)))
           }
         },
       )
@@ -367,7 +430,7 @@ export function ChatCallProvider({
             mediaMode,
             title: profile.title,
             avatarUrl: profile.avatarUrl,
-            isVideo: call.kind === 'dm_av' && mediaMode === 'video',
+            isVideo: mediaMode === 'video',
           })
         } catch {
           if (roomFromPush) onOpenRoomRef.current?.(roomFromPush)
@@ -469,7 +532,7 @@ export function ChatCallProvider({
           mediaMode,
           title: profile.title,
           avatarUrl: profile.avatarUrl,
-          isVideo: call.kind === 'dm_av' && mediaMode === 'video',
+          isVideo: mediaMode === 'video',
         })
         shouldClear = true
       } catch (err) {
@@ -548,6 +611,7 @@ export function ChatCallProvider({
             typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
               ? opts.peerUserId.trim()
               : null,
+          ...recordingFieldsFromCall(call),
         })
         return call
       } catch (err) {
@@ -616,8 +680,8 @@ export function ChatCallProvider({
         setActiveCall({
           callId: call.id,
           roomId,
-          kind: call.kind,
-          mediaMode: call.media_mode,
+          kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
+          mediaMode: call.media_mode === 'video' ? 'video' : 'audio',
           token: res.token,
           livekitUrl: res.livekit_url,
           title,
@@ -625,6 +689,7 @@ export function ChatCallProvider({
           avatarUrl,
           viewerAvatarUrl,
           peerUserId,
+          ...recordingFieldsFromCall(call),
         })
         return call
       } catch (err) {
@@ -738,6 +803,52 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, ensureBroadcast])
 
+  const startRecording = useCallback(async () => {
+    const current = activeCallRef.current
+    if (!supabaseClient || !current) return null
+    if (current.mediaMode !== 'video') {
+      showCallStatusToast('Recording is only available on video calls.')
+      return null
+    }
+    try {
+      const res = await chatStartRecording(supabaseClient, current.callId)
+      const call = res?.call || res
+      const fields = recordingFieldsFromCall(call)
+      setActiveCall((prev) => patchActiveRecording(prev, fields))
+      ensureBroadcast(current.roomId)?.emit('recording_started', {
+        callId: current.callId,
+        startedBy: fields.recordingStartedBy || viewerUserId,
+        startedAt: fields.recordingStartedAt,
+        maxSeconds: fields.recordingMaxSeconds,
+      })
+      playChatCallRecordingCue('started')
+      return res
+    } catch (err) {
+      showCallStatusToast(err instanceof Error ? err.message : 'Could not start recording')
+      return null
+    }
+  }, [supabaseClient, ensureBroadcast, showCallStatusToast, viewerUserId])
+
+  const stopRecording = useCallback(async () => {
+    const current = activeCallRef.current
+    if (!supabaseClient || !current) return null
+    try {
+      const res = await chatStopRecording(supabaseClient, current.callId)
+      setActiveCall((prev) =>
+        patchActiveRecording(prev, {
+          recordingStatus: 'stopping',
+        }),
+      )
+      ensureBroadcast(current.roomId)?.emit('recording_stopping', {
+        callId: current.callId,
+      })
+      return res
+    } catch (err) {
+      showCallStatusToast(err instanceof Error ? err.message : 'Could not stop recording')
+      return null
+    }
+  }, [supabaseClient, ensureBroadcast, showCallStatusToast])
+
   const watchRoom = useCallback(
     (roomId) => {
       if (!roomId) return () => {}
@@ -761,6 +872,8 @@ export function ChatCallProvider({
       acceptIncoming,
       declineIncoming,
       hangup,
+      startRecording,
+      stopRecording,
       watchRoom,
       releaseBroadcast,
     }),
@@ -774,6 +887,8 @@ export function ChatCallProvider({
       acceptIncoming,
       declineIncoming,
       hangup,
+      startRecording,
+      stopRecording,
       watchRoom,
       releaseBroadcast,
     ],
@@ -788,7 +903,9 @@ export function ChatCallProvider({
         avatarUrl={incoming?.avatarUrl || null}
         subtitle={
           incoming?.kind === 'group_audio'
-            ? 'Group voice call'
+            ? incoming?.mediaMode === 'video'
+              ? 'Group video call'
+              : 'Group voice call'
             : incoming?.mediaMode === 'video'
               ? 'Incoming video call'
               : 'Incoming voice call'
@@ -834,6 +951,11 @@ export function ChatCallProvider({
             avatarUrl={activeCall.avatarUrl || null}
             viewerAvatarUrl={activeCall.viewerAvatarUrl || null}
             peerUserId={activeCall.peerUserId || null}
+            viewerUserId={viewerUserId}
+            recordingStatus={activeCall.recordingStatus || 'idle'}
+            recordingStartedBy={activeCall.recordingStartedBy || null}
+            recordingStartedAt={activeCall.recordingStartedAt || null}
+            recordingMaxSeconds={activeCall.recordingMaxSeconds || CHAT_CALL_RECORDING_MAX_SECONDS}
             supabaseClient={supabaseClient}
             onError={(msg) => showCallStatusToast(msg || 'Call connection failed')}
             onDisconnected={() => {
@@ -841,6 +963,8 @@ export function ChatCallProvider({
               void hangup()
             }}
             onHangup={() => void hangup()}
+            onStartRecording={() => void startRecording()}
+            onStopRecording={() => void stopRecording()}
           />
         </Suspense>
       ) : null}

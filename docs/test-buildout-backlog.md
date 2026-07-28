@@ -122,10 +122,13 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### Chat calling (LiveKit) — v1 shipped in code
 
-Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`20260728000000_chat_calls.sql`**. Edge **`chat-calls`** (+ redeploy **`lounge-send-activity-push`** for `chat_call_invite`).
+Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`20260728000000_chat_calls.sql`** (+ group video **`20260728050000`**, recording **`20260728060000`**). Edge **`chat-calls`** + **`livekit-egress-webhook`** (+ redeploy **`lounge-send-activity-push`** for `chat_call_invite`).
 
 - [x] **DM audio + video** ring/accept/decline/hangup (`ChatCallProvider`, header Phone/Video).
-- [x] **Group audio** start/join (audio-only grants; multi-participant list UI).
+- [x] **Group audio** start/join (multi-participant list UI).
+- [x] **Group video** (code + test SQL/Edge): header Video; `media_mode = video` with `kind = group_audio`; `VideoCallStage` for 3+; **`20260728050000`** applied on test; **`chat-calls`** redeployed test.
+- [x] **Call recording** (code + test SQL/Edge): manual Record/Stop; first-starter wins; 10m cap + 1:00/0:15 cues; RoomComposite → R2 → `call_recording` card; stop does **not** hang up. **`20260728060000`** applied on test; **`livekit-egress-webhook`** + **`chat-calls`** deployed test. **Still need:** LiveKit Cloud webhook URL → `https://kcosfvmreeiosdjdzycb.supabase.co/functions/v1/livekit-egress-webhook` (`egress_ended`).
+- [ ] **Smoke — group video + recording (test):** 3+ video strip/pin/cam off; DM video unchanged; Record A blanks B; stop early → card; 10m auto-stop + card with call still live; hangup while recording finalizes.
 - [x] **Group leave ≠ end-for-all:** hangup → Edge **`leave_call`** (redeploy **`chat-calls`**); group continues only if **2+** remain after leave; DM / when ≤1 would remain ends the room.
 - [x] **App-wide in-app ring:** `ChatCallProvider` in **`AppShell`** (any tab while signed in); accept opens Chat room.
 - [x] **Offline ring (wire):** `activity_events.chat_call_invite` immediate push; deep link `/?tab=chat&room=&call=`.
@@ -139,7 +142,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [x] **First-open PWA mic prompt:** **Android PWA only**; after splash (after push opt-in if queued); `getUserMedia` then stop track; `edge_pwa_mic_prompt_v2:` (`pwaMicrophonePrompt.js`). iOS skipped.
 - [x] **Call summary chips** in thread (`content_encoding = call_summary`).
 - [x] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan; DM voice connect smoked).
-- [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; recording; screen share.
+- [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; screen share; auto-record; audio-only recording.
 
 ### Planned (Spaces / fan hangouts — later)
 
@@ -703,6 +706,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
   - **Migration:** run **`20260608000000_chat_messages_video_url.sql`** on test before client deploy (adds `video_url TEXT` column; rebuilds `chat_messages_page` + `chat_messages_window` RPCs to include it).
   - **Smoke (test):** send a video in chat — progress bar encodes then uploads; bubble appears immediately with poster; tap bubble → native `<video>` plays; delete message → R2 objects removed. Legacy `stream_video_uid` messages still render via CF iframe unchanged.
 
+- [x] **`chat-calls`** + **`livekit-egress-webhook`** (group video + RoomComposite recording) — SQL **`20260728050000`** / **`20260728060000`** on **test**; both functions deployed test (`verify_jwt = false` on webhook). **Open:** configure LiveKit Cloud webhook → `https://kcosfvmreeiosdjdzycb.supabase.co/functions/v1/livekit-egress-webhook` (`egress_ended`). Source: `docs/chat-calling.md`, function READMEs. Smoke under **Chat calling**.
+
 - [ ] **`lounge-news-poll`** (Market Edge — Finnhub allowlist → score → auto-publish) — deploy on **test** with **`FINNHUB_API_KEY`**; migrations **`20260703140000`** + **`20260705020000`**; cron **`lounge_news_poll_market_edge`** every 3 min or Bot Portal **Poll now**. Source: `supabase/functions/lounge-news-poll/README.md`.
 
 - [x] **Creator affiliates** — Smoked on **test** (Ryan, 2026-07-17). Promoted to **prod**: SQL through **`20260711160000`**, Edge checkout/webhook/connect/tax-email, frontend **`main`**. Live Stripe Connect + live promo ids + prod **`RESEND_API_KEY`** still ops follow-through. Spec: **`docs/affiliates.md`**.
@@ -939,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-28: **Chat calling group video + recording:** SQL **`20260728050000`** (group `media_mode=video`) + **`20260728060000`** (`recording_*`); Edge **`chat-calls`** `start_recording` / `stop_recording` (RoomComposite → R2, 10m); new **`livekit-egress-webhook`** → `call_recording` card; client Record/Stop + cues + group Video header. Test: apply SQL, redeploy both functions, configure LiveKit webhook; smoke checklist under Chat calling. Prod after Ryan sign-off.
 - 2026-07-28: **Chat calling push tap → Accept UI:** deep link no longer awaits caller profile before `presentIncoming` (PWA wake cancel left DM open with no overlay). notificationclick also posts **`chat-call-invite-inapp`**. Force-close PWA to pick up **`push-sw.js`**.
 - 2026-07-27: **Chat calling UX batch → production:** merge `test` → `main` (WhatsApp in-call UI, leave_call / end-when-≤1, earpiece, speaking rings, late-join Join bar + avatars). Redeploy Edge **`chat-calls`** on **`jtjgtucumuoswnbauxry`**. No new SQL.
 - 2026-07-27: **Chat calling group late join:** classic group conversation queries open `chat_calls` + Realtime; Join bar above composer (status + participant avatars / `+N`, polled) + header Join → `joinCall` / Edge `join_call`. Start Voice on 409 joins the open call. Client only (RLS SELECT).

@@ -17,6 +17,10 @@ verify_jwt = true
 [functions.chat-calls]
 verify_jwt = true
 
+# LiveKit Cloud egress_ended → call_recording chat card (signature verified in function).
+[functions.livekit-egress-webhook]
+verify_jwt = false
+
 [functions.lounge-link-unfurl]
 verify_jwt = true
 

@@ -509,6 +509,53 @@ export default function ChatBubble({
   const openViewer = useCallback((idx) => setMediaViewerIndex(idx), [])
   const closeViewer = useCallback(() => setMediaViewerIndex(null), [])
 
+  const isCallRecording = String(message.content_encoding || '') === 'call_recording'
+  if (isCallRecording) {
+    const recordingMedia = videoUrl
+      ? [{
+          type: 'video',
+          videoUid: null,
+          videoUrl,
+          url: message.stream_poster_url || '',
+          posterUrl: message.stream_poster_url || '',
+          displayWidth: message.stream_video_width ?? null,
+          displayHeight: message.stream_video_height ?? null,
+        }]
+      : []
+    return (
+      <div
+        data-chat-message-id={message.id}
+        className={`flex ${isMine ? 'justify-end' : 'justify-start'} px-1 py-1`}
+      >
+        <div className={`${CHAT_MESSAGE_COLUMN_WIDTH_CLASS} overflow-hidden rounded-2xl border border-zinc-700/80 bg-zinc-900/95`}>
+          <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">
+            <span className="inline-flex h-2 w-2 rounded-full bg-[#ea4335]" aria-hidden />
+            <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-300">
+              Call recording
+            </span>
+            {formattedTime ? (
+              <span className="ml-auto text-[11px] text-zinc-500">{formattedTime}</span>
+            ) : null}
+          </div>
+          {recordingMedia.length > 0 ? (
+            <div className="relative w-full">
+              <ChatMediaGrid media={recordingMedia} onOpen={openViewer} />
+            </div>
+          ) : (
+            <p className="px-3 py-3 text-[13px] text-zinc-400">Recording unavailable</p>
+          )}
+        </div>
+        {mediaViewerIndex !== null && recordingMedia.length > 0 ? (
+          <ChatMediaViewer
+            items={recordingMedia}
+            initialIndex={mediaViewerIndex}
+            onClose={closeViewer}
+          />
+        ) : null}
+      </div>
+    )
+  }
+
   const callSummaryBody = String(message.body || '').trim()
   const isCallSummary =
     String(message.content_encoding || '') === 'call_summary' ||

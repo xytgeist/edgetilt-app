@@ -104,7 +104,9 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
     return q
   }
   const { data: d2, error: e2 } = await buildDirect(
-    supabaseClient.from('chat_messages').select('id, body, image_urls, sender_id, created_at, deleted_at, reply_to_message_id, reply_to_preview, reply_to_sender_id, link_preview')
+    supabaseClient.from('chat_messages').select(
+      'id, body, image_urls, sender_id, created_at, deleted_at, reply_to_message_id, reply_to_preview, reply_to_sender_id, link_preview, video_url, content_encoding, stream_video_uid, stream_poster_url, stream_video_width, stream_video_height',
+    )
   )
   if (!e2) return d2 || []
   const { data: d3, error: e3 } = await buildDirect(
@@ -312,9 +314,9 @@ export default function ChatConversation({
   const isClassicGroupRoom = activeRoom.kind === 'group'
   const isDmRoom = activeRoom.kind === 'dm'
   const chatCall = useChatCallOptional()
-  /** @type {[{ id: string, kind?: string, status?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null, Function]} */
+  /** @type {[{ id: string, kind?: string, status?: string, media_mode?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null, Function]} */
   const [roomOpenCall, setRoomOpenCall] = useState(
-    /** @type {{ id: string, kind?: string, status?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null} */ (null),
+    /** @type {{ id: string, kind?: string, status?: string, media_mode?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null} */ (null),
   )
   /** @type {[{ userId: string, avatarUrl: string | null, initial: string }[], Function]} */
   const [roomCallParticipantAvatars, setRoomCallParticipantAvatars] = useState(
@@ -2189,7 +2191,11 @@ export default function ChatConversation({
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
   const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
   const roomCallStatusLabel =
-    roomOpenCall?.status === 'ringing' ? 'Ringing…' : 'Voice call in progress'
+    roomOpenCall?.status === 'ringing'
+      ? 'Ringing…'
+      : roomOpenCall?.media_mode === 'video'
+        ? 'Video call in progress'
+        : 'Voice call in progress'
   const ROOM_CALL_AVATAR_MAX = 5
   const roomCallAvatarTotal = roomCallParticipantAvatars.length
   // When overflowing, reserve the last slot for +N.
@@ -2349,30 +2355,50 @@ export default function ChatConversation({
                     openRoom: false,
                   })
                 }}
-                aria-label="Join group voice call"
+                aria-label="Join group call"
                 title="Join call"
                 className="flex h-10 items-center justify-center rounded-full bg-[#25d366] px-3 text-[13px] font-bold text-white touch-manipulation active:opacity-80 transition-opacity disabled:opacity-40"
               >
                 Join
               </button>
             ) : (
-              <button
-                type="button"
-                disabled={chatCall.busy || Boolean(chatCall.activeCall)}
-                onClick={() => {
-                  void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName, {
-                    avatarUrl: activeRoom.avatar_url || null,
-                    viewerAvatarUrl: viewerProfile?.avatar_url || null,
-                  })
-                }}
-                aria-label="Start group voice call"
-                title="Voice call"
-                className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
-                </svg>
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={chatCall.busy || Boolean(chatCall.activeCall)}
+                  onClick={() => {
+                    void chatCall.startCall(activeRoom.id, 'audio', headerDisplayName, {
+                      avatarUrl: activeRoom.avatar_url || null,
+                      viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                    })
+                  }}
+                  aria-label="Start group voice call"
+                  title="Voice call"
+                  className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.3 1.2.4 2.5.6 3.8.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.6 3.8.1.4 0 .8-.3 1.1L6.6 10.8z" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  disabled={chatCall.busy || Boolean(chatCall.activeCall)}
+                  onClick={() => {
+                    void chatCall.startCall(activeRoom.id, 'video', headerDisplayName, {
+                      avatarUrl: activeRoom.avatar_url || null,
+                      viewerAvatarUrl: viewerProfile?.avatar_url || null,
+                    })
+                  }}
+                  aria-label="Start group video call"
+                  title="Video call"
+                  className="chat-header-glass flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity disabled:opacity-40"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+                    <rect x="2" y="6" width="14" height="12" rx="2" />
+                  </svg>
+                </button>
+              </>
             )}
           </div>
         ) : null}

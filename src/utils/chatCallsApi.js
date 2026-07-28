@@ -87,6 +87,19 @@ export function chatGetCall(supabase, callId) {
   return chatCallsInvoke(supabase, { action: 'get_call', call_id: callId })
 }
 
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
+export function chatStartRecording(supabase, callId) {
+  return chatCallsInvoke(supabase, { action: 'start_recording', call_id: callId })
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
+export function chatStopRecording(supabase, callId) {
+  return chatCallsInvoke(supabase, { action: 'stop_recording', call_id: callId })
+}
+
+/** Manual RoomComposite hard cap (must match Edge MAX_RECORDING_SECONDS). */
+export const CHAT_CALL_RECORDING_MAX_SECONDS = 600
+
 /**
  * Open ringing/active call for a room (member RLS on `chat_calls`).
  * Includes active participant ids/count (rows with `left_at` null).

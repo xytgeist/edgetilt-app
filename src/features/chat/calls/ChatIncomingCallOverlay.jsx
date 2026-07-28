@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { CHAT_CALL_DECLINE_QUICK_REPLIES } from './chatCallDeclineQuickReplies.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 
 /**
@@ -7,26 +8,34 @@ import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chat
  * @param {{
  *   open: boolean,
  *   title: string,
+ *   avatarUrl?: string | null,
  *   subtitle?: string,
  *   isVideo?: boolean,
  *   busy?: boolean,
+ *   showDeclineQuickReplies?: boolean,
  *   onAccept: () => void,
  *   onDecline: () => void,
+ *   onDeclineWithMessage?: (message: string) => void,
  * }} props
  */
 export default function ChatIncomingCallOverlay({
   open,
   title,
+  avatarUrl = null,
   subtitle = 'Incoming call',
   isVideo = false,
   busy = false,
+  showDeclineQuickReplies = false,
   onAccept,
   onDecline,
+  onDeclineWithMessage,
 }) {
   const toneRef = useRef(/** @type {{ stop: () => void } | null} */ (null))
+  const [quickReply, setQuickReply] = useState('')
 
   useEffect(() => {
     if (!open) {
+      setQuickReply('')
       stopChatCallTone(toneRef.current)
       toneRef.current = null
       return undefined
@@ -59,6 +68,9 @@ export default function ChatIncomingCallOverlay({
 
   if (!open || typeof document === 'undefined') return null
 
+  const canSendQuickReply =
+    showDeclineQuickReplies && Boolean(quickReply) && typeof onDeclineWithMessage === 'function'
+
   return createPortal(
     <div
       className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-zinc-950/95 px-6 text-center"
@@ -69,7 +81,7 @@ export default function ChatIncomingCallOverlay({
       onPointerDown={(event) => {
         // Unlock autoplay. Restart tone only for non-button taps (Accept/Decline stop their own tone).
         unlockChatCallAudio()
-        if (event.target instanceof Element && event.target.closest('button')) return
+        if (event.target instanceof Element && event.target.closest('button, select, label')) return
         stopChatCallTone(toneRef.current)
         toneRef.current = startChatCallTone('incoming')
       }}
@@ -77,12 +89,63 @@ export default function ChatIncomingCallOverlay({
       <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-cyan-400/90">
         {isVideo ? 'Video call' : 'Voice call'}
       </p>
-      <h2 className="mt-3 max-w-sm text-[28px] font-black tracking-tight text-zinc-50">{title}</h2>
+      <div className="mt-6 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-800 shadow-[0_0_0_4px_rgba(24,24,27,0.65)]">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-[36px] font-black uppercase tracking-tight text-zinc-300" aria-hidden>
+            {(title || '?').trim().charAt(0) || '?'}
+          </span>
+        )}
+      </div>
+      <h2 className="mt-4 max-w-sm text-[28px] font-black tracking-tight text-zinc-50">{title}</h2>
       <p className="mt-2 text-[15px] text-zinc-400">{subtitle}</p>
       <p className="mt-8 max-w-xs text-[12px] leading-relaxed text-zinc-500">
         Keep Edge open during calls. Background audio on iPhone is best-effort.
       </p>
-      <div className="mt-12 flex items-center gap-10">
+
+      {showDeclineQuickReplies ? (
+        <div className="mt-8 w-full max-w-sm text-left">
+          <label htmlFor="chat-call-decline-quick-reply" className="block text-[12px] font-semibold text-zinc-400">
+            Quick reply (optional)
+          </label>
+          <select
+            id="chat-call-decline-quick-reply"
+            value={quickReply}
+            disabled={busy}
+            onChange={(event) => setQuickReply(event.target.value)}
+            className="mt-2 w-full min-h-12 appearance-none rounded-2xl border border-zinc-700 bg-zinc-900 px-4 pr-10 text-[15px] font-medium text-zinc-100 touch-manipulation disabled:opacity-50"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 0.9rem center',
+            }}
+          >
+            <option value="">Decline without a message</option>
+            {CHAT_CALL_DECLINE_QUICK_REPLIES.map((text) => (
+              <option key={text} value={text}>
+                {text}
+              </option>
+            ))}
+          </select>
+          {canSendQuickReply ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                stopToneNow()
+                onDeclineWithMessage?.(quickReply)
+              }}
+              className="mt-3 w-full min-h-12 rounded-2xl border border-rose-500/50 bg-rose-600/90 px-4 text-[15px] font-bold text-white touch-manipulation active:opacity-80 disabled:opacity-50"
+            >
+              Decline & send
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className={`flex items-center gap-10${showDeclineQuickReplies ? ' mt-10' : ' mt-12'}`}>
         <button
           type="button"
           disabled={busy}

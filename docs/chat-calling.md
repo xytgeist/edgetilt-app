@@ -6,7 +6,7 @@ DM **audio/video** and group **audio** calls for Edge Chat.
 
 | Surface | Media | UX |
 | --- | --- | --- |
-| DM (`chat_rooms.kind = dm`) | Audio or video | Ring / accept / decline / hangup |
+| DM (`chat_rooms.kind = dm`) | Audio or video | Ring / accept / decline / hangup; decline can optionally send a quick reply chat message |
 | Classic group (`kind = group`) | Audio only | Start voice call; members join/leave |
 | Topics / Private Subs | Out of scope | Fan Spaces later |
 
@@ -29,8 +29,9 @@ See [`supabase/functions/chat-calls/README.md`](../supabase/functions/chat-calls
 
 ## Client
 
-- `src/features/chat/calls/` — session UI, incoming overlay, API, controller.
+- `src/features/chat/calls/` — session UI, incoming overlay (caller avatar + name), API, controller.
 - Header: DM Phone + Video; group Voice (absolute right). Avatar/title stay screen-centered; room options live in the name › sheet (no ⋯ menu).
+- **DM decline quick replies** (`chatCallDeclineQuickReplies.js`): incoming overlay dropdown + **Decline & send** (decline call, then `chatSendMessage`). Circle decline still ends the call with no message. Group voice invites do not show this UI.
 
 ## Guardrails
 

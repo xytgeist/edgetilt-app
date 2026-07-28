@@ -17,6 +17,7 @@ import {
   chatJoinCall,
   chatStartCall,
 } from '../../../utils/chatCallsApi.js'
+import { chatSendMessage } from '../chatApi.js'
 import { subscribeToChatCallBroadcast } from './chatCallBroadcast.js'
 import ChatIncomingCallOverlay from './ChatIncomingCallOverlay.jsx'
 import ChatMissedCallCallbackOverlay from './ChatMissedCallCallbackOverlay.jsx'
@@ -52,7 +53,12 @@ const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
  *   mediaMode: ChatCallMediaMode,
  *   fromUserId: string,
  *   title: string,
+ *   avatarUrl?: string | null,
  * }} IncomingChatCall
+ */
+
+/**
+ * @typedef {{ title: string, avatarUrl: string | null }} CallerProfileSnap
  */
 
 const ChatCallContext = createContext(null)
@@ -61,7 +67,7 @@ const ChatCallContext = createContext(null)
  * @param {{
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient | null,
  *   viewerUserId: string,
- *   profilesById?: Record<string, { display_name?: string, handle?: string }>,
+ *   profilesById?: Record<string, { display_name?: string, handle?: string, avatar_url?: string | null }>,
  *   roomTitleById?: (roomId: string) => string,
  *   initialCallId?: string | null,
  *   initialCallIntent?: 'ring' | 'callback',
@@ -93,48 +99,70 @@ export function ChatCallProvider({
   const activeCallRef = useRef(activeCall)
   const incomingRef = useRef(incoming)
   const endingRef = useRef(false)
-  const titleCacheRef = useRef(/** @type {Map<string, string>} */ (new Map()))
+  const callerProfileCacheRef = useRef(/** @type {Map<string, CallerProfileSnap>} */ (new Map()))
+  const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
 
-  const resolveTitle = useCallback(
+  const resolveCallerProfile = useCallback(
     (roomId, fromUserId) => {
-      if (fromUserId && titleCacheRef.current.has(fromUserId)) {
-        return titleCacheRef.current.get(fromUserId) || 'Chat call'
+      if (fromUserId && callerProfileCacheRef.current.has(fromUserId)) {
+        return callerProfileCacheRef.current.get(fromUserId) || { title: 'Chat call', avatarUrl: null }
       }
       if (fromUserId && profilesById[fromUserId]) {
         const p = profilesById[fromUserId]
-        return String(p.display_name || p.handle || 'Member').trim() || 'Member'
+        const title = String(p.display_name || p.handle || 'Member').trim() || 'Member'
+        const avatarUrl = typeof p.avatar_url === 'string' && p.avatar_url.trim() ? p.avatar_url.trim() : null
+        const snap = { title, avatarUrl }
+        callerProfileCacheRef.current.set(fromUserId, snap)
+        return snap
       }
       if (typeof roomTitleById === 'function') {
         const t = roomTitleById(roomId)
-        if (t) return t
+        if (t) return { title: t, avatarUrl: null }
       }
-      return 'Incoming call'
+      return { title: 'Incoming call', avatarUrl: null }
     },
     [profilesById, roomTitleById],
   )
 
-  /** When provider lives above ChatTab, profilesById is often empty... fetch caller name. */
-  const resolveTitleAsync = useCallback(
+  /** When provider lives above ChatTab, profilesById is often empty... fetch caller name + avatar. */
+  const resolveCallerProfileAsync = useCallback(
     async (roomId, fromUserId) => {
-      const sync = resolveTitle(roomId, fromUserId)
+      const sync = resolveCallerProfile(roomId, fromUserId)
       if (!supabaseClient || !fromUserId) return sync
-      if (profilesById[fromUserId] || titleCacheRef.current.has(fromUserId)) return sync
+      if (callerProfileFetchedRef.current.has(fromUserId)) {
+        return callerProfileCacheRef.current.get(fromUserId) || sync
+      }
       try {
         const { data } = await supabaseClient
           .from('profiles')
-          .select('display_name, handle')
+          .select('display_name, handle, avatar_url')
           .eq('user_id', fromUserId)
           .maybeSingle()
-        const t = String(data?.display_name || data?.handle || sync).trim() || sync
-        titleCacheRef.current.set(fromUserId, t)
-        return t
+        const title = String(data?.display_name || data?.handle || sync.title).trim() || sync.title
+        const avatarUrl =
+          typeof data?.avatar_url === 'string' && data.avatar_url.trim()
+            ? data.avatar_url.trim()
+            : sync.avatarUrl
+        const snap = { title, avatarUrl }
+        callerProfileCacheRef.current.set(fromUserId, snap)
+        callerProfileFetchedRef.current.add(fromUserId)
+        return snap
       } catch {
+        callerProfileFetchedRef.current.add(fromUserId)
         return sync
       }
     },
-    [supabaseClient, profilesById, resolveTitle],
+    [supabaseClient, resolveCallerProfile],
+  )
+
+  const resolveTitleAsync = useCallback(
+    async (roomId, fromUserId) => {
+      const snap = await resolveCallerProfileAsync(roomId, fromUserId)
+      return snap.title
+    },
+    [resolveCallerProfileAsync],
   )
 
   const presentIncomingRef = useRef(/** @type {(row: Record<string, unknown>) => void} */ (() => {}))
@@ -182,19 +210,23 @@ export function ChatCallProvider({
       const kind = row.kind === 'group_audio' ? 'group_audio' : 'dm_av'
       const mediaMode = (row.media_mode || row.mediaMode) === 'video' ? 'video' : 'audio'
       if (roomId) ensureBroadcast(roomId)
+      const profile = resolveCallerProfile(roomId, fromUserId)
       setIncoming({
         callId: row.id,
         roomId,
         kind,
         mediaMode,
         fromUserId,
-        title: resolveTitle(roomId, fromUserId),
+        title: profile.title,
+        avatarUrl: profile.avatarUrl,
       })
-      void resolveTitleAsync(roomId, fromUserId).then((title) => {
-        setIncoming((prev) => (prev?.callId === row.id ? { ...prev, title } : prev))
+      void resolveCallerProfileAsync(roomId, fromUserId).then((next) => {
+        setIncoming((prev) =>
+          prev?.callId === row.id ? { ...prev, title: next.title, avatarUrl: next.avatarUrl } : prev,
+        )
       })
     },
-    [ensureBroadcast, resolveTitle, resolveTitleAsync],
+    [ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync],
   )
   presentIncomingRef.current = presentIncoming
 
@@ -478,13 +510,29 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, incoming, ensureBroadcast, onOpenRoom])
 
-  const declineIncoming = useCallback(async () => {
+  /**
+   * @param {{ message?: string }} [opts]
+   * DM only: optional `message` is sent as a normal chat text after decline.
+   */
+  const declineIncoming = useCallback(async (opts = {}) => {
     if (!supabaseClient || !incoming) return
+    const snap = incoming
+    const message = typeof opts?.message === 'string' ? opts.message.trim() : ''
     setBusy(true)
     try {
-      if (incoming.kind === 'dm_av') {
-        await chatDeclineCall(supabaseClient, incoming.callId)
-        ensureBroadcast(incoming.roomId)?.emit('decline', { callId: incoming.callId })
+      if (snap.kind === 'dm_av') {
+        await chatDeclineCall(supabaseClient, snap.callId)
+        ensureBroadcast(snap.roomId)?.emit('decline', { callId: snap.callId })
+        if (message) {
+          try {
+            await chatSendMessage(supabaseClient, {
+              roomId: snap.roomId,
+              body: message,
+            })
+          } catch {
+            // Call already declined; do not block dismiss on message failure.
+          }
+        }
       }
       setIncoming(null)
     } catch (err) {
@@ -566,6 +614,7 @@ export function ChatCallProvider({
       <ChatIncomingCallOverlay
         open={Boolean(incoming) && !activeCall && !callbackPrompt}
         title={incoming?.title || 'Incoming call'}
+        avatarUrl={incoming?.avatarUrl || null}
         subtitle={
           incoming?.kind === 'group_audio'
             ? 'Group voice call'
@@ -575,8 +624,10 @@ export function ChatCallProvider({
         }
         isVideo={incoming?.mediaMode === 'video'}
         busy={busy}
+        showDeclineQuickReplies={incoming?.kind === 'dm_av'}
         onAccept={() => void acceptIncoming()}
         onDecline={() => void declineIncoming()}
+        onDeclineWithMessage={(message) => void declineIncoming({ message })}
       />
       <ChatMissedCallCallbackOverlay
         open={Boolean(callbackPrompt) && !activeCall && !incoming}

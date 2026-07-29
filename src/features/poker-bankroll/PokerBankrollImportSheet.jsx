@@ -258,11 +258,19 @@ export default function PokerBankrollImportSheet({
             : 'cash'
           : sessionTypeOverride
       const venueKind = s.venue_kind || detectVenueKindFallback(s.casino_name)
+      // Tournament cashes (Hendon Mob etc.) often omit duration... assume 8h.
+      let endAt = s.end_at ?? null
+      if (!endAt && sessionType === 'tournament' && s.start_at) {
+        const startMs = new Date(s.start_at).getTime()
+        if (Number.isFinite(startMs)) {
+          endAt = new Date(startMs + 8 * 3_600_000).toISOString()
+        }
+      }
       return {
         user_id: userId,
         deal_id: dealId || null,
         start_at: s.start_at,
-        end_at: s.end_at ?? null,
+        end_at: endAt,
         buy_in: s.buy_in ?? s.start_amount,
         cash_out: s.end_amount,
         rebuy_amount: Number(s.rebuy_amount) || 0,

@@ -592,6 +592,12 @@ function parseSectionSessions(section) {
     // Same-day Hendon cashes need distinct timestamps for import dedupe.
     if (hendon) start_at = offsetIsoMinutes(start_at, rowIndex)
 
+    let end_at = parseDate(get(row, 'end_at')) ?? null
+    // Hendon Mob cashes have no duration column... assume 8 hours of play.
+    if (!end_at && hendon && start_at) {
+      end_at = offsetIsoMinutes(start_at, 8 * 60)
+    }
+
     const buyIn = parseAmount(get(row, 'start_amount'))
     if (buyIn == null) {
       skipped.push({ reason: 'invalid_amount', raw: row })
@@ -609,7 +615,6 @@ function parseSectionSessions(section) {
     // Slots bankroll treats invested total as start_amount; poker keeps parts split.
     const start_amount = parseFloat((buyIn + rebuy_amount + addon_amount).toFixed(2))
 
-    const end_at = parseDate(get(row, 'end_at')) ?? null
     const eventRaw = (get(row, 'tournament_name') || '').trim() || null
     const hendonMeta = hendon ? enrichFromHendonEvent(eventRaw) : null
 

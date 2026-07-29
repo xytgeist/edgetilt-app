@@ -22,12 +22,34 @@ export function fmtPoker$(n) {
   return num < 0 ? `-${str}` : str
 }
 
-/** @param {{ start_at?: string, end_at?: string | null }} session */
+/**
+ * Hours played for a session.
+ * Active sessions (no end_at) use a live clock. Completed tournaments without
+ * end_at (e.g. Hendon Mob cashes) assume 8 hours. Other completed rows with no
+ * end_at contribute 0 so we never treat "years since 2009" as play time.
+ *
+ * @param {{
+ *   start_at?: string,
+ *   end_at?: string | null,
+ *   status?: string | null,
+ *   session_type?: string | null,
+ * }} session
+ */
 export function pokerSessionDurationHours(session) {
   if (!session?.start_at) return 0
   const start = new Date(session.start_at)
-  const end = session.end_at ? new Date(session.end_at) : new Date()
-  return Math.max(0, (end - start) / 3_600_000)
+  if (Number.isNaN(start.getTime())) return 0
+  if (session.end_at) {
+    const end = new Date(session.end_at)
+    if (Number.isNaN(end.getTime())) return 0
+    return Math.max(0, (end - start) / 3_600_000)
+  }
+  if (session.status === 'active') {
+    return Math.max(0, (Date.now() - start.getTime()) / 3_600_000)
+  }
+  // Hendon Mob / cashes-only imports often have no duration column.
+  if (session.session_type === 'tournament') return 8
+  return 0
 }
 
 /**

@@ -38,7 +38,7 @@ const START_CALL_RATE_MAX = 8
 const MAX_RECORDING_SECONDS = 600
 
 const CALL_SELECT_BASE =
-  'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name, live_transcript, recording_status, recording_started_by, recording_started_at, recording_egress_id, recording_r2_key, recording_featured_identity'
+  'id, chat_room_id, kind, media_mode, status, started_by, started_at, answered_at, livekit_room_name, recording_status, recording_started_by, recording_started_at, recording_egress_id, recording_r2_key, recording_featured_identity'
 
 function readEgressTemplateBaseUrl(): string {
   const explicit = String(Deno.env.get('CHAT_CALL_EGRESS_TEMPLATE_BASE_URL') || '')
@@ -294,7 +294,6 @@ async function endCallRow(
     status: string
     kind: string
     media_mode?: string | null
-    live_transcript?: unknown
   },
   endedReason: string,
   statusOverride?: 'ended' | 'missed' | 'declined',
@@ -309,13 +308,6 @@ async function endCallRow(
   }
 
   const endedAt = new Date().toISOString()
-  // Re-read live_transcript so late client flushes land on the summary card.
-  const { data: freshCall } = await admin
-    .from('chat_calls')
-    .select(CALL_SELECT_BASE)
-    .eq('id', call.id)
-    .maybeSingle()
-  const callForSummary = freshCall || call
 
   await admin
     .from('chat_calls')
@@ -331,7 +323,7 @@ async function endCallRow(
 
   let body = 'Call ended'
   try {
-    const summary = await ensureCallSummaryMessage(admin, callForSummary, status, endedAt)
+    const summary = await ensureCallSummaryMessage(admin, call, status, endedAt)
     body = summary.body
   } catch (err) {
     console.warn('chat-calls: call summary card failed', err)

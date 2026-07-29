@@ -1,24 +1,19 @@
 /**
- * Transcribe call recordings (Deepgram diarization) and live voice-call STT.
+ * Transcribe video call recordings (Deepgram diarization).
  *
  * Actions:
  * - transcribe (user JWT or service role) — run / resume STT for a call_recording message
- * - remap_speakers (user JWT) — assign speaker indices to participant user_ids (recording or summary)
+ * - remap_speakers (user JWT) — assign speaker indices to participant user_ids
  * - deepgram_callback (callback secret) — async Deepgram completion
- * - mint_live_stt_grant (user JWT) — short-lived Deepgram token for browser live listen (audio calls)
- * - append_live_transcript (user JWT) — merge per-participant finals into chat_calls.live_transcript
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import {
   applySpeakerMapToUtterances,
   buildSpeakerMap,
-  mergeLiveTranscriptUtterances,
   transcriptFromDeepgram,
-  transcriptFromLiveDraft,
   type CallRecordingPreviewWithTranscript,
   type CallTranscriptParticipant,
   type CallTranscriptPayload,
-  type LiveCallTranscriptDraft,
 } from '../_shared/chatCallTranscript.ts'
 
 const corsHeaders = {
@@ -101,50 +96,6 @@ async function loadRecordingMessage(
   messageId: string,
 ) {
   return loadTranscriptMessage(admin, messageId)
-}
-
-async function requireCallParticipant(
-  admin: ReturnType<typeof createClient>,
-  callId: string,
-  userId: string,
-): Promise<boolean> {
-  const { data } = await admin
-    .from('chat_call_participants')
-    .select('user_id')
-    .eq('call_id', callId)
-    .eq('user_id', userId)
-    .maybeSingle()
-  return Boolean(data?.user_id)
-}
-
-async function syncCallSummaryLiveTranscript(
-  admin: ReturnType<typeof createClient>,
-  callId: string,
-  draft: LiveCallTranscriptDraft,
-): Promise<CallRecordingPreviewWithTranscript | null> {
-  const { data: msg } = await admin
-    .from('chat_messages')
-    .select('id, link_preview')
-    .eq('content_encoding', 'call_summary')
-    .contains('link_preview', { kind: 'call_summary', call_id: callId })
-    .limit(1)
-    .maybeSingle()
-  if (!msg?.id) return null
-
-  const preview = (msg.link_preview || {}) as CallRecordingPreviewWithTranscript
-  const participants = participantsFromPreview(preview)
-  const existingMap =
-    preview.transcript && typeof preview.transcript === 'object'
-      ? preview.transcript.speaker_map
-      : null
-  const transcript = transcriptFromLiveDraft(draft, participants, existingMap)
-  if (!transcript) return preview
-
-  return patchMessagePreview(admin, msg.id, preview, {
-    transcript_status: 'ready',
-    transcript_error: null,
-    transcript,
-  })
 }
 
 async function runDeepgramSync(videoUrl: string, apiKey: string): Promise<unknown> {
@@ -305,180 +256,6 @@ Deno.serve(async (req) => {
     } = await admin.auth.getUser(jwt)
     if (userErr || !user?.id) return json(401, { error: 'Invalid session.' })
     actorUserId = user.id
-  }
-
-  // ── mint_live_stt_grant ──────────────────────────────────────────────────
-  if (action === 'mint_live_stt_grant') {
-    if (!actorUserId) return json(403, { error: 'User session required.' })
-    if (!deepgramKey) {
-      return json(500, { error: 'DEEPGRAM_API_KEY is not configured.' })
-    }
-    const callId = String(body?.call_id || '').trim()
-    if (!callId) return json(400, { error: 'call_id is required.' })
-
-    const { data: call, error: callErr } = await admin
-      .from('chat_calls')
-      .select('id, chat_room_id, media_mode, status')
-      .eq('id', callId)
-      .maybeSingle()
-    if (callErr) return json(500, { error: callErr.message })
-    if (!call) return json(404, { error: 'Call not found.' })
-    if (call.media_mode !== 'audio') {
-      return json(400, { error: 'Live STT is only available on voice calls.' })
-    }
-    if (!['ringing', 'active'].includes(String(call.status))) {
-      return json(400, { error: 'Call is not active.' })
-    }
-    if (!(await requireRoomMember(admin, call.chat_room_id, actorUserId))) {
-      return json(403, { error: 'Not a room member.' })
-    }
-    if (!(await requireCallParticipant(admin, callId, actorUserId))) {
-      return json(403, { error: 'Join the call before starting live STT.' })
-    }
-
-    // Mark draft as soon as mint is attempted so empty `{}` means "client never called".
-    const { data: existing } = await admin
-      .from('chat_calls')
-      .select('live_transcript')
-      .eq('id', callId)
-      .maybeSingle()
-    const prev = (existing?.live_transcript || {}) as LiveCallTranscriptDraft
-    const baseDraft: LiveCallTranscriptDraft = {
-      ...prev,
-      status: prev.status === 'ready' ? 'ready' : 'pending',
-      error: null,
-      updated_at: new Date().toISOString(),
-      utterances: Array.isArray(prev.utterances) ? prev.utterances : [],
-    }
-    await admin.from('chat_calls').update({ live_transcript: baseDraft }).eq('id', callId)
-
-    const grantRes = await fetch('https://api.deepgram.com/v1/auth/grant', {
-      method: 'POST',
-      headers: {
-        Authorization: `Token ${deepgramKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ttl_seconds: 30 }),
-    })
-    const grantText = await grantRes.text()
-    let grantBody: { access_token?: string; expires_in?: number; err_msg?: string } = {}
-    try {
-      grantBody = grantText ? JSON.parse(grantText) : {}
-    } catch {
-      grantBody = {}
-    }
-    if (!grantRes.ok || !grantBody.access_token) {
-      const errMsg = grantBody.err_msg || grantText.slice(0, 240) || `Deepgram grant HTTP ${grantRes.status}`
-      await admin
-        .from('chat_calls')
-        .update({
-          live_transcript: {
-            ...baseDraft,
-            status: 'failed',
-            error: errMsg.slice(0, 500),
-            updated_at: new Date().toISOString(),
-          },
-        })
-        .eq('id', callId)
-      return json(502, { error: errMsg })
-    }
-
-    return json(200, {
-      ok: true,
-      access_token: grantBody.access_token,
-      expires_in: grantBody.expires_in ?? 30,
-      call_id: callId,
-    })
-  }
-
-  // ── append_live_transcript ───────────────────────────────────────────────
-  if (action === 'append_live_transcript') {
-    if (!actorUserId) return json(403, { error: 'User session required.' })
-    const callId = String(body?.call_id || '').trim()
-    if (!callId) return json(400, { error: 'call_id is required.' })
-
-    const rawUtterances = Array.isArray(body?.utterances) ? body.utterances : []
-    if (!rawUtterances.length) return json(400, { error: 'utterances are required.' })
-
-    const { data: call, error: callErr } = await admin
-      .from('chat_calls')
-      .select('id, chat_room_id, media_mode, status, ended_at, live_transcript')
-      .eq('id', callId)
-      .maybeSingle()
-    if (callErr) return json(500, { error: callErr.message })
-    if (!call) return json(404, { error: 'Call not found.' })
-    if (call.media_mode !== 'audio') {
-      return json(400, { error: 'Live STT is only available on voice calls.' })
-    }
-    if (!(await requireRoomMember(admin, call.chat_room_id, actorUserId))) {
-      return json(403, { error: 'Not a room member.' })
-    }
-    if (!(await requireCallParticipant(admin, callId, actorUserId))) {
-      return json(403, { error: 'Not a call participant.' })
-    }
-
-    // Allow a short post-hangup flush window so finals land on the summary.
-    if (['ended', 'missed', 'declined'].includes(String(call.status))) {
-      const endedMs = call.ended_at ? Date.parse(String(call.ended_at)) : NaN
-      if (!Number.isFinite(endedMs) || Date.now() - endedMs > 90_000) {
-        return json(400, { error: 'Call transcript flush window has closed.' })
-      }
-    }
-
-    const incoming = rawUtterances
-      .map((u) => {
-        if (!u || typeof u !== 'object') return null
-        const row = u as Record<string, unknown>
-        return {
-          id: row.id != null ? String(row.id) : undefined,
-          start_ms: Number(row.start_ms),
-          end_ms: Number(row.end_ms),
-          text: String(row.text || ''),
-          // Identity is always the authenticated participant (do not trust client user_id).
-          user_id: actorUserId,
-          speaker: row.speaker != null ? Number(row.speaker) : undefined,
-        }
-      })
-      .filter(Boolean) as Array<{
-      id?: string
-      start_ms: number
-      end_ms: number
-      text: string
-      user_id: string
-      speaker?: number
-    }>
-
-    if (!incoming.length) return json(400, { error: 'No valid utterances.' })
-
-    const language =
-      body?.language != null && String(body.language).trim()
-        ? String(body.language).trim()
-        : null
-    const nextDraft = mergeLiveTranscriptUtterances(
-      (call.live_transcript || {}) as LiveCallTranscriptDraft,
-      incoming,
-      language,
-    )
-
-    const { error: upErr } = await admin
-      .from('chat_calls')
-      .update({ live_transcript: nextDraft })
-      .eq('id', callId)
-    if (upErr) return json(500, { error: upErr.message })
-
-    let linkPreview: CallRecordingPreviewWithTranscript | null = null
-    try {
-      linkPreview = await syncCallSummaryLiveTranscript(admin, callId, nextDraft)
-    } catch (err) {
-      console.warn('chat-call-transcribe: summary sync failed', err)
-    }
-
-    return json(200, {
-      ok: true,
-      live_transcript: nextDraft,
-      link_preview: linkPreview,
-      utterance_count: nextDraft.utterances?.length || 0,
-    })
   }
 
   // ── remap_speakers ───────────────────────────────────────────────────────

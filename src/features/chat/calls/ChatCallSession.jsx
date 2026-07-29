@@ -18,7 +18,6 @@ import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
-import LiveVoiceCallStt from './LiveVoiceCallStt.jsx'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -504,8 +503,6 @@ function CallChrome({
   const awaitingAnswer = Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
 
   // Voice only: live STT after answer (no recording card).
-  const liveSttEnabled = !videoEnabled && Boolean(callId) && Boolean(supabaseClient)
-
   const participantIds = useMemo(
     () => participants.map((p) => p.identity).filter(Boolean),
     [participants],
@@ -937,27 +934,15 @@ function CallChrome({
     </>
   )
 
-  const liveSttNode = liveSttEnabled ? (
-    <LiveVoiceCallStt
-      enabled
-      callId={callId}
-      supabaseClient={supabaseClient}
-      awaitingAnswer={awaitingAnswer}
-    />
-  ) : null
-
   if (minimized) {
     return (
-      <>
-        {liveSttNode}
-        <DraggableMinimizedCallPill
-          avatarUrl={avatarUrl}
-          title={title}
-          onExpand={onExpand}
-        >
-          {controlButtons}
-        </DraggableMinimizedCallPill>
-      </>
+      <DraggableMinimizedCallPill
+        avatarUrl={avatarUrl}
+        title={title}
+        onExpand={onExpand}
+      >
+        {controlButtons}
+      </DraggableMinimizedCallPill>
     )
   }
 
@@ -972,7 +957,6 @@ function CallChrome({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      {liveSttNode}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{

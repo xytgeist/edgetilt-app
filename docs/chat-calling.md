@@ -51,10 +51,9 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 - **In-call / ringing chrome:** WhatsApp-style dark stage, large peer avatar while ringing/audio, bottom control pill (mute / video / flip camera / **Record** on video / speaker when supported / hangup). Flip camera (video calls, cam on) toggles front/back via LiveKit `restartTrack({ facingMode })`, with device-cycle fallback. **Speaker defaults:** voice → earpiece intent; video → **speakerphone**. Cam off on video → earpiece intent again (unless user manually toggled speaker). **Speaker button** only on non-iOS when sinks can actually switch (`canToggleCallAudioRoute`). Android Chrome: phantom `audioinput` `Headset earpiece` / `Speakerphone`. **iPhone / iPad: always hidden** (`isIosDevice` hard gate). Safari still gets **`navigator.audioSession.type = 'play-and-record'`** and reset to `playback`→`auto` on hangup (`chatCallAudioSession.js`). Minimize (top-left) collapses to a **draggable** floating pill (app-wide via `ChatCallProvider` in AppShell; left control = peer avatar, tap to expand). **Expanded call stays planted** (`touch-action: none` + body scroll lock; cheek/ear contact cannot pan the stage... controls keep `data-chat-call-interactive`). **Video:** remote/active-speaker fullscreen + round PiP for the other person in 1:1 (swaps when you pin local so you can switch back); round PiP/strip uses `object-fit: cover` (no letterbox bars); camera-off / muted camera shows avatar (not black); multi-remote strip with tap-to-pin.
 - **Recording UX:** REC badge + elapsed status; any participant can Record; **Stop** for recording starter **or** call host; others see dimmed Record while live; countdown banners + cues at 1:00 / 0:15; auto `stop_recording` at 10:00 without hanging up. **Pin before Record** to feature the slot camera in the MP4 (toast confirms featuring pinned vs own camera).
 - **Call recording card:** `ChatCallRecordingCard` for `content_encoding === 'call_recording'`... durable poster via first successful client frame capture → R2 → Edge `attach_recording_poster` writes `stream_poster_url` (iOS primes with muted `play()` so canvas works; later opens use the stored `<img>`). Meta lives in `link_preview` (`kind: call_recording`). Inbox preview `[call recording] · m:ss`. Long-press: Share / Copy link; **Delete** for the recorder, group owner/admin, fan moderators, or either DM participant (`lounge-chat` `delete_message` + best-effort R2 cleanup).
-- **Call summary card (historical):** on call end, Edge inserts a durable `content_encoding = call_summary` message (`ChatCallSummaryCard`) with `link_preview.kind = call_summary` (status, media_mode, duration, participant avatars). Stays in the thread after leave/reopen. Live late-join Join bar is separate and only while the call is open. Unique index on `link_preview->>'call_id'` for call_summary. **Voice calls:** long-press (or right-click) → **View transcript** from live STT (no playable audio / no recording card).
+- **Call summary card (historical):** on call end, Edge inserts a durable `content_encoding = call_summary` message (`ChatCallSummaryCard`) with `link_preview.kind = call_summary` (status, media_mode, duration, participant avatars). Stays in the thread after leave/reopen. Live late-join Join bar is separate and only while the call is open. Unique index on `link_preview->>'call_id'` for call_summary. **No voice-call transcription product** (summary card only).
 - **Room details → Media, links & docs → Calls:** RPC **`chat_room_shared_calls`** lists `call_recording` + `call_summary` messages; tap jumps to the in-thread card.
 - **Call recording transcript (video):** Edge **`chat-call-transcribe`** (Deepgram `nova-2` + `diarize_model=latest`) after finalize (best-effort) or on long-press **View transcript**. Utterances stored on `link_preview.transcript` with `speaker_map` → participant `user_id` (avatar + name). Room members can reassign speakers in the modal. Secrets: **`DEEPGRAM_API_KEY`**; optional async callback **`CHAT_CALL_TRANSCRIBE_PUBLIC_URL`** + **`CHAT_CALL_TRANSCRIBE_CALLBACK_SECRET`**.
-- **Voice call live transcript:** after answer + local mic live, each participant streams **local mic only** to Deepgram live (`nova-3`) via a short-lived **`mint_live_stt_grant`** JWT (browser WS uses `Sec-WebSocket-Protocol: Bearer, <jwt>`). PCM capture uses a dedicated AudioContext → ScriptProcessor → **`MediaStreamDestination`** + muted `<audio>` pull (never audible `destination`) so STT does not fight iPhone call playback. Do **not** gate on `canPlaybackAudio` (stays false on 1:1 `webAudioMix:false` and blocked mint entirely). Finals flush with **`append_live_transcript`** into `chat_calls.live_transcript` (Edge stamps `user_id` from JWT). On call end, draft is copied onto the **`call_summary`** card as `provider: deepgram_live`. No LiveKit egress / no R2 audio for voice.
 - **DM decline quick replies** (`chatCallDeclineQuickReplies.js`): incoming overlay dropdown + **Decline & send** (decline call, then `chatSendMessage`). Circle decline still ends the call with no message. Group invites do not show this UI.
 
 ## Guardrails
@@ -64,8 +63,6 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 - Rate-limit starts (**8 / minute** / user).
 - Bidirectional **blocks** gate DM calls.
 - Recording max **10 minutes**; video-only; no auto-record of every call.
-- Voice transcripts are live STT only (no audio recording product).
-
 ## iOS / PWA limits
 
 - **No CallKit** ... incoming = web push + in-app overlay only.
@@ -85,8 +82,6 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 3. No speaker button (or it actually switches if iOS exposes sinks)... never a fake toggle.
 4. Hang up → Spotify/YouTube routing feels normal again.
 5. Video call: starts loudspeaker when toggle exists; cam off → earpiece intent; cam on → speaker again.
-6. After voice call, summary long-press → View transcript still works.
-
 ## Setup checklist
 
 1. Create LiveKit Cloud project; copy URL + API key/secret.
@@ -102,7 +97,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 **Group video + recording (test first):** SQL through **`20260728090000`**; redeploy **`chat-calls`** with egress template secret; deploy **`livekit-egress-webhook`**; configure LiveKit webhook; ship frontend **`call-egress.html`**. Promote prod only after Ryan sign-off.
 
-**Prod promote (2026-07-28, recording + transcripts):** SQL **`20260728050000`–`110000`** on **`jtjgtucumuoswnbauxry`**; Edge **`chat-calls`** / **`livekit-egress-webhook`** / **`chat-call-transcribe`** / **`publish-call-egress-template`**; R2 host **`https://media.lvslotpro.com`**; template published; LiveKit webhook + Deepgram confirmed. Frontend via **`main`**. Smoke on **edgetilt.com** still required before sign-off.
+**Prod promote (2026-07-28, recording + transcripts):** SQL **`20260728050000`–`110000`** on **`jtjgtucumuoswnbauxry`**; Edge **`chat-calls`** / **`livekit-egress-webhook`** / **`chat-call-transcribe`** / **`publish-call-egress-template`**; R2 host **`https://media.lvslotpro.com`**; template published; LiveKit webhook + Deepgram confirmed. Frontend via **`main`**. **Voice live STT later removed** (product cut)... video recording transcripts remain.
 
 ### Prod media host — Gate before Record promote
 

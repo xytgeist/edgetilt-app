@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { DollarSign, Trophy } from 'lucide-react'
 import { buildPokerOverviewStats, fmtPokerOverview$ } from './pokerOverviewStats.js'
 
 function toneClass(n) {
@@ -30,6 +31,18 @@ function ColHead({ children, className = '' }) {
   return (
     <div className={`text-[10px] font-semibold uppercase tracking-wide text-zinc-500 ${className}`}>
       {children}
+    </div>
+  )
+}
+
+/** CG / Tourney matrix column label: icon stacked above text, right-justified. */
+function MatrixTypeHead({ label, Icon, className = '' }) {
+  return (
+    <div
+      className={`flex flex-col items-end justify-end gap-0.5 text-[10px] font-semibold uppercase tracking-wide ${className}`}
+    >
+      <Icon size={14} strokeWidth={2} aria-hidden className="opacity-90" />
+      <span>{label}</span>
     </div>
   )
 }
@@ -239,10 +252,10 @@ export default function PokerBankrollOverview({ sessions = [] }) {
             {fmtPokerOverview$(total.profit)}
           </div>
         </div>
-        <div className="mb-1 grid grid-cols-[1.2fr_1fr_1fr_1fr] gap-1">
+        <div className="mb-1 grid grid-cols-[1.2fr_1fr_1fr_1fr] items-end gap-1">
           <ColHead />
-          <ColHead className="text-center text-cyan-400">CG</ColHead>
-          <ColHead className="text-center text-amber-300">Tourney</ColHead>
+          <MatrixTypeHead label="Cash" Icon={DollarSign} className="text-cyan-400" />
+          <MatrixTypeHead label="Tourney" Icon={Trophy} className="text-amber-300" />
           <ColHead className="text-right">Total</ColHead>
         </div>
         <MatrixRow label="Buy-In" c={cash.buyIn} t={tourney.buyIn} tot={total.buyIn} />
@@ -258,10 +271,10 @@ export default function PokerBankrollOverview({ sessions = [] }) {
 
       {/* Sessions */}
       <Card>
-        <div className="mb-1 grid grid-cols-[1.2fr_1fr_1fr_1fr] gap-1">
+        <div className="mb-1 grid grid-cols-[1.2fr_1fr_1fr_1fr] items-end gap-1">
           <div className="text-[15px] font-semibold text-zinc-200">Sessions</div>
-          <ColHead className="text-center text-cyan-400">CG</ColHead>
-          <ColHead className="text-center text-amber-300">Tourney</ColHead>
+          <MatrixTypeHead label="Cash" Icon={DollarSign} className="text-cyan-400" />
+          <MatrixTypeHead label="Tourney" Icon={Trophy} className="text-amber-300" />
           <ColHead className="text-right">Total</ColHead>
         </div>
         <MatrixRow label="Sessions" c={cash.sessions} t={tourney.sessions} tot={total.sessions} format="hours" />

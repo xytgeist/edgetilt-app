@@ -105,8 +105,9 @@ export default function PokerBankrollTracker({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'import'} */
+  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import'} */
   const [sheet, setSheet] = useState(null)
+  const [rebuyAmount, setRebuyAmount] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editingPrevWl, setEditingPrevWl] = useState(0)
@@ -467,6 +468,50 @@ export default function PokerBankrollTracker({
     setError('')
     setSheet('end')
     triggerTapHapticLight()
+  }
+
+  function openRebuy() {
+    if (!activeSession) return
+    setRebuyAmount('')
+    setError('')
+    setSheet('rebuy')
+    triggerTapHapticLight()
+  }
+
+  async function saveRebuy() {
+    if (!supabaseClient || !userId || !activeSession) return
+    const add = parseFloat(rebuyAmount)
+    if (!Number.isFinite(add) || add <= 0) {
+      setError(
+        activeSession.session_type === 'tournament'
+          ? 'Enter a valid re-entry amount.'
+          : 'Enter a valid re-buy amount.',
+      )
+      return
+    }
+    const nextBuyIn = (Number(activeSession.buy_in) || 0) + add
+    const nextReentries = (Number(activeSession.reentries) || 0) + 1
+    setSaving(true)
+    setError('')
+    try {
+      const { error: uErr } = await supabaseClient
+        .from('poker_bankroll_sessions')
+        .update({
+          buy_in: nextBuyIn,
+          reentries: nextReentries,
+        })
+        .eq('id', activeSession.id)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+      if (uErr) throw uErr
+      setSheet(null)
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not add re-buy.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function startLiveSession() {
@@ -1090,19 +1135,33 @@ export default function PokerBankrollTracker({
                       {pokerSessionMetaLine(activeSession)}
                     </div>
                     <div className="mt-0.5 text-sm text-zinc-400">
-                      Started with {fmtPoker$(activeSession.buy_in)}
+                      In for {fmtPoker$(activeSession.buy_in)}
+                      {Number(activeSession.reentries) > 0
+                        ? ` · ${Number(activeSession.reentries)} re-buy${
+                            Number(activeSession.reentries) === 1 ? '' : 's'
+                          }`
+                        : ''}
                     </div>
                     <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
                       {fmtPokerDuration(elapsed)}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={openEndSession}
-                    className="shrink-0 rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
-                  >
-                    End Session
-                  </button>
+                  <div className="flex shrink-0 flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={openRebuy}
+                      className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-4 py-2.5 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                    >
+                      Re-buy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openEndSession}
+                      className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                    >
+                      End Session
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1591,6 +1650,59 @@ export default function PokerBankrollTracker({
         </div>
       ) : null}
 
+      {sheet === 'rebuy' && activeSession ? (
+        <div
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          onClick={() => !saving && setSheet(null)}
+        >
+          <div
+            data-poker-bankroll-sheet
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-h-[92dvh] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-lg font-bold text-white">
+                {activeSession.session_type === 'tournament' ? 'Re-enter' : 'Re-buy'}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSheet(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-3 text-sm text-zinc-400">
+              Adds to your total in for this session. Currently in for{' '}
+              <span className="font-semibold text-zinc-200">
+                {fmtPoker$(activeSession.buy_in)}
+              </span>
+              .
+            </p>
+            <FieldLabel>
+              {activeSession.session_type === 'tournament' ? 'Re-entry amount' : 'Re-buy amount'}
+            </FieldLabel>
+            <div className="mb-4">
+              <MoneyInput value={rebuyAmount} onChange={setRebuyAmount} />
+            </div>
+            {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void saveRebuy()}
+              className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+            >
+              {saving
+                ? 'Saving…'
+                : activeSession.session_type === 'tournament'
+                  ? 'Add re-entry'
+                  : 'Add re-buy'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {sheet === 'end' && activeSession ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
@@ -1620,7 +1732,12 @@ export default function PokerBankrollTracker({
                     {pokerSessionStakesLabel(activeSession)}
                   </div>
                   <div className="mt-0.5 text-xs text-zinc-400">
-                    Started with {fmtPoker$(activeSession.buy_in)}
+                    In for {fmtPoker$(activeSession.buy_in)}
+                    {Number(activeSession.reentries) > 0
+                      ? ` · ${Number(activeSession.reentries)} re-buy${
+                          Number(activeSession.reentries) === 1 ? '' : 's'
+                        }`
+                      : ''}
                   </div>
                 </div>
                 <div className="shrink-0 text-lg font-black tabular-nums text-emerald-300">

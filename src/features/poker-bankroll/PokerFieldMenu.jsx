@@ -8,10 +8,16 @@ const TRIGGER_CLASS =
 
 const GAP_PX = 6
 const MAX_PANEL_HEIGHT_PX = 256
+/** Just under the panel so taps outside close; still above sheet (`Z_APP_MODAL` 120). */
+const BACKDROP_Z = Z_APP_ALERT - 1
 
 /**
  * Custom field menu matching the cash Game picker.
  * Panel portals to document.body as a fixed popover (does not expand the form).
+ *
+ * Touch: while open, document touchmove is non-passive + preventDefault so iOS
+ * Reachability / page rubber-band cannot steal pull-down gestures. List scroll
+ * is applied manually via scrollTop.
  *
  * @param {object} props
  * @param {string} props.value
@@ -35,7 +41,7 @@ export default function PokerFieldMenu({
   const triggerRef = useRef(null)
   const panelRef = useRef(null)
   const listRef = useRef(null)
-  const touchStartYRef = useRef(null)
+  const touchScrollRef = useRef({ active: false, lastY: 0 })
 
   const rows = useMemo(() => {
     if (Array.isArray(rowsProp) && rowsProp.length) return rowsProp
@@ -50,6 +56,8 @@ export default function PokerFieldMenu({
     const hit = rows.find((r) => r.type === 'option' && r.id === value)
     return hit?.label || placeholder
   }, [rows, value, placeholder])
+
+  const close = useCallback(() => setOpen(false), [])
 
   const updatePanelPos = useCallback(() => {
     const trigger = triggerRef.current
@@ -79,7 +87,6 @@ export default function PokerFieldMenu({
     if (listRef.current) listRef.current.scrollTop = 0
 
     function onViewportChange(e) {
-      // Ignore scrolls inside the menu list (avoids jitter + overscroll feedback loops).
       const t = e?.target
       if (t instanceof Node && panelRef.current?.contains(t)) return
       updatePanelPos()
@@ -93,66 +100,63 @@ export default function PokerFieldMenu({
     }
   }, [open, updatePanelPos, rows.length])
 
-  // Lock sheet / page scroll while open so list overscroll doesn't yank the sheet (iOS Reachability).
+  // Hard-lock page touch scrolling while open (iOS Reachability / rubber-band).
   useEffect(() => {
     if (!open) return undefined
+
     const sheet = triggerRef.current?.closest?.('[data-poker-bankroll-sheet]')
     const prevSheetOverflow = sheet instanceof HTMLElement ? sheet.style.overflow : ''
     const prevBodyOverflow = document.body.style.overflow
     const prevBodyOverscroll = document.body.style.overscrollBehavior
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehavior
     if (sheet instanceof HTMLElement) sheet.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
     document.body.style.overscrollBehavior = 'none'
+    document.documentElement.style.overscrollBehavior = 'none'
+
+    function onTouchStart(e) {
+      const t = e.target
+      const onPanel = t instanceof Node && panelRef.current?.contains(t)
+      if (onPanel && e.touches[0]) {
+        touchScrollRef.current = { active: true, lastY: e.touches[0].clientY }
+      } else {
+        touchScrollRef.current = { active: false, lastY: 0 }
+      }
+    }
 
     function onTouchMove(e) {
-      const t = e.target
-      if (t instanceof Node && panelRef.current?.contains(t)) return
+      // Non-passive: kill browser/page pull-down (Reachability) for the whole gesture.
       e.preventDefault()
+      const state = touchScrollRef.current
+      const list = listRef.current
+      if (!state.active || !list || !e.touches[0]) return
+      const y = e.touches[0].clientY
+      const dy = y - state.lastY
+      state.lastY = y
+      list.scrollTop -= dy
     }
-    document.addEventListener('touchmove', onTouchMove, { passive: false })
+
+    function onTouchEnd() {
+      touchScrollRef.current = { active: false, lastY: 0 }
+    }
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true, capture: true })
+    document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+    document.addEventListener('touchend', onTouchEnd, { passive: true, capture: true })
+    document.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true })
 
     return () => {
       if (sheet instanceof HTMLElement) sheet.style.overflow = prevSheetOverflow
       document.body.style.overflow = prevBodyOverflow
       document.body.style.overscrollBehavior = prevBodyOverscroll
-      document.removeEventListener('touchmove', onTouchMove)
+      document.documentElement.style.overscrollBehavior = prevHtmlOverscroll
+      document.removeEventListener('touchstart', onTouchStart, true)
+      document.removeEventListener('touchmove', onTouchMove, true)
+      document.removeEventListener('touchend', onTouchEnd, true)
+      document.removeEventListener('touchcancel', onTouchEnd, true)
+      touchScrollRef.current = { active: false, lastY: 0 }
     }
   }, [open])
-
-  // Block edge overscroll inside the list so iOS doesn't promote it to Reachability / page bounce.
-  useEffect(() => {
-    if (!open) return undefined
-    const list = listRef.current
-    if (!list) return undefined
-
-    function onTouchStart(e) {
-      touchStartYRef.current = e.touches[0]?.clientY ?? null
-    }
-    function onTouchMove(e) {
-      const startY = touchStartYRef.current
-      if (startY == null || !e.touches[0]) return
-      const y = e.touches[0].clientY
-      const deltaY = y - startY
-      const { scrollTop, scrollHeight, clientHeight } = list
-      const atTop = scrollTop <= 0
-      const atBottom = scrollTop + clientHeight >= scrollHeight - 1
-      // Finger moving down at top = pull-down overscroll (Reachability / rubber-band).
-      if (atTop && deltaY > 0) {
-        e.preventDefault()
-        return
-      }
-      if (atBottom && deltaY < 0) {
-        e.preventDefault()
-      }
-    }
-
-    list.addEventListener('touchstart', onTouchStart, { passive: true })
-    list.addEventListener('touchmove', onTouchMove, { passive: false })
-    return () => {
-      list.removeEventListener('touchstart', onTouchStart)
-      list.removeEventListener('touchmove', onTouchMove)
-    }
-  }, [open, panelPos])
 
   useEffect(() => {
     if (!open) return undefined
@@ -161,82 +165,91 @@ export default function PokerFieldMenu({
       if (!(t instanceof Node)) return
       if (wrapperRef.current?.contains(t)) return
       if (panelRef.current?.contains(t)) return
+      // Backdrop handles tap-to-close; ignore its mousedown path here if needed
+      if (t instanceof Element && t.closest('[data-poker-field-menu-backdrop]')) return
       setOpen(false)
     }
     document.addEventListener('mousedown', onOutside)
-    document.addEventListener('touchstart', onOutside, { passive: true })
     return () => {
       document.removeEventListener('mousedown', onOutside)
-      document.removeEventListener('touchstart', onOutside)
     }
   }, [open])
 
   const panel =
     open && panelPos && typeof document !== 'undefined'
       ? createPortal(
-          <div
-            ref={panelRef}
-            data-poker-field-menu-panel
-            className="overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-800 shadow-xl overscroll-none"
-            role="listbox"
-            aria-label={ariaLabel}
-            style={{
-              position: 'fixed',
-              zIndex: Z_APP_ALERT,
-              left: panelPos.left,
-              width: panelPos.width,
-              top: panelPos.top,
-              bottom: panelPos.bottom,
-              maxHeight: panelPos.maxHeight,
-              overscrollBehavior: 'none',
-              WebkitOverflowScrolling: 'auto',
-            }}
-          >
+          <>
             <div
-              ref={listRef}
-              className="h-full overflow-y-auto overscroll-none touch-pan-y"
+              data-poker-field-menu-backdrop
+              aria-hidden
+              className="fixed inset-0 touch-none"
+              style={{ zIndex: BACKDROP_Z }}
+              onClick={close}
+            />
+            <div
+              ref={panelRef}
+              data-poker-field-menu-panel
+              className="overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-800 shadow-xl"
+              role="listbox"
+              aria-label={ariaLabel}
               style={{
+                position: 'fixed',
+                zIndex: Z_APP_ALERT,
+                left: panelPos.left,
+                width: panelPos.width,
+                top: panelPos.top,
+                bottom: panelPos.bottom,
                 maxHeight: panelPos.maxHeight,
                 overscrollBehavior: 'none',
-                WebkitOverflowScrolling: 'auto',
               }}
             >
-              {rows.map((row, index) => {
-                if (row.type === 'label') {
+              <div
+                ref={listRef}
+                className="h-full overflow-y-auto overscroll-none"
+                style={{
+                  maxHeight: panelPos.maxHeight,
+                  overscrollBehavior: 'none',
+                  WebkitOverflowScrolling: 'auto',
+                  touchAction: 'none',
+                }}
+              >
+                {rows.map((row, index) => {
+                  if (row.type === 'label') {
+                    return (
+                      <div
+                        key={`label:${row.label}:${index}`}
+                        className="sticky top-0 border-b border-zinc-700/40 bg-zinc-800/95 px-4 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
+                        role="presentation"
+                      >
+                        {row.label}
+                      </div>
+                    )
+                  }
+                  const picked = row.id === value
                   return (
-                    <div
-                      key={`label:${row.label}:${index}`}
-                      className="sticky top-0 border-b border-zinc-700/40 bg-zinc-800/95 px-4 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
-                      role="presentation"
+                    <button
+                      key={row.id || `opt:${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={picked}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        onChange(row.id)
+                        setOpen(false)
+                      }}
+                      className={`w-full border-b border-zinc-700/40 px-4 py-3 text-left text-sm font-semibold touch-manipulation last:border-0 ${
+                        picked
+                          ? 'bg-emerald-600/25 text-emerald-200'
+                          : 'text-zinc-200 hover:bg-zinc-700/60 active:bg-zinc-700'
+                      }`}
                     >
                       {row.label}
-                    </div>
+                    </button>
                   )
-                }
-                const picked = row.id === value
-                return (
-                  <button
-                    key={row.id || `opt:${index}`}
-                    type="button"
-                    role="option"
-                    aria-selected={picked}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      onChange(row.id)
-                      setOpen(false)
-                    }}
-                    className={`w-full border-b border-zinc-700/40 px-4 py-3 text-left text-sm font-semibold touch-manipulation last:border-0 ${
-                      picked
-                        ? 'bg-emerald-600/25 text-emerald-200'
-                        : 'text-zinc-200 hover:bg-zinc-700/60 active:bg-zinc-700'
-                    }`}
-                  >
-                    {row.label}
-                  </button>
-                )
-              })}
+                })}
+              </div>
             </div>
-          </div>,
+          </>,
           document.body,
         )
       : null

@@ -10,6 +10,11 @@ import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import {
+  isMissingStableTableError,
+  loadDealBankrollProfiles,
+  loadMyStableDeals,
+} from '../poker-stable/pokerStableApi.js'
+import {
   fmtPoker$,
   fmtPokerDuration,
   formatDurationHoursField,
@@ -89,7 +94,14 @@ export default function PokerBankrollTracker({
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
+  /** All sessions for this user (personal + deal-scoped). */
   const [sessions, setSessions] = useState([])
+  /** Active deals where I am the horse (stakee). */
+  const [stakeeDeals, setStakeeDeals] = useState([])
+  /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
+  const [dealProfiles, setDealProfiles] = useState({})
+  /** @type {'personal' | string} personal or deal id */
+  const [bankrollScope, setBankrollScope] = useState('personal')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -114,21 +126,46 @@ export default function PokerBankrollTracker({
   /** @type {'overview' | 'details' | 'locations' | 'charts'} */
   const [activeTab, setActiveTab] = useState('overview')
 
-  const overallBankroll = profile ? Number(profile.overall_bankroll) : null
-  const hasBankrollProfile = profile != null
+  const isOnStake = bankrollScope !== 'personal'
+  const activeDeal = useMemo(
+    () => (isOnStake ? stakeeDeals.find((d) => d.id === bankrollScope) ?? null : null),
+    [isOnStake, stakeeDeals, bankrollScope],
+  )
+  const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
+
+  const overallBankroll = isOnStake
+    ? dealProfile != null
+      ? Number(dealProfile.overall_bankroll)
+      : null
+    : profile
+      ? Number(profile.overall_bankroll)
+      : null
+  const hasBankrollProfile = isOnStake ? dealProfile != null : profile != null
+
+  const scopedSessions = useMemo(() => {
+    if (!isOnStake) return sessions.filter((s) => s.deal_id == null)
+    return sessions.filter((s) => s.deal_id === bankrollScope)
+  }, [sessions, isOnStake, bankrollScope])
+
   const activeSession = useMemo(
-    () => sessions.find((s) => s.status === 'active') ?? null,
-    [sessions],
+    () => scopedSessions.find((s) => s.status === 'active') ?? null,
+    [scopedSessions],
   )
   const completedSessions = useMemo(
-    () => sessions.filter((s) => s.status !== 'active'),
-    [sessions],
+    () => scopedSessions.filter((s) => s.status !== 'active'),
+    [scopedSessions],
   )
   /** Prior cash games for the Game dropdown (most recent first). */
   const cashGamePresets = useMemo(
-    () => buildCashGamePresetsFromSessions(sessions),
-    [sessions],
+    () => buildCashGamePresetsFromSessions(scopedSessions),
+    [scopedSessions],
   )
+
+  useEffect(() => {
+    if (bankrollScope !== 'personal' && !stakeeDeals.some((d) => d.id === bankrollScope)) {
+      setBankrollScope('personal')
+    }
+  }, [bankrollScope, stakeeDeals])
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -151,6 +188,8 @@ export default function PokerBankrollTracker({
     if (!supabaseClient || !userId) {
       setSessions([])
       setProfile(null)
+      setStakeeDeals([])
+      setDealProfiles({})
       setCustomVenues([])
       setLoading(false)
       return
@@ -158,7 +197,7 @@ export default function PokerBankrollTracker({
     setLoading(true)
     setError('')
     try {
-      const [sessRes, profRes, customRes] = await Promise.all([
+      const [sessRes, profRes, customRes, dealsRes] = await Promise.all([
         supabaseClient
           .from('poker_bankroll_sessions')
           .select('*')
@@ -175,6 +214,7 @@ export default function PokerBankrollTracker({
           .select('id, name')
           .eq('user_id', userId)
           .order('created_at', { ascending: false }),
+        loadMyStableDeals(supabaseClient, userId),
       ])
       if (sessRes.error) throw sessRes.error
       if (profRes.error) throw profRes.error
@@ -185,6 +225,27 @@ export default function PokerBankrollTracker({
         setCustomVenues([])
       } else {
         setCustomVenues(customRes.data || [])
+      }
+
+      if (dealsRes.error) {
+        if (!isMissingStableTableError(dealsRes.error)) {
+          console.warn('[poker-bankroll] stable deals load failed', dealsRes.error.message)
+        }
+        setStakeeDeals([])
+        setDealProfiles({})
+      } else {
+        const mine = (dealsRes.deals || []).filter(
+          (d) => d.stakee_user_id === userId && d.status === 'active',
+        )
+        setStakeeDeals(mine)
+        const { byDeal, error: rollErr } = await loadDealBankrollProfiles(
+          supabaseClient,
+          mine.map((d) => d.id),
+        )
+        if (rollErr && !isMissingStableTableError(rollErr)) {
+          console.warn('[poker-bankroll] deal rolls load failed', rollErr.message)
+        }
+        setDealProfiles(byDeal)
       }
     } catch (e) {
       setError(e?.message || 'Could not load poker bankroll.')
@@ -228,6 +289,22 @@ export default function PokerBankrollTracker({
   }
 
   async function upsertBankroll(nextAmount) {
+    if (isOnStake) {
+      if (!bankrollScope || bankrollScope === 'personal') {
+        throw new Error('Pick an On Stake deal first.')
+      }
+      const { data, error: err } = await supabaseClient
+        .from('poker_deal_bankroll_profiles')
+        .upsert(
+          { deal_id: bankrollScope, overall_bankroll: nextAmount },
+          { onConflict: 'deal_id' },
+        )
+        .select()
+        .single()
+      if (err) throw err
+      setDealProfiles((prev) => ({ ...prev, [bankrollScope]: data }))
+      return data
+    }
     const { data, error: err } = await supabaseClient
       .from('poker_bankroll_profiles')
       .upsert({ user_id: userId, overall_bankroll: nextAmount }, { onConflict: 'user_id' })
@@ -240,8 +317,18 @@ export default function PokerBankrollTracker({
 
   async function applyBankrollDelta(delta) {
     if (!Number.isFinite(delta) || Math.abs(delta) < 0.0005) return
-    const current = profile ? Number(profile.overall_bankroll) : 0
+    const current = isOnStake
+      ? dealProfile
+        ? Number(dealProfile.overall_bankroll)
+        : 0
+      : profile
+        ? Number(profile.overall_bankroll)
+        : 0
     await upsertBankroll(current + delta)
+  }
+
+  function scopeDealIdForWrite() {
+    return isOnStake ? bankrollScope : null
   }
 
   useEffect(() => {
@@ -308,7 +395,11 @@ export default function PokerBankrollTracker({
   }, [completedSessions, overallBankroll])
 
   function openSetBankroll() {
-    setBankrollInput(hasBankrollProfile ? String(profile.overall_bankroll) : '')
+    if (isOnStake) {
+      setBankrollInput(dealProfile != null ? String(dealProfile.overall_bankroll) : '')
+    } else {
+      setBankrollInput(profile != null ? String(profile.overall_bankroll) : '')
+    }
     setError('')
     setSheet('bankroll')
     triggerTapHapticLight()
@@ -409,8 +500,13 @@ export default function PokerBankrollTracker({
       return
     }
     const now = new Date()
+    if (isOnStake && !hasBankrollProfile) {
+      setError('Set your On Stake starting bankroll first.')
+      return
+    }
     const payload = {
       user_id: userId,
+      deal_id: scopeDealIdForWrite(),
       venue_name: form.venue_name.trim() || null,
       venue_kind: form.venue_kind,
       session_type: form.session_type,
@@ -629,8 +725,15 @@ export default function PokerBankrollTracker({
     const startAt = localDateTimeToIso(form.date, form.start_time)
     const endAt = new Date(new Date(startAt).getTime() + durationHrs * 3_600_000).toISOString()
 
+    if (isOnStake && !hasBankrollProfile && !editingId) {
+      setError('Set your On Stake starting bankroll first.')
+      return
+    }
     const payload = {
       user_id: userId,
+      deal_id: editingId
+        ? undefined
+        : scopeDealIdForWrite(),
       venue_name: form.venue_name.trim() || null,
       venue_kind: form.venue_kind,
       session_type: form.session_type,
@@ -686,6 +789,7 @@ export default function PokerBankrollTracker({
           : null,
       notes: showAdvanced ? form.notes.trim() || null : null,
     }
+    if (payload.deal_id === undefined) delete payload.deal_id
 
     const newWl =
       cashOut +
@@ -804,6 +908,57 @@ export default function PokerBankrollTracker({
           <p className="mb-3 text-center text-sm text-rose-400">{error}</p>
         ) : null}
 
+        {/* Personal ↔ On Stake (per-deal) — same screen, different data */}
+        {stakeeDeals.length > 0 ? (
+          <div className="mb-4">
+            <div className="flex gap-1 rounded-2xl bg-zinc-900 p-1">
+              <button
+                type="button"
+                onClick={() => setBankrollScope('personal')}
+                className={`flex-1 rounded-xl py-2.5 text-xs font-bold tracking-wide touch-manipulation transition-colors ${
+                  !isOnStake
+                    ? 'bg-zinc-700 text-white'
+                    : 'text-zinc-500 active:text-zinc-300'
+                }`}
+              >
+                Personal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const first = stakeeDeals[0]
+                  if (first) setBankrollScope(first.id)
+                }}
+                className={`flex-1 rounded-xl py-2.5 text-xs font-bold tracking-wide touch-manipulation transition-colors ${
+                  isOnStake
+                    ? 'bg-amber-600 text-white shadow-inner shadow-amber-900/40'
+                    : 'text-zinc-500 active:text-zinc-300'
+                }`}
+              >
+                On Stake
+              </button>
+            </div>
+            {isOnStake && stakeeDeals.length > 1 ? (
+              <div className="mt-2 flex gap-1.5 overflow-x-auto no-scrollbar">
+                {stakeeDeals.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setBankrollScope(d.id)}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold touch-manipulation ${
+                      bankrollScope === d.id
+                        ? 'bg-amber-500/30 text-amber-200 ring-1 ring-amber-400/50'
+                        : 'bg-zinc-800 text-zinc-500'
+                    }`}
+                  >
+                    {d.label || 'Deal'}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {activeTab === 'details' ? (
           loading ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
@@ -814,24 +969,50 @@ export default function PokerBankrollTracker({
 
         {activeTab === 'overview' ? (
           <>
-            {/* Overall poker bankroll — large hero card + lifetime stats */}
-            <div className="mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6">
+            {/* Bankroll hero — personal (zinc) vs On Stake (amber, hard to miss) */}
+            <div
+              className={
+                isOnStake
+                  ? 'mb-4 rounded-3xl border-2 border-amber-400/70 bg-gradient-to-br from-amber-950 via-amber-900/80 to-zinc-950 p-6 shadow-[0_0_40px_-12px_rgba(251,191,36,0.55)]'
+                  : 'mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6'
+              }
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                    Poker bankroll
+                  {isOnStake ? (
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-950">
+                        On stake
+                      </span>
+                      <span className="truncate text-xs font-semibold text-amber-200/90">
+                        {activeDeal?.label || 'Stake deal'}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div
+                    className={`mb-1.5 text-xs font-semibold uppercase tracking-wide ${
+                      isOnStake ? 'text-amber-200/70' : 'text-zinc-400'
+                    }`}
+                  >
+                    {isOnStake ? 'On Stake bankroll' : 'Poker bankroll'}
                   </div>
                   {loading ? (
                     <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
                   ) : hasBankrollProfile ? (
                     <div className="flex items-end justify-between gap-3">
-                      <div className="min-w-0 text-5xl font-black tracking-tight text-white">
+                      <div
+                        className={`min-w-0 text-5xl font-black tracking-tight ${
+                          isOnStake ? 'text-amber-50' : 'text-white'
+                        }`}
+                      >
                         {fmtPoker$(overallBankroll)}
                       </div>
                       {bankrollSparkSeries.length >= 2 ? (
                         <BankrollSparkline
                           series={bankrollSparkSeries}
                           className="mb-1 h-10 w-24 shrink-0 sm:w-28"
+                          upStroke={isOnStake ? '#fbbf24' : '#34d399'}
+                          downStroke={isOnStake ? '#f59e0b' : '#fb7185'}
                         />
                       ) : null}
                     </div>
@@ -839,9 +1020,13 @@ export default function PokerBankrollTracker({
                     <button
                       type="button"
                       onClick={openSetBankroll}
-                      className="mt-1 text-sm font-semibold text-emerald-400 touch-manipulation"
+                      className={`mt-1 text-sm font-semibold touch-manipulation ${
+                        isOnStake ? 'text-amber-300' : 'text-emerald-400'
+                      }`}
                     >
-                      + Set your starting bankroll
+                      {isOnStake
+                        ? '+ Set On Stake starting bankroll'
+                        : '+ Set your starting bankroll'}
                     </button>
                   )}
                 </div>
@@ -849,14 +1034,22 @@ export default function PokerBankrollTracker({
                   <button
                     type="button"
                     onClick={openSetBankroll}
-                    className="shrink-0 rounded-xl bg-zinc-700/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-600"
+                    className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+                      isOnStake
+                        ? 'bg-amber-500/25 text-amber-100 active:bg-amber-500/40'
+                        : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
+                    }`}
                   >
                     Edit
                   </button>
                 ) : null}
               </div>
               {hasBankrollProfile && !loading ? (
-                <div className="mt-5 grid grid-cols-4 gap-2 border-t border-zinc-700/40 pt-4">
+                <div
+                  className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${
+                    isOnStake ? 'border-amber-400/25' : 'border-zinc-700/40'
+                  }`}
+                >
                   <BankrollStat
                     label="Profit"
                     value={fmtPoker$(stats.profit)}
@@ -978,8 +1171,12 @@ export default function PokerBankrollTracker({
                 <p className="text-white font-semibold">No poker sessions yet</p>
                 <p className="mt-1 text-sm text-zinc-500">
                   {hasBankrollProfile
-                    ? 'Start a live session, or log one from earlier.'
-                    : 'Set your poker bankroll to get started.'}
+                    ? isOnStake
+                      ? 'Start or log an On Stake session for this deal.'
+                      : 'Start a live session, or log one from earlier.'
+                    : isOnStake
+                      ? 'Set your On Stake bankroll to get started.'
+                      : 'Set your poker bankroll to get started.'}
                 </p>
               </div>
             ) : (
@@ -1071,7 +1268,13 @@ export default function PokerBankrollTracker({
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="text-lg font-bold text-white">
-                {hasBankrollProfile ? 'Edit poker bankroll' : 'Starting bankroll'}
+                {isOnStake
+                  ? hasBankrollProfile
+                    ? 'Edit On Stake bankroll'
+                    : 'On Stake starting bankroll'
+                  : hasBankrollProfile
+                    ? 'Edit poker bankroll'
+                    : 'Starting bankroll'}
               </div>
               <button
                 type="button"
@@ -1331,6 +1534,7 @@ export default function PokerBankrollTracker({
         <PokerBankrollImportSheet
           supabaseClient={supabaseClient}
           userId={userId}
+          dealId={scopeDealIdForWrite()}
           completedSessions={completedSessions}
           onClose={() => setSheet(null)}
           onImported={() => void loadData()}
@@ -1499,8 +1703,13 @@ function BankrollStat({ label, value, tone = 'neutral' }) {
   )
 }
 
-/** Tiny SVG bankroll trajectory (green if end ≥ start, else rose). */
-function BankrollSparkline({ series, className = '' }) {
+/** Tiny SVG bankroll trajectory. */
+function BankrollSparkline({
+  series,
+  className = '',
+  upStroke = '#34d399',
+  downStroke = '#fb7185',
+}) {
   if (!series || series.length < 2) return null
   const min = Math.min(...series)
   const max = Math.max(...series)
@@ -1516,7 +1725,7 @@ function BankrollSparkline({ series, className = '' }) {
     })
     .join(' ')
   const up = series[series.length - 1] >= series[0]
-  const stroke = up ? '#34d399' : '#fb7185'
+  const stroke = up ? upStroke : downStroke
   return (
     <svg
       viewBox={`0 0 ${w} ${h}`}

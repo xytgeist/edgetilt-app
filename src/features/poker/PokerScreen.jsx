@@ -1,4 +1,4 @@
-import { Spade } from 'lucide-react'
+import { Spade, Users } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 
 const POKER_TOOLS = [
@@ -8,6 +8,13 @@ const POKER_TOOLS = [
     Icon: Spade,
     color: '#6ee7b7',
     description: 'Cash & tourneys · live & online',
+  },
+  {
+    id: 'poker-stable',
+    label: 'Stable',
+    Icon: Users,
+    color: '#fbbf24',
+    description: 'Track horses · per-deal On Stake sync',
   },
 ]
 

@@ -113,6 +113,7 @@ const OffersCalendar = lazyRoute(() => import('../offers/OffersCalendar.jsx'))
 const GuidesScreen = lazyRoute(() => import('../guides/GuidesScreen.jsx'))
 const BankrollTracker = lazyRoute(() => import('../bankroll/BankrollTracker.jsx'))
 const PokerBankrollTracker = lazyRoute(() => import('../poker-bankroll/PokerBankrollTracker.jsx'))
+const PokerStableScreen = lazyRoute(() => import('../poker-stable/PokerStableScreen.jsx'))
 const LocalIntel = lazyRoute(() => import('../intel/LocalIntel.jsx'))
 const CalculatorsTab = lazyRoute(() => import('../calculators/CalculatorsTab.jsx'))
 const PlayLogbook = lazyRoute(() => import('../play-logbook/PlayLogbook.jsx'))
@@ -1266,7 +1267,7 @@ export default function AppShell({
     'intel',
     'logbook',
   ])
-  const POKER_TOOL_TAB_IDS = new Set(['poker-bankroll'])
+  const POKER_TOOL_TAB_IDS = new Set(['poker-bankroll', 'poker-stable'])
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
   const isPokerAreaTab = (activeTab) => activeTab === 'poker' || POKER_TOOL_TAB_IDS.has(activeTab)
@@ -2067,6 +2068,14 @@ export default function AppShell({
           freemiumUsageLoading={freemiumUsageLoading}
           onRequireSubscribeForPokerBankroll={() => onRequireSubscribe?.('slots-edge')}
           onPokerBankrollSessionCreated={refreshFreemiumUsage}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+        />
+      )
+    } else if (tab === 'poker-stable') {
+      visibleTab = (
+        <PokerStableScreen
+          supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
         />

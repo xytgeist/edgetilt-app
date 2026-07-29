@@ -113,6 +113,8 @@ const PREVIEW_LIMIT = 6
 export default function PokerBankrollImportSheet({
   supabaseClient,
   userId,
+  /** When set, imported rows go to this On Stake deal. */
+  dealId = null,
   completedSessions,
   onClose,
   onImported,
@@ -187,6 +189,7 @@ export default function PokerBankrollImportSheet({
 
     const rows = toImport.map((s) => ({
       user_id: userId,
+      deal_id: dealId || null,
       start_at: s.start_at,
       end_at: s.end_at ?? null,
       buy_in: s.start_amount,

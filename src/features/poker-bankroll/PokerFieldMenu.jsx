@@ -35,6 +35,7 @@ export default function PokerFieldMenu({
   const triggerRef = useRef(null)
   const panelRef = useRef(null)
   const listRef = useRef(null)
+  const touchStartYRef = useRef(null)
 
   const rows = useMemo(() => {
     if (Array.isArray(rowsProp) && rowsProp.length) return rowsProp
@@ -76,13 +77,82 @@ export default function PokerFieldMenu({
     }
     updatePanelPos()
     if (listRef.current) listRef.current.scrollTop = 0
+
+    function onViewportChange(e) {
+      // Ignore scrolls inside the menu list (avoids jitter + overscroll feedback loops).
+      const t = e?.target
+      if (t instanceof Node && panelRef.current?.contains(t)) return
+      updatePanelPos()
+    }
+
     window.addEventListener('resize', updatePanelPos)
-    window.addEventListener('scroll', updatePanelPos, true)
+    window.addEventListener('scroll', onViewportChange, true)
     return () => {
       window.removeEventListener('resize', updatePanelPos)
-      window.removeEventListener('scroll', updatePanelPos, true)
+      window.removeEventListener('scroll', onViewportChange, true)
     }
   }, [open, updatePanelPos, rows.length])
+
+  // Lock sheet / page scroll while open so list overscroll doesn't yank the sheet (iOS Reachability).
+  useEffect(() => {
+    if (!open) return undefined
+    const sheet = triggerRef.current?.closest?.('[data-poker-bankroll-sheet]')
+    const prevSheetOverflow = sheet instanceof HTMLElement ? sheet.style.overflow : ''
+    const prevBodyOverflow = document.body.style.overflow
+    const prevBodyOverscroll = document.body.style.overscrollBehavior
+    if (sheet instanceof HTMLElement) sheet.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehavior = 'none'
+
+    function onTouchMove(e) {
+      const t = e.target
+      if (t instanceof Node && panelRef.current?.contains(t)) return
+      e.preventDefault()
+    }
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+
+    return () => {
+      if (sheet instanceof HTMLElement) sheet.style.overflow = prevSheetOverflow
+      document.body.style.overflow = prevBodyOverflow
+      document.body.style.overscrollBehavior = prevBodyOverscroll
+      document.removeEventListener('touchmove', onTouchMove)
+    }
+  }, [open])
+
+  // Block edge overscroll inside the list so iOS doesn't promote it to Reachability / page bounce.
+  useEffect(() => {
+    if (!open) return undefined
+    const list = listRef.current
+    if (!list) return undefined
+
+    function onTouchStart(e) {
+      touchStartYRef.current = e.touches[0]?.clientY ?? null
+    }
+    function onTouchMove(e) {
+      const startY = touchStartYRef.current
+      if (startY == null || !e.touches[0]) return
+      const y = e.touches[0].clientY
+      const deltaY = y - startY
+      const { scrollTop, scrollHeight, clientHeight } = list
+      const atTop = scrollTop <= 0
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 1
+      // Finger moving down at top = pull-down overscroll (Reachability / rubber-band).
+      if (atTop && deltaY > 0) {
+        e.preventDefault()
+        return
+      }
+      if (atBottom && deltaY < 0) {
+        e.preventDefault()
+      }
+    }
+
+    list.addEventListener('touchstart', onTouchStart, { passive: true })
+    list.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => {
+      list.removeEventListener('touchstart', onTouchStart)
+      list.removeEventListener('touchmove', onTouchMove)
+    }
+  }, [open, panelPos])
 
   useEffect(() => {
     if (!open) return undefined
@@ -107,7 +177,7 @@ export default function PokerFieldMenu({
           <div
             ref={panelRef}
             data-poker-field-menu-panel
-            className="overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-800 shadow-xl"
+            className="overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-800 shadow-xl overscroll-none"
             role="listbox"
             aria-label={ariaLabel}
             style={{
@@ -118,12 +188,18 @@ export default function PokerFieldMenu({
               top: panelPos.top,
               bottom: panelPos.bottom,
               maxHeight: panelPos.maxHeight,
+              overscrollBehavior: 'none',
+              WebkitOverflowScrolling: 'auto',
             }}
           >
             <div
               ref={listRef}
-              className="h-full overflow-y-auto overscroll-contain"
-              style={{ maxHeight: panelPos.maxHeight }}
+              className="h-full overflow-y-auto overscroll-none touch-pan-y"
+              style={{
+                maxHeight: panelPos.maxHeight,
+                overscrollBehavior: 'none',
+                WebkitOverflowScrolling: 'auto',
+              }}
             >
               {rows.map((row, index) => {
                 if (row.type === 'label') {

@@ -13,7 +13,7 @@ const POKER_TOOLS = [
     id: 'poker-stable',
     label: 'Stable',
     Icon: Users,
-    color: '#fbbf24',
+    color: '#22d3ee',
     description: 'Track horses · per-deal On Stake sync',
   },
 ]

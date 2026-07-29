@@ -54,6 +54,8 @@ export function createLiveCallSttSession(opts) {
   let source = null
   /** @type {MediaStreamAudioDestinationNode | null} */
   let silentDest = null
+  /** @type {HTMLAudioElement | null} */
+  let pullEl = null
   /** @type {ReturnType<typeof setInterval> | null} */
   let keepAliveTimer = null
   /** @type {MediaStreamTrack | null} */
@@ -75,6 +77,16 @@ export function createLiveCallSttSession(opts) {
       silentDest?.disconnect()
     } catch {
       /* ignore */
+    }
+    if (pullEl) {
+      try {
+        pullEl.pause()
+        pullEl.srcObject = null
+        pullEl.remove()
+      } catch {
+        /* ignore */
+      }
+      pullEl = null
     }
     processor = null
     source = null
@@ -143,6 +155,18 @@ export function createLiveCallSttSession(opts) {
 
     source.connect(processor)
     processor.connect(silentDest)
+    // Some browsers skip ScriptProcessor callbacks unless something pulls the
+    // destination stream. A muted <audio> pulls without speaker output.
+    try {
+      pullEl = new Audio()
+      pullEl.muted = true
+      pullEl.playsInline = true
+      pullEl.setAttribute('playsinline', 'true')
+      pullEl.srcObject = silentDest.stream
+      void pullEl.play().catch(() => {})
+    } catch {
+      pullEl = null
+    }
     if (audioCtx.state === 'suspended') {
       void audioCtx.resume().catch(() => {})
     }
@@ -194,7 +218,9 @@ export function createLiveCallSttSession(opts) {
 
     await new Promise((resolve, reject) => {
       let settled = false
-      const socket = new WebSocket(`${DG_LISTEN_URL}?${params}`, [`Bearer ${token}`])
+      // Deepgram requires two Sec-WebSocket-Protocol values: scheme + credential.
+      // `['Bearer ${token}']` (one string) is rejected; use `['Bearer', token]`.
+      const socket = new WebSocket(`${DG_LISTEN_URL}?${params.toString()}`, ['Bearer', token])
       ws = socket
       socket.binaryType = 'arraybuffer'
 

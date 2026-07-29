@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { Track } from 'livekit-client'
+import { useEffect, useRef } from 'react'
+import { ConnectionState, Track } from 'livekit-client'
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react'
 import {
   chatAppendLiveCallTranscript,
@@ -11,9 +11,12 @@ const FLUSH_MS = 2_000
 const MAX_BATCH = 12
 
 /**
- * Auto-starts Deepgram live STT for voice calls once a remote participant joins
- * and call audio playback is unlocked (avoids racing iPhone AudioContext).
- * Streams only the local mic; Edge stamps user_id from the JWT.
+ * Auto-starts Deepgram live STT for voice calls once answered and the local mic
+ * is live. Streams only the local mic; Edge stamps user_id from the JWT.
+ *
+ * Do not gate on room.canPlaybackAudio... 1:1 voice uses webAudioMix:false and
+ * that flag often stays false even when the call is up, which previously meant
+ * mint_live_stt_grant never ran (live_transcript stayed {}).
  *
  * @param {{
  *   enabled: boolean,
@@ -30,7 +33,6 @@ export default function LiveVoiceCallStt({
 }) {
   const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
-  const [audioReady, setAudioReady] = useState(() => Boolean(room?.canPlaybackAudio))
   const sessionRef = useRef(/** @type {ReturnType<typeof createLiveCallSttSession> | null} */ (null))
   const pendingRef = useRef(
     /** @type {Array<{ id: string, start_ms: number, end_ms: number, text: string }> } */ ([]),
@@ -39,25 +41,11 @@ export default function LiveVoiceCallStt({
   const stoppedRef = useRef(false)
 
   useEffect(() => {
-    if (!room) {
-      setAudioReady(false)
-      return undefined
-    }
-    const sync = () => setAudioReady(Boolean(room.canPlaybackAudio))
-    sync()
-    const onChange = () => sync()
-    room.on?.('audioPlaybackStatusChanged', onChange)
-    // Poll briefly... some iOS builds fire late without the event.
-    const id = window.setInterval(sync, 1000)
-    return () => {
-      room.off?.('audioPlaybackStatusChanged', onChange)
-      window.clearInterval(id)
-    }
-  }, [room])
-
-  useEffect(() => {
     stoppedRef.current = false
-    if (!enabled || !callId || !supabaseClient || awaitingAnswer || !audioReady) {
+    const roomReady =
+      Boolean(room) &&
+      (room.state === ConnectionState.Connected || String(room.state || '') === 'connected')
+    if (!enabled || !callId || !supabaseClient || awaitingAnswer || !roomReady) {
       return undefined
     }
 
@@ -67,7 +55,9 @@ export default function LiveVoiceCallStt({
         localParticipant?.getTrackPublications?.()?.find(
           (p) => p.source === Track.Source.Microphone || p.kind === Track.Kind.Audio,
         )
-      return pub?.track?.mediaStreamTrack || null
+      const track = pub?.track?.mediaStreamTrack || null
+      if (!track || track.readyState !== 'live') return null
+      return track
     }
 
     const flush = async () => {
@@ -110,7 +100,12 @@ export default function LiveVoiceCallStt({
     sessionRef.current = session
 
     let cancelled = false
-    void (async () => {
+    let started = false
+
+    const tryStart = async () => {
+      if (cancelled || started) return
+      if (!getMicTrack()) return
+      started = true
       try {
         await session.connect()
         if (cancelled) {
@@ -119,13 +114,20 @@ export default function LiveVoiceCallStt({
         }
         session.syncTrack()
       } catch (err) {
+        started = false
         console.warn('Live voice STT connect failed', err)
       }
-    })()
+    }
 
+    void tryStart()
     const syncTimer = window.setInterval(() => {
-      if (!cancelled) session.syncTrack()
-    }, 2000)
+      if (cancelled) return
+      if (!started) {
+        void tryStart()
+        return
+      }
+      session.syncTrack()
+    }, 1500)
 
     return () => {
       cancelled = true
@@ -141,7 +143,7 @@ export default function LiveVoiceCallStt({
       })()
       sessionRef.current = null
     }
-  }, [enabled, callId, supabaseClient, awaitingAnswer, audioReady, localParticipant])
+  }, [enabled, callId, supabaseClient, awaitingAnswer, localParticipant, room, room?.state])
 
   return null
 }

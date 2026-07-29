@@ -1303,12 +1303,19 @@ export default function PokerBankrollTracker({
                     {fmtPoker$(overallBankroll)}
                   </div>
                   {bankrollSparkSeries.length >= 2 ? (
-                    <BankrollSparkline
-                      series={bankrollSparkSeries}
-                      className="mt-3 h-10 w-full"
-                      upClass={isOnStake ? 'text-amber-400' : 'text-emerald-400'}
-                      downClass={isOnStake ? 'text-amber-500' : 'text-rose-400'}
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('trend')}
+                      className="mt-3 block w-full touch-manipulation active:opacity-80"
+                      aria-label="Open Trend chart"
+                    >
+                      <BankrollSparkline
+                        series={bankrollSparkSeries}
+                        className="h-10 w-full"
+                        upClass={isOnStake ? 'text-amber-400' : 'text-emerald-400'}
+                        downClass={isOnStake ? 'text-amber-500' : 'text-rose-400'}
+                      />
+                    </button>
                   ) : null}
                 </>
               ) : (

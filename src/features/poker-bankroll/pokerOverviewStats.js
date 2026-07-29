@@ -131,6 +131,16 @@ export function cashStakeTier(session) {
   return 'High-Stakes'
 }
 
+/** Tournament stake tier from entry buy-in (not re-buys / add-ons). */
+export function tourneyStakeTier(session) {
+  const bi = Number(session.buy_in) || 0
+  if (bi < 1000) return 'Low-Stakes'
+  if (bi <= 5000) return 'Mid-Stakes'
+  return 'High-Stakes'
+}
+
+const TOURNEY_TIER_ORDER = ['Low-Stakes', 'Mid-Stakes', 'High-Stakes']
+
 function cashGameRowLabel(session) {
   const name = pokerCashGameNameFromStored(session.game_variant)
   const sb = Number(session.small_blind)
@@ -206,6 +216,9 @@ export function buildPokerOverviewStats(completedSessions) {
 
   const cashByTier = groupRows(cash, cashStakeTier)
   const cashByGame = groupRows(cash, cashGameRowLabel)
+  const tourneyByTier = groupRows(tourney, tourneyStakeTier).sort(
+    (a, b) => TOURNEY_TIER_ORDER.indexOf(a.label) - TOURNEY_TIER_ORDER.indexOf(b.label),
+  )
   const tourneyByGame = groupRows(tourney, tourneyGameRowLabel)
   const allByGame = groupRows(sessions, (s) =>
     s.session_type === 'tournament' ? tourneyGameRowLabel(s) : cashGameRowLabel(s),
@@ -241,6 +254,7 @@ export function buildPokerOverviewStats(completedSessions) {
     total: finalize(totalB),
     cashByTier,
     cashByGame,
+    tourneyByTier,
     tourneyByGame,
     allByGame,
     currentMonth,

@@ -122,20 +122,11 @@ function GameRows({ rows }) {
   )
 }
 
-function AccordionSection({ title, titleClass, open, onToggle, children }) {
+function SectionCard({ title, titleClass, children }) {
   return (
     <Card>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="mb-1 flex w-full items-center gap-2 touch-manipulation"
-      >
-        <span className={`text-sm ${open ? 'rotate-0' : '-rotate-90'} text-zinc-400 transition-transform`}>
-          ▾
-        </span>
-        <span className={`flex-1 text-left text-[15px] font-semibold ${titleClass}`}>{title}</span>
-      </button>
-      {open ? <div className="mt-1">{children}</div> : null}
+      <div className={`mb-2 text-[15px] font-semibold ${titleClass}`}>{title}</div>
+      {children}
     </Card>
   )
 }
@@ -233,14 +224,12 @@ function TrendCard({ months, agg }) {
 }
 
 /**
- * Poker bankroll DETAILS tab (Total / Sessions / Games + Cash/Tourney accordions).
+ * Poker bankroll DETAILS tab (Total / Sessions / Games + Cash/Tourney sections).
  */
 export default function PokerBankrollOverview({ sessions = [] }) {
   const stats = useMemo(() => buildPokerOverviewStats(sessions), [sessions])
-  const [cashOpen, setCashOpen] = useState(true)
-  const [tourneyOpen, setTourneyOpen] = useState(true)
   const [cashMode, setCashMode] = useState('tiers') // 'tiers' | 'games'
-  const [tourneyMode, setTourneyMode] = useState('games')
+  const [tourneyMode, setTourneyMode] = useState('tiers') // 'tiers' | 'games'
 
   const { cash, tourney, total } = stats
 
@@ -307,13 +296,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
         <GameRows rows={stats.allByGame.slice(0, 12)} />
       </Card>
 
-      {/* Cash Game accordion */}
-      <AccordionSection
-        title="Cash Game"
-        titleClass="text-cyan-400"
-        open={cashOpen}
-        onToggle={() => setCashOpen((v) => !v)}
-      >
+      <SectionCard title="Cash Game" titleClass="text-cyan-400">
         <div className="mb-2 flex gap-2">
           <button
             type="button"
@@ -349,16 +332,19 @@ export default function PokerBankrollOverview({ sessions = [] }) {
           <StatPairRow label="Avg Winnings" value={fmtPokerOverview$(cash.avgWinnings)} tone />
           <StatPairRow label="Avg Losses" value={fmtPokerOverview$(cash.avgLosses)} tone />
         </div>
-      </AccordionSection>
+      </SectionCard>
 
-      {/* Tournament accordion */}
-      <AccordionSection
-        title="Tournament"
-        titleClass="text-amber-300"
-        open={tourneyOpen}
-        onToggle={() => setTourneyOpen((v) => !v)}
-      >
+      <SectionCard title="Tournament" titleClass="text-amber-300">
         <div className="mb-2 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTourneyMode('tiers')}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
+              tourneyMode === 'tiers' ? 'bg-amber-500/20 text-amber-200' : 'bg-zinc-800 text-zinc-500'
+            }`}
+          >
+            Stakes
+          </button>
           <button
             type="button"
             onClick={() => setTourneyMode('games')}
@@ -369,7 +355,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
             By game
           </button>
         </div>
-        <GameRows rows={stats.tourneyByGame} />
+        <GameRows rows={tourneyMode === 'tiers' ? stats.tourneyByTier : stats.tourneyByGame} />
         <div className="mt-2">
           <StatPairRow label="Bounty winnings" value={fmtPokerOverview$(tourney.bounty)} tone />
           <StatPairRow label="Sessions" value={String(tourney.sessions)} />
@@ -394,7 +380,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
             value={`${tourney.victories}${tourney.sessions ? ` (${fmtPct(tourney.victoriesPct)})` : ''}`}
           />
         </div>
-      </AccordionSection>
+      </SectionCard>
 
       <MonthCompare current={stats.currentMonth} last={stats.lastMonth} />
       <TrendCard months={stats.trendMonths} agg={stats.trendAgg} />

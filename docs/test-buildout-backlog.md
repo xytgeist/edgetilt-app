@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-29: **Poker bankroll starting roll:** **`poker_bankroll_profiles`** (`20260729010000`) + UI to set/edit overall poker bankroll; session create/edit/delete applies P/L delta. Separate from slots `bankroll_profiles`.
 - 2026-07-29: **Poker tools hub:** hamburger **Poker** (`PokerScreen.jsx` / tab **`poker`**) parallel to Slots; Poker Bankroll lives under it (not Slots hub). Close on poker tools returns to Poker hub.
 - 2026-07-29: **Poker Bankroll Manager (v1 scaffold):** new feature **`src/features/poker-bankroll/`** + tab **`poker-bankroll`**. SQL **`20260729000000_poker_bankroll_sessions.sql`** (cash/tourney, live/online, simple + advanced columns, RLS). Log sheet: recreational defaults + collapsible Advanced. Freemium **10** poker sessions (`FREE_POKER_BANKROLL_SESSION_LIMIT`). Charts/locations/trend/live HUD deferred. Apply SQL on test before smoke.
 - 2026-07-28: **Voice call live transcripts removed (product cut):** no browser Deepgram live STT, no summary **View transcript** for voice. Video **call_recording** transcripts unchanged. Client + Edge mint/append removed; redeploy **`chat-calls`** + **`chat-call-transcribe`**.

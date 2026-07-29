@@ -66,16 +66,23 @@ export default function PokerBankrollTracker({
   onPokerBankrollSessionCreated = null,
 }) {
   const [userId, setUserId] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [sheetOpen, setSheetOpen] = useState(false)
+  /** @type {null | 'session' | 'bankroll'} */
+  const [sheet, setSheet] = useState(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [editingPrevWl, setEditingPrevWl] = useState(0)
   const [form, setForm] = useState(emptyForm)
+  const [bankrollInput, setBankrollInput] = useState('')
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
   const [venueFilter, setVenueFilter] = useState('all') // all | live | online
+
+  const overallBankroll = profile ? Number(profile.overall_bankroll) : null
+  const hasBankrollProfile = profile != null
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -94,25 +101,35 @@ export default function PokerBankrollTracker({
     }
   }, [supabaseClient])
 
-  const loadSessions = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!supabaseClient || !userId) {
       setSessions([])
+      setProfile(null)
       setLoading(false)
       return
     }
     setLoading(true)
     setError('')
     try {
-      const { data, error: qErr } = await supabaseClient
-        .from('poker_bankroll_sessions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('start_at', { ascending: false })
-        .limit(500)
-      if (qErr) throw qErr
-      setSessions(data || [])
+      const [sessRes, profRes] = await Promise.all([
+        supabaseClient
+          .from('poker_bankroll_sessions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('start_at', { ascending: false })
+          .limit(500),
+        supabaseClient
+          .from('poker_bankroll_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ])
+      if (sessRes.error) throw sessRes.error
+      if (profRes.error) throw profRes.error
+      setSessions(sessRes.data || [])
+      setProfile(profRes.data || null)
     } catch (e) {
-      setError(e?.message || 'Could not load poker sessions.')
+      setError(e?.message || 'Could not load poker bankroll.')
       setSessions([])
     } finally {
       setLoading(false)
@@ -120,8 +137,25 @@ export default function PokerBankrollTracker({
   }, [supabaseClient, userId])
 
   useEffect(() => {
-    void loadSessions()
-  }, [loadSessions])
+    void loadData()
+  }, [loadData])
+
+  async function upsertBankroll(nextAmount) {
+    const { data, error: err } = await supabaseClient
+      .from('poker_bankroll_profiles')
+      .upsert({ user_id: userId, overall_bankroll: nextAmount }, { onConflict: 'user_id' })
+      .select()
+      .single()
+    if (err) throw err
+    setProfile(data)
+    return data
+  }
+
+  async function applyBankrollDelta(delta) {
+    if (!Number.isFinite(delta) || Math.abs(delta) < 0.0005) return
+    const current = profile ? Number(profile.overall_bankroll) : 0
+    await upsertBankroll(current + delta)
+  }
 
   const filtered = useMemo(() => {
     return sessions.filter((s) => {
@@ -153,23 +187,52 @@ export default function PokerBankrollTracker({
     }
   }, [filtered])
 
+  function openSetBankroll() {
+    setBankrollInput(hasBankrollProfile ? String(profile.overall_bankroll) : '')
+    setError('')
+    setSheet('bankroll')
+    triggerTapHapticLight()
+  }
+
+  async function saveBankroll() {
+    const val = parseFloat(bankrollInput)
+    if (!Number.isFinite(val) || val < 0) {
+      setError('Enter a valid bankroll amount.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      await upsertBankroll(val)
+      setSheet(null)
+      triggerTapHapticLight()
+    } catch (e) {
+      setError(e?.message || 'Could not save bankroll.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function openCreate() {
     if (!canCreatePokerBankrollSession) {
       onRequireSubscribeForPokerBankroll?.()
       return
     }
     setEditingId(null)
+    setEditingPrevWl(0)
     setForm(emptyForm())
     setShowAdvanced(false)
     setError('')
-    setSheetOpen(true)
+    setSheet('session')
     triggerTapHapticLight()
   }
 
   function openEdit(session) {
     const start = new Date(session.start_at)
     const hrs = pokerSessionDurationHours(session)
+    const prevWl = pokerSessionWinLoss(session)
     setEditingId(session.id)
+    setEditingPrevWl(prevWl == null ? 0 : prevWl)
     setForm({
       session_type: session.session_type || 'cash',
       venue_kind: session.venue_kind || 'live',
@@ -193,8 +256,7 @@ export default function PokerBankrollTracker({
       notes: session.notes || '',
     })
     const hasAdvanced = Boolean(
-      session.game_variant ||
-        session.small_blind != null ||
+      session.small_blind != null ||
         session.big_blind != null ||
         session.tournament_name ||
         session.field_size != null ||
@@ -204,7 +266,7 @@ export default function PokerBankrollTracker({
     )
     setShowAdvanced(hasAdvanced)
     setError('')
-    setSheetOpen(true)
+    setSheet('session')
   }
 
   function setField(key, value) {
@@ -283,6 +345,13 @@ export default function PokerBankrollTracker({
       if (form.big_blind !== '') payload.big_blind = parseFloat(form.big_blind)
     }
 
+    const newWl =
+      cashOut +
+      (form.session_type === 'tournament' && form.bounty_winnings !== ''
+        ? parseFloat(form.bounty_winnings) || 0
+        : 0) -
+      buyIn
+
     setSaving(true)
     setError('')
     try {
@@ -293,6 +362,7 @@ export default function PokerBankrollTracker({
           .eq('id', editingId)
           .eq('user_id', userId)
         if (uErr) throw uErr
+        await applyBankrollDelta(newWl - editingPrevWl)
       } else {
         if (!canCreatePokerBankrollSession) {
           onRequireSubscribeForPokerBankroll?.()
@@ -300,11 +370,12 @@ export default function PokerBankrollTracker({
         }
         const { error: iErr } = await supabaseClient.from('poker_bankroll_sessions').insert(payload)
         if (iErr) throw iErr
+        await applyBankrollDelta(newWl)
         onPokerBankrollSessionCreated?.()
       }
-      setSheetOpen(false)
+      setSheet(null)
       triggerTapHapticLight()
-      await loadSessions()
+      await loadData()
     } catch (e) {
       setError(e?.message || 'Save failed.')
     } finally {
@@ -323,8 +394,9 @@ export default function PokerBankrollTracker({
         .eq('id', editingId)
         .eq('user_id', userId)
       if (dErr) throw dErr
-      setSheetOpen(false)
-      await loadSessions()
+      await applyBankrollDelta(-editingPrevWl)
+      setSheet(null)
+      await loadData()
     } catch (e) {
       setError(e?.message || 'Delete failed.')
     } finally {
@@ -362,6 +434,46 @@ export default function PokerBankrollTracker({
           itemLabelPlural="poker sessions"
           loading={freemiumUsageLoading}
         />
+
+        {/* Overall poker bankroll */}
+        <div className="mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                Poker bankroll
+              </div>
+              {loading ? (
+                <div className="h-10 w-40 animate-pulse rounded-xl bg-zinc-700/40" />
+              ) : hasBankrollProfile ? (
+                <div className="text-4xl font-black tracking-tight text-white">
+                  {fmtPoker$(overallBankroll)}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openSetBankroll}
+                  className="mt-1 text-sm font-semibold text-emerald-400 touch-manipulation"
+                >
+                  + Set your starting bankroll
+                </button>
+              )}
+            </div>
+            {hasBankrollProfile ? (
+              <button
+                type="button"
+                onClick={openSetBankroll}
+                className="shrink-0 rounded-xl bg-zinc-700/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-600"
+              >
+                Edit
+              </button>
+            ) : null}
+          </div>
+          {hasBankrollProfile && sessions.length > 0 ? (
+            <div className="mt-3 border-t border-zinc-700/40 pt-3 text-[12px] text-zinc-500">
+              Session P/L below updates this roll automatically.
+            </div>
+          ) : null}
+        </div>
 
         {/* Summary */}
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -411,7 +523,7 @@ export default function PokerBankrollTracker({
           ))}
         </div>
 
-        {error && !sheetOpen ? (
+        {error && !sheet ? (
           <p className="mb-3 text-center text-sm text-rose-400">{error}</p>
         ) : null}
 
@@ -499,11 +611,53 @@ export default function PokerBankrollTracker({
         +
       </button>
 
-      {sheetOpen ? (
+      {sheet === 'bankroll' ? (
         <div
           className={APP_MODAL_OVERLAY_CLASS}
           data-poker-bankroll-sheet
-          onClick={() => !saving && setSheetOpen(false)}
+          onClick={() => !saving && setSheet(null)}
+        >
+          <div
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-lg font-bold text-white">
+                {hasBankrollProfile ? 'Edit poker bankroll' : 'Starting bankroll'}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSheet(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-3 text-sm text-zinc-500">
+              Your poker roll only. Separate from Slots Bankroll. Session wins and losses update this
+              automatically.
+            </p>
+            <FieldLabel>Amount</FieldLabel>
+            <MoneyInput value={bankrollInput} onChange={setBankrollInput} />
+            {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void saveBankroll()}
+              className="mt-4 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save bankroll'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {sheet === 'session' ? (
+        <div
+          className={APP_MODAL_OVERLAY_CLASS}
+          data-poker-bankroll-sheet
+          onClick={() => !saving && setSheet(null)}
         >
           <div
             className={`${APP_MODAL_SHEET_PANEL_CLASS} max-h-[92dvh] overflow-y-auto overscroll-y-contain px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
@@ -515,7 +669,7 @@ export default function PokerBankrollTracker({
               </div>
               <button
                 type="button"
-                onClick={() => setSheetOpen(false)}
+                onClick={() => setSheet(null)}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
                 aria-label="Close"
               >

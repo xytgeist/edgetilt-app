@@ -82,7 +82,7 @@ const INFO = {
   },
   kelly: {
     title: 'Kelly Fraction',
-    body: 'Derived from observed win rate and payoff ratio, this is a theoretical guide for how aggressively to size session risk relative to bankroll for long-run growth. Negative Kelly means no clear mathematical edge in the sample. Half Kelly shown here is the more conservative presentation of that estimate.',
+    body: 'Estimated from your session win rate and payoff ratio (average win size vs average loss size). It treats each session like one “bet” and asks: what % of bankroll would maximize long-run growth if those odds kept holding?\n\nIt is not a green light to move up in stakes. A 5% Kelly means the model’s full-throttle pace is risking about 5% of bankroll per session (roughly typical losing-session size / in-for vs your roll). Half Kelly is the more practical number... same idea, less variance pain.\n\nUse it as a risk thermometer: if you regularly put more of your roll at risk per session than Half Kelly suggests, you’re playing hotter than this sample supports. Negative Kelly / No Edge means this sample does not yet justify sizing up. Stake moves still need volume, game quality, and a real bankroll rule (e.g. many buy-ins for cash, deeper for tournaments)... Kelly alone is not a promotion button. Poker sessions aren’t identical bets and tournaments are especially skewed, so treat this as directional, not precise.',
   },
   maxDrawdown: {
     title: 'Max Drawdown',
@@ -230,7 +230,7 @@ function MetricInfoModal({ title, body, onClose }) {
             ✕
           </button>
         </div>
-        <div className="text-zinc-400 text-sm leading-relaxed">{body}</div>
+        <div className="text-zinc-400 text-sm leading-relaxed whitespace-pre-wrap">{body}</div>
       </div>
     </div>
   )

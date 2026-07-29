@@ -112,10 +112,12 @@ const SocialFeed = lazyRoute(() => import('../lounge/SocialFeed.jsx'))
 const OffersCalendar = lazyRoute(() => import('../offers/OffersCalendar.jsx'))
 const GuidesScreen = lazyRoute(() => import('../guides/GuidesScreen.jsx'))
 const BankrollTracker = lazyRoute(() => import('../bankroll/BankrollTracker.jsx'))
+const PokerBankrollTracker = lazyRoute(() => import('../poker-bankroll/PokerBankrollTracker.jsx'))
 const LocalIntel = lazyRoute(() => import('../intel/LocalIntel.jsx'))
 const CalculatorsTab = lazyRoute(() => import('../calculators/CalculatorsTab.jsx'))
 const PlayLogbook = lazyRoute(() => import('../play-logbook/PlayLogbook.jsx'))
 const SlotsScreen = lazyRoute(() => import('../slots/SlotsScreen.jsx'))
+const PokerScreen = lazyRoute(() => import('../poker/PokerScreen.jsx'))
 const ChatTab = lazyRoute(() => import('../chat/ChatTab.jsx'))
 const EdgeMonitorScreen = lazyRoute(() => import('../ops/EdgeMonitorScreen.jsx'))
 const BotManagementScreen = lazyRoute(() => import('../bots/BotManagementScreen.jsx'))
@@ -314,8 +316,10 @@ export default function AppShell({
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
   const {
     canCreateBankrollSession,
+    canCreatePokerBankrollSession,
     canCreatePlayLog,
     bankrollSessionsRemaining,
+    pokerBankrollSessionsRemaining,
     playLogsRemaining,
     freemiumUsageLoading,
     refreshFreemiumUsage,
@@ -1218,6 +1222,11 @@ export default function AppShell({
     setTab(toolId)
   }, [])
 
+  const openPokerTool = useCallback((toolId) => {
+    setActiveCalculator(null)
+    setTab(toolId)
+  }, [])
+
   const openLogbook = useCallback(() => {
     setActiveCalculator(null)
     setTab('logbook')
@@ -1243,9 +1252,24 @@ export default function AppShell({
     setMenuOpen(false)
   }, [])
 
-  const SLOTS_TOOL_TAB_IDS = new Set(['calculators', 'offers', 'bankroll', 'guides', 'intel', 'logbook'])
+  const backToPokerHub = useCallback(() => {
+    setActiveCalculator(null)
+    setTab('poker')
+    setMenuOpen(false)
+  }, [])
+
+  const SLOTS_TOOL_TAB_IDS = new Set([
+    'calculators',
+    'offers',
+    'bankroll',
+    'guides',
+    'intel',
+    'logbook',
+  ])
+  const POKER_TOOL_TAB_IDS = new Set(['poker-bankroll'])
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
+  const isPokerAreaTab = (activeTab) => activeTab === 'poker' || POKER_TOOL_TAB_IDS.has(activeTab)
 
   useEffect(() => {
     if (browseMode !== 'member' || !supabaseClient) {
@@ -1265,9 +1289,10 @@ export default function AppShell({
     }
   }, [browseMode, supabaseClient, tab])
 
-  /** Title bar ☰ menu - Slots hub + Chat (Lounge via dock home; Monitor admin-only). */
+  /** Title bar ☰ menu - Slots / Poker hubs + Chat (Lounge via dock home; Monitor admin-only). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
+    { id: 'poker', label: 'Poker', icon: '♠️', subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: '💬', subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: '📊', subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: '🤖', subscriberGated: false }] : []),
@@ -1308,7 +1333,10 @@ export default function AppShell({
   const renderNavMenuItems = () =>
     navItems.map((item) => {
       const showLock = showNavSubscriberLocks && item.subscriberGated
-      const isActive = tab === item.id || (item.id === 'slots' && isSlotsAreaTab(tab))
+      const isActive =
+        tab === item.id ||
+        (item.id === 'slots' && isSlotsAreaTab(tab)) ||
+        (item.id === 'poker' && isPokerAreaTab(tab))
       return (
         <button
           key={item.id}
@@ -1328,6 +1356,10 @@ export default function AppShell({
             if (item.id === 'slots') {
               setActiveCalculator(null)
               setTab('slots')
+              triggerTapHapticLight()
+            } else if (item.id === 'poker') {
+              setActiveCalculator(null)
+              setTab('poker')
               triggerTapHapticLight()
             } else {
               setActiveCalculator(null)
@@ -1353,6 +1385,7 @@ export default function AppShell({
 
   const slotsToolTitleBarCloseVisible =
     SLOTS_TOOL_TAB_IDS.has(tab) && !(tab === 'calculators' && activeCalculator)
+  const pokerToolTitleBarCloseVisible = POKER_TOOL_TAB_IDS.has(tab)
 
   const renderTitleBarNavSlot = () => (
     <div className="flex items-center gap-1.5 shrink-0" data-title-bar-nav-cluster>
@@ -1389,6 +1422,8 @@ export default function AppShell({
       </div>
       {slotsToolTitleBarCloseVisible ? (
         <TitleBarCloseButton onClick={backToSlotsHub} ariaLabel="Close" />
+      ) : pokerToolTitleBarCloseVisible ? (
+        <TitleBarCloseButton onClick={backToPokerHub} ariaLabel="Close" />
       ) : null}
     </div>
   )
@@ -1432,7 +1467,7 @@ export default function AppShell({
 
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return
-    if (!['bankroll', 'logbook', 'guides', 'calculators'].includes(tab)) return
+    if (!['bankroll', 'poker-bankroll', 'logbook', 'guides', 'calculators'].includes(tab)) return
     void refreshFreemiumUsage()
   }, [tab, isStaff, hasActiveSubscription, refreshFreemiumUsage])
 
@@ -1837,6 +1872,15 @@ export default function AppShell({
           starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
         />
       )
+    } else if (tab === 'poker') {
+      visibleTab = (
+        <PokerScreen
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          browseMode={browseMode}
+          onOpenAuth={() => onOpenAuth?.('login')}
+          onOpenTool={openPokerTool}
+        />
+      )
     } else if (tab === 'calculators') {
       visibleTab = (
         <CalculatorsTab
@@ -2012,6 +2056,19 @@ export default function AppShell({
           onBankrollSessionCreated={refreshFreemiumUsage}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
+        />
+      )
+    } else if (tab === 'poker-bankroll') {
+      visibleTab = (
+        <PokerBankrollTracker
+          supabaseClient={supabaseClient}
+          canCreatePokerBankrollSession={canCreatePokerBankrollSession}
+          pokerBankrollSessionsRemaining={pokerBankrollSessionsRemaining}
+          freemiumUsageLoading={freemiumUsageLoading}
+          onRequireSubscribeForPokerBankroll={() => onRequireSubscribe?.('slots-edge')}
+          onPokerBankrollSessionCreated={refreshFreemiumUsage}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
         />
       )
     } else if (tab === 'logbook') {

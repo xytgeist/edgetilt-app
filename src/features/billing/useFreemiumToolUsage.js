@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   FREE_BANKROLL_SESSION_LIMIT,
   FREE_PLAY_LOG_LIMIT,
+  FREE_POKER_BANKROLL_SESSION_LIMIT,
   canCreateBankrollSession,
   canCreatePlayLog,
+  canCreatePokerBankrollSession,
   fetchFreemiumToolUsageCounts,
   freemiumUsageRemaining,
   hasUnlimitedToolAccess,
@@ -26,7 +28,11 @@ export function useFreemiumToolUsage({
   hasSlotsEdge = false,
 }) {
   const [userId, setUserId] = useState(null)
-  const [counts, setCounts] = useState({ bankrollSessionCount: 0, playLogCount: 0 })
+  const [counts, setCounts] = useState({
+    bankrollSessionCount: 0,
+    pokerBankrollSessionCount: 0,
+    playLogCount: 0,
+  })
   const [loading, setLoading] = useState(false)
 
   const unlimited = hasUnlimitedToolAccess({ isStaff, hasSlotsEdge })
@@ -69,7 +75,7 @@ export function useFreemiumToolUsage({
 
   useEffect(() => {
     if (!userId || unlimited) {
-      setCounts({ bankrollSessionCount: 0, playLogCount: 0 })
+      setCounts({ bankrollSessionCount: 0, pokerBankrollSessionCount: 0, playLogCount: 0 })
       setLoading(false)
       return
     }
@@ -81,9 +87,15 @@ export function useFreemiumToolUsage({
       loading: loading && !unlimited,
       freemiumUsageLoading: loading && !unlimited,
       bankrollSessionCount: counts.bankrollSessionCount,
+      pokerBankrollSessionCount: counts.pokerBankrollSessionCount,
       playLogCount: counts.playLogCount,
       canCreateBankrollSession: canCreateBankrollSession({
         count: counts.bankrollSessionCount,
+        isStaff,
+        hasSlotsEdge,
+      }),
+      canCreatePokerBankrollSession: canCreatePokerBankrollSession({
+        count: counts.pokerBankrollSessionCount,
         isStaff,
         hasSlotsEdge,
       }),
@@ -95,6 +107,11 @@ export function useFreemiumToolUsage({
       bankrollSessionsRemaining: freemiumUsageRemaining(
         FREE_BANKROLL_SESSION_LIMIT,
         counts.bankrollSessionCount,
+        unlimited,
+      ),
+      pokerBankrollSessionsRemaining: freemiumUsageRemaining(
+        FREE_POKER_BANKROLL_SESSION_LIMIT,
+        counts.pokerBankrollSessionCount,
         unlimited,
       ),
       playLogsRemaining: freemiumUsageRemaining(FREE_PLAY_LOG_LIMIT, counts.playLogCount, unlimited),

@@ -64,13 +64,14 @@ If the user attempts **any** of the following, show the **create account** popup
 **Navigation**
 
 - May open **all** other app areas from the **hamburger menu** (no blanket “create account” wall).
-- **Hamburger UI:** Top-level rows are **Lounge**, **Slots** (hub), and **Team**. **Slots** opens a hub that links to Calcs, Calendar, Bankroll, Logbook, and AP Guides (**Local Intel** removed from hub UI — route/code retained; Lounge covers field intel for now). Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar**, **Bankroll**, and **Logbook** hub tiles stay **unlocked** for free users; bankroll/logbook **create** actions cap at 10 free uses — see §4 table; calendar **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
+- **Hamburger UI:** Top-level rows include **Slots** (hub), **Poker** (hub), and **Chat** (Lounge via dock home). **Slots** links to Calcs, Calendar, Bankroll, Logbook, and AP Guides. **Poker** links to Poker Bankroll (more poker tools later). Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar**, **Bankroll**, **Poker Bankroll**, and **Logbook** hub tiles stay **unlocked** for free users; bankroll/poker/logbook **create** actions cap at 10 free uses each — see §4 table; calendar **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
 
 **Per-feature subscribe requirements**
 
 | Area | Free tier |
 | --- | --- |
 | **Bankroll manager** | **10 free sessions**; subscribe for unlimited. Hub tile unlocked; **Start Session** locks at limit. |
+| **Poker Bankroll** | **10 free poker sessions** (separate counter); subscribe for unlimited. Hub tile unlocked; **Log session** locks at limit. |
 | **Play Logbook** | **10 free play logs**; subscribe for unlimited. Hub tile unlocked; **+ Log Play** and **Log play in Logbook** lock at limit. |
 | **Calendar** | May use calendar **without** subscribe. **Subscribe** for **alerts** and for **image upload AI OCR** on offers. |
 | **Calculators** | **Buffalo Link** + **Must Hit By (MHB)** free; **Phoenix Link** + **Stack Up Pays** + all other premium calcs locked → subscribe (**`FREE_CALCULATOR_KEYS`**, **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`**). |

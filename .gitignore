@@ -54,3 +54,6 @@ supabase/.branches/
 # Local Lounge video fixtures / probe artifacts (never commit)
 IMG_1425.MOV
 .tmp-*.mp4
+pokerbankrollcalc.mp4
+tmp-poker-frames/
+tmp-ffmpeg-tools/

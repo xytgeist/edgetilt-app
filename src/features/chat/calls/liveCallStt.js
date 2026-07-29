@@ -155,17 +155,27 @@ export function createLiveCallSttSession(opts) {
 
     source.connect(processor)
     processor.connect(silentDest)
-    // Some browsers skip ScriptProcessor callbacks unless something pulls the
-    // destination stream. A muted <audio> pulls without speaker output.
+    // Keep the processor graph alive without audible output:
+    // 1) muted <audio> pulling MediaStreamDestination
+    // 2) zero-gain tap to destination (Chrome often needs a destination path)
     try {
       pullEl = new Audio()
       pullEl.muted = true
+      pullEl.volume = 0
       pullEl.playsInline = true
       pullEl.setAttribute('playsinline', 'true')
       pullEl.srcObject = silentDest.stream
       void pullEl.play().catch(() => {})
     } catch {
       pullEl = null
+    }
+    try {
+      const gain = audioCtx.createGain()
+      gain.gain.value = 0
+      processor.connect(gain)
+      gain.connect(audioCtx.destination)
+    } catch {
+      /* ignore */
     }
     if (audioCtx.state === 'suspended') {
       void audioCtx.resume().catch(() => {})
@@ -218,9 +228,9 @@ export function createLiveCallSttSession(opts) {
 
     await new Promise((resolve, reject) => {
       let settled = false
-      // Deepgram requires two Sec-WebSocket-Protocol values: scheme + credential.
-      // `['Bearer ${token}']` (one string) is rejected; use `['Bearer', token]`.
-      const socket = new WebSocket(`${DG_LISTEN_URL}?${params.toString()}`, ['Bearer', token])
+      // Deepgram browser auth: two subprotocols. Temporary JWTs use lowercase
+      // `bearer` (SDK 4.5+); API keys use `token`. See deepgram-js-sdk #392.
+      const socket = new WebSocket(`${DG_LISTEN_URL}?${params.toString()}`, ['bearer', token])
       ws = socket
       socket.binaryType = 'arraybuffer'
 

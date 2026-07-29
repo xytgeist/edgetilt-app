@@ -336,6 +336,22 @@ Deno.serve(async (req) => {
       return json(403, { error: 'Join the call before starting live STT.' })
     }
 
+    // Mark draft as soon as mint is attempted so empty `{}` means "client never called".
+    const { data: existing } = await admin
+      .from('chat_calls')
+      .select('live_transcript')
+      .eq('id', callId)
+      .maybeSingle()
+    const prev = (existing?.live_transcript || {}) as LiveCallTranscriptDraft
+    const baseDraft: LiveCallTranscriptDraft = {
+      ...prev,
+      status: prev.status === 'ready' ? 'ready' : 'pending',
+      error: null,
+      updated_at: new Date().toISOString(),
+      utterances: Array.isArray(prev.utterances) ? prev.utterances : [],
+    }
+    await admin.from('chat_calls').update({ live_transcript: baseDraft }).eq('id', callId)
+
     const grantRes = await fetch('https://api.deepgram.com/v1/auth/grant', {
       method: 'POST',
       headers: {
@@ -353,29 +369,18 @@ Deno.serve(async (req) => {
     }
     if (!grantRes.ok || !grantBody.access_token) {
       const errMsg = grantBody.err_msg || grantText.slice(0, 240) || `Deepgram grant HTTP ${grantRes.status}`
-      return json(502, { error: errMsg })
-    }
-
-    // Mark draft pending so summary can show "Transcribing…" if hangup races finals.
-    const { data: existing } = await admin
-      .from('chat_calls')
-      .select('live_transcript')
-      .eq('id', callId)
-      .maybeSingle()
-    const prev = (existing?.live_transcript || {}) as LiveCallTranscriptDraft
-    if (!prev.status || prev.status === 'failed') {
       await admin
         .from('chat_calls')
         .update({
           live_transcript: {
-            ...prev,
-            status: 'pending',
-            error: null,
+            ...baseDraft,
+            status: 'failed',
+            error: errMsg.slice(0, 500),
             updated_at: new Date().toISOString(),
-            utterances: Array.isArray(prev.utterances) ? prev.utterances : [],
           },
         })
         .eq('id', callId)
+      return json(502, { error: errMsg })
     }
 
     return json(200, {

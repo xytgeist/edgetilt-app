@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ConnectionState, Track } from 'livekit-client'
+import { ConnectionState, RoomEvent, Track } from 'livekit-client'
 import { useLocalParticipant, useRoomContext } from '@livekit/components-react'
 import {
   chatAppendLiveCallTranscript,
@@ -11,12 +11,9 @@ const FLUSH_MS = 2_000
 const MAX_BATCH = 12
 
 /**
- * Auto-starts Deepgram live STT for voice calls once answered and the local mic
- * is live. Streams only the local mic; Edge stamps user_id from the JWT.
- *
- * Do not gate on room.canPlaybackAudio... 1:1 voice uses webAudioMix:false and
- * that flag often stays false even when the call is up, which previously meant
- * mint_live_stt_grant never ran (live_transcript stayed {}).
+ * Auto-starts Deepgram live STT for voice calls once answered.
+ * Mints the grant as soon as the room is connected (does not wait for mic
+ * publication), then attaches the local mic when it appears.
  *
  * @param {{
  *   enabled: boolean,
@@ -33,7 +30,9 @@ export default function LiveVoiceCallStt({
 }) {
   const room = useRoomContext()
   const { localParticipant } = useLocalParticipant()
-  const sessionRef = useRef(/** @type {ReturnType<typeof createLiveCallSttSession> | null} */ (null))
+  const localParticipantRef = useRef(localParticipant)
+  localParticipantRef.current = localParticipant
+
   const pendingRef = useRef(
     /** @type {Array<{ id: string, start_ms: number, end_ms: number, text: string }> } */ ([]),
   )
@@ -42,22 +41,24 @@ export default function LiveVoiceCallStt({
 
   useEffect(() => {
     stoppedRef.current = false
-    const roomReady =
-      Boolean(room) &&
-      (room.state === ConnectionState.Connected || String(room.state || '') === 'connected')
-    if (!enabled || !callId || !supabaseClient || awaitingAnswer || !roomReady) {
+    if (!enabled || !callId || !supabaseClient || awaitingAnswer || !room) {
       return undefined
     }
 
     const getMicTrack = () => {
+      const lp = localParticipantRef.current
+      if (!lp) return null
       const pub =
-        localParticipant?.getTrackPublication?.(Track.Source.Microphone) ||
-        localParticipant?.getTrackPublications?.()?.find(
-          (p) => p.source === Track.Source.Microphone || p.kind === Track.Kind.Audio,
-        )
-      const track = pub?.track?.mediaStreamTrack || null
-      if (!track || track.readyState !== 'live') return null
-      return track
+        lp.getTrackPublication?.(Track.Source.Microphone) ||
+        [...(lp.audioTrackPublications?.values?.() || [])][0] ||
+        null
+      const track = pub?.track
+      const mst =
+        track?.mediaStreamTrack ||
+        track?.mediaStream?.getAudioTracks?.()?.[0] ||
+        null
+      if (!mst || mst.readyState === 'ended') return null
+      return mst
     }
 
     const flush = async () => {
@@ -97,29 +98,51 @@ export default function LiveVoiceCallStt({
       },
       onError: (msg) => console.warn('Live voice STT:', msg),
     })
-    sessionRef.current = session
 
     let cancelled = false
     let started = false
+    let starting = false
+
+    const roomIsConnected = () => {
+      const state = room.state
+      return state === ConnectionState.Connected || String(state || '') === 'connected'
+    }
 
     const tryStart = async () => {
-      if (cancelled || started) return
-      if (!getMicTrack()) return
-      started = true
+      if (cancelled || started || starting) return
+      if (!roomIsConnected()) return
+      starting = true
       try {
+        // Mint even if mic track is not published yet... empty live_transcript
+        // in DB meant we never reached Edge before.
         await session.connect()
         if (cancelled) {
           await session.stop()
           return
         }
+        started = true
         session.syncTrack()
       } catch (err) {
-        started = false
         console.warn('Live voice STT connect failed', err)
+      } finally {
+        starting = false
       }
     }
 
     void tryStart()
+
+    const onConnected = () => {
+      void tryStart()
+    }
+    const onTrack = () => {
+      if (started) session.syncTrack()
+      else void tryStart()
+    }
+
+    room.on?.(RoomEvent.Connected, onConnected)
+    room.on?.(RoomEvent.LocalTrackPublished, onTrack)
+    room.on?.(RoomEvent.TrackSubscribed, onTrack)
+
     const syncTimer = window.setInterval(() => {
       if (cancelled) return
       if (!started) {
@@ -133,6 +156,9 @@ export default function LiveVoiceCallStt({
       cancelled = true
       stoppedRef.current = true
       window.clearInterval(syncTimer)
+      room.off?.(RoomEvent.Connected, onConnected)
+      room.off?.(RoomEvent.LocalTrackPublished, onTrack)
+      room.off?.(RoomEvent.TrackSubscribed, onTrack)
       void (async () => {
         try {
           await session.stop()
@@ -141,9 +167,10 @@ export default function LiveVoiceCallStt({
         }
         await flush()
       })()
-      sessionRef.current = null
     }
-  }, [enabled, callId, supabaseClient, awaitingAnswer, localParticipant, room, room?.state])
+    // Intentionally omit localParticipant from deps... use a ref so identity
+    // churn does not tear down the Deepgram session every render.
+  }, [enabled, callId, supabaseClient, awaitingAnswer, room])
 
   return null
 }

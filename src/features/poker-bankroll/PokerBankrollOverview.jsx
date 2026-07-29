@@ -218,7 +218,7 @@ function TrendCard({ months, agg }) {
 }
 
 /**
- * Poker bankroll Overview tab (reference: Total / Sessions / Games + Cash/Tourney accordions).
+ * Poker bankroll DETAILS tab (Total / Sessions / Games + Cash/Tourney accordions).
  */
 export default function PokerBankrollOverview({ sessions = [] }) {
   const stats = useMemo(() => buildPokerOverviewStats(sessions), [sessions])

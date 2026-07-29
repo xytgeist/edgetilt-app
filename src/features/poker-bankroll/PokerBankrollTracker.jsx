@@ -111,8 +111,8 @@ export default function PokerBankrollTracker({
   const [gpsLoading, setGpsLoading] = useState(false)
   const [customVenues, setCustomVenues] = useState([])
   const casinoCoordCacheRef = useRef(null)
-  /** @type {'session' | 'overview' | 'locations' | 'charts'} */
-  const [activeTab, setActiveTab] = useState('session')
+  /** @type {'overview' | 'details' | 'locations' | 'charts'} */
+  const [activeTab, setActiveTab] = useState('overview')
 
   const overallBankroll = profile ? Number(profile.overall_bankroll) : null
   const hasBankrollProfile = profile != null
@@ -265,12 +265,13 @@ export default function PokerBankrollTracker({
     })
   }, [completedSessions, typeFilter, venueFilter])
 
+  /** Lifetime session stats for the bankroll hero (not history filters). */
   const stats = useMemo(() => {
     let profit = 0
     let hours = 0
     let wins = 0
     let counted = 0
-    for (const s of filtered) {
+    for (const s of completedSessions) {
       const wl = pokerSessionWinLoss(s)
       if (wl == null) continue
       counted += 1
@@ -285,7 +286,26 @@ export default function PokerBankrollTracker({
       winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
       count: counted,
     }
-  }, [filtered])
+  }, [completedSessions])
+
+  /** Running bankroll after each completed session (inferred start = current − lifetime profit). */
+  const bankrollSparkSeries = useMemo(() => {
+    const ordered = [...completedSessions]
+      .map((s) => ({
+        at: s.end_at || s.start_at || null,
+        wl: pokerSessionWinLoss(s),
+      }))
+      .filter((x) => x.wl != null && x.at)
+      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+    if (ordered.length === 0 || overallBankroll == null) return []
+    let run = Number(overallBankroll) - ordered.reduce((sum, x) => sum + x.wl, 0)
+    const points = [run]
+    for (const x of ordered) {
+      run += x.wl
+      points.push(run)
+    }
+    return points
+  }, [completedSessions, overallBankroll])
 
   function openSetBankroll() {
     setBankrollInput(hasBankrollProfile ? String(profile.overall_bankroll) : '')
@@ -757,11 +777,11 @@ export default function PokerBankrollTracker({
           loading={freemiumUsageLoading}
         />
 
-        {/* Tabs — SESSION first (main landing), then OVERVIEW / LOCATIONS / CHARTS */}
-        <div className="mb-4 flex border-b border-zinc-800">
+        {/* Pills — match slots Bankroll: OVERVIEW (landing) · DETAILS · LOCATIONS · CHARTS */}
+        <div className="mb-5 -mx-3 flex gap-1 overflow-x-auto px-3 no-scrollbar">
           {[
-            { id: 'session', label: 'SESSION' },
             { id: 'overview', label: 'OVERVIEW' },
+            { id: 'details', label: 'DETAILS' },
             { id: 'locations', label: 'LOCATIONS' },
             { id: 'charts', label: 'CHARTS' },
           ].map((tab) => (
@@ -769,10 +789,10 @@ export default function PokerBankrollTracker({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2.5 text-center text-[11px] font-bold tracking-wide touch-manipulation ${
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold tracking-wide touch-manipulation transition-colors ${
                 activeTab === tab.id
-                  ? 'border-b-2 border-cyan-400 text-cyan-300'
-                  : 'border-b-2 border-transparent text-zinc-500'
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-zinc-800 text-zinc-400 active:bg-zinc-700'
               }`}
             >
               {tab.label}
@@ -784,7 +804,7 @@ export default function PokerBankrollTracker({
           <p className="mb-3 text-center text-sm text-rose-400">{error}</p>
         ) : null}
 
-        {activeTab === 'overview' ? (
+        {activeTab === 'details' ? (
           loading ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
           ) : (
@@ -792,9 +812,9 @@ export default function PokerBankrollTracker({
           )
         ) : null}
 
-        {activeTab === 'session' ? (
+        {activeTab === 'overview' ? (
           <>
-            {/* Overall poker bankroll — large hero card */}
+            {/* Overall poker bankroll — large hero card + lifetime stats */}
             <div className="mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -804,8 +824,16 @@ export default function PokerBankrollTracker({
                   {loading ? (
                     <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
                   ) : hasBankrollProfile ? (
-                    <div className="text-5xl font-black tracking-tight text-white">
-                      {fmtPoker$(overallBankroll)}
+                    <div className="flex items-end justify-between gap-3">
+                      <div className="min-w-0 text-5xl font-black tracking-tight text-white">
+                        {fmtPoker$(overallBankroll)}
+                      </div>
+                      {bankrollSparkSeries.length >= 2 ? (
+                        <BankrollSparkline
+                          series={bankrollSparkSeries}
+                          className="mb-1 h-10 w-24 shrink-0 sm:w-28"
+                        />
+                      ) : null}
                     </div>
                   ) : (
                     <button
@@ -827,9 +855,23 @@ export default function PokerBankrollTracker({
                   </button>
                 ) : null}
               </div>
-              {hasBankrollProfile && completedSessions.length > 0 ? (
-                <div className="mt-4 border-t border-zinc-700/40 pt-3 text-[12px] text-zinc-500">
-                  Session P/L below updates this roll automatically.
+              {hasBankrollProfile && !loading ? (
+                <div className="mt-5 grid grid-cols-4 gap-2 border-t border-zinc-700/40 pt-4">
+                  <BankrollStat
+                    label="Profit"
+                    value={fmtPoker$(stats.profit)}
+                    tone={stats.profit >= 0 ? 'good' : 'bad'}
+                  />
+                  <BankrollStat
+                    label="Hourly"
+                    value={stats.hourly == null ? '-' : fmtPoker$(stats.hourly)}
+                    tone={stats.hourly == null ? 'neutral' : stats.hourly >= 0 ? 'good' : 'bad'}
+                  />
+                  <BankrollStat label="Hours" value={stats.hours.toFixed(1)} />
+                  <BankrollStat
+                    label="Win rate"
+                    value={stats.winRate == null ? '-' : `${stats.winRate}%`}
+                  />
                 </div>
               ) : null}
             </div>
@@ -898,24 +940,6 @@ export default function PokerBankrollTracker({
                 </div>
               )
             )}
-
-            <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <StatTile
-                label="Profit"
-                value={fmtPoker$(stats.profit)}
-                tone={stats.profit >= 0 ? 'good' : 'bad'}
-              />
-              <StatTile
-                label="Hourly"
-                value={stats.hourly == null ? '-' : fmtPoker$(stats.hourly)}
-                tone={stats.hourly == null ? 'neutral' : stats.hourly >= 0 ? 'good' : 'bad'}
-              />
-              <StatTile label="Hours" value={stats.hours.toFixed(1)} />
-              <StatTile
-                label="Win rate"
-                value={stats.winRate == null ? '-' : `${stats.winRate}%`}
-              />
-            </div>
 
             {completedSessions.length > 0 ? (
               <div className="mb-3 flex flex-wrap gap-1.5">
@@ -1462,14 +1486,54 @@ export default function PokerBankrollTracker({
   )
 }
 
-function StatTile({ label, value, tone = 'neutral' }) {
+function BankrollStat({ label, value, tone = 'neutral' }) {
   const toneClass =
     tone === 'good' ? 'text-emerald-400' : tone === 'bad' ? 'text-rose-400' : 'text-white'
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 px-3 py-2.5">
+    <div className="min-w-0 text-center">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
-      <div className={`mt-0.5 text-lg font-bold tabular-nums ${toneClass}`}>{value}</div>
+      <div className={`mt-0.5 truncate text-sm font-bold tabular-nums sm:text-base ${toneClass}`}>
+        {value}
+      </div>
     </div>
+  )
+}
+
+/** Tiny SVG bankroll trajectory (green if end ≥ start, else rose). */
+function BankrollSparkline({ series, className = '' }) {
+  if (!series || series.length < 2) return null
+  const min = Math.min(...series)
+  const max = Math.max(...series)
+  const span = max - min || 1
+  const padY = 4
+  const h = 40
+  const w = 100
+  const points = series
+    .map((v, i) => {
+      const x = (i / (series.length - 1)) * w
+      const y = padY + (1 - (v - min) / span) * (h - padY * 2)
+      return `${x},${y}`
+    })
+    .join(' ')
+  const up = series[series.length - 1] >= series[0]
+  const stroke = up ? '#34d399' : '#fb7185'
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className={className}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <polyline
+        fill="none"
+        stroke={stroke}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   )
 }
 

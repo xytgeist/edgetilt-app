@@ -2,6 +2,14 @@ import { useMemo, useState } from 'react'
 import { DollarSign, Trophy } from 'lucide-react'
 import { buildPokerOverviewStats, fmtPokerOverview$ } from './pokerOverviewStats.js'
 
+/** Full dollars for the Total hero (no $7.5k shorthand, no cents). */
+function fmtTotalWhole$(n) {
+  if (n == null || Number.isNaN(Number(n))) return '-'
+  const num = Number(n)
+  const body = `$${Math.round(Math.abs(num)).toLocaleString()}`
+  return num < 0 ? `-${body}` : body
+}
+
 function toneClass(n) {
   if (n == null || Number.isNaN(Number(n)) || Math.abs(Number(n)) < 0.0005) return 'text-zinc-200'
   return Number(n) > 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -249,7 +257,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
         <div className="mb-2 flex items-end justify-between gap-2">
           <div className="text-[15px] font-semibold text-zinc-200">Total</div>
           <div className={`text-xl font-black tabular-nums ${toneClass(total.profit)}`}>
-            {fmtPokerOverview$(total.profit)}
+            {fmtTotalWhole$(total.profit)}
           </div>
         </div>
         <div className="mb-1 grid grid-cols-[1.2fr_1fr_1fr_1fr] items-end gap-1">

@@ -432,9 +432,9 @@ export default function PokerBankrollTracker({
     }
   }, [filtered])
 
-  /** Running bankroll after each completed session (inferred start = current − lifetime profit). */
+  /** Running bankroll after each filtered session (inferred start = current − filtered profit). */
   const bankrollSparkSeries = useMemo(() => {
-    const ordered = [...completedSessions]
+    const ordered = [...filtered]
       .map((s) => ({
         at: s.end_at || s.start_at || null,
         wl: pokerSessionWinLoss(s),
@@ -449,7 +449,7 @@ export default function PokerBankrollTracker({
       points.push(run)
     }
     return points
-  }, [completedSessions, overallBankroll])
+  }, [filtered, overallBankroll])
 
   function openSetBankroll() {
     if (isOnStake) {

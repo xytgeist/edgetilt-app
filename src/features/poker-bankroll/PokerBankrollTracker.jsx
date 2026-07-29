@@ -2158,7 +2158,7 @@ function PokerSessionCoreFields({
       ) : (
         <>
           <div className="mb-3">
-            <Select
+            <MenuSelect
               value={form.online_site_pick || ''}
               onChange={(id) => setField('online_site_pick', id)}
               options={pokerOnlineSiteSelectOptions()}
@@ -2391,6 +2391,68 @@ function Select({ value, onChange, options }) {
         </option>
       ))}
     </select>
+  )
+}
+
+/** Long option lists (online sites): custom menu always opens scrolled to the top. */
+function MenuSelect({ value, onChange, options }) {
+  const [open, setOpen] = useState(false)
+  const listRef = useRef(null)
+  const selected = options.find((o) => o.id === value)
+  const label = selected?.label || options[0]?.label || 'Select…'
+
+  useEffect(() => {
+    if (!open) return
+    const el = listRef.current
+    if (el) el.scrollTop = 0
+  }, [open])
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`${POKER_FIELD_CLASS} flex items-center justify-between text-left`}
+      >
+        <span className={`truncate font-semibold text-sm ${value ? 'text-white' : 'text-zinc-500'}`}>
+          {label}
+        </span>
+        <span
+          className={`ml-2 shrink-0 text-xs text-zinc-500 transition-transform duration-200 ${
+            open ? 'rotate-180' : ''
+          }`}
+        >
+          ▾
+        </span>
+      </button>
+      {open ? (
+        <div
+          ref={listRef}
+          className="mt-2 max-h-64 overflow-y-auto overscroll-contain rounded-2xl bg-zinc-800 py-1"
+        >
+          {options.map((opt) => {
+            const active = opt.id === value
+            return (
+              <button
+                key={opt.id || 'empty'}
+                type="button"
+                onClick={() => {
+                  onChange(opt.id)
+                  setOpen(false)
+                }}
+                className={`flex w-full items-center px-4 py-2.5 text-left text-sm touch-manipulation ${
+                  active
+                    ? 'bg-emerald-600/25 font-semibold text-emerald-200'
+                    : 'text-zinc-200 active:bg-zinc-700'
+                }`}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
   )
 }
 

@@ -12,6 +12,7 @@ import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollChartsTab from './PokerBankrollChartsTab.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
+import PokerBankrollTrendTab from './PokerBankrollTrendTab.jsx'
 import PokerCashGamePicker from './PokerCashGamePicker.jsx'
 import PokerFieldMenu from './PokerFieldMenu.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
@@ -179,7 +180,7 @@ export default function PokerBankrollTracker({
   const casinoCoordCacheRef = useRef(null)
   /** Tracks auto-default currency so geo resolve can overwrite until the user picks. */
   const currencyAutoDefaultRef = useRef('USD')
-  /** @type {'overview' | 'details' | 'locations' | 'charts'} */
+  /** @type {'overview' | 'details' | 'locations' | 'charts' | 'trend'} */
   const [activeTab, setActiveTab] = useState('overview')
 
   const isOnStake = bankrollScope !== 'personal'
@@ -1160,13 +1161,14 @@ export default function PokerBankrollTracker({
           loading={freemiumUsageLoading}
         />
 
-        {/* Pills — match slots Bankroll: OVERVIEW (landing) · DETAILS · LOCATIONS · CHARTS */}
+        {/* Pills — match slots Bankroll: OVERVIEW · DETAILS · LOCATIONS · CHARTS · TREND */}
         <div className="mb-5 -mx-3 flex gap-1 overflow-x-auto px-3 no-scrollbar">
           {[
             { id: 'overview', label: 'OVERVIEW' },
             { id: 'details', label: 'DETAILS' },
             { id: 'locations', label: 'LOCATIONS' },
             { id: 'charts', label: 'CHARTS' },
+            { id: 'trend', label: 'TREND' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1561,6 +1563,17 @@ export default function PokerBankrollTracker({
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
           ) : (
             <PokerBankrollChartsTab sessions={completedSessions} />
+          )
+        ) : null}
+
+        {activeTab === 'trend' ? (
+          loading ? (
+            <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
+          ) : (
+            <PokerBankrollTrendTab
+              sessions={completedSessions}
+              initialBankroll={hasBankrollProfile ? overallBankroll : null}
+            />
           )
         ) : null}
         </div>

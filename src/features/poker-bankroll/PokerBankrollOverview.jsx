@@ -313,7 +313,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
       {/* Total */}
       <Card>
         <div className="mb-2 flex items-end justify-between gap-2">
-          <div className="text-[15px] font-semibold text-zinc-200">Total</div>
+          <div className="text-xl font-semibold text-zinc-200">Total</div>
           <div className={`text-xl font-black tabular-nums ${toneClass(total.profit)}`}>
             {fmtTotalWhole$(total.profit)}
           </div>

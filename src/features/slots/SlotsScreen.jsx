@@ -95,6 +95,7 @@ export default function SlotsScreen({
             <button
               key={tool.id}
               type="button"
+              data-hub-tool-card
               title={locked ? 'Subscribe to unlock Slots Edge' : undefined}
               onClick={() => handleOpen(tool)}
               className="flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-4 text-left touch-manipulation active:scale-[0.99] transition-transform"

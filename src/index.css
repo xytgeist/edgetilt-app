@@ -2662,6 +2662,12 @@ html.light input:-webkit-autofill:focus {
   -webkit-text-fill-color: #18181b !important;
 }
 
+/* Slots / Poker hub tool rows — light only: soft lift like play-logbook empty cards */
+html.light [data-hub-tool-card] {
+  box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
 /* Slots / Poker hub glass icon tiles */
 .slots-icon-tile {
   color: var(--tc);

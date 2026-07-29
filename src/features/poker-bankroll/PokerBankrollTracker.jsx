@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -1345,7 +1346,11 @@ export default function PokerBankrollTracker({
                           }`}
                           aria-hidden
                         >
-                          {session.session_type === 'tournament' ? 'T' : '$'}
+                          {session.session_type === 'tournament' ? (
+                            <Trophy className="h-4 w-4" strokeWidth={2.25} />
+                          ) : (
+                            '$'
+                          )}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-baseline justify-between gap-2">

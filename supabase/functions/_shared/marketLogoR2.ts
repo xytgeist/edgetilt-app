@@ -4,6 +4,7 @@
 import { coingeckoCryptoLogo } from './coingeckoMarket.ts'
 import { finnhubStockLogoUrl } from './finnhubMarket.ts'
 import {
+  loungeCfR2AllowedPublicOrigins,
   loungeCfR2PublicUrl,
   loungeCfR2PutObject,
   readLoungeCfR2Config,
@@ -52,12 +53,21 @@ export function marketLogoR2ObjectKey(row: Pick<MarketInstrumentRow, 'asset_clas
 
 export function isMarketLogoHostedOnR2(logoUrl: string, publicBaseUrl: string): boolean {
   const url = String(logoUrl || '').trim()
-  const base = String(publicBaseUrl || '').trim().replace(/\/+$/, '')
-  if (!url || !base) return false
+  if (!url) return false
   try {
     const parsed = new URL(url)
-    const baseParsed = new URL(base)
-    if (parsed.origin !== baseParsed.origin) return false
+    const allowed = new Set(loungeCfR2AllowedPublicOrigins(null))
+    const base = String(publicBaseUrl || '')
+      .trim()
+      .replace(/\/+$/, '')
+    if (base) {
+      try {
+        allowed.add(new URL(base).origin)
+      } catch {
+        // ignore invalid configured base
+      }
+    }
+    if (!allowed.has(parsed.origin)) return false
     return parsed.pathname.replace(/^\/+/, '').startsWith(`${MARKET_LOGO_R2_PREFIX}/`)
   } catch {
     return false

@@ -110,7 +110,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 `media.edgetilt.com` is deferred: `edgetilt.com` is Cloudflare Registrar in a different account and can’t move for ~60 days after purchase. After the lock, move the zone into the R2 account and attach `media.edgetilt.com`, then flip secrets.
 
-1. Keep **`media-test.lvslotpro.com`** + **`media.lvslotpro.com`** both attached to the bucket.
+1. Keep **`media-test.lvslotpro.com`** + **`media.lvslotpro.com`** both attached to the bucket. Edge/client URL allowlists accept **both** hosts so delete/poster/resize still work for older `media-test` rows after flipping the prod public base.
 2. Confirm CORS allows **`https://edgetilt.com`** (and localhost if needed); **`AllowedHeaders`**: `Content-Type`, `Cache-Control`.
 3. Prod Edge secret **`LOUNGE_CF_R2_PUBLIC_BASE_URL=https://media.lvslotpro.com`** + Vercel Production **`VITE_LOUNGE_CF_MEDIA_PUBLIC_BASE_URL`** to match.
 4. Publish template: `node scripts/publish-call-egress-template-local.mjs --target=production` → `https://media.lvslotpro.com/call-egress/call-egress.html`.

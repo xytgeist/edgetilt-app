@@ -19,7 +19,11 @@ import {
   normalizeEgressStatus,
 } from '../_shared/chatCallRecordingFinalize.ts'
 import { ensureCallSummaryMessage } from '../_shared/chatCallSummary.ts'
-import { loungeCfR2PublicUrl, readLoungeCfR2Config } from '../_shared/loungeCfR2.ts'
+import {
+  loungeCfR2IsAllowedPublicUrl,
+  loungeCfR2PublicUrl,
+  readLoungeCfR2Config,
+} from '../_shared/loungeCfR2.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1240,8 +1244,7 @@ Deno.serve(async (req) => {
       if (!posterUrl) return json(400, { error: 'Missing poster_url.' })
 
       const r2 = readLoungeCfR2Config()
-      const publicBase = r2?.publicBaseUrl ? String(r2.publicBaseUrl).replace(/\/+$/, '') : ''
-      if (!publicBase || !posterUrl.startsWith(`${publicBase}/`)) {
+      if (!r2 || !loungeCfR2IsAllowedPublicUrl(r2, posterUrl)) {
         return json(400, { error: 'Poster URL must be on the Lounge R2 public host.' })
       }
 

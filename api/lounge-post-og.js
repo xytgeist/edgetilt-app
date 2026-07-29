@@ -27,16 +27,34 @@ function oneLine(s) {
     .trim()
 }
 
+const LOUNGE_CF_R2_KNOWN_PUBLIC_ORIGINS = [
+  'https://media.lvslotpro.com',
+  'https://media-test.lvslotpro.com',
+]
+
+function loungeOgAllowedMediaOrigins() {
+  const out = new Set(LOUNGE_CF_R2_KNOWN_PUBLIC_ORIGINS)
+  const base = String(
+    process.env.LOUNGE_CF_R2_PUBLIC_BASE_URL || process.env.VITE_LOUNGE_CF_MEDIA_PUBLIC_BASE_URL || '',
+  )
+    .trim()
+    .replace(/\/+$/, '')
+  if (base) {
+    try {
+      out.add(new URL(base).origin)
+    } catch {
+      // ignore
+    }
+  }
+  return out
+}
+
 function loungeOgImageDeliveryUrl(storedUrl) {
   const url = String(storedUrl || '').trim()
   if (!url) return ''
-  const base = String(process.env.LOUNGE_CF_R2_PUBLIC_BASE_URL || process.env.VITE_LOUNGE_CF_MEDIA_PUBLIC_BASE_URL || '')
-    .trim()
-    .replace(/\/+$/, '')
-  if (!base) return url
   try {
-    if (new URL(url).origin !== new URL(base).origin) return url
     const parsed = new URL(url)
+    if (!loungeOgAllowedMediaOrigins().has(parsed.origin)) return url
     const path = parsed.pathname.replace(/^\//, '')
     if (!path || path.startsWith('cdn-cgi/image/')) return url
     return `${parsed.origin}/cdn-cgi/image/width=1200,quality=85,format=auto/${path}`

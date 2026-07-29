@@ -79,14 +79,48 @@ export function loungeCfR2PublicUrl(cfg: LoungeCfR2Config, objectKey: string): s
   return `${cfg.publicBaseUrl}/${key.split('/').map(encodeURIComponent).join('/')}`
 }
 
+/**
+ * Custom domains that serve the same Lounge R2 bucket.
+ * Prod writes `media.lvslotpro.com`; older rows / test still use `media-test.lvslotpro.com`.
+ * Always accept both so delete/poster/parse keep working after a public-base flip.
+ */
+export const LOUNGE_CF_R2_KNOWN_PUBLIC_ORIGINS = [
+  'https://media.lvslotpro.com',
+  'https://media-test.lvslotpro.com',
+] as const
+
+export function loungeCfR2AllowedPublicOrigins(cfg?: LoungeCfR2Config | null): string[] {
+  const out = new Set<string>(LOUNGE_CF_R2_KNOWN_PUBLIC_ORIGINS)
+  const configured = String(cfg?.publicBaseUrl || '')
+    .trim()
+    .replace(/\/+$/, '')
+  if (configured) {
+    try {
+      out.add(new URL(configured).origin)
+    } catch {
+      // ignore invalid configured base
+    }
+  }
+  return [...out]
+}
+
+export function loungeCfR2IsAllowedPublicUrl(cfg: LoungeCfR2Config | null | undefined, publicUrl: string): boolean {
+  const raw = String(publicUrl || '').trim()
+  if (!raw) return false
+  try {
+    return loungeCfR2AllowedPublicOrigins(cfg).includes(new URL(raw).origin)
+  } catch {
+    return false
+  }
+}
+
 export function loungeCfR2ParseObjectKeyFromPublicUrl(cfg: LoungeCfR2Config, publicUrl: string): string {
   const raw = String(publicUrl || '').trim()
   if (!raw) return ''
   let pathname = ''
   try {
     const u = new URL(raw)
-    const base = new URL(cfg.publicBaseUrl)
-    if (u.origin !== base.origin) return ''
+    if (!loungeCfR2IsAllowedPublicUrl(cfg, raw)) return ''
     pathname = u.pathname.replace(/^\/+/, '')
   } catch {
     return ''

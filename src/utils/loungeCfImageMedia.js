@@ -20,23 +20,41 @@ const DELIVERY_WIDTH_BY_VARIANT = {
   og: 1200,
 }
 
+/** Same-bucket Lounge media hosts (prod + legacy/test). Keep in sync with Edge `LOUNGE_CF_R2_KNOWN_PUBLIC_ORIGINS`. */
+const LOUNGE_CF_R2_KNOWN_PUBLIC_ORIGINS = [
+  'https://media.lvslotpro.com',
+  'https://media-test.lvslotpro.com',
+]
+
 function loungeCfMediaPublicBaseUrl() {
   return String(import.meta.env.VITE_LOUNGE_CF_MEDIA_PUBLIC_BASE_URL || '')
     .trim()
     .replace(/\/+$/, '')
 }
 
+function loungeCfMediaAllowedOrigins() {
+  const out = new Set(LOUNGE_CF_R2_KNOWN_PUBLIC_ORIGINS)
+  const configured = loungeCfMediaPublicBaseUrl()
+  if (configured) {
+    try {
+      out.add(new URL(configured).origin)
+    } catch {
+      // ignore invalid Vite base
+    }
+  }
+  return out
+}
+
 export function loungeCfImageResizeEnabled() {
   return String(import.meta.env.VITE_LOUNGE_CF_IMAGE_RESIZE || 'true').trim().toLowerCase() !== 'false'
 }
 
-/** True when URL is on the configured R2 public domain. */
+/** True when URL is on a known Lounge R2 public domain (prod or media-test). */
 export function isLoungeCfR2MediaUrl(url) {
   const u = String(url || '').trim()
-  const base = loungeCfMediaPublicBaseUrl()
-  if (!u || !base) return false
+  if (!u) return false
   try {
-    return new URL(u).origin === new URL(base).origin
+    return loungeCfMediaAllowedOrigins().has(new URL(u).origin)
   } catch {
     return false
   }

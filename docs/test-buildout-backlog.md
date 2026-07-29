@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-29: **Poker bankroll CSV import fields:** `bankrollCsvImport.js` multi-section Poker Income + full PBT mapping (blinds/limit/table/venue/currency/rebuy/addon/bounties/tourney meta); Auto cash vs tourney; sample PBT export 162 sessions parsed.
 - 2026-07-29: **Poker Bankroll → production:** SQL **`20260729000000`–`20260730030000`** applied on **`jtjgtucumuoswnbauxry`**; frontend promote **`test` → `main`** (Stable hub Coming soon). No Edge redeploy.
 - 2026-07-29: **Poker bankroll Club + currency:** Where = Live / Online / Club; **`currency`** column (`20260730030000`, applied on **test**); Currency dropdown on Game row (geo → ISO code, else USD); Locations subtitle Live/Online/Club · currency.
 - 2026-07-29: **Poker bankroll Locations tab (PBT-matched):** `PokerLocationsTab.jsx` ... venue cards (Entries · hours · $/h · % won); Location Info modal with cumulative P&L, Cash/Tourney + Won/Lost donuts, Type/ROI/Profit table, Best sessions, year pills + session list (tap → edit).

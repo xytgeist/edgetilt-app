@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { parseCsvImport } from '../../utils/bankrollCsvImport.js'
+import { formatCashGameLabel } from './pokerSessionLabels.js'
 
 // Same CSV import UX as slots BankrollImportSheet → poker_bankroll_sessions.
 
@@ -90,7 +91,7 @@ function SessionTypePill({ value, active, onClick, label }) {
   )
 }
 
-function detectVenueKind(casinoName) {
+function detectVenueKindFallback(casinoName) {
   const n = String(casinoName || '').toLowerCase()
   if (
     n.includes('pokerstars') ||
@@ -100,11 +101,64 @@ function detectVenueKind(casinoName) {
     n.includes('partypoker') ||
     n.includes('888poker') ||
     n.includes('wsop.com') ||
+    n.includes('ignition') ||
+    n.includes('bovada') ||
     n.includes('online')
   ) {
     return 'online'
   }
+  if (n.includes('clubgg') || n.includes('pppoker') || n.includes('pokerbros') || n.includes('club')) {
+    return 'club'
+  }
   return 'live'
+}
+
+function liveGamePickFromLabel(gameRaw) {
+  const g = String(gameRaw || '').toLowerCase()
+  if (g.includes('omaha 5') || g.includes('5-card omaha') || g.includes('plo5')) return 'omaha5'
+  if (g.includes('omaha 6') || g.includes('6-card omaha') || g.includes('plo6')) return 'omaha6'
+  if (g.includes('omaha') || g.includes('plo')) return 'omaha'
+  if (g.includes('short')) return 'short_deck'
+  if (g.includes('stud')) return 'stud'
+  if (g.includes('draw')) return 'draw'
+  if (g.includes('mix')) return 'mixed'
+  if (g.includes('ofc') || g.includes('pine')) return 'ofc'
+  return 'holdem'
+}
+
+function tourneyGameVariantFromLabel(gameRaw, limitType) {
+  const g = String(gameRaw || '').toLowerCase()
+  if (g.includes('plo8') || g.includes('omaha 8') || g.includes('omaha hi')) return 'plo8'
+  if (g.includes('omaha') || g.includes('plo')) return 'plo'
+  if (g.includes('mix')) return 'mixed'
+  if (limitType === 'limit' || g.includes('limit hold')) return 'limit_holdem'
+  return 'nlh'
+}
+
+function resolveGameVariant(session, sessionType) {
+  const limitType = session.limit_type || 'no_limit'
+  if (sessionType === 'tournament') {
+    return tourneyGameVariantFromLabel(session.game_label, limitType)
+  }
+  if (session.small_blind != null && session.big_blind != null) {
+    const label = formatCashGameLabel({
+      live_game_name_pick: liveGamePickFromLabel(session.game_label),
+      limit_type: limitType,
+      venue_kind: session.venue_kind || 'live',
+      small_blind: session.small_blind,
+      big_blind: session.big_blind,
+      third_blind: session.third_blind,
+    })
+    if (label) return label
+  }
+  return String(session.game_label || '').trim() || 'custom'
+}
+
+function sessionProfit(s) {
+  const invested =
+    (Number(s.buy_in) || 0) + (Number(s.rebuy_amount) || 0) + (Number(s.addon_amount) || 0)
+  const out = (Number(s.end_amount) || 0) + (Number(s.bounty_winnings) || 0)
+  return out - invested
 }
 
 const STEPS = { INPUT: 'input', PREVIEW: 'preview', IMPORTING: 'importing', DONE: 'done' }
@@ -124,8 +178,9 @@ export default function PokerBankrollImportSheet({
   const [fileName, setFileName] = useState(null)
   const [parseResult, setParseResult] = useState(null)
   const [parseError, setParseError] = useState(null)
-  const [sessionTypeOverride, setSessionTypeOverride] = useState('cash')
-  const [pokerOnly, setPokerOnly] = useState(false)
+  /** @type {'auto' | 'cash' | 'tournament'} */
+  const [sessionTypeOverride, setSessionTypeOverride] = useState('auto')
+  const [pokerOnly, setPokerOnly] = useState(true)
   const [importError, setImportError] = useState(null)
   const [importedCount, setImportedCount] = useState(0)
   const fileInputRef = useRef(null)
@@ -187,21 +242,47 @@ export default function PokerBankrollImportSheet({
     setStep(STEPS.IMPORTING)
     setImportError(null)
 
-    const rows = toImport.map((s) => ({
-      user_id: userId,
-      deal_id: dealId || null,
-      start_at: s.start_at,
-      end_at: s.end_at ?? null,
-      buy_in: s.start_amount,
-      cash_out: s.end_amount,
-      venue_name: s.casino_name ?? null,
-      venue_kind: detectVenueKind(s.casino_name),
-      currency: 'USD',
-      notes: s.notes ?? null,
-      session_type: sessionTypeOverride,
-      status: 'completed',
-      game_variant: s.game_label || null,
-    }))
+    const rows = toImport.map((s) => {
+      const sessionType =
+        sessionTypeOverride === 'auto'
+          ? s.session_type === 'tournament'
+            ? 'tournament'
+            : 'cash'
+          : sessionTypeOverride
+      const venueKind = s.venue_kind || detectVenueKindFallback(s.casino_name)
+      return {
+        user_id: userId,
+        deal_id: dealId || null,
+        start_at: s.start_at,
+        end_at: s.end_at ?? null,
+        buy_in: s.buy_in ?? s.start_amount,
+        cash_out: s.end_amount,
+        rebuy_amount: Number(s.rebuy_amount) || 0,
+        addon_amount: Number(s.addon_amount) || 0,
+        venue_name: s.casino_name ?? null,
+        venue_kind: venueKind,
+        currency: s.currency || 'USD',
+        notes: s.notes ?? null,
+        session_type: sessionType,
+        status: 'completed',
+        game_variant: resolveGameVariant(s, sessionType),
+        limit_type: s.limit_type || null,
+        table_size: s.table_size || null,
+        small_blind: s.small_blind != null && s.small_blind > 0 ? s.small_blind : null,
+        big_blind: s.big_blind != null && s.big_blind > 0 ? s.big_blind : null,
+        third_blind: s.third_blind != null && s.third_blind > 0 ? s.third_blind : null,
+        ante: s.ante != null && s.ante > 0 ? s.ante : null,
+        tournament_name: sessionType === 'tournament' ? s.tournament_name : null,
+        field_size: sessionType === 'tournament' ? s.field_size : null,
+        start_stack: sessionType === 'tournament' ? s.start_stack : null,
+        finish_place: sessionType === 'tournament' ? s.finish_place : null,
+        bounty_winnings:
+          sessionType === 'tournament' && s.bounty_winnings != null
+            ? s.bounty_winnings
+            : null,
+        reentries: s.reentries != null ? s.reentries : null,
+      }
+    })
 
     try {
       const BATCH = 200
@@ -320,25 +401,30 @@ export default function PokerBankrollImportSheet({
 
               <div className="mb-5">
                 <div className="text-zinc-400 text-xs font-semibold uppercase tracking-wide mb-2">
-                  Session type for imported sessions
+                  Session type
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <SessionTypePill
+                    value="auto"
+                    label="Auto-detect"
+                    active={sessionTypeOverride === 'auto'}
+                    onClick={() => setSessionTypeOverride('auto')}
+                  />
                   <SessionTypePill
                     value="cash"
-                    label="Cash"
+                    label="Force Cash"
                     active={sessionTypeOverride === 'cash'}
                     onClick={() => setSessionTypeOverride('cash')}
                   />
                   <SessionTypePill
                     value="tournament"
-                    label="Tournament"
+                    label="Force Tourney"
                     active={sessionTypeOverride === 'tournament'}
                     onClick={() => setSessionTypeOverride('tournament')}
                   />
                 </div>
                 <p className="text-zinc-600 text-xs mt-2 leading-relaxed">
-                  All imported sessions will be tagged with this type. You can edit individual sessions
-                  afterward.
+                  Auto uses PBT variant / Poker Income Cash vs Tourneys sections when present.
                 </p>
               </div>
 
@@ -393,7 +479,15 @@ export default function PokerBankrollImportSheet({
                   </div>
                   <div className="space-y-1.5">
                     {toImport.slice(0, PREVIEW_LIMIT).map((s, i) => {
-                      const wl = s.end_amount - s.start_amount
+                      const wl = sessionProfit(s)
+                      const typeLabel =
+                        sessionTypeOverride === 'auto'
+                          ? s.session_type === 'tournament'
+                            ? 'Tourney'
+                            : 'Cash'
+                          : sessionTypeOverride === 'tournament'
+                            ? 'Tourney'
+                            : 'Cash'
                       return (
                         <div
                           key={i}
@@ -402,8 +496,12 @@ export default function PokerBankrollImportSheet({
                           <div className="min-w-0">
                             <span className="text-white text-sm font-medium truncate block">
                               {s.casino_name || 'Unknown location'}
+                              {s.tournament_name ? ` · ${s.tournament_name}` : ''}
                             </span>
-                            <span className="text-zinc-500 text-xs">{fmtDate(s.start_at)}</span>
+                            <span className="text-zinc-500 text-xs">
+                              {fmtDate(s.start_at)} · {typeLabel}
+                              {s.game_label ? ` · ${s.game_label}` : ''}
+                            </span>
                           </div>
                           <span
                             className={`shrink-0 font-bold text-sm tabular-nums ${

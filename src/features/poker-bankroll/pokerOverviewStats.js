@@ -162,27 +162,49 @@ function tourneyGameRowLabel(session) {
   return biStr ? `${biStr} ${name}` : name
 }
 
-/** Drop leading blind/stake noise so "2/5 NLH" classifies as game type, not stakes. */
-function stripLeadingStakes(name) {
-  return String(name || '')
+/**
+ * Drop leading buy-in / blind noise so game type remains.
+ * "$5000 No Limit Hold'em" → "No Limit Hold'em"; "2/5 NLH" → "NLH"
+ */
+function stripLeadingBuyInOrStakes(name) {
+  let s = String(name || '')
     .trim()
-    .replace(/^\$?\d+(?:\.\d+)?(?:\s*\/\s*\$?\d+(?:\.\d+)?){1,3}\s*/i, '')
-    .trim()
+    .replace(/,/g, '')
+  // $5k / 5k buy-in prefix
+  s = s.replace(/^\$?\d+(?:\.\d+)?\s*k\b\s*/i, '')
+  // $5000 / 5000 buy-in prefix (must leave game text after)
+  s = s.replace(/^\$?\d+(?:\.\d+)?\s+(?=[a-z])/i, '')
+  // Blind structures 2/5, $1/$2, 5/10/20
+  s = s.replace(/^\$?\d+(?:\.\d+)?(?:\s*\/\s*\$?\d+(?:\.\d+)?){1,3}\s*/i, '')
+  return s.trim()
 }
 
 function looksLikeStakesOnly(name) {
-  const s = String(name || '').trim()
+  const s = String(name || '')
+    .trim()
+    .replace(/,/g, '')
   if (!s) return true
-  return /^\$?\d+(?:\.\d+)?(?:\s*\/\s*\$?\d+(?:\.\d+)?){1,3}$/i.test(s)
+  return (
+    /^\$?\d+(?:\.\d+)?\s*k?$/i.test(s) ||
+    /^\$?\d+(?:\.\d+)?(?:\s*\/\s*\$?\d+(?:\.\d+)?){1,3}$/i.test(s)
+  )
 }
 
 /**
- * Group by game type only (NLH, PLO, PLO5, …) — never by blind size.
- * Used by the Games card and Cash Game → By game.
+ * Group by game type only (NLH, PLO, PLO5, …) — never by blinds or buy-in.
+ * Cash + tourney: uses game_variant and tournament_name.
  */
 function sessionGameFieldLabel(session) {
   const stored = pokerCashGameNameFromStored(session.game_variant)
-  const candidates = [stored, stripLeadingStakes(stored), session.game_variant, stripLeadingStakes(session.game_variant)]
+  const tourneyName = String(session.tournament_name || '').trim()
+  const candidates = [
+    stored,
+    stripLeadingBuyInOrStakes(stored),
+    session.game_variant,
+    stripLeadingBuyInOrStakes(session.game_variant),
+    tourneyName,
+    stripLeadingBuyInOrStakes(tourneyName),
+  ]
   for (const c of candidates) {
     if (!c || looksLikeStakesOnly(c)) continue
     const family = pokerGameFamilyLabel(c)

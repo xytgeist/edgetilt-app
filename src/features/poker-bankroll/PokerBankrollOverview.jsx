@@ -137,15 +137,10 @@ function filterSessionsByVenue(sessions, venue) {
   return (sessions || []).filter((s) => (s.venue_kind || 'live') === venue)
 }
 
-function VenueChips({ value, onChange, activeClass }) {
+function FilterChips({ value, onChange, options, activeClass }) {
   return (
-    <div className="mb-2 flex gap-2">
-      {[
-        { id: 'all', label: 'All' },
-        { id: 'live', label: 'Live' },
-        { id: 'online', label: 'Online' },
-        { id: 'club', label: 'Club' },
-      ].map((opt) => (
+    <div className="mb-2 flex flex-wrap gap-2">
+      {options.map((opt) => (
         <button
           key={opt.id}
           type="button"
@@ -158,6 +153,22 @@ function VenueChips({ value, onChange, activeClass }) {
         </button>
       ))}
     </div>
+  )
+}
+
+function VenueChips({ value, onChange, activeClass }) {
+  return (
+    <FilterChips
+      value={value}
+      onChange={onChange}
+      activeClass={activeClass}
+      options={[
+        { id: 'all', label: 'All' },
+        { id: 'live', label: 'Live' },
+        { id: 'online', label: 'Online' },
+        { id: 'club', label: 'Club' },
+      ]}
+    />
   )
 }
 
@@ -262,6 +273,8 @@ export default function PokerBankrollOverview({ sessions = [] }) {
   const [tourneyMode, setTourneyMode] = useState('tiers') // 'tiers' | 'games'
   const [cashVenue, setCashVenue] = useState('all') // 'all' | 'live' | 'online' | 'club'
   const [tourneyVenue, setTourneyVenue] = useState('all')
+  /** @type {'all' | 'cash' | 'tournament'} */
+  const [gamesType, setGamesType] = useState('all')
 
   const completed = useMemo(
     () => (sessions || []).filter((s) => s.status !== 'active'),
@@ -275,6 +288,11 @@ export default function PokerBankrollOverview({ sessions = [] }) {
     () => completed.filter((s) => s.session_type === 'tournament'),
     [completed],
   )
+  const gamesSessions = useMemo(() => {
+    if (gamesType === 'cash') return cashSessions
+    if (gamesType === 'tournament') return tourneySessions
+    return completed
+  }, [completed, cashSessions, tourneySessions, gamesType])
 
   const cashScoped = useMemo(
     () => buildPokerOverviewStats(filterSessionsByVenue(cashSessions, cashVenue)),
@@ -284,6 +302,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
     () => buildPokerOverviewStats(filterSessionsByVenue(tourneySessions, tourneyVenue)),
     [tourneySessions, tourneyVenue],
   )
+  const gamesScoped = useMemo(() => buildPokerOverviewStats(gamesSessions), [gamesSessions])
 
   const { cash, tourney, total } = stats
   const cashView = cashScoped.cash
@@ -355,7 +374,17 @@ export default function PokerBankrollOverview({ sessions = [] }) {
 
       <Card>
         <div className="mb-2 text-[15px] font-semibold text-zinc-200">Games</div>
-        <GameRows rows={stats.byGameField} firstColLabel="Games" />
+        <FilterChips
+          value={gamesType}
+          onChange={setGamesType}
+          activeClass="bg-emerald-600/30 text-emerald-300"
+          options={[
+            { id: 'all', label: 'All' },
+            { id: 'cash', label: 'Cash' },
+            { id: 'tournament', label: 'Tourney' },
+          ]}
+        />
+        <GameRows rows={gamesScoped.byGameField} firstColLabel="Games" />
       </Card>
 
       <SectionCard title="Cash Game" titleClass="text-cyan-400">

@@ -102,7 +102,9 @@ import {
   STALE_CHUNK_RELOAD_KEY,
   clearStaleChunkReloadGuard,
   importRoute,
+  isStaleChunkLoadError,
   lazyRoute,
+  reloadOnceForStaleChunk,
 } from '../../utils/lazyImportWithChunkReload.js'
 import { ChatCallProvider } from '../chat/calls/ChatCallProvider.jsx'
 
@@ -151,6 +153,12 @@ class TabErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
+    // Mid-deploy stale lazy chunk (Safari: e._result.default)... one hard reload, no FUMBLE.
+    if (!isStaffTabErrorTest(error) && isStaleChunkLoadError(error)) {
+      if (reloadOnceForStaleChunk(STALE_CHUNK_RELOAD_KEY)) {
+        return
+      }
+    }
     const prev = parseInt(sessionStorage.getItem(TAB_ERROR_COUNT_KEY) || '0', 10)
     sessionStorage.setItem(TAB_ERROR_COUNT_KEY, String(prev + 1))
     // Keep component stack for Report Issue (message alone is often a minified React code).

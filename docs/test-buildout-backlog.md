@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-29: **Stale lazy-chunk recovery:** Sentry `e._result.default` after deploy = React.lazy reading a dead chunk. `lazyImportWithChunkReload` validates default export; TabErrorBoundary auto-reloads once on that class of errors (plus richer crash report fields).
 - 2026-07-29: **Casino geo gaps (LV):** seed + migration **`20260730120000`** adds **Horseshoe Las Vegas** (+ Harrah's / Sahara / Strat / Palazzo / Hard Rock / Rio / Palms / South Point) with lat/lng; applied on **test** + **prod**.
 - 2026-07-29: **Poker bankroll follow-up → production:** frontend **`test` → `main`** @ **`6c055e17`** (full PBT/Poker Income CSV mapping + Overview Purge all sessions). No new SQL/Edge.
 - 2026-07-29: **Poker bankroll CSV import fields:** `bankrollCsvImport.js` multi-section Poker Income + full PBT mapping (blinds/limit/table/venue/currency/rebuy/addon/bounties/tourney meta); Auto cash vs tourney; sample PBT export 162 sessions parsed.

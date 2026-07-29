@@ -13,8 +13,30 @@ export function isStaleChunkLoadError(err) {
     msg.includes('importing a module script failed') ||
     msg.includes('failed to load module script') ||
     msg.includes('loading chunk') ||
-    msg.includes('chunkloaderror')
+    msg.includes('chunkloaderror') ||
+    // React.lazy after a mid-deploy stale chunk (Safari / Chrome wording)
+    msg.includes('_result.default') ||
+    msg.includes("reading 'default'") ||
+    msg.includes('reading "default"') ||
+    msg.includes('missing default export') ||
+    msg.includes('element type is invalid')
   )
+}
+
+/**
+ * One hard reload for a stale deploy. Returns true if reload was triggered.
+ * @param {string} [reloadKey]
+ */
+export function reloadOnceForStaleChunk(reloadKey = STALE_CHUNK_RELOAD_KEY) {
+  try {
+    if (typeof sessionStorage === 'undefined') return false
+    if (sessionStorage.getItem(reloadKey)) return false
+    sessionStorage.setItem(reloadKey, '1')
+    window.location.reload()
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -24,18 +46,21 @@ export function isStaleChunkLoadError(err) {
  * @param {string} [reloadKey]
  */
 export function importRoute(importFn, reloadKey = STALE_CHUNK_RELOAD_KEY) {
-  return importFn().catch((err) => {
-    if (
-      typeof sessionStorage !== 'undefined' &&
-      isStaleChunkLoadError(err) &&
-      !sessionStorage.getItem(reloadKey)
-    ) {
-      sessionStorage.setItem(reloadKey, '1')
-      window.location.reload()
-      return new Promise(() => {})
-    }
-    throw err
-  })
+  return importFn()
+    .then((mod) => {
+      // React.lazy requires `{ default: Component }`. A missing default usually means the
+      // browser got HTML (SPA fallback) or a mismatched chunk after deploy.
+      if (mod == null || typeof /** @type {{ default?: unknown }} */ (mod).default === 'undefined') {
+        throw new Error('Lazy route module missing default export')
+      }
+      return /** @type {{ default: import('react').ComponentType<any> }} */ (mod)
+    })
+    .catch((err) => {
+      if (isStaleChunkLoadError(err) && reloadOnceForStaleChunk(reloadKey)) {
+        return new Promise(() => {})
+      }
+      throw err
+    })
 }
 
 /** @deprecated Prefer importRoute — kept as alias for existing call sites. */
@@ -64,12 +89,8 @@ export function installStaleChunkReloadListener(reloadKey = STALE_CHUNK_RELOAD_K
 
   const maybeReload = (reason) => {
     if (!isStaleChunkLoadError(reason)) return
-    try {
-      if (sessionStorage.getItem(reloadKey)) return
-      sessionStorage.setItem(reloadKey, '1')
-      window.location.reload()
-    } catch {
-      /* ignore */
+    if (reloadOnceForStaleChunk(reloadKey)) {
+      // Prevent duplicate handlers from also treating this as fatal.
     }
   }
 

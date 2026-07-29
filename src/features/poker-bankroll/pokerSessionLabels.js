@@ -289,7 +289,9 @@ export function pokerSessionStakesLabel(session) {
 export function pokerSessionMetaLine(session) {
   const bits = []
   bits.push(session.session_type === 'tournament' ? 'Tourney' : 'Cash')
-  bits.push(session.venue_kind === 'online' ? 'Online' : 'Live')
+  bits.push(
+    session.venue_kind === 'online' ? 'Online' : session.venue_kind === 'club' ? 'Club' : 'Live',
+  )
   if (session.venue_name) bits.push(String(session.venue_name))
   return bits.join(' · ')
 }

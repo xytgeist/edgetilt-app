@@ -22,10 +22,27 @@ import { pokerSessionStakesLabel } from './pokerSessionLabels.js'
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, ArcElement, Tooltip, Filler)
 
 function venueSubtitle(sessions) {
-  const online = sessions.filter((s) => s.venue_kind === 'online').length
-  const live = sessions.length - online
-  const kind = online > live ? 'Online' : 'Casino'
-  return `${kind} · USD`
+  const counts = { live: 0, online: 0, club: 0 }
+  /** @type {Map<string, number>} */
+  const currencyCounts = new Map()
+  for (const s of sessions || []) {
+    const kind = s.venue_kind === 'online' ? 'online' : s.venue_kind === 'club' ? 'club' : 'live'
+    counts[kind] += 1
+    const cur = String(s.currency || 'USD').trim().toUpperCase() || 'USD'
+    currencyCounts.set(cur, (currencyCounts.get(cur) || 0) + 1)
+  }
+  let kind = 'Live'
+  if (counts.online >= counts.live && counts.online >= counts.club) kind = 'Online'
+  else if (counts.club >= counts.live && counts.club >= counts.online) kind = 'Club'
+  let currency = 'USD'
+  let best = 0
+  for (const [code, n] of currencyCounts) {
+    if (n > best) {
+      best = n
+      currency = code
+    }
+  }
+  return `${kind} · ${currency}`
 }
 
 function fmtRoi(pct) {

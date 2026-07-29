@@ -13,6 +13,11 @@ import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
 import {
+  POKER_CURRENCIES,
+  normalizePokerCurrency,
+  resolveCurrencyFromGeolocation,
+} from './pokerCurrencies.js'
+import {
   isMissingStableTableError,
   loadDealBankrollProfiles,
   loadMyStableDeals,
@@ -70,6 +75,7 @@ function emptyForm() {
     venue_kind: 'live',
     venue_name: '',
     online_site_pick: '',
+    currency: 'USD',
     date: localYmd(now),
     start_time: `${String(now.getHours()).padStart(2, '0')}:00`,
     duration_hours: '4',
@@ -141,11 +147,13 @@ export default function PokerBankrollTracker({
   const [endFinishPlace, setEndFinishPlace] = useState('')
   const [elapsed, setElapsed] = useState(0)
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
-  const [venueFilter, setVenueFilter] = useState('all') // all | live | online
+  const [venueFilter, setVenueFilter] = useState('all') // all | live | online | club
   const [nearbyCasinos, setNearbyCasinos] = useState([])
   const [gpsLoading, setGpsLoading] = useState(false)
   const [customVenues, setCustomVenues] = useState([])
   const casinoCoordCacheRef = useRef(null)
+  /** Tracks auto-default currency so geo resolve can overwrite until the user picks. */
+  const currencyAutoDefaultRef = useRef('USD')
   /** @type {'overview' | 'details' | 'locations' | 'charts'} */
   const [activeTab, setActiveTab] = useState('overview')
 
@@ -447,6 +455,18 @@ export default function PokerBankrollTracker({
     }
   }
 
+  function applyGeoCurrencyDefault() {
+    currencyAutoDefaultRef.current = 'USD'
+    void resolveCurrencyFromGeolocation(userId).then((code) => {
+      const next = normalizePokerCurrency(code)
+      setForm((f) => {
+        if (normalizePokerCurrency(f.currency) !== currencyAutoDefaultRef.current) return f
+        currencyAutoDefaultRef.current = next
+        return { ...f, currency: next }
+      })
+    })
+  }
+
   function openStartSession() {
     if (!canCreatePokerBankrollSession) {
       onRequireSubscribeForPokerBankroll?.()
@@ -462,6 +482,7 @@ export default function PokerBankrollTracker({
     setError('')
     setSheet('start')
     triggerTapHapticLight()
+    applyGeoCurrencyDefault()
     void fetchNearby((name) => setForm((f) => (f.venue_kind === 'live' && !f.venue_name ? { ...f, venue_name: name } : f)))
   }
 
@@ -478,6 +499,7 @@ export default function PokerBankrollTracker({
     setError('')
     setSheet('session')
     triggerTapHapticLight()
+    applyGeoCurrencyDefault()
     void fetchNearby((name) => setForm((f) => (f.venue_kind === 'live' && !f.venue_name ? { ...f, venue_name: name } : f)))
   }
 
@@ -610,6 +632,7 @@ export default function PokerBankrollTracker({
       deal_id: scopeDealIdForWrite(),
       venue_name: form.venue_name.trim() || null,
       venue_kind: form.venue_kind,
+      currency: normalizePokerCurrency(form.currency),
       session_type: form.session_type,
       status: 'active',
       start_at: now.toISOString(),
@@ -730,6 +753,7 @@ export default function PokerBankrollTracker({
       venue_kind: session.venue_kind || 'live',
       venue_name: session.venue_name || '',
       online_site_pick: pokerOnlineSiteSelectValue(session.venue_name || ''),
+      currency: normalizePokerCurrency(session.currency),
       date: localYmd(start),
       start_time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
       duration_hours: formatDurationHoursField(hrs || 0),
@@ -794,28 +818,39 @@ export default function PokerBankrollTracker({
           if (next.game_variant !== 'custom') next.game_custom_name = ''
         }
       }
-      if (key === 'venue_kind' && value === 'live' && prev.venue_kind !== 'live') {
+      if (key === 'venue_kind' && value !== prev.venue_kind) {
         next.online_site_pick = ''
-        next.venue_name = ''
-        void fetchNearby((name) => {
-          setForm((f) => (f.venue_kind === 'live' && !String(f.venue_name || '').trim() ? { ...f, venue_name: name } : f))
-        })
-      }
-      if (key === 'venue_kind' && value === 'online' && prev.venue_kind !== 'online') {
-        const n = parseInt(next.tables_count, 10)
-        if (!Number.isFinite(n) || n < 1) next.tables_count = '1'
-        const last = lastOnlineSiteFromSessions(completedSessions)
-        if (last) {
-          next.venue_name = last.venue_name
-          next.online_site_pick = last.online_site_pick
-        } else {
+        if (value === 'live') {
           next.venue_name = ''
-          next.online_site_pick = ''
+          void fetchNearby((name) => {
+            setForm((f) =>
+              f.venue_kind === 'live' && !String(f.venue_name || '').trim()
+                ? { ...f, venue_name: name }
+                : f,
+            )
+          })
+        } else if (value === 'club') {
+          next.venue_name = ''
+          setNearbyCasinos([])
+        } else if (value === 'online') {
+          const n = parseInt(next.tables_count, 10)
+          if (!Number.isFinite(n) || n < 1) next.tables_count = '1'
+          const last = lastOnlineSiteFromSessions(completedSessions)
+          if (last) {
+            next.venue_name = last.venue_name
+            next.online_site_pick = last.online_site_pick
+          } else {
+            next.venue_name = ''
+            next.online_site_pick = ''
+          }
         }
       }
       if (key === 'online_site_pick') {
         next.online_site_pick = value || ''
         next.venue_name = value ? pokerOnlineSiteLabelFromId(value) : ''
+      }
+      if (key === 'currency') {
+        next.currency = normalizePokerCurrency(value)
       }
       return next
     })
@@ -881,6 +916,7 @@ export default function PokerBankrollTracker({
         : scopeDealIdForWrite(),
       venue_name: form.venue_name.trim() || null,
       venue_kind: form.venue_kind,
+      currency: normalizePokerCurrency(form.currency),
       session_type: form.session_type,
       status: 'completed',
       start_at: startAt,
@@ -1325,6 +1361,7 @@ export default function PokerBankrollTracker({
                   { id: 'all', label: 'Any' },
                   { id: 'live', label: 'Live' },
                   { id: 'online', label: 'Online' },
+                  { id: 'club', label: 'Club' },
                 ].map((opt) => (
                   <FilterChip
                     key={`v-${opt.id}`}
@@ -2071,25 +2108,11 @@ function PokerSessionCoreFields({
         options={[
           { id: 'live', label: 'Live' },
           { id: 'online', label: 'Online' },
+          { id: 'club', label: 'Club' },
         ]}
       />
 
-      {form.venue_kind === 'live' ? (
-        <>
-          <FieldLabel>Location</FieldLabel>
-          <CasinoAutocomplete
-            value={form.venue_name}
-            onChange={(v) => setField('venue_name', v)}
-            supabaseClient={supabaseClient}
-            nearbyCasinos={nearbyCasinos}
-            customVenues={customVenues}
-            onSaveCustomVenue={onSaveCustomVenue}
-            gpsLoading={gpsLoading}
-            placeholder="Wynn, Aria, home game…"
-            className="mb-3"
-          />
-        </>
-      ) : (
+      {form.venue_kind === 'online' ? (
         <>
           <FieldLabel>Site</FieldLabel>
           <div className="mb-3">
@@ -2100,14 +2123,33 @@ function PokerSessionCoreFields({
             />
           </div>
         </>
+      ) : (
+        <>
+          <FieldLabel>{form.venue_kind === 'club' ? 'Club' : 'Location'}</FieldLabel>
+          <CasinoAutocomplete
+            value={form.venue_name}
+            onChange={(v) => setField('venue_name', v)}
+            supabaseClient={supabaseClient}
+            nearbyCasinos={form.venue_kind === 'live' ? nearbyCasinos : []}
+            customVenues={customVenues}
+            onSaveCustomVenue={onSaveCustomVenue}
+            gpsLoading={form.venue_kind === 'live' ? gpsLoading : false}
+            placeholder={
+              form.venue_kind === 'club' ? 'Club name…' : 'Wynn, Aria, home game…'
+            }
+            className="mb-3"
+          />
+        </>
       )}
 
       {isCash ? (
         <>
-          <GameTablesRow
+          <GameCurrencyTablesRow
             isOnline={form.venue_kind === 'online'}
             tablesCount={form.tables_count}
             onTablesCountChange={(v) => setField('tables_count', v)}
+            currency={form.currency}
+            onCurrencyChange={(v) => setField('currency', v)}
             game={
               <Select
                 value={form.cash_game_pick || POKER_CASH_NEW_GAME_ID}
@@ -2167,10 +2209,12 @@ function PokerSessionCoreFields({
         </>
       ) : (
         <>
-          <GameTablesRow
+          <GameCurrencyTablesRow
             isOnline={form.venue_kind === 'online'}
             tablesCount={form.tables_count}
             onTablesCountChange={(v) => setField('tables_count', v)}
+            currency={form.currency}
+            onCurrencyChange={(v) => setField('currency', v)}
             game={
               <Select
                 value={form.game_variant}
@@ -2292,8 +2336,15 @@ function Select({ value, onChange, options }) {
   )
 }
 
-/** Online: Game + Tables on one row. Live: Game full width. */
-function GameTablesRow({ isOnline, game, tablesCount, onTablesCountChange }) {
+/** Game + Currency on one row; online also shows Tables below. */
+function GameCurrencyTablesRow({
+  isOnline,
+  game,
+  currency,
+  onCurrencyChange,
+  tablesCount,
+  onTablesCountChange,
+}) {
   const tables = (
     <div className="flex h-12 items-center gap-1">
       <button
@@ -2327,25 +2378,28 @@ function GameTablesRow({ isOnline, game, tablesCount, onTablesCountChange }) {
     </div>
   )
 
-  if (isOnline) {
-    return (
+  return (
+    <>
       <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
         <div className="min-w-0">
           <FieldLabel>Game</FieldLabel>
           {game}
         </div>
         <div className="min-w-0">
+          <FieldLabel>Currency</FieldLabel>
+          <Select
+            value={normalizePokerCurrency(currency)}
+            onChange={onCurrencyChange}
+            options={POKER_CURRENCIES}
+          />
+        </div>
+      </div>
+      {isOnline ? (
+        <div className="mb-3 min-w-0">
           <FieldLabel>Tables</FieldLabel>
           {tables}
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      <FieldLabel>Game</FieldLabel>
-      <div className="mb-3">{game}</div>
+      ) : null}
     </>
   )
 }

@@ -131,11 +131,10 @@ function SectionCard({ title, titleClass, children }) {
   )
 }
 
-/** @param {'all' | 'live' | 'online'} venue */
+/** @param {'all' | 'live' | 'online' | 'club'} venue */
 function filterSessionsByVenue(sessions, venue) {
-  if (venue === 'online') return (sessions || []).filter((s) => s.venue_kind === 'online')
-  if (venue === 'live') return (sessions || []).filter((s) => s.venue_kind !== 'online')
-  return sessions || []
+  if (venue === 'all') return sessions || []
+  return (sessions || []).filter((s) => (s.venue_kind || 'live') === venue)
 }
 
 function VenueChips({ value, onChange, activeClass }) {
@@ -145,6 +144,7 @@ function VenueChips({ value, onChange, activeClass }) {
         { id: 'all', label: 'All' },
         { id: 'live', label: 'Live' },
         { id: 'online', label: 'Online' },
+        { id: 'club', label: 'Club' },
       ].map((opt) => (
         <button
           key={opt.id}
@@ -260,7 +260,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
   const stats = useMemo(() => buildPokerOverviewStats(sessions), [sessions])
   const [cashMode, setCashMode] = useState('tiers') // 'tiers' | 'games'
   const [tourneyMode, setTourneyMode] = useState('tiers') // 'tiers' | 'games'
-  const [cashVenue, setCashVenue] = useState('all') // 'all' | 'live' | 'online'
+  const [cashVenue, setCashVenue] = useState('all') // 'all' | 'live' | 'online' | 'club'
   const [tourneyVenue, setTourneyVenue] = useState('all')
 
   const completed = useMemo(

@@ -196,6 +196,7 @@ export default function PokerBankrollImportSheet({
       cash_out: s.end_amount,
       venue_name: s.casino_name ?? null,
       venue_kind: detectVenueKind(s.casino_name),
+      currency: 'USD',
       notes: s.notes ?? null,
       session_type: sessionTypeOverride,
       status: 'completed',

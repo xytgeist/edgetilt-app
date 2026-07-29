@@ -280,6 +280,7 @@ export default function PokerStableScreen({
               {incoming.map((deal) => (
                 <div
                   key={deal.id}
+                  data-elevated-card="accent"
                   className="rounded-2xl border border-cyan-500/25 bg-zinc-900/80 p-4"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -329,7 +330,10 @@ export default function PokerStableScreen({
           {loading ? (
             <p className="py-10 text-center text-sm text-zinc-500">Loading…</p>
           ) : asStaker.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-zinc-700 bg-zinc-900/40 px-5 py-10 text-center">
+            <div
+              data-elevated-card="surface"
+              className="rounded-3xl border border-dashed border-zinc-700 bg-zinc-900/40 px-5 py-10 text-center"
+            >
               <Users className="mx-auto mb-3 text-zinc-600" size={28} strokeWidth={1.5} />
               <p className="text-sm font-semibold text-zinc-300">No horses yet</p>
               <p className="mt-1 text-sm leading-relaxed text-zinc-500">
@@ -351,6 +355,7 @@ export default function PokerStableScreen({
                 return (
                   <div
                     key={deal.id}
+                    data-elevated-card="accent"
                     className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/40 to-zinc-900 p-4"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -425,6 +430,7 @@ export default function PokerStableScreen({
               {myActiveAsHorse.map((deal) => (
                 <div
                   key={deal.id}
+                  data-elevated-card="accent"
                   className="rounded-2xl border border-amber-500/25 bg-amber-950/30 px-4 py-3"
                 >
                   <div className="font-semibold text-amber-100">

@@ -28,6 +28,7 @@ function fmtNum(n, digits = 0) {
 function Card({ children, className = '' }) {
   return (
     <div
+      data-elevated-card="surface"
       className={`mb-3 rounded-2xl border border-zinc-700/50 bg-zinc-900/80 px-3.5 py-3 ${className}`}
     >
       {children}

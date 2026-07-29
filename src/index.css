@@ -2662,9 +2662,13 @@ html.light input:-webkit-autofill:focus {
   -webkit-text-fill-color: #18181b !important;
 }
 
-/* Slots / Poker hub tool rows — light only: soft lift like play-logbook empty cards */
-html.light [data-hub-tool-card] {
+/* Soft card lift — light only (hub tools + Poker Bankroll elevated cards) */
+html.light [data-hub-tool-card],
+html.light [data-elevated-card] {
   box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.12);
+}
+html.light [data-hub-tool-card],
+html.light [data-elevated-card='surface'] {
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 

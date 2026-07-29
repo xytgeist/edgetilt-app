@@ -1017,6 +1017,7 @@ export default function PokerBankrollTracker({
           <>
             {/* Bankroll hero — personal (zinc) vs On Stake (amber, hard to miss) */}
             <div
+              data-elevated-card={isOnStake ? 'accent' : 'surface'}
               className={
                 isOnStake
                   ? 'mb-4 rounded-3xl border-2 border-amber-400/70 bg-gradient-to-br from-amber-950 via-amber-900/80 to-zinc-950 p-6 shadow-[0_0_40px_-12px_rgba(251,191,36,0.55)]'
@@ -1118,6 +1119,7 @@ export default function PokerBankrollTracker({
             {activeSession ? (
               <div
                 data-session-card
+                data-elevated-card="accent"
                 className="mb-4 rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5"
               >
                 <div className="mb-3 flex items-center gap-2">
@@ -1227,7 +1229,10 @@ export default function PokerBankrollTracker({
             {loading ? (
               <p className="py-16 text-center text-sm text-zinc-500">Loading sessions…</p>
             ) : filtered.length === 0 ? (
-              <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center">
+              <div
+                data-elevated-card="surface"
+                className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
+              >
                 <p className="text-white font-semibold">No poker sessions yet</p>
                 <p className="mt-1 text-sm text-zinc-500">
                   {hasBankrollProfile
@@ -1250,6 +1255,7 @@ export default function PokerBankrollTracker({
                       <button
                         type="button"
                         onClick={() => openEdit(session)}
+                        data-elevated-card="surface"
                         className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
                       >
                         <span
@@ -1307,7 +1313,10 @@ export default function PokerBankrollTracker({
         ) : null}
 
         {activeTab === 'charts' ? (
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-12 text-center">
+          <div
+            data-elevated-card="surface"
+            className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-12 text-center"
+          >
             <p className="font-semibold text-white">Charts coming next</p>
             <p className="mt-1 text-sm text-zinc-500">
               Overview already covers Total, Sessions, Games, and Cash / Tourney breakdowns.
@@ -1901,7 +1910,10 @@ function PokerLocationsPanel({ sessions, loading }) {
   }
   if (!rows.length) {
     return (
-      <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center">
+      <div
+        data-elevated-card="surface"
+        className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
+      >
         <p className="font-semibold text-white">No locations yet</p>
         <p className="mt-1 text-sm text-zinc-500">Log sessions with a venue to see them here.</p>
       </div>
@@ -1912,6 +1924,7 @@ function PokerLocationsPanel({ sessions, loading }) {
       {rows.map((r) => (
         <li
           key={r.name}
+          data-elevated-card="surface"
           className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3"
         >
           <div className="min-w-0">

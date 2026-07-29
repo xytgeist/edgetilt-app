@@ -51,6 +51,14 @@ import {
 const POKER_FIELD_CLASS =
   'w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
 
+/** Online multi-tabling count for DB write; live always 1. */
+function tablesCountForPayload(form) {
+  if (form.venue_kind !== 'online') return 1
+  const n = parseInt(form.tables_count, 10)
+  if (!Number.isFinite(n) || n < 1) return 1
+  return Math.min(n, 24)
+}
+
 function emptyForm() {
   const now = new Date()
   return {
@@ -69,6 +77,7 @@ function emptyForm() {
     game_custom_name: '',
     limit_type: 'no_limit',
     table_size: 'full_ring',
+    tables_count: '1',
     small_blind: '',
     big_blind: '',
     third_blind: '',
@@ -614,6 +623,7 @@ export default function PokerBankrollTracker({
           ? form.limit_type || null
           : null,
       table_size: form.table_size || null,
+      tables_count: tablesCountForPayload(form),
       small_blind:
         form.session_type === 'cash' && form.small_blind !== ''
           ? parseFloat(form.small_blind)
@@ -729,6 +739,8 @@ export default function PokerBankrollTracker({
       game_custom_name: gamePick.game_custom_name,
       limit_type: session.limit_type || 'no_limit',
       table_size: session.table_size || 'full_ring',
+      tables_count:
+        session.tables_count != null ? String(session.tables_count) : '1',
       small_blind: session.small_blind != null ? String(session.small_blind) : '',
       big_blind: session.big_blind != null ? String(session.big_blind) : '',
       third_blind: session.third_blind != null ? String(session.third_blind) : '',
@@ -780,6 +792,10 @@ export default function PokerBankrollTracker({
         void fetchNearby((name) => {
           setForm((f) => (f.venue_kind === 'live' && !String(f.venue_name || '').trim() ? { ...f, venue_name: name } : f))
         })
+      }
+      if (key === 'venue_kind' && value === 'online') {
+        const n = parseInt(next.tables_count, 10)
+        if (!Number.isFinite(n) || n < 1) next.tables_count = '1'
       }
       return next
     })
@@ -863,6 +879,7 @@ export default function PokerBankrollTracker({
           ? form.limit_type || null
           : null,
       table_size: form.table_size || null,
+      tables_count: tablesCountForPayload(form),
       small_blind:
         form.session_type === 'cash' && form.small_blind !== ''
           ? parseFloat(form.small_blind)
@@ -1405,7 +1422,7 @@ export default function PokerBankrollTracker({
           >
             <p className="font-semibold text-white">Charts coming next</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Overview already covers Total, Sessions, Games, and Cash / Tourney breakdowns.
+              Overview already covers Total, Sessions, and Cash / Tourney breakdowns.
             </p>
           </div>
         ) : null}
@@ -2123,6 +2140,42 @@ function PokerSessionCoreFields({
           className={`mb-3 ${POKER_FIELD_CLASS}`}
         />
       )}
+
+      {form.venue_kind === 'online' ? (
+        <div className="mb-3">
+          <FieldLabel>Tables</FieldLabel>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+              onClick={() => {
+                const n = Math.max(1, (parseInt(form.tables_count, 10) || 1) - 1)
+                setField('tables_count', String(n))
+              }}
+            >
+              −
+            </button>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={form.tables_count}
+              onChange={(e) => setField('tables_count', e.target.value)}
+              className={`min-w-0 flex-1 text-center ${POKER_FIELD_CLASS}`}
+              aria-label="Number of tables"
+            />
+            <button
+              type="button"
+              className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+              onClick={() => {
+                const n = Math.min(24, (parseInt(form.tables_count, 10) || 1) + 1)
+                setField('tables_count', String(n))
+              }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {isCash ? (
         <>

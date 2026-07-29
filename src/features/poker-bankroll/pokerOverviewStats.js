@@ -1,5 +1,6 @@
 import {
   pokerSessionDurationHours,
+  pokerSessionHandsPerHour,
   pokerSessionTotalCost,
   pokerSessionWinLoss,
   pokerSessionBbWon,
@@ -26,6 +27,7 @@ function emptyBucket() {
   return {
     sessions: 0,
     hours: 0,
+    handsSum: 0,
     buyIn: 0,
     cashOut: 0,
     profit: 0,
@@ -35,6 +37,7 @@ function emptyBucket() {
     bounty: 0,
     bbWonSum: 0,
     bbHours: 0,
+    bbHandsSum: 0,
     winProfitSum: 0,
     winCount: 0,
     lossProfitSum: 0,
@@ -50,6 +53,7 @@ function addSession(bucket, session) {
   const wl = pokerSessionWinLoss(session)
   if (wl == null) return
   const hrs = pokerSessionDurationHours(session)
+  const hands = hrs >= 0.02 ? hrs * pokerSessionHandsPerHour(session) : 0
   const buyIn = pokerSessionTotalCost(session)
   const cashOut = Number(session.cash_out) || 0
   const rebuys = Number(session.reentries) || 0
@@ -58,6 +62,7 @@ function addSession(bucket, session) {
 
   bucket.sessions += 1
   bucket.hours += hrs
+  bucket.handsSum += hands
   bucket.buyIn += buyIn
   bucket.cashOut += cashOut + bounty
   bucket.profit += wl
@@ -78,6 +83,7 @@ function addSession(bucket, session) {
     if (bbWon != null && hrs >= 0.02) {
       bucket.bbWonSum += bbWon
       bucket.bbHours += hrs
+      bucket.bbHandsSum += hands
     }
   }
 
@@ -107,7 +113,8 @@ function finalize(bucket) {
     avgRebuys: sessions > 0 ? bucket.rebuys / sessions : null,
     rebuyPct: sessions > 0 ? (bucket.sessionsWithRebuy / sessions) * 100 : null,
     bbPerHour: bucket.bbHours >= 0.02 ? bucket.bbWonSum / bucket.bbHours : null,
-    bbPer100: bucket.bbHours >= 0.02 ? (bucket.bbWonSum / bucket.bbHours) * (100 / 25) : null,
+    bbPer100: bucket.bbHandsSum > 0 ? (bucket.bbWonSum / bucket.bbHandsSum) * 100 : null,
+    dollarsPer100: bucket.handsSum > 0 ? (bucket.profit / bucket.handsSum) * 100 : null,
     avgWinnings: bucket.winCount > 0 ? bucket.winProfitSum / bucket.winCount : null,
     avgLosses: bucket.lossCount > 0 ? bucket.lossProfitSum / bucket.lossCount : null,
     itmPct: sessions > 0 ? (bucket.itm / sessions) * 100 : null,
@@ -220,9 +227,6 @@ export function buildPokerOverviewStats(completedSessions) {
     (a, b) => TOURNEY_TIER_ORDER.indexOf(a.label) - TOURNEY_TIER_ORDER.indexOf(b.label),
   )
   const tourneyByGame = groupRows(tourney, tourneyGameRowLabel)
-  const allByGame = groupRows(sessions, (s) =>
-    s.session_type === 'tournament' ? tourneyGameRowLabel(s) : cashGameRowLabel(s),
-  )
 
   const now = new Date()
   const curY = now.getFullYear()
@@ -256,7 +260,6 @@ export function buildPokerOverviewStats(completedSessions) {
     cashByGame,
     tourneyByTier,
     tourneyByGame,
-    allByGame,
     currentMonth,
     lastMonth,
     trendMonths,

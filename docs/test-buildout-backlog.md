@@ -945,6 +945,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ## Update log
 
 - 2026-07-29: **Poker bankroll Overview tab:** OVERVIEW / SESSION / LOCATIONS / CHARTS; Overview = Total · Sessions · Games + collapsible Cash Game / Tournament (stakes / by-game dropdowns), month compare, 3-month trend; FAB start session.
+- 2026-07-29: **Poker bankroll online tables_count:** **`tables_count`** (`20260730020000`, applied on **test**); online form **Tables** stepper (1–24); hands/hour × tables for BB/100 and $/100. Live stays 1.
 - 2026-07-28: **Poker bankroll tourney re-buy / add-on $:** columns **`rebuy_amount`** / **`addon_amount`** (`20260730010000`, applied on **test**); invested cost = buy-in + re-buys + add-ons for P/L + Overview buy-in totals; form fields on tourney log/start; live **Re-enter** / **Add-on** buttons. Cash live re-buy still folds into **`buy_in`**. Advanced **Re-entries** count unchanged.
 - 2026-07-28: **Poker bankroll Session as landing:** default tab **SESSION** (first in strip); removed round + FAB (start/log stays on Session); larger bankroll hero card (`text-5xl` + helper footer).
 - 2026-07-28: **Poker bankroll hero stats:** Profit / Hourly / Hours / Win rate live inside the Session bankroll card (lifetime, not history filters); removed separate stat tiles.

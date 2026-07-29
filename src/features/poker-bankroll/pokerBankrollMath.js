@@ -59,6 +59,39 @@ export function pokerSessionHourly(session) {
 }
 
 /**
+ * Concurrent tables for hand-rate scaling (online multi-tabling). Live always 1.
+ * @param {{ venue_kind?: string | null, tables_count?: number | string | null }} session
+ */
+export function pokerSessionTablesCount(session) {
+  if (session?.venue_kind !== 'online') return 1
+  const n = Math.floor(Number(session.tables_count))
+  if (!Number.isFinite(n) || n < 1) return 1
+  return Math.min(n, 24)
+}
+
+/**
+ * Assumed hands/hour for rate metrics.
+ * Live 25; online 6-max (and HU) 75; online full-ring 60.
+ * Online multi-tabling multiplies by tables_count.
+ * @param {{ venue_kind?: string | null, table_size?: string | null, tables_count?: number | string | null }} session
+ */
+export function pokerSessionHandsPerHour(session) {
+  const tables = pokerSessionTablesCount(session)
+  if (session?.venue_kind === 'online') {
+    const perTable = session.table_size === 'full_ring' ? 60 : 75
+    return perTable * tables
+  }
+  return 25
+}
+
+/** @param {object} session */
+export function pokerSessionEstimatedHands(session) {
+  const hrs = pokerSessionDurationHours(session)
+  if (hrs < 0.02) return null
+  return hrs * pokerSessionHandsPerHour(session)
+}
+
+/**
  * Big blinds won for cash games when blinds are known.
  * @param {object} session
  */
@@ -77,6 +110,22 @@ export function pokerSessionBbPerHour(session) {
   if (bbWon == null) return null
   const hrs = pokerSessionDurationHours(session)
   return hrs >= 0.02 ? bbWon / hrs : null
+}
+
+/** @param {object} session */
+export function pokerSessionBbPer100(session) {
+  const bbWon = pokerSessionBbWon(session)
+  const hands = pokerSessionEstimatedHands(session)
+  if (bbWon == null || hands == null || hands <= 0) return null
+  return (bbWon / hands) * 100
+}
+
+/** Profit per 100 hands using assumed hand rates. */
+export function pokerSessionDollarsPer100(session) {
+  const wl = pokerSessionWinLoss(session)
+  const hands = pokerSessionEstimatedHands(session)
+  if (wl == null || hands == null || hands <= 0) return null
+  return (wl / hands) * 100
 }
 
 /** YYYY-MM-DD in device timezone. */

@@ -224,7 +224,7 @@ function TrendCard({ months, agg }) {
 }
 
 /**
- * Poker bankroll DETAILS tab (Total / Sessions / Games + Cash/Tourney sections).
+ * Poker bankroll DETAILS tab (Total / Sessions + Cash/Tourney sections).
  */
 export default function PokerBankrollOverview({ sessions = [] }) {
   const stats = useMemo(() => buildPokerOverviewStats(sessions), [sessions])
@@ -271,6 +271,13 @@ export default function PokerBankrollOverview({ sessions = [] }) {
         <MatrixRow label="Sessions" c={cash.sessions} t={tourney.sessions} tot={total.sessions} format="hours" />
         <MatrixRow label="Hours" c={cash.hours} t={tourney.hours} tot={total.hours} format="hours" />
         <MatrixRow label="$/h" c={cash.hourly} t={tourney.hourly} tot={total.hourly} tone />
+        <MatrixRow
+          label="$/100"
+          c={cash.dollarsPer100}
+          t={tourney.dollarsPer100}
+          tot={total.dollarsPer100}
+          tone
+        />
         <MatrixRow label="ROI" c={cash.roi} t={tourney.roi} tot={total.roi} format="pct" tone />
         <MatrixRow label="Won" c={cash.wonPct} t={tourney.wonPct} tot={total.wonPct} format="pct" tone />
         <MatrixRow label="Avg Buy-In" c={cash.avgBuyIn} t={tourney.avgBuyIn} tot={total.avgBuyIn} />
@@ -288,12 +295,6 @@ export default function PokerBankrollOverview({ sessions = [] }) {
           tot={total.avgRebuys}
           format="dec1"
         />
-      </Card>
-
-      {/* Games */}
-      <Card>
-        <div className="mb-2 text-[15px] font-semibold text-zinc-200">Games</div>
-        <GameRows rows={stats.allByGame.slice(0, 12)} />
       </Card>
 
       <SectionCard title="Cash Game" titleClass="text-cyan-400">
@@ -329,6 +330,11 @@ export default function PokerBankrollOverview({ sessions = [] }) {
             value={cash.bbPerHour == null ? '-' : fmtNum(cash.bbPerHour, 2)}
             tone
           />
+          <StatPairRow
+            label="BB/100"
+            value={cash.bbPer100 == null ? '-' : fmtNum(cash.bbPer100, 2)}
+            tone
+          />
           <StatPairRow label="Avg Winnings" value={fmtPokerOverview$(cash.avgWinnings)} tone />
           <StatPairRow label="Avg Losses" value={fmtPokerOverview$(cash.avgLosses)} tone />
         </div>
@@ -352,7 +358,7 @@ export default function PokerBankrollOverview({ sessions = [] }) {
               tourneyMode === 'games' ? 'bg-amber-500/20 text-amber-200' : 'bg-zinc-800 text-zinc-500'
             }`}
           >
-            By game
+            By event
           </button>
         </div>
         <GameRows rows={tourneyMode === 'tiers' ? stats.tourneyByTier : stats.tourneyByGame} />

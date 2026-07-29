@@ -72,6 +72,20 @@ import {
 const POKER_FIELD_CLASS =
   'w-full h-12 min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
 
+/** Shared poker sheet chrome (content-sized unless tall class is added). */
+const POKER_SHEET_PANEL_CLASS = `${APP_MODAL_SHEET_PANEL_CLASS} !max-h-[min(96dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`
+
+/** Extra height only for cash New game… / edit details (Game picker needs room). */
+const POKER_SHEET_PANEL_TALL_CLASS =
+  'min-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-1.25rem))]'
+
+/** @param {object} form */
+function pokerSessionSheetNeedsTall(form, { editing = false } = {}) {
+  if (form?.session_type !== 'cash') return false
+  if (editing) return true
+  return form.cash_game_pick === POKER_CASH_NEW_GAME_ID
+}
+
 /** Online multi-tabling count for DB write; live always 1. */
 function tablesCountForPayload(form) {
   if (form.venue_kind !== 'online') return 1
@@ -1604,7 +1618,11 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-bankroll-sheet
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} !max-h-[min(96dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] min-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-1.25rem))] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            className={`${POKER_SHEET_PANEL_CLASS} ${
+              pokerSessionSheetNeedsTall(form, { editing: Boolean(editingId) })
+                ? POKER_SHEET_PANEL_TALL_CLASS
+                : ''
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -1838,7 +1856,9 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-bankroll-sheet
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} !max-h-[min(96dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] min-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-1.25rem))] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            className={`${POKER_SHEET_PANEL_CLASS} ${
+              pokerSessionSheetNeedsTall(form) ? POKER_SHEET_PANEL_TALL_CLASS : ''
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -1886,7 +1906,7 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-bankroll-sheet
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} !max-h-[min(96dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] min-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-1.25rem))] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            className={POKER_SHEET_PANEL_CLASS}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -1949,7 +1969,7 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-bankroll-sheet
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} !max-h-[min(96dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] min-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-1.25rem))] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            className={POKER_SHEET_PANEL_CLASS}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

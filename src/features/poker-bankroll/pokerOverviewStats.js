@@ -1,5 +1,6 @@
 import {
   pokerSessionDurationHours,
+  pokerSessionTotalCost,
   pokerSessionWinLoss,
   pokerSessionBbWon,
 } from './pokerBankrollMath.js'
@@ -49,10 +50,11 @@ function addSession(bucket, session) {
   const wl = pokerSessionWinLoss(session)
   if (wl == null) return
   const hrs = pokerSessionDurationHours(session)
-  const buyIn = Number(session.buy_in) || 0
+  const buyIn = pokerSessionTotalCost(session)
   const cashOut = Number(session.cash_out) || 0
   const rebuys = Number(session.reentries) || 0
   const bounty = Number(session.bounty_winnings) || 0
+  const rebuyDollars = Number(session.rebuy_amount) || 0
 
   bucket.sessions += 1
   bucket.hours += hrs
@@ -68,7 +70,7 @@ function addSession(bucket, session) {
     bucket.lossCount += 1
   }
   bucket.rebuys += rebuys
-  if (rebuys > 0) bucket.sessionsWithRebuy += 1
+  if (rebuys > 0 || rebuyDollars > 0) bucket.sessionsWithRebuy += 1
   bucket.bounty += bounty
 
   if (session.session_type === 'cash') {

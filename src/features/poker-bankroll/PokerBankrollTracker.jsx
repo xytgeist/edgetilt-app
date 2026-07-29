@@ -24,6 +24,7 @@ import {
   pokerSessionBbPerHour,
   pokerSessionDurationHours,
   pokerSessionHourly,
+  pokerSessionTotalCost,
   pokerSessionWinLoss,
 } from './pokerBankrollMath.js'
 import {
@@ -57,6 +58,8 @@ function emptyForm() {
     start_time: `${String(now.getHours()).padStart(2, '0')}:00`,
     duration_hours: '4',
     buy_in: '',
+    rebuy_amount: '',
+    addon_amount: '',
     cash_out: '',
     cash_game_pick: POKER_CASH_NEW_GAME_ID,
     game_variant: 'custom',
@@ -108,6 +111,8 @@ export default function PokerBankrollTracker({
   /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import'} */
   const [sheet, setSheet] = useState(null)
   const [rebuyAmount, setRebuyAmount] = useState('')
+  /** @type {'rebuy' | 'addon'} */
+  const [rebuyKind, setRebuyKind] = useState('rebuy')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editingPrevWl, setEditingPrevWl] = useState(0)
@@ -470,8 +475,9 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
-  function openRebuy() {
+  function openRebuy(kind = 'rebuy') {
     if (!activeSession) return
+    setRebuyKind(kind === 'addon' ? 'addon' : 'rebuy')
     setRebuyAmount('')
     setError('')
     setSheet('rebuy')
@@ -481,25 +487,40 @@ export default function PokerBankrollTracker({
   async function saveRebuy() {
     if (!supabaseClient || !userId || !activeSession) return
     const add = parseFloat(rebuyAmount)
+    const isAddon = rebuyKind === 'addon'
+    const isTourney = activeSession.session_type === 'tournament'
     if (!Number.isFinite(add) || add <= 0) {
       setError(
-        activeSession.session_type === 'tournament'
-          ? 'Enter a valid re-entry amount.'
-          : 'Enter a valid re-buy amount.',
+        isAddon
+          ? 'Enter a valid add-on amount.'
+          : isTourney
+            ? 'Enter a valid re-entry amount.'
+            : 'Enter a valid re-buy amount.',
       )
       return
     }
-    const nextBuyIn = (Number(activeSession.buy_in) || 0) + add
-    const nextReentries = (Number(activeSession.reentries) || 0) + 1
+    /** @type {Record<string, number>} */
+    let patch
+    if (isTourney && isAddon) {
+      patch = { addon_amount: (Number(activeSession.addon_amount) || 0) + add }
+    } else if (isTourney) {
+      patch = {
+        rebuy_amount: (Number(activeSession.rebuy_amount) || 0) + add,
+        reentries: (Number(activeSession.reentries) || 0) + 1,
+      }
+    } else {
+      // Cash: keep folding re-buys into buy_in (bring-in total).
+      patch = {
+        buy_in: (Number(activeSession.buy_in) || 0) + add,
+        reentries: (Number(activeSession.reentries) || 0) + 1,
+      }
+    }
     setSaving(true)
     setError('')
     try {
       const { error: uErr } = await supabaseClient
         .from('poker_bankroll_sessions')
-        .update({
-          buy_in: nextBuyIn,
-          reentries: nextReentries,
-        })
+        .update(patch)
         .eq('id', activeSession.id)
         .eq('user_id', userId)
         .eq('status', 'active')
@@ -508,7 +529,7 @@ export default function PokerBankrollTracker({
       triggerTapHapticLight()
       await loadData()
     } catch (e) {
-      setError(e?.message || 'Could not add re-buy.')
+      setError(e?.message || (isAddon ? 'Could not add add-on.' : 'Could not add re-buy.'))
     } finally {
       setSaving(false)
     }
@@ -532,6 +553,24 @@ export default function PokerBankrollTracker({
           : 'Enter a valid bring-in amount.',
       )
       return
+    }
+    const rebuyAmt =
+      form.session_type === 'tournament' && form.rebuy_amount !== ''
+        ? parseFloat(form.rebuy_amount)
+        : 0
+    const addonAmt =
+      form.session_type === 'tournament' && form.addon_amount !== ''
+        ? parseFloat(form.addon_amount)
+        : 0
+    if (form.session_type === 'tournament') {
+      if (form.rebuy_amount !== '' && (!Number.isFinite(rebuyAmt) || rebuyAmt < 0)) {
+        setError('Enter a valid re-buy amount.')
+        return
+      }
+      if (form.addon_amount !== '' && (!Number.isFinite(addonAmt) || addonAmt < 0)) {
+        setError('Enter a valid add-on amount.')
+        return
+      }
     }
     if (
       (form.session_type === 'cash' || form.game_variant === 'custom') &&
@@ -559,6 +598,8 @@ export default function PokerBankrollTracker({
       start_at: now.toISOString(),
       end_at: null,
       buy_in: buyIn,
+      rebuy_amount: form.session_type === 'tournament' ? rebuyAmt || 0 : 0,
+      addon_amount: form.session_type === 'tournament' ? addonAmt || 0 : 0,
       cash_out: null,
       game_variant: pokerGameVariantToStored(
         form.session_type,
@@ -623,7 +664,7 @@ export default function PokerBankrollTracker({
       activeSession.session_type === 'tournament' && endBounties !== ''
         ? parseFloat(endBounties) || 0
         : 0
-    const wl = cashOut + bounties - (Number(activeSession.buy_in) || 0)
+    const wl = cashOut + bounties - pokerSessionTotalCost(activeSession)
     setSaving(true)
     setError('')
     try {
@@ -674,6 +715,8 @@ export default function PokerBankrollTracker({
       start_time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
       duration_hours: formatDurationHoursField(hrs || 0),
       buy_in: session.buy_in != null ? String(session.buy_in) : '',
+      rebuy_amount: session.rebuy_amount != null ? String(session.rebuy_amount) : '',
+      addon_amount: session.addon_amount != null ? String(session.addon_amount) : '',
       cash_out: session.cash_out != null ? String(session.cash_out) : '',
       cash_game_pick:
         sessionType === 'cash' && gamePick.game_custom_name
@@ -747,6 +790,24 @@ export default function PokerBankrollTracker({
       setError('Enter a valid buy-in / bring-in amount.')
       return
     }
+    const rebuyAmt =
+      form.session_type === 'tournament' && form.rebuy_amount !== ''
+        ? parseFloat(form.rebuy_amount)
+        : 0
+    const addonAmt =
+      form.session_type === 'tournament' && form.addon_amount !== ''
+        ? parseFloat(form.addon_amount)
+        : 0
+    if (form.session_type === 'tournament') {
+      if (form.rebuy_amount !== '' && (!Number.isFinite(rebuyAmt) || rebuyAmt < 0)) {
+        setError('Enter a valid re-buy amount.')
+        return
+      }
+      if (form.addon_amount !== '' && (!Number.isFinite(addonAmt) || addonAmt < 0)) {
+        setError('Enter a valid add-on amount.')
+        return
+      }
+    }
     if (!Number.isFinite(cashOut)) {
       setError('Enter cash out (what you walked with).')
       return
@@ -786,6 +847,8 @@ export default function PokerBankrollTracker({
       start_at: startAt,
       end_at: endAt,
       buy_in: buyIn,
+      rebuy_amount: form.session_type === 'tournament' ? rebuyAmt || 0 : 0,
+      addon_amount: form.session_type === 'tournament' ? addonAmt || 0 : 0,
       cash_out: cashOut,
       game_variant: pokerGameVariantToStored(
         form.session_type,
@@ -836,12 +899,16 @@ export default function PokerBankrollTracker({
     }
     if (payload.deal_id === undefined) delete payload.deal_id
 
-    const newWl =
-      cashOut +
-      (form.session_type === 'tournament' && form.bounty_winnings !== ''
-        ? parseFloat(form.bounty_winnings) || 0
-        : 0) -
-      buyIn
+    const newWl = pokerSessionWinLoss({
+      buy_in: buyIn,
+      rebuy_amount: payload.rebuy_amount,
+      addon_amount: payload.addon_amount,
+      cash_out: cashOut,
+      bounty_winnings:
+        form.session_type === 'tournament' && form.bounty_winnings !== ''
+          ? parseFloat(form.bounty_winnings) || 0
+          : 0,
+    })
 
     setSaving(true)
     setError('')
@@ -900,7 +967,15 @@ export default function PokerBankrollTracker({
     const cashOut = parseFloat(form.cash_out)
     const bounties = parseFloat(form.bounty_winnings) || 0
     if (!Number.isFinite(buyIn) || !Number.isFinite(cashOut)) return null
-    return cashOut + bounties - buyIn
+    const rebuy =
+      form.session_type === 'tournament' && form.rebuy_amount !== ''
+        ? parseFloat(form.rebuy_amount) || 0
+        : 0
+    const addon =
+      form.session_type === 'tournament' && form.addon_amount !== ''
+        ? parseFloat(form.addon_amount) || 0
+        : 0
+    return cashOut + bounties - (buyIn + rebuy + addon)
   })()
 
   return (
@@ -1137,12 +1212,7 @@ export default function PokerBankrollTracker({
                       {pokerSessionMetaLine(activeSession)}
                     </div>
                     <div className="mt-0.5 text-sm text-zinc-400">
-                      In for {fmtPoker$(activeSession.buy_in)}
-                      {Number(activeSession.reentries) > 0
-                        ? ` · ${Number(activeSession.reentries)} re-buy${
-                            Number(activeSession.reentries) === 1 ? '' : 's'
-                          }`
-                        : ''}
+                      {pokerSessionInForLine(activeSession)}
                     </div>
                     <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
                       {fmtPokerDuration(elapsed)}
@@ -1151,11 +1221,20 @@ export default function PokerBankrollTracker({
                   <div className="flex shrink-0 flex-col gap-2">
                     <button
                       type="button"
-                      onClick={openRebuy}
+                      onClick={() => openRebuy('rebuy')}
                       className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-4 py-2.5 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
                     >
-                      Re-buy
+                      {activeSession.session_type === 'tournament' ? 'Re-enter' : 'Re-buy'}
                     </button>
+                    {activeSession.session_type === 'tournament' ? (
+                      <button
+                        type="button"
+                        onClick={() => openRebuy('addon')}
+                        className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-4 py-2.5 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                      >
+                        Add-on
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={openEndSession}
@@ -1671,7 +1750,11 @@ export default function PokerBankrollTracker({
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="text-lg font-bold text-white">
-                {activeSession.session_type === 'tournament' ? 'Re-enter' : 'Re-buy'}
+                {rebuyKind === 'addon'
+                  ? 'Add-on'
+                  : activeSession.session_type === 'tournament'
+                    ? 'Re-enter'
+                    : 'Re-buy'}
               </div>
               <button
                 type="button"
@@ -1685,12 +1768,16 @@ export default function PokerBankrollTracker({
             <p className="mb-3 text-sm text-zinc-400">
               Adds to your total in for this session. Currently in for{' '}
               <span className="font-semibold text-zinc-200">
-                {fmtPoker$(activeSession.buy_in)}
+                {fmtPoker$(pokerSessionTotalCost(activeSession))}
               </span>
               .
             </p>
             <FieldLabel>
-              {activeSession.session_type === 'tournament' ? 'Re-entry amount' : 'Re-buy amount'}
+              {rebuyKind === 'addon'
+                ? 'Add-on amount'
+                : activeSession.session_type === 'tournament'
+                  ? 'Re-entry amount'
+                  : 'Re-buy amount'}
             </FieldLabel>
             <div className="mb-4">
               <MoneyInput value={rebuyAmount} onChange={setRebuyAmount} />
@@ -1704,9 +1791,11 @@ export default function PokerBankrollTracker({
             >
               {saving
                 ? 'Saving…'
-                : activeSession.session_type === 'tournament'
-                  ? 'Add re-entry'
-                  : 'Add re-buy'}
+                : rebuyKind === 'addon'
+                  ? 'Add add-on'
+                  : activeSession.session_type === 'tournament'
+                    ? 'Add re-entry'
+                    : 'Add re-buy'}
             </button>
           </div>
         </div>
@@ -1741,12 +1830,7 @@ export default function PokerBankrollTracker({
                     {pokerSessionStakesLabel(activeSession)}
                   </div>
                   <div className="mt-0.5 text-xs text-zinc-400">
-                    In for {fmtPoker$(activeSession.buy_in)}
-                    {Number(activeSession.reentries) > 0
-                      ? ` · ${Number(activeSession.reentries)} re-buy${
-                          Number(activeSession.reentries) === 1 ? '' : 's'
-                        }`
-                      : ''}
+                    {pokerSessionInForLine(activeSession)}
                   </div>
                 </div>
                 <div className="shrink-0 text-lg font-black tabular-nums text-emerald-300">
@@ -1789,7 +1873,7 @@ export default function PokerBankrollTracker({
                 activeSession.session_type === 'tournament' && endBounties !== ''
                   ? parseFloat(endBounties) || 0
                   : 0
-              const wl = cashOut + bounties - (Number(activeSession.buy_in) || 0)
+              const wl = cashOut + bounties - pokerSessionTotalCost(activeSession)
               return (
                 <p
                   className={`mb-3 text-center text-sm font-semibold tabular-nums ${
@@ -1879,6 +1963,7 @@ function FilterChip({ active, onClick, label }) {
     <button
       type="button"
       onClick={onClick}
+      data-poker-filter-chip={active ? 'on' : 'off'}
       className={`rounded-full px-3 py-1.5 text-xs font-semibold touch-manipulation ${
         active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
       }`}
@@ -2143,8 +2228,36 @@ function PokerSessionCoreFields({
       <div className="mb-3">
         <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
       </div>
+      {form.session_type === 'tournament' ? (
+        <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+          <div className="min-w-0">
+            <FieldLabel>Re-buy</FieldLabel>
+            <MoneyInput value={form.rebuy_amount} onChange={(v) => setField('rebuy_amount', v)} />
+          </div>
+          <div className="min-w-0">
+            <FieldLabel>Add-on</FieldLabel>
+            <MoneyInput value={form.addon_amount} onChange={(v) => setField('addon_amount', v)} />
+          </div>
+        </div>
+      ) : null}
     </>
   )
+}
+
+/** Live / end-sheet “In for …” line including re-buys and add-ons. */
+function pokerSessionInForLine(session) {
+  const total = pokerSessionTotalCost(session)
+  const bits = [`In for ${fmtPoker$(total)}`]
+  const reentries = Number(session.reentries) || 0
+  const rebuy = Number(session.rebuy_amount) || 0
+  const addon = Number(session.addon_amount) || 0
+  if (reentries > 0) {
+    bits.push(`${reentries} re-buy${reentries === 1 ? '' : 's'}`)
+  } else if (rebuy > 0) {
+    bits.push(`re-buys ${fmtPoker$(rebuy)}`)
+  }
+  if (addon > 0) bits.push(`add-ons ${fmtPoker$(addon)}`)
+  return bits.join(' · ')
 }
 
 function FieldLabel({ children }) {

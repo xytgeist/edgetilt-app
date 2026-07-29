@@ -30,13 +30,24 @@ export function pokerSessionDurationHours(session) {
   return Math.max(0, (end - start) / 3_600_000)
 }
 
-/** @param {{ buy_in?: number | string, cash_out?: number | string | null, bounty_winnings?: number | string | null }} session */
+/**
+ * Total invested / “in for” (entry + re-buys + add-ons).
+ * @param {{ buy_in?: number | string, rebuy_amount?: number | string | null, addon_amount?: number | string | null }} session
+ */
+export function pokerSessionTotalCost(session) {
+  const buyIn = Number(session?.buy_in) || 0
+  const rebuy = Number(session?.rebuy_amount) || 0
+  const addon = Number(session?.addon_amount) || 0
+  return buyIn + rebuy + addon
+}
+
+/** @param {{ buy_in?: number | string, rebuy_amount?: number | string | null, addon_amount?: number | string | null, cash_out?: number | string | null, bounty_winnings?: number | string | null }} session */
 export function pokerSessionWinLoss(session) {
   if (session?.cash_out == null || session.cash_out === '') return null
-  const buyIn = Number(session.buy_in) || 0
+  const invested = pokerSessionTotalCost(session)
   const cashOut = Number(session.cash_out) || 0
   const bounties = Number(session.bounty_winnings) || 0
-  return cashOut + bounties - buyIn
+  return cashOut + bounties - invested
 }
 
 /** @param {object} session */

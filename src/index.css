@@ -4507,6 +4507,22 @@ html.light [data-poker-bankroll] .text-red-300 {
   color: #b91c1c !important;
 }
 
+/* Live session secondary actions (Re-buy / Add-on) — light only; dark keeps emerald-950 fill */
+html.light [data-poker-bankroll] .bg-emerald-950\/80 {
+  background-color: #ffffff !important;
+  border-color: #34d399 !important;
+  color: #047857 !important;
+}
+html.light [data-poker-bankroll] .bg-emerald-950\/80:active {
+  background-color: #d1fae5 !important;
+}
+
+/* History filter chips — light only; selected reads as cyan (dark keeps zinc-700) */
+html.light [data-poker-bankroll] [data-poker-filter-chip='on'] {
+  background-color: #0891b2 !important;
+  color: #ffffff !important;
+}
+
 /* End session W/L preview pill - light mode */
 html.light [data-wl-preview="win"] {
   background-color: #ecfdf5 !important;

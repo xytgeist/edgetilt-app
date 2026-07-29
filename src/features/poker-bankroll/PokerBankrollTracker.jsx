@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
@@ -1026,15 +1025,6 @@ export default function PokerBankrollTracker({
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div data-poker-bankroll>
-        <SlotsToolPageHeader
-          center={
-            <div className="text-center">
-              <div className="text-white text-lg font-black tracking-tight">Poker Bankroll</div>
-              <div className="text-zinc-500 text-[11px]">Cash · Tourneys · Live · Online</div>
-            </div>
-          }
-        />
-
         <FreemiumUsageCounter
           remaining={pokerBankrollSessionsRemaining}
           limit={FREE_POKER_BANKROLL_SESSION_LIMIT}
@@ -1173,8 +1163,8 @@ export default function PokerBankrollTracker({
                         <BankrollSparkline
                           series={bankrollSparkSeries}
                           className="mb-1 h-10 w-24 shrink-0 sm:w-28"
-                          upStroke={isOnStake ? '#fbbf24' : '#34d399'}
-                          downStroke={isOnStake ? '#f59e0b' : '#fb7185'}
+                          upClass={isOnStake ? 'text-amber-400' : 'text-emerald-400'}
+                          downClass={isOnStake ? 'text-amber-500' : 'text-rose-400'}
                         />
                       ) : null}
                     </div>
@@ -1960,8 +1950,8 @@ function BankrollStat({ label, value, tone = 'neutral' }) {
 function BankrollSparkline({
   series,
   className = '',
-  upStroke = '#34d399',
-  downStroke = '#fb7185',
+  upClass = 'text-emerald-400',
+  downClass = 'text-rose-400',
 }) {
   if (!series || series.length < 2) return null
   const min = Math.min(...series)
@@ -1978,17 +1968,16 @@ function BankrollSparkline({
     })
     .join(' ')
   const up = series[series.length - 1] >= series[0]
-  const stroke = up ? upStroke : downStroke
   return (
     <svg
       viewBox={`0 0 ${w} ${h}`}
-      className={className}
+      className={`${className} ${up ? upClass : downClass}`}
       preserveAspectRatio="none"
       aria-hidden
     >
       <polyline
         fill="none"
-        stroke={stroke}
+        stroke="currentColor"
         strokeWidth="2.25"
         strokeLinecap="round"
         strokeLinejoin="round"

@@ -4490,13 +4490,22 @@ html.light [data-poker-bankroll-sheet] .text-rose-400 {
   color: #e11d48 !important;
 }
 
-/* Poker Bankroll main screen P/L tones — light only (dark keeps bright emerald/rose) */
-html.light [data-poker-bankroll] .text-emerald-400,
-html.light [data-poker-bankroll] .text-emerald-300 {
-  color: #047857 !important;
+/*
+ * Poker Bankroll light palette (dark unchanged):
+ *   chrome = same blue as remapped bg-cyan-600 tabs (#2563eb)
+ *   money  = one emerald (#059669) for P/L, Start Session, sparkline, cash chip
+ */
+html.light [data-poker-bankroll] {
+  --poker-chrome: #2563eb;
+  --poker-money: #059669;
+  --poker-money-soft: rgba(5, 150, 105, 0.14);
+  --poker-money-press: #047857;
 }
+
+html.light [data-poker-bankroll] .text-emerald-400,
+html.light [data-poker-bankroll] .text-emerald-300,
 html.light [data-poker-bankroll] .text-emerald-200 {
-  color: #059669 !important;
+  color: var(--poker-money) !important;
 }
 html.light [data-poker-bankroll] .text-rose-400,
 html.light [data-poker-bankroll] .text-rose-300 {
@@ -4507,19 +4516,31 @@ html.light [data-poker-bankroll] .text-red-300 {
   color: #b91c1c !important;
 }
 
+html.light [data-poker-bankroll] .bg-emerald-600,
+html.light [data-poker-bankroll] .bg-emerald-500 {
+  background-color: var(--poker-money) !important;
+}
+html.light [data-poker-bankroll] .active\:bg-emerald-500:active,
+html.light [data-poker-bankroll] .active\:bg-emerald-600:active {
+  background-color: var(--poker-money-press) !important;
+}
+html.light [data-poker-bankroll] .bg-emerald-500\/15 {
+  background-color: var(--poker-money-soft) !important;
+}
+
 /* Live session secondary actions (Re-buy / Add-on) — light only; dark keeps emerald-950 fill */
 html.light [data-poker-bankroll] .bg-emerald-950\/80 {
   background-color: #ffffff !important;
-  border-color: #34d399 !important;
-  color: #047857 !important;
+  border-color: var(--poker-money) !important;
+  color: var(--poker-money) !important;
 }
 html.light [data-poker-bankroll] .bg-emerald-950\/80:active {
   background-color: #d1fae5 !important;
 }
 
-/* History filter chips — light only; selected reads as cyan (dark keeps zinc-700) */
+/* History filter chips — match OVERVIEW tab blue exactly */
 html.light [data-poker-bankroll] [data-poker-filter-chip='on'] {
-  background-color: #0891b2 !important;
+  background-color: var(--poker-chrome) !important;
   color: #ffffff !important;
 }
 

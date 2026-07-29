@@ -2662,16 +2662,22 @@ html.light input:-webkit-autofill:focus {
   -webkit-text-fill-color: #18181b !important;
 }
 
-/* Slots glass icon tiles */
+/* Slots / Poker hub glass icon tiles */
 .slots-icon-tile {
+  color: var(--tc);
   background: color-mix(in srgb, var(--tc) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--tc) 25%, transparent);
   box-shadow: 0 0 18px color-mix(in srgb, var(--tc) 13%, transparent), inset 0 1px 0 rgba(255,255,255,0.08);
 }
+/* Light only: deeper glyph + richer chip so pastel --tc is not washed on white cards */
 html.light .slots-icon-tile {
-  background: color-mix(in srgb, var(--tc) 22%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tc) 45%, transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--tc) 22%, transparent), inset 0 1px 0 rgba(255,255,255,0.15);
+  color: color-mix(in srgb, var(--tc) 58%, #09090b 42%);
+  background: color-mix(in srgb, var(--tc) 32%, #ffffff 68%);
+  border: 1px solid color-mix(in srgb, var(--tc) 62%, #09090b 18%);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tc) 20%, transparent), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+html.light .slots-icon-tile svg {
+  color: inherit !important;
 }
 
 /* Auth modal card */

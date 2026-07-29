@@ -60,7 +60,7 @@ export default function PokerScreen({
                 className="slots-icon-tile grid h-12 w-12 shrink-0 place-items-center rounded-2xl backdrop-blur-md"
                 style={{ '--tc': color }}
               >
-                <Icon size={22} strokeWidth={1.5} style={{ color }} />
+                <Icon size={22} strokeWidth={1.5} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-lg font-bold text-white">{tool.label}</span>

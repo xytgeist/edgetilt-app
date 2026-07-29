@@ -9,6 +9,7 @@ import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
+import PokerBankrollChartsTab from './PokerBankrollChartsTab.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import PokerCashGamePicker from './PokerCashGamePicker.jsx'
@@ -1556,15 +1557,11 @@ export default function PokerBankrollTracker({
         ) : null}
 
         {activeTab === 'charts' ? (
-          <div
-            data-elevated-card="surface"
-            className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-12 text-center"
-          >
-            <p className="font-semibold text-white">Charts coming next</p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Overview already covers Total, Sessions, Games, and Cash / Tourney breakdowns.
-            </p>
-          </div>
+          loading ? (
+            <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
+          ) : (
+            <PokerBankrollChartsTab sessions={completedSessions} />
+          )
         ) : null}
         </div>
       </ScrollLinkedEdgeTitleBarShell>

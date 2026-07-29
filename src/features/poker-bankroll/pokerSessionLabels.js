@@ -118,6 +118,68 @@ export const POKER_TABLE_SIZES = [
   { id: 'heads_up', label: 'HU' },
 ]
 
+/** Free-text Site when the room isn’t in the known list. */
+export const POKER_ONLINE_OTHER_SITE_ID = 'other'
+
+/** Known online card rooms for the Site dropdown (stored as label in venue_name). */
+export const POKER_ONLINE_SITES = [
+  { id: 'pokerstars', label: 'PokerStars' },
+  { id: 'ggpoker', label: 'GGPoker' },
+  { id: 'wsop', label: 'WSOP.com' },
+  { id: 'clubwpt', label: 'ClubWPT' },
+  { id: 'wpt-global', label: 'WPT Global' },
+  { id: 'acr', label: 'ACR' },
+  { id: 'ignition', label: 'Ignition' },
+  { id: 'bovada', label: 'Bovada' },
+  { id: 'betonline', label: 'BetOnline' },
+  { id: '888poker', label: '888poker' },
+  { id: 'partypoker', label: 'partypoker' },
+  { id: 'unibet', label: 'Unibet' },
+  { id: 'winamax', label: 'Winamax' },
+  { id: 'betmgm', label: 'BetMGM Poker' },
+  { id: 'draftkings', label: 'DraftKings Poker' },
+  { id: 'fanduel', label: 'FanDuel Poker' },
+  { id: 'coinpoker', label: 'CoinPoker' },
+  { id: 'clubgg', label: 'ClubGG' },
+  { id: 'pppoker', label: 'PPPoker' },
+  { id: 'pokerbros', label: 'PokerBROS' },
+  { id: 'upoker', label: 'Upoker' },
+  { id: 'kkpoker', label: 'KKPoker' },
+  { id: 'xpoker', label: 'X-Poker' },
+  { id: 'global-poker', label: 'Global Poker' },
+  { id: 'tigergaming', label: 'TigerGaming' },
+  { id: 'pokerking', label: 'PokerKing' },
+  { id: 'blackchip', label: 'BlackChip Poker' },
+  { id: 'juicystakes', label: 'Juicy Stakes' },
+  { id: 'intertops', label: 'Intertops' },
+  { id: 'luxon', label: 'Luxon Poker' },
+  { id: 'revolution', label: 'Revolution' },
+  { id: 'swc', label: 'SwC Poker' },
+]
+
+/** @returns {{ id: string, label: string }[]} */
+export function pokerOnlineSiteSelectOptions() {
+  return [
+    { id: '', label: 'Select site…' },
+    ...POKER_ONLINE_SITES,
+    { id: POKER_ONLINE_OTHER_SITE_ID, label: 'Other…' },
+  ]
+}
+
+/** Map stored venue_name → Select value. */
+export function pokerOnlineSiteSelectValue(venueName) {
+  const raw = String(venueName || '').trim()
+  if (!raw) return ''
+  const hit = POKER_ONLINE_SITES.find((s) => s.label.toLowerCase() === raw.toLowerCase())
+  return hit ? hit.id : POKER_ONLINE_OTHER_SITE_ID
+}
+
+/** @param {string} siteId */
+export function pokerOnlineSiteLabelFromId(siteId) {
+  const hit = POKER_ONLINE_SITES.find((s) => s.id === siteId)
+  return hit?.label || ''
+}
+
 /** @param {'cash' | 'tournament' | string | null | undefined} sessionType */
 export function pokerGameOptionsForSessionType(sessionType) {
   return sessionType === 'tournament' ? POKER_TOURNAMENT_GAME_VARIANTS : POKER_CASH_GAME_TYPE_OPTIONS

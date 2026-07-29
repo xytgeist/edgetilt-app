@@ -33,6 +33,7 @@ import {
 import {
   POKER_CASH_NEW_GAME_ID,
   POKER_LIMIT_TYPES,
+  POKER_ONLINE_OTHER_SITE_ID,
   POKER_TABLE_SIZES,
   applyCashGamePreset,
   buildCashGamePresetsFromSessions,
@@ -43,6 +44,9 @@ import {
   pokerGameOptionsForSessionType,
   pokerGamePickFromStored,
   pokerGameVariantToStored,
+  pokerOnlineSiteLabelFromId,
+  pokerOnlineSiteSelectOptions,
+  pokerOnlineSiteSelectValue,
   pokerSessionMetaLine,
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
@@ -65,6 +69,7 @@ function emptyForm() {
     session_type: 'cash',
     venue_kind: 'live',
     venue_name: '',
+    online_site_pick: '',
     date: localYmd(now),
     start_time: `${String(now.getHours()).padStart(2, '0')}:00`,
     duration_hours: '4',
@@ -724,6 +729,7 @@ export default function PokerBankrollTracker({
       session_type: sessionType,
       venue_kind: session.venue_kind || 'live',
       venue_name: session.venue_name || '',
+      online_site_pick: pokerOnlineSiteSelectValue(session.venue_name || ''),
       date: localYmd(start),
       start_time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
       duration_hours: formatDurationHoursField(hrs || 0),
@@ -796,6 +802,24 @@ export default function PokerBankrollTracker({
       if (key === 'venue_kind' && value === 'online') {
         const n = parseInt(next.tables_count, 10)
         if (!Number.isFinite(n) || n < 1) next.tables_count = '1'
+        if (!next.online_site_pick && next.venue_name) {
+          next.online_site_pick = pokerOnlineSiteSelectValue(next.venue_name)
+        }
+      }
+      if (key === 'online_site_pick') {
+        if (!value) {
+          next.online_site_pick = ''
+          next.venue_name = ''
+        } else if (value === POKER_ONLINE_OTHER_SITE_ID) {
+          next.online_site_pick = POKER_ONLINE_OTHER_SITE_ID
+          const wasKnown =
+            pokerOnlineSiteSelectValue(prev.venue_name) !== POKER_ONLINE_OTHER_SITE_ID &&
+            String(prev.venue_name || '').trim() !== ''
+          if (wasKnown) next.venue_name = ''
+        } else {
+          next.online_site_pick = value
+          next.venue_name = pokerOnlineSiteLabelFromId(value)
+        }
       }
       return next
     })
@@ -2132,13 +2156,24 @@ function PokerSessionCoreFields({
           className="mb-3"
         />
       ) : (
-        <input
-          type="text"
-          value={form.venue_name}
-          onChange={(e) => setField('venue_name', e.target.value)}
-          placeholder="PokerStars, ClubWPT…"
-          className={`mb-3 ${POKER_FIELD_CLASS}`}
-        />
+        <>
+          <div className="mb-3">
+            <Select
+              value={form.online_site_pick || ''}
+              onChange={(id) => setField('online_site_pick', id)}
+              options={pokerOnlineSiteSelectOptions()}
+            />
+          </div>
+          {form.online_site_pick === POKER_ONLINE_OTHER_SITE_ID ? (
+            <input
+              type="text"
+              value={form.venue_name}
+              onChange={(e) => setField('venue_name', e.target.value)}
+              placeholder="Site name…"
+              className={`mb-3 ${POKER_FIELD_CLASS}`}
+            />
+          ) : null}
+        </>
       )}
 
       {form.venue_kind === 'online' ? (

@@ -122,7 +122,7 @@ function GameRows({ rows }) {
   )
 }
 
-function AccordionSection({ title, titleClass, open, onToggle, columnHeads, children }) {
+function AccordionSection({ title, titleClass, open, onToggle, children }) {
   return (
     <Card>
       <button
@@ -134,13 +134,6 @@ function AccordionSection({ title, titleClass, open, onToggle, columnHeads, chil
           ▾
         </span>
         <span className={`flex-1 text-left text-[15px] font-semibold ${titleClass}`}>{title}</span>
-        {columnHeads ? (
-          <div className="grid w-[55%] grid-cols-3 gap-1">
-            <ColHead className="text-right">Hours</ColHead>
-            <ColHead className="text-right">$/h</ColHead>
-            <ColHead className="text-right">Total</ColHead>
-          </div>
-        ) : null}
       </button>
       {open ? <div className="mt-1">{children}</div> : null}
     </Card>
@@ -320,7 +313,6 @@ export default function PokerBankrollOverview({ sessions = [] }) {
         titleClass="text-cyan-400"
         open={cashOpen}
         onToggle={() => setCashOpen((v) => !v)}
-        columnHeads
       >
         <div className="mb-2 flex gap-2">
           <button
@@ -365,7 +357,6 @@ export default function PokerBankrollOverview({ sessions = [] }) {
         titleClass="text-amber-300"
         open={tourneyOpen}
         onToggle={() => setTourneyOpen((v) => !v)}
-        columnHeads
       >
         <div className="mb-2 flex gap-2">
           <button

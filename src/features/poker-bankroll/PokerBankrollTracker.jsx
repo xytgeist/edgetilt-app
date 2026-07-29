@@ -3,6 +3,8 @@ import { Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
+import DateWheelPicker from '../../components/DateWheelPicker.jsx'
+import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
@@ -1497,20 +1499,17 @@ export default function PokerBankrollTracker({
             <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
               <div className="min-w-0">
                 <FieldLabel>Date</FieldLabel>
-                <input
-                  type="date"
+                <DateWheelPicker
                   value={form.date}
-                  onChange={(e) => setField('date', e.target.value)}
-                  className={`${POKER_FIELD_CLASS} min-w-0 max-w-full`}
+                  onChange={(v) => setField('date', v)}
+                  showYear
                 />
               </div>
               <div className="min-w-0">
                 <FieldLabel>Start time</FieldLabel>
-                <input
-                  type="time"
+                <TimeWheelPicker
                   value={form.start_time}
-                  onChange={(e) => setField('start_time', e.target.value)}
-                  className={`${POKER_FIELD_CLASS} min-w-0 max-w-full`}
+                  onChange={(v) => setField('start_time', v)}
                 />
               </div>
             </div>

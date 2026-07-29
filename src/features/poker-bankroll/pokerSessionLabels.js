@@ -24,8 +24,8 @@ export function buildCashGamePresetsFromSessions(sessions) {
       limit_type: s.limit_type || 'no_limit',
       small_blind: s.small_blind != null ? String(s.small_blind) : '',
       big_blind: s.big_blind != null ? String(s.big_blind) : '',
-      third_blind: s.third_blind != null ? String(s.third_blind) : '0',
-      ante: s.ante != null ? String(s.ante) : '0',
+      third_blind: s.third_blind != null ? String(s.third_blind) : '',
+      ante: s.ante != null ? String(s.ante) : '',
     })
   }
   return [...seen.values()]
@@ -50,8 +50,8 @@ export function applyCashGamePreset(form, preset) {
       limit_type: 'no_limit',
       small_blind: '',
       big_blind: '',
-      third_blind: '0',
-      ante: '0',
+      third_blind: '',
+      ante: '',
     }
   }
   return {
@@ -62,8 +62,8 @@ export function applyCashGamePreset(form, preset) {
     limit_type: preset.limit_type || 'no_limit',
     small_blind: preset.small_blind ?? '',
     big_blind: preset.big_blind ?? '',
-    third_blind: preset.third_blind ?? '0',
-    ante: preset.ante ?? '0',
+    third_blind: preset.third_blind ?? '',
+    ante: preset.ante ?? '',
   }
 }
 

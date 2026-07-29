@@ -36,6 +36,10 @@ import {
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
 
+/** Match CasinoAutocomplete / Location field text styling. */
+const POKER_FIELD_CLASS =
+  'w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
+
 function emptyForm() {
   const now = new Date()
   return {
@@ -54,8 +58,8 @@ function emptyForm() {
     table_size: 'full_ring',
     small_blind: '',
     big_blind: '',
-    third_blind: '0',
-    ante: '0',
+    third_blind: '',
+    ante: '',
     tournament_name: '',
     field_size: '',
     start_stack: '',
@@ -516,8 +520,8 @@ export default function PokerBankrollTracker({
       table_size: session.table_size || 'full_ring',
       small_blind: session.small_blind != null ? String(session.small_blind) : '',
       big_blind: session.big_blind != null ? String(session.big_blind) : '',
-      third_blind: session.third_blind != null ? String(session.third_blind) : '0',
-      ante: session.ante != null ? String(session.ante) : '0',
+      third_blind: session.third_blind != null ? String(session.third_blind) : '',
+      ante: session.ante != null ? String(session.ante) : '',
       tournament_name: session.tournament_name || '',
       field_size: session.field_size != null ? String(session.field_size) : '',
       start_stack: session.start_stack != null ? String(session.start_stack) : '',
@@ -1063,7 +1067,7 @@ export default function PokerBankrollTracker({
                   type="date"
                   value={form.date}
                   onChange={(e) => setField('date', e.target.value)}
-                  className="w-full min-h-12 min-w-0 max-w-full rounded-2xl bg-zinc-800 px-3 font-semibold text-white outline-none"
+                  className={`${POKER_FIELD_CLASS} min-w-0 max-w-full`}
                 />
               </div>
               <div className="min-w-0">
@@ -1072,7 +1076,7 @@ export default function PokerBankrollTracker({
                   type="time"
                   value={form.start_time}
                   onChange={(e) => setField('start_time', e.target.value)}
-                  className="w-full min-h-12 min-w-0 max-w-full rounded-2xl bg-zinc-800 px-3 font-semibold text-white outline-none"
+                  className={`${POKER_FIELD_CLASS} min-w-0 max-w-full`}
                 />
               </div>
             </div>
@@ -1096,7 +1100,7 @@ export default function PokerBankrollTracker({
                 inputMode="decimal"
                 value={form.duration_hours}
                 onChange={(e) => setField('duration_hours', e.target.value)}
-                className="min-h-12 flex-1 rounded-2xl bg-zinc-800 px-4 text-center font-semibold text-white outline-none"
+                className={`${POKER_FIELD_CLASS} flex-1 text-center`}
               />
               <button
                 type="button"
@@ -1158,7 +1162,7 @@ export default function PokerBankrollTracker({
                         value={form.tournament_name}
                         onChange={(e) => setField('tournament_name', e.target.value)}
                         placeholder="Daily $200, WSOP…"
-                        className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none"
+                        className={POKER_FIELD_CLASS}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -1193,7 +1197,7 @@ export default function PokerBankrollTracker({
                     value={form.notes}
                     onChange={(e) => setField('notes', e.target.value)}
                     rows={3}
-                    className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none"
+                    className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40"
                     placeholder="Table notes, tilt, etc."
                   />
                 </div>
@@ -1333,7 +1337,7 @@ export default function PokerBankrollTracker({
               value={endNotes}
               onChange={(e) => setEndNotes(e.target.value)}
               rows={3}
-              className="mb-3 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none"
+              className="mb-3 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40"
               placeholder="Optional"
             />
 
@@ -1483,7 +1487,7 @@ function PokerSessionCoreFields({
           value={form.venue_name}
           onChange={(e) => setField('venue_name', e.target.value)}
           placeholder="PokerStars, ClubWPT…"
-          className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+          className={`mb-3 ${POKER_FIELD_CLASS}`}
         />
       )}
 
@@ -1514,7 +1518,7 @@ function PokerSessionCoreFields({
                   value={form.game_custom_name}
                   onChange={(e) => setField('game_custom_name', e.target.value)}
                   placeholder="e.g. 2/5 NLH"
-                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className={POKER_FIELD_CLASS}
                 />
               </div>
               <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
@@ -1573,7 +1577,7 @@ function PokerSessionCoreFields({
                   value={form.game_custom_name}
                   onChange={(e) => setField('game_custom_name', e.target.value)}
                   placeholder="e.g. Dealers Choice, Stud…"
-                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+                  className={POKER_FIELD_CLASS}
                 />
               </div>
             </>
@@ -1630,7 +1634,7 @@ function Select({ value, onChange, options }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full min-h-12 rounded-2xl bg-zinc-800 px-3 font-semibold text-white outline-none"
+      className={POKER_FIELD_CLASS}
     >
       {options.map((opt) => (
         <option key={opt.id} value={opt.id}>
@@ -1648,7 +1652,7 @@ function NumInput({ value, onChange }) {
       inputMode="numeric"
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ''))}
-      className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none"
+      className={POKER_FIELD_CLASS}
     />
   )
 }
@@ -1656,11 +1660,15 @@ function NumInput({ value, onChange }) {
 function MoneyInput({ value, onChange, colorize = false }) {
   const numVal = parseFloat(value)
   const hasValue = value !== '' && value !== '-'
-  const textColor =
-    colorize && hasValue ? (numVal >= 0 ? 'text-emerald-300' : 'text-red-300') : 'text-white'
+  const textClass =
+    colorize && hasValue
+      ? numVal >= 0
+        ? 'text-emerald-300'
+        : 'text-red-300'
+      : 'text-white'
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-semibold text-zinc-400">
+      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
         $
       </span>
       <input
@@ -1668,9 +1676,7 @@ function MoneyInput({ value, onChange, colorize = false }) {
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
-        className={`w-full min-h-12 rounded-2xl bg-zinc-800 pl-8 pr-4 font-semibold outline-none focus:ring-2 focus:ring-emerald-500/40 ${
-          hasValue ? textColor : 'text-white'
-        }`}
+        className={`w-full min-h-12 rounded-2xl bg-zinc-800 pl-8 pr-4 outline-none focus:ring-2 focus:ring-cyan-500/40 ${textClass}`}
       />
     </div>
   )

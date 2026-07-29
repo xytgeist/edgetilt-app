@@ -356,18 +356,31 @@ function DetailStat({ label, value, colored, positive }) {
   )
 }
 
-function TrendFilterChip({ active, onClick, label }) {
+/** Full-width segmented control (same chrome as Personal / On Stake). */
+function TrendSegmentedControl({ options, value, onChange, ariaLabel }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-poker-filter-chip={active ? 'on' : 'off'}
-      className={`rounded-full px-3 py-1.5 text-xs font-semibold touch-manipulation ${
-        active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
-      }`}
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="flex gap-1 rounded-2xl bg-zinc-900 p-1"
     >
-      {label}
-    </button>
+      {options.map((opt) => {
+        const active = value === opt.id
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            data-poker-filter-chip={active ? 'on' : 'off'}
+            className={`min-w-0 flex-1 rounded-xl py-2 text-xs font-bold tracking-wide touch-manipulation transition-colors ${
+              active ? 'bg-zinc-700 text-white' : 'text-zinc-500 active:text-zinc-300'
+            }`}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -781,24 +794,19 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
   return (
     <>
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-1.5">
-          {TYPE_FILTERS.map((opt) => (
-            <TrendFilterChip
-              key={opt.id}
-              active={typeFilter === opt.id}
-              onClick={() => selectTypeFilter(opt.id)}
-              label={opt.label}
-            />
-          ))}
-          <span className="mx-1 w-px self-stretch bg-zinc-800" />
-          {VENUE_FILTERS.map((opt) => (
-            <TrendFilterChip
-              key={`v-${opt.id}`}
-              active={venueFilter === opt.id}
-              onClick={() => selectVenueFilter(opt.id)}
-              label={opt.label}
-            />
-          ))}
+        <div className="space-y-2">
+          <TrendSegmentedControl
+            ariaLabel="Session type"
+            options={TYPE_FILTERS}
+            value={typeFilter}
+            onChange={selectTypeFilter}
+          />
+          <TrendSegmentedControl
+            ariaLabel="Venue"
+            options={VENUE_FILTERS}
+            value={venueFilter}
+            onChange={selectVenueFilter}
+          />
         </div>
 
         {scopedSessions.length === 0 ? (

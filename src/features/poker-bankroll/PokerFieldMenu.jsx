@@ -7,21 +7,12 @@ const TRIGGER_CLASS =
   'relative box-border w-full h-12 min-h-12 rounded-2xl bg-zinc-800 px-4 pr-10 text-left text-white outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation'
 
 const GAP_PX = 6
-const MAX_PANEL_HEIGHT_PX = 256
+/** Tall enough to show most Game defaults; still capped by viewport space below/above trigger. */
+const MAX_PANEL_HEIGHT_PX = 420
 const BACKDROP_Z = Z_APP_ALERT - 1
 
-const IS_IOS =
-  typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
-
-function preferSheetPicker() {
-  if (typeof window === 'undefined') return false
-  if (IS_IOS) return true
-  return window.matchMedia?.('(pointer: coarse)')?.matches === true
-}
-
 /**
- * Freeze the session sheet / overlay so iOS cannot rubber-band or Reachability-yank it
- * while a field menu is open.
+ * Freeze the session sheet / overlay while a field menu is open.
  * @returns {() => void} restore
  */
 function lockPokerSheetBehind(triggerEl) {
@@ -69,8 +60,7 @@ function lockPokerSheetBehind(triggerEl) {
 }
 
 /**
- * Non-passive edge lock on a scrollable list node (attach to the element, not document).
- * Stops iOS from chaining pull-down at top into Reachability / sheet bounce.
+ * Element-level edge lock so pull-down at list top is less likely to yank the page.
  * @param {HTMLElement | null} list
  * @returns {() => void}
  */
@@ -109,7 +99,6 @@ function attachListEdgeScrollLock(list) {
 }
 
 /**
- * Non-passive absorb on backdrop (element-level; Safari often ignores document listeners).
  * @param {HTMLElement | null} el
  * @returns {() => void}
  */
@@ -125,8 +114,7 @@ function attachBackdropTouchLock(el) {
 }
 
 /**
- * Custom field menu for Game / Currency.
- * Desktop: anchored popover. iOS / coarse pointer: bottom sheet (avoids Reachability yank).
+ * Anchored popover field menu for Game / Currency (portaled, field-width).
  *
  * @param {object} props
  * @param {string} props.value
@@ -146,7 +134,6 @@ export default function PokerFieldMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [panelPos, setPanelPos] = useState(null)
-  const [useSheet, setUseSheet] = useState(() => preferSheetPicker())
   const wrapperRef = useRef(null)
   const triggerRef = useRef(null)
   const panelRef = useRef(null)
@@ -169,23 +156,19 @@ export default function PokerFieldMenu({
 
   const close = useCallback(() => setOpen(false), [])
 
-  useEffect(() => {
-    const mq = window.matchMedia?.('(pointer: coarse)')
-    const sync = () => setUseSheet(preferSheetPicker())
-    sync()
-    mq?.addEventListener?.('change', sync)
-    return () => mq?.removeEventListener?.('change', sync)
-  }, [])
-
   const updatePanelPos = useCallback(() => {
     const trigger = triggerRef.current
     if (!trigger) return
     const r = trigger.getBoundingClientRect()
     const spaceBelow = window.innerHeight - r.bottom - GAP_PX
     const spaceAbove = r.top - GAP_PX
-    const preferAbove = spaceBelow < 160 && spaceAbove > spaceBelow
+    const preferAbove = spaceBelow < 200 && spaceAbove > spaceBelow
     const available = preferAbove ? spaceAbove : spaceBelow
-    const maxHeight = Math.max(120, Math.min(MAX_PANEL_HEIGHT_PX, available))
+    const maxCap =
+      typeof window !== 'undefined'
+        ? Math.min(MAX_PANEL_HEIGHT_PX, Math.floor(window.innerHeight * 0.6))
+        : MAX_PANEL_HEIGHT_PX
+    const maxHeight = Math.max(160, Math.min(maxCap, available))
     setPanelPos({
       left: r.left,
       width: r.width,
@@ -197,12 +180,11 @@ export default function PokerFieldMenu({
   }, [])
 
   useLayoutEffect(() => {
-    if (!open || useSheet) {
-      if (!open) setPanelPos(null)
+    if (!open) {
+      setPanelPos(null)
       return undefined
     }
     updatePanelPos()
-    if (listRef.current) listRef.current.scrollTop = 0
 
     function onViewportChange(e) {
       const t = e?.target
@@ -216,11 +198,10 @@ export default function PokerFieldMenu({
       window.removeEventListener('resize', updatePanelPos)
       window.removeEventListener('scroll', onViewportChange, true)
     }
-  }, [open, useSheet, updatePanelPos, rows.length])
+  }, [open, updatePanelPos, rows.length])
 
   useLayoutEffect(() => {
-    if (!open) return undefined
-    // After portal commit so backdrop/list refs exist.
+    if (!open || !panelPos) return undefined
     const restoreSheet = lockPokerSheetBehind(triggerRef.current)
     const restoreBackdrop = attachBackdropTouchLock(backdropRef.current)
     const restoreList = attachListEdgeScrollLock(listRef.current)
@@ -230,7 +211,7 @@ export default function PokerFieldMenu({
       restoreBackdrop()
       restoreSheet()
     }
-  }, [open, useSheet, panelPos])
+  }, [open, panelPos])
 
   useEffect(() => {
     if (!open) return undefined
@@ -253,128 +234,82 @@ export default function PokerFieldMenu({
     }
   }, [open])
 
-  const optionButtons = rows.map((row, index) => {
-    if (row.type === 'label') {
-      return (
-        <div
-          key={`label:${row.label}:${index}`}
-          className="sticky top-0 border-b border-zinc-700/40 bg-zinc-800/95 px-4 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
-          role="presentation"
-        >
-          {row.label}
-        </div>
-      )
-    }
-    const picked = row.id === value
-    return (
-      <button
-        key={row.id || `opt:${index}`}
-        type="button"
-        role="option"
-        aria-selected={picked}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => {
-          onChange(row.id)
-          setOpen(false)
-        }}
-        className={`w-full border-b border-zinc-700/40 px-4 py-3.5 text-left text-sm font-semibold touch-manipulation last:border-0 ${
-          picked
-            ? 'bg-emerald-600/25 text-emerald-200'
-            : 'text-zinc-200 active:bg-zinc-700'
-        }`}
-      >
-        {row.label}
-      </button>
-    )
-  })
-
-  const menuPortal =
-    open && typeof document !== 'undefined'
+  const panel =
+    open && panelPos && typeof document !== 'undefined'
       ? createPortal(
-          useSheet ? (
-            <div className="fixed inset-0 flex flex-col justify-end" style={{ zIndex: Z_APP_ALERT }}>
+          <>
+            <div
+              ref={backdropRef}
+              data-poker-field-menu-backdrop
+              aria-hidden
+              className="fixed inset-0"
+              style={{ zIndex: BACKDROP_Z, touchAction: 'none' }}
+              onClick={close}
+            />
+            <div
+              ref={panelRef}
+              data-poker-field-menu-panel
+              className="overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-800 shadow-xl"
+              role="listbox"
+              aria-label={ariaLabel}
+              style={{
+                position: 'fixed',
+                zIndex: Z_APP_ALERT,
+                left: panelPos.left,
+                width: panelPos.width,
+                top: panelPos.top,
+                bottom: panelPos.bottom,
+                maxHeight: panelPos.maxHeight,
+                overscrollBehavior: 'none',
+              }}
+            >
               <div
-                ref={backdropRef}
-                data-poker-field-menu-backdrop
-                aria-hidden
-                className="absolute inset-0 bg-black/50"
-                style={{ touchAction: 'none' }}
-                onClick={close}
-              />
-              <div
-                ref={panelRef}
-                data-poker-field-menu-panel
-                data-poker-field-menu-sheet
-                className="relative flex max-h-[min(55dvh,420px)] w-full flex-col overflow-hidden rounded-t-3xl border border-zinc-700/60 bg-zinc-800 shadow-xl"
-                role="listbox"
-                aria-label={ariaLabel}
-                style={{ overscrollBehavior: 'none' }}
-              >
-                <div className="flex shrink-0 items-center justify-between border-b border-zinc-700/50 px-4 py-3">
-                  <div className="text-sm font-bold text-white">{ariaLabel}</div>
-                  <button
-                    type="button"
-                    onClick={close}
-                    className="rounded-full bg-zinc-700/80 px-3 py-1 text-xs font-semibold text-zinc-200 touch-manipulation"
-                  >
-                    Done
-                  </button>
-                </div>
-                <div
-                  ref={listRef}
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-none"
-                  style={{
-                    overscrollBehavior: 'none',
-                    WebkitOverflowScrolling: 'touch',
-                    touchAction: 'pan-y',
-                  }}
-                >
-                  {optionButtons}
-                </div>
-              </div>
-            </div>
-          ) : panelPos ? (
-            <>
-              <div
-                ref={backdropRef}
-                data-poker-field-menu-backdrop
-                aria-hidden
-                className="fixed inset-0"
-                style={{ zIndex: BACKDROP_Z, touchAction: 'none' }}
-                onClick={close}
-              />
-              <div
-                ref={panelRef}
-                data-poker-field-menu-panel
-                className="overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-800 shadow-xl"
-                role="listbox"
-                aria-label={ariaLabel}
+                ref={listRef}
+                className="h-full overflow-y-auto overscroll-none"
                 style={{
-                  position: 'fixed',
-                  zIndex: Z_APP_ALERT,
-                  left: panelPos.left,
-                  width: panelPos.width,
-                  top: panelPos.top,
-                  bottom: panelPos.bottom,
                   maxHeight: panelPos.maxHeight,
                   overscrollBehavior: 'none',
+                  WebkitOverflowScrolling: 'touch',
+                  touchAction: 'pan-y',
                 }}
               >
-                <div
-                  ref={listRef}
-                  className="h-full overflow-y-auto overscroll-none"
-                  style={{
-                    maxHeight: panelPos.maxHeight,
-                    overscrollBehavior: 'none',
-                    WebkitOverflowScrolling: 'touch',
-                    touchAction: 'pan-y',
-                  }}
-                >
-                  {optionButtons}
-                </div>
+                {rows.map((row, index) => {
+                  if (row.type === 'label') {
+                    return (
+                      <div
+                        key={`label:${row.label}:${index}`}
+                        className="sticky top-0 border-b border-zinc-700/40 bg-zinc-800/95 px-4 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
+                        role="presentation"
+                      >
+                        {row.label}
+                      </div>
+                    )
+                  }
+                  const picked = row.id === value
+                  return (
+                    <button
+                      key={row.id || `opt:${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={picked}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        onChange(row.id)
+                        setOpen(false)
+                      }}
+                      className={`w-full border-b border-zinc-700/40 px-4 py-3 text-left text-sm font-semibold touch-manipulation last:border-0 ${
+                        picked
+                          ? 'bg-emerald-600/25 text-emerald-200'
+                          : 'text-zinc-200 hover:bg-zinc-700/60 active:bg-zinc-700'
+                      }`}
+                    >
+                      {row.label}
+                    </button>
+                  )
+                })}
               </div>
-            </>
-          ) : null,
+            </div>
+          </>,
           document.body,
         )
       : null
@@ -399,7 +334,7 @@ export default function PokerFieldMenu({
           ▾
         </span>
       </button>
-      {menuPortal}
+      {panel}
     </div>
   )
 }

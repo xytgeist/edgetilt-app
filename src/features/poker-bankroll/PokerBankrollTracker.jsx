@@ -1161,14 +1161,14 @@ export default function PokerBankrollTracker({
           loading={freemiumUsageLoading}
         />
 
-        {/* Pills — match slots Bankroll: OVERVIEW · DETAILS · LOCATIONS · CHARTS · TREND */}
+        {/* Pills: OVERVIEW · DETAILS · TREND · LOCATIONS · CHARTS */}
         <div className="mb-5 -mx-3 flex gap-1 overflow-x-auto px-3 no-scrollbar">
           {[
             { id: 'overview', label: 'OVERVIEW' },
             { id: 'details', label: 'DETAILS' },
+            { id: 'trend', label: 'TREND' },
             { id: 'locations', label: 'LOCATIONS' },
             { id: 'charts', label: 'CHARTS' },
-            { id: 'trend', label: 'TREND' },
           ].map((tab) => (
             <button
               key={tab.id}

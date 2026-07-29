@@ -29,6 +29,19 @@ const FILTERS = [
   { label: 'MAX', days: null },
 ]
 
+const TYPE_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'cash', label: 'Cash' },
+  { id: 'tournament', label: 'Tourney' },
+]
+
+const VENUE_FILTERS = [
+  { id: 'all', label: 'Any' },
+  { id: 'live', label: 'Live' },
+  { id: 'online', label: 'Online' },
+  { id: 'club', label: 'Club' },
+]
+
 const HORIZONS = [50, 100, 200]
 const RUIN_FRACTION = 0.75
 
@@ -343,10 +356,29 @@ function DetailStat({ label, value, colored, positive }) {
   )
 }
 
+function TrendFilterChip({ active, onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-poker-filter-chip={active ? 'on' : 'off'}
+      className={`rounded-full px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+        active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PokerBankrollTrendTab({ sessions, adjustments = [], initialBankroll }) {
   const [filter, setFilter] = useState('MAX')
+  /** @type {'all' | 'cash' | 'tournament'} */
+  const [typeFilter, setTypeFilter] = useState('all')
+  /** @type {'all' | 'live' | 'online' | 'club'} */
+  const [venueFilter, setVenueFilter] = useState('all')
   const [fanHorizon, setFanHorizon] = useState(100)
   const [showMonteCarlo, setShowMonteCarlo] = useState(false)
   const [sessionModal, setSessionModal] = useState(null)
@@ -378,9 +410,17 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
 
   const showInfo = (key) => setInfoModal(INFO[key])
 
+  const scopedSessions = useMemo(() => {
+    return (sessions || []).filter((s) => {
+      if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
+      if (venueFilter !== 'all' && s.venue_kind !== venueFilter) return false
+      return true
+    })
+  }, [sessions, typeFilter, venueFilter])
+
   const sortedSessions = useMemo(
-    () => [...sessions].sort((a, b) => new Date(a.start_at) - new Date(b.start_at)),
-    [sessions]
+    () => [...scopedSessions].sort((a, b) => new Date(a.start_at) - new Date(b.start_at)),
+    [scopedSessions]
   )
 
   const filteredSessions = useMemo(() => {
@@ -391,6 +431,16 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
       : new Date(Date.now() - f.days * 86400000)
     return sortedSessions.filter(s => new Date(s.start_at) >= cutoff)
   }, [sortedSessions, filter])
+
+  function selectTypeFilter(id) {
+    setTooltip(null)
+    setTypeFilter(id)
+  }
+
+  function selectVenueFilter(id) {
+    setTooltip(null)
+    setVenueFilter(id)
+  }
 
   const { labels, dataPoints, sessionResults, orderedSessions, adjMarkers } = useMemo(() => {
     const f = FILTERS.find(f => f.label === filter)
@@ -731,6 +781,38 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
   return (
     <>
       <div className="space-y-4">
+        <div className="flex flex-wrap gap-1.5">
+          {TYPE_FILTERS.map((opt) => (
+            <TrendFilterChip
+              key={opt.id}
+              active={typeFilter === opt.id}
+              onClick={() => selectTypeFilter(opt.id)}
+              label={opt.label}
+            />
+          ))}
+          <span className="mx-1 w-px self-stretch bg-zinc-800" />
+          {VENUE_FILTERS.map((opt) => (
+            <TrendFilterChip
+              key={`v-${opt.id}`}
+              active={venueFilter === opt.id}
+              onClick={() => selectVenueFilter(opt.id)}
+              label={opt.label}
+            />
+          ))}
+        </div>
+
+        {scopedSessions.length === 0 ? (
+          <div
+            data-elevated-card="surface"
+            className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
+          >
+            <p className="font-semibold text-white">No sessions for this filter</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Try All / Any, or another Cash · Tourney · Live · Online · Club mix.
+            </p>
+          </div>
+        ) : (
+          <>
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-2">
           <StatPill label="Total P&L" value={`${totalPL >= 0 ? '+' : ''}${fmt$(totalPL)}`} positive={totalPL >= 0} />
@@ -1087,6 +1169,8 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
             <span className="ml-2 text-zinc-700">· need 5+ sessions for projections</span>
           )}
         </div>
+          </>
+        )}
       </div>
 
       {sessionModal && (

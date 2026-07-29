@@ -118,15 +118,13 @@ export const POKER_TABLE_SIZES = [
   { id: 'heads_up', label: 'HU' },
 ]
 
-/** Free-text Site when the room isn’t in the known list. */
-export const POKER_ONLINE_OTHER_SITE_ID = 'other'
-
 /** Known online card rooms for the Site dropdown (stored as label in venue_name). */
 export const POKER_ONLINE_SITES = [
   { id: 'pokerstars', label: 'PokerStars' },
   { id: 'ggpoker', label: 'GGPoker' },
   { id: 'wsop', label: 'WSOP.com' },
   { id: 'clubwpt', label: 'ClubWPT' },
+  { id: 'clubwpt-gold', label: 'ClubWPT Gold' },
   { id: 'wpt-global', label: 'WPT Global' },
   { id: 'acr', label: 'ACR' },
   { id: 'ignition', label: 'Ignition' },
@@ -159,19 +157,15 @@ export const POKER_ONLINE_SITES = [
 
 /** @returns {{ id: string, label: string }[]} */
 export function pokerOnlineSiteSelectOptions() {
-  return [
-    { id: '', label: 'Select site…' },
-    ...POKER_ONLINE_SITES,
-    { id: POKER_ONLINE_OTHER_SITE_ID, label: 'Other…' },
-  ]
+  return [{ id: '', label: 'Select site…' }, ...POKER_ONLINE_SITES]
 }
 
-/** Map stored venue_name → Select value. */
+/** Map stored venue_name → Select value ('' if not in known list). */
 export function pokerOnlineSiteSelectValue(venueName) {
   const raw = String(venueName || '').trim()
   if (!raw) return ''
   const hit = POKER_ONLINE_SITES.find((s) => s.label.toLowerCase() === raw.toLowerCase())
-  return hit ? hit.id : POKER_ONLINE_OTHER_SITE_ID
+  return hit ? hit.id : ''
 }
 
 /** @param {string} siteId */
@@ -181,7 +175,8 @@ export function pokerOnlineSiteLabelFromId(siteId) {
 }
 
 /**
- * Most recent online session site (sessions expected newest-first).
+ * Most recent known online site (sessions expected newest-first).
+ * Skips rooms that aren’t in POKER_ONLINE_SITES.
  * @param {Array<object>} sessions
  * @returns {{ venue_name: string, online_site_pick: string } | null}
  */
@@ -190,10 +185,9 @@ export function lastOnlineSiteFromSessions(sessions) {
     if (s?.venue_kind !== 'online') continue
     const name = String(s.venue_name || '').trim()
     if (!name) continue
-    return {
-      venue_name: name,
-      online_site_pick: pokerOnlineSiteSelectValue(name),
-    }
+    const pick = pokerOnlineSiteSelectValue(name)
+    if (!pick) continue
+    return { venue_name: pokerOnlineSiteLabelFromId(pick), online_site_pick: pick }
   }
   return null
 }

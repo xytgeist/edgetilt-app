@@ -33,7 +33,6 @@ import {
 import {
   POKER_CASH_NEW_GAME_ID,
   POKER_LIMIT_TYPES,
-  POKER_ONLINE_OTHER_SITE_ID,
   POKER_TABLE_SIZES,
   applyCashGamePreset,
   buildCashGamePresetsFromSessions,
@@ -54,7 +53,7 @@ import {
 
 /** Match CasinoAutocomplete / Location field text styling. */
 const POKER_FIELD_CLASS =
-  'w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
+  'w-full h-12 min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
 
 /** Online multi-tabling count for DB write; live always 1. */
 function tablesCountForPayload(form) {
@@ -815,19 +814,8 @@ export default function PokerBankrollTracker({
         }
       }
       if (key === 'online_site_pick') {
-        if (!value) {
-          next.online_site_pick = ''
-          next.venue_name = ''
-        } else if (value === POKER_ONLINE_OTHER_SITE_ID) {
-          next.online_site_pick = POKER_ONLINE_OTHER_SITE_ID
-          const wasKnown =
-            pokerOnlineSiteSelectValue(prev.venue_name) !== POKER_ONLINE_OTHER_SITE_ID &&
-            String(prev.venue_name || '').trim() !== ''
-          if (wasKnown) next.venue_name = ''
-        } else {
-          next.online_site_pick = value
-          next.venue_name = pokerOnlineSiteLabelFromId(value)
-        }
+        next.online_site_pick = value || ''
+        next.venue_name = value ? pokerOnlineSiteLabelFromId(value) : ''
       }
       return next
     })
@@ -2175,64 +2163,23 @@ function PokerSessionCoreFields({
               options={pokerOnlineSiteSelectOptions()}
             />
           </div>
-          {form.online_site_pick === POKER_ONLINE_OTHER_SITE_ID ? (
-            <input
-              type="text"
-              value={form.venue_name}
-              onChange={(e) => setField('venue_name', e.target.value)}
-              placeholder="Site name…"
-              className={`mb-3 ${POKER_FIELD_CLASS}`}
-            />
-          ) : null}
         </>
       )}
 
-      {form.venue_kind === 'online' ? (
-        <div className="mb-3">
-          <FieldLabel>Tables</FieldLabel>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
-              onClick={() => {
-                const n = Math.max(1, (parseInt(form.tables_count, 10) || 1) - 1)
-                setField('tables_count', String(n))
-              }}
-            >
-              −
-            </button>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={form.tables_count}
-              onChange={(e) => setField('tables_count', e.target.value)}
-              className={`min-w-0 flex-1 text-center ${POKER_FIELD_CLASS}`}
-              aria-label="Number of tables"
-            />
-            <button
-              type="button"
-              className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
-              onClick={() => {
-                const n = Math.min(24, (parseInt(form.tables_count, 10) || 1) + 1)
-                setField('tables_count', String(n))
-              }}
-            >
-              +
-            </button>
-          </div>
-        </div>
-      ) : null}
-
       {isCash ? (
         <>
-          <FieldLabel>Game</FieldLabel>
-          <div className="mb-3">
-            <Select
-              value={form.cash_game_pick || POKER_CASH_NEW_GAME_ID}
-              onChange={(v) => setField('cash_game_pick', v)}
-              options={cashGameOptions}
-            />
-          </div>
+          <GameTablesRow
+            isOnline={form.venue_kind === 'online'}
+            tablesCount={form.tables_count}
+            onTablesCountChange={(v) => setField('tables_count', v)}
+            game={
+              <Select
+                value={form.cash_game_pick || POKER_CASH_NEW_GAME_ID}
+                onChange={(v) => setField('cash_game_pick', v)}
+                options={cashGameOptions}
+              />
+            }
+          />
           {showCashDetails ? (
             <>
               <FieldLabel>Limit</FieldLabel>
@@ -2284,14 +2231,18 @@ function PokerSessionCoreFields({
         </>
       ) : (
         <>
-          <FieldLabel>Game</FieldLabel>
-          <div className="mb-3">
-            <Select
-              value={form.game_variant}
-              onChange={(v) => setField('game_variant', v)}
-              options={pokerGameOptionsForSessionType('tournament')}
-            />
-          </div>
+          <GameTablesRow
+            isOnline={form.venue_kind === 'online'}
+            tablesCount={form.tables_count}
+            onTablesCountChange={(v) => setField('tables_count', v)}
+            game={
+              <Select
+                value={form.game_variant}
+                onChange={(v) => setField('game_variant', v)}
+                options={pokerGameOptionsForSessionType('tournament')}
+              />
+            }
+          />
           {isCustomGame ? (
             <>
               <FieldLabel>Limit</FieldLabel>
@@ -2394,7 +2345,7 @@ function Select({ value, onChange, options }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={POKER_FIELD_CLASS}
+      className={`${POKER_FIELD_CLASS} box-border appearance-none py-0 leading-[3rem]`}
     >
       {options.map((opt) => (
         <option key={opt.id} value={opt.id}>
@@ -2402,6 +2353,64 @@ function Select({ value, onChange, options }) {
         </option>
       ))}
     </select>
+  )
+}
+
+/** Online: Game + Tables on one row. Live: Game full width. */
+function GameTablesRow({ isOnline, game, tablesCount, onTablesCountChange }) {
+  const tables = (
+    <div className="flex h-12 items-center gap-1">
+      <button
+        type="button"
+        className="flex h-12 w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+        onClick={() => {
+          const n = Math.max(1, (parseInt(tablesCount, 10) || 1) - 1)
+          onTablesCountChange(String(n))
+        }}
+      >
+        −
+      </button>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={tablesCount}
+        onChange={(e) => onTablesCountChange(e.target.value)}
+        className={`min-w-0 flex-1 text-center ${POKER_FIELD_CLASS}`}
+        aria-label="Number of tables"
+      />
+      <button
+        type="button"
+        className="flex h-12 w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+        onClick={() => {
+          const n = Math.min(24, (parseInt(tablesCount, 10) || 1) + 1)
+          onTablesCountChange(String(n))
+        }}
+      >
+        +
+      </button>
+    </div>
+  )
+
+  if (isOnline) {
+    return (
+      <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+        <div className="min-w-0">
+          <FieldLabel>Game</FieldLabel>
+          {game}
+        </div>
+        <div className="min-w-0">
+          <FieldLabel>Tables</FieldLabel>
+          {tables}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <FieldLabel>Game</FieldLabel>
+      <div className="mb-3">{game}</div>
+    </>
   )
 }
 

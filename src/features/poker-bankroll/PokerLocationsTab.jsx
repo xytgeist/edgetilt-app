@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Trophy } from 'lucide-react'
 import {
   Chart as ChartJS,
@@ -11,6 +12,7 @@ import {
   Filler,
 } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
+import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import {
   fmtPoker$,
   pokerSessionDurationHours,
@@ -360,16 +362,15 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
     },
   ].filter((r) => r.count > 0)
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
+      className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+      onClick={onClose}
     >
       <div
-        data-elevated-card="surface"
-        className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 pb-6 pt-5"
+        data-poker-bankroll-sheet
+        className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -565,7 +566,8 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

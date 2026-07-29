@@ -9,7 +9,6 @@ import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
-import BankrollSessionHistoryRow from '../bankroll/BankrollSessionHistoryRow.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import PokerCashGamePicker from './PokerCashGamePicker.jsx'
@@ -175,8 +174,6 @@ export default function PokerBankrollTracker({
   const [elapsed, setElapsed] = useState(0)
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
   const [venueFilter, setVenueFilter] = useState('all') // all | live | online | club
-  /** Only one history row open for swipe-to-delete at a time. */
-  const [openSwipeSessionId, setOpenSwipeSessionId] = useState(null)
   const [nearbyCasinos, setNearbyCasinos] = useState([])
   const [gpsLoading, setGpsLoading] = useState(false)
   const [customVenues, setCustomVenues] = useState([])
@@ -1100,51 +1097,25 @@ export default function PokerBankrollTracker({
     }
   }
 
-  /**
-   * Delete a completed session and reverse its bankroll P/L.
-   * @param {string} sessionId
-   * @param {{ confirm?: boolean, prevWl?: number }} [opts]
-   */
-  async function deleteCompletedSessionById(sessionId, opts = {}) {
-    if (!supabaseClient || !userId || !sessionId) return
-    const session =
-      sessions.find((s) => s.id === sessionId) ||
-      scopedSessions.find((s) => s.id === sessionId)
-    if (!session || session.status === 'active') return
-    if (opts.confirm !== false && !window.confirm('Delete this poker session?')) return
-    const prevWl =
-      opts.prevWl != null
-        ? opts.prevWl
-        : pokerSessionWinLoss(session) || 0
+  async function deleteSession() {
+    if (!editingId || !supabaseClient || !userId) return
+    if (!window.confirm('Delete this poker session?')) return
     setSaving(true)
-    setError('')
     try {
       const { error: dErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .delete()
-        .eq('id', sessionId)
+        .eq('id', editingId)
         .eq('user_id', userId)
       if (dErr) throw dErr
-      if (prevWl) await applyBankrollDelta(-prevWl)
-      if (editingId === sessionId) {
-        setEditingId(null)
-        setSheet(null)
-      }
-      setOpenSwipeSessionId(null)
+      await applyBankrollDelta(-editingPrevWl)
+      setSheet(null)
       await loadData()
     } catch (e) {
       setError(e?.message || 'Delete failed.')
     } finally {
       setSaving(false)
     }
-  }
-
-  async function deleteSession() {
-    if (!editingId) return
-    await deleteCompletedSessionById(editingId, {
-      confirm: true,
-      prevWl: editingPrevWl,
-    })
   }
 
   /** Discard an in-progress session from End Session (no bankroll delta yet). */
@@ -1530,20 +1501,13 @@ export default function PokerBankrollTracker({
                   const hourly = pokerSessionHourly(session)
                   const bbh = pokerSessionBbPerHour(session)
                   return (
-                    <BankrollSessionHistoryRow
-                      key={session.id}
-                      sessionId={session.id}
-                      openSwipeId={openSwipeSessionId}
-                      onSwipeOpen={setOpenSwipeSessionId}
-                      onActivate={() => openEdit(session)}
-                      onDelete={() =>
-                        void deleteCompletedSessionById(session.id, {
-                          confirm: false,
-                          prevWl: wl || 0,
-                        })
-                      }
-                    >
-                      <div className="flex w-full items-start gap-3">
+                    <li key={session.id}>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(session)}
+                        data-elevated-card="surface"
+                        className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
+                      >
                         <span
                           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                             session.session_type === 'tournament'
@@ -1589,8 +1553,8 @@ export default function PokerBankrollTracker({
                             {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
                           </span>
                         </span>
-                      </div>
-                    </BankrollSessionHistoryRow>
+                      </button>
+                    </li>
                   )
                 })}
               </ul>

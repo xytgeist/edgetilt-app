@@ -78,6 +78,7 @@ import { resolveGuideAccent } from '../../utils/guideCardAccent.js'
 import { LOG_PLAY_LOGBOOK_BTN_CLASS } from '../calculators/CalculatorLogPlayButton.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
+import { useGuideFavorites } from './guideFavoritesStore.js'
 
 /** Collapsed cards rendered at once; more load via scroll sentinel. */
 const GUIDES_LIST_PAGE_SIZE = 24
@@ -223,6 +224,24 @@ function IconChevronFold({ expanded, className }) {
           strokeLinejoin="round"
         />
       )}
+    </svg>
+  )
+}
+
+function GuideFavoriteStarIcon({ filled }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      aria-hidden
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth={filled ? 0 : 1.75}
+    >
+      <path
+        strokeLinejoin="round"
+        d="M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.78L12 16.77l-5.2 2.73.99-5.78-4.21-4.1 5.82-.85L12 3.5z"
+      />
     </svg>
   )
 }
@@ -1459,6 +1478,7 @@ export default function GuidesScreen({
 
   const guidesScrollRootRef = useRef(null)
   const loadMoreSentinelRef = useRef(null)
+  const { favoriteSlugs, isFavorite, toggleFavorite } = useGuideFavorites()
 
   const [gateBusySlug, setGateBusySlug] = useState(null)
   /** @type {[null | { guideId: string, machineId: string | null, slug: string, name: string }, import('react').Dispatch<import('react').SetStateAction<null | { guideId: string, machineId: string | null, slug: string, name: string }>>]} */
@@ -1703,9 +1723,25 @@ export default function GuidesScreen({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) => searchHaystackByRowId[r.id]?.includes(q))
-  }, [rows, query, searchHaystackByRowId])
+    const base = q
+      ? rows.filter((r) => searchHaystackByRowId[r.id]?.includes(q))
+      : rows
+    if (!favoriteSlugs.length) return base
+    const favSet = new Set(favoriteSlugs)
+    const favOrder = new Map(favoriteSlugs.map((s, i) => [s, i]))
+    return [...base].sort((a, b) => {
+      const sa = normalizeGuideAccessSlug(machineForGuide(a)?.slug || a.slug) || ''
+      const sb = normalizeGuideAccessSlug(machineForGuide(b)?.slug || b.slug) || ''
+      const fa = favSet.has(sa)
+      const fb = favSet.has(sb)
+      if (fa && !fb) return -1
+      if (!fa && fb) return 1
+      if (fa && fb) return (favOrder.get(sa) ?? 0) - (favOrder.get(sb) ?? 0)
+      const na = (machineForGuide(a)?.name || a.title || '').toLowerCase()
+      const nb = (machineForGuide(b)?.name || b.title || '').toLowerCase()
+      return na.localeCompare(nb)
+    })
+  }, [rows, query, searchHaystackByRowId, favoriteSlugs])
 
   const visibleRows = useMemo(
     () => filtered.slice(0, visibleCount),
@@ -1924,11 +1960,33 @@ export default function GuidesScreen({
               ? 'blur-[3px] brightness-[0.72] saturate-[0.9] select-none'
               : ''
             const normalizedGuideSlug = normalizeGuideAccessSlug(slug)
+            const favorited = isFavorite(cardSlug)
             const ringFocus = accent.ringFocus || 'focus-visible:ring-amber-500/60'
             const heroGrad =
               accent.mode === 'hex'
                 ? accent.heroGradientClass
                 : `bg-gradient-to-br ${accent.heroGradientClass}`
+
+            const favoriteBtn = (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  toggleFavorite(cardSlug)
+                  triggerTapHapticLight()
+                }}
+                className={[
+                  'pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-sm touch-manipulation [-webkit-tap-highlight-color:transparent]',
+                  favorited
+                    ? 'border-amber-400/70 bg-amber-500/90 text-zinc-950 shadow-md'
+                    : 'border-white/25 bg-black/45 text-white hover:bg-black/60',
+                ].join(' ')}
+                aria-label={favorited ? `Unfavorite ${m?.name || row.title}` : `Favorite ${m?.name || row.title}`}
+                aria-pressed={favorited}
+              >
+                <GuideFavoriteStarIcon filled={favorited} />
+              </button>
+            )
 
             return (
               <li key={row.id || row.slug} id={`guide-card-${cardSlug}`}>
@@ -1971,25 +2029,26 @@ export default function GuidesScreen({
                       >
                         {isAdmin ? (
                           <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 pointer-events-none">
-                            {!isLocalDemoGuide(row) ? (
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  setDeleteConfirm({
-                                    guideId: row.id,
-                                    machineId: m?.id ?? null,
-                                    slug,
-                                    name: m?.name || row.title || slug,
-                                  })
-                                }}
-                                className="pointer-events-auto shrink-0 rounded-xl border border-red-500/70 bg-red-950/75 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-red-200 backdrop-blur-sm hover:bg-red-950/95 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                              >
-                                Delete
-                              </button>
-                            ) : (
-                              <span className="pointer-events-none" aria-hidden />
-                            )}
+                            <div className="flex items-start gap-2">
+                              {favoriteBtn}
+                              {!isLocalDemoGuide(row) ? (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setDeleteConfirm({
+                                      guideId: row.id,
+                                      machineId: m?.id ?? null,
+                                      slug,
+                                      name: m?.name || row.title || slug,
+                                    })
+                                  }}
+                                  className="pointer-events-auto shrink-0 rounded-xl border border-red-500/70 bg-red-950/75 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-red-200 backdrop-blur-sm hover:bg-red-950/95 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
+                            </div>
                             <div className="pointer-events-auto shrink-0">
                               <ContentAccessAdminSwitch
                                 locked={adminGuideLocked}
@@ -2002,7 +2061,11 @@ export default function GuidesScreen({
                               />
                             </div>
                           </div>
-                        ) : null}
+                        ) : (
+                          <div className="absolute left-3 top-3 z-20 pointer-events-none">
+                            {favoriteBtn}
+                          </div>
+                        )}
                         {heroThumb ? (
                           <img
                             src={heroThumb}

@@ -39,6 +39,146 @@ export function cashGameSelectOptions(presets) {
   ]
 }
 
+/** Live cash “Game name” options when Game = New game… */
+export const POKER_LIVE_CASH_GAME_CUSTOM_ID = 'custom_name'
+
+export const POKER_LIVE_CASH_GAME_NAMES = [
+  { id: 'holdem', label: "Hold'em" },
+  { id: 'omaha', label: 'Omaha' },
+  { id: 'omaha5', label: 'Omaha 5' },
+  { id: 'omaha6', label: 'Omaha 6' },
+  { id: 'short_deck', label: 'Short Deck (6+)' },
+  { id: 'stud', label: 'Stud' },
+  { id: 'draw', label: 'Draw' },
+  { id: 'mixed', label: 'Mixed' },
+  { id: 'ofc', label: 'Chinese Poker / OFC' },
+  { id: POKER_LIVE_CASH_GAME_CUSTOM_ID, label: 'Custom' },
+]
+
+/** @param {string | null | undefined} name */
+export function pokerLiveCashGameNameSelectValue(name) {
+  const raw = String(name || '').trim()
+  if (!raw) return 'holdem'
+  const hit = POKER_LIVE_CASH_GAME_NAMES.find(
+    (g) => g.id !== POKER_LIVE_CASH_GAME_CUSTOM_ID && g.label.toLowerCase() === raw.toLowerCase(),
+  )
+  return hit ? hit.id : POKER_LIVE_CASH_GAME_CUSTOM_ID
+}
+
+/** @param {string} id */
+export function pokerLiveCashGameNameLabelFromId(id) {
+  if (id === POKER_LIVE_CASH_GAME_CUSTOM_ID) return ''
+  const hit = POKER_LIVE_CASH_GAME_NAMES.find((g) => g.id === id)
+  return hit?.label || ''
+}
+
+/**
+ * Collapse stake/format variants into a Games-card family label.
+ * e.g. "2/5 NLH", "100NL" → "NLH"; "5/10 PLO", "100PLO" → "PLO";
+ * Omaha 5 → PLO5; Omaha 6 → PLO6; Omaha Hi/Lo / 8-or-better → Omaha Hi/Lo.
+ * @param {string | null | undefined} rawName
+ * @returns {string | null} family label, or null if empty / unknown bucket
+ */
+export function pokerGameFamilyLabel(rawName) {
+  const raw = String(rawName || '').trim()
+  if (!raw || raw === 'custom' || raw === 'other') return null
+
+  const s = raw
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  // Legacy stored ids
+  if (s === 'nlh' || s === 'nlhe') return 'NLH'
+  if (s === 'limit_holdem') return "Limit Hold'em"
+  if (s === 'plo') return 'PLO'
+  if (s === 'plo5') return 'PLO5'
+  if (s === 'plo6') return 'PLO6'
+  if (s === 'plo8') return 'Omaha Hi/Lo'
+  if (s === 'mixed' || s === 'mix') return 'Mixed'
+
+  if (/\bofc\b/.test(s) || /chinese\s*poker/.test(s) || /open\s*face/.test(s)) return 'OFC'
+
+  if (/short\s*deck/.test(s) || /\b6\+\b/.test(s) || /\bsd\b/.test(s)) return 'Short Deck'
+
+  // Omaha Hi/Lo (8-or-better) — before PLO5 / PLO6 / plain PLO
+  if (
+    /\bplo\s*8\b/.test(s) ||
+    /\bplo8\b/.test(s) ||
+    /\bo8\b/.test(s) ||
+    /\bomaha\s*8\b/.test(s) ||
+    /\bomaha\s*8\s*or\s*better\b/.test(s) ||
+    /\b8\s*or\s*better\b/.test(s) ||
+    /\b8ob\b/.test(s) ||
+    /\bomaha\s*hi[\s/-]*lo\b/.test(s) ||
+    /\bomaha\s*h\s*\/\s*l\b/.test(s) ||
+    (/\b(omaha|plo)\b/.test(s) && /hi[\s/-]*lo|\bh\/l\b|\bhl\b/.test(s))
+  ) {
+    return 'Omaha Hi/Lo'
+  }
+
+  // PLO5 / Omaha 5 (incl. Big O) — blinds ignored
+  if (
+    /\bplo\s*5\b/.test(s) ||
+    /\bplo5\b/.test(s) ||
+    /\bomaha\s*5\b/.test(s) ||
+    /\bbig\s*o\b/.test(s) ||
+    /\bo5\b/.test(s)
+  ) {
+    return 'PLO5'
+  }
+
+  // PLO6 / Omaha 6 — blinds ignored
+  if (/\bplo\s*6\b/.test(s) || /\bplo6\b/.test(s) || /\bomaha\s*6\b/.test(s) || /\bo6\b/.test(s)) {
+    return 'PLO6'
+  }
+
+  // Plain PLO / Omaha (any blinds, pot-limit omaha, 100PLO, etc.)
+  if (
+    /\bpot\s*limit\s*omaha\b/.test(s) ||
+    /\bplo\b/.test(s) ||
+    /\bomaha\b/.test(s) ||
+    /\b\d+\s*plo\b/.test(s)
+  ) {
+    return 'PLO'
+  }
+
+  if (/\bstud\b/.test(s)) return 'Stud'
+
+  if (/\bdraw\b/.test(s) || /\b2[\s-]*7\b/.test(s) || /\bbadeuce\b/.test(s)) return 'Draw'
+
+  if (
+    /\bmixed\b/.test(s) ||
+    /\bmix\b/.test(s) ||
+    /\bhorse\b/.test(s) ||
+    /\b8[\s-]*game\b/.test(s) ||
+    /\bdealers?\s*choice\b/.test(s)
+  ) {
+    return 'Mixed'
+  }
+
+  // NLH before Limit Hold'em so "No Limit Hold'em" is not misread as Limit
+  if (
+    /\bnlhe?\b/.test(s) ||
+    /\bno\s*limit\s*hold/.test(s) ||
+    /\bnl\s*texas/.test(s) ||
+    /\btexas\s*hold/.test(s) ||
+    /\b\d+\s*nl\b/.test(s) ||
+    /\bnl\s*\d+\b/.test(s)
+  ) {
+    return 'NLH'
+  }
+
+  if (/(?<!\bno\s)limit\s*hold/.test(s) || /\blhe\b/.test(s) || /\bfl\s*hold/.test(s)) {
+    return "Limit Hold'em"
+  }
+
+  if (/\bhold\s*ems?\b/.test(s) || /\bholdem\b/.test(s) || s === 'hold em') return 'NLH'
+
+  return raw
+}
+
 /** Apply a saved cash game (or clear for New game…). */
 export function applyCashGamePreset(form, preset) {
   if (!preset) {
@@ -46,7 +186,8 @@ export function applyCashGamePreset(form, preset) {
       ...form,
       cash_game_pick: POKER_CASH_NEW_GAME_ID,
       game_variant: 'custom',
-      game_custom_name: '',
+      live_game_name_pick: 'holdem',
+      game_custom_name: "Hold'em",
       limit_type: 'no_limit',
       small_blind: '',
       big_blind: '',
@@ -58,6 +199,7 @@ export function applyCashGamePreset(form, preset) {
     ...form,
     cash_game_pick: preset.id,
     game_variant: 'custom',
+    live_game_name_pick: pokerLiveCashGameNameSelectValue(preset.label),
     game_custom_name: preset.label,
     limit_type: preset.limit_type || 'no_limit',
     small_blind: preset.small_blind ?? '',
@@ -188,6 +330,54 @@ export function lastOnlineSiteFromSessions(sessions) {
     const pick = pokerOnlineSiteSelectValue(name)
     if (!pick) continue
     return { venue_name: pokerOnlineSiteLabelFromId(pick), online_site_pick: pick }
+  }
+  return null
+}
+
+/** Known club apps for the Club dropdown (stored as label in venue_name). */
+export const POKER_CLUB_APPS = [
+  { id: 'pppoker', label: 'PPPoker' },
+  { id: 'clubgg', label: 'ClubGG' },
+  { id: 'pokerbros', label: 'PokerBros' },
+  { id: 'xpoker', label: 'X-Poker' },
+  { id: 'suprema', label: 'Suprema Poker' },
+  { id: 'pokerrrr2', label: 'Pokerrrr 2' },
+  { id: 'qqpoker', label: 'QQPoker' },
+  { id: 'wpt-home', label: 'WPT Home' },
+]
+
+/** @returns {{ id: string, label: string }[]} */
+export function pokerClubAppSelectOptions() {
+  return [{ id: '', label: 'Select club…' }, ...POKER_CLUB_APPS]
+}
+
+/** Map stored venue_name → Select value ('' if not in known list). */
+export function pokerClubAppSelectValue(venueName) {
+  const raw = String(venueName || '').trim()
+  if (!raw) return ''
+  const hit = POKER_CLUB_APPS.find((s) => s.label.toLowerCase() === raw.toLowerCase())
+  return hit ? hit.id : ''
+}
+
+/** @param {string} clubId */
+export function pokerClubAppLabelFromId(clubId) {
+  const hit = POKER_CLUB_APPS.find((s) => s.id === clubId)
+  return hit?.label || ''
+}
+
+/**
+ * Most recent known club app (sessions expected newest-first).
+ * @param {Array<object>} sessions
+ * @returns {{ venue_name: string, club_app_pick: string } | null}
+ */
+export function lastClubAppFromSessions(sessions) {
+  for (const s of sessions || []) {
+    if (s?.venue_kind !== 'club') continue
+    const name = String(s.venue_name || '').trim()
+    if (!name) continue
+    const pick = pokerClubAppSelectValue(name)
+    if (!pick) continue
+    return { venue_name: pokerClubAppLabelFromId(pick), club_app_pick: pick }
   }
   return null
 }

@@ -5,7 +5,7 @@ import {
   pokerSessionWinLoss,
   pokerSessionBbWon,
 } from './pokerBankrollMath.js'
-import { pokerCashGameNameFromStored } from './pokerSessionLabels.js'
+import { pokerCashGameNameFromStored, pokerGameFamilyLabel } from './pokerSessionLabels.js'
 
 /** Compact money for dense overview tables ($1.7k, -$23.5k). */
 export function fmtPokerOverview$(n, { signed = false } = {}) {
@@ -148,18 +148,6 @@ export function tourneyStakeTier(session) {
 
 const TOURNEY_TIER_ORDER = ['Low-Stakes', 'Mid-Stakes', 'High-Stakes']
 
-function cashGameRowLabel(session) {
-  const name = pokerCashGameNameFromStored(session.game_variant)
-  const sb = Number(session.small_blind)
-  const bb = Number(session.big_blind)
-  if (Number.isFinite(sb) && Number.isFinite(bb) && sb > 0 && bb > 0) {
-    const fmt = (n) => (n % 1 === 0 ? String(n) : n.toFixed(2))
-    const stakes = `$${fmt(sb)}/${fmt(bb)}`
-    return name ? `${stakes} ${name}` : stakes
-  }
-  return name || 'Cash'
-}
-
 function tourneyGameRowLabel(session) {
   const bi = Number(session.buy_in)
   const biStr = Number.isFinite(bi)
@@ -174,10 +162,32 @@ function tourneyGameRowLabel(session) {
   return biStr ? `${biStr} ${name}` : name
 }
 
-/** Games card: group by session Game field only (stored game_variant). */
+/** Drop leading blind/stake noise so "2/5 NLH" classifies as game type, not stakes. */
+function stripLeadingStakes(name) {
+  return String(name || '')
+    .trim()
+    .replace(/^\$?\d+(?:\.\d+)?(?:\s*\/\s*\$?\d+(?:\.\d+)?){1,3}\s*/i, '')
+    .trim()
+}
+
+function looksLikeStakesOnly(name) {
+  const s = String(name || '').trim()
+  if (!s) return true
+  return /^\$?\d+(?:\.\d+)?(?:\s*\/\s*\$?\d+(?:\.\d+)?){1,3}$/i.test(s)
+}
+
+/**
+ * Group by game type only (NLH, PLO, PLO5, …) — never by blind size.
+ * Used by the Games card and Cash Game → By game.
+ */
 function sessionGameFieldLabel(session) {
-  const name = pokerCashGameNameFromStored(session.game_variant)
-  if (name && name !== 'custom' && name !== 'other') return name
+  const stored = pokerCashGameNameFromStored(session.game_variant)
+  const candidates = [stored, stripLeadingStakes(stored), session.game_variant, stripLeadingStakes(session.game_variant)]
+  for (const c of candidates) {
+    if (!c || looksLikeStakesOnly(c)) continue
+    const family = pokerGameFamilyLabel(c)
+    if (family && !looksLikeStakesOnly(family)) return family
+  }
   return session.session_type === 'tournament' ? 'Tournament' : 'Cash'
 }
 
@@ -229,7 +239,8 @@ export function buildPokerOverviewStats(completedSessions) {
   for (const s of sessions) addSession(totalB, s)
 
   const cashByTier = groupRows(cash, cashStakeTier)
-  const cashByGame = groupRows(cash, cashGameRowLabel)
+  /** By game type (NLH/PLO/…), not blinds — same family rules as Games card. */
+  const cashByGame = groupRows(cash, sessionGameFieldLabel)
   const tourneyByTier = groupRows(tourney, tourneyStakeTier).sort(
     (a, b) => TOURNEY_TIER_ORDER.indexOf(a.label) - TOURNEY_TIER_ORDER.indexOf(b.label),
   )

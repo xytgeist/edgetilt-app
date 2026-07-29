@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { DollarSign, Trophy } from 'lucide-react'
 import {
@@ -29,22 +29,270 @@ function pokerLocationChartChrome() {
     typeof document !== 'undefined' && document.documentElement.classList.contains('light')
   if (isLight) {
     return {
+      isLight: true,
       tooltipBg: '#ffffff',
       tooltipBorder: '#d4d4d8',
       tooltipTitle: '#52525b',
       tooltipBody: '#18181b',
+      crosshair: 'rgba(24,24,27,0.45)',
+      crosshairDot: '#18181b',
       grid: 'rgba(24,24,27,0.06)',
       ticks: '#71717a',
+      pos: '#059669',
+      neg: '#dc2626',
     }
   }
   return {
-    tooltipBg: '#27272a',
+    isLight: false,
+    tooltipBg: '#3f3f46',
     tooltipBorder: '#52525b',
-    tooltipTitle: '#a1a1aa',
+    tooltipTitle: '#e4e4e7',
     tooltipBody: '#fafafa',
+    crosshair: 'rgba(255,255,255,0.55)',
+    crosshairDot: '#ffffff',
     grid: 'rgba(255,255,255,0.06)',
     ticks: '#71717a',
+    pos: '#34d399',
+    neg: '#f87171',
   }
+}
+
+function fmtChartSessionDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+/**
+ * Cumulative P&L line with slide-to-scrub crosshair + session callout.
+ * @param {{ sessions: object[] }} props completed sessions, oldest → newest
+ */
+function LocationCumulativeScrubChart({ sessions }) {
+  const chartRef = useRef(null)
+  const wrapRef = useRef(null)
+  const activeRef = useRef(null)
+  const [active, setActive] = useState(null)
+  const chrome = useMemo(() => pokerLocationChartChrome(), [])
+
+  const { chartData, sessionResults, lineData } = useMemo(() => {
+    const results = []
+    let running = 0
+    const data = (sessions || []).map((s) => {
+      const wl = pokerSessionWinLoss(s) ?? 0
+      results.push(wl)
+      running += wl
+      return parseFloat(running.toFixed(2))
+    })
+    const pointRadius = data.length <= 15 ? 3 : 0
+    const pointColors = results.map((r) => (r >= 0 ? '#34d399' : '#f87171'))
+    return {
+      sessionResults: results,
+      lineData: data,
+      chartData: {
+        labels: data.map((_, i) => `#${i + 1}`),
+        datasets: [
+          {
+            data,
+            segment: {
+              borderColor: (ctx) => (results[ctx.p1DataIndex] >= 0 ? '#34d399' : '#f87171'),
+            },
+            borderColor: '#71717a',
+            fill: {
+              target: 'origin',
+              above: 'rgba(52,211,153,0.10)',
+              below: 'rgba(248,113,113,0.10)',
+            },
+            borderWidth: 2,
+            pointRadius,
+            pointHoverRadius: 0,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            tension: 0.3,
+          },
+        ],
+      },
+    }
+  }, [sessions])
+
+  const crosshairPlugin = useMemo(
+    () => ({
+      id: 'pokerLocationCrosshair',
+      afterDraw(chart) {
+        const a = activeRef.current
+        if (a?.index == null) return
+        const meta = chart.getDatasetMeta(0)
+        const pt = meta?.data?.[a.index]
+        if (!pt || pt.x == null || pt.y == null) return
+        const { ctx, chartArea } = chart
+        ctx.save()
+        ctx.beginPath()
+        ctx.setLineDash([4, 4])
+        ctx.strokeStyle = chrome.crosshair
+        ctx.lineWidth = 1
+        ctx.moveTo(pt.x, chartArea.top)
+        ctx.lineTo(pt.x, chartArea.bottom)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.setLineDash([])
+        ctx.fillStyle = chrome.crosshairDot
+        ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      },
+    }),
+    [chrome.crosshair, chrome.crosshairDot],
+  )
+
+  useEffect(() => {
+    activeRef.current = active
+    chartRef.current?.update?.('none')
+  }, [active])
+
+  const scrub = useCallback(
+    (nativeEvent) => {
+      const chart = chartRef.current
+      if (!chart || !sessions?.length) return
+      const els = chart.getElementsAtEventForMode(
+        nativeEvent,
+        'index',
+        { intersect: false },
+        false,
+      )
+      if (!els.length) return
+      const index = els[0].index
+      const meta = chart.getDatasetMeta(0)
+      const pt = meta?.data?.[index]
+      if (!pt) return
+      const session = sessions[index]
+      const sessionPL = sessionResults[index] ?? 0
+      const cumPL = lineData[index] ?? 0
+      setActive({
+        index,
+        x: pt.x,
+        y: pt.y,
+        wrapW: wrapRef.current?.clientWidth || 320,
+        session,
+        sessionPL,
+        cumPL,
+      })
+    },
+    [lineData, sessionResults, sessions],
+  )
+
+  const onPointerDown = useCallback(
+    (e) => {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        /* ignore */
+      }
+      scrub(e.nativeEvent)
+    },
+    [scrub],
+  )
+
+  const onPointerMove = useCallback(
+    (e) => {
+      scrub(e.nativeEvent)
+    },
+    [scrub],
+  )
+
+  const onPointerUp = useCallback((e) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
+  const onPointerLeave = useCallback(() => {
+    setActive(null)
+  }, [])
+
+  const options = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+      },
+      scales: {
+        x: {
+          grid: { color: chrome.grid },
+          ticks: {
+            color: chrome.ticks,
+            font: { size: 10 },
+            maxTicksLimit: 6,
+            maxRotation: 0,
+          },
+        },
+        y: {
+          grid: { color: chrome.grid },
+          ticks: {
+            color: chrome.ticks,
+            font: { size: 10 },
+            callback: (v) => fmtPoker$(v),
+          },
+        },
+      },
+    }),
+    [chrome.grid, chrome.ticks],
+  )
+
+  const tipW = 168
+  const wrapW = active?.wrapW || 320
+  let tipLeft = active ? active.x + 12 : 0
+  if (active && tipLeft + tipW > wrapW - 4) tipLeft = Math.max(4, active.x - tipW - 12)
+  const tipTop = active ? Math.max(4, active.y - 42) : 0
+  const cumTone = active && active.cumPL >= 0 ? chrome.pos : chrome.neg
+  const sessionTone = active && active.sessionPL >= 0 ? chrome.pos : chrome.neg
+
+  return (
+    <div
+      ref={wrapRef}
+      className="relative h-[160px] touch-none select-none"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onPointerLeave={onPointerLeave}
+    >
+      <Line ref={chartRef} data={chartData} options={options} plugins={[crosshairPlugin]} />
+      {active?.session ? (
+        <div
+          className="pointer-events-none absolute z-10 rounded-lg px-2.5 py-1.5 shadow-lg"
+          style={{
+            left: tipLeft,
+            top: tipTop,
+            minWidth: 140,
+            maxWidth: tipW,
+            background: chrome.tooltipBg,
+            border: `1px solid ${chrome.tooltipBorder}`,
+          }}
+        >
+          <div className="text-[11px] font-medium leading-tight" style={{ color: chrome.tooltipTitle }}>
+            {fmtChartSessionDate(active.session.start_at)}{' '}
+            <span className="font-semibold tabular-nums" style={{ color: cumTone }}>
+              ({fmtPoker$(active.cumPL)})
+            </span>
+          </div>
+          <div className="mt-0.5 text-[10px] tabular-nums" style={{ color: chrome.tooltipTitle }}>
+            Session{' '}
+            <span className="font-semibold" style={{ color: sessionTone }}>
+              {fmtPoker$(active.sessionPL)}
+            </span>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
 function venueSubtitle(sessions) {
@@ -277,72 +525,6 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
       .slice(0, 5)
   }, [completed])
 
-  const lineLabels = completed.map((_, i) => `#${i + 1}`)
-  const sessionResults = []
-  let running = 0
-  const lineData = completed.map((s) => {
-    const wl = pokerSessionWinLoss(s) ?? 0
-    sessionResults.push(wl)
-    running += wl
-    return parseFloat(running.toFixed(2))
-  })
-  const pointRadius = lineData.length <= 15 ? 4 : 0
-  const pointColors = sessionResults.map((r) => (r >= 0 ? '#34d399' : '#f87171'))
-
-  const chartLineData = {
-    labels: lineLabels,
-    datasets: [
-      {
-        data: lineData,
-        segment: {
-          borderColor: (ctx) => (sessionResults[ctx.p1DataIndex] >= 0 ? '#34d399' : '#f87171'),
-        },
-        borderColor: '#71717a',
-        fill: {
-          target: 'origin',
-          above: 'rgba(52,211,153,0.10)',
-          below: 'rgba(248,113,113,0.10)',
-        },
-        borderWidth: 2,
-        pointRadius,
-        pointHoverRadius: Math.max(pointRadius, 5),
-        pointBackgroundColor: pointColors,
-        pointBorderColor: pointColors,
-        tension: 0.3,
-      },
-    ],
-  }
-
-  const chartChrome = pokerLocationChartChrome()
-  const lineOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: { label: (ctx) => fmtPoker$(ctx.parsed.y) },
-        backgroundColor: chartChrome.tooltipBg,
-        borderColor: chartChrome.tooltipBorder,
-        borderWidth: 1,
-        titleColor: chartChrome.tooltipTitle,
-        bodyColor: chartChrome.tooltipBody,
-        padding: 10,
-        displayColors: false,
-      },
-    },
-    scales: {
-      x: {
-        grid: { color: chartChrome.grid },
-        ticks: { color: chartChrome.ticks, font: { size: 10 }, maxTicksLimit: 6, maxRotation: 0 },
-      },
-      y: {
-        grid: { color: chartChrome.grid },
-        ticks: { color: chartChrome.ticks, font: { size: 10 }, callback: (v) => fmtPoker$(v) },
-      },
-    },
-  }
-
   const cashCount = location.cash.count
   const tourneyCount = location.tournament.count
   const typeDonut = {
@@ -443,9 +625,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
         {completed.length >= 2 ? (
           <div className="mb-4 rounded-2xl border border-zinc-700/30 bg-zinc-800/50 p-3">
             <div className="mb-2 text-xs text-zinc-400">Cumulative P&L</div>
-            <div className="h-[160px]">
-              <Line data={chartLineData} options={lineOptions} />
-            </div>
+            <LocationCumulativeScrubChart sessions={completed} />
           </div>
         ) : null}
 

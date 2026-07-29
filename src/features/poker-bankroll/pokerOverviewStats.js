@@ -174,6 +174,13 @@ function tourneyGameRowLabel(session) {
   return biStr ? `${biStr} ${name}` : name
 }
 
+/** Games card: group by session Game field only (stored game_variant). */
+function sessionGameFieldLabel(session) {
+  const name = pokerCashGameNameFromStored(session.game_variant)
+  if (name && name !== 'custom' && name !== 'other') return name
+  return session.session_type === 'tournament' ? 'Tournament' : 'Cash'
+}
+
 function groupRows(sessions, labelFn) {
   /** @type {Map<string, ReturnType<typeof emptyBucket>>} */
   const map = new Map()
@@ -227,6 +234,7 @@ export function buildPokerOverviewStats(completedSessions) {
     (a, b) => TOURNEY_TIER_ORDER.indexOf(a.label) - TOURNEY_TIER_ORDER.indexOf(b.label),
   )
   const tourneyByGame = groupRows(tourney, tourneyGameRowLabel)
+  const byGameField = groupRows(sessions, sessionGameFieldLabel)
 
   const now = new Date()
   const curY = now.getFullYear()
@@ -260,6 +268,7 @@ export function buildPokerOverviewStats(completedSessions) {
     cashByGame,
     tourneyByTier,
     tourneyByGame,
+    byGameField,
     currentMonth,
     lastMonth,
     trendMonths,

@@ -91,14 +91,14 @@ function StatPairRow({ label, value, tone = false }) {
   )
 }
 
-function GameRows({ rows }) {
+function GameRows({ rows, firstColLabel = '' }) {
   if (!rows.length) {
     return <p className="py-2 text-center text-xs text-zinc-500">No sessions yet</p>
   }
   return (
     <div>
       <div className="mb-1 grid grid-cols-[1.4fr_0.7fr_0.9fr_0.9fr] gap-1">
-        <ColHead />
+        <ColHead>{firstColLabel}</ColHead>
         <ColHead className="text-right">Hours</ColHead>
         <ColHead className="text-right">$/h</ColHead>
         <ColHead className="text-right">Total</ColHead>
@@ -128,6 +128,36 @@ function SectionCard({ title, titleClass, children }) {
       <div className={`mb-2 text-[15px] font-semibold ${titleClass}`}>{title}</div>
       {children}
     </Card>
+  )
+}
+
+/** @param {'all' | 'live' | 'online'} venue */
+function filterSessionsByVenue(sessions, venue) {
+  if (venue === 'online') return (sessions || []).filter((s) => s.venue_kind === 'online')
+  if (venue === 'live') return (sessions || []).filter((s) => s.venue_kind !== 'online')
+  return sessions || []
+}
+
+function VenueChips({ value, onChange, activeClass }) {
+  return (
+    <div className="mb-2 flex gap-2">
+      {[
+        { id: 'all', label: 'All' },
+        { id: 'live', label: 'Live' },
+        { id: 'online', label: 'Online' },
+      ].map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
+            value === opt.id ? activeClass : 'bg-zinc-800 text-zinc-500'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -230,8 +260,34 @@ export default function PokerBankrollOverview({ sessions = [] }) {
   const stats = useMemo(() => buildPokerOverviewStats(sessions), [sessions])
   const [cashMode, setCashMode] = useState('tiers') // 'tiers' | 'games'
   const [tourneyMode, setTourneyMode] = useState('tiers') // 'tiers' | 'games'
+  const [cashVenue, setCashVenue] = useState('all') // 'all' | 'live' | 'online'
+  const [tourneyVenue, setTourneyVenue] = useState('all')
+
+  const completed = useMemo(
+    () => (sessions || []).filter((s) => s.status !== 'active'),
+    [sessions],
+  )
+  const cashSessions = useMemo(
+    () => completed.filter((s) => s.session_type === 'cash'),
+    [completed],
+  )
+  const tourneySessions = useMemo(
+    () => completed.filter((s) => s.session_type === 'tournament'),
+    [completed],
+  )
+
+  const cashScoped = useMemo(
+    () => buildPokerOverviewStats(filterSessionsByVenue(cashSessions, cashVenue)),
+    [cashSessions, cashVenue],
+  )
+  const tourneyScoped = useMemo(
+    () => buildPokerOverviewStats(filterSessionsByVenue(tourneySessions, tourneyVenue)),
+    [tourneySessions, tourneyVenue],
+  )
 
   const { cash, tourney, total } = stats
+  const cashView = cashScoped.cash
+  const tourneyView = tourneyScoped.tourney
 
   return (
     <div className="pb-4">
@@ -297,7 +353,17 @@ export default function PokerBankrollOverview({ sessions = [] }) {
         />
       </Card>
 
+      <Card>
+        <div className="mb-2 text-[15px] font-semibold text-zinc-200">Games</div>
+        <GameRows rows={stats.byGameField} firstColLabel="Games" />
+      </Card>
+
       <SectionCard title="Cash Game" titleClass="text-cyan-400">
+        <VenueChips
+          value={cashVenue}
+          onChange={setCashVenue}
+          activeClass="bg-cyan-600/30 text-cyan-300"
+        />
         <div className="mb-2 flex gap-2">
           <button
             type="button"
@@ -318,29 +384,34 @@ export default function PokerBankrollOverview({ sessions = [] }) {
             By game
           </button>
         </div>
-        <GameRows rows={cashMode === 'tiers' ? stats.cashByTier : stats.cashByGame} />
+        <GameRows rows={cashMode === 'tiers' ? cashScoped.cashByTier : cashScoped.cashByGame} />
         <div className="mt-2">
-          <StatPairRow label="Sessions" value={String(cash.sessions)} />
+          <StatPairRow label="Sessions" value={String(cashView.sessions)} />
           <StatPairRow
             label="Rebuys"
-            value={`${cash.rebuys}${cash.sessions ? ` (${fmtPct(cash.rebuyPct)})` : ''}`}
+            value={`${cashView.rebuys}${cashView.sessions ? ` (${fmtPct(cashView.rebuyPct)})` : ''}`}
           />
           <StatPairRow
             label="BB/h"
-            value={cash.bbPerHour == null ? '-' : fmtNum(cash.bbPerHour, 2)}
+            value={cashView.bbPerHour == null ? '-' : fmtNum(cashView.bbPerHour, 2)}
             tone
           />
           <StatPairRow
             label="BB/100"
-            value={cash.bbPer100 == null ? '-' : fmtNum(cash.bbPer100, 2)}
+            value={cashView.bbPer100 == null ? '-' : fmtNum(cashView.bbPer100, 2)}
             tone
           />
-          <StatPairRow label="Avg Winnings" value={fmtPokerOverview$(cash.avgWinnings)} tone />
-          <StatPairRow label="Avg Losses" value={fmtPokerOverview$(cash.avgLosses)} tone />
+          <StatPairRow label="Avg Winnings" value={fmtPokerOverview$(cashView.avgWinnings)} tone />
+          <StatPairRow label="Avg Losses" value={fmtPokerOverview$(cashView.avgLosses)} tone />
         </div>
       </SectionCard>
 
       <SectionCard title="Tournament" titleClass="text-amber-300">
+        <VenueChips
+          value={tourneyVenue}
+          onChange={setTourneyVenue}
+          activeClass="bg-amber-500/20 text-amber-200"
+        />
         <div className="mb-2 flex gap-2">
           <button
             type="button"
@@ -361,29 +432,31 @@ export default function PokerBankrollOverview({ sessions = [] }) {
             By event
           </button>
         </div>
-        <GameRows rows={tourneyMode === 'tiers' ? stats.tourneyByTier : stats.tourneyByGame} />
+        <GameRows
+          rows={tourneyMode === 'tiers' ? tourneyScoped.tourneyByTier : tourneyScoped.tourneyByGame}
+        />
         <div className="mt-2">
-          <StatPairRow label="Bounty winnings" value={fmtPokerOverview$(tourney.bounty)} tone />
-          <StatPairRow label="Sessions" value={String(tourney.sessions)} />
+          <StatPairRow label="Bounty winnings" value={fmtPokerOverview$(tourneyView.bounty)} tone />
+          <StatPairRow label="Sessions" value={String(tourneyView.sessions)} />
           <StatPairRow
             label="Rebuys"
-            value={`${tourney.rebuys}${tourney.sessions ? ` (${fmtPct(tourney.rebuyPct)})` : ''}`}
+            value={`${tourneyView.rebuys}${tourneyView.sessions ? ` (${fmtPct(tourneyView.rebuyPct)})` : ''}`}
           />
           <StatPairRow
             label="ITM"
-            value={`${tourney.itm}${tourney.sessions ? ` (${fmtPct(tourney.itmPct)})` : ''}`}
+            value={`${tourneyView.itm}${tourneyView.sessions ? ` (${fmtPct(tourneyView.itmPct)})` : ''}`}
           />
           <StatPairRow
             label="Final Table"
-            value={`${tourney.finalTable}${tourney.sessions ? ` (${fmtPct(tourney.finalTablePct)})` : ''}`}
+            value={`${tourneyView.finalTable}${tourneyView.sessions ? ` (${fmtPct(tourneyView.finalTablePct)})` : ''}`}
           />
           <StatPairRow
             label="Runner-Up"
-            value={`${tourney.runnerUp}${tourney.sessions ? ` (${fmtPct(tourney.runnerUpPct)})` : ''}`}
+            value={`${tourneyView.runnerUp}${tourneyView.sessions ? ` (${fmtPct(tourneyView.runnerUpPct)})` : ''}`}
           />
           <StatPairRow
             label="Victories"
-            value={`${tourney.victories}${tourney.sessions ? ` (${fmtPct(tourney.victoriesPct)})` : ''}`}
+            value={`${tourneyView.victories}${tourneyView.sessions ? ` (${fmtPct(tourneyView.victoriesPct)})` : ''}`}
           />
         </div>
       </SectionCard>

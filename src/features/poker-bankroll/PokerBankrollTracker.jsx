@@ -1432,7 +1432,7 @@ export default function PokerBankrollTracker({
           >
             <p className="font-semibold text-white">Charts coming next</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Overview already covers Total, Sessions, and Cash / Tourney breakdowns.
+              Overview already covers Total, Sessions, Games, and Cash / Tourney breakdowns.
             </p>
           </div>
         ) : null}

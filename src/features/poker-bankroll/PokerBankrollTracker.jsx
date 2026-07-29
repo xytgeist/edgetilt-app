@@ -1118,6 +1118,29 @@ export default function PokerBankrollTracker({
     }
   }
 
+  /** Discard an in-progress session from End Session (no bankroll delta yet). */
+  async function deleteActiveSession() {
+    if (!activeSession || !supabaseClient || !userId) return
+    if (!window.confirm('Delete this session? It will not be saved to your history.')) return
+    setSaving(true)
+    setError('')
+    try {
+      const { error: dErr } = await supabaseClient
+        .from('poker_bankroll_sessions')
+        .delete()
+        .eq('id', activeSession.id)
+        .eq('user_id', userId)
+      if (dErr) throw dErr
+      setSheet(null)
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Delete failed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const previewWl = (() => {
     const buyIn = parseFloat(form.buy_in)
     const cashOut = parseFloat(form.cash_out)
@@ -2048,9 +2071,17 @@ export default function PokerBankrollTracker({
               type="button"
               disabled={saving}
               onClick={() => void endLiveSession()}
-              className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+              className="mb-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
             >
               {saving ? 'Ending…' : 'End Session'}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void deleteActiveSession()}
+              className="w-full rounded-2xl border border-rose-500/40 py-3 text-sm font-semibold text-rose-300 touch-manipulation disabled:opacity-50"
+            >
+              Delete session
             </button>
           </div>
         </div>

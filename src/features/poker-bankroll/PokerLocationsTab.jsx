@@ -7,11 +7,10 @@ import {
   PointElement,
   LinearScale,
   CategoryScale,
-  ArcElement,
   Tooltip,
   Filler,
 } from 'chart.js'
-import { Line, Doughnut } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import {
   fmtPoker$,
@@ -21,7 +20,7 @@ import {
 } from './pokerBankrollMath.js'
 import { pokerSessionStakesLabel } from './pokerSessionLabels.js'
 
-ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, ArcElement, Tooltip, Filler)
+ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler)
 
 /** Chart.js tooltip / axis chrome for EDGE light vs dark (`html.light`). */
 function pokerLocationChartChrome() {
@@ -411,28 +410,49 @@ function MiniStatCard({ label, value, positive }) {
   )
 }
 
-function DonutCard({ title, centerLabel, centerValue, chart, options, legend }) {
-  const hasData = chart.datasets[0].data.some((v) => v > 0)
+/**
+ * 100% segmented meter (preview alternative to donuts).
+ * @param {{ title: string, summary?: string, segments: { label: string, count: number, color: string }[] }} props
+ */
+function SegmentMeterCard({ title, summary, segments }) {
+  const total = (segments || []).reduce((sum, s) => sum + (Number(s.count) || 0), 0)
   return (
     <div className="rounded-2xl border border-zinc-700/30 bg-zinc-800/50 p-3">
-      <div className="mb-2 text-xs text-zinc-400">{title}</div>
-      {!hasData ? (
-        <div className="flex h-[110px] items-center justify-center text-xs text-zinc-600">No data</div>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div className="text-xs text-zinc-400">{title}</div>
+        {summary ? (
+          <div className="text-[11px] font-bold tabular-nums text-white">{summary}</div>
+        ) : null}
+      </div>
+      {total <= 0 ? (
+        <div className="py-3 text-center text-xs text-zinc-600">No data</div>
       ) : (
         <>
-          <div className="relative h-[110px]">
-            <Doughnut data={chart} options={options} />
-            {centerLabel ? (
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <div className="text-[11px] font-bold tabular-nums text-white">{centerValue}</div>
-                <div className="text-[9px] uppercase tracking-wide text-zinc-500">{centerLabel}</div>
-              </div>
-            ) : null}
+          <div
+            className="flex h-3.5 w-full overflow-hidden rounded-full bg-zinc-950/60 ring-1 ring-inset ring-zinc-700/40"
+            role="img"
+            aria-label={segments.map((s) => `${s.label} ${s.count}`).join(', ')}
+          >
+            {segments
+              .filter((s) => (Number(s.count) || 0) > 0)
+              .map((s) => (
+                <div
+                  key={s.label}
+                  className="h-full min-w-[3px] first:rounded-l-full last:rounded-r-full"
+                  style={{
+                    width: `${((Number(s.count) || 0) / total) * 100}%`,
+                    backgroundColor: s.color,
+                  }}
+                />
+              ))}
           </div>
-          <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
-            {legend.map((l) => (
-              <div key={l.label} className="flex items-center gap-1">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: l.color }} />
+          <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1">
+            {segments.map((l) => (
+              <div key={l.label} className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: l.color }}
+                />
                 <span className="text-[10px] text-zinc-400">
                   {l.label} ({l.count})
                 </span>
@@ -527,41 +547,8 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
 
   const cashCount = location.cash.count
   const tourneyCount = location.tournament.count
-  const typeDonut = {
-    labels: ['Cash Game', 'Tournament'],
-    datasets: [
-      {
-        data: [cashCount, tourneyCount],
-        backgroundColor: ['#3b82f6', '#fbbf24'],
-        borderWidth: 0,
-      },
-    ],
-  }
-
   const wonCount = completed.filter((s) => (pokerSessionWinLoss(s) ?? 0) >= 0).length
   const lostCount = completed.length - wonCount
-  const wlDonut = {
-    labels: ['Won', 'Lost'],
-    datasets: [
-      {
-        data: [wonCount, lostCount],
-        backgroundColor: ['#34d399', '#f87171'],
-        borderWidth: 0,
-      },
-    ],
-  }
-
-  // Legend + center label already show the counts; Chart.js tooltips cover the hole and look wrong in light mode.
-  const donutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '68%',
-    animation: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { enabled: false },
-    },
-  }
 
   const typeRows = [
     { key: 'cash', label: 'Cash Game', icon: 'cash', iconClass: 'text-blue-400', ...location.cash },
@@ -630,25 +617,19 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
         ) : null}
 
         {completed.length > 0 ? (
-          <div className="mb-4 grid grid-cols-2 gap-3">
-            <DonutCard
+          <div className="mb-4 space-y-2">
+            <SegmentMeterCard
               title="Session Type"
-              centerValue={String(location.completed)}
-              centerLabel="Entries"
-              chart={typeDonut}
-              options={donutOptions}
-              legend={[
+              summary={`${location.completed} entries`}
+              segments={[
                 { label: 'Cash', color: '#3b82f6', count: cashCount },
                 { label: 'Tourney', color: '#fbbf24', count: tourneyCount },
               ]}
             />
-            <DonutCard
+            <SegmentMeterCard
               title="Outcome"
-              centerValue={location.winPct != null ? `${location.winPct.toFixed(0)}%` : '—'}
-              centerLabel="Won"
-              chart={wlDonut}
-              options={donutOptions}
-              legend={[
+              summary={location.winPct != null ? `${location.winPct.toFixed(0)}% won` : undefined}
+              segments={[
                 { label: 'Won', color: '#34d399', count: wonCount },
                 { label: 'Lost', color: '#f87171', count: lostCount },
               ]}

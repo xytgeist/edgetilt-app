@@ -944,6 +944,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-29: **Poker bankroll start form (game not Advanced):** Type · Table size · Location. Cash = New game… → Limit · free-text Game · blinds/ante; Tourney = NLH/Limit Hold'em/PLO/PLO8/Mix presets + Players/Start stack; **`third_blind`/`ante`** (`20260729030000`). Advanced = notes (+ tourney extras).
+- 2026-07-29: **Poker bankroll GPS + custom venues:** live Casino/venue autofills nearest casino (`fetchNearbyCasinos`); **`poker_custom_venues`** (`20260729020000`) + **Your places** at top of **`CasinoAutocomplete`** (optional props; slots bankroll unchanged). Apply SQL on test.
 - 2026-07-29: **Poker bankroll starting roll:** **`poker_bankroll_profiles`** (`20260729010000`) + UI to set/edit overall poker bankroll; session create/edit/delete applies P/L delta. Separate from slots `bankroll_profiles`.
 - 2026-07-29: **Poker tools hub:** hamburger **Poker** (`PokerScreen.jsx` / tab **`poker`**) parallel to Slots; Poker Bankroll lives under it (not Slots hub). Close on poker tools returns to Poker hub.
 - 2026-07-29: **Poker Bankroll Manager (v1 scaffold):** new feature **`src/features/poker-bankroll/`** + tab **`poker-bankroll`**. SQL **`20260729000000_poker_bankroll_sessions.sql`** (cash/tourney, live/online, simple + advanced columns, RLS). Log sheet: recreational defaults + collapsible Advanced. Freemium **10** poker sessions (`FREE_POKER_BANKROLL_SESSION_LIMIT`). Charts/locations/trend/live HUD deferred. Apply SQL on test before smoke.

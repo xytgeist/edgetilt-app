@@ -4,19 +4,23 @@
  * Typeahead for casino / location names.
  *
  * On focus:
- *   - If nearbyCasinos are available, shows "📍 Near you" section (top 5 by distance)
+ *   - If customVenues are provided, shows "Your places" first
+ *   - If nearbyCasinos are available, shows "Near you" (top by distance)
  *   - User can tap one or start typing to search
  *
  * On type (2+ chars):
  *   - Searches our casinos table (trigram fuzzy, instant & free)
  *   - If < 3 local results, shows "Search online…" → Google Places proxy
  *   - Selecting a Places result saves it to casinos table with lat/lng
+ *   - Optional onSaveCustomVenue: "Save as custom place" row
  *
  * Props:
  *   value          - controlled string value
  *   onChange       - fn(name: string)
  *   supabaseClient - authenticated Supabase client
  *   nearbyCasinos  - [{ id, name, city, state, country, distanceMi }]
+ *   customVenues   - [{ id, name }] user-saved places (shown above Near you)
+ *   onSaveCustomVenue - fn(name: string) => void | Promise — save typed name as custom
  *   gpsLoading     - bool: true while GPS + casino fetch is in progress
  *   placeholder    - optional
  *   className      - extra classes on the wrapper
@@ -37,6 +41,8 @@ export default function CasinoAutocomplete({
   onChange,
   supabaseClient,
   nearbyCasinos = [],
+  customVenues = [],
+  onSaveCustomVenue = null,
   gpsLoading = false,
   placeholder = 'e.g. Bellagio',
   className = '',
@@ -49,6 +55,7 @@ export default function CasinoAutocomplete({
   const [showOnline, setShowOnline] = useState(false)
   const [focused, setFocused] = useState(false)
   const [userTyped, setUserTyped] = useState(false)
+  const [savingCustom, setSavingCustom] = useState(false)
   const debounceRef = useRef(null)
   const wrapperRef = useRef(null)
   const touchStartYRef = useRef(null)
@@ -166,12 +173,55 @@ export default function CasinoAutocomplete({
     setLocalResults([])
   }
 
-  // Nearby shows whenever focused + not yet typed (even if field is pre-filled)
+  const trimmedQuery = String(query || '').trim()
+  const customNameSet = new Set(
+    (customVenues || []).map((v) => String(v.name || '').trim().toLowerCase()).filter(Boolean),
+  )
+  const filteredCustom = (customVenues || []).filter((v) => {
+    if (!userTyped || trimmedQuery.length < 1) return true
+    return String(v.name || '').toLowerCase().includes(trimmedQuery.toLowerCase())
+  })
+  const canSaveCustom =
+    Boolean(onSaveCustomVenue) &&
+    trimmedQuery.length >= 2 &&
+    !customNameSet.has(trimmedQuery.toLowerCase())
+
+  // Custom + Nearby show when focused + not yet typed (even if field is pre-filled)
   // Search shows only once user has actively typed
+  const showCustom = focused && filteredCustom.length > 0 && (!userTyped || trimmedQuery.length >= 1)
   const showNearby = focused && !userTyped && nearbyCasinos.length > 0
   const showSearch = focused && userTyped && query.length >= MIN_CHARS
   const showSearchOnlineOption = showSearch && !showOnline && localResults.length < 3
-  const hasDropdown = showNearby || (showSearch && (localResults.length > 0 || showSearchOnlineOption || showOnline))
+  const showSaveCustomRow = focused && userTyped && canSaveCustom
+  const hasDropdown =
+    showCustom ||
+    showNearby ||
+    showSaveCustomRow ||
+    (showSearch && (localResults.length > 0 || showSearchOnlineOption || showOnline))
+
+  const pickCustom = (venue) => {
+    setQuery(venue.name)
+    onChange(venue.name)
+    setFocused(false)
+    setShowOnline(false)
+    setOnlineResults([])
+    setLocalResults([])
+  }
+
+  const saveCustom = async () => {
+    if (!canSaveCustom || savingCustom) return
+    setSavingCustom(true)
+    try {
+      await onSaveCustomVenue?.(trimmedQuery)
+      setQuery(trimmedQuery)
+      onChange(trimmedQuery)
+      setFocused(false)
+      setUserTyped(false)
+      setLocalResults([])
+    } finally {
+      setSavingCustom(false)
+    }
+  }
 
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
@@ -200,6 +250,32 @@ export default function CasinoAutocomplete({
 
       {hasDropdown && (
         <div className="absolute z-50 mt-1.5 w-full rounded-2xl bg-zinc-800 border border-zinc-700/60 shadow-xl overflow-hidden max-h-72 overflow-y-auto">
+
+          {/* ── Custom places (always above Near you) ── */}
+          {showCustom && (
+            <>
+              <div className="px-4 pt-3 pb-1.5 flex items-center gap-1.5">
+                <span className="text-xs">⭐</span>
+                <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Your places</span>
+              </div>
+              {filteredCustom.map((venue) => (
+                <button
+                  key={venue.id}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); pickCustom(venue) }}
+                  onTouchStart={(e) => { touchStartYRef.current = e.touches[0].clientY }}
+                  onTouchEnd={(e) => {
+                    const delta = Math.abs(e.changedTouches[0].clientY - (touchStartYRef.current ?? 0))
+                    if (delta < 8) { e.preventDefault(); pickCustom(venue) }
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-zinc-700/60 active:bg-zinc-700 border-b border-zinc-700/40 last:border-0"
+                >
+                  <div className="text-sm font-semibold leading-tight text-white">{venue.name}</div>
+                  <div className="text-zinc-500 text-xs mt-0.5">Custom location</div>
+                </button>
+              ))}
+            </>
+          )}
 
           {/* ── Nearby section ── */}
           {showNearby && (
@@ -319,6 +395,23 @@ export default function CasinoAutocomplete({
                 )
               )}
             </>
+          )}
+
+          {showSaveCustomRow && (
+            <button
+              type="button"
+              disabled={savingCustom}
+              onMouseDown={(e) => { e.preventDefault(); void saveCustom() }}
+              onTouchStart={(e) => { touchStartYRef.current = e.touches[0].clientY }}
+              onTouchEnd={(e) => {
+                const delta = Math.abs(e.changedTouches[0].clientY - (touchStartYRef.current ?? 0))
+                if (delta < 8) { e.preventDefault(); void saveCustom() }
+              }}
+              className="w-full text-left px-4 py-3 flex items-center gap-2 text-emerald-400 text-sm font-semibold hover:bg-zinc-700/60 active:bg-zinc-700 border-t border-zinc-700/40 disabled:opacity-60"
+            >
+              <span>⭐</span>
+              <span>{savingCustom ? 'Saving…' : `Save "${trimmedQuery}" as custom place`}</span>
+            </button>
           )}
         </div>
       )}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -6,6 +6,7 @@ import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -19,9 +20,18 @@ import {
   pokerSessionWinLoss,
 } from './pokerBankrollMath.js'
 import {
-  POKER_GAME_VARIANTS,
+  POKER_CASH_NEW_GAME_ID,
   POKER_LIMIT_TYPES,
   POKER_TABLE_SIZES,
+  applyCashGamePreset,
+  buildCashGamePresetsFromSessions,
+  cashGamePresetIdFromName,
+  cashGameSelectOptions,
+  coercePokerGameForSessionType,
+  formWithDefaultCashGame,
+  pokerGameOptionsForSessionType,
+  pokerGamePickFromStored,
+  pokerGameVariantToStored,
   pokerSessionMetaLine,
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
@@ -37,11 +47,15 @@ function emptyForm() {
     duration_hours: '4',
     buy_in: '',
     cash_out: '',
-    game_variant: 'nlh',
+    cash_game_pick: POKER_CASH_NEW_GAME_ID,
+    game_variant: 'custom',
+    game_custom_name: '',
     limit_type: 'no_limit',
     table_size: 'full_ring',
     small_blind: '',
     big_blind: '',
+    third_blind: '0',
+    ante: '0',
     tournament_name: '',
     field_size: '',
     start_stack: '',
@@ -54,7 +68,8 @@ function emptyForm() {
 
 /**
  * Poker Bankroll Manager — separate from slots Bankroll.
- * Simple by default; Advanced expands pro fields.
+ * Core start fields: type, table size, location, game (+ stake/tourney details).
+ * Advanced holds notes and post-session tourney extras.
  */
 export default function PokerBankrollTracker({
   supabaseClient,
@@ -86,6 +101,10 @@ export default function PokerBankrollTracker({
   const [elapsed, setElapsed] = useState(0)
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
   const [venueFilter, setVenueFilter] = useState('all') // all | live | online
+  const [nearbyCasinos, setNearbyCasinos] = useState([])
+  const [gpsLoading, setGpsLoading] = useState(false)
+  const [customVenues, setCustomVenues] = useState([])
+  const casinoCoordCacheRef = useRef(null)
 
   const overallBankroll = profile ? Number(profile.overall_bankroll) : null
   const hasBankrollProfile = profile != null
@@ -95,6 +114,11 @@ export default function PokerBankrollTracker({
   )
   const completedSessions = useMemo(
     () => sessions.filter((s) => s.status !== 'active'),
+    [sessions],
+  )
+  /** Prior cash games for the Game dropdown (most recent first). */
+  const cashGamePresets = useMemo(
+    () => buildCashGamePresetsFromSessions(sessions),
     [sessions],
   )
 
@@ -119,13 +143,14 @@ export default function PokerBankrollTracker({
     if (!supabaseClient || !userId) {
       setSessions([])
       setProfile(null)
+      setCustomVenues([])
       setLoading(false)
       return
     }
     setLoading(true)
     setError('')
     try {
-      const [sessRes, profRes] = await Promise.all([
+      const [sessRes, profRes, customRes] = await Promise.all([
         supabaseClient
           .from('poker_bankroll_sessions')
           .select('*')
@@ -137,11 +162,22 @@ export default function PokerBankrollTracker({
           .select('*')
           .eq('user_id', userId)
           .maybeSingle(),
+        supabaseClient
+          .from('poker_custom_venues')
+          .select('id, name')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
       ])
       if (sessRes.error) throw sessRes.error
       if (profRes.error) throw profRes.error
       setSessions(sessRes.data || [])
       setProfile(profRes.data || null)
+      if (customRes.error) {
+        console.warn('[poker-bankroll] custom venues load failed', customRes.error.message)
+        setCustomVenues([])
+      } else {
+        setCustomVenues(customRes.data || [])
+      }
     } catch (e) {
       setError(e?.message || 'Could not load poker bankroll.')
       setSessions([])
@@ -153,6 +189,35 @@ export default function PokerBankrollTracker({
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  const fetchNearby = useCallback(async (onNearest) => {
+    await fetchNearbyCasinos(supabaseClient, {
+      cacheRef: casinoCoordCacheRef,
+      userId,
+      onLoading: setGpsLoading,
+      onNearby: setNearbyCasinos,
+      onNearest,
+    })
+  }, [supabaseClient, userId])
+
+  async function saveCustomVenue(name) {
+    const trimmed = String(name || '').trim()
+    if (!trimmed || !supabaseClient || !userId) return
+    const { data, error: err } = await supabaseClient
+      .from('poker_custom_venues')
+      .upsert(
+        { user_id: userId, name: trimmed },
+        { onConflict: 'user_id,name' },
+      )
+      .select('id, name')
+      .single()
+    if (err) throw err
+    setCustomVenues((prev) => {
+      const next = prev.filter((v) => v.id !== data.id && v.name.toLowerCase() !== trimmed.toLowerCase())
+      return [data, ...next]
+    })
+    setForm((f) => ({ ...f, venue_name: data.name }))
+  }
 
   async function upsertBankroll(nextAmount) {
     const { data, error: err } = await supabaseClient
@@ -249,11 +314,13 @@ export default function PokerBankrollTracker({
       setError('You already have a session in progress.')
       return
     }
-    setForm(emptyForm())
+    setNearbyCasinos([])
+    setForm(formWithDefaultCashGame(emptyForm(), cashGamePresets))
     setShowAdvanced(false)
     setError('')
     setSheet('start')
     triggerTapHapticLight()
+    void fetchNearby((name) => setForm((f) => (f.venue_kind === 'live' && !f.venue_name ? { ...f, venue_name: name } : f)))
   }
 
   function openLogPast() {
@@ -263,11 +330,13 @@ export default function PokerBankrollTracker({
     }
     setEditingId(null)
     setEditingPrevWl(0)
-    setForm(emptyForm())
+    setNearbyCasinos([])
+    setForm(formWithDefaultCashGame(emptyForm(), cashGamePresets))
     setShowAdvanced(false)
     setError('')
     setSheet('session')
     triggerTapHapticLight()
+    void fetchNearby((name) => setForm((f) => (f.venue_kind === 'live' && !f.venue_name ? { ...f, venue_name: name } : f)))
   }
 
   function openEndSession() {
@@ -300,6 +369,17 @@ export default function PokerBankrollTracker({
       )
       return
     }
+    if (
+      (form.session_type === 'cash' || form.game_variant === 'custom') &&
+      !String(form.game_custom_name || '').trim()
+    ) {
+      setError(
+        form.session_type === 'cash'
+          ? 'Enter a game name (e.g. 2/5 NLH).'
+          : 'Enter a name for your custom game.',
+      )
+      return
+    }
     const now = new Date()
     const payload = {
       user_id: userId,
@@ -311,19 +391,37 @@ export default function PokerBankrollTracker({
       end_at: null,
       buy_in: buyIn,
       cash_out: null,
-      game_variant: form.game_variant || null,
-      limit_type: showAdvanced ? form.limit_type || null : null,
-      table_size: showAdvanced ? form.table_size || null : null,
+      game_variant: pokerGameVariantToStored(
+        form.session_type,
+        form.game_variant,
+        form.game_custom_name,
+      ),
+      limit_type:
+        form.session_type === 'cash' || form.game_variant === 'custom'
+          ? form.limit_type || null
+          : null,
+      table_size: form.table_size || null,
       small_blind:
         form.session_type === 'cash' && form.small_blind !== ''
           ? parseFloat(form.small_blind)
           : null,
       big_blind:
         form.session_type === 'cash' && form.big_blind !== '' ? parseFloat(form.big_blind) : null,
+      third_blind:
+        form.session_type === 'cash' && form.third_blind !== ''
+          ? parseFloat(form.third_blind)
+          : null,
+      ante: form.session_type === 'cash' && form.ante !== '' ? parseFloat(form.ante) : null,
       tournament_name:
         form.session_type === 'tournament' ? form.tournament_name.trim() || null : null,
-      field_size: null,
-      start_stack: null,
+      field_size:
+        form.session_type === 'tournament' && form.field_size !== ''
+          ? parseInt(form.field_size, 10)
+          : null,
+      start_stack:
+        form.session_type === 'tournament' && form.start_stack !== ''
+          ? parseFloat(form.start_stack)
+          : null,
       finish_place: null,
       bounty_winnings: null,
       reentries: null,
@@ -394,10 +492,13 @@ export default function PokerBankrollTracker({
     const start = new Date(session.start_at)
     const hrs = pokerSessionDurationHours(session)
     const prevWl = pokerSessionWinLoss(session)
+    const sessionType = session.session_type || 'cash'
+    const gamePick = pokerGamePickFromStored(session.game_variant, sessionType)
+    const gameVariant = coercePokerGameForSessionType(sessionType, gamePick.game_variant)
     setEditingId(session.id)
     setEditingPrevWl(prevWl == null ? 0 : prevWl)
     setForm({
-      session_type: session.session_type || 'cash',
+      session_type: sessionType,
       venue_kind: session.venue_kind || 'live',
       venue_name: session.venue_name || '',
       date: localYmd(start),
@@ -405,11 +506,18 @@ export default function PokerBankrollTracker({
       duration_hours: formatDurationHoursField(hrs || 0),
       buy_in: session.buy_in != null ? String(session.buy_in) : '',
       cash_out: session.cash_out != null ? String(session.cash_out) : '',
-      game_variant: session.game_variant || 'nlh',
+      cash_game_pick:
+        sessionType === 'cash' && gamePick.game_custom_name
+          ? cashGamePresetIdFromName(gamePick.game_custom_name)
+          : POKER_CASH_NEW_GAME_ID,
+      game_variant: gameVariant,
+      game_custom_name: gamePick.game_custom_name,
       limit_type: session.limit_type || 'no_limit',
       table_size: session.table_size || 'full_ring',
       small_blind: session.small_blind != null ? String(session.small_blind) : '',
       big_blind: session.big_blind != null ? String(session.big_blind) : '',
+      third_blind: session.third_blind != null ? String(session.third_blind) : '0',
+      ante: session.ante != null ? String(session.ante) : '0',
       tournament_name: session.tournament_name || '',
       field_size: session.field_size != null ? String(session.field_size) : '',
       start_stack: session.start_stack != null ? String(session.start_stack) : '',
@@ -419,21 +527,47 @@ export default function PokerBankrollTracker({
       notes: session.notes || '',
     })
     const hasAdvanced = Boolean(
-      session.small_blind != null ||
-        session.big_blind != null ||
-        session.tournament_name ||
-        session.field_size != null ||
+      session.tournament_name ||
         session.finish_place != null ||
         session.bounty_winnings != null ||
+        session.reentries != null ||
         session.notes,
     )
     setShowAdvanced(hasAdvanced)
     setError('')
     setSheet('session')
+    if ((session.venue_kind || 'live') === 'live') {
+      void fetchNearby(null)
+    }
   }
 
   function setField(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }))
+    setForm((prev) => {
+      if (key === 'cash_game_pick') {
+        if (value === POKER_CASH_NEW_GAME_ID) return applyCashGamePreset(prev, null)
+        const preset = cashGamePresets.find((p) => p.id === value)
+        return preset ? applyCashGamePreset(prev, preset) : applyCashGamePreset(prev, null)
+      }
+      let next = { ...prev, [key]: value }
+      if (key === 'session_type' && value !== prev.session_type) {
+        next.game_variant = coercePokerGameForSessionType(value, prev.game_variant)
+        if (value === 'cash') {
+          next = formWithDefaultCashGame(
+            { ...next, game_variant: 'custom', game_custom_name: '' },
+            cashGamePresets,
+          )
+        } else {
+          next.cash_game_pick = POKER_CASH_NEW_GAME_ID
+          if (next.game_variant !== 'custom') next.game_custom_name = ''
+        }
+      }
+      if (key === 'venue_kind' && value === 'live' && prev.venue_kind !== 'live') {
+        void fetchNearby((name) => {
+          setForm((f) => (f.venue_kind === 'live' && !String(f.venue_name || '').trim() ? { ...f, venue_name: name } : f))
+        })
+      }
+      return next
+    })
   }
 
   async function saveSession() {
@@ -446,6 +580,17 @@ export default function PokerBankrollTracker({
     }
     if (!Number.isFinite(cashOut)) {
       setError('Enter cash out (what you walked with).')
+      return
+    }
+    if (
+      (form.session_type === 'cash' || form.game_variant === 'custom') &&
+      !String(form.game_custom_name || '').trim()
+    ) {
+      setError(
+        form.session_type === 'cash'
+          ? 'Enter a game name (e.g. 2/5 NLH).'
+          : 'Enter a name for your custom game.',
+      )
       return
     }
     const durationHrs = parseDurationHoursField(form.duration_hours)
@@ -466,25 +611,37 @@ export default function PokerBankrollTracker({
       end_at: endAt,
       buy_in: buyIn,
       cash_out: cashOut,
-      game_variant: form.game_variant || null,
-      limit_type: showAdvanced ? form.limit_type || null : null,
-      table_size: showAdvanced ? form.table_size || null : null,
+      game_variant: pokerGameVariantToStored(
+        form.session_type,
+        form.game_variant,
+        form.game_custom_name,
+      ),
+      limit_type:
+        form.session_type === 'cash' || form.game_variant === 'custom'
+          ? form.limit_type || null
+          : null,
+      table_size: form.table_size || null,
       small_blind:
-        showAdvanced && form.session_type === 'cash' && form.small_blind !== ''
+        form.session_type === 'cash' && form.small_blind !== ''
           ? parseFloat(form.small_blind)
           : null,
       big_blind:
-        showAdvanced && form.session_type === 'cash' && form.big_blind !== ''
+        form.session_type === 'cash' && form.big_blind !== ''
           ? parseFloat(form.big_blind)
           : null,
+      third_blind:
+        form.session_type === 'cash' && form.third_blind !== ''
+          ? parseFloat(form.third_blind)
+          : null,
+      ante: form.session_type === 'cash' && form.ante !== '' ? parseFloat(form.ante) : null,
       tournament_name:
         form.session_type === 'tournament' ? form.tournament_name.trim() || null : null,
       field_size:
-        showAdvanced && form.session_type === 'tournament' && form.field_size !== ''
+        form.session_type === 'tournament' && form.field_size !== ''
           ? parseInt(form.field_size, 10)
           : null,
       start_stack:
-        showAdvanced && form.session_type === 'tournament' && form.start_stack !== ''
+        form.session_type === 'tournament' && form.start_stack !== ''
           ? parseFloat(form.start_stack)
           : null,
       finish_place:
@@ -500,12 +657,6 @@ export default function PokerBankrollTracker({
           ? parseInt(form.reentries, 10)
           : null,
       notes: showAdvanced ? form.notes.trim() || null : null,
-    }
-
-    // Always keep blinds on cash when user typed them even if advanced collapsed after edit
-    if (form.session_type === 'cash') {
-      if (form.small_blind !== '') payload.small_blind = parseFloat(form.small_blind)
-      if (form.big_blind !== '') payload.big_blind = parseFloat(form.big_blind)
     }
 
     const newWl =
@@ -893,46 +1044,17 @@ export default function PokerBankrollTracker({
               </button>
             </div>
 
-            {/* Simple path */}
-            <Segmented
-              label="Type"
-              value={form.session_type}
-              onChange={(v) => setField('session_type', v)}
-              options={[
-                { id: 'cash', label: 'Cash' },
-                { id: 'tournament', label: 'Tourney' },
-              ]}
+            <PokerSessionCoreFields
+              form={form}
+              setField={setField}
+              supabaseClient={supabaseClient}
+              nearbyCasinos={nearbyCasinos}
+              customVenues={customVenues}
+              onSaveCustomVenue={saveCustomVenue}
+              gpsLoading={gpsLoading}
+              cashGamePresets={cashGamePresets}
+              showCashDetails={Boolean(editingId) || form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
             />
-            <Segmented
-              label="Where"
-              value={form.venue_kind}
-              onChange={(v) => setField('venue_kind', v)}
-              options={[
-                { id: 'live', label: 'Live' },
-                { id: 'online', label: 'Online' },
-              ]}
-            />
-
-            <FieldLabel>
-              {form.venue_kind === 'online' ? 'Site' : 'Casino / venue'}
-            </FieldLabel>
-            {form.venue_kind === 'live' ? (
-              <CasinoAutocomplete
-                value={form.venue_name}
-                onChange={(v) => setField('venue_name', v)}
-                supabaseClient={supabaseClient}
-                placeholder="Wynn, Aria…"
-                className="mb-3"
-              />
-            ) : (
-              <input
-                type="text"
-                value={form.venue_name}
-                onChange={(e) => setField('venue_name', e.target.value)}
-                placeholder="PokerStars, ClubWPT…"
-                className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
-              />
-            )}
 
             <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
               <div className="min-w-0">
@@ -990,21 +1112,13 @@ export default function PokerBankrollTracker({
               </button>
             </div>
 
-            <div className="mb-3 grid grid-cols-2 gap-2">
-              <div>
-                <FieldLabel>
-                  {form.session_type === 'tournament' ? 'Buy-in' : 'Bring-in'}
-                </FieldLabel>
-                <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
-              </div>
-              <div>
-                <FieldLabel>Cash out</FieldLabel>
-                <MoneyInput
-                  value={form.cash_out}
-                  onChange={(v) => setField('cash_out', v)}
-                  colorize
-                />
-              </div>
+            <div className="mb-3">
+              <FieldLabel>Cash out</FieldLabel>
+              <MoneyInput
+                value={form.cash_out}
+                onChange={(v) => setField('cash_out', v)}
+                colorize
+              />
             </div>
 
             {previewWl != null ? (
@@ -1025,7 +1139,9 @@ export default function PokerBankrollTracker({
               <span>
                 <span className="block text-sm font-semibold text-white">Advanced</span>
                 <span className="block text-[11px] text-zinc-500">
-                  Blinds, game, place, bounties, notes
+                  {form.session_type === 'tournament'
+                    ? 'Name, finish, bounties, re-entries, notes'
+                    : 'Notes'}
                 </span>
               </span>
               <span className="text-zinc-400">{showAdvanced ? '▲' : '▼'}</span>
@@ -1033,51 +1149,7 @@ export default function PokerBankrollTracker({
 
             {showAdvanced ? (
               <div className="mb-3 space-y-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <FieldLabel>Game</FieldLabel>
-                    <Select
-                      value={form.game_variant}
-                      onChange={(v) => setField('game_variant', v)}
-                      options={POKER_GAME_VARIANTS}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Limit</FieldLabel>
-                    <Select
-                      value={form.limit_type}
-                      onChange={(v) => setField('limit_type', v)}
-                      options={POKER_LIMIT_TYPES}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <FieldLabel>Table size</FieldLabel>
-                  <Select
-                    value={form.table_size}
-                    onChange={(v) => setField('table_size', v)}
-                    options={POKER_TABLE_SIZES}
-                  />
-                </div>
-
-                {form.session_type === 'cash' ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <FieldLabel>Small blind</FieldLabel>
-                      <MoneyInput
-                        value={form.small_blind}
-                        onChange={(v) => setField('small_blind', v)}
-                      />
-                    </div>
-                    <div>
-                      <FieldLabel>Big blind</FieldLabel>
-                      <MoneyInput
-                        value={form.big_blind}
-                        onChange={(v) => setField('big_blind', v)}
-                      />
-                    </div>
-                  </div>
-                ) : (
+                {form.session_type === 'tournament' ? (
                   <>
                     <div>
                       <FieldLabel>Tournament name</FieldLabel>
@@ -1091,24 +1163,10 @@ export default function PokerBankrollTracker({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <FieldLabel>Field size</FieldLabel>
-                        <NumInput
-                          value={form.field_size}
-                          onChange={(v) => setField('field_size', v)}
-                        />
-                      </div>
-                      <div>
                         <FieldLabel>Finish place</FieldLabel>
                         <NumInput
                           value={form.finish_place}
                           onChange={(v) => setField('finish_place', v)}
-                        />
-                      </div>
-                      <div>
-                        <FieldLabel>Start stack</FieldLabel>
-                        <NumInput
-                          value={form.start_stack}
-                          onChange={(v) => setField('start_stack', v)}
                         />
                       </div>
                       <div>
@@ -1128,8 +1186,7 @@ export default function PokerBankrollTracker({
                       />
                     </div>
                   </>
-                )}
-
+                ) : null}
                 <div>
                   <FieldLabel>Notes</FieldLabel>
                   <textarea
@@ -1189,79 +1246,17 @@ export default function PokerBankrollTracker({
               </button>
             </div>
 
-            <Segmented
-              label="Type"
-              value={form.session_type}
-              onChange={(v) => setField('session_type', v)}
-              options={[
-                { id: 'cash', label: 'Cash' },
-                { id: 'tournament', label: 'Tourney' },
-              ]}
+            <PokerSessionCoreFields
+              form={form}
+              setField={setField}
+              supabaseClient={supabaseClient}
+              nearbyCasinos={nearbyCasinos}
+              customVenues={customVenues}
+              onSaveCustomVenue={saveCustomVenue}
+              gpsLoading={gpsLoading}
+              cashGamePresets={cashGamePresets}
+              showCashDetails={form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
             />
-            <Segmented
-              label="Where"
-              value={form.venue_kind}
-              onChange={(v) => setField('venue_kind', v)}
-              options={[
-                { id: 'live', label: 'Live' },
-                { id: 'online', label: 'Online' },
-              ]}
-            />
-
-            <FieldLabel>
-              {form.venue_kind === 'online' ? 'Site' : 'Casino / venue'}
-            </FieldLabel>
-            {form.venue_kind === 'live' ? (
-              <CasinoAutocomplete
-                value={form.venue_name}
-                onChange={(v) => setField('venue_name', v)}
-                supabaseClient={supabaseClient}
-                placeholder="Wynn, Aria…"
-                className="mb-3"
-              />
-            ) : (
-              <input
-                type="text"
-                value={form.venue_name}
-                onChange={(e) => setField('venue_name', e.target.value)}
-                placeholder="PokerStars, ClubWPT…"
-                className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
-              />
-            )}
-
-            <FieldLabel>
-              {form.session_type === 'tournament' ? 'Buy-in' : 'Bring-in'}
-            </FieldLabel>
-            <div className="mb-3">
-              <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
-            </div>
-
-            {form.session_type === 'tournament' ? (
-              <div className="mb-3">
-                <FieldLabel>Tournament name</FieldLabel>
-                <input
-                  type="text"
-                  value={form.tournament_name}
-                  onChange={(e) => setField('tournament_name', e.target.value)}
-                  placeholder="Optional"
-                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none"
-                />
-              </div>
-            ) : (
-              <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-                <div className="min-w-0">
-                  <FieldLabel>Small blind</FieldLabel>
-                  <MoneyInput
-                    value={form.small_blind}
-                    onChange={(v) => setField('small_blind', v)}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <FieldLabel>Big blind</FieldLabel>
-                  <MoneyInput value={form.big_blind} onChange={(v) => setField('big_blind', v)} />
-                </div>
-              </div>
-            )}
 
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
 
@@ -1400,6 +1395,207 @@ function FilterChip({ active, onClick, label }) {
     >
       {label}
     </button>
+  )
+}
+
+/**
+ * Shared Start / Log core.
+ * Cash: Game dropdown = saved games + New game… (details only for New game…).
+ * Tournament: Game presets (NLH / PLO / …) + Players / Start stack.
+ */
+function PokerSessionCoreFields({
+  form,
+  setField,
+  supabaseClient,
+  nearbyCasinos,
+  customVenues,
+  onSaveCustomVenue,
+  gpsLoading,
+  cashGamePresets = [],
+  showCashDetails = true,
+}) {
+  const isCash = form.session_type === 'cash'
+  const isCustomGame = form.game_variant === 'custom'
+  const cashGameOptions = (() => {
+    const opts = cashGameSelectOptions(cashGamePresets)
+    const pick = form.cash_game_pick
+    if (
+      pick &&
+      pick !== POKER_CASH_NEW_GAME_ID &&
+      !opts.some((o) => o.id === pick) &&
+      form.game_custom_name
+    ) {
+      return [...opts, { id: pick, label: form.game_custom_name }]
+    }
+    return opts
+  })()
+
+  return (
+    <>
+      <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+        <div className="min-w-0">
+          <FieldLabel>Type</FieldLabel>
+          <Select
+            value={form.session_type}
+            onChange={(v) => setField('session_type', v)}
+            options={[
+              { id: 'cash', label: 'Cash' },
+              { id: 'tournament', label: 'Tournament' },
+            ]}
+          />
+        </div>
+        <div className="min-w-0">
+          <FieldLabel>Table size</FieldLabel>
+          <Select
+            value={form.table_size}
+            onChange={(v) => setField('table_size', v)}
+            options={POKER_TABLE_SIZES}
+          />
+        </div>
+      </div>
+
+      <Segmented
+        label="Where"
+        value={form.venue_kind}
+        onChange={(v) => setField('venue_kind', v)}
+        options={[
+          { id: 'live', label: 'Live' },
+          { id: 'online', label: 'Online' },
+        ]}
+      />
+
+      <FieldLabel>{form.venue_kind === 'online' ? 'Site' : 'Location'}</FieldLabel>
+      {form.venue_kind === 'live' ? (
+        <CasinoAutocomplete
+          value={form.venue_name}
+          onChange={(v) => setField('venue_name', v)}
+          supabaseClient={supabaseClient}
+          nearbyCasinos={nearbyCasinos}
+          customVenues={customVenues}
+          onSaveCustomVenue={onSaveCustomVenue}
+          gpsLoading={gpsLoading}
+          placeholder="Wynn, Aria, home game…"
+          className="mb-3"
+        />
+      ) : (
+        <input
+          type="text"
+          value={form.venue_name}
+          onChange={(e) => setField('venue_name', e.target.value)}
+          placeholder="PokerStars, ClubWPT…"
+          className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+        />
+      )}
+
+      {isCash ? (
+        <>
+          <FieldLabel>Game</FieldLabel>
+          <div className="mb-3">
+            <Select
+              value={form.cash_game_pick || POKER_CASH_NEW_GAME_ID}
+              onChange={(v) => setField('cash_game_pick', v)}
+              options={cashGameOptions}
+            />
+          </div>
+          {showCashDetails ? (
+            <>
+              <FieldLabel>Limit</FieldLabel>
+              <div className="mb-3">
+                <Select
+                  value={form.limit_type}
+                  onChange={(v) => setField('limit_type', v)}
+                  options={POKER_LIMIT_TYPES}
+                />
+              </div>
+              <FieldLabel>Game name</FieldLabel>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  value={form.game_custom_name}
+                  onChange={(e) => setField('game_custom_name', e.target.value)}
+                  placeholder="e.g. 2/5 NLH"
+                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+                />
+              </div>
+              <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+                <div className="min-w-0">
+                  <FieldLabel>Small blind</FieldLabel>
+                  <MoneyInput
+                    value={form.small_blind}
+                    onChange={(v) => setField('small_blind', v)}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <FieldLabel>Big blind</FieldLabel>
+                  <MoneyInput value={form.big_blind} onChange={(v) => setField('big_blind', v)} />
+                </div>
+              </div>
+              <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+                <div className="min-w-0">
+                  <FieldLabel>3rd blind</FieldLabel>
+                  <MoneyInput
+                    value={form.third_blind}
+                    onChange={(v) => setField('third_blind', v)}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <FieldLabel>Ante</FieldLabel>
+                  <MoneyInput value={form.ante} onChange={(v) => setField('ante', v)} />
+                </div>
+              </div>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <FieldLabel>Game</FieldLabel>
+          <div className="mb-3">
+            <Select
+              value={form.game_variant}
+              onChange={(v) => setField('game_variant', v)}
+              options={pokerGameOptionsForSessionType('tournament')}
+            />
+          </div>
+          {isCustomGame ? (
+            <>
+              <FieldLabel>Limit</FieldLabel>
+              <div className="mb-3">
+                <Select
+                  value={form.limit_type}
+                  onChange={(v) => setField('limit_type', v)}
+                  options={POKER_LIMIT_TYPES}
+                />
+              </div>
+              <FieldLabel>Game</FieldLabel>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  value={form.game_custom_name}
+                  onChange={(e) => setField('game_custom_name', e.target.value)}
+                  placeholder="e.g. Dealers Choice, Stud…"
+                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+                />
+              </div>
+            </>
+          ) : null}
+          <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+            <div className="min-w-0">
+              <FieldLabel>Players</FieldLabel>
+              <NumInput value={form.field_size} onChange={(v) => setField('field_size', v)} />
+            </div>
+            <div className="min-w-0">
+              <FieldLabel>Start stack</FieldLabel>
+              <NumInput value={form.start_stack} onChange={(v) => setField('start_stack', v)} />
+            </div>
+          </div>
+        </>
+      )}
+
+      <FieldLabel>Buy-in</FieldLabel>
+      <div className="mb-3">
+        <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
+      </div>
+    </>
   )
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Trophy } from 'lucide-react'
+import { DollarSign, Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -1496,7 +1496,7 @@ export default function PokerBankrollTracker({
                         className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
                       >
                         <span
-                          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                             session.session_type === 'tournament'
                               ? 'bg-amber-500/15 text-amber-300'
                               : 'bg-emerald-500/15 text-emerald-300'
@@ -1506,7 +1506,7 @@ export default function PokerBankrollTracker({
                           {session.session_type === 'tournament' ? (
                             <Trophy className="h-4 w-4" strokeWidth={2.25} />
                           ) : (
-                            '$'
+                            <DollarSign className="h-4 w-4" strokeWidth={2.25} />
                           )}
                         </span>
                         <span className="min-w-0 flex-1">

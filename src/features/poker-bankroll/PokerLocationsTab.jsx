@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Trophy } from 'lucide-react'
+import { DollarSign, Trophy } from 'lucide-react'
 import {
   Chart as ChartJS,
   LineElement,
@@ -177,12 +177,16 @@ function SessionRow({ session, onClick }) {
       className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
     >
       <span
-        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
           isTourney ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'
         }`}
         aria-hidden
       >
-        {isTourney ? <Trophy className="h-4 w-4" strokeWidth={2.25} /> : '$'}
+        {isTourney ? (
+          <Trophy className="h-4 w-4" strokeWidth={2.25} />
+        ) : (
+          <DollarSign className="h-4 w-4" strokeWidth={2.25} />
+        )}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline justify-between gap-2">
@@ -352,7 +356,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
   }
 
   const typeRows = [
-    { key: 'cash', label: 'Cash Game', icon: '$', iconClass: 'text-blue-400', ...location.cash },
+    { key: 'cash', label: 'Cash Game', icon: 'cash', iconClass: 'text-blue-400', ...location.cash },
     {
       key: 'tournament',
       label: 'Tournament',
@@ -458,9 +462,13 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
                 <div key={row.key} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
                   <div className="flex min-w-0 items-center gap-2">
                     <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-900/80 text-xs font-bold ${row.iconClass}`}
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-900/80 ${row.iconClass}`}
                     >
-                      {row.icon === 'trophy' ? <Trophy className="h-3.5 w-3.5" strokeWidth={2.25} /> : row.icon}
+                      {row.icon === 'trophy' ? (
+                        <Trophy className="h-3.5 w-3.5" strokeWidth={2.25} />
+                      ) : (
+                        <DollarSign className="h-3.5 w-3.5" strokeWidth={2.25} />
+                      )}
                     </span>
                     <span className="truncate text-sm text-white">
                       {row.label}{' '}

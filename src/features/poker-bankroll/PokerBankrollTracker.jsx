@@ -1441,33 +1441,37 @@ export default function PokerBankrollTracker({
             )}
 
             {completedSessions.length > 0 ? (
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'cash', label: 'Cash' },
-                  { id: 'tournament', label: 'Tourney' },
-                ].map((opt) => (
-                  <FilterChip
-                    key={opt.id}
-                    active={typeFilter === opt.id}
-                    onClick={() => setTypeFilter(opt.id)}
-                    label={opt.label}
-                  />
-                ))}
-                <span className="mx-1 w-px self-stretch bg-zinc-800" />
-                {[
-                  { id: 'all', label: 'Any' },
-                  { id: 'live', label: 'Live' },
-                  { id: 'online', label: 'Online' },
-                  { id: 'club', label: 'Club' },
-                ].map((opt) => (
-                  <FilterChip
-                    key={`v-${opt.id}`}
-                    active={venueFilter === opt.id}
-                    onClick={() => setVenueFilter(opt.id)}
-                    label={opt.label}
-                  />
-                ))}
+              <div className="mb-3 flex w-full flex-nowrap items-center gap-1">
+                <div className="flex min-w-0 flex-[3] gap-1" role="group" aria-label="Session type">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'cash', label: 'Cash' },
+                    { id: 'tournament', label: 'Tourney' },
+                  ].map((opt) => (
+                    <FilterChip
+                      key={opt.id}
+                      active={typeFilter === opt.id}
+                      onClick={() => setTypeFilter(opt.id)}
+                      label={opt.label}
+                    />
+                  ))}
+                </div>
+                <span className="mx-0.5 h-4 w-px shrink-0 self-center bg-zinc-800" aria-hidden />
+                <div className="flex min-w-0 flex-[4] gap-1" role="group" aria-label="Venue">
+                  {[
+                    { id: 'all', label: 'Any' },
+                    { id: 'live', label: 'Live' },
+                    { id: 'online', label: 'Online' },
+                    { id: 'club', label: 'Club' },
+                  ].map((opt) => (
+                    <FilterChip
+                      key={`v-${opt.id}`}
+                      active={venueFilter === opt.id}
+                      onClick={() => setVenueFilter(opt.id)}
+                      label={opt.label}
+                    />
+                  ))}
+                </div>
               </div>
             ) : null}
 
@@ -2128,13 +2132,14 @@ function BankrollSparkline({
   )
 }
 
+/** Fluid one-line filter pill... shares row width so Overview never wraps. */
 function FilterChip({ active, onClick, label }) {
   return (
     <button
       type="button"
       onClick={onClick}
       data-poker-filter-chip={active ? 'on' : 'off'}
-      className={`rounded-full px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+      className={`min-w-0 flex-1 truncate rounded-full px-1 py-1 text-center text-[10px] font-semibold touch-manipulation sm:px-2 sm:text-[11px] ${
         active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
       }`}
     >

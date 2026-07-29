@@ -132,7 +132,6 @@ function emptyForm() {
 /**
  * Poker Bankroll Manager — separate from slots Bankroll.
  * Core start fields: type, table size, location, game (+ stake/tourney details).
- * Advanced holds notes and post-session tourney extras.
  */
 export default function PokerBankrollTracker({
   supabaseClient,
@@ -162,7 +161,6 @@ export default function PokerBankrollTracker({
   const [rebuyAmount, setRebuyAmount] = useState('')
   /** @type {'rebuy' | 'addon'} */
   const [rebuyKind, setRebuyKind] = useState('rebuy')
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editingPrevWl, setEditingPrevWl] = useState(0)
   const [form, setForm] = useState(emptyForm)
@@ -509,7 +507,6 @@ export default function PokerBankrollTracker({
         buildCashGamePresetsFromSessions(scopedSessions, 'live'),
       ),
     )
-    setShowAdvanced(false)
     setError('')
     setSheet('start')
     triggerTapHapticLight()
@@ -531,7 +528,6 @@ export default function PokerBankrollTracker({
         buildCashGamePresetsFromSessions(scopedSessions, 'live'),
       ),
     )
-    setShowAdvanced(false)
     setError('')
     setSheet('session')
     triggerTapHapticLight()
@@ -544,7 +540,6 @@ export default function PokerBankrollTracker({
     setEndNotes('')
     setEndBounties('')
     setEndFinishPlace('')
-    setShowAdvanced(false)
     setError('')
     setSheet('end')
     triggerTapHapticLight()
@@ -834,14 +829,6 @@ export default function PokerBankrollTracker({
       reentries: session.reentries != null ? String(session.reentries) : '',
       notes: session.notes || '',
     })
-    const hasAdvanced = Boolean(
-      session.tournament_name ||
-        session.finish_place != null ||
-        session.bounty_winnings != null ||
-        session.reentries != null ||
-        session.notes,
-    )
-    setShowAdvanced(hasAdvanced)
     setError('')
     setSheet('session')
     if ((session.venue_kind || 'live') === 'live') {
@@ -1040,18 +1027,18 @@ export default function PokerBankrollTracker({
           ? parseFloat(form.start_stack)
           : null,
       finish_place:
-        showAdvanced && form.session_type === 'tournament' && form.finish_place !== ''
+        form.session_type === 'tournament' && form.finish_place !== ''
           ? parseInt(form.finish_place, 10)
           : null,
       bounty_winnings:
-        showAdvanced && form.session_type === 'tournament' && form.bounty_winnings !== ''
+        form.session_type === 'tournament' && form.bounty_winnings !== ''
           ? parseFloat(form.bounty_winnings)
           : null,
       reentries:
-        showAdvanced && form.session_type === 'tournament' && form.reentries !== ''
+        form.session_type === 'tournament' && form.reentries !== ''
           ? parseInt(form.reentries, 10)
           : null,
-      notes: showAdvanced ? form.notes.trim() || null : null,
+      notes: form.notes.trim() || null,
     }
     if (payload.deal_id === undefined) delete payload.deal_id
 
@@ -1742,74 +1729,55 @@ export default function PokerBankrollTracker({
               </p>
             ) : null}
 
-            <button
-              type="button"
-              onClick={() => setShowAdvanced((v) => !v)}
-              className="mb-3 flex w-full items-center justify-between rounded-2xl border border-zinc-700/80 bg-zinc-900/60 px-4 py-3 text-left touch-manipulation"
-            >
-              <span>
-                <span className="block text-sm font-semibold text-white">Advanced</span>
-                <span className="block text-[11px] text-zinc-500">
-                  {form.session_type === 'tournament'
-                    ? 'Name, finish, bounties, re-entries, notes'
-                    : 'Notes'}
-                </span>
-              </span>
-              <span className="text-zinc-400">{showAdvanced ? '▲' : '▼'}</span>
-            </button>
-
-            {showAdvanced ? (
-              <div className="mb-3 space-y-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-3">
-                {form.session_type === 'tournament' ? (
-                  <>
-                    <div>
-                      <FieldLabel>Tournament name</FieldLabel>
-                      <input
-                        type="text"
-                        value={form.tournament_name}
-                        onChange={(e) => setField('tournament_name', e.target.value)}
-                        placeholder="Daily $200, WSOP…"
-                        className={POKER_FIELD_CLASS}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <FieldLabel>Finish place</FieldLabel>
-                        <NumInput
-                          value={form.finish_place}
-                          onChange={(v) => setField('finish_place', v)}
-                        />
-                      </div>
-                      <div>
-                        <FieldLabel>Re-entries</FieldLabel>
-                        <NumInput
-                          value={form.reentries}
-                          onChange={(v) => setField('reentries', v)}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <FieldLabel>Bounty winnings</FieldLabel>
-                      <MoneyInput
-                        value={form.bounty_winnings}
-                        onChange={(v) => setField('bounty_winnings', v)}
-                        colorize
-                      />
-                    </div>
-                  </>
-                ) : null}
+            {form.session_type === 'tournament' ? (
+              <div className="mb-3 space-y-3">
                 <div>
-                  <FieldLabel>Notes</FieldLabel>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setField('notes', e.target.value)}
-                    rows={3}
-                    className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40"
-                    placeholder="Table notes, tilt, etc."
+                  <FieldLabel>Tournament name</FieldLabel>
+                  <input
+                    type="text"
+                    value={form.tournament_name}
+                    onChange={(e) => setField('tournament_name', e.target.value)}
+                    placeholder="Daily $200, WSOP…"
+                    className={POKER_FIELD_CLASS}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <FieldLabel>Finish place</FieldLabel>
+                    <NumInput
+                      value={form.finish_place}
+                      onChange={(v) => setField('finish_place', v)}
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Re-entries</FieldLabel>
+                    <NumInput
+                      value={form.reentries}
+                      onChange={(v) => setField('reentries', v)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel>Bounty winnings</FieldLabel>
+                  <MoneyInput
+                    value={form.bounty_winnings}
+                    onChange={(v) => setField('bounty_winnings', v)}
+                    colorize
                   />
                 </div>
               </div>
             ) : null}
+
+            <div className="mb-3">
+              <FieldLabel>Notes</FieldLabel>
+              <textarea
+                value={form.notes}
+                onChange={(e) => setField('notes', e.target.value)}
+                rows={3}
+                className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40"
+                placeholder="Table notes, tilt, etc."
+              />
+            </div>
 
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
 

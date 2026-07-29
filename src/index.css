@@ -4468,9 +4468,6 @@ html.light [data-poker-bankroll-sheet] .bg-zinc-900\/60,
 html.light [data-poker-bankroll-sheet] .bg-zinc-950\/50 {
   background-color: #f4f4f5 !important;
 }
-html.light [data-poker-bankroll-sheet] [data-poker-cash-game-picker] .bg-zinc-900 {
-  background-color: #e4e4e7 !important;
-}
 html.light [data-poker-bankroll-sheet] [data-poker-cash-game-picker] .bg-zinc-800\/95 {
   background-color: #f4f4f5 !important;
 }

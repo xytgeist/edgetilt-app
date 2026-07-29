@@ -7,10 +7,10 @@ export function cashGamePresetIdFromName(name) {
 }
 
 /**
- * Built-in cash Game selector defaults (blinds + family abbrev).
+ * Live cash Game defaults (blinds + family).
  * @type {Array<{ label: string, small_blind: string, big_blind: string, third_blind: string, limit_type: string, family: string }>}
  */
-export const POKER_DEFAULT_CASH_GAMES = [
+export const POKER_DEFAULT_CASH_GAMES_LIVE = [
   { label: '1/2 NLH', small_blind: '1', big_blind: '2', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
   { label: '1/3 NLH', small_blind: '1', big_blind: '3', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
   { label: '2/5 NLH', small_blind: '2', big_blind: '5', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
@@ -26,6 +26,79 @@ export const POKER_DEFAULT_CASH_GAMES = [
   { label: '10/20 PLO', small_blind: '10', big_blind: '20', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
   { label: '25/50 PLO', small_blind: '25', big_blind: '50', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
 ]
+
+/** @deprecated use POKER_DEFAULT_CASH_GAMES_LIVE */
+export const POKER_DEFAULT_CASH_GAMES = POKER_DEFAULT_CASH_GAMES_LIVE
+
+/**
+ * Club cash Game defaults (micro → mid blinds + family).
+ * @type {Array<{ label: string, small_blind: string, big_blind: string, third_blind: string, limit_type: string, family: string }>}
+ */
+export const POKER_DEFAULT_CASH_GAMES_CLUB = [
+  { label: '0.10/0.25 NLH', small_blind: '0.10', big_blind: '0.25', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '0.25/0.50 NLH', small_blind: '0.25', big_blind: '0.50', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '0.50/1 NLH', small_blind: '0.50', big_blind: '1', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '1/2 NLH', small_blind: '1', big_blind: '2', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '2/5 NLH', small_blind: '2', big_blind: '5', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '5/10 NLH', small_blind: '5', big_blind: '10', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '0.10/0.25 PLO', small_blind: '0.10', big_blind: '0.25', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '0.25/0.50 PLO', small_blind: '0.25', big_blind: '0.50', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '0.50/1 PLO', small_blind: '0.50', big_blind: '1', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '1/2 PLO', small_blind: '1', big_blind: '2', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '2/5 PLO', small_blind: '2', big_blind: '5', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '5/10 PLO', small_blind: '5', big_blind: '10', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+]
+
+/**
+ * Online stake buy-in → blinds (25NL / PLO25 share blinds, etc.).
+ * @type {Record<number, { small_blind: string, big_blind: string }>}
+ */
+export const POKER_ONLINE_STAKE_BLINDS = {
+  25: { small_blind: '0.10', big_blind: '0.25' },
+  50: { small_blind: '0.25', big_blind: '0.50' },
+  100: { small_blind: '0.50', big_blind: '1' },
+  200: { small_blind: '1', big_blind: '2' },
+  500: { small_blind: '2.50', big_blind: '5' },
+  1000: { small_blind: '5', big_blind: '10' },
+}
+
+/**
+ * Online cash Game defaults (25NL / PLO25 notation).
+ * @type {Array<{ label: string, small_blind: string, big_blind: string, third_blind: string, limit_type: string, family: string }>}
+ */
+export const POKER_DEFAULT_CASH_GAMES_ONLINE = (() => {
+  const buyins = [25, 50, 100, 200, 500, 1000]
+  const nlh = buyins.map((buyin) => {
+    const blinds = POKER_ONLINE_STAKE_BLINDS[buyin]
+    return {
+      label: `${buyin}NL`,
+      small_blind: blinds.small_blind,
+      big_blind: blinds.big_blind,
+      third_blind: '',
+      limit_type: 'no_limit',
+      family: 'NLH',
+    }
+  })
+  const plo = buyins.map((buyin) => {
+    const blinds = POKER_ONLINE_STAKE_BLINDS[buyin]
+    return {
+      label: `PLO${buyin}`,
+      small_blind: blinds.small_blind,
+      big_blind: blinds.big_blind,
+      third_blind: '',
+      limit_type: 'pot_limit',
+      family: 'PLO',
+    }
+  })
+  return [...nlh, ...plo]
+})()
+
+/** @param {string | null | undefined} venueKind */
+export function defaultCashGamesForVenue(venueKind) {
+  if (venueKind === 'online') return POKER_DEFAULT_CASH_GAMES_ONLINE
+  if (venueKind === 'club') return POKER_DEFAULT_CASH_GAMES_CLUB
+  return POKER_DEFAULT_CASH_GAMES_LIVE
+}
 
 /** @param {string | null | undefined} family */
 export function cashFamilyToLiveGamePick(family) {
@@ -139,28 +212,86 @@ export function cashGameFamilyAbbrev(form) {
   }
 }
 
+/** Match blinds to an online buy-in stake (25 / 50 / …). */
+export function onlineBuyinFromBlinds(smallBlind, bigBlind) {
+  const sb = Number(smallBlind)
+  const bb = Number(bigBlind)
+  if (!Number.isFinite(sb) || !Number.isFinite(bb)) return null
+  for (const [buyinRaw, blinds] of Object.entries(POKER_ONLINE_STAKE_BLINDS)) {
+    if (Number(blinds.small_blind) === sb && Number(blinds.big_blind) === bb) {
+      return Number(buyinRaw)
+    }
+  }
+  return null
+}
+
 /**
  * Compose stake/game label from whatever blinds + limit + game the user entered.
- * Pattern: `{sb}/{bb}[/{3rd}] {family}` e.g. any of 3/6 NLH, .10/.25 PLO5, 50/100 Mix.
- * @param {{ live_game_name_pick?: string, game_custom_name?: string, limit_type?: string, small_blind?: string|number, big_blind?: string|number, third_blind?: string|number|null }} form
+ * Live/Club: `{sb}/{bb}[/{3rd}] {family}`. Online NLH/PLO: `25NL` / `PLO25` when blinds match.
+ * @param {{ live_game_name_pick?: string, game_custom_name?: string, limit_type?: string, venue_kind?: string, small_blind?: string|number, big_blind?: string|number, third_blind?: string|number|null }} form
  * @returns {string | null}
  */
 export function formatCashGameLabel(form) {
+  const family = cashGameFamilyAbbrev(form)
+  if (!family) return null
+  const hasThird = form?.third_blind != null && String(form.third_blind).trim() !== ''
+  if (
+    form?.venue_kind === 'online' &&
+    !hasThird &&
+    (family === 'NLH' || family === 'PLO')
+  ) {
+    const buyin = onlineBuyinFromBlinds(form.small_blind, form.big_blind)
+    if (buyin != null) return family === 'PLO' ? `PLO${buyin}` : `${buyin}NL`
+  }
   const parts = [form?.small_blind, form?.big_blind, form?.third_blind]
     .map(formatCashBlindPart)
     .filter(Boolean)
   if (parts.length < 2) return null
-  const family = cashGameFamilyAbbrev(form)
-  if (!family) return null
   return `${parts.join('/')} ${family}`
 }
 
 /**
- * Parse "2/5/10 PLO" → blinds + family.
+ * Parse "2/5/10 PLO", "25NL", "PLO100" → blinds + family.
  * @param {string | null | undefined} label
  */
 export function parseCashGameLabel(label) {
   const raw = String(label || '').trim()
+  if (!raw) return null
+
+  const onlineNl = raw.match(/^(\d+)\s*nl$/i)
+  if (onlineNl) {
+    const buyin = Number(onlineNl[1])
+    const blinds = POKER_ONLINE_STAKE_BLINDS[buyin]
+    if (blinds) {
+      return {
+        label: `${buyin}NL`,
+        small_blind: blinds.small_blind,
+        big_blind: blinds.big_blind,
+        third_blind: '',
+        family: 'NLH',
+        limit_type: 'no_limit',
+        live_game_name_pick: 'holdem',
+      }
+    }
+  }
+
+  const onlinePlo = raw.match(/^plo\s*(\d+)$/i)
+  if (onlinePlo) {
+    const buyin = Number(onlinePlo[1])
+    const blinds = POKER_ONLINE_STAKE_BLINDS[buyin]
+    if (blinds) {
+      return {
+        label: `PLO${buyin}`,
+        small_blind: blinds.small_blind,
+        big_blind: blinds.big_blind,
+        third_blind: '',
+        family: 'PLO',
+        limit_type: 'pot_limit',
+        live_game_name_pick: 'omaha',
+      }
+    }
+  }
+
   const m = raw.match(/^(\d*\.?\d+(?:\/\d*\.?\d+){1,2})\s+(.+)$/)
   if (!m) return null
   const blindParts = m[1].split('/')
@@ -177,8 +308,9 @@ export function parseCashGameLabel(label) {
   }
 }
 
-function defaultCashGamePresets() {
-  return POKER_DEFAULT_CASH_GAMES.map((d) => ({
+/** @param {string | null | undefined} venueKind */
+function defaultCashGamePresets(venueKind = 'live') {
+  return defaultCashGamesForVenue(venueKind).map((d) => ({
     id: cashGamePresetIdFromName(d.label),
     label: d.label,
     limit_type: d.limit_type,
@@ -210,6 +342,7 @@ export function cashGameLabelFromSession(session) {
     game_custom_name:
       livePick === 'custom_name' ? fromName || stored : pokerLiveCashGameNameLabelFromId(livePick),
     limit_type: session?.limit_type || cashFamilyToLimitType(family) || 'no_limit',
+    venue_kind: session?.venue_kind || 'live',
     small_blind: session?.small_blind != null ? String(session.small_blind) : '',
     big_blind: session?.big_blind != null ? String(session.big_blind) : '',
     third_blind: session?.third_blind != null ? String(session.third_blind) : '',
@@ -218,16 +351,20 @@ export function cashGameLabelFromSession(session) {
 }
 
 /**
- * User/session games first (most recent first), then built-in defaults.
+ * User/session games for this Where first (most recent), then venue defaults.
  * @param {Array<object>} sessions
+ * @param {string | null | undefined} venueKind live | online | club
  */
-export function buildCashGamePresetsFromSessions(sessions) {
-  const defaults = defaultCashGamePresets()
+export function buildCashGamePresetsFromSessions(sessions, venueKind = 'live') {
+  const kind = venueKind === 'online' || venueKind === 'club' ? venueKind : 'live'
+  const defaults = defaultCashGamePresets(kind)
   const byId = new Map(defaults.map((p) => [p.id, p]))
   const extras = []
 
   for (const s of sessions || []) {
     if (s.session_type !== 'cash') continue
+    const sKind = s.venue_kind === 'online' || s.venue_kind === 'club' ? s.venue_kind : 'live'
+    if (sKind !== kind) continue
     const label = cashGameLabelFromSession(s)
     if (!label) continue
     const id = cashGamePresetIdFromName(label)
@@ -257,52 +394,13 @@ export function buildCashGamePresetsFromSessions(sessions) {
   return [...extras, ...defaults]
 }
 
-/** @param {string | null | undefined} query */
-export function normalizeCashGameSearchQuery(query) {
-  return String(query || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '')
-}
-
-function cashGameBlindsMatchQuery(blinds, queryNorm) {
-  if (!blinds || !queryNorm) return false
-  if (blinds === queryNorm || blinds.startsWith(`${queryNorm}/`)) return true
-  const bt = blinds.split('/')
-  const qt = queryNorm.split('/').filter(Boolean)
-  if (!qt.length) return false
-  for (let i = 0; i <= bt.length - qt.length; i += 1) {
-    if (qt.every((t, j) => bt[i + j] === t)) return true
-  }
-  return false
-}
-
-function cashGameLabelMatchesQuery(label, queryNorm) {
-  if (!queryNorm) return true
-  const raw = String(label || '')
-    .toLowerCase()
-    .replace(/\s+/g, '')
-  // Family / text (PLO, nlh, mix…): allow slash-insensitive contains
-  if (/[a-z]/.test(queryNorm)) {
-    if (raw.includes(queryNorm)) return true
-    return raw.replace(/\//g, '').includes(queryNorm.replace(/\//g, ''))
-  }
-  // Stake search: token-aware so "2/5" ≠ "25/50" / ".25/.50"
-  const blinds = raw.match(/^[\d.]+(?:\/[\d.]+){1,2}/)?.[0] || ''
-  if (blinds) return cashGameBlindsMatchQuery(blinds, queryNorm)
-  return raw.includes(queryNorm)
-}
-
 /**
- * Rows for the searchable cash Game picker.
- * New game… pinned, then Your games, then Defaults (filterable).
+ * Rows for the cash Game menu: New game…, then Your games, then Defaults.
  * @param {Array<{ id: string, label: string, isDefault?: boolean }>} presets
- * @param {string} [searchQuery]
  * @param {{ id: string, label: string } | null} [orphan] selected game missing from presets
- * @returns {{ rows: Array<{ type: 'label'|'option', id?: string, label: string }>, matchCount: number }}
+ * @returns {{ rows: Array<{ type: 'label'|'option', id?: string, label: string }> }}
  */
-export function buildCashGamePickerRows(presets, searchQuery = '', orphan = null) {
-  const q = normalizeCashGameSearchQuery(searchQuery)
+export function buildCashGamePickerRows(presets, orphan = null) {
   const list = Array.isArray(presets) ? [...presets] : []
   if (orphan?.id && orphan.label && !list.some((p) => p.id === orphan.id)) {
     list.unshift({ id: orphan.id, label: orphan.label, isDefault: false })
@@ -310,27 +408,19 @@ export function buildCashGamePickerRows(presets, searchQuery = '', orphan = null
 
   const yours = list.filter((p) => !p.isDefault)
   const defaults = list.filter((p) => p.isDefault)
-  const yoursF = yours.filter((p) => cashGameLabelMatchesQuery(p.label, q))
-  const defaultsF = defaults.filter((p) => cashGameLabelMatchesQuery(p.label, q))
-  const showNew =
-    !q || cashGameLabelMatchesQuery('New game…', q) || cashGameLabelMatchesQuery('new game', q)
 
   /** @type {Array<{ type: 'label'|'option', id?: string, label: string }>} */
-  const rows = []
-  if (showNew) {
-    rows.push({ type: 'option', id: POKER_CASH_NEW_GAME_ID, label: 'New game…' })
-  }
-  if (yoursF.length) {
+  const rows = [{ type: 'option', id: POKER_CASH_NEW_GAME_ID, label: 'New game…' }]
+  if (yours.length) {
     rows.push({ type: 'label', label: 'Your games' })
-    for (const p of yoursF) rows.push({ type: 'option', id: p.id, label: p.label })
+    for (const p of yours) rows.push({ type: 'option', id: p.id, label: p.label })
   }
-  if (defaultsF.length) {
+  if (defaults.length) {
     rows.push({ type: 'label', label: 'Defaults' })
-    for (const p of defaultsF) rows.push({ type: 'option', id: p.id, label: p.label })
+    for (const p of defaults) rows.push({ type: 'option', id: p.id, label: p.label })
   }
 
-  const matchCount = (showNew ? 1 : 0) + yoursF.length + defaultsF.length
-  return { rows, matchCount }
+  return { rows }
 }
 
 /** @param {Array<{ id: string, label: string }>} presets */
@@ -414,6 +504,9 @@ export function pokerGameFamilyLabel(rawName) {
   if (s === 'plo6') return 'PLO6'
   if (s === 'plo8') return 'Omaha Hi/Lo'
   if (s === 'mixed' || s === 'mix') return 'Mixed'
+  // Online stake tags: 25NL / PLO25 (before PLO5 / plain PLO)
+  if (/^\d+nl$/.test(s)) return 'NLH'
+  if (/^plo\d+$/.test(s)) return 'PLO'
 
   if (/\bofc\b/.test(s) || /chinese\s*poker/.test(s) || /open\s*face/.test(s)) return 'OFC'
 
@@ -538,14 +631,13 @@ export function applyCashGamePreset(form, preset) {
   }
 }
 
-/** Default cash Game pick to built-in 1/2 NLH (not the first user-added game). */
+/** Default cash Game pick to first built-in for this venue (not a user-added game). */
 export function formWithDefaultCashGame(baseForm, presets) {
   const list = presets || []
   if (baseForm.session_type !== 'cash' || list.length === 0) {
     return applyCashGamePreset(baseForm, null)
   }
-  const defaultId = cashGamePresetIdFromName(POKER_DEFAULT_CASH_GAMES[0]?.label)
-  const pick = list.find((p) => p.id === defaultId) || list[0]
+  const pick = list.find((p) => p.isDefault) || list[0]
   return applyCashGamePreset(baseForm, pick)
 }
 

@@ -199,10 +199,10 @@ export default function PokerBankrollTracker({
     () => scopedSessions.filter((s) => s.status !== 'active'),
     [scopedSessions],
   )
-  /** Game dropdown: user-added cash games first, then built-in defaults. */
+  /** Game dropdown: user-added for this Where first, then venue defaults. */
   const cashGamePresets = useMemo(
-    () => buildCashGamePresetsFromSessions(scopedSessions),
-    [scopedSessions],
+    () => buildCashGamePresetsFromSessions(scopedSessions, form.venue_kind),
+    [scopedSessions, form.venue_kind],
   )
 
   useEffect(() => {
@@ -490,7 +490,12 @@ export default function PokerBankrollTracker({
       return
     }
     setNearbyCasinos([])
-    setForm(formWithDefaultCashGame(emptyForm(), cashGamePresets))
+    setForm(
+      formWithDefaultCashGame(
+        emptyForm(),
+        buildCashGamePresetsFromSessions(scopedSessions, 'live'),
+      ),
+    )
     setShowAdvanced(false)
     setError('')
     setSheet('start')
@@ -507,7 +512,12 @@ export default function PokerBankrollTracker({
     setEditingId(null)
     setEditingPrevWl(0)
     setNearbyCasinos([])
-    setForm(formWithDefaultCashGame(emptyForm(), cashGamePresets))
+    setForm(
+      formWithDefaultCashGame(
+        emptyForm(),
+        buildCashGamePresetsFromSessions(scopedSessions, 'live'),
+      ),
+    )
     setShowAdvanced(false)
     setError('')
     setSheet('session')
@@ -864,13 +874,6 @@ export default function PokerBankrollTracker({
         next.club_app_pick = ''
         if (value === 'live') {
           next.venue_name = ''
-          if (next.session_type === 'cash' && next.cash_game_pick === POKER_CASH_NEW_GAME_ID) {
-            const pick = pokerLiveCashGameNameSelectValue(next.game_custom_name)
-            next.live_game_name_pick = pick
-            if (pick !== POKER_LIVE_CASH_GAME_CUSTOM_ID) {
-              next.game_custom_name = pokerLiveCashGameNameLabelFromId(pick)
-            }
-          }
           void fetchNearby((name) => {
             setForm((f) =>
               f.venue_kind === 'live' && !String(f.venue_name || '').trim()
@@ -899,6 +902,10 @@ export default function PokerBankrollTracker({
             next.venue_name = ''
             next.online_site_pick = ''
           }
+        }
+        if (next.session_type === 'cash') {
+          const venuePresets = buildCashGamePresetsFromSessions(scopedSessions, value)
+          next = formWithDefaultCashGame(next, venuePresets)
         }
       }
       if (key === 'online_site_pick') {

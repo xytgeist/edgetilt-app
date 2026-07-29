@@ -411,7 +411,7 @@ function MiniStatCard({ label, value, positive }) {
 }
 
 /**
- * 100% segmented meter (preview alternative to donuts).
+ * 100% segmented meter (e.g. Won / Lost mix).
  * @param {{ title: string, summary?: string, segments: { label: string, count: number, color: string }[] }} props
  */
 function SegmentMeterCard({ title, summary, segments }) {
@@ -461,6 +461,132 @@ function SegmentMeterCard({ title, summary, segments }) {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+/**
+ * Cash vs Tourney value bars: bar width = share of |P/L|, labeled with P/L and $/h.
+ * @param {{ sessions: object[], totalPL: number }} props
+ */
+function SessionTypeValueBars({ sessions, totalPL }) {
+  const { rows, barMode } = useMemo(() => {
+    let cashPL = 0
+    let cashHrs = 0
+    let cashN = 0
+    let tourneyPL = 0
+    let tourneyHrs = 0
+    let tourneyN = 0
+    for (const s of sessions || []) {
+      const wl = pokerSessionWinLoss(s)
+      if (wl == null) continue
+      const hrs = pokerSessionDurationHours(s)
+      if (s.session_type === 'tournament') {
+        tourneyPL += wl
+        tourneyHrs += hrs
+        tourneyN += 1
+      } else {
+        cashPL += wl
+        cashHrs += hrs
+        cashN += 1
+      }
+    }
+    const built = [
+      {
+        key: 'cash',
+        label: 'Cash',
+        count: cashN,
+        profit: cashPL,
+        hours: cashHrs,
+        hourly: cashHrs >= 0.02 ? cashPL / cashHrs : null,
+      },
+      {
+        key: 'tournament',
+        label: 'Tourney',
+        count: tourneyN,
+        profit: tourneyPL,
+        hours: tourneyHrs,
+        hourly: tourneyHrs >= 0.02 ? tourneyPL / tourneyHrs : null,
+      },
+    ].filter((r) => r.count > 0)
+
+    // Bar length: relative |$/h| when both have rates, else |P/L| share.
+    const hourlies = built.map((r) => (r.hourly != null ? Math.abs(r.hourly) : null))
+    const allHaveHourly = hourlies.length > 0 && hourlies.every((h) => h != null)
+    const maxHourly = allHaveHourly ? Math.max(...hourlies, 0.01) : 0
+    const absPlSum = built.reduce((sum, r) => sum + Math.abs(r.profit), 0)
+
+    return {
+      barMode: allHaveHourly ? 'hourly' : 'pl',
+      rows: built.map((r) => {
+        const widthPct = allHaveHourly
+          ? (Math.abs(r.hourly) / maxHourly) * 100
+          : absPlSum > 0
+            ? (Math.abs(r.profit) / absPlSum) * 100
+            : 0
+        const ofTotal =
+          totalPL != null && Math.abs(totalPL) >= 0.005
+            ? (r.profit / totalPL) * 100
+            : null
+        return { ...r, widthPct: Math.max(widthPct, r.count > 0 ? 6 : 0), ofTotal }
+      }),
+    }
+  }, [sessions, totalPL])
+
+  if (!rows.length) return null
+
+  return (
+    <div className="rounded-2xl border border-zinc-700/30 bg-zinc-800/50 p-3">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <div className="text-xs text-zinc-400">Value by type</div>
+        <div className="text-[10px] text-zinc-500">
+          {barMode === 'hourly' ? 'bar = relative $/h' : 'bar = share of |P/L|'}
+        </div>
+      </div>
+      <div className="space-y-3">
+        {rows.map((row) => {
+          const positive = row.profit >= 0
+          const barColor = positive ? '#34d399' : '#f87171'
+          return (
+            <div key={row.key}>
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <span className="text-[12px] font-semibold text-white">
+                  {row.label}{' '}
+                  <span className="font-normal text-zinc-500">({row.count})</span>
+                </span>
+                <span
+                  className={`text-[12px] font-bold tabular-nums ${
+                    positive ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {fmtPoker$(row.profit)}
+                  {row.hourly != null ? (
+                    <span className="font-semibold text-zinc-400">
+                      {' '}
+                      · {fmtPoker$(row.hourly)}/h
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-950/60 ring-1 ring-inset ring-zinc-700/40">
+                <div
+                  className="h-full rounded-full transition-[width]"
+                  style={{
+                    width: `${Math.min(100, row.widthPct)}%`,
+                    backgroundColor: barColor,
+                  }}
+                />
+              </div>
+              {row.ofTotal != null ? (
+                <div className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                  {row.ofTotal >= 0 ? '+' : ''}
+                  {row.ofTotal.toFixed(0)}% of location P/L
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -545,8 +671,6 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
       .slice(0, 5)
   }, [completed])
 
-  const cashCount = location.cash.count
-  const tourneyCount = location.tournament.count
   const wonCount = completed.filter((s) => (pokerSessionWinLoss(s) ?? 0) >= 0).length
   const lostCount = completed.length - wonCount
 
@@ -618,14 +742,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
 
         {completed.length > 0 ? (
           <div className="mb-4 space-y-2">
-            <SegmentMeterCard
-              title="Session Type"
-              summary={`${location.completed} entries`}
-              segments={[
-                { label: 'Cash', color: '#3b82f6', count: cashCount },
-                { label: 'Tourney', color: '#fbbf24', count: tourneyCount },
-              ]}
-            />
+            <SessionTypeValueBars sessions={completed} totalPL={location.totalPL} />
             <SegmentMeterCard
               title="Outcome"
               summary={location.winPct != null ? `${location.winPct.toFixed(0)}% won` : undefined}

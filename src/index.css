@@ -2669,11 +2669,11 @@ html.light input:-webkit-autofill:focus {
   border: 1px solid color-mix(in srgb, var(--tc) 25%, transparent);
   box-shadow: 0 0 18px color-mix(in srgb, var(--tc) 13%, transparent), inset 0 1px 0 rgba(255,255,255,0.08);
 }
-/* Light only: deeper glyph, lighter soft chip fill (Ryan liked the airier interior) */
+/* Light only: deeper glyph, lighter soft chip fill; border matches glyph darkness */
 html.light .slots-icon-tile {
   color: color-mix(in srgb, var(--tc) 58%, #09090b 42%);
   background: color-mix(in srgb, var(--tc) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tc) 42%, transparent);
+  border: 1px solid currentColor;
   box-shadow: 0 0 16px color-mix(in srgb, var(--tc) 16%, transparent), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 html.light .slots-icon-tile svg {

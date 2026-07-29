@@ -17,6 +17,7 @@ import { enterCallAudioSession, exitCallAudioSession } from './chatCallAudioSess
 import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
+import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 import LiveVoiceCallStt from './LiveVoiceCallStt.jsx'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
@@ -472,6 +473,7 @@ function CallChrome({
   const [camOn, setCamOn] = useState(videoEnabled)
   /** Voice defaults earpiece; video defaults speakerphone. */
   const [speakerOn, setSpeakerOn] = useState(() => Boolean(videoEnabled))
+  /** Starts false; Android may enable after probe. iPhone always stays false. */
   const [audioRouteSupported, setAudioRouteSupported] = useState(false)
   const [cameraBusy, setCameraBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -692,6 +694,10 @@ function CallChrome({
   // Probe real sink switching once the room is up (not on every join/leave).
   useEffect(() => {
     if (!room) return undefined
+    if (isIosDevice()) {
+      setAudioRouteSupported(false)
+      return undefined
+    }
     let cancelled = false
     ;(async () => {
       const ok = await canToggleCallAudioRoute()
@@ -904,7 +910,7 @@ function CallChrome({
         )
       ) : null}
 
-      {audioRouteSupported ? (
+      {audioRouteSupported && !isIosDevice() ? (
         <button
           type="button"
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${

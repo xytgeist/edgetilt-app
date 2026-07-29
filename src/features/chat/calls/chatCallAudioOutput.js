@@ -10,6 +10,7 @@
  * is false. UI must hide the speaker button; use AudioSession play-and-record instead.
  */
 import { Room, Track } from 'livekit-client'
+import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 
 /**
  * @param {MediaDeviceInfo | { label?: string, kind?: string, deviceId?: string }} d
@@ -108,6 +109,10 @@ function elementSupportsSetSinkId() {
  */
 export async function canToggleCallAudioRoute() {
   try {
+    // Safari / iOS PWA cannot reliably switch earpiece ↔ speakerphone from the web.
+    // Never surface a speaker control there (even if device labels look promising).
+    if (isIosDevice()) return false
+
     const devices = await listAudioDevices()
     const ear = pickCallAudioRoute(devices, 'earpiece')
     const speaker = pickCallAudioRoute(devices, 'speakerphone')

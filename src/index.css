@@ -4419,6 +4419,61 @@ html.light [data-bankroll-sheet] .bg-cyan-600 {
   background-color: #0891b2 !important;
 }
 
+/* ── Poker Bankroll sheet - light mode (dark unchanged) ──── */
+html.light [data-poker-bankroll-sheet] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-bankroll-sheet] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-bankroll-sheet] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-bankroll-sheet] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-bankroll-sheet] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-bankroll-sheet] input,
+html.light [data-poker-bankroll-sheet] textarea,
+html.light [data-poker-bankroll-sheet] select {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+  max-width: 100%;
+}
+html.light [data-poker-bankroll-sheet] input::placeholder,
+html.light [data-poker-bankroll-sheet] textarea::placeholder {
+  color: #71717a !important;
+}
+html.light [data-poker-bankroll-sheet] .bg-zinc-800,
+html.light [data-poker-bankroll-sheet] .bg-zinc-900\/60,
+html.light [data-poker-bankroll-sheet] .bg-zinc-950\/50 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-bankroll-sheet] .border-zinc-700,
+html.light [data-poker-bankroll-sheet] .border-zinc-700\/80,
+html.light [data-poker-bankroll-sheet] .border-zinc-800 {
+  border-color: #d4d4d8 !important;
+}
+/* Keep white label text on green primary / selected chips */
+html.light [data-poker-bankroll-sheet] .bg-emerald-600,
+html.light [data-poker-bankroll-sheet] .bg-emerald-600 .text-white,
+html.light [data-poker-bankroll-sheet] .bg-emerald-600.text-white {
+  color: #ffffff !important;
+}
+html.light [data-poker-bankroll-sheet] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-bankroll-sheet] .text-red-300 {
+  color: #dc2626 !important;
+}
+html.light [data-poker-bankroll-sheet] .text-rose-300,
+html.light [data-poker-bankroll-sheet] .text-rose-400 {
+  color: #e11d48 !important;
+}
+
 /* End session W/L preview pill - light mode */
 html.light [data-wl-preview="win"] {
   background-color: #ecfdf5 !important;

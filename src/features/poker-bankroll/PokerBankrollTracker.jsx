@@ -613,12 +613,12 @@ export default function PokerBankrollTracker({
 
       {sheet === 'bankroll' ? (
         <div
-          className={APP_MODAL_OVERLAY_CLASS}
-          data-poker-bankroll-sheet
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
           onClick={() => !saving && setSheet(null)}
         >
           <div
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            data-poker-bankroll-sheet
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -655,12 +655,12 @@ export default function PokerBankrollTracker({
 
       {sheet === 'session' ? (
         <div
-          className={APP_MODAL_OVERLAY_CLASS}
-          data-poker-bankroll-sheet
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
           onClick={() => !saving && setSheet(null)}
         >
           <div
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-h-[92dvh] overflow-y-auto overscroll-y-contain px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            data-poker-bankroll-sheet
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-h-[92dvh] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -718,23 +718,23 @@ export default function PokerBankrollTracker({
               />
             )}
 
-            <div className="mb-3 grid grid-cols-2 gap-2">
-              <div>
+            <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+              <div className="min-w-0">
                 <FieldLabel>Date</FieldLabel>
                 <input
                   type="date"
                   value={form.date}
                   onChange={(e) => setField('date', e.target.value)}
-                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-3 font-semibold text-white outline-none"
+                  className="w-full min-h-12 min-w-0 max-w-full rounded-2xl bg-zinc-800 px-3 font-semibold text-white outline-none"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <FieldLabel>Start time</FieldLabel>
                 <input
                   type="time"
                   value={form.start_time}
                   onChange={(e) => setField('start_time', e.target.value)}
-                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-3 font-semibold text-white outline-none"
+                  className="w-full min-h-12 min-w-0 max-w-full rounded-2xl bg-zinc-800 px-3 font-semibold text-white outline-none"
                 />
               </div>
             </div>

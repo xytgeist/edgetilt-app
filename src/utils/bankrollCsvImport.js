@@ -292,9 +292,19 @@ export function parseCsvImport(text) {
     const end_at = parseDate(get(row, 'end_at')) ?? null
     const casino_name = (get(row, 'casino_name') || '').trim() || null
     const notes = (get(row, 'notes') || '').trim() || null
-    const detectedGameType = detectGameType(get(row, 'game_col'))
+    const gameRaw = (get(row, 'game_col') || '').trim() || null
+    const detectedGameType = detectGameType(gameRaw)
 
-    sessions.push({ start_at, end_at, start_amount, end_amount, casino_name, notes, detectedGameType })
+    sessions.push({
+      start_at,
+      end_at,
+      start_amount,
+      end_amount,
+      casino_name,
+      notes,
+      detectedGameType,
+      game_label: gameRaw,
+    })
   }
 
   const hasGameColumn = columnMap.game_col != null

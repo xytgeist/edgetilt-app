@@ -944,6 +944,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-29: **Poker bankroll Overview tab:** OVERVIEW / SESSION / LOCATIONS / CHARTS; Overview = Total · Sessions · Games + collapsible Cash Game / Tournament (stakes / by-game dropdowns), month compare, 3-month trend; FAB start session.
+- 2026-07-29: **Poker bankroll CSV import:** same flow as slots (`parseCsvImport` / Poker Income + PBT) via **`PokerBankrollImportSheet`** → **`poker_bankroll_sessions`**; entry under Log previous session.
 - 2026-07-29: **Poker bankroll start form (game not Advanced):** Type · Table size · Location. Cash = New game… → Limit · free-text Game · blinds/ante; Tourney = NLH/Limit Hold'em/PLO/PLO8/Mix presets + Players/Start stack; **`third_blind`/`ante`** (`20260729030000`). Advanced = notes (+ tourney extras).
 - 2026-07-29: **Poker bankroll GPS + custom venues:** live Casino/venue autofills nearest casino (`fetchNearbyCasinos`); **`poker_custom_venues`** (`20260729020000`) + **Your places** at top of **`CasinoAutocomplete`** (optional props; slots bankroll unchanged). Apply SQL on test.
 - 2026-07-29: **Poker bankroll starting roll:** **`poker_bankroll_profiles`** (`20260729010000`) + UI to set/edit overall poker bankroll; session create/edit/delete applies P/L delta. Separate from slots `bankroll_profiles`.

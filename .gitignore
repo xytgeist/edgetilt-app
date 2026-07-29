@@ -55,5 +55,8 @@ supabase/.branches/
 IMG_1425.MOV
 .tmp-*.mp4
 pokerbankrollcalc.mp4
+ScreenRecording_*.mp4
 tmp-poker-frames/
+tmp-poker-overview-frames/
+tmp-poker-overview-dd/
 tmp-ffmpeg-tools/

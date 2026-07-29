@@ -7,6 +7,8 @@ import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
+import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
+import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -91,7 +93,7 @@ export default function PokerBankrollTracker({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  /** @type {null | 'session' | 'bankroll' | 'start' | 'end'} */
+  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'import'} */
   const [sheet, setSheet] = useState(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -109,6 +111,8 @@ export default function PokerBankrollTracker({
   const [gpsLoading, setGpsLoading] = useState(false)
   const [customVenues, setCustomVenues] = useState([])
   const casinoCoordCacheRef = useRef(null)
+  /** @type {'overview' | 'session' | 'locations' | 'charts'} */
+  const [activeTab, setActiveTab] = useState('overview')
 
   const overallBankroll = profile ? Number(profile.overall_bankroll) : null
   const hasBankrollProfile = profile != null
@@ -753,234 +757,291 @@ export default function PokerBankrollTracker({
           loading={freemiumUsageLoading}
         />
 
-        {/* Overall poker bankroll */}
-        <div className="mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                Poker bankroll
-              </div>
-              {loading ? (
-                <div className="h-10 w-40 animate-pulse rounded-xl bg-zinc-700/40" />
-              ) : hasBankrollProfile ? (
-                <div className="text-4xl font-black tracking-tight text-white">
-                  {fmtPoker$(overallBankroll)}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={openSetBankroll}
-                  className="mt-1 text-sm font-semibold text-emerald-400 touch-manipulation"
-                >
-                  + Set your starting bankroll
-                </button>
-              )}
-            </div>
-            {hasBankrollProfile ? (
-              <button
-                type="button"
-                onClick={openSetBankroll}
-                className="shrink-0 rounded-xl bg-zinc-700/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-600"
-              >
-                Edit
-              </button>
-            ) : null}
-          </div>
-          {hasBankrollProfile && completedSessions.length > 0 ? (
-            <div className="mt-3 border-t border-zinc-700/40 pt-3 text-[12px] text-zinc-500">
-              Session P/L below updates this roll automatically.
-            </div>
-          ) : null}
+        {/* Tabs — OVERVIEW / SESSION / LOCATIONS / CHARTS */}
+        <div className="mb-4 flex border-b border-zinc-800">
+          {[
+            { id: 'overview', label: 'OVERVIEW' },
+            { id: 'session', label: 'SESSION' },
+            { id: 'locations', label: 'LOCATIONS' },
+            { id: 'charts', label: 'CHARTS' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2.5 text-center text-[11px] font-bold tracking-wide touch-manipulation ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-cyan-400 text-cyan-300'
+                  : 'border-b-2 border-transparent text-zinc-500'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-
-        {/* Active session or Start / Log CTAs */}
-        {activeSession ? (
-          <div
-            data-session-card
-            className="mb-4 rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5"
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-              <span className="text-xs font-bold uppercase tracking-wide text-emerald-300">
-                Session in progress
-              </span>
-            </div>
-            <div className="flex items-end justify-between gap-4">
-              <div className="min-w-0">
-                <div className="truncate text-lg font-bold leading-tight text-white">
-                  {pokerSessionStakesLabel(activeSession)}
-                </div>
-                <div className="mt-0.5 truncate text-sm text-zinc-400">
-                  {pokerSessionMetaLine(activeSession)}
-                </div>
-                <div className="mt-0.5 text-sm text-zinc-400">
-                  Started with {fmtPoker$(activeSession.buy_in)}
-                </div>
-                <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
-                  {fmtPokerDuration(elapsed)}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={openEndSession}
-                className="shrink-0 rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
-              >
-                End Session
-              </button>
-            </div>
-          </div>
-        ) : (
-          !loading &&
-          hasBankrollProfile && (
-            <div className="mb-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={openStartSession}
-                data-start-session-btn
-                data-start-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
-                className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
-                  !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
-                }`}
-              >
-                + Start Session
-              </button>
-              <button
-                type="button"
-                onClick={openLogPast}
-                data-log-past-session-btn
-                data-log-past-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
-                className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
-                  !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
-                }`}
-              >
-                Log previous session(s)
-              </button>
-            </div>
-          )
-        )}
-
-        {/* Summary */}
-        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatTile
-            label="Profit"
-            value={fmtPoker$(stats.profit)}
-            tone={stats.profit >= 0 ? 'good' : 'bad'}
-          />
-          <StatTile
-            label="Hourly"
-            value={stats.hourly == null ? '-' : fmtPoker$(stats.hourly)}
-            tone={stats.hourly == null ? 'neutral' : stats.hourly >= 0 ? 'good' : 'bad'}
-          />
-          <StatTile label="Hours" value={stats.hours.toFixed(1)} />
-          <StatTile
-            label="Win rate"
-            value={stats.winRate == null ? '-' : `${stats.winRate}%`}
-          />
-        </div>
-
-        {/* Filters */}
-        {completedSessions.length > 0 ? (
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'cash', label: 'Cash' },
-              { id: 'tournament', label: 'Tourney' },
-            ].map((opt) => (
-              <FilterChip
-                key={opt.id}
-                active={typeFilter === opt.id}
-                onClick={() => setTypeFilter(opt.id)}
-                label={opt.label}
-              />
-            ))}
-            <span className="mx-1 w-px self-stretch bg-zinc-800" />
-            {[
-              { id: 'all', label: 'Any' },
-              { id: 'live', label: 'Live' },
-              { id: 'online', label: 'Online' },
-            ].map((opt) => (
-              <FilterChip
-                key={`v-${opt.id}`}
-                active={venueFilter === opt.id}
-                onClick={() => setVenueFilter(opt.id)}
-                label={opt.label}
-              />
-            ))}
-          </div>
-        ) : null}
 
         {error && !sheet ? (
           <p className="mb-3 text-center text-sm text-rose-400">{error}</p>
         ) : null}
 
-        {loading ? (
-          <p className="py-16 text-center text-sm text-zinc-500">Loading sessions…</p>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center">
-            <p className="text-white font-semibold">No poker sessions yet</p>
-            <p className="mt-1 text-sm text-zinc-500">
-              {hasBankrollProfile
-                ? 'Start a live session, or log one from earlier.'
-                : 'Set your poker bankroll to get started.'}
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {filtered.map((session) => {
-              const wl = pokerSessionWinLoss(session)
-              const hourly = pokerSessionHourly(session)
-              const bbh = pokerSessionBbPerHour(session)
-              return (
-                <li key={session.id}>
+        {activeTab === 'overview' ? (
+          loading ? (
+            <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
+          ) : (
+            <PokerBankrollOverview sessions={completedSessions} />
+          )
+        ) : null}
+
+        {activeTab === 'session' ? (
+          <>
+            {/* Overall poker bankroll */}
+            <div className="mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                    Poker bankroll
+                  </div>
+                  {loading ? (
+                    <div className="h-10 w-40 animate-pulse rounded-xl bg-zinc-700/40" />
+                  ) : hasBankrollProfile ? (
+                    <div className="text-4xl font-black tracking-tight text-white">
+                      {fmtPoker$(overallBankroll)}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openSetBankroll}
+                      className="mt-1 text-sm font-semibold text-emerald-400 touch-manipulation"
+                    >
+                      + Set your starting bankroll
+                    </button>
+                  )}
+                </div>
+                {hasBankrollProfile ? (
                   <button
                     type="button"
-                    onClick={() => openEdit(session)}
-                    className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
+                    onClick={openSetBankroll}
+                    className="shrink-0 rounded-xl bg-zinc-700/60 px-3 py-1.5 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-600"
                   >
-                    <span
-                      className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        session.session_type === 'tournament'
-                          ? 'bg-amber-500/15 text-amber-300'
-                          : 'bg-emerald-500/15 text-emerald-300'
-                      }`}
-                      aria-hidden
-                    >
-                      {session.session_type === 'tournament' ? 'T' : '$'}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span className="truncate font-semibold text-white">
-                          {pokerSessionStakesLabel(session)}
-                        </span>
-                        <span
-                          className={`shrink-0 font-bold tabular-nums ${
-                            wl == null ? 'text-zinc-500' : wl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                          }`}
-                        >
-                          {wl == null ? '-' : fmtPoker$(wl)}
-                        </span>
-                      </span>
-                      <span className="mt-0.5 block truncate text-[12px] text-zinc-500">
-                        {pokerSessionMetaLine(session)}
-                      </span>
-                      <span className="mt-0.5 block text-[11px] text-zinc-600">
-                        {new Date(session.start_at).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                        {hourly != null ? ` · ${fmtPoker$(hourly)}/h` : ''}
-                        {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
-                      </span>
-                    </span>
+                    Edit
                   </button>
-                </li>
+                ) : null}
+              </div>
+            </div>
+
+            {activeSession ? (
+              <div
+                data-session-card
+                className="mb-4 rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5"
+              >
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                  <span className="text-xs font-bold uppercase tracking-wide text-emerald-300">
+                    Session in progress
+                  </span>
+                </div>
+                <div className="flex items-end justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="truncate text-lg font-bold leading-tight text-white">
+                      {pokerSessionStakesLabel(activeSession)}
+                    </div>
+                    <div className="mt-0.5 truncate text-sm text-zinc-400">
+                      {pokerSessionMetaLine(activeSession)}
+                    </div>
+                    <div className="mt-0.5 text-sm text-zinc-400">
+                      Started with {fmtPoker$(activeSession.buy_in)}
+                    </div>
+                    <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
+                      {fmtPokerDuration(elapsed)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openEndSession}
+                    className="shrink-0 rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                  >
+                    End Session
+                  </button>
+                </div>
+              </div>
+            ) : (
+              !loading &&
+              hasBankrollProfile && (
+                <div className="mb-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={openStartSession}
+                    data-start-session-btn
+                    data-start-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
+                    className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
+                      !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
+                    }`}
+                  >
+                    + Start Session
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openLogPast}
+                    data-log-past-session-btn
+                    data-log-past-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
+                    className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
+                      !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
+                    }`}
+                  >
+                    Log previous session(s)
+                  </button>
+                </div>
               )
-            })}
-          </ul>
-        )}
+            )}
+
+            <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <StatTile
+                label="Profit"
+                value={fmtPoker$(stats.profit)}
+                tone={stats.profit >= 0 ? 'good' : 'bad'}
+              />
+              <StatTile
+                label="Hourly"
+                value={stats.hourly == null ? '-' : fmtPoker$(stats.hourly)}
+                tone={stats.hourly == null ? 'neutral' : stats.hourly >= 0 ? 'good' : 'bad'}
+              />
+              <StatTile label="Hours" value={stats.hours.toFixed(1)} />
+              <StatTile
+                label="Win rate"
+                value={stats.winRate == null ? '-' : `${stats.winRate}%`}
+              />
+            </div>
+
+            {completedSessions.length > 0 ? (
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'cash', label: 'Cash' },
+                  { id: 'tournament', label: 'Tourney' },
+                ].map((opt) => (
+                  <FilterChip
+                    key={opt.id}
+                    active={typeFilter === opt.id}
+                    onClick={() => setTypeFilter(opt.id)}
+                    label={opt.label}
+                  />
+                ))}
+                <span className="mx-1 w-px self-stretch bg-zinc-800" />
+                {[
+                  { id: 'all', label: 'Any' },
+                  { id: 'live', label: 'Live' },
+                  { id: 'online', label: 'Online' },
+                ].map((opt) => (
+                  <FilterChip
+                    key={`v-${opt.id}`}
+                    active={venueFilter === opt.id}
+                    onClick={() => setVenueFilter(opt.id)}
+                    label={opt.label}
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {loading ? (
+              <p className="py-16 text-center text-sm text-zinc-500">Loading sessions…</p>
+            ) : filtered.length === 0 ? (
+              <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center">
+                <p className="text-white font-semibold">No poker sessions yet</p>
+                <p className="mt-1 text-sm text-zinc-500">
+                  {hasBankrollProfile
+                    ? 'Start a live session, or log one from earlier.'
+                    : 'Set your poker bankroll to get started.'}
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {filtered.map((session) => {
+                  const wl = pokerSessionWinLoss(session)
+                  const hourly = pokerSessionHourly(session)
+                  const bbh = pokerSessionBbPerHour(session)
+                  return (
+                    <li key={session.id}>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(session)}
+                        className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
+                      >
+                        <span
+                          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                            session.session_type === 'tournament'
+                              ? 'bg-amber-500/15 text-amber-300'
+                              : 'bg-emerald-500/15 text-emerald-300'
+                          }`}
+                          aria-hidden
+                        >
+                          {session.session_type === 'tournament' ? 'T' : '$'}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="truncate font-semibold text-white">
+                              {pokerSessionStakesLabel(session)}
+                            </span>
+                            <span
+                              className={`shrink-0 font-bold tabular-nums ${
+                                wl == null
+                                  ? 'text-zinc-500'
+                                  : wl >= 0
+                                    ? 'text-emerald-400'
+                                    : 'text-rose-400'
+                              }`}
+                            >
+                              {wl == null ? '-' : fmtPoker$(wl)}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block truncate text-[12px] text-zinc-500">
+                            {pokerSessionMetaLine(session)}
+                          </span>
+                          <span className="mt-0.5 block text-[11px] text-zinc-600">
+                            {new Date(session.start_at).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                            {hourly != null ? ` · ${fmtPoker$(hourly)}/h` : ''}
+                            {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </>
+        ) : null}
+
+        {activeTab === 'locations' ? (
+          <PokerLocationsPanel sessions={completedSessions} loading={loading} />
+        ) : null}
+
+        {activeTab === 'charts' ? (
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-12 text-center">
+            <p className="font-semibold text-white">Charts coming next</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Overview already covers Total, Sessions, Games, and Cash / Tourney breakdowns.
+            </p>
+          </div>
+        ) : null}
       </ScrollLinkedEdgeTitleBarShell>
+
+      {/* FAB — match reference + for new session */}
+      {!activeSession && hasBankrollProfile && !sheet ? (
+        <button
+          type="button"
+          onClick={openStartSession}
+          data-start-session-btn
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 z-[40] flex h-14 w-14 items-center justify-center rounded-full bg-cyan-500 text-2xl font-light text-white shadow-lg shadow-cyan-900/40 touch-manipulation active:bg-cyan-400"
+          aria-label="Start session"
+        >
+          +
+        </button>
+      ) : null}
 
       {sheet === 'bankroll' ? (
         <div
@@ -1223,9 +1284,41 @@ export default function PokerBankrollTracker({
               >
                 Delete session
               </button>
-            ) : null}
+            ) : (
+              <>
+                <div className="mb-1 mt-5 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-zinc-800" />
+                  <span className="text-xs text-zinc-600">have multiple sessions?</span>
+                  <div className="h-px flex-1 bg-zinc-800" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSheet('import')
+                    triggerTapHapticLight()
+                  }}
+                  className="flex w-full items-center justify-center gap-2 py-3 text-sm font-semibold text-zinc-500 touch-manipulation active:text-zinc-300"
+                >
+                  <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4 shrink-0">
+                    <path d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z" />
+                    <path d="M3.5 9.75a.75.75 0 0 0-1.5 0v1.5A2.75 2.75 0 0 0 4.75 14h6.5A2.75 2.75 0 0 0 14 11.25v-1.5a.75.75 0 0 0-1.5 0v1.5c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-1.5Z" />
+                  </svg>
+                  Import from CSV
+                </button>
+              </>
+            )}
           </div>
         </div>
+      ) : null}
+
+      {sheet === 'import' ? (
+        <PokerBankrollImportSheet
+          supabaseClient={supabaseClient}
+          userId={userId}
+          completedSessions={completedSessions}
+          onClose={() => setSheet(null)}
+          onImported={() => void loadData()}
+        />
       ) : null}
 
       {sheet === 'start' ? (
@@ -1399,6 +1492,60 @@ function FilterChip({ active, onClick, label }) {
     >
       {label}
     </button>
+  )
+}
+
+function PokerLocationsPanel({ sessions, loading }) {
+  const rows = useMemo(() => {
+    /** @type {Map<string, { name: string, sessions: number, hours: number, profit: number }>} */
+    const map = new Map()
+    for (const s of sessions || []) {
+      const name = String(s.venue_name || '').trim() || 'Unknown'
+      if (!map.has(name)) map.set(name, { name, sessions: 0, hours: 0, profit: 0 })
+      const row = map.get(name)
+      const wl = pokerSessionWinLoss(s)
+      if (wl == null) continue
+      row.sessions += 1
+      row.hours += pokerSessionDurationHours(s)
+      row.profit += wl
+    }
+    return [...map.values()].sort((a, b) => b.profit - a.profit)
+  }, [sessions])
+
+  if (loading) {
+    return <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
+  }
+  if (!rows.length) {
+    return (
+      <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center">
+        <p className="font-semibold text-white">No locations yet</p>
+        <p className="mt-1 text-sm text-zinc-500">Log sessions with a venue to see them here.</p>
+      </div>
+    )
+  }
+  return (
+    <ul className="space-y-2">
+      {rows.map((r) => (
+        <li
+          key={r.name}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3"
+        >
+          <div className="min-w-0">
+            <div className="truncate font-semibold text-white">{r.name}</div>
+            <div className="mt-0.5 text-[12px] text-zinc-500">
+              {r.sessions} session{r.sessions === 1 ? '' : 's'} · {r.hours.toFixed(0)}h
+            </div>
+          </div>
+          <div
+            className={`shrink-0 text-sm font-bold tabular-nums ${
+              r.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}
+          >
+            {fmtPoker$(r.profit)}
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 

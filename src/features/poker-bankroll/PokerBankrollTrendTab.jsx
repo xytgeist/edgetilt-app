@@ -356,7 +356,7 @@ function DetailStat({ label, value, colored, positive }) {
   )
 }
 
-/** Text tab for the under-chart filter dock (selected = bold white, not a filled pill). */
+/** Text tab for the under-chart time range row. */
 function TrendDockTab({ active, onClick, label }) {
   return (
     <button
@@ -365,6 +365,22 @@ function TrendDockTab({ active, onClick, label }) {
       data-poker-trend-dock-tab={active ? 'on' : 'off'}
       className={`min-w-0 flex-1 px-0.5 py-1 text-center text-[11px] uppercase tracking-wide touch-manipulation transition-colors ${
         active ? 'font-bold text-white' : 'font-semibold text-zinc-500 active:text-zinc-300'
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+/** Compact pill for type / venue filters inside the under-chart dock. */
+function TrendDockPill({ active, onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-poker-filter-chip={active ? 'on' : 'off'}
+      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
+        active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
       }`}
     >
       {label}
@@ -796,19 +812,18 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
         ))}
       </div>
       <div className="h-px bg-zinc-800/80" />
-      <div className="flex items-center gap-0.5" role="group" aria-label="Session type">
+      <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Session type and venue">
         {TYPE_FILTERS.map((opt) => (
-          <TrendDockTab
+          <TrendDockPill
             key={opt.id}
             active={typeFilter === opt.id}
             onClick={() => selectTypeFilter(opt.id)}
             label={opt.label}
           />
         ))}
-      </div>
-      <div className="flex items-center gap-0.5" role="group" aria-label="Venue">
+        <span className="mx-0.5 h-4 w-px shrink-0 self-center bg-zinc-700" aria-hidden />
         {VENUE_FILTERS.map((opt) => (
-          <TrendDockTab
+          <TrendDockPill
             key={`v-${opt.id}`}
             active={venueFilter === opt.id}
             onClick={() => selectVenueFilter(opt.id)}

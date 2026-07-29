@@ -949,6 +949,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - 2026-07-28: **Poker bankroll hero stats:** Profit / Hourly / Hours / Win rate live inside the Session bankroll card (lifetime, not history filters); removed separate stat tiles.
 - 2026-07-28: **Poker bankroll hero sparkline:** tiny running-bankroll polyline beside the Session roll amount (inferred start = current − lifetime profit).
 - 2026-07-28: **Poker bankroll pill tabs:** match slots bankroll pills; landing **OVERVIEW** (was Session); former Overview aggregates → **DETAILS**; LOCATIONS / CHARTS unchanged.
+- 2026-07-28: **Poker bankroll hero stats filter:** Profit / Hourly / Hours / Win rate on the Overview bankroll card follow Cash/Tourney + Live/Online chips (same as history).
 - 2026-07-29: **Poker bankroll CSV import:** same flow as slots (`parseCsvImport` / Poker Income + PBT) via **`PokerBankrollImportSheet`** → **`poker_bankroll_sessions`**; entry under Log previous session.
 - 2026-07-29: **Poker bankroll start form (game not Advanced):** Type · Table size · Location. Cash = New game… → Limit · free-text Game · blinds/ante; Tourney = NLH/Limit Hold'em/PLO/PLO8/Mix presets + Players/Start stack; **`third_blind`/`ante`** (`20260729030000`). Advanced = notes (+ tourney extras).
 - 2026-07-29: **Poker bankroll GPS + custom venues:** live Casino/venue autofills nearest casino (`fetchNearbyCasinos`); **`poker_custom_venues`** (`20260729020000`) + **Your places** at top of **`CasinoAutocomplete`** (optional props; slots bankroll unchanged). Apply SQL on test.

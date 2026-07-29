@@ -265,13 +265,13 @@ export default function PokerBankrollTracker({
     })
   }, [completedSessions, typeFilter, venueFilter])
 
-  /** Lifetime session stats for the bankroll hero (not history filters). */
+  /** Bankroll-card stats follow All/Cash/Tourney + Any/Live/Online filters. */
   const stats = useMemo(() => {
     let profit = 0
     let hours = 0
     let wins = 0
     let counted = 0
-    for (const s of completedSessions) {
+    for (const s of filtered) {
       const wl = pokerSessionWinLoss(s)
       if (wl == null) continue
       counted += 1
@@ -286,7 +286,7 @@ export default function PokerBankrollTracker({
       winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
       count: counted,
     }
-  }, [completedSessions])
+  }, [filtered])
 
   /** Running bankroll after each completed session (inferred start = current − lifetime profit). */
   const bankrollSparkSeries = useMemo(() => {

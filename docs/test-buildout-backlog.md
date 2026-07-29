@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-29: **Poker bankroll Locations tab (PBT-matched):** `PokerLocationsTab.jsx` ... venue cards (Entries · hours · $/h · % won); Location Info modal with cumulative P&L, Cash/Tourney + Won/Lost donuts, Type/ROI/Profit table, Best sessions, year pills + session list (tap → edit).
 - 2026-07-29: **Poker bankroll Overview tab:** OVERVIEW / SESSION / LOCATIONS / CHARTS; Overview = Total · Sessions · Games + collapsible Cash Game / Tournament (stakes / by-game dropdowns), month compare, 3-month trend; FAB start session.
 - 2026-07-29: **Poker bankroll online tables_count:** **`tables_count`** (`20260730020000`, applied on **test**); online form **Tables** stepper (1–24); hands/hour × tables for BB/100 and $/100. Live stays 1.
 - 2026-07-28: **Poker bankroll tourney re-buy / add-on $:** columns **`rebuy_amount`** / **`addon_amount`** (`20260730010000`, applied on **test**); invested cost = buy-in + re-buys + add-ons for P/L + Overview buy-in totals; form fields on tourney log/start; live **Re-enter** / **Add-on** buttons. Cash live re-buy still folds into **`buy_in`**. Advanced **Re-entries** count unchanged.

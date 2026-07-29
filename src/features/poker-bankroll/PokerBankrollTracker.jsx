@@ -11,6 +11,7 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
+import PokerLocationsTab from './PokerLocationsTab.jsx'
 import {
   isMissingStableTableError,
   loadDealBankrollProfiles,
@@ -1422,7 +1423,11 @@ export default function PokerBankrollTracker({
         ) : null}
 
         {activeTab === 'locations' ? (
-          <PokerLocationsPanel sessions={completedSessions} loading={loading} />
+          <PokerLocationsTab
+            sessions={completedSessions}
+            loading={loading}
+            onEditSession={openEdit}
+          />
         ) : null}
 
         {activeTab === 'charts' ? (
@@ -2000,64 +2005,6 @@ function FilterChip({ active, onClick, label }) {
     >
       {label}
     </button>
-  )
-}
-
-function PokerLocationsPanel({ sessions, loading }) {
-  const rows = useMemo(() => {
-    /** @type {Map<string, { name: string, sessions: number, hours: number, profit: number }>} */
-    const map = new Map()
-    for (const s of sessions || []) {
-      const name = String(s.venue_name || '').trim() || 'Unknown'
-      if (!map.has(name)) map.set(name, { name, sessions: 0, hours: 0, profit: 0 })
-      const row = map.get(name)
-      const wl = pokerSessionWinLoss(s)
-      if (wl == null) continue
-      row.sessions += 1
-      row.hours += pokerSessionDurationHours(s)
-      row.profit += wl
-    }
-    return [...map.values()].sort((a, b) => b.profit - a.profit)
-  }, [sessions])
-
-  if (loading) {
-    return <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
-  }
-  if (!rows.length) {
-    return (
-      <div
-        data-elevated-card="surface"
-        className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
-      >
-        <p className="font-semibold text-white">No locations yet</p>
-        <p className="mt-1 text-sm text-zinc-500">Log sessions with a venue to see them here.</p>
-      </div>
-    )
-  }
-  return (
-    <ul className="space-y-2">
-      {rows.map((r) => (
-        <li
-          key={r.name}
-          data-elevated-card="surface"
-          className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3"
-        >
-          <div className="min-w-0">
-            <div className="truncate font-semibold text-white">{r.name}</div>
-            <div className="mt-0.5 text-[12px] text-zinc-500">
-              {r.sessions} session{r.sessions === 1 ? '' : 's'} · {r.hours.toFixed(0)}h
-            </div>
-          </div>
-          <div
-            className={`shrink-0 text-sm font-bold tabular-nums ${
-              r.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {fmtPoker$(r.profit)}
-          </div>
-        </li>
-      ))}
-    </ul>
   )
 }
 

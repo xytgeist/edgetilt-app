@@ -865,6 +865,7 @@ export default function PokerBankrollTracker({
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
+        <div data-poker-bankroll>
         <SlotsToolPageHeader
           center={
             <div className="text-center">
@@ -1254,6 +1255,7 @@ export default function PokerBankrollTracker({
             </p>
           </div>
         ) : null}
+        </div>
       </ScrollLinkedEdgeTitleBarShell>
 
       {sheet === 'bankroll' ? (

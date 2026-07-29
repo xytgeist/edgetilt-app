@@ -4486,6 +4486,23 @@ html.light [data-poker-bankroll-sheet] .text-rose-400 {
   color: #e11d48 !important;
 }
 
+/* Poker Bankroll main screen P/L tones — light only (dark keeps bright emerald/rose) */
+html.light [data-poker-bankroll] .text-emerald-400,
+html.light [data-poker-bankroll] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-bankroll] .text-emerald-200 {
+  color: #059669 !important;
+}
+html.light [data-poker-bankroll] .text-rose-400,
+html.light [data-poker-bankroll] .text-rose-300 {
+  color: #be123c !important;
+}
+html.light [data-poker-bankroll] .text-red-400,
+html.light [data-poker-bankroll] .text-red-300 {
+  color: #b91c1c !important;
+}
+
 /* End session W/L preview pill - light mode */
 html.light [data-wl-preview="win"] {
   background-color: #ecfdf5 !important;

@@ -1130,6 +1130,44 @@ export default function PokerBankrollTracker({
     }
   }
 
+  /** Wipe every session in the current Personal / On Stake scope and reverse P/L. */
+  async function purgeAllSessions() {
+    if (!supabaseClient || !userId || scopedSessions.length === 0 || saving) return
+    const scopeLabel = isOnStake ? 'On Stake' : 'personal'
+    const n = scopedSessions.length
+    if (
+      !window.confirm(
+        `Delete all ${n} ${scopeLabel} poker session${n === 1 ? '' : 's'}? Your bankroll will be adjusted by the reversed session P/L. This cannot be undone.`,
+      )
+    ) {
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      let totalWl = 0
+      for (const s of scopedSessions) {
+        const wl = pokerSessionWinLoss(s)
+        if (wl != null) totalWl += wl
+      }
+      let q = supabaseClient
+        .from('poker_bankroll_sessions')
+        .delete()
+        .eq('user_id', userId)
+      q = isOnStake ? q.eq('deal_id', bankrollScope) : q.is('deal_id', null)
+      const { error: dErr } = await q
+      if (dErr) throw dErr
+      await applyBankrollDelta(-totalWl)
+      setSheet(null)
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Purge failed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const previewWl = (() => {
     const buyIn = parseFloat(form.buy_in)
     const cashOut = parseFloat(form.cash_out)
@@ -1558,6 +1596,19 @@ export default function PokerBankrollTracker({
                 })}
               </ul>
             )}
+
+            {scopedSessions.length > 0 ? (
+              <div className="mt-6 pb-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => void purgeAllSessions()}
+                  disabled={saving}
+                  className="text-sm font-medium text-zinc-500 touch-manipulation active:text-rose-400 disabled:opacity-40"
+                >
+                  Purge all sessions
+                </button>
+              </div>
+            ) : null}
           </>
         ) : null}
 

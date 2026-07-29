@@ -41,14 +41,21 @@ function readEgressTemplateBaseUrl(): string {
     .trim()
     .replace(/\/+$/, '')
   if (explicit) return explicit
-  // Prefer R2-hosted template (LiveKit Chrome was blocked / flaky against Vercel HTML).
-  // Publish with: node scripts/publish-call-egress-template.mjs --target=test|production
+  // Prefer whatever public host the Lounge R2 secrets use (keeps prod/test from drifting).
+  // Publish with: node scripts/publish-call-egress-template-local.mjs --target=test|production
+  const r2Base = String(Deno.env.get('LOUNGE_CF_R2_PUBLIC_BASE_URL') || '')
+    .trim()
+    .replace(/\/+$/, '')
+  if (r2Base) return `${r2Base}/call-egress/call-egress.html`
+  // Legacy hardcodes if R2 public base is somehow unset.
   const supabaseUrl = String(Deno.env.get('SUPABASE_URL') || '')
   if (supabaseUrl.includes('kcosfvmreeiosdjdzycb')) {
     return 'https://media-test.lvslotpro.com/call-egress/call-egress.html'
   }
   if (supabaseUrl.includes('jtjgtucumuoswnbauxry')) {
-    return 'https://media.edgetilt.com/call-egress/call-egress.html'
+    // Until edgetilt.com can move into the R2 Cloudflare account (~60d registrar lock),
+    // prod media host is media.lvslotpro.com on the same bucket as media-test.
+    return 'https://media.lvslotpro.com/call-egress/call-egress.html'
   }
   return ''
 }

@@ -101,3 +101,18 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 **Prod promote (2026-07-27, UX batch):** WhatsApp in-call polish, group leave semantics, earpiece/speaker, late-join Join bar + avatars → **`main`**; redeploy **`chat-calls`** on prod for **`leave_call`** / end-when-≤1-remains. No new SQL.
 
 **Group video + recording (test first):** SQL through **`20260728090000`**; redeploy **`chat-calls`** with egress template secret; deploy **`livekit-egress-webhook`**; configure LiveKit webhook; ship frontend **`call-egress.html`**. Promote prod only after Ryan sign-off.
+
+**Prod promote (2026-07-28, recording + transcripts):** SQL **`20260728050000`–`110000`** on **`jtjgtucumuoswnbauxry`**; Edge **`chat-calls`** / **`livekit-egress-webhook`** / **`chat-call-transcribe`** / **`publish-call-egress-template`**; R2 host **`https://media.lvslotpro.com`**; template published; LiveKit webhook + Deepgram confirmed. Frontend via **`main`**. Smoke on **edgetilt.com** still required before sign-off.
+
+### Prod media host — Gate before Record promote
+
+**Current prod host:** **`https://media.lvslotpro.com`** (R2 custom domain on the Lounge media bucket; same bucket as **`media-test.lvslotpro.com`**).
+
+`media.edgetilt.com` is deferred: `edgetilt.com` is Cloudflare Registrar in a different account and can’t move for ~60 days after purchase. After the lock, move the zone into the R2 account and attach `media.edgetilt.com`, then flip secrets.
+
+1. Keep **`media-test.lvslotpro.com`** + **`media.lvslotpro.com`** both attached to the bucket.
+2. Confirm CORS allows **`https://edgetilt.com`** (and localhost if needed); **`AllowedHeaders`**: `Content-Type`, `Cache-Control`.
+3. Prod Edge secret **`LOUNGE_CF_R2_PUBLIC_BASE_URL=https://media.lvslotpro.com`** + Vercel Production **`VITE_LOUNGE_CF_MEDIA_PUBLIC_BASE_URL`** to match.
+4. Publish template: `node scripts/publish-call-egress-template-local.mjs --target=production` → `https://media.lvslotpro.com/call-egress/call-egress.html`.
+5. `chat-calls` template URL prefers **`LOUNGE_CF_R2_PUBLIC_BASE_URL`** when set (optional override **`CHAT_CALL_EGRESS_TEMPLATE_BASE_URL`**).
+6. Prod **`DEEPGRAM_API_KEY`** + LiveKit webhook → `https://jtjgtucumuoswnbauxry.supabase.co/functions/v1/livekit-egress-webhook` (`egress_ended`).

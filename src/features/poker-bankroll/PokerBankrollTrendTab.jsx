@@ -397,7 +397,7 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
   /** @type {'all' | 'live' | 'online' | 'club'} */
   const [venueFilter, setVenueFilter] = useState('all')
   const [fanHorizon, setFanHorizon] = useState(100)
-  const [showMonteCarlo, setShowMonteCarlo] = useState(false)
+  const [showMonteCarlo, setShowMonteCarlo] = useState(true)
   const [sessionModal, setSessionModal] = useState(null)
   const [infoModal, setInfoModal] = useState(null)
   const [tooltip, setTooltip] = useState(null) // { type:'session'|'fan', x, y, side, ... }
@@ -862,20 +862,27 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
           {mcResult && (
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <button
+                type="button"
                 onClick={() => setShowMonteCarlo(v => !v)}
+                data-poker-trend-mc={showMonteCarlo ? 'on' : 'off'}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold touch-manipulation transition-colors border ${
                   showMonteCarlo
                     ? 'bg-blue-900/60 text-blue-300 border-blue-700/50'
                     : 'text-zinc-600 border-zinc-800'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${showMonteCarlo ? 'bg-blue-400' : 'bg-zinc-600'}`} />
+                <span
+                  data-poker-trend-mc-dot
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${showMonteCarlo ? 'bg-blue-400' : 'bg-zinc-600'}`}
+                />
                 Monte Carlo
               </button>
               {showMonteCarlo && HORIZONS.map(h => (
                 <button
                   key={h}
+                  type="button"
                   onClick={() => setFanHorizon(h)}
+                  data-poker-trend-mc={fanHorizon === h ? 'on' : 'off'}
                   className={`px-2.5 py-1 rounded-full text-[10px] font-bold touch-manipulation transition-colors border ${
                     fanHorizon === h
                       ? 'bg-blue-900/60 text-blue-300 border-blue-700/50'

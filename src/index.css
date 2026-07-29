@@ -4588,6 +4588,24 @@ html.light [data-poker-bankroll] [data-poker-trend-dock-tab='off'] {
   color: #a1a1aa !important;
 }
 
+/* Trend Monte Carlo pills — dark blue-on-blue reads muddy in light mode */
+html.light [data-poker-bankroll] [data-poker-trend-mc='on'] {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+}
+html.light [data-poker-bankroll] [data-poker-trend-mc='off'] {
+  color: #71717a !important;
+  border-color: #d4d4d8 !important;
+  background-color: transparent !important;
+}
+html.light [data-poker-bankroll] [data-poker-trend-mc='on'] [data-poker-trend-mc-dot] {
+  background-color: #2563eb !important;
+}
+html.light [data-poker-bankroll] [data-poker-trend-mc='off'] [data-poker-trend-mc-dot] {
+  background-color: #a1a1aa !important;
+}
+
 /* End session W/L preview pill - light mode */
 html.light [data-wl-preview="win"] {
   background-color: #ecfdf5 !important;

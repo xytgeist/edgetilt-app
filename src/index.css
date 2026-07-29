@@ -4573,6 +4573,21 @@ html.light [data-poker-bankroll] [data-poker-filter-chip='on'] {
   color: #ffffff !important;
 }
 
+/* Trend under-chart filter dock — text tabs (no filled pill) */
+html.light [data-poker-bankroll] [data-poker-trend-filter-dock] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-bankroll] [data-poker-trend-filter-dock] .h-px {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-poker-bankroll] [data-poker-trend-dock-tab='on'] {
+  color: #18181b !important;
+}
+html.light [data-poker-bankroll] [data-poker-trend-dock-tab='off'] {
+  color: #a1a1aa !important;
+}
+
 /* End session W/L preview pill - light mode */
 html.light [data-wl-preview="win"] {
   background-color: #ecfdf5 !important;

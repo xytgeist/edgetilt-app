@@ -356,14 +356,15 @@ function DetailStat({ label, value, colored, positive }) {
   )
 }
 
-function TrendFilterChip({ active, onClick, label }) {
+/** Text tab for the under-chart filter dock (selected = bold white, not a filled pill). */
+function TrendDockTab({ active, onClick, label }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      data-poker-filter-chip={active ? 'on' : 'off'}
-      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
-        active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
+      data-poker-trend-dock-tab={active ? 'on' : 'off'}
+      className={`min-w-0 flex-1 px-0.5 py-1 text-center text-[11px] uppercase tracking-wide touch-manipulation transition-colors ${
+        active ? 'font-bold text-white' : 'font-semibold text-zinc-500 active:text-zinc-300'
       }`}
     >
       {label}
@@ -778,29 +779,49 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
       : `${(m.kelly * 50).toFixed(1)}%`
     : null
 
+  const filterDock = (
+    <div
+      data-elevated-card="surface"
+      data-poker-trend-filter-dock
+      className="rounded-3xl border border-zinc-800/60 bg-zinc-900 px-3 py-3 space-y-2.5"
+    >
+      <div className="flex items-center gap-0.5" role="group" aria-label="Time range">
+        {FILTERS.map((f) => (
+          <TrendDockTab
+            key={f.label}
+            active={filter === f.label}
+            onClick={() => { setTooltip(null); setFilter(f.label) }}
+            label={f.label}
+          />
+        ))}
+      </div>
+      <div className="h-px bg-zinc-800/80" />
+      <div className="flex items-center gap-0.5" role="group" aria-label="Session type">
+        {TYPE_FILTERS.map((opt) => (
+          <TrendDockTab
+            key={opt.id}
+            active={typeFilter === opt.id}
+            onClick={() => selectTypeFilter(opt.id)}
+            label={opt.label}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-0.5" role="group" aria-label="Venue">
+        {VENUE_FILTERS.map((opt) => (
+          <TrendDockTab
+            key={`v-${opt.id}`}
+            active={venueFilter === opt.id}
+            onClick={() => selectVenueFilter(opt.id)}
+            label={opt.label}
+          />
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <>
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-1">
-          {TYPE_FILTERS.map((opt) => (
-            <TrendFilterChip
-              key={opt.id}
-              active={typeFilter === opt.id}
-              onClick={() => selectTypeFilter(opt.id)}
-              label={opt.label}
-            />
-          ))}
-          <span className="mx-0.5 w-px self-stretch bg-zinc-800" />
-          {VENUE_FILTERS.map((opt) => (
-            <TrendFilterChip
-              key={`v-${opt.id}`}
-              active={venueFilter === opt.id}
-              onClick={() => selectVenueFilter(opt.id)}
-              label={opt.label}
-            />
-          ))}
-        </div>
-
         {scopedSessions.length === 0 ? (
           <div
             data-elevated-card="surface"
@@ -822,21 +843,6 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
 
         {/* Chart card */}
         <div data-elevated-card="surface" className="rounded-3xl bg-zinc-900 border border-zinc-800/60 p-4">
-          {/* Time filter pills */}
-          <div className="flex gap-1 mb-3 overflow-x-auto no-scrollbar">
-            {FILTERS.map(f => (
-              <button
-                key={f.label}
-                onClick={() => { setTooltip(null); setFilter(f.label) }}
-                className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold touch-manipulation transition-colors ${
-                  filter === f.label ? 'bg-zinc-700 text-white' : 'text-zinc-500 active:bg-zinc-800'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
           {/* Monte Carlo toggle + horizon */}
           {mcResult && (
             <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -1000,7 +1006,13 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
             </div>
           )}
         </div>
+          </>
+        )}
 
+        {filterDock}
+
+        {scopedSessions.length > 0 ? (
+          <>
         {/* Advanced metrics */}
         {m && (
           <div data-elevated-card="surface" className="rounded-3xl bg-zinc-900 border border-zinc-800/60 p-4">
@@ -1170,7 +1182,7 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
           )}
         </div>
           </>
-        )}
+        ) : null}
       </div>
 
       {sessionModal && (

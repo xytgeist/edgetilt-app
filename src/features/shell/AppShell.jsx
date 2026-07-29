@@ -136,7 +136,7 @@ function TabLoadingFallback() {
 class TabErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { error: null, attemptCount: 0 }
+    this.state = { error: null, attemptCount: 0, componentStack: '' }
     /** Per-boundary ref so Strict Mode remount can throw again; Replay keeps the same instance. */
     this.lastSimulatedTriggerRef = { current: 0 }
     this.handleReport = this.handleReport.bind(this)
@@ -153,13 +153,15 @@ class TabErrorBoundary extends React.Component {
   componentDidCatch(error, info) {
     const prev = parseInt(sessionStorage.getItem(TAB_ERROR_COUNT_KEY) || '0', 10)
     sessionStorage.setItem(TAB_ERROR_COUNT_KEY, String(prev + 1))
+    // Keep component stack for Report Issue (message alone is often a minified React code).
+    this.setState({ componentStack: info?.componentStack || '' })
     if (!isStaffTabErrorTest(error)) {
       Sentry.captureException(error, { extra: { componentStack: info?.componentStack } })
     }
   }
 
   handleRetry() {
-    this.setState({ error: null })
+    this.setState({ error: null, componentStack: '' })
     this.props.onRecover?.()
   }
 
@@ -171,7 +173,17 @@ class TabErrorBoundary extends React.Component {
   // It naturally clears when the browser tab is closed.
 
   handleReport() {
-    const errText = this.state.error?.stack || this.state.error?.message || 'Unknown error'
+    const err = this.state.error
+    const message = err?.message || String(err || 'Unknown error')
+    const stack = err?.stack || ''
+    const componentStack = this.state.componentStack || ''
+    const errText = [
+      `Message: ${message}`,
+      stack ? `Stack:\n${stack}` : '',
+      componentStack ? `Component stack:\n${componentStack}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n')
     const subject = encodeURIComponent('LVSlotPro App Error Report')
     const body = encodeURIComponent(
       `App tab crashed twice - please investigate.\n\nTimestamp: ${new Date().toISOString()}\n\nError:\n${errText}`,

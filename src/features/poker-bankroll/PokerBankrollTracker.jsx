@@ -11,6 +11,7 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
+import PokerCashGamePicker from './PokerCashGamePicker.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
 import {
   POKER_CURRENCIES,
@@ -45,7 +46,6 @@ import {
   buildCashGamePresetsFromSessions,
   cashGameLabelFromSession,
   cashGamePresetIdFromName,
-  cashGameSelectOptions,
   coercePokerGameForSessionType,
   formWithDefaultCashGame,
   parseCashGameLabel,
@@ -199,7 +199,7 @@ export default function PokerBankrollTracker({
     () => scopedSessions.filter((s) => s.status !== 'active'),
     [scopedSessions],
   )
-  /** Prior cash games for the Game dropdown (most recent first). */
+  /** Game dropdown: user-added cash games first, then built-in defaults. */
   const cashGamePresets = useMemo(
     () => buildCashGamePresetsFromSessions(scopedSessions),
     [scopedSessions],
@@ -2123,18 +2123,17 @@ function PokerSessionCoreFields({
 }) {
   const isCash = form.session_type === 'cash'
   const isCustomGame = form.game_variant === 'custom'
-  const cashGameOptions = (() => {
-    const opts = cashGameSelectOptions(cashGamePresets)
+  const cashGameOrphan = (() => {
     const pick = form.cash_game_pick
     if (
       pick &&
       pick !== POKER_CASH_NEW_GAME_ID &&
-      !opts.some((o) => o.id === pick) &&
+      !(cashGamePresets || []).some((p) => p.id === pick) &&
       form.game_custom_name
     ) {
-      return [...opts, { id: pick, label: form.game_custom_name }]
+      return { id: pick, label: form.game_custom_name }
     }
-    return opts
+    return null
   })()
 
   return (
@@ -2220,10 +2219,11 @@ function PokerSessionCoreFields({
             currency={form.currency}
             onCurrencyChange={(v) => setField('currency', v)}
             game={
-              <Select
+              <PokerCashGamePicker
                 value={form.cash_game_pick || POKER_CASH_NEW_GAME_ID}
                 onChange={(v) => setField('cash_game_pick', v)}
-                options={cashGameOptions}
+                presets={cashGamePresets}
+                orphan={cashGameOrphan}
               />
             }
           />

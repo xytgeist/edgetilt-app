@@ -886,16 +886,11 @@ export function pokerSessionStakesLabel(session) {
     if (biStr) return `${biStr} buy-in`
     return game || 'Tournament'
   }
-  const sb = Number(session.small_blind)
-  const bb = Number(session.big_blind)
+  // Prefer composed stake labels ("2/5 NLH", "25NL") over bare family ids ("nlh").
+  const cashLabel = cashGameLabelFromSession(session)
+  if (cashLabel && parseCashGameLabel(cashLabel)) return cashLabel
   const game = gameLabel(session.game_variant)
-  if (Number.isFinite(sb) && Number.isFinite(bb) && sb > 0 && bb > 0) {
-    const fmt = (n) => (n % 1 === 0 ? String(n) : n.toFixed(2))
-    // Prefer free-text game name ("2/5 NLH"); fall back to blinds + name
-    if (game) return game
-    return `$${fmt(sb)}/$${fmt(bb)}`
-  }
-  return game || 'Cash game'
+  return game || cashLabel || 'Cash game'
 }
 
 /** @param {object} session */

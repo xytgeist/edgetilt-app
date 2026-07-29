@@ -23,6 +23,30 @@ import { pokerSessionStakesLabel } from './pokerSessionLabels.js'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, ArcElement, Tooltip, Filler)
 
+/** Chart.js tooltip / axis chrome for EDGE light vs dark (`html.light`). */
+function pokerLocationChartChrome() {
+  const isLight =
+    typeof document !== 'undefined' && document.documentElement.classList.contains('light')
+  if (isLight) {
+    return {
+      tooltipBg: '#ffffff',
+      tooltipBorder: '#d4d4d8',
+      tooltipTitle: '#52525b',
+      tooltipBody: '#18181b',
+      grid: 'rgba(24,24,27,0.06)',
+      ticks: '#71717a',
+    }
+  }
+  return {
+    tooltipBg: '#27272a',
+    tooltipBorder: '#52525b',
+    tooltipTitle: '#a1a1aa',
+    tooltipBody: '#fafafa',
+    grid: 'rgba(255,255,255,0.06)',
+    ticks: '#71717a',
+  }
+}
+
 function venueSubtitle(sessions) {
   const counts = { live: 0, online: 0, club: 0 }
   /** @type {Map<string, number>} */
@@ -51,6 +75,12 @@ function fmtRoi(pct) {
   if (pct == null || Number.isNaN(pct)) return '—'
   const rounded = Math.round(pct)
   return `${rounded}%`
+}
+
+/** @param {'all' | 'live' | 'online' | 'club'} venue */
+function filterSessionsByVenue(sessions, venue) {
+  if (venue === 'all') return sessions || []
+  return (sessions || []).filter((s) => (s.venue_kind || 'live') === venue)
 }
 
 function buildLocationStats(sessions) {
@@ -283,6 +313,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
     ],
   }
 
+  const chartChrome = pokerLocationChartChrome()
   const lineOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -291,22 +322,23 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
       legend: { display: false },
       tooltip: {
         callbacks: { label: (ctx) => fmtPoker$(ctx.parsed.y) },
-        backgroundColor: '#18181b',
-        borderColor: '#3f3f46',
+        backgroundColor: chartChrome.tooltipBg,
+        borderColor: chartChrome.tooltipBorder,
         borderWidth: 1,
-        titleColor: '#a1a1aa',
-        bodyColor: '#fff',
+        titleColor: chartChrome.tooltipTitle,
+        bodyColor: chartChrome.tooltipBody,
         padding: 10,
+        displayColors: false,
       },
     },
     scales: {
       x: {
-        grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { color: '#71717a', font: { size: 10 }, maxTicksLimit: 6, maxRotation: 0 },
+        grid: { color: chartChrome.grid },
+        ticks: { color: chartChrome.ticks, font: { size: 10 }, maxTicksLimit: 6, maxRotation: 0 },
       },
       y: {
-        grid: { color: 'rgba(255,255,255,0.06)' },
-        ticks: { color: '#71717a', font: { size: 10 }, callback: (v) => fmtPoker$(v) },
+        grid: { color: chartChrome.grid },
+        ticks: { color: chartChrome.ticks, font: { size: 10 }, callback: (v) => fmtPoker$(v) },
       },
     },
   }
@@ -337,6 +369,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
     ],
   }
 
+  // Legend + center label already show the counts; Chart.js tooltips cover the hole and look wrong in light mode.
   const donutOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -344,14 +377,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
     animation: false,
     plugins: {
       legend: { display: false },
-      tooltip: {
-        backgroundColor: '#18181b',
-        borderColor: '#3f3f46',
-        borderWidth: 1,
-        titleColor: '#a1a1aa',
-        bodyColor: '#fff',
-        padding: 10,
-      },
+      tooltip: { enabled: false },
     },
   }
 
@@ -579,15 +605,38 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
   )
 }
 
+const VENUE_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'live', label: 'Live' },
+  { id: 'online', label: 'Online' },
+  { id: 'club', label: 'Club' },
+]
+
 export default function PokerLocationsTab({ sessions, loading, onEditSession }) {
   const [selectedLocation, setSelectedLocation] = useState(null)
-  const locations = useMemo(() => buildLocationStats(sessions), [sessions])
+  /** @type {'all' | 'live' | 'online' | 'club'} */
+  const [venueFilter, setVenueFilter] = useState('all')
+
+  const filteredSessions = useMemo(
+    () => filterSessionsByVenue(sessions, venueFilter),
+    [sessions, venueFilter],
+  )
+  const locations = useMemo(
+    () => buildLocationStats(filteredSessions),
+    [filteredSessions],
+  )
+  const hasAnySessions = (sessions || []).length > 0
+
+  function selectVenueFilter(id) {
+    setVenueFilter(id)
+    setSelectedLocation(null)
+  }
 
   if (loading) {
     return <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
   }
 
-  if (!locations.length) {
+  if (!hasAnySessions) {
     return (
       <div
         data-elevated-card="surface"
@@ -601,59 +650,84 @@ export default function PokerLocationsTab({ sessions, loading, onEditSession }) 
 
   return (
     <>
-      <div className="space-y-2 pb-4">
-        {locations.map((loc) => {
-          const plColor = loc.totalPL >= 0 ? 'text-emerald-400' : 'text-rose-400'
-          const hourlyColor =
-            loc.hourlyRate == null
-              ? 'text-zinc-500'
-              : loc.hourlyRate >= 0
-                ? 'text-emerald-400'
-                : 'text-rose-400'
-          const winColor =
-            loc.winPct == null ? 'text-zinc-500' : loc.winPct >= 50 ? 'text-zinc-400' : 'text-rose-400'
-          return (
-            <button
-              key={loc.name}
-              type="button"
-              onClick={() => setSelectedLocation(loc)}
-              data-elevated-card="surface"
-              className="w-full rounded-2xl border border-zinc-800/80 bg-zinc-900/70 p-4 text-left touch-manipulation active:bg-zinc-800/80"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-white">{loc.name}</div>
-                  <div className="mt-0.5 text-xs text-zinc-500">{loc.subtitle}</div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                    <span>
-                      {loc.completed} Entries
-                    </span>
-                    <span aria-hidden>·</span>
-                    <span>{loc.totalHours.toFixed(0)}h</span>
-                    {loc.hourlyRate != null ? (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span className={`font-semibold ${hourlyColor}`}>
-                          {fmtPoker$(loc.hourlyRate)}/h
-                        </span>
-                      </>
-                    ) : null}
-                    {loc.winPct != null ? (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span className={winColor}>{loc.winPct.toFixed(0)}% won</span>
-                      </>
-                    ) : null}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {VENUE_FILTERS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => selectVenueFilter(opt.id)}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+              venueFilter === opt.id
+                ? 'bg-zinc-700 text-white'
+                : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {!locations.length ? (
+        <div
+          data-elevated-card="surface"
+          className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
+        >
+          <p className="font-semibold text-white">No locations for this filter</p>
+          <p className="mt-1 text-sm text-zinc-500">Try All, or another Live / Online / Club filter.</p>
+        </div>
+      ) : (
+        <div className="space-y-2 pb-4">
+          {locations.map((loc) => {
+            const plColor = loc.totalPL >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            const hourlyColor =
+              loc.hourlyRate == null
+                ? 'text-zinc-500'
+                : loc.hourlyRate >= 0
+                  ? 'text-emerald-400'
+                  : 'text-rose-400'
+            const winColor =
+              loc.winPct == null ? 'text-zinc-500' : loc.winPct >= 50 ? 'text-zinc-400' : 'text-rose-400'
+            return (
+              <button
+                key={`${venueFilter}:${loc.name}`}
+                type="button"
+                onClick={() => setSelectedLocation(loc)}
+                data-elevated-card="surface"
+                className="w-full rounded-2xl border border-zinc-800/80 bg-zinc-900/70 p-4 text-left touch-manipulation active:bg-zinc-800/80"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-white">{loc.name}</div>
+                    <div className="mt-0.5 text-xs text-zinc-500">{loc.subtitle}</div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                      <span>{loc.completed} Entries</span>
+                      <span aria-hidden>·</span>
+                      <span>{loc.totalHours.toFixed(0)}h</span>
+                      {loc.hourlyRate != null ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className={`font-semibold ${hourlyColor}`}>
+                            {fmtPoker$(loc.hourlyRate)}/h
+                          </span>
+                        </>
+                      ) : null}
+                      {loc.winPct != null ? (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className={winColor}>{loc.winPct.toFixed(0)}% won</span>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className={`shrink-0 text-xl font-black tabular-nums ${plColor}`}>
+                    {fmtPoker$(loc.totalPL)}
                   </div>
                 </div>
-                <div className={`shrink-0 text-xl font-black tabular-nums ${plColor}`}>
-                  {fmtPoker$(loc.totalPL)}
-                </div>
-              </div>
-            </button>
-          )
-        })}
-      </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {selectedLocation ? (
         <LocationDetailModal

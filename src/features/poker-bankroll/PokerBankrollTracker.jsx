@@ -1256,58 +1256,23 @@ export default function PokerBankrollTracker({
                   : 'mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6'
               }
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  {isOnStake ? (
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-950">
-                        On stake
-                      </span>
-                      <span className="truncate text-xs font-semibold text-amber-200/90">
-                        {activeDeal?.label || 'Stake deal'}
-                      </span>
-                    </div>
-                  ) : null}
-                  <div
-                    className={`mb-1.5 text-xs font-semibold uppercase tracking-wide ${
-                      isOnStake ? 'text-amber-200/70' : 'text-zinc-400'
-                    }`}
-                  >
-                    {isOnStake ? 'On Stake bankroll' : 'Poker bankroll'}
-                  </div>
-                  {loading ? (
-                    <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
-                  ) : hasBankrollProfile ? (
-                    <div className="flex items-end justify-between gap-3">
-                      <div
-                        className={`min-w-0 text-5xl font-black tracking-tight ${
-                          isOnStake ? 'text-amber-50' : 'text-white'
-                        }`}
-                      >
-                        {fmtPoker$(overallBankroll)}
-                      </div>
-                      {bankrollSparkSeries.length >= 2 ? (
-                        <BankrollSparkline
-                          series={bankrollSparkSeries}
-                          className="mb-1 h-10 w-24 shrink-0 sm:w-28"
-                          upClass={isOnStake ? 'text-amber-400' : 'text-emerald-400'}
-                          downClass={isOnStake ? 'text-amber-500' : 'text-rose-400'}
-                        />
-                      ) : null}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={openSetBankroll}
-                      className={`mt-1 text-sm font-semibold touch-manipulation ${
-                        isOnStake ? 'text-amber-300' : 'text-emerald-400'
-                      }`}
-                    >
-                      {isOnStake
-                        ? '+ Set On Stake starting bankroll'
-                        : '+ Set your starting bankroll'}
-                    </button>
-                  )}
+              {isOnStake ? (
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-950">
+                    On stake
+                  </span>
+                  <span className="truncate text-xs font-semibold text-amber-200/90">
+                    {activeDeal?.label || 'Stake deal'}
+                  </span>
+                </div>
+              ) : null}
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <div
+                  className={`text-xs font-semibold uppercase tracking-wide ${
+                    isOnStake ? 'text-amber-200/70' : 'text-zinc-400'
+                  }`}
+                >
+                  {isOnStake ? 'On Stake bankroll' : 'Poker bankroll'}
                 </div>
                 {hasBankrollProfile ? (
                   <button
@@ -1323,6 +1288,39 @@ export default function PokerBankrollTracker({
                   </button>
                 ) : null}
               </div>
+              {loading ? (
+                <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
+              ) : hasBankrollProfile ? (
+                <>
+                  <div
+                    className={`text-5xl font-black tracking-tight ${
+                      isOnStake ? 'text-amber-50' : 'text-white'
+                    }`}
+                  >
+                    {fmtPoker$(overallBankroll)}
+                  </div>
+                  {bankrollSparkSeries.length >= 2 ? (
+                    <BankrollSparkline
+                      series={bankrollSparkSeries}
+                      className="mt-3 h-10 w-full"
+                      upClass={isOnStake ? 'text-amber-400' : 'text-emerald-400'}
+                      downClass={isOnStake ? 'text-amber-500' : 'text-rose-400'}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openSetBankroll}
+                  className={`mt-1 text-sm font-semibold touch-manipulation ${
+                    isOnStake ? 'text-amber-300' : 'text-emerald-400'
+                  }`}
+                >
+                  {isOnStake
+                    ? '+ Set On Stake starting bankroll'
+                    : '+ Set your starting bankroll'}
+                </button>
+              )}
               {hasBankrollProfile && !loading ? (
                 <div
                   className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${

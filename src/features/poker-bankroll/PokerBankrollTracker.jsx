@@ -8,6 +8,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import {
   fmtPoker$,
+  fmtPokerDuration,
   formatDurationHoursField,
   localDateTimeToIso,
   localYmd,
@@ -71,18 +72,31 @@ export default function PokerBankrollTracker({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  /** @type {null | 'session' | 'bankroll'} */
+  /** @type {null | 'session' | 'bankroll' | 'start' | 'end'} */
   const [sheet, setSheet] = useState(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editingPrevWl, setEditingPrevWl] = useState(0)
   const [form, setForm] = useState(emptyForm)
   const [bankrollInput, setBankrollInput] = useState('')
+  const [endCashOut, setEndCashOut] = useState('')
+  const [endNotes, setEndNotes] = useState('')
+  const [endBounties, setEndBounties] = useState('')
+  const [endFinishPlace, setEndFinishPlace] = useState('')
+  const [elapsed, setElapsed] = useState(0)
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
   const [venueFilter, setVenueFilter] = useState('all') // all | live | online
 
   const overallBankroll = profile ? Number(profile.overall_bankroll) : null
   const hasBankrollProfile = profile != null
+  const activeSession = useMemo(
+    () => sessions.find((s) => s.status === 'active') ?? null,
+    [sessions],
+  )
+  const completedSessions = useMemo(
+    () => sessions.filter((s) => s.status !== 'active'),
+    [sessions],
+  )
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -157,13 +171,26 @@ export default function PokerBankrollTracker({
     await upsertBankroll(current + delta)
   }
 
+  useEffect(() => {
+    if (!activeSession) {
+      setElapsed(0)
+      return undefined
+    }
+    const tick = () => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(activeSession.start_at).getTime()) / 1000)))
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [activeSession])
+
   const filtered = useMemo(() => {
-    return sessions.filter((s) => {
+    return completedSessions.filter((s) => {
       if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
       if (venueFilter !== 'all' && s.venue_kind !== venueFilter) return false
       return true
     })
-  }, [sessions, typeFilter, venueFilter])
+  }, [completedSessions, typeFilter, venueFilter])
 
   const stats = useMemo(() => {
     let profit = 0
@@ -213,7 +240,23 @@ export default function PokerBankrollTracker({
     }
   }
 
-  function openCreate() {
+  function openStartSession() {
+    if (!canCreatePokerBankrollSession) {
+      onRequireSubscribeForPokerBankroll?.()
+      return
+    }
+    if (activeSession) {
+      setError('You already have a session in progress.')
+      return
+    }
+    setForm(emptyForm())
+    setShowAdvanced(false)
+    setError('')
+    setSheet('start')
+    triggerTapHapticLight()
+  }
+
+  function openLogPast() {
     if (!canCreatePokerBankrollSession) {
       onRequireSubscribeForPokerBankroll?.()
       return
@@ -225,6 +268,126 @@ export default function PokerBankrollTracker({
     setError('')
     setSheet('session')
     triggerTapHapticLight()
+  }
+
+  function openEndSession() {
+    setEndCashOut('')
+    setEndNotes('')
+    setEndBounties('')
+    setEndFinishPlace('')
+    setShowAdvanced(false)
+    setError('')
+    setSheet('end')
+    triggerTapHapticLight()
+  }
+
+  async function startLiveSession() {
+    if (!supabaseClient || !userId) return
+    if (activeSession) {
+      setError('You already have a session in progress.')
+      return
+    }
+    if (!canCreatePokerBankrollSession) {
+      onRequireSubscribeForPokerBankroll?.()
+      return
+    }
+    const buyIn = parseFloat(form.buy_in)
+    if (!Number.isFinite(buyIn) || buyIn < 0) {
+      setError(
+        form.session_type === 'tournament'
+          ? 'Enter a valid buy-in.'
+          : 'Enter a valid bring-in amount.',
+      )
+      return
+    }
+    const now = new Date()
+    const payload = {
+      user_id: userId,
+      venue_name: form.venue_name.trim() || null,
+      venue_kind: form.venue_kind,
+      session_type: form.session_type,
+      status: 'active',
+      start_at: now.toISOString(),
+      end_at: null,
+      buy_in: buyIn,
+      cash_out: null,
+      game_variant: form.game_variant || null,
+      limit_type: showAdvanced ? form.limit_type || null : null,
+      table_size: showAdvanced ? form.table_size || null : null,
+      small_blind:
+        form.session_type === 'cash' && form.small_blind !== ''
+          ? parseFloat(form.small_blind)
+          : null,
+      big_blind:
+        form.session_type === 'cash' && form.big_blind !== '' ? parseFloat(form.big_blind) : null,
+      tournament_name:
+        form.session_type === 'tournament' ? form.tournament_name.trim() || null : null,
+      field_size: null,
+      start_stack: null,
+      finish_place: null,
+      bounty_winnings: null,
+      reentries: null,
+      notes: null,
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const { error: iErr } = await supabaseClient.from('poker_bankroll_sessions').insert(payload)
+      if (iErr) throw iErr
+      onPokerBankrollSessionCreated?.()
+      setSheet(null)
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not start session.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function endLiveSession() {
+    if (!supabaseClient || !userId || !activeSession) return
+    const cashOut = parseFloat(endCashOut)
+    if (!Number.isFinite(cashOut) || cashOut < 0) {
+      setError('Enter cash out (what you walked with).')
+      return
+    }
+    const bounties =
+      activeSession.session_type === 'tournament' && endBounties !== ''
+        ? parseFloat(endBounties) || 0
+        : 0
+    const wl = cashOut + bounties - (Number(activeSession.buy_in) || 0)
+    setSaving(true)
+    setError('')
+    try {
+      const { error: uErr } = await supabaseClient
+        .from('poker_bankroll_sessions')
+        .update({
+          status: 'completed',
+          end_at: new Date().toISOString(),
+          cash_out: cashOut,
+          bounty_winnings:
+            activeSession.session_type === 'tournament' && endBounties !== ''
+              ? parseFloat(endBounties)
+              : null,
+          finish_place:
+            activeSession.session_type === 'tournament' && endFinishPlace !== ''
+              ? parseInt(endFinishPlace, 10)
+              : null,
+          notes: endNotes.trim() || null,
+        })
+        .eq('id', activeSession.id)
+        .eq('user_id', userId)
+      if (uErr) throw uErr
+      await applyBankrollDelta(wl)
+      setSheet(null)
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not end session.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function openEdit(session) {
@@ -468,12 +631,78 @@ export default function PokerBankrollTracker({
               </button>
             ) : null}
           </div>
-          {hasBankrollProfile && sessions.length > 0 ? (
+          {hasBankrollProfile && completedSessions.length > 0 ? (
             <div className="mt-3 border-t border-zinc-700/40 pt-3 text-[12px] text-zinc-500">
               Session P/L below updates this roll automatically.
             </div>
           ) : null}
         </div>
+
+        {/* Active session or Start / Log CTAs */}
+        {activeSession ? (
+          <div
+            data-session-card
+            className="mb-4 rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-wide text-emerald-300">
+                Session in progress
+              </span>
+            </div>
+            <div className="flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <div className="truncate text-lg font-bold leading-tight text-white">
+                  {pokerSessionStakesLabel(activeSession)}
+                </div>
+                <div className="mt-0.5 truncate text-sm text-zinc-400">
+                  {pokerSessionMetaLine(activeSession)}
+                </div>
+                <div className="mt-0.5 text-sm text-zinc-400">
+                  Started with {fmtPoker$(activeSession.buy_in)}
+                </div>
+                <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
+                  {fmtPokerDuration(elapsed)}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={openEndSession}
+                className="shrink-0 rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+              >
+                End Session
+              </button>
+            </div>
+          </div>
+        ) : (
+          !loading &&
+          hasBankrollProfile && (
+            <div className="mb-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={openStartSession}
+                data-start-session-btn
+                data-start-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
+                className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
+                  !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
+                }`}
+              >
+                + Start Session
+              </button>
+              <button
+                type="button"
+                onClick={openLogPast}
+                data-log-past-session-btn
+                data-log-past-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
+                className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
+                  !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
+                }`}
+              >
+                Log previous session(s)
+              </button>
+            </div>
+          )
+        )}
 
         {/* Summary */}
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -495,33 +724,35 @@ export default function PokerBankrollTracker({
         </div>
 
         {/* Filters */}
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'cash', label: 'Cash' },
-            { id: 'tournament', label: 'Tourney' },
-          ].map((opt) => (
-            <FilterChip
-              key={opt.id}
-              active={typeFilter === opt.id}
-              onClick={() => setTypeFilter(opt.id)}
-              label={opt.label}
-            />
-          ))}
-          <span className="mx-1 w-px self-stretch bg-zinc-800" />
-          {[
-            { id: 'all', label: 'Any' },
-            { id: 'live', label: 'Live' },
-            { id: 'online', label: 'Online' },
-          ].map((opt) => (
-            <FilterChip
-              key={`v-${opt.id}`}
-              active={venueFilter === opt.id}
-              onClick={() => setVenueFilter(opt.id)}
-              label={opt.label}
-            />
-          ))}
-        </div>
+        {completedSessions.length > 0 ? (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'cash', label: 'Cash' },
+              { id: 'tournament', label: 'Tourney' },
+            ].map((opt) => (
+              <FilterChip
+                key={opt.id}
+                active={typeFilter === opt.id}
+                onClick={() => setTypeFilter(opt.id)}
+                label={opt.label}
+              />
+            ))}
+            <span className="mx-1 w-px self-stretch bg-zinc-800" />
+            {[
+              { id: 'all', label: 'Any' },
+              { id: 'live', label: 'Live' },
+              { id: 'online', label: 'Online' },
+            ].map((opt) => (
+              <FilterChip
+                key={`v-${opt.id}`}
+                active={venueFilter === opt.id}
+                onClick={() => setVenueFilter(opt.id)}
+                label={opt.label}
+              />
+            ))}
+          </div>
+        ) : null}
 
         {error && !sheet ? (
           <p className="mb-3 text-center text-sm text-rose-400">{error}</p>
@@ -533,15 +764,10 @@ export default function PokerBankrollTracker({
           <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center">
             <p className="text-white font-semibold">No poker sessions yet</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Log a cash game or tournament in under a minute.
+              {hasBankrollProfile
+                ? 'Start a live session, or log one from earlier.'
+                : 'Set your poker bankroll to get started.'}
             </p>
-            <button
-              type="button"
-              onClick={openCreate}
-              className="mt-5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-500"
-            >
-              Log session
-            </button>
           </div>
         ) : (
           <ul className="space-y-2">
@@ -601,16 +827,6 @@ export default function PokerBankrollTracker({
         )}
       </ScrollLinkedEdgeTitleBarShell>
 
-      {/* FAB */}
-      <button
-        type="button"
-        onClick={openCreate}
-        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 z-[40] flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-2xl font-light text-white shadow-lg shadow-black/40 touch-manipulation active:scale-95"
-        aria-label="Log poker session"
-      >
-        +
-      </button>
-
       {sheet === 'bankroll' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
@@ -665,7 +881,7 @@ export default function PokerBankrollTracker({
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="text-lg font-bold text-white">
-                {editingId ? 'Edit session' : 'Log session'}
+                {editingId ? 'Edit session' : 'Log previous session'}
               </div>
               <button
                 type="button"
@@ -947,6 +1163,214 @@ export default function PokerBankrollTracker({
                 Delete session
               </button>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {sheet === 'start' ? (
+        <div
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          onClick={() => !saving && setSheet(null)}
+        >
+          <div
+            data-poker-bankroll-sheet
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-h-[92dvh] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-lg font-bold text-white">Start Session</div>
+              <button
+                type="button"
+                onClick={() => setSheet(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <Segmented
+              label="Type"
+              value={form.session_type}
+              onChange={(v) => setField('session_type', v)}
+              options={[
+                { id: 'cash', label: 'Cash' },
+                { id: 'tournament', label: 'Tourney' },
+              ]}
+            />
+            <Segmented
+              label="Where"
+              value={form.venue_kind}
+              onChange={(v) => setField('venue_kind', v)}
+              options={[
+                { id: 'live', label: 'Live' },
+                { id: 'online', label: 'Online' },
+              ]}
+            />
+
+            <FieldLabel>
+              {form.venue_kind === 'online' ? 'Site' : 'Casino / venue'}
+            </FieldLabel>
+            {form.venue_kind === 'live' ? (
+              <CasinoAutocomplete
+                value={form.venue_name}
+                onChange={(v) => setField('venue_name', v)}
+                supabaseClient={supabaseClient}
+                placeholder="Wynn, Aria…"
+                className="mb-3"
+              />
+            ) : (
+              <input
+                type="text"
+                value={form.venue_name}
+                onChange={(e) => setField('venue_name', e.target.value)}
+                placeholder="PokerStars, ClubWPT…"
+                className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+              />
+            )}
+
+            <FieldLabel>
+              {form.session_type === 'tournament' ? 'Buy-in' : 'Bring-in'}
+            </FieldLabel>
+            <div className="mb-3">
+              <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
+            </div>
+
+            {form.session_type === 'tournament' ? (
+              <div className="mb-3">
+                <FieldLabel>Tournament name</FieldLabel>
+                <input
+                  type="text"
+                  value={form.tournament_name}
+                  onChange={(e) => setField('tournament_name', e.target.value)}
+                  placeholder="Optional"
+                  className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 font-semibold text-white outline-none"
+                />
+              </div>
+            ) : (
+              <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+                <div className="min-w-0">
+                  <FieldLabel>Small blind</FieldLabel>
+                  <MoneyInput
+                    value={form.small_blind}
+                    onChange={(v) => setField('small_blind', v)}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <FieldLabel>Big blind</FieldLabel>
+                  <MoneyInput value={form.big_blind} onChange={(v) => setField('big_blind', v)} />
+                </div>
+              </div>
+            )}
+
+            {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
+
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void startLiveSession()}
+              className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+            >
+              {saving ? 'Starting…' : 'Start Session'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {sheet === 'end' && activeSession ? (
+        <div
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          onClick={() => !saving && setSheet(null)}
+        >
+          <div
+            data-poker-bankroll-sheet
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-h-[92dvh] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-lg font-bold text-white">End Session</div>
+              <button
+                type="button"
+                onClick={() => setSheet(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-5 rounded-2xl border border-zinc-700/40 bg-zinc-800/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-white">
+                    {pokerSessionStakesLabel(activeSession)}
+                  </div>
+                  <div className="mt-0.5 text-xs text-zinc-400">
+                    Started with {fmtPoker$(activeSession.buy_in)}
+                  </div>
+                </div>
+                <div className="shrink-0 text-lg font-black tabular-nums text-emerald-300">
+                  {fmtPokerDuration(elapsed)}
+                </div>
+              </div>
+            </div>
+
+            <FieldLabel>Cash out</FieldLabel>
+            <div className="mb-3">
+              <MoneyInput value={endCashOut} onChange={setEndCashOut} colorize />
+            </div>
+
+            {activeSession.session_type === 'tournament' ? (
+              <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+                <div className="min-w-0">
+                  <FieldLabel>Finish place</FieldLabel>
+                  <NumInput value={endFinishPlace} onChange={setEndFinishPlace} />
+                </div>
+                <div className="min-w-0">
+                  <FieldLabel>Bounties</FieldLabel>
+                  <MoneyInput value={endBounties} onChange={setEndBounties} colorize />
+                </div>
+              </div>
+            ) : null}
+
+            <FieldLabel>Notes</FieldLabel>
+            <textarea
+              value={endNotes}
+              onChange={(e) => setEndNotes(e.target.value)}
+              rows={3}
+              className="mb-3 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none"
+              placeholder="Optional"
+            />
+
+            {(() => {
+              const cashOut = parseFloat(endCashOut)
+              if (!Number.isFinite(cashOut)) return null
+              const bounties =
+                activeSession.session_type === 'tournament' && endBounties !== ''
+                  ? parseFloat(endBounties) || 0
+                  : 0
+              const wl = cashOut + bounties - (Number(activeSession.buy_in) || 0)
+              return (
+                <p
+                  className={`mb-3 text-center text-sm font-semibold tabular-nums ${
+                    wl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  Session P/L {fmtPoker$(wl)}
+                </p>
+              )
+            })()}
+
+            {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
+
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void endLiveSession()}
+              className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+            >
+              {saving ? 'Ending…' : 'End Session'}
+            </button>
           </div>
         </div>
       ) : null}

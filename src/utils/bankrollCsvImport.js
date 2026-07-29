@@ -1,6 +1,7 @@
 /**
  * Flexible CSV importer for bankroll sessions.
  * Handles exports from Poker Income, PBT (Poker Bankroll Tracker),
+ * Hendon Mob tournament cashes (Date / Event / Place / Prize / Buy-in / Game Type),
  * and similar apps, mapping their varied column names to our schema.
  *
  * Poker Income exports often have multiple sections (Cash Games + Tourneys);
@@ -33,6 +34,8 @@ const FIELD_SYNONYMS = {
     'cashed out', 'cashout', 'cash out', 'cashedout', 'amount out',
     'winnings', 'payout', 'money out', 'cash out amount', 'total out',
     'ending stack', 'final stack', 'closing stack',
+    // Hendon Mob
+    'prize', 'prize money', 'earnings',
   ],
   rebuy_costs: [
     'rebuycosts', 'rebuy costs', 'rebuy amount', 'rebuy $',
@@ -44,7 +47,8 @@ const FIELD_SYNONYMS = {
     'rebuys', 're buys', 're-buys', 'reentries', 're entries', 're-entries',
   ],
   casino_name: [
-    'location', 'casino', 'venue', 'place', 'room', 'club',
+    // Bare "place" is finish rank (Hendon Mob), not venue.
+    'location', 'casino', 'venue', 'room', 'club',
     'casino name', 'property', 'site', 'cardroom', 'casino/location',
   ],
   notes: [
@@ -145,11 +149,19 @@ function parseLine(line) {
   return result
 }
 
+/** Hendon Mob cashes: Date, Event, Place, Prize (+ optional Buy-in, Game Type). */
+function isHendonMobHeaders(fields) {
+  const set = new Set(fields)
+  return set.has('date') && set.has('event') && set.has('place') && set.has('prize')
+}
+
 /**
- * True session headers must include start-time + buy-in + cash-out columns.
+ * True session headers must include start-time + buy-in + cash-out columns,
+ * or the Hendon Mob Date/Event/Place/Prize shape.
  * Looser “any 2 synonyms” matching falsely treats data cells like "Casino" as headers.
  */
 function looksLikeHeader(fields) {
+  if (isHendonMobHeaders(fields)) return true
   const set = new Set(fields)
   const hasStart = FIELD_SYNONYMS.start_at.some((s) => set.has(s))
   const hasBuyIn = FIELD_SYNONYMS.start_amount.some((s) => set.has(s))
@@ -161,6 +173,7 @@ function looksLikeHeader(fields) {
  * Parse every CSV section that has a recognizable session header.
  * Poker Income: Cash Games block, then Tourneys block.
  * PBT: single flat header after a title line.
+ * Hendon Mob: Date / Event / Place / Prize [/ Buy-in / Game Type].
  */
 function parseAllCsvSections(text) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1)
@@ -171,8 +184,14 @@ function parseAllCsvSections(text) {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i]
     if (ch === '"') {
-      if (inQ && text[i + 1] === '"') { current += '"'; i++ }
-      else inQ = !inQ
+      // Keep quote chars so parseLine can still honor commas inside fields.
+      current += '"'
+      if (inQ && text[i + 1] === '"') {
+        current += '"'
+        i++
+      } else {
+        inQ = !inQ
+      }
     } else if (ch === '\n' && !inQ) {
       allLines.push(current.replace(/\r$/, ''))
       current = ''
@@ -235,21 +254,24 @@ function detectSectionHint(titleHint, headers) {
   const t = normalize(titleHint).replace(/"/g, '')
   if (t.includes('tourney') || t.includes('tournament') || t.includes('mtt')) return 'tournament'
   if (t.includes('cash')) return 'cash'
-  const headerNorm = headers.map(normalize).join(' ')
+  const headerNorm = headers.map(normalize)
+  if (isHendonMobHeaders(headerNorm)) return 'tournament'
+  const headerJoined = headerNorm.join(' ')
   if (
-    headerNorm.includes('tourney type') ||
-    headerNorm.includes('place paid') ||
-    headerNorm.includes('mttname') ||
-    headerNorm.includes('mtt name')
+    headerJoined.includes('tourney type') ||
+    headerJoined.includes('place paid') ||
+    headerJoined.includes('mttname') ||
+    headerJoined.includes('mtt name')
   ) {
     return 'tournament'
   }
-  if (headerNorm.includes('stake') && !headerNorm.includes('mtt')) return 'cash'
+  if (headerJoined.includes('stake') && !headerJoined.includes('mtt')) return 'cash'
   return null
 }
 
 function buildColumnMap(headers) {
   const norm = headers.map(normalize)
+  const hendon = isHendonMobHeaders(norm)
   const columnMap = {}
   for (const [field, synonyms] of Object.entries(FIELD_SYNONYMS)) {
     for (let i = 0; i < norm.length; i++) {
@@ -268,7 +290,85 @@ function buildColumnMap(headers) {
     delete columnMap.venue_type_col
   }
   const requiredMissing = REQUIRED_FIELDS.filter((f) => columnMap[f] == null)
-  return { columnMap, requiredMissing }
+  return { columnMap, requiredMissing, hendon }
+}
+
+/**
+ * Venue / table size / trimmed name from a Hendon Mob Event string.
+ * Buy-in and game type come from dedicated columns in the richer export.
+ */
+function enrichFromHendonEvent(eventRaw) {
+  const event = String(eventRaw || '').trim()
+  if (!event) {
+    return { casino_name: null, venue_kind: null, tournament_name: null, table_size: null }
+  }
+
+  let casino_name = null
+  let tournament_name = event
+  const locMatch = event.match(/,\s*([^,]+)\s*$/)
+  if (locMatch) {
+    casino_name = locMatch[1].trim() || null
+    tournament_name = event.slice(0, locMatch.index).trim() || event
+  }
+
+  const lower = event.toLowerCase()
+  let venue_kind = detectVenueKind(null, null, casino_name)
+  if (
+    !venue_kind &&
+    (/\bonline\b/.test(lower) || /\bwsop\.com\b/.test(lower) || /\bggpoker\b/.test(lower))
+  ) {
+    venue_kind = 'online'
+  }
+
+  if (venue_kind === 'online') {
+    if (!casino_name || normalize(casino_name) === 'online') {
+      if (/\bggpoker\b/.test(lower)) casino_name = 'GGPoker'
+      else if (/\bwsop\.com\b/.test(lower)) casino_name = 'WSOP.com'
+      else casino_name = 'Online'
+    }
+  } else {
+    if (/\bwynn\b/.test(lower)) casino_name = 'Wynn Las Vegas'
+    else if (/\bvenetian\b/.test(lower)) casino_name = 'The Venetian'
+    if (casino_name) venue_kind = venue_kind || 'live'
+  }
+
+  let table_size = null
+  if (
+    /\b6[\s-]?max\b/.test(lower) ||
+    /\b6[\s-]?handed\b/.test(lower) ||
+    /\bsix[\s-]?handed\b/.test(lower) ||
+    /\bsix[\s-]?max\b/.test(lower)
+  ) {
+    table_size = '6max'
+  } else if (/\bheads?\s*up\b/.test(lower) || /\b2[\s-]?max\b/.test(lower)) {
+    table_size = 'heads_up'
+  } else if (
+    /\b8[\s-]?max\b/.test(lower) ||
+    /\b8[\s-]?handed\b/.test(lower) ||
+    /\b8 handed\b/.test(lower)
+  ) {
+    table_size = 'full_ring'
+  }
+
+  return { casino_name, venue_kind, tournament_name, table_size }
+}
+
+function limitFromGameLabel(gameRaw) {
+  const g = normalize(gameRaw)
+  if (!g) return null
+  if (g === 'nlh' || g === 'nlhe' || g.includes('hold')) return 'no_limit'
+  if (g === 'plo' || g === 'plo5' || g === 'plo8' || g.includes('omaha')) return 'pot_limit'
+  if (g === 'horse' || g === 'mixed' || g.includes('mix') || g.includes('h.o.r.s.e')) {
+    return 'mixed'
+  }
+  return null
+}
+
+function offsetIsoMinutes(iso, minutes) {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  d.setUTCMinutes(d.getUTCMinutes() + minutes)
+  return d.toISOString()
 }
 
 /**
@@ -299,6 +399,27 @@ function parseDate(str) {
     return isNaN(d.getTime()) ? null : d.toISOString()
   }
 
+  // Hendon Mob: 12-Jul-2026
+  const hendonDate = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/)
+  if (hendonDate) {
+    const months = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+    }
+    const mo = months[hendonDate[2].toLowerCase()]
+    if (mo != null) {
+      const d = new Date(
+        parseInt(hendonDate[3], 10),
+        mo,
+        parseInt(hendonDate[1], 10),
+        12,
+        0,
+        0,
+      )
+      return isNaN(d.getTime()) ? null : d.toISOString()
+    }
+  }
+
   const d = new Date(str)
   return isNaN(d.getTime()) ? null : d.toISOString()
 }
@@ -317,13 +438,15 @@ function parseIntSafe(str) {
 
 function detectGameType(raw) {
   if (!raw) return null
-  const g = raw.toLowerCase()
+  const g = raw.toLowerCase().trim()
   if (g.includes('slot')) return 'slots'
   if (
+    g === 'nlh' || g === 'nlhe' || g === 'plo' || g === 'plo5' || g === 'plo8' ||
+    g === 'mixed' || g === 'horse' || g === 'h.o.r.s.e' ||
     g.includes('hold') || g.includes('holdem') || g.includes('poker') ||
     g.includes('omaha') || g.includes('stud') || g.includes('razz') ||
     g.includes('badugi') || g.includes('draw') || g.includes('hi-lo') ||
-    g.includes('short deck') || g.includes('ofc')
+    g.includes('short deck') || g.includes('ofc') || g.includes('mix')
   ) return 'tables'
   return null
 }
@@ -437,7 +560,7 @@ function positiveInt(n) {
 
 function parseSectionSessions(section) {
   const { headers, rows, sectionHint } = section
-  const { columnMap, requiredMissing } = buildColumnMap(headers)
+  const { columnMap, requiredMissing, hendon } = buildColumnMap(headers)
   if (requiredMissing.length > 0) {
     return { sessions: [], skipped: [], columnMap, requiredMissing, headers, ok: false }
   }
@@ -449,8 +572,10 @@ function parseSectionSessions(section) {
 
   const sessions = []
   const skipped = []
+  let rowIndex = 0
 
   for (const row of rows) {
+    rowIndex += 1
     if (columnMap.state_col != null) {
       const state = (get(row, 'state_col') || '').toLowerCase().trim()
       if (state && state !== 'completed' && state !== 'finished' && state !== 'done') {
@@ -459,11 +584,13 @@ function parseSectionSessions(section) {
       }
     }
 
-    const start_at = parseDate(get(row, 'start_at'))
+    let start_at = parseDate(get(row, 'start_at'))
     if (!start_at) {
       skipped.push({ reason: 'invalid_date', raw: row })
       continue
     }
+    // Same-day Hendon cashes need distinct timestamps for import dedupe.
+    if (hendon) start_at = offsetIsoMinutes(start_at, rowIndex)
 
     const buyIn = parseAmount(get(row, 'start_amount'))
     if (buyIn == null) {
@@ -483,21 +610,33 @@ function parseSectionSessions(section) {
     const start_amount = parseFloat((buyIn + rebuy_amount + addon_amount).toFixed(2))
 
     const end_at = parseDate(get(row, 'end_at')) ?? null
-    const casino_name = (get(row, 'casino_name') || '').trim() || null
+    const eventRaw = (get(row, 'tournament_name') || '').trim() || null
+    const hendonMeta = hendon ? enrichFromHendonEvent(eventRaw) : null
+
+    let casino_name = (get(row, 'casino_name') || '').trim() || null
+    if (!casino_name && hendonMeta?.casino_name) casino_name = hendonMeta.casino_name
+
     const noteMain = (get(row, 'notes') || '').trim() || null
     const sessionNote = (get(row, 'session_note') || '').trim() || null
     const gameRaw = (get(row, 'game_col') || '').trim() || null
-    const detectedGameType = detectGameType(gameRaw)
+    const detectedGameType = detectGameType(gameRaw) || (hendon ? 'tables' : null)
     const variantRaw = get(row, 'session_variant')
-    const session_type = detectSessionType(variantRaw, sectionHint, columnMap)
-    const venue_kind = detectVenueKind(
+    let session_type = detectSessionType(variantRaw, sectionHint, columnMap)
+    if (hendon) session_type = 'tournament'
+
+    let venue_kind = detectVenueKind(
       get(row, 'venue_kind_col'),
       get(row, 'venue_type_col'),
       casino_name,
     )
+    if (!venue_kind && hendonMeta?.venue_kind) venue_kind = hendonMeta.venue_kind
+
     const currency = normalizeCurrency(get(row, 'currency_col'))
-    const limit_type = normalizeLimitType(get(row, 'limit_col'))
-    const table_size = normalizeTableSize(get(row, 'table_size_col'))
+    let limit_type = normalizeLimitType(get(row, 'limit_col'))
+    if (!limit_type && hendon) limit_type = limitFromGameLabel(gameRaw)
+
+    let table_size = normalizeTableSize(get(row, 'table_size_col'))
+    if (!table_size && hendonMeta?.table_size) table_size = hendonMeta.table_size
 
     let small_blind = parseAmount(get(row, 'small_blind'))
     let big_blind = parseAmount(get(row, 'big_blind'))
@@ -511,7 +650,8 @@ function parseSectionSessions(section) {
     }
 
     const bounty_winnings = parseAmount(get(row, 'bounty_winnings'))
-    const tournament_name = (get(row, 'tournament_name') || '').trim() || null
+    let tournament_name = eventRaw
+    if (hendonMeta?.tournament_name) tournament_name = hendonMeta.tournament_name
     const field_size = parseIntSafe(get(row, 'field_size'))
     const finish_place = parseIntSafe(get(row, 'finish_place'))
     const start_stack = parseAmount(get(row, 'start_stack'))

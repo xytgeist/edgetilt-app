@@ -127,10 +127,18 @@ function liveGamePickFromLabel(gameRaw) {
 }
 
 function tourneyGameVariantFromLabel(gameRaw, limitType) {
-  const g = String(gameRaw || '').toLowerCase()
-  if (g.includes('plo8') || g.includes('omaha 8') || g.includes('omaha hi')) return 'plo8'
-  if (g.includes('omaha') || g.includes('plo')) return 'plo'
-  if (g.includes('mix')) return 'mixed'
+  const g = String(gameRaw || '').toLowerCase().trim()
+  if (g === 'plo8' || g.includes('plo8') || g.includes('omaha 8') || g.includes('omaha hi')) {
+    return 'plo8'
+  }
+  if (g === 'plo5' || g.includes('plo5') || g.includes('5-card') || g.includes('five card')) {
+    return 'plo5'
+  }
+  if (g === 'plo' || g.includes('omaha') || g.includes('plo')) return 'plo'
+  if (g === 'horse' || g.includes('h.o.r.s.e') || g === 'mixed' || g.includes('mix')) {
+    return 'mixed'
+  }
+  if (g === 'nlh' || g === 'nlhe') return 'nlh'
   if (limitType === 'limit' || g.includes('limit hold')) return 'limit_holdem'
   return 'nlh'
 }
@@ -310,8 +318,8 @@ export default function PokerBankrollImportSheet({
               <Header title="Import Sessions" onClose={onClose} />
 
               <p className="text-zinc-400 text-sm leading-relaxed mb-6">
-                Import your session history from Poker Income, PBT, or any app that exports CSV.
-                Column names are detected automatically.
+                Import from Poker Income, PBT, Hendon Mob cashes (Date / Event / Place / Prize / Buy-in / Game Type),
+                or any CSV with recognizable columns. Names are detected automatically.
               </p>
 
               <input
@@ -343,7 +351,7 @@ export default function PokerBankrollImportSheet({
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
                 placeholder={
-                  'Paste your exported CSV here…\n\nPoker Income: Setup → Export (requires email app) → copy CSV from email.\n\nPoker Bankroll Tracker: Account → Export to CSV → copy CSV from email.'
+                  'Paste your exported CSV here…\n\nPoker Income: Setup → Export (requires email app) → copy CSV from email.\n\nPoker Bankroll Tracker: Account → Export to CSV → copy CSV from email.\n\nHendon Mob: Date, Event, Place, Prize, Buy-in, Game Type.'
                 }
                 rows={8}
                 className="w-full rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-200 text-sm px-4 py-3 resize-none font-mono placeholder:text-zinc-600 placeholder:font-sans focus:outline-none focus:border-zinc-600 mb-3"

@@ -43,13 +43,16 @@ import {
   POKER_TABLE_SIZES,
   applyCashGamePreset,
   buildCashGamePresetsFromSessions,
+  cashGameLabelFromSession,
   cashGamePresetIdFromName,
   cashGameSelectOptions,
   coercePokerGameForSessionType,
   formWithDefaultCashGame,
+  parseCashGameLabel,
   pokerGameOptionsForSessionType,
   pokerGamePickFromStored,
   pokerGameVariantToStored,
+  resolveCashGameLabelForSave,
   lastClubAppFromSessions,
   lastOnlineSiteFromSessions,
   pokerClubAppLabelFromId,
@@ -621,15 +624,15 @@ export default function PokerBankrollTracker({
         return
       }
     }
-    if (
-      (form.session_type === 'cash' || form.game_variant === 'custom') &&
-      !String(form.game_custom_name || '').trim()
-    ) {
-      setError(
-        form.session_type === 'cash'
-          ? 'Enter a game name (e.g. 2/5 NLH).'
-          : 'Enter a name for your custom game.',
-      )
+    let cashGameLabel = null
+    if (form.session_type === 'cash') {
+      cashGameLabel = resolveCashGameLabelForSave(form, cashGamePresets)
+      if (!cashGameLabel) {
+        setError('Enter small and big blinds (e.g. 2/5 NLH).')
+        return
+      }
+    } else if (form.game_variant === 'custom' && !String(form.game_custom_name || '').trim()) {
+      setError('Enter a name for your custom game.')
       return
     }
     const now = new Date()
@@ -654,7 +657,7 @@ export default function PokerBankrollTracker({
       game_variant: pokerGameVariantToStored(
         form.session_type,
         form.game_variant,
-        form.game_custom_name,
+        form.session_type === 'cash' ? cashGameLabel : form.game_custom_name,
       ),
       limit_type:
         form.session_type === 'cash' || form.game_variant === 'custom'
@@ -756,6 +759,12 @@ export default function PokerBankrollTracker({
     const sessionType = session.session_type || 'cash'
     const gamePick = pokerGamePickFromStored(session.game_variant, sessionType)
     const gameVariant = coercePokerGameForSessionType(sessionType, gamePick.game_variant)
+    const cashLabel =
+      sessionType === 'cash' ? cashGameLabelFromSession(session) || gamePick.game_custom_name : ''
+    const cashParsed = cashLabel ? parseCashGameLabel(cashLabel) : null
+    const cashLivePick =
+      cashParsed?.live_game_name_pick ||
+      pokerLiveCashGameNameSelectValue(gamePick.game_custom_name)
     setEditingId(session.id)
     setEditingPrevWl(prevWl == null ? 0 : prevWl)
     setForm({
@@ -777,12 +786,15 @@ export default function PokerBankrollTracker({
       addon_amount: session.addon_amount != null ? String(session.addon_amount) : '',
       cash_out: session.cash_out != null ? String(session.cash_out) : '',
       cash_game_pick:
-        sessionType === 'cash' && gamePick.game_custom_name
-          ? cashGamePresetIdFromName(gamePick.game_custom_name)
+        sessionType === 'cash' && cashLabel
+          ? cashGamePresetIdFromName(cashLabel)
           : POKER_CASH_NEW_GAME_ID,
       game_variant: gameVariant,
-      live_game_name_pick: pokerLiveCashGameNameSelectValue(gamePick.game_custom_name),
-      game_custom_name: gamePick.game_custom_name,
+      live_game_name_pick: cashLivePick,
+      game_custom_name:
+        cashLivePick === POKER_LIVE_CASH_GAME_CUSTOM_ID
+          ? cashParsed?.family || gamePick.game_custom_name
+          : pokerLiveCashGameNameLabelFromId(cashLivePick) || gamePick.game_custom_name,
       limit_type: session.limit_type || 'no_limit',
       table_size: session.table_size || 'full_ring',
       tables_count:
@@ -934,15 +946,15 @@ export default function PokerBankrollTracker({
       setError('Enter cash out (what you walked with).')
       return
     }
-    if (
-      (form.session_type === 'cash' || form.game_variant === 'custom') &&
-      !String(form.game_custom_name || '').trim()
-    ) {
-      setError(
-        form.session_type === 'cash'
-          ? 'Enter a game name (e.g. 2/5 NLH).'
-          : 'Enter a name for your custom game.',
-      )
+    let cashGameLabel = null
+    if (form.session_type === 'cash') {
+      cashGameLabel = resolveCashGameLabelForSave(form, cashGamePresets)
+      if (!cashGameLabel) {
+        setError('Enter small and big blinds (e.g. 2/5 NLH).')
+        return
+      }
+    } else if (form.game_variant === 'custom' && !String(form.game_custom_name || '').trim()) {
+      setError('Enter a name for your custom game.')
       return
     }
     const durationHrs = parseDurationHoursField(form.duration_hours)
@@ -976,7 +988,7 @@ export default function PokerBankrollTracker({
       game_variant: pokerGameVariantToStored(
         form.session_type,
         form.game_variant,
-        form.game_custom_name,
+        form.session_type === 'cash' ? cashGameLabel : form.game_custom_name,
       ),
       limit_type:
         form.session_type === 'cash' || form.game_variant === 'custom'
@@ -2226,38 +2238,24 @@ function PokerSessionCoreFields({
                 />
               </div>
               <FieldLabel>Game name</FieldLabel>
-              {form.venue_kind === 'live' ? (
-                <>
-                  <div className="mb-3">
-                    <Select
-                      value={form.live_game_name_pick || 'holdem'}
-                      onChange={(v) => setField('live_game_name_pick', v)}
-                      options={POKER_LIVE_CASH_GAME_NAMES}
-                    />
-                  </div>
-                  {form.live_game_name_pick === POKER_LIVE_CASH_GAME_CUSTOM_ID ? (
-                    <div className="mb-3">
-                      <input
-                        type="text"
-                        value={form.game_custom_name}
-                        onChange={(e) => setField('game_custom_name', e.target.value)}
-                        placeholder="Enter game name…"
-                        className={POKER_FIELD_CLASS}
-                      />
-                    </div>
-                  ) : null}
-                </>
-              ) : (
+              <div className="mb-3">
+                <Select
+                  value={form.live_game_name_pick || 'holdem'}
+                  onChange={(v) => setField('live_game_name_pick', v)}
+                  options={POKER_LIVE_CASH_GAME_NAMES}
+                />
+              </div>
+              {form.live_game_name_pick === POKER_LIVE_CASH_GAME_CUSTOM_ID ? (
                 <div className="mb-3">
                   <input
                     type="text"
                     value={form.game_custom_name}
                     onChange={(e) => setField('game_custom_name', e.target.value)}
-                    placeholder="e.g. 2/5 NLH"
+                    placeholder="Enter game name…"
                     className={POKER_FIELD_CLASS}
                   />
                 </div>
-              )}
+              ) : null}
               <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
                 <div className="min-w-0">
                   <FieldLabel>Small blind</FieldLabel>

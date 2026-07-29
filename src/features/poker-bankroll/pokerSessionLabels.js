@@ -1,4 +1,4 @@
-/** Cash Game dropdown: New game… plus presets built from prior cash sessions. */
+/** Cash Game dropdown: New game… plus defaults + user-created stake/game labels. */
 export const POKER_CASH_NEW_GAME_ID = 'new'
 
 /** @param {string | null | undefined} name */
@@ -7,28 +7,245 @@ export function cashGamePresetIdFromName(name) {
 }
 
 /**
- * Unique cash games from session history (most recent first).
+ * Built-in cash Game selector defaults (blinds + family abbrev).
+ * @type {Array<{ label: string, small_blind: string, big_blind: string, third_blind: string, limit_type: string, family: string }>}
+ */
+export const POKER_DEFAULT_CASH_GAMES = [
+  { label: '1/2 NLH', small_blind: '1', big_blind: '2', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '1/3 NLH', small_blind: '1', big_blind: '3', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '2/5 NLH', small_blind: '2', big_blind: '5', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '5/10 NLH', small_blind: '5', big_blind: '10', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '5/10/20 NLH', small_blind: '5', big_blind: '10', third_blind: '20', limit_type: 'no_limit', family: 'NLH' },
+  { label: '10/20 NLH', small_blind: '10', big_blind: '20', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '25/50 NLH', small_blind: '25', big_blind: '50', third_blind: '', limit_type: 'no_limit', family: 'NLH' },
+  { label: '1/2 PLO', small_blind: '1', big_blind: '2', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '1/2/5 PLO', small_blind: '1', big_blind: '2', third_blind: '5', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '2/5 PLO', small_blind: '2', big_blind: '5', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '5/10 PLO', small_blind: '5', big_blind: '10', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '5/10/20 PLO', small_blind: '5', big_blind: '10', third_blind: '20', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '10/20 PLO', small_blind: '10', big_blind: '20', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+  { label: '25/50 PLO', small_blind: '25', big_blind: '50', third_blind: '', limit_type: 'pot_limit', family: 'PLO' },
+]
+
+/** @param {string | null | undefined} family */
+export function cashFamilyToLiveGamePick(family) {
+  switch (String(family || '').trim()) {
+    case 'NLH':
+      return 'holdem'
+    case 'PLO':
+      return 'omaha'
+    case 'PLO5':
+      return 'omaha5'
+    case 'PLO6':
+      return 'omaha6'
+    case 'Mix':
+    case 'Mixed':
+      return 'mixed'
+    case 'SD':
+    case 'Short Deck':
+      return 'short_deck'
+    case 'Stud':
+      return 'stud'
+    case 'Draw':
+      return 'draw'
+    case 'OFC':
+      return 'ofc'
+    case "Limit Hold'em":
+    case 'LHE':
+      return 'holdem'
+    default:
+      return null
+  }
+}
+
+/** @param {string | null | undefined} family */
+export function cashFamilyToLimitType(family) {
+  switch (String(family || '').trim()) {
+    case 'PLO':
+    case 'PLO5':
+    case 'PLO6':
+    case 'PLO8':
+      return 'pot_limit'
+    case 'Mix':
+    case 'Mixed':
+      return 'mixed'
+    case 'LHE':
+    case "Limit Hold'em":
+      return 'limit'
+    default:
+      return 'no_limit'
+  }
+}
+
+/** Format a blind amount for stake labels (.25/.50 not 0.25/0.50; 2 not 2.00). */
+export function formatCashBlindPart(value) {
+  if (value == null || value === '') return null
+  const raw = String(value).trim()
+  const num = Number(raw)
+  if (!Number.isFinite(num) || num <= 0) return null
+  if (/^\d+$/.test(raw)) return String(parseInt(raw, 10))
+  // Preserve typed decimals; 0.50 → .50, .50 → .50
+  if (/^0\.\d+$/.test(raw)) return raw.slice(1)
+  if (/^\.\d+$/.test(raw)) return raw
+  if (/^\d+\.\d+$/.test(raw)) return raw
+  if (Number.isInteger(num)) return String(num)
+  const s = String(num)
+  return s.startsWith('0.') ? s.slice(1) : s
+}
+
+/**
+ * Abbrev used in Game selector labels (NLH, PLO, PLO5, Mix, …).
+ * @param {{ live_game_name_pick?: string, game_custom_name?: string }} form
+ */
+export function cashGameFamilyAbbrev(form) {
+  const pick = form?.live_game_name_pick || 'holdem'
+  switch (pick) {
+    case 'holdem':
+      return 'NLH'
+    case 'omaha':
+      return 'PLO'
+    case 'omaha5':
+      return 'PLO5'
+    case 'omaha6':
+      return 'PLO6'
+    case 'short_deck':
+      return 'SD'
+    case 'stud':
+      return 'Stud'
+    case 'draw':
+      return 'Draw'
+    case 'mixed':
+      return 'Mix'
+    case 'ofc':
+      return 'OFC'
+    case 'custom_name': {
+      const custom = String(form?.game_custom_name || '').trim()
+      if (!custom) return 'Custom'
+      const fam = pokerGameFamilyLabel(custom)
+      if (fam === 'Mixed') return 'Mix'
+      if (fam === 'Short Deck') return 'SD'
+      if (fam === "Limit Hold'em") return 'LHE'
+      if (fam === 'Omaha Hi/Lo') return 'PLO8'
+      if (fam && fam !== custom) return fam
+      return custom
+    }
+    default:
+      return 'NLH'
+  }
+}
+
+/**
+ * Build stake/game label: "2/5/10 PLO", ".25/.50 NLH", "25/50 Mix".
+ * @param {{ live_game_name_pick?: string, game_custom_name?: string, small_blind?: string|number, big_blind?: string|number, third_blind?: string|number|null }} form
+ * @returns {string | null}
+ */
+export function formatCashGameLabel(form) {
+  const parts = [form?.small_blind, form?.big_blind, form?.third_blind]
+    .map(formatCashBlindPart)
+    .filter(Boolean)
+  if (parts.length < 2) return null
+  const family = cashGameFamilyAbbrev(form)
+  if (!family) return null
+  return `${parts.join('/')} ${family}`
+}
+
+/**
+ * Parse "2/5/10 PLO" → blinds + family.
+ * @param {string | null | undefined} label
+ */
+export function parseCashGameLabel(label) {
+  const raw = String(label || '').trim()
+  const m = raw.match(/^(\d*\.?\d+(?:\/\d*\.?\d+){1,2})\s+(.+)$/)
+  if (!m) return null
+  const blindParts = m[1].split('/')
+  const family = m[2].trim()
+  if (!family) return null
+  return {
+    label: raw,
+    small_blind: blindParts[0] || '',
+    big_blind: blindParts[1] || '',
+    third_blind: blindParts[2] || '',
+    family,
+    limit_type: cashFamilyToLimitType(family),
+    live_game_name_pick: cashFamilyToLiveGamePick(family) || 'custom_name',
+  }
+}
+
+function defaultCashGamePresets() {
+  return POKER_DEFAULT_CASH_GAMES.map((d) => ({
+    id: cashGamePresetIdFromName(d.label),
+    label: d.label,
+    limit_type: d.limit_type,
+    small_blind: d.small_blind,
+    big_blind: d.big_blind,
+    third_blind: d.third_blind,
+    ante: '',
+    family: d.family,
+    live_game_name_pick: cashFamilyToLiveGamePick(d.family) || 'holdem',
+  }))
+}
+
+/** Best stake/game label for a cash session row (formats legacy rows when possible). */
+export function cashGameLabelFromSession(session) {
+  const stored = String(session?.game_variant || '').trim()
+  if (stored && stored !== 'custom' && stored !== 'other' && parseCashGameLabel(stored)) {
+    return stored
+  }
+  const fromName = pokerCashGameNameFromStored(stored)
+  const family =
+    pokerGameFamilyLabel(stored) || pokerGameFamilyLabel(fromName) || null
+  const livePick =
+    cashFamilyToLiveGamePick(family) ||
+    pokerLiveCashGameNameSelectValue(fromName || stored) ||
+    'holdem'
+  const formatted = formatCashGameLabel({
+    live_game_name_pick: livePick,
+    game_custom_name:
+      livePick === 'custom_name' ? fromName || stored : pokerLiveCashGameNameLabelFromId(livePick),
+    small_blind: session?.small_blind != null ? String(session.small_blind) : '',
+    big_blind: session?.big_blind != null ? String(session.big_blind) : '',
+    third_blind: session?.third_blind != null ? String(session.third_blind) : '',
+  })
+  return formatted || (stored && stored !== 'custom' && stored !== 'other' ? stored : null)
+}
+
+/**
+ * Defaults first, then user/session games not already in the default list.
  * @param {Array<object>} sessions
  */
 export function buildCashGamePresetsFromSessions(sessions) {
-  const seen = new Map()
+  const defaults = defaultCashGamePresets()
+  const byId = new Map(defaults.map((p) => [p.id, p]))
+  const extras = []
+
   for (const s of sessions || []) {
     if (s.session_type !== 'cash') continue
-    const label = String(s.game_variant || '').trim()
-    if (!label || label === 'custom' || label === 'other') continue
+    const label = cashGameLabelFromSession(s)
+    if (!label) continue
     const id = cashGamePresetIdFromName(label)
-    if (seen.has(id)) continue
-    seen.set(id, {
+    if (byId.has(id)) continue
+    const parsed = parseCashGameLabel(label)
+    const preset = {
       id,
       label,
-      limit_type: s.limit_type || 'no_limit',
-      small_blind: s.small_blind != null ? String(s.small_blind) : '',
-      big_blind: s.big_blind != null ? String(s.big_blind) : '',
-      third_blind: s.third_blind != null ? String(s.third_blind) : '',
+      limit_type: s.limit_type || parsed?.limit_type || 'no_limit',
+      small_blind:
+        s.small_blind != null ? String(s.small_blind) : parsed?.small_blind || '',
+      big_blind: s.big_blind != null ? String(s.big_blind) : parsed?.big_blind || '',
+      third_blind:
+        s.third_blind != null ? String(s.third_blind) : parsed?.third_blind || '',
       ante: s.ante != null ? String(s.ante) : '',
-    })
+      family: parsed?.family || pokerGameFamilyLabel(label) || label,
+      live_game_name_pick:
+        parsed?.live_game_name_pick ||
+        cashFamilyToLiveGamePick(pokerGameFamilyLabel(label)) ||
+        'holdem',
+    }
+    byId.set(id, preset)
+    extras.push(preset)
   }
-  return [...seen.values()]
+
+  return [...defaults, ...extras]
 }
 
 /** @param {Array<{ id: string, label: string }>} presets */
@@ -37,6 +254,20 @@ export function cashGameSelectOptions(presets) {
     { id: POKER_CASH_NEW_GAME_ID, label: 'New game…' },
     ...(presets || []).map((p) => ({ id: p.id, label: p.label })),
   ]
+}
+
+/**
+ * Resolve label to persist on cash session create/edit.
+ * @param {object} form
+ * @param {Array<{ id: string, label: string }>} presets
+ * @returns {string | null}
+ */
+export function resolveCashGameLabelForSave(form, presets) {
+  if (form?.cash_game_pick && form.cash_game_pick !== POKER_CASH_NEW_GAME_ID) {
+    const preset = (presets || []).find((p) => p.id === form.cash_game_pick)
+    if (preset?.label) return preset.label
+  }
+  return formatCashGameLabel(form)
 }
 
 /** Live cash “Game name” options when Game = New game… */
@@ -195,25 +426,34 @@ export function applyCashGamePreset(form, preset) {
       ante: '',
     }
   }
+  const parsed = parseCashGameLabel(preset.label)
+  const livePick =
+    preset.live_game_name_pick ||
+    parsed?.live_game_name_pick ||
+    cashFamilyToLiveGamePick(preset.family) ||
+    'holdem'
   return {
     ...form,
     cash_game_pick: preset.id,
     game_variant: 'custom',
-    live_game_name_pick: pokerLiveCashGameNameSelectValue(preset.label),
-    game_custom_name: preset.label,
-    limit_type: preset.limit_type || 'no_limit',
-    small_blind: preset.small_blind ?? '',
-    big_blind: preset.big_blind ?? '',
-    third_blind: preset.third_blind ?? '',
+    live_game_name_pick: livePick,
+    game_custom_name:
+      livePick === POKER_LIVE_CASH_GAME_CUSTOM_ID
+        ? String(preset.family || preset.label || '').trim()
+        : pokerLiveCashGameNameLabelFromId(livePick) || preset.label,
+    limit_type: preset.limit_type || parsed?.limit_type || 'no_limit',
+    small_blind: preset.small_blind ?? parsed?.small_blind ?? '',
+    big_blind: preset.big_blind ?? parsed?.big_blind ?? '',
+    third_blind: preset.third_blind ?? parsed?.third_blind ?? '',
     ante: preset.ante ?? '',
   }
 }
 
-/** Default cash Game pick to most recent preset when opening a sheet. */
+/** Default cash Game pick to first list entry (built-in 1/2 NLH). */
 export function formWithDefaultCashGame(baseForm, presets) {
   const list = presets || []
   if (baseForm.session_type !== 'cash' || list.length === 0) {
-    return { ...baseForm, cash_game_pick: POKER_CASH_NEW_GAME_ID }
+    return applyCashGamePreset(baseForm, null)
   }
   return applyCashGamePreset(baseForm, list[0])
 }

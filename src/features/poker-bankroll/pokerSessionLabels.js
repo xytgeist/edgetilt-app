@@ -180,6 +180,24 @@ export function pokerOnlineSiteLabelFromId(siteId) {
   return hit?.label || ''
 }
 
+/**
+ * Most recent online session site (sessions expected newest-first).
+ * @param {Array<object>} sessions
+ * @returns {{ venue_name: string, online_site_pick: string } | null}
+ */
+export function lastOnlineSiteFromSessions(sessions) {
+  for (const s of sessions || []) {
+    if (s?.venue_kind !== 'online') continue
+    const name = String(s.venue_name || '').trim()
+    if (!name) continue
+    return {
+      venue_name: name,
+      online_site_pick: pokerOnlineSiteSelectValue(name),
+    }
+  }
+  return null
+}
+
 /** @param {'cash' | 'tournament' | string | null | undefined} sessionType */
 export function pokerGameOptionsForSessionType(sessionType) {
   return sessionType === 'tournament' ? POKER_TOURNAMENT_GAME_VARIANTS : POKER_CASH_GAME_TYPE_OPTIONS

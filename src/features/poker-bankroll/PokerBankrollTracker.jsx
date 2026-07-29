@@ -44,6 +44,7 @@ import {
   pokerGameOptionsForSessionType,
   pokerGamePickFromStored,
   pokerGameVariantToStored,
+  lastOnlineSiteFromSessions,
   pokerOnlineSiteLabelFromId,
   pokerOnlineSiteSelectOptions,
   pokerOnlineSiteSelectValue,
@@ -795,15 +796,22 @@ export default function PokerBankrollTracker({
         }
       }
       if (key === 'venue_kind' && value === 'live' && prev.venue_kind !== 'live') {
+        next.online_site_pick = ''
+        next.venue_name = ''
         void fetchNearby((name) => {
           setForm((f) => (f.venue_kind === 'live' && !String(f.venue_name || '').trim() ? { ...f, venue_name: name } : f))
         })
       }
-      if (key === 'venue_kind' && value === 'online') {
+      if (key === 'venue_kind' && value === 'online' && prev.venue_kind !== 'online') {
         const n = parseInt(next.tables_count, 10)
         if (!Number.isFinite(n) || n < 1) next.tables_count = '1'
-        if (!next.online_site_pick && next.venue_name) {
-          next.online_site_pick = pokerOnlineSiteSelectValue(next.venue_name)
+        const last = lastOnlineSiteFromSessions(completedSessions)
+        if (last) {
+          next.venue_name = last.venue_name
+          next.online_site_pick = last.online_site_pick
+        } else {
+          next.venue_name = ''
+          next.online_site_pick = ''
         }
       }
       if (key === 'online_site_pick') {
@@ -2142,21 +2150,24 @@ function PokerSessionCoreFields({
         ]}
       />
 
-      <FieldLabel>{form.venue_kind === 'online' ? 'Site' : 'Location'}</FieldLabel>
       {form.venue_kind === 'live' ? (
-        <CasinoAutocomplete
-          value={form.venue_name}
-          onChange={(v) => setField('venue_name', v)}
-          supabaseClient={supabaseClient}
-          nearbyCasinos={nearbyCasinos}
-          customVenues={customVenues}
-          onSaveCustomVenue={onSaveCustomVenue}
-          gpsLoading={gpsLoading}
-          placeholder="Wynn, Aria, home game…"
-          className="mb-3"
-        />
+        <>
+          <FieldLabel>Location</FieldLabel>
+          <CasinoAutocomplete
+            value={form.venue_name}
+            onChange={(v) => setField('venue_name', v)}
+            supabaseClient={supabaseClient}
+            nearbyCasinos={nearbyCasinos}
+            customVenues={customVenues}
+            onSaveCustomVenue={onSaveCustomVenue}
+            gpsLoading={gpsLoading}
+            placeholder="Wynn, Aria, home game…"
+            className="mb-3"
+          />
+        </>
       ) : (
         <>
+          <FieldLabel>Site</FieldLabel>
           <div className="mb-3">
             <MenuSelect
               value={form.online_site_pick || ''}

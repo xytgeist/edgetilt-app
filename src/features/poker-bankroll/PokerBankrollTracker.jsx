@@ -12,6 +12,7 @@ import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import PokerCashGamePicker from './PokerCashGamePicker.jsx'
+import PokerFieldMenu from './PokerFieldMenu.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
 import {
   POKER_CURRENCIES,
@@ -2472,10 +2473,12 @@ function GameCurrencyTablesRow({
         </div>
         <div className="min-w-0">
           <FieldLabel>Currency</FieldLabel>
-          <Select
+          <PokerFieldMenu
             value={normalizePokerCurrency(currency)}
             onChange={onCurrencyChange}
             options={POKER_CURRENCIES}
+            ariaLabel="Currency"
+            placeholder="USD ($)"
           />
         </div>
       </div>

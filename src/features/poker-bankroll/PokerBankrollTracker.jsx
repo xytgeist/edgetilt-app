@@ -111,8 +111,8 @@ export default function PokerBankrollTracker({
   const [gpsLoading, setGpsLoading] = useState(false)
   const [customVenues, setCustomVenues] = useState([])
   const casinoCoordCacheRef = useRef(null)
-  /** @type {'overview' | 'session' | 'locations' | 'charts'} */
-  const [activeTab, setActiveTab] = useState('overview')
+  /** @type {'session' | 'overview' | 'locations' | 'charts'} */
+  const [activeTab, setActiveTab] = useState('session')
 
   const overallBankroll = profile ? Number(profile.overall_bankroll) : null
   const hasBankrollProfile = profile != null
@@ -757,11 +757,11 @@ export default function PokerBankrollTracker({
           loading={freemiumUsageLoading}
         />
 
-        {/* Tabs — OVERVIEW / SESSION / LOCATIONS / CHARTS */}
+        {/* Tabs — SESSION first (main landing), then OVERVIEW / LOCATIONS / CHARTS */}
         <div className="mb-4 flex border-b border-zinc-800">
           {[
-            { id: 'overview', label: 'OVERVIEW' },
             { id: 'session', label: 'SESSION' },
+            { id: 'overview', label: 'OVERVIEW' },
             { id: 'locations', label: 'LOCATIONS' },
             { id: 'charts', label: 'CHARTS' },
           ].map((tab) => (
@@ -794,17 +794,17 @@ export default function PokerBankrollTracker({
 
         {activeTab === 'session' ? (
           <>
-            {/* Overall poker bankroll */}
-            <div className="mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-5">
+            {/* Overall poker bankroll — large hero card */}
+            <div className="mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
                     Poker bankroll
                   </div>
                   {loading ? (
-                    <div className="h-10 w-40 animate-pulse rounded-xl bg-zinc-700/40" />
+                    <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
                   ) : hasBankrollProfile ? (
-                    <div className="text-4xl font-black tracking-tight text-white">
+                    <div className="text-5xl font-black tracking-tight text-white">
                       {fmtPoker$(overallBankroll)}
                     </div>
                   ) : (
@@ -827,6 +827,11 @@ export default function PokerBankrollTracker({
                   </button>
                 ) : null}
               </div>
+              {hasBankrollProfile && completedSessions.length > 0 ? (
+                <div className="mt-4 border-t border-zinc-700/40 pt-3 text-[12px] text-zinc-500">
+                  Session P/L below updates this roll automatically.
+                </div>
+              ) : null}
             </div>
 
             {activeSession ? (
@@ -1029,19 +1034,6 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
       </ScrollLinkedEdgeTitleBarShell>
-
-      {/* FAB — match reference + for new session */}
-      {!activeSession && hasBankrollProfile && !sheet ? (
-        <button
-          type="button"
-          onClick={openStartSession}
-          data-start-session-btn
-          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-4 z-[40] flex h-14 w-14 items-center justify-center rounded-full bg-cyan-500 text-2xl font-light text-white shadow-lg shadow-cyan-900/40 touch-manipulation active:bg-cyan-400"
-          aria-label="Start session"
-        >
-          +
-        </button>
-      ) : null}
 
       {sheet === 'bankroll' ? (
         <div

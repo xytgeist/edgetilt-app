@@ -2225,7 +2225,7 @@ export default function PokerBankrollTracker({
                                 data-poker-session-swap-line="waiting"
                                 className="block text-[11px] font-medium text-cyan-300/90"
                               >
-                                Swap
+                                Swaps
                               </span>
                               {sessionSwaps.map((swap) => {
                                 const role = swapViewerRole(swap, userId) || 'creator'

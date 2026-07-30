@@ -1734,7 +1734,7 @@ export default function PokerBankrollTracker({
                 <div className="min-w-0 text-lg font-bold leading-tight text-white">
                   {pokerSessionStakesLabel(activeSession)}
                 </div>
-                <div className="mt-2 flex items-stretch justify-between gap-4">
+                <div className="mt-2 flex items-stretch justify-between gap-3">
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="text-sm text-zinc-400">
                       {pokerSessionMetaLine(activeSession)}
@@ -1742,38 +1742,54 @@ export default function PokerBankrollTracker({
                     <div className="mt-0.5 text-sm text-zinc-400">
                       {pokerSessionInForLine(activeSession)}
                     </div>
-                    <div className="mt-auto pt-2 text-3xl font-black tabular-nums text-emerald-200">
+                    <div
+                      data-session-card-timer
+                      className="mt-auto pt-2 font-black tabular-nums text-emerald-200"
+                    >
                       {fmtPokerDuration(elapsed)}
                     </div>
                   </div>
                   <div
-                    className="flex shrink-0 flex-col gap-2"
+                    data-session-card-actions
+                    className="flex min-w-0 shrink-0 flex-col gap-2"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <button
-                      type="button"
-                      onClick={() => openRebuy('rebuy')}
-                      className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-4 py-2.5 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
-                    >
-                      {activeSession.session_type === 'tournament' ? 'Re-enter' : 'Re-buy'}
-                    </button>
                     {activeSession.session_type === 'tournament' ? (
                       <button
                         type="button"
-                        onClick={openActiveSwaps}
-                        className="rounded-2xl border border-cyan-400/40 bg-cyan-950/50 px-4 py-2.5 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
+                        onClick={() => openRebuy('rebuy')}
+                        className="w-full rounded-2xl border border-emerald-400/40 bg-emerald-950/80 font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
                       >
-                        Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                        Re-enter
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={openEndSession}
-                      className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
-                    >
-                      End Session
-                    </button>
+                    <div className="flex gap-2">
+                      {activeSession.session_type === 'cash' ? (
+                        <button
+                          type="button"
+                          onClick={() => openRebuy('rebuy')}
+                          className="min-w-0 flex-1 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                        >
+                          Re-buy
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={openActiveSwaps}
+                          className="min-w-0 flex-1 rounded-2xl border border-cyan-400/40 bg-cyan-950/50 font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
+                        >
+                          Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={openEndSession}
+                        className="min-w-0 flex-1 rounded-2xl bg-emerald-500 font-bold text-white touch-manipulation active:bg-emerald-600"
+                      >
+                        End Session
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

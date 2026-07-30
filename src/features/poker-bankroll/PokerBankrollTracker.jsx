@@ -1960,8 +1960,8 @@ export default function PokerBankrollTracker({
 
                   if (isCash) {
                     return (
-                      <div className="mt-2">
-                        <div className="min-w-0">
+                      <div className="relative mt-2 min-h-[5rem]">
+                        <div className="min-w-0 pr-[6.25rem]">
                           <div className="truncate text-sm text-zinc-400">
                             {pokerSessionMetaLine(activeSession)}
                           </div>
@@ -1969,33 +1969,37 @@ export default function PokerBankrollTracker({
                             {pokerSessionInForLine(activeSession)}
                           </div>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <div
-                            className={`min-w-0 shrink overflow-hidden font-black tabular-nums whitespace-nowrap text-emerald-200 ${timerTextClass}`}
+                        <div
+                          className={`absolute bottom-0 left-0 max-w-[calc(100%-6rem)] overflow-hidden font-black tabular-nums whitespace-nowrap text-emerald-200 ${timerTextClass}`}
+                        >
+                          {elapsedLabel}
+                        </div>
+                        <div
+                          className="absolute bottom-0 right-0"
+                          onClick={stopCardClick}
+                          onKeyDown={stopCardClick}
+                        >
+                          <button
+                            type="button"
+                            onClick={openEndSession}
+                            data-poker-session-end-btn
+                            className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
                           >
-                            {elapsedLabel}
-                          </div>
-                          <div
-                            className="flex shrink-0 gap-1.5"
-                            onClick={stopCardClick}
-                            onKeyDown={stopCardClick}
+                            End Session
+                          </button>
+                        </div>
+                        <div
+                          className="absolute right-0 top-0"
+                          onClick={stopCardClick}
+                          onKeyDown={stopCardClick}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openRebuy('rebuy')}
+                            className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
                           >
-                            <button
-                              type="button"
-                              onClick={() => openRebuy('rebuy')}
-                              className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
-                            >
-                              Re-buy
-                            </button>
-                            <button
-                              type="button"
-                              onClick={openEndSession}
-                              data-poker-session-end-btn
-                              className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
-                            >
-                              End Session
-                            </button>
-                          </div>
+                            Re-buy
+                          </button>
                         </div>
                       </div>
                     )

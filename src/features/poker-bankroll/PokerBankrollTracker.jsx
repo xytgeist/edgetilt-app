@@ -2246,18 +2246,14 @@ export default function PokerBankrollTracker({
                                       )
                                     : formatSwapWaitingStatus(swap, role, other)
                                 const showSettledAmt = paid && swap.status === 'settled'
-                                const lineTone = showSettledAmt ? 'settled' : 'waiting'
+                                // Same cyan as Even / awaiting ... only the signed ($amt) is red/green.
                                 const amtTone =
                                   signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
                                 return (
                                   <span
                                     key={swap.id}
-                                    data-poker-session-swap-line={lineTone}
-                                    className={`block truncate text-[11px] ${
-                                      lineTone === 'settled'
-                                        ? 'text-emerald-300/90'
-                                        : 'text-cyan-300/80'
-                                    }`}
+                                    data-poker-session-swap-line="waiting"
+                                    className="block truncate text-[11px] text-cyan-300/80"
                                   >
                                     {other}
                                     {swap.pct_creator_gives != null &&

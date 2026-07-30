@@ -24,6 +24,7 @@
  *   gpsLoading     - bool: true while GPS + casino fetch is in progress
  *   placeholder    - optional
  *   className      - extra classes on the wrapper
+ *   insetLabel     - optional tiny label inside the input (no external field label)
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -46,6 +47,7 @@ export default function CasinoAutocomplete({
   gpsLoading = false,
   placeholder = 'e.g. Bellagio',
   className = '',
+  insetLabel = '',
 }) {
   const [query, setQuery] = useState(value ?? '')
   const [localResults, setLocalResults] = useState([])
@@ -223,9 +225,16 @@ export default function CasinoAutocomplete({
     }
   }
 
+  const hasInset = Boolean(insetLabel)
+
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       <div className="relative">
+        {hasInset ? (
+          <span className="pointer-events-none absolute left-3.5 top-1.5 z-[1] text-[9px] font-semibold uppercase tracking-wide leading-none text-zinc-500">
+            {insetLabel}
+          </span>
+        ) : null}
         <input
           type="text"
           value={query}
@@ -233,7 +242,12 @@ export default function CasinoAutocomplete({
           onFocus={() => { setFocused(true); setUserTyped(false) }}
           placeholder={gpsLoading ? 'Detecting location…' : placeholder}
           autoComplete="off"
-          className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40 pr-10"
+          aria-label={insetLabel || undefined}
+          className={
+            hasInset
+              ? 'w-full min-h-[3.35rem] rounded-2xl bg-zinc-800 px-3.5 pb-1.5 pt-5 pr-10 text-sm font-semibold text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
+              : 'w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40 pr-10'
+          }
         />
         {/* GPS indicator */}
         {gpsLoading && (

@@ -107,6 +107,14 @@ import {
 const POKER_FIELD_CLASS =
   'w-full h-12 min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
 
+/** Control chrome when the label lives inside the field (denser session sheets). */
+const POKER_INFIELD_WRAP =
+  'relative flex min-h-[3.35rem] flex-col justify-center rounded-2xl bg-zinc-800 px-3.5 py-1.5'
+const POKER_INFIELD_LABEL =
+  'text-[9px] font-semibold uppercase tracking-wide leading-none text-zinc-500'
+const POKER_INFIELD_CONTROL =
+  'w-full min-h-0 rounded-none border-0 bg-transparent px-0 text-sm font-semibold text-white outline-none focus:ring-0'
+
 /** Shared poker sheet chrome (content-sized unless tall class is added). */
 const POKER_SHEET_PANEL_CLASS = `${APP_MODAL_SHEET_PANEL_CLASS} !max-h-[min(96dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`
 
@@ -2288,30 +2296,25 @@ export default function PokerBankrollTracker({
             />
 
             <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-              <div className="min-w-0">
-                <FieldLabel>Date</FieldLabel>
-                <DateWheelPicker
-                  value={form.date}
-                  onChange={(v) => setField('date', v)}
-                  showYear
-                />
-              </div>
-              <div className="min-w-0">
-                <FieldLabel>Start time</FieldLabel>
-                <TimeWheelPicker
-                  value={form.start_time}
-                  onChange={(v) => setField('start_time', v)}
-                />
-              </div>
+              <DateWheelPicker
+                value={form.date}
+                onChange={(v) => setField('date', v)}
+                showYear
+                insetLabel="Date"
+              />
+              <TimeWheelPicker
+                value={form.start_time}
+                onChange={(v) => setField('start_time', v)}
+                insetLabel="Start time"
+              />
             </div>
 
             {!editingActiveSession ? (
               <>
-                <FieldLabel>Hours played</FieldLabel>
                 <div className="mb-3 flex items-center gap-2">
                   <button
                     type="button"
-                    className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+                    className="flex h-[3.35rem] w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
                     onClick={() =>
                       setField(
                         'duration_hours',
@@ -2323,16 +2326,19 @@ export default function PokerBankrollTracker({
                   >
                     −
                   </button>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={form.duration_hours}
-                    onChange={(e) => setField('duration_hours', e.target.value)}
-                    className={`${POKER_FIELD_CLASS} flex-1 text-center`}
-                  />
+                  <InField label="Hours" className="min-w-0 flex-1">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={form.duration_hours}
+                      onChange={(e) => setField('duration_hours', e.target.value)}
+                      className={`${POKER_INFIELD_CONTROL} text-center`}
+                      aria-label="Hours played"
+                    />
+                  </InField>
                   <button
                     type="button"
-                    className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+                    className="flex h-[3.35rem] w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
                     onClick={() =>
                       setField(
                         'duration_hours',
@@ -2347,8 +2353,8 @@ export default function PokerBankrollTracker({
                 </div>
 
                 <div className="mb-3">
-                  <FieldLabel>Cash out</FieldLabel>
                   <MoneyInput
+                    label="Cash out"
                     value={form.cash_out}
                     onChange={(v) => setField('cash_out', v)}
                     colorize
@@ -2366,54 +2372,47 @@ export default function PokerBankrollTracker({
                 ) : null}
 
                 {form.session_type === 'tournament' ? (
-                  <div className="mb-3 space-y-3">
+                  <div className="mb-3 space-y-2">
                     <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <FieldLabel>Finish place</FieldLabel>
-                        <NumInput
-                          value={form.finish_place}
-                          onChange={(v) => setField('finish_place', v)}
-                        />
-                      </div>
-                      <div>
-                        <FieldLabel>Re-entries</FieldLabel>
-                        <NumInput
-                          value={form.reentries}
-                          onChange={(v) => setField('reentries', v)}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <FieldLabel>Bounty winnings</FieldLabel>
-                      <MoneyInput
-                        value={form.bounty_winnings}
-                        onChange={(v) => setField('bounty_winnings', v)}
-                        colorize
+                      <NumInput
+                        label="Finish place"
+                        value={form.finish_place}
+                        onChange={(v) => setField('finish_place', v)}
+                      />
+                      <NumInput
+                        label="Re-entries"
+                        value={form.reentries}
+                        onChange={(v) => setField('reentries', v)}
                       />
                     </div>
+                    <MoneyInput
+                      label="Bounty winnings"
+                      value={form.bounty_winnings}
+                      onChange={(v) => setField('bounty_winnings', v)}
+                      colorize
+                    />
                   </div>
                 ) : null}
               </>
             ) : form.session_type === 'tournament' ? (
               <div className="mb-3">
-                <FieldLabel>Re-entries</FieldLabel>
                 <NumInput
+                  label="Re-entries"
                   value={form.reentries}
                   onChange={(v) => setField('reentries', v)}
                 />
               </div>
             ) : null}
 
-            <div className="mb-3">
-              <FieldLabel>Notes</FieldLabel>
+            <InField label="Notes" className="mb-3 !min-h-0">
               <textarea
                 value={form.notes}
                 onChange={(e) => setField('notes', e.target.value)}
-                rows={3}
-                className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40"
+                rows={2}
+                className="w-full resize-none bg-transparent px-0 py-0.5 text-sm text-white outline-none placeholder:text-zinc-500"
                 placeholder="Table notes, tilt, etc."
               />
-            </div>
+            </InField>
 
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
 
@@ -2635,15 +2634,18 @@ export default function PokerBankrollTracker({
               </span>
               .
             </p>
-            <FieldLabel>
-              {rebuyKind === 'addon'
-                ? 'Add-on amount'
-                : activeSession.session_type === 'tournament'
-                  ? 'Re-entry amount'
-                  : 'Re-buy amount'}
-            </FieldLabel>
             <div className="mb-4">
-              <MoneyInput value={rebuyAmount} onChange={setRebuyAmount} />
+              <MoneyInput
+                label={
+                  rebuyKind === 'addon'
+                    ? 'Add-on amount'
+                    : activeSession.session_type === 'tournament'
+                      ? 'Re-entry amount'
+                      : 'Re-buy amount'
+                }
+                value={rebuyAmount}
+                onChange={setRebuyAmount}
+              />
             </div>
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
             <button
@@ -2702,32 +2704,31 @@ export default function PokerBankrollTracker({
               </div>
             </div>
 
-            <FieldLabel>Cash out</FieldLabel>
             <div className="mb-3">
-              <MoneyInput value={endCashOut} onChange={setEndCashOut} colorize />
+              <MoneyInput label="Cash out" value={endCashOut} onChange={setEndCashOut} colorize />
             </div>
 
             {activeSession.session_type === 'tournament' ? (
               <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-                <div className="min-w-0">
-                  <FieldLabel>Finish place</FieldLabel>
-                  <NumInput value={endFinishPlace} onChange={setEndFinishPlace} />
-                </div>
-                <div className="min-w-0">
-                  <FieldLabel>Bounties</FieldLabel>
-                  <MoneyInput value={endBounties} onChange={setEndBounties} colorize />
-                </div>
+                <NumInput label="Finish place" value={endFinishPlace} onChange={setEndFinishPlace} />
+                <MoneyInput
+                  label="Bounties"
+                  value={endBounties}
+                  onChange={setEndBounties}
+                  colorize
+                />
               </div>
             ) : null}
 
-            <FieldLabel>Notes</FieldLabel>
-            <textarea
-              value={endNotes}
-              onChange={(e) => setEndNotes(e.target.value)}
-              rows={3}
-              className="mb-3 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-cyan-500/40"
-              placeholder="Optional"
-            />
+            <InField label="Notes" className="mb-3 !min-h-0">
+              <textarea
+                value={endNotes}
+                onChange={(e) => setEndNotes(e.target.value)}
+                rows={2}
+                className="w-full resize-none bg-transparent px-0 py-0.5 text-sm text-white outline-none placeholder:text-zinc-500"
+                placeholder="Optional"
+              />
+            </InField>
 
             {(() => {
               const cashOut = parseFloat(endCashOut)
@@ -2929,30 +2930,25 @@ function PokerSessionCoreFields({
 
   return (
     <>
-      <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-        <div className="min-w-0">
-          <FieldLabel>Type</FieldLabel>
-          <Select
-            value={form.session_type}
-            onChange={(v) => setField('session_type', v)}
-            options={[
-              { id: 'cash', label: 'Cash' },
-              { id: 'tournament', label: 'Tournament' },
-            ]}
-          />
-        </div>
-        <div className="min-w-0">
-          <FieldLabel>Table size</FieldLabel>
-          <Select
-            value={form.table_size}
-            onChange={(v) => setField('table_size', v)}
-            options={POKER_TABLE_SIZES}
-          />
-        </div>
+      <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
+        <Select
+          label="Type"
+          value={form.session_type}
+          onChange={(v) => setField('session_type', v)}
+          options={[
+            { id: 'cash', label: 'Cash' },
+            { id: 'tournament', label: 'Tournament' },
+          ]}
+        />
+        <Select
+          label="Table size"
+          value={form.table_size}
+          onChange={(v) => setField('table_size', v)}
+          options={POKER_TABLE_SIZES}
+        />
       </div>
 
       <Segmented
-        label="Where"
         value={form.venue_kind}
         onChange={(v) => setField('venue_kind', v)}
         options={[
@@ -2962,51 +2958,41 @@ function PokerSessionCoreFields({
         ]}
       />
 
-      {!isCash ? (
-        <>
-          <FieldLabel>Tournament</FieldLabel>
-          <div className="mb-3">
+      {!isCash ? <SectionLabel>Event</SectionLabel> : null}
+      <div className="mb-2 space-y-2">
+        {!isCash ? (
+          <div>
             <PokerFieldMenu
               value={form.tournament_event_pick || ''}
               onChange={onPickSoftTournament}
               options={softTournamentOptions}
               ariaLabel="Tournament"
               placeholder="Select tournament…"
+              insetLabel="Tournament"
             />
             {softEventsReady && softEvents.length === 0 ? (
-              <p className="mt-1.5 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-zinc-500">
                 No nearby logged tournaments yet … pick Enter manually
               </p>
             ) : null}
           </div>
-        </>
-      ) : null}
+        ) : null}
 
-      {form.venue_kind === 'online' ? (
-        <>
-          <FieldLabel>Site</FieldLabel>
-          <div className="mb-3">
-            <MenuSelect
-              value={form.online_site_pick || ''}
-              onChange={(id) => setField('online_site_pick', id)}
-              options={pokerOnlineSiteSelectOptions()}
-            />
-          </div>
-        </>
-      ) : form.venue_kind === 'club' ? (
-        <>
-          <FieldLabel>Club</FieldLabel>
-          <div className="mb-3">
-            <MenuSelect
-              value={form.club_app_pick || ''}
-              onChange={(id) => setField('club_app_pick', id)}
-              options={pokerClubAppSelectOptions()}
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <FieldLabel>Location</FieldLabel>
+        {form.venue_kind === 'online' ? (
+          <MenuSelect
+            label="Site"
+            value={form.online_site_pick || ''}
+            onChange={(id) => setField('online_site_pick', id)}
+            options={pokerOnlineSiteSelectOptions()}
+          />
+        ) : form.venue_kind === 'club' ? (
+          <MenuSelect
+            label="Club"
+            value={form.club_app_pick || ''}
+            onChange={(id) => setField('club_app_pick', id)}
+            options={pokerClubAppSelectOptions()}
+          />
+        ) : (
           <CasinoAutocomplete
             value={form.venue_name}
             onChange={(v) => setField('venue_name', v)}
@@ -3016,10 +3002,10 @@ function PokerSessionCoreFields({
             onSaveCustomVenue={onSaveCustomVenue}
             gpsLoading={gpsLoading}
             placeholder="Wynn, Aria, home game…"
-            className="mb-3"
+            insetLabel="Location"
           />
-        </>
-      )}
+        )}
+      </div>
 
       {isCash ? (
         <>
@@ -3035,66 +3021,62 @@ function PokerSessionCoreFields({
                 onChange={(v) => setField('cash_game_pick', v)}
                 presets={cashGamePresets}
                 orphan={cashGameOrphan}
+                insetLabel="Game"
               />
             }
           />
           {showCashDetails ? (
             <>
-              <FieldLabel>Limit</FieldLabel>
-              <div className="mb-3">
+              <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
                 <Select
+                  label="Limit"
                   value={form.limit_type}
                   onChange={(v) => setField('limit_type', v)}
                   options={POKER_LIMIT_TYPES}
                 />
-              </div>
-              <FieldLabel>Game name</FieldLabel>
-              <div className="mb-3">
                 <Select
+                  label="Game name"
                   value={form.live_game_name_pick || 'holdem'}
                   onChange={(v) => setField('live_game_name_pick', v)}
                   options={POKER_LIVE_CASH_GAME_NAMES}
                 />
               </div>
               {form.live_game_name_pick === POKER_LIVE_CASH_GAME_CUSTOM_ID ? (
-                <div className="mb-3">
+                <InField label="Custom name" className="mb-2">
                   <input
                     type="text"
                     value={form.game_custom_name}
                     onChange={(e) => setField('game_custom_name', e.target.value)}
                     placeholder="Enter game name…"
-                    className={POKER_FIELD_CLASS}
+                    className={POKER_INFIELD_CONTROL}
                   />
-                </div>
+                </InField>
               ) : null}
-              <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-                <div className="min-w-0">
-                  <FieldLabel>Small blind</FieldLabel>
-                  <MoneyInput
-                    value={form.small_blind}
-                    onChange={(v) => setField('small_blind', v)}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <FieldLabel>Big blind</FieldLabel>
-                  <MoneyInput value={form.big_blind} onChange={(v) => setField('big_blind', v)} />
-                </div>
+              <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
+                <MoneyInput
+                  label="Small blind"
+                  value={form.small_blind}
+                  onChange={(v) => setField('small_blind', v)}
+                />
+                <MoneyInput
+                  label="Big blind"
+                  value={form.big_blind}
+                  onChange={(v) => setField('big_blind', v)}
+                />
               </div>
-              <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-                <div className="min-w-0">
-                  <FieldLabel>3rd blind</FieldLabel>
-                  <MoneyInput
-                    value={form.third_blind}
-                    onChange={(v) => setField('third_blind', v)}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <FieldLabel>Ante</FieldLabel>
-                  <MoneyInput value={form.ante} onChange={(v) => setField('ante', v)} />
-                </div>
+              <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
+                <MoneyInput
+                  label="3rd blind"
+                  value={form.third_blind}
+                  onChange={(v) => setField('third_blind', v)}
+                />
+                <MoneyInput label="Ante" value={form.ante} onChange={(v) => setField('ante', v)} />
               </div>
             </>
           ) : null}
+          <div className="mb-3">
+            <MoneyInput label="Buy-in" value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
+          </div>
         </>
       ) : (
         <>
@@ -3106,6 +3088,7 @@ function PokerSessionCoreFields({
             onCurrencyChange={(v) => setField('currency', v)}
             game={
               <Select
+                label="Game"
                 value={form.game_variant}
                 onChange={(v) => setField('game_variant', v)}
                 options={pokerGameOptionsForSessionType('tournament')}
@@ -3113,76 +3096,64 @@ function PokerSessionCoreFields({
             }
           />
           {isCustomGame ? (
-            <>
-              <FieldLabel>Limit</FieldLabel>
-              <div className="mb-3">
-                <Select
-                  value={form.limit_type}
-                  onChange={(v) => setField('limit_type', v)}
-                  options={POKER_LIMIT_TYPES}
-                />
-              </div>
-              <FieldLabel>Game</FieldLabel>
-              <div className="mb-3">
+            <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
+              <Select
+                label="Limit"
+                value={form.limit_type}
+                onChange={(v) => setField('limit_type', v)}
+                options={POKER_LIMIT_TYPES}
+              />
+              <InField label="Game">
                 <input
                   type="text"
                   value={form.game_custom_name}
                   onChange={(e) => setField('game_custom_name', e.target.value)}
-                  placeholder="e.g. Dealers Choice, Stud…"
-                  className={POKER_FIELD_CLASS}
+                  placeholder="Dealers Choice…"
+                  className={POKER_INFIELD_CONTROL}
                 />
-              </div>
-            </>
+              </InField>
+            </div>
           ) : null}
           {!isSoftTournamentEventPick(form.tournament_event_pick) ? (
-            <>
-              <FieldLabel>Tournament name</FieldLabel>
-              <div className="mb-3">
-                <input
-                  type="text"
-                  value={form.tournament_name}
-                  onChange={(e) => setField('tournament_name', e.target.value)}
-                  placeholder="WSOP Event #96, Daily Deepstack…"
-                  className={POKER_FIELD_CLASS}
-                />
-              </div>
-            </>
+            <InField label="Tournament name" className="mb-2">
+              <input
+                type="text"
+                value={form.tournament_name}
+                onChange={(e) => setField('tournament_name', e.target.value)}
+                placeholder="WSOP Event #96…"
+                className={POKER_INFIELD_CONTROL}
+              />
+            </InField>
           ) : null}
-          <FieldLabel>Buy-in</FieldLabel>
-          <div className="mb-3">
-            <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
+          <div className="mb-2">
+            <MoneyInput label="Buy-in" value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
+          </div>
+          <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
+            <NumInput
+              label="Players"
+              value={form.field_size}
+              onChange={(v) => setField('field_size', v)}
+            />
+            <NumInput
+              label="Start stack"
+              value={form.start_stack}
+              onChange={(v) => setField('start_stack', v)}
+            />
           </div>
           <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-            <div className="min-w-0">
-              <FieldLabel>Players</FieldLabel>
-              <NumInput value={form.field_size} onChange={(v) => setField('field_size', v)} />
-            </div>
-            <div className="min-w-0">
-              <FieldLabel>Start stack</FieldLabel>
-              <NumInput value={form.start_stack} onChange={(v) => setField('start_stack', v)} />
-            </div>
-          </div>
-          <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-            <div className="min-w-0">
-              <FieldLabel>Re-buy</FieldLabel>
-              <MoneyInput value={form.rebuy_amount} onChange={(v) => setField('rebuy_amount', v)} />
-            </div>
-            <div className="min-w-0">
-              <FieldLabel>Add-on</FieldLabel>
-              <MoneyInput value={form.addon_amount} onChange={(v) => setField('addon_amount', v)} />
-            </div>
+            <MoneyInput
+              label="Re-buy"
+              value={form.rebuy_amount}
+              onChange={(v) => setField('rebuy_amount', v)}
+            />
+            <MoneyInput
+              label="Add-on"
+              value={form.addon_amount}
+              onChange={(v) => setField('addon_amount', v)}
+            />
           </div>
         </>
       )}
-
-      {isCash ? (
-        <>
-          <FieldLabel>Buy-in</FieldLabel>
-          <div className="mb-3">
-            <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
-          </div>
-        </>
-      ) : null}
     </>
   )
 }
@@ -3207,17 +3178,34 @@ function FieldLabel({ children }) {
   return <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{children}</div>
 }
 
+function SectionLabel({ children }) {
+  return (
+    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+      {children}
+    </div>
+  )
+}
+
+function InField({ label, className = '', children }) {
+  return (
+    <div className={`${POKER_INFIELD_WRAP} ${className}`} data-poker-in-field="">
+      <div className={POKER_INFIELD_LABEL}>{label}</div>
+      <div className="mt-0.5 min-w-0">{children}</div>
+    </div>
+  )
+}
+
 function Segmented({ label, value, onChange, options }) {
   return (
-    <div className="mb-3">
-      <FieldLabel>{label}</FieldLabel>
+    <div className="mb-2">
+      {label ? <FieldLabel>{label}</FieldLabel> : null}
       <div className="flex gap-1 rounded-2xl bg-zinc-800 p-1">
         {options.map((opt) => (
           <button
             key={opt.id}
             type="button"
             onClick={() => onChange(opt.id)}
-            className={`flex-1 rounded-xl py-2.5 text-sm font-semibold touch-manipulation ${
+            className={`flex-1 rounded-xl py-2 text-sm font-semibold touch-manipulation ${
               value === opt.id ? 'bg-emerald-600 text-white' : 'text-zinc-400 active:bg-zinc-700'
             }`}
           >
@@ -3229,12 +3217,17 @@ function Segmented({ label, value, onChange, options }) {
   )
 }
 
-function Select({ value, onChange, options }) {
-  return (
+function Select({ value, onChange, options, label }) {
+  const select = (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`${POKER_FIELD_CLASS} box-border appearance-none py-0 leading-[3rem]`}
+      aria-label={label || undefined}
+      className={
+        label
+          ? `${POKER_INFIELD_CONTROL} appearance-none`
+          : `${POKER_FIELD_CLASS} box-border appearance-none py-0 leading-[3rem]`
+      }
     >
       {options.map((opt) => (
         <option key={opt.id} value={opt.id}>
@@ -3243,6 +3236,8 @@ function Select({ value, onChange, options }) {
       ))}
     </select>
   )
+  if (!label) return select
+  return <InField label={label}>{select}</InField>
 }
 
 /** Game + Currency on one row; online also shows Tables below. */
@@ -3255,10 +3250,10 @@ function GameCurrencyTablesRow({
   onTablesCountChange,
 }) {
   const tables = (
-    <div className="flex h-12 items-center gap-1">
+    <div className="flex items-center gap-1">
       <button
         type="button"
-        className="flex h-12 w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+        className="flex h-[3.35rem] w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
         onClick={() => {
           const n = Math.max(1, (parseInt(tablesCount, 10) || 1) - 1)
           onTablesCountChange(String(n))
@@ -3266,17 +3261,19 @@ function GameCurrencyTablesRow({
       >
         −
       </button>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={tablesCount}
-        onChange={(e) => onTablesCountChange(e.target.value)}
-        className={`min-w-0 flex-1 text-center ${POKER_FIELD_CLASS}`}
-        aria-label="Number of tables"
-      />
+      <InField label="Tables" className="min-w-0 flex-1">
+        <input
+          type="text"
+          inputMode="numeric"
+          value={tablesCount}
+          onChange={(e) => onTablesCountChange(e.target.value)}
+          className={`${POKER_INFIELD_CONTROL} text-center`}
+          aria-label="Number of tables"
+        />
+      </InField>
       <button
         type="button"
-        className="flex h-12 w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+        className="flex h-[3.35rem] w-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
         onClick={() => {
           const n = Math.min(24, (parseInt(tablesCount, 10) || 1) + 1)
           onTablesCountChange(String(n))
@@ -3289,38 +3286,31 @@ function GameCurrencyTablesRow({
 
   return (
     <>
-      <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+      <div className="mb-2 grid min-w-0 grid-cols-2 gap-2">
+        <div className="min-w-0">{game}</div>
         <div className="min-w-0">
-          <FieldLabel>Game</FieldLabel>
-          {game}
-        </div>
-        <div className="min-w-0">
-          <FieldLabel>Currency</FieldLabel>
           <PokerFieldMenu
             value={normalizePokerCurrency(currency)}
             onChange={onCurrencyChange}
             options={POKER_CURRENCIES}
             ariaLabel="Currency"
             placeholder="USD ($)"
+            insetLabel="Currency"
           />
         </div>
       </div>
-      {isOnline ? (
-        <div className="mb-3 min-w-0">
-          <FieldLabel>Tables</FieldLabel>
-          {tables}
-        </div>
-      ) : null}
+      {isOnline ? <div className="mb-2 min-w-0">{tables}</div> : null}
     </>
   )
 }
 
 /** Long option lists (online sites): custom menu always opens scrolled to the top. */
-function MenuSelect({ value, onChange, options }) {
+function MenuSelect({ value, onChange, options, label: fieldLabel = '' }) {
   const [open, setOpen] = useState(false)
   const listRef = useRef(null)
   const selected = options.find((o) => o.id === value)
-  const label = selected?.label || options[0]?.label || 'Select…'
+  const display = selected?.label || options[0]?.label || 'Select…'
+  const hasInset = Boolean(fieldLabel)
 
   useEffect(() => {
     if (!open) return
@@ -3333,18 +3323,43 @@ function MenuSelect({ value, onChange, options }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`${POKER_FIELD_CLASS} flex items-center justify-between text-left`}
+        aria-label={fieldLabel || 'Select'}
+        className={
+          hasInset
+            ? 'relative flex w-full min-h-[3.35rem] flex-col justify-center rounded-2xl bg-zinc-800 px-3.5 py-1.5 pr-9 text-left outline-none focus:ring-2 focus:ring-cyan-500/40'
+            : `${POKER_FIELD_CLASS} flex items-center justify-between text-left`
+        }
       >
-        <span className={`truncate font-semibold text-sm ${value ? 'text-white' : 'text-zinc-500'}`}>
-          {label}
-        </span>
-        <span
-          className={`ml-2 shrink-0 text-xs text-zinc-500 transition-transform duration-200 ${
-            open ? 'rotate-180' : ''
-          }`}
-        >
-          ▾
-        </span>
+        {hasInset ? (
+          <>
+            <span className={POKER_INFIELD_LABEL}>{fieldLabel}</span>
+            <span
+              className={`mt-0.5 truncate text-sm font-semibold ${value ? 'text-white' : 'text-zinc-500'}`}
+            >
+              {display}
+            </span>
+            <span
+              className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-zinc-500 transition-transform duration-200 ${
+                open ? 'rotate-180' : ''
+              }`}
+            >
+              ▾
+            </span>
+          </>
+        ) : (
+          <>
+            <span className={`truncate text-sm font-semibold ${value ? 'text-white' : 'text-zinc-500'}`}>
+              {display}
+            </span>
+            <span
+              className={`ml-2 shrink-0 text-xs text-zinc-500 transition-transform duration-200 ${
+                open ? 'rotate-180' : ''
+              }`}
+            >
+              ▾
+            </span>
+          </>
+        )}
       </button>
       {open ? (
         <div
@@ -3377,19 +3392,22 @@ function MenuSelect({ value, onChange, options }) {
   )
 }
 
-function NumInput({ value, onChange }) {
-  return (
+function NumInput({ value, onChange, label }) {
+  const input = (
     <input
       type="text"
       inputMode="numeric"
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ''))}
-      className={POKER_FIELD_CLASS}
+      aria-label={label || undefined}
+      className={label ? POKER_INFIELD_CONTROL : POKER_FIELD_CLASS}
     />
   )
+  if (!label) return input
+  return <InField label={label}>{input}</InField>
 }
 
-function MoneyInput({ value, onChange, colorize = false }) {
+function MoneyInput({ value, onChange, colorize = false, label }) {
   const numVal = parseFloat(value)
   const hasValue = value !== '' && value !== '-'
   const textClass =
@@ -3398,6 +3416,25 @@ function MoneyInput({ value, onChange, colorize = false }) {
         ? 'text-emerald-300'
         : 'text-red-300'
       : 'text-white'
+  if (label) {
+    return (
+      <InField label={label}>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-zinc-400">
+            $
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
+            aria-label={label}
+            className={`w-full bg-transparent pl-4 outline-none ${textClass} text-sm font-semibold`}
+          />
+        </div>
+      </InField>
+    )
+  }
   return (
     <div className="relative">
       <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">

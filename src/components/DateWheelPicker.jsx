@@ -49,7 +49,7 @@ function displayLabel(yyyymmdd, showYear = false) {
 const currentYear = new Date().getFullYear()
 const YEARS = Array.from({ length: 8 }, (_, i) => String(currentYear - 7 + i))
 
-export default function DateWheelPicker({ value, onChange, showYear = false }) {
+export default function DateWheelPicker({ value, onChange, showYear = false, insetLabel = '' }) {
   const [open, setOpen] = useState(false)
   const [pickerValue, setPickerValue] = useState(() => partsFrom(value))
 
@@ -79,16 +79,36 @@ export default function DateWheelPicker({ value, onChange, showYear = false }) {
   }
 
   const label = displayLabel(value, showYear) ?? displayLabel(toYYYYMMDD(nowParts()), showYear)
+  const hasInset = Boolean(insetLabel)
 
   return (
     <div>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-left flex items-center justify-between touch-manipulation"
+        aria-label={insetLabel || 'Date'}
+        className={
+          hasInset
+            ? 'flex w-full min-h-[3.35rem] flex-col justify-center rounded-2xl bg-zinc-800 px-3.5 py-1.5 text-left touch-manipulation'
+            : 'flex w-full min-h-12 items-center justify-between rounded-2xl bg-zinc-800 px-4 text-left touch-manipulation'
+        }
       >
-        <span className="text-white font-semibold text-sm">{label}</span>
-        <span className={`text-zinc-500 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+        {hasInset ? (
+          <>
+            <span className="text-[9px] font-semibold uppercase tracking-wide leading-none text-zinc-500">
+              {insetLabel}
+            </span>
+            <span className="mt-0.5 flex items-center justify-between gap-1">
+              <span className="truncate text-sm font-semibold text-white">{label}</span>
+              <span className={`shrink-0 text-xs text-zinc-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="text-sm font-semibold text-white">{label}</span>
+            <span className={`text-xs text-zinc-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+          </>
+        )}
       </button>
 
       {open && (

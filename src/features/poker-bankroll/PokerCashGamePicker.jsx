@@ -11,6 +11,7 @@ import { buildCashGamePickerRows } from './pokerSessionLabels.js'
  * @param {Array<{ id: string, label: string, isDefault?: boolean }>} props.presets
  * @param {{ id: string, label: string } | null} [props.orphan]
  * @param {string} [props.ariaLabel]
+ * @param {string} [props.insetLabel]
  */
 export default function PokerCashGamePicker({
   value,
@@ -18,6 +19,7 @@ export default function PokerCashGamePicker({
   presets = [],
   orphan = null,
   ariaLabel = 'Game',
+  insetLabel = '',
 }) {
   const { rows } = useMemo(() => buildCashGamePickerRows(presets, orphan), [presets, orphan])
 
@@ -29,6 +31,7 @@ export default function PokerCashGamePicker({
         rows={rows}
         ariaLabel={ariaLabel}
         placeholder="Select game…"
+        insetLabel={insetLabel}
       />
     </div>
   )

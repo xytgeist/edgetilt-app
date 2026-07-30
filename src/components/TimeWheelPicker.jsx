@@ -54,7 +54,7 @@ function displayLabel(hh24) {
   return `${h12}:${String(mm).padStart(2, '0')} ${period}`
 }
 
-export default function TimeWheelPicker({ value, onChange }) {
+export default function TimeWheelPicker({ value, onChange, insetLabel = '' }) {
   const [open, setOpen] = useState(false)
   const [pickerValue, setPickerValue] = useState(() => pickerValueFrom24h(value))
   const recenterRef = useRef(null)
@@ -148,15 +148,36 @@ export default function TimeWheelPicker({ value, onChange }) {
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   })())
 
+  const hasInset = Boolean(insetLabel)
+
   return (
     <div>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full min-h-12 rounded-2xl bg-zinc-800 px-3 text-left flex items-center justify-between touch-manipulation"
+        aria-label={insetLabel || 'Time'}
+        className={
+          hasInset
+            ? 'flex w-full min-h-[3.35rem] flex-col justify-center rounded-2xl bg-zinc-800 px-3.5 py-1.5 text-left touch-manipulation'
+            : 'flex w-full min-h-12 items-center justify-between rounded-2xl bg-zinc-800 px-3 text-left touch-manipulation'
+        }
       >
-        <span className="text-white font-semibold text-sm truncate">{label}</span>
-        <span className={`text-zinc-500 text-xs ml-1 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+        {hasInset ? (
+          <>
+            <span className="text-[9px] font-semibold uppercase tracking-wide leading-none text-zinc-500">
+              {insetLabel}
+            </span>
+            <span className="mt-0.5 flex items-center justify-between gap-1">
+              <span className="truncate text-sm font-semibold text-white">{label}</span>
+              <span className={`ml-1 shrink-0 text-xs text-zinc-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="truncate text-sm font-semibold text-white">{label}</span>
+            <span className={`ml-1 shrink-0 text-xs text-zinc-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+          </>
+        )}
       </button>
 
       {open && (

@@ -6,6 +6,10 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 const TRIGGER_CLASS =
   'relative box-border w-full h-12 min-h-12 rounded-2xl bg-zinc-800 px-4 pr-10 text-left text-white outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation'
 
+/** Compact trigger with label inside the control (session sheet density). */
+const TRIGGER_INSET_CLASS =
+  'relative box-border flex w-full min-h-[3.35rem] flex-col justify-center rounded-2xl bg-zinc-800 px-3.5 py-1.5 pr-9 text-left text-white outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation'
+
 const GAP_PX = 6
 /** Tall enough to show most Game defaults; still capped by viewport space below/above trigger. */
 const MAX_PANEL_HEIGHT_PX = 420
@@ -123,6 +127,7 @@ function attachBackdropTouchLock(el) {
  * @param {Array<{ type: 'label'|'option', id?: string, label: string }>} [props.rows]
  * @param {string} [props.ariaLabel]
  * @param {string} [props.placeholder]
+ * @param {string} [props.insetLabel] — tiny label inside the trigger (no external FieldLabel)
  */
 export default function PokerFieldMenu({
   value,
@@ -131,6 +136,7 @@ export default function PokerFieldMenu({
   rows: rowsProp = null,
   ariaLabel = 'Select',
   placeholder = 'Select…',
+  insetLabel = '',
 }) {
   const [open, setOpen] = useState(false)
   const [panelPos, setPanelPos] = useState(null)
@@ -314,6 +320,8 @@ export default function PokerFieldMenu({
         )
       : null
 
+  const hasInset = Boolean(insetLabel)
+
   return (
     <div ref={wrapperRef} className="relative" data-poker-field-menu>
       <button
@@ -322,12 +330,21 @@ export default function PokerFieldMenu({
         aria-label={ariaLabel}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={TRIGGER_CLASS}
+        className={hasInset ? TRIGGER_INSET_CLASS : TRIGGER_CLASS}
       >
-        <span className="block truncate pr-1 leading-[3rem]">{triggerLabel}</span>
+        {hasInset ? (
+          <>
+            <span className="block text-[9px] font-semibold uppercase tracking-wide leading-none text-zinc-500">
+              {insetLabel}
+            </span>
+            <span className="mt-0.5 block truncate text-sm font-semibold leading-tight">{triggerLabel}</span>
+          </>
+        ) : (
+          <span className="block truncate pr-1 leading-[3rem]">{triggerLabel}</span>
+        )}
         <span
           aria-hidden
-          className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-zinc-500 transition-transform duration-200 ${
+          className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-zinc-500 transition-transform duration-200 ${
             open ? 'rotate-180' : ''
           }`}
         >

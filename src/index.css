@@ -4625,20 +4625,19 @@ html.light [data-wl-preview] .text-zinc-400 {
   color: #6b7280 !important;
 }
 
-/* Active session card - fluid button/timer type (both themes; format unchanged) */
+/* Active session card - keep original button/timer size; shrink only on narrow cards */
 [data-session-card] {
   container-type: inline-size;
   container-name: session-card;
 }
-[data-session-card] [data-session-card-actions] button {
-  font-size: clamp(0.7rem, 3.1cqi, 0.875rem);
-  line-height: 1.15;
-  padding: clamp(0.42rem, 2.1cqi, 0.625rem) clamp(0.55rem, 2.8cqi, 1rem);
-  white-space: nowrap;
-}
-[data-session-card] [data-session-card-timer] {
-  font-size: clamp(1.25rem, 6.5cqi, 1.875rem);
-  line-height: 1;
+@container session-card (max-width: 340px) {
+  [data-session-card-actions] button {
+    font-size: 0.75rem;
+    padding: 0.45rem 0.7rem;
+  }
+  [data-session-card-timer] {
+    font-size: 1.5rem;
+  }
 }
 
 /* Active session card - light mode */

@@ -445,7 +445,7 @@ export default function PokerBankrollTracker({
     void loadData()
   }, [loadData])
 
-  /** Keep swap cards in sync when the other party marks paid (or settles). */
+  /** Keep swap cards in sync when the other party marks cash settled. */
   useEffect(() => {
     if (!supabaseClient || !userId) return undefined
     const channel = supabaseClient
@@ -2077,7 +2077,7 @@ export default function PokerBankrollTracker({
                                 const line =
                                   swap.status === 'settled'
                                     ? paid
-                                      ? 'Paid'
+                                      ? 'Settled'
                                       : formatSwapIouLine(
                                           swap.settlement_amount,
                                           role,

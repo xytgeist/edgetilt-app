@@ -142,7 +142,7 @@ export default function PokerTournamentSwapsSection({
       if (error) throw error
       onSavedSwapsMutated?.()
     } catch (e) {
-      setLocalError(e?.message || 'Could not mark paid.')
+      setLocalError(e?.message || 'Could not mark settled.')
     } finally {
       setBusyId('')
     }
@@ -371,7 +371,7 @@ export default function PokerTournamentSwapsSection({
           const paid = swapIsMarkedPaid(swap)
           const statusLine =
             swap.status === 'settled' && paid
-              ? 'Paid'
+              ? 'Settled'
               : primaryStatus
           return (
             <div
@@ -399,7 +399,7 @@ export default function PokerTournamentSwapsSection({
                   onClick={() => void onMarkPaid(swap, role)}
                   className="mt-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white touch-manipulation disabled:opacity-50"
                 >
-                  Mark paid
+                  Mark settled
                 </button>
               ) : null}
 

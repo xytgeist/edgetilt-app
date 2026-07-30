@@ -181,7 +181,7 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
                     onChange={(e) => setMarkPaid(e.target.checked)}
                     className="h-4 w-4 rounded border-zinc-600"
                   />
-                  Mark paid (if you already settled cash)
+                  Mark settled (if cash already exchanged)
                 </label>
                 {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
                 <button

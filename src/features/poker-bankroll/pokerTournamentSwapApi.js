@@ -358,7 +358,7 @@ export async function acceptCounterpartySessionBind(supabase, swapId, sessionId,
   return { error: null }
 }
 
-/** True when either party has confirmed cash settlement. */
+/** True when either party has confirmed cash settled (DB: *_marked_paid). */
 export function swapIsMarkedPaid(swap) {
   return Boolean(swap?.creator_marked_paid || swap?.counterparty_marked_paid)
 }
@@ -370,7 +370,7 @@ export function swapIsMarkedPaid(swap) {
  * @param {boolean} paid
  */
 export async function markSwapPaid(supabase, swapId, role, paid) {
-  // Paid is a mutual fact: either party marking updates both cards.
+  // Cash settled is a mutual fact: either party marking updates both cards.
   const patch = paid
     ? { creator_marked_paid: true, counterparty_marked_paid: true }
     : role === 'creator'

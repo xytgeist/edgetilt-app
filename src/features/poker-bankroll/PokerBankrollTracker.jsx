@@ -69,6 +69,19 @@ import {
   pokerSessionMetaLine,
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
+import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
+import {
+  acceptCounterpartySessionBind,
+  ensureTournamentEvent,
+  isMissingTournamentSwapTableError,
+  loadMyTournamentSwaps,
+  loadSwapCounterpartyProfiles,
+  notifyTournamentSwap,
+  persistDraftSwapsForSession,
+  swapOtherPartyLabel,
+  syncCounterpartyResultsForSession,
+  syncCreatorResultsForSession,
+} from './pokerTournamentSwapApi.js'
 
 /** Match CasinoAutocomplete / Location field text styling. */
 const POKER_FIELD_CLASS =
@@ -158,8 +171,15 @@ export default function PokerBankrollTracker({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import'} */
+  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps'} */
   const [sheet, setSheet] = useState(null)
+  /** @type {object[]} */
+  const [draftSwaps, setDraftSwaps] = useState([])
+  /** @type {object[]} */
+  const [tournamentSwaps, setTournamentSwaps] = useState([])
+  /** @type {Record<string, object>} */
+  const [swapProfilesById, setSwapProfilesById] = useState({})
+  const [swapBindSessionId, setSwapBindSessionId] = useState('')
   const [rebuyAmount, setRebuyAmount] = useState('')
   /** @type {'rebuy' | 'addon'} */
   const [rebuyKind, setRebuyKind] = useState('rebuy')
@@ -210,6 +230,41 @@ export default function PokerBankrollTracker({
   )
   const completedSessions = useMemo(
     () => scopedSessions.filter((s) => s.status !== 'active'),
+    [scopedSessions],
+  )
+  const activeSessionSwaps = useMemo(
+    () =>
+      tournamentSwaps.filter(
+        (s) =>
+          s.creator_session_id === activeSession?.id ||
+          s.counterparty_session_id === activeSession?.id,
+      ),
+    [tournamentSwaps, activeSession?.id],
+  )
+  const editingSessionSwaps = useMemo(
+    () =>
+      editingId
+        ? tournamentSwaps.filter(
+            (s) => s.creator_session_id === editingId || s.counterparty_session_id === editingId,
+          )
+        : [],
+    [tournamentSwaps, editingId],
+  )
+  const pendingCounterpartySwaps = useMemo(
+    () =>
+      tournamentSwaps.filter(
+        (s) =>
+          s.counterparty_user_id === userId &&
+          s.status === 'active' &&
+          !s.counterparty_session_accepted_at,
+      ),
+    [tournamentSwaps, userId],
+  )
+  const bindableTourneySessions = useMemo(
+    () =>
+      scopedSessions.filter(
+        (s) => s.session_type === 'tournament' && (s.status === 'active' || s.status === 'completed'),
+      ),
     [scopedSessions],
   )
   /** Game dropdown: user-added for this Where first, then venue defaults. */
@@ -303,6 +358,25 @@ export default function PokerBankrollTracker({
           console.warn('[poker-bankroll] deal rolls load failed', rollErr.message)
         }
         setDealProfiles(byDeal)
+      }
+
+      const swapsRes = await loadMyTournamentSwaps(supabaseClient, userId)
+      if (swapsRes.error) {
+        if (!isMissingTournamentSwapTableError(swapsRes.error)) {
+          console.warn('[poker-bankroll] swaps load failed', swapsRes.error.message)
+        }
+        setTournamentSwaps([])
+        setSwapProfilesById({})
+      } else {
+        setTournamentSwaps(swapsRes.swaps || [])
+        const ids = []
+        for (const s of swapsRes.swaps || []) {
+          if (s.creator_user_id) ids.push(s.creator_user_id)
+          if (s.counterparty_user_id) ids.push(s.counterparty_user_id)
+        }
+        const { byId, error: pErr } = await loadSwapCounterpartyProfiles(supabaseClient, ids)
+        if (pErr) console.warn('[poker-bankroll] swap profiles failed', pErr.message)
+        setSwapProfilesById(byId)
       }
     } catch (e) {
       setError(e?.message || 'Could not load poker bankroll.')
@@ -493,6 +567,69 @@ export default function PokerBankrollTracker({
     })
   }
 
+  /**
+   * Soft-link event + persist draft swaps + notify guests/Edge counterparties.
+   * @param {object} sessionRow
+   * @param {object[]} drafts
+   */
+  async function attachDraftSwapsToSession(sessionRow, drafts) {
+    if (!supabaseClient || !userId || !sessionRow?.id) return
+    if (sessionRow.session_type !== 'tournament' || !drafts?.length) return
+
+    let tournamentEventId = sessionRow.tournament_event_id || null
+    const eventDate = localYmd(new Date(sessionRow.start_at))
+    const eventInput = {
+      venue_name: sessionRow.venue_name || '',
+      event_date: eventDate,
+      buy_in: Number(sessionRow.buy_in) || 0,
+      game_variant: sessionRow.game_variant || null,
+      currency: sessionRow.currency || 'USD',
+      display_name: sessionRow.tournament_name || null,
+    }
+    let eventRes = await ensureTournamentEvent(supabaseClient, userId, eventInput)
+    if (eventRes.needsConfirm && eventRes.existing) {
+      const same = window.confirm(
+        `Looks like you’re in “${eventRes.existing.display_name || eventRes.existing.venue_name}” (same venue/date/buy-in/game). Same event?\n\nOK = same event · Cancel = different event`,
+      )
+      eventRes = await ensureTournamentEvent(supabaseClient, userId, {
+        ...eventInput,
+        confirmSameEvent: same,
+        forceSibling: !same,
+      })
+    }
+    if (eventRes.error) {
+      console.warn('[poker-bankroll] event link failed', eventRes.error.message)
+    } else if (eventRes.event?.id) {
+      tournamentEventId = eventRes.event.id
+      const { error: linkErr } = await supabaseClient
+        .from('poker_bankroll_sessions')
+        .update({ tournament_event_id: tournamentEventId })
+        .eq('id', sessionRow.id)
+        .eq('user_id', userId)
+      if (linkErr) console.warn('[poker-bankroll] session event link failed', linkErr.message)
+    }
+
+    const { swaps, error: swapErr } = await persistDraftSwapsForSession(
+      supabaseClient,
+      userId,
+      sessionRow.id,
+      drafts,
+      tournamentEventId,
+      sessionRow,
+    )
+    if (swapErr) {
+      if (!isMissingTournamentSwapTableError(swapErr)) {
+        setError(swapErr.message || 'Could not save swaps.')
+      }
+      return
+    }
+    for (const swap of swaps || []) {
+      const { error: nErr } = await notifyTournamentSwap(supabaseClient, swap.id)
+      if (nErr) console.warn('[poker-bankroll] swap notify failed', nErr.message)
+    }
+    setDraftSwaps([])
+  }
+
   function openStartSession() {
     if (!canCreatePokerBankrollSession) {
       onRequireSubscribeForPokerBankroll?.()
@@ -503,6 +640,7 @@ export default function PokerBankrollTracker({
       return
     }
     setNearbyCasinos([])
+    setDraftSwaps([])
     setForm(
       formWithDefaultCashGame(
         emptyForm(),
@@ -524,6 +662,7 @@ export default function PokerBankrollTracker({
     setEditingId(null)
     setEditingPrevWl(0)
     setNearbyCasinos([])
+    setDraftSwaps([])
     setForm(
       formWithDefaultCashGame(
         emptyForm(),
@@ -545,6 +684,47 @@ export default function PokerBankrollTracker({
     setError('')
     setSheet('end')
     triggerTapHapticLight()
+  }
+
+  function openActiveSwaps() {
+    if (!activeSession || activeSession.session_type !== 'tournament') return
+    setDraftSwaps([])
+    setError('')
+    setSheet('swaps')
+    triggerTapHapticLight()
+  }
+
+  async function bindPendingSwap(swapId) {
+    if (!supabaseClient || !userId || !swapBindSessionId) {
+      setError('Pick one of your tournament sessions to attach.')
+      return
+    }
+    const session = sessions.find((s) => s.id === swapBindSessionId)
+    if (!session) {
+      setError('Session not found.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const ok = window.confirm(
+        'Attach this swap to your logged tournament? You confirm before it binds to your session.',
+      )
+      if (!ok) return
+      const { error } = await acceptCounterpartySessionBind(
+        supabaseClient,
+        swapId,
+        session.id,
+        session,
+      )
+      if (error) throw error
+      setSwapBindSessionId('')
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not attach swap.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function openRebuy(kind = 'rebuy') {
@@ -714,8 +894,15 @@ export default function PokerBankrollTracker({
     setSaving(true)
     setError('')
     try {
-      const { error: iErr } = await supabaseClient.from('poker_bankroll_sessions').insert(payload)
+      const { data: created, error: iErr } = await supabaseClient
+        .from('poker_bankroll_sessions')
+        .insert(payload)
+        .select('*')
+        .single()
       if (iErr) throw iErr
+      if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
+        await attachDraftSwapsToSession(created, draftSwaps)
+      }
       onPokerBankrollSessionCreated?.()
       setSheet(null)
       triggerTapHapticLight()
@@ -762,6 +949,33 @@ export default function PokerBankrollTracker({
         .eq('user_id', userId)
       if (uErr) throw uErr
       await applyBankrollDelta(wl)
+      if (activeSession.session_type === 'tournament') {
+        const ended = {
+          ...activeSession,
+          status: 'completed',
+          cash_out: cashOut,
+          bounty_winnings:
+            activeSession.session_type === 'tournament' && endBounties !== ''
+              ? parseFloat(endBounties)
+              : null,
+        }
+        const syncA = await syncCreatorResultsForSession(
+          supabaseClient,
+          activeSession.id,
+          ended,
+        )
+        if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
+          console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
+        }
+        const syncB = await syncCounterpartyResultsForSession(
+          supabaseClient,
+          activeSession.id,
+          ended,
+        )
+        if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
+          console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
+        }
+      }
       setSheet(null)
       triggerTapHapticLight()
       await loadData()
@@ -831,6 +1045,7 @@ export default function PokerBankrollTracker({
       reentries: session.reentries != null ? String(session.reentries) : '',
       notes: session.notes || '',
     })
+    setDraftSwaps([])
     setError('')
     setSheet('session')
     if ((session.venue_kind || 'live') === 'live') {
@@ -1059,21 +1274,51 @@ export default function PokerBankrollTracker({
     setError('')
     try {
       if (editingId) {
-        const { error: uErr } = await supabaseClient
+        const { data: updated, error: uErr } = await supabaseClient
           .from('poker_bankroll_sessions')
           .update(payload)
           .eq('id', editingId)
           .eq('user_id', userId)
+          .select('*')
+          .single()
         if (uErr) throw uErr
         await applyBankrollDelta(newWl - editingPrevWl)
+        if (payload.session_type === 'tournament') {
+          if (draftSwaps.length > 0) {
+            await attachDraftSwapsToSession(updated, draftSwaps)
+          }
+          const syncA = await syncCreatorResultsForSession(
+            supabaseClient,
+            editingId,
+            updated,
+          )
+          if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
+            console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
+          }
+          const syncB = await syncCounterpartyResultsForSession(
+            supabaseClient,
+            editingId,
+            updated,
+          )
+          if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
+            console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
+          }
+        }
       } else {
         if (!canCreatePokerBankrollSession) {
           onRequireSubscribeForPokerBankroll?.()
           return
         }
-        const { error: iErr } = await supabaseClient.from('poker_bankroll_sessions').insert(payload)
+        const { data: created, error: iErr } = await supabaseClient
+          .from('poker_bankroll_sessions')
+          .insert(payload)
+          .select('*')
+          .single()
         if (iErr) throw iErr
         await applyBankrollDelta(newWl)
+        if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
+          await attachDraftSwapsToSession(created, draftSwaps)
+        }
         onPokerBankrollSessionCreated?.()
       }
       setSheet(null)
@@ -1438,6 +1683,15 @@ export default function PokerBankrollTracker({
                         Add-on
                       </button>
                     ) : null}
+                    {activeSession.session_type === 'tournament' ? (
+                      <button
+                        type="button"
+                        onClick={openActiveSwaps}
+                        className="rounded-2xl border border-cyan-400/40 bg-cyan-950/50 px-4 py-2.5 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
+                      >
+                        Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={openEndSession}
@@ -1477,6 +1731,63 @@ export default function PokerBankrollTracker({
                 </div>
               )
             )}
+
+            {pendingCounterpartySwaps.length > 0 ? (
+              <div
+                data-elevated-card="surface"
+                className="mb-4 rounded-3xl border border-cyan-500/30 bg-cyan-950/40 p-4"
+              >
+                <div className="mb-2 text-xs font-bold uppercase tracking-wide text-cyan-300">
+                  Incoming swaps
+                </div>
+                <p className="mb-3 text-[11px] text-zinc-400">
+                  Confirm before a swap binds to your logged tournament.
+                </p>
+                <div className="mb-3">
+                  <label className="mb-1 block text-[10px] font-semibold uppercase text-zinc-500">
+                    Your tournament session
+                  </label>
+                  <select
+                    className={`${POKER_FIELD_CLASS} text-sm`}
+                    value={swapBindSessionId}
+                    onChange={(e) => setSwapBindSessionId(e.target.value)}
+                  >
+                    <option value="">Select…</option>
+                    {bindableTourneySessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {pokerSessionStakesLabel(s)} · {localYmd(new Date(s.start_at))}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <ul className="space-y-2">
+                  {pendingCounterpartySwaps.map((swap) => {
+                    const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
+                    return (
+                      <li
+                        key={swap.id}
+                        className="flex items-center justify-between gap-2 rounded-2xl bg-zinc-900/60 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-white">{other}</div>
+                          <div className="text-[11px] text-zinc-400">
+                            {swap.pct_creator_gives}% ↔ {swap.pct_counterparty_gives}%
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={saving || !swapBindSessionId}
+                          onClick={() => void bindPendingSwap(swap.id)}
+                          className="shrink-0 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white touch-manipulation disabled:opacity-40"
+                        >
+                          Accept
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ) : null}
 
             {completedSessions.length > 0 ? (
               <div className="mb-3 flex w-full flex-nowrap items-center gap-1">
@@ -1727,6 +2038,17 @@ export default function PokerBankrollTracker({
               showCashDetails={Boolean(editingId) || form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
             />
 
+            <PokerTournamentSwapsSection
+              supabaseClient={supabaseClient}
+              userId={userId}
+              enabled={form.session_type === 'tournament'}
+              draftSwaps={draftSwaps}
+              onDraftSwapsChange={setDraftSwaps}
+              savedSwaps={editingSessionSwaps}
+              profilesById={swapProfilesById}
+              onSavedSwapsMutated={() => void loadData()}
+            />
+
             <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
               <div className="min-w-0">
                 <FieldLabel>Date</FieldLabel>
@@ -1942,6 +2264,16 @@ export default function PokerBankrollTracker({
               showCashDetails={form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
             />
 
+            <PokerTournamentSwapsSection
+              supabaseClient={supabaseClient}
+              userId={userId}
+              enabled={form.session_type === 'tournament'}
+              draftSwaps={draftSwaps}
+              onDraftSwapsChange={setDraftSwaps}
+              savedSwaps={[]}
+              profilesById={swapProfilesById}
+            />
+
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
 
             <button
@@ -1952,6 +2284,75 @@ export default function PokerBankrollTracker({
             >
               {saving ? 'Starting…' : 'Start Session'}
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {sheet === 'swaps' && activeSession ? (
+        <div
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          onClick={() => !saving && setSheet(null)}
+        >
+          <div
+            data-poker-bankroll-sheet
+            className={POKER_SHEET_PANEL_CLASS}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-lg font-bold text-white">Tournament swaps</div>
+              <button
+                type="button"
+                onClick={() => setSheet(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <PokerTournamentSwapsSection
+              supabaseClient={supabaseClient}
+              userId={userId}
+              enabled
+              draftSwaps={draftSwaps}
+              onDraftSwapsChange={setDraftSwaps}
+              savedSwaps={activeSessionSwaps}
+              profilesById={swapProfilesById}
+              onSavedSwapsMutated={() => void loadData()}
+              compact
+            />
+            {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
+            <button
+              type="button"
+              disabled={saving || draftSwaps.length === 0}
+              onClick={() => {
+                void (async () => {
+                  if (!activeSession) return
+                  setSaving(true)
+                  setError('')
+                  try {
+                    await attachDraftSwapsToSession(activeSession, draftSwaps)
+                    setSheet(null)
+                    await loadData()
+                  } catch (e) {
+                    setError(e?.message || 'Could not save swaps.')
+                  } finally {
+                    setSaving(false)
+                  }
+                })()
+              }}
+              className="mt-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : draftSwaps.length ? 'Save swaps' : 'Close when done'}
+            </button>
+            {draftSwaps.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => setSheet(null)}
+                className="mt-2 w-full rounded-2xl border border-zinc-700 py-3 text-sm font-semibold text-zinc-300 touch-manipulation"
+              >
+                Done
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -1002,6 +1002,14 @@ export default function AppShell({
           setMenuOpen(false)
         }
       }
+      if (targetTab === 'poker-bankroll') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('poker-bankroll')
+          setMenuOpen(false)
+        }
+      }
       const guideFromQuery = (params.get('guide') || '').trim()
       const guideFromPath = parseGuideSlugFromPathname(window.location.pathname || '')
       const guideSlug = guideFromQuery || guideFromPath

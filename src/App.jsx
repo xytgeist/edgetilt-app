@@ -45,9 +45,13 @@ import {
 import { clearAccountClientState } from './utils/clearAccountClientState.js'
 import { restoreSupabaseSession } from './utils/supabaseSessionRestore.js'
 import { parseMonitorPathname } from './features/ops/opsMonitorNavigation.js'
+import { parsePokerSwapClaimFromLocation } from './features/poker-bankroll/pokerTournamentSwapNav.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
+const PokerTournamentSwapClaimPage = lazyRoute(
+  () => import('./features/poker-bankroll/PokerTournamentSwapClaimPage.jsx'),
+)
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -94,6 +98,14 @@ function App() {
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window === 'undefined') return 'app'
     if (parseMonitorPathname(window.location.pathname || '/')) return 'monitor'
+    if (
+      parsePokerSwapClaimFromLocation(
+        window.location.pathname || '/',
+        window.location.search || '',
+      )
+    ) {
+      return 'poker-swap-claim'
+    }
     return (
       resolveLegalViewFromLocation(
         window.location.pathname || '/',
@@ -896,6 +908,15 @@ function App() {
         setCurrentView('monitor')
         return
       }
+      if (
+        parsePokerSwapClaimFromLocation(
+          window.location.pathname || '/',
+          window.location.search || '',
+        )
+      ) {
+        setCurrentView('poker-swap-claim')
+        return
+      }
       setCurrentView('app')
       const ctx = readLegalReturnContext()
       if (ctx) finishLegalReturn(ctx)
@@ -936,6 +957,30 @@ function App() {
         onBack={exitLegalDocument}
         onGotIt={exitLegalDocument}
       />
+    )
+  }
+
+  if (currentView === 'poker-swap-claim') {
+    const claim =
+      typeof window !== 'undefined'
+        ? parsePokerSwapClaimFromLocation(
+            window.location.pathname || '/',
+            window.location.search || '',
+          )
+        : null
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-zinc-950 text-zinc-400 flex items-center justify-center">
+            Loading…
+          </div>
+        }
+      >
+        <PokerTournamentSwapClaimPage
+          supabaseClient={supabase}
+          token={claim?.token || ''}
+        />
+      </Suspense>
     )
   }
 

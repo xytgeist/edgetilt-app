@@ -56,11 +56,17 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
 }
 
-function isEmailLocalPart(text: string, index: number) {
-  if (index <= 0) return false
-  const at = text.lastIndexOf('@', index - 1)
-  if (at < 0) return false
-  return /^[a-zA-Z0-9._-]*$/.test(text.slice(at + 1, index))
+/** Skip URL matches that are part of an email address (local or domain segment). */
+function isPartOfEmailAddress(text: string, start: number, end: number) {
+  if (text[end] === '@') {
+    const rest = text.slice(end + 1)
+    if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/.test(rest)) return true
+  }
+  if (start > 0) {
+    const at = text.lastIndexOf('@', start - 1)
+    if (at >= 0 && /^[a-zA-Z0-9._+-]*$/.test(text.slice(at + 1, start))) return true
+  }
+  return false
 }
 
 export function extractFirstUrlFromText(text: string): string | null {
@@ -69,7 +75,7 @@ export function extractFirstUrlFromText(text: string): string | null {
   const re = new RegExp(URL_RE.source, URL_RE.flags)
   let m: RegExpExecArray | null
   while ((m = re.exec(s)) !== null) {
-    if (isEmailLocalPart(s, m.index)) continue
+    if (isPartOfEmailAddress(s, m.index, m.index + m[0].length)) continue
     const raw = trimTrailingPunct(m[0])
     let href = raw
     if (/^www\./i.test(href)) href = `https://${href}`

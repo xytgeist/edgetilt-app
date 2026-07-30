@@ -571,7 +571,9 @@ export default function PokerTournamentSwapsSection({
               {otherResultLine && !bothReady ? (
                 <div className="mt-0.5 text-[11px] text-zinc-400">{otherResultLine}</div>
               ) : null}
-              {swap.status === 'settled' && !paid ? (
+              {swap.status === 'settled' &&
+              !paid &&
+              Math.abs(Number(swap.settlement_amount) || 0) >= 0.005 ? (
                 <button
                   type="button"
                   disabled={busyId === swap.id}

@@ -43,8 +43,6 @@ Fair +652 (9 books)
 🎯 Best cover on the board today:
 Pirates -1.5 (+172) @ FanDuel
 
-It's not a huge edge, but it's the cleanest number I'm seeing relative to everything else out there this morning.
-
 👀 Other spots on my radar:
 • World Cup · Actis ML +1400 @ DraftKings (+8.1% EV)
 • World Cup · Meza ML +600 @ BetUS (+5.2% EV)
@@ -56,7 +54,7 @@ France vs Paraguay (Sat 2PM PT)
 Full board breakdown by sport below 👇
 ```
 
-When no spread or ML clears **~3.5-4%** EV, Scott switches to the tighter voice (*"If I'm playing one side today…"*) and lists longshot ML juice inline. **On Tap Tomorrow** was removed from the parent post. **Dog of the Day** stays the biggest plus-money longshot (not +EV gated). Thread parts unchanged.
+When no spread or ML clears **~3.5-4%** EV, Scott switches to the tighter voice (*"If I'm playing one side today…"*) and lists longshot ML juice inline. Featured lean has **no canned filler** under the pick ... only optional **Rundown** context when available. **On Tap Tomorrow** was removed from the parent post. **Dog of the Day** stays the biggest plus-money longshot (not +EV gated). Thread parts unchanged.
 
 **Thread part (one per calendar sport today), e.g. MLB:**
 ```text

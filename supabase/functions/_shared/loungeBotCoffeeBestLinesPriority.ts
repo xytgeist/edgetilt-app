@@ -63,10 +63,29 @@ export const COFFEE_SECONDARY_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_MORE_SOCCER_T
 export const COFFEE_OTHER_SOCCER_THREAD_LABEL = 'Other Soccer'
 export const COFFEE_OTHER_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_OTHER_SOCCER_THREAD_LABEL}`
 
+/** All Odds API `tennis_*` keys (except table tennis) → one Best Lines thread part. */
+export const COFFEE_TENNIS_COMBINED_SORT_KEY = 'tennis_combined'
+
 const COFFEE_SOCCER_LUMP_SORT_KEYS = new Set([
   'soccer_top_leagues',
   'soccer_core_secondary_leagues',
+  'soccer_other_leagues',
 ])
+
+export function isCoffeeTennisKey(sportKey: string): boolean {
+  const sk = normalizeSportKey(sportKey)
+  if (!sk.startsWith('tennis_')) return false
+  if (sk.includes('table_tennis') || sk.includes('ping_pong')) return false
+  return true
+}
+
+/** ATP before WTA before other tour keys when merging tennis slices. */
+export function coffeeTennisSliceSortOrder(sportKey: string): number {
+  const sk = normalizeSportKey(sportKey)
+  if (sk === 'tennis_atp' || sk.startsWith('tennis_atp_')) return 0
+  if (sk === 'tennis_wta' || sk.startsWith('tennis_wta_')) return 1
+  return 2
+}
 
 /** Daily Best Lines thread sort — higher rank = earlier in thread. */
 const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {
@@ -79,6 +98,7 @@ const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {
   soccer_top_leagues: 940,
   boxing_boxing: 930,
   mma_mixed_martial_arts: 925,
+  tennis_combined: 920,
   tennis_atp: 920,
   tennis_wta: 919,
   soccer_core_secondary_leagues: 910,
@@ -282,6 +302,7 @@ export function resolveCoffeeBestLinesThreadTier(sortKey: string): CoffeeBestLin
   if (sk === 'soccer_top_leagues') return 1
   if (sk === 'soccer_core_secondary_leagues') return 2
   if (sk === 'soccer_other_leagues') return 2
+  if (sk === COFFEE_TENNIS_COMBINED_SORT_KEY) return 2
   return resolveCoffeeBestLinesTier(sk)
 }
 

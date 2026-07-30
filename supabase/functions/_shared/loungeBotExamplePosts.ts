@@ -36,8 +36,6 @@ export const SCOTT_EXAMPLE_POST_SPECS: ScottExamplePostSpec[] = [
       '🎯 Best cover on the board today:',
       'Pirates -1.5 (+172) @ FanDuel',
       '',
-      'It\'s not a huge edge, but it\'s the cleanest number I\'m seeing relative to everything else out there this morning.',
-      '',
       '👀 Other spots on my radar:',
       '• World Cup · Actis ML +1400 @ DraftKings (+8.1% EV)',
       '• World Cup · Meza ML +600 @ BetUS (+5.2% EV)',

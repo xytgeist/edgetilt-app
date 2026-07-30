@@ -38,8 +38,11 @@ import {
   coffeeCoreSecondarySoccerSortOrder,
   coffeeOtherSoccerSortOrder,
   coffeeTopTierSoccerSortOrder,
+  COFFEE_TENNIS_COMBINED_SORT_KEY,
+  coffeeTennisSliceSortOrder,
   isCoffeeCoreSecondarySoccerKey,
   isCoffeeOtherSoccerKey,
+  isCoffeeTennisKey,
   isCoffeeTopTierSoccerKey,
   selectCoffeeBestLinesThreadCandidates,
   shouldIncludeCoffeeBestLinesThreadPart,
@@ -867,14 +870,6 @@ function formatCompactPickLabel(candidate: RadarCandidate | FeaturedLean): strin
   return `${team} ML ${formatAmericanOdds(pick.pickPrice)}`
 }
 
-function defaultFeaturedReasoning(edgePct: number, isSpread: boolean): string {
-  if (edgePct >= 7) return 'This is the sharpest edge I\'ve got this morning.'
-  if (isSpread) {
-    return "It's not a huge edge, but it's the cleanest number I'm seeing relative to everything else out there this morning."
-  }
-  return "It's the best price I'm seeing this morning."
-}
-
 type RadarCandidate =
   | { kind: 'spread'; pick: SpreadPick; edgePct: number }
   | { kind: 'ml'; pick: OddsPick; edgePct: number }
@@ -1012,13 +1007,7 @@ function buildMainCaption(
         : featured.pick,
     )
     const featuredNote = contextByEventKey?.get(featuredKey)
-    const reasoning =
-      featuredNote?.trim()
-      || defaultFeaturedReasoning(
-        featured.kind === 'spread' ? featured.pick.edgePct : featured.pick.edgePct,
-        isSpreadFeatured,
-      )
-    lines.push(reasoning)
+    if (featuredNote?.trim()) lines.push(featuredNote.trim())
 
     if (radar.length) {
       lines.push('')
@@ -1267,6 +1256,7 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
   const topTierSoccerSlices: SportCoffeeSlice[] = []
   const coreSecondarySoccerSlices: SportCoffeeSlice[] = []
   const otherSoccerSlices: SportCoffeeSlice[] = []
+  const tennisSlices: SportCoffeeSlice[] = []
   const biggestDogs: BiggestDog[] = []
 
   for (const slice of slices) {
@@ -1278,6 +1268,8 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
       coreSecondarySoccerSlices.push(slice)
     } else if (isCoffeeOtherSoccerKey(slice.sportKey)) {
       otherSoccerSlices.push(slice)
+    } else if (isCoffeeTennisKey(slice.sportKey)) {
+      tennisSlices.push(slice)
     } else if (shouldIncludeCoffeeBestLinesThreadPart(slice.sportKey, slice)) {
       const body = buildSportLinesThreadBody(
         slice.categoryLabel,
@@ -1352,6 +1344,32 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
           aggregateCoffeeBestLinesSliceStats(otherSoccerSlices),
         ),
       })
+    }
+  }
+
+  if (tennisSlices.length) {
+    const sortedTennis = [...tennisSlices].sort(
+      (a, b) => coffeeTennisSliceSortOrder(a.sportKey) - coffeeTennisSliceSortOrder(b.sportKey),
+    )
+    const mergedEvents = sortedTennis.flatMap((slice) => slice.events)
+    const totalBefore = sortedTennis.reduce(
+      (sum, slice) => sum + (slice.totalBefore ?? extractSlateGameBestLines(slice.events).length),
+      0,
+    )
+    const agg = aggregateCoffeeBestLinesSliceStats(sortedTennis)
+    if (shouldIncludeCoffeeBestLinesThreadPart(COFFEE_TENNIS_COMBINED_SORT_KEY, agg)) {
+      const body = buildSportLinesThreadBody(
+        'Tennis',
+        mergedEvents,
+        COFFEE_TENNIS_COMBINED_SORT_KEY,
+        totalBefore,
+      )
+      if (body) {
+        threadPartCandidates.push({
+          part: { categoryLabel: 'Tennis', body },
+          meta: buildCoffeeBestLinesThreadCandidateMeta(COFFEE_TENNIS_COMBINED_SORT_KEY, agg),
+        })
+      }
     }
   }
 

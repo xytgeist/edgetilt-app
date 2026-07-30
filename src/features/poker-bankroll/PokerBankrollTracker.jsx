@@ -2326,7 +2326,7 @@ export default function PokerBankrollTracker({
                                         e.stopPropagation()
                                         void markSessionCardSwapSettled(swap)
                                       }}
-                                      className="col-start-1 box-border h-3.5 w-9 max-w-9 self-center rounded border border-emerald-500 bg-emerald-500 px-0 text-center text-[7px] font-bold leading-none text-white touch-manipulation active:bg-emerald-600 disabled:opacity-50"
+                                      className="col-start-1 box-border h-3.5 w-9 max-w-9 self-center rounded bg-emerald-500 px-0 text-center text-[7px] font-bold leading-none text-white touch-manipulation active:bg-emerald-600 disabled:opacity-50"
                                     >
                                       {sessionCardSwapBusyId === swap.id ? '…' : 'Settle'}
                                     </button>

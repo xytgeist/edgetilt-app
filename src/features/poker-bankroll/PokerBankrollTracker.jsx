@@ -1731,21 +1731,18 @@ export default function PokerBankrollTracker({
                     Session in progress
                   </span>
                 </div>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="truncate text-lg font-bold leading-tight text-white">
-                      {pokerSessionStakesLabel(activeSession)}
-                    </div>
-                    <div className="mt-0.5 truncate text-sm text-zinc-400">
-                      {pokerSessionMetaLine(activeSession)}
-                    </div>
-                    <div className="mt-0.5 text-sm text-zinc-400">
-                      {pokerSessionInForLine(activeSession)}
-                    </div>
-                    <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
-                      {fmtPokerDuration(elapsed)}
-                    </div>
+                <div className="min-w-0">
+                  <div className="text-lg font-bold leading-tight text-white">
+                    {pokerSessionStakesLabel(activeSession)}
                   </div>
+                  <div className="mt-0.5 text-sm text-zinc-400">
+                    {pokerSessionMetaLine(activeSession)}
+                  </div>
+                  <div className="mt-0.5 text-sm text-zinc-400">
+                    {pokerSessionInForLine(activeSession)}
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end">
                   <div
                     className="flex shrink-0 flex-col gap-2"
                     onClick={(e) => e.stopPropagation()}
@@ -1775,6 +1772,9 @@ export default function PokerBankrollTracker({
                       End Session
                     </button>
                   </div>
+                </div>
+                <div className="mt-3 text-3xl font-black tabular-nums text-emerald-200">
+                  {fmtPokerDuration(elapsed)}
                 </div>
               </div>
             ) : (

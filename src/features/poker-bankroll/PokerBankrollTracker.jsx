@@ -231,13 +231,14 @@ export default function PokerBankrollTracker({
   )
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
+  /** Missing profile rows count as $0 so users can start without a setup step. */
   const overallBankroll = isOnStake
     ? dealProfile != null
-      ? Number(dealProfile.overall_bankroll)
-      : null
-    : profile
-      ? Number(profile.overall_bankroll)
-      : null
+      ? Number(dealProfile.overall_bankroll) || 0
+      : 0
+    : profile != null
+      ? Number(profile.overall_bankroll) || 0
+      : 0
   const hasBankrollProfile = isOnStake ? dealProfile != null : profile != null
 
   const scopedSessions = useMemo(() => {
@@ -906,10 +907,6 @@ export default function PokerBankrollTracker({
       return
     }
     const now = new Date()
-    if (isOnStake && !hasBankrollProfile) {
-      setError('Set your On Stake starting bankroll first.')
-      return
-    }
     const payload = {
       user_id: userId,
       deal_id: scopeDealIdForWrite(),
@@ -1305,10 +1302,6 @@ export default function PokerBankrollTracker({
       ? null
       : new Date(new Date(startAt).getTime() + durationHrs * 3_600_000).toISOString()
 
-    if (isOnStake && !hasBankrollProfile && !editingId) {
-      setError('Set your On Stake starting bankroll first.')
-      return
-    }
     const payload = {
       user_id: userId,
       deal_id: editingId
@@ -1696,23 +1689,21 @@ export default function PokerBankrollTracker({
                 >
                   {isOnStake ? 'On Stake bankroll' : 'Poker bankroll'}
                 </div>
-                {hasBankrollProfile ? (
-                  <button
-                    type="button"
-                    onClick={openSetBankroll}
-                    className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
-                      isOnStake
-                        ? 'bg-amber-500/25 text-amber-100 active:bg-amber-500/40'
-                        : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
-                    }`}
-                  >
-                    Edit
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={openSetBankroll}
+                  className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+                    isOnStake
+                      ? 'bg-amber-500/25 text-amber-100 active:bg-amber-500/40'
+                      : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
+                  }`}
+                >
+                  Edit
+                </button>
               </div>
               {loading ? (
                 <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
-              ) : hasBankrollProfile ? (
+              ) : (
                 <>
                   <div
                     className={`text-5xl font-black tracking-tight ${
@@ -1737,20 +1728,8 @@ export default function PokerBankrollTracker({
                     </button>
                   ) : null}
                 </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={openSetBankroll}
-                  className={`mt-1 text-sm font-semibold touch-manipulation ${
-                    isOnStake ? 'text-amber-300' : 'text-emerald-400'
-                  }`}
-                >
-                  {isOnStake
-                    ? '+ Set On Stake starting bankroll'
-                    : '+ Set your starting bankroll'}
-                </button>
               )}
-              {hasBankrollProfile && !loading ? (
+              {!loading ? (
                 <div
                   className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${
                     isOnStake ? 'border-amber-400/25' : 'border-zinc-700/40'
@@ -1866,8 +1845,7 @@ export default function PokerBankrollTracker({
                 })()}
               </div>
             ) : (
-              !loading &&
-              hasBankrollProfile && (
+              !loading && (
                 <div className="mb-4 flex flex-col gap-2">
                   <button
                     type="button"
@@ -1984,13 +1962,9 @@ export default function PokerBankrollTracker({
               >
                 <p className="text-white font-semibold">No poker sessions yet</p>
                 <p className="mt-1 text-sm text-zinc-500">
-                  {hasBankrollProfile
-                    ? isOnStake
-                      ? 'Start or log an On Stake session for this deal.'
-                      : 'Start a live session, or log one from earlier.'
-                    : isOnStake
-                      ? 'Set your On Stake bankroll to get started.'
-                      : 'Set your poker bankroll to get started.'}
+                  {isOnStake
+                    ? 'Start or log an On Stake session for this deal.'
+                    : 'Start a live session, or log one from earlier.'}
                 </p>
               </div>
             ) : (
@@ -2140,7 +2114,7 @@ export default function PokerBankrollTracker({
           ) : (
             <PokerBankrollTrendTab
               sessions={completedSessions}
-              initialBankroll={hasBankrollProfile ? overallBankroll : null}
+              initialBankroll={overallBankroll}
             />
           )
         ) : null}

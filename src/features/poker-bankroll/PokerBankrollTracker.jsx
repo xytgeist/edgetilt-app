@@ -207,6 +207,12 @@ export default function PokerBankrollTracker({
   const [sheet, setSheet] = useState(null)
   /** @type {object[]} */
   const [draftSwaps, setDraftSwaps] = useState([])
+  /**
+   * Incoming swap Accept with no matching session yet → Start Session prefill,
+   * then bind on submit (counterparty path; not a new creator draft).
+   * @type {object | null}
+   */
+  const [incomingAcceptSwap, setIncomingAcceptSwap] = useState(null)
   /** @type {object[]} */
   const [tournamentSwaps, setTournamentSwaps] = useState([])
   /** @type {Record<string, object>} */
@@ -767,6 +773,7 @@ export default function PokerBankrollTracker({
     }
     setNearbyCasinos([])
     setDraftSwaps([])
+    setIncomingAcceptSwap(null)
     setForm(
       formWithDefaultCashGame(
         emptyForm(),
@@ -778,6 +785,57 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
     applyGeoCurrencyDefault()
     void fetchNearby((name) => setForm((f) => (f.venue_kind === 'live' && !f.venue_name ? { ...f, venue_name: name } : f)))
+  }
+
+  /** Start Session prefilled from an incoming soft-event swap (no matching session yet). */
+  function openStartForIncomingSwap(swap) {
+    if (!canCreatePokerBankrollSession) {
+      onRequireSubscribeForPokerBankroll?.()
+      return
+    }
+    if (activeSession) {
+      setError('You already have a session in progress.')
+      return
+    }
+    const event = swap?.tournament_event_id
+      ? swapEventsById[swap.tournament_event_id] || null
+      : null
+    const lastTourneyGame = lastTournamentGameFromSessions(scopedSessions)
+    let nextForm = {
+      ...emptyForm(),
+      session_type: 'tournament',
+      game_variant: lastTourneyGame.game_variant,
+      game_custom_name: lastTourneyGame.game_custom_name,
+      tournament_event_pick: '',
+    }
+    if (event) {
+      nextForm = applySoftTournamentEventToForm(nextForm, event, {
+        normalizeCurrency: normalizePokerCurrency,
+        pokerGamePickFromStored,
+        pokerOnlineSiteSelectValue,
+        pokerOnlineSiteLabelFromId,
+        pokerClubAppSelectValue,
+        pokerClubAppLabelFromId,
+      })
+    } else {
+      nextForm.tournament_event_pick = POKER_TOURNAMENT_MANUAL_PICK_ID
+    }
+    setNearbyCasinos([])
+    setDraftSwaps([])
+    setIncomingAcceptSwap(swap)
+    setForm(nextForm)
+    setError('')
+    setSheet('start')
+    triggerTapHapticLight()
+    if (nextForm.venue_kind === 'live') {
+      void fetchNearby((name) =>
+        setForm((f) =>
+          f.venue_kind === 'live' && !String(f.venue_name || '').trim()
+            ? { ...f, venue_name: name }
+            : f,
+        ),
+      )
+    }
   }
 
   function openLogPast() {
@@ -820,38 +878,41 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
-  async function bindPendingSwap(swap) {
+  /**
+   * Incoming Accept:
+   * - Matching session already started/logged → bind swap onto it.
+   * - Otherwise → open Start Session prefilled (event + swap), bind on submit.
+   */
+  async function acceptIncomingSwap(swap) {
     if (!supabaseClient || !userId || !swap?.id) return
     const session = findCounterpartyBindSession(swap, scopedSessions)
-    if (!session) {
+    if (session) {
+      setSaving(true)
+      setError('')
+      try {
+        const { error } = await acceptCounterpartySessionBind(
+          supabaseClient,
+          swap.id,
+          session.id,
+          session,
+        )
+        if (error) throw error
+        await loadData()
+      } catch (e) {
+        setError(e?.message || 'Could not attach swap.')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+    if (activeSession) {
       const eventLabel = formatTournamentEventLabel(swapEventsById[swap.tournament_event_id])
       setError(
-        swap.tournament_event_id
-          ? `Log ${eventLabel} first, then Accept to attach this swap.`
-          : 'Log the matching tournament session first, then Accept.',
+        `Your active session doesn't match ${eventLabel}. End it (or switch) before accepting this swap.`,
       )
       return
     }
-    setSaving(true)
-    setError('')
-    try {
-      const ok = window.confirm(
-        'Attach this swap to your logged tournament? You confirm before it binds to your session.',
-      )
-      if (!ok) return
-      const { error } = await acceptCounterpartySessionBind(
-        supabaseClient,
-        swap.id,
-        session.id,
-        session,
-      )
-      if (error) throw error
-      await loadData()
-    } catch (e) {
-      setError(e?.message || 'Could not attach swap.')
-    } finally {
-      setSaving(false)
-    }
+    openStartForIncomingSwap(swap)
   }
 
   function openRebuy(kind = 'rebuy') {
@@ -1027,9 +1088,19 @@ export default function PokerBankrollTracker({
         .select('*')
         .single()
       if (iErr) throw iErr
+      if (payload.session_type === 'tournament' && incomingAcceptSwap?.id) {
+        const { error: bindErr } = await acceptCounterpartySessionBind(
+          supabaseClient,
+          incomingAcceptSwap.id,
+          created.id,
+          created,
+        )
+        if (bindErr) throw bindErr
+      }
       if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
         await attachDraftSwapsToSession(created, draftSwaps)
       }
+      setIncomingAcceptSwap(null)
       onPokerBankrollSessionCreated?.()
       setSheet(null)
       triggerTapHapticLight()
@@ -1303,6 +1374,7 @@ export default function PokerBankrollTracker({
   /** Close any sheet without leaving form-validation errors on Overview. */
   function dismissSheet() {
     setError('')
+    setIncomingAcceptSwap(null)
     setSheet(null)
   }
 
@@ -1941,7 +2013,7 @@ export default function PokerBankrollTracker({
                   Incoming swaps
                 </div>
                 <p className="mb-3 text-[11px] text-zinc-400">
-                  Accept attaches the swap to your matching logged tournament.
+                  Accept attaches to your matching session, or opens Start with the swap ready.
                 </p>
                 <ul className="space-y-2">
                   {pendingCounterpartySwaps.map((swap) => {
@@ -1964,20 +2036,16 @@ export default function PokerBankrollTracker({
                         </div>
                         <button
                           type="button"
-                          disabled={saving || !canBind}
-                          onClick={() => void bindPendingSwap(swap)}
+                          disabled={saving}
+                          onClick={() => void acceptIncomingSwap(swap)}
                           title={
                             canBind
-                              ? 'Accept and attach to your matching session'
-                              : 'Log this tournament first, then Accept'
+                              ? 'Attach this swap to your matching session'
+                              : 'Start this tournament with the swap pre-filled'
                           }
-                          className={
-                            canBind
-                              ? 'shrink-0 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-black text-white touch-manipulation shadow-sm'
-                              : 'shrink-0 rounded-xl border border-cyan-500/40 bg-transparent px-3 py-1.5 text-[11px] font-semibold text-cyan-300 touch-manipulation opacity-100'
-                          }
+                          className="shrink-0 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-black text-white touch-manipulation shadow-sm disabled:opacity-50"
                         >
-                          {canBind ? 'Accept' : 'Log first'}
+                          Accept
                         </button>
                       </li>
                     )
@@ -2527,6 +2595,7 @@ export default function PokerBankrollTracker({
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={[]}
               profilesById={swapProfilesById}
+              incomingAcceptSwap={incomingAcceptSwap}
             />
 
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
@@ -2537,7 +2606,11 @@ export default function PokerBankrollTracker({
               onClick={() => void startLiveSession()}
               className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
             >
-              {saving ? 'Starting…' : 'Start Session'}
+              {saving
+                ? 'Starting…'
+                : incomingAcceptSwap
+                  ? 'Start & accept swap'
+                  : 'Start Session'}
             </button>
           </div>
         </div>

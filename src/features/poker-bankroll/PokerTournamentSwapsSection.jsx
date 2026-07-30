@@ -36,6 +36,7 @@ const FIELD =
  *   profilesById?: Record<string, object>,
  *   onSavedSwapsMutated?: () => void,
  *   compact?: boolean,
+ *   incomingAcceptSwap?: object | null,
  * }} props
  */
 export default function PokerTournamentSwapsSection({
@@ -48,6 +49,7 @@ export default function PokerTournamentSwapsSection({
   profilesById = {},
   onSavedSwapsMutated,
   compact = false,
+  incomingAcceptSwap = null,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [manualBuyIn, setManualBuyIn] = useState({})
@@ -69,7 +71,7 @@ export default function PokerTournamentSwapsSection({
     return s
   }, [draftSwaps, savedSwaps])
 
-  /** Sum of % you give across draft + saved swaps (your side of the package). */
+  /** Sum of % you give across draft + saved + pending incoming accept (your side). */
   const mySideTotalPct = useMemo(() => {
     let total = 0
     for (const d of draftSwaps) {
@@ -85,11 +87,25 @@ export default function PokerTournamentSwapsSection({
           : Number(swap.pct_creator_gives)
       if (Number.isFinite(pct)) total += pct
     }
+    if (incomingAcceptSwap) {
+      const pct = Number(incomingAcceptSwap.pct_counterparty_gives)
+      if (Number.isFinite(pct)) total += pct
+    }
     return Math.round(total * 1000) / 1000
-  }, [draftSwaps, savedSwaps, userId])
+  }, [draftSwaps, savedSwaps, incomingAcceptSwap, userId])
 
-  const hasAnySwaps = draftSwaps.length > 0 || savedSwaps.length > 0
+  const hasAnySwaps =
+    draftSwaps.length > 0 || savedSwaps.length > 0 || Boolean(incomingAcceptSwap)
   const mySideOver = mySideTotalPct > 100
+  const incomingOther = incomingAcceptSwap
+    ? swapOtherPartyLabel(incomingAcceptSwap, profilesById, userId)
+    : ''
+  const incomingYouPct = incomingAcceptSwap
+    ? Number(incomingAcceptSwap.pct_counterparty_gives)
+    : null
+  const incomingTheyPct = incomingAcceptSwap
+    ? Number(incomingAcceptSwap.pct_creator_gives)
+    : null
 
   if (!enabled) return null
 
@@ -302,6 +318,24 @@ export default function PokerTournamentSwapsSection({
       ) : null}
 
       <div className="flex flex-col gap-2">
+        {incomingAcceptSwap ? (
+          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/40 p-3">
+            <div className="mb-1 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-white">{incomingOther}</div>
+                <div className="text-[11px] text-emerald-200/80">Incoming · attaches on Start</div>
+              </div>
+              <div className="shrink-0 text-sm font-bold tabular-nums text-emerald-200">
+                {Number.isFinite(incomingYouPct) ? incomingYouPct : '?'}% ↔{' '}
+                {Number.isFinite(incomingTheyPct) ? incomingTheyPct : '?'}%
+              </div>
+            </div>
+            <p className="text-[11px] leading-snug text-zinc-400">
+              You give {Number.isFinite(incomingYouPct) ? incomingYouPct : '?'}% · they give{' '}
+              {Number.isFinite(incomingTheyPct) ? incomingTheyPct : '?'}%
+            </p>
+          </div>
+        ) : null}
         {draftSwaps.map((draft) => {
           const label =
             draft.counterparty_kind === 'guest'

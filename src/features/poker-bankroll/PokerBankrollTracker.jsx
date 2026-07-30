@@ -105,6 +105,32 @@ import {
   swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
+/** IOU tail on session cards: line text matches Swaps heading; trailing $ amount gets gain/loss tone. */
+function renderSessionCardSwapIouTail(waitingLine, signed) {
+  if (!waitingLine) return null
+  const amtTone =
+    signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
+  const match = waitingLine.match(/(\$[\d,]+(?:\.\d{2})?)\s*$/)
+  if (!match || amtTone === 'flat') return waitingLine
+  return (
+    <>
+      {waitingLine.slice(0, match.index)}
+      <span
+        data-poker-session-swap-amt={amtTone}
+        className={
+          amtTone === 'loss'
+            ? 'text-rose-400'
+            : amtTone === 'gain'
+              ? 'text-emerald-400'
+              : 'text-inherit'
+        }
+      >
+        {match[1]}
+      </span>
+    </>
+  )
+}
+
 /** Match CasinoAutocomplete / Location field text styling. */
 const POKER_FIELD_CLASS =
   'w-full h-12 min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
@@ -2334,7 +2360,7 @@ export default function PokerBankrollTracker({
                                   <span
                                     data-poker-session-swap-line={paid ? 'settled' : 'waiting'}
                                     style={{ gridRowStart: swapRowStart }}
-                                    className="col-start-2 min-w-0 truncate text-[11px] text-cyan-300/80"
+                                    className="col-start-2 min-w-0 truncate text-[11px] text-cyan-300/90"
                                   >
                                     {other}
                                     {swap.pct_creator_gives != null &&
@@ -2358,7 +2384,10 @@ export default function PokerBankrollTracker({
                                         </span>
                                       </>
                                     ) : waitingLine ? (
-                                      ` · ${waitingLine}`
+                                      <>
+                                        {' · '}
+                                        {renderSessionCardSwapIouTail(waitingLine, signed)}
+                                      </>
                                     ) : null}
                                   </span>
                                 </Fragment>

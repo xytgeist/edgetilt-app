@@ -4603,12 +4603,9 @@ html.light [data-poker-bankroll] .text-emerald-200 {
   color: var(--poker-money) !important;
 }
 
-/* Completed-session swap lines: opacity variants miss the remaps above */
-html.light [data-poker-bankroll] [data-poker-session-swap-line='settled'] {
-  color: var(--poker-money) !important;
-}
-html.light [data-poker-bankroll] [data-poker-session-swap-line='waiting'] {
-  color: #0e7490 !important; /* cyan-700 — readable on white */
+/* Completed-session swap lines + heading: same cyan on white; amounts use data-poker-session-swap-amt */
+html.light [data-poker-bankroll] [data-poker-session-swap-line] {
+  color: #0e7490 !important; /* cyan-700 — match Swaps heading */
 }
 /* Amount alone: red/green regardless of line tone */
 html.light [data-poker-bankroll] [data-poker-session-swap-amt='loss'] {

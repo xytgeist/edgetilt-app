@@ -4553,6 +4553,22 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] 
   color: #ffffff !important;
 }
 
+/* Locked incoming-accept card on Start sheet (dark keeps emerald-950). */
+html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] {
+  background-color: #ffffff !important;
+  border-color: #6ee7b7 !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-white {
+  color: #064e3b !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-emerald-200,
+html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-emerald-200\/80 {
+  color: #047857 !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-zinc-400 {
+  color: #52525b !important;
+}
+
 /*
  * Poker Bankroll light palette (dark unchanged):
  *   chrome = same blue as remapped bg-cyan-600 tabs (#2563eb)

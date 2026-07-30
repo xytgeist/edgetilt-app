@@ -319,7 +319,10 @@ export default function PokerTournamentSwapsSection({
 
       <div className="flex flex-col gap-2">
         {incomingAcceptSwap ? (
-          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/40 p-3">
+          <div
+            data-poker-incoming-accept-card
+            className="rounded-2xl border border-emerald-500/40 bg-emerald-950/40 p-3"
+          >
             <div className="mb-1 flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-white">{incomingOther}</div>

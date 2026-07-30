@@ -29,7 +29,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`5bde2e48`** (2026-07-30)
+**Branch:** `main` / `test` aligned at **`0903822a`** (2026-07-30)
 
 **Supabase (do not swap these):**
 
@@ -98,10 +98,11 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ## Pick up here (Jul 2026 ... session 2026-07-30)
 
-### Latest commits (`main` / `test` @ **`5bde2e48`**)
+### Latest commits (`main` / `test` @ **`0903822a`**)
 
 | Commit | What |
 | --- | --- |
+| **`0903822a`** | Handoff docs (WAKEUP / backlog / checklist / architecture) |
 | **`5bde2e48`** | Empty soft-event picker: “No nearby logged tournaments yet … Enter manually” |
 | **`dc0f3e4d`** | Docs: poker tournament swaps production promote recorded |
 | **`44ba6b13`** | Settled amounts: explicit `+` in parens for gains (`(+$131)` / `(-$131)`) |
@@ -113,7 +114,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 | **`47221138`** | Incoming Accept → bind matching session or Start Session prefilled |
 | **`39cf33fc`** / **`1a94cfad`** | Soft-event Tournament proximity picker (Live; today + 36h activity) |
 
-Promote tip for swaps feature set: **`44ba6b13`** (+ docs **`dc0f3e4d`**). Copy polish after: **`5bde2e48`** on **main**.
+Promote tip for swaps feature set: **`44ba6b13`**. Client + handoff docs: **`0903822a`** on **main** / **test**.
 
 ### Shipped: poker tournament swaps (test + **prod**)
 
@@ -121,7 +122,7 @@ Promote tip for swaps feature set: **`44ba6b13`** (+ docs **`dc0f3e4d`**). Copy 
 | --- | --- |
 | **SQL** | **`20260730140000`–`180000`** on **test** + **prod** (`poker_tournament_events`, swaps, claim tokens/RPCs, activity types, Realtime, `last_activity_at`) |
 | **Edge** | **`poker-tournament-swap-notify`** + **`lounge-send-activity-push`** redeployed **test + prod** |
-| **Frontend** | **`test` → `main`** through **`5bde2e48`** → Vercel **`edgetilt.com`** |
+| **Frontend** | **`test` → `main`** through **`0903822a`** → Vercel **`edgetilt.com`** |
 | **Soft events** | Live Tournament dropdown: calendar **today** + `last_activity_at` within **36h**. Online/Club = manual name (MTTDB later) |
 | **Offers** | Edge user or guest; guest phone/email **optional** (notify-only). Draft on live session → **Send swap** |
 | **Accept** | Matching session → bind; else Start Session prefilled + **Start & accept swap** |

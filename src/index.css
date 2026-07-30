@@ -4625,21 +4625,6 @@ html.light [data-wl-preview] .text-zinc-400 {
   color: #6b7280 !important;
 }
 
-/* Active session card - keep original button/timer size; shrink only on narrow cards */
-[data-session-card] {
-  container-type: inline-size;
-  container-name: session-card;
-}
-@container session-card (max-width: 340px) {
-  [data-session-card-actions] button {
-    font-size: 0.75rem;
-    padding: 0.45rem 0.7rem;
-  }
-  [data-session-card-timer] {
-    font-size: 1.5rem;
-  }
-}
-
 /* Active session card - light mode */
 html.light [data-session-card] {
   background-color: #ecfdf5 !important;

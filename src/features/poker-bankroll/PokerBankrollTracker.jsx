@@ -1742,16 +1742,12 @@ export default function PokerBankrollTracker({
                     <div className="mt-0.5 text-sm text-zinc-400">
                       {pokerSessionInForLine(activeSession)}
                     </div>
-                    <div
-                      data-session-card-timer
-                      className="mt-auto pt-2 text-3xl font-black tabular-nums text-emerald-200"
-                    >
+                    <div className="mt-auto pt-2 text-3xl font-black tabular-nums text-emerald-200">
                       {fmtPokerDuration(elapsed)}
                     </div>
                   </div>
                   <div
-                    data-session-card-actions
-                    className="flex shrink-0 flex-col items-stretch gap-2"
+                    className="flex shrink-0 flex-col items-end gap-2"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >

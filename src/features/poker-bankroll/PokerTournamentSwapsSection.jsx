@@ -58,6 +58,28 @@ export default function PokerTournamentSwapsSection({
     return s
   }, [draftSwaps, savedSwaps])
 
+  /** Sum of % you give across draft + saved swaps (your side of the package). */
+  const mySideTotalPct = useMemo(() => {
+    let total = 0
+    for (const d of draftSwaps) {
+      const pct = parseSwapPct(d.pct_you_give)
+      if (pct != null) total += pct
+    }
+    for (const swap of savedSwaps) {
+      if (swap.status === 'cancelled') continue
+      const role = swapViewerRole(swap, userId)
+      const pct =
+        role === 'counterparty'
+          ? Number(swap.pct_counterparty_gives)
+          : Number(swap.pct_creator_gives)
+      if (Number.isFinite(pct)) total += pct
+    }
+    return Math.round(total * 1000) / 1000
+  }, [draftSwaps, savedSwaps, userId])
+
+  const hasAnySwaps = draftSwaps.length > 0 || savedSwaps.length > 0
+  const mySideOver = mySideTotalPct > 100
+
   if (!enabled) return null
 
   function updateDraft(localId, patch) {
@@ -166,12 +188,44 @@ export default function PokerTournamentSwapsSection({
           </button>
         </div>
       </div>
-      <p className="mb-3 text-[11px] leading-snug text-zinc-500">
+      <p className="mb-2 text-[11px] leading-snug text-zinc-500">
         Bilateral % of net (prize − buy-in). Busts owe $0 from that side. Settlement when both
         results are in.
       </p>
 
-      {draftSwaps.length === 0 && savedSwaps.length === 0 ? (
+      {hasAnySwaps ? (
+        <div
+          className={`mb-3 rounded-2xl border px-3 py-2 ${
+            mySideOver
+              ? 'border-rose-500/40 bg-rose-950/30'
+              : 'border-zinc-700/70 bg-zinc-900/50'
+          }`}
+        >
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              Your side swapped
+            </span>
+            <span
+              className={`text-base font-bold tabular-nums ${
+                mySideOver ? 'text-rose-300' : 'text-white'
+              }`}
+            >
+              {mySideTotalPct}%
+            </span>
+          </div>
+          {mySideOver ? (
+            <p className="mt-1 text-[11px] text-rose-300/90">
+              Over 100% ... you&apos;re giving away more than your full net.
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Sum of You give % across all swaps on this session.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      {!hasAnySwaps ? (
         <p className="mb-1 text-sm text-zinc-500">No swaps on this session yet.</p>
       ) : null}
 

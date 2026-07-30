@@ -322,12 +322,13 @@ export default function PlayLogPartnerPickerModal({
           {showFollow ? (
             <button
               type="button"
+              data-partner-picker-follow
               disabled={followBusyId === uid}
               onClick={(e) => {
                 e.stopPropagation()
                 void followUser(uid)
               }}
-              className="mt-2 shrink-0 min-h-9 rounded-full bg-white px-4 text-[13px] font-bold text-zinc-950 touch-manipulation active:bg-zinc-200 disabled:opacity-50"
+              className="mt-2 shrink-0 min-h-9 rounded-full bg-white px-4 text-[13px] font-bold text-[#09090b] touch-manipulation active:bg-zinc-200 disabled:opacity-50"
             >
               {followBusyId === uid ? '…' : 'Follow'}
             </button>
@@ -341,6 +342,7 @@ export default function PlayLogPartnerPickerModal({
 
   return (
     <div
+      data-partner-picker
       className="fixed inset-0 flex items-end justify-center bg-black/70 backdrop-blur-sm"
       style={{ zIndex: Z_APP_ALERT }}
       role="dialog"
@@ -349,8 +351,9 @@ export default function PlayLogPartnerPickerModal({
       onClick={onClose}
     >
       <div
+        data-partner-picker-sheet
         className={`flex w-full max-w-lg ${PANEL_HEIGHT_CLASS} shrink-0 flex-col rounded-t-3xl border border-zinc-700/60 border-b-0 bg-zinc-900 shadow-2xl`}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <header className="shrink-0 border-b border-zinc-800/80 px-4 pt-4 pb-3">
           <div className="flex items-center gap-2 mb-3">

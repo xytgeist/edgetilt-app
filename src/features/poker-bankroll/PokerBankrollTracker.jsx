@@ -2828,22 +2828,22 @@ function PokerSessionCoreFields({
           </div>
           <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
             <div className="min-w-0">
-              <FieldLabel>Re-buy</FieldLabel>
-              <MoneyInput value={form.rebuy_amount} onChange={(v) => setField('rebuy_amount', v)} />
-            </div>
-            <div className="min-w-0">
-              <FieldLabel>Add-on</FieldLabel>
-              <MoneyInput value={form.addon_amount} onChange={(v) => setField('addon_amount', v)} />
-            </div>
-          </div>
-          <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-            <div className="min-w-0">
               <FieldLabel>Players</FieldLabel>
               <NumInput value={form.field_size} onChange={(v) => setField('field_size', v)} />
             </div>
             <div className="min-w-0">
               <FieldLabel>Start stack</FieldLabel>
               <NumInput value={form.start_stack} onChange={(v) => setField('start_stack', v)} />
+            </div>
+          </div>
+          <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+            <div className="min-w-0">
+              <FieldLabel>Re-buy</FieldLabel>
+              <MoneyInput value={form.rebuy_amount} onChange={(v) => setField('rebuy_amount', v)} />
+            </div>
+            <div className="min-w-0">
+              <FieldLabel>Add-on</FieldLabel>
+              <MoneyInput value={form.addon_amount} onChange={(v) => setField('addon_amount', v)} />
             </div>
           </div>
         </>

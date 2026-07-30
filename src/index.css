@@ -4694,9 +4694,61 @@ html.light [data-freemium-usage-counter][data-freemium-usage-remaining="0"] {
   display: none;
 }
 
+/* Tournament swaps running total - light mode only */
+html.light [data-poker-tournament-swaps] .bg-zinc-900\/50 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-tournament-swaps] .border-zinc-700\/70 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-tournament-swaps] .bg-rose-950\/30 {
+  background-color: #fff1f2 !important;
+}
+
+/* Partner / Edge-user picker sheet (Logbook + poker swaps) - light mode only */
+html.light [data-partner-picker-sheet] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.12);
+}
+html.light [data-partner-picker-sheet] .border-zinc-800\/80 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-partner-picker-sheet] input[type='search'] {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #18181b !important;
+}
+html.light [data-partner-picker-sheet] input[type='search']::placeholder {
+  color: #71717a !important;
+}
+html.light [data-partner-picker-sheet] .bg-cyan-600\/15 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+html.light [data-partner-picker-sheet] .border-cyan-500\/30 {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+html.light [data-partner-picker-sheet] .text-cyan-200,
+html.light [data-partner-picker-sheet] .text-cyan-300,
+html.light [data-partner-picker-sheet] .text-cyan-300\/80,
+html.light [data-partner-picker-sheet] .text-cyan-400\/90 {
+  color: #1d4ed8 !important;
+}
+html.light [data-partner-picker-follow] {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border: 1px solid #18181b;
+}
+html.light [data-partner-picker-follow]:active {
+  background-color: #27272a !important;
+}
+html.light [data-partner-picker-sheet] footer .bg-cyan-600 {
+  background-color: #2563eb !important;
+}
+
 /* Play Logbook page - light mode (Log Play sheet uses data-bankroll-sheet rules above) */
 html.light [data-play-logbook-card] {
-  box-shadow: 0 4px 10px -3px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.12);
 }
 html.light [data-play-logbook-primary-btn] {
   box-shadow: 0 8px 20px -4px rgba(0,0,0,0.2);

@@ -82,15 +82,18 @@ export async function upsertUserSubscriptionFromStripe(
     .maybeSingle()
   if (subLookupErr) throw new Error(`user_subscriptions lookup (${subscription.id}): ${subLookupErr.message}`)
 
-  // Stripe does not guarantee webhook order. subscription.created (incomplete) can arrive after
-  // checkout.session.completed or subscription.updated (active) and would clobber entitlements.
   const protectedStatuses = new Set(['active', 'trialing'])
   const staleIncomingStatuses = new Set(['incomplete', 'incomplete_expired'])
-  if (
-    existingBySubId?.id &&
-    protectedStatuses.has(String(existingBySubId.status)) &&
-    staleIncomingStatuses.has(subscription.status)
-  ) {
+
+  // Never persist checkout-in-progress statuses. checkout.session.completed + invoice.paid write
+  // active rows; late subscription.created (incomplete) must not clobber entitlements.
+  if (staleIncomingStatuses.has(subscription.status)) {
+    if (
+      existingBySubId?.id &&
+      protectedStatuses.has(String(existingBySubId.status))
+    ) {
+      return
+    }
     return
   }
 

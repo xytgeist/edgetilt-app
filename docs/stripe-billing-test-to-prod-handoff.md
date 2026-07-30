@@ -61,7 +61,7 @@ Entitlements: **`get_my_entitlements()`** → `{ active, status, current_period_
 | **Starter → Pro** | Checkout (`payment_method_collection: always`); metadata `replaces_stripe_subscription_id`; webhook cancels Starter |
 | **Monthly → annual** (same tier) | Checkout + replace old monthly sub (same as tier upgrade pattern) |
 | **Annual → monthly** (same tier) | In-place subscription update → `{ interval_changed: true }` (no Checkout redirect) |
-| **→ Lifetime** | Checkout `mode: payment`; webhook grants lifetime + cancels recurring subs |
+| **→ Lifetime** | Checkout `mode: payment`; **same UTC month** Starter/Pro **`amount_paid`** credited off Lifetime total (after founding/affiliate %); webhook grants lifetime + cancels recurring subs |
 | Already on Lifetime | 400 |
 
 ### Portal (`stripe-create-portal-session`)
@@ -92,6 +92,8 @@ Entitlements: **`get_my_entitlements()`** → `{ active, status, current_period_
 | Lifetime checkout error: `payment_method_collection` on payment mode | Removed that param for `mode: payment` |
 | Light mode: washed-out membership buttons / legal links | Scoped **`html.light [data-settings-account]`** + **`[data-billing-manage-modal]`** |
 | Test reset left canceled rows / unique key noise | **`revoke_slots_edge_subscription_by_handle.sql`** now **DELETE** rows |
+| Paid subscriber stuck **Free** (`user_subscriptions.status = incomplete`) | **`billingDb.ts`** never persists **`incomplete`**; **`invoice.paid`** sync; hourly **`platform-billing-reconcile-stripe`** (**`20260730180000`**) |
+| Lifetime upgrade did not credit same-month sub payment | **`billingLifetimeUpgrade.ts`** + computed Checkout amount in **`stripe-create-checkout-session`** |
 
 ---
 

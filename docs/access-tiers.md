@@ -164,6 +164,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 ### 5.4 Upgrades
 
 - **Slots Edge → Slots Edge Pro:** same **Upgrade to Slots Edge Pro** button in **`SubscribeModal`**. Edge **`stripe-create-checkout-session`** detects active **`slots-edge-starter`** and **updates the existing Stripe subscription** to the Pro price with **`proration_behavior: always_invoice`** (unused Slots Edge time credits against the upgrade invoice). **`user_subscriptions`** Starter row is removed; Pro row is upserted on the same **`stripe_subscription_id`**. **Immediate** full library unlock.
+- **Recurring → Slots Edge Lifetime:** **Settings → Manage membership → Compare all plans → Lifetime**. Checkout subtracts **this UTC calendar month's** paid Starter/Pro invoice (**`amount_paid`**) from the Lifetime total after founding/affiliate discount. Pro/Starter recurring subs cancel on successful Lifetime payment.
 - **Free → either plan:** standard subscribe modal with plan picker.
 
 ### 5.5 Future verticals

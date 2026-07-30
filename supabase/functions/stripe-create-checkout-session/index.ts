@@ -14,6 +14,11 @@ import {
   upsertUserSubscriptionFromStripe,
 } from '../_shared/billingDb.ts'
 import {
+  buildLifetimeCheckoutPricing,
+  computeLifetimeUpgradeCreditCents,
+  lifetimeCheckoutUsesComputedPrice,
+} from '../_shared/billingLifetimeUpgrade.ts'
+import {
   isSelfReferral,
   loadActiveAffiliateByCode,
   upsertCheckoutAttribution,
@@ -158,6 +163,44 @@ async function getActiveRecurringStripeSubscriptionIds(
     if (row?.stripe_subscription_id) ids.push(row.stripe_subscription_id)
   }
   return [...new Set(ids)]
+}
+
+/** DB + Stripe (covers stale incomplete rows when Stripe sub is already active). */
+async function resolveRecurringStripeSubscriptionIdsToReplace(
+  stripe: Stripe,
+  admin: ReturnType<typeof createBillingAdmin>,
+  userId: string,
+  customerId: string | null,
+) {
+  const ids = new Set(await getActiveRecurringStripeSubscriptionIds(admin, userId))
+  const customer = customerId?.trim()
+  if (!customer) return [...ids]
+
+  for (const status of ['active', 'trialing'] as const) {
+    const page = await stripe.subscriptions.list({ customer, status, limit: 20 })
+    for (const sub of page.data) {
+      const slug = sub.metadata?.product_slug?.trim()
+      if (slug === STARTER_PRODUCT_SLUG || slug === FULL_PRODUCT_SLUG) {
+        ids.add(sub.id)
+      }
+    }
+  }
+
+  return [...ids]
+}
+
+async function affiliateBuyerDiscountPct(
+  admin: ReturnType<typeof createBillingAdmin>,
+  affiliateId: string,
+): Promise<number> {
+  const { data, error } = await admin
+    .from('affiliates')
+    .select('buyer_discount_pct')
+    .eq('id', affiliateId)
+    .maybeSingle()
+  if (error) throw new Error(`affiliates buyer_discount_pct: ${error.message}`)
+  const pct = Number(data?.buyer_discount_pct)
+  return Number.isFinite(pct) && pct > 0 ? pct : 0
 }
 
 function subscriptionPriceIntervalForProduct(
@@ -437,21 +480,59 @@ Deno.serve(async (req) => {
     }
 
     if (isLifetime) {
-      const replaceSubscriptionIds = await getActiveRecurringStripeSubscriptionIds(admin, auth.user.id)
+      const replaceSubscriptionIds = await resolveRecurringStripeSubscriptionIdsToReplace(
+        stripe,
+        admin,
+        auth.user.id,
+        customerId,
+      )
+      const upgradeCreditCents = await computeLifetimeUpgradeCreditCents(stripe, customerId)
+
+      let promoPercentOff = 0
+      if (affiliatePromotionCodeId && affiliateMeta) {
+        promoPercentOff = await affiliateBuyerDiscountPct(admin, affiliateMeta.affiliate_id)
+      } else if (wantsFounding) {
+        promoPercentOff = 25
+      }
+
+      const lifetimePricing = await buildLifetimeCheckoutPricing(stripe, {
+        lifetimePriceId: priceId,
+        promoPercentOff,
+        upgradeCreditCents,
+      })
+
       let sessionMetadata: Record<string, string> = {
         supabase_user_id: auth.user.id,
         product_slug: productSlug,
+        lifetime_upgrade_credit_cents: String(lifetimePricing.upgradeCreditCents),
+        lifetime_checkout_unit_amount_cents: String(lifetimePricing.checkoutUnitAmountCents),
       }
       if (replaceSubscriptionIds.length > 0) {
         sessionMetadata.replaces_stripe_subscription_ids = replaceSubscriptionIds.join(',')
       }
       sessionMetadata = applyAffiliateToMetadata(sessionMetadata)
 
+      const useComputedPrice = lifetimeCheckoutUsesComputedPrice(lifetimePricing)
       const couponId = foundingCouponId(productSlug, 'monthly', true, wantsFounding)
+
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
         mode: 'payment',
         customer: customerId,
-        line_items: [{ price: priceId, quantity: 1 }],
+        line_items: useComputedPrice
+          ? [
+              {
+                price_data: {
+                  currency: 'usd',
+                  unit_amount: lifetimePricing.checkoutUnitAmountCents,
+                  product_data: {
+                    name: productCheck.product.display_name || 'Slots Edge Lifetime',
+                    metadata: { product_slug: productSlug },
+                  },
+                },
+                quantity: 1,
+              },
+            ]
+          : [{ price: priceId, quantity: 1 }],
         success_url,
         cancel_url,
         client_reference_id: auth.user.id,
@@ -460,17 +541,25 @@ Deno.serve(async (req) => {
           metadata: sessionMetadata,
         },
       }
-      const session = await createCheckoutSessionAllowingPromoFallback(stripe, sessionParams, {
-        affiliatePromotionCodeId,
-        foundingCouponIdValue: couponId,
-        allowFoundingFallback,
-      })
+
+      const session = useComputedPrice
+        ? await stripe.checkout.sessions.create(sessionParams)
+        : await createCheckoutSessionAllowingPromoFallback(stripe, sessionParams, {
+            affiliatePromotionCodeId,
+            foundingCouponIdValue: couponId,
+            allowFoundingFallback,
+          })
 
       if (!session.url) {
         throw new Error('Stripe Checkout session missing url.')
       }
 
-      return jsonResponse({ url: session.url, product_slug: productSlug })
+      return jsonResponse({
+        url: session.url,
+        product_slug: productSlug,
+        lifetime_upgrade_credit_cents: lifetimePricing.upgradeCreditCents,
+        lifetime_checkout_amount_cents: lifetimePricing.checkoutUnitAmountCents,
+      })
     }
 
     const couponId = foundingCouponId(productSlug, priceInterval, false, wantsFounding)

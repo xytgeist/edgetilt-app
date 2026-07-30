@@ -228,6 +228,36 @@ async function voidCommissionsForCharge(
   }
 }
 
+async function syncPlatformSubscriptionFromStripeInvoice(
+  stripe: Stripe,
+  admin: ReturnType<typeof createBillingAdmin>,
+  invoice: Stripe.Invoice,
+) {
+  const subscriptionId =
+    typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription?.id || null
+  if (!subscriptionId) return
+
+  const subscriptionRaw = (await stripe.subscriptions.retrieve(
+    subscriptionId,
+  )) as StripeSubscriptionPayload
+
+  if (isCreatorFanSubscriptionMetadata(subscriptionRaw.metadata)) {
+    await upsertCreatorFanSubscriptionFromStripe(admin, { subscription: subscriptionRaw })
+    return
+  }
+
+  const { userId, productSlug } = await resolveUserAndProduct(admin, subscriptionRaw)
+  if (!userId || !isPlatformProductSlug(productSlug)) return
+
+  await upsertUserSubscriptionFromStripe(admin, {
+    userId,
+    productSlug: productSlug || 'slots-edge',
+    subscription: subscriptionRaw,
+  })
+}
+
 async function commissionFromInvoice(
   admin: ReturnType<typeof createBillingAdmin>,
   stripe: Stripe,
@@ -525,6 +555,11 @@ async function processStripeWebhookEvent(
     if (event.type === 'invoice.paid') {
       const invoice = event.data.object as Stripe.Invoice
       if (invoice.status === 'paid' && (invoice.amount_paid ?? 0) > 0) {
+        try {
+          await syncPlatformSubscriptionFromStripeInvoice(stripe, admin, invoice)
+        } catch (syncErr) {
+          console.warn('stripe-webhook: invoice.paid platform sync failed', invoice.id, syncErr)
+        }
         await commissionFromInvoice(admin, stripe, invoice)
         await promotePayableCommissions(admin)
       }

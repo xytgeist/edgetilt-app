@@ -75,6 +75,9 @@ verify_jwt = true
 [functions.creator-fan-reconcile-stripe]
 verify_jwt = false
 
+[functions.platform-billing-reconcile-stripe]
+verify_jwt = false
+
 [functions.stripe-webhook]
 verify_jwt = false
 

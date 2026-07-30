@@ -944,6 +944,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-30: **Poker tournament swaps → production:** SQL **`20260730140000`–`180000`** on **`jtjgtucumuoswnbauxry`**; Edge **`poker-tournament-swap-notify`** + **`lounge-send-activity-push`** redeployed; frontend **`test` → `main`** @ **`44ba6b13`** (`edgetilt.com`). Confirm prod secrets **`PUBLIC_APP_URL`** (+ Twilio when From number ready).
 - 2026-07-30: **Guest swap contact optional:** phone/email no longer required to create a guest swap (notify-only). Offer SMS/email copy: `{Display Name} swapping x% - y% with you in event: {Tournament} from EdgeTilt.com` (+ claim link when contact present). Redeployed **`poker-tournament-swap-notify`** on **test**.
 - 2026-07-30: **Soft-event picker window:** dropdown shows `event_date` **today only**, plus rows with `last_activity_at` in the last **36h** (Day 2 / late reg). No multi-day future schedule. Migration **`20260730180000`** (column + session/swap bump triggers) on test.
 - 2026-07-29: **Poker swap Mark settled is mutual:** UI says **Mark settled** / **Settled** (DB still `*_marked_paid`); either party marking sets both flags and replaces the IOU on both session cards; Realtime on `poker_tournament_swaps` (`20260730170000`) refreshes the other user’s overview live.

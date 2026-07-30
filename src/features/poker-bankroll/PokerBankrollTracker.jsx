@@ -87,6 +87,7 @@ import {
   loadMyTournamentSwaps,
   loadSwapCounterpartyProfiles,
   notifyTournamentSwap,
+  notifyTournamentSwapResults,
   persistDraftSwapsForSession,
   swapOtherPartyLabel,
   syncCounterpartyResultsForSession,
@@ -1012,6 +1013,10 @@ export default function PokerBankrollTracker({
         if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
           console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
         }
+        await notifyTournamentSwapResults(supabaseClient, [
+          ...(syncA.swapIds || []),
+          ...(syncB.swapIds || []),
+        ])
       }
       setSheet(null)
       triggerTapHapticLight()
@@ -1393,6 +1398,10 @@ export default function PokerBankrollTracker({
             if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
               console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
             }
+            await notifyTournamentSwapResults(supabaseClient, [
+              ...(syncA.swapIds || []),
+              ...(syncB.swapIds || []),
+            ])
           }
         }
       } else {

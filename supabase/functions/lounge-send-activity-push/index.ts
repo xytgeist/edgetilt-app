@@ -23,6 +23,8 @@ type ActivityEventRow = {
   chat_room_id: string | null
   chat_call_id?: string | null
   starter_weekly_unlock_id?: string | null
+  detail_text?: string | null
+  poker_tournament_swap_id?: string | null
   created_at: string
 }
 
@@ -188,6 +190,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'Weekly guide drop ready — scratch to reveal'
     case 'poker_tournament_swap':
       return 'offered you a tournament swap'
+    case 'poker_tournament_swap_result':
+      return 'finished a tournament swap with you'
     default:
       return 'interacted with you'
   }
@@ -255,7 +259,10 @@ function buildTargetUrl(
     params.set('tab', 'home')
     params.set('lounge', 'notifications')
     params.set('starterDrop', String(event.starter_weekly_unlock_id))
-  } else if (event.event_type === 'poker_tournament_swap') {
+  } else if (
+    event.event_type === 'poker_tournament_swap' ||
+    event.event_type === 'poker_tournament_swap_result'
+  ) {
     params.set('tab', 'poker-bankroll')
   } else if (event.event_type === 'repost' && !event.comment_id) {
     params.set('lounge', 'notifications')
@@ -430,7 +437,7 @@ async function handleImmediatePush(
   const { data: eventRow, error: eventError } = await admin
     .from('activity_events')
     .select(
-      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, chat_call_id, created_at',
+      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, chat_call_id, detail_text, poker_tournament_swap_id, created_at',
     )
     .eq('id', activityEventId)
     .maybeSingle()
@@ -476,6 +483,19 @@ async function handleImmediatePush(
     (actorProfile as ActorProfile | null) || null,
     isReply,
   )
+
+  if (event.event_type === 'poker_tournament_swap_result') {
+    const who = actorDisplayName((actorProfile as ActorProfile | null) || null)
+    const detail = String(event.detail_text || '').trim() || 'finished a tournament swap with you'
+    notification = {
+      title: pushTitleForEventType(event.event_type),
+      body: `${who} ${detail}`,
+      url: buildTargetUrl(event, (actorProfile as ActorProfile | null) || null, {
+        activityEventId: event.id,
+      }),
+      activityEventId: event.id,
+    }
+  }
 
   if (
     (event.event_type === 'play_log_shared' ||

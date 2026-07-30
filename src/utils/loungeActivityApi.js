@@ -19,6 +19,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   CREATOR_FAN_SUB: 'creator_fan_sub',
   CHAT_CALL_MISSED: 'chat_call_missed',
   POKER_TOURNAMENT_SWAP: 'poker_tournament_swap',
+  POKER_TOURNAMENT_SWAP_RESULT: 'poker_tournament_swap_result',
 }
 
 /** Maps `activity_events.event_type` → notification avatar badge kind (null = no badge). */
@@ -51,6 +52,7 @@ export function loungeActivityNotificationBadgeKind(eventType) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED:
       return 'missed_call'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT:
       return 'play_log'
     default:
       return null
@@ -225,6 +227,10 @@ export function loungeActivityActionPhrase(event) {
       return 'called you'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
       return 'offered you a tournament swap'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail || 'finished a tournament swap with you'
+    }
     default:
       return 'interacted with you'
   }

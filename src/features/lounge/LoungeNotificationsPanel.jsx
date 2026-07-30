@@ -415,7 +415,10 @@ export default function LoungeNotificationsPanel({
         return
       }
 
-      if (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP) {
+      if (
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT
+      ) {
         const nextPath = '/?tab=poker-bankroll'
         if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
           window.history.pushState({}, '', nextPath)

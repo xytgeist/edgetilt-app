@@ -235,13 +235,14 @@ export async function persistDraftSwapsForSession(
  */
 export async function syncCreatorResultsForSession(supabase, sessionId, session) {
   const snap = sessionResultSnapshot(session)
-  if (!snap) return { error: null }
+  if (!snap) return { error: null, swapIds: [] }
   const { data: swaps, error } = await supabase
     .from('poker_tournament_swaps')
     .select('id, status')
     .eq('creator_session_id', sessionId)
     .eq('status', 'active')
-  if (error) return { error }
+  if (error) return { error, swapIds: [] }
+  const swapIds = []
   for (const swap of swaps || []) {
     const { error: uErr } = await supabase
       .from('poker_tournament_swaps')
@@ -251,13 +252,14 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session)
         creator_result_ready: true,
       })
       .eq('id', swap.id)
-    if (uErr) return { error: uErr }
+    if (uErr) return { error: uErr, swapIds }
     const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
       p_swap_id: swap.id,
     })
-    if (sErr) return { error: sErr }
+    if (sErr) return { error: sErr, swapIds }
+    swapIds.push(swap.id)
   }
-  return { error: null }
+  return { error: null, swapIds }
 }
 
 /**
@@ -268,13 +270,14 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session)
  */
 export async function syncCounterpartyResultsForSession(supabase, sessionId, session) {
   const snap = sessionResultSnapshot(session)
-  if (!snap) return { error: null }
+  if (!snap) return { error: null, swapIds: [] }
   const { data: swaps, error } = await supabase
     .from('poker_tournament_swaps')
     .select('id, status, counterparty_session_accepted_at')
     .eq('counterparty_session_id', sessionId)
     .eq('status', 'active')
-  if (error) return { error }
+  if (error) return { error, swapIds: [] }
+  const swapIds = []
   for (const swap of swaps || []) {
     if (!swap.counterparty_session_accepted_at) continue
     const { error: uErr } = await supabase
@@ -286,13 +289,14 @@ export async function syncCounterpartyResultsForSession(supabase, sessionId, ses
         counterparty_result_ready: true,
       })
       .eq('id', swap.id)
-    if (uErr) return { error: uErr }
+    if (uErr) return { error: uErr, swapIds }
     const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
       p_swap_id: swap.id,
     })
-    if (sErr) return { error: sErr }
+    if (sErr) return { error: sErr, swapIds }
+    swapIds.push(swap.id)
   }
-  return { error: null }
+  return { error: null, swapIds }
 }
 
 /**
@@ -378,14 +382,31 @@ export async function markSwapPaid(supabase, swapId, role, paid) {
  * Notify guest (Twilio SMS + email) or Edge user (in-app + push) via Edge Function.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
+ * @param {{ kind?: 'offer' | 'result' }} [opts]
  */
-export async function notifyTournamentSwap(supabase, swapId) {
+export async function notifyTournamentSwap(supabase, swapId, opts = {}) {
+  const kind = opts.kind === 'result' ? 'result' : 'offer'
   const { data, error } = await supabase.functions.invoke('poker-tournament-swap-notify', {
-    body: { swap_id: swapId },
+    body: { swap_id: swapId, kind },
   })
   if (error) return { error }
   if (data?.error) return { error: new Error(data.error) }
   return { data, error: null }
+}
+
+/**
+ * After syncing session results, notify the other party on each affected swap.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string[]} swapIds
+ */
+export async function notifyTournamentSwapResults(supabase, swapIds) {
+  const unique = [...new Set((swapIds || []).filter(Boolean))]
+  for (const swapId of unique) {
+    const { error } = await notifyTournamentSwap(supabase, swapId, { kind: 'result' })
+    if (error) {
+      console.warn('[poker-bankroll] swap result notify failed', swapId, error.message || error)
+    }
+  }
 }
 
 /**

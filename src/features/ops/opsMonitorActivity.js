@@ -19,6 +19,7 @@ export const OPS_ACTIVITY_EVENT_LABELS = {
   starter_weekly_guide_drop: 'Starter weekly drop',
   creator_fan_sub: 'Creator fan sub',
   poker_tournament_swap: 'Poker tournament swap',
+  poker_tournament_swap_result: 'Poker tournament swap result',
 }
 
 /** @param {string | null | undefined} eventType */

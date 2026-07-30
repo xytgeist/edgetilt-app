@@ -127,9 +127,9 @@ function pokerSessionSheetNeedsTall(form) {
   return form?.session_type === 'cash'
 }
 
-/** Online multi-tabling count for DB write; live always 1. */
+/** Online cash multi-tabling for DB write; live / club / tournament always 1. */
 function tablesCountForPayload(form) {
-  if (form.venue_kind !== 'online') return 1
+  if (form.venue_kind !== 'online' || form.session_type !== 'cash') return 1
   const n = parseInt(form.tables_count, 10)
   if (!Number.isFinite(n) || n < 1) return 1
   return Math.min(n, 24)
@@ -3010,7 +3010,7 @@ function PokerSessionCoreFields({
       {isCash ? (
         <>
           <GameCurrencyTablesRow
-            isOnline={form.venue_kind === 'online'}
+            showTables={form.venue_kind === 'online'}
             tablesCount={form.tables_count}
             onTablesCountChange={(v) => setField('tables_count', v)}
             currency={form.currency}
@@ -3081,7 +3081,6 @@ function PokerSessionCoreFields({
       ) : (
         <>
           <GameCurrencyTablesRow
-            isOnline={form.venue_kind === 'online'}
             tablesCount={form.tables_count}
             onTablesCountChange={(v) => setField('tables_count', v)}
             currency={form.currency}
@@ -3240,9 +3239,9 @@ function Select({ value, onChange, options, label }) {
   return <InField label={label}>{select}</InField>
 }
 
-/** Game + Currency on one row; online also shows Tables below. */
+/** Game + Currency on one row; online cash also shows Tables below. */
 function GameCurrencyTablesRow({
-  isOnline,
+  showTables = false,
   game,
   currency,
   onCurrencyChange,
@@ -3299,7 +3298,7 @@ function GameCurrencyTablesRow({
           />
         </div>
       </div>
-      {isOnline ? <div className="mb-2 min-w-0">{tables}</div> : null}
+      {showTables ? <div className="mb-2 min-w-0">{tables}</div> : null}
     </>
   )
 }

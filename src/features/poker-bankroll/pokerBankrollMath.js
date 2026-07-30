@@ -81,11 +81,12 @@ export function pokerSessionHourly(session) {
 }
 
 /**
- * Concurrent tables for hand-rate scaling (online multi-tabling). Live always 1.
- * @param {{ venue_kind?: string | null, tables_count?: number | string | null }} session
+ * Concurrent tables for hand-rate scaling (online cash multi-tabling).
+ * Live / club / tournament always 1.
+ * @param {{ session_type?: string | null, venue_kind?: string | null, tables_count?: number | string | null }} session
  */
 export function pokerSessionTablesCount(session) {
-  if (session?.venue_kind !== 'online') return 1
+  if (session?.venue_kind !== 'online' || session?.session_type !== 'cash') return 1
   const n = Math.floor(Number(session.tables_count))
   if (!Number.isFinite(n) || n < 1) return 1
   return Math.min(n, 24)

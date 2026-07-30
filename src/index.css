@@ -4574,6 +4574,10 @@ html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-r
 html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .border-rose-500\/40 {
   border-color: #fda4af !important;
 }
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/20 {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
 
 html.light [data-poker-bankroll] [data-poker-incoming-swaps] button.border-zinc-600\/80 {
   border-color: #d4d4d8 !important;

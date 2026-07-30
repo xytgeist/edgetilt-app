@@ -300,21 +300,30 @@ export async function syncCounterpartyResultsForSession(supabase, sessionId, ses
 }
 
 /**
- * Creator manually enters counterparty prize (guest never claimed / no app).
+ * Manually enter one side's buy-in + prize (override / guest path), then try settle.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
+ * @param {'creator' | 'counterparty'} side
  * @param {number} buyIn
  * @param {number} prize
  */
-export async function setCounterpartyManualResult(supabase, swapId, buyIn, prize) {
+export async function setSwapSideManualResult(supabase, swapId, side, buyIn, prize) {
+  const patch =
+    side === 'creator'
+      ? {
+          creator_buy_in: buyIn,
+          creator_prize: prize,
+          creator_result_ready: true,
+        }
+      : {
+          counterparty_buy_in: buyIn,
+          counterparty_prize: prize,
+          counterparty_result_source: 'manual',
+          counterparty_result_ready: true,
+        }
   const { error: uErr } = await supabase
     .from('poker_tournament_swaps')
-    .update({
-      counterparty_buy_in: buyIn,
-      counterparty_prize: prize,
-      counterparty_result_source: 'manual',
-      counterparty_result_ready: true,
-    })
+    .update(patch)
     .eq('id', swapId)
   if (uErr) return { error: uErr }
   const { data, error } = await supabase.rpc('poker_tournament_swap_try_settle', {
@@ -322,6 +331,17 @@ export async function setCounterpartyManualResult(supabase, swapId, buyIn, prize
   })
   if (error) return { error }
   return { swap: data, error: null }
+}
+
+/**
+ * Creator manually enters counterparty prize (guest never claimed / no app).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} swapId
+ * @param {number} buyIn
+ * @param {number} prize
+ */
+export async function setCounterpartyManualResult(supabase, swapId, buyIn, prize) {
+  return setSwapSideManualResult(supabase, swapId, 'counterparty', buyIn, prize)
 }
 
 /**

@@ -5,7 +5,7 @@ import {
   cancelTournamentSwap,
   emptyDraftSwap,
   markSwapPaid,
-  setCounterpartyManualResult,
+  setSwapSideManualResult,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
   swapViewerRole,
@@ -56,8 +56,12 @@ export default function PokerTournamentSwapsSection({
   decliningIncoming = false,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [manualBuyIn, setManualBuyIn] = useState({})
-  const [manualPrize, setManualPrize] = useState({})
+  /** swapId → show manual payout fields */
+  const [manualOpen, setManualOpen] = useState({})
+  const [manualTheirBuyIn, setManualTheirBuyIn] = useState({})
+  const [manualTheirPrize, setManualTheirPrize] = useState({})
+  const [manualMyBuyIn, setManualMyBuyIn] = useState({})
+  const [manualMyPrize, setManualMyPrize] = useState({})
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
 
@@ -192,27 +196,43 @@ export default function PokerTournamentSwapsSection({
     }
   }
 
-  async function onSaveManual(swap) {
+  /**
+   * @param {object} swap
+   * @param {'self' | 'other'} which
+   */
+  async function onSaveManual(swap, which) {
     if (!supabaseClient) return
-    const buyIn = parseFloat(manualBuyIn[swap.id])
-    const prize = parseFloat(manualPrize[swap.id])
+    const role = swapViewerRole(swap, userId) || 'creator'
+    const side =
+      which === 'self'
+        ? role
+        : role === 'creator'
+          ? 'counterparty'
+          : 'creator'
+    const buyIn = parseFloat(which === 'self' ? manualMyBuyIn[swap.id] : manualTheirBuyIn[swap.id])
+    const prize = parseFloat(which === 'self' ? manualMyPrize[swap.id] : manualTheirPrize[swap.id])
     if (!Number.isFinite(buyIn) || buyIn < 0 || !Number.isFinite(prize) || prize < 0) {
-      setLocalError('Enter their buy-in and prize.')
+      setLocalError(
+        which === 'self'
+          ? 'Enter your buy-in and prize (cash out).'
+          : 'Enter their buy-in and prize (cash out).',
+      )
       return
     }
     setBusyId(swap.id)
     setLocalError('')
     try {
-      const { error } = await setCounterpartyManualResult(
+      const { error } = await setSwapSideManualResult(
         supabaseClient,
         swap.id,
+        side,
         buyIn,
         prize,
       )
       if (error) throw error
       onSavedSwapsMutated?.()
     } catch (e) {
-      setLocalError(e?.message || 'Could not save their result.')
+      setLocalError(e?.message || 'Could not save manual result.')
     } finally {
       setBusyId('')
     }
@@ -545,38 +565,124 @@ export default function PokerTournamentSwapsSection({
                 </button>
               ) : null}
 
-              {role === 'creator' &&
-              swap.status === 'active' &&
-              !swap.counterparty_result_ready ? (
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
-                    className={FIELD}
-                    placeholder="Their buy-in"
-                    inputMode="decimal"
-                    value={manualBuyIn[swap.id] ?? ''}
-                    onChange={(e) =>
-                      setManualBuyIn((m) => ({ ...m, [swap.id]: e.target.value }))
-                    }
-                  />
-                  <input
-                    className={FIELD}
-                    placeholder="Their prize"
-                    inputMode="decimal"
-                    value={manualPrize[swap.id] ?? ''}
-                    onChange={(e) =>
-                      setManualPrize((m) => ({ ...m, [swap.id]: e.target.value }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    disabled={busyId === swap.id}
-                    onClick={() => void onSaveManual(swap)}
-                    className="col-span-2 rounded-xl border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-                  >
-                    Enter their result
-                  </button>
-                </div>
-              ) : null}
+              {(() => {
+                if (swap.status !== 'active' || bothReady) return null
+                const accepted = Boolean(swap.counterparty_session_accepted_at)
+                const isGuest = swap.counterparty_kind === 'guest'
+                // Guests / not-yet-accepted: keep creator "enter their result" open by default.
+                const forceOpen =
+                  role === 'creator' && !cpReady && (isGuest || !accepted)
+                const open = forceOpen || Boolean(manualOpen[swap.id])
+                const needSelf = !(role === 'creator' ? creatorReady : cpReady)
+                const needOther = !(role === 'creator' ? cpReady : creatorReady)
+                if (!needSelf && !needOther) return null
+                return (
+                  <div className="mt-2">
+                    {!open ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setManualOpen((m) => ({ ...m, [swap.id]: true }))
+                        }
+                        className="w-full rounded-xl border border-zinc-600/80 px-3 py-2 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800"
+                      >
+                        Enter results manually…
+                      </button>
+                    ) : (
+                      <div className="space-y-2 rounded-2xl border border-zinc-700/60 bg-black/20 p-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                            Manual payouts
+                          </div>
+                          {!forceOpen ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setManualOpen((m) => ({ ...m, [swap.id]: false }))
+                              }
+                              className="text-[11px] font-semibold text-zinc-500 touch-manipulation"
+                            >
+                              Hide
+                            </button>
+                          ) : null}
+                        </div>
+                        {needOther ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              className={FIELD}
+                              placeholder="Their buy-in"
+                              inputMode="decimal"
+                              value={manualTheirBuyIn[swap.id] ?? ''}
+                              onChange={(e) =>
+                                setManualTheirBuyIn((m) => ({
+                                  ...m,
+                                  [swap.id]: e.target.value,
+                                }))
+                              }
+                            />
+                            <input
+                              className={FIELD}
+                              placeholder="Their prize"
+                              inputMode="decimal"
+                              value={manualTheirPrize[swap.id] ?? ''}
+                              onChange={(e) =>
+                                setManualTheirPrize((m) => ({
+                                  ...m,
+                                  [swap.id]: e.target.value,
+                                }))
+                              }
+                            />
+                            <button
+                              type="button"
+                              disabled={busyId === swap.id}
+                              onClick={() => void onSaveManual(swap, 'other')}
+                              className="col-span-2 rounded-xl border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                            >
+                              Save their result
+                            </button>
+                          </div>
+                        ) : null}
+                        {needSelf ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              className={FIELD}
+                              placeholder="Your buy-in"
+                              inputMode="decimal"
+                              value={manualMyBuyIn[swap.id] ?? ''}
+                              onChange={(e) =>
+                                setManualMyBuyIn((m) => ({
+                                  ...m,
+                                  [swap.id]: e.target.value,
+                                }))
+                              }
+                            />
+                            <input
+                              className={FIELD}
+                              placeholder="Your prize"
+                              inputMode="decimal"
+                              value={manualMyPrize[swap.id] ?? ''}
+                              onChange={(e) =>
+                                setManualMyPrize((m) => ({
+                                  ...m,
+                                  [swap.id]: e.target.value,
+                                }))
+                              }
+                            />
+                            <button
+                              type="button"
+                              disabled={busyId === swap.id}
+                              onClick={() => void onSaveManual(swap, 'self')}
+                              className="col-span-2 rounded-xl border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                            >
+                              Save your result
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )
         })}

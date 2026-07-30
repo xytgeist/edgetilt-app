@@ -6,6 +6,23 @@ import { opsMonitorSupabaseProjectRef } from './opsMonitorApi.js'
 
 /** @typedef {'ok' | 'failed' | 'stale' | 'disabled' | 'external' | 'unscheduled'} OpsJobHealth */
 
+/** @param {object | null | undefined} drift */
+export function opsDriftCaseAlertLabel(drift) {
+  const name = drift?.display_name || drift?.handle || 'Unknown user'
+  switch (drift?.case_code) {
+    case 'platform_incomplete_stuck':
+    case 'platform_active_profile_free':
+    case 'platform_profile_paid_no_sub':
+      return `${name} — paid but no access`
+    case 'platform_past_due_no_access':
+      return `${name} — past due, no access`
+    case 'fan_incomplete_stuck':
+      return `${name} — fan sub stuck`
+    default:
+      return `${name} — billing drift`
+  }
+}
+
 /**
  * @param {object | null | undefined} systemHealth
  * @returns {Array<{ id: string, severity: 'warn' | 'critical', label: string, message: string, runbookId?: string }>}
@@ -17,11 +34,10 @@ export function evaluateSystemHealthAlerts(systemHealth) {
   const alerts = []
 
   for (const drift of systemHealth.billing_drift || []) {
-    const name = drift.display_name || drift.handle || 'Unknown user'
     alerts.push({
       id: `drift-${drift.case_code}-${drift.user_id}`,
       severity: drift.severity === 'critical' ? 'critical' : 'warn',
-      label: `${name} — paid but no access`,
+      label: opsDriftCaseAlertLabel(drift),
       message: drift.message || drift.case_code,
       runbookId: 'billing-drift',
     })

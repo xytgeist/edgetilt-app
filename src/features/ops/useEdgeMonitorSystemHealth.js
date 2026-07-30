@@ -25,6 +25,9 @@ const KNOWN_GAPS = [
 function mergeSystemHealth(driftData, jobsData, jobsError = '') {
   const drift = driftData?.billing_drift || []
   const driftCount = drift.length
+  const driftCritical =
+    driftData?.drift_critical ?? drift.filter((d) => d.severity === 'critical').length
+  const driftWarn = driftData?.drift_warn ?? drift.filter((d) => d.severity !== 'critical').length
   const jobs = jobsData?.scheduled_jobs || []
   const jobsOk = jobsData?.jobs_ok ?? jobs.filter((j) => j.health === 'ok').length
   const jobsIssue =
@@ -33,8 +36,8 @@ function mergeSystemHealth(driftData, jobsData, jobsError = '') {
   const jobsTotal = jobsData?.jobs_total ?? jobs.length
 
   let overall = 'ok'
-  if (driftCount > 0) overall = 'critical'
-  else if (jobsIssue > 0) overall = 'warn'
+  if (driftCritical > 0) overall = 'critical'
+  else if (driftWarn > 0 || jobsIssue > 0) overall = 'warn'
 
   return {
     generated_at: driftData?.generated_at || jobsData?.generated_at || new Date().toISOString(),
@@ -43,6 +46,8 @@ function mergeSystemHealth(driftData, jobsData, jobsError = '') {
       jobs_ok: jobsOk,
       jobs_issue: jobsIssue,
       drift_cases: driftCount,
+      drift_critical: driftCritical,
+      drift_warn: driftWarn,
       jobs_total: jobsTotal,
     },
     billing_drift: drift,

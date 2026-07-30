@@ -109,7 +109,8 @@ Admin-only RPC **`admin_ops_subscriber_roster()`** + **`EdgeMonitorSubscriberRos
 Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthPanel`** at top of Edge Monitor (below alerts banner).
 
 - **Scheduled jobs:** pg_cron registry with last run, health (`ok` / `failed` / `stale` / `disabled` / `external` / `unscheduled`), runbook links
-- **Billing drift:** proactive cases naming users stuck **`incomplete`**, active sub + Free profile flag, Stripe customer with no sub row, fan sub incomplete
+- **Billing drift:** proactive cases naming users stuck **`incomplete`**, active sub + Free profile flag, profile paid flag with no active row, **`past_due`** lockout (warn), fan sub incomplete
+- **Dropped (40500):** orphan **`stripe_customer_id`** with no sub row (checkout noise)
 - **Copy diagnostic:** plain-text bundle for chat triage (project, user ids, Stripe ids, job failures)
 - **Alerts banner:** drift + critical job issues surface as red/critical alerts without searching subscriber roster
 
@@ -121,3 +122,4 @@ _Update log: 2026-07-03 — v1 scaffold (RPC + EdgeMonitorScreen + AppShell tab)
 _Update log: 2026-07-03 — Phases 2–5 (extended RPC, external-health Edge fn, alerts/runbooks, live pulse poll)._
 _Update log: 2026-07-23 — Phase 6 subscriber roster (`admin_ops_subscriber_roster` + Monitor panel)._
 _Update log: 2026-07-30 — Phase 7 system health (cron registry + billing drift + copy diagnostic)._
+_Update log: 2026-07-30 — **40500** billing drift focus: drop orphan Stripe customer noise; add profile-paid-no-row + past_due rules; critical vs warn overall._

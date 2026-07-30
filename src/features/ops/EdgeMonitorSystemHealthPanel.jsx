@@ -22,6 +22,81 @@ function stripeSubscriptionUrl(subId) {
   return `https://dashboard.stripe.com/subscriptions/${subId}`
 }
 
+function DriftCard({ drift: c, tone = 'critical' }) {
+  const isCritical = tone === 'critical'
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 ${
+        isCritical
+          ? 'border-red-500/40 bg-red-950/35'
+          : 'border-amber-500/35 bg-amber-950/25'
+      }`}
+    >
+      <div
+        className={`font-bold text-sm ${
+          isCritical ? 'text-red-100' : 'text-amber-100'
+        }`}
+      >
+        {c.display_name || c.handle || 'Unknown user'}
+        {c.handle ? (
+          <span
+            className={`font-semibold ${
+              isCritical ? 'text-red-200/80' : 'text-amber-200/80'
+            }`}
+          >
+            {' '}
+            @{c.handle}
+          </span>
+        ) : null}
+      </div>
+      <div
+        className={`text-xs mt-1 leading-relaxed ${
+          isCritical ? 'text-red-100/90' : 'text-amber-100/90'
+        }`}
+      >
+        {c.message}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+        {c.db_status ? (
+          <span className="rounded-md bg-black/25 px-2 py-0.5 font-mono">DB: {c.db_status}</span>
+        ) : null}
+        {c.product_slug ? (
+          <span className="rounded-md bg-black/25 px-2 py-0.5">{c.product_slug}</span>
+        ) : null}
+        {c.stripe_customer_id ? (
+          <a
+            href={stripeCustomerUrl(c.stripe_customer_id) || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md bg-black/25 px-2 py-0.5 text-cyan-300 hover:underline"
+          >
+            Stripe customer ↗
+          </a>
+        ) : null}
+        {c.stripe_subscription_id ? (
+          <a
+            href={stripeSubscriptionUrl(c.stripe_subscription_id) || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md bg-black/25 px-2 py-0.5 text-cyan-300 hover:underline"
+          >
+            Stripe sub ↗
+          </a>
+        ) : null}
+      </div>
+      {c.suggested_action ? (
+        <div
+          className={`mt-2 text-[10px] font-mono break-all ${
+            isCritical ? 'text-red-200/70' : 'text-amber-200/70'
+          }`}
+        >
+          {c.suggested_action}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 /**
  * @param {{
  *   systemHealth: object | null,
@@ -46,6 +121,8 @@ export default function EdgeMonitorSystemHealthPanel({
   const [jobsFilter, setJobsFilter] = useState('issues')
 
   const drift = systemHealth?.billing_drift || []
+  const criticalDrift = useMemo(() => drift.filter((d) => d.severity === 'critical'), [drift])
+  const warnDrift = useMemo(() => drift.filter((d) => d.severity !== 'critical'), [drift])
   const jobs = systemHealth?.scheduled_jobs || []
   const gaps = systemHealth?.known_gaps || []
   const summary = systemHealth?.summary || {}
@@ -73,7 +150,7 @@ export default function EdgeMonitorSystemHealthPanel({
         <div className="mt-2 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-amber-100 text-xs">
           {error}
           <div className="mt-1 opacity-80">
-            Apply migrations through <span className="font-mono">20260730240400</span>, then refresh.
+            Apply migrations through <span className="font-mono">20260730240500</span>, then refresh.
           </div>
         </div>
       </section>
@@ -128,71 +205,47 @@ export default function EdgeMonitorSystemHealthPanel({
               Jobs OK: {summary.jobs_ok ?? 0}/{summary.jobs_total ?? 0}
             </span>
             <span className="rounded-lg bg-zinc-950 px-2.5 py-1 text-zinc-300 ring-1 ring-zinc-700">
-              Billing drift: {summary.drift_cases ?? 0}
+              Access issues: {summary.drift_critical ?? criticalDrift.length}
+              {(summary.drift_warn ?? warnDrift.length) > 0
+                ? ` · follow-up: ${summary.drift_warn ?? warnDrift.length}`
+                : ''}
             </span>
           </div>
 
           {jobsLoadError ? (
             <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/25 px-3 py-2 text-amber-100 text-xs">
               Scheduled jobs unavailable: {jobsLoadError}. Billing drift above still loaded. Apply{' '}
-              <span className="font-mono">20260730240400</span> and refresh.
+              <span className="font-mono">20260730240500</span> and refresh.
             </div>
           ) : null}
 
-          {drift.length > 0 ? (
+          {criticalDrift.length > 0 ? (
             <div className="mb-4 space-y-2">
               <div className="text-red-200 text-xs font-bold uppercase tracking-wide">
-                Needs attention — paid but no access
+                Paid but no access
               </div>
-              {drift.map((c) => (
-                <div
-                  key={`${c.case_code}-${c.user_id}`}
-                  className="rounded-2xl border border-red-500/40 bg-red-950/35 px-4 py-3"
-                >
-                  <div className="text-red-100 font-bold text-sm">
-                    {c.display_name || c.handle || 'Unknown user'}
-                    {c.handle ? <span className="text-red-200/80 font-semibold"> @{c.handle}</span> : null}
-                  </div>
-                  <div className="text-red-100/90 text-xs mt-1 leading-relaxed">{c.message}</div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
-                    {c.db_status ? (
-                      <span className="rounded-md bg-black/25 px-2 py-0.5 font-mono">DB: {c.db_status}</span>
-                    ) : null}
-                    {c.product_slug ? (
-                      <span className="rounded-md bg-black/25 px-2 py-0.5">{c.product_slug}</span>
-                    ) : null}
-                    {c.stripe_customer_id ? (
-                      <a
-                        href={stripeCustomerUrl(c.stripe_customer_id) || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-md bg-black/25 px-2 py-0.5 text-cyan-300 hover:underline"
-                      >
-                        Stripe customer ↗
-                      </a>
-                    ) : null}
-                    {c.stripe_subscription_id ? (
-                      <a
-                        href={stripeSubscriptionUrl(c.stripe_subscription_id) || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-md bg-black/25 px-2 py-0.5 text-cyan-300 hover:underline"
-                      >
-                        Stripe sub ↗
-                      </a>
-                    ) : null}
-                  </div>
-                  {c.suggested_action ? (
-                    <div className="mt-2 text-[10px] text-red-200/70 font-mono break-all">{c.suggested_action}</div>
-                  ) : null}
-                </div>
+              {criticalDrift.map((c) => (
+                <DriftCard key={`${c.case_code}-${c.user_id}`} drift={c} tone="critical" />
               ))}
             </div>
-          ) : (
-            <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2 text-emerald-100 text-xs">
-              No billing drift cases — no one stuck on incomplete with paid access symptoms.
+          ) : null}
+
+          {warnDrift.length > 0 ? (
+            <div className="mb-4 space-y-2">
+              <div className="text-amber-200 text-xs font-bold uppercase tracking-wide">
+                Billing follow-up
+              </div>
+              {warnDrift.map((c) => (
+                <DriftCard key={`${c.case_code}-${c.user_id}`} drift={c} tone="warn" />
+              ))}
             </div>
-          )}
+          ) : null}
+
+          {drift.length === 0 ? (
+            <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2 text-emerald-100 text-xs">
+              No billing drift — no incomplete stuck rows, profile flag mismatches, or past_due lockouts.
+            </div>
+          ) : null}
 
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="text-white text-xs font-bold">Scheduled jobs</div>

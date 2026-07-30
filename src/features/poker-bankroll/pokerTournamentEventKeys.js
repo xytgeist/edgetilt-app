@@ -5,11 +5,16 @@
  */
 
 /** @param {unknown} s */
-function normalizeVenue(s) {
+export function normalizeTournamentVenue(s) {
   return String(s || '')
     .trim()
     .toLowerCase()
     .replace(/\s+/g, ' ')
+}
+
+/** @param {unknown} s */
+function normalizeVenue(s) {
+  return normalizeTournamentVenue(s)
 }
 
 /** @param {unknown} s */

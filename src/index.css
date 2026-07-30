@@ -4735,12 +4735,12 @@ html.light [data-partner-picker-sheet] .text-cyan-400\/90 {
   color: #1d4ed8 !important;
 }
 html.light [data-partner-picker-follow] {
-  background-color: #18181b !important;
-  color: #ffffff !important;
-  border: 1px solid #18181b;
+  background-color: #f4f4f5 !important;
+  color: #27272a !important;
+  border: 1px solid #d4d4d8;
 }
 html.light [data-partner-picker-follow]:active {
-  background-color: #27272a !important;
+  background-color: #e4e4e7 !important;
 }
 html.light [data-partner-picker-sheet] footer .bg-cyan-600 {
   background-color: #2563eb !important;

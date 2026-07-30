@@ -28,6 +28,18 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
+/** Prefer "Display Name (@handle)", then @handle, then a safe fallback. */
+function formatProfileLabel(profile: { display_name?: string | null; handle?: string | null } | null) {
+  const name = String(profile?.display_name || '').trim()
+  const handleRaw = String(profile?.handle || '')
+    .trim()
+    .replace(/^@/, '')
+  if (name && handleRaw) return `${name} (@${handleRaw})`
+  if (name) return name
+  if (handleRaw) return `@${handleRaw}`
+  return 'Someone'
+}
+
 function normalizePhone(raw: string): string | null {
   const digits = String(raw || '').replace(/[^\d+]/g, '')
   if (digits.length < 8) return null
@@ -137,11 +149,9 @@ Deno.serve(async (req) => {
     const { data: creator } = await admin
       .from('profiles')
       .select('display_name, handle')
-      .eq('id', auth.user.id)
+      .eq('user_id', auth.user.id)
       .maybeSingle()
-    const creatorLabel =
-      (creator?.display_name && String(creator.display_name).trim()) ||
-      (creator?.handle ? `@${creator.handle}` : 'Someone')
+    const creatorLabel = formatProfileLabel(creator)
 
     let eventLabel = ''
     if (swap.tournament_event_id) {
@@ -214,7 +224,7 @@ Deno.serve(async (req) => {
     const { data: cpProfile } = await admin
       .from('profiles')
       .select('phone_number')
-      .eq('id', swap.counterparty_user_id)
+      .eq('user_id', swap.counterparty_user_id)
       .maybeSingle()
     const phone = normalizePhone(String(cpProfile?.phone_number || ''))
     if (phone) {

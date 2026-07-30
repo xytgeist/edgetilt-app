@@ -72,6 +72,13 @@ import {
 } from './pokerSessionLabels.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import {
+  applySoftTournamentEventToForm,
+  isSoftTournamentEventPick,
+  loadNearbySoftTournamentEvents,
+  POKER_TOURNAMENT_MANUAL_PICK_ID,
+  softTournamentPickerOptions,
+} from './pokerTournamentNearbyEvents.js'
+import {
   acceptCounterpartySessionBind,
   ensureTournamentEvent,
   isMissingTournamentSwapTableError,
@@ -136,6 +143,7 @@ function emptyForm() {
     third_blind: '',
     ante: '',
     tournament_name: '',
+    tournament_event_pick: '',
     field_size: '',
     start_stack: '',
     finish_place: '',
@@ -578,36 +586,38 @@ export default function PokerBankrollTracker({
     if (sessionRow.session_type !== 'tournament' || !drafts?.length) return
 
     let tournamentEventId = sessionRow.tournament_event_id || null
-    const eventDate = localYmd(new Date(sessionRow.start_at))
-    const eventInput = {
-      venue_name: sessionRow.venue_name || '',
-      event_date: eventDate,
-      buy_in: Number(sessionRow.buy_in) || 0,
-      game_variant: sessionRow.game_variant || null,
-      currency: sessionRow.currency || 'USD',
-      display_name: sessionRow.tournament_name || null,
-    }
-    let eventRes = await ensureTournamentEvent(supabaseClient, userId, eventInput)
-    if (eventRes.needsConfirm && eventRes.existing) {
-      const same = window.confirm(
-        `Looks like you’re in “${eventRes.existing.display_name || eventRes.existing.venue_name}” (same venue/date/buy-in/game). Same event?\n\nOK = same event · Cancel = different event`,
-      )
-      eventRes = await ensureTournamentEvent(supabaseClient, userId, {
-        ...eventInput,
-        confirmSameEvent: same,
-        forceSibling: !same,
-      })
-    }
-    if (eventRes.error) {
-      console.warn('[poker-bankroll] event link failed', eventRes.error.message)
-    } else if (eventRes.event?.id) {
-      tournamentEventId = eventRes.event.id
-      const { error: linkErr } = await supabaseClient
-        .from('poker_bankroll_sessions')
-        .update({ tournament_event_id: tournamentEventId })
-        .eq('id', sessionRow.id)
-        .eq('user_id', userId)
-      if (linkErr) console.warn('[poker-bankroll] session event link failed', linkErr.message)
+    if (!tournamentEventId) {
+      const eventDate = localYmd(new Date(sessionRow.start_at))
+      const eventInput = {
+        venue_name: sessionRow.venue_name || '',
+        event_date: eventDate,
+        buy_in: Number(sessionRow.buy_in) || 0,
+        game_variant: sessionRow.game_variant || null,
+        currency: sessionRow.currency || 'USD',
+        display_name: sessionRow.tournament_name || null,
+      }
+      let eventRes = await ensureTournamentEvent(supabaseClient, userId, eventInput)
+      if (eventRes.needsConfirm && eventRes.existing) {
+        const same = window.confirm(
+          `Looks like you’re in “${eventRes.existing.display_name || eventRes.existing.venue_name}” (same venue/date/buy-in/game). Same event?\n\nOK = same event · Cancel = different event`,
+        )
+        eventRes = await ensureTournamentEvent(supabaseClient, userId, {
+          ...eventInput,
+          confirmSameEvent: same,
+          forceSibling: !same,
+        })
+      }
+      if (eventRes.error) {
+        console.warn('[poker-bankroll] event link failed', eventRes.error.message)
+      } else if (eventRes.event?.id) {
+        tournamentEventId = eventRes.event.id
+        const { error: linkErr } = await supabaseClient
+          .from('poker_bankroll_sessions')
+          .update({ tournament_event_id: tournamentEventId })
+          .eq('id', sessionRow.id)
+          .eq('user_id', userId)
+        if (linkErr) console.warn('[poker-bankroll] session event link failed', linkErr.message)
+      }
     }
 
     const { swaps, error: swapErr } = await persistDraftSwapsForSession(
@@ -879,6 +889,10 @@ export default function PokerBankrollTracker({
       ante: form.session_type === 'cash' && form.ante !== '' ? parseFloat(form.ante) : null,
       tournament_name:
         form.session_type === 'tournament' ? form.tournament_name.trim() || null : null,
+      tournament_event_id:
+        form.session_type === 'tournament' && isSoftTournamentEventPick(form.tournament_event_pick)
+          ? form.tournament_event_pick
+          : null,
       field_size:
         form.session_type === 'tournament' && form.field_size !== ''
           ? parseInt(form.field_size, 10)
@@ -1039,6 +1053,7 @@ export default function PokerBankrollTracker({
       third_blind: session.third_blind != null ? String(session.third_blind) : '',
       ante: session.ante != null ? String(session.ante) : '',
       tournament_name: session.tournament_name || '',
+      tournament_event_pick: session.tournament_event_id || '',
       field_size: session.field_size != null ? String(session.field_size) : '',
       start_stack: session.start_stack != null ? String(session.start_stack) : '',
       finish_place: session.finish_place != null ? String(session.finish_place) : '',
@@ -1061,6 +1076,26 @@ export default function PokerBankrollTracker({
         const preset = cashGamePresets.find((p) => p.id === value)
         return preset ? applyCashGamePreset(prev, preset) : applyCashGamePreset(prev, null)
       }
+      if (key === 'soft_tournament_event') {
+        const next = applySoftTournamentEventToForm(prev, value, {
+          normalizeCurrency: normalizePokerCurrency,
+          pokerGamePickFromStored,
+          pokerOnlineSiteSelectValue,
+          pokerOnlineSiteLabelFromId,
+          pokerClubAppSelectValue,
+          pokerClubAppLabelFromId,
+        })
+        if (next.venue_kind === 'live' && prev.venue_kind !== 'live') {
+          void fetchNearby((name) => {
+            setForm((f) =>
+              f.venue_kind === 'live' && !String(f.venue_name || '').trim()
+                ? { ...f, venue_name: name }
+                : f,
+            )
+          })
+        }
+        return next
+      }
       let next = { ...prev, [key]: value }
       if (key === 'session_type' && value !== prev.session_type) {
         if (value === 'cash') {
@@ -1070,6 +1105,7 @@ export default function PokerBankrollTracker({
               game_variant: 'custom',
               live_game_name_pick: 'holdem',
               game_custom_name: "Hold'em",
+              tournament_event_pick: '',
             },
             cashGamePresets,
           )
@@ -1080,6 +1116,7 @@ export default function PokerBankrollTracker({
           const lastTourneyGame = lastTournamentGameFromSessions(scopedSessions)
           next.game_variant = lastTourneyGame.game_variant
           next.game_custom_name = lastTourneyGame.game_custom_name
+          next.tournament_event_pick = ''
         }
       }
       if (key === 'live_game_name_pick') {
@@ -1239,6 +1276,10 @@ export default function PokerBankrollTracker({
       ante: form.session_type === 'cash' && form.ante !== '' ? parseFloat(form.ante) : null,
       tournament_name:
         form.session_type === 'tournament' ? form.tournament_name.trim() || null : null,
+      tournament_event_id:
+        form.session_type === 'tournament' && isSoftTournamentEventPick(form.tournament_event_pick)
+          ? form.tournament_event_pick
+          : null,
       field_size:
         form.session_type === 'tournament' && form.field_size !== ''
           ? parseInt(form.field_size, 10)
@@ -1262,6 +1303,10 @@ export default function PokerBankrollTracker({
       notes: form.notes.trim() || null,
     }
     if (payload.deal_id === undefined) delete payload.deal_id
+    // Edit without a soft pick: don't wipe an existing link by sending null.
+    if (editingId && !isSoftTournamentEventPick(form.tournament_event_pick)) {
+      delete payload.tournament_event_id
+    }
 
     const newWl = pokerSessionWinLoss({
       buy_in: buyIn,
@@ -1655,7 +1700,7 @@ export default function PokerBankrollTracker({
                     Session in progress
                   </span>
                 </div>
-                <div className="flex items-end justify-between gap-4">
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="truncate text-lg font-bold leading-tight text-white">
                       {pokerSessionStakesLabel(activeSession)}
@@ -2612,6 +2657,9 @@ function PokerSessionCoreFields({
 }) {
   const isCash = form.session_type === 'cash'
   const isCustomGame = form.game_variant === 'custom'
+  const [softEvents, setSoftEvents] = useState([])
+  const [softEventsReady, setSoftEventsReady] = useState(false)
+  const softEventsReqRef = useRef(0)
   const cashGameOrphan = (() => {
     const pick = form.cash_game_pick
     if (
@@ -2624,6 +2672,55 @@ function PokerSessionCoreFields({
     }
     return null
   })()
+
+  useEffect(() => {
+    if (isCash || !supabaseClient) return undefined
+    const reqId = ++softEventsReqRef.current
+    void loadNearbySoftTournamentEvents(supabaseClient, {
+      venueKind: form.venue_kind,
+      nearbyCasinos,
+    }).then(({ events, error }) => {
+      if (reqId !== softEventsReqRef.current) return
+      if (error) {
+        console.warn('[poker-bankroll] soft tournament load failed', error.message)
+        setSoftEvents([])
+      } else {
+        setSoftEvents(events || [])
+      }
+      setSoftEventsReady(true)
+    })
+    return () => {
+      softEventsReqRef.current += 1
+    }
+  }, [isCash, supabaseClient, form.venue_kind, nearbyCasinos])
+
+  const softTournamentOptions = useMemo(() => {
+    const opts = softTournamentPickerOptions(softEvents)
+    const pick = form.tournament_event_pick
+    if (
+      isSoftTournamentEventPick(pick) &&
+      !softEvents.some((e) => String(e.id) === String(pick))
+    ) {
+      opts.splice(1, 0, {
+        id: String(pick),
+        label: String(form.tournament_name || '').trim() || 'Linked tournament',
+      })
+    }
+    return opts
+  }, [softEvents, form.tournament_event_pick, form.tournament_name])
+
+  function onPickSoftTournament(id) {
+    if (!id || id === POKER_TOURNAMENT_MANUAL_PICK_ID) {
+      setField('tournament_event_pick', id || POKER_TOURNAMENT_MANUAL_PICK_ID)
+      return
+    }
+    const event = softEvents.find((e) => String(e.id) === String(id))
+    if (event) {
+      setField('soft_tournament_event', event)
+      return
+    }
+    setField('tournament_event_pick', id)
+  }
 
   return (
     <>
@@ -2659,6 +2756,26 @@ function PokerSessionCoreFields({
           { id: 'club', label: 'Club' },
         ]}
       />
+
+      {!isCash ? (
+        <>
+          <FieldLabel>Tournament</FieldLabel>
+          <div className="mb-3">
+            <PokerFieldMenu
+              value={form.tournament_event_pick || ''}
+              onChange={onPickSoftTournament}
+              options={softTournamentOptions}
+              ariaLabel="Tournament"
+              placeholder="Select tournament…"
+            />
+            {softEventsReady && softEvents.length === 0 ? (
+              <p className="mt-1.5 text-xs text-zinc-500">
+                No nearby logged tournaments yet … pick Enter manually
+              </p>
+            ) : null}
+          </div>
+        </>
+      ) : null}
 
       {form.venue_kind === 'online' ? (
         <>

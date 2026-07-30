@@ -58,6 +58,7 @@ import {
   resolveCashGameLabelForSave,
   lastClubAppFromSessions,
   lastOnlineSiteFromSessions,
+  lastTournamentGameFromSessions,
   pokerClubAppLabelFromId,
   pokerClubAppSelectOptions,
   pokerClubAppSelectValue,
@@ -1062,7 +1063,6 @@ export default function PokerBankrollTracker({
       }
       let next = { ...prev, [key]: value }
       if (key === 'session_type' && value !== prev.session_type) {
-        next.game_variant = coercePokerGameForSessionType(value, prev.game_variant)
         if (value === 'cash') {
           next = formWithDefaultCashGame(
             {
@@ -1074,8 +1074,12 @@ export default function PokerBankrollTracker({
             cashGamePresets,
           )
         } else {
+          // Cash uses game_variant=custom; that id also means "New game…" in tourney.
+          // Prefer the user's last tournament game, else NLH.
           next.cash_game_pick = POKER_CASH_NEW_GAME_ID
-          if (next.game_variant !== 'custom') next.game_custom_name = ''
+          const lastTourneyGame = lastTournamentGameFromSessions(scopedSessions)
+          next.game_variant = lastTourneyGame.game_variant
+          next.game_custom_name = lastTourneyGame.game_custom_name
         }
       }
       if (key === 'live_game_name_pick') {
@@ -2123,16 +2127,6 @@ export default function PokerBankrollTracker({
 
             {form.session_type === 'tournament' ? (
               <div className="mb-3 space-y-3">
-                <div>
-                  <FieldLabel>Tournament name</FieldLabel>
-                  <input
-                    type="text"
-                    value={form.tournament_name}
-                    onChange={(e) => setField('tournament_name', e.target.value)}
-                    placeholder="Daily $200, WSOP…"
-                    className={POKER_FIELD_CLASS}
-                  />
-                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <FieldLabel>Finish place</FieldLabel>
@@ -2818,6 +2812,16 @@ function PokerSessionCoreFields({
               </div>
             </>
           ) : null}
+          <FieldLabel>Tournament name</FieldLabel>
+          <div className="mb-3">
+            <input
+              type="text"
+              value={form.tournament_name}
+              onChange={(e) => setField('tournament_name', e.target.value)}
+              placeholder="WSOP Event #96, Daily Deepstack…"
+              className={POKER_FIELD_CLASS}
+            />
+          </div>
           <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
             <div className="min-w-0">
               <FieldLabel>Players</FieldLabel>

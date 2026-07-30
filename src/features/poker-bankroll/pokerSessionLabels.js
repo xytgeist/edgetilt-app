@@ -805,6 +805,27 @@ export function lastClubAppFromSessions(sessions) {
   return null
 }
 
+/**
+ * Most recent tournament Game pick (sessions expected newest-first).
+ * Falls back to NLH when the user has no prior tourney logs.
+ * @param {Array<object>} sessions
+ * @returns {{ game_variant: string, game_custom_name: string }}
+ */
+export function lastTournamentGameFromSessions(sessions) {
+  for (const s of sessions || []) {
+    if (s?.session_type !== 'tournament') continue
+    const pick = pokerGamePickFromStored(s.game_variant, 'tournament')
+    if (pick.game_variant === 'custom' && !String(pick.game_custom_name || '').trim()) {
+      continue
+    }
+    return {
+      game_variant: pick.game_variant || 'nlh',
+      game_custom_name: pick.game_custom_name || '',
+    }
+  }
+  return { game_variant: 'nlh', game_custom_name: '' }
+}
+
 /** @param {'cash' | 'tournament' | string | null | undefined} sessionType */
 export function pokerGameOptionsForSessionType(sessionType) {
   return sessionType === 'tournament' ? POKER_TOURNAMENT_GAME_VARIANTS : POKER_CASH_GAME_TYPE_OPTIONS

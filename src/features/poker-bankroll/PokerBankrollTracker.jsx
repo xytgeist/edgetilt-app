@@ -1747,7 +1747,9 @@ export default function PokerBankrollTracker({
                     </div>
                   </div>
                   <div
-                    className="flex shrink-0 flex-col items-end gap-2"
+                    className={`grid shrink-0 grid-cols-2 gap-2 ${
+                      activeSession.session_type === 'tournament' ? '' : 'grid-rows-1'
+                    }`}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
@@ -1755,37 +1757,35 @@ export default function PokerBankrollTracker({
                       <button
                         type="button"
                         onClick={() => openRebuy('rebuy')}
-                        className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-4 py-2.5 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                        className="col-start-2 box-border h-11 w-full rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-3 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
                       >
                         Re-enter
                       </button>
                     ) : null}
-                    <div className="flex gap-2">
-                      {activeSession.session_type === 'cash' ? (
-                        <button
-                          type="button"
-                          onClick={() => openRebuy('rebuy')}
-                          className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-4 py-2.5 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
-                        >
-                          Re-buy
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={openActiveSwaps}
-                          className="rounded-2xl border border-cyan-400/40 bg-cyan-950/50 px-4 py-2.5 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
-                        >
-                          Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
-                        </button>
-                      )}
+                    {activeSession.session_type === 'cash' ? (
                       <button
                         type="button"
-                        onClick={openEndSession}
-                        className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                        onClick={() => openRebuy('rebuy')}
+                        className="box-border h-11 w-full rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-3 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
                       >
-                        End Session
+                        Re-buy
                       </button>
-                    </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openActiveSwaps}
+                        className="box-border h-11 w-full rounded-2xl border border-cyan-400/40 bg-cyan-950/50 px-3 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
+                      >
+                        Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={openEndSession}
+                      className="box-border h-11 w-full rounded-2xl border border-emerald-500 bg-emerald-500 px-3 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                    >
+                      End Session
+                    </button>
                   </div>
                 </div>
               </div>

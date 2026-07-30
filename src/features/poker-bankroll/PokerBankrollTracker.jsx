@@ -1734,59 +1734,61 @@ export default function PokerBankrollTracker({
                 <div className="min-w-0 text-lg font-bold leading-tight text-white">
                   {pokerSessionStakesLabel(activeSession)}
                 </div>
-                <div className="mt-2 flex items-stretch justify-between gap-3">
-                  <div className="flex min-w-0 flex-1 flex-col">
+                {/*
+                  Button cluster is absolutely positioned so meta only clears ONE chip
+                  (Re-enter). Swap sits under the free space beside Re-enter — matches
+                  the compact reference layout.
+                */}
+                <div className="relative mt-2 min-h-[6.25rem]">
+                  <div className="min-w-0 pr-[8.75rem]">
                     <div className="truncate text-sm text-zinc-400">
                       {pokerSessionMetaLine(activeSession)}
                     </div>
                     <div className="mt-0.5 truncate text-sm text-zinc-400">
                       {pokerSessionInForLine(activeSession)}
                     </div>
-                    <div className="mt-auto pt-2 text-3xl font-black tabular-nums whitespace-nowrap text-emerald-200">
-                      {fmtPokerDuration(elapsed)}
-                    </div>
+                  </div>
+                  <div className="absolute bottom-0 left-0 text-3xl font-black tabular-nums whitespace-nowrap text-emerald-200">
+                    {fmtPokerDuration(elapsed)}
                   </div>
                   <div
-                    className="flex shrink-0 flex-col items-end gap-2"
+                    className="absolute right-0 top-0 grid grid-cols-2 gap-2"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    {/* Fixed equal chip size (same as old side-stack cells). */}
                     {activeSession.session_type === 'tournament' ? (
                       <button
                         type="button"
                         onClick={() => openRebuy('rebuy')}
-                        className="box-border h-11 w-32 shrink-0 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                        className="col-start-2 box-border h-11 w-32 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
                       >
                         Re-enter
                       </button>
                     ) : null}
-                    <div className="flex gap-2">
-                      {activeSession.session_type === 'cash' ? (
-                        <button
-                          type="button"
-                          onClick={() => openRebuy('rebuy')}
-                          className="box-border h-11 w-32 shrink-0 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
-                        >
-                          Re-buy
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={openActiveSwaps}
-                          className="box-border h-11 w-32 shrink-0 rounded-2xl border border-cyan-400/40 bg-cyan-950/50 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
-                        >
-                          Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
-                        </button>
-                      )}
+                    {activeSession.session_type === 'cash' ? (
                       <button
                         type="button"
-                        onClick={openEndSession}
-                        className="box-border h-11 w-32 shrink-0 rounded-2xl border border-emerald-500 bg-emerald-500 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                        onClick={() => openRebuy('rebuy')}
+                        className="box-border h-11 w-32 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
                       >
-                        End Session
+                        Re-buy
                       </button>
-                    </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openActiveSwaps}
+                        className="box-border h-11 w-32 rounded-2xl border border-cyan-400/40 bg-cyan-950/50 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
+                      >
+                        Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={openEndSession}
+                      className="box-border h-11 w-32 rounded-2xl border border-emerald-500 bg-emerald-500 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                    >
+                      End Session
+                    </button>
                   </div>
                 </div>
               </div>

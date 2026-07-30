@@ -80,6 +80,7 @@ import {
 } from './pokerTournamentNearbyEvents.js'
 import {
   acceptCounterpartySessionBind,
+  cancelTournamentSwap,
   findCounterpartyBindSession,
   formatTournamentEventLabel,
   ensureTournamentEvent,
@@ -876,6 +877,27 @@ export default function PokerBankrollTracker({
     setError('')
     setSheet('swaps')
     triggerTapHapticLight()
+  }
+
+  /** Counterparty declines an incoming offer (cancels the swap). */
+  async function declineIncomingSwap(swap, { closeStartSheet = false } = {}) {
+    if (!supabaseClient || !swap?.id) return
+    const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
+    const ok = window.confirm(`Decline swap with ${other}? This cancels the deal.`)
+    if (!ok) return
+    setSaving(true)
+    setError('')
+    try {
+      const { error } = await cancelTournamentSwap(supabaseClient, swap.id)
+      if (error) throw error
+      setIncomingAcceptSwap(null)
+      if (closeStartSheet) setSheet(null)
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not decline swap.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   /**
@@ -2034,19 +2056,29 @@ export default function PokerBankrollTracker({
                             {swap.pct_creator_gives}% ↔ {swap.pct_counterparty_gives}%
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => void acceptIncomingSwap(swap)}
-                          title={
-                            canBind
-                              ? 'Attach this swap to your matching session'
-                              : 'Start this tournament with the swap pre-filled'
-                          }
-                          className="shrink-0 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-black text-white touch-manipulation shadow-sm disabled:opacity-50"
-                        >
-                          Accept
-                        </button>
+                        <div className="flex shrink-0 flex-col gap-1.5">
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => void acceptIncomingSwap(swap)}
+                            title={
+                              canBind
+                                ? 'Attach this swap to your matching session'
+                                : 'Start this tournament with the swap pre-filled'
+                            }
+                            className="rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-black text-white touch-manipulation shadow-sm disabled:opacity-50"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => void declineIncomingSwap(swap)}
+                            className="rounded-xl border border-zinc-600/80 px-3 py-1.5 text-xs font-semibold text-zinc-400 touch-manipulation active:text-rose-300 disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
+                        </div>
                       </li>
                     )
                   })}
@@ -2596,6 +2628,12 @@ export default function PokerBankrollTracker({
               savedSwaps={[]}
               profilesById={swapProfilesById}
               incomingAcceptSwap={incomingAcceptSwap}
+              onDeclineIncomingAccept={
+                incomingAcceptSwap
+                  ? () => void declineIncomingSwap(incomingAcceptSwap, { closeStartSheet: true })
+                  : undefined
+              }
+              decliningIncoming={saving}
             />
 
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}

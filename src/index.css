@@ -4568,6 +4568,18 @@ html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-e
 html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-zinc-400 {
   color: #52525b !important;
 }
+html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-rose-300 {
+  color: #be123c !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .border-rose-500\/40 {
+  border-color: #fda4af !important;
+}
+
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] button.border-zinc-600\/80 {
+  border-color: #d4d4d8 !important;
+  color: #52525b !important;
+  background-color: #ffffff !important;
+}
 
 /*
  * Poker Bankroll light palette (dark unchanged):

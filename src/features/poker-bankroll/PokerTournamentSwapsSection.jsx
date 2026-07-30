@@ -37,6 +37,8 @@ const FIELD =
  *   onSavedSwapsMutated?: () => void,
  *   compact?: boolean,
  *   incomingAcceptSwap?: object | null,
+ *   onDeclineIncomingAccept?: () => void,
+ *   decliningIncoming?: boolean,
  * }} props
  */
 export default function PokerTournamentSwapsSection({
@@ -50,6 +52,8 @@ export default function PokerTournamentSwapsSection({
   onSavedSwapsMutated,
   compact = false,
   incomingAcceptSwap = null,
+  onDeclineIncomingAccept,
+  decliningIncoming = false,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [manualBuyIn, setManualBuyIn] = useState({})
@@ -333,10 +337,22 @@ export default function PokerTournamentSwapsSection({
                 {Number.isFinite(incomingTheyPct) ? incomingTheyPct : '?'}%
               </div>
             </div>
-            <p className="text-[11px] leading-snug text-zinc-400">
-              You give {Number.isFinite(incomingYouPct) ? incomingYouPct : '?'}% · they give{' '}
-              {Number.isFinite(incomingTheyPct) ? incomingTheyPct : '?'}%
-            </p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="text-[11px] leading-snug text-zinc-400">
+                You give {Number.isFinite(incomingYouPct) ? incomingYouPct : '?'}% · they give{' '}
+                {Number.isFinite(incomingTheyPct) ? incomingTheyPct : '?'}%
+              </p>
+              {typeof onDeclineIncomingAccept === 'function' ? (
+                <button
+                  type="button"
+                  disabled={decliningIncoming}
+                  onClick={onDeclineIncomingAccept}
+                  className="shrink-0 rounded-xl border border-rose-500/40 px-2.5 py-1 text-[11px] font-semibold text-rose-300 touch-manipulation active:bg-rose-950/40 disabled:opacity-50"
+                >
+                  Decline
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
         {draftSwaps.map((draft) => {

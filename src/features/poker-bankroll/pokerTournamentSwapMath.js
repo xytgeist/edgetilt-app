@@ -140,14 +140,12 @@ export function formatSwapWaitingStatus(swap, viewerRole, otherLabel) {
     return 'Waiting on you to accept this swap'
   }
 
-  // Joined / claimed path — results still missing.
-  if (!selfReady) return 'Waiting on you to log your result'
-  if (!creatorReady) return `Waiting on ${label} to log their result`
-  if (!cpReady) {
-    if (isGuest && viewerRole === 'creator') {
-      return `Waiting on ${label} to log their result · or enter it below`
+  // Joined / claimed path — results still missing (soft copy; not a do-it-now nudge).
+  if (!selfReady || !creatorReady || !cpReady) {
+    if (isGuest && viewerRole === 'creator' && !cpReady) {
+      return 'Awaiting results · or enter theirs below'
     }
-    return `Waiting on ${label} to log their result`
+    return 'Awaiting results'
   }
   return 'Both results in'
 }

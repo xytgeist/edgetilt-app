@@ -4519,6 +4519,40 @@ html.light [data-poker-bankroll-sheet] .text-rose-400 {
   color: #e11d48 !important;
 }
 
+/* Featured Swaps card on Start/Log/Edit (dark uses emerald Tailwind classes as-is). */
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] {
+  background-color: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+  box-shadow: inset 0 1px 0 0 rgba(16, 185, 129, 0.18);
+}
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .text-emerald-200 {
+  color: #059669 !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .text-emerald-100,
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .text-emerald-100\/80,
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .text-emerald-100\/70,
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .text-emerald-100\/55 {
+  color: #047857 !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .bg-emerald-500\/20 {
+  background-color: rgba(5, 150, 105, 0.14) !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .border-emerald-400\/45,
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .border-emerald-500\/25 {
+  border-color: #6ee7b7 !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .bg-emerald-950\/50,
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .bg-black\/20 {
+  background-color: #ffffff !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] .bg-emerald-600 {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+
 /*
  * Poker Bankroll light palette (dark unchanged):
  *   chrome = same blue as remapped bg-cyan-600 tabs (#2563eb)

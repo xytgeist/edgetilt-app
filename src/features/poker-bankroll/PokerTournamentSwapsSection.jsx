@@ -199,27 +199,66 @@ export default function PokerTournamentSwapsSection({
   }
 
   return (
-    <div className={compact ? 'mt-3' : 'mb-4 mt-2'} data-poker-tournament-swaps>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-xs font-bold uppercase tracking-wide text-zinc-400">Swaps</div>
-        <div className="flex gap-2">
+    <div
+      className={
+        compact
+          ? 'mt-3'
+          : 'mb-4 mt-1 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-3 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.12)]'
+      }
+      data-poker-tournament-swaps={compact ? 'compact' : 'featured'}
+    >
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className={
+                compact
+                  ? 'text-xs font-bold uppercase tracking-wide text-zinc-400'
+                  : 'text-sm font-black uppercase tracking-wide text-emerald-300'
+              }
+            >
+              Swaps
+            </div>
+            {!compact ? (
+              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                % deal
+              </span>
+            ) : null}
+          </div>
+          {!compact ? (
+            <p className="mt-1 text-[12px] font-semibold leading-snug text-emerald-100/80">
+              Split this tournament with a friend
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 gap-1.5">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="rounded-xl border border-zinc-600 bg-zinc-800/80 px-2.5 py-1 text-xs font-semibold text-zinc-200 touch-manipulation"
+            className={
+              compact
+                ? 'rounded-xl border border-zinc-600 bg-zinc-800/80 px-2.5 py-1 text-xs font-semibold text-zinc-200 touch-manipulation'
+                : 'rounded-xl bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white touch-manipulation active:bg-emerald-500'
+            }
           >
             + Edge user
           </button>
           <button
             type="button"
             onClick={addBlankGuestDraft}
-            className="rounded-xl border border-zinc-600 bg-zinc-800/80 px-2.5 py-1 text-xs font-semibold text-zinc-200 touch-manipulation"
+            className={
+              compact
+                ? 'rounded-xl border border-zinc-600 bg-zinc-800/80 px-2.5 py-1 text-xs font-semibold text-zinc-200 touch-manipulation'
+                : 'rounded-xl border border-emerald-400/45 bg-emerald-950/50 px-2.5 py-1.5 text-xs font-bold text-emerald-100 touch-manipulation active:bg-emerald-900/60'
+            }
           >
             + Guest
           </button>
         </div>
       </div>
-      <p className="mb-2 text-[11px] leading-snug text-zinc-500">
+      <p
+        className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
+      >
         Bilateral % of net (prize − buy-in). Busts owe $0 from that side. Settlement when both
         results are in.
       </p>
@@ -229,7 +268,9 @@ export default function PokerTournamentSwapsSection({
           className={`mb-3 rounded-2xl border px-3 py-2 ${
             mySideOver
               ? 'border-rose-500/40 bg-rose-950/30'
-              : 'border-zinc-700/70 bg-zinc-900/50'
+              : compact
+                ? 'border-zinc-700/70 bg-zinc-900/50'
+                : 'border-emerald-500/25 bg-black/20'
           }`}
         >
           <div className="flex items-baseline justify-between gap-2">
@@ -253,7 +294,11 @@ export default function PokerTournamentSwapsSection({
       ) : null}
 
       {!hasAnySwaps ? (
-        <p className="mb-1 text-sm text-zinc-500">No swaps on this session yet.</p>
+        <p
+          className={`mb-1 text-sm ${compact ? 'text-zinc-500' : 'font-medium text-emerald-100/70'}`}
+        >
+          No swaps yet ... add someone above.
+        </p>
       ) : null}
 
       <div className="flex flex-col gap-2">

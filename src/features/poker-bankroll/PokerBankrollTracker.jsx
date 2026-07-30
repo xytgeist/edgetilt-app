@@ -2088,6 +2088,9 @@ export default function PokerBankrollTracker({
                                 return (
                                   <span
                                     key={swap.id}
+                                    data-poker-session-swap-line={
+                                      swap.status === 'settled' ? 'settled' : 'waiting'
+                                    }
                                     className={`block truncate text-[11px] ${
                                       swap.status === 'settled'
                                         ? 'text-emerald-300/90'

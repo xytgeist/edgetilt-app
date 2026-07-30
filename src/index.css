@@ -4536,6 +4536,14 @@ html.light [data-poker-bankroll] .text-emerald-300,
 html.light [data-poker-bankroll] .text-emerald-200 {
   color: var(--poker-money) !important;
 }
+
+/* Completed-session swap lines: opacity variants miss the remaps above */
+html.light [data-poker-bankroll] [data-poker-session-swap-line='settled'] {
+  color: var(--poker-money) !important;
+}
+html.light [data-poker-bankroll] [data-poker-session-swap-line='waiting'] {
+  color: #0e7490 !important; /* cyan-700 — readable on white */
+}
 html.light [data-poker-bankroll] .text-rose-400,
 html.light [data-poker-bankroll] .text-rose-300 {
   color: #be123c !important;

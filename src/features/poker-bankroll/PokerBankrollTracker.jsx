@@ -3140,7 +3140,7 @@ function PokerSessionCoreFields({
             />
             {softEventsReady && softEvents.length === 0 ? (
               <p className="mt-1 text-xs text-zinc-500">
-                No nearby logged tournaments yet … pick Enter manually
+                No nearby logged tournaments yet … Enter manually
               </p>
             ) : null}
           </div>

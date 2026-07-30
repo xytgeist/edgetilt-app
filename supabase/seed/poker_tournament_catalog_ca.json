@@ -1,0 +1,153 @@
+{
+  "_meta": {
+    "region": "california",
+    "timezone": "America/Los_Angeles",
+    "notes": "Recurring dailies from official room schedules (Commerce/Bicycle/Hollywood Park poker pages, tribal property calendars). Verify when rooms change series.",
+    "sources": [
+      "https://www.commercecasino.com/poker/tournaments",
+      "https://www.thebicyclecasino.com/poker/tournaments",
+      "https://www.hollywoodparkcasino.com/poker",
+      "https://www.pechanga.com/indulge/casino/poker",
+      "https://www.thundervalleyresort.com/Casino/Poker"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "commerce-daily-25-nlh",
+      "venue_name": "Commerce Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "10:00",
+      "buy_in": 25,
+      "game_variant": "nl hold'em",
+      "display_name": "$25 NLH Daily"
+    },
+    {
+      "external_id": "commerce-daily-165-nlh",
+      "venue_name": "Commerce Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 165,
+      "game_variant": "nl hold'em",
+      "display_name": "$165 NLH Deep Stack"
+    },
+    {
+      "external_id": "commerce-daily-225-nlh-weekday",
+      "venue_name": "Commerce Casino",
+      "days_of_week": [1, 2, 3, 4],
+      "starts_at_local": "14:00",
+      "buy_in": 225,
+      "game_variant": "nl hold'em",
+      "display_name": "$225 NLH Daily"
+    },
+    {
+      "external_id": "commerce-daily-265-nlh-weekend",
+      "venue_name": "Commerce Casino",
+      "days_of_week": [0, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 265,
+      "game_variant": "nl hold'em",
+      "display_name": "$265 NLH Daily"
+    },
+    {
+      "external_id": "bicycle-daily-22-nlh",
+      "venue_name": "Bicycle Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "11:00",
+      "buy_in": 22,
+      "game_variant": "nl hold'em",
+      "display_name": "$22 NLH Daily"
+    },
+    {
+      "external_id": "bicycle-daily-109-nlh",
+      "venue_name": "Bicycle Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 109,
+      "game_variant": "nl hold'em",
+      "display_name": "$109 NLH Daily"
+    },
+    {
+      "external_id": "bicycle-daily-225-nlh",
+      "venue_name": "Bicycle Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "13:00",
+      "buy_in": 225,
+      "game_variant": "nl hold'em",
+      "display_name": "$225 NLH Deep Stack"
+    },
+    {
+      "external_id": "hollywood-park-daily-75-nlh",
+      "venue_name": "Hollywood Park Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "11:00",
+      "buy_in": 75,
+      "game_variant": "nl hold'em",
+      "display_name": "$75 NLH Daily"
+    },
+    {
+      "external_id": "hollywood-park-daily-150-nlh",
+      "venue_name": "Hollywood Park Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "13:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Daily"
+    },
+    {
+      "external_id": "hollywood-park-daily-250-nlh",
+      "venue_name": "Hollywood Park Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "15:00",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 NLH Daily"
+    },
+    {
+      "external_id": "pechanga-daily-80-nlh",
+      "venue_name": "Pechanga Resort Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 80,
+      "game_variant": "nl hold'em",
+      "display_name": "$80 NLH Daily"
+    },
+    {
+      "external_id": "pechanga-daily-160-nlh",
+      "venue_name": "Pechanga Resort Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 160,
+      "game_variant": "nl hold'em",
+      "display_name": "$160 NLH Daily"
+    },
+    {
+      "external_id": "thunder-valley-daily-125-nlh",
+      "venue_name": "Thunder Valley Casino Resort",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 125,
+      "game_variant": "nl hold'em",
+      "display_name": "$125 NLH Daily"
+    },
+    {
+      "external_id": "morongo-daily-240-nlh",
+      "venue_name": "Morongo Casino Resort & Spa",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 240,
+      "game_variant": "nl hold'em",
+      "display_name": "$240 NLH Daily"
+    },
+    {
+      "external_id": "yaamava-daily-75-nlh",
+      "venue_name": "Yaamava' Resort & Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 75,
+      "game_variant": "nl hold'em",
+      "display_name": "$75 NLH Daily"
+    }
+  ],
+  "one_off": []
+}

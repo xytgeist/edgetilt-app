@@ -52,7 +52,13 @@
     "play-log:sync-templates:dry": "node scripts/sync-play-log-guide-templates.mjs --target=test --dry-run",
     "play-log:sync-templates:production": "node scripts/sync-play-log-guide-templates.mjs --target=production",
     "play-log:seed-edgelord-demo": "node scripts/seed-play-log-edgelord-demo.mjs --target=test",
-    "play-log:seed-edgelord-demo:cleanup": "node scripts/seed-play-log-edgelord-demo.mjs --target=test --cleanup"
+    "play-log:seed-edgelord-demo:cleanup": "node scripts/seed-play-log-edgelord-demo.mjs --target=test --cleanup",
+    "poker:catalog:seed:test": "node scripts/seed-poker-tournament-catalog.mjs --target=test",
+    "poker:catalog:seed:test:dry": "node scripts/seed-poker-tournament-catalog.mjs --target=test --dry-run",
+    "poker:catalog:sync:test": "node scripts/sync-poker-tournament-catalog.mjs --target=test",
+    "poker:catalog:sync:test:dry": "node scripts/sync-poker-tournament-catalog.mjs --target=test --dry-run",
+    "poker:catalog:sync:production": "node scripts/sync-poker-tournament-catalog.mjs --target=production",
+    "poker:catalog:sync:production:dry": "node scripts/sync-poker-tournament-catalog.mjs --target=production --dry-run"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.6",
@@ -93,6 +99,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "pg": "^8.22.0",
     "playwright": "^1.60.0",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.1"

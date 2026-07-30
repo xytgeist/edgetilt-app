@@ -1,0 +1,116 @@
+{
+  "_meta": {
+    "region": "indiana",
+    "timezone": "America/Chicago",
+    "notes": "Caesars Southern Indiana + Horseshoe Indianapolis (Shelbyville). Horseshoe Hammond daily grid lives in poker_tournament_catalog_chi.json (Chicagoland GPS). Skipped: Blue Chip/French Lick/Belterra/Ameristar East Chicago/Hard Rock Gary (no recurring dailies on PokerAtlas).",
+    "sources": [
+      "https://visitcaesars.com/poker/",
+      "https://www.pokeratlas.com/poker-room/caesars-s-indiana-elizabeth/tournaments",
+      "https://www.pokeratlas.com/poker-room/horseshoe-indy-shelbyville/tournaments",
+      "https://www.playindiana.com/casinos/horseshoe-indianapolis/"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "caesars-si-mon-80-nlh-lunch",
+      "venue_name": "Caesars Southern Indiana",
+      "days_of_week": [1],
+      "starts_at_local": "12:00",
+      "buy_in": 80,
+      "game_variant": "nl hold'em",
+      "display_name": "$80 NLH Final Table Jackpot"
+    },
+    {
+      "external_id": "caesars-si-thu-80-nlh-lunch",
+      "venue_name": "Caesars Southern Indiana",
+      "days_of_week": [4],
+      "starts_at_local": "12:00",
+      "buy_in": 80,
+      "game_variant": "nl hold'em",
+      "display_name": "$80 NLH Final Table Jackpot"
+    },
+    {
+      "external_id": "caesars-si-wed-100-bounty-night",
+      "venue_name": "Caesars Southern Indiana",
+      "days_of_week": [3],
+      "starts_at_local": "19:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH Green Chip Bounty · $3K GTD"
+    },
+    {
+      "external_id": "caesars-si-sun-110-nlh-afternoon",
+      "venue_name": "Caesars Southern Indiana",
+      "days_of_week": [0],
+      "starts_at_local": "15:00",
+      "buy_in": 110,
+      "game_variant": "nl hold'em",
+      "display_name": "$110 NLH Final Table Jackpot"
+    },
+    {
+      "external_id": "horseshoe-indy-mon-50-nlh-evening",
+      "venue_name": "Horseshoe Indianapolis",
+      "days_of_week": [1],
+      "starts_at_local": "18:00",
+      "buy_in": 50,
+      "game_variant": "nl hold'em",
+      "display_name": "$50 NLH"
+    },
+    {
+      "external_id": "horseshoe-indy-tue-100-nlh-evening",
+      "venue_name": "Horseshoe Indianapolis",
+      "days_of_week": [2],
+      "starts_at_local": "18:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    },
+    {
+      "external_id": "horseshoe-indy-wed-150-nlh-afternoon",
+      "venue_name": "Horseshoe Indianapolis",
+      "days_of_week": [3],
+      "starts_at_local": "16:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH"
+    },
+    {
+      "external_id": "horseshoe-indy-thu-85-nlh-morning",
+      "venue_name": "Horseshoe Indianapolis",
+      "days_of_week": [4],
+      "starts_at_local": "11:00",
+      "buy_in": 85,
+      "game_variant": "nl hold'em",
+      "display_name": "$85 NLH"
+    },
+    {
+      "external_id": "horseshoe-indy-thu-50-nlh-evening",
+      "venue_name": "Horseshoe Indianapolis",
+      "days_of_week": [4],
+      "starts_at_local": "18:00",
+      "buy_in": 50,
+      "game_variant": "nl hold'em",
+      "display_name": "$50 NLH"
+    },
+    {
+      "external_id": "horseshoe-indy-fri-150-nlh-morning",
+      "venue_name": "Horseshoe Indianapolis",
+      "days_of_week": [5],
+      "starts_at_local": "11:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH"
+    },
+    {
+      "external_id": "horseshoe-indy-fri-200-nlh-evening",
+      "venue_name": "Horseshoe Indianapolis",
+      "days_of_week": [5],
+      "starts_at_local": "18:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH"
+    }
+  ],
+  "one_off": []
+}

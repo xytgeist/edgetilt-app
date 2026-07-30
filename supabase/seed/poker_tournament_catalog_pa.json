@@ -1,0 +1,98 @@
+{
+  "_meta": {
+    "region": "pennsylvania",
+    "timezone": "America/New_York",
+    "notes": "Parx, Wind Creek Bethlehem, Rivers Philadelphia, Live! Pittsburgh. Skipped: Harrah's Chester + Presque Isle (no recurring dailies on PokerAtlas/CardPlayer).",
+    "sources": [
+      "https://www.parxcasino.com/poker",
+      "https://windcreek.com/bethlehem/casino/poker",
+      "https://www.riverscasino.com/philadelphia/poker",
+      "https://www.livech.com/en/pittsburgh/casino-and-gaming/poker/poker-tournaments"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "parx-daily-200-nlh",
+      "venue_name": "Parx Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH Big Stax Daily"
+    },
+    {
+      "external_id": "parx-daily-350-nlh",
+      "venue_name": "Parx Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 350,
+      "game_variant": "nl hold'em",
+      "display_name": "$350 NLH Daily"
+    },
+    {
+      "external_id": "wind-creek-bethlehem-daily-115-nlh",
+      "venue_name": "Wind Creek Bethlehem",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 115,
+      "game_variant": "nl hold'em",
+      "display_name": "$115 NLH Daily"
+    },
+    {
+      "external_id": "rivers-philly-daily-130-nlh",
+      "venue_name": "Rivers Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 130,
+      "game_variant": "nl hold'em",
+      "display_name": "$130 NLH Daily"
+    },
+    {
+      "external_id": "live-pittsburgh-sun-80-bankroll-builder",
+      "venue_name": "Live! Casino Pittsburgh",
+      "days_of_week": [0],
+      "starts_at_local": "14:15",
+      "buy_in": 80,
+      "game_variant": "nl hold'em",
+      "display_name": "$80 Bankroll Builder NLH"
+    },
+    {
+      "external_id": "live-pittsburgh-tue-100-nlh",
+      "venue_name": "Live! Casino Pittsburgh",
+      "days_of_week": [2],
+      "starts_at_local": "12:15",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    },
+    {
+      "external_id": "live-pittsburgh-wed-80-bankroll-builder",
+      "venue_name": "Live! Casino Pittsburgh",
+      "days_of_week": [3],
+      "starts_at_local": "18:15",
+      "buy_in": 80,
+      "game_variant": "nl hold'em",
+      "display_name": "$80 Bankroll Builder NLH"
+    },
+    {
+      "external_id": "live-pittsburgh-fri-100-nlh",
+      "venue_name": "Live! Casino Pittsburgh",
+      "days_of_week": [5],
+      "starts_at_local": "18:15",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    },
+    {
+      "external_id": "live-pittsburgh-sat-100-nlh-evening",
+      "venue_name": "Live! Casino Pittsburgh",
+      "days_of_week": [6],
+      "starts_at_local": "18:15",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    }
+  ],
+  "one_off": []
+}

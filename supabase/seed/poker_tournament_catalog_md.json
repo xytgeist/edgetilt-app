@@ -1,0 +1,224 @@
+{
+  "_meta": {
+    "region": "dc-maryland",
+    "timezone": "America/New_York",
+    "notes": "DC metro = MGM National Harbor (Oxon Hill) + Live! Casino & Hotel Maryland (Hanover / Arundel Mills). Recurring templates from Live! 2026 poker calendar + MGM weekly grid; series weeks (PWPO, multi-flight) omitted.",
+    "sources": [
+      "https://www.livech.com/maryland/casino-and-gaming/poker",
+      "https://mgmnationalharbor.mgmresorts.com/en/casino/poker.html",
+      "https://www.pokeratlas.com/poker-room/maryland-live-hanover/tournaments",
+      "https://www.pokeratlas.com/poker-room/mgm-national-oxon-hill/tournaments"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "live-md-mon-120-fatstacks",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [1],
+      "starts_at_local": "11:15",
+      "buy_in": 120,
+      "game_variant": "nl hold'em",
+      "display_name": "$120 FatStacks · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-tue-140-triplestacks",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [2],
+      "starts_at_local": "11:15",
+      "buy_in": 140,
+      "game_variant": "nl hold'em",
+      "display_name": "$140 TripleStacks · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-wed-160-bounty",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [3],
+      "starts_at_local": "11:15",
+      "buy_in": 160,
+      "game_variant": "nl hold'em",
+      "display_name": "$160 Double Green Chip Bounty · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-thu-140-lunch",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [4],
+      "starts_at_local": "11:15",
+      "buy_in": 140,
+      "game_variant": "nl hold'em",
+      "display_name": "$140 NLH · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-fri-220-deepstacks",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [5],
+      "starts_at_local": "11:15",
+      "buy_in": 220,
+      "game_variant": "nl hold'em",
+      "display_name": "$220 DeepStacks · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-mon-140-quadstacks-night",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [1],
+      "starts_at_local": "19:15",
+      "buy_in": 140,
+      "game_variant": "nl hold'em",
+      "display_name": "$140 QuadStacks · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-tue-200-night",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [2],
+      "starts_at_local": "19:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-wed-160-night",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [3],
+      "starts_at_local": "19:15",
+      "buy_in": 160,
+      "game_variant": "nl hold'em",
+      "display_name": "$160 NLH · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-thu-160-night",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [4],
+      "starts_at_local": "19:15",
+      "buy_in": 160,
+      "game_variant": "nl hold'em",
+      "display_name": "$160 NLH · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-fri-140-night",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [5],
+      "starts_at_local": "19:15",
+      "buy_in": 140,
+      "game_variant": "nl hold'em",
+      "display_name": "$140 NLH · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-sat-200-night",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [6],
+      "starts_at_local": "17:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · Maryland Live!"
+    },
+    {
+      "external_id": "live-md-sun-100-bankroll-builder",
+      "venue_name": "Live! Casino & Hotel",
+      "days_of_week": [0],
+      "starts_at_local": "14:15",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "Bankroll Builder · Maryland Live!"
+    },
+    {
+      "external_id": "mgm-nh-mon-200-lunch",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [1],
+      "starts_at_local": "11:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH Double Green Chip Bounty"
+    },
+    {
+      "external_id": "mgm-nh-tue-200-lunch",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [2],
+      "starts_at_local": "11:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH"
+    },
+    {
+      "external_id": "mgm-nh-wed-200-lunch",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [3],
+      "starts_at_local": "11:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH"
+    },
+    {
+      "external_id": "mgm-nh-thu-250-lunch",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [4],
+      "starts_at_local": "11:15",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 NLH Triple Green Chip Bounty"
+    },
+    {
+      "external_id": "mgm-nh-mon-300-night",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [1],
+      "starts_at_local": "19:15",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH Black Chip Bounty"
+    },
+    {
+      "external_id": "mgm-nh-tue-200-night",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [2],
+      "starts_at_local": "19:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH Double Stack"
+    },
+    {
+      "external_id": "mgm-nh-wed-200-night",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [3],
+      "starts_at_local": "19:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH Double Stack"
+    },
+    {
+      "external_id": "mgm-nh-thu-300-night",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [4],
+      "starts_at_local": "19:15",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH"
+    },
+    {
+      "external_id": "mgm-nh-fri-250-lunch",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [5],
+      "starts_at_local": "11:15",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 NLH Triple Green Chip Bounty"
+    },
+    {
+      "external_id": "mgm-nh-fri-300-night",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [5],
+      "starts_at_local": "19:15",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH"
+    },
+    {
+      "external_id": "mgm-nh-sun-200-turbo-bounty",
+      "venue_name": "MGM National Harbor",
+      "days_of_week": [0],
+      "starts_at_local": "16:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH Turbo Bounty"
+    }
+  ],
+  "one_off": []
+}

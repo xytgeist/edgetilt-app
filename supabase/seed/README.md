@@ -33,3 +33,18 @@ node scripts/generate-local-intel-seed-sql.mjs
 - The generated SQL uses `WHERE NOT EXISTS`, so it is safe to re-run.
 - This does **not** delete anything.
 
+### Poker tournament catalog (Live picker schedule)
+- Region seeds under `supabase/seed/poker_tournament_catalog_*.json`:
+  - **`lv`** Nevada · **`ca`** · **`az`** · **`fl`** · **`pa`** · **`nj`** · **`ct`** · **`ok`** · **`gulf`** · **`md`** · **`chi`** · **`midwest`** · **`in`** · **`wi`** · **`mttdb`** (MTTDB live + online lobby scrape at sync)
+- Each file sets `_meta.timezone` (Pacific / Eastern / Central) for DST-aware `starts_at`.
+- **Sync (recommended):** all region files + Wynn series JSON-LD + **MTTDB live + online lobbies** (`mttdbCatalogFetch.mjs`, `mttdbCatalogSites.mjs`):
+```bash
+npm run poker:catalog:sync:test:dry
+npm run poker:catalog:sync:test
+```
+- **Seed only** (no fetch): `npm run poker:catalog:seed:test`
+- Single region: `--file=supabase/seed/poker_tournament_catalog_ca.json`
+- New poker rooms need matching rows in `supabase/casino_seed.sql` for GPS venue match.
+- **Picker display:** Live = catalog rows **today or tomorrow** + GPS venue match + `starts_at` buy-in window. Online = same date window filtered by **Site** dropdown (`venue_name` = network label).
+- User soft events (`source=user`) unchanged ... day-of via Start/Log only
+

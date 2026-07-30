@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "region": "oklahoma",
+    "timezone": "America/Chicago",
+    "notes": "Recurring dailies from Choctaw Durant and WinStar poker room schedules.",
+    "sources": [
+      "https://www.choctawcasinos.com/durant/casino/poker",
+      "https://www.winstar.com/gaming/poker"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "choctaw-daily-110-nlh",
+      "venue_name": "Choctaw Casino & Resort",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "11:00",
+      "buy_in": 110,
+      "game_variant": "nl hold'em",
+      "display_name": "$110 NLH Daily"
+    },
+    {
+      "external_id": "choctaw-daily-220-nlh",
+      "venue_name": "Choctaw Casino & Resort",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "13:00",
+      "buy_in": 220,
+      "game_variant": "nl hold'em",
+      "display_name": "$220 NLH Daily"
+    },
+    {
+      "external_id": "winstar-daily-115-nlh",
+      "venue_name": "WinStar World Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 115,
+      "game_variant": "nl hold'em",
+      "display_name": "$115 NLH Daily"
+    },
+    {
+      "external_id": "winstar-daily-220-nlh",
+      "venue_name": "WinStar World Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 220,
+      "game_variant": "nl hold'em",
+      "display_name": "$220 NLH Daily"
+    }
+  ],
+  "one_off": []
+}

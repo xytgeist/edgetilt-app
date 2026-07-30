@@ -1,0 +1,297 @@
+{
+  "_meta": {
+    "region": "las-vegas",
+    "timezone": "America/Los_Angeles",
+    "notes": "Recurring dailies from official room schedules (Wynn/Encore PDF, Boyd Orleans PDF, CardPlayer LV grid). Golden Nugget = Grand Poker Series in June only (no year-round recurring). Verify on property sites when WSOP/series suspend dailies.",
+    "sources": [
+      "https://www.wynnpoker.com/tournaments",
+      "https://cdn.wynnresorts.com/image/upload/v1752011166/visitwynn_pdfs_files/Poker/Daily%20Tournaments/poker-daily-tournament-poster.pdf",
+      "https://www.cardplayer.com/lasvegaspoker",
+      "https://orleans.boydgaming.com/play/poker-room",
+      "https://www.horseshoevegas.com/casino/poker"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "wynn-daily-200-nlh-lunch",
+      "venue_name": "Wynn Las Vegas",
+      "days_of_week": [1, 2, 3, 4],
+      "starts_at_local": "12:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · $10K GTD"
+    },
+    {
+      "external_id": "wynn-daily-240-nlh-rebuy-fri",
+      "venue_name": "Wynn Las Vegas",
+      "days_of_week": [5],
+      "starts_at_local": "12:00",
+      "buy_in": 240,
+      "game_variant": "nl hold'em",
+      "display_name": "$240 NLH Rebuy · $40K GTD"
+    },
+    {
+      "external_id": "wynn-daily-300-nlh-lunch-sat",
+      "venue_name": "Wynn Las Vegas",
+      "days_of_week": [6],
+      "starts_at_local": "12:00",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH · $25K GTD"
+    },
+    {
+      "external_id": "wynn-daily-200-nlh-lunch-sun",
+      "venue_name": "Wynn Las Vegas",
+      "days_of_week": [0],
+      "starts_at_local": "12:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · $25K GTD"
+    },
+    {
+      "external_id": "wynn-daily-160-nlh-night",
+      "venue_name": "Wynn Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "18:00",
+      "buy_in": 160,
+      "game_variant": "nl hold'em",
+      "display_name": "$160 NLH · $10K GTD"
+    },
+    {
+      "external_id": "aria-daily-200-nlh-lunch",
+      "venue_name": "Aria",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "13:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · $5K GTD"
+    },
+    {
+      "external_id": "bellagio-daily-150-nlh-lunch",
+      "venue_name": "Bellagio",
+      "days_of_week": [0, 1, 2, 3, 4, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Daily"
+    },
+    {
+      "external_id": "bellagio-daily-150-nlh-dinner",
+      "venue_name": "Bellagio",
+      "days_of_week": [0, 1, 2, 3, 4, 6],
+      "starts_at_local": "17:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Daily"
+    },
+    {
+      "external_id": "venetian-daily-400-nlh",
+      "venue_name": "The Venetian",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 400,
+      "game_variant": "nl hold'em",
+      "display_name": "$400 NLH Daily Deepstack"
+    },
+    {
+      "external_id": "venetian-daily-600-nlh",
+      "venue_name": "The Venetian",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 600,
+      "game_variant": "nl hold'em",
+      "display_name": "$600 NLH Daily"
+    },
+    {
+      "external_id": "caesars-daily-250-nlh",
+      "venue_name": "Caesars Palace",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "10:00",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 NLH Daily"
+    },
+    {
+      "external_id": "caesars-daily-500-nlh",
+      "venue_name": "Caesars Palace",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 500,
+      "game_variant": "nl hold'em",
+      "display_name": "$500 NLH Daily"
+    },
+    {
+      "external_id": "planet-hollywood-daily-150-nlh",
+      "venue_name": "Planet Hollywood",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Daily"
+    },
+    {
+      "external_id": "paris-daily-150-nlh",
+      "venue_name": "Paris Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "13:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Daily"
+    },
+    {
+      "external_id": "encore-daily-200-nlh-lunch-weekday",
+      "venue_name": "Encore at Wynn",
+      "days_of_week": [1, 2, 3, 4],
+      "starts_at_local": "12:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · $10K GTD (Wynn poker room)"
+    },
+    {
+      "external_id": "encore-daily-240-nlh-rebuy-fri",
+      "venue_name": "Encore at Wynn",
+      "days_of_week": [5],
+      "starts_at_local": "12:00",
+      "buy_in": 240,
+      "game_variant": "nl hold'em",
+      "display_name": "$240 NLH Rebuy · $40K GTD"
+    },
+    {
+      "external_id": "encore-daily-300-nlh-lunch-sat",
+      "venue_name": "Encore at Wynn",
+      "days_of_week": [6],
+      "starts_at_local": "12:00",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH · $25K GTD"
+    },
+    {
+      "external_id": "encore-daily-200-nlh-lunch-sun",
+      "venue_name": "Encore at Wynn",
+      "days_of_week": [0],
+      "starts_at_local": "12:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · $25K GTD"
+    },
+    {
+      "external_id": "encore-daily-160-nlh-night",
+      "venue_name": "Encore at Wynn",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "18:00",
+      "buy_in": 160,
+      "game_variant": "nl hold'em",
+      "display_name": "$160 NLH · $10K GTD"
+    },
+    {
+      "external_id": "horseshoe-lv-100-nlh-9am",
+      "venue_name": "Horseshoe Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "09:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH · $1K GTD"
+    },
+    {
+      "external_id": "horseshoe-lv-100-nlh-11am",
+      "venue_name": "Horseshoe Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "11:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH · $1K GTD"
+    },
+    {
+      "external_id": "horseshoe-lv-100-nlh-2pm",
+      "venue_name": "Horseshoe Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH · $1K GTD"
+    },
+    {
+      "external_id": "horseshoe-lv-100-nlh-5pm",
+      "venue_name": "Horseshoe Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "17:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH · $1K GTD"
+    },
+    {
+      "external_id": "horseshoe-lv-100-nlh-8pm",
+      "venue_name": "Horseshoe Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "20:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH · $1K GTD"
+    },
+    {
+      "external_id": "horseshoe-lv-100-nlh-11pm",
+      "venue_name": "Horseshoe Las Vegas",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "23:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH · $1K GTD"
+    },
+    {
+      "external_id": "orleans-200-nlh-sun-morning",
+      "venue_name": "The Orleans",
+      "days_of_week": [0],
+      "starts_at_local": "11:05",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH · $50K Sunday Special"
+    },
+    {
+      "external_id": "orleans-120-nlh-weekday-morning",
+      "venue_name": "The Orleans",
+      "days_of_week": [1, 2, 3, 4, 5],
+      "starts_at_local": "11:05",
+      "buy_in": 120,
+      "game_variant": "nl hold'em",
+      "display_name": "$120 NLH Super Stack · $5K GTD"
+    },
+    {
+      "external_id": "orleans-150-nlh-sat-morning",
+      "venue_name": "The Orleans",
+      "days_of_week": [6],
+      "starts_at_local": "11:05",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Monster Stack · $15K GTD"
+    },
+    {
+      "external_id": "orleans-150-nlh-mon-tue-thu-fri-evening",
+      "venue_name": "The Orleans",
+      "days_of_week": [1, 2, 4, 5],
+      "starts_at_local": "18:05",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Monster Stack"
+    },
+    {
+      "external_id": "orleans-120-nlh-wed-evening",
+      "venue_name": "The Orleans",
+      "days_of_week": [3],
+      "starts_at_local": "18:05",
+      "buy_in": 120,
+      "game_variant": "nl hold'em",
+      "display_name": "$120 NLH Super Stack"
+    },
+    {
+      "external_id": "orleans-150-nlh-sat-evening-bounty",
+      "venue_name": "The Orleans",
+      "days_of_week": [6],
+      "starts_at_local": "18:05",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH Monster Stack Bounty"
+    }
+  ],
+  "one_off": []
+}

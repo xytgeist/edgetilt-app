@@ -1,3 +1,8 @@
+import {
+  isKnownTournamentGameVariantId,
+  normalizeTournamentGameVariantId,
+} from '../../../scripts/lib/pokerTournamentGameVariant.mjs'
+
 /** Cash Game dropdown: New game… plus defaults + user-created stake/game labels. */
 export const POKER_CASH_NEW_GAME_ID = 'new'
 
@@ -715,10 +720,16 @@ export const POKER_ONLINE_SITES = [
   { id: 'blackchip', label: 'BlackChip Poker' },
   { id: 'juicystakes', label: 'Juicy Stakes' },
   { id: 'intertops', label: 'Intertops' },
+  { id: 'ipoker', label: 'iPoker' },
+  { id: 'pmu-poker', label: 'PMU Poker' },
+  { id: 'svenskaspel', label: 'Svenska Spel' },
   { id: 'luxon', label: 'Luxon Poker' },
   { id: 'revolution', label: 'Revolution' },
   { id: 'swc', label: 'SwC Poker' },
 ]
+
+/** Default Site when Online has no prior session pick. */
+export const POKER_DEFAULT_ONLINE_SITE_ID = 'pokerstars'
 
 /** @returns {{ id: string, label: string }[]} */
 export function pokerOnlineSiteSelectOptions() {
@@ -755,6 +766,20 @@ export function lastOnlineSiteFromSessions(sessions) {
     return { venue_name: pokerOnlineSiteLabelFromId(pick), online_site_pick: pick }
   }
   return null
+}
+
+/**
+ * Last online site from session history, else PokerStars default.
+ * @param {Array<object>} sessions
+ * @returns {{ venue_name: string, online_site_pick: string }}
+ */
+export function resolveOnlineSitePickFromSessions(sessions) {
+  const last = lastOnlineSiteFromSessions(sessions)
+  if (last) return last
+  return {
+    online_site_pick: POKER_DEFAULT_ONLINE_SITE_ID,
+    venue_name: pokerOnlineSiteLabelFromId(POKER_DEFAULT_ONLINE_SITE_ID),
+  }
 }
 
 /** Known club apps for the Club dropdown (stored as label in venue_name). */
@@ -855,6 +880,23 @@ function gameLabel(stored) {
   return pokerCashGameNameFromStored(stored)
 }
 
+/**
+ * Map catalog / free-text game strings to tournament preset ids.
+ * @param {string | null | undefined} stored
+ * @returns {{ game_variant: string, game_custom_name: string }}
+ */
+export function tournamentGamePickFromStored(stored) {
+  const raw = String(stored || '').trim()
+  const id = normalizeTournamentGameVariantId(raw)
+  if (isKnownTournamentGameVariantId(id) && id !== 'custom') {
+    return { game_variant: id, game_custom_name: '' }
+  }
+  if (id === 'custom') {
+    return { game_variant: 'custom', game_custom_name: '' }
+  }
+  return { game_variant: 'custom', game_custom_name: raw }
+}
+
 /** Resolve stored game_variant to select id + optional custom / cash name. */
 export function pokerGamePickFromStored(stored, sessionType = 'cash') {
   const raw = String(stored || '').trim()
@@ -864,13 +906,7 @@ export function pokerGamePickFromStored(stored, sessionType = 'cash') {
       game_custom_name: pokerCashGameNameFromStored(raw),
     }
   }
-  if (!raw || POKER_KNOWN_GAME_IDS.has(raw)) {
-    return { game_variant: raw || 'nlh', game_custom_name: '' }
-  }
-  if (raw === 'custom' || raw === 'other') {
-    return { game_variant: 'custom', game_custom_name: '' }
-  }
-  return { game_variant: 'custom', game_custom_name: raw }
+  return tournamentGamePickFromStored(raw)
 }
 
 /** Persist select + optional New game… / cash name into game_variant text. */
@@ -879,7 +915,7 @@ export function pokerGameVariantToStored(sessionType, gameVariant, gameCustomNam
     const name = String(gameCustomName || '').trim()
     return name || 'custom'
   }
-  return gameVariant || 'nlh'
+  return normalizeTournamentGameVariantId(gameVariant || 'nlh')
 }
 
 /**

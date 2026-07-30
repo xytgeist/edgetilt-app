@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "region": "gulf-coast",
+    "timezone": "America/Chicago",
+    "notes": "Mississippi Gulf Coast (Biloxi). Beau Rivage is the only major room with recurring daily MTTs; IP/Golden Nugget Biloxi and LA Lake Charles rooms are cash-only per property/PokerAtlas. Series (Heater) are one_off later.",
+    "sources": [
+      "https://beaurivage.mgmresorts.com/en/casino/poker-room.html",
+      "https://www.cardplayer.com/poker-rooms/MS",
+      "https://www.pokeratlas.com/poker-room/beau-rivage-biloxi/tournaments"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "beau-rivage-daily-100-nlh-noon",
+      "venue_name": "Beau Rivage Resort & Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH Daily"
+    },
+    {
+      "external_id": "beau-rivage-daily-100-nlh-evening",
+      "venue_name": "Beau Rivage Resort & Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "20:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH Daily"
+    },
+    {
+      "external_id": "beau-rivage-daily-150-nlh-gtd-sun",
+      "venue_name": "Beau Rivage Resort & Casino",
+      "days_of_week": [0],
+      "starts_at_local": "12:15",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH · $5K GTD"
+    }
+  ],
+  "one_off": []
+}

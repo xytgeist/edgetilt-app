@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "region": "new-jersey",
+    "timezone": "America/New_York",
+    "notes": "Recurring dailies from Borgata poker room schedule (Atlantic City).",
+    "sources": [
+      "https://casino.borgataonline.com/poker"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "borgata-daily-115-nlh",
+      "venue_name": "Borgata Hotel Casino & Spa",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 115,
+      "game_variant": "nl hold'em",
+      "display_name": "$115 NLH Classic Daily"
+    },
+    {
+      "external_id": "borgata-daily-230-nlh",
+      "venue_name": "Borgata Hotel Casino & Spa",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "14:00",
+      "buy_in": 230,
+      "game_variant": "nl hold'em",
+      "display_name": "$230 NLH Daily"
+    },
+    {
+      "external_id": "borgata-daily-400-nlh",
+      "venue_name": "Borgata Hotel Casino & Spa",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 400,
+      "game_variant": "nl hold'em",
+      "display_name": "$400 NLH Deep Stack Daily"
+    }
+  ],
+  "one_off": []
+}

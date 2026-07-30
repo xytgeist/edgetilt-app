@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "region": "wisconsin",
+    "timezone": "America/Chicago",
+    "notes": "Potawatomi Milwaukee = MSPT festival weeks via MTTDB catalog sync (see poker_tournament_catalog_mttdb.json). Ho-Chunk Baraboo + Oneida Green Bay = cash-only.",
+    "sources": [
+      "https://www.potawatomi.com/casino/poker",
+      "https://www.pokeratlas.com/poker-room/potawatomi-casino-milwaukee/tournaments",
+      "https://msptpoker.com/"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [],
+  "one_off": []
+}

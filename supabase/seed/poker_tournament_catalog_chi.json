@@ -1,0 +1,79 @@
+{
+  "_meta": {
+    "region": "chicagoland",
+    "timezone": "America/Chicago",
+    "notes": "Chicagoland = Horseshoe Hammond (IN) + Rivers Des Plaines + Grand Victoria Elgin. Horseshoe Wed $220 replaces noon $120; series (WSOPC/MSPT) omitted from recurring.",
+    "sources": [
+      "https://www.pokeratlas.com/poker-room/horseshoe-hammond/tournaments",
+      "https://www.riverscasino.com/desplaines/casino/poker-room",
+      "https://www.pokeratlas.com/poker-room/grand-victoria-elgin/tournaments"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "horseshoe-hammond-120-nlh-lunch",
+      "venue_name": "Horseshoe Casino",
+      "days_of_week": [0, 1, 2, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 120,
+      "game_variant": "nl hold'em",
+      "display_name": "$120 NLH · $5K GTD"
+    },
+    {
+      "external_id": "horseshoe-hammond-220-nlh-lunch-wed",
+      "venue_name": "Horseshoe Casino",
+      "days_of_week": [3],
+      "starts_at_local": "12:00",
+      "buy_in": 220,
+      "game_variant": "nl hold'em",
+      "display_name": "$220 NLH · $10K GTD"
+    },
+    {
+      "external_id": "horseshoe-hammond-120-nlh-evening",
+      "venue_name": "Horseshoe Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "18:00",
+      "buy_in": 120,
+      "game_variant": "nl hold'em",
+      "display_name": "$120 NLH · $5K GTD"
+    },
+    {
+      "external_id": "rivers-des-plaines-250-nlh-monday",
+      "venue_name": "Rivers Casino Des Plaines",
+      "days_of_week": [1],
+      "starts_at_local": "11:00",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 NLH Monday Tournament"
+    },
+    {
+      "external_id": "grand-victoria-300-nlh-lunch",
+      "venue_name": "Grand Victoria Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH Deep Stack"
+    },
+    {
+      "external_id": "grand-victoria-150-nlh-afternoon",
+      "venue_name": "Grand Victoria Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "17:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 NLH"
+    },
+    {
+      "external_id": "grand-victoria-250-nlh-evening",
+      "venue_name": "Grand Victoria Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "18:00",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 NLH"
+    }
+  ],
+  "one_off": []
+}

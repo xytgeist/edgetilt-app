@@ -12,6 +12,12 @@ export const PROJECT_REFS = {
   production: "jtjgtucumuoswnbauxry",
 };
 
+/** Session pooler region per project (Dashboard → Connect). */
+const POOLER_REGION_BY_REF = {
+  [PROJECT_REFS.test]: "aws-0-us-east-1",
+  [PROJECT_REFS.production]: "aws-1-us-east-1",
+};
+
 const RETRY_DELAYS_MS = [0, 15_000, 45_000, 90_000];
 const LOCK_PATH = path.join(repoRoot, "supabase", ".temp", "db-query.lock");
 const POOLER_URL_PATH = path.join(repoRoot, "supabase", ".temp", "pooler-url");
@@ -133,8 +139,9 @@ export function ensureLinked(target) {
     fs.mkdirSync(path.dirname(PROJECT_REF_PATH), { recursive: true });
     fs.writeFileSync(PROJECT_REF_PATH, ref, "utf8");
     const regionGuess =
+      POOLER_REGION_BY_REF[ref] ||
       poolerUrl?.match(/@(aws-\d+-[a-z0-9-]+)\.pooler\.supabase\.com/)?.[1] ||
-      "aws-1-us-east-1";
+      "aws-0-us-east-1";
     fs.writeFileSync(
       POOLER_URL_PATH,
       `postgresql://postgres.${ref}@${regionGuess}.pooler.supabase.com:5432/postgres`,

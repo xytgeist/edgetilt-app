@@ -1,0 +1,14 @@
+{
+  "_meta": {
+    "region": "mttdb",
+    "timezone": "America/Chicago",
+    "notes": "Live + online catalog rows from MTTDB lobby scrape at sync (scripts/lib/mttdbCatalogFetch.mjs + mttdbCatalogSites.mjs). Regional recurring JSON remains as fallback; upsert dedupes on fingerprint. Satellites skipped.",
+    "sources": [
+      "https://mttdb.com/live-poker/tournaments/",
+      "https://mttdb.com/online-poker/"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [],
+  "one_off": []
+}

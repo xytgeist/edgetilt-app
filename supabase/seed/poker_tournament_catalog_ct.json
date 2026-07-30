@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "region": "connecticut",
+    "timezone": "America/New_York",
+    "notes": "Recurring dailies from Foxwoods and Mohegan Sun poker schedules.",
+    "sources": [
+      "https://www.foxwoods.com/gaming/poker",
+      "https://mohegansun.com/gaming/poker.html"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "foxwoods-daily-120-nlh",
+      "venue_name": "Foxwoods Resort Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 120,
+      "game_variant": "nl hold'em",
+      "display_name": "$120 NLH Daily"
+    },
+    {
+      "external_id": "mohegan-daily-125-nlh",
+      "venue_name": "Mohegan Sun",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "12:00",
+      "buy_in": 125,
+      "game_variant": "nl hold'em",
+      "display_name": "$125 NLH Daily"
+    }
+  ],
+  "one_off": []
+}

@@ -1,4 +1,18 @@
 import { ensureGeoLocationAccess } from '../../utils/geoLocationConsent.js'
+import {
+  currencyFromCountryCode as currencyFromCountryCodeCore,
+  currencyFromCountryName,
+  currencyFromNearbyCasinoName,
+  currencyFromOnlineSiteId,
+  resolveCatalogCurrency,
+} from '../../../scripts/lib/pokerTournamentCurrency.mjs'
+
+export {
+  currencyFromCountryName,
+  currencyFromNearbyCasinoName,
+  currencyFromOnlineSiteId,
+  resolveCatalogCurrency,
+}
 
 /** Common poker currencies for the session Currency dropdown. */
 export const POKER_CURRENCIES = [
@@ -36,83 +50,12 @@ export const POKER_CURRENCIES = [
 
 const CURRENCY_IDS = new Set(POKER_CURRENCIES.map((c) => c.id))
 
-/** ISO 3166-1 alpha-2 → ISO 4217 (poker-relevant defaults). */
-const COUNTRY_TO_CURRENCY = {
-  US: 'USD',
-  PR: 'USD',
-  GU: 'USD',
-  VI: 'USD',
-  AS: 'USD',
-  MP: 'USD',
-  CA: 'CAD',
-  MX: 'MXN',
-  GB: 'GBP',
-  UK: 'GBP',
-  IE: 'EUR',
-  FR: 'EUR',
-  DE: 'EUR',
-  ES: 'EUR',
-  IT: 'EUR',
-  PT: 'EUR',
-  NL: 'EUR',
-  BE: 'EUR',
-  AT: 'EUR',
-  FI: 'EUR',
-  GR: 'EUR',
-  LU: 'EUR',
-  MT: 'EUR',
-  CY: 'EUR',
-  EE: 'EUR',
-  LV: 'EUR',
-  LT: 'EUR',
-  SK: 'EUR',
-  SI: 'EUR',
-  HR: 'EUR',
-  AU: 'AUD',
-  NZ: 'NZD',
-  BR: 'BRL',
-  JP: 'JPY',
-  KR: 'KRW',
-  CN: 'CNY',
-  HK: 'HKD',
-  SG: 'SGD',
-  IN: 'INR',
-  PH: 'PHP',
-  TH: 'THB',
-  VN: 'VND',
-  CZ: 'CZK',
-  PL: 'PLN',
-  SE: 'SEK',
-  NO: 'NOK',
-  DK: 'DKK',
-  CH: 'CHF',
-  TR: 'TRY',
-  ZA: 'ZAR',
-  RU: 'RUB',
-  UA: 'UAH',
-  IL: 'ILS',
-  AE: 'AED',
-  SA: 'SAR',
-}
-
-/**
- * @param {string | null | undefined} code
- * @returns {string}
- */
+/** @param {string | null | undefined} code @returns {string} */
 export function currencyFromCountryCode(code) {
-  const c = String(code || '')
-    .trim()
-    .toUpperCase()
-  if (!c) return 'USD'
-  const mapped = COUNTRY_TO_CURRENCY[c]
-  if (mapped && CURRENCY_IDS.has(mapped)) return mapped
-  return 'USD'
+  return currencyFromCountryCodeCore(code)
 }
 
-/**
- * @param {string | null | undefined} code
- * @returns {string}
- */
+/** @param {string | null | undefined} code @returns {string} */
 export function normalizePokerCurrency(code) {
   const c = String(code || '')
     .trim()

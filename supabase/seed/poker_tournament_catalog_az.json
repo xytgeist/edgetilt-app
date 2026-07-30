@@ -1,0 +1,163 @@
+{
+  "_meta": {
+    "region": "arizona",
+    "timezone": "America/Phoenix",
+    "notes": "Phoenix metro + Tucson dailies. Gila River poker is Lone Butte only (Wild Horse Pass/Vee Quiva have no live poker room). Lone Butte $70/$100 rotation from PokerAtlas/Bravo; verify on property.",
+    "sources": [
+      "https://www.talkingstickresort.com/phoenix-scottsdale-casino/poker/arena-poker-room-tournaments",
+      "https://playatgila.com/casino-game/poker/",
+      "https://www.pokeratlas.com/poker-room/lone-butte-chandler/tournaments",
+      "https://www.ddcaz.com/tucson/gaming/poker",
+      "https://www.ddcaz.com/west-valley/gaming/poker",
+      "https://www.casinodelsol.com"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "talking-stick-daily-125-nlh-morning",
+      "venue_name": "Talking Stick Resort",
+      "days_of_week": [1, 2, 3, 4, 5],
+      "starts_at_local": "11:15",
+      "buy_in": 125,
+      "game_variant": "nl hold'em",
+      "display_name": "$125 NLH Weekday Morning"
+    },
+    {
+      "external_id": "talking-stick-daily-200-nlh-evening",
+      "venue_name": "Talking Stick Resort",
+      "days_of_week": [2, 5],
+      "starts_at_local": "19:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH Evening"
+    },
+    {
+      "external_id": "talking-stick-daily-300-bounty-thu",
+      "venue_name": "Talking Stick Resort",
+      "days_of_week": [4],
+      "starts_at_local": "19:15",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH Progressive Bounty"
+    },
+    {
+      "external_id": "talking-stick-daily-300-super-stack-sat",
+      "venue_name": "Talking Stick Resort",
+      "days_of_week": [6],
+      "starts_at_local": "19:15",
+      "buy_in": 300,
+      "game_variant": "nl hold'em",
+      "display_name": "$300 NLH Super Stack"
+    },
+    {
+      "external_id": "lone-butte-daily-100-nlh-lunch-wedsat",
+      "venue_name": "Lone Butte Casino",
+      "days_of_week": [2, 3, 6],
+      "starts_at_local": "11:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH Daily"
+    },
+    {
+      "external_id": "lone-butte-daily-100-nlh-night-wedsat",
+      "venue_name": "Lone Butte Casino",
+      "days_of_week": [3, 6],
+      "starts_at_local": "18:30",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH Night"
+    },
+    {
+      "external_id": "lone-butte-daily-70-nlh-lunch-mthu",
+      "venue_name": "Lone Butte Casino",
+      "days_of_week": [1, 4],
+      "starts_at_local": "11:00",
+      "buy_in": 70,
+      "game_variant": "nl hold'em",
+      "display_name": "$70 NLH Daily"
+    },
+    {
+      "external_id": "lone-butte-daily-70-nlh-night-mthut",
+      "venue_name": "Lone Butte Casino",
+      "days_of_week": [1, 2, 4],
+      "starts_at_local": "18:30",
+      "buy_in": 70,
+      "game_variant": "nl hold'em",
+      "display_name": "$70 NLH Night"
+    },
+    {
+      "external_id": "dd-tucson-daily-40-nlh-high-noon",
+      "venue_name": "Desert Diamond Casino",
+      "days_of_week": [2, 4],
+      "starts_at_local": "12:00",
+      "buy_in": 40,
+      "game_variant": "nl hold'em",
+      "display_name": "$40 NLH High Noon"
+    },
+    {
+      "external_id": "dd-tucson-daily-60-nlh-bounty-sun",
+      "venue_name": "Desert Diamond Casino",
+      "days_of_week": [0],
+      "starts_at_local": "13:00",
+      "buy_in": 60,
+      "game_variant": "nl hold'em",
+      "display_name": "$60 NLH Bounty Bash"
+    },
+    {
+      "external_id": "dd-tucson-daily-60-nlh-bounty-wed",
+      "venue_name": "Desert Diamond Casino",
+      "days_of_week": [3],
+      "starts_at_local": "19:00",
+      "buy_in": 60,
+      "game_variant": "nl hold'em",
+      "display_name": "$60 NLH Bounty Bash"
+    },
+    {
+      "external_id": "dd-tucson-daily-60-nlh-sat",
+      "venue_name": "Desert Diamond Casino",
+      "days_of_week": [6],
+      "starts_at_local": "12:00",
+      "buy_in": 60,
+      "game_variant": "nl hold'em",
+      "display_name": "$60 NLH Daily"
+    },
+    {
+      "external_id": "dd-west-valley-daily-130-nlh-fri",
+      "venue_name": "Desert Diamond West Valley",
+      "days_of_week": [5],
+      "starts_at_local": "10:00",
+      "buy_in": 130,
+      "game_variant": "nl hold'em",
+      "display_name": "$130 NLH Friday Morning"
+    },
+    {
+      "external_id": "casino-del-sol-daily-60-nlh-bounty-sun",
+      "venue_name": "Casino Del Sol",
+      "days_of_week": [0],
+      "starts_at_local": "13:00",
+      "buy_in": 60,
+      "game_variant": "nl hold'em",
+      "display_name": "$60 NLH Sunday Bounty"
+    },
+    {
+      "external_id": "casino-del-sol-daily-40-nlh-tuethu",
+      "venue_name": "Casino Del Sol",
+      "days_of_week": [2, 3],
+      "starts_at_local": "13:00",
+      "buy_in": 40,
+      "game_variant": "nl hold'em",
+      "display_name": "$40 NLH · $800 GTD"
+    },
+    {
+      "external_id": "casino-del-sol-daily-120-nlh-fri-deep",
+      "venue_name": "Casino Del Sol",
+      "days_of_week": [5],
+      "starts_at_local": "18:00",
+      "buy_in": 120,
+      "game_variant": "nl hold'em",
+      "display_name": "$120 NLH Deep Stack · $5K GTD"
+    }
+  ],
+  "one_off": []
+}

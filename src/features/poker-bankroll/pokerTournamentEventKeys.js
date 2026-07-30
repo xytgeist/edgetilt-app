@@ -4,6 +4,8 @@
  * Free-text tournament name is display-only (never in the match key).
  */
 
+import { normalizeTournamentGameVariantId } from '../../../scripts/lib/pokerTournamentGameVariant.mjs'
+
 /** @param {unknown} s */
 export function normalizeTournamentVenue(s) {
   return String(s || '')
@@ -19,8 +21,7 @@ function normalizeVenue(s) {
 
 /** @param {unknown} s */
 function normalizeGame(s) {
-  return String(s || '')
-    .trim()
+  return normalizeTournamentGameVariantId(String(s || ''))
     .toLowerCase()
     .replace(/\s+/g, ' ')
 }

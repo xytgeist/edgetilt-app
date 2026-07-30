@@ -32,6 +32,9 @@ values
   ('Mandalay Bay',                      'seed', 'Las Vegas',           'Nevada',          'United States',  36.0922,  -115.1749),
   ('Fontainebleau Las Vegas',           'seed', 'Las Vegas',           'Nevada',          'United States',  36.1374,  -115.1594),
   ('Horseshoe Las Vegas',               'seed', 'Las Vegas',           'Nevada',          'United States',  36.1139,  -115.1706),
+  ('The Orleans',                       'seed', 'Las Vegas',           'Nevada',          'United States',  36.1026,  -115.2034),
+  ('Caesars Southern Indiana',          'seed', 'Elizabeth',           'Indiana',         'United States',  38.8701,   -84.9267),
+  ('Horseshoe Indianapolis',            'seed', 'Shelbyville',         'Indiana',         'United States',  39.5519,   -85.7923),
   ('Harrah''s Las Vegas',               'seed', 'Las Vegas',           'Nevada',          'United States',  36.1194,  -115.1708),
   ('Sahara Las Vegas',                  'seed', 'Las Vegas',           'Nevada',          'United States',  36.1422,  -115.1564),
   ('The Strat',                         'seed', 'Las Vegas',           'Nevada',          'United States',  36.1475,  -115.1567),
@@ -73,6 +76,7 @@ values
   ('Apache Casino Hotel',               'seed', 'Lawton',              'Oklahoma',        'United States',  34.6070,   -98.3602),
   ('Mystic Lake Casino',                'seed', 'Prior Lake',          'Minnesota',       'United States',  44.7308,   -93.4736),
   ('Canterbury Park',                   'seed', 'Shakopee',            'Minnesota',       'United States',  44.7904,   -93.4837),
+  ('Running Aces Casino',               'seed', 'Columbus',            'Minnesota',       'United States',  45.2683,   -93.0558),
   ('Treasure Island Casino',            'seed', 'Red Wing',            'Minnesota',       'United States',  44.6323,   -92.6499),
   ('Jackpot Junction Casino',           'seed', 'Morton',              'Minnesota',       'United States',  44.5318,   -94.9989),
   ('Prairie Edge Casino',               'seed', 'Watertown',           'South Dakota',    'United States',  44.8912,   -97.1432),
@@ -121,7 +125,15 @@ values
   ('Viejas Casino',                     'seed', 'Alpine',              'California',      'United States',  32.8425,  -116.7047),
   ('Jamul Casino',                      'seed', 'Jamul',               'California',      'United States',  32.7031,  -116.8692),
   ('Sycuan Casino Resort',              'seed', 'El Cajon',            'California',      'United States',  32.7863,  -116.8313),
-  ('Pala Casino Spa Resort',            'seed', 'Pala',                'California',      'United States',  33.3632,  -117.0848)
+  ('Pala Casino Spa Resort',            'seed', 'Pala',                'California',      'United States',  33.3632,  -117.0848),
+  ('Commerce Casino',                   'seed', 'Commerce',            'California',      'United States',  34.0822,  -118.1526),
+  ('Bicycle Casino',                    'seed', 'Bell Gardens',        'California',      'United States',  33.9679,  -118.1650),
+  ('Hollywood Park Casino',             'seed', 'Inglewood',           'California',      'United States',  33.9828,  -118.3442),
+  ('Seminole Hard Rock Hollywood',      'seed', 'Hollywood',           'Florida',         'United States',  26.0515,  -80.2120),
+  ('Lone Butte Casino',                 'seed', 'Chandler',            'Arizona',         'United States',  33.3068,  -111.9445),
+  ('Desert Diamond West Valley',        'seed', 'Glendale',            'Arizona',         'United States',  33.5234,  -112.2598),
+  ('Rivers Casino Des Plaines',         'seed', 'Des Plaines',         'Illinois',        'United States',  42.0320,   -87.8876),
+  ('Grand Victoria Casino',             'seed', 'Elgin',               'Illinois',        'United States',  42.0372,   -88.3234)
 on conflict (lower(name)) do update set lat = excluded.lat, lng = excluded.lng;
 
 -- European casinos

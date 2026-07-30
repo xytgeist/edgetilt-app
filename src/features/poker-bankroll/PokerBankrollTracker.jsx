@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DollarSign, Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -20,6 +20,8 @@ import {
   POKER_CURRENCIES,
   normalizePokerCurrency,
   resolveCurrencyFromGeolocation,
+  currencyFromNearbyCasinoName,
+  currencyFromOnlineSiteId,
 } from './pokerCurrencies.js'
 import {
   isMissingStableTableError,
@@ -57,7 +59,7 @@ import {
   pokerGameVariantToStored,
   resolveCashGameLabelForSave,
   lastClubAppFromSessions,
-  lastOnlineSiteFromSessions,
+  resolveOnlineSitePickFromSessions,
   lastTournamentGameFromSessions,
   pokerClubAppLabelFromId,
   pokerClubAppSelectOptions,
@@ -527,6 +529,20 @@ export default function PokerBankrollTracker({
     })
   }, [supabaseClient, userId])
 
+  /** Auto-fill nearest live room from GPS and align currency with casino country. */
+  function patchLiveVenueFromGps(prevForm, venueName) {
+    if (prevForm.venue_kind !== 'live' || String(prevForm.venue_name || '').trim()) {
+      return prevForm
+    }
+    const casinos = casinoCoordCacheRef.current || nearbyCasinos
+    const venueCurrency = currencyFromNearbyCasinoName(venueName, casinos)
+    return {
+      ...prevForm,
+      venue_name: venueName,
+      ...(venueCurrency ? { currency: normalizePokerCurrency(venueCurrency) } : {}),
+    }
+  }
+
   async function saveCustomVenue(name) {
     const trimmed = String(name || '').trim()
     if (!trimmed || !supabaseClient || !userId) return
@@ -806,7 +822,7 @@ export default function PokerBankrollTracker({
     setSheet('start')
     triggerTapHapticLight()
     applyGeoCurrencyDefault()
-    void fetchNearby((name) => setForm((f) => (f.venue_kind === 'live' && !f.venue_name ? { ...f, venue_name: name } : f)))
+    void fetchNearby((name) => setForm((f) => patchLiveVenueFromGps(f, name)))
   }
 
   /** Start Session prefilled from an incoming soft-event swap (no matching session yet). */
@@ -850,13 +866,9 @@ export default function PokerBankrollTracker({
     setSheet('start')
     triggerTapHapticLight()
     if (nextForm.venue_kind === 'live') {
-      void fetchNearby((name) =>
-        setForm((f) =>
-          f.venue_kind === 'live' && !String(f.venue_name || '').trim()
-            ? { ...f, venue_name: name }
-            : f,
-        ),
-      )
+      void fetchNearby((name) => {
+        setForm((f) => patchLiveVenueFromGps(f, name))
+      })
     }
   }
 
@@ -879,7 +891,7 @@ export default function PokerBankrollTracker({
     setSheet('session')
     triggerTapHapticLight()
     applyGeoCurrencyDefault()
-    void fetchNearby((name) => setForm((f) => (f.venue_kind === 'live' && !f.venue_name ? { ...f, venue_name: name } : f)))
+    void fetchNearby((name) => setForm((f) => patchLiveVenueFromGps(f, name)))
   }
 
   function openEndSession() {
@@ -1330,14 +1342,10 @@ export default function PokerBankrollTracker({
           pokerOnlineSiteLabelFromId,
           pokerClubAppSelectValue,
           pokerClubAppLabelFromId,
-        })
+        }, { preserveVenueContext: true })
         if (next.venue_kind === 'live' && prev.venue_kind !== 'live') {
           void fetchNearby((name) => {
-            setForm((f) =>
-              f.venue_kind === 'live' && !String(f.venue_name || '').trim()
-                ? { ...f, venue_name: name }
-                : f,
-            )
+            setForm((f) => patchLiveVenueFromGps(f, name))
           })
         }
         return next
@@ -1376,16 +1384,14 @@ export default function PokerBankrollTracker({
       if (key === 'venue_kind' && value !== prev.venue_kind) {
         next.online_site_pick = ''
         next.club_app_pick = ''
-        // Soft-event picker is Live-only until MTTDB (or similar) for Online/Club.
-        if (value !== 'live') next.tournament_event_pick = ''
+        if (prev.session_type === 'tournament') {
+          next.tournament_event_pick = ''
+          next.tournament_name = ''
+        }
         if (value === 'live') {
           next.venue_name = ''
           void fetchNearby((name) => {
-            setForm((f) =>
-              f.venue_kind === 'live' && !String(f.venue_name || '').trim()
-                ? { ...f, venue_name: name }
-                : f,
-            )
+            setForm((f) => patchLiveVenueFromGps(f, name))
           })
         } else if (value === 'club') {
           setNearbyCasinos([])
@@ -1400,14 +1406,11 @@ export default function PokerBankrollTracker({
         } else if (value === 'online') {
           const n = parseInt(next.tables_count, 10)
           if (!Number.isFinite(n) || n < 1) next.tables_count = '1'
-          const last = lastOnlineSiteFromSessions(completedSessions)
-          if (last) {
-            next.venue_name = last.venue_name
-            next.online_site_pick = last.online_site_pick
-          } else {
-            next.venue_name = ''
-            next.online_site_pick = ''
-          }
+          const site = resolveOnlineSitePickFromSessions(completedSessions)
+          next.venue_name = site.venue_name
+          next.online_site_pick = site.online_site_pick
+          const siteCurrency = currencyFromOnlineSiteId(site.online_site_pick)
+          if (siteCurrency) next.currency = normalizePokerCurrency(siteCurrency)
         }
         if (next.session_type === 'cash') {
           const venuePresets = buildCashGamePresetsFromSessions(scopedSessions, value)
@@ -1417,6 +1420,16 @@ export default function PokerBankrollTracker({
       if (key === 'online_site_pick') {
         next.online_site_pick = value || ''
         next.venue_name = value ? pokerOnlineSiteLabelFromId(value) : ''
+        const siteCurrency = currencyFromOnlineSiteId(value)
+        if (siteCurrency) next.currency = normalizePokerCurrency(siteCurrency)
+        if (prev.session_type === 'tournament') {
+          next.tournament_event_pick = ''
+          next.tournament_name = ''
+        }
+      }
+      if (key === 'venue_name' && prev.venue_kind === 'live') {
+        const venueCurrency = currencyFromNearbyCasinoName(value, nearbyCasinos)
+        if (venueCurrency) next.currency = normalizePokerCurrency(venueCurrency)
       }
       if (key === 'club_app_pick') {
         next.club_app_pick = value || ''
@@ -3124,7 +3137,8 @@ function PokerSessionCoreFields({
     return null
   })()
 
-  const showSoftTournamentPicker = !isCash && form.venue_kind === 'live'
+  const showSoftTournamentPicker =
+    !isCash && (form.venue_kind === 'live' || form.venue_kind === 'online')
 
   useEffect(() => {
     if (!showSoftTournamentPicker || !supabaseClient) {
@@ -3132,11 +3146,13 @@ function PokerSessionCoreFields({
       setSoftEventsReady(true)
       return undefined
     }
+    setSoftEvents([])
     setSoftEventsReady(false)
     const reqId = ++softEventsReqRef.current
     void loadNearbySoftTournamentEvents(supabaseClient, {
       venueKind: form.venue_kind,
       nearbyCasinos,
+      onlineSitePick: form.online_site_pick,
     }).then(({ events, error }) => {
       if (reqId !== softEventsReqRef.current) return
       if (error) {
@@ -3150,7 +3166,30 @@ function PokerSessionCoreFields({
     return () => {
       softEventsReqRef.current += 1
     }
-  }, [showSoftTournamentPicker, supabaseClient, form.venue_kind, nearbyCasinos])
+  }, [showSoftTournamentPicker, supabaseClient, form.venue_kind, form.online_site_pick, nearbyCasinos])
+
+  // Default to closest catalog row (already distance-sorted) instead of blank "Select tournament…".
+  useLayoutEffect(() => {
+    if (!showSoftTournamentPicker || !softEventsReady || !softEvents.length) return
+    if (form.venue_kind === 'online' && !String(form.online_site_pick || '').trim()) return
+    const pick = String(form.tournament_event_pick || '')
+    if (pick === POKER_TOURNAMENT_MANUAL_PICK_ID) return
+    if (
+      isSoftTournamentEventPick(pick) &&
+      softEvents.some((e) => String(e.id) === pick)
+    ) {
+      return
+    }
+    setField('soft_tournament_event', softEvents[0])
+  }, [
+    showSoftTournamentPicker,
+    softEventsReady,
+    softEvents,
+    form.tournament_event_pick,
+    form.venue_kind,
+    form.online_site_pick,
+    setField,
+  ])
 
   const softTournamentOptions = useMemo(() => {
     const opts = softTournamentPickerOptions(softEvents)
@@ -3212,6 +3251,15 @@ function PokerSessionCoreFields({
 
       {!isCash ? <SectionLabel>Event</SectionLabel> : null}
       <div className="mb-2 space-y-2">
+        {form.venue_kind === 'online' ? (
+          <MenuSelect
+            label="Site"
+            value={form.online_site_pick || ''}
+            onChange={(id) => setField('online_site_pick', id)}
+            options={pokerOnlineSiteSelectOptions()}
+          />
+        ) : null}
+
         {showSoftTournamentPicker ? (
           <div>
             <PokerFieldMenu
@@ -3224,27 +3272,22 @@ function PokerSessionCoreFields({
             />
             {softEventsReady && softEvents.length === 0 ? (
               <p className="mt-1 text-xs text-zinc-500">
-                No nearby logged tournaments yet … Enter manually
+                {form.venue_kind === 'online' && !form.online_site_pick
+                  ? 'Select a site to see upcoming tournaments … Enter manually'
+                  : 'No buy-in tournaments nearby in the next 24 hours … Enter manually'}
               </p>
             ) : null}
           </div>
         ) : null}
 
-        {form.venue_kind === 'online' ? (
-          <MenuSelect
-            label="Site"
-            value={form.online_site_pick || ''}
-            onChange={(id) => setField('online_site_pick', id)}
-            options={pokerOnlineSiteSelectOptions()}
-          />
-        ) : form.venue_kind === 'club' ? (
+        {form.venue_kind === 'club' ? (
           <MenuSelect
             label="Club"
             value={form.club_app_pick || ''}
             onChange={(id) => setField('club_app_pick', id)}
             options={pokerClubAppSelectOptions()}
           />
-        ) : (
+        ) : form.venue_kind === 'live' ? (
           <CasinoAutocomplete
             value={form.venue_name}
             onChange={(v) => setField('venue_name', v)}
@@ -3256,7 +3299,7 @@ function PokerSessionCoreFields({
             placeholder="Wynn, Aria, home game…"
             insetLabel="Location"
           />
-        )}
+        ) : null}
       </div>
 
       {isCash ? (
@@ -3354,7 +3397,7 @@ function PokerSessionCoreFields({
                 onChange={(v) => setField('limit_type', v)}
                 options={POKER_LIMIT_TYPES}
               />
-              <InField label="Game">
+              <InField label="Game name">
                 <input
                   type="text"
                   value={form.game_custom_name}

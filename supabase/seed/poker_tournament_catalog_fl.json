@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "region": "florida",
+    "timezone": "America/New_York",
+    "notes": "Recurring dailies from Seminole Hard Rock poker room schedules (Tampa + Hollywood).",
+    "sources": [
+      "https://www.seminolehardrocktampa.com/gaming/poker",
+      "https://www.seminolehardrockhollywood.com/gaming/poker"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "shr-tampa-daily-115-nlh",
+      "venue_name": "Seminole Hard Rock Hotel & Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "11:00",
+      "buy_in": 115,
+      "game_variant": "nl hold'em",
+      "display_name": "$115 NLH Deep Stack"
+    },
+    {
+      "external_id": "shr-tampa-daily-250-nlh",
+      "venue_name": "Seminole Hard Rock Hotel & Casino",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "13:00",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 NLH Daily"
+    },
+    {
+      "external_id": "shr-hollywood-daily-115-nlh",
+      "venue_name": "Seminole Hard Rock Hollywood",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "11:00",
+      "buy_in": 115,
+      "game_variant": "nl hold'em",
+      "display_name": "$115 NLH Deep Stack"
+    },
+    {
+      "external_id": "shr-hollywood-daily-240-nlh",
+      "venue_name": "Seminole Hard Rock Hollywood",
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6],
+      "starts_at_local": "13:00",
+      "buy_in": 240,
+      "game_variant": "nl hold'em",
+      "display_name": "$240 NLH Daily"
+    }
+  ],
+  "one_off": []
+}

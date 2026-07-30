@@ -1,0 +1,377 @@
+{
+  "_meta": {
+    "region": "midwest",
+    "timezone": "America/Chicago",
+    "notes": "Minnesota: Canterbury Park + Running Aces. Michigan: FireKeepers. Wisconsin tribal (Potawatomi/Ho-Chunk/Oneida) = see poker_tournament_catalog_wi.json (MSPT-only / cash). Canterbury Tue PLO runs 1st & 3rd Tue per room; catalog lists every Tue. Running Aces Mon free-roll omitted.",
+    "sources": [
+      "https://www.canterburypark.com/poker-tournaments/",
+      "https://www.pokeratlas.com/poker-room/canterbury-park-shakopee/tournaments",
+      "https://runaces.com/cards/tournaments/weekly-poker-tournaments/",
+      "https://firekeeperscasino.com/casino/games/poker/"
+    ],
+    "days_of_week": "0=Sun … 6=Sat (JS Date.getDay())"
+  },
+  "recurring": [
+    {
+      "external_id": "canterbury-mon-100-nlh-morning",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [1],
+      "starts_at_local": "10:30",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    },
+    {
+      "external_id": "canterbury-mon-150-bounty-evening",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [1],
+      "starts_at_local": "18:30",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 Double Green Chip Bounty NLH"
+    },
+    {
+      "external_id": "canterbury-tue-150-superstack-morning",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [2],
+      "starts_at_local": "10:30",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 Super Stack NLH"
+    },
+    {
+      "external_id": "canterbury-tue-160-plo-evening",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [2],
+      "starts_at_local": "18:30",
+      "buy_in": 160,
+      "game_variant": "pot-limit omaha",
+      "display_name": "$160 Pot Limit Omaha"
+    },
+    {
+      "external_id": "canterbury-wed-150-superstack-morning",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [3],
+      "starts_at_local": "10:30",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 Super Stack NLH"
+    },
+    {
+      "external_id": "canterbury-wed-250-doublestack-evening",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [3],
+      "starts_at_local": "18:30",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 Double Stack NLH"
+    },
+    {
+      "external_id": "canterbury-thu-100-nlh-morning",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [4],
+      "starts_at_local": "10:30",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    },
+    {
+      "external_id": "canterbury-thu-150-superstack-evening",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [4],
+      "starts_at_local": "18:30",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 Super Stack NLH"
+    },
+    {
+      "external_id": "canterbury-fri-150-bounty-morning",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [5],
+      "starts_at_local": "10:30",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 Double Green Chip Bounty NLH"
+    },
+    {
+      "external_id": "canterbury-fri-100-nlh-afternoon",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [5],
+      "starts_at_local": "17:00",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    },
+    {
+      "external_id": "canterbury-sat-250-deepstack-morning",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [6],
+      "starts_at_local": "10:30",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "$250 Deep Stack NLH"
+    },
+    {
+      "external_id": "canterbury-sat-60-young-crushers-evening",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [6],
+      "starts_at_local": "17:00",
+      "buy_in": 60,
+      "game_variant": "nl hold'em",
+      "display_name": "35 & Under Young Crushers $60 NLH"
+    },
+    {
+      "external_id": "canterbury-sun-150-deepstack-morning",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [0],
+      "starts_at_local": "10:30",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "$150 Deep Stack NLH"
+    },
+    {
+      "external_id": "canterbury-sun-100-nlh-evening",
+      "venue_name": "Canterbury Park",
+      "days_of_week": [0],
+      "starts_at_local": "18:30",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 NLH"
+    },
+    {
+      "external_id": "running-aces-sun-250-royal-doublestack",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [0],
+      "starts_at_local": "13:00",
+      "buy_in": 250,
+      "game_variant": "nl hold'em",
+      "display_name": "Royal Double Stack NLH"
+    },
+    {
+      "external_id": "running-aces-sun-80-evening",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [0],
+      "starts_at_local": "18:00",
+      "buy_in": 80,
+      "game_variant": "nl hold'em",
+      "display_name": "The Eighty NLH"
+    },
+    {
+      "external_id": "running-aces-mon-50-morning",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [1],
+      "starts_at_local": "10:00",
+      "buy_in": 50,
+      "game_variant": "nl hold'em",
+      "display_name": "The 50/50 NLH (10am flight)"
+    },
+    {
+      "external_id": "running-aces-mon-50-afternoon",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [1],
+      "starts_at_local": "13:00",
+      "buy_in": 50,
+      "game_variant": "nl hold'em",
+      "display_name": "The 50/50 NLH (1pm flight)"
+    },
+    {
+      "external_id": "running-aces-tue-75-morning",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [2],
+      "starts_at_local": "10:00",
+      "buy_in": 75,
+      "game_variant": "nl hold'em",
+      "display_name": "The Seventy Five NLH"
+    },
+    {
+      "external_id": "running-aces-tue-200-doublestack-evening",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [2],
+      "starts_at_local": "18:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "Double Stack NLH"
+    },
+    {
+      "external_id": "running-aces-wed-60-morning",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [3],
+      "starts_at_local": "10:00",
+      "buy_in": 60,
+      "game_variant": "nl hold'em",
+      "display_name": "The 60/60 NLH (10am flight)"
+    },
+    {
+      "external_id": "running-aces-wed-60-afternoon",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [3],
+      "starts_at_local": "13:00",
+      "buy_in": 60,
+      "game_variant": "nl hold'em",
+      "display_name": "The 60/60 NLH (1pm flight)"
+    },
+    {
+      "external_id": "running-aces-wed-80-evening",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [3],
+      "starts_at_local": "18:00",
+      "buy_in": 80,
+      "game_variant": "nl hold'em",
+      "display_name": "The Eighty NLH"
+    },
+    {
+      "external_id": "running-aces-thu-90-splash-morning",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [4],
+      "starts_at_local": "10:00",
+      "buy_in": 90,
+      "game_variant": "nl hold'em",
+      "display_name": "Splash Pot NLH"
+    },
+    {
+      "external_id": "running-aces-thu-200-doublestack-evening",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [4],
+      "starts_at_local": "18:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "Double Stack NLH"
+    },
+    {
+      "external_id": "running-aces-fri-200-doublestack-morning",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [5],
+      "starts_at_local": "10:00",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "Double Stack NLH"
+    },
+    {
+      "external_id": "running-aces-fri-150-players-special",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [5],
+      "starts_at_local": "17:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "Player's Special NLH"
+    },
+    {
+      "external_id": "running-aces-sat-150-players-special-morning",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [6],
+      "starts_at_local": "10:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "Player's Special NLH"
+    },
+    {
+      "external_id": "running-aces-sat-150-green-chip-bounty",
+      "venue_name": "Running Aces Casino",
+      "days_of_week": [6],
+      "starts_at_local": "17:00",
+      "buy_in": 150,
+      "game_variant": "nl hold'em",
+      "display_name": "Double Green Chip Bounty NLH"
+    },
+    {
+      "external_id": "firekeepers-mon-fri-65-nlh-lunch",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [1, 2, 3, 4, 5],
+      "starts_at_local": "12:15",
+      "buy_in": 65,
+      "game_variant": "nl hold'em",
+      "display_name": "$65 NLH"
+    },
+    {
+      "external_id": "firekeepers-mon-wed-65-nlh-evening",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [1, 2, 3],
+      "starts_at_local": "18:15",
+      "buy_in": 65,
+      "game_variant": "nl hold'em",
+      "display_name": "$65 NLH"
+    },
+    {
+      "external_id": "firekeepers-thu-65-plo-evening",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [4],
+      "starts_at_local": "18:15",
+      "buy_in": 65,
+      "game_variant": "pot-limit omaha",
+      "display_name": "$65 PLO"
+    },
+    {
+      "external_id": "firekeepers-fri-125-green-chip-bounty",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [5],
+      "starts_at_local": "18:15",
+      "buy_in": 125,
+      "game_variant": "nl hold'em",
+      "display_name": "$125 Green Chip Bounty NLHE"
+    },
+    {
+      "external_id": "firekeepers-fri-85-triple-nickel-bounty",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [5],
+      "starts_at_local": "22:15",
+      "buy_in": 85,
+      "game_variant": "nl hold'em",
+      "display_name": "$85 Triple Nickel Bounty"
+    },
+    {
+      "external_id": "firekeepers-sat-70-glpc-satellite-lunch",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [6],
+      "starts_at_local": "12:15",
+      "buy_in": 70,
+      "game_variant": "nl hold'em",
+      "display_name": "$70 GLPC Milestone Satellite"
+    },
+    {
+      "external_id": "firekeepers-sat-275-glpc-satellite-evening",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [6],
+      "starts_at_local": "18:15",
+      "buy_in": 275,
+      "game_variant": "nl hold'em",
+      "display_name": "$275 GLPC Milestone Satellite"
+    },
+    {
+      "external_id": "firekeepers-sat-70-bomb-pot-plo",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [6],
+      "starts_at_local": "20:15",
+      "buy_in": 70,
+      "game_variant": "pot-limit omaha",
+      "display_name": "$70 Bomb Pot PLO"
+    },
+    {
+      "external_id": "firekeepers-sun-200-nlh-lunch",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [0],
+      "starts_at_local": "12:15",
+      "buy_in": 200,
+      "game_variant": "nl hold'em",
+      "display_name": "$200 NLH"
+    },
+    {
+      "external_id": "firekeepers-sun-100-mega-stack",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [0],
+      "starts_at_local": "16:15",
+      "buy_in": 100,
+      "game_variant": "nl hold'em",
+      "display_name": "$100 Mega Stack NLHE"
+    },
+    {
+      "external_id": "firekeepers-sun-65-pineapple",
+      "venue_name": "FireKeepers Casino",
+      "days_of_week": [0],
+      "starts_at_local": "18:15",
+      "buy_in": 65,
+      "game_variant": "pineapple",
+      "display_name": "$65 Pineapple"
+    }
+  ],
+  "one_off": []
+}

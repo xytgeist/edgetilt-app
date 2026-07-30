@@ -96,6 +96,7 @@ export async function ensureTournamentEvent(supabase, userId, input) {
   const { data: created, error: cErr } = await supabase
     .from('poker_tournament_events')
     .insert({
+      source: 'user',
       fingerprint_key,
       fingerprint_sibling: sibling,
       venue_name: String(input.venue_name || '').trim(),

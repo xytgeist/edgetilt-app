@@ -1978,6 +1978,7 @@ export default function PokerBankrollTracker({
                           <button
                             type="button"
                             onClick={openActiveSwaps}
+                            data-poker-session-swap-btn
                             className={`${chip} border border-cyan-400/40 bg-cyan-950/50 text-cyan-100 active:bg-cyan-900/60`}
                           >
                             Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
@@ -1986,6 +1987,7 @@ export default function PokerBankrollTracker({
                         <button
                           type="button"
                           onClick={openEndSession}
+                          data-poker-session-end-btn
                           className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
                         >
                           End Session

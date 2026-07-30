@@ -4748,6 +4748,18 @@ html.light [data-session-card] .text-emerald-200 {
   color: #047857 !important;
 }
 
+/* Live session action chips — same hues, darker / higher contrast (light only). */
+html.light [data-session-card] [data-poker-session-swap-btn] {
+  background-color: #bfdbfe !important;
+  border-color: #2563eb !important;
+  color: #1e3a8a !important;
+}
+html.light [data-session-card] [data-poker-session-end-btn] {
+  background-color: #047857 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+}
+
 /* MoneyKeypad uses inline styles - no Tailwind overrides needed */
 
 /* Bankroll cards + button - shadows in light mode only */

@@ -4694,7 +4694,7 @@ html.light [data-freemium-usage-counter][data-freemium-usage-remaining="0"] {
   display: none;
 }
 
-/* Tournament swaps running total - light mode only */
+/* Tournament swaps cards + running total - light mode only (dark unchanged) */
 html.light [data-poker-tournament-swaps] .bg-zinc-900\/50 {
   background-color: #f4f4f5 !important;
 }
@@ -4703,6 +4703,50 @@ html.light [data-poker-tournament-swaps] .border-zinc-700\/70 {
 }
 html.light [data-poker-tournament-swaps] .bg-rose-950\/30 {
   background-color: #fff1f2 !important;
+}
+/* Draft swap cards */
+html.light [data-poker-tournament-swaps] .bg-zinc-900\/70 {
+  background-color: #fafafa !important;
+}
+html.light [data-poker-tournament-swaps] .border-zinc-700\/80 {
+  border-color: #e4e4e7 !important;
+}
+/* Saved / active player swap cards (was muddy emerald-950 on light) */
+html.light [data-poker-tournament-swaps] .bg-emerald-950\/30 {
+  background-color: #ecfdf5 !important;
+}
+html.light [data-poker-tournament-swaps] .border-emerald-500\/25 {
+  border-color: #a7f3d0 !important;
+}
+html.light [data-poker-tournament-swaps] .text-emerald-100\/90,
+html.light [data-poker-tournament-swaps] .text-emerald-100 {
+  color: #065f46 !important;
+}
+html.light [data-poker-tournament-swaps] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-tournament-swaps] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-tournament-swaps] .text-zinc-400 {
+  color: #52525b !important;
+}
+/* + Edge user / + Guest chips */
+html.light [data-poker-tournament-swaps] .bg-zinc-800\/80 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-tournament-swaps] .border-zinc-600 {
+  border-color: #d4d4d8 !important;
+}
+/* Enter their result / secondary actions on cards */
+html.light [data-poker-tournament-swaps] button.border-zinc-600 {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-tournament-swaps] .bg-emerald-600 {
+  background-color: #059669 !important;
+  color: #ffffff !important;
 }
 
 /* Partner / Edge-user picker sheet (Logbook + poker swaps) - light mode only */

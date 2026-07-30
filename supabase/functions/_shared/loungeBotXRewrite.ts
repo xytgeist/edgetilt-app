@@ -6,9 +6,8 @@ import {
   extractHttpUrls,
 } from './loungeBotXTweetFetch.ts'
 import { isXTwitterHttpUrl, stripXTwitterUrlsFromText } from './loungeBotXTweetUrl.ts'
+import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { sanitizeBotProse } from './wireBotProse.ts'
-
-const CAPTION_MAX = 500
 
 export async function rewriteTweetForBot(opts: {
   sourceText: string
@@ -39,7 +38,7 @@ export async function rewriteTweetForBot(opts: {
         body: JSON.stringify({
           model: Deno.env.get('OPENAI_CHAT_MODEL') || 'gpt-4o-mini',
           temperature: 0.7,
-          max_tokens: 280,
+          max_tokens: 900,
           messages: [
             {
               role: 'system',
@@ -47,7 +46,7 @@ export async function rewriteTweetForBot(opts: {
                 `You rewrite X posts into Lounge feed captions for an EdgeTilt bot account. ` +
                 `Follow this voice instruction exactly:\n${voice}\n\n` +
                 `Rules: output a single caption only. Do not copy the tweet verbatim. ` +
-                `No em dashes or en dashes ... use " · " or "-" for breaks. Max ${CAPTION_MAX} chars. ` +
+                `No em dashes, en dashes, or middle dots (·) ... use commas, ellipses (...), or "-" for breaks. Max ${LOUNGE_BOT_CAPTION_MAX} chars. ` +
                 `Do not impersonate the original author; informational tone only. ` +
                 `Never start with a salutation or stock opener (Yo, Listen up, Alright, Check this, Hey, So, etc.). ` +
                 `Jump straight into the point. Do not reuse the same opening across posts.` +
@@ -65,7 +64,7 @@ export async function rewriteTweetForBot(opts: {
         const text = String(json?.choices?.[0]?.message?.content || '').trim()
         if (text) {
           return stripXTwitterUrlsFromText(
-            sanitizeBotProse(ensureCaptionKeepsUrls(text, outboundUrls, CAPTION_MAX)),
+            sanitizeBotProse(ensureCaptionKeepsUrls(text, outboundUrls, LOUNGE_BOT_CAPTION_MAX)),
           )
         }
       }
@@ -84,6 +83,6 @@ export async function rewriteTweetForBot(opts: {
     ? `${prefix}${withoutUrls}\n${outboundUrls.join('\n')}`
     : `${prefix}${withoutUrls}`
   return stripXTwitterUrlsFromText(
-    sanitizeBotProse(ensureCaptionKeepsUrls(draft, outboundUrls, CAPTION_MAX)),
+    sanitizeBotProse(ensureCaptionKeepsUrls(draft, outboundUrls, LOUNGE_BOT_CAPTION_MAX)),
   )
 }

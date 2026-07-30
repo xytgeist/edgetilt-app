@@ -5,9 +5,8 @@
 
 import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
 import { sanitizeWireProse, splitWireSentences, cleanWireFeedExcerpt } from './wireBotProse.ts'
+import { LOUNGE_BOT_WIRE_SYNOPSIS_MAX } from './loungeBotCaptionLimits.ts'
 import type { NewsProfile } from './loungeBotNewsProfile.ts'
-
-const SYNOPSIS_MAX = 380
 const OPENAI_TIMEOUT_MS = 12000
 
 const PERSONA: Record<NewsProfile, string> = {
@@ -148,7 +147,7 @@ function clipFeedSummary(
   }
   const joined = kept.join(' ').trim()
   const normalized = normalizeSynopsisLead(joined)
-  return normalized ? normalized.slice(0, SYNOPSIS_MAX) : ''
+  return normalized ? normalized.slice(0, LOUNGE_BOT_WIRE_SYNOPSIS_MAX) : ''
 }
 
 function headlineLooksSelfContained(headline: string): boolean {
@@ -191,7 +190,7 @@ function parseComposeJson(raw: string): { includeLink: boolean; synopsis: string
     const synopsis = String(parsed.synopsis || '')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, SYNOPSIS_MAX)
+      .slice(0, LOUNGE_BOT_WIRE_SYNOPSIS_MAX)
     return { includeLink, synopsis: normalizeSynopsisLead(sanitizeWireProse(synopsis)) }
   } catch {
     return null
@@ -255,8 +254,8 @@ export async function composeWirePost(opts: WirePostComposeInput): Promise<WireP
                 `- Standalone sentences only. Never start synopsis with a comma or mid-sentence continuation of the headline.\n` +
                 `- If the feed excerpt only repeats the headline, skip it and pull a later detail or return "".\n` +
                 `- Third person only ... no we/our/us/I. No investment advice.\n` +
-                `- NEVER use em dashes or en dashes. Use commas, " · ", or "-" for breaks.\n` +
-                `- Max ${SYNOPSIS_MAX} characters in synopsis.`,
+                `- NEVER use em dashes, en dashes, or middle dots (·). Use commas, ellipses (...), or "-" for breaks.\n` +
+                `- Max ${LOUNGE_BOT_WIRE_SYNOPSIS_MAX} characters in synopsis.`,
             },
             {
               role: 'user',

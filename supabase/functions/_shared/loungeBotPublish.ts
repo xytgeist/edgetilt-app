@@ -5,6 +5,8 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { attachLinkPreviewToEntity, unfurlUrl, type LinkPreviewPayload } from './linkUnfurl.ts'
 import { isXTwitterHttpUrl, stripXTwitterUrlsFromText } from './loungeBotXTweetUrl.ts'
+import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
+import { attachMarketEmbedsFromCaptionCashtags } from './loungeMarketAttach.ts'
 import { sanitizeBotProse } from './wireBotProse.ts'
 
 export type BotPublishInput = {
@@ -57,7 +59,9 @@ export async function publishLoungeBotPost(
   const caption = stripXTwitterUrlsFromText(sanitizeBotProse(String(input.caption || '').trim()))
   const imageUrls = normalizeBotImageUrls(input.imageUrls)
   if (!caption && !imageUrls.length) return { postId: null, error: 'Caption or image required.' }
-  if (caption.length > 2000) return { postId: null, error: 'Caption exceeds 2000 chars.' }
+  if (caption.length > LOUNGE_BOT_CAPTION_MAX) {
+    return { postId: null, error: `Caption exceeds ${LOUNGE_BOT_CAPTION_MAX} chars.` }
+  }
 
   const pills = Array.isArray(input.categoryPills)
     ? input.categoryPills.map((p) => String(p || '').trim()).filter(Boolean).slice(0, 3)
@@ -74,7 +78,7 @@ export async function publishLoungeBotPost(
 
     if (!finalCaption.includes(url)) {
       const withUrl = `${finalCaption} ${url}`.trim()
-      finalCaption = withUrl.length <= 2000 ? withUrl : caption
+      finalCaption = withUrl.length <= LOUNGE_BOT_CAPTION_MAX ? withUrl : caption
     }
   }
 
@@ -114,6 +118,12 @@ export async function publishLoungeBotPost(
     // Link preview is best-effort for bot posts.
   }
 
+  try {
+    await attachMarketEmbedsFromCaptionCashtags(admin, data.id, finalCaption)
+  } catch {
+    // Mini charts from caption $ cashtags are best-effort for bot posts.
+  }
+
   return { postId: data.id as string, error: null }
 }
 
@@ -135,7 +145,9 @@ export async function publishLoungeBotPostWithThread(
 
   for (let i = 0; i < parts.length; i++) {
     let body = parts[i]!
-    if (body.length > 2000) body = `${body.slice(0, 1997)}...`
+    if (body.length > LOUNGE_BOT_CAPTION_MAX) {
+      body = `${body.slice(0, LOUNGE_BOT_CAPTION_MAX - 3)}...`
+    }
 
     const { error } = await admin.from('feed_comments').insert({
       post_id: root.postId,

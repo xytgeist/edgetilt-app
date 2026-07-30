@@ -188,7 +188,7 @@ Used for **`source_type = x`** (and optional **`manual`** paste for testing X vo
 | `source_payload` | jsonb ... tweet metadata for admin card |
 | `bot_user_id` | persona |
 | `source_text`, `source_url`, `source_posted_at` | read-only context in UI |
-| `draft_caption` | editable; max 500 chars |
+| `draft_caption` | editable; max **2000** chars (bot tier; was 500) |
 | `category_pills` | text[] |
 | `attach_source_link` | bool |
 | `status` | see statuses above |

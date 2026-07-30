@@ -14,7 +14,7 @@ import {
   invokeLoungeXIngest,
   updateEditorialQueueRow,
 } from './botPortalApi.js'
-import { LOUNGE_CAPTION_MAX } from '../../utils/loungeCommentLimits.js'
+import { LOUNGE_CAPTION_SUBSCRIBER_MAX } from '../../utils/loungeCommentLimits.js'
 
 function scheduleIsoMinutesFromNow(minutes) {
   return new Date(Date.now() + minutes * 60_000).toISOString()
@@ -451,7 +451,7 @@ export default function BotEditorialInbox({ supabaseClient, bots, onReload, setT
                   <div className="space-y-2">
                     <textarea
                       value={editCaption}
-                      maxLength={LOUNGE_CAPTION_MAX}
+                      maxLength={LOUNGE_CAPTION_SUBSCRIBER_MAX}
                       rows={4}
                       onChange={(e) => setEditCaption(e.target.value)}
                       className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-white text-sm"

@@ -1,5 +1,5 @@
 /**
- * Market Edge caption builder — clean, fast, neutral-to-sharp (<= 500 chars).
+ * Market Edge caption builder — clean, fast, neutral-to-sharp (<= 2000 chars for bots).
  * Walter Bloomberg / Financial Juice style: lead with fact + tickers when present.
  * Dry humor is rare and only when headline already has a wry hook (no forced jokes).
  */
@@ -8,9 +8,8 @@ import { decodeHtmlEntities } from './decodeHtmlEntities.ts'
 import { sanitizeWireProse } from './wireBotProse.ts'
 import { extractTickers, type NewsCandidate } from './loungeBotNewsScore.ts'
 import type { NewsProfile } from './loungeBotNewsProfile.ts'
+import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { composeWirePost, type WirePostComposeResult } from './loungeBotNewsSynopsis.ts'
-
-const CAPTION_MAX = 1200
 
 const FLUFF_PREFIX_RE = /^(breaking|just in|update|alert|exclusive)[:\s-]+/i
 
@@ -244,7 +243,7 @@ function buildHeadlineLine(item: NewsCandidate, opts: { newsProfile?: NewsProfil
  * Build Lounge caption from a news candidate (headline only — skip logs / dry fallback).
  */
 export function buildFinancialWireCaption(item: NewsCandidate): string {
-  return shorten(sanitizeWireProse(buildHeadlineLine(item)), CAPTION_MAX)
+  return shorten(sanitizeWireProse(buildHeadlineLine(item)), LOUNGE_BOT_CAPTION_MAX)
 }
 
 /** Headline + OpenAI compose (synopsis length + link decision) for published wire posts. */
@@ -262,7 +261,7 @@ export async function buildFinancialWirePostAsync(
   })
 
   return {
-    caption: shorten(sanitizeWireProse(composed.caption || headlineLine), CAPTION_MAX),
+    caption: shorten(sanitizeWireProse(composed.caption || headlineLine), LOUNGE_BOT_CAPTION_MAX),
     includeLink: Boolean(item.url)
       && (opts.newsProfile === 'crypto' ? true : composed.includeLink),
   }

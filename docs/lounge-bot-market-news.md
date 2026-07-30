@@ -193,7 +193,7 @@ Always **rewrite** ... do not paste licensed wire text verbatim unless API contr
 | Poll fn | `supabase/functions/lounge-news-poll/` |
 | Scoring | `supabase/functions/_shared/loungeBotNewsScore.ts` |
 | Captions | `supabase/functions/_shared/loungeBotNewsCaption.ts` — headline + OpenAI compose (`loungeBotNewsSynopsis.ts`: link yes/no + 0-2 sentence synopsis); first-person headlines reframed |
-| Publish | `supabase/functions/_shared/loungeBotPublish.ts` — source link + preview when compose says include; rich card only when og:image loads |
+| Publish | `supabase/functions/_shared/loungeBotPublish.ts` — source link + preview when compose says include; rich card only when og:image loads; caption **`$TICKER`** cashtags → **`market_embeds`** mini charts (best-effort via **`loungeMarketAttach.ts`**) |
 | Admin UI | `src/features/ops/EdgeMonitorBotOpsPanel.jsx` |
 | Finnhub (existing) | `supabase/functions/_shared/finnhubMarket.ts` |
 
@@ -308,7 +308,7 @@ Output: **~3–12 published posts/day** at default thresholds ... tune in admin 
 
 Template or LLM with **hard rules**:
 
-- Max 500 chars; **original wording**
+- Max **2000** chars for bot posts (subscriber tier); wire synopsis block up to **1200** under headline
 - Lead with `$TICKER` + fact; optional "via {source}" link in preview
 - **Never** paste full wire body unless API license explicitly allows embed
 

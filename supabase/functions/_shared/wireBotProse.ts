@@ -1,7 +1,9 @@
 /**
- * Bot caption prose — Ryan rule: never em/en dashes in published copy.
- * Prose breaks → middle dot (·); numeric ranges → hyphen without spaces.
+ * Bot caption prose — Ryan rule: no em/en dashes or middle dots (·) in published copy.
+ * Prose breaks → ellipses (...); numeric ranges → hyphen without spaces.
  */
+
+const PROSE_BREAK = ' ... '
 
 /** Private-use placeholder — mask decimal points before sentence splitting on `.` */
 const WIRE_DECIMAL_DOT = '\uE000'
@@ -32,12 +34,15 @@ function sanitizeWireProseLine(text: string): string {
   // Numeric ranges: 2024–2026, $955–968 → hyphen without spaces
   s = s.replace(/(\d)\s*[\u2013\u2014]\s*(\d)/g, '$1-$2')
 
-  // Prose breaks → · (Scott + wire bots; never em/en dash)
-  s = s.replace(/\s*[\u2014\u2013]\s*/g, ' · ')
-  s = s.replace(/\s--\s/g, ' · ')
+  // Prose breaks → ellipses (Scott + wire bots; never em/en dash or middle dot)
+  s = s.replace(/\s*[\u2014\u2013]\s*/g, PROSE_BREAK)
+  s = s.replace(/\s--\s/g, PROSE_BREAK)
+  s = s.replace(/\s·\s/g, PROSE_BREAK)
+  s = s.replace(/·/g, PROSE_BREAK)
 
   return s
-    .replace(/(?: · ){2,}/g, ' · ')
+    .replace(/(?: \.\.\. ){2,}/g, PROSE_BREAK)
+    .replace(/\.{4,}/g, '...')
     .replace(/[ \t]+/g, ' ')
     .trim()
 }

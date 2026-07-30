@@ -1,8 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import {
   MARKET_CACHE_TTL_MS,
-  MARKET_EMBED_MAX,
-  buildMarketEmbed,
   buildRollingBatchPayload,
   embedQuoteCurrency,
   enrichSearchResultsForPicker,
@@ -24,7 +22,6 @@ import {
   resolveCashtagsDisambiguationBatch,
   sortMarketSearchResults,
   type MarketAssetClass,
-  type MarketEmbed,
   type MarketProfile,
   type MarketWindowKey,
 } from '../_shared/finnhubMarket.ts'
@@ -47,9 +44,9 @@ import {
   readMarketInstrument,
   readMarketInstrumentCoinId,
   upsertMarketInstrument,
-  upsertMarketInstrumentFromEmbed,
 } from '../_shared/marketInstrumentRegistry.ts'
 import { coingeckoCoinIdForTicker } from '../_shared/marketCashtagCrypto.ts'
+import { attachMarketEmbedsToPost, loungeMarketPublicOrigin } from '../_shared/loungeMarketAttach.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -216,43 +213,6 @@ async function previewSymbol(symbol: string, asset_class: MarketAssetClass) {
     change_pct: quote.change_pct,
     change: quoteUsd.change,
   }
-}
-
-async function attachMarketEmbeds(
-  admin: ReturnType<typeof createClient>,
-  postId: string,
-  caption: string,
-  symbols: Array<{ symbol: string; asset_class: MarketAssetClass }>,
-  origin: string,
-) {
-  const limited = symbols.slice(0, MARKET_EMBED_MAX)
-  const embeds: MarketEmbed[] = []
-  const skipped: string[] = []
-  for (const item of limited) {
-    try {
-      const embed = await buildMarketEmbed(item.symbol, item.asset_class, caption)
-      embed.og_image_url = `${origin}/api/lounge-market-og?postId=${encodeURIComponent(postId)}&symbol=${encodeURIComponent(embed.display_symbol)}`
-      embeds.push(embed)
-      await upsertMarketInstrumentFromEmbed(admin, embed)
-    } catch (e) {
-      const detail = e instanceof Error ? e.message : 'embed build failed'
-      skipped.push(`${item.symbol}: ${detail}`)
-    }
-  }
-  const { error } = await admin
-    .from('community_feed_posts')
-    .update({ market_embeds: embeds })
-    .eq('id', postId)
-  if (error) {
-    const msg = String(error.message || '')
-    if (/market_embeds|schema cache/i.test(msg)) {
-      throw new Error(
-        'Apply migration 20260609120000_lounge_market_embeds.sql on this Supabase project.',
-      )
-    }
-    throw new Error(msg || 'Could not save market embeds.')
-  }
-  return { embeds, skipped }
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -674,7 +634,7 @@ Deno.serve(async (req) => {
   if (action === 'attach') {
     const postId = String(body?.post_id || body?.entity_id || '').trim()
     const caption = String(body?.caption || '').trim()
-    const origin = String(body?.origin || Deno.env.get('LOUNGE_PUBLIC_ORIGIN') || 'https://lvslotpro.com').replace(/\/+$/, '')
+    const origin = loungeMarketPublicOrigin(String(body?.origin || ''))
     const rawSymbols = Array.isArray(body?.symbols) ? body.symbols : []
     const pickerSymbols = rawSymbols
       .map((row) => {
@@ -715,7 +675,7 @@ Deno.serve(async (req) => {
         if (error) throw new Error(error.message || 'Could not clear market embeds.')
         return respond(200, { ok: true, embeds: [] })
       }
-      const { embeds, skipped } = await attachMarketEmbeds(admin, postId, caption, symbols, origin)
+      const { embeds, skipped } = await attachMarketEmbedsToPost(admin, postId, caption, symbols, origin)
       return respond(200, {
         ok: true,
         embeds,

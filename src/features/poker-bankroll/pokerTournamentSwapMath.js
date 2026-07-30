@@ -70,17 +70,6 @@ export function formatSwapSettledLine(settlementAmount, viewerRole, otherLabel, 
 }
 
 /**
- * Cash-settled label with absolute settlement amount, e.g. Settled ($25).
- * @param {number | null | undefined} settlementAmount
- * @param {(n: number) => string} fmt$
- */
-export function formatSwapSettledLabel(settlementAmount, fmt$) {
-  if (settlementAmount == null || Number.isNaN(Number(settlementAmount))) return 'Settled'
-  const amt = Math.abs(Number(settlementAmount))
-  return `Settled (${fmt$(amt)})`
-}
-
-/**
  * Explicit, role-aware waiting copy for the real gate
  * (accept / claim / log result) ... never blames a side that already finished.
  *

@@ -13,7 +13,7 @@ import {
 import {
   computeTournamentSwapSettlement,
   formatSwapIouLine,
-  formatSwapSettledLabel,
+  formatSwapSettledLine,
   formatSwapSideResultLine,
   formatSwapWaitingStatus,
   parseSwapPct,

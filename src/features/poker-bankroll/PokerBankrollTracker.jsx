@@ -97,7 +97,7 @@ import {
 } from './pokerTournamentSwapApi.js'
 import {
   formatSwapIouLine,
-  formatSwapSettledLabel,
+  formatSwapSettledLine,
   formatSwapWaitingStatus,
 } from './pokerTournamentSwapMath.js'
 

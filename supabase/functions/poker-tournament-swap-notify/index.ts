@@ -12,7 +12,9 @@
  *
  * Secrets (optional per guest channel):
  *   RESEND_API_KEY, RESEND_FROM / POKER_SWAP_EMAIL_FROM
- *   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
+ *   TWILIO_ACCOUNT_SID, TWILIO_FROM_NUMBER
+ *   TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (preferred)
+ *   TWILIO_AUTH_TOKEN (legacy fallback if API key not set)
  *   PUBLIC_APP_URL / APP_ORIGIN (claim link host)
  */
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
@@ -107,22 +109,33 @@ async function sendResendEmail(to: string, subject: string, html: string, text: 
 }
 
 async function sendTwilioSms(to: string, body: string) {
-  const sid = Deno.env.get('TWILIO_ACCOUNT_SID')?.trim()
-  const token = Deno.env.get('TWILIO_AUTH_TOKEN')?.trim()
+  const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')?.trim()
   const from = Deno.env.get('TWILIO_FROM_NUMBER')?.trim()
-  if (!sid || !token || !from) {
+  const apiKeySid = Deno.env.get('TWILIO_API_KEY_SID')?.trim()
+  const apiKeySecret = Deno.env.get('TWILIO_API_KEY_SECRET')?.trim()
+  const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')?.trim()
+  if (!accountSid || !from) {
     return { skipped: true as const, reason: 'Twilio secrets not set' }
   }
-  const auth = btoa(`${sid}:${token}`)
+  // Prefer API key (scoped / rotatable). Auth token still works as fallback.
+  const basicUser = apiKeySid && apiKeySecret ? apiKeySid : authToken ? accountSid : ''
+  const basicPass = apiKeySid && apiKeySecret ? apiKeySecret : authToken || ''
+  if (!basicUser || !basicPass) {
+    return { skipped: true as const, reason: 'Twilio API key or auth token not set' }
+  }
+  const auth = btoa(`${basicUser}:${basicPass}`)
   const params = new URLSearchParams({ To: to, From: from, Body: body })
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const res = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params,
     },
-    body: params,
-  })
+  )
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`Twilio failed (${res.status}): ${text}`)

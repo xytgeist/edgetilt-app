@@ -7,7 +7,7 @@
 ## What you do (quick)
 
 1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — smoke quote repost avatar on iPhone PWA.*).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — finish Twilio From number + smoke guest SMS on prod.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -29,7 +29,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`bf469ec3`** (2026-07-26)
+**Branch:** `main` / `test` aligned at **`5bde2e48`** (2026-07-30)
 
 **Supabase (do not swap these):**
 
@@ -38,15 +38,15 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Lounge feed UX polish batch shipped (carousel bleed, lightbox snap, quote inset avatar). Ryan smoke on iPhone PWA; Scott/bot work may continue in parallel._
+**Goal:** _Poker tournament swaps + soft-event picker shipped and promoted to prod. Next: confirm prod notify secrets (PUBLIC_APP_URL + Twilio From when ready), smoke swaps on edgetilt.com, then pick next work (Stable smoke / MTTDB / other)._
 
-**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-26** feed UX + Scott rows). Lounge media: **`docs/frontend-architecture.md`** → **`lounge/`** row.
+**Start by reading:** `AGENTS.md`, then **`docs/test-buildout-backlog.md`** Update log tail (**2026-07-30** poker swaps), **`docs/production-rollout-checklist.md`** poker swaps row, **`docs/frontend-architecture.md`** → **`poker-bankroll/`** row.
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. smoke multi-image carousel on post detail + thread hierarchy; verify quote repost inset avatar]_
+- Session focus: _[e.g. set PUBLIC_APP_URL on prod; smoke guest email claim on edgetilt.com]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see backlog Update log Jul 26 feed carousel batch"]_
+- Context: _[e.g. "see WAKEUP Pick up here Jul 30 + backlog Update log"]_
 
 ---
 
@@ -96,76 +96,69 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ---
 
-## Pick up here (Jul 2026 ... session 2026-07-26)
+## Pick up here (Jul 2026 ... session 2026-07-30)
 
-### Latest commits (`main` / `test` @ **`bf469ec3`**)
+### Latest commits (`main` / `test` @ **`5bde2e48`**)
 
 | Commit | What |
 | --- | --- |
-| **`bf469ec3`** | Quote repost inset: author avatar beside meta row (X-style) |
-| **`b6e6914a`** | Feed post row: remove `active:` background flash during scroll (iOS) |
-| **`6a2b67c0`** | Thread hierarchy: carousel full-bleed only on **focus** row, not ancestors |
-| **`a0972b9a`** | Profile sheet: fix horizontal pan from carousel `100vw` bleed overflow |
-| **`2a246548`** | Hide scrollbars on feed carousels + lightbox pager (`index.css`) |
-| **`64c6f5ea`** | Image lightbox: snap paging (not feed free-scroll); **`useLoungeLightboxCarouselSnap.js`** |
-| **`fc929dc1`** | Post/comment detail: remove separator under title bar |
-| **`23594dd8`** | Post detail: fix horizontal pan from carousel bleed (`overflow-x-hidden`) |
-| **`f8483129`** | Extend horizontal image carousel to detail + comment media |
-| **`dedc699f`** | PWA auth restore hardening on cold boot / resume |
-| **`7c90f91a`** | Feed carousel rubber-band bounce at scroll limits |
-| **`ab823f86`** | Restore vertical feed scroll over lounge media (axis lock) |
+| **`5bde2e48`** | Empty soft-event picker: “No nearby logged tournaments yet … Enter manually” |
+| **`dc0f3e4d`** | Docs: poker tournament swaps production promote recorded |
+| **`44ba6b13`** | Settled amounts: explicit `+` in parens for gains (`(+$131)` / `(-$131)`) |
+| **`586f425b`** | Hide **Mark settled** when settlement is even (nothing owed) |
+| **`8dad97a2`** | Settled session-card lines use same cyan as Even |
+| **`d459c9a3`** | Manual entry = **their** result only (your side syncs on session end) |
+| **`1fac8310`** | Guest phone/email optional; offer notify copy + claim only if contact present |
+| **`dcce316a`** | **Send swap** on draft cards when session already exists |
+| **`47221138`** | Incoming Accept → bind matching session or Start Session prefilled |
+| **`39cf33fc`** / **`1a94cfad`** | Soft-event Tournament proximity picker (Live; today + 36h activity) |
 
-### Lounge feed carousel + bleed (shipped Jul 26)
+Promote tip for swaps feature set: **`44ba6b13`** (+ docs **`dc0f3e4d`**). Copy polish after: **`5bde2e48`** on **main**.
 
-| Area | Detail |
-| --- | --- |
-| **Surfaces** | Multi-image horizontal carousels on feed posts, post detail, comment rows, profile replies |
-| **Axis lock** | **`useLoungeFeedCarouselAxisLock`** ... vertical feed scroll wins except on carousel strip |
-| **Full bleed** | **`loungeFeedImageAttachment.js`** → **`loungeFeedCarouselFullBleed()`** ... feed posts + comment rows with **`captionColumnMedia={true}`** only |
-| **Hierarchy** | **`LoungePostDetailCommentHierarchy`** / **`LoungePostThreadPartsHierarchy`**: ancestors **`captionColumnMedia={false}`**; focus/last row **`true`** |
-| **Profile replies** | **`ProfileReplyRow`**: OP media in thread uses **`variant="detail"`** + **`captionColumnMedia={false}`** |
-| **Horizontal pan bug** | **`overflow-y-auto`** scroll roots implicitly allow horizontal overflow from **`100vw`** bleed children ... fixed on post detail scroll ref + profile body scroll ref |
-
-### Lightbox vs feed carousel (shipped Jul 26)
+### Shipped: poker tournament swaps (test + **prod**)
 
 | Area | Detail |
 | --- | --- |
-| **Feed carousel** | Free horizontal scroll + axis lock + hidden scrollbar |
-| **Lightbox pager** | **`useLoungeLightboxCarouselSnap.js`** + CSS **`snap-x snap-mandatory`** ... page between images, not free-scroll |
-| **Swipe dismiss** | **`loungeLightboxSwipeDismiss.js`** skips pointer capture when touch starts on **`[data-lounge-lightbox-carousel]`** |
+| **SQL** | **`20260730140000`–`180000`** on **test** + **prod** (`poker_tournament_events`, swaps, claim tokens/RPCs, activity types, Realtime, `last_activity_at`) |
+| **Edge** | **`poker-tournament-swap-notify`** + **`lounge-send-activity-push`** redeployed **test + prod** |
+| **Frontend** | **`test` → `main`** through **`5bde2e48`** → Vercel **`edgetilt.com`** |
+| **Soft events** | Live Tournament dropdown: calendar **today** + `last_activity_at` within **36h**. Online/Club = manual name (MTTDB later) |
+| **Offers** | Edge user or guest; guest phone/email **optional** (notify-only). Draft on live session → **Send swap** |
+| **Accept** | Matching session → bind; else Start Session prefilled + **Start & accept swap** |
+| **Results** | Your side syncs on **End session**; manual = **their** buy-in/prize only. Even → no Mark settled. Settled card: cyan line + `(+$x)` / `(-$x)` |
+| **Guest notify copy** | `{Display Name} swapping x% - y% with you in event: {Tournament} from EdgeTilt.com` (+ claim link when contact present) |
+| **Canonical docs** | Checklist §2 poker swaps row; backlog Update log **2026-07-30**; architecture **`poker-bankroll/`** row |
 
-### Quote repost inset avatar (shipped Jul 26 @ **`bf469ec3`**)
+### On deck (ordered)
 
-| Area | Detail |
-| --- | --- |
-| **Component** | **`LoungeQuoteRepostEmbedAuthorMeta.jsx`** ... 20px avatar left of name/badges/handle/time |
-| **Constant** | **`LOUNGE_QUOTE_EMBED_AVATAR_CLASS`** in **`loungeFeedAvatar.js`** |
-| **Blast radius** | Feed quote embeds, post detail, quote composer preview, comment quote insets, locked fan-only embed shell |
-| **Smoke** | Quote repost with inset OP ... avatar visible + tappable to profile (where **`onDisplayNameClick`** wired) |
-
-### Scott / bots (parallel Jul 26 backlog ... not this chat's commits)
-
-Heavy Jul 26 **`test-buildout-backlog.md`** rows: Scott alert thresholds, Situational Lean, Coffee voice, sub-chat dedupe, live pick quality, sport labels, bot **`feed_visible_at`** hotfix, **`lounge-odds-poll`** BOOT_ERROR fix. See backlog Update log **2026-07-26** Scott rows. Edge redeploys may still need Ryan smoke.
-
-### Shipped client (Vercel `main` → **edgetilt.com**)
-
-Through **`bf469ec3`**: full feed UX polish batch above. **No new SQL** in this batch. **No Edge redeploy** required for carousel/lightbox/avatar fixes.
-
-### Next priorities (ordered)
-
-1. **Ryan smoke (iPhone PWA):** multi-image post on feed → swipe carousel → open detail → no horizontal page pan; thread hierarchy ancestors stay inset, focus row bleeds; profile sheet same; lightbox snap between images; quote repost inset shows avatar
-2. **Scott alert smoke** ... if continuing bot work: portal **Run alert now** + Coffee morning check (see backlog Jul 26 Scott rows)
-3. **Staged video publish** ... prod smoke still open from **2026-07-25** backlog row if not yet signed off
+1. **Prod secrets / guest SMS:** confirm **`PUBLIC_APP_URL=https://edgetilt.com`** on prod Edge. Guest **email** via Resend should work. Guest **SMS** blocked until Twilio **From number** + secrets (`TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID` / `TWILIO_API_KEY_SECRET`, `TWILIO_FROM_NUMBER`). API key code already deployed; Ryan had key SIDs in prior chat ... rotate if leaked.
+2. **Prod smoke (edgetilt.com):** Start tourney → Edge/guest swap → Send swap on live session → Incoming Accept / claim → end session → Settled / Even on session card (**Swaps** heading).
+3. **Poker Stable smoke** (open): request → accept → On Stake log → staker sync (`20260730000000` already on test/prod from bankroll promote).
+4. **MTTDB / Online soft events** (deferred): Online/Club tournament picker when catalog exists.
+5. Unrelated WIP may exist locally (`scripts/tmp-debug-egress.mjs` untracked historically) ... ignore unless Ryan asks.
 
 ### Key files (grep anchors)
 
 | Topic | Files |
 | --- | --- |
-| Carousel bleed | **`loungeFeedImageAttachment.js`**, **`LoungePostFeedMedia.jsx`**, **`LoungeCommentCard.jsx`** |
-| Horizontal pan | **`SocialFeed.jsx`** (`loungePostDetailScrollRef`), **`LoungeProfileFullScreen.jsx`** (`profileBodyScrollRef`) |
-| Lightbox snap | **`useLoungeLightboxCarouselSnap.js`**, **`LoungeInlineMediaUrl.jsx`**, **`index.css`** |
-| Quote avatar | **`LoungeQuoteRepostEmbedAuthorMeta.jsx`**, **`LoungeQuoteRepostEmbeddedOriginal.jsx`** |
-| Feed row flash | **`loungeFeedAvatar.js`** (`LOUNGE_FEED_POST_ROW_CLASS`) |
+| Swaps UI | **`PokerTournamentSwapsSection.jsx`**, **`PokerBankrollTracker.jsx`** |
+| Swap API / math | **`pokerTournamentSwapApi.js`**, **`pokerTournamentSwapMath.js`** |
+| Soft events | **`pokerTournamentNearbyEvents.js`**, **`pokerTournamentEventKeys.js`** |
+| Guest claim | **`PokerTournamentSwapClaimPage.jsx`**, route in **`App.jsx`** |
+| Notify Edge | **`supabase/functions/poker-tournament-swap-notify/`** |
+| Activity / push | **`lounge-send-activity-push`**, **`LoungeNotificationsPanel.jsx`** (poker deep link) |
+| Light mode | **`index.css`** `data-poker-tournament-swaps`, `data-poker-session-swap-*` |
+
+### Twilio / notify secrets (names only)
+
+| Secret | Notes |
+| --- | --- |
+| `PUBLIC_APP_URL` | Prod = `https://edgetilt.com`; test = test host |
+| `RESEND_API_KEY` / `RESEND_FROM` | Guest email (already used elsewhere) |
+| `TWILIO_ACCOUNT_SID` | Messages API path |
+| `TWILIO_API_KEY_SID` + `TWILIO_API_KEY_SECRET` | Preferred auth |
+| `TWILIO_FROM_NUMBER` | E.164; blocked on compliance until Ryan buys number |
+| `TWILIO_AUTH_TOKEN` | Legacy fallback only |
 
 ### AP guides (ongoing workflow)
 
@@ -173,9 +166,10 @@ Through **`bf469ec3`**: full feed UX polish batch above. **No new SQL** in this 
 
 **Prod = prod for agents:** Never ingest/batch-run to **`jtjgtucumuoswnbauxry`** unless Ryan names the slug/batch.
 
-### Parked
+### Parked (still true)
 
 - Thread compose iOS keyboard / options bar overlap after media pick
 - Feed UI +EV badge (caption prefix only today)
 - Stream + still images in one carousel (upload order) ... **not scheduled**
 - Reuters wire (needs LSEG/API license)
+- Poker Online soft-event catalog (MTTDB or similar)

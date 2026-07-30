@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DollarSign, Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -2225,16 +2225,17 @@ export default function PokerBankrollTracker({
                   const hourly = wl != null && hrs >= 0.02 ? wl / hrs : null
                   const bbh = pokerSessionBbPerHour(session)
                   const sessionSwaps = swapsBySessionId[session.id] || []
+                  const swapsHeaderRow = 4
                   return (
                     <li key={session.id}>
                       <button
                         type="button"
                         onClick={() => openEdit(session)}
                         data-elevated-card="surface"
-                        className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
+                        className="grid w-full grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-x-3 gap-y-0.5 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
                       >
                         <span
-                          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                          className={`col-start-1 row-start-1 mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center justify-self-center rounded-full ${
                             session.session_type === 'tournament'
                               ? 'bg-amber-500/15 text-amber-300'
                               : 'bg-emerald-500/15 text-emerald-300'
@@ -2247,128 +2248,124 @@ export default function PokerBankrollTracker({
                             <DollarSign className="h-4 w-4" strokeWidth={2.25} />
                           )}
                         </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-baseline justify-between gap-2">
-                            <span className="truncate font-semibold text-white">
-                              {pokerSessionStakesLabel(session)}
-                            </span>
-                            <span
-                              className={`shrink-0 font-bold tabular-nums ${
-                                wl == null
-                                  ? 'text-zinc-500'
-                                  : wl >= 0
-                                    ? 'text-emerald-400'
-                                    : 'text-rose-400'
-                              }`}
-                            >
-                              {wl == null ? '-' : fmtPoker$(wl)}
-                            </span>
+                        <span className="col-start-2 row-start-1 min-w-0 flex items-baseline justify-between gap-2">
+                          <span className="truncate font-semibold text-white">
+                            {pokerSessionStakesLabel(session)}
                           </span>
-                          <span className="mt-0.5 block truncate text-[12px] text-zinc-500">
-                            {pokerSessionMetaLine(session)}
+                          <span
+                            className={`shrink-0 font-bold tabular-nums ${
+                              wl == null
+                                ? 'text-zinc-500'
+                                : wl >= 0
+                                  ? 'text-emerald-400'
+                                  : 'text-rose-400'
+                            }`}
+                          >
+                            {wl == null ? '-' : fmtPoker$(wl)}
                           </span>
-                          <span className="mt-0.5 block text-[11px] text-zinc-600">
-                            {new Date(session.start_at).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                            {hourly != null ? ` · ${fmtPoker$(hourly)}/h` : ''}
-                            {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
-                          </span>
-                          {sessionSwaps.length > 0 ? (
-                            <span className="mt-1.5 block space-y-0.5">
-                              <span
-                                data-poker-session-swap-line="waiting"
-                                className="block text-[11px] font-medium text-cyan-300/90"
-                              >
-                                Swaps
-                              </span>
-                              {sessionSwaps.map((swap) => {
-                                const role = swapViewerRole(swap, userId) || 'creator'
-                                const other = swapOtherPartyLabel(
-                                  swap,
-                                  swapProfilesById,
-                                  userId,
-                                )
-                                const paid = swapIsMarkedPaid(swap)
-                                const signed = swapViewerSettlementDelta(swap, role)
-                                const waitingLine =
-                                  swap.status === 'settled'
-                                    ? formatSwapIouLine(
-                                        swap.settlement_amount,
-                                        role,
-                                        other,
-                                        fmtPoker$,
-                                      )
-                                    : formatSwapWaitingStatus(swap, role, other)
-                                const showSettledAmt = paid && swap.status === 'settled'
-                                const canMarkSettled =
-                                  swap.status === 'settled' &&
-                                  !paid &&
-                                  Math.abs(Number(swap.settlement_amount) || 0) >= 0.005
-                                // Same cyan as Even / awaiting ... only the signed ($amt) is red/green.
-                                const amtTone =
-                                  signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
-                                return (
-                                  <div
-                                    key={swap.id}
-                                    className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-1.5"
-                                  >
-                                    <div className="flex min-w-0 justify-start">
-                                      {canMarkSettled ? (
-                                        <button
-                                          type="button"
-                                          disabled={sessionCardSwapBusyId === swap.id}
-                                          data-poker-session-swap-settle-btn
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            void markSessionCardSwapSettled(swap)
-                                          }}
-                                          className="box-border h-7 w-[5.5rem] shrink-0 rounded-md border border-emerald-500/40 bg-emerald-950/80 px-1 py-0.5 text-[8px] font-bold leading-tight text-emerald-200 touch-manipulation active:bg-emerald-900 disabled:opacity-50"
-                                        >
-                                          {sessionCardSwapBusyId === swap.id
-                                            ? '…'
-                                            : 'Mark settled'}
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                    <span
-                                      data-poker-session-swap-line={paid ? 'settled' : 'waiting'}
-                                      className="min-w-0 truncate text-[11px] text-cyan-300/80"
-                                    >
-                                      {other}
-                                      {swap.pct_creator_gives != null &&
-                                      swap.pct_counterparty_gives != null
-                                        ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
-                                        : ''}
-                                      {showSettledAmt ? (
-                                        <>
-                                          {' · Settled '}
-                                          <span
-                                            data-poker-session-swap-amt={amtTone}
-                                            className={
-                                              amtTone === 'loss'
-                                                ? 'text-rose-400'
-                                                : amtTone === 'gain'
-                                                  ? 'text-emerald-400'
-                                                  : 'text-inherit'
-                                            }
-                                          >
-                                            {formatSwapSettledParenAmount(signed, fmtPoker$)}
-                                          </span>
-                                        </>
-                                      ) : waitingLine ? (
-                                        ` · ${waitingLine}`
-                                      ) : null}
-                                    </span>
-                                  </div>
-                                )
-                              })}
-                            </span>
-                          ) : null}
                         </span>
+                        <span className="col-start-2 row-start-2 mt-0.5 block min-w-0 truncate text-[12px] text-zinc-500">
+                          {pokerSessionMetaLine(session)}
+                        </span>
+                        <span className="col-start-2 row-start-3 mt-0.5 block text-[11px] text-zinc-600">
+                          {new Date(session.start_at).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                          {hourly != null ? ` · ${fmtPoker$(hourly)}/h` : ''}
+                          {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
+                        </span>
+                        {sessionSwaps.length > 0 ? (
+                          <>
+                            <span
+                              data-poker-session-swap-line="waiting"
+                              style={{ gridRowStart: swapsHeaderRow }}
+                              className="col-start-2 mt-1.5 block text-[11px] font-medium text-cyan-300/90"
+                            >
+                              Swaps
+                            </span>
+                            {sessionSwaps.map((swap, swapIdx) => {
+                              const role = swapViewerRole(swap, userId) || 'creator'
+                              const other = swapOtherPartyLabel(
+                                swap,
+                                swapProfilesById,
+                                userId,
+                              )
+                              const paid = swapIsMarkedPaid(swap)
+                              const signed = swapViewerSettlementDelta(swap, role)
+                              const waitingLine =
+                                swap.status === 'settled'
+                                  ? formatSwapIouLine(
+                                      swap.settlement_amount,
+                                      role,
+                                      other,
+                                      fmtPoker$,
+                                    )
+                                  : formatSwapWaitingStatus(swap, role, other)
+                              const showSettledAmt = paid && swap.status === 'settled'
+                              const canMarkSettled =
+                                swap.status === 'settled' &&
+                                !paid &&
+                                Math.abs(Number(swap.settlement_amount) || 0) >= 0.005
+                              const amtTone =
+                                signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
+                              const swapRowStart = swapsHeaderRow + 1 + swapIdx
+                              return (
+                                <Fragment key={swap.id}>
+                                  {canMarkSettled ? (
+                                    <button
+                                      type="button"
+                                      disabled={sessionCardSwapBusyId === swap.id}
+                                      data-poker-session-swap-settle-btn
+                                      aria-label="Mark settled"
+                                      title="Mark settled"
+                                      style={{ gridRowStart: swapRowStart }}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        void markSessionCardSwapSettled(swap)
+                                      }}
+                                      className="col-start-1 box-border h-3.5 w-9 max-w-9 self-center rounded border border-emerald-500 bg-emerald-500 px-0 text-center text-[7px] font-bold leading-none text-white touch-manipulation active:bg-emerald-600 disabled:opacity-50"
+                                    >
+                                      {sessionCardSwapBusyId === swap.id ? '…' : 'Settle'}
+                                    </button>
+                                  ) : null}
+                                  <span
+                                    data-poker-session-swap-line={paid ? 'settled' : 'waiting'}
+                                    style={{ gridRowStart: swapRowStart }}
+                                    className="col-start-2 min-w-0 truncate text-[11px] text-cyan-300/80"
+                                  >
+                                    {other}
+                                    {swap.pct_creator_gives != null &&
+                                    swap.pct_counterparty_gives != null
+                                      ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
+                                      : ''}
+                                    {showSettledAmt ? (
+                                      <>
+                                        {' · Settled '}
+                                        <span
+                                          data-poker-session-swap-amt={amtTone}
+                                          className={
+                                            amtTone === 'loss'
+                                              ? 'text-rose-400'
+                                              : amtTone === 'gain'
+                                                ? 'text-emerald-400'
+                                                : 'text-inherit'
+                                          }
+                                        >
+                                          {formatSwapSettledParenAmount(signed, fmtPoker$)}
+                                        </span>
+                                      </>
+                                    ) : waitingLine ? (
+                                      ` · ${waitingLine}`
+                                    ) : null}
+                                  </span>
+                                </Fragment>
+                              )
+                            })}
+                          </>
+                        ) : null}
                       </button>
                     </li>
                   )

@@ -880,7 +880,7 @@ export default function PokerBankrollTracker({
   }
 
   /** Counterparty declines an incoming offer (cancels the swap). */
-  async function declineIncomingSwap(swap, { closeStartSheet = false } = {}) {
+  async function declineIncomingSwap(swap) {
     if (!supabaseClient || !swap?.id) return
     const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
     const ok = window.confirm(`Decline swap with ${other}? This cancels the deal.`)
@@ -891,7 +891,6 @@ export default function PokerBankrollTracker({
       const { error } = await cancelTournamentSwap(supabaseClient, swap.id)
       if (error) throw error
       setIncomingAcceptSwap(null)
-      if (closeStartSheet) setSheet(null)
       await loadData()
     } catch (e) {
       setError(e?.message || 'Could not decline swap.')
@@ -2630,7 +2629,7 @@ export default function PokerBankrollTracker({
               incomingAcceptSwap={incomingAcceptSwap}
               onDeclineIncomingAccept={
                 incomingAcceptSwap
-                  ? () => void declineIncomingSwap(incomingAcceptSwap, { closeStartSheet: true })
+                  ? () => void declineIncomingSwap(incomingAcceptSwap)
                   : undefined
               }
               decliningIncoming={saving}

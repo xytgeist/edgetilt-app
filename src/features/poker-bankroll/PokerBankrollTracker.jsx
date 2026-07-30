@@ -90,9 +90,14 @@ import {
   notifyTournamentSwapResults,
   persistDraftSwapsForSession,
   swapOtherPartyLabel,
+  swapViewerRole,
   syncCounterpartyResultsForSession,
   syncCreatorResultsForSession,
 } from './pokerTournamentSwapApi.js'
+import {
+  formatSwapIouLine,
+  formatSwapWaitingStatus,
+} from './pokerTournamentSwapMath.js'
 
 /** Match CasinoAutocomplete / Location field text styling. */
 const POKER_FIELD_CLASS =
@@ -268,6 +273,20 @@ export default function PokerBankrollTracker({
         : [],
     [tournamentSwaps, editingId],
   )
+  /** Session id → non-cancelled swaps linked as creator or counterparty. */
+  const swapsBySessionId = useMemo(() => {
+    /** @type {Record<string, object[]>} */
+    const map = {}
+    for (const swap of tournamentSwaps) {
+      if (!swap || swap.status === 'cancelled') continue
+      for (const sid of [swap.creator_session_id, swap.counterparty_session_id]) {
+        if (!sid) continue
+        if (!map[sid]) map[sid] = []
+        if (!map[sid].some((s) => s.id === swap.id)) map[sid].push(swap)
+      }
+    }
+    return map
+  }, [tournamentSwaps])
   const pendingCounterpartySwaps = useMemo(
     () =>
       tournamentSwaps.filter(
@@ -1980,6 +1999,7 @@ export default function PokerBankrollTracker({
                   const wl = pokerSessionWinLoss(session)
                   const hourly = pokerSessionHourly(session)
                   const bbh = pokerSessionBbPerHour(session)
+                  const sessionSwaps = swapsBySessionId[session.id] || []
                   return (
                     <li key={session.id}>
                       <button
@@ -2032,6 +2052,49 @@ export default function PokerBankrollTracker({
                             {hourly != null ? ` · ${fmtPoker$(hourly)}/h` : ''}
                             {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
                           </span>
+                          {sessionSwaps.length > 0 ? (
+                            <span className="mt-1.5 block space-y-0.5">
+                              {sessionSwaps.map((swap) => {
+                                const role = swapViewerRole(swap, userId) || 'creator'
+                                const other = swapOtherPartyLabel(
+                                  swap,
+                                  swapProfilesById,
+                                  userId,
+                                )
+                                const line =
+                                  swap.status === 'settled'
+                                    ? formatSwapIouLine(
+                                        swap.settlement_amount,
+                                        role,
+                                        other,
+                                        fmtPoker$,
+                                      )
+                                    : formatSwapWaitingStatus(swap, role, other)
+                                const paid =
+                                  role === 'creator'
+                                    ? swap.creator_marked_paid
+                                    : swap.counterparty_marked_paid
+                                return (
+                                  <span
+                                    key={swap.id}
+                                    className={`block truncate text-[11px] ${
+                                      swap.status === 'settled'
+                                        ? 'text-emerald-300/90'
+                                        : 'text-cyan-300/80'
+                                    }`}
+                                  >
+                                    Swap · {other}
+                                    {swap.pct_creator_gives != null &&
+                                    swap.pct_counterparty_gives != null
+                                      ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
+                                      : ''}
+                                    {line ? ` · ${line}` : ''}
+                                    {swap.status === 'settled' && paid ? ' · Paid' : ''}
+                                  </span>
+                                )
+                              })}
+                            </span>
+                          ) : null}
                         </span>
                       </button>
                     </li>

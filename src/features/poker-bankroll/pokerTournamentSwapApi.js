@@ -375,7 +375,7 @@ export async function markSwapPaid(supabase, swapId, role, paid) {
 }
 
 /**
- * Notify guest (Twilio SMS + email) and/or Edge counterparty via Edge Function.
+ * Notify guest (Twilio SMS + email) or Edge user (in-app + push) via Edge Function.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
  */
@@ -386,6 +386,53 @@ export async function notifyTournamentSwap(supabase, swapId) {
   if (error) return { error }
   if (data?.error) return { error: new Error(data.error) }
   return { data, error: null }
+}
+
+/**
+ * Compact label for a soft tournament event (incoming swap card / notify copy).
+ * @param {object | null | undefined} ev
+ */
+export function formatTournamentEventLabel(ev) {
+  if (!ev) return 'Tournament'
+  const name = String(ev.display_name || '').trim()
+  const venue = String(ev.venue_name || '').trim()
+  const bi = Number(ev.buy_in)
+  const biStr = Number.isFinite(bi) ? `$${bi % 1 === 0 ? bi.toFixed(0) : bi.toFixed(2)}` : ''
+  const date = ev.event_date ? String(ev.event_date).slice(0, 10) : ''
+  if (name && biStr) return `${biStr} · ${name}`
+  if (name) return name
+  if (venue && biStr) return date ? `${biStr} · ${venue} · ${date}` : `${biStr} · ${venue}`
+  if (venue) return date ? `${venue} · ${date}` : venue
+  if (biStr) return `${biStr} buy-in`
+  return 'Tournament'
+}
+
+/**
+ * Pick the counterparty session that should bind to an incoming swap.
+ * Prefers same soft event; then sole active tourney when the swap has no event id.
+ * @param {object} swap
+ * @param {object[]} sessions
+ */
+export function findCounterpartyBindSession(swap, sessions) {
+  const list = Array.isArray(sessions) ? sessions : []
+  const tourneys = list.filter(
+    (s) => s?.session_type === 'tournament' && (s.status === 'active' || s.status === 'completed'),
+  )
+  const eventId = swap?.tournament_event_id || null
+  let candidates = eventId
+    ? tourneys.filter((s) => s.tournament_event_id === eventId)
+    : tourneys.filter((s) => s.status === 'active')
+  if (!eventId && candidates.length !== 1) {
+    if (tourneys.length === 1) candidates = tourneys
+    else return null
+  }
+  if (!candidates.length) return null
+  candidates = [...candidates].sort((a, b) => {
+    if (a.status === 'active' && b.status !== 'active') return -1
+    if (b.status === 'active' && a.status !== 'active') return 1
+    return new Date(b.start_at).getTime() - new Date(a.start_at).getTime()
+  })
+  return candidates[0] || null
 }
 
 /** @returns {object} */

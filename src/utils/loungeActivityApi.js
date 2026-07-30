@@ -18,6 +18,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   STARTER_WEEKLY_GUIDE_DROP: 'starter_weekly_guide_drop',
   CREATOR_FAN_SUB: 'creator_fan_sub',
   CHAT_CALL_MISSED: 'chat_call_missed',
+  POKER_TOURNAMENT_SWAP: 'poker_tournament_swap',
 }
 
 /** Maps `activity_events.event_type` → notification avatar badge kind (null = no badge). */
@@ -49,6 +50,8 @@ export function loungeActivityNotificationBadgeKind(eventType) {
       return 'play_log'
     case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED:
       return 'missed_call'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
+      return 'play_log'
     default:
       return null
   }
@@ -220,6 +223,8 @@ export function loungeActivityActionPhrase(event) {
       return 'Weekly guide drop ready — scratch to reveal'
     case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED:
       return 'called you'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
+      return 'offered you a tournament swap'
     default:
       return 'interacted with you'
   }

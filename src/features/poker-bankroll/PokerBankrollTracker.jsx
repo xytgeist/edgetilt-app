@@ -80,6 +80,8 @@ import {
 } from './pokerTournamentNearbyEvents.js'
 import {
   acceptCounterpartySessionBind,
+  findCounterpartyBindSession,
+  formatTournamentEventLabel,
   ensureTournamentEvent,
   isMissingTournamentSwapTableError,
   loadMyTournamentSwaps,
@@ -188,7 +190,8 @@ export default function PokerBankrollTracker({
   const [tournamentSwaps, setTournamentSwaps] = useState([])
   /** @type {Record<string, object>} */
   const [swapProfilesById, setSwapProfilesById] = useState({})
-  const [swapBindSessionId, setSwapBindSessionId] = useState('')
+  /** Soft events for incoming / listed swaps keyed by tournament_event_id. */
+  const [swapEventsById, setSwapEventsById] = useState({})
   const [rebuyAmount, setRebuyAmount] = useState('')
   /** @type {'rebuy' | 'addon'} */
   const [rebuyKind, setRebuyKind] = useState('rebuy')
@@ -270,13 +273,6 @@ export default function PokerBankrollTracker({
           !s.counterparty_session_accepted_at,
       ),
     [tournamentSwaps, userId],
-  )
-  const bindableTourneySessions = useMemo(
-    () =>
-      scopedSessions.filter(
-        (s) => s.session_type === 'tournament' && (s.status === 'active' || s.status === 'completed'),
-      ),
-    [scopedSessions],
   )
   /** Game dropdown: user-added for this Where first, then venue defaults. */
   const cashGamePresets = useMemo(
@@ -378,16 +374,39 @@ export default function PokerBankrollTracker({
         }
         setTournamentSwaps([])
         setSwapProfilesById({})
+        setSwapEventsById({})
       } else {
         setTournamentSwaps(swapsRes.swaps || [])
         const ids = []
+        const eventIds = []
         for (const s of swapsRes.swaps || []) {
           if (s.creator_user_id) ids.push(s.creator_user_id)
           if (s.counterparty_user_id) ids.push(s.counterparty_user_id)
+          if (s.tournament_event_id) eventIds.push(s.tournament_event_id)
         }
         const { byId, error: pErr } = await loadSwapCounterpartyProfiles(supabaseClient, ids)
         if (pErr) console.warn('[poker-bankroll] swap profiles failed', pErr.message)
         setSwapProfilesById(byId)
+
+        const uniqueEventIds = [...new Set(eventIds)]
+        if (uniqueEventIds.length === 0) {
+          setSwapEventsById({})
+        } else {
+          const { data: evRows, error: evErr } = await supabaseClient
+            .from('poker_tournament_events')
+            .select('id, display_name, venue_name, event_date, buy_in, game_variant, currency')
+            .in('id', uniqueEventIds)
+          if (evErr) {
+            console.warn('[poker-bankroll] swap events failed', evErr.message)
+            setSwapEventsById({})
+          } else {
+            const byEv = {}
+            for (const ev of evRows || []) {
+              if (ev?.id) byEv[ev.id] = ev
+            }
+            setSwapEventsById(byEv)
+          }
+        }
       }
     } catch (e) {
       setError(e?.message || 'Could not load poker bankroll.')
@@ -707,14 +726,16 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
-  async function bindPendingSwap(swapId) {
-    if (!supabaseClient || !userId || !swapBindSessionId) {
-      setError('Pick one of your tournament sessions to attach.')
-      return
-    }
-    const session = sessions.find((s) => s.id === swapBindSessionId)
+  async function bindPendingSwap(swap) {
+    if (!supabaseClient || !userId || !swap?.id) return
+    const session = findCounterpartyBindSession(swap, scopedSessions)
     if (!session) {
-      setError('Session not found.')
+      const eventLabel = formatTournamentEventLabel(swapEventsById[swap.tournament_event_id])
+      setError(
+        swap.tournament_event_id
+          ? `Log ${eventLabel} first, then Accept to attach this swap.`
+          : 'Log the matching tournament session first, then Accept.',
+      )
       return
     }
     setSaving(true)
@@ -726,12 +747,11 @@ export default function PokerBankrollTracker({
       if (!ok) return
       const { error } = await acceptCounterpartySessionBind(
         supabaseClient,
-        swapId,
+        swap.id,
         session.id,
         session,
       )
       if (error) throw error
-      setSwapBindSessionId('')
       await loadData()
     } catch (e) {
       setError(e?.message || 'Could not attach swap.')
@@ -1839,28 +1859,15 @@ export default function PokerBankrollTracker({
                   Incoming swaps
                 </div>
                 <p className="mb-3 text-[11px] text-zinc-400">
-                  Confirm before a swap binds to your logged tournament.
+                  Accept attaches the swap to your matching logged tournament.
                 </p>
-                <div className="mb-3">
-                  <label className="mb-1 block text-[10px] font-semibold uppercase text-zinc-500">
-                    Your tournament session
-                  </label>
-                  <select
-                    className={`${POKER_FIELD_CLASS} text-sm`}
-                    value={swapBindSessionId}
-                    onChange={(e) => setSwapBindSessionId(e.target.value)}
-                  >
-                    <option value="">Select…</option>
-                    {bindableTourneySessions.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {pokerSessionStakesLabel(s)} · {localYmd(new Date(s.start_at))}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <ul className="space-y-2">
                   {pendingCounterpartySwaps.map((swap) => {
                     const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
+                    const eventLabel = formatTournamentEventLabel(
+                      swapEventsById[swap.tournament_event_id],
+                    )
+                    const canBind = Boolean(findCounterpartyBindSession(swap, scopedSessions))
                     return (
                       <li
                         key={swap.id}
@@ -1868,14 +1875,15 @@ export default function PokerBankrollTracker({
                       >
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-white">{other}</div>
+                          <div className="truncate text-[11px] text-cyan-200/90">{eventLabel}</div>
                           <div className="text-[11px] text-zinc-400">
                             {swap.pct_creator_gives}% ↔ {swap.pct_counterparty_gives}%
                           </div>
                         </div>
                         <button
                           type="button"
-                          disabled={saving || !swapBindSessionId}
-                          onClick={() => void bindPendingSwap(swap.id)}
+                          disabled={saving || !canBind}
+                          onClick={() => void bindPendingSwap(swap)}
                           className="shrink-0 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white touch-manipulation disabled:opacity-40"
                         >
                           Accept

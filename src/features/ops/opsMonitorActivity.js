@@ -18,6 +18,7 @@ export const OPS_ACTIVITY_EVENT_LABELS = {
   chat_group_invite: 'Chat group invite',
   starter_weekly_guide_drop: 'Starter weekly drop',
   creator_fan_sub: 'Creator fan sub',
+  poker_tournament_swap: 'Poker tournament swap',
 }
 
 /** @param {string | null | undefined} eventType */

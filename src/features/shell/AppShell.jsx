@@ -467,6 +467,13 @@ export default function AppShell({
           setMenuOpen(false)
           if (playLogEntryId) setPendingPlayLogEntryId(playLogEntryId)
         }
+      } else if (targetTab === 'poker-bankroll') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('poker-bankroll')
+          setMenuOpen(false)
+        }
       } else if (targetTab === 'offers') {
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()
@@ -1073,6 +1080,25 @@ export default function AppShell({
           return
         }
         setTab('offers')
+        return
+      }
+      if (targetTab === 'poker-bankroll') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+          return
+        }
+        setTab('poker-bankroll')
+        setMenuOpen(false)
+        const activityEventId = data.activityEventId || null
+        const activityBatchId = data.activityBatchId || null
+        if (data.markActivityRead || activityEventId || activityBatchId) {
+          queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
+          window.dispatchEvent(
+            new CustomEvent('lounge-push-opened', {
+              detail: { activityEventId, activityBatchId },
+            }),
+          )
+        }
         return
       }
       if (targetTab === 'chat') {

@@ -186,6 +186,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'Missed call'
     case 'starter_weekly_guide_drop':
       return 'Weekly guide drop ready — scratch to reveal'
+    case 'poker_tournament_swap':
+      return 'offered you a tournament swap'
     default:
       return 'interacted with you'
   }
@@ -253,6 +255,8 @@ function buildTargetUrl(
     params.set('tab', 'home')
     params.set('lounge', 'notifications')
     params.set('starterDrop', String(event.starter_weekly_unlock_id))
+  } else if (event.event_type === 'poker_tournament_swap') {
+    params.set('tab', 'poker-bankroll')
   } else if (event.event_type === 'repost' && !event.comment_id) {
     params.set('lounge', 'notifications')
   } else if (event.post_id) {

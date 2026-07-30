@@ -1,8 +1,10 @@
 /**
- * Create a guest claim token and notify via Twilio SMS and/or Resend email.
- * Also emails Edge counterparties when we can resolve auth.users.email.
+ * Notify tournament swap counterparties:
+ *   - guest → claim token + Twilio SMS and/or Resend email
+ *   - Edge user → activity_events row (in-app + push via lounge-send-activity-push)
+ *     Deep link: /?tab=poker-bankroll
  *
- * Secrets (optional per channel):
+ * Secrets (optional per guest channel):
  *   RESEND_API_KEY, RESEND_FROM / POKER_SWAP_EMAIL_FROM
  *   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER
  *   PUBLIC_APP_URL / APP_ORIGIN (claim link host)
@@ -204,34 +206,29 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true, claim_url: claimUrl, channels })
     }
 
-    // Edge counterparty: email via auth.users when available
-    const { data: authUser, error: auErr } = await admin.auth.admin.getUserById(
-      swap.counterparty_user_id,
-    )
-    if (auErr) throw new Error(auErr.message)
-    const email = String(authUser?.user?.email || '')
-      .trim()
-      .toLowerCase()
-    const bankrollUrl = `${appOrigin()}/?tab=poker-bankroll`
-    const text = `${subject}. Open Poker Bankroll to attach your session: ${bankrollUrl}`
-    const html = `<p>${subject}.</p><p><a href="${bankrollUrl}">Open Poker Bankroll</a></p>`
-    if (email && isValidEmail(email)) {
-      channels.email = await sendResendEmail(email, `Tournament swap · ${pctLine}`, html, text)
-    } else {
-      channels.email = { skipped: true, reason: 'no counterparty email' }
+    // Edge counterparty: in-app + web push only (no email/SMS).
+    const recipientId = String(swap.counterparty_user_id || '').trim()
+    if (!recipientId) {
+      return jsonResponse({ error: 'Swap has no counterparty user.' }, 400)
+    }
+    if (recipientId === auth.user.id) {
+      return jsonResponse({ error: 'Cannot notify yourself.' }, 400)
     }
 
-    const { data: cpProfile } = await admin
-      .from('profiles')
-      .select('phone_number')
-      .eq('user_id', swap.counterparty_user_id)
+    const { data: activityRow, error: actErr } = await admin
+      .from('activity_events')
+      .insert({
+        recipient_user_id: recipientId,
+        actor_user_id: auth.user.id,
+        event_type: 'poker_tournament_swap',
+      })
+      .select('id')
       .maybeSingle()
-    const phone = normalizePhone(String(cpProfile?.phone_number || ''))
-    if (phone) {
-      channels.sms = await sendTwilioSms(phone, text)
-    } else {
-      channels.sms = { skipped: true, reason: 'no counterparty phone' }
-    }
+    if (actErr) throw new Error(actErr.message)
+
+    channels.in_app = { ok: true, activity_event_id: activityRow?.id || null }
+    channels.email = { skipped: true, reason: 'edge users use in-app/push' }
+    channels.sms = { skipped: true, reason: 'edge users use in-app/push' }
 
     return jsonResponse({ ok: true, channels })
   } catch (e) {

@@ -415,6 +415,15 @@ export default function LoungeNotificationsPanel({
         return
       }
 
+      if (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP) {
+        const nextPath = '/?tab=poker-bankroll'
+        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
+          window.history.pushState({}, '', nextPath)
+          window.dispatchEvent(new PopStateEvent('popstate'))
+        }
+        return
+      }
+
       if (
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED &&
         (event.chat_room_id || event.chat_call_id)

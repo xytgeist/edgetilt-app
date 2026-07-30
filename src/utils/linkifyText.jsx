@@ -10,12 +10,19 @@ const WWW_URL_RE = /\bwww\.[^\s<>"']+/gi
 const URL_RE =
   /(?:https?:\/\/|www\.)[\w\-.~:/?#[\]@!$&'()*+,;=%]+|\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[\w\-.~:/?#[\]@!$&'()*+,;=%]*)?/gi
 
-function isEmailLocalPart(text, index) {
-  if (index <= 0) return false
-  const at = text.lastIndexOf('@', index - 1)
-  if (at < 0) return false
-  const between = text.slice(at + 1, index)
-  return /^[a-zA-Z0-9._-]*$/.test(between)
+/** Skip URL matches that are part of an email address (local or domain segment). */
+function isPartOfEmailAddress(text, start, end) {
+  // Local part immediately before @domain.tld (e.g. set.food@gmail.com → skip set.food).
+  if (text[end] === '@') {
+    const rest = text.slice(end + 1)
+    if (/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/.test(rest)) return true
+  }
+  // Domain part after @local (e.g. user@gmail.com → skip gmail.com).
+  if (start > 0) {
+    const at = text.lastIndexOf('@', start - 1)
+    if (at >= 0 && /^[a-zA-Z0-9._+-]*$/.test(text.slice(at + 1, start))) return true
+  }
+  return false
 }
 
 function trimTrailingPunct(raw) {
@@ -76,7 +83,7 @@ export function textWithoutUrls(text, { previewUrl = null } = {}) {
   } else {
     const re = new RegExp(URL_RE.source, URL_RE.flags)
     out = out.replace(re, (match, offset, whole) => {
-      if (isEmailLocalPart(whole, offset)) return match
+      if (isPartOfEmailAddress(whole, offset, offset + match.length)) return match
       return ' '
     })
   }
@@ -119,7 +126,7 @@ export function splitTextWithLinks(text, { trimTrailing = true } = {}) {
   let last = 0
   let match
   while ((match = re.exec(text)) !== null) {
-    if (isEmailLocalPart(text, match.index)) continue
+    if (isPartOfEmailAddress(text, match.index, match.index + match[0].length)) continue
     if (match.index > last) {
       segments.push({ type: 'text', value: text.slice(last, match.index) })
     }

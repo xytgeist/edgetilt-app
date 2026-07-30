@@ -115,11 +115,32 @@ export function resolveMttdbOnlineSiteLabel(siteName, siteSlug = '') {
 }
 
 /**
+ * Fallback when slug/name not in static maps: use MTTDB site_name (trimmed).
+ * @param {string} siteName
+ * @param {string} [siteSlug]
+ * @returns {string | null}
+ */
+export function inferMttdbOnlineSiteLabel(siteName, siteSlug = '') {
+  const fromName = String(siteName || '').trim().replace(/\s+/g, ' ')
+  if (fromName) return fromName
+
+  const slug = normKey(siteSlug).replace(/\s+/g, '-')
+  if (!slug) return null
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+/**
  * @returns {{ resolve: (siteName: string, siteSlug?: string) => string | null, unmappedSites: () => object[] }}
  */
 export function createMttdbSiteResolver() {
   /** @type {Map<string, { site_name: string, site_slug: string }>} */
   const unmapped = new Map()
+  /** @type {Set<string>} */
+  const autoMapped = new Set()
 
   /**
    * @param {string} siteName
@@ -129,16 +150,20 @@ export function createMttdbSiteResolver() {
     const label = resolveMttdbOnlineSiteLabel(siteName, siteSlug)
     if (label) return label
 
-    const missKey = `${normKey(siteSlug)}|${normKey(siteName)}`
-    unmapped.set(missKey, {
-      site_name: String(siteName || '').trim(),
-      site_slug: String(siteSlug || '').trim(),
-    })
-    return null
+    const inferred = inferMttdbOnlineSiteLabel(siteName, siteSlug)
+    if (!inferred) return null
+
+    const autoKey = `${normKey(siteSlug)}|${normKey(siteName)}`
+    if (!autoMapped.has(autoKey)) {
+      autoMapped.add(autoKey)
+      console.log(`[mttdb:sites] auto-mapped: ${siteSlug || siteName} → ${inferred}`)
+    }
+    return inferred
   }
 
   return {
     resolve,
     unmappedSites: () => [...unmapped.values()],
+    autoMappedSites: () => [...autoMapped],
   }
 }

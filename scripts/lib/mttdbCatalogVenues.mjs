@@ -143,15 +143,32 @@ export async function createMttdbVenueResolver(supabase, opts = {}) {
     const insertName = aliased || raw
     if (!dryRun) {
       const { error: insertErr } = await supabase.from('casinos').insert({
-          name: insertName,
-          source: 'seed',
-          city: venueCity || null,
-          state: null,
-          country: countryName || null,
-          lat: coords.lat,
-          lng: coords.lng,
+        name: insertName,
+        source: 'seed',
+        city: venueCity || null,
+        state: null,
+        country: countryName || null,
+        lat: coords.lat,
+        lng: coords.lng,
+      })
+      if (insertErr && /duplicate|unique/i.test(insertErr.message)) {
+        const linked = await linkVenueAlias(supabase, {
+          byKey,
+          insertName,
+          rawTitle: raw,
+          coords,
+          venueCity,
+          countryName,
         })
-      if (insertErr && !/duplicate|unique/i.test(insertErr.message)) {
+        if (linked) {
+          unmapped.delete(missKey)
+          console.log(`[mttdb:venues] linked alias: ${raw} → ${linked}`)
+          return linked
+        }
+        console.warn('[mttdb:venues] duplicate casino, could not link alias:', insertName, insertErr.message)
+        return null
+      }
+      if (insertErr) {
         console.warn('[mttdb:venues] insert failed:', insertName, insertErr.message)
         return null
       }
@@ -170,9 +187,22 @@ export async function createMttdbVenueResolver(supabase, opts = {}) {
 }
 
 async function geocodeVenue(venueTitle, venueCity, countryName) {
-  const q = [venueTitle, venueCity, countryName].filter(Boolean).join(', ')
-  if (!q) return null
+  const queries = [
+    [venueTitle, venueCity, countryName],
+    [venueTitle, venueCity],
+    [venueTitle, countryName],
+    [venueTitle],
+  ]
+  for (const parts of queries) {
+    const q = parts.filter(Boolean).join(', ')
+    if (!q) continue
+    const coords = await geocodeQuery(q)
+    if (coords) return coords
+  }
+  return null
+}
 
+async function geocodeQuery(q) {
   await sleep(1100)
   const url = `${NOMINATIM_URL}?${new URLSearchParams({
     q,
@@ -191,6 +221,72 @@ async function geocodeVenue(venueTitle, venueCity, countryName) {
   } catch {
     return null
   }
+}
+
+/**
+ * When geocode insert hits duplicate name, attach MTTDB title as alias on existing row.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{
+ *   byKey: Map<string, { name: string, lat: number, lng: number }>,
+ *   insertName: string,
+ *   rawTitle: string,
+ *   coords: { lat: number, lng: number },
+ *   venueCity: string,
+ *   countryName: string,
+ * }} opts
+ */
+async function linkVenueAlias(supabase, opts) {
+  const { byKey, insertName, rawTitle, coords, venueCity, countryName } = opts
+  const keys = [normKey(insertName), normKey(rawTitle)]
+  for (const key of keys) {
+    if (byKey.has(key)) return byKey.get(key).name
+  }
+
+  const { data: byName } = await supabase
+    .from('casinos')
+    .select('name, lat, lng, aliases, city, country')
+    .ilike('name', insertName)
+    .limit(1)
+
+  let best = byName?.[0] || null
+  if (!best) {
+    const { data: byRaw } = await supabase
+      .from('casinos')
+      .select('name, lat, lng, aliases, city, country')
+      .ilike('name', rawTitle)
+      .limit(1)
+    best = byRaw?.[0] || null
+  }
+  if (!best && venueCity) {
+    const { data: cityRows } = await supabase
+      .from('casinos')
+      .select('name, lat, lng, aliases, city, country')
+      .ilike('city', `%${venueCity}%`)
+      .limit(10)
+    best =
+      (cityRows || []).find((row) => normKey(row.country || '') === normKey(countryName)) ||
+      cityRows?.[0] ||
+      null
+  }
+
+  if (!best?.name) return null
+
+  const aliasSet = new Set([...(best.aliases || []), rawTitle, insertName].filter(Boolean))
+  const aliases = [...aliasSet]
+  await supabase
+    .from('casinos')
+    .update({ aliases })
+    .eq('name', best.name)
+
+  const lat = Number(best.lat) || coords.lat
+  const lng = Number(best.lng) || coords.lng
+  const entry = { name: best.name, lat, lng }
+  byKey.set(normKey(best.name), entry)
+  for (const alias of aliases) {
+    const ak = normKey(alias)
+    if (ak) byKey.set(ak, entry)
+  }
+  return best.name
 }
 
 function sleep(ms) {

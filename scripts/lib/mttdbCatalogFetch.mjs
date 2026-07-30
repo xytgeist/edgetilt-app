@@ -109,13 +109,6 @@ function totalBuyIn(row) {
   return total > 0 ? total : null
 }
 
-function isSkippableRow(row) {
-  if (Number(row.is_satellite) === 1) return true
-  const n = String(row.name || '').toLowerCase()
-  if (/satellite/i.test(n) && /advance|milestone|super satellite|turbo.*sat/i.test(n)) return true
-  return false
-}
-
 /**
  * @param {object} row MTTDB tournament object
  * @param {string} venueName resolved catalog casino name
@@ -169,16 +162,10 @@ export async function fetchMttdbLiveCatalogOneOffs(opts) {
 
   /** @type {object[]} */
   const oneOff = []
-  let skippedSatellites = 0
   let skippedVenue = 0
   let skippedDate = 0
 
   for (const row of parsed) {
-    if (isSkippableRow(row)) {
-      skippedSatellites++
-      continue
-    }
-
     const eventDate = String(row.start_date || '').slice(0, 10)
     if (eventDate < today || eventDate > horizonIso) {
       skippedDate++
@@ -204,7 +191,6 @@ export async function fetchMttdbLiveCatalogOneOffs(opts) {
     stats: {
       parsed: parsed.length,
       ingested: oneOff.length,
-      skippedSatellites,
       skippedVenue,
       skippedDate,
     },
@@ -263,16 +249,10 @@ export async function fetchMttdbOnlineCatalogOneOffs(opts) {
 
   /** @type {object[]} */
   const oneOff = []
-  let skippedSatellites = 0
   let skippedSite = 0
   let skippedDate = 0
 
   for (const row of parsed) {
-    if (isSkippableRow(row)) {
-      skippedSatellites++
-      continue
-    }
-
     const eventDate = String(row.start_date || '').slice(0, 10)
     if (eventDate < today || eventDate > horizonIso) {
       skippedDate++
@@ -294,7 +274,6 @@ export async function fetchMttdbOnlineCatalogOneOffs(opts) {
     stats: {
       parsed: parsed.length,
       ingested: oneOff.length,
-      skippedSatellites,
       skippedSite,
       skippedDate,
     },

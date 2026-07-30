@@ -41,7 +41,11 @@ node scripts/generate-local-intel-seed-sql.mjs
 ```bash
 npm run poker:catalog:sync:test:dry
 npm run poker:catalog:sync:test
+npm run poker:catalog:sync:production
 ```
+- **Production schedule:** GitHub Actions workflow `.github/workflows/poker-catalog-sync-production.yml` runs **`poker:catalog:sync:production` every ~3 days**. Secrets: `SUPABASE_URL_PRODUCTION`, `SUPABASE_SERVICE_ROLE_KEY_PRODUCTION`.
+- **Auto-map at sync:** unknown MTTDB **online sites** → `site_name` label; unknown **live venues** → Nominatim geocode + `casinos` insert (duplicate name → alias link on existing row).
+- **Satellites:** included (same picker filters: today/tomorrow + GPS / Site).
 - **Seed only** (no fetch): `npm run poker:catalog:seed:test`
 - Single region: `--file=supabase/seed/poker_tournament_catalog_ca.json`
 - New poker rooms need matching rows in `supabase/casino_seed.sql` for GPS venue match.

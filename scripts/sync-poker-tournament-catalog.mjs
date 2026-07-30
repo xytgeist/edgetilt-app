@@ -152,7 +152,7 @@ async function main() {
         resolveVenue: venueResolver.resolve,
       })
       console.log(
-        `MTTDB live: parsed ${liveStats.parsed}, ingested ${liveStats.ingested} (skipped satellites ${liveStats.skippedSatellites}, venue ${liveStats.skippedVenue}, date ${liveStats.skippedDate})`,
+        `MTTDB live: parsed ${liveStats.parsed}, ingested ${liveStats.ingested} (skipped venue ${liveStats.skippedVenue}, date ${liveStats.skippedDate})`,
       )
       const unmappedVenues = venueResolver.unmappedVenues()
       if (unmappedVenues.length) {
@@ -167,7 +167,7 @@ async function main() {
         resolveSite: siteResolver.resolve,
       })
       console.log(
-        `MTTDB online: parsed ${onlineStats.parsed}, ingested ${onlineStats.ingested} (skipped satellites ${onlineStats.skippedSatellites}, site ${onlineStats.skippedSite}, date ${onlineStats.skippedDate})`,
+        `MTTDB online: parsed ${onlineStats.parsed}, ingested ${onlineStats.ingested} (skipped site ${onlineStats.skippedSite}, date ${onlineStats.skippedDate})`,
       )
       const unmappedSites = siteResolver.unmappedSites()
       if (unmappedSites.length) {

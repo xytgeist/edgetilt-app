@@ -1,0 +1,45 @@
+# Scrape MTTDB + regional JSON → upsert poker_tournament_events on production.
+# Schedule: every 3 days (picker only needs today + tomorrow; MTTDB lobby ≈ 7 days ahead).
+#
+# Required GitHub repo secrets (Settings → Secrets → Actions):
+#   SUPABASE_URL_PRODUCTION
+#   SUPABASE_SERVICE_ROLE_KEY_PRODUCTION
+#
+# Optional (not needed for RPC upsert; geocode uses Supabase REST only):
+#   SUPABASE_DB_PASSWORD_PRODUCTION
+#   SUPABASE_DB_URL_PRODUCTION
+
+name: Poker catalog sync (production)
+
+on:
+  schedule:
+    # 06:00 UTC every 3rd day-of-month block (≈ every 3 days)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch:
+
+concurrency:
+  group: poker-catalog-sync-production
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync poker tournament catalog to production
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run poker:catalog:sync:production

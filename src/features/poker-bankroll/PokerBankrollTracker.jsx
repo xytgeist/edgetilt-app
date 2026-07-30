@@ -1734,65 +1734,59 @@ export default function PokerBankrollTracker({
                 <div className="min-w-0 text-lg font-bold leading-tight text-white">
                   {pokerSessionStakesLabel(activeSession)}
                 </div>
-                <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-2">
-                  {/* Meta spans into the gap beside Re-enter so it doesn’t wrap early. */}
+                <div className="mt-2 flex items-stretch justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="truncate text-sm text-zinc-400">
+                      {pokerSessionMetaLine(activeSession)}
+                    </div>
+                    <div className="mt-0.5 truncate text-sm text-zinc-400">
+                      {pokerSessionInForLine(activeSession)}
+                    </div>
+                    <div className="mt-auto pt-2 text-3xl font-black tabular-nums whitespace-nowrap text-emerald-200">
+                      {fmtPokerDuration(elapsed)}
+                    </div>
+                  </div>
                   <div
-                    className={`min-w-0 text-sm text-zinc-400 ${
-                      activeSession.session_type === 'tournament' ? 'col-span-2' : 'col-span-3'
-                    }`}
+                    className="flex shrink-0 flex-col items-end gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
                   >
-                    {pokerSessionMetaLine(activeSession)}
-                  </div>
-                  {activeSession.session_type === 'tournament' ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openRebuy('rebuy')
-                      }}
-                      className="box-border h-11 min-w-[7.5rem] rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-3 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
-                    >
-                      Re-enter
-                    </button>
-                  ) : null}
-                  <div className="min-w-0 text-sm text-zinc-400">
-                    {pokerSessionInForLine(activeSession)}
-                  </div>
-                  {activeSession.session_type === 'cash' ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openRebuy('rebuy')
-                      }}
-                      className="box-border h-11 min-w-[7.5rem] rounded-2xl border border-emerald-400/40 bg-emerald-950/80 px-3 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
-                    >
-                      Re-buy
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openActiveSwaps()
-                      }}
-                      className="box-border h-11 min-w-[7.5rem] rounded-2xl border border-cyan-400/40 bg-cyan-950/50 px-3 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
-                    >
-                      Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      openEndSession()
-                    }}
-                    className="box-border h-11 min-w-[7.5rem] rounded-2xl border border-emerald-500 bg-emerald-500 px-3 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
-                  >
-                    End Session
-                  </button>
-                  <div className="text-3xl font-black tabular-nums text-emerald-200">
-                    {fmtPokerDuration(elapsed)}
+                    {/* Fixed equal chip size (same as old side-stack cells). */}
+                    {activeSession.session_type === 'tournament' ? (
+                      <button
+                        type="button"
+                        onClick={() => openRebuy('rebuy')}
+                        className="box-border h-11 w-32 shrink-0 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                      >
+                        Re-enter
+                      </button>
+                    ) : null}
+                    <div className="flex gap-2">
+                      {activeSession.session_type === 'cash' ? (
+                        <button
+                          type="button"
+                          onClick={() => openRebuy('rebuy')}
+                          className="box-border h-11 w-32 shrink-0 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                        >
+                          Re-buy
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={openActiveSwaps}
+                          className="box-border h-11 w-32 shrink-0 rounded-2xl border border-cyan-400/40 bg-cyan-950/50 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
+                        >
+                          Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={openEndSession}
+                        className="box-border h-11 w-32 shrink-0 rounded-2xl border border-emerald-500 bg-emerald-500 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                      >
+                        End Session
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -1966,9 +1966,18 @@ export default function PokerBankrollTracker({
                           type="button"
                           disabled={saving || !canBind}
                           onClick={() => void bindPendingSwap(swap)}
-                          className="shrink-0 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-bold text-white touch-manipulation disabled:opacity-40"
+                          title={
+                            canBind
+                              ? 'Accept and attach to your matching session'
+                              : 'Log this tournament first, then Accept'
+                          }
+                          className={
+                            canBind
+                              ? 'shrink-0 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-black text-white touch-manipulation shadow-sm'
+                              : 'shrink-0 rounded-xl border border-cyan-500/40 bg-transparent px-3 py-1.5 text-[11px] font-semibold text-cyan-300 touch-manipulation opacity-100'
+                          }
                         >
-                          Accept
+                          {canBind ? 'Accept' : 'Log first'}
                         </button>
                       </li>
                     )

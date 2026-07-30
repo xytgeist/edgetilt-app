@@ -116,6 +116,8 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 
 **Deferred:** GitHub Actions heartbeat for poker catalog sync; ops email on drift (reuse **`BILLING_ADMIN_ALERT_EMAILS`**).
 
+**Offer reminders cron (40600):** pg_cron **`send_due_offer_reminders_minute`** every minute → **`send-due-offer-reminders`** Edge fn (`lookaheadMinutes: 1`).
+
 ---
 
 _Update log: 2026-07-03 — v1 scaffold (RPC + EdgeMonitorScreen + AppShell tab)._

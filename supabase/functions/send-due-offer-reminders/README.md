@@ -34,8 +34,12 @@ supabaseClient.functions.invoke('send-due-offer-reminders', {
 
 ## Recommended schedule
 
-Run every minute using a scheduler (Supabase scheduled functions, GitHub Action, or external cron) with:
+**Shipped (40600):** pg_cron job **`send_due_offer_reminders_minute`** every minute via **`public.invoke_send_due_offer_reminders()`** (`lookaheadMinutes: 1`). Vault: **`lounge_odds_poll_project_url`**, **`lounge_odds_poll_service_role_key`**.
 
-- `lookaheadMinutes: 1`
+Manual smoke:
 
-This catches reminders due in the next minute while avoiding duplicate sends via the dedupe table.
+```sql
+select public.invoke_send_due_offer_reminders();
+```
+
+Offers UI **Run reminder check now** still works for ad-hoc runs with a wider lookahead.

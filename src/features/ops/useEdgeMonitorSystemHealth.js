@@ -6,13 +6,6 @@ import {
 
 const KNOWN_GAPS = [
   {
-    id: 'send_due_offer_reminders',
-    label: 'Offer push reminders',
-    schedule_hint: 'Edge fn exists · no pg_cron in repo',
-    runbook_id: 'prod-checklist',
-    critical: true,
-  },
-  {
     id: 'poker_catalog_sync_production',
     label: 'Poker catalog sync',
     schedule_hint: 'GitHub Actions only — add heartbeat in v2',

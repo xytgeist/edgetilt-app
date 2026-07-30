@@ -89,6 +89,7 @@ import {
   notifyTournamentSwap,
   notifyTournamentSwapResults,
   persistDraftSwapsForSession,
+  swapIsMarkedPaid,
   swapOtherPartyLabel,
   swapViewerRole,
   syncCounterpartyResultsForSession,
@@ -443,6 +444,43 @@ export default function PokerBankrollTracker({
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  /** Keep swap cards in sync when the other party marks paid (or settles). */
+  useEffect(() => {
+    if (!supabaseClient || !userId) return undefined
+    const channel = supabaseClient
+      .channel(`poker-tournament-swaps-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'poker_tournament_swaps' },
+        (payload) => {
+          const row = payload.new || payload.old
+          if (!row?.id) return
+          if (
+            row.creator_user_id !== userId &&
+            row.counterparty_user_id !== userId
+          ) {
+            return
+          }
+          setTournamentSwaps((prev) => {
+            if (payload.eventType === 'DELETE') {
+              return prev.filter((s) => s.id !== row.id)
+            }
+            const nextRow = payload.new
+            if (!nextRow) return prev
+            const idx = prev.findIndex((s) => s.id === nextRow.id)
+            if (idx < 0) return [nextRow, ...prev]
+            const copy = prev.slice()
+            copy[idx] = { ...copy[idx], ...nextRow }
+            return copy
+          })
+        },
+      )
+      .subscribe()
+    return () => {
+      void supabaseClient.removeChannel(channel)
+    }
+  }, [supabaseClient, userId])
 
   /** Swap-result notify deep link: open the viewer's linked session sheet. */
   useEffect(() => {
@@ -2035,19 +2073,18 @@ export default function PokerBankrollTracker({
                                   swapProfilesById,
                                   userId,
                                 )
+                                const paid = swapIsMarkedPaid(swap)
                                 const line =
                                   swap.status === 'settled'
-                                    ? formatSwapIouLine(
-                                        swap.settlement_amount,
-                                        role,
-                                        other,
-                                        fmtPoker$,
-                                      )
+                                    ? paid
+                                      ? 'Paid'
+                                      : formatSwapIouLine(
+                                          swap.settlement_amount,
+                                          role,
+                                          other,
+                                          fmtPoker$,
+                                        )
                                     : formatSwapWaitingStatus(swap, role, other)
-                                const paid =
-                                  role === 'creator'
-                                    ? swap.creator_marked_paid
-                                    : swap.counterparty_marked_paid
                                 return (
                                   <span
                                     key={swap.id}
@@ -2063,7 +2100,6 @@ export default function PokerBankrollTracker({
                                       ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
                                       : ''}
                                     {line ? ` · ${line}` : ''}
-                                    {swap.status === 'settled' && paid ? ' · Paid' : ''}
                                   </span>
                                 )
                               })}

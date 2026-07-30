@@ -358,6 +358,11 @@ export async function acceptCounterpartySessionBind(supabase, swapId, sessionId,
   return { error: null }
 }
 
+/** True when either party has confirmed cash settlement. */
+export function swapIsMarkedPaid(swap) {
+  return Boolean(swap?.creator_marked_paid || swap?.counterparty_marked_paid)
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
@@ -365,10 +370,12 @@ export async function acceptCounterpartySessionBind(supabase, swapId, sessionId,
  * @param {boolean} paid
  */
 export async function markSwapPaid(supabase, swapId, role, paid) {
-  const patch =
-    role === 'creator'
-      ? { creator_marked_paid: Boolean(paid) }
-      : { counterparty_marked_paid: Boolean(paid) }
+  // Paid is a mutual fact: either party marking updates both cards.
+  const patch = paid
+    ? { creator_marked_paid: true, counterparty_marked_paid: true }
+    : role === 'creator'
+      ? { creator_marked_paid: false }
+      : { counterparty_marked_paid: false }
   const { data, error } = await supabase
     .from('poker_tournament_swaps')
     .update(patch)

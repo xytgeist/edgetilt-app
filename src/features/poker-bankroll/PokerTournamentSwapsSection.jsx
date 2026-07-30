@@ -5,6 +5,7 @@ import {
   emptyDraftSwap,
   markSwapPaid,
   setCounterpartyManualResult,
+  swapIsMarkedPaid,
   swapOtherPartyLabel,
   swapViewerRole,
 } from './pokerTournamentSwapApi.js'
@@ -367,8 +368,11 @@ export default function PokerTournamentSwapsSection({
             otherReady && swap.status !== 'settled'
               ? formatSwapSideResultLine(swap, otherSide, other, fmtPoker$)
               : null
-          const paid =
-            role === 'creator' ? swap.creator_marked_paid : swap.counterparty_marked_paid
+          const paid = swapIsMarkedPaid(swap)
+          const statusLine =
+            swap.status === 'settled' && paid
+              ? 'Paid'
+              : primaryStatus
           return (
             <div
               key={swap.id}
@@ -382,8 +386,8 @@ export default function PokerTournamentSwapsSection({
                   </div>
                 </div>
               </div>
-              {primaryStatus ? (
-                <div className="text-sm text-emerald-100/90">{primaryStatus}</div>
+              {statusLine ? (
+                <div className="text-sm text-emerald-100/90">{statusLine}</div>
               ) : null}
               {otherResultLine && !bothReady ? (
                 <div className="mt-0.5 text-[11px] text-zinc-400">{otherResultLine}</div>
@@ -397,9 +401,6 @@ export default function PokerTournamentSwapsSection({
                 >
                   Mark paid
                 </button>
-              ) : null}
-              {swap.status === 'settled' && paid ? (
-                <div className="mt-1 text-[11px] font-semibold text-emerald-300">Paid</div>
               ) : null}
 
               {role === 'creator' &&

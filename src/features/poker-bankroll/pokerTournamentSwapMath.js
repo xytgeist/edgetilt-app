@@ -157,9 +157,9 @@ export function formatSwapWaitingStatus(swap, viewerRole, otherLabel) {
   // Joined / claimed path — results still missing (soft copy; not a do-it-now nudge).
   if (!selfReady || !creatorReady || !cpReady) {
     if (isGuest && viewerRole === 'creator' && !cpReady) {
-      return 'Awaiting results (upon completed session) · or enter theirs below'
+      return 'Awaiting results (upon completed sessions) · or enter theirs below'
     }
-    return 'Awaiting results (upon completed session)'
+    return 'Awaiting results (upon completed sessions)'
   }
   return 'Both results in'
 }

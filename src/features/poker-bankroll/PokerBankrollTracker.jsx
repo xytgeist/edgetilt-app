@@ -237,6 +237,8 @@ export default function PokerBankrollTracker({
     () => scopedSessions.find((s) => s.status === 'active') ?? null,
     [scopedSessions],
   )
+  /** Editing the live in-progress session (not a completed log). */
+  const editingActiveSession = Boolean(editingId && activeSession?.id === editingId)
   const completedSessions = useMemo(
     () => scopedSessions.filter((s) => s.status !== 'active'),
     [scopedSessions],
@@ -1064,6 +1066,7 @@ export default function PokerBankrollTracker({
     setDraftSwaps([])
     setError('')
     setSheet('session')
+    triggerTapHapticLight()
     if ((session.venue_kind || 'live') === 'live') {
       void fetchNearby(null)
     }
@@ -1181,6 +1184,12 @@ export default function PokerBankrollTracker({
     })
   }
 
+  /** Close any sheet without leaving form-validation errors on Overview. */
+  function dismissSheet() {
+    setError('')
+    setSheet(null)
+  }
+
   async function saveSession() {
     if (!supabaseClient || !userId) return
     const buyIn = parseFloat(form.buy_in)
@@ -1207,9 +1216,12 @@ export default function PokerBankrollTracker({
         return
       }
     }
-    if (!Number.isFinite(cashOut)) {
-      setError('Enter cash out (what you walked with).')
-      return
+    // Active in-progress edit: no cash-out / hours yet (End Session handles that).
+    if (!editingActiveSession) {
+      if (!Number.isFinite(cashOut)) {
+        setError('Enter cash out (what you walked with).')
+        return
+      }
     }
     let cashGameLabel = null
     if (form.session_type === 'cash') {
@@ -1223,12 +1235,14 @@ export default function PokerBankrollTracker({
       return
     }
     const durationHrs = parseDurationHoursField(form.duration_hours)
-    if (durationHrs <= 0) {
+    if (!editingActiveSession && durationHrs <= 0) {
       setError('Enter hours played.')
       return
     }
     const startAt = localDateTimeToIso(form.date, form.start_time)
-    const endAt = new Date(new Date(startAt).getTime() + durationHrs * 3_600_000).toISOString()
+    const endAt = editingActiveSession
+      ? null
+      : new Date(new Date(startAt).getTime() + durationHrs * 3_600_000).toISOString()
 
     if (isOnStake && !hasBankrollProfile && !editingId) {
       setError('Set your On Stake starting bankroll first.')
@@ -1243,13 +1257,13 @@ export default function PokerBankrollTracker({
       venue_kind: form.venue_kind,
       currency: normalizePokerCurrency(form.currency),
       session_type: form.session_type,
-      status: 'completed',
+      status: editingActiveSession ? 'active' : 'completed',
       start_at: startAt,
       end_at: endAt,
       buy_in: buyIn,
       rebuy_amount: form.session_type === 'tournament' ? rebuyAmt || 0 : 0,
       addon_amount: form.session_type === 'tournament' ? addonAmt || 0 : 0,
-      cash_out: cashOut,
+      cash_out: editingActiveSession ? null : cashOut,
       game_variant: pokerGameVariantToStored(
         form.session_type,
         form.game_variant,
@@ -1288,12 +1302,14 @@ export default function PokerBankrollTracker({
         form.session_type === 'tournament' && form.start_stack !== ''
           ? parseFloat(form.start_stack)
           : null,
-      finish_place:
-        form.session_type === 'tournament' && form.finish_place !== ''
+      finish_place: editingActiveSession
+        ? null
+        : form.session_type === 'tournament' && form.finish_place !== ''
           ? parseInt(form.finish_place, 10)
           : null,
-      bounty_winnings:
-        form.session_type === 'tournament' && form.bounty_winnings !== ''
+      bounty_winnings: editingActiveSession
+        ? null
+        : form.session_type === 'tournament' && form.bounty_winnings !== ''
           ? parseFloat(form.bounty_winnings)
           : null,
       reentries:
@@ -1308,16 +1324,18 @@ export default function PokerBankrollTracker({
       delete payload.tournament_event_id
     }
 
-    const newWl = pokerSessionWinLoss({
-      buy_in: buyIn,
-      rebuy_amount: payload.rebuy_amount,
-      addon_amount: payload.addon_amount,
-      cash_out: cashOut,
-      bounty_winnings:
-        form.session_type === 'tournament' && form.bounty_winnings !== ''
-          ? parseFloat(form.bounty_winnings) || 0
-          : 0,
-    })
+    const newWl = editingActiveSession
+      ? null
+      : pokerSessionWinLoss({
+          buy_in: buyIn,
+          rebuy_amount: payload.rebuy_amount,
+          addon_amount: payload.addon_amount,
+          cash_out: cashOut,
+          bounty_winnings:
+            form.session_type === 'tournament' && form.bounty_winnings !== ''
+              ? parseFloat(form.bounty_winnings) || 0
+              : 0,
+        })
 
     setSaving(true)
     setError('')
@@ -1331,26 +1349,30 @@ export default function PokerBankrollTracker({
           .select('*')
           .single()
         if (uErr) throw uErr
-        await applyBankrollDelta(newWl - editingPrevWl)
+        if (!editingActiveSession && newWl != null) {
+          await applyBankrollDelta(newWl - editingPrevWl)
+        }
         if (payload.session_type === 'tournament') {
           if (draftSwaps.length > 0) {
             await attachDraftSwapsToSession(updated, draftSwaps)
           }
-          const syncA = await syncCreatorResultsForSession(
-            supabaseClient,
-            editingId,
-            updated,
-          )
-          if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
-            console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
-          }
-          const syncB = await syncCounterpartyResultsForSession(
-            supabaseClient,
-            editingId,
-            updated,
-          )
-          if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
-            console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
+          if (!editingActiveSession) {
+            const syncA = await syncCreatorResultsForSession(
+              supabaseClient,
+              editingId,
+              updated,
+            )
+            if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
+              console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
+            }
+            const syncB = await syncCounterpartyResultsForSession(
+              supabaseClient,
+              editingId,
+              updated,
+            )
+            if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
+              console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
+            }
           }
         }
       } else {
@@ -1692,7 +1714,16 @@ export default function PokerBankrollTracker({
               <div
                 data-session-card
                 data-elevated-card="accent"
-                className="mb-4 rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5"
+                role="button"
+                tabIndex={0}
+                onClick={() => openEdit(activeSession)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    openEdit(activeSession)
+                  }
+                }}
+                className="mb-4 cursor-pointer rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5 touch-manipulation active:bg-emerald-950/80"
               >
                 <div className="mb-3 flex items-center gap-2">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
@@ -1715,7 +1746,11 @@ export default function PokerBankrollTracker({
                       {fmtPokerDuration(elapsed)}
                     </div>
                   </div>
-                  <div className="flex shrink-0 flex-col gap-2">
+                  <div
+                    className="flex shrink-0 flex-col gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
                       onClick={() => openRebuy('rebuy')}
@@ -2004,7 +2039,7 @@ export default function PokerBankrollTracker({
       {sheet === 'bankroll' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          onClick={() => !saving && setSheet(null)}
+          onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
@@ -2023,7 +2058,7 @@ export default function PokerBankrollTracker({
               </div>
               <button
                 type="button"
-                onClick={() => setSheet(null)}
+                onClick={dismissSheet}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
                 aria-label="Close"
               >
@@ -2052,7 +2087,7 @@ export default function PokerBankrollTracker({
       {sheet === 'session' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          onClick={() => !saving && setSheet(null)}
+          onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
@@ -2063,11 +2098,15 @@ export default function PokerBankrollTracker({
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="text-lg font-bold text-white">
-                {editingId ? 'Edit session' : 'Log previous session'}
+                {editingActiveSession
+                  ? 'Session details'
+                  : editingId
+                    ? 'Edit session'
+                    : 'Log previous session'}
               </div>
               <button
                 type="button"
-                onClick={() => setSheet(null)}
+                onClick={dismissSheet}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
                 aria-label="Close"
               >
@@ -2116,86 +2155,102 @@ export default function PokerBankrollTracker({
               </div>
             </div>
 
-            <FieldLabel>Hours played</FieldLabel>
-            <div className="mb-3 flex items-center gap-2">
-              <button
-                type="button"
-                className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
-                onClick={() =>
-                  setField(
-                    'duration_hours',
-                    formatDurationHoursField(parseDurationHoursField(form.duration_hours) - 0.25),
-                  )
-                }
-              >
-                −
-              </button>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={form.duration_hours}
-                onChange={(e) => setField('duration_hours', e.target.value)}
-                className={`${POKER_FIELD_CLASS} flex-1 text-center`}
-              />
-              <button
-                type="button"
-                className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
-                onClick={() =>
-                  setField(
-                    'duration_hours',
-                    formatDurationHoursField(parseDurationHoursField(form.duration_hours) + 0.25),
-                  )
-                }
-              >
-                +
-              </button>
-            </div>
-
-            <div className="mb-3">
-              <FieldLabel>Cash out</FieldLabel>
-              <MoneyInput
-                value={form.cash_out}
-                onChange={(v) => setField('cash_out', v)}
-                colorize
-              />
-            </div>
-
-            {previewWl != null ? (
-              <p
-                className={`mb-3 text-center text-sm font-semibold tabular-nums ${
-                  previewWl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                }`}
-              >
-                Session P/L {fmtPoker$(previewWl)}
-              </p>
-            ) : null}
-
-            {form.session_type === 'tournament' ? (
-              <div className="mb-3 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <FieldLabel>Finish place</FieldLabel>
-                    <NumInput
-                      value={form.finish_place}
-                      onChange={(v) => setField('finish_place', v)}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Re-entries</FieldLabel>
-                    <NumInput
-                      value={form.reentries}
-                      onChange={(v) => setField('reentries', v)}
-                    />
-                  </div>
+            {!editingActiveSession ? (
+              <>
+                <FieldLabel>Hours played</FieldLabel>
+                <div className="mb-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+                    onClick={() =>
+                      setField(
+                        'duration_hours',
+                        formatDurationHoursField(
+                          parseDurationHoursField(form.duration_hours) - 0.25,
+                        ),
+                      )
+                    }
+                  >
+                    −
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.duration_hours}
+                    onChange={(e) => setField('duration_hours', e.target.value)}
+                    className={`${POKER_FIELD_CLASS} flex-1 text-center`}
+                  />
+                  <button
+                    type="button"
+                    className="h-12 w-12 rounded-2xl bg-zinc-800 text-xl text-zinc-300 touch-manipulation"
+                    onClick={() =>
+                      setField(
+                        'duration_hours',
+                        formatDurationHoursField(
+                          parseDurationHoursField(form.duration_hours) + 0.25,
+                        ),
+                      )
+                    }
+                  >
+                    +
+                  </button>
                 </div>
-                <div>
-                  <FieldLabel>Bounty winnings</FieldLabel>
+
+                <div className="mb-3">
+                  <FieldLabel>Cash out</FieldLabel>
                   <MoneyInput
-                    value={form.bounty_winnings}
-                    onChange={(v) => setField('bounty_winnings', v)}
+                    value={form.cash_out}
+                    onChange={(v) => setField('cash_out', v)}
                     colorize
                   />
                 </div>
+
+                {previewWl != null ? (
+                  <p
+                    className={`mb-3 text-center text-sm font-semibold tabular-nums ${
+                      previewWl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                  >
+                    Session P/L {fmtPoker$(previewWl)}
+                  </p>
+                ) : null}
+
+                {form.session_type === 'tournament' ? (
+                  <div className="mb-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <FieldLabel>Finish place</FieldLabel>
+                        <NumInput
+                          value={form.finish_place}
+                          onChange={(v) => setField('finish_place', v)}
+                        />
+                      </div>
+                      <div>
+                        <FieldLabel>Re-entries</FieldLabel>
+                        <NumInput
+                          value={form.reentries}
+                          onChange={(v) => setField('reentries', v)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <FieldLabel>Bounty winnings</FieldLabel>
+                      <MoneyInput
+                        value={form.bounty_winnings}
+                        onChange={(v) => setField('bounty_winnings', v)}
+                        colorize
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : form.session_type === 'tournament' ? (
+              <div className="mb-3">
+                <FieldLabel>Re-entries</FieldLabel>
+                <NumInput
+                  value={form.reentries}
+                  onChange={(v) => setField('reentries', v)}
+                />
               </div>
             ) : null}
 
@@ -2262,7 +2317,7 @@ export default function PokerBankrollTracker({
           userId={userId}
           dealId={scopeDealIdForWrite()}
           completedSessions={completedSessions}
-          onClose={() => setSheet(null)}
+          onClose={dismissSheet}
           onImported={() => void loadData()}
         />
       ) : null}
@@ -2270,7 +2325,7 @@ export default function PokerBankrollTracker({
       {sheet === 'start' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          onClick={() => !saving && setSheet(null)}
+          onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
@@ -2283,7 +2338,7 @@ export default function PokerBankrollTracker({
               <div className="text-lg font-bold text-white">Start Session</div>
               <button
                 type="button"
-                onClick={() => setSheet(null)}
+                onClick={dismissSheet}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
                 aria-label="Close"
               >
@@ -2330,7 +2385,7 @@ export default function PokerBankrollTracker({
       {sheet === 'swaps' && activeSession ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          onClick={() => !saving && setSheet(null)}
+          onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
@@ -2341,7 +2396,7 @@ export default function PokerBankrollTracker({
               <div className="text-lg font-bold text-white">Tournament swaps</div>
               <button
                 type="button"
-                onClick={() => setSheet(null)}
+                onClick={dismissSheet}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
                 aria-label="Close"
               >
@@ -2386,7 +2441,7 @@ export default function PokerBankrollTracker({
             {draftSwaps.length === 0 ? (
               <button
                 type="button"
-                onClick={() => setSheet(null)}
+                onClick={dismissSheet}
                 className="mt-2 w-full rounded-2xl border border-zinc-700 py-3 text-sm font-semibold text-zinc-300 touch-manipulation"
               >
                 Done
@@ -2399,7 +2454,7 @@ export default function PokerBankrollTracker({
       {sheet === 'rebuy' && activeSession ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          onClick={() => !saving && setSheet(null)}
+          onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
@@ -2416,7 +2471,7 @@ export default function PokerBankrollTracker({
               </div>
               <button
                 type="button"
-                onClick={() => setSheet(null)}
+                onClick={dismissSheet}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
                 aria-label="Close"
               >
@@ -2462,7 +2517,7 @@ export default function PokerBankrollTracker({
       {sheet === 'end' && activeSession ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          onClick={() => !saving && setSheet(null)}
+          onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
@@ -2473,7 +2528,7 @@ export default function PokerBankrollTracker({
               <div className="text-lg font-bold text-white">End Session</div>
               <button
                 type="button"
-                onClick={() => setSheet(null)}
+                onClick={dismissSheet}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
                 aria-label="Close"
               >

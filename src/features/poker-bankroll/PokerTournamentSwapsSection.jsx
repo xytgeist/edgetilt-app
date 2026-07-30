@@ -8,7 +8,13 @@ import {
   swapOtherPartyLabel,
   swapViewerRole,
 } from './pokerTournamentSwapApi.js'
-import { formatSwapIouLine, parseSwapPct } from './pokerTournamentSwapMath.js'
+import {
+  computeTournamentSwapSettlement,
+  formatSwapIouLine,
+  formatSwapSideResultLine,
+  formatSwapWaitingStatus,
+  parseSwapPct,
+} from './pokerTournamentSwapMath.js'
 
 const FIELD =
   'w-full h-11 min-h-11 rounded-2xl bg-zinc-800 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
@@ -335,14 +341,36 @@ export default function PokerTournamentSwapsSection({
         {savedSwaps.map((swap) => {
           const role = swapViewerRole(swap, userId) || 'creator'
           const other = swapOtherPartyLabel(swap, profilesById, userId)
-          const iou =
+          const creatorReady = Boolean(swap.creator_result_ready)
+          const cpReady = Boolean(swap.counterparty_result_ready)
+          const bothReady = creatorReady && cpReady
+          const settlementPreview = bothReady
+            ? computeTournamentSwapSettlement({
+                creatorPrize: swap.creator_prize,
+                creatorBuyIn: swap.creator_buy_in,
+                counterpartyPrize: swap.counterparty_prize,
+                counterpartyBuyIn: swap.counterparty_buy_in,
+                pctCreatorGives: swap.pct_creator_gives,
+                pctCounterpartyGives: swap.pct_counterparty_gives,
+              })
+            : null
+          const primaryStatus =
             swap.status === 'settled'
               ? formatSwapIouLine(swap.settlement_amount, role, other, fmtPoker$)
-              : swap.counterparty_result_ready
-                ? 'Waiting on your result'
-                : swap.creator_result_ready
-                  ? `Waiting on ${other}`
-                  : 'Waiting on both results'
+              : bothReady
+                ? formatSwapIouLine(
+                    settlementPreview?.settlementAmount,
+                    role,
+                    other,
+                    fmtPoker$,
+                  )
+                : formatSwapWaitingStatus(swap, role, other)
+          const otherSide = role === 'creator' ? 'counterparty' : 'creator'
+          const otherReady = role === 'creator' ? cpReady : creatorReady
+          const otherResultLine =
+            otherReady && swap.status !== 'settled'
+              ? formatSwapSideResultLine(swap, otherSide, other, fmtPoker$)
+              : null
           const paid =
             role === 'creator' ? swap.creator_marked_paid : swap.counterparty_marked_paid
           return (
@@ -358,7 +386,12 @@ export default function PokerTournamentSwapsSection({
                   </div>
                 </div>
               </div>
-              <div className="text-sm text-emerald-100/90">{iou}</div>
+              {primaryStatus ? (
+                <div className="text-sm text-emerald-100/90">{primaryStatus}</div>
+              ) : null}
+              {otherResultLine && !bothReady ? (
+                <div className="mt-0.5 text-[11px] text-zinc-400">{otherResultLine}</div>
+              ) : null}
               {swap.status === 'settled' && !paid ? (
                 <button
                   type="button"

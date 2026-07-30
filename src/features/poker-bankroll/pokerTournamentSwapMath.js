@@ -59,6 +59,69 @@ export function formatSwapIouLine(settlementAmount, viewerRole, otherLabel, fmt$
   return `${label} owes you ${fmt$(Math.abs(amt))}`
 }
 
+/**
+ * Explicit, role-aware waiting copy for the real gate
+ * (accept / claim / log result) ... never blames a side that already finished.
+ *
+ * @param {object} swap
+ * @param {'creator' | 'counterparty'} viewerRole
+ * @param {string} otherLabel
+ */
+export function formatSwapWaitingStatus(swap, viewerRole, otherLabel) {
+  const label = String(otherLabel || 'them').trim() || 'them'
+  const creatorReady = Boolean(swap?.creator_result_ready)
+  const cpReady = Boolean(swap?.counterparty_result_ready)
+  if (creatorReady && cpReady) return 'Both results in'
+
+  const accepted = Boolean(swap?.counterparty_session_accepted_at)
+  const isGuest = swap?.counterparty_kind === 'guest'
+  const selfReady = viewerRole === 'creator' ? creatorReady : cpReady
+
+  // Edge user / guest hasn’t joined the swap yet (Incoming Accept or claim link).
+  if (!cpReady && !accepted) {
+    if (isGuest) {
+      if (viewerRole === 'creator') {
+        return `Waiting on ${label} to claim · or enter their result below`
+      }
+      return 'Waiting on you to claim this swap'
+    }
+    if (viewerRole === 'creator') return `Waiting on ${label} to accept`
+    return 'Waiting on you to accept this swap'
+  }
+
+  // Joined / claimed path — results still missing.
+  if (!selfReady) return 'Waiting on you to log your result'
+  if (!creatorReady) return `Waiting on ${label} to log their result`
+  if (!cpReady) {
+    if (isGuest && viewerRole === 'creator') {
+      return `Waiting on ${label} to log their result · or enter it below`
+    }
+    return `Waiting on ${label} to log their result`
+  }
+  return 'Both results in'
+}
+
+/**
+ * One side’s logged result + their positive-net swap share.
+ * @param {object} swap
+ * @param {'creator' | 'counterparty'} side
+ * @param {string} label
+ * @param {(n: number) => string} fmt$
+ */
+export function formatSwapSideResultLine(swap, side, label, fmt$) {
+  const buyIn =
+    side === 'creator' ? Number(swap?.creator_buy_in) : Number(swap?.counterparty_buy_in)
+  const prize =
+    side === 'creator' ? Number(swap?.creator_prize) : Number(swap?.counterparty_prize)
+  const pct =
+    side === 'creator' ? Number(swap?.pct_creator_gives) : Number(swap?.pct_counterparty_gives)
+  if (!Number.isFinite(buyIn) && !Number.isFinite(prize)) return null
+  const net = (Number.isFinite(prize) ? prize : 0) - (Number.isFinite(buyIn) ? buyIn : 0)
+  const share = Math.round((Math.max(0, net) * (Number.isFinite(pct) ? pct : 0)) / 100 * 100) / 100
+  const who = String(label || (side === 'creator' ? 'Them' : 'Them')).trim() || 'Them'
+  return `${who}: net ${fmt$(net)} · ${fmt$(share)} toward swap`
+}
+
 /** @param {unknown} pct */
 export function parseSwapPct(pct) {
   const n = parseFloat(String(pct ?? '').trim())

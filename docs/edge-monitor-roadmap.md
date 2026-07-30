@@ -100,9 +100,24 @@ Admin-only RPC **`admin_ops_subscriber_roster()`** + **`EdgeMonitorSubscriberRos
 7. Non-admin account: tab shows “admin-only” (no RPC call required for gate test).
 8. **Desktop:** open **`/monitor`** ... 30/90d sparklines, alerts banner, auto-refresh toggle.
 9. **Subscriber roster:** panel below hero KPIs ... new-user buckets, platform/fan tabs, creator monetization table, cancels tab, CSV export.
+10. **System health:** panel below alerts ... scheduled job table, billing drift cards (names users stuck on incomplete), **Copy diagnostic** button.
+
+## Phase 7 — system health (shipped)
+
+**Migration:** **`20260730240000_admin_ops_system_health.sql`**
+
+Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthPanel`** at top of Edge Monitor (below alerts banner).
+
+- **Scheduled jobs:** pg_cron registry with last run, health (`ok` / `failed` / `stale` / `disabled` / `external` / `unscheduled`), runbook links
+- **Billing drift:** proactive cases naming users stuck **`incomplete`**, active sub + Free profile flag, Stripe customer with no sub row, fan sub incomplete
+- **Copy diagnostic:** plain-text bundle for chat triage (project, user ids, Stripe ids, job failures)
+- **Alerts banner:** drift + critical job issues surface as red/critical alerts without searching subscriber roster
+
+**Deferred:** GitHub Actions heartbeat for poker catalog sync; ops email on drift (reuse **`BILLING_ADMIN_ALERT_EMAILS`**).
 
 ---
 
 _Update log: 2026-07-03 — v1 scaffold (RPC + EdgeMonitorScreen + AppShell tab)._
 _Update log: 2026-07-03 — Phases 2–5 (extended RPC, external-health Edge fn, alerts/runbooks, live pulse poll)._
 _Update log: 2026-07-23 — Phase 6 subscriber roster (`admin_ops_subscriber_roster` + Monitor panel)._
+_Update log: 2026-07-30 — Phase 7 system health (cron registry + billing drift + copy diagnostic)._

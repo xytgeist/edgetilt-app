@@ -17,6 +17,30 @@ export const OPS_MONITOR_RUNBOOKS = [
     hint: 'Webhook + secrets replay',
   },
   {
+    id: 'billing-drift',
+    title: 'Billing drift triage',
+    href: '/docs/access-tiers.md',
+    hint: 'Paid but no access · incomplete rows · reconcile',
+  },
+  {
+    id: 'lounge-bot-sports-odds',
+    title: 'Scott Share odds bots',
+    href: '/docs/lounge-bot-sports-odds.md',
+    hint: 'pg_cron odds poll + Coffee & Covers',
+  },
+  {
+    id: 'lounge-bot-market-news',
+    title: 'Market Edge news bot',
+    href: '/docs/lounge-bot-market-news.md',
+    hint: 'Financial news poll cron',
+  },
+  {
+    id: 'lounge-bot-editorial-queue',
+    title: 'X editorial bot queue',
+    href: '/docs/lounge-bot-editorial-queue.md',
+    hint: 'X ingest cron + editorial inbox',
+  },
+  {
     id: 'stream-purge',
     title: 'Stream pending-upload purge',
     href: '/supabase/functions/lounge-cf-stream-purge-pending-uploads/README.md',
@@ -50,7 +74,17 @@ export function opsMonitorRunbookById(id) {
 export function opsMonitorRunbooksForSection(sectionKey) {
   switch (sectionKey) {
     case 'subs':
-      return [opsMonitorRunbookById('stripe-handoff'), opsMonitorRunbookById('prod-checklist')].filter(Boolean)
+      return [
+        opsMonitorRunbookById('billing-drift'),
+        opsMonitorRunbookById('stripe-handoff'),
+        opsMonitorRunbookById('prod-checklist'),
+      ].filter(Boolean)
+    case 'system':
+      return [
+        opsMonitorRunbookById('billing-drift'),
+        opsMonitorRunbookById('lounge-bot-sports-odds'),
+        opsMonitorRunbookById('prod-checklist'),
+      ].filter(Boolean)
     case 'search':
       return [opsMonitorRunbookById('prod-checklist')].filter(Boolean)
     case 'lounge':

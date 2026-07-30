@@ -64,6 +64,34 @@ export async function fetchLoungeBotOpsSnapshot(supabaseClient) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @returns {Promise<{ data: object | null, error: import('@supabase/supabase-js').PostgrestError | null }>}
+ */
+export async function fetchOpsMonitorBillingDrift(supabaseClient) {
+  const { data, error } = await supabaseClient.rpc('admin_ops_billing_drift_snapshot')
+  return { data, error }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @returns {Promise<{ data: object | null, error: import('@supabase/supabase-js').PostgrestError | null }>}
+ */
+export async function fetchOpsMonitorScheduledJobs(supabaseClient) {
+  const { data, error } = await supabaseClient.rpc('admin_ops_scheduled_jobs_snapshot')
+  return { data, error }
+}
+
+/**
+ * Combined snapshot (legacy). Prefer parallel billing + jobs fetches.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @returns {Promise<{ data: object | null, error: import('@supabase/supabase-js').PostgrestError | null }>}
+ */
+export async function fetchOpsMonitorSystemHealth(supabaseClient) {
+  const { data, error } = await supabaseClient.rpc('admin_ops_system_health_snapshot')
+  return { data, error }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string, dryRun?: boolean, force?: boolean }} [opts]
  * @returns {Promise<{ data: object | null, error: Error | null }>}
  */

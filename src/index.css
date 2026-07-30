@@ -5791,46 +5791,283 @@ html.light [data-auth-modal] [data-auth-legal-nudge] {
   transform: scale(0.98);
 }
 
+/* Edge Monitor — light mode (/?tab=monitor + /monitor). Dark default unchanged. */
 html.light [data-edge-monitor] .edge-monitor-section,
-html.light [data-edge-monitor] .edge-monitor-chart-shell {
-  background-color: rgb(255 255 255) !important;
-  border-color: rgb(212 212 216) !important;
-}
-
+html.light [data-edge-monitor] .edge-monitor-chart-shell,
 html.light [data-edge-monitor] .edge-monitor-panel {
-  background-color: rgb(255 255 255) !important;
-  border-color: rgb(228 228 231) !important;
-}
-
-html.light [data-edge-monitor] .text-zinc-500 {
-  color: rgb(82 82 91) !important;
-}
-
-html.light [data-edge-monitor] .text-zinc-400 {
-  color: rgb(63 63 70) !important;
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 html.light [data-edge-monitor] .edge-monitor-header {
-  background: rgb(250 250 250) !important;
-  border-color: rgb(228 228 231) !important;
+  background: #fafafa !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 html.light [data-edge-monitor] .edge-monitor-product-metric,
-html.light [data-edge-monitor] .edge-monitor-metric-tile {
-  background: rgb(255 255 255) !important;
-  border-color: rgb(228 228 231) !important;
+html.light [data-edge-monitor] .edge-monitor-metric-tile,
+html.light [data-edge-monitor] .edge-monitor-hero-card {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-html.light [data-edge-monitor] .edge-monitor-product-metric .text-white,
-html.light [data-edge-monitor] .edge-monitor-metric-tile .text-white {
-  color: rgb(24 24 27) !important;
+html.light [data-edge-monitor] .text-white:not([class*="bg-"]):not([class*="from-"]) {
+  color: #18181b !important;
 }
 
-html.light [data-edge-monitor] .edge-monitor-product-metric .text-zinc-400,
-html.light [data-edge-monitor] .edge-monitor-product-metric .text-zinc-500,
-html.light [data-edge-monitor] .edge-monitor-product-metric .text-zinc-600,
-html.light [data-edge-monitor] .edge-monitor-metric-tile .text-zinc-500 {
-  color: rgb(82 82 91) !important;
+html.light [data-edge-monitor] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-edge-monitor] .text-zinc-200 {
+  color: #27272a !important;
+}
+html.light [data-edge-monitor] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-edge-monitor] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-edge-monitor] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-edge-monitor] .text-zinc-600 {
+  color: #71717a !important;
+}
+
+html.light [data-edge-monitor] .border-zinc-800,
+html.light [data-edge-monitor] .border-zinc-800\/80,
+html.light [data-edge-monitor] .border-zinc-800\/70 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-edge-monitor] .border-zinc-700,
+html.light [data-edge-monitor] .border-zinc-700\/80 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light [data-edge-monitor] .ring-zinc-700 {
+  --tw-ring-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.light [data-edge-monitor] .ring-zinc-600\/50,
+html.light [data-edge-monitor] .ring-zinc-600\/30 {
+  --tw-ring-color: rgba(0, 0, 0, 0.14) !important;
+}
+
+html.light [data-edge-monitor] .bg-zinc-900,
+html.light [data-edge-monitor] .bg-zinc-900\/90,
+html.light [data-edge-monitor] .bg-zinc-900\/80,
+html.light [data-edge-monitor] .bg-zinc-900\/50 {
+  background-color: #ffffff !important;
+}
+html.light [data-edge-monitor] .bg-zinc-950,
+html.light [data-edge-monitor] .bg-zinc-950\/60,
+html.light [data-edge-monitor] .bg-zinc-950\/50,
+html.light [data-edge-monitor] .bg-zinc-950\/40 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-edge-monitor] .bg-zinc-800,
+html.light [data-edge-monitor] .bg-zinc-800\/80,
+html.light [data-edge-monitor] .bg-zinc-800\/60 {
+  background-color: #ececef !important;
+}
+html.light [data-edge-monitor] .bg-zinc-800\/60.edge-monitor-shimmer {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-edge-monitor] .hover\:bg-zinc-900:hover,
+html.light [data-edge-monitor] .hover\:bg-zinc-900\/80:hover,
+html.light [data-edge-monitor] .hover\:bg-zinc-800\/60:hover,
+html.light [data-edge-monitor] .hover\:bg-zinc-700:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light [data-edge-monitor] .divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
+html.light [data-edge-monitor] .divide-zinc-800\/70 > :not([hidden]) ~ :not([hidden]),
+html.light [data-edge-monitor] .divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light [data-edge-monitor] input,
+html.light [data-edge-monitor] textarea,
+html.light [data-edge-monitor] select {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: rgba(0, 0, 0, 0.14) !important;
+  -webkit-text-fill-color: #18181b;
+}
+html.light [data-edge-monitor] input::placeholder,
+html.light [data-edge-monitor] textarea::placeholder {
+  color: #71717a !important;
+  opacity: 1;
+}
+
+html.light [data-edge-monitor] .text-cyan-200,
+html.light [data-edge-monitor] .text-cyan-300,
+html.light [data-edge-monitor] .text-cyan-400 {
+  color: #0e7490 !important;
+}
+html.light [data-edge-monitor] .text-violet-200,
+html.light [data-edge-monitor] .text-violet-300 {
+  color: #6d28d9 !important;
+}
+html.light [data-edge-monitor] .border-cyan-500\/40,
+html.light [data-edge-monitor] .border-cyan-500\/30,
+html.light [data-edge-monitor] .border-cyan-500\/25 {
+  border-color: rgba(6, 182, 212, 0.35) !important;
+}
+html.light [data-edge-monitor] .ring-cyan-500\/25,
+html.light [data-edge-monitor] .ring-cyan-500\/30,
+html.light [data-edge-monitor] .ring-cyan-500\/35,
+html.light [data-edge-monitor] .ring-cyan-500\/40 {
+  --tw-ring-color: rgba(6, 182, 212, 0.35) !important;
+}
+
+html.light [data-edge-monitor] .bg-emerald-950\/50,
+html.light [data-edge-monitor] .bg-emerald-950\/40,
+html.light [data-edge-monitor] .bg-emerald-950\/20 {
+  background-color: rgba(220, 252, 231, 0.85) !important;
+}
+html.light [data-edge-monitor] .bg-emerald-900 {
+  background-color: rgba(209, 250, 229, 0.95) !important;
+}
+html.light [data-edge-monitor] .text-emerald-100,
+html.light [data-edge-monitor] .text-emerald-200,
+html.light [data-edge-monitor] .text-emerald-300,
+html.light [data-edge-monitor] .text-emerald-400 {
+  color: #047857 !important;
+}
+html.light [data-edge-monitor] .ring-emerald-500\/30,
+html.light [data-edge-monitor] .ring-emerald-500\/35,
+html.light [data-edge-monitor] .ring-emerald-500\/40,
+html.light [data-edge-monitor] .ring-emerald-800 {
+  --tw-ring-color: rgba(16, 185, 129, 0.35) !important;
+}
+html.light [data-edge-monitor] .border-emerald-500\/25 {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+html.light [data-edge-monitor] .bg-amber-950\/50,
+html.light [data-edge-monitor] .bg-amber-950\/40,
+html.light [data-edge-monitor] .bg-amber-950\/30,
+html.light [data-edge-monitor] .bg-amber-950\/25,
+html.light [data-edge-monitor] .bg-amber-950\/15 {
+  background-color: rgba(254, 243, 199, 0.85) !important;
+}
+html.light [data-edge-monitor] .text-amber-100,
+html.light [data-edge-monitor] .text-amber-200,
+html.light [data-edge-monitor] .text-amber-300,
+html.light [data-edge-monitor] .text-amber-400,
+html.light [data-edge-monitor] .text-amber-400\/90 {
+  color: #b45309 !important;
+}
+html.light [data-edge-monitor] .text-amber-200\/70 {
+  color: rgba(146, 64, 14, 0.85) !important;
+}
+html.light [data-edge-monitor] .ring-amber-500\/30,
+html.light [data-edge-monitor] .ring-amber-500\/35 {
+  --tw-ring-color: rgba(245, 158, 11, 0.35) !important;
+}
+html.light [data-edge-monitor] .border-amber-500\/30,
+html.light [data-edge-monitor] .border-amber-500\/35,
+html.light [data-edge-monitor] .border-amber-500\/25 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.light [data-edge-monitor] .bg-red-950\/50,
+html.light [data-edge-monitor] .bg-red-950\/40,
+html.light [data-edge-monitor] .bg-red-950\/35 {
+  background-color: rgba(254, 226, 226, 0.85) !important;
+}
+html.light [data-edge-monitor] .text-red-100,
+html.light [data-edge-monitor] .text-red-200,
+html.light [data-edge-monitor] .text-red-300,
+html.light [data-edge-monitor] .text-red-400 {
+  color: #991b1b !important;
+}
+html.light [data-edge-monitor] .text-red-100\/90 {
+  color: rgba(153, 27, 27, 0.9) !important;
+}
+html.light [data-edge-monitor] .text-red-200\/70,
+html.light [data-edge-monitor] .text-red-200\/80 {
+  color: rgba(153, 27, 27, 0.8) !important;
+}
+html.light [data-edge-monitor] .ring-red-500\/30,
+html.light [data-edge-monitor] .ring-red-500\/40 {
+  --tw-ring-color: rgba(239, 68, 68, 0.35) !important;
+}
+html.light [data-edge-monitor] .border-red-500\/40,
+html.light [data-edge-monitor] .border-red-500\/30 {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+html.light [data-edge-monitor] .bg-black\/25 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  color: #27272a !important;
+}
+html.light [data-edge-monitor] .ring-white\/10 {
+  --tw-ring-color: rgba(0, 0, 0, 0.08) !important;
+}
+html.light [data-edge-monitor] .hover\:bg-black\/40:hover {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light [data-edge-monitor] .hover\:text-white:hover {
+  color: #18181b !important;
+}
+html.light [data-edge-monitor] .hover\:text-zinc-200:hover,
+html.light [data-edge-monitor] .hover\:text-zinc-300:hover {
+  color: #3f3f46 !important;
+}
+html.light [data-edge-monitor] .hover\:text-cyan-300:hover,
+html.light [data-edge-monitor] .hover\:text-cyan-200:hover {
+  color: #0e7490 !important;
+}
+html.light [data-edge-monitor] .hover\:text-violet-200:hover {
+  color: #6d28d9 !important;
+}
+
+html.light [data-edge-monitor] .bg-violet-600.text-white {
+  color: #ffffff !important;
+}
+
+/* /monitor desktop shell (header, gate screens) */
+html.light [data-edge-monitor-desktop].edge-monitor-desktop-page {
+  color: #52525b !important;
+}
+html.light [data-edge-monitor-desktop] .border-zinc-800 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-edge-monitor-desktop] .bg-zinc-950,
+html.light [data-edge-monitor-desktop] .bg-zinc-900 {
+  background-color: #fafafa !important;
+}
+html.light [data-edge-monitor-desktop] .bg-zinc-800 {
+  background-color: #ececef !important;
+}
+html.light [data-edge-monitor-desktop] .text-white:not([class*="bg-"]) {
+  color: #18181b !important;
+}
+html.light [data-edge-monitor-desktop] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-edge-monitor-desktop] .text-zinc-400,
+html.light [data-edge-monitor-desktop] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-edge-monitor-desktop] .hover\:bg-zinc-700:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+html.light [data-edge-monitor-desktop] .hover\:text-zinc-200:hover,
+html.light [data-edge-monitor-desktop] .hover\:text-zinc-300:hover {
+  color: #3f3f46 !important;
+}
+html.light [data-edge-monitor-desktop] .border-red-900\/40 {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+html.light [data-edge-monitor-desktop] .bg-red-950\/20 {
+  background-color: rgba(254, 226, 226, 0.75) !important;
+}
+html.light [data-edge-monitor-desktop] .text-red-100,
+html.light [data-edge-monitor-desktop] .text-red-200,
+html.light [data-edge-monitor-desktop] .text-red-200\/80 {
+  color: #991b1b !important;
 }
 
 .edge-monitor-desktop-page {

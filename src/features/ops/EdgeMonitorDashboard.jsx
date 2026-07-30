@@ -30,9 +30,12 @@ import { useLoungeBotOps } from './useLoungeBotOps.js'
 import EdgeMonitorActivityPanel from './EdgeMonitorActivityPanel.jsx'
 import EdgeMonitorBotOpsPanel from './EdgeMonitorBotOpsPanel.jsx'
 import EdgeMonitorSubscriberRosterPanel from './EdgeMonitorSubscriberRosterPanel.jsx'
+import EdgeMonitorSystemHealthPanel from './EdgeMonitorSystemHealthPanel.jsx'
 import EdgeMonitorUserSignupsPanel from './EdgeMonitorUserSignupsPanel.jsx'
 import { useEdgeMonitorLivePulse } from './useEdgeMonitorLivePulse.js'
 import { useEdgeMonitorSubscriberRoster } from './useEdgeMonitorSubscriberRoster.js'
+import { useEdgeMonitorSystemHealth } from './useEdgeMonitorSystemHealth.js'
+import { evaluateSystemHealthAlerts } from './opsMonitorSystemHealth.js'
 import { EDGE_MONITOR_PATH } from './opsMonitorNavigation.js'
 
 const MONITOR_PANEL = 'rounded-2xl border border-zinc-800 bg-zinc-900'
@@ -362,6 +365,16 @@ export default function EdgeMonitorDashboard({
     enabled: Boolean(snapshot),
     autoRefreshMs: autoRefresh ? 90_000 : 0,
   })
+  const {
+    systemHealth,
+    loading: systemHealthLoading,
+    error: systemHealthError,
+    refreshing: systemHealthRefreshing,
+    load: loadSystemHealth,
+  } = useEdgeMonitorSystemHealth(supabaseClient, {
+    enabled: Boolean(snapshot),
+    autoRefreshMs: autoRefresh ? 90_000 : 0,
+  })
 
   const generatedAt = snapshot?.generated_at
     ? new Date(snapshot.generated_at).toLocaleString(undefined, {
@@ -399,10 +412,14 @@ export default function EdgeMonitorDashboard({
   const trendLabels30d = useMemo(() => opsMonitorTrendLabels(trends30d, { every: 5 }), [trends30d])
   const trendLabels90d = useMemo(() => opsMonitorTrendLabels(trends90d, { every: 2 }), [trends90d])
   const pulseDatasets = useMemo(() => buildPulseDatasets(trends), [trends])
-  const alerts = useMemo(
-    () => evaluateOpsMonitorAlerts({ snapshot, external, live }),
-    [snapshot, external, live],
-  )
+  const alerts = useMemo(() => {
+    const systemAlerts = evaluateSystemHealthAlerts(systemHealth)
+    const metricAlerts = evaluateOpsMonitorAlerts({ snapshot, external, live })
+    return [...systemAlerts, ...metricAlerts].sort((a, b) => {
+      if (a.severity === b.severity) return a.label.localeCompare(b.label)
+      return a.severity === 'critical' ? -1 : 1
+    })
+  }, [snapshot, external, live, systemHealth])
 
   const roleDoughnut = useMemo(
     () =>
@@ -733,14 +750,15 @@ export default function EdgeMonitorDashboard({
               ) : null}
               <button
                 type="button"
-                disabled={loading || refreshing || rosterRefreshing}
+                disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing}
                 onClick={() => {
                   void load(true)
                   void loadRoster(true)
+                  void loadSystemHealth(true)
                 }}
                 className={MONITOR_BTN_PRIMARY}
               >
-                {refreshing || rosterRefreshing ? 'Refreshing…' : 'Refresh'}
+                {refreshing || rosterRefreshing || systemHealthRefreshing ? 'Refreshing…' : 'Refresh'}
               </button>
               <button
                 type="button"
@@ -781,14 +799,15 @@ export default function EdgeMonitorDashboard({
               ) : null}
               <button
                 type="button"
-                disabled={loading || refreshing || rosterRefreshing}
+                disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing}
                 onClick={() => {
                   void load(true)
                   void loadRoster(true)
+                  void loadSystemHealth(true)
                 }}
                 className={MONITOR_BTN_PRIMARY}
               >
-                {refreshing || rosterRefreshing ? 'Refreshing…' : 'Refresh'}
+                {refreshing || rosterRefreshing || systemHealthRefreshing ? 'Refreshing…' : 'Refresh'}
               </button>
               <button
                 type="button"
@@ -829,6 +848,17 @@ export default function EdgeMonitorDashboard({
       {snapshot ? (
         <>
           <AlertsBanner alerts={alerts} />
+
+          <EdgeMonitorSystemHealthPanel
+            systemHealth={systemHealth}
+            loading={systemHealthLoading}
+            error={systemHealthError}
+            refreshing={systemHealthRefreshing}
+            onReload={() => void loadSystemHealth(true)}
+            snapshot={snapshot}
+            external={external}
+          />
+
           <LivePulseStrip live={live} error={liveError} show={isDesktop} />
 
           {isDesktop ? (

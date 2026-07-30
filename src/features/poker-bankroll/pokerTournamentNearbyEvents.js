@@ -8,15 +8,17 @@ import { fmtPoker$ } from './pokerBankrollMath.js'
 
 export const POKER_TOURNAMENT_MANUAL_PICK_ID = '__manual__'
 
-/** Past window (days) for soft-event picker. */
-const PAST_DAYS = 14
+/** Past window (days) for soft-event picker by event_date (yesterday…). */
+const PAST_DAYS = 1
 /** Future window (days) for soft-event picker. */
 const FUTURE_DAYS = 60
+/** Keep older event_date rows if anyone logged/swapped against them this recently. */
+export const SOFT_EVENT_ACTIVITY_GRACE_MS = 36 * 60 * 60 * 1000
 const FETCH_LIMIT = 200
 
 /**
  * @param {Date} [now]
- * @returns {{ from: string, to: string }}
+ * @returns {{ from: string, to: string, activitySinceIso: string }}
  */
 export function softEventDateWindow(now = new Date()) {
   const from = new Date(now)
@@ -29,7 +31,11 @@ export function softEventDateWindow(now = new Date()) {
     const day = String(d.getDate()).padStart(2, '0')
     return `${y}-${m}-${day}`
   }
-  return { from: ymd(from), to: ymd(to) }
+  return {
+    from: ymd(from),
+    to: ymd(to),
+    activitySinceIso: new Date(now.getTime() - SOFT_EVENT_ACTIVITY_GRACE_MS).toISOString(),
+  }
 }
 
 /**
@@ -105,18 +111,64 @@ export function formatSoftTournamentOptionLabel(event, distanceMi) {
 export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
   if (!supabase) return { events: [], error: new Error('Missing supabase client.') }
 
-  const { from, to } = softEventDateWindow()
-  const { data, error } = await supabase
-    .from('poker_tournament_events')
-    .select(
-      'id, fingerprint_key, fingerprint_sibling, venue_name, event_date, buy_in, game_variant, currency, display_name',
-    )
-    .gte('event_date', from)
-    .lte('event_date', to)
-    .order('event_date', { ascending: true })
-    .limit(FETCH_LIMIT)
+  const { from, to, activitySinceIso } = softEventDateWindow()
+  const selectCols =
+    'id, fingerprint_key, fingerprint_sibling, venue_name, event_date, buy_in, game_variant, currency, display_name, last_activity_at'
 
-  if (error) return { events: [], error }
+  // Date window (yesterday → future) OR recent logging activity (Day 2 / late reg).
+  const [byDate, byActivity] = await Promise.all([
+    supabase
+      .from('poker_tournament_events')
+      .select(selectCols)
+      .gte('event_date', from)
+      .lte('event_date', to)
+      .order('event_date', { ascending: true })
+      .limit(FETCH_LIMIT),
+    supabase
+      .from('poker_tournament_events')
+      .select(selectCols)
+      .gte('last_activity_at', activitySinceIso)
+      .order('last_activity_at', { ascending: false })
+      .limit(FETCH_LIMIT),
+  ])
+
+  if (byDate.error) {
+    const msg = String(byDate.error.message || '')
+    if (/last_activity_at/i.test(msg)) {
+      const legacy = await supabase
+        .from('poker_tournament_events')
+        .select(
+          'id, fingerprint_key, fingerprint_sibling, venue_name, event_date, buy_in, game_variant, currency, display_name',
+        )
+        .gte('event_date', from)
+        .lte('event_date', to)
+        .order('event_date', { ascending: true })
+        .limit(FETCH_LIMIT)
+      if (legacy.error) return { events: [], error: legacy.error }
+      return decorateSoftTournamentEvents(legacy.data || [], opts)
+    }
+    return { events: [], error: byDate.error }
+  }
+
+  /** @type {Map<string, object>} */
+  const byId = new Map()
+  for (const row of byDate.data || []) {
+    if (row?.id) byId.set(String(row.id), row)
+  }
+  if (!byActivity.error) {
+    for (const row of byActivity.data || []) {
+      if (row?.id && !byId.has(String(row.id))) byId.set(String(row.id), row)
+    }
+  }
+
+  return decorateSoftTournamentEvents([...byId.values()], opts)
+}
+
+/**
+ * @param {object[]} data
+ * @param {{ venueKind?: string | null, nearbyCasinos?: Array<{ name?: string, distanceMi?: number }> }} opts
+ */
+function decorateSoftTournamentEvents(data, opts = {}) {
 
   const venueKind = String(opts.venueKind || 'live')
   const useDistance = venueKind === 'live'

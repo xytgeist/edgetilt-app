@@ -2266,7 +2266,7 @@ export default function PokerBankrollTracker({
                                       : ''}
                                     {showSettledAmt ? (
                                       <>
-                                        {' · Settled ('}
+                                        {' · Settled '}
                                         <span
                                           data-poker-session-swap-amt={amtTone}
                                           className={
@@ -2277,9 +2277,8 @@ export default function PokerBankrollTracker({
                                                 : 'text-inherit'
                                           }
                                         >
-                                          {fmtPoker$(Number(signed))}
+                                          ({fmtPoker$(Number(signed))})
                                         </span>
-                                        {')'}
                                       </>
                                     ) : waitingLine ? (
                                       ` · ${waitingLine}`

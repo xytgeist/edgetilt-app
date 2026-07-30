@@ -2203,6 +2203,12 @@ export default function PokerBankrollTracker({
                           </span>
                           {sessionSwaps.length > 0 ? (
                             <span className="mt-1.5 block space-y-0.5">
+                              <span
+                                data-poker-session-swap-line="waiting"
+                                className="block text-[11px] font-medium text-cyan-300/90"
+                              >
+                                Swap
+                              </span>
                               {sessionSwaps.map((swap) => {
                                 const role = swapViewerRole(swap, userId) || 'creator'
                                 const other = swapOtherPartyLabel(
@@ -2235,7 +2241,7 @@ export default function PokerBankrollTracker({
                                         : 'text-cyan-300/80'
                                     }`}
                                   >
-                                    Swap · {other}
+                                    {other}
                                     {swap.pct_creator_gives != null &&
                                     swap.pct_counterparty_gives != null
                                       ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`

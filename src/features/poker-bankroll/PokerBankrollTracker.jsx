@@ -1731,26 +1731,45 @@ export default function PokerBankrollTracker({
                     Session in progress
                   </span>
                 </div>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="truncate text-lg font-bold leading-tight text-white">
-                      {pokerSessionStakesLabel(activeSession)}
-                    </div>
-                    <div className="mt-0.5 truncate text-sm text-zinc-400">
-                      {pokerSessionMetaLine(activeSession)}
-                    </div>
-                    <div className="mt-0.5 text-sm text-zinc-400">
-                      {pokerSessionInForLine(activeSession)}
-                    </div>
-                    <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
-                      {fmtPokerDuration(elapsed)}
-                    </div>
+                <div className="min-w-0">
+                  <div className="truncate text-lg font-bold leading-tight text-white">
+                    {pokerSessionStakesLabel(activeSession)}
                   </div>
-                  <div
-                    className="flex shrink-0 flex-col gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
+                  <div className="mt-0.5 truncate text-sm text-zinc-400">
+                    {pokerSessionMetaLine(activeSession)}
+                  </div>
+                  <div className="mt-0.5 text-sm text-zinc-400">
+                    {pokerSessionInForLine(activeSession)}
+                  </div>
+                  <div className="mt-2 text-3xl font-black tabular-nums text-emerald-200">
+                    {fmtPokerDuration(elapsed)}
+                  </div>
+                </div>
+                <div
+                  className="mt-3 flex flex-col gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  {activeSession.session_type === 'tournament' ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={openActiveSwaps}
+                        className="rounded-2xl border border-cyan-400/40 bg-cyan-950/50 px-4 py-2.5 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
+                      >
+                        Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                      </button>
+                    </div>
+                  ) : null}
+                  {/* Right → left: End Session, Re-enter/Re-buy, Add-on */}
+                  <div className="flex flex-row-reverse flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={openEndSession}
+                      className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+                    >
+                      End Session
+                    </button>
                     <button
                       type="button"
                       onClick={() => openRebuy('rebuy')}
@@ -1767,22 +1786,6 @@ export default function PokerBankrollTracker({
                         Add-on
                       </button>
                     ) : null}
-                    {activeSession.session_type === 'tournament' ? (
-                      <button
-                        type="button"
-                        onClick={openActiveSwaps}
-                        className="rounded-2xl border border-cyan-400/40 bg-cyan-950/50 px-4 py-2.5 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
-                      >
-                        Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={openEndSession}
-                      className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
-                    >
-                      End Session
-                    </button>
                   </div>
                 </div>
               </div>
@@ -2984,16 +2987,20 @@ function PokerSessionCoreFields({
               </div>
             </>
           ) : null}
-          <FieldLabel>Tournament name</FieldLabel>
-          <div className="mb-3">
-            <input
-              type="text"
-              value={form.tournament_name}
-              onChange={(e) => setField('tournament_name', e.target.value)}
-              placeholder="WSOP Event #96, Daily Deepstack…"
-              className={POKER_FIELD_CLASS}
-            />
-          </div>
+          {!isSoftTournamentEventPick(form.tournament_event_pick) ? (
+            <>
+              <FieldLabel>Tournament name</FieldLabel>
+              <div className="mb-3">
+                <input
+                  type="text"
+                  value={form.tournament_name}
+                  onChange={(e) => setField('tournament_name', e.target.value)}
+                  placeholder="WSOP Event #96, Daily Deepstack…"
+                  className={POKER_FIELD_CLASS}
+                />
+              </div>
+            </>
+          ) : null}
           <FieldLabel>Buy-in</FieldLabel>
           <div className="mb-3">
             <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />

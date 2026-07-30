@@ -223,11 +223,7 @@ export default function PokerTournamentSwapsSection({
             <p className="mt-1 text-[11px] text-rose-300/90">
               Over 100% ... you&apos;re giving away more than your full net.
             </p>
-          ) : (
-            <p className="mt-1 text-[11px] text-zinc-500">
-              Sum of You give % across all swaps on this session.
-            </p>
-          )}
+          ) : null}
         </div>
       ) : null}
 

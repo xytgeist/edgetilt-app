@@ -4544,6 +4544,9 @@ html.light [data-poker-bankroll] [data-poker-session-swap-line='settled'] {
 html.light [data-poker-bankroll] [data-poker-session-swap-line='waiting'] {
   color: #0e7490 !important; /* cyan-700 — readable on white */
 }
+html.light [data-poker-bankroll] [data-poker-session-swap-line='loss'] {
+  color: #be123c !important;
+}
 html.light [data-poker-bankroll] .text-rose-400,
 html.light [data-poker-bankroll] .text-rose-300 {
   color: #be123c !important;

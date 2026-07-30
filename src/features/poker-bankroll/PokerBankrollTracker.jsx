@@ -97,8 +97,10 @@ import {
 } from './pokerTournamentSwapApi.js'
 import {
   formatSwapIouLine,
-  formatSwapSettledLine,
+  formatSwapSettledAmountLine,
   formatSwapWaitingStatus,
+  sessionSwapSettlementDelta,
+  swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
 /** Match CasinoAutocomplete / Location field text styling. */
@@ -597,8 +599,9 @@ export default function PokerBankrollTracker({
     let wins = 0
     let counted = 0
     for (const s of filtered) {
-      const wl = pokerSessionWinLoss(s)
-      if (wl == null) continue
+      const base = pokerSessionWinLoss(s)
+      if (base == null) continue
+      const wl = base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId)
       counted += 1
       profit += wl
       hours += pokerSessionDurationHours(s)
@@ -611,15 +614,21 @@ export default function PokerBankrollTracker({
       winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
       count: counted,
     }
-  }, [filtered])
+  }, [filtered, tournamentSwaps, userId])
 
   /** Running bankroll after each filtered session (inferred start = current − filtered profit). */
   const bankrollSparkSeries = useMemo(() => {
     const ordered = [...filtered]
-      .map((s) => ({
-        at: s.end_at || s.start_at || null,
-        wl: pokerSessionWinLoss(s),
-      }))
+      .map((s) => {
+        const base = pokerSessionWinLoss(s)
+        return {
+          at: s.end_at || s.start_at || null,
+          wl:
+            base == null
+              ? null
+              : base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId),
+        }
+      })
       .filter((x) => x.wl != null && x.at)
       .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
     if (ordered.length === 0 || overallBankroll == null) return []
@@ -630,7 +639,7 @@ export default function PokerBankrollTracker({
       points.push(run)
     }
     return points
-  }, [filtered, overallBankroll])
+  }, [filtered, overallBankroll, tournamentSwaps, userId])
 
   function openSetBankroll() {
     if (isOnStake) {
@@ -2009,8 +2018,15 @@ export default function PokerBankrollTracker({
             ) : (
               <ul className="space-y-2">
                 {filtered.map((session) => {
-                  const wl = pokerSessionWinLoss(session)
-                  const hourly = pokerSessionHourly(session)
+                  const baseWl = pokerSessionWinLoss(session)
+                  const swapDelta = sessionSwapSettlementDelta(
+                    tournamentSwaps,
+                    session.id,
+                    userId,
+                  )
+                  const wl = baseWl == null ? null : baseWl + swapDelta
+                  const hrs = pokerSessionDurationHours(session)
+                  const hourly = wl != null && hrs >= 0.02 ? wl / hrs : null
                   const bbh = pokerSessionBbPerHour(session)
                   const sessionSwaps = swapsBySessionId[session.id] || []
                   return (
@@ -2075,32 +2091,32 @@ export default function PokerBankrollTracker({
                                   userId,
                                 )
                                 const paid = swapIsMarkedPaid(swap)
-                                const line =
+                                const signed = swapViewerSettlementDelta(swap, role)
+                                const waitingLine =
                                   swap.status === 'settled'
-                                    ? paid
-                                      ? formatSwapSettledLine(
-                                          swap.settlement_amount,
-                                          role,
-                                          other,
-                                          fmtPoker$,
-                                        )
-                                      : formatSwapIouLine(
-                                          swap.settlement_amount,
-                                          role,
-                                          other,
-                                          fmtPoker$,
-                                        )
+                                    ? formatSwapIouLine(
+                                        swap.settlement_amount,
+                                        role,
+                                        other,
+                                        fmtPoker$,
+                                      )
                                     : formatSwapWaitingStatus(swap, role, other)
+                                const settledTone =
+                                  signed < -0.005
+                                    ? 'loss'
+                                    : swap.status === 'settled'
+                                      ? 'settled'
+                                      : 'waiting'
                                 return (
                                   <span
                                     key={swap.id}
-                                    data-poker-session-swap-line={
-                                      swap.status === 'settled' ? 'settled' : 'waiting'
-                                    }
+                                    data-poker-session-swap-line={settledTone}
                                     className={`block truncate text-[11px] ${
-                                      swap.status === 'settled'
-                                        ? 'text-emerald-300/90'
-                                        : 'text-cyan-300/80'
+                                      settledTone === 'loss'
+                                        ? 'text-rose-400'
+                                        : settledTone === 'settled'
+                                          ? 'text-emerald-300/90'
+                                          : 'text-cyan-300/80'
                                     }`}
                                   >
                                     Swap · {other}
@@ -2108,7 +2124,11 @@ export default function PokerBankrollTracker({
                                     swap.pct_counterparty_gives != null
                                       ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
                                       : ''}
-                                    {line ? ` · ${line}` : ''}
+                                    {paid && swap.status === 'settled'
+                                      ? ` · ${formatSwapSettledAmountLine(signed, fmtPoker$)}`
+                                      : waitingLine
+                                        ? ` · ${waitingLine}`
+                                        : ''}
                                   </span>
                                 )
                               })}

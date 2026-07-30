@@ -60,13 +60,54 @@ export function formatSwapIouLine(settlementAmount, viewerRole, otherLabel, fmt$
 }
 
 /**
- * Cash-settled label with IOU direction still visible.
- * e.g. "Settled · You owe Jordan $25"
+ * Viewer cash delta from a settled swap (+ received / − paid).
+ * settlement_amount > 0 ⇒ counterparty owes creator.
+ * @param {object} swap
+ * @param {'creator' | 'counterparty' | null} viewerRole
+ * @returns {number}
  */
-export function formatSwapSettledLine(settlementAmount, viewerRole, otherLabel, fmt$) {
-  const iou = formatSwapIouLine(settlementAmount, viewerRole, otherLabel, fmt$)
-  if (!iou) return 'Settled'
-  return `Settled · ${iou}`
+export function swapViewerSettlementDelta(swap, viewerRole) {
+  if (!swap || swap.status === 'cancelled') return 0
+  if (swap.status !== 'settled' && swap.settlement_amount == null) return 0
+  const amt = Number(swap.settlement_amount)
+  if (!Number.isFinite(amt)) return 0
+  if (viewerRole === 'creator') return amt
+  if (viewerRole === 'counterparty') return -amt
+  return 0
+}
+
+/**
+ * Sum viewer deltas for settled swaps linked to a session.
+ * @param {object[]} swaps
+ * @param {string} sessionId
+ * @param {string} viewerUserId
+ */
+export function sessionSwapSettlementDelta(swaps, sessionId, viewerUserId) {
+  if (!sessionId || !viewerUserId) return 0
+  let total = 0
+  for (const swap of swaps || []) {
+    if (!swap || swap.status !== 'settled') continue
+    if (swap.creator_session_id !== sessionId && swap.counterparty_session_id !== sessionId) {
+      continue
+    }
+    const role =
+      swap.creator_user_id === viewerUserId
+        ? 'creator'
+        : swap.counterparty_user_id === viewerUserId
+          ? 'counterparty'
+          : null
+    total += swapViewerSettlementDelta(swap, role)
+  }
+  return Math.round(total * 100) / 100
+}
+
+/**
+ * Cash-settled label with signed amount from viewer POV.
+ * e.g. Settled ($25) / Settled (-$25)
+ */
+export function formatSwapSettledAmountLine(signedAmount, fmt$) {
+  if (signedAmount == null || Number.isNaN(Number(signedAmount))) return 'Settled'
+  return `Settled (${fmt$(Number(signedAmount))})`
 }
 
 /**

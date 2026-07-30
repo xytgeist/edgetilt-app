@@ -13,10 +13,11 @@ import {
 import {
   computeTournamentSwapSettlement,
   formatSwapIouLine,
-  formatSwapSettledLine,
+  formatSwapSettledAmountLine,
   formatSwapSideResultLine,
   formatSwapWaitingStatus,
   parseSwapPct,
+  swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
 const FIELD =
@@ -394,11 +395,18 @@ export default function PokerTournamentSwapsSection({
               ? formatSwapSideResultLine(swap, otherSide, other, fmtPoker$)
               : null
           const paid = swapIsMarkedPaid(swap)
+          const signed = swapViewerSettlementDelta(swap, role)
           const statusLine =
             swap.status === 'settled' && paid
-              ? formatSwapSettledLine(swap.settlement_amount, role, other, fmtPoker$)
+              ? formatSwapSettledAmountLine(signed, fmtPoker$)
               : primaryStatus
           const canCancel = !paid
+          const statusTone =
+            swap.status === 'settled' && paid
+              ? signed < -0.005
+                ? 'text-rose-300'
+                : 'text-emerald-100/90'
+              : 'text-emerald-100/90'
           return (
             <div
               key={swap.id}
@@ -423,7 +431,7 @@ export default function PokerTournamentSwapsSection({
                 ) : null}
               </div>
               {statusLine ? (
-                <div className="text-sm text-emerald-100/90">{statusLine}</div>
+                <div className={`text-sm ${statusTone}`}>{statusLine}</div>
               ) : null}
               {otherResultLine && !bothReady ? (
                 <div className="mt-0.5 text-[11px] text-zinc-400">{otherResultLine}</div>

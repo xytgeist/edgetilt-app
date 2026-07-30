@@ -1737,15 +1737,9 @@ export default function PokerBankrollTracker({
                 {(() => {
                   const elapsedLabel = fmtPokerDuration(elapsed)
                   const elapsedChars = elapsedLabel.replace(/\s/g, '').length
-                  // Shrink as "55m" → "1h 7m" → "12h 45m" so it never collides with Swap.
+                  // Match title (text-lg); only step down for long labels so it clears Swap.
                   const timerTextClass =
-                    elapsedChars <= 3
-                      ? 'text-xl'
-                      : elapsedChars <= 4
-                        ? 'text-lg'
-                        : elapsedChars <= 5
-                          ? 'text-base'
-                          : 'text-sm'
+                    elapsedChars <= 6 ? 'text-lg' : elapsedChars <= 8 ? 'text-base' : 'text-sm'
                   const chip =
                     'box-border h-9 w-[5.5rem] rounded-xl text-xs font-bold touch-manipulation'
                   return (

@@ -759,7 +759,25 @@ export default function PokerBankrollTracker({
       const { error: nErr } = await notifyTournamentSwap(supabaseClient, swap.id)
       if (nErr) console.warn('[poker-bankroll] swap notify failed', nErr.message)
     }
-    setDraftSwaps([])
+    const sentLocalIds = new Set(drafts.map((d) => d.localId).filter(Boolean))
+    setDraftSwaps((prev) =>
+      sentLocalIds.size ? prev.filter((d) => !sentLocalIds.has(d.localId)) : [],
+    )
+  }
+
+  /** Persist one (or more) draft offers onto an existing tournament session. */
+  async function sendDraftSwapsForSession(sessionRow, drafts) {
+    if (!sessionRow || !drafts?.length) return
+    setSaving(true)
+    setError('')
+    try {
+      await attachDraftSwapsToSession(sessionRow, drafts)
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not send swap.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function openStartSession() {
@@ -2422,6 +2440,20 @@ export default function PokerBankrollTracker({
               savedSwaps={editingSessionSwaps}
               profilesById={swapProfilesById}
               onSavedSwapsMutated={() => void loadData()}
+              onSendDraft={
+                editingId
+                  ? (draft) => {
+                      const sessionRow =
+                        scopedSessions.find((s) => s.id === editingId) || null
+                      if (!sessionRow) {
+                        setError('Session not found ... save the session first.')
+                        return
+                      }
+                      void sendDraftSwapsForSession(sessionRow, [draft])
+                    }
+                  : undefined
+              }
+              sendingDrafts={saving}
             />
 
             <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
@@ -2702,40 +2734,33 @@ export default function PokerBankrollTracker({
               profilesById={swapProfilesById}
               onSavedSwapsMutated={() => void loadData()}
               compact
+              onSendDraft={(draft) => {
+                if (!activeSession) return
+                void sendDraftSwapsForSession(activeSession, [draft])
+              }}
+              sendingDrafts={saving}
             />
             {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
-            <button
-              type="button"
-              disabled={saving || draftSwaps.length === 0}
-              onClick={() => {
-                void (async () => {
-                  if (!activeSession) return
-                  setSaving(true)
-                  setError('')
-                  try {
-                    await attachDraftSwapsToSession(activeSession, draftSwaps)
-                    setSheet(null)
-                    await loadData()
-                  } catch (e) {
-                    setError(e?.message || 'Could not save swaps.')
-                  } finally {
-                    setSaving(false)
-                  }
-                })()
-              }}
-              className="mt-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : draftSwaps.length ? 'Save swaps' : 'Close when done'}
-            </button>
-            {draftSwaps.length === 0 ? (
+            {draftSwaps.length > 1 ? (
               <button
                 type="button"
-                onClick={dismissSheet}
-                className="mt-2 w-full rounded-2xl border border-zinc-700 py-3 text-sm font-semibold text-zinc-300 touch-manipulation"
+                disabled={saving}
+                onClick={() => {
+                  if (!activeSession) return
+                  void sendDraftSwapsForSession(activeSession, draftSwaps)
+                }}
+                className="mt-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
               >
-                Done
+                {saving ? 'Sending…' : 'Send all swaps'}
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={dismissSheet}
+              className="mt-2 w-full rounded-2xl border border-zinc-700 py-3 text-sm font-semibold text-zinc-300 touch-manipulation"
+            >
+              Done
+            </button>
           </div>
         </div>
       ) : null}

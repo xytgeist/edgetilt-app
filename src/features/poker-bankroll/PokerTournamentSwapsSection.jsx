@@ -39,6 +39,8 @@ const FIELD =
  *   incomingAcceptSwap?: object | null,
  *   onDeclineIncomingAccept?: () => void,
  *   decliningIncoming?: boolean,
+ *   onSendDraft?: (draft: object) => void | Promise<void>,
+ *   sendingDrafts?: boolean,
  * }} props
  */
 export default function PokerTournamentSwapsSection({
@@ -54,6 +56,8 @@ export default function PokerTournamentSwapsSection({
   incomingAcceptSwap = null,
   onDeclineIncomingAccept,
   decliningIncoming = false,
+  onSendDraft,
+  sendingDrafts = false,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   /** swapId → show manual payout fields */
@@ -384,6 +388,24 @@ export default function PokerTournamentSwapsSection({
           const pctOk =
             parseSwapPct(draft.pct_you_give) != null &&
             parseSwapPct(draft.pct_they_give) != null
+          const guestLabelOk =
+            draft.counterparty_kind !== 'guest' ||
+            Boolean(String(draft.counterparty_guest_label || '').trim())
+          const guestContactOk =
+            draft.counterparty_kind !== 'guest' ||
+            Boolean(
+              String(draft.counterparty_guest_phone || '').trim() ||
+                String(draft.counterparty_guest_email || '').trim(),
+            )
+          const edgeUserOk =
+            draft.counterparty_kind !== 'user' || Boolean(draft.counterparty_user_id)
+          const canSend =
+            typeof onSendDraft === 'function' &&
+            pctOk &&
+            guestLabelOk &&
+            guestContactOk &&
+            edgeUserOk &&
+            !mySideOver
           return (
             <div
               key={draft.localId}
@@ -472,6 +494,21 @@ export default function PokerTournamentSwapsSection({
               </div>
               {!pctOk ? (
                 <p className="mt-1 text-[11px] text-rose-400">Percents must be 0–100.</p>
+              ) : null}
+              {draft.counterparty_kind === 'guest' && pctOk && !guestContactOk ? (
+                <p className="mt-1 text-[11px] text-rose-400">
+                  Add a phone and/or email to send the claim link.
+                </p>
+              ) : null}
+              {typeof onSendDraft === 'function' ? (
+                <button
+                  type="button"
+                  disabled={sendingDrafts || !canSend}
+                  onClick={() => void onSendDraft(draft)}
+                  className="mt-2.5 w-full rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+                >
+                  {sendingDrafts ? 'Sending…' : 'Send swap'}
+                </button>
               ) : null}
             </div>
           )

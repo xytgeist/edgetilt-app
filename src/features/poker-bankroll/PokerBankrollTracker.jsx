@@ -2314,24 +2314,26 @@ export default function PokerBankrollTracker({
                                 return (
                                   <div
                                     key={swap.id}
-                                    className="flex min-w-0 items-center gap-1.5"
+                                    className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-1.5"
                                   >
-                                    {canMarkSettled ? (
-                                      <button
-                                        type="button"
-                                        disabled={sessionCardSwapBusyId === swap.id}
-                                        data-poker-session-swap-settle-btn
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          void markSessionCardSwapSettled(swap)
-                                        }}
-                                        className="shrink-0 rounded-md border border-emerald-500/40 bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-bold leading-tight text-emerald-200 touch-manipulation active:bg-emerald-900 disabled:opacity-50"
-                                      >
-                                        {sessionCardSwapBusyId === swap.id
-                                          ? '…'
-                                          : 'Mark settled'}
-                                      </button>
-                                    ) : null}
+                                    <div className="flex min-w-0 justify-start">
+                                      {canMarkSettled ? (
+                                        <button
+                                          type="button"
+                                          disabled={sessionCardSwapBusyId === swap.id}
+                                          data-poker-session-swap-settle-btn
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            void markSessionCardSwapSettled(swap)
+                                          }}
+                                          className="box-border h-7 w-[5.5rem] shrink-0 rounded-md border border-emerald-500/40 bg-emerald-950/80 px-1 py-0.5 text-[8px] font-bold leading-tight text-emerald-200 touch-manipulation active:bg-emerald-900 disabled:opacity-50"
+                                        >
+                                          {sessionCardSwapBusyId === swap.id
+                                            ? '…'
+                                            : 'Mark settled'}
+                                        </button>
+                                      ) : null}
+                                    </div>
                                     <span
                                       data-poker-session-swap-line={paid ? 'settled' : 'waiting'}
                                       className="min-w-0 truncate text-[11px] text-cyan-300/80"

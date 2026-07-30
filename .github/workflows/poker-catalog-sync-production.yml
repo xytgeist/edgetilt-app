@@ -8,6 +8,8 @@
 # Optional (not needed for RPC upsert; geocode uses Supabase REST only):
 #   SUPABASE_DB_PASSWORD_PRODUCTION
 #   SUPABASE_DB_URL_PRODUCTION
+#
+# On success, writes admin_ops_job_heartbeats (Edge Monitor) on production.
 
 name: Poker catalog sync (production)
 

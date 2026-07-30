@@ -114,9 +114,11 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 - **Copy diagnostic:** plain-text bundle for chat triage (project, user ids, Stripe ids, job failures)
 - **Alerts banner:** drift + critical job issues surface as red/critical alerts without searching subscriber roster
 
-**Deferred:** GitHub Actions heartbeat for poker catalog sync; ops email on drift (reuse **`BILLING_ADMIN_ALERT_EMAILS`**).
+**Deferred:** ops email on drift (reuse **`BILLING_ADMIN_ALERT_EMAILS`**).
 
 **Offer reminders cron (40600):** pg_cron **`send_due_offer_reminders_minute`** every minute → **`send-due-offer-reminders`** Edge fn (`lookaheadMinutes: 1`).
+
+**Poker catalog heartbeat (40800):** GitHub Actions sync writes **`admin_ops_job_heartbeats`**; Monitor stale if last success >4 days.
 
 ---
 
@@ -124,4 +126,4 @@ _Update log: 2026-07-03 — v1 scaffold (RPC + EdgeMonitorScreen + AppShell tab)
 _Update log: 2026-07-03 — Phases 2–5 (extended RPC, external-health Edge fn, alerts/runbooks, live pulse poll)._
 _Update log: 2026-07-23 — Phase 6 subscriber roster (`admin_ops_subscriber_roster` + Monitor panel)._
 _Update log: 2026-07-30 — Phase 7 system health (cron registry + billing drift + copy diagnostic)._
-_Update log: 2026-07-30 — **40700** push flush Monitor: stale only when overdue `activity_push_batches` (>2 min), not quiet traffic._
+_Update log: 2026-07-30 — **40800** poker catalog GitHub Actions heartbeat (`admin_ops_job_heartbeats`); Known gaps cleared._

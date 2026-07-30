@@ -53,6 +53,12 @@ export const OPS_MONITOR_RUNBOOKS = [
     hint: 'Freemium + starter entitlements',
   },
   {
+    id: 'poker-catalog-sync',
+    title: 'Poker catalog GitHub Actions',
+    href: 'https://github.com/xytgeist/edgetilt-app/actions/workflows/poker-catalog-sync-production.yml',
+    hint: 'Every 3 days · MTTDB + regional JSON upsert',
+  },
+  {
     id: 'sentry',
     title: 'Sentry dashboard',
     href: 'https://edge-ev.sentry.io/',
@@ -83,6 +89,7 @@ export function opsMonitorRunbooksForSection(sectionKey) {
       return [
         opsMonitorRunbookById('billing-drift'),
         opsMonitorRunbookById('lounge-bot-sports-odds'),
+        opsMonitorRunbookById('poker-catalog-sync'),
         opsMonitorRunbookById('prod-checklist'),
       ].filter(Boolean)
     case 'search':

@@ -22,6 +22,7 @@ import {
 import { fetchMttdbLiveCatalogOneOffs, fetchMttdbOnlineCatalogOneOffs } from './lib/mttdbCatalogFetch.mjs'
 import { createMttdbVenueResolver } from './lib/mttdbCatalogVenues.mjs'
 import { createMttdbSiteResolver } from './lib/mttdbCatalogSites.mjs'
+import { recordOpsJobHeartbeatForTarget } from './lib/opsJobHeartbeat.mjs'
 
 const repoRoot = repoRootFromCatalogLib
 const WYNN_URL = 'https://www.wynnpoker.com/tournaments'
@@ -212,17 +213,34 @@ async function main() {
   }
 
   const supabase = createSupabaseServiceClient(createClient)
-  const { data, error } = await supabase.rpc('upsert_poker_tournament_catalog', {
-    p_rows: rows,
-    p_prune_past: !noPrune,
-  })
+  try {
+    const { data, error } = await supabase.rpc('upsert_poker_tournament_catalog', {
+      p_rows: rows,
+      p_prune_past: !noPrune,
+    })
 
-  if (error) {
-    console.error('upsert_poker_tournament_catalog failed:', error.message)
-    process.exit(1)
+    if (error) {
+      await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
+        message: error.message,
+        rows: rows.length,
+      })
+      console.error('upsert_poker_tournament_catalog failed:', error.message)
+      process.exit(1)
+    }
+
+    await recordOpsJobHeartbeatForTarget(supabase, target, 'ok', {
+      upsert: data,
+      rows: rows.length,
+      target,
+    })
+    console.log('Done:', data)
+  } catch (err) {
+    await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
+      message: String(err?.message || err),
+      rows: rows.length,
+    })
+    throw err
   }
-
-  console.log('Done:', data)
 }
 
 main().catch((err) => {

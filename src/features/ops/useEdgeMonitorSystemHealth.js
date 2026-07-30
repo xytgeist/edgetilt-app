@@ -4,15 +4,7 @@ import {
   fetchOpsMonitorScheduledJobs,
 } from './opsMonitorApi.js'
 
-const KNOWN_GAPS = [
-  {
-    id: 'poker_catalog_sync_production',
-    label: 'Poker catalog sync',
-    schedule_hint: 'GitHub Actions only — add heartbeat in v2',
-    runbook_id: 'prod-checklist',
-    critical: false,
-  },
-]
+const KNOWN_GAPS = []
 
 /** @param {object | null} driftData @param {object | null} jobsData @param {string} [jobsError] */
 function mergeSystemHealth(driftData, jobsData, jobsError = '') {

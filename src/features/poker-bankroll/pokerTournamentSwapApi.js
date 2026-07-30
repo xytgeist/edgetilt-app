@@ -170,11 +170,9 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
   }
   const label = String(draft.counterparty_guest_label || '').trim()
   if (!label) return { error: 'Enter a guest name for the swap.' }
+  // Phone/email optional ... only used to notify the guest of the offer.
   const phone = String(draft.counterparty_guest_phone || '').trim() || null
   const email = String(draft.counterparty_guest_email || '').trim().toLowerCase() || null
-  if (!phone && !email) {
-    return { error: 'Guest swaps need a phone and/or email so we can send the claim link.' }
-  }
   return {
     row: {
       creator_user_id: creatorUserId,

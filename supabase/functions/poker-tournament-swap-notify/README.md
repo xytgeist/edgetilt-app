@@ -1,6 +1,6 @@
 # `poker-tournament-swap-notify`
 
-Creates a guest claim token and sends **Twilio SMS** and/or **Resend email** for a tournament swap. Edge counterparties get a Poker Bankroll deep link (email/SMS when contact is available).
+Creates a guest claim token (only when phone/email is present) and sends **Twilio SMS** and/or **Resend email** for a tournament swap. Guest phone/email are optional on create ... notify is skipped when neither is set. Offer copy looks like: `{Display Name} swapping 5% - 5% with you in event: {Tournament} from EdgeTilt.com`. Edge counterparties get in-app/push to Poker Bankroll.
 
 ## Secrets
 

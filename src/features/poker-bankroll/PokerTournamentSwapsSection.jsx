@@ -391,19 +391,12 @@ export default function PokerTournamentSwapsSection({
           const guestLabelOk =
             draft.counterparty_kind !== 'guest' ||
             Boolean(String(draft.counterparty_guest_label || '').trim())
-          const guestContactOk =
-            draft.counterparty_kind !== 'guest' ||
-            Boolean(
-              String(draft.counterparty_guest_phone || '').trim() ||
-                String(draft.counterparty_guest_email || '').trim(),
-            )
           const edgeUserOk =
             draft.counterparty_kind !== 'user' || Boolean(draft.counterparty_user_id)
           const canSend =
             typeof onSendDraft === 'function' &&
             pctOk &&
             guestLabelOk &&
-            guestContactOk &&
             edgeUserOk &&
             !mySideOver
           return (
@@ -441,7 +434,7 @@ export default function PokerTournamentSwapsSection({
                   />
                   <input
                     className={FIELD}
-                    placeholder="Phone (SMS)"
+                    placeholder="Phone (optional SMS)"
                     inputMode="tel"
                     value={draft.counterparty_guest_phone}
                     onChange={(e) =>
@@ -452,7 +445,7 @@ export default function PokerTournamentSwapsSection({
                   />
                   <input
                     className={FIELD}
-                    placeholder="Email"
+                    placeholder="Email (optional)"
                     inputMode="email"
                     value={draft.counterparty_guest_email}
                     onChange={(e) =>
@@ -461,6 +454,9 @@ export default function PokerTournamentSwapsSection({
                       })
                     }
                   />
+                  <p className="text-[11px] leading-snug text-zinc-500">
+                    Phone/email optional ... only used to notify them of the swap.
+                  </p>
                 </div>
               ) : null}
 
@@ -495,10 +491,8 @@ export default function PokerTournamentSwapsSection({
               {!pctOk ? (
                 <p className="mt-1 text-[11px] text-rose-400">Percents must be 0–100.</p>
               ) : null}
-              {draft.counterparty_kind === 'guest' && pctOk && !guestContactOk ? (
-                <p className="mt-1 text-[11px] text-rose-400">
-                  Add a phone and/or email to send the claim link.
-                </p>
+              {draft.counterparty_kind === 'guest' && pctOk && !guestLabelOk ? (
+                <p className="mt-1 text-[11px] text-rose-400">Enter a guest name.</p>
               ) : null}
               {typeof onSendDraft === 'function' ? (
                 <button

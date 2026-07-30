@@ -50,6 +50,32 @@ function formatProfileLabel(profile: { display_name?: string | null; handle?: st
   return 'Someone'
 }
 
+/** Guest SMS/email: prefer display name only (shorter, matches product copy). */
+function formatGuestActorName(profile: { display_name?: string | null; handle?: string | null } | null) {
+  const name = String(profile?.display_name || '').trim()
+  if (name) return name
+  const handleRaw = String(profile?.handle || '')
+    .trim()
+    .replace(/^@/, '')
+  if (handleRaw) return `@${handleRaw}`
+  return 'Someone'
+}
+
+/**
+ * Offer copy for guest SMS/email.
+ * e.g. "Edge Lord swapping 5% - 5% with you in event: Summer Series Event 7 from EdgeTilt.com"
+ */
+function formatGuestOfferLine(
+  actorName: string,
+  pctCreator: number,
+  pctCounterparty: number,
+  eventLabel: string,
+) {
+  const pct = `${pctCreator}% - ${pctCounterparty}%`
+  const eventBit = eventLabel ? ` in event: ${eventLabel}` : ''
+  return `${actorName} swapping ${pct} with you${eventBit} from EdgeTilt.com`
+}
+
 function normalizePhone(raw: string): string | null {
   const digits = String(raw || '').replace(/[^\d+]/g, '')
   if (digits.length < 8) return null
@@ -263,6 +289,7 @@ Deno.serve(async (req) => {
       .eq('user_id', uid)
       .maybeSingle()
     const actorLabel = formatProfileLabel(actorProfile)
+    const guestActorName = formatGuestActorName(actorProfile)
 
     let eventLabel = ''
     if (swap.tournament_event_id) {
@@ -274,7 +301,7 @@ Deno.serve(async (req) => {
       eventLabel = String(ev?.display_name || ev?.venue_name || '').trim()
     }
 
-    const pctLine = `${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
+    const pctLine = `${swap.pct_creator_gives}% - ${swap.pct_counterparty_gives}%`
     const channels: Record<string, unknown> = {}
 
     // ── Result notify (session end) ──────────────────────────────────────────
@@ -288,6 +315,18 @@ Deno.serve(async (req) => {
       // Notify the other side (never self).
       if (actorRole === 'creator') {
         if (swap.counterparty_kind === 'guest') {
+          const email = String(swap.counterparty_guest_email || '')
+            .trim()
+            .toLowerCase()
+          const phone = normalizePhone(String(swap.counterparty_guest_phone || ''))
+          const hasEmail = Boolean(email && isValidEmail(email))
+          const hasPhone = Boolean(phone)
+          if (!hasEmail && !hasPhone) {
+            channels.email = { skipped: true, reason: 'no guest email' }
+            channels.sms = { skipped: true, reason: 'no guest phone' }
+            return jsonResponse({ ok: true, kind, channels, notified: false })
+          }
+
           const claimUrl = await createGuestClaimUrl(admin, swapId)
           const cta = swap.counterparty_result_ready
             ? 'View swap details'
@@ -295,10 +334,7 @@ Deno.serve(async (req) => {
           const text = `${subject}. ${cta}: ${claimUrl}`
           const html = `<p>${subject}.</p><p><a href="${claimUrl}">${cta}</a></p><p style="color:#888;font-size:12px">${claimUrl}</p>`
 
-          const email = String(swap.counterparty_guest_email || '')
-            .trim()
-            .toLowerCase()
-          if (email && isValidEmail(email)) {
+          if (hasEmail) {
             channels.email = await sendResendEmail(
               email,
               `Tournament swap result · ${pctLine}`,
@@ -309,8 +345,7 @@ Deno.serve(async (req) => {
             channels.email = { skipped: true, reason: 'no guest email' }
           }
 
-          const phone = normalizePhone(String(swap.counterparty_guest_phone || ''))
-          if (phone) {
+          if (hasPhone && phone) {
             channels.sms = await sendTwilioSms(phone, text)
           } else {
             channels.sms = { skipped: true, reason: 'no guest phone' }
@@ -360,27 +395,43 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true, kind, channels })
     }
 
-    // ── Offer notify (existing) ──────────────────────────────────────────────
-    const subjectBits = [actorLabel, 'swapped', pctLine, 'with you']
-    if (eventLabel) subjectBits.push(`· ${eventLabel}`)
-    const subject = subjectBits.join(' ')
+    // ── Offer notify ─────────────────────────────────────────────────────────
+    const offerLine = formatGuestOfferLine(
+      guestActorName,
+      Number(swap.pct_creator_gives),
+      Number(swap.pct_counterparty_gives),
+      eventLabel,
+    )
 
     if (swap.counterparty_kind === 'guest') {
-      const claimUrl = await createGuestClaimUrl(admin, swapId)
-      const text = `${subject}. Tap to enter your cash result: ${claimUrl}`
-      const html = `<p>${subject}.</p><p><a href="${claimUrl}">Enter your result</a></p><p style="color:#888;font-size:12px">${claimUrl}</p>`
-
       const email = String(swap.counterparty_guest_email || '')
         .trim()
         .toLowerCase()
-      if (email && isValidEmail(email)) {
-        channels.email = await sendResendEmail(email, `Tournament swap · ${pctLine}`, html, text)
+      const phone = normalizePhone(String(swap.counterparty_guest_phone || ''))
+      const hasEmail = Boolean(email && isValidEmail(email))
+      const hasPhone = Boolean(phone)
+      if (!hasEmail && !hasPhone) {
+        channels.email = { skipped: true, reason: 'no guest email' }
+        channels.sms = { skipped: true, reason: 'no guest phone' }
+        return jsonResponse({ ok: true, kind, channels, notified: false })
+      }
+
+      const claimUrl = await createGuestClaimUrl(admin, swapId)
+      const text = `${offerLine}\nAccept / enter your result: ${claimUrl}`
+      const html = `<p>${offerLine}</p><p><a href="${claimUrl}">Accept / enter your result</a></p><p style="color:#888;font-size:12px">${claimUrl}</p>`
+
+      if (hasEmail) {
+        channels.email = await sendResendEmail(
+          email,
+          `${guestActorName} swapping ${pctLine} with you`,
+          html,
+          text,
+        )
       } else {
         channels.email = { skipped: true, reason: 'no guest email' }
       }
 
-      const phone = normalizePhone(String(swap.counterparty_guest_phone || ''))
-      if (phone) {
+      if (hasPhone && phone) {
         channels.sms = await sendTwilioSms(phone, text)
       } else {
         channels.sms = { skipped: true, reason: 'no guest phone' }

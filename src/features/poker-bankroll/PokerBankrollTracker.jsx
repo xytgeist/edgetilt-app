@@ -1247,6 +1247,8 @@ export default function PokerBankrollTracker({
       if (key === 'venue_kind' && value !== prev.venue_kind) {
         next.online_site_pick = ''
         next.club_app_pick = ''
+        // Soft-event picker is Live-only until MTTDB (or similar) for Online/Club.
+        if (value !== 'live') next.tournament_event_pick = ''
         if (value === 'live') {
           next.venue_name = ''
           void fetchNearby((name) => {
@@ -2879,8 +2881,15 @@ function PokerSessionCoreFields({
     return null
   })()
 
+  const showSoftTournamentPicker = !isCash && form.venue_kind === 'live'
+
   useEffect(() => {
-    if (isCash || !supabaseClient) return undefined
+    if (!showSoftTournamentPicker || !supabaseClient) {
+      setSoftEvents([])
+      setSoftEventsReady(true)
+      return undefined
+    }
+    setSoftEventsReady(false)
     const reqId = ++softEventsReqRef.current
     void loadNearbySoftTournamentEvents(supabaseClient, {
       venueKind: form.venue_kind,
@@ -2898,7 +2907,7 @@ function PokerSessionCoreFields({
     return () => {
       softEventsReqRef.current += 1
     }
-  }, [isCash, supabaseClient, form.venue_kind, nearbyCasinos])
+  }, [showSoftTournamentPicker, supabaseClient, form.venue_kind, nearbyCasinos])
 
   const softTournamentOptions = useMemo(() => {
     const opts = softTournamentPickerOptions(softEvents)
@@ -2960,7 +2969,7 @@ function PokerSessionCoreFields({
 
       {!isCash ? <SectionLabel>Event</SectionLabel> : null}
       <div className="mb-2 space-y-2">
-        {!isCash ? (
+        {showSoftTournamentPicker ? (
           <div>
             <PokerFieldMenu
               value={form.tournament_event_pick || ''}
@@ -3113,13 +3122,20 @@ function PokerSessionCoreFields({
               </InField>
             </div>
           ) : null}
-          {!isSoftTournamentEventPick(form.tournament_event_pick) ? (
+          {!showSoftTournamentPicker ||
+          !isSoftTournamentEventPick(form.tournament_event_pick) ? (
             <InField label="Tournament name" className="mb-2">
               <input
                 type="text"
                 value={form.tournament_name}
                 onChange={(e) => setField('tournament_name', e.target.value)}
-                placeholder="WSOP Event #96…"
+                placeholder={
+                  form.venue_kind === 'online'
+                    ? 'Sunday Million, daily…'
+                    : form.venue_kind === 'club'
+                      ? 'Club tournament name…'
+                      : 'WSOP Event #96…'
+                }
                 className={POKER_INFIELD_CONTROL}
               />
             </InField>

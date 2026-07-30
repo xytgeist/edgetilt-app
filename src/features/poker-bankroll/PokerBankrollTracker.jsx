@@ -98,6 +98,7 @@ import {
 } from './pokerTournamentSwapApi.js'
 import {
   formatSwapIouLine,
+  formatSwapSettledParenAmount,
   formatSwapWaitingStatus,
   sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
@@ -2273,7 +2274,7 @@ export default function PokerBankrollTracker({
                                                 : 'text-inherit'
                                           }
                                         >
-                                          ({fmtPoker$(Number(signed))})
+                                          {formatSwapSettledParenAmount(signed, fmtPoker$)}
                                         </span>
                                       </>
                                     ) : waitingLine ? (

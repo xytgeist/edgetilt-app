@@ -102,12 +102,26 @@ export function sessionSwapSettlementDelta(swaps, sessionId, viewerUserId) {
 }
 
 /**
+ * Parenthetical settled amount from viewer POV.
+ * Positive gets an explicit + (parens alone read as negative in accounting).
+ * e.g. (+$25) / (-$25) / ($0.00)
+ */
+export function formatSwapSettledParenAmount(signedAmount, fmt$) {
+  if (signedAmount == null || Number.isNaN(Number(signedAmount))) return null
+  const n = Number(signedAmount)
+  const body = fmt$(n)
+  if (n > 0.005) return `(+${body})`
+  return `(${body})`
+}
+
+/**
  * Cash-settled label with signed amount from viewer POV.
- * e.g. Settled ($25) / Settled (-$25)
+ * e.g. Settled (+$25) / Settled (-$25)
  */
 export function formatSwapSettledAmountLine(signedAmount, fmt$) {
-  if (signedAmount == null || Number.isNaN(Number(signedAmount))) return 'Settled'
-  return `Settled (${fmt$(Number(signedAmount))})`
+  const paren = formatSwapSettledParenAmount(signedAmount, fmt$)
+  if (!paren) return 'Settled'
+  return `Settled ${paren}`
 }
 
 /**

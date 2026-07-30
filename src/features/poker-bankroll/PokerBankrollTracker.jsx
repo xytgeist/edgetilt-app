@@ -97,6 +97,7 @@ import {
 } from './pokerTournamentSwapApi.js'
 import {
   formatSwapIouLine,
+  formatSwapSettledLabel,
   formatSwapWaitingStatus,
 } from './pokerTournamentSwapMath.js'
 
@@ -2077,7 +2078,12 @@ export default function PokerBankrollTracker({
                                 const line =
                                   swap.status === 'settled'
                                     ? paid
-                                      ? 'Settled'
+                                      ? formatSwapSettledLine(
+                                          swap.settlement_amount,
+                                          role,
+                                          other,
+                                          fmtPoker$,
+                                        )
                                       : formatSwapIouLine(
                                           swap.settlement_amount,
                                           role,

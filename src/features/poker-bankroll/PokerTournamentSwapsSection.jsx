@@ -13,6 +13,7 @@ import {
 import {
   computeTournamentSwapSettlement,
   formatSwapIouLine,
+  formatSwapSettledLabel,
   formatSwapSideResultLine,
   formatSwapWaitingStatus,
   parseSwapPct,
@@ -395,7 +396,7 @@ export default function PokerTournamentSwapsSection({
           const paid = swapIsMarkedPaid(swap)
           const statusLine =
             swap.status === 'settled' && paid
-              ? 'Settled'
+              ? formatSwapSettledLine(swap.settlement_amount, role, other, fmtPoker$)
               : primaryStatus
           const canCancel = !paid
           return (

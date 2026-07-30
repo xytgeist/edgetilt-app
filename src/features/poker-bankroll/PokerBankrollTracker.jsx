@@ -2222,18 +2222,18 @@ export default function PokerBankrollTracker({
                                       )
                                     : formatSwapWaitingStatus(swap, role, other)
                                 const showSettledAmt = paid && swap.status === 'settled'
+                                const lineTone = showSettledAmt ? 'settled' : 'waiting'
                                 const amtTone =
-                                  !showSettledAmt
-                                    ? null
-                                    : signed < -0.005
-                                      ? 'loss'
-                                      : signed > 0.005
-                                        ? 'settled'
-                                        : 'flat'
+                                  signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
                                 return (
                                   <span
                                     key={swap.id}
-                                    className="block truncate text-[11px] text-zinc-500"
+                                    data-poker-session-swap-line={lineTone}
+                                    className={`block truncate text-[11px] ${
+                                      lineTone === 'settled'
+                                        ? 'text-emerald-300/90'
+                                        : 'text-cyan-300/80'
+                                    }`}
                                   >
                                     Swap · {other}
                                     {swap.pct_creator_gives != null &&
@@ -2244,13 +2244,13 @@ export default function PokerBankrollTracker({
                                       <>
                                         {' · Settled ('}
                                         <span
-                                          data-poker-session-swap-line={amtTone}
+                                          data-poker-session-swap-amt={amtTone}
                                           className={
                                             amtTone === 'loss'
                                               ? 'text-rose-400'
-                                              : amtTone === 'settled'
-                                                ? 'text-emerald-300'
-                                                : 'text-zinc-400'
+                                              : amtTone === 'gain'
+                                                ? 'text-emerald-400'
+                                                : 'text-inherit'
                                           }
                                         >
                                           {fmtPoker$(Number(signed))}
@@ -2258,15 +2258,7 @@ export default function PokerBankrollTracker({
                                         {')'}
                                       </>
                                     ) : waitingLine ? (
-                                      <>
-                                        {' · '}
-                                        <span
-                                          data-poker-session-swap-line="waiting"
-                                          className="text-cyan-300/80"
-                                        >
-                                          {waitingLine}
-                                        </span>
-                                      </>
+                                      ` · ${waitingLine}`
                                     ) : null}
                                   </span>
                                 )

@@ -1734,63 +1734,77 @@ export default function PokerBankrollTracker({
                 <div className="min-w-0 text-lg font-bold leading-tight text-white">
                   {pokerSessionStakesLabel(activeSession)}
                 </div>
-                {/*
-                  Button cluster is absolutely positioned so meta only clears ONE chip
-                  (Re-enter). Swap sits under the free space beside Re-enter — matches
-                  the compact reference layout.
-                */}
-                <div className="relative mt-2 min-h-[6.25rem]">
-                  <div className="min-w-0 pr-[8.75rem]">
-                    <div className="truncate text-sm text-zinc-400">
-                      {pokerSessionMetaLine(activeSession)}
+                {(() => {
+                  const elapsedLabel = fmtPokerDuration(elapsed)
+                  const elapsedChars = elapsedLabel.replace(/\s/g, '').length
+                  // Shrink as "55m" → "1h 7m" → "12h 45m" so it never collides with Swap.
+                  const timerTextClass =
+                    elapsedChars <= 3
+                      ? 'text-xl'
+                      : elapsedChars <= 4
+                        ? 'text-lg'
+                        : elapsedChars <= 5
+                          ? 'text-base'
+                          : 'text-sm'
+                  const chip =
+                    'box-border h-9 w-[5.5rem] rounded-xl text-xs font-bold touch-manipulation'
+                  return (
+                    <div className="relative mt-2 min-h-[5rem]">
+                      <div className="min-w-0 pr-[6.25rem]">
+                        <div className="truncate text-sm text-zinc-400">
+                          {pokerSessionMetaLine(activeSession)}
+                        </div>
+                        <div className="mt-0.5 truncate text-sm text-zinc-400">
+                          {pokerSessionInForLine(activeSession)}
+                        </div>
+                      </div>
+                      <div
+                        className={`absolute bottom-0 left-0 max-w-[calc(100%-12rem)] overflow-hidden font-black tabular-nums whitespace-nowrap text-emerald-200 ${timerTextClass}`}
+                      >
+                        {elapsedLabel}
+                      </div>
+                      <div
+                        className="absolute right-0 top-0 grid grid-cols-2 gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        {activeSession.session_type === 'tournament' ? (
+                          <button
+                            type="button"
+                            onClick={() => openRebuy('rebuy')}
+                            className={`${chip} col-start-2 border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
+                          >
+                            Re-enter
+                          </button>
+                        ) : null}
+                        {activeSession.session_type === 'cash' ? (
+                          <button
+                            type="button"
+                            onClick={() => openRebuy('rebuy')}
+                            className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
+                          >
+                            Re-buy
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={openActiveSwaps}
+                            className={`${chip} border border-cyan-400/40 bg-cyan-950/50 text-cyan-100 active:bg-cyan-900/60`}
+                          >
+                            Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={openEndSession}
+                          className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
+                        >
+                          End Session
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-0.5 truncate text-sm text-zinc-400">
-                      {pokerSessionInForLine(activeSession)}
-                    </div>
-                  </div>
-                  <div className="absolute bottom-0 left-0 text-3xl font-black tabular-nums whitespace-nowrap text-emerald-200">
-                    {fmtPokerDuration(elapsed)}
-                  </div>
-                  <div
-                    className="absolute right-0 top-0 grid grid-cols-2 gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
-                    {activeSession.session_type === 'tournament' ? (
-                      <button
-                        type="button"
-                        onClick={() => openRebuy('rebuy')}
-                        className="col-start-2 box-border h-11 w-32 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
-                      >
-                        Re-enter
-                      </button>
-                    ) : null}
-                    {activeSession.session_type === 'cash' ? (
-                      <button
-                        type="button"
-                        onClick={() => openRebuy('rebuy')}
-                        className="box-border h-11 w-32 rounded-2xl border border-emerald-400/40 bg-emerald-950/80 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
-                      >
-                        Re-buy
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={openActiveSwaps}
-                        className="box-border h-11 w-32 rounded-2xl border border-cyan-400/40 bg-cyan-950/50 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
-                      >
-                        Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={openEndSession}
-                      className="box-border h-11 w-32 rounded-2xl border border-emerald-500 bg-emerald-500 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
-                    >
-                      End Session
-                    </button>
-                  </div>
-                </div>
+                  )
+                })()}
               </div>
             ) : (
               !loading &&

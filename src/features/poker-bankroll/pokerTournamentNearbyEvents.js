@@ -8,32 +8,23 @@ import { fmtPoker$ } from './pokerBankrollMath.js'
 
 export const POKER_TOURNAMENT_MANUAL_PICK_ID = '__manual__'
 
-/** Past window (days) for soft-event picker by event_date (yesterday…). */
-const PAST_DAYS = 1
-/** Future window (days) for soft-event picker. */
-const FUTURE_DAYS = 60
 /** Keep older event_date rows if anyone logged/swapped against them this recently. */
 export const SOFT_EVENT_ACTIVITY_GRACE_MS = 36 * 60 * 60 * 1000
 const FETCH_LIMIT = 200
 
 /**
+ * Picker is for logging play now: calendar today by event_date, plus 36h activity grace.
  * @param {Date} [now]
  * @returns {{ from: string, to: string, activitySinceIso: string }}
  */
 export function softEventDateWindow(now = new Date()) {
-  const from = new Date(now)
-  from.setDate(from.getDate() - PAST_DAYS)
-  const to = new Date(now)
-  to.setDate(to.getDate() + FUTURE_DAYS)
-  const ymd = (d) => {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${day}`
-  }
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const today = `${y}-${m}-${day}`
   return {
-    from: ymd(from),
-    to: ymd(to),
+    from: today,
+    to: today,
     activitySinceIso: new Date(now.getTime() - SOFT_EVENT_ACTIVITY_GRACE_MS).toISOString(),
   }
 }
@@ -115,7 +106,7 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
   const selectCols =
     'id, fingerprint_key, fingerprint_sibling, venue_name, event_date, buy_in, game_variant, currency, display_name, last_activity_at'
 
-  // Date window (yesterday → future) OR recent logging activity (Day 2 / late reg).
+  // Today by event_date OR recent logging activity (Day 2 / late reg).
   const [byDate, byActivity] = await Promise.all([
     supabase
       .from('poker_tournament_events')

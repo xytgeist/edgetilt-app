@@ -1,5 +1,6 @@
 -- Soft-event picker expiry: keep events with recent logging activity (Day 2 / late reg)
 -- even when event_date is older than yesterday.
+-- Renamed from 20260730180000 (duplicate version id with platform_billing_reconcile_cron).
 
 begin;
 

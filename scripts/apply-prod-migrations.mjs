@@ -46,7 +46,7 @@ const MIGRATIONS = [
   '20260730160000_poker_tournament_swap_result_activity.sql',
   '20260730170000_poker_tournament_swaps_realtime.sql',
   '20260730180000_platform_billing_reconcile_cron.sql',
-  '20260730180000_poker_tournament_events_last_activity.sql',
+  '20260730180100_poker_tournament_events_last_activity.sql',
   '20260730190000_lounge_bot_queue_caption_2000.sql',
 ];
 

@@ -124,4 +124,4 @@ _Update log: 2026-07-03 — v1 scaffold (RPC + EdgeMonitorScreen + AppShell tab)
 _Update log: 2026-07-03 — Phases 2–5 (extended RPC, external-health Edge fn, alerts/runbooks, live pulse poll)._
 _Update log: 2026-07-23 — Phase 6 subscriber roster (`admin_ops_subscriber_roster` + Monitor panel)._
 _Update log: 2026-07-30 — Phase 7 system health (cron registry + billing drift + copy diagnostic)._
-_Update log: 2026-07-30 — **40500** billing drift focus: drop orphan Stripe customer noise; add profile-paid-no-row + past_due rules; critical vs warn overall._
+_Update log: 2026-07-30 — **40700** push flush Monitor: stale only when overdue `activity_push_batches` (>2 min), not quiet traffic._

@@ -2822,6 +2822,20 @@ function PokerSessionCoreFields({
               className={POKER_FIELD_CLASS}
             />
           </div>
+          <FieldLabel>Buy-in</FieldLabel>
+          <div className="mb-3">
+            <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
+          </div>
+          <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
+            <div className="min-w-0">
+              <FieldLabel>Re-buy</FieldLabel>
+              <MoneyInput value={form.rebuy_amount} onChange={(v) => setField('rebuy_amount', v)} />
+            </div>
+            <div className="min-w-0">
+              <FieldLabel>Add-on</FieldLabel>
+              <MoneyInput value={form.addon_amount} onChange={(v) => setField('addon_amount', v)} />
+            </div>
+          </div>
           <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
             <div className="min-w-0">
               <FieldLabel>Players</FieldLabel>
@@ -2835,21 +2849,13 @@ function PokerSessionCoreFields({
         </>
       )}
 
-      <FieldLabel>Buy-in</FieldLabel>
-      <div className="mb-3">
-        <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
-      </div>
-      {form.session_type === 'tournament' ? (
-        <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
-          <div className="min-w-0">
-            <FieldLabel>Re-buy</FieldLabel>
-            <MoneyInput value={form.rebuy_amount} onChange={(v) => setField('rebuy_amount', v)} />
+      {isCash ? (
+        <>
+          <FieldLabel>Buy-in</FieldLabel>
+          <div className="mb-3">
+            <MoneyInput value={form.buy_in} onChange={(v) => setField('buy_in', v)} />
           </div>
-          <div className="min-w-0">
-            <FieldLabel>Add-on</FieldLabel>
-            <MoneyInput value={form.addon_amount} onChange={(v) => setField('addon_amount', v)} />
-          </div>
-        </div>
+        </>
       ) : null}
     </>
   )

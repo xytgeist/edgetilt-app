@@ -365,6 +365,9 @@ export default function PokerTournamentSwapsSection({
         userId={userId}
         usedUserIds={usedUserIds}
         onConfirm={onPickerConfirm}
+        mode="directory"
+        hideGuests
+        title="Add Edge user"
       />
     </div>
   )

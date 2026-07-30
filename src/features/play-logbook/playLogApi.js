@@ -112,6 +112,83 @@ export async function fetchPlayLogPartnerCandidates(supabaseClient, viewerUserId
 }
 
 /**
+ * Edge-user directory for tournament swaps (same row shape as Logbook partner picker).
+ * Connections (followers ∪ following) first, then everyone else A→Z.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} viewerUserId
+ */
+export async function fetchEdgeUserDirectoryPickerData(supabaseClient, viewerUserId) {
+  const uid = String(viewerUserId || '').trim()
+  if (!uid) {
+    return {
+      candidates: [],
+      viewerFollowingIds: new Set(),
+      connectionIds: new Set(),
+      error: null,
+    }
+  }
+
+  const network = await fetchPlayLogPartnerPickerData(supabaseClient, uid)
+  const connectionIds = new Set(
+    (network.candidates || []).map((p) => String(p.user_id || '')).filter(Boolean),
+  )
+
+  const { data: allRows, error: allErr } = await supabaseClient
+    .from('profiles')
+    .select('user_id, handle, display_name, avatar_url, role, is_og')
+    .is('banned_at', null)
+    .neq('user_id', uid)
+    .or('is_bot.is.null,is_bot.eq.false')
+    .not('handle', 'is', null)
+    .order('display_name', { ascending: true, nullsFirst: false })
+    .limit(800)
+
+  if (allErr) {
+    return {
+      candidates: network.candidates || [],
+      viewerFollowingIds: network.viewerFollowingIds || new Set(),
+      connectionIds,
+      error: network.error || allErr.message,
+    }
+  }
+
+  /** @type {Map<string, object>} */
+  const byId = new Map()
+  for (const p of network.candidates || []) {
+    const id = String(p?.user_id || '')
+    if (id) byId.set(id, p)
+  }
+  for (const p of allRows || []) {
+    const id = String(p?.user_id || '')
+    if (!id || id === uid || byId.has(id)) continue
+    byId.set(id, p)
+  }
+
+  const rest = [...byId.values()]
+    .filter((p) => !connectionIds.has(String(p.user_id)))
+    .sort((a, b) =>
+      playLogPartnerLabel(a).localeCompare(playLogPartnerLabel(b), undefined, {
+        sensitivity: 'base',
+      }),
+    )
+
+  const candidates = [...(network.candidates || []), ...rest]
+  const ids = candidates.map((p) => String(p.user_id)).filter(Boolean)
+  let viewerFollowingIds = network.viewerFollowingIds || new Set()
+  if (ids.length > 0) {
+    const among = await fetchViewerFollowingAmong(supabaseClient, uid, ids)
+    viewerFollowingIds = new Set([...viewerFollowingIds, ...among])
+  }
+
+  return {
+    candidates,
+    viewerFollowingIds,
+    connectionIds,
+    error: network.error || null,
+  }
+}
+
+/**
  * Partner picker: merged list + who the viewer already follows (for Follow buttons).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} viewerUserId

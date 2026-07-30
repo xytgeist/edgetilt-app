@@ -137,12 +137,12 @@ export async function loadSwapCounterpartyProfiles(supabase, userIds) {
   if (ids.length === 0) return { byId: {}, error: null }
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, display_name, handle, avatar_url')
-    .in('id', ids)
+    .select('user_id, display_name, handle, avatar_url')
+    .in('user_id', ids)
   if (error) return { byId: {}, error }
   /** @type {Record<string, object>} */
   const byId = {}
-  for (const row of data || []) byId[row.id] = row
+  for (const row of data || []) byId[row.user_id] = row
   return { byId, error: null }
 }
 

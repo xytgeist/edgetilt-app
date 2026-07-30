@@ -8,6 +8,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     callId: null,
     missedCallId: null,
     playLogEntryId: null,
+    pokerSessionId: null,
     urlChanged: false,
   }
   if (typeof window === 'undefined') return empty
@@ -35,6 +36,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     callId: (parsed.searchParams.get('call') || '').trim() || null,
     missedCallId: (parsed.searchParams.get('missedCall') || '').trim() || null,
     playLogEntryId: (parsed.searchParams.get('playLogEntry') || '').trim() || null,
+    pokerSessionId: (parsed.searchParams.get('pokerSession') || '').trim() || null,
     urlChanged,
   }
 }

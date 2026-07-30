@@ -320,6 +320,7 @@ export default function AppShell({
   const COMMUNITY_FEED_PAGE_SIZE = 28
   const [tab, setTab] = useState('home')
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
+  const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
@@ -440,6 +441,7 @@ export default function AppShell({
         callId,
         missedCallId,
         playLogEntryId,
+        pokerSessionId,
       } = navigateFromLoungeActivityPayload(payload)
 
       if (targetTab === 'chat') {
@@ -473,6 +475,7 @@ export default function AppShell({
         } else {
           setTab('poker-bankroll')
           setMenuOpen(false)
+          if (pokerSessionId) setPendingPokerSessionId(pokerSessionId)
         }
       } else if (targetTab === 'offers') {
         if (browseMode === 'anonymous') {
@@ -1015,6 +1018,8 @@ export default function AppShell({
         } else {
           setTab('poker-bankroll')
           setMenuOpen(false)
+          const pokerSession = (params.get('pokerSession') || '').trim()
+          if (pokerSession) setPendingPokerSessionId(pokerSession)
         }
       }
       const guideFromQuery = (params.get('guide') || '').trim()
@@ -1089,6 +1094,15 @@ export default function AppShell({
         }
         setTab('poker-bankroll')
         setMenuOpen(false)
+        try {
+          const msgUrl = new URL(data.url || '', window.location.origin)
+          const pokerSession = String(
+            data.pokerSessionId || msgUrl.searchParams.get('pokerSession') || '',
+          ).trim()
+          if (pokerSession) setPendingPokerSessionId(pokerSession)
+        } catch {
+          // ignore malformed url
+        }
         const activityEventId = data.activityEventId || null
         const activityBatchId = data.activityBatchId || null
         if (data.markActivityRead || activityEventId || activityBatchId) {
@@ -2124,6 +2138,8 @@ export default function AppShell({
           onPokerBankrollSessionCreated={refreshFreemiumUsage}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+          openSessionId={pendingPokerSessionId}
+          onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
         />
       )
     } else if (tab === 'poker-stable') {

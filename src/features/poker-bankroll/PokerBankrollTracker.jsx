@@ -169,6 +169,9 @@ export default function PokerBankrollTracker({
   freemiumUsageLoading = false,
   onRequireSubscribeForPokerBankroll = null,
   onPokerBankrollSessionCreated = null,
+  /** Deep link: open session details sheet for this id (swap result notify). */
+  openSessionId = null,
+  onOpenSessionConsumed = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -420,6 +423,20 @@ export default function PokerBankrollTracker({
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  /** Swap-result notify deep link: open the viewer's linked session sheet. */
+  useEffect(() => {
+    if (!openSessionId || loading) return
+    const session = sessions.find((s) => String(s.id) === String(openSessionId))
+    if (!session) {
+      onOpenSessionConsumed?.()
+      return
+    }
+    openEdit(session)
+    onOpenSessionConsumed?.()
+    // openEdit is a stable-enough local opener; intentionally omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deep-link one-shot
+  }, [openSessionId, loading, sessions, onOpenSessionConsumed])
 
   const fetchNearby = useCallback(async (onNearest) => {
     await fetchNearbyCasinos(supabaseClient, {

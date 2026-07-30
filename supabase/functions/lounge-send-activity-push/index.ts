@@ -487,12 +487,32 @@ async function handleImmediatePush(
   if (event.event_type === 'poker_tournament_swap_result') {
     const who = actorDisplayName((actorProfile as ActorProfile | null) || null)
     const detail = String(event.detail_text || '').trim() || 'finished a tournament swap with you'
+    const params = new URLSearchParams()
+    params.set('tab', 'poker-bankroll')
+    params.set('activityEvent', event.id)
+    if (event.poker_tournament_swap_id) {
+      const { data: swapRow } = await admin
+        .from('poker_tournament_swaps')
+        .select('creator_user_id, creator_session_id, counterparty_user_id, counterparty_session_id')
+        .eq('id', event.poker_tournament_swap_id)
+        .maybeSingle()
+      const recipientId = String(event.recipient_user_id || '')
+      let sessionId: string | null = null
+      if (swapRow && recipientId) {
+        if (String(swapRow.creator_user_id || '') === recipientId) {
+          sessionId = swapRow.creator_session_id ? String(swapRow.creator_session_id) : null
+        } else if (String(swapRow.counterparty_user_id || '') === recipientId) {
+          sessionId = swapRow.counterparty_session_id
+            ? String(swapRow.counterparty_session_id)
+            : null
+        }
+      }
+      if (sessionId) params.set('pokerSession', sessionId)
+    }
     notification = {
       title: pushTitleForEventType(event.event_type),
       body: `${who} ${detail}`,
-      url: buildTargetUrl(event, (actorProfile as ActorProfile | null) || null, {
-        activityEventId: event.id,
-      }),
+      url: `/?${params.toString()}`,
       activityEventId: event.id,
     }
   }

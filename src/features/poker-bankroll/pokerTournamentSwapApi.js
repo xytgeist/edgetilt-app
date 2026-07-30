@@ -410,6 +410,23 @@ export async function notifyTournamentSwapResults(supabase, swapIds) {
 }
 
 /**
+ * Viewer's linked session on a swap (creator or counterparty), if any.
+ * @param {object | null | undefined} swap
+ * @param {string | null | undefined} viewerUserId
+ * @returns {string | null}
+ */
+export function viewerSessionIdFromSwap(swap, viewerUserId) {
+  if (!swap || !viewerUserId) return null
+  if (swap.creator_user_id === viewerUserId) {
+    return swap.creator_session_id ? String(swap.creator_session_id) : null
+  }
+  if (swap.counterparty_user_id === viewerUserId) {
+    return swap.counterparty_session_id ? String(swap.counterparty_session_id) : null
+  }
+  return null
+}
+
+/**
  * Compact label for a soft tournament event (incoming swap card / notify copy).
  * @param {object | null | undefined} ev
  */

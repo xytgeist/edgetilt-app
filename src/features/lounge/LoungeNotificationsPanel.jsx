@@ -419,11 +419,46 @@ export default function LoungeNotificationsPanel({
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT
       ) {
-        const nextPath = '/?tab=poker-bankroll'
-        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
-          window.history.pushState({}, '', nextPath)
-          window.dispatchEvent(new PopStateEvent('popstate'))
-        }
+        void (async () => {
+          const params = new URLSearchParams()
+          params.set('tab', 'poker-bankroll')
+          const swapId = event.poker_tournament_swap_id
+          if (
+            event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT &&
+            swapId &&
+            supabaseClient &&
+            viewerUserId
+          ) {
+            try {
+              const { data: swapRow } = await supabaseClient
+                .from('poker_tournament_swaps')
+                .select(
+                  'creator_user_id, creator_session_id, counterparty_user_id, counterparty_session_id',
+                )
+                .eq('id', swapId)
+                .maybeSingle()
+              if (swapRow) {
+                const sessionId =
+                  swapRow.creator_user_id === viewerUserId
+                    ? swapRow.creator_session_id
+                    : swapRow.counterparty_user_id === viewerUserId
+                      ? swapRow.counterparty_session_id
+                      : null
+                if (sessionId) params.set('pokerSession', String(sessionId))
+              }
+            } catch {
+              // fall back to overview
+            }
+          }
+          const nextPath = `/?${params.toString()}`
+          if (
+            typeof window !== 'undefined' &&
+            window.location.pathname + window.location.search !== nextPath
+          ) {
+            window.history.pushState({}, '', nextPath)
+            window.dispatchEvent(new PopStateEvent('popstate'))
+          }
+        })()
         return
       }
 
@@ -467,7 +502,15 @@ export default function LoungeNotificationsPanel({
         })()
       }
     },
-    [markNotificationEventsRead, markSessionNewSeen, onOpenOwnProfileFollowers, onOpenPost, onOpenProfile, supabaseClient],
+    [
+      markNotificationEventsRead,
+      markSessionNewSeen,
+      onOpenOwnProfileFollowers,
+      onOpenPost,
+      onOpenProfile,
+      supabaseClient,
+      viewerUserId,
+    ],
   )
 
   const patchNotificationInteractionEntity = useCallback((kind, entityId, patch) => {

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import PlayLogPartnerPickerModal from '../play-logbook/PlayLogPartnerPickerModal.jsx'
 import { fmtPoker$ } from './pokerBankrollMath.js'
 import {
+  cancelTournamentSwap,
   emptyDraftSwap,
   markSwapPaid,
   setCounterpartyManualResult,
@@ -60,6 +61,7 @@ export default function PokerTournamentSwapsSection({
       }
     }
     for (const swap of savedSwaps) {
+      if (swap.status === 'cancelled') continue
       if (swap.counterparty_user_id) s.add(swap.counterparty_user_id)
     }
     return s
@@ -143,6 +145,26 @@ export default function PokerTournamentSwapsSection({
       onSavedSwapsMutated?.()
     } catch (e) {
       setLocalError(e?.message || 'Could not mark settled.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function onCancelSwap(swap) {
+    if (!supabaseClient || !swap?.id) return
+    const other = swapOtherPartyLabel(swap, profilesById, userId)
+    const ok = window.confirm(
+      `Cancel swap with ${other}? This cannot be undone (you can add a new swap after).`,
+    )
+    if (!ok) return
+    setBusyId(swap.id)
+    setLocalError('')
+    try {
+      const { error } = await cancelTournamentSwap(supabaseClient, swap.id)
+      if (error) throw error
+      onSavedSwapsMutated?.()
+    } catch (e) {
+      setLocalError(e?.message || 'Could not cancel swap.')
     } finally {
       setBusyId('')
     }
@@ -335,7 +357,9 @@ export default function PokerTournamentSwapsSection({
           )
         })}
 
-        {savedSwaps.map((swap) => {
+        {savedSwaps
+          .filter((swap) => swap.status !== 'cancelled')
+          .map((swap) => {
           const role = swapViewerRole(swap, userId) || 'creator'
           const other = swapOtherPartyLabel(swap, profilesById, userId)
           const creatorReady = Boolean(swap.creator_result_ready)
@@ -373,6 +397,7 @@ export default function PokerTournamentSwapsSection({
             swap.status === 'settled' && paid
               ? 'Settled'
               : primaryStatus
+          const canCancel = !paid
           return (
             <div
               key={swap.id}
@@ -385,6 +410,16 @@ export default function PokerTournamentSwapsSection({
                     {swap.pct_creator_gives}% ↔ {swap.pct_counterparty_gives}% · {swap.status}
                   </div>
                 </div>
+                {canCancel ? (
+                  <button
+                    type="button"
+                    disabled={busyId === swap.id}
+                    onClick={() => void onCancelSwap(swap)}
+                    className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-400 touch-manipulation hover:text-rose-300 active:text-rose-200 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                ) : null}
               </div>
               {statusLine ? (
                 <div className="text-sm text-emerald-100/90">{statusLine}</div>

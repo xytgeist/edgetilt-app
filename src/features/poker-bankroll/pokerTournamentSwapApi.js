@@ -358,6 +358,24 @@ export async function acceptCounterpartySessionBind(supabase, swapId, sessionId,
   return { error: null }
 }
 
+/**
+ * Cancel an active / unsettled swap (wrong counterparty, etc.).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} swapId
+ */
+export async function cancelTournamentSwap(supabase, swapId) {
+  const { data, error } = await supabase
+    .from('poker_tournament_swaps')
+    .update({ status: 'cancelled' })
+    .eq('id', swapId)
+    .neq('status', 'cancelled')
+    .select('*')
+    .maybeSingle()
+  if (error) return { swap: null, error }
+  if (!data) return { swap: null, error: new Error('Swap not found or already cancelled.') }
+  return { swap: data, error: null }
+}
+
 /** True when either party has confirmed cash settled (DB: *_marked_paid). */
 export function swapIsMarkedPaid(swap) {
   return Boolean(swap?.creator_marked_paid || swap?.counterparty_marked_paid)

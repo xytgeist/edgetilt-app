@@ -1955,6 +1955,52 @@ export default function PokerBankrollTracker({
                     elapsedChars <= 6 ? 'text-lg' : elapsedChars <= 8 ? 'text-base' : 'text-sm'
                   const chip =
                     'box-border h-9 w-[5.5rem] rounded-xl text-xs font-bold touch-manipulation'
+                  const stopCardClick = (e) => e.stopPropagation()
+                  const isCash = activeSession.session_type === 'cash'
+
+                  if (isCash) {
+                    return (
+                      <div className="mt-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm text-zinc-400">
+                            {pokerSessionMetaLine(activeSession)}
+                          </div>
+                          <div className="mt-0.5 truncate text-sm text-zinc-400">
+                            {pokerSessionInForLine(activeSession)}
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <div
+                            className={`min-w-0 shrink overflow-hidden font-black tabular-nums whitespace-nowrap text-emerald-200 ${timerTextClass}`}
+                          >
+                            {elapsedLabel}
+                          </div>
+                          <div
+                            className="flex shrink-0 gap-1.5"
+                            onClick={stopCardClick}
+                            onKeyDown={stopCardClick}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openRebuy('rebuy')}
+                              className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
+                            >
+                              Re-buy
+                            </button>
+                            <button
+                              type="button"
+                              onClick={openEndSession}
+                              data-poker-session-end-btn
+                              className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
+                            >
+                              End Session
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+
                   return (
                     <div className="relative mt-2 min-h-[5rem]">
                       <div className="min-w-0 pr-[6.25rem]">
@@ -1972,36 +2018,24 @@ export default function PokerBankrollTracker({
                       </div>
                       <div
                         className="absolute right-0 top-0 grid grid-cols-2 gap-1.5"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
+                        onClick={stopCardClick}
+                        onKeyDown={stopCardClick}
                       >
-                        {activeSession.session_type === 'tournament' ? (
-                          <button
-                            type="button"
-                            onClick={() => openRebuy('rebuy')}
-                            className={`${chip} col-start-2 border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
-                          >
-                            Re-enter
-                          </button>
-                        ) : null}
-                        {activeSession.session_type === 'cash' ? (
-                          <button
-                            type="button"
-                            onClick={() => openRebuy('rebuy')}
-                            className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
-                          >
-                            Re-buy
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={openActiveSwaps}
-                            data-poker-session-swap-btn
-                            className={`${chip} border border-cyan-400/40 bg-cyan-950/50 text-cyan-100 active:bg-cyan-900/60`}
-                          >
-                            Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => openRebuy('rebuy')}
+                          className={`${chip} col-start-2 border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
+                        >
+                          Re-enter
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openActiveSwaps}
+                          data-poker-session-swap-btn
+                          className={`${chip} border border-cyan-400/40 bg-cyan-950/50 text-cyan-100 active:bg-cyan-900/60`}
+                        >
+                          Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
+                        </button>
                         <button
                           type="button"
                           onClick={openEndSession}

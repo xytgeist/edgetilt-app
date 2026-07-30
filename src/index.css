@@ -4670,6 +4670,37 @@ html.light [data-wl-preview] .text-zinc-400 {
   color: #6b7280 !important;
 }
 
+/*
+ * Incoming swaps (Overview) — light only.
+ * Dark keeps cyan-950 / zinc-900. Global html.light .text-cyan-200 → #93c5fd
+ * is unreadable on light surfaces; chrome blue + soft blue card fixes contrast.
+ */
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] .text-cyan-300 {
+  color: #1d4ed8 !important;
+}
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] .bg-zinc-900\/60 {
+  background-color: #ffffff !important;
+  border: 1px solid #dbeafe;
+}
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] .text-cyan-200\/90,
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] .text-cyan-200 {
+  color: #1d4ed8 !important;
+}
+html.light [data-poker-bankroll] [data-poker-incoming-swaps] .bg-cyan-600 {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
 /* Active session card - light mode */
 html.light [data-session-card] {
   background-color: #ecfdf5 !important;

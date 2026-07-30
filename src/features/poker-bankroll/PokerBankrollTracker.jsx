@@ -1934,6 +1934,7 @@ export default function PokerBankrollTracker({
             {pendingCounterpartySwaps.length > 0 ? (
               <div
                 data-elevated-card="surface"
+                data-poker-incoming-swaps
                 className="mb-4 rounded-3xl border border-cyan-500/30 bg-cyan-950/40 p-4"
               >
                 <div className="mb-2 text-xs font-bold uppercase tracking-wide text-cyan-300">

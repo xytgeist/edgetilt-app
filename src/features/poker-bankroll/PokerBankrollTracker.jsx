@@ -98,7 +98,6 @@ import {
 } from './pokerTournamentSwapApi.js'
 import {
   formatSwapIouLine,
-  formatSwapSettledAmountLine,
   formatSwapWaitingStatus,
   sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
@@ -2222,34 +2221,53 @@ export default function PokerBankrollTracker({
                                         fmtPoker$,
                                       )
                                     : formatSwapWaitingStatus(swap, role, other)
-                                const settledTone =
-                                  signed < -0.005
-                                    ? 'loss'
-                                    : swap.status === 'settled'
-                                      ? 'settled'
-                                      : 'waiting'
+                                const showSettledAmt = paid && swap.status === 'settled'
+                                const amtTone =
+                                  !showSettledAmt
+                                    ? null
+                                    : signed < -0.005
+                                      ? 'loss'
+                                      : signed > 0.005
+                                        ? 'settled'
+                                        : 'flat'
                                 return (
                                   <span
                                     key={swap.id}
-                                    data-poker-session-swap-line={settledTone}
-                                    className={`block truncate text-[11px] ${
-                                      settledTone === 'loss'
-                                        ? 'text-rose-400'
-                                        : settledTone === 'settled'
-                                          ? 'text-emerald-300/90'
-                                          : 'text-cyan-300/80'
-                                    }`}
+                                    className="block truncate text-[11px] text-zinc-500"
                                   >
                                     Swap · {other}
                                     {swap.pct_creator_gives != null &&
                                     swap.pct_counterparty_gives != null
                                       ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
                                       : ''}
-                                    {paid && swap.status === 'settled'
-                                      ? ` · ${formatSwapSettledAmountLine(signed, fmtPoker$)}`
-                                      : waitingLine
-                                        ? ` · ${waitingLine}`
-                                        : ''}
+                                    {showSettledAmt ? (
+                                      <>
+                                        {' · Settled ('}
+                                        <span
+                                          data-poker-session-swap-line={amtTone}
+                                          className={
+                                            amtTone === 'loss'
+                                              ? 'text-rose-400'
+                                              : amtTone === 'settled'
+                                                ? 'text-emerald-300'
+                                                : 'text-zinc-400'
+                                          }
+                                        >
+                                          {fmtPoker$(Number(signed))}
+                                        </span>
+                                        {')'}
+                                      </>
+                                    ) : waitingLine ? (
+                                      <>
+                                        {' · '}
+                                        <span
+                                          data-poker-session-swap-line="waiting"
+                                          className="text-cyan-300/80"
+                                        >
+                                          {waitingLine}
+                                        </span>
+                                      </>
+                                    ) : null}
                                   </span>
                                 )
                               })}

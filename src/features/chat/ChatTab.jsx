@@ -1539,7 +1539,6 @@ function ChatRoomListRow({
         onPointerCancel={onPointerCancel}
         onContextMenu={(e) => e.preventDefault()}
       >
-          {isPinnedInbox ? <span className="chat-room-pinned-rail" aria-hidden /> : null}
           <div className="relative shrink-0 flex h-11 w-11 items-center justify-center">
             {room.kind === 'dm' && room.peerAvatarUrl ? (
               <img

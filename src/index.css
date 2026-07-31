@@ -5450,18 +5450,6 @@ html.light .chat-room-swipe-unread-dot {
     transparent 72%
   );
 }
-.chat-room-pinned-rail {
-  pointer-events: none;
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  z-index: 2;
-  width: 3px;
-  border-radius: 9999px;
-  background: #22d3ee;
-  box-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
-}
 .chat-inbox-pin-indicator {
   color: rgba(34, 211, 238, 0.42);
 }
@@ -5500,10 +5488,6 @@ html.light .chat-inbox-pinned-header {
 }
 html.light .chat-inbox-pinned-divider {
   background: rgba(0, 0, 0, 0.08);
-}
-html.light .chat-room-pinned-rail {
-  background: #0891b2;
-  box-shadow: 0 0 6px rgba(8, 145, 178, 0.35);
 }
 
 /* Bankroll session history — swipe-right delete (same gesture as chat inbox) */

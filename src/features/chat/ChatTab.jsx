@@ -847,7 +847,11 @@ export default function ChatTab({
         profilesById={profilesById}
         otherUnreadCount={otherUnreadCount}
         onBack={() => {
-          if (openedFromPrivateSubsRef.current) {
+          const returnToPrivateSubs =
+            openedFromPrivateSubsRef.current
+            || room?.kind === 'platform_sub'
+            || room?.kind === 'creator_fan'
+          if (returnToPrivateSubs) {
             openedFromPrivateSubsRef.current = false
             setTab('privateSubs')
           }

@@ -41,7 +41,7 @@ The Guides paywall was **client-only** (`guideAccess.js` / `canOpenGuide()`). Sc
 | Piece | Purpose |
 | --- | --- |
 | **`admin_ops_security_snapshot()`** | Admin RPC: 24h guide read aggregates, heavy readers, denied slug tops |
-| **`EdgeMonitorSecurityPanel`** | Health tab section in Edge Monitor |
+| **`EdgeMonitorSecurityPanel`** | **Security** tab in Edge Monitor |
 | **Alert thresholds** | `guide_denied_reads_24h`, `guide_heavy_anon_1h` in `opsMonitorAlerts.js` |
 
 ---

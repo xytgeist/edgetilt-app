@@ -1,12 +1,13 @@
 /** Bookmarkable admin ops dashboard (desktop-first). */
 export const EDGE_MONITOR_PATH = '/monitor'
 
-/** @typedef {'overview' | 'health' | 'people' | 'product'} EdgeMonitorSectionId */
+/** @typedef {'overview' | 'health' | 'security' | 'people' | 'product'} EdgeMonitorSectionId */
 
 /** @type {{ id: EdgeMonitorSectionId, label: string, hint: string }[]} */
 export const EDGE_MONITOR_SECTIONS = [
   { id: 'overview', label: 'Overview', hint: 'KPIs · alerts · pulse' },
   { id: 'health', label: 'Health', hint: 'Jobs · billing drift · vendors' },
+  { id: 'security', label: 'Security', hint: 'Guide reads · scrape signals' },
   { id: 'people', label: 'People', hint: 'Signups · roster · revenue' },
   { id: 'product', label: 'Product', hint: 'Lounge · chat · tools' },
 ]

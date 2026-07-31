@@ -395,6 +395,7 @@ export default function EdgeMonitorDashboard({
   const [autoRefresh, setAutoRefresh] = useState(false)
   const needsPeopleData = section === 'people'
   const needsHealthData = section === 'health'
+  const needsSecurityData = section === 'security'
   const needsOverviewData = section === 'overview'
   const { snapshot, loading, error, refreshing, load } = useEdgeMonitorSnapshot(supabaseClient, {
     autoRefreshMs: autoRefresh ? 90_000 : 0,
@@ -433,7 +434,7 @@ export default function EdgeMonitorDashboard({
     refreshing: securityRefreshing,
     load: loadSecurity,
   } = useEdgeMonitorSecurity(supabaseClient, {
-    enabled: Boolean(snapshot) && needsHealthData,
+    enabled: Boolean(snapshot) && needsSecurityData,
     autoRefreshMs: autoRefresh ? 90_000 : 0,
   })
 
@@ -478,6 +479,14 @@ export default function EdgeMonitorDashboard({
     () => evaluateOpsMonitorAlerts({ snapshot, external, live, security }),
     [snapshot, external, live, security],
   )
+  const securityMetricAlerts = useMemo(
+    () => metricAlerts.filter((item) => String(item.metric || '').startsWith('security.')),
+    [metricAlerts],
+  )
+  const healthMetricAlerts = useMemo(
+    () => metricAlerts.filter((item) => !String(item.metric || '').startsWith('security.')),
+    [metricAlerts],
+  )
   const alerts = useMemo(() => {
     return [...systemAlerts, ...metricAlerts].sort((a, b) => {
       if (a.severity === b.severity) return a.label.localeCompare(b.label)
@@ -498,9 +507,10 @@ export default function EdgeMonitorDashboard({
 
     return {
       overview: criticalCount || warnCount,
-      health: healthCount + securityBadge,
+      health: healthCount,
+      security: securityBadge || securityMetricAlerts.length,
     }
-  }, [alerts, systemHealth, security])
+  }, [alerts, systemHealth, security, securityMetricAlerts.length])
 
   const roleDoughnut = useMemo(
     () =>
@@ -881,7 +891,7 @@ export default function EdgeMonitorDashboard({
     if (section === 'health') {
       return (
         <>
-          <AlertsBanner alerts={[...systemAlerts, ...metricAlerts]} />
+          <AlertsBanner alerts={[...systemAlerts, ...healthMetricAlerts]} />
           <EdgeMonitorSystemHealthPanel
             systemHealth={systemHealth}
             loading={systemHealthLoading}
@@ -890,13 +900,6 @@ export default function EdgeMonitorDashboard({
             onReload={() => void loadSystemHealth(true)}
             snapshot={snapshot}
             external={external}
-          />
-          <EdgeMonitorSecurityPanel
-            security={security}
-            loading={securityLoading}
-            error={securityError}
-            refreshing={securityRefreshing}
-            onReload={() => void loadSecurity(true)}
           />
           <EdgeMonitorBotOpsPanel
             botOps={botOps}
@@ -909,6 +912,21 @@ export default function EdgeMonitorDashboard({
             loading={externalLoading}
             error={externalError}
             onReload={reloadExternal}
+          />
+        </>
+      )
+    }
+
+    if (section === 'security') {
+      return (
+        <>
+          <AlertsBanner alerts={securityMetricAlerts} />
+          <EdgeMonitorSecurityPanel
+            security={security}
+            loading={securityLoading}
+            error={securityError}
+            refreshing={securityRefreshing}
+            onReload={() => void loadSecurity(true)}
           />
         </>
       )
@@ -938,15 +956,19 @@ export default function EdgeMonitorDashboard({
       )
     }
 
-    return (
-      <>
-        <EdgeMonitorActivityPanel snapshot={snapshot} loading={loading} />
-        {isDesktop ? productChartsDesktop : null}
-        <div className={isDesktop ? 'edge-monitor-desktop-sections grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4'}>
-          {productDetailSections}
-        </div>
-      </>
-    )
+    if (section === 'product') {
+      return (
+        <>
+          <EdgeMonitorActivityPanel snapshot={snapshot} loading={loading} />
+          {isDesktop ? productChartsDesktop : null}
+          <div className={isDesktop ? 'edge-monitor-desktop-sections grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4'}>
+            {productDetailSections}
+          </div>
+        </>
+      )
+    }
+
+    return null
   }
 
   return (
@@ -983,7 +1005,7 @@ export default function EdgeMonitorDashboard({
                     Desktop
                   </span>
                 </div>
-                <div className="text-zinc-400 text-sm mt-1">Overview · Health · People · Product</div>
+                <div className="text-zinc-400 text-sm mt-1">Overview · Health · Security · People · Product</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <span className={MONITOR_META_PILL}>{opsMonitorSupabaseProjectRef()}</span>
                   <span className={MONITOR_META_PILL}>{APP_BUILD_SHA.slice(0, 7)}</span>
@@ -1005,11 +1027,12 @@ export default function EdgeMonitorDashboard({
               ) : null}
               <button
                 type="button"
-                disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing}
+                disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing || securityRefreshing}
                 onClick={() => {
                   void load(true)
                   if (needsPeopleData) void loadRoster(true)
                   if (needsOverviewData || needsHealthData) void loadSystemHealth(true)
+                  if (needsSecurityData) void loadSecurity(true)
                   if (needsHealthData) {
                     void reloadExternal()
                     void reloadBotOps()
@@ -1017,7 +1040,7 @@ export default function EdgeMonitorDashboard({
                 }}
                 className={MONITOR_BTN_PRIMARY}
               >
-                {refreshing || rosterRefreshing || systemHealthRefreshing ? 'Refreshing…' : 'Refresh'}
+                {refreshing || rosterRefreshing || systemHealthRefreshing || securityRefreshing ? 'Refreshing…' : 'Refresh'}
               </button>
               <button
                 type="button"
@@ -1037,7 +1060,7 @@ export default function EdgeMonitorDashboard({
                 </span>
                 <div className="text-xl font-black tracking-tight text-white">Edge Monitor</div>
               </div>
-              <div className="text-zinc-400 text-sm mt-1">Overview · Health · People · Product</div>
+              <div className="text-zinc-400 text-sm mt-1">Overview · Health · Security · People · Product</div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {headerSlot}
@@ -1058,11 +1081,12 @@ export default function EdgeMonitorDashboard({
               ) : null}
               <button
                 type="button"
-                disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing}
+                disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing || securityRefreshing}
                 onClick={() => {
                   void load(true)
                   if (needsPeopleData) void loadRoster(true)
                   if (needsOverviewData || needsHealthData) void loadSystemHealth(true)
+                  if (needsSecurityData) void loadSecurity(true)
                   if (needsHealthData) {
                     void reloadExternal()
                     void reloadBotOps()
@@ -1070,7 +1094,7 @@ export default function EdgeMonitorDashboard({
                 }}
                 className={MONITOR_BTN_PRIMARY}
               >
-                {refreshing || rosterRefreshing || systemHealthRefreshing ? 'Refreshing…' : 'Refresh'}
+                {refreshing || rosterRefreshing || systemHealthRefreshing || securityRefreshing ? 'Refreshing…' : 'Refresh'}
               </button>
               <button
                 type="button"

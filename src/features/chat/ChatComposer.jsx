@@ -20,6 +20,7 @@ import {
   LOUNGE_IOS,
   plainTextFromComposerRoot,
 } from '../lounge/loungeRichComposerDom.js'
+import { notifyChatMediaPickerActive } from './chatMediaPickerRegistry.js'
 
 const MAX_BODY            = 4000
 const MAX_IMAGES          = 12
@@ -30,6 +31,8 @@ const COMPOSER_ROW_H = 40
 const COMPOSER_MAX_H = 160
 /** Corner radius once the field wraps past one line. */
 const COMPOSER_EXPANDED_RADIUS_PX = 20
+/** After native picker dismiss, ignore ghost taps that can hit the portaled Lounge dock Home. */
+const CHAT_MEDIA_PICKER_GHOST_CLICK_MS = 650
 
 /**
  * Chat message composer - floating glass bar matching the header style.
@@ -91,6 +94,28 @@ export default function ChatComposer({
   const plusBtnRef     = useRef(null)
   const caretRef = useRef(0)
   const enterHandledRef = useRef(false)
+  const mediaPickerEndTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
+
+  const beginMediaPickerSession = useCallback(() => {
+    if (mediaPickerEndTimerRef.current) {
+      clearTimeout(mediaPickerEndTimerRef.current)
+      mediaPickerEndTimerRef.current = null
+    }
+    notifyChatMediaPickerActive(true)
+  }, [])
+
+  const endMediaPickerSession = useCallback((delayMs = CHAT_MEDIA_PICKER_GHOST_CLICK_MS) => {
+    if (mediaPickerEndTimerRef.current) clearTimeout(mediaPickerEndTimerRef.current)
+    mediaPickerEndTimerRef.current = setTimeout(() => {
+      mediaPickerEndTimerRef.current = null
+      notifyChatMediaPickerActive(false)
+    }, delayMs)
+  }, [])
+
+  useEffect(() => () => {
+    if (mediaPickerEndTimerRef.current) clearTimeout(mediaPickerEndTimerRef.current)
+    notifyChatMediaPickerActive(false)
+  }, [])
 
   const hasContent = body.trim().length > 0 || imageSlots.length > 0
   const canSend = !disabled && !sending && hasContent
@@ -318,7 +343,8 @@ export default function ChatComposer({
     const files = Array.from(e.target.files || [])
     if (fileInputRef.current) fileInputRef.current.value = ''
     setPlusOpen(false)
-    enqueueImageFiles(files)
+    if (files.length) enqueueImageFiles(files)
+    endMediaPickerSession()
   }
 
   const handlePaste = useCallback(async (e) => {
@@ -463,23 +489,33 @@ export default function ChatComposer({
     setUploadErr('')
   }
 
-  const handleCropCancel = () => setCropModalFile(null)
+  const handleCropCancel = () => {
+    setCropModalFile(null)
+    endMediaPickerSession()
+  }
 
   // Modal confirms: hand the spec (File or composerTrimJob) off to the parent.
   // All trim/encode/upload work happens in ChatConversation's queue, not here.
   const handleCropConfirm = useCallback((result) => {
     setCropModalFile(null)
     const isTrimJob = result?.type === 'composerTrimJob'
-    if (!isTrimJob && !(result instanceof File)) return
+    if (!isTrimJob && !(result instanceof File)) {
+      endMediaPickerSession()
+      return
+    }
     onVideoConfirmed?.(result)
-  }, [onVideoConfirmed])
+    endMediaPickerSession()
+  }, [onVideoConfirmed, endMediaPickerSession])
 
   const handleVideoPick = useCallback(async (e) => {
     const file = e.target.files?.[0]
-    if (!file) return
     if (videoInputRef.current) videoInputRef.current.value = ''
     setPlusOpen(false)
     setUploadErr('')
+    if (!file) {
+      endMediaPickerSession()
+      return
+    }
 
     // Only open the trimmer if the clip exceeds the limit.
     let duration = NaN
@@ -492,10 +528,11 @@ export default function ChatComposer({
     if (Number.isFinite(duration) && duration <= LOUNGE_VIDEO_MAX_SECONDS) {
       // Short video: skip trim modal entirely.
       onVideoConfirmed?.(file)
+      endMediaPickerSession()
     } else {
       setCropModalFile({ file, knownDurationSec: Number.isFinite(duration) ? duration : undefined })
     }
-  }, [onVideoConfirmed])
+  }, [onVideoConfirmed, endMediaPickerSession])
 
   const handleSend = useCallback(async () => {
     if (!canSend) return
@@ -615,7 +652,7 @@ export default function ChatComposer({
         <button
           type="button"
           disabled={disabled || imageSlots.length >= MAX_IMAGES}
-          onClick={() => { setPlusOpen(false); fileInputRef.current?.click() }}
+          onClick={() => { setPlusOpen(false); beginMediaPickerSession(); fileInputRef.current?.click() }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
@@ -631,7 +668,7 @@ export default function ChatComposer({
         <button
           type="button"
           disabled={disabled || imageSlots.length > 0}
-          onClick={() => { setPlusOpen(false); videoInputRef.current?.click() }}
+          onClick={() => { setPlusOpen(false); beginMediaPickerSession(); videoInputRef.current?.click() }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">

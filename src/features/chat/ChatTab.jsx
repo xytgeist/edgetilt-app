@@ -29,6 +29,8 @@ import {
 import { LOUNGE_CHAT_TOPIC_CHANNELS } from '../../utils/loungeChatConstants.js'
 import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
 import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.js'
+import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
+import { isChatMediaPickerActive } from './chatMediaPickerRegistry.js'
 
 /**
  * @param {{
@@ -139,13 +141,26 @@ export default function ChatTab({
 
   const subscriberOk = Boolean(hasActiveSubscription || isStaff)
 
+  // Keep the Lounge dock suppressed for the whole open-room session (not only while
+  // ChatConversation is mounted). iOS remounts the conversation after native pickers
+  // and would otherwise briefly drop suppressCount and let a ghost tap hit dock Home.
+  useEffect(() => {
+    if (!openRoomId) return undefined
+    notifyLoungeDockSuppress(true)
+    return () => notifyLoungeDockSuppress(false)
+  }, [openRoomId])
+
   // On iOS, app resume with the keyboard open can corrupt the visual viewport layout.
   // Force a full remount of the conversation by bumping the key.
   useEffect(() => {
     const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent)
     if (!isIos || !activeRoomId) return
     const onVisible = () => {
-      if (document.visibilityState === 'visible') setIosResumeCount((n) => n + 1)
+      if (document.visibilityState !== 'visible') return
+      // Native photo/video sheets also flip visibility; remounting mid-pick drops
+      // dock suppress and can ghost-navigate to Lounge on dismiss.
+      if (isChatMediaPickerActive()) return
+      setIosResumeCount((n) => n + 1)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)

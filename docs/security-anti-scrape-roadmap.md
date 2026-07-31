@@ -96,7 +96,7 @@ curl "$SUPABASE_URL/rest/v1/rpc/get_guide_content" \
   -d '{"p_slug":"buffalo-link"}'
 ```
 
-**Monitor:** Edge Monitor → Health → **Security · guide reads** panel populated after migration **`20260731170000`**.
+**Monitor:** Edge Monitor → **Security** tab → **Security · guide reads** panel populated after migration **`20260731170000`**.
 
 ---
 

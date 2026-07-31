@@ -646,6 +646,13 @@ export function chatIsPlatformSubRoom(room) {
   return room?.kind === 'platform_sub'
 }
 
+export function chatCanEditPlatformSubRoomMeta(room, viewerUserId, viewerRole = null) {
+  if (!chatIsPlatformSubRoom(room) || !viewerUserId) return false
+  if (viewerRole === 'admin' || viewerRole === 'moderator') return true
+  const role = room.memberRole || room.member_role
+  return role === 'admin'
+}
+
 export function chatIsPrivateSubsGroupRoom(room) {
   return chatIsFanRoom(room) || chatIsPlatformSubRoom(room)
 }

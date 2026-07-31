@@ -826,10 +826,31 @@ Deno.serve(async (req) => {
     return Boolean(mem?.room_id)
   }
 
+  async function canUpdatePlatformSubRoomSettings(roomId: string, uid: string) {
+    if (actorProfile?.role === 'admin' || actorProfile?.role === 'moderator') return true
+    const { data: mem } = await admin
+      .from('chat_room_members')
+      .select('role')
+      .eq('room_id', roomId)
+      .eq('user_id', uid)
+      .maybeSingle()
+    return mem?.role === 'admin'
+  }
+
   if (action === 'update_group') {
     const roomId = String(body?.room_id || '').trim()
     if (!roomId) return json(400, { error: 'room_id is required.' })
-    if (!(await isGroupAdmin(roomId, user.id))) {
+    const { data: updateRoom } = await admin
+      .from('chat_rooms')
+      .select('id, kind')
+      .eq('id', roomId)
+      .maybeSingle()
+    if (!updateRoom) return json(404, { error: 'Room not found.' })
+    if (updateRoom.kind === 'platform_sub') {
+      if (!(await canUpdatePlatformSubRoomSettings(roomId, user.id))) {
+        return json(403, { error: 'Only room admins can change room settings.' })
+      }
+    } else if (!(await isGroupAdmin(roomId, user.id))) {
       return json(403, { error: 'Only the group owner can change group settings.' })
     }
     const patch: Record<string, unknown> = {}

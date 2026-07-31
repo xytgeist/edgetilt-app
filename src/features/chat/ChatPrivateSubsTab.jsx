@@ -232,9 +232,13 @@ export default function ChatPrivateSubsTab({
                 >
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-zinc-800">
                     {isPlatform ? (
-                      <div className="flex h-full w-full items-center justify-center bg-zinc-950 px-1">
-                        <EdgeLogoWithEasterEgg className="h-5 w-auto max-w-full" />
-                      </div>
+                      avatar ? (
+                        <img src={String(avatar)} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-zinc-950 px-1">
+                          <EdgeLogoWithEasterEgg className="h-5 w-auto max-w-full" />
+                        </div>
+                      )
                     ) : avatar ? (
                       <img src={String(avatar)} alt="" className="h-full w-full object-cover" />
                     ) : (

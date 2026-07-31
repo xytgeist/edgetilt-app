@@ -10,6 +10,7 @@ import {
   chatIsFanRoom,
   chatIsPlatformSubRoom,
   chatIsPrivateSubsGroupRoom,
+  chatCanEditPlatformSubRoomMeta,
   chatIsFanRoomOwner,
   chatIsGroupOwner,
   chatLeaveRoom,
@@ -94,7 +95,7 @@ export default function ChatGroupSettingsSheet({
   const isPlatformSubRoom = chatIsPlatformSubRoom(room)
   const isPrivateSubsGroupRoom = chatIsPrivateSubsGroupRoom(room)
   const isOwner = isPlatformSubRoom
-    ? viewerRole === 'admin'
+    ? chatCanEditPlatformSubRoomMeta(room, viewerUserId, viewerRole)
     : isCreatorFanRoom
       ? chatIsFanRoomOwner(room, viewerUserId)
       : chatIsGroupOwner(room, viewerUserId)

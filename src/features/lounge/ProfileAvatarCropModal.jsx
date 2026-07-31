@@ -16,9 +16,12 @@ function clamp(n, lo, hi) {
 }
 
 /**
- * Full-screen modal: circular crop preview, pan, pinch/wheel zoom, 90° rotate, Apply → `File` (WebP).
+ * Full-screen modal: crop preview, pan, pinch/wheel zoom, 90° rotate, Apply → `File` (WebP).
+ *
+ * @param {'circle' | 'square'} [cropShape='circle'] — `square` fills the frame (chat room avatars); `circle` for profiles.
  */
-export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }) {
+export default function ProfileAvatarCropModal({ open, file, onCancel, onApply, cropShape = 'circle' }) {
+  const isSquareCrop = cropShape === 'square'
   const canvasRef = useRef(null)
   const bitmapRef = useRef(null)
   const [rotationDeg, setRotationDeg] = useState(0)
@@ -45,8 +48,10 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }
     if (!ctx) return
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, s, s)
-    ctx.fillStyle = '#09090b'
-    ctx.fillRect(0, 0, s, s)
+    if (!isSquareCrop) {
+      ctx.fillStyle = '#09090b'
+      ctx.fillRect(0, 0, s, s)
+    }
 
     const { rw, rh } = rotatedExtents(iw, ih, rotationDeg)
     const cover = Math.max(s / Math.max(rw, 1e-6), s / Math.max(rh, 1e-6))
@@ -54,9 +59,11 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }
     const rad = (rotationDeg * Math.PI) / 180
 
     ctx.save()
-    ctx.beginPath()
-    ctx.arc(s / 2, s / 2, s / 2, 0, Math.PI * 2)
-    ctx.clip()
+    if (!isSquareCrop) {
+      ctx.beginPath()
+      ctx.arc(s / 2, s / 2, s / 2, 0, Math.PI * 2)
+      ctx.clip()
+    }
     ctx.translate(s / 2, s / 2)
     ctx.rotate(rad)
     ctx.scale(scale, scale)
@@ -66,13 +73,25 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }
 
     // ring
     ctx.save()
-    ctx.beginPath()
-    ctx.arc(s / 2, s / 2, s / 2 - 1.5, 0, Math.PI * 2)
     ctx.strokeStyle = 'rgba(255,255,255,0.22)'
     ctx.lineWidth = 3
+    if (isSquareCrop) {
+      const inset = 1.5
+      const side = s - inset * 2
+      const radius = Math.round(s * 0.22)
+      ctx.beginPath()
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(inset, inset, side, side, radius)
+      } else {
+        ctx.rect(inset, inset, side, side)
+      }
+    } else {
+      ctx.beginPath()
+      ctx.arc(s / 2, s / 2, s / 2 - 1.5, 0, Math.PI * 2)
+    }
     ctx.stroke()
     ctx.restore()
-  }, [rotationDeg, zoom, pan])
+  }, [isSquareCrop, rotationDeg, zoom, pan])
 
   /** Prevent parent scroll surfaces from moving while adjusting crop. */
   useEffect(() => {
@@ -248,7 +267,7 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply }
           ) : (
             <canvas
               ref={canvasRef}
-              className="max-h-[min(72vmin,420px)] max-w-[min(92vw,420px)] touch-none rounded-full shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
+              className={`max-h-[min(72vmin,420px)] max-w-[min(92vw,420px)] touch-none shadow-[0_0_0_1px_rgba(255,255,255,0.08)] ${isSquareCrop ? 'rounded-xl' : 'rounded-full'}`}
               onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}

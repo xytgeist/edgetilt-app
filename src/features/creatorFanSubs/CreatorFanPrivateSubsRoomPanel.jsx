@@ -197,6 +197,7 @@ export default function CreatorFanPrivateSubsRoomPanel({
       <ProfileAvatarCropModal
         open={Boolean(avatarCropFile)}
         file={avatarCropFile}
+        cropShape="square"
         onCancel={() => setAvatarCropFile(null)}
         onApply={(file) => void onAvatarCropped(file)}
       />

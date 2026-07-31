@@ -988,6 +988,7 @@ export default function ChatGroupSettingsSheet({
       <ProfileAvatarCropModal
         open={Boolean(avatarCropFile)}
         file={avatarCropFile}
+        cropShape="square"
         onCancel={() => setAvatarCropFile(null)}
         onApply={async (croppedFile) => {
           setAvatarCropFile(null)

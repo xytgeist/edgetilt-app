@@ -71,6 +71,35 @@ html.light [data-chat-feature] .chat-bubble-tail-incoming {
   fill: rgba(228, 228, 231, 0.9);
 }
 
+/* Lounge post link inset in chat: keep quote-embed zinc palette inside blue/zinc bubbles. */
+[data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-100,
+html.light [data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-100 {
+  color: rgb(244 244 245) !important;
+}
+[data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-200,
+html.light [data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-200 {
+  color: rgb(228 228 231) !important;
+}
+[data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-500,
+html.light [data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-500 {
+  color: rgb(113 113 122) !important;
+}
+[data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-600,
+html.light [data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-zinc-600 {
+  color: rgb(82 82 91) !important;
+}
+[data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-fuchsia-200,
+html.light [data-chat-feature] .chat-bubble-surface.text-white [data-chat-lounge-post-embed] .text-fuchsia-200 {
+  color: rgb(245 208 254) !important;
+}
+[data-chat-feature] [data-chat-lounge-post-embed] {
+  border-color: rgba(63, 63, 70, 0.8);
+  background-color: rgba(9, 9, 11, 0.72);
+}
+html.light [data-chat-feature] [data-chat-lounge-post-embed] {
+  background-color: rgba(24, 24, 27, 0.92);
+}
+
 /* Edge scroll shell: dark = gray-950 canvas (#030712); light = remapped zinc-950 (#fafafa) */
 html:not(.light) [data-edge-scroll-shell] {
   background-color: #030712 !important;

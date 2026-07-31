@@ -274,7 +274,9 @@ async function fetchLoungePostPreview(
 ): Promise<LinkPreviewPayload | null> {
   const { data: post, error } = await admin
     .from('community_feed_posts')
-    .select('id,caption,user_id,created_at,pinned,like_count,comment_count,stream_poster_url,media_url,image_urls,gif_url')
+    .select(
+      'id,caption,user_id,created_at,pinned,like_count,comment_count,stream_poster_url,stream_video_uid,stream_video_width,stream_video_height,media_url,image_urls,gif_url',
+    )
     .eq('id', postId)
     .maybeSingle()
   if (error || !post) return null
@@ -317,6 +319,13 @@ async function fetchLoungePostPreview(
       caption: caption || null,
       created_at: post.created_at ? String(post.created_at) : null,
       pinned: post.pinned === true,
+      media_url: post.media_url ? String(post.media_url) : null,
+      gif_url: post.gif_url ? String(post.gif_url) : null,
+      image_urls: post.image_urls ?? null,
+      stream_video_uid: post.stream_video_uid ? String(post.stream_video_uid) : null,
+      stream_poster_url: post.stream_poster_url ? String(post.stream_poster_url) : null,
+      stream_video_width: post.stream_video_width ?? null,
+      stream_video_height: post.stream_video_height ?? null,
       author: {
         user_id: String(post.user_id || prof?.user_id || ''),
         display_name: prof?.display_name ? String(prof.display_name) : null,

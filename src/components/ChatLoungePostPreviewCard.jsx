@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import LoungeFeedAuthorMetaBadges from '../features/lounge/LoungeFeedAuthorMetaBadges.jsx'
+import { LoungePostFeedImagesAndGif } from '../features/lounge/LoungePostFeedMedia.jsx'
 import {
   LOUNGE_FEED_META_TEXT_COLUMN_CLASS,
   LOUNGE_QUOTE_EMBED_AVATAR_CLASS,
@@ -7,12 +8,15 @@ import {
   LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS,
   LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS,
   LOUNGE_QUOTE_EMBED_META_ROW_CLASS,
+  LOUNGE_QUOTE_EMBED_SHELL_BASE,
+  LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE,
 } from '../features/lounge/loungeFeedAvatar.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../features/profiles/profileGate.js'
 import {
   fetchChatLoungePostEmbed,
   isLoungePostLinkPreview,
   loungePostAgeLabel,
+  loungePostEmbedHasMedia,
   resolveLoungePostEmbedFromPreview,
 } from '../utils/loungePostLinkPreview.js'
 
@@ -22,7 +26,6 @@ import {
  * @param {{
  *   preview: object,
  *   className?: string,
- *   isMine?: boolean,
  *   embedded?: boolean,
  *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onPreviewOpen?: (preview: object, e: MouseEvent) => void,
@@ -31,7 +34,6 @@ import {
 export default function ChatLoungePostPreviewCard({
   preview,
   className = '',
-  isMine = false,
   embedded = false,
   supabaseClient = null,
   onPreviewOpen,
@@ -47,12 +49,6 @@ export default function ChatLoungePostPreviewCard({
   useEffect(() => {
     const postId = String(preview?.lounge_post_id || embed?.id || '').trim()
     if (!postId || !supabaseClient) return undefined
-    if (
-      String(embed?.caption || '').trim() &&
-      String(embed?.author?.display_name || embed?.author?.handle || '').trim()
-    ) {
-      return undefined
-    }
 
     let cancelled = false
     void fetchChatLoungePostEmbed(supabaseClient, postId).then((next) => {
@@ -63,7 +59,7 @@ export default function ChatLoungePostPreviewCard({
     return () => {
       cancelled = true
     }
-  }, [embed?.author?.display_name, embed?.caption, embed?.id, preview?.lounge_post_id, supabaseClient])
+  }, [embed?.id, preview?.lounge_post_id, supabaseClient])
 
   const author = embed?.author || {}
   const displayName = useMemo(() => {
@@ -75,28 +71,32 @@ export default function ChatLoungePostPreviewCard({
   }, [author.handle])
   const caption = String(embed?.caption || '').trim()
   const ageLabel = loungePostAgeLabel(embed?.created_at)
+  const postForMedia = useMemo(
+    () => ({
+      id: embed?.id,
+      caption: embed?.caption,
+      media_url: embed?.media_url,
+      gif_url: embed?.gif_url,
+      image_urls: embed?.image_urls,
+      stream_video_uid: embed?.stream_video_uid,
+      stream_poster_url: embed?.stream_poster_url,
+      stream_video_width: embed?.stream_video_width,
+      stream_video_height: embed?.stream_video_height,
+    }),
+    [embed],
+  )
+  const hasMedia = loungePostEmbedHasMedia(postForMedia)
 
   if (!isLoungePostLinkPreview(preview) || loadFailed) return null
 
-  const marginTop = embedded ? 'mt-2' : 'mt-1.5'
-  const widthClass = embedded ? 'w-full max-w-full' : 'w-full max-w-[280px]'
-  const embeddedShell = embedded
-    ? `pt-2 border-t ${isMine ? 'border-white/20' : 'border-zinc-600/50'}`
-    : ''
-  const shellBg = embedded
-    ? isMine
-      ? 'bg-black/12'
-      : 'bg-black/25'
-    : isMine
-      ? 'bg-blue-600/90'
-      : 'bg-zinc-800/95'
-  const borderClass = isMine ? 'border-white/20' : 'border-zinc-600/50'
-  const nameClass = isMine ? 'text-white' : LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS
-  const metaClass = isMine ? 'text-white/75' : LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS
-  const captionClass = isMine ? 'text-white/90' : LOUNGE_QUOTE_EMBED_CAPTION_CLASS
-  const dotClass = isMine ? 'text-white/45' : 'text-zinc-600'
+  const marginTop = embedded ? 'mt-2' : 'mt-0'
+  const embeddedShell = embedded ? 'pt-2 border-t border-zinc-700/50' : ''
+  const shellClass = embedded ? LOUNGE_QUOTE_EMBED_SHELL_BASE : LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE
 
   const open = (e) => {
+    if (e.target instanceof Element && e.target.closest('[data-lounge-feed-carousel-track], [data-lounge-feed-carousel-bleed]')) {
+      return
+    }
     if (typeof onPreviewOpen === 'function') {
       onPreviewOpen(preview, e)
       return
@@ -110,19 +110,25 @@ export default function ChatLoungePostPreviewCard({
 
   const stop = (e) => {
     e.stopPropagation()
-    e.preventDefault()
   }
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
+      data-chat-lounge-post-embed
+      aria-label={`Open Lounge post by ${displayName}`}
+      className={`${marginTop} ${embeddedShell} ${shellClass} ${className}`.trim()}
       onClick={(e) => {
         stop(e)
         open(e)
       }}
-      onPointerDown={stop}
-      className={`${marginTop} ${embeddedShell} block ${widthClass} rounded-xl border ${borderClass} px-2.5 py-2 text-left touch-manipulation ${shellBg} ${className}`}
-      aria-label={caption ? `Open Lounge post by ${displayName}` : `Open Lounge post by ${displayName}`}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        if (e.target !== e.currentTarget) return
+        e.preventDefault()
+        open(e)
+      }}
     >
       <div className="flex min-w-0 items-center gap-2">
         <div className={`${LOUNGE_QUOTE_EMBED_AVATAR_CLASS} pointer-events-none`} aria-hidden>
@@ -144,12 +150,12 @@ export default function ChatLoungePostPreviewCard({
               role={author.role}
               isOg={author.is_og === true}
               displayName={displayName}
-              displayNameClassName={nameClass}
+              displayNameClassName={LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS}
               metaVariant="quoteEmbed"
             />
-            <span className={metaClass}>
+            <span className={LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS}>
               {handleLabel ? <span className="min-w-0 truncate">{handleLabel}</span> : null}
-              {handleLabel && ageLabel ? <span className={`shrink-0 ${dotClass}`}>·</span> : null}
+              {handleLabel && ageLabel ? <span className="shrink-0 text-zinc-600">·</span> : null}
               {ageLabel ? (
                 <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{ageLabel}</span>
               ) : null}
@@ -165,8 +171,19 @@ export default function ChatLoungePostPreviewCard({
         </div>
       </div>
       {caption ? (
-        <div className={`mt-1 text-left whitespace-pre-wrap break-words line-clamp-6 ${captionClass}`}>{caption}</div>
+        <div className={`mt-1 text-left line-clamp-6 ${LOUNGE_QUOTE_EMBED_CAPTION_CLASS}`}>{caption}</div>
       ) : null}
-    </button>
+      {hasMedia ? (
+        <div onClick={stop} onPointerDown={stop}>
+          <LoungePostFeedImagesAndGif
+            post={postForMedia}
+            variant="embed"
+            firstMarginTopClass="mt-2"
+            enableLightbox={false}
+            feedAutoplayRowId={embed?.id}
+          />
+        </div>
+      ) : null}
+    </div>
   )
 }

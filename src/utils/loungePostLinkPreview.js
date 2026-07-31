@@ -1,3 +1,5 @@
+import { feedPostImageUrls, feedPostStreamVideoUid } from './communityFeedPost.js'
+
 /** @typedef {{
  *   user_id?: string | null,
  *   display_name?: string | null,
@@ -13,7 +15,57 @@
  *   created_at?: string | null,
  *   pinned?: boolean | null,
  *   author?: LoungePostEmbedAuthor | null,
+ *   media_url?: string | null,
+ *   gif_url?: string | null,
+ *   image_urls?: unknown,
+ *   stream_video_uid?: string | null,
+ *   stream_poster_url?: string | null,
+ *   stream_video_width?: number | null,
+ *   stream_video_height?: number | null,
  * }} LoungePostEmbedPreview */
+
+const LOUNGE_POST_EMBED_MEDIA_SELECT =
+  'id,caption,created_at,pinned,user_id,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height'
+
+/**
+ * @param {Record<string, unknown> | null | undefined} row
+ * @returns {Pick<LoungePostEmbedPreview, 'media_url' | 'gif_url' | 'image_urls' | 'stream_video_uid' | 'stream_poster_url' | 'stream_video_width' | 'stream_video_height'>}
+ */
+export function loungePostMediaFieldsFromRow(row) {
+  if (!row) {
+    return {
+      media_url: null,
+      gif_url: null,
+      image_urls: null,
+      stream_video_uid: null,
+      stream_poster_url: null,
+      stream_video_width: null,
+      stream_video_height: null,
+    }
+  }
+  return {
+    media_url: row.media_url ? String(row.media_url) : null,
+    gif_url: row.gif_url ? String(row.gif_url) : null,
+    image_urls: row.image_urls ?? null,
+    stream_video_uid: row.stream_video_uid ? String(row.stream_video_uid) : null,
+    stream_poster_url: row.stream_poster_url ? String(row.stream_poster_url) : null,
+    stream_video_width:
+      row.stream_video_width == null || row.stream_video_width === '' ? null : Number(row.stream_video_width),
+    stream_video_height:
+      row.stream_video_height == null || row.stream_video_height === '' ? null : Number(row.stream_video_height),
+  }
+}
+
+/**
+ * @param {LoungePostEmbedPreview | null | undefined} embed
+ * @returns {boolean}
+ */
+export function loungePostEmbedHasMedia(embed) {
+  if (!embed) return false
+  if (feedPostStreamVideoUid(embed)) return true
+  if (String(embed.media_url || embed.gif_url || '').trim()) return true
+  return feedPostImageUrls(embed).length > 0
+}
 
 /**
  * @param {string | null | undefined} createdAt
@@ -74,7 +126,7 @@ export async function fetchChatLoungePostEmbed(supabaseClient, postId) {
 
   const { data: post, error } = await supabaseClient
     .from('community_feed_posts')
-    .select('id,caption,created_at,pinned,user_id')
+    .select(LOUNGE_POST_EMBED_MEDIA_SELECT)
     .eq('id', id)
     .is('hidden_at', null)
     .maybeSingle()
@@ -91,6 +143,7 @@ export async function fetchChatLoungePostEmbed(supabaseClient, postId) {
     caption: post.caption,
     created_at: post.created_at,
     pinned: post.pinned === true,
+    ...loungePostMediaFieldsFromRow(post),
     author: prof
       ? {
           user_id: prof.user_id,

@@ -22,6 +22,7 @@ import {
   CHAT_YOUTUBE_EMBED_WIDTH_CLASS,
   isYouTubeLinkPreview,
 } from '../../utils/youtubeEmbed.js'
+import { isLoungePostLinkPreview } from '../../utils/loungePostLinkPreview.js'
 
 const QUICK_REACTIONS = ['👍','❤️','😂','🔥','😮','😢','🎉','😍','👏','💯','🙏','🤣']
 
@@ -272,8 +273,11 @@ export default function ChatBubble({
   /** Caption + link card share one bubble (iMessage-style). */
   const linkPreviewInBubble = Boolean(linkPreview && showTextBubble && !isDeleted)
   const youtubeLinkPreview = Boolean(linkPreview && isYouTubeLinkPreview(linkPreview))
+  const loungePostLinkPreview = Boolean(linkPreview && isLoungePostLinkPreview(linkPreview))
   const widenColumnForYoutube =
     youtubeLinkPreview && (linkPreviewInBubble || isLinkPreviewOnly)
+  const widenColumnForLoungePost =
+    loungePostLinkPreview && (linkPreviewInBubble || isLinkPreviewOnly)
 
   const bubbleHighlightStyle =
     highlighted && !isDeleted
@@ -616,7 +620,7 @@ export default function ChatBubble({
 
         <div
           className={`flex flex-col gap-1 ${isMine ? 'items-end' : 'items-start'} ${
-            isSingleVideoOnly || widenColumnForYoutube ? CHAT_MESSAGE_COLUMN_WIDTH_CLASS : 'max-w-[78%]'
+            isSingleVideoOnly || widenColumnForYoutube || widenColumnForLoungePost ? CHAT_MESSAGE_COLUMN_WIDTH_CLASS : 'max-w-[78%]'
           }`}
         >
           {/* Sender name - others only; first in run only; hidden in DMs */}
@@ -751,7 +755,9 @@ export default function ChatBubble({
           {linkPreview && !isDeleted && !linkPreviewInBubble ? (
             <div
               ref={isLinkPreviewOnly ? bubbleRef : undefined}
-              className={`${isLinkPreviewOnly ? 'chat-bubble-surface' : ''} ${youtubeLinkPreview ? CHAT_YOUTUBE_EMBED_WIDTH_CLASS : ''}`.trim()}
+              className={`${
+                isLinkPreviewOnly && !loungePostLinkPreview ? 'chat-bubble-surface' : ''
+              } ${youtubeLinkPreview ? CHAT_YOUTUBE_EMBED_WIDTH_CLASS : ''}`.trim()}
               onPointerDown={isLinkPreviewOnly ? handlePointerDown : undefined}
               onPointerUp={isLinkPreviewOnly ? cancelLongPress : undefined}
               onPointerCancel={isLinkPreviewOnly ? cancelLongPress : undefined}

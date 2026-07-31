@@ -7,6 +7,7 @@ import {
   formatOpsRosterHandle,
   formatOpsRosterWhen,
   opsMonitorProfileHref,
+  opsMonitorSortByRecent,
   opsMonitorUserSignupDailySeries,
   opsMonitorUserSignupGrowth,
   opsMonitorUserSignupsSummary,
@@ -110,10 +111,12 @@ export default function EdgeMonitorUserSignupsPanel({ roster, signupTrends30d = 
 
   const recentSignups = useMemo(() => {
     const rows = Array.isArray(users.recent) ? users.recent : []
-    if (!q) return rows
-    return rows.filter((r) =>
-      [r.handle, r.display_name, r.email, r.role].some((p) => String(p || '').toLowerCase().includes(q)),
-    )
+    const filtered = !q
+      ? rows
+      : rows.filter((r) =>
+          [r.handle, r.display_name, r.email, r.role].some((p) => String(p || '').toLowerCase().includes(q)),
+        )
+    return opsMonitorSortByRecent(filtered, ['created_at'])
   }, [users.recent, q])
 
   const recentTotal = Array.isArray(users.recent) ? users.recent.length : 0
@@ -167,59 +170,64 @@ export default function EdgeMonitorUserSignupsPanel({ roster, signupTrends30d = 
 
       {roster ? (
         <>
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <SignupMetric label="Signups 24h" value={summary.new24h} accent={OPS_CHART_COLORS.green} />
-            <SignupMetric label="Signups 7d" value={summary.new7d} accent={OPS_CHART_COLORS.cyan} />
-            <SignupMetric label="Signups 30d" value={summary.new30d} />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <SignupGrowthMetric label="Growth · day" growth={growth.day} hint="vs yesterday (UTC)" />
-            <SignupGrowthMetric label="Growth · week" growth={growth.week} hint="last 7d vs prior 7d" />
-            <SignupGrowthMetric
-              label="Growth · month"
-              growth={growth.month}
-              hint="last 30d vs prior 30d"
-            />
-          </div>
-
-          {dailySeries.values.length > 0 ? (
-            <div className="mb-3">
-              <div className="mb-2">
-                <div className="text-white text-sm font-bold">Signups by day</div>
-                <div className="text-zinc-500 text-[10px]">UTC daily · last 30 days</div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <div className="min-w-0">
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <SignupMetric label="Signups 24h" value={summary.new24h} accent={OPS_CHART_COLORS.green} />
+                <SignupMetric label="Signups 7d" value={summary.new7d} accent={OPS_CHART_COLORS.cyan} />
+                <SignupMetric label="Signups 30d" value={summary.new30d} />
               </div>
-              <MonitorSparklineChart
-                labels={dailySeries.labels}
-                values={dailySeries.values}
-                color={OPS_CHART_COLORS.cyan}
-                label="New accounts"
-                height={168}
-              />
-            </div>
-          ) : null}
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950">
-            <button
-              type="button"
-              onClick={() => setListOpen((v) => !v)}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left touch-manipulation hover:bg-zinc-900/80"
-              aria-expanded={listOpen}
-            >
-              <div className="min-w-0">
-                <div className="text-white text-sm font-semibold">Recent signups</div>
-                <div className="text-zinc-500 text-[10px] mt-0.5">
-                  {recentTotal} loaded · tap to {listOpen ? 'hide' : 'browse'}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <SignupGrowthMetric label="Growth · day" growth={growth.day} hint="vs yesterday (UTC)" />
+                <SignupGrowthMetric label="Growth · week" growth={growth.week} hint="last 7d vs prior 7d" />
+                <SignupGrowthMetric
+                  label="Growth · month"
+                  growth={growth.month}
+                  hint="last 30d vs prior 30d"
+                />
+              </div>
+
+              {dailySeries.values.length > 0 ? (
+                <div>
+                  <div className="mb-2">
+                    <div className="text-white text-sm font-bold">Signups by day</div>
+                    <div className="text-zinc-500 text-[10px]">UTC daily · last 30 days</div>
+                  </div>
+                  <MonitorSparklineChart
+                    labels={dailySeries.labels}
+                    values={dailySeries.values}
+                    color={OPS_CHART_COLORS.cyan}
+                    label="New accounts"
+                    height={168}
+                  />
                 </div>
-              </div>
-              <ChevronDown
-                className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${listOpen ? 'rotate-180' : ''}`}
-                aria-hidden
-              />
-            </button>
+              ) : null}
+            </div>
 
-            {listOpen ? (
-              <div className="border-t border-zinc-800 px-3 pb-3 pt-2">
+            <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-col min-h-0 lg:max-h-[420px]">
+              <button
+                type="button"
+                onClick={() => setListOpen((v) => !v)}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left touch-manipulation hover:bg-zinc-900/80 lg:pointer-events-none lg:cursor-default"
+                aria-expanded={listOpen}
+              >
+                <div className="min-w-0">
+                  <div className="text-white text-sm font-semibold">Recent signups</div>
+                  <div className="text-zinc-500 text-[10px] mt-0.5">
+                    {recentTotal} loaded · newest first
+                    <span className="lg:hidden"> · tap to {listOpen ? 'hide' : 'browse'}</span>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform lg:hidden ${listOpen ? 'rotate-180' : ''}`}
+                  aria-hidden
+                />
+              </button>
+
+              <div
+                className={`border-t border-zinc-800 px-3 pb-3 pt-2 flex flex-col min-h-0 flex-1 ${listOpen ? '' : 'hidden lg:flex'}`}
+              >
                 <input
                   type="search"
                   value={search}
@@ -228,7 +236,7 @@ export default function EdgeMonitorUserSignupsPanel({ roster, signupTrends30d = 
                   className="mb-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-500"
                 />
 
-                <div className="overflow-x-auto overflow-y-auto max-h-52 rounded-lg border border-zinc-800">
+                <div className="overflow-x-auto overflow-y-auto max-h-52 lg:max-h-none lg:flex-1 rounded-lg border border-zinc-800">
                   <table className="w-full min-w-[520px] text-left text-xs">
                     <thead className="sticky top-0 z-10 bg-zinc-950 text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800">
                       <tr>
@@ -268,7 +276,7 @@ export default function EdgeMonitorUserSignupsPanel({ roster, signupTrends30d = 
                   </table>
                 </div>
               </div>
-            ) : null}
+            </div>
           </div>
         </>
       ) : null}

@@ -2,12 +2,88 @@
 
 import { buildLoungeProfileShareUrl } from '../../utils/loungeSharePost.js'
 
+/** @typedef {'paid' | 'comp' | 'test' | 'unknown'} OpsMonitorBillingSource */
+
+/**
+ * Classify platform/fan subscription billing from Stripe-shaped ids.
+ * Matches admin comp (`admin_comp_*`), SQL test grants (`test_*`), and real Stripe (`sub_`, `pi_`, `cus_`).
+ * @param {string | null | undefined} subscriptionId
+ * @param {string | null | undefined} [customerId]
+ * @returns {OpsMonitorBillingSource}
+ */
+export function opsMonitorSubscriptionBillingSource(subscriptionId, customerId) {
+  const sub = String(subscriptionId || '').trim()
+  const cus = String(customerId || '').trim()
+
+  if (sub.startsWith('admin_comp_') || cus.startsWith('admin_comp_')) return 'comp'
+  if (sub.startsWith('test_') || cus.startsWith('test_cus_')) return 'test'
+
+  if (
+    sub.startsWith('sub_')
+    || sub.startsWith('pi_')
+    || sub.startsWith('cs_')
+    || cus.startsWith('cus_')
+  ) {
+    return 'paid'
+  }
+
+  return 'unknown'
+}
+
+/** @param {OpsMonitorBillingSource} source */
+export function formatOpsMonitorBillingSourceLabel(source) {
+  switch (source) {
+    case 'paid':
+      return 'Paid'
+    case 'comp':
+      return 'Comp'
+    case 'test':
+      return 'Test'
+    default:
+      return 'Unknown'
+  }
+}
+
+/**
+ * @param {{ stripe_subscription_id?: string | null, stripe_customer_id?: string | null }} row
+ * @returns {OpsMonitorBillingSource}
+ */
+export function opsMonitorRowBillingSource(row) {
+  return opsMonitorSubscriptionBillingSource(row?.stripe_subscription_id, row?.stripe_customer_id)
+}
+
 /** @param {string | null | undefined} iso */
 export function formatOpsRosterWhen(iso) {
   if (!iso) return '...'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '...'
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} row
+ * @param {string[]} keys
+ */
+export function opsMonitorRowRecentMs(row, keys) {
+  if (!row || !keys?.length) return 0
+  for (const key of keys) {
+    const ms = Date.parse(String(row[key] || ''))
+    if (Number.isFinite(ms)) return ms
+  }
+  return 0
+}
+
+/**
+ * Newest first (stable tie-break on original index).
+ * @param {Array<Record<string, unknown>> | null | undefined} rows
+ * @param {string[]} dateKeys
+ */
+export function opsMonitorSortByRecent(rows, dateKeys) {
+  if (!Array.isArray(rows) || rows.length < 2) return rows || []
+  return rows
+    .map((row, index) => ({ row, index, ms: opsMonitorRowRecentMs(row, dateKeys) }))
+    .sort((a, b) => b.ms - a.ms || a.index - b.index)
+    .map(({ row }) => row)
 }
 
 /** @param {string | null | undefined} handle */
@@ -87,6 +163,7 @@ export function opsPlatformSubscribersToCsv(rows) {
     { label: 'display_name', value: (r) => r.display_name },
     { label: 'email', value: (r) => r.email },
     { label: 'product', value: (r) => r.product_slug },
+    { label: 'billing', value: (r) => formatOpsMonitorBillingSourceLabel(opsMonitorRowBillingSource(r)) },
     { label: 'status', value: (r) => r.status },
     { label: 'interval', value: (r) => r.price_interval },
     { label: 'cancel_at_period_end', value: (r) => (r.cancel_at_period_end ? 'yes' : 'no') },
@@ -104,6 +181,7 @@ export function opsFanSubscribersToCsv(rows) {
     { label: 'subscriber_email', value: (r) => r.subscriber_email },
     { label: 'creator_handle', value: (r) => r.creator_handle },
     { label: 'tier_key', value: (r) => r.fan_tier_key },
+    { label: 'billing', value: (r) => formatOpsMonitorBillingSourceLabel(opsMonitorRowBillingSource(r)) },
     { label: 'status', value: (r) => r.status },
     { label: 'cancel_at_period_end', value: (r) => (r.cancel_at_period_end ? 'yes' : 'no') },
     { label: 'period_end', value: (r) => r.current_period_end },

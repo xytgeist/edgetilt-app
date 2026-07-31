@@ -6,9 +6,12 @@ import {
   downloadOpsMonitorCsv,
   formatOpsRosterHandle,
   formatOpsRosterWhen,
+  formatOpsMonitorBillingSourceLabel,
   opsFanSubscribersToCsv,
   opsMonitorProfileHref,
   opsMonitorRosterSummary,
+  opsMonitorRowBillingSource,
+  opsMonitorSortByRecent,
   opsPlatformSubscribersToCsv,
   opsStripeConnectAccountDashboardUrl,
   opsStripeConnectSubscriptionDashboardUrl,
@@ -17,7 +20,6 @@ import {
 } from './opsMonitorSubscriberRoster.js'
 
 const TABS = [
-  { id: 'platform', label: 'Platform subs' },
   { id: 'fan', label: 'Fan subs' },
   { id: 'creators', label: 'Creators' },
   { id: 'cancels', label: 'Cancels' },
@@ -113,6 +115,28 @@ function RosterProfileCell({ handle, userId, displayName, email, accent = 'text-
 const stripeLinkClass =
   'inline-flex items-center text-[10px] font-semibold text-violet-300 hover:text-violet-200 hover:underline'
 
+const billingBadgeClass = {
+  paid: 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60',
+  comp: 'bg-amber-950/80 text-amber-300 border-amber-800/60',
+  test: 'bg-cyan-950/80 text-cyan-300 border-cyan-800/60',
+  unknown: 'bg-zinc-900 text-zinc-400 border-zinc-700',
+}
+
+/** @param {{ row: { stripe_subscription_id?: string | null, stripe_customer_id?: string | null } }} props */
+function RosterBillingCell({ row }) {
+  const source = opsMonitorRowBillingSource(row)
+  return (
+    <td className="px-3 py-2.5 whitespace-nowrap">
+      <span
+        className={`inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${billingBadgeClass[source]}`}
+        title={String(row.stripe_subscription_id || row.stripe_customer_id || '').trim() || 'No billing id'}
+      >
+        {formatOpsMonitorBillingSourceLabel(source)}
+      </span>
+    </td>
+  )
+}
+
 /**
  * @param {{
  *   customerId?: string | null,
@@ -169,94 +193,129 @@ export default function EdgeMonitorSubscriberRosterPanel({
   refreshing,
   onReload,
 }) {
-  const [tab, setTab] = useState('platform')
+  const [tab, setTab] = useState('fan')
   const [search, setSearch] = useState('')
+  const [platformSearch, setPlatformSearch] = useState('')
+  const [paidOnly, setPaidOnly] = useState(false)
+  const [platformPaidOnly, setPlatformPaidOnly] = useState(false)
   const [listOpen, setListOpen] = useState(false)
 
   const summary = useMemo(() => opsMonitorRosterSummary(roster), [roster])
   const theme = OPS_SECTION_THEMES.subs
   const q = search.trim().toLowerCase()
+  const platformQ = platformSearch.trim().toLowerCase()
 
   const platform = roster?.platform || {}
   const fan = roster?.creator_fan || {}
 
-  const filterText = (parts) => {
-    if (!q) return true
-    return parts.some((p) => String(p || '').toLowerCase().includes(q))
+  const filterText = (parts, query) => {
+    if (!query) return true
+    return parts.some((p) => String(p || '').toLowerCase().includes(query))
   }
 
-  const activePlatform = useMemo(
-    () => (Array.isArray(platform.active_roster) ? platform.active_roster : []).filter((r) =>
-      filterText([r.handle, r.display_name, r.email, r.product_slug, r.status]),
-    ),
-    [platform.active_roster, q],
-  )
+  const passesPaidFilter = (row, onlyPaid) => !onlyPaid || opsMonitorRowBillingSource(row) === 'paid'
 
-  const fanActive = useMemo(
-    () => (Array.isArray(fan.active_roster) ? fan.active_roster : []).filter((r) =>
-      filterText([
-        r.subscriber_handle,
-        r.subscriber_email,
-        r.creator_handle,
-        r.fan_tier_key,
-        r.status,
-      ]),
-    ),
-    [fan.active_roster, q],
-  )
+  const activePlatform = useMemo(() => {
+    const rows = Array.isArray(platform.active_roster) ? platform.active_roster : []
+    const filtered = rows.filter(
+      (r) =>
+        passesPaidFilter(r, platformPaidOnly)
+        && filterText(
+          [
+            r.handle,
+            r.display_name,
+            r.email,
+            r.product_slug,
+            r.status,
+            formatOpsMonitorBillingSourceLabel(opsMonitorRowBillingSource(r)),
+          ],
+          platformQ,
+        ),
+    )
+    return opsMonitorSortByRecent(filtered, ['subscribed_at', 'updated_at', 'created_at'])
+  }, [platform.active_roster, platformQ, platformPaidOnly])
 
-  const creators = useMemo(
-    () => (Array.isArray(fan.monetized_creators) ? fan.monetized_creators : []).filter((r) =>
-      filterText([r.handle, r.display_name, r.email, r.fan_tier_key]),
-    ),
-    [fan.monetized_creators, q],
-  )
+  const fanActive = useMemo(() => {
+    const rows = Array.isArray(fan.active_roster) ? fan.active_roster : []
+    const filtered = rows.filter(
+      (r) =>
+        passesPaidFilter(r, paidOnly)
+        && filterText(
+          [
+            r.subscriber_handle,
+            r.subscriber_email,
+            r.creator_handle,
+            r.fan_tier_key,
+            r.status,
+            formatOpsMonitorBillingSourceLabel(opsMonitorRowBillingSource(r)),
+          ],
+          q,
+        ),
+    )
+    return opsMonitorSortByRecent(filtered, ['subscribed_at', 'updated_at', 'created_at'])
+  }, [fan.active_roster, q, paidOnly])
+
+  const creators = useMemo(() => {
+    const rows = Array.isArray(fan.monetized_creators) ? fan.monetized_creators : []
+    const filtered = rows.filter((r) => filterText([r.handle, r.display_name, r.email, r.fan_tier_key], q))
+    return opsMonitorSortByRecent(filtered, ['profile_created_at', 'created_at'])
+  }, [fan.monetized_creators, q])
 
   const pendingAll = useMemo(() => {
     const plat = Array.isArray(platform.pending_cancel) ? platform.pending_cancel : []
     const fanPending = Array.isArray(fan.pending_cancel) ? fan.pending_cancel : []
-    return [
+    const merged = [
       ...plat.map((r) => ({ kind: 'platform', ...r })),
       ...fanPending.map((r) => ({ kind: 'fan', ...r })),
-    ].filter((r) =>
-      filterText([
-        r.handle,
-        r.email,
-        r.subscriber_handle,
-        r.subscriber_email,
-        r.creator_handle,
-        r.product_slug,
-      ]),
+    ].filter(
+      (r) =>
+        passesPaidFilter(r, paidOnly)
+        && filterText(
+          [
+            r.handle,
+            r.email,
+            r.subscriber_handle,
+            r.subscriber_email,
+            r.creator_handle,
+            r.product_slug,
+            formatOpsMonitorBillingSourceLabel(opsMonitorRowBillingSource(r)),
+          ],
+          q,
+        ),
     )
-  }, [fan.pending_cancel, platform.pending_cancel, q])
+    return opsMonitorSortByRecent(merged, ['updated_at', 'subscribed_at', 'current_period_end'])
+  }, [fan.pending_cancel, platform.pending_cancel, q, paidOnly])
 
   const canceledAll = useMemo(() => {
     const plat = Array.isArray(platform.canceled_recent) ? platform.canceled_recent : []
     const fanCanceled = Array.isArray(fan.canceled_recent) ? fan.canceled_recent : []
-    return [
+    const merged = [
       ...plat.map((r) => ({ kind: 'platform', ...r })),
       ...fanCanceled.map((r) => ({ kind: 'fan', ...r })),
-    ].filter((r) =>
-      filterText([
-        r.handle,
-        r.email,
-        r.subscriber_handle,
-        r.subscriber_email,
-        r.creator_handle,
-        r.product_slug,
-        r.status,
-      ]),
+    ].filter(
+      (r) =>
+        passesPaidFilter(r, paidOnly)
+        && filterText(
+          [
+            r.handle,
+            r.email,
+            r.subscriber_handle,
+            r.subscriber_email,
+            r.creator_handle,
+            r.product_slug,
+            r.status,
+            formatOpsMonitorBillingSourceLabel(opsMonitorRowBillingSource(r)),
+          ],
+          q,
+        ),
     )
-  }, [fan.canceled_recent, platform.canceled_recent, q])
+    return opsMonitorSortByRecent(merged, ['canceled_at', 'updated_at', 'current_period_end'])
+  }, [fan.canceled_recent, platform.canceled_recent, q, paidOnly])
 
   const byProduct = Array.isArray(platform.by_product) ? platform.by_product : []
 
   const activeTabMeta = useMemo(() => {
     const tabDef = TABS.find((t) => t.id === tab) || TABS[0]
-    if (tab === 'platform') {
-      const total = Array.isArray(platform.active_roster) ? platform.active_roster.length : 0
-      return { label: tabDef.label, shown: activePlatform.length, total }
-    }
     if (tab === 'fan') {
       const total = Array.isArray(fan.active_roster) ? fan.active_roster.length : 0
       return { label: tabDef.label, shown: fanActive.length, total }
@@ -276,12 +335,10 @@ export default function EdgeMonitorSubscriberRosterPanel({
     }
   }, [
     tab,
-    activePlatform.length,
     fanActive.length,
     creators.length,
     pendingAll.length,
     canceledAll.length,
-    platform.active_roster,
     fan.active_roster,
     fan.monetized_creators,
     platform.pending_cancel,
@@ -290,21 +347,45 @@ export default function EdgeMonitorSubscriberRosterPanel({
     fan.canceled_recent,
   ])
 
+  const platformListHint = useMemo(() => {
+    const total = Array.isArray(platform.active_roster) ? platform.active_roster.length : 0
+    const parts = [`${activePlatform.length}`]
+    if (platformQ || platformPaidOnly) parts.push(`of ${total}`)
+    parts.push('rows')
+    if (platformPaidOnly) parts.push('· paid only')
+    parts.push('· newest first')
+    return parts.join(' ')
+  }, [activePlatform.length, platform.active_roster, platformQ, platformPaidOnly])
+
+  const rosterListHint = useMemo(() => {
+    const parts = [`${activeTabMeta.shown}`]
+    if (q || paidOnly) parts.push(`of ${activeTabMeta.total}`)
+    parts.push('rows')
+    if (paidOnly && tab !== 'creators') parts.push('· paid only')
+    parts.push('· newest first')
+    parts.push(`· tap to ${listOpen ? 'hide' : 'browse'}`)
+    return parts.join(' ')
+  }, [activeTabMeta.shown, activeTabMeta.total, q, paidOnly, tab, listOpen])
+
   const onExport = () => {
     const stamp = new Date().toISOString().slice(0, 10)
-    if (tab === 'platform') {
-      downloadOpsMonitorCsv(
-        opsPlatformSubscribersToCsv(platform.active_roster || []),
-        `edge-platform-subs-${stamp}.csv`,
-      )
-    } else if (tab === 'fan') {
-      downloadOpsMonitorCsv(opsFanSubscribersToCsv(fan.active_roster || []), `edge-fan-subs-${stamp}.csv`)
+    if (tab === 'fan') {
+      downloadOpsMonitorCsv(opsFanSubscribersToCsv(fanActive), `edge-fan-subs-${stamp}.csv`)
     } else if (tab === 'cancels') {
+      const cancelRows = [...pendingAll, ...canceledAll]
       downloadOpsMonitorCsv(
-        opsPlatformSubscribersToCsv(platform.pending_cancel || []),
-        `edge-pending-cancels-${stamp}.csv`,
+        opsPlatformSubscribersToCsv(cancelRows),
+        `edge-cancels-${stamp}.csv`,
       )
     }
+  }
+
+  const onExportPlatform = () => {
+    const stamp = new Date().toISOString().slice(0, 10)
+    downloadOpsMonitorCsv(
+      opsPlatformSubscribersToCsv(activePlatform),
+      `edge-platform-subs-${stamp}.csv`,
+    )
   }
 
   return (
@@ -333,7 +414,7 @@ export default function EdgeMonitorSubscriberRosterPanel({
             <button
               type="button"
               onClick={onExport}
-              disabled={!roster || loading}
+              disabled={!roster || loading || tab === 'creators'}
               className="min-h-8 inline-flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 text-zinc-200 text-[11px] font-semibold hover:bg-zinc-700 disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5" aria-hidden />
@@ -366,33 +447,139 @@ export default function EdgeMonitorSubscriberRosterPanel({
 
         {roster ? (
           <>
-            {byProduct.length > 0 ? (
-              <div className="mb-4">
-                <div className="mb-2">
-                  <div className="text-white text-sm font-bold">Active by product</div>
-                  <div className="text-zinc-500 text-[10px]">Platform Edge subs · active + trialing</div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
-                  {byProduct.map((row, i) => (
-                    <ProductActiveMetric
-                      key={row.product_slug}
-                      row={row}
-                      accent={OPS_CHART_SEQUENCE[i % OPS_CHART_SEQUENCE.length]}
-                    />
-                  ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start mb-4">
+              <div className="min-w-0">
+                {byProduct.length > 0 ? (
+                  <div className="mb-4">
+                    <div className="mb-2">
+                      <div className="text-white text-sm font-bold">Active by product</div>
+                      <div className="text-zinc-500 text-[10px]">Platform Edge subs · active + trialing</div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-2">
+                      {byProduct.map((row, i) => (
+                        <ProductActiveMetric
+                          key={row.product_slug}
+                          row={row}
+                          accent={OPS_CHART_SEQUENCE[i % OPS_CHART_SEQUENCE.length]}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <RosterMetric label="Platform active" value={summary.activePlatform} accent={OPS_CHART_COLORS.purple} />
+                  <RosterMetric label="Fan active" value={summary.activeFan} accent={OPS_CHART_COLORS.pink} />
+                  <RosterMetric
+                    label="Pending cancel"
+                    value={summary.pendingPlatform + summary.pendingFan}
+                    accent={OPS_CHART_COLORS.orange}
+                  />
+                  <RosterMetric label="Monetized creators" value={summary.monetizedCreators} accent={OPS_CHART_COLORS.cyan} />
                 </div>
               </div>
-            ) : null}
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              <RosterMetric label="Platform active" value={summary.activePlatform} accent={OPS_CHART_COLORS.purple} />
-              <RosterMetric label="Fan active" value={summary.activeFan} accent={OPS_CHART_COLORS.pink} />
-              <RosterMetric
-                label="Pending cancel"
-                value={summary.pendingPlatform + summary.pendingFan}
-                accent={OPS_CHART_COLORS.orange}
-              />
-              <RosterMetric label="Monetized creators" value={summary.monetizedCreators} accent={OPS_CHART_COLORS.cyan} />
+              <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-col min-h-0 lg:max-h-[420px]">
+                <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-zinc-800/80">
+                  <div className="min-w-0">
+                    <div className="text-white text-sm font-semibold">Platform subs</div>
+                    <div className="text-zinc-500 text-[10px] mt-0.5">{platformListHint}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onExportPlatform}
+                    disabled={!roster || loading}
+                    className="min-h-7 inline-flex shrink-0 items-center gap-1 rounded-lg bg-zinc-800 px-2.5 text-zinc-200 text-[10px] font-semibold hover:bg-zinc-700 disabled:opacity-50"
+                  >
+                    <Download className="h-3 w-3" aria-hidden />
+                    CSV
+                  </button>
+                </div>
+
+                <div className="px-3 pb-3 pt-2 flex flex-col min-h-0 flex-1">
+                  <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                      type="search"
+                      value={platformSearch}
+                      onChange={(e) => setPlatformSearch(e.target.value)}
+                      placeholder="Filter handle, email, product, billing…"
+                      className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPlatformPaidOnly((v) => !v)}
+                      aria-pressed={platformPaidOnly}
+                      className={`min-h-8 shrink-0 rounded-lg px-3 text-[11px] font-semibold touch-manipulation ${
+                        platformPaidOnly
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      }`}
+                    >
+                      Paid only
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto overflow-y-auto max-h-52 lg:max-h-none lg:flex-1 rounded-lg border border-zinc-800">
+                    <table className="w-full min-w-[640px] text-left text-xs">
+                      <thead className="sticky top-0 z-10 bg-zinc-950 text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800/80">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">Member</th>
+                          <th className="px-3 py-2 font-semibold">Product</th>
+                          <th className="px-3 py-2 font-semibold">Billing</th>
+                          <th className="px-3 py-2 font-semibold">Status</th>
+                          <th className="px-3 py-2 font-semibold">Subscribed</th>
+                          <th className="px-3 py-2 font-semibold">Renews</th>
+                          <th className="px-3 py-2 font-semibold">Cancel?</th>
+                          <th className="px-3 py-2 font-semibold">Stripe</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800/60">
+                        {activePlatform.length === 0 ? (
+                          <EmptyRow colSpan={8}>
+                            {platformPaidOnly ? 'No paid platform subscriptions' : 'No active platform subscriptions'}
+                          </EmptyRow>
+                        ) : (
+                          activePlatform.map((row) => (
+                            <tr key={`${row.user_id}-${row.product_slug}-${row.stripe_subscription_id}`}>
+                              <RosterProfileCell
+                                handle={row.handle}
+                                userId={row.user_id}
+                                displayName={row.display_name}
+                                email={row.email}
+                              />
+                              <td className="px-3 py-2.5 text-zinc-200">
+                                <div>{row.product_slug}</div>
+                                <div className="text-zinc-500">{row.price_interval || '...'}</div>
+                              </td>
+                              <RosterBillingCell row={row} />
+                              <td className="px-3 py-2.5 capitalize text-zinc-300">{row.status}</td>
+                              <td className="px-3 py-2.5 text-zinc-400 tabular-nums whitespace-nowrap">
+                                {formatOpsRosterWhen(row.subscribed_at)}
+                              </td>
+                              <td className="px-3 py-2.5 text-zinc-400 tabular-nums">
+                                {formatOpsRosterWhen(row.current_period_end)}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                {row.cancel_at_period_end ? (
+                                  <span className="text-orange-300 font-semibold">Pending</span>
+                                ) : (
+                                  <span className="text-zinc-500">No</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <RosterStripeLinks
+                                  customerId={row.stripe_customer_id}
+                                  subscriptionId={row.stripe_subscription_id}
+                                />
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="rounded-xl border border-zinc-800 bg-zinc-950">
@@ -404,10 +591,7 @@ export default function EdgeMonitorSubscriberRosterPanel({
               >
                 <div className="min-w-0">
                   <div className="text-white text-sm font-semibold">{activeTabMeta.label}</div>
-                  <div className="text-zinc-500 text-[10px] mt-0.5">
-                    {activeTabMeta.shown}
-                    {q ? ` of ${activeTabMeta.total}` : ''} rows · tap to {listOpen ? 'hide' : 'browse'}
-                  </div>
+                  <div className="text-zinc-500 text-[10px] mt-0.5">{rosterListHint}</div>
                 </div>
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${listOpen ? 'rotate-180' : ''}`}
@@ -434,67 +618,31 @@ export default function EdgeMonitorSubscriberRosterPanel({
                     ))}
                   </div>
 
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Filter handle, email, product…"
-                    className="mb-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-500"
-                  />
+                  <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Filter handle, email, product, billing…"
+                      className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-500"
+                    />
+                    {tab !== 'creators' ? (
+                      <button
+                        type="button"
+                        onClick={() => setPaidOnly((v) => !v)}
+                        aria-pressed={paidOnly}
+                        className={`min-h-8 shrink-0 rounded-lg px-3 text-[11px] font-semibold touch-manipulation ${
+                          paidOnly
+                            ? 'bg-emerald-700 text-white'
+                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                        }`}
+                      >
+                        Paid only
+                      </button>
+                    ) : null}
+                  </div>
 
                   <div className="overflow-x-auto overflow-y-auto max-h-52 rounded-lg border border-zinc-800">
-            {tab === 'platform' ? (
-                <table className="w-full min-w-[640px] text-left text-xs">
-                  <thead className="text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800/80">
-                    <tr>
-                      <th className="px-3 py-2 font-semibold">Member</th>
-                      <th className="px-3 py-2 font-semibold">Product</th>
-                      <th className="px-3 py-2 font-semibold">Status</th>
-                      <th className="px-3 py-2 font-semibold">Renews</th>
-                      <th className="px-3 py-2 font-semibold">Cancel?</th>
-                      <th className="px-3 py-2 font-semibold">Stripe</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800/60">
-                    {activePlatform.length === 0 ? (
-                      <EmptyRow colSpan={6}>No active platform subscriptions</EmptyRow>
-                    ) : (
-                      activePlatform.map((row) => (
-                        <tr key={`${row.user_id}-${row.product_slug}-${row.stripe_subscription_id}`}>
-                          <RosterProfileCell
-                            handle={row.handle}
-                            userId={row.user_id}
-                            displayName={row.display_name}
-                            email={row.email}
-                          />
-                          <td className="px-3 py-2.5 text-zinc-200">
-                            <div>{row.product_slug}</div>
-                            <div className="text-zinc-500">{row.price_interval || '...'}</div>
-                          </td>
-                          <td className="px-3 py-2.5 capitalize text-zinc-300">{row.status}</td>
-                          <td className="px-3 py-2.5 text-zinc-400 tabular-nums">
-                            {formatOpsRosterWhen(row.current_period_end)}
-                          </td>
-                          <td className="px-3 py-2.5">
-                            {row.cancel_at_period_end ? (
-                              <span className="text-orange-300 font-semibold">Pending</span>
-                            ) : (
-                              <span className="text-zinc-500">No</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <RosterStripeLinks
-                              customerId={row.stripe_customer_id}
-                              subscriptionId={row.stripe_subscription_id}
-                            />
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              ) : null}
-
               {tab === 'fan' ? (
                 <table className="w-full min-w-[640px] text-left text-xs">
                   <thead className="text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800/80">
@@ -502,14 +650,18 @@ export default function EdgeMonitorSubscriberRosterPanel({
                       <th className="px-3 py-2 font-semibold">Fan</th>
                       <th className="px-3 py-2 font-semibold">Creator</th>
                       <th className="px-3 py-2 font-semibold">Tier</th>
+                      <th className="px-3 py-2 font-semibold">Billing</th>
                       <th className="px-3 py-2 font-semibold">Status</th>
+                      <th className="px-3 py-2 font-semibold">Subscribed</th>
                       <th className="px-3 py-2 font-semibold">Renews</th>
                       <th className="px-3 py-2 font-semibold">Stripe</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800/60">
                     {fanActive.length === 0 ? (
-                      <EmptyRow colSpan={6}>No active fan subscriptions</EmptyRow>
+                      <EmptyRow colSpan={8}>
+                        {paidOnly ? 'No paid fan subscriptions' : 'No active fan subscriptions'}
+                      </EmptyRow>
                     ) : (
                       fanActive.map((row) => (
                         <tr
@@ -545,7 +697,11 @@ export default function EdgeMonitorSubscriberRosterPanel({
                             <div className="text-zinc-500">{row.creator_display_name || '...'}</div>
                           </td>
                           <td className="px-3 py-2.5 text-zinc-300">{row.fan_tier_key}</td>
+                          <RosterBillingCell row={row} />
                           <td className="px-3 py-2.5 capitalize text-zinc-300">{row.status}</td>
+                          <td className="px-3 py-2.5 text-zinc-400 tabular-nums whitespace-nowrap">
+                            {formatOpsRosterWhen(row.subscribed_at)}
+                          </td>
                           <td className="px-3 py-2.5 text-zinc-400 tabular-nums">
                             {formatOpsRosterWhen(row.current_period_end)}
                           </td>
@@ -629,13 +785,18 @@ export default function EdgeMonitorSubscriberRosterPanel({
                       <th className="px-3 py-2 font-semibold">Type</th>
                       <th className="px-3 py-2 font-semibold">Member</th>
                       <th className="px-3 py-2 font-semibold">Product / creator</th>
+                      <th className="px-3 py-2 font-semibold">Billing</th>
                       <th className="px-3 py-2 font-semibold">Ends</th>
                       <th className="px-3 py-2 font-semibold">Stripe</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800/60">
                     {pendingAll.length === 0 && canceledAll.length === 0 ? (
-                      <EmptyRow colSpan={5}>No pending cancels or recent churn (30d)</EmptyRow>
+                      <EmptyRow colSpan={6}>
+                        {paidOnly
+                          ? 'No paid pending cancels or recent churn (30d)'
+                          : 'No pending cancels or recent churn (30d)'}
+                      </EmptyRow>
                     ) : null}
                     {pendingAll.map((row, i) => (
                       <tr key={`pending-${i}-${row.kind}`}>
@@ -669,6 +830,7 @@ export default function EdgeMonitorSubscriberRosterPanel({
                             `${formatOpsRosterHandle(row.creator_handle)} fan`
                           )}
                         </td>
+                        <RosterBillingCell row={row} />
                         <td className="px-3 py-2.5 text-zinc-400 tabular-nums">
                           {formatOpsRosterWhen(row.current_period_end)}
                         </td>
@@ -713,6 +875,7 @@ export default function EdgeMonitorSubscriberRosterPanel({
                             `${formatOpsRosterHandle(row.creator_handle)} fan`
                           )}
                         </td>
+                        <RosterBillingCell row={row} />
                         <td className="px-3 py-2.5 text-zinc-400 tabular-nums">
                           {formatOpsRosterWhen(row.canceled_at || row.current_period_end)}
                         </td>

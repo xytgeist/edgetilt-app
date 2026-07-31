@@ -120,7 +120,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Group photo** — Owner uploads group avatar in settings; header switches to single large photo.
 - [ ] **Group settings** — Owner: rename, description, add/remove member, mute member (5m–permanent). Member: leave, mute group (presets + mute-until datetime), add member, starred list.
 - [ ] **Star message** — Long-press a group message → Star; appears under Starred messages in settings.
-- [ ] **@mention notify** — Type `@` in a group/DM composer → room-member autocomplete; send `@handle` → tagged member gets Lounge notification **"{name} tagged you in {room}"** + web push (respects **Mentions** pref). Apply **`20260731120000_chat_mention_activity.sql`** on test; redeploy **`lounge-chat`** + **`lounge-send-activity-push`**.
+- [ ] **@mention notify** — Type `@` in a group/DM composer → room-member autocomplete; send `@handle` → tagged member gets Lounge notification **"{name} tagged you in {room}"** + web push (respects **Mentions** pref). Apply **`20260731120000`** + **`20260731130000`** (`guide_slug` for push Edge) on test; redeploy **`lounge-chat`** + **`lounge-send-activity-push`**.
 
 ### Chat calling (LiveKit) — v1 shipped in code
 

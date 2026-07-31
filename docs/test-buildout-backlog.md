@@ -120,7 +120,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Group photo** — Owner uploads group avatar in settings; header switches to single large photo.
 - [ ] **Group settings** — Owner: rename, description, add/remove member, mute member (5m–permanent). Member: leave, mute group (presets + mute-until datetime), add member, starred list.
 - [ ] **Star message** — Long-press a group message → Star; appears under Starred messages in settings.
-- [ ] **@mention notify** — Type `@` in a **group** composer → room-member autocomplete; send `@handle` → tagged member gets Lounge notification **"{name} tagged you in {room}"** + web push (respects **Mentions** pref). **DM:** autocomplete still works but **no** `chat_mention` event (DM message push already fires). Apply **`20260731120000`** + **`20260731130000`** + **`20260731140000`** (skip DM) on test; redeploy **`lounge-chat`** + **`lounge-send-activity-push`**.
+- [x] **@mention notify** — Type `@` in a **group** composer → room-member autocomplete; send `@handle` → tagged member gets Lounge notification **"{name} tagged you in {room}"** + web push (respects **Mentions** pref). **DM:** autocomplete still works but **no** `chat_mention` event (DM message push already fires). **Prod:** **`main`** @ **`58c91faf`**, SQL through **`20260731140000`**, Edge **`lounge-chat`** + **`lounge-send-activity-push`** on **`jtjgtucumuoswnbauxry`** (Ryan **2026-07-31**).
 
 ### Chat calling (LiveKit) — v1 shipped in code
 
@@ -949,6 +949,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-31: **Prod promote (chat @mentions + monitor webhook health):** SQL **`20260731130000`**, **`20260731140000`**, **`20260731150000`** on **`jtjgtucumuoswnbauxry`** (**`31120000`** already tracked); Edge **`lounge-chat`**, **`lounge-send-activity-push`**, **`stripe-webhook`** redeployed prod; **`main`** @ **`58c91faf`** (Vercel **edgetilt.com**). Group @-tag → bell + push; DM tags no extra notify; Monitor webhook health + GitHub runbooks.
 - 2026-07-31: **Edge Monitor Stripe webhook health + runbook links:** migration **`20260731150000`** — persist failed **`stripe_webhook_events`** (no delete on handler error); snapshot **`health_status`** / last success/failure; removed naive "24h = 0" alert; runbook links → GitHub blob URLs. Redeploy **`stripe-webhook`** after apply. Client monitor tiles: Webhook health / Last OK / Processed 24h.
 - 2026-07-31: **Chat @mention skip DM:** migration **`20260731140000`** — **`chat_emit_mention_activity_events`** no-op for `kind = dm` (DM message push already covers new messages; tag copy duplicated peer name). Edge **`lounge-chat`** skips RPC for DMs. Redeploy **`lounge-chat`** on test after apply.
 - 2026-07-31: **Chat @mention push on test (guide_slug):** migration **`20260731130000`** adds `activity_events.guide_slug` without replacing event-type check (40900 wholesale would drop `chat_mention`). **`lounge-send-activity-push`** was 500 until column existed; **`apply-migration-once.mjs`** now ignores mismatched `SUPABASE_DB_URL` so `--target=test` hits test DB. Applied on test; mention push + toast verified after retry.

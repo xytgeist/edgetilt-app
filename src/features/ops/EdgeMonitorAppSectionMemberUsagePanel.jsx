@@ -60,7 +60,7 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
             <div className="text-white font-bold text-[15px]">Member activity</div>
           </div>
           <div className="text-zinc-500 text-xs mt-0.5 leading-relaxed">
-            Top {topLimit} active members (7d) · expand a row for tab visits, calculator opens, and logged sessions by section
+            Top {topLimit} active members (7d) · expand a row for app sections, Lounge posts, interactions, calculators, and logged sessions
           </div>
         </div>
         {data?.generated_at ? (
@@ -106,7 +106,7 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
 
       {error ? (
         <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-950/25 px-3 py-2 text-amber-100 text-xs">
-          {error} ... apply migrations <span className="font-mono">20260731222000</span>–<span className="font-mono">22300</span>.
+          {error} ... apply migrations <span className="font-mono">20260731222000</span>–<span className="font-mono">22400</span>.
         </div>
       ) : null}
 
@@ -159,6 +159,7 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
                     (row.sections?.length || 0) > 0
                     || (row.calculators?.length || 0) > 0
                     || (row.session_breakdown?.length || 0) > 0
+                    || (row.lounge_activity?.length || 0) > 0
 
                   return (
                     <Fragment key={row.user_id}>
@@ -266,6 +267,9 @@ function MemberBreakdownBody({ member, compact = false }) {
   const sections = member.sections || []
   const calculators = member.calculators || []
   const sessionBreakdown = member.session_breakdown || []
+  const loungeActivity = member.lounge_activity || []
+  const hasProductSections =
+    sections.length > 0 || calculators.length > 0 || sessionBreakdown.length > 0
 
   return (
     <>
@@ -276,9 +280,13 @@ function MemberBreakdownBody({ member, compact = false }) {
         <Stat label="Sessions 7d" value={member.sessions_7d} />
       </div>
 
+      {loungeActivity.length > 0 ? (
+        <LoungeActivityTable rows={loungeActivity} />
+      ) : null}
+
       {sections.length > 0 ? (
         <WindowedDetailTable
-          title="Sections"
+          title="App sections"
           rows={sections.map((row) => ({
             key: row.section_id,
             label: row.label || appProductSectionLabel(row.section_id),
@@ -288,9 +296,11 @@ function MemberBreakdownBody({ member, compact = false }) {
             sessions7d: row.sessions_7d,
           }))}
         />
-      ) : (
-        <EmptyBreakdownNote text="No tab visits or logged sessions by section in the last 7 days." />
-      )}
+      ) : null}
+
+      {!hasProductSections && loungeActivity.length === 0 ? (
+        <EmptyBreakdownNote text="No app section visits, logged sessions, or Lounge activity in the last 7 days." />
+      ) : null}
 
       {calculators.length > 0 ? (
         <OpensDetailTable
@@ -330,6 +340,58 @@ function Stat({ label, value }) {
     <div className="rounded-lg bg-zinc-950/70 border border-zinc-800 px-2 py-1.5">
       <div className="text-zinc-500 text-[10px] uppercase">{label}</div>
       <div className="text-white font-bold tabular-nums text-sm">{formatOpsMonitorCount(value)}</div>
+    </div>
+  )
+}
+
+/** @param {{ rows: Array<Record<string, unknown>> }} props */
+function LoungeActivityTable({ rows }) {
+  const groupLabels = {
+    created: 'Created',
+    interactions_given: 'Interactions given',
+    received: 'Received on their posts',
+  }
+  const groups = ['created', 'interactions_given', 'received']
+
+  return (
+    <div className="mb-2 overflow-x-auto rounded-lg border border-zinc-800/80">
+      <div className="border-b border-zinc-800 bg-zinc-950/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        Lounge
+      </div>
+      {groups.map((group) => {
+        const groupRows = rows.filter((row) => row.group === group)
+        if (groupRows.length === 0) return null
+
+        return (
+          <div key={group} className="border-t border-zinc-800/60 first:border-t-0">
+            <div className="bg-zinc-950/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+              {groupLabels[group] || group}
+            </div>
+            <table className="w-full text-xs">
+              <thead className="text-zinc-500 text-[10px] uppercase">
+                <tr>
+                  <th className="px-2 py-1 text-left font-semibold">Metric</th>
+                  <th className="px-2 py-1 text-right font-semibold">24h</th>
+                  <th className="px-2 py-1 text-right font-semibold">7d</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupRows.map((row) => (
+                  <tr key={String(row.metric_id)} className="border-t border-zinc-800/40">
+                    <td className="px-2 py-1.5 text-zinc-200">{String(row.label || row.metric_id)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-zinc-300">
+                      {formatOpsMonitorCount(row.count_24h)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-zinc-100">
+                      {formatOpsMonitorCount(row.count_7d)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      })}
     </div>
   )
 }

@@ -15171,7 +15171,7 @@ export default function SocialFeed({
       onPanelScrollRestored={onDockPanelScrollRestored}
       communityPosts={communityPosts}
       viewportTitleTopPx={loungeFeedViewportTopPx}
-      titleBarNavSlot={titleBarNavSlot}
+      titleBarNavSlot={isActivePage ? titleBarNavSlot : null}
       communityFeedLoading={communityFeedLoading}
       onHome={onLoungeDockHome}
       onSearch={onLoungeDockSearch}

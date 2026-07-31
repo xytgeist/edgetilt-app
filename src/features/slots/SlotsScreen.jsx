@@ -51,7 +51,7 @@ const SLOTS_TOOLS = [
     label: 'Slots Pro Lounge',
     Icon: MessageCircle,
     color: '#06b6d4',
-    description: 'Private subscriber group chat',
+    description: 'Pro private subscriber group chat',
     subscriberGated: () => true,
   },
   // Local Intel (`intel` tab) remains routable from AppShell for future use - not listed in hub (Ryan, 2026-05-29).

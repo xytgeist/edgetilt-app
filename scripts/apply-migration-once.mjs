@@ -3,8 +3,8 @@
 import fs from 'fs';
 import path from 'path';
 import pg from 'pg';
-import { loadSupabaseEnv } from './lib/supabaseEnv.mjs';
-import { poolerUrlWithPassword } from './lib/supabaseDbCli.mjs';
+import { loadSupabaseEnv, repoRoot } from './lib/supabaseEnv.mjs';
+import { ensureLinked, poolerUrlWithPassword, PROJECT_REFS } from './lib/supabaseDbCli.mjs';
 
 const targetArg = process.argv.find((a) => a.startsWith('--target='))?.slice('--target='.length)
   || (process.argv.includes('--target') ? process.argv[process.argv.indexOf('--target') + 1] : null)
@@ -21,11 +21,24 @@ const version = file.replace(/\.sql$/, '').split('_')[0];
 const name = file.replace(/\.sql$/, '');
 
 loadSupabaseEnv(targetArg);
+ensureLinked(targetArg);
 const password = process.env.SUPABASE_DB_PASSWORD?.trim();
 if (!password) throw new Error(`SUPABASE_DB_PASSWORD missing for ${targetArg}`);
 
-const pooler = fs.readFileSync(path.join('supabase', '.temp', 'pooler-url'), 'utf8').trim();
-const connectionString = process.env.SUPABASE_DB_URL?.trim() || poolerUrlWithPassword(pooler, password);
+const expectedRef = PROJECT_REFS[targetArg];
+const explicitDbUrl = process.env.SUPABASE_DB_URL?.trim();
+const pooler = fs.readFileSync(path.join(repoRoot, 'supabase', '.temp', 'pooler-url'), 'utf8').trim();
+let connectionString;
+if (explicitDbUrl && explicitDbUrl.includes(`postgres.${expectedRef}@`)) {
+  connectionString = explicitDbUrl;
+} else {
+  if (explicitDbUrl) {
+    process.stderr.write(
+      `[apply-migration-once] ignoring SUPABASE_DB_URL (project ref mismatch for target=${targetArg})\n`,
+    );
+  }
+  connectionString = poolerUrlWithPassword(pooler, password);
+}
 const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });
 await client.connect();
 
@@ -39,7 +52,7 @@ if (tracked.rows.length) {
   process.exit(0);
 }
 
-const sqlText = fs.readFileSync(path.join('supabase', 'migrations', file), 'utf8');
+const sqlText = fs.readFileSync(path.join(repoRoot, 'supabase', 'migrations', file), 'utf8');
 process.stdout.write(`${targetArg}: APPLY ${file} ... `);
 try {
   await client.query('BEGIN');

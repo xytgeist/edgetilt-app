@@ -21,6 +21,8 @@ import {
   plainTextFromComposerRoot,
 } from '../lounge/loungeRichComposerDom.js'
 import { notifyChatMediaPickerActive } from './chatMediaPickerRegistry.js'
+import { useChatMentionState } from './chatMentionAutocomplete.js'
+import LoungeMentionDropdown from '../lounge/LoungeMentionDropdown.jsx'
 
 const MAX_BODY            = 4000
 const MAX_IMAGES          = 12
@@ -49,6 +51,7 @@ const CHAT_MEDIA_PICKER_GHOST_CLICK_MS = 650
  *   disabled?: boolean,
  *   footerHost?: boolean,
  *   onComposerChromeLayout?: (() => void) | null,
+ *   mentionCandidates?: Array<{ user_id: string, handle: string, display_name?: string|null, avatar_url?: string|null, role?: string|null, is_og?: boolean|null }>,
  * }} props
  * @param props.footerHost Parent footer host already applies padding + keyboard overlap.
  * @param props.onComposerChromeLayout Parent syncs list inset after auto-grow (iOS multiline).
@@ -65,6 +68,7 @@ export default function ChatComposer({
   disabled = false,
   footerHost = false,
   onComposerChromeLayout = null,
+  mentionCandidates = [],
 }) {
   const [body, setBody]           = useState('')
   /**
@@ -92,6 +96,7 @@ export default function ChatComposer({
   const fileInputRef   = useRef(null)
   const videoInputRef  = useRef(null)
   const plusBtnRef     = useRef(null)
+  const mentionAnchorRef = useRef(null)
   const caretRef = useRef(0)
   const enterHandledRef = useRef(false)
   const mediaPickerEndTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
@@ -119,6 +124,8 @@ export default function ChatComposer({
 
   const hasContent = body.trim().length > 0 || imageSlots.length > 0
   const canSend = !disabled && !sending && hasContent
+  const mentionEnabled = !disabled && mentionCandidates.length > 0
+  const mentionState = useChatMentionState(body, mentionCandidates, mentionEnabled)
 
   useEffect(() => {
     if (!footerHost) setComposerActive(true)
@@ -209,6 +216,7 @@ export default function ChatComposer({
     caretRef.current = getCaretTextOffset(el)
     setBody(trimmed)
     onTyping(viewerDisplayName)
+    mentionState.onCursorMove(e)
   }
 
   const handleTextareaChange = (e) => {
@@ -217,6 +225,10 @@ export default function ChatComposer({
     caretRef.current = el.selectionStart ?? trimmed.length
     setBody(trimmed)
     onTyping(viewerDisplayName)
+    mentionState.onCursorMove({
+      text: trimmed,
+      caret: caretRef.current,
+    })
   }
 
   const insertTextIntoChatBody = useCallback(
@@ -614,6 +626,7 @@ export default function ChatComposer({
   }, [onTyping, viewerDisplayName])
 
   const handleKeyDown = (e) => {
+    if (mentionState.onMentionKeyDown(e, setBody, textareaRef.current)) return
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       void handleSend()
@@ -829,6 +842,7 @@ export default function ChatComposer({
           } ${expanded ? '' : 'h-10'}`}
           style={{ borderRadius: expanded ? COMPOSER_EXPANDED_RADIUS_PX : '9999px' }}
         >
+          <div ref={mentionAnchorRef} className="relative flex min-w-0 flex-1">
           {LOUNGE_IOS ? (
             <textarea
               ref={textareaRef}
@@ -840,6 +854,8 @@ export default function ChatComposer({
               aria-label="Message"
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
+              onKeyUp={mentionState.onCursorMove}
+              onSelect={mentionState.onCursorMove}
               onPaste={handlePaste}
               onPointerDown={handleComposerPointerDown}
               onPointerMove={handleComposerPointerMove}
@@ -880,6 +896,8 @@ export default function ChatComposer({
               data-placeholder="Message…"
               onInput={handleBodyInput}
               onKeyDown={handleKeyDown}
+              onKeyUp={mentionState.onCursorMove}
+              onMouseUp={mentionState.onCursorMove}
               onPaste={handlePaste}
               onPointerDown={handleComposerPointerDown}
               onPointerMove={handleComposerPointerMove}
@@ -909,6 +927,18 @@ export default function ChatComposer({
               }}
             />
           )}
+
+          {mentionState.mention && mentionState.suggestions.length > 0 ? (
+            <LoungeMentionDropdown
+              suggestions={mentionState.suggestions}
+              activeIndex={mentionState.activeIndex}
+              loading={mentionState.loading}
+              onSelect={(p) => mentionState.onMentionSelect(p, setBody, textareaRef.current)}
+              anchorRef={mentionAnchorRef}
+              caretFieldRef={textareaRef}
+            />
+          ) : null}
+          </div>
 
           {hasContent ? (
             <button

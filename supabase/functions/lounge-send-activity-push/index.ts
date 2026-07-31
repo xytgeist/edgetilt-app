@@ -66,7 +66,8 @@ function pushTitleForEventType(eventType: string): string {
     eventType === 'chat_dm' ||
     eventType === 'chat_group_invite' ||
     eventType === 'chat_call_invite' ||
-    eventType === 'chat_call_missed'
+    eventType === 'chat_call_missed' ||
+    eventType === 'chat_mention'
   ) {
     return PUSH_TITLE_CHAT
   }
@@ -121,6 +122,7 @@ function prefAllows(prefs: NotificationPrefs | null, eventType: string): boolean
       return prefs.push_replies
     case 'mention_in_post':
     case 'mention_in_comment':
+    case 'chat_mention':
       return prefs.push_mentions
     case 'follow':
     case 'creator_fan_sub':
@@ -161,6 +163,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'mentioned you in a post'
     case 'mention_in_comment':
       return 'mentioned you in a comment'
+    case 'chat_mention':
+      return 'tagged you in a chat'
     case 'follow':
       return 'followed you'
     case 'creator_fan_sub':
@@ -238,7 +242,8 @@ function buildTargetUrl(
     (event.event_type === 'chat_dm' ||
       event.event_type === 'chat_group_invite' ||
       event.event_type === 'chat_call_invite' ||
-      event.event_type === 'chat_call_missed') &&
+      event.event_type === 'chat_call_missed' ||
+      event.event_type === 'chat_mention') &&
     event.chat_room_id
   ) {
     params.set('tab', 'chat')
@@ -357,6 +362,16 @@ function buildSingleNotification(
       activityEventId: event.id,
       eventType: event.event_type,
       ...(event.chat_call_id ? { chatCallId: event.chat_call_id } : {}),
+    }
+  }
+  if (event.event_type === 'chat_mention') {
+    const roomName = String(event.detail_text || '').trim() || 'a chat'
+    return {
+      title: pushTitleForEventType(event.event_type),
+      body: `${who} tagged you in ${roomName}`,
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      activityEventId: event.id,
+      eventType: event.event_type,
     }
   }
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)

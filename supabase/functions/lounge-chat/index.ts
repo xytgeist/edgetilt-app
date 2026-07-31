@@ -486,6 +486,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    // @mention notify: room-member handles only (chat_emit_mention_activity_events).
+    if (inserted?.id && text.includes('@')) {
+      try {
+        await admin.rpc('chat_emit_mention_activity_events', {
+          p_room_id: roomId,
+          p_message_id: inserted.id,
+          p_actor_id: user.id,
+          p_body: text,
+        })
+      } catch {
+        // Mention notify errors must never surface to the sender.
+      }
+    }
+
     return json(200, {
       ok: true,
       message_id: inserted?.id,

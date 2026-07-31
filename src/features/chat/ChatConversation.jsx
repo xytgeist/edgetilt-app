@@ -15,6 +15,7 @@ import {
   chatRemoveReaction,
   chatUpdateLastRead,
   chatGroupHeaderMembersResolved,
+  chatGroupMembersList,
   chatStarredMessageIds,
   chatStarMessage,
   chatUnstarMessage,
@@ -193,6 +194,7 @@ export default function ChatConversation({
   const [roomMeta, setRoomMeta] = useState(() => ({ ...room }))
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false)
   const [groupHeaderMembers, setGroupHeaderMembers] = useState(/** @type {any[]} */ ([]))
+  const [mentionCandidates, setMentionCandidates] = useState(/** @type {any[]} */ ([]))
   const [groupHeaderErr, setGroupHeaderErr] = useState('')
   const [starredIds, setStarredIds] = useState(() => new Set())
   const [pinnedIds, setPinnedIds] = useState(() => new Set())
@@ -498,6 +500,60 @@ export default function ChatConversation({
     })()
     return () => { cancelled = true }
   }, [isGroupRoom, room.id, room.avatar_url, roomMeta.avatar_url, supabaseClient])
+
+  useEffect(() => {
+    if (!room.id) {
+      setMentionCandidates([])
+      return undefined
+    }
+    if (isDmRoom) {
+      const peerId = activeRoom.peer_user_id ?? null
+      const peer = peerId ? (profilesById[peerId] || localProfiles[peerId] || null) : null
+      if (peer?.handle && peerId !== viewerUserId) {
+        setMentionCandidates([{
+          user_id: peerId,
+          handle: peer.handle,
+          display_name: peer.display_name,
+          avatar_url: peer.avatar_url,
+          role: peer.role,
+          is_og: peer.is_og,
+        }])
+      } else {
+        setMentionCandidates([])
+      }
+      return undefined
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const list = await chatGroupMembersList(supabaseClient, room.id)
+        if (cancelled) return
+        setMentionCandidates(
+          list
+            .filter((m) => m.user_id && m.user_id !== viewerUserId && m.handle)
+            .map((m) => ({
+              user_id: m.user_id,
+              handle: m.handle,
+              display_name: m.display_name,
+              avatar_url: m.avatar_url,
+              role: m.role,
+              is_og: m.is_og,
+            })),
+        )
+      } catch {
+        if (!cancelled) setMentionCandidates([])
+      }
+    })()
+    return () => { cancelled = true }
+  }, [
+    room.id,
+    isDmRoom,
+    activeRoom.peer_user_id,
+    profilesById,
+    localProfiles,
+    viewerUserId,
+    supabaseClient,
+  ])
 
   useEffect(() => {
     if (!showStarPinActions || !room.id) {
@@ -2701,6 +2757,7 @@ export default function ChatConversation({
             viewerDisplayName={viewerDisplayName}
             footerHost
             onComposerChromeLayout={syncComposerInsetFromDom}
+            mentionCandidates={mentionCandidates}
           />
         </div>
       </div>

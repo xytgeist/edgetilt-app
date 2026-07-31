@@ -19,6 +19,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   AP_GUIDE_RELEASED: 'ap_guide_released',
   CREATOR_FAN_SUB: 'creator_fan_sub',
   CHAT_CALL_MISSED: 'chat_call_missed',
+  CHAT_MENTION: 'chat_mention',
   POKER_TOURNAMENT_SWAP: 'poker_tournament_swap',
   POKER_TOURNAMENT_SWAP_RESULT: 'poker_tournament_swap_result',
 }
@@ -32,6 +33,7 @@ export function loungeActivityNotificationBadgeKind(eventType) {
       return 'reply'
     case LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_POST:
     case LOUNGE_ACTIVITY_EVENT_TYPES.MENTION_IN_COMMENT:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_MENTION:
       return 'mention'
     case LOUNGE_ACTIVITY_EVENT_TYPES.FOLLOW:
     case LOUNGE_ACTIVITY_EVENT_TYPES.CREATOR_FAN_SUB:
@@ -234,6 +236,10 @@ export function loungeActivityActionPhrase(event) {
     }
     case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED:
       return 'called you'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_MENTION: {
+      const roomName = String(event?.detail_text || '').trim()
+      return roomName ? `tagged you in ${roomName}` : 'tagged you in a chat'
+    }
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
       return 'offered you a tournament swap'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT: {

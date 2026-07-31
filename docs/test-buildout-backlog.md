@@ -120,6 +120,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Group photo** — Owner uploads group avatar in settings; header switches to single large photo.
 - [ ] **Group settings** — Owner: rename, description, add/remove member, mute member (5m–permanent). Member: leave, mute group (presets + mute-until datetime), add member, starred list.
 - [ ] **Star message** — Long-press a group message → Star; appears under Starred messages in settings.
+- [ ] **@mention notify** — Type `@` in a group/DM composer → room-member autocomplete; send `@handle` → tagged member gets Lounge notification **"{name} tagged you in {room}"** + web push (respects **Mentions** pref). Apply **`20260731120000_chat_mention_activity.sql`** on test; redeploy **`lounge-chat`** + **`lounge-send-activity-push`**.
 
 ### Chat calling (LiveKit) — v1 shipped in code
 
@@ -948,6 +949,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-31: **Chat @mention notifications (code):** migration **`20260731120000`** — `chat_mention` activity type, `chat_message_id`, RPC **`chat_emit_mention_activity_events`** (room-member handles only); Edge **`lounge-chat`** emit after send; **`lounge-send-activity-push`** copy + **`push_mentions`** pref; client room-member autocomplete in **`ChatComposer`** + Lounge bell tap → `/?tab=chat&room=`. **Apply SQL + redeploy Edge on test before smoke.**
 - 2026-07-31: **Chat nav + lounge chat embeds + FAB dock panels → production:** frontend **`test` → `main`** @ **`2a61df56`**. Ryan sign-off on test (lvslotpro.com). **No SQL / Edge.** Direct Slots Pro Lounge open, keep-alive chat + post preview return, quote-style lounge links in chat, Private Subs back nav, FAB settings from tools without Lounge detour.
 - 2026-07-31: **Slots Pro Lounge → production:** migration **`20260731000000`** applied on **`jtjgtucumuoswnbauxry`**; Edge **`stripe-webhook`** + **`lounge-chat`** redeployed; frontend **`test` → `main`** @ **`749e5eb7`**. Ryan smoke on **edgetilt.com**: Pro/Lifetime lounge + Slots hub button; Starter gated.
 - 2026-07-31: **Slots Pro Lounge (platform Private Subs + Slots hub):** migration **`20260731000000`** — `chat_rooms.kind = platform_sub`, singleton **Slots Pro Lounge** (`slots-pro-lounge`), access **Slots Edge Pro + Lifetime only** (no Starter); RPCs `user_has_slots_pro_lounge_access`, `platform_sub_sync_chat_member`, `platform_sub_claim_membership`, `get_platform_sub_room_id`; extends **`list_creator_fan_private_subs`** (platform row pinned first); **`chat_unread_room_count`** excludes `platform_sub`. Client: **Private Subs** tab platform row + subscribe gate → **`onRequireSubscribe('slots-edge')`**; **Slots → Slots Pro Lounge** tool (Pro/Lifetime lock) opens Chat + room; **`billingDb`** + **`stripe-webhook`** sync membership on sub changes; **`lounge-chat`** staff/mod paths for `platform_sub`. **Test validated**; prod promote above.

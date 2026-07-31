@@ -40,6 +40,16 @@ import { chatFetchActiveRoomCall } from '../../utils/chatCallsApi.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
+/** Ignore swipe-to-reveal when the gesture starts on a Lounge horizontal carousel. */
+function touchTargetIsLoungeFeedCarousel(target) {
+  if (!(target instanceof Element)) return false
+  return Boolean(
+    target.closest('[data-lounge-feed-horizontal-scroll]') ||
+    target.closest('[data-lounge-feed-carousel-track]') ||
+    target.closest('[data-lounge-carousel-dragging]'),
+  )
+}
+
 // Glass styles are defined in index.css as .chat-header-glass / .chat-menu-glass
 // with html.light overrides - do not use inline styles for these.
 
@@ -1769,6 +1779,10 @@ export default function ChatConversation({
   const MAX_SWIPE_PX = 76 // must match `right: -76px` in ChatBubble
 
   const handleSwipeTouchStart = useCallback((e) => {
+    if (touchTargetIsLoungeFeedCarousel(e.target)) {
+      swipeGestureRef.current.active = false
+      return
+    }
     const t = e.touches[0]
     swipeGestureRef.current = { startX: t.clientX, startY: t.clientY, active: true, axis: null }
     if (translateLayerRef.current) {
@@ -1779,6 +1793,15 @@ export default function ChatConversation({
   const handleSwipeTouchMove = useCallback((e) => {
     const g = swipeGestureRef.current
     if (!g.active) return
+    if (touchTargetIsLoungeFeedCarousel(e.target)) {
+      g.active = false
+      g.axis = null
+      if (translateLayerRef.current) {
+        translateLayerRef.current.style.transition = ''
+        translateLayerRef.current.style.transform = 'translateX(0)'
+      }
+      return
+    }
     const t = e.touches[0]
     const dx = t.clientX - g.startX
     const dy = t.clientY - g.startY

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import ChatLoungePostPreviewCard from './ChatLoungePostPreviewCard.jsx'
 import {
   accentLuminance,
   bubbleAccentBackground,
   extractAccentFromImageUrl,
   resolvePreviewAccent,
 } from '../utils/linkPreviewAccent.js'
+import { isLoungePostLinkPreview } from '../utils/loungePostLinkPreview.js'
 import { isYouTubeLinkPreview } from '../utils/youtubeEmbed.js'
 import YouTubeChatEmbed from './YouTubeChatEmbed.jsx'
 
@@ -20,15 +22,25 @@ import YouTubeChatEmbed from './YouTubeChatEmbed.jsx'
  *     site_name?: string | null,
  *     layout?: 'rich' | 'compact',
  *     lounge_post_id?: string | null,
+ *     embed_kind?: string | null,
+ *     lounge_post?: object | null,
  *     accent_color?: string | null,
  *   },
  *   className?: string,
  *   isMine?: boolean,
  *   embedded?: boolean,
+ *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
  *   onPreviewOpen?: (preview: object, e: MouseEvent) => void,
  * }} props
  */
-export default function ChatLinkPreviewCard({ preview, className = '', isMine = false, embedded = false, onPreviewOpen }) {
+export default function ChatLinkPreviewCard({
+  preview,
+  className = '',
+  isMine = false,
+  embedded = false,
+  supabaseClient = null,
+  onPreviewOpen,
+}) {
   const [sampledAccent, setSampledAccent] = useState(null)
   const [richImageFailed, setRichImageFailed] = useState(false)
 
@@ -57,6 +69,19 @@ export default function ChatLinkPreviewCard({ preview, className = '', isMine = 
   }, [preview?.url, preview?.image_url])
 
   if (!preview?.url) return null
+
+  if (isLoungePostLinkPreview(preview)) {
+    return (
+      <ChatLoungePostPreviewCard
+        preview={preview}
+        className={className}
+        isMine={isMine}
+        embedded={embedded}
+        supabaseClient={supabaseClient}
+        onPreviewOpen={onPreviewOpen}
+      />
+    )
+  }
 
   if (isYouTubeLinkPreview(preview)) {
     return (

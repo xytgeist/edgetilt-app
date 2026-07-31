@@ -7,6 +7,21 @@ const URL_RE =
 const MAX_HTML_BYTES = 512_000
 const FETCH_TIMEOUT_MS = 8000
 
+export type LoungePostEmbedPreview = {
+  id: string
+  caption: string | null
+  created_at: string | null
+  pinned?: boolean
+  author: {
+    user_id: string
+    display_name: string | null
+    handle: string | null
+    avatar_url: string | null
+    role: string | null
+    is_og: boolean
+  }
+}
+
 export type LinkPreviewPayload = {
   url: string
   title: string | null
@@ -18,9 +33,10 @@ export type LinkPreviewPayload = {
   lounge_post_id: string | null
   /** Brand tint for compact link pills (theme-color, domain map, or client favicon sample). */
   accent_color: string | null
-  /** Inline embed hint for clients (e.g. YouTube). */
-  embed_kind?: 'youtube' | null
+  /** Inline embed hint for clients (e.g. YouTube, Lounge post). */
+  embed_kind?: 'youtube' | 'lounge_post' | null
   youtube_video_id?: string | null
+  lounge_post?: LoungePostEmbedPreview | null
 }
 
 const DOMAIN_ACCENT: Record<string, string> = {
@@ -258,14 +274,14 @@ async function fetchLoungePostPreview(
 ): Promise<LinkPreviewPayload | null> {
   const { data: post, error } = await admin
     .from('community_feed_posts')
-    .select('id,caption,user_id,like_count,comment_count,stream_poster_url,media_url,image_urls,gif_url')
+    .select('id,caption,user_id,created_at,pinned,like_count,comment_count,stream_poster_url,media_url,image_urls,gif_url')
     .eq('id', postId)
     .maybeSingle()
   if (error || !post) return null
 
   const { data: prof } = await admin
     .from('profiles')
-    .select('display_name,handle,is_og')
+    .select('user_id,display_name,handle,is_og,avatar_url,role')
     .eq('user_id', post.user_id)
     .maybeSingle()
 
@@ -288,13 +304,28 @@ async function fetchLoungePostPreview(
   return {
     url: canonicalUrl,
     title: title.slice(0, 380),
-    description: 'Open this post in Edge.',
+    description: caption || 'Open this post in Edge.',
     image_url: image || null,
     favicon_url: faviconForHost(hostname),
     site_name: hostname,
-    layout: image ? 'rich' : 'compact',
+    layout: 'compact',
     lounge_post_id: postId,
     accent_color: '#06cefc',
+    embed_kind: 'lounge_post',
+    lounge_post: {
+      id: postId,
+      caption: caption || null,
+      created_at: post.created_at ? String(post.created_at) : null,
+      pinned: post.pinned === true,
+      author: {
+        user_id: String(post.user_id || prof?.user_id || ''),
+        display_name: prof?.display_name ? String(prof.display_name) : null,
+        handle: prof?.handle ? String(prof.handle) : null,
+        avatar_url: prof?.avatar_url ? String(prof.avatar_url) : null,
+        role: prof?.role ? String(prof.role) : null,
+        is_og: prof?.is_og === true,
+      },
+    },
   }
 }
 

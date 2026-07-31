@@ -47,6 +47,7 @@ import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.j
  *   onInitialPrivateSubsContextConsumed?: () => void,
  *   onRequireSubscribe?: ((productSlug?: string) => void) | null,
  *   onViewProfile?: ((userId: string) => void) | null,
+ *   onOpenLoungePost?: ((postId: string) => void) | null,
  * }} props
  */
 export default function ChatTab({
@@ -64,6 +65,7 @@ export default function ChatTab({
   onInitialPrivateSubsContextConsumed,
   onRequireSubscribe = null,
   onViewProfile = null,
+  onOpenLoungePost = null,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -728,6 +730,7 @@ export default function ChatTab({
           void refreshInboxLists()
         }}
         onViewProfile={onViewProfile}
+        onOpenLoungePost={onOpenLoungePost}
         onOpenDm={openDmWithUser}
         openedFromArchived={openedFromArchived}
         onInboxRestored={() => {

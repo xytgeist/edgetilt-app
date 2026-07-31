@@ -694,6 +694,9 @@ export default function SocialFeed({
   /** When set, opens the lounge profile modal for this user (e.g. from Chat member profile). */
   requestOpenProfileUserId = null,
   onRequestOpenProfileConsumed,
+  /** When set, opens lounge post detail (e.g. from Chat lounge link preview). */
+  requestOpenPostId = null,
+  onRequestOpenPostConsumed,
   /** Open terms, privacy, or guidelines in-app with return navigation. */
   onOpenLegalDocument = null,
   /** Open in-app billing manage modal (upgrade / interval / cancel). */
@@ -14610,6 +14613,13 @@ export default function SocialFeed({
     },
     [communityPosts, hydrateCommunityPosts, openLoungePostDetail, setCommunityPosts, supabaseClient],
   )
+
+  useEffect(() => {
+    if (!requestOpenPostId) return
+    const postId = requestOpenPostId
+    onRequestOpenPostConsumed?.()
+    void openLoungePostById(postId, { skipNavCapture: true })
+  }, [requestOpenPostId, openLoungePostById, onRequestOpenPostConsumed])
 
   const openCaptionLink = useCallback(
     (href, e) => {

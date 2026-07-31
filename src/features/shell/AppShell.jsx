@@ -332,6 +332,7 @@ export default function AppShell({
   /** Signed-in uid for app-wide call ring (ChatCallProvider lives above ChatTab). */
   const [chatCallViewerUserId, setChatCallViewerUserId] = useState('')
   const [pendingLoungeProfileUserId, setPendingLoungeProfileUserId] = useState(null)
+  const [pendingLoungePostId, setPendingLoungePostId] = useState(null)
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
@@ -2009,6 +2010,8 @@ export default function AppShell({
             }}
             requestOpenProfileUserId={pendingLoungeProfileUserId}
             onRequestOpenProfileConsumed={() => setPendingLoungeProfileUserId(null)}
+            requestOpenPostId={pendingLoungePostId}
+            onRequestOpenPostConsumed={() => setPendingLoungePostId(null)}
             onOpenLegalDocument={onOpenLegalDocument}
             onOpenBillingManage={onOpenBillingManage}
             onSimulateTabError={simulateTabError}
@@ -2288,6 +2291,12 @@ export default function AppShell({
           onViewProfile={(userId) => {
             if (!userId) return
             setPendingLoungeProfileUserId(userId)
+            setTab('home')
+            setMenuOpen(false)
+          }}
+          onOpenLoungePost={(postId) => {
+            if (!postId) return
+            setPendingLoungePostId(postId)
             setTab('home')
             setMenuOpen(false)
           }}

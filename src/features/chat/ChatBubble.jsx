@@ -191,6 +191,7 @@ function computeLayout(rect, isMine, { isDeleted = false, enableStar = false, en
  *   onTogglePin?: (messageId: string, pinned: boolean) => void,
  *   receipt?: import('./chatReceiptStatus.js').ChatMessageReceipt | null,
  *   highlighted?: boolean,
+ *   onOpenLoungePost?: ((postId: string) => void) | null,
  * }} props
  */
 export default function ChatBubble({
@@ -219,6 +220,7 @@ export default function ChatBubble({
   onTogglePin,
   supabaseClient = null,
   onLinkPreviewReady = null,
+  onOpenLoungePost = null,
   receipt = null,
   highlighted = false,
 }) {
@@ -239,6 +241,22 @@ export default function ChatBubble({
   const bubbleRef      = useRef(null)
   const isDeleted      = Boolean(message.deleted_at)
   const linkPreview    = message.link_preview || null
+  const handleLinkPreviewOpen = useCallback(
+    (preview, e) => {
+      const postId = String(preview?.lounge_post_id || preview?.lounge_post?.id || '').trim()
+      if (postId && typeof onOpenLoungePost === 'function') {
+        e?.preventDefault?.()
+        onOpenLoungePost(postId)
+        return
+      }
+      try {
+        window.open(preview.url, '_blank', 'noopener,noreferrer')
+      } catch {
+        /* */
+      }
+    },
+    [onOpenLoungePost],
+  )
   const imageUrlsEarly = Array.isArray(message.image_urls) ? message.image_urls.filter(Boolean) : []
   const displayBody    = bodyTextWithLinkPreview(message.body, linkPreview)
   const showBodyText   = Boolean(displayBody)
@@ -697,7 +715,13 @@ export default function ChatBubble({
                 )}
                 {linkPreviewInBubble ? (
                   <div className={`${hasMedia ? 'px-3 pb-2' : ''} ${youtubeLinkPreview ? `flex ${isMine ? 'justify-end' : 'justify-start'}` : ''}`}>
-                    <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} embedded />
+                    <ChatLinkPreviewCard
+                      preview={linkPreview}
+                      isMine={isMine}
+                      embedded
+                      supabaseClient={supabaseClient}
+                      onPreviewOpen={handleLinkPreviewOpen}
+                    />
                   </div>
                 ) : null}
               </>
@@ -735,7 +759,12 @@ export default function ChatBubble({
               onContextMenu={isLinkPreviewOnly ? (e) => e.preventDefault() : undefined}
               style={isLinkPreviewOnly ? { WebkitTouchCallout: 'none', userSelect: 'none', ...bubbleHighlightStyle } : undefined}
             >
-              <ChatLinkPreviewCard preview={linkPreview} isMine={isMine} />
+              <ChatLinkPreviewCard
+                preview={linkPreview}
+                isMine={isMine}
+                supabaseClient={supabaseClient}
+                onPreviewOpen={handleLinkPreviewOpen}
+              />
             </div>
           ) : null}
 

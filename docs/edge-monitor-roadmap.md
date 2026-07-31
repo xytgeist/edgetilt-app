@@ -58,9 +58,9 @@ Deploy: **`supabase/functions/admin-ops-external-health/README.md`**
 
 ## Phase 4 — alerts & runbooks (shipped)
 
-- [x] Default threshold config (`opsMonitorAlerts.js` ... webhook 24h = 0, rate-limit spike, CF pending uploads, starter pool exhausted, Sentry unresolved)
+- [x] Default threshold config (`opsMonitorAlerts.js` ... rate-limit spike, CF pending uploads, starter pool exhausted, Sentry unresolved). **Stripe:** `admin_ops_monitor_stripe_webhook_health()` — **critical** when last failure is newer than last success; **warn** when active billing subs exist but no success in 96h (replaces naive "24h = 0").
 - [ ] Email or push to admin when threshold breached (deferred ... reuse `send-test-push` pattern later)
-- [x] Inline runbook links per section (`opsMonitorRunbooks.js` ... prod checklist, Stripe handoff, Stream purge README)
+- [x] Inline runbook links per section (`opsMonitorRunbooks.js` ... GitHub blob URLs to repo docs; prod checklist, Stripe handoff, Stream purge README)
 
 ## Phase 5 — real-time (shipped)
 

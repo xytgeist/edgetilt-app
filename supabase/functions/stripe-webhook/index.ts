@@ -3,6 +3,7 @@ import { jsonResponse } from '../_shared/billingCors.ts'
 import { requireStripeSecretKey, requireStripeWebhookSecret } from '../_shared/billingEnv.ts'
 import {
   createBillingAdmin,
+  markWebhookEventFailed,
   recordWebhookEvent,
   deleteUserSubscriptionByStripeId,
   deleteCreatorFanSubscriptionByStripeId,
@@ -345,7 +346,8 @@ Deno.serve(async (req) => {
       await processStripeWebhookEvent(stripe, admin, parsedEvent)
     } catch (processErr) {
       if (isNew) {
-        await admin.from('stripe_webhook_events').delete().eq('stripe_event_id', parsedEvent.id)
+        const failMsg = processErr instanceof Error ? processErr.message : String(processErr)
+        await markWebhookEventFailed(admin, parsedEvent.id, failMsg)
       }
       throw processErr
     }

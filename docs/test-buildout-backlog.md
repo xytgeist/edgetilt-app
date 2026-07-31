@@ -120,7 +120,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [ ] **Group photo** — Owner uploads group avatar in settings; header switches to single large photo.
 - [ ] **Group settings** — Owner: rename, description, add/remove member, mute member (5m–permanent). Member: leave, mute group (presets + mute-until datetime), add member, starred list.
 - [ ] **Star message** — Long-press a group message → Star; appears under Starred messages in settings.
-- [ ] **@mention notify** — Type `@` in a group/DM composer → room-member autocomplete; send `@handle` → tagged member gets Lounge notification **"{name} tagged you in {room}"** + web push (respects **Mentions** pref). Apply **`20260731120000`** + **`20260731130000`** (`guide_slug` for push Edge) on test; redeploy **`lounge-chat`** + **`lounge-send-activity-push`**.
+- [ ] **@mention notify** — Type `@` in a **group** composer → room-member autocomplete; send `@handle` → tagged member gets Lounge notification **"{name} tagged you in {room}"** + web push (respects **Mentions** pref). **DM:** autocomplete still works but **no** `chat_mention` event (DM message push already fires). Apply **`20260731120000`** + **`20260731130000`** + **`20260731140000`** (skip DM) on test; redeploy **`lounge-chat`** + **`lounge-send-activity-push`**.
 
 ### Chat calling (LiveKit) — v1 shipped in code
 
@@ -949,6 +949,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-07-31: **Edge Monitor Stripe webhook health + runbook links:** migration **`20260731150000`** — persist failed **`stripe_webhook_events`** (no delete on handler error); snapshot **`health_status`** / last success/failure; removed naive "24h = 0" alert; runbook links → GitHub blob URLs. Redeploy **`stripe-webhook`** after apply. Client monitor tiles: Webhook health / Last OK / Processed 24h.
+- 2026-07-31: **Chat @mention skip DM:** migration **`20260731140000`** — **`chat_emit_mention_activity_events`** no-op for `kind = dm` (DM message push already covers new messages; tag copy duplicated peer name). Edge **`lounge-chat`** skips RPC for DMs. Redeploy **`lounge-chat`** on test after apply.
 - 2026-07-31: **Chat @mention push on test (guide_slug):** migration **`20260731130000`** adds `activity_events.guide_slug` without replacing event-type check (40900 wholesale would drop `chat_mention`). **`lounge-send-activity-push`** was 500 until column existed; **`apply-migration-once.mjs`** now ignores mismatched `SUPABASE_DB_URL` so `--target=test` hits test DB. Applied on test; mention push + toast verified after retry.
 - 2026-07-31: **Chat @mention notifications (code):** migration **`20260731120000`** — `chat_mention` activity type, `chat_message_id`, RPC **`chat_emit_mention_activity_events`** (room-member handles only); Edge **`lounge-chat`** emit after send; **`lounge-send-activity-push`** copy + **`push_mentions`** pref; client room-member autocomplete in **`ChatComposer`** + Lounge bell tap → `/?tab=chat&room=`. **Apply SQL + redeploy Edge on test before smoke.**
 - 2026-07-31: **Chat nav + lounge chat embeds + FAB dock panels → production:** frontend **`test` → `main`** @ **`2a61df56`**. Ryan sign-off on test (lvslotpro.com). **No SQL / Edge.** Direct Slots Pro Lounge open, keep-alive chat + post preview return, quote-style lounge links in chat, Private Subs back nav, FAB settings from tools without Lounge detour.

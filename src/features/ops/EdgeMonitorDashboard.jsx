@@ -3,8 +3,10 @@ import { APP_BUILD_SHA } from '../../utils/appBuildInfo.js'
 import {
   formatOpsMonitorBreakdown,
   formatOpsMonitorCount,
+  formatOpsMonitorRelativeTime,
   formatOpsMonitorTopQueries,
   opsMonitorSupabaseProjectRef,
+  stripeWebhookHealthAccent,
 } from './opsMonitorApi.js'
 import {
   MonitorBarChart,
@@ -589,7 +591,33 @@ export default function EdgeMonitorDashboard({
         <MetricTile label="Monthly" value={formatOpsMonitorCount(subs.monthly_interval)} />
         <MetricTile label="Annual" value={formatOpsMonitorCount(subs.annual_interval)} />
         <MetricTile label="Lifetime" value={formatOpsMonitorCount(subs.lifetime)} accent={OPS_CHART_COLORS.yellow} />
-        <MetricTile label="Webhooks 24h" value={formatOpsMonitorCount(stripeWebhooks.events_24h)} accent={OPS_CHART_COLORS.yellow} />
+        <MetricTile
+          label="Webhook health"
+          value={String(stripeWebhooks.health_status || 'ok').toUpperCase()}
+          hint={stripeWebhooks.health_summary || 'Stripe billing pipeline'}
+          accent={stripeWebhookHealthAccent(stripeWebhooks)}
+        />
+        <MetricTile
+          label="Last webhook OK"
+          value={formatOpsMonitorRelativeTime(stripeWebhooks.last_success_at)}
+          hint={
+            stripeWebhooks.last_failure_at &&
+            (!stripeWebhooks.last_success_at ||
+              Date.parse(stripeWebhooks.last_failure_at) > Date.parse(stripeWebhooks.last_success_at))
+              ? `Failed ${formatOpsMonitorRelativeTime(stripeWebhooks.last_failure_at)}${stripeWebhooks.last_failure_type ? ` · ${stripeWebhooks.last_failure_type}` : ''}`
+              : undefined
+          }
+          accent={stripeWebhookHealthAccent(stripeWebhooks)}
+        />
+        <MetricTile
+          label="Processed 24h"
+          value={formatOpsMonitorCount(stripeWebhooks.events_24h)}
+          hint={
+            stripeWebhooks.failures_24h
+              ? `${formatOpsMonitorCount(stripeWebhooks.failures_24h)} failed in 24h`
+              : 'Successful handler completions'
+          }
+        />
       </MonitorSection>
     </>
   ) : null

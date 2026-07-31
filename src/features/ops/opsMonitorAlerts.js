@@ -7,15 +7,6 @@ export const OPS_MONITOR_THRESHOLDS_STORAGE_KEY = 'edge-monitor-thresholds-v1'
 /** @type {OpsMonitorThreshold[]} */
 export const OPS_MONITOR_DEFAULT_THRESHOLDS = [
   {
-    id: 'stripe_webhooks_24h_zero',
-    label: 'Stripe webhooks 24h = 0',
-    metric: 'stripe_webhooks.events_24h',
-    op: 'eq',
-    value: 0,
-    severity: 'critical',
-    runbookId: 'stripe-handoff',
-  },
-  {
     id: 'rate_limits_24h_spike',
     label: 'Rate limit hits 24h > 50',
     metric: 'rate_limits.events_24h',
@@ -70,7 +61,9 @@ export function loadOpsMonitorThresholds() {
     const raw = window.localStorage.getItem(OPS_MONITOR_THRESHOLDS_STORAGE_KEY)
     if (!raw) return OPS_MONITOR_DEFAULT_THRESHOLDS
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : OPS_MONITOR_DEFAULT_THRESHOLDS
+    if (!Array.isArray(parsed) || parsed.length === 0) return OPS_MONITOR_DEFAULT_THRESHOLDS
+    const filtered = parsed.filter((t) => t?.id !== 'stripe_webhooks_24h_zero')
+    return filtered.length > 0 ? filtered : OPS_MONITOR_DEFAULT_THRESHOLDS
   } catch {
     return OPS_MONITOR_DEFAULT_THRESHOLDS
   }
@@ -143,8 +136,53 @@ export function evaluateOpsMonitorAlerts(ctx) {
     })
   }
 
+  alerts.push(...evaluateStripeWebhookHealthAlerts(ctx.snapshot))
+
   return alerts.sort((a, b) => {
     if (a.severity === b.severity) return a.label.localeCompare(b.label)
     return a.severity === 'critical' ? -1 : 1
   })
+}
+
+/**
+ * Stripe webhook health from snapshot (replaces naive "24h = 0" alert).
+ * @param {object | null | undefined} snapshot
+ * @returns {Array<OpsMonitorThreshold & { actual: number | null, message: string }>}
+ */
+export function evaluateStripeWebhookHealthAlerts(snapshot) {
+  const wh = snapshot?.stripe_webhooks
+  if (!wh || typeof wh !== 'object') return []
+
+  /** @type {Array<OpsMonitorThreshold & { actual: number | null, message: string }>} */
+  const alerts = []
+  const status = String(wh.health_status || 'ok')
+  const summary = String(wh.health_summary || '').trim()
+
+  if (status === 'critical') {
+    alerts.push({
+      id: 'stripe_webhook_failure_unresolved',
+      label: 'Stripe webhook processing failed',
+      metric: 'stripe_webhooks.health_status',
+      op: 'eq',
+      value: 0,
+      severity: 'critical',
+      runbookId: 'stripe-handoff',
+      actual: null,
+      message: summary || 'Latest webhook failure not cleared by a later success',
+    })
+  } else if (status === 'warn') {
+    alerts.push({
+      id: 'stripe_webhook_stale',
+      label: 'Stripe webhooks stale (active billing subs)',
+      metric: 'stripe_webhooks.health_status',
+      op: 'eq',
+      value: 0,
+      severity: 'warn',
+      runbookId: 'stripe-handoff',
+      actual: wh.active_billing_subs ?? null,
+      message: summary || 'No successful webhook recently while billing subs are active',
+    })
+  }
+
+  return alerts
 }

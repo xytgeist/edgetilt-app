@@ -161,9 +161,15 @@ export function formatOpsSystemHealthDiagnostic(systemHealth, ctx = {}) {
   }
 
   if (ctx.snapshot?.stripe_webhooks) {
+    const wh = ctx.snapshot.stripe_webhooks
     lines.push('--- Stripe webhooks (snapshot) ---')
-    lines.push(`  events_24h: ${ctx.snapshot.stripe_webhooks.events_24h ?? '—'}`)
-    lines.push(`  events_7d: ${ctx.snapshot.stripe_webhooks.events_7d ?? '—'}`)
+    lines.push(`  health: ${wh.health_status ?? '—'} — ${wh.health_summary ?? ''}`)
+    lines.push(`  last_success: ${wh.last_success_at ?? '—'}`)
+    lines.push(`  last_failure: ${wh.last_failure_at ?? '—'}`)
+    if (wh.last_failure_message) lines.push(`  last_failure_msg: ${wh.last_failure_message}`)
+    lines.push(`  processed_24h: ${wh.events_24h ?? '—'}`)
+    lines.push(`  failures_24h: ${wh.failures_24h ?? '—'}`)
+    lines.push(`  active_billing_subs: ${wh.active_billing_subs ?? '—'}`)
     lines.push('')
   }
 

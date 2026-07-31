@@ -407,8 +407,28 @@ export async function recordWebhookEvent(admin: SupabaseClient, eventId: string,
   const { error } = await admin.from('stripe_webhook_events').insert({
     stripe_event_id: eventId,
     event_type: eventType,
+    processing_status: 'processed',
   })
   if (error?.code === '23505') return false
   if (error) throw new Error(`stripe_webhook_events insert: ${error.message}`)
   return true
+}
+
+/** Keep failed rows for Edge Monitor (do not delete audit on handler error). */
+export async function markWebhookEventFailed(
+  admin: SupabaseClient,
+  eventId: string,
+  errorMessage: string,
+) {
+  const msg = String(errorMessage || 'Webhook processing failed').trim().slice(0, 500)
+  const { error } = await admin
+    .from('stripe_webhook_events')
+    .update({
+      processing_status: 'failed',
+      error_message: msg || null,
+    })
+    .eq('stripe_event_id', eventId)
+  if (error) {
+    console.warn('markWebhookEventFailed:', error.message)
+  }
 }

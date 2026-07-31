@@ -486,8 +486,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // @mention notify: room-member handles only (chat_emit_mention_activity_events).
-    if (inserted?.id && text.includes('@')) {
+    // @mention notify: non-DM rooms only (DMs already get message push; tag copy is redundant).
+    if (room.kind !== 'dm' && inserted?.id && text.includes('@')) {
       try {
         await admin.rpc('chat_emit_mention_activity_events', {
           p_room_id: roomId,

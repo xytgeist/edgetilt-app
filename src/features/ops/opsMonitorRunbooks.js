@@ -1,5 +1,14 @@
 /** Inline runbook links for Edge Monitor Phase 4. */
 
+/** GitHub blob URLs — repo docs are not served by the SPA. */
+export const OPS_MONITOR_GITHUB_REPO = 'https://github.com/xytgeist/edgetilt-app'
+
+/** @param {string} repoPath e.g. docs/foo.md */
+export function opsMonitorGithubDocHref(repoPath) {
+  const path = String(repoPath || '').replace(/^\/+/, '')
+  return `${OPS_MONITOR_GITHUB_REPO}/blob/main/${path}`
+}
+
 /** @typedef {{ id: string, title: string, href: string, hint?: string }} OpsMonitorRunbook */
 
 /** @type {OpsMonitorRunbook[]} */
@@ -7,49 +16,49 @@ export const OPS_MONITOR_RUNBOOKS = [
   {
     id: 'prod-checklist',
     title: 'Production rollout checklist',
-    href: '/docs/production-rollout-checklist.md',
+    href: opsMonitorGithubDocHref('docs/production-rollout-checklist.md'),
     hint: 'Promote test work to prod',
   },
   {
     id: 'stripe-handoff',
     title: 'Stripe billing handoff',
-    href: '/docs/stripe-billing-test-to-prod-handoff.md',
+    href: opsMonitorGithubDocHref('docs/stripe-billing-test-to-prod-handoff.md'),
     hint: 'Webhook + secrets replay',
   },
   {
     id: 'billing-drift',
     title: 'Billing drift triage',
-    href: '/docs/access-tiers.md',
+    href: opsMonitorGithubDocHref('docs/access-tiers.md'),
     hint: 'Paid but no access · incomplete rows · reconcile',
   },
   {
     id: 'lounge-bot-sports-odds',
     title: 'Scott Share odds bots',
-    href: '/docs/lounge-bot-sports-odds.md',
+    href: opsMonitorGithubDocHref('docs/lounge-bot-sports-odds.md'),
     hint: 'pg_cron odds poll + Coffee & Covers',
   },
   {
     id: 'lounge-bot-market-news',
     title: 'Market Edge news bot',
-    href: '/docs/lounge-bot-market-news.md',
+    href: opsMonitorGithubDocHref('docs/lounge-bot-market-news.md'),
     hint: 'Financial news poll cron',
   },
   {
     id: 'lounge-bot-editorial-queue',
     title: 'X editorial bot queue',
-    href: '/docs/lounge-bot-editorial-queue.md',
+    href: opsMonitorGithubDocHref('docs/lounge-bot-editorial-queue.md'),
     hint: 'X ingest cron + editorial inbox',
   },
   {
     id: 'stream-purge',
     title: 'Stream pending-upload purge',
-    href: '/supabase/functions/lounge-cf-stream-purge-pending-uploads/README.md',
+    href: opsMonitorGithubDocHref('supabase/functions/lounge-cf-stream-purge-pending-uploads/README.md'),
     hint: 'Cron / manual CF cleanup',
   },
   {
     id: 'starter-drops',
     title: 'Starter weekly drops',
-    href: '/docs/access-tiers.md',
+    href: opsMonitorGithubDocHref('docs/access-tiers.md'),
     hint: 'Freemium + starter entitlements',
   },
   {
@@ -67,7 +76,7 @@ export const OPS_MONITOR_RUNBOOKS = [
   {
     id: 'edge-monitor-roadmap',
     title: 'Edge Monitor roadmap',
-    href: '/docs/edge-monitor-roadmap.md',
+    href: opsMonitorGithubDocHref('docs/edge-monitor-roadmap.md'),
   },
 ]
 

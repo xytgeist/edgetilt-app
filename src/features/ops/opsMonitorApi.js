@@ -122,6 +122,29 @@ export function formatOpsMonitorCount(value) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
+/** @param {string | null | undefined} iso */
+export function formatOpsMonitorRelativeTime(iso) {
+  if (!iso) return '—'
+  const ms = Date.parse(iso)
+  if (!Number.isFinite(ms)) return '—'
+  const diffSec = Math.round((Date.now() - ms) / 1000)
+  if (diffSec < 60) return 'just now'
+  const diffMin = Math.round(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.round(diffMin / 60)
+  if (diffHr < 48) return `${diffHr}h ago`
+  const diffDay = Math.round(diffHr / 24)
+  return `${diffDay}d ago`
+}
+
+/** @param {{ health_status?: string } | null | undefined} stripeWebhooks */
+export function stripeWebhookHealthAccent(stripeWebhooks) {
+  const status = String(stripeWebhooks?.health_status || 'ok')
+  if (status === 'critical') return '#f87171'
+  if (status === 'warn') return '#fb923c'
+  return '#4ade80'
+}
+
 /** Account-level bot post cap; null = no limit. */
 export function formatBotPostCap(value) {
   if (value == null) return 'No limit'

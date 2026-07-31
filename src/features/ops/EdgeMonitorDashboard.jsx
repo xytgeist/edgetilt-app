@@ -33,10 +33,12 @@ import EdgeMonitorActivityPanel from './EdgeMonitorActivityPanel.jsx'
 import EdgeMonitorBotOpsPanel from './EdgeMonitorBotOpsPanel.jsx'
 import EdgeMonitorSubscriberRosterPanel from './EdgeMonitorSubscriberRosterPanel.jsx'
 import EdgeMonitorSystemHealthPanel from './EdgeMonitorSystemHealthPanel.jsx'
+import EdgeMonitorSecurityPanel from './EdgeMonitorSecurityPanel.jsx'
 import EdgeMonitorUserSignupsPanel from './EdgeMonitorUserSignupsPanel.jsx'
 import { useEdgeMonitorLivePulse } from './useEdgeMonitorLivePulse.js'
 import { useEdgeMonitorSubscriberRoster } from './useEdgeMonitorSubscriberRoster.js'
 import { useEdgeMonitorSystemHealth } from './useEdgeMonitorSystemHealth.js'
+import { useEdgeMonitorSecurity } from './useEdgeMonitorSecurity.js'
 import { evaluateSystemHealthAlerts } from './opsMonitorSystemHealth.js'
 import EdgeMonitorSectionNav from './EdgeMonitorSectionNav.jsx'
 import { EDGE_MONITOR_PATH } from './opsMonitorNavigation.js'
@@ -424,6 +426,16 @@ export default function EdgeMonitorDashboard({
     enabled: Boolean(snapshot) && (needsOverviewData || needsHealthData),
     autoRefreshMs: autoRefresh ? 90_000 : 0,
   })
+  const {
+    security,
+    loading: securityLoading,
+    error: securityError,
+    refreshing: securityRefreshing,
+    load: loadSecurity,
+  } = useEdgeMonitorSecurity(supabaseClient, {
+    enabled: Boolean(snapshot) && needsHealthData,
+    autoRefreshMs: autoRefresh ? 90_000 : 0,
+  })
 
   const generatedAt = snapshot?.generated_at
     ? new Date(snapshot.generated_at).toLocaleString(undefined, {
@@ -463,8 +475,8 @@ export default function EdgeMonitorDashboard({
   const pulseDatasets = useMemo(() => buildPulseDatasets(trends), [trends])
   const systemAlerts = useMemo(() => evaluateSystemHealthAlerts(systemHealth), [systemHealth])
   const metricAlerts = useMemo(
-    () => evaluateOpsMonitorAlerts({ snapshot, external, live }),
-    [snapshot, external, live],
+    () => evaluateOpsMonitorAlerts({ snapshot, external, live, security }),
+    [snapshot, external, live, security],
   )
   const alerts = useMemo(() => {
     return [...systemAlerts, ...metricAlerts].sort((a, b) => {
@@ -480,12 +492,15 @@ export default function EdgeMonitorDashboard({
     const driftCritical = Number(systemHealth?.summary?.drift_critical) || 0
     const driftWarn = Number(systemHealth?.summary?.drift_warn) || 0
     const healthCount = jobsIssue + driftCritical + (driftWarn > 0 ? 1 : 0)
+    const securityOverall = String(security?.overall || 'ok')
+    const securityBadge =
+      securityOverall === 'critical' ? 2 : securityOverall === 'warn' ? 1 : 0
 
     return {
       overview: criticalCount || warnCount,
-      health: healthCount,
+      health: healthCount + securityBadge,
     }
-  }, [alerts, systemHealth])
+  }, [alerts, systemHealth, security])
 
   const roleDoughnut = useMemo(
     () =>
@@ -875,6 +890,13 @@ export default function EdgeMonitorDashboard({
             onReload={() => void loadSystemHealth(true)}
             snapshot={snapshot}
             external={external}
+          />
+          <EdgeMonitorSecurityPanel
+            security={security}
+            loading={securityLoading}
+            error={securityError}
+            refreshing={securityRefreshing}
+            onReload={() => void loadSecurity(true)}
           />
           <EdgeMonitorBotOpsPanel
             botOps={botOps}

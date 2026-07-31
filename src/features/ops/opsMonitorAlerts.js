@@ -42,6 +42,24 @@ export const OPS_MONITOR_DEFAULT_THRESHOLDS = [
     severity: 'warn',
     runbookId: 'sentry',
   },
+  {
+    id: 'guide_denied_reads_24h',
+    label: 'Guide denied reads 24h > 50',
+    metric: 'security.guide_reads.denied_24h',
+    op: 'gt',
+    value: 50,
+    severity: 'warn',
+    runbookId: 'prod-checklist',
+  },
+  {
+    id: 'guide_heavy_anon_1h',
+    label: 'Anon guide grants 1h > 200',
+    metric: 'security.guide_reads.anon_granted_1h',
+    op: 'gt',
+    value: 200,
+    severity: 'warn',
+    runbookId: 'prod-checklist',
+  },
 ]
 
 /** @param {OpsMonitorThreshold[]} thresholds */
@@ -114,6 +132,7 @@ export function evaluateOpsMonitorAlerts(ctx) {
   const thresholds = ctx.thresholds || OPS_MONITOR_DEFAULT_THRESHOLDS
   const metricRoot = {
     ...(ctx.snapshot || {}),
+    security: ctx.security || {},
     external: {
       cloudflare: ctx.external?.probes?.cloudflare || {},
       sentry: ctx.external?.probes?.sentry || {},

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { normalizeGuideAccessSlug } from '../features/guides/guideAccess.js'
 import { supabase } from './LoginGate.jsx'
+import { fetchAdminGuideForEdit } from '../features/guides/guideContentApi.js'
 import {
   buildGuideMarkdown,
   buildSlotGuideDraft,
   diagramFilename,
-  GUIDE_FORM_SELECT,
   guideRowToFormFields,
   loadSlotGuideDraftFromStorage,
   slugify,
@@ -682,8 +682,8 @@ export default function SlotGuideFormApp() {
   }
 
   async function fetchGuideRow(id) {
-    const { data, error: err } = await supabase.from('guides').select(GUIDE_FORM_SELECT).eq('id', id).single()
-    if (err) throw new Error(err.message)
+    const { data, error: err } = await fetchAdminGuideForEdit(supabase, id)
+    if (err) throw err
     return data
   }
 
@@ -967,7 +967,7 @@ export default function SlotGuideFormApp() {
       }
       if (newThumbnailUrl) guidePayload.thumbnail_url = newThumbnailUrl
       if (newAccentColor) guidePayload.card_accent_color = newAccentColor
-      const guideResult = await supabase.from('guides').update(guidePayload).eq('id', editIds.guideId).select('id, updated_at, content_markdown').maybeSingle()
+      const guideResult = await supabase.from('guides').update(guidePayload).eq('id', editIds.guideId).select('id, updated_at').maybeSingle()
       assertSupabaseRowUpdated(guideResult, 'guides')
 
       // Reflect new timestamp in the preview

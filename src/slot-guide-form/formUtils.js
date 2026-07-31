@@ -245,7 +245,7 @@ export function writeSlotGuideDraftToStorage(draft) {
   } catch { /* quota / private mode */ }
 }
 
-/** Supabase select for full guide editor load / duplicate fetch. */
+/** Legacy PostgREST select (content_markdown blocked after 20260731160000). Prefer admin_get_guide_for_edit RPC. */
 export const GUIDE_FORM_SELECT = `
   id, slug, title, content_markdown, card_ev_threshold, published, thumbnail_url,
   created_at, updated_at,

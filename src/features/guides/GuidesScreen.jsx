@@ -73,6 +73,7 @@ import {
   resolveGuidePostSlug,
   showGuideLock,
 } from './guideAccess.js'
+import { fetchGuideContentBySlug } from './guideContentApi.js'
 import { resolveCalculatorKeyFromMachine } from './guideCalculatorKey.js'
 import { resolveGuideAccent } from '../../utils/guideCardAccent.js'
 import { LOG_PLAY_LOGBOOK_BTN_CLASS } from '../calculators/CalculatorLogPlayButton.jsx'
@@ -94,6 +95,7 @@ const GUIDE_LIST_SELECT = `
           updated_at,
           thumbnail_url,
           published,
+          skins_search_text,
           machines (
             id,
             slug,
@@ -125,6 +127,7 @@ const GUIDE_LIST_SELECT_FALLBACK_POPULARITY = `
               updated_at,
               thumbnail_url,
               published,
+              skins_search_text,
               machines (
                 id,
                 slug,
@@ -1472,7 +1475,6 @@ export default function GuidesScreen({
   const [expandedSlug, setExpandedSlug] = useState(null)
   const [askFor, setAskFor] = useState(null)
   const [guideContentById, setGuideContentById] = useState(() => new Map())
-  const [skinSearchByRowId, setSkinSearchByRowId] = useState(() => Object.create(null))
   const [visibleCount, setVisibleCount] = useState(GUIDES_LIST_PAGE_SIZE)
   const [expandedContentLoading, setExpandedContentLoading] = useState(false)
 
@@ -1707,6 +1709,20 @@ export default function GuidesScreen({
     }
   }, [supabaseClient])
 
+  const skinSearchByRowId = useMemo(() => {
+    /** @type {Record<string, string>} */
+    const map = Object.create(null)
+    for (const r of rows) {
+      if (!r?.id) continue
+      if (typeof r.skins_search_text === 'string' && r.skins_search_text.trim()) {
+        map[r.id] = r.skins_search_text.trim().toLowerCase()
+      } else if (isLocalDemoGuide(r) && r.content_markdown) {
+        map[r.id] = parseGuideMarkdown(r.content_markdown).skins_markdown.toLowerCase()
+      }
+    }
+    return map
+  }, [rows])
+
   /** Title + Skins only (not hunt copy, manufacturer, slug, or MHB keyword blobs). */
   const searchHaystackByRowId = useMemo(() => {
     /** @type {Record<string, string>} */
@@ -1752,37 +1768,6 @@ export default function GuidesScreen({
     void load()
   }, [load])
 
-  /** After card list paints, fetch markdown in the background for skin search + expand cache. */
-  useEffect(() => {
-    if (loading || !rows.length || !supabaseClient) return undefined
-    let cancelled = false
-    void (async () => {
-      const { data, error } = await supabaseClient
-        .from('guides')
-        .select('id, content_markdown')
-        .eq('published', true)
-      if (cancelled || error) return
-      const contentMap = new Map()
-      const skinMap = Object.create(null)
-      for (const guide of data || []) {
-        if (!guide?.id) continue
-        const markdown = guide.content_markdown || ''
-        contentMap.set(guide.id, markdown)
-        skinMap[guide.id] = parseGuideMarkdown(markdown).skins_markdown.toLowerCase()
-      }
-      for (const row of rows) {
-        if (!isLocalDemoGuide(row) || !row.content_markdown) continue
-        contentMap.set(row.id, row.content_markdown)
-        skinMap[row.id] = parseGuideMarkdown(row.content_markdown).skins_markdown.toLowerCase()
-      }
-      setGuideContentById(contentMap)
-      setSkinSearchByRowId(skinMap)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [loading, rows, supabaseClient])
-
   useEffect(() => {
     if (!expandedSlug || !supabaseClient) return undefined
     const row = rows.find((r) => {
@@ -1790,7 +1775,7 @@ export default function GuidesScreen({
       const slug = normalizeGuideAccessSlug(m?.slug || r.slug)
       return slug && String(slug).toLowerCase() === String(expandedSlug).toLowerCase()
     })
-    if (!row?.id || row.content_markdown || guideContentById.has(row.id) || isLocalDemoGuide(row)) {
+    if (!row?.id || guideContentById.has(row.id) || isLocalDemoGuide(row)) {
       setExpandedContentLoading(false)
       return undefined
     }
@@ -1798,15 +1783,11 @@ export default function GuidesScreen({
     setExpandedContentLoading(true)
     void (async () => {
       try {
-        const { data, error } = await supabaseClient
-          .from('guides')
-          .select('content_markdown')
-          .eq('id', row.id)
-          .maybeSingle()
-        if (cancelled || error) return
+        const { data, error } = await fetchGuideContentBySlug(supabaseClient, expandedSlug)
+        if (cancelled || error || !data?.content_markdown) return
         setGuideContentById((prev) => {
           const next = new Map(prev)
-          next.set(row.id, data?.content_markdown || '')
+          next.set(row.id, data.content_markdown || '')
           return next
         })
       } finally {

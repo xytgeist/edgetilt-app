@@ -28,6 +28,12 @@ import {
 } from './opsMonitorTheme.js'
 import { useEdgeMonitorSnapshot } from './useEdgeMonitorSnapshot.js'
 import { useEdgeMonitorExternalHealth } from './useEdgeMonitorExternalHealth.js'
+import {
+  opsExternalHealthClass,
+  opsExternalHealthLabel,
+  opsExternalHealthOverall,
+  opsExternalProbeHealth,
+} from './opsMonitorExternalHealth.js'
 import { useLoungeBotOps } from './useLoungeBotOps.js'
 import EdgeMonitorActivityPanel from './EdgeMonitorActivityPanel.jsx'
 import EdgeMonitorBotOpsPanel from './EdgeMonitorBotOpsPanel.jsx'
@@ -273,6 +279,7 @@ function AlertsBanner({ alerts }) {
 function ExternalHealthPanel({ external, loading, error, onReload }) {
   const probes = external?.probes || {}
   const links = external?.links || {}
+  const overallStatus = opsExternalHealthOverall(external, { error })
   const cards = [
     {
       key: 'stripe',
@@ -310,7 +317,16 @@ function ExternalHealthPanel({ external, loading, error, onReload }) {
     <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4 lg:p-5 lg:col-span-2`}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <div className="text-white font-bold text-[15px]">External health</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-white font-bold text-[15px]">External health</div>
+            {!loading || external || error ? (
+              <span
+                className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ${opsExternalHealthClass(overallStatus)}`}
+              >
+                {opsExternalHealthLabel(overallStatus)}
+              </span>
+            ) : null}
+          </div>
           <div className="text-zinc-500 text-xs mt-0.5">Dashboard links + optional server probes (Phase 3)</div>
         </div>
         <button
@@ -328,16 +344,25 @@ function ExternalHealthPanel({ external, loading, error, onReload }) {
         </div>
       ) : null}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ key, title, probe, href }) => (
+        {cards.map(({ key, title, probe, href }) => {
+          const probeStatus = opsExternalProbeHealth(probe, key)
+          return (
           <div key={key} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-white text-sm font-bold">{title}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="text-white text-sm font-bold truncate">{title}</div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 ring-inset ${opsExternalHealthClass(probeStatus)}`}
+                >
+                  {opsExternalHealthLabel(probeStatus)}
+                </span>
+              </div>
               {href ? (
                 <a
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[10px] font-semibold text-cyan-300 hover:text-cyan-200"
+                  className="shrink-0 text-[10px] font-semibold text-cyan-300 hover:text-cyan-200"
                 >
                   Open ↗
                 </a>
@@ -366,7 +391,8 @@ function ExternalHealthPanel({ external, loading, error, onReload }) {
               {probe?.error ? <span className="text-amber-300">{probe.error}</span> : null}
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
       <RunbookLinks sectionKey="external" />
     </section>

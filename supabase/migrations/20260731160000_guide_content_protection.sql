@@ -44,7 +44,7 @@ begin
       v_header := btrim(substring(v_chunk from 1 for v_nl - 1));
       v_body := btrim(substring(v_chunk from v_nl + 1));
     end if;
-    if v_header ~* '^Skins' then
+    if v_header ~* 'Skins' then
       v_skins := v_body;
       exit;
     end if;

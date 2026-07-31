@@ -36,6 +36,7 @@ import {
 } from './opsMonitorExternalHealth.js'
 import { useLoungeBotOps } from './useLoungeBotOps.js'
 import EdgeMonitorActivityPanel from './EdgeMonitorActivityPanel.jsx'
+import EdgeMonitorAppSectionUsagePanel from './EdgeMonitorAppSectionUsagePanel.jsx'
 import EdgeMonitorBotOpsPanel from './EdgeMonitorBotOpsPanel.jsx'
 import EdgeMonitorSubscriberRosterPanel from './EdgeMonitorSubscriberRosterPanel.jsx'
 import EdgeMonitorSystemHealthPanel from './EdgeMonitorSystemHealthPanel.jsx'
@@ -45,6 +46,7 @@ import { useEdgeMonitorLivePulse } from './useEdgeMonitorLivePulse.js'
 import { useEdgeMonitorSubscriberRoster } from './useEdgeMonitorSubscriberRoster.js'
 import { useEdgeMonitorSystemHealth } from './useEdgeMonitorSystemHealth.js'
 import { useEdgeMonitorSecurity } from './useEdgeMonitorSecurity.js'
+import { useEdgeMonitorAppSectionUsage } from './useEdgeMonitorAppSectionUsage.js'
 import { evaluateSystemHealthAlerts } from './opsMonitorSystemHealth.js'
 import EdgeMonitorSectionNav from './EdgeMonitorSectionNav.jsx'
 import { EDGE_MONITOR_PATH } from './opsMonitorNavigation.js'
@@ -422,6 +424,7 @@ export default function EdgeMonitorDashboard({
   const needsPeopleData = section === 'people'
   const needsHealthData = section === 'health'
   const needsSecurityData = section === 'security'
+  const needsProductData = section === 'product'
   const needsOverviewData = section === 'overview'
   const { snapshot, loading, error, refreshing, load } = useEdgeMonitorSnapshot(supabaseClient, {
     autoRefreshMs: autoRefresh ? 90_000 : 0,
@@ -462,6 +465,14 @@ export default function EdgeMonitorDashboard({
   } = useEdgeMonitorSecurity(supabaseClient, {
     enabled: Boolean(snapshot) && needsSecurityData,
     autoRefreshMs: autoRefresh ? 90_000 : 0,
+  })
+  const {
+    usage: appSectionUsage,
+    loading: appSectionUsageLoading,
+    error: appSectionUsageError,
+    reload: reloadAppSectionUsage,
+  } = useEdgeMonitorAppSectionUsage(supabaseClient, {
+    enabled: Boolean(snapshot) && needsProductData,
   })
 
   const generatedAt = snapshot?.generated_at
@@ -985,6 +996,11 @@ export default function EdgeMonitorDashboard({
     if (section === 'product') {
       return (
         <>
+          <EdgeMonitorAppSectionUsagePanel
+            usage={appSectionUsage}
+            loading={appSectionUsageLoading}
+            error={appSectionUsageError}
+          />
           <EdgeMonitorActivityPanel snapshot={snapshot} loading={loading} />
           {isDesktop ? productChartsDesktop : null}
           <div className={isDesktop ? 'edge-monitor-desktop-sections grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4'}>
@@ -1059,6 +1075,7 @@ export default function EdgeMonitorDashboard({
                   if (needsPeopleData) void loadRoster(true)
                   if (needsOverviewData || needsHealthData) void loadSystemHealth(true)
                   if (needsSecurityData) void loadSecurity(true)
+                  if (needsProductData) void reloadAppSectionUsage()
                   if (needsHealthData) {
                     void reloadExternal()
                     void reloadBotOps()
@@ -1113,6 +1130,7 @@ export default function EdgeMonitorDashboard({
                   if (needsPeopleData) void loadRoster(true)
                   if (needsOverviewData || needsHealthData) void loadSystemHealth(true)
                   if (needsSecurityData) void loadSecurity(true)
+                  if (needsProductData) void reloadAppSectionUsage()
                   if (needsHealthData) {
                     void reloadExternal()
                     void reloadBotOps()

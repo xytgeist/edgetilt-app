@@ -121,6 +121,13 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 
 **Poker catalog heartbeat (40800):** GitHub Actions sync writes **`admin_ops_job_heartbeats`**; Monitor stale if last success >4 days.
 
+## Phase 8 — app section visits (shipped)
+
+**Migrations:** **`20260731210000`**–**`20260731210701`** (`app_section_visits`, **`record_app_section_visit()`**, **`admin_ops_app_section_usage_snapshot()`**)
+
+- **Client:** **`AppShell`** tab changes → debounced **`record_app_section_visit`** (45s per section, members only). Canonical map: **`src/constants/appProductSections.js`**.
+- **Monitor:** **Product** tab → **`EdgeMonitorAppSectionUsagePanel`** (visits/users 24h + 7d bar chart + table). Excludes Monitor/Bots tabs.
+
 ---
 
 _Update log: 2026-07-03 — v1 scaffold (RPC + EdgeMonitorScreen + AppShell tab)._

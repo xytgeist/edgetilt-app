@@ -54,6 +54,7 @@ import {
   requestPwaMicrophoneAccess,
 } from '../../utils/pwaMicrophonePrompt'
 import { stashPendingChatCallDeepLink } from '../../utils/pendingChatCallDeepLink.js'
+import { recordAppSectionVisitForTab } from '../../utils/appSectionVisitTracking.js'
 import { chatClaimPlatformSubMembership, chatGetPlatformSubRoomId } from '../chat/chatApi.js'
 import { takePendingAppNavigateFromSw } from '../../utils/pendingAppNavigateFromSw.js'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
@@ -1095,6 +1096,12 @@ export default function AppShell({
   useEffect(() => {
     if (tab === 'home') void loadCommunityFeedRef.current()
   }, [tab])
+
+  /** Product analytics: debounced section visit rows for Edge Monitor (members only). */
+  useEffect(() => {
+    if (browseMode !== 'member' || !supabaseClient) return
+    void recordAppSectionVisitForTab(supabaseClient, tab)
+  }, [tab, browseMode, supabaseClient])
 
   /** Resume Lottie (≥1h background): refresh feed under the splash so the reveal isn't stale. */
   useEffect(() => {

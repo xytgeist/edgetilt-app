@@ -101,6 +101,15 @@ export async function fetchOpsMonitorSecuritySnapshot(supabaseClient) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @returns {Promise<{ data: object | null, error: import('@supabase/supabase-js').PostgrestError | null }>}
+ */
+export async function fetchOpsMonitorAppSectionUsage(supabaseClient) {
+  const { data, error } = await supabaseClient.rpc('admin_ops_app_section_usage_snapshot')
+  return { data, error }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string, dryRun?: boolean, force?: boolean }} [opts]
  * @returns {Promise<{ data: object | null, error: Error | null }>}
  */

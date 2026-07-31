@@ -130,21 +130,32 @@ const SPORT_THREAD_EMOJI_BY_ODDS_PREFIX: [string, string][] = [
 
 /** Emoji prefix for Coffee & Covers thread part headers (e.g. "🎾 Wimbledon"). */
 export function sportThreadEmojiForCategory(categoryLabel: string, sportKey?: string): string {
+  const sk = String(sportKey || '').trim().toLowerCase()
+  for (const [prefix, emoji] of SPORT_THREAD_EMOJI_BY_ODDS_PREFIX) {
+    if (sk.startsWith(prefix)) return emoji
+  }
+
   const label = String(categoryLabel || '').trim().toLowerCase()
   if (label && SPORT_THREAD_EMOJI_BY_LABEL[label]) return SPORT_THREAD_EMOJI_BY_LABEL[label]!
   if (label.includes('world cup') || label.includes('soccer')) return '⚽'
+  if (label.includes('bundesliga') || label.includes('premier league') || label.includes('la liga')) {
+    return '⚽'
+  }
   if (label.includes('wimbledon') || label.includes('tennis')) return '🎾'
   if (label.includes('march madness') || label.includes('ncaab')) return '🏀'
   if (label.includes('wnba') || label.includes('nba')) return '🏀'
   if (label.includes('mlb') || label.includes('baseball')) return '⚾'
   if (label.includes('nhl') || label.includes('hockey')) return '🏒'
   if (label.includes('pga') || label.includes('golf')) return '⛳'
-  if (label.includes('nfl') || label.includes('ncaaf') || label.includes('football')) return '🏈'
-
-  const sk = String(sportKey || '').trim().toLowerCase()
-  for (const [prefix, emoji] of SPORT_THREAD_EMOJI_BY_ODDS_PREFIX) {
-    if (sk.startsWith(prefix)) return emoji
+  if (
+    label.includes('nfl')
+    || label.includes('ncaaf')
+    || label.includes('american football')
+    || label.includes('college football')
+  ) {
+    return '🏈'
   }
+
   return ''
 }
 

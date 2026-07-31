@@ -176,7 +176,7 @@ export default function ChatPrivateSubsTab({
   return (
     <div className="px-3 py-3" data-chat-private-subs>
       <p className="mb-3 text-[13px] leading-relaxed text-zinc-500">
-        Slots Pro Lounge for Edge Pro and Lifetime members, plus private group chats with creators you support.
+        Private group chats with creators you support. Search by name, description, or keywords.
       </p>
 
       <label className="mb-3 block">

@@ -6,7 +6,7 @@ import { buildLoungeProfileShareUrl } from '../../utils/loungeSharePost.js'
 
 /**
  * Classify platform/fan subscription billing from Stripe-shaped ids.
- * Matches admin comp (`admin_comp_*`), SQL test grants (`test_*`), and real Stripe (`sub_`, `pi_`, `cus_`).
+ * Matches admin comp (`admin_comp_*`, legacy `comp_lifetime_*`), SQL test grants (`test_*`), and real Stripe (`sub_`, `pi_`, `cus_`).
  * @param {string | null | undefined} subscriptionId
  * @param {string | null | undefined} [customerId]
  * @returns {OpsMonitorBillingSource}
@@ -16,14 +16,11 @@ export function opsMonitorSubscriptionBillingSource(subscriptionId, customerId) 
   const cus = String(customerId || '').trim()
 
   if (sub.startsWith('admin_comp_') || cus.startsWith('admin_comp_')) return 'comp'
+  // Legacy manual comps (pre-20260726210000) ... subscription id only; may still have real cus_* on file.
+  if (sub.startsWith('comp_lifetime_')) return 'comp'
   if (sub.startsWith('test_') || cus.startsWith('test_cus_')) return 'test'
 
-  if (
-    sub.startsWith('sub_')
-    || sub.startsWith('pi_')
-    || sub.startsWith('cs_')
-    || cus.startsWith('cus_')
-  ) {
+  if (sub.startsWith('sub_') || sub.startsWith('pi_') || sub.startsWith('cs_') || cus.startsWith('cus_')) {
     return 'paid'
   }
 

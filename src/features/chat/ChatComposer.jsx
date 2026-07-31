@@ -450,10 +450,17 @@ export default function ChatComposer({
   const removeSlot = (slotId) => {
     setImageSlots((prev) => {
       const slot = prev.find((s) => s.id === slotId)
-      if (slot) URL.revokeObjectURL(slot.localUrl)
+      if (slot?.localUrl?.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(slot.localUrl)
+        } catch {
+          /* ignore */
+        }
+      }
       uploadPromisesRef.current.delete(slotId)
       return prev.filter((s) => s.id !== slotId)
     })
+    setUploadErr('')
   }
 
   const handleCropCancel = () => setCropModalFile(null)
@@ -718,16 +725,32 @@ export default function ChatComposer({
 
       {/* Image preview strip - slots appear immediately with local blob URLs */}
       {imageSlots.length > 0 && (
-        <div className="chat-header-glass mb-1 flex items-center gap-2 overflow-x-auto rounded-2xl px-3 py-2">
+        <div className="chat-header-glass mb-1.5 flex items-stretch gap-2 overflow-x-auto rounded-2xl px-3 py-3">
           {imageSlots.map((slot) => (
             <SwipeAwayTile key={slot.id} onDismiss={() => removeSlot(slot.id)}>
-              <div className="relative h-16 w-16">
-                <img src={slot.localUrl} alt="" className="h-16 w-16 rounded-xl object-cover" />
+              <div className="relative inline-flex max-w-[min(78vw,18rem)] shrink-0 overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                <img
+                  src={slot.localUrl}
+                  alt=""
+                  className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
+                />
                 {!slot.remoteUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   </div>
                 )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeSlot(slot.id)
+                  }}
+                  className="absolute right-1.5 top-1.5 z-[1] grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/45 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/60 active:bg-black/70"
+                  aria-label={slot.localUrl.startsWith('blob:') ? 'Remove image' : 'Remove GIF'}
+                  title={slot.localUrl.startsWith('blob:') ? 'Remove image' : 'Remove GIF'}
+                >
+                  ×
+                </button>
               </div>
             </SwipeAwayTile>
           ))}

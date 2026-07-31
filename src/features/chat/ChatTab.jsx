@@ -47,7 +47,7 @@ import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.j
  *   onInitialPrivateSubsContextConsumed?: () => void,
  *   onRequireSubscribe?: ((productSlug?: string) => void) | null,
  *   onViewProfile?: ((userId: string) => void) | null,
- *   onOpenLoungePost?: ((postId: string) => void) | null,
+ *   onOpenLoungePost?: ((postId: string, returnChatRoomId?: string | null) => void) | null,
  * }} props
  */
 export default function ChatTab({

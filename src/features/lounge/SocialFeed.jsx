@@ -695,8 +695,10 @@ export default function SocialFeed({
   requestOpenProfileUserId = null,
   onRequestOpenProfileConsumed,
   /** When set, opens lounge post detail (e.g. from Chat lounge link preview). */
-  requestOpenPostId = null,
+  requestOpenPost = null,
   onRequestOpenPostConsumed,
+  /** App shell: return to Chat tab + reopen this room after post detail back. */
+  onReturnToChatRoom = null,
   /** Open terms, privacy, or guidelines in-app with return navigation. */
   onOpenLegalDocument = null,
   /** Open in-app billing manage modal (upgrade / interval / cancel). */
@@ -14257,6 +14259,12 @@ export default function SocialFeed({
             setLoungeDockPanel(frame.panel)
             break
           }
+          case 'chat': {
+            setLoungeDockPanel(null)
+            setProfileOverlayStack([])
+            onReturnToChatRoom?.(frame.roomId)
+            break
+          }
           default:
             break
         }
@@ -14271,6 +14279,7 @@ export default function SocialFeed({
       openLoungePostDetail,
       openProfileModal,
       profileModalOpen,
+      onReturnToChatRoom,
     ],
   )
 
@@ -14615,11 +14624,15 @@ export default function SocialFeed({
   )
 
   useEffect(() => {
-    if (!requestOpenPostId) return
-    const postId = requestOpenPostId
+    const postId = String(requestOpenPost?.postId || '').trim()
+    if (!postId) return
+    const returnChatRoomId = String(requestOpenPost?.returnChatRoomId || '').trim()
     onRequestOpenPostConsumed?.()
+    if (returnChatRoomId) {
+      pushLoungeNavReturnFrame(loungeNavReturnStackRef.current, { kind: 'chat', roomId: returnChatRoomId })
+    }
     void openLoungePostById(postId, { skipNavCapture: true })
-  }, [requestOpenPostId, openLoungePostById, onRequestOpenPostConsumed])
+  }, [requestOpenPost, openLoungePostById, onRequestOpenPostConsumed])
 
   const openCaptionLink = useCallback(
     (href, e) => {

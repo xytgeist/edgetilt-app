@@ -146,7 +146,7 @@ async function fetchPage(supabaseClient, roomId, { beforeCreatedAt = null, befor
  *   profilesById: Record<string, { display_name?: string | null, handle?: string | null, avatar_url?: string | null }>,
  *   onBack: () => void,
  *   onViewProfile?: ((userId: string) => void) | null,
- *   onOpenLoungePost?: ((postId: string) => void) | null,
+ *   onOpenLoungePost?: ((postId: string, returnChatRoomId?: string | null) => void) | null,
  *   onOpenDm?: ((userId: string) => void | Promise<void>) | null,
  *   onRoomUpdated?: ((patch: Record<string, unknown>) => void) | null,
  *   openedFromArchived?: boolean,
@@ -2533,7 +2533,11 @@ export default function ChatConversation({
                         }
                         supabaseClient={supabaseClient}
                         onLinkPreviewReady={handleLinkPreviewReady}
-                        onOpenLoungePost={onOpenLoungePost}
+                        onOpenLoungePost={
+                          onOpenLoungePost
+                            ? (postId) => onOpenLoungePost(postId, String(room.id))
+                            : null
+                        }
                         receipt={getMessageReceiptStatus({
                           message: msg,
                           viewerUserId,

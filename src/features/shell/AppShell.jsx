@@ -332,7 +332,7 @@ export default function AppShell({
   /** Signed-in uid for app-wide call ring (ChatCallProvider lives above ChatTab). */
   const [chatCallViewerUserId, setChatCallViewerUserId] = useState('')
   const [pendingLoungeProfileUserId, setPendingLoungeProfileUserId] = useState(null)
-  const [pendingLoungePostId, setPendingLoungePostId] = useState(null)
+  const [pendingLoungePostOpen, setPendingLoungePostOpen] = useState(/** @type {{ postId: string, returnChatRoomId?: string | null } | null} */ (null))
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
@@ -2010,8 +2010,14 @@ export default function AppShell({
             }}
             requestOpenProfileUserId={pendingLoungeProfileUserId}
             onRequestOpenProfileConsumed={() => setPendingLoungeProfileUserId(null)}
-            requestOpenPostId={pendingLoungePostId}
-            onRequestOpenPostConsumed={() => setPendingLoungePostId(null)}
+            requestOpenPost={pendingLoungePostOpen}
+            onRequestOpenPostConsumed={() => setPendingLoungePostOpen(null)}
+            onReturnToChatRoom={(roomId) => {
+              const id = String(roomId || '').trim()
+              if (id) setPendingChatRoomId(id)
+              setTab('chat')
+              setMenuOpen(false)
+            }}
             onOpenLegalDocument={onOpenLegalDocument}
             onOpenBillingManage={onOpenBillingManage}
             onSimulateTabError={simulateTabError}
@@ -2294,9 +2300,13 @@ export default function AppShell({
             setTab('home')
             setMenuOpen(false)
           }}
-          onOpenLoungePost={(postId) => {
-            if (!postId) return
-            setPendingLoungePostId(postId)
+          onOpenLoungePost={(postId, returnChatRoomId) => {
+            const id = String(postId || '').trim()
+            if (!id) return
+            setPendingLoungePostOpen({
+              postId: id,
+              returnChatRoomId: returnChatRoomId ? String(returnChatRoomId) : null,
+            })
             setTab('home')
             setMenuOpen(false)
           }}

@@ -3,6 +3,7 @@ import {
   communityFeedCommentQuoteRepostInsertPayload,
   communityFeedPostInsertPayload,
   communityFeedQuoteRepostInsertPayload,
+  feedPostMediaUpdatePayload,
   normalizeFeedCaption,
   uploadLoungeFeedPostImage,
 } from '../../utils/communityFeedPost'
@@ -1481,19 +1482,11 @@ export async function executeLoungeCommunityPostUpdate({
         streamVideoWidth: streamVideoWidthOut || undefined,
         streamVideoHeight: streamVideoHeightOut || undefined,
       })
-    } else if (mergedImageUrls.length > 0) {
-      mediaPayload = communityFeedPostInsertPayload({
-        caption: '',
+    } else {
+      mediaPayload = feedPostMediaUpdatePayload({
         imageUrls: mergedImageUrls,
         gifUrl: gu || undefined,
       })
-    } else if (gu) {
-      mediaPayload = communityFeedPostInsertPayload({
-        caption: '',
-        mediaUrl: gu,
-      })
-    } else {
-      mediaPayload = communityFeedPostInsertPayload({ caption: '' })
       if (clearStream || previousStreamUid) {
         mediaPayload.stream_video_uid = null
         mediaPayload.stream_poster_url = null

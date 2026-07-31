@@ -555,6 +555,16 @@ export default function ChatTab({
     [rooms],
   )
 
+  const pinnedInboxRooms = useMemo(
+    () => inboxRooms.filter((r) => r.pinned),
+    [inboxRooms],
+  )
+
+  const regularInboxRooms = useMemo(
+    () => inboxRooms.filter((r) => !r.pinned),
+    [inboxRooms],
+  )
+
   const onOpenPrivateSubsRoom = useCallback((room) => {
     openedFromPrivateSubsRef.current = true
     setHydratedOpenRoom(room)
@@ -1047,7 +1057,39 @@ export default function ChatTab({
         </div>
       ) : (
         <ul className="px-2 py-1.5">
-          {inboxRooms.map((room) => (
+          {pinnedInboxRooms.length >= 2 ? (
+            <li className="chat-inbox-pinned-header" aria-hidden>
+              Pinned
+            </li>
+          ) : null}
+          {pinnedInboxRooms.map((room, index) => (
+            <ChatRoomListRow
+              key={room.id}
+              room={room}
+              label={chatRoomLabel(room)}
+              groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
+              listMode="inbox"
+              pinnedBlockPosition={
+                pinnedInboxRooms.length === 1
+                  ? 'only'
+                  : index === 0
+                    ? 'first'
+                    : index === pinnedInboxRooms.length - 1
+                      ? 'last'
+                      : 'middle'
+              }
+              onOpen={(roomId) => setActiveRoomId(roomId)}
+              onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'inbox' })}
+              onArchive={(r) => void handleRoomAction('archive', r)}
+              onDelete={(r) => void handleRoomAction('delete', r)}
+              openSwipeRoomId={openSwipeRoomId}
+              onSwipeOpen={setOpenSwipeRoomId}
+            />
+          ))}
+          {pinnedInboxRooms.length > 0 ? (
+            <li className="chat-inbox-pinned-divider" aria-hidden />
+          ) : null}
+          {regularInboxRooms.map((room) => (
             <ChatRoomListRow
               key={room.id}
               room={room}
@@ -1170,6 +1212,14 @@ function ChatSwipeArchiveIcon({ className = 'h-6 w-6' }) {
   )
 }
 
+function ChatInboxPinIcon({ className = 'h-3.5 w-3.5' }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z" />
+    </svg>
+  )
+}
+
 function ChatSwipeInboxIcon({ className = 'h-6 w-6' }) {
   return (
     <svg
@@ -1196,6 +1246,7 @@ function ChatRoomListRow({
   label,
   groupHeaderMembers = [],
   listMode = 'inbox',
+  pinnedBlockPosition = null,
   onOpen,
   onLongPress,
   onArchive,
@@ -1418,12 +1469,22 @@ function ChatRoomListRow({
   const LeftSwipeIcon = listMode === 'archived' ? ChatSwipeInboxIcon : ChatSwipeArchiveIcon
   const rowTransition = swipeDragging ? 'none' : 'transform 240ms cubic-bezier(0.32, 0.72, 0, 1)'
   const iconScale = (progress) => 0.84 + progress * 0.16
+  const isPinnedInbox = listMode === 'inbox' && Boolean(room.pinned)
+  const pinnedSurfaceClass = isPinnedInbox ? 'chat-room-swipe-foreground-pinned' : 'bg-zinc-950'
   const foregroundInnerClass = offsetX !== 0
-    ? 'chat-room-swipe-foreground chat-room-swipe-foreground-active relative bg-zinc-950'
-    : 'chat-room-swipe-foreground relative bg-zinc-950'
+    ? `chat-room-swipe-foreground chat-room-swipe-foreground-active relative ${pinnedSurfaceClass}`
+    : `chat-room-swipe-foreground relative ${pinnedSurfaceClass}`
+  const pinnedRowClass =
+    pinnedBlockPosition === 'first'
+      ? 'chat-inbox-pinned-row chat-inbox-pinned-row-first'
+      : pinnedBlockPosition === 'last'
+        ? 'chat-inbox-pinned-row chat-inbox-pinned-row-last'
+        : pinnedBlockPosition === 'only' || pinnedBlockPosition === 'middle'
+          ? 'chat-inbox-pinned-row'
+          : ''
 
   return (
-    <li ref={rowRef} className="chat-room-swipe-row relative">
+    <li ref={rowRef} className={`chat-room-swipe-row relative ${pinnedRowClass}`.trim()}>
       <div className="chat-room-swipe-underlay-clip pointer-events-none absolute inset-0 z-0">
         {offsetX > 0 && (
           <>
@@ -1478,6 +1539,7 @@ function ChatRoomListRow({
         onPointerCancel={onPointerCancel}
         onContextMenu={(e) => e.preventDefault()}
       >
+          {isPinnedInbox ? <span className="chat-room-pinned-rail" aria-hidden /> : null}
           <div className="relative shrink-0 flex h-11 w-11 items-center justify-center">
             {room.kind === 'dm' && room.peerAvatarUrl ? (
               <img
@@ -1505,11 +1567,6 @@ function ChatRoomListRow({
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
-              {room.pinned && (
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-cyan-500" aria-hidden>
-                  <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/>
-                </svg>
-              )}
               <div className="flex min-w-0 flex-1 items-center gap-1">
                 <span className={`truncate text-[15px] font-semibold ${room.hasUnread ? 'text-zinc-100' : 'text-zinc-300'}`}>
                   {label}
@@ -1542,11 +1599,18 @@ function ChatRoomListRow({
             )}
           </div>
 
-          {room.last_message_at && (
-            <div className="shrink-0 text-[11px] text-zinc-600">
-              {formatChatTimestamp(room.last_message_at)}
-            </div>
-          )}
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {room.last_message_at ? (
+              <span className="text-[11px] tabular-nums text-zinc-600">
+                {formatChatTimestamp(room.last_message_at)}
+              </span>
+            ) : null}
+            {isPinnedInbox ? (
+              <span className="chat-inbox-pin-indicator inline-flex" title="Pinned conversation">
+                <ChatInboxPinIcon />
+              </span>
+            ) : null}
+          </div>
       </button>
     </li>
   )

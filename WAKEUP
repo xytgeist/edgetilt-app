@@ -29,7 +29,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`567070d6`** (2026-07-31)
+**Branch:** `main` / `test` aligned at **`2858dd36`** (2026-07-31)
 
 **Supabase (do not swap these):**
 
@@ -40,7 +40,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal:** _Edge Monitor Product analytics shipped to prod (app section visits, dual member top-25, Lounge contributor ranking, exclusions). Next session: pick next backlog item — or smoke Monitor Product on edgetilt.com if not signed off yet._
 
-**Start by reading:** `AGENTS.md`, then **`docs/edge-monitor-roadmap.md`** Phase 8, **`docs/test-buildout-backlog.md`** Update log (**2026-07-31**), **`docs/production-rollout-checklist.md`** (Phase 8 rows @ **`567070d6`**).
+**Start by reading:** `AGENTS.md`, then **`docs/edge-monitor-roadmap.md`** Phase 8, **`docs/test-buildout-backlog.md`** Update log (**2026-07-31**), **`docs/production-rollout-checklist.md`** (Phase 8 rows @ **`567070d6`** client + **`2858dd36`** docs).
 
 **Optional add-ons** (delete lines you do not need)
 

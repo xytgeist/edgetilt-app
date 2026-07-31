@@ -1507,7 +1507,7 @@ export default function ChatConversation({
   }, [setVideoPrepJobs])
 
   /** Detached from encode queue - runs upload + send after encoding is done. */
-  const uploadAndSendVideoPrepJob = useCallback(async (jobId, encodedFile) => {
+  const uploadAndSendVideoPrepJob = useCallback(async (jobId, encodedFile, posterMetaPromise = null) => {
     if (videoPrepJobsRef.current.find((j) => j.jobId === jobId)?.abortCtrl?.signal?.aborted) {
       removeVideoPrepJob(jobId)
       return
@@ -1516,7 +1516,17 @@ export default function ChatConversation({
     try {
       const job = videoPrepJobsRef.current.find((j) => j.jobId === jobId)
       const abortSignal = job?.abortCtrl?.signal
-      const localPoster = job?.posterUrl ?? null
+
+      if (posterMetaPromise) {
+        await posterMetaPromise.catch(() => null)
+      }
+      if (abortSignal?.aborted) { removeVideoPrepJob(jobId); return }
+
+      let localPoster = videoPrepJobsRef.current.find((j) => j.jobId === jobId)?.posterUrl ?? null
+      if (!localPoster && encodedFile instanceof File) {
+        localPoster = await captureVideoFilePosterObjectUrl(encodedFile, { signal: abortSignal }).catch(() => null)
+        if (localPoster) updateVideoPrepJob(jobId, { posterUrl: localPoster })
+      }
 
       const [videoUrl, posterPublicUrl] = await Promise.all([
         uploadChatVideoToR2(supabaseClient, encodedFile, { signal: abortSignal }),
@@ -1629,8 +1639,8 @@ export default function ChatConversation({
               },
             )
           } else {
-            // Direct file: capture poster + dims in parallel while encoding starts.
-            Promise.all([
+            // Direct file: capture poster + dims in parallel with encoding, then await before upload.
+            const posterMetaPromise = Promise.all([
               probeVideoFileDisplaySize(spec).catch(() => null),
               captureVideoFilePosterObjectUrl(spec, { signal: abortCtrl.signal }).catch(() => null),
             ]).then(([dims, poster]) => {
@@ -1646,6 +1656,12 @@ export default function ChatConversation({
               signal: abortCtrl.signal,
               onProgress: (r) => updateVideoPrepJob(jobId, { progress: 0.02 + r * 0.75 }),
             })
+
+            if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+
+            // Trim/encode done - launch upload+send detached so the queue is free for the next job.
+            void uploadAndSendVideoPrepJob(jobId, readyFile, posterMetaPromise)
+            return
           }
 
           if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }

@@ -310,8 +310,10 @@ export default function ChatConversation({
     memberRole: roomMeta.memberRole ?? room.memberRole ?? room.member_role,
     created_by: roomMeta.created_by ?? room.created_by,
   }
-  const isFanRoom = activeRoom.kind === 'creator_fan'
-  const isGroupRoom = activeRoom.kind === 'group' || isFanRoom
+  const isCreatorFanRoom = activeRoom.kind === 'creator_fan'
+  const isPlatformSubRoom = activeRoom.kind === 'platform_sub'
+  const isPrivateSubsGroupRoom = isCreatorFanRoom || isPlatformSubRoom
+  const isGroupRoom = activeRoom.kind === 'group' || isPrivateSubsGroupRoom
   const isClassicGroupRoom = activeRoom.kind === 'group'
   const isDmRoom = activeRoom.kind === 'dm'
   const chatCall = useChatCallOptional()
@@ -2278,7 +2280,7 @@ export default function ChatConversation({
                   <span className="truncate text-[16px] font-bold text-zinc-50">{headerDisplayName}</span>
                   <span className="text-[15px] font-normal text-zinc-300">›</span>
                 </button>
-              ) : isFanRoom ? (
+              ) : isPrivateSubsGroupRoom ? (
                 <button
                   type="button"
                   onClick={() => setGroupSettingsOpen(true)}
@@ -2699,13 +2701,14 @@ export default function ChatConversation({
         }}
       />
 
-      {(isClassicGroupRoom || isFanRoom) ? (
+      {(isClassicGroupRoom || isPrivateSubsGroupRoom) ? (
         <ChatGroupSettingsSheet
           open={groupSettingsOpen}
           onClose={() => setGroupSettingsOpen(false)}
           supabaseClient={supabaseClient}
           room={activeRoom}
           viewerUserId={viewerUserId}
+          viewerRole={viewerProfile?.role || null}
           headerMembers={groupHeaderMembers}
           onRoomUpdated={(patch) => {
             setRoomMeta((prev) => ({ ...prev, ...patch }))

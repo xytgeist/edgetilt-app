@@ -24,6 +24,8 @@ import {
   chatFetchRoomForViewer,
   chatSetReadReceiptsEnabled,
   buildProvisionalDmRoom,
+  chatClaimPlatformSubMembership,
+  buildProvisionalFanRoom,
 } from './chatApi.js'
 import { LOUNGE_CHAT_TOPIC_CHANNELS } from '../../utils/loungeChatConstants.js'
 import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
@@ -41,6 +43,9 @@ import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.j
  *   onInitialPeerConsumed?: () => void,
  *   initialRoomId?: string | null,
  *   onInitialRoomConsumed?: () => void,
+ *   initialPrivateSubsContext?: boolean,
+ *   onInitialPrivateSubsContextConsumed?: () => void,
+ *   onRequireSubscribe?: ((productSlug?: string) => void) | null,
  *   onViewProfile?: ((userId: string) => void) | null,
  * }} props
  */
@@ -55,6 +60,9 @@ export default function ChatTab({
   onInitialPeerConsumed,
   initialRoomId = null,
   onInitialRoomConsumed,
+  initialPrivateSubsContext = false,
+  onInitialPrivateSubsContextConsumed,
+  onRequireSubscribe = null,
   onViewProfile = null,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
@@ -369,13 +377,48 @@ export default function ChatTab({
     if (!initialRoomId || !viewerUserId || !supabaseClient) return
     let cancelled = false
     void (async () => {
+      if (initialPrivateSubsContext) {
+        setTab('privateSubs')
+        openedFromPrivateSubsRef.current = true
+        onInitialPrivateSubsContextConsumed?.()
+      }
+      if (initialPrivateSubsContext && (hasActiveSubscription || isStaff)) {
+        try {
+          await chatClaimPlatformSubMembership(supabaseClient)
+        } catch {
+          /* room may already exist from webhook backfill */
+        }
+      }
       await loadRooms()
+      if (cancelled) return
+      const fetched = await chatFetchRoomForViewer(supabaseClient, initialRoomId, viewerUserId)
+      if (fetched) {
+        setHydratedOpenRoom(fetched)
+        setHydrateOpenRoomDone(true)
+      } else if (initialPrivateSubsContext) {
+        const catalog = await listCreatorFanPrivateSubs(supabaseClient, '')
+        const row = catalog.find((r) => r.room_id === initialRoomId)
+        if (row) {
+          setHydratedOpenRoom(buildProvisionalFanRoom(row, viewerUserId))
+          setHydrateOpenRoomDone(true)
+        }
+      }
       if (cancelled) return
       setActiveRoomId(initialRoomId)
       onInitialRoomConsumed?.()
     })()
     return () => { cancelled = true }
-  }, [initialRoomId, viewerUserId, supabaseClient, loadRooms, onInitialRoomConsumed])
+  }, [
+    initialRoomId,
+    initialPrivateSubsContext,
+    viewerUserId,
+    supabaseClient,
+    hasActiveSubscription,
+    isStaff,
+    loadRooms,
+    onInitialRoomConsumed,
+    onInitialPrivateSubsContextConsumed,
+  ])
 
   // ── Join topic channel ────────────────────────────────────────────────────
 
@@ -551,7 +594,7 @@ export default function ChatTab({
   }, [supabaseClient, groupTitle, groupMembers, viewerUserId, loadRooms])
 
   const inboxRooms = useMemo(
-    () => rooms.filter((r) => r.kind !== 'creator_fan'),
+    () => rooms.filter((r) => r.kind !== 'creator_fan' && r.kind !== 'platform_sub'),
     [rooms],
   )
 
@@ -991,6 +1034,9 @@ export default function ChatTab({
         <ChatPrivateSubsTab
           supabaseClient={supabaseClient}
           viewerUserId={viewerUserId}
+          hasActiveSubscription={hasActiveSubscription}
+          isStaff={isStaff}
+          onRequireSubscribe={onRequireSubscribe}
           onOpenRoom={onOpenPrivateSubsRoom}
           onViewProfile={onViewProfile}
           onUnreadChange={setPrivateSubsHasUnread}

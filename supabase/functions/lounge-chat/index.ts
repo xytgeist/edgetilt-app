@@ -534,8 +534,20 @@ Deno.serve(async (req) => {
             .maybeSingle()
           if (mem?.role === 'admin') canDelete = true
         }
-      } else if (room?.kind === 'creator_fan') {
-        if (room.creator_user_id === user.id || room.created_by === user.id) {
+      } else if (room?.kind === 'creator_fan' || room?.kind === 'platform_sub') {
+        if (room.kind === 'platform_sub') {
+          if (actorProfile?.role === 'admin' || actorProfile?.role === 'moderator') {
+            canDelete = true
+          } else {
+            const { data: mem } = await admin
+              .from('chat_room_members')
+              .select('role')
+              .eq('room_id', msg.room_id)
+              .eq('user_id', user.id)
+              .maybeSingle()
+            if (mem?.role === 'admin' || mem?.role === 'moderator') canDelete = true
+          }
+        } else if (room.creator_user_id === user.id || room.created_by === user.id) {
           canDelete = true
         } else {
           const { data: mem } = await admin
@@ -772,7 +784,7 @@ Deno.serve(async (req) => {
     return mem?.role === 'admin'
   }
 
-  /** Group owner/admin, or creator_fan creator/admin/moderator (mute + pin). */
+  /** Group owner/admin, creator_fan creator/admin/moderator, or platform_sub staff/room mods (mute + pin). */
   async function canModerateRoomMembers(roomId: string, uid: string) {
     const { data: room } = await admin
       .from('chat_rooms')
@@ -781,6 +793,16 @@ Deno.serve(async (req) => {
       .maybeSingle()
     if (!room) return false
     if (room.kind === 'group') return isGroupAdmin(roomId, uid)
+    if (room.kind === 'platform_sub') {
+      if (actorProfile?.role === 'admin' || actorProfile?.role === 'moderator') return true
+      const { data: mem } = await admin
+        .from('chat_room_members')
+        .select('role')
+        .eq('room_id', roomId)
+        .eq('user_id', uid)
+        .maybeSingle()
+      return mem?.role === 'admin' || mem?.role === 'moderator'
+    }
     if (room.kind === 'creator_fan') {
       if (room.creator_user_id === uid || room.created_by === uid) return true
       const { data: mem } = await admin
@@ -974,9 +996,9 @@ Deno.serve(async (req) => {
       if (!(await isGroupAdmin(roomId, user.id))) {
         return json(403, { error: 'Only the group owner can pin messages.' })
       }
-    } else if (pinRoom.kind === 'creator_fan') {
+    } else if (pinRoom.kind === 'creator_fan' || pinRoom.kind === 'platform_sub') {
       if (!(await canModerateRoomMembers(roomId, user.id))) {
-        return json(403, { error: 'Only the room creator or moderators can pin messages.' })
+        return json(403, { error: 'Only room moderators can pin messages.' })
       }
     } else {
       return json(403, { error: 'Cannot pin messages in this room.' })

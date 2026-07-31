@@ -375,11 +375,32 @@ export async function deleteCreatorFanSubscriptionByStripeId(
   )
 }
 
-async function syncProfileHasActiveSubscription(admin: SupabaseClient, userId: string) {
+export async function syncPlatformSlotsProLoungeMemberWarnOnly(
+  admin: SupabaseClient,
+  userId: string,
+) {
+  const { data: grant, error } = await admin.rpc('user_has_slots_pro_lounge_access', {
+    p_user_id: userId,
+  })
+  if (error) {
+    console.warn('user_has_slots_pro_lounge_access:', error.message)
+    return
+  }
+  const { error: syncErr } = await admin.rpc('platform_sub_sync_chat_member', {
+    p_user_id: userId,
+    p_grant_access: grant === true,
+  })
+  if (syncErr) {
+    console.warn('platform_sub_sync_chat_member:', syncErr.message)
+  }
+}
+
+export async function syncProfileHasActiveSubscription(admin: SupabaseClient, userId: string) {
   const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
     p_user_id: userId,
   })
   if (syncErr) throw new Error(`sync_profile_has_active_subscription: ${syncErr.message}`)
+  await syncPlatformSlotsProLoungeMemberWarnOnly(admin, userId)
 }
 
 export async function recordWebhookEvent(admin: SupabaseClient, eventId: string, eventType: string) {

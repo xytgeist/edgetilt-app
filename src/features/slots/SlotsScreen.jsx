@@ -1,4 +1,4 @@
-import { Calculator, CalendarDays, Wallet, BookOpen, ClipboardList } from 'lucide-react'
+import { Calculator, CalendarDays, Wallet, BookOpen, ClipboardList, MessageCircle } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import { calculatorsTabFullyGated } from '../calculators/calculatorAccess.js'
@@ -45,6 +45,14 @@ const SLOTS_TOOLS = [
     color: '#f472b6',
     description: 'Log AP plays and analyze your data',
     subscriberGated: () => false,
+  },
+  {
+    id: 'slots-pro-lounge',
+    label: 'Slots Pro Lounge',
+    Icon: MessageCircle,
+    color: '#06b6d4',
+    description: 'Private subscriber group chat',
+    subscriberGated: () => true,
   },
   // Local Intel (`intel` tab) remains routable from AppShell for future use - not listed in hub (Ryan, 2026-05-29).
 ]

@@ -384,6 +384,7 @@ export function chatRoomLabel(room) {
   }
   if (room.kind === 'channel') return room.title ? `#${room.slug} · ${room.title}` : `#${room.slug}`
   if (room.kind === 'creator_fan') return room.title || 'Private Sub'
+  if (room.kind === 'platform_sub') return room.title || 'Slots Pro Lounge'
   return room.title || 'Group chat'
 }
 
@@ -396,10 +397,11 @@ export function buildProvisionalFanRoom(row, viewerUserId) {
   const preview = row.last_message_preview
     ? String(row.last_message_preview)
     : null
+  const roomKind = row.room_kind === 'platform_sub' ? 'platform_sub' : 'creator_fan'
   return enrichChatRoomRow(
     {
       id: row.room_id,
-      kind: 'creator_fan',
+      kind: roomKind,
       title: row.title,
       description: row.description,
       avatar_url: row.avatar_url,
@@ -411,9 +413,17 @@ export function buildProvisionalFanRoom(row, viewerUserId) {
       last_message_preview: preview,
       created_by: row.creator_user_id,
       creator_user_id: row.creator_user_id,
+      catalog_kind: row.catalog_kind,
     },
     viewerUserId,
   )
+}
+
+/** Claim Slots Pro Lounge membership when eligible (Pro / Lifetime / staff). */
+export async function chatClaimPlatformSubMembership(supabase) {
+  const { data, error } = await supabase.rpc('platform_sub_claim_membership')
+  if (error) throw new Error(error.message)
+  return data
 }
 
 /**
@@ -632,6 +642,14 @@ export function chatIsFanRoom(room) {
   return room?.kind === 'creator_fan'
 }
 
+export function chatIsPlatformSubRoom(room) {
+  return room?.kind === 'platform_sub'
+}
+
+export function chatIsPrivateSubsGroupRoom(room) {
+  return chatIsFanRoom(room) || chatIsPlatformSubRoom(room)
+}
+
 export function chatIsFanRoomOwner(room, viewerUserId) {
   if (!room || room.kind !== 'creator_fan' || !viewerUserId) return false
   if (room.creator_user_id === viewerUserId || room.created_by === viewerUserId) return true
@@ -644,8 +662,13 @@ export function chatIsFanRoomModerator(room, viewerUserId) {
   return role === 'moderator'
 }
 
-/** Creator/admin or assigned room moderator. */
-export function chatCanModerateFanRoom(room, viewerUserId) {
+/** Creator/admin or assigned room moderator; platform_sub adds staff + room mods. */
+export function chatCanModerateFanRoom(room, viewerUserId, viewerRole = null) {
+  if (chatIsPlatformSubRoom(room)) {
+    if (viewerRole === 'admin' || viewerRole === 'moderator') return true
+    const role = room.memberRole || room.member_role
+    return role === 'admin' || role === 'moderator'
+  }
   return chatIsFanRoomOwner(room, viewerUserId) || chatIsFanRoomModerator(room, viewerUserId)
 }
 
@@ -659,19 +682,23 @@ export async function chatSetFanRoomMemberRole(supabase, roomId, targetUserId, r
 }
 
 /** Group owner/admin, or either participant in a DM. */
-export function chatCanPinMessages(room, viewerUserId) {
+export function chatCanPinMessages(room, viewerUserId, viewerRole = null) {
   if (!room || !viewerUserId) return false
   if (room.kind === 'dm') return true
-  if (room.kind === 'creator_fan') return chatCanModerateFanRoom(room, viewerUserId)
+  if (room.kind === 'creator_fan' || room.kind === 'platform_sub') {
+    return chatCanModerateFanRoom(room, viewerUserId, viewerRole)
+  }
   return chatIsGroupOwner(room, viewerUserId)
 }
 
-/** Sender, group owner/admin, fan moderators, or either DM participant. */
-export function chatCanDeleteCallRecording(room, viewerUserId, message) {
+/** Sender, group owner/admin, fan/platform moderators, or either DM participant. */
+export function chatCanDeleteCallRecording(room, viewerUserId, message, viewerRole = null) {
   if (!room || !viewerUserId || !message) return false
   if (message.sender_id === viewerUserId) return true
   if (room.kind === 'dm') return true
-  if (room.kind === 'creator_fan') return chatCanModerateFanRoom(room, viewerUserId)
+  if (room.kind === 'creator_fan' || room.kind === 'platform_sub') {
+    return chatCanModerateFanRoom(room, viewerUserId, viewerRole)
+  }
   return chatIsGroupOwner(room, viewerUserId)
 }
 

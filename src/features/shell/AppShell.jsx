@@ -53,6 +53,7 @@ import {
   requestPwaMicrophoneAccess,
 } from '../../utils/pwaMicrophonePrompt'
 import { stashPendingChatCallDeepLink } from '../../utils/pendingChatCallDeepLink.js'
+import { chatClaimPlatformSubMembership } from '../chat/chatApi.js'
 import { takePendingAppNavigateFromSw } from '../../utils/pendingAppNavigateFromSw.js'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
 import AppConsoleLogDebugHud from '../../components/AppConsoleLogDebugHud.jsx'
@@ -324,6 +325,7 @@ export default function AppShell({
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
+  const [pendingChatPrivateSubsOpen, setPendingChatPrivateSubsOpen] = useState(false)
   const [pendingChatCallId, setPendingChatCallId] = useState(null)
   /** When set, deep link should open call-back prompt (missedCall=) not accept UI. */
   const [pendingChatCallIntent, setPendingChatCallIntent] = useState(/** @type {'ring' | 'callback'} */ ('ring'))
@@ -1343,10 +1345,46 @@ export default function AppShell({
     setMenuOpen(false)
   }
 
+  const openSlotsProLounge = useCallback(async () => {
+    if (browseMode !== 'member') {
+      onOpenAuth?.('login')
+      return
+    }
+    if (!isStaff && !hasActiveSubscription) {
+      onRequireSubscribe?.('slots-edge')
+      return
+    }
+    if (!supabaseClient) return
+    try {
+      const roomId = await chatClaimPlatformSubMembership(supabaseClient)
+      if (!roomId) throw new Error('Slots Pro Lounge is not available yet.')
+      setPendingChatPrivateSubsOpen(true)
+      setPendingChatRoomId(String(roomId))
+      setTab('chat')
+      setMenuOpen(false)
+    } catch (e) {
+      console.warn('openSlotsProLounge', e)
+      setPendingChatPrivateSubsOpen(true)
+      setTab('chat')
+      setMenuOpen(false)
+    }
+  }, [
+    browseMode,
+    hasActiveSubscription,
+    isStaff,
+    onOpenAuth,
+    onRequireSubscribe,
+    supabaseClient,
+  ])
+
   const openSlotsTool = useCallback((toolId) => {
+    if (toolId === 'slots-pro-lounge') {
+      void openSlotsProLounge()
+      return
+    }
     if (toolId !== 'calculators') setActiveCalculator(null)
     setTab(toolId)
-  }, [])
+  }, [openSlotsProLounge])
 
   const openPokerTool = useCallback((toolId) => {
     setActiveCalculator(null)
@@ -2244,6 +2282,9 @@ export default function AppShell({
           onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
           initialRoomId={pendingChatRoomId}
           onInitialRoomConsumed={() => setPendingChatRoomId(null)}
+          initialPrivateSubsContext={pendingChatPrivateSubsOpen}
+          onInitialPrivateSubsContextConsumed={() => setPendingChatPrivateSubsOpen(false)}
+          onRequireSubscribe={onRequireSubscribe}
           onViewProfile={(userId) => {
             if (!userId) return
             setPendingLoungeProfileUserId(userId)

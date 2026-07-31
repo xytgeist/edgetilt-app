@@ -10,6 +10,7 @@ import {
   upsertLifetimePurchaseFromCheckout,
   upsertUserSubscriptionFromStripe,
   upsertCreatorFanSubscriptionFromStripe,
+  syncProfileHasActiveSubscription,
   isCreatorFanSubscriptionMetadata,
   mergeCreatorFanStripeMetadata,
   isPlatformProductSlug,
@@ -51,10 +52,7 @@ async function cancelReplacedStripeSubscriptions(
   }
 
   if (syncUserId) {
-    const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
-      p_user_id: syncUserId,
-    })
-    if (syncErr) throw new Error(`sync_profile_has_active_subscription: ${syncErr.message}`)
+    await syncProfileHasActiveSubscription(admin, syncUserId)
   }
 }
 
@@ -411,10 +409,7 @@ async function processStripeWebhookEvent(
       }
       const userId = await deleteUserSubscriptionByStripeId(admin, subscription.id)
       if (userId) {
-        const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
-          p_user_id: userId,
-        })
-        if (syncErr) throw new Error(`sync_profile_has_active_subscription: ${syncErr.message}`)
+        await syncProfileHasActiveSubscription(admin, userId)
       }
       return
     }

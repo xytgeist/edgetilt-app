@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 import {
   fetchCreatorFanOffer,
   fetchMyCreatorFanSubscriptions,
   listCreatorFanPrivateSubs,
 } from '../creatorFanSubs/creatorFanSubsApi.js'
 import CreatorFanSubscribeModal from '../creatorFanSubs/CreatorFanSubscribeModal.jsx'
-import { buildProvisionalFanRoom } from './chatApi.js'
+import { buildProvisionalFanRoom, chatClaimPlatformSubMembership } from './chatApi.js'
 import {
   profileAvatarInitials,
   profileAvatarToneClass,
@@ -15,6 +16,9 @@ import {
  * @param {{
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   viewerUserId: string,
+ *   hasActiveSubscription?: boolean,
+ *   isStaff?: boolean,
+ *   onRequireSubscribe?: ((productSlug?: string) => void) | null,
  *   onOpenRoom: (room: Record<string, unknown>, catalogRow: Record<string, unknown>) => void,
  *   onViewProfile?: ((userId: string) => void) | null,
  *   onUnreadChange?: ((hasUnread: boolean) => void) | null,
@@ -23,6 +27,9 @@ import {
 export default function ChatPrivateSubsTab({
   supabaseClient,
   viewerUserId,
+  hasActiveSubscription = false,
+  isStaff = false,
+  onRequireSubscribe = null,
   onOpenRoom,
   onViewProfile = null,
   onUnreadChange = null,
@@ -38,6 +45,8 @@ export default function ChatPrivateSubsTab({
   const [gateCreatorId, setGateCreatorId] = useState(/** @type {string | null} */ (null))
   const [gateSubscribed, setGateSubscribed] = useState(false)
   const [pendingOpenRow, setPendingOpenRow] = useState(/** @type {Record<string, unknown> | null} */ (null))
+
+  const proLoungeEligible = Boolean(hasActiveSubscription || isStaff)
 
   const load = useCallback(async (q) => {
     if (!supabaseClient || !viewerUserId) {
@@ -87,7 +96,30 @@ export default function ChatPrivateSubsTab({
     return () => window.removeEventListener('edge:creator-fan-billing-return', onBillingReturn)
   }, [load, search, pendingOpenRow, gateCreatorId, viewerUserId, onOpenRoom])
 
-  const openRow = useCallback(async (row) => {
+  const openPlatformRow = useCallback(async (row) => {
+    if (row.is_member) {
+      onOpenRoom(buildProvisionalFanRoom(row, viewerUserId), row)
+      return
+    }
+    if (!proLoungeEligible) {
+      onRequireSubscribe?.('slots-edge')
+      return
+    }
+    setErr('')
+    try {
+      await chatClaimPlatformSubMembership(supabaseClient)
+      await load(search)
+      const refreshed = (await listCreatorFanPrivateSubs(supabaseClient, search))
+        .find((r) => r.room_id === row.room_id)
+      if (refreshed) {
+        onOpenRoom(buildProvisionalFanRoom(refreshed, viewerUserId), refreshed)
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not open Slots Pro Lounge.')
+    }
+  }, [supabaseClient, viewerUserId, onOpenRoom, load, search, proLoungeEligible, onRequireSubscribe])
+
+  const openCreatorRow = useCallback(async (row) => {
     if (row.is_member) {
       const room = buildProvisionalFanRoom(row, viewerUserId)
       onOpenRoom(room, row)
@@ -123,6 +155,14 @@ export default function ChatPrivateSubsTab({
     }
   }, [supabaseClient, viewerUserId, onOpenRoom, load, search])
 
+  const openRow = useCallback(async (row) => {
+    if (row.catalog_kind === 'platform' || row.room_kind === 'platform_sub') {
+      await openPlatformRow(row)
+      return
+    }
+    await openCreatorRow(row)
+  }, [openPlatformRow, openCreatorRow])
+
   const sortedRows = useMemo(() => rows, [rows])
   const hasAnyUnread = useMemo(
     () => rows.some((r) => r.is_member && r.has_unread),
@@ -136,7 +176,7 @@ export default function ChatPrivateSubsTab({
   return (
     <div className="px-3 py-3" data-chat-private-subs>
       <p className="mb-3 text-[13px] leading-relaxed text-zinc-500">
-        Private group chats with creators you support. Search by name, description, or keywords.
+        Slots Pro Lounge for Edge Pro and Lifetime members, plus private group chats with creators you support.
       </p>
 
       <label className="mb-3 block">
@@ -167,10 +207,15 @@ export default function ChatPrivateSubsTab({
       ) : (
         <ul className="space-y-2 pb-4">
           {sortedRows.map((row) => {
+            const isPlatform = row.catalog_kind === 'platform' || row.room_kind === 'platform_sub'
             const joined = Boolean(row.is_member)
-            const pillLabel = row.is_host ? 'Host' : joined ? 'Joined' : null
+            const lockedPlatform = isPlatform && !joined && !proLoungeEligible
+            const pillLabel = row.is_host ? 'Host' : joined ? 'Joined' : lockedPlatform ? 'Pro' : null
             const avatar = row.avatar_url || row.creator_avatar_url
             const handle = row.creator_handle ? `@${row.creator_handle}` : ''
+            const subtitle = isPlatform
+              ? (row.creator_display_name || 'Slots Edge Pro & Lifetime')
+              : handle
 
             return (
               <li key={row.room_id}>
@@ -180,11 +225,17 @@ export default function ChatPrivateSubsTab({
                   className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left touch-manipulation transition-colors ${
                     joined
                       ? 'border-cyan-500/30 bg-zinc-900/80 hover:bg-zinc-900'
-                      : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900/70'
+                      : isPlatform
+                        ? 'border-cyan-500/20 bg-zinc-900/60 hover:bg-zinc-900/80'
+                        : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900/70'
                   }`}
                 >
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-zinc-800">
-                    {avatar ? (
+                    {isPlatform ? (
+                      <div className="flex h-full w-full items-center justify-center bg-zinc-950 px-1">
+                        <EdgeLogoWithEasterEgg className="h-5 w-auto max-w-full" />
+                      </div>
+                    ) : avatar ? (
                       <img src={String(avatar)} alt="" className="h-full w-full object-cover" />
                     ) : (
                       <span
@@ -198,10 +249,10 @@ export default function ChatPrivateSubsTab({
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[15px] font-bold text-zinc-100">
-                          {row.title || 'Private Sub'}
+                          {row.title || (isPlatform ? 'Slots Pro Lounge' : 'Private Sub')}
                         </div>
-                        {handle ? (
-                          <div className="truncate text-[12px] text-zinc-500">{handle}</div>
+                        {subtitle ? (
+                          <div className="truncate text-[12px] text-zinc-500">{subtitle}</div>
                         ) : null}
                       </div>
                       {pillLabel ? (

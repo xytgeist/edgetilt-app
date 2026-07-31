@@ -37,6 +37,7 @@ import {
 import { useLoungeBotOps } from './useLoungeBotOps.js'
 import EdgeMonitorActivityPanel from './EdgeMonitorActivityPanel.jsx'
 import EdgeMonitorAppSectionUsagePanel from './EdgeMonitorAppSectionUsagePanel.jsx'
+import EdgeMonitorAppSectionMemberUsagePanel from './EdgeMonitorAppSectionMemberUsagePanel.jsx'
 import EdgeMonitorBotOpsPanel from './EdgeMonitorBotOpsPanel.jsx'
 import EdgeMonitorSubscriberRosterPanel from './EdgeMonitorSubscriberRosterPanel.jsx'
 import EdgeMonitorSystemHealthPanel from './EdgeMonitorSystemHealthPanel.jsx'
@@ -47,6 +48,7 @@ import { useEdgeMonitorSubscriberRoster } from './useEdgeMonitorSubscriberRoster
 import { useEdgeMonitorSystemHealth } from './useEdgeMonitorSystemHealth.js'
 import { useEdgeMonitorSecurity } from './useEdgeMonitorSecurity.js'
 import { useEdgeMonitorAppSectionUsage } from './useEdgeMonitorAppSectionUsage.js'
+import { useEdgeMonitorAppSectionMemberUsage } from './useEdgeMonitorAppSectionMemberUsage.js'
 import { evaluateSystemHealthAlerts } from './opsMonitorSystemHealth.js'
 import EdgeMonitorSectionNav from './EdgeMonitorSectionNav.jsx'
 import { EDGE_MONITOR_PATH } from './opsMonitorNavigation.js'
@@ -473,6 +475,18 @@ export default function EdgeMonitorDashboard({
     reload: reloadAppSectionUsage,
   } = useEdgeMonitorAppSectionUsage(supabaseClient, {
     enabled: Boolean(snapshot) && needsProductData,
+  })
+  const {
+    data: appSectionMemberUsage,
+    loading: appSectionMemberUsageLoading,
+    error: appSectionMemberUsageError,
+    searchInput: appSectionMemberSearchInput,
+    setSearchInput: setAppSectionMemberSearchInput,
+    runSearch: runAppSectionMemberSearch,
+    clearSearch: clearAppSectionMemberSearch,
+  } = useEdgeMonitorAppSectionMemberUsage(supabaseClient, {
+    enabled: Boolean(snapshot) && needsProductData,
+    topLimit: 25,
   })
 
   const generatedAt = snapshot?.generated_at
@@ -1000,6 +1014,15 @@ export default function EdgeMonitorDashboard({
             usage={appSectionUsage}
             loading={appSectionUsageLoading}
             error={appSectionUsageError}
+          />
+          <EdgeMonitorAppSectionMemberUsagePanel
+            data={appSectionMemberUsage}
+            loading={appSectionMemberUsageLoading}
+            error={appSectionMemberUsageError}
+            searchInput={appSectionMemberSearchInput}
+            onSearchInputChange={setAppSectionMemberSearchInput}
+            onSearch={() => runAppSectionMemberSearch()}
+            onClearSearch={clearAppSectionMemberSearch}
           />
           <EdgeMonitorActivityPanel snapshot={snapshot} loading={loading} />
           {isDesktop ? productChartsDesktop : null}

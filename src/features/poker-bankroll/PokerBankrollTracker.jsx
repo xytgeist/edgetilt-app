@@ -8,6 +8,7 @@ import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import { recordAppSessionRecorded } from '../../utils/appSectionVisitTracking.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollChartsTab from './PokerBankrollChartsTab.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
@@ -1649,6 +1650,7 @@ export default function PokerBankrollTracker({
         if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
           await attachDraftSwapsToSession(created, draftSwaps)
         }
+        void recordAppSessionRecorded(supabaseClient, 'poker-bankroll', payload.session_type)
         onPokerBankrollSessionCreated?.()
       }
       setSheet(null)

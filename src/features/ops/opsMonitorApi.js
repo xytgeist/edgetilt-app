@@ -110,6 +110,21 @@ export async function fetchOpsMonitorAppSectionUsage(supabaseClient) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ handle?: string, topLimit?: number }} [opts]
+ * @returns {Promise<{ data: object | null, error: import('@supabase/supabase-js').PostgrestError | null }>}
+ */
+export async function fetchOpsMonitorAppSectionMemberUsage(supabaseClient, opts = {}) {
+  const handle = String(opts.handle || '').trim()
+  const topLimit = Number(opts.topLimit) || 25
+  const { data, error } = await supabaseClient.rpc('admin_ops_app_section_member_usage_snapshot', {
+    p_lookup_handle: handle || null,
+    p_top_limit: topLimit,
+  })
+  return { data, error }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string, dryRun?: boolean, force?: boolean }} [opts]
  * @returns {Promise<{ data: object | null, error: Error | null }>}
  */

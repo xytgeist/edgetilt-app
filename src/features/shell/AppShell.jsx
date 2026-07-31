@@ -54,7 +54,10 @@ import {
   requestPwaMicrophoneAccess,
 } from '../../utils/pwaMicrophonePrompt'
 import { stashPendingChatCallDeepLink } from '../../utils/pendingChatCallDeepLink.js'
-import { recordAppSectionVisitForTab } from '../../utils/appSectionVisitTracking.js'
+import {
+  recordAppCalculatorVisit,
+  recordAppSectionVisitForTab,
+} from '../../utils/appSectionVisitTracking.js'
 import { chatClaimPlatformSubMembership, chatGetPlatformSubRoomId } from '../chat/chatApi.js'
 import { takePendingAppNavigateFromSw } from '../../utils/pendingAppNavigateFromSw.js'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
@@ -1097,11 +1100,18 @@ export default function AppShell({
     if (tab === 'home') void loadCommunityFeedRef.current()
   }, [tab])
 
-  /** Product analytics: debounced section visit rows for Edge Monitor (members only). */
+  /** Product analytics: debounced section visit rows for Edge Monitor (members only; admins excluded in SQL). */
   useEffect(() => {
-    if (browseMode !== 'member' || !supabaseClient) return
+    if (browseMode !== 'member' || !supabaseClient || isAdmin) return
     void recordAppSectionVisitForTab(supabaseClient, tab)
-  }, [tab, browseMode, supabaseClient])
+  }, [tab, browseMode, supabaseClient, isAdmin])
+
+  /** Calculator drill-down: debounced per calculator key (members only; admins excluded in SQL). */
+  useEffect(() => {
+    if (browseMode !== 'member' || !supabaseClient || isAdmin) return
+    if (tab !== 'calculators' || !activeCalculator) return
+    void recordAppCalculatorVisit(supabaseClient, activeCalculator)
+  }, [tab, activeCalculator, browseMode, supabaseClient, isAdmin])
 
   /** Resume Lottie (≥1h background): refresh feed under the splash so the reveal isn't stale. */
   useEffect(() => {

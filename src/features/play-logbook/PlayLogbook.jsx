@@ -13,6 +13,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS, Z_APP_ALERT } fro
 import { resolveDefaultCaptureCasino } from '../../utils/nearbyCasinos.js'
 import { consumePlayLogPrefill } from '../../utils/playLogPrefill.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import { recordAppSessionRecorded } from '../../utils/appSectionVisitTracking.js'
 import { playLogCalcSnapshotNotes } from '../../utils/playLogCalcSnapshot.js'
 import {
   formatMetricValue,
@@ -746,6 +747,9 @@ export default function PlayLogbook({
       }
       closeSheet()
       triggerTapHapticLight()
+      if (!editingEntryId && !editingSessionId) {
+        void recordAppSessionRecorded(supabaseClient, 'play-logbook', selectedTemplate.id)
+      }
       await loadAll()
       if (!editingEntryId && !sharedOnEdit) onPlayLogCreated?.()
     } catch (e) {

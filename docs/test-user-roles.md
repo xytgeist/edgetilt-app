@@ -207,10 +207,58 @@ on conflict (user_id, guide_slug) do nothing;
 
 Reload app. **`get_my_starter_weekly_guide_slugs()`** should include the slug; AP Guides + paired calculator should unlock for that title.
 
-## 5. Local env override
+## 5. Edge Monitor product analytics exclusions
+
+Migration chain **`20260731220700`**–**`20260731221500`**: handle blocklist, email blocklist, bot auth emails (`*@bots.edgetilt.local`), and **`app_product_analytics_user_excluded()`**.
+
+| Who is excluded | How |
+| --- | --- |
+| **Admin** | Always (`profiles.role = admin`) |
+| **Moderators** | **Not** excluded unless blocklisted |
+| **Test / smoke accounts** | Email and/or handle blocklist tables |
+| **Lounge bots** | Any auth email ending **`@bots.edgetilt.local`** |
+
+**Blocklist an email:**
+
+```sql
+insert into public.app_product_analytics_excluded_emails (email, note)
+values ('subscriber-test@example.com', 'smoke account')
+on conflict (email) do update set note = excluded.note;
+```
+
+**Blocklist a handle (when you know it):**
+
+```sql
+insert into public.app_product_analytics_excluded_handles (handle, note)
+values ('smokewagon', 'Ryan smoke-test account')
+on conflict (handle) do update set note = excluded.note;
+```
+
+**Remove from blocklist:**
+
+```sql
+delete from public.app_product_analytics_excluded_handles
+where handle = lower('smokewagon');
+```
+
+**List current blocklist:**
+
+```sql
+select handle, note, created_at
+from public.app_product_analytics_excluded_handles
+order by handle;
+
+select email, note, created_at
+from public.app_product_analytics_excluded_emails
+order by email;
+```
+
+Excluded users do not get new **`app_section_visits`** rows; Monitor aggregates also omit them (including historical rows).
+
+## 6. Local env override
 
 `VITE_HAS_ACTIVE_SUBSCRIPTION=true` in **`.env.local`** still forces **subscriber UI for every logged-in user** (useful for a quick check). Remove it when testing **per-row** `has_active_subscription`.
 
-## 6. No profile row yet
+## 7. No profile row yet
 
 If `profiles` has no row for the user, the app treats them as non-staff / non-subscriber until a row exists (e.g. after profile completion in Lounge/Guides). Create or complete profile, then **reload** if you just added SQL flags.

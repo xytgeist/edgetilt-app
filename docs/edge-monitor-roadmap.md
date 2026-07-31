@@ -123,10 +123,11 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 
 ## Phase 8 — app section visits (shipped)
 
-**Migrations:** **`20260731210000`**–**`20260731210701`** (`app_section_visits`, **`record_app_section_visit()`**, **`admin_ops_app_section_usage_snapshot()`**)
+**Migrations:** **`20260731210000`**–**`20260731210701`** (`app_section_visits`, **`record_app_section_visit()`**, **`admin_ops_app_section_usage_snapshot()`**); drill-down **`20260731220000`**–**`20260731220600`**; exclusions **`20260731220700`**–**`20260731221500`**; remove Intel **`21600`**–**`21900`**; member activity **`20260731222000`**–**`20260731222100`** (`admin_ops_app_section_member_usage_snapshot()`).
 
-- **Client:** **`AppShell`** tab changes → debounced **`record_app_section_visit`** (45s per section, members only). Canonical map: **`src/constants/appProductSections.js`**.
-- **Monitor:** **Product** tab → **`EdgeMonitorAppSectionUsagePanel`** (visits/users 24h + 7d bar chart + table). Excludes Monitor/Bots tabs.
+- **Client:** **`AppShell`** tab changes → debounced **`record_app_section_visit`** (45s per section, members only). **`activeCalculator`** → calculator drill-down. **`PlayLogbook`** / **`PokerBankrollTracker`** → **`session_recorded`** on new saves. Canonical map: **`src/constants/appProductSections.js`**.
+- **Exclusions:** all **`profiles.role = admin`**; optional handles in **`app_product_analytics_excluded_handles`**; optional emails in **`app_product_analytics_excluded_emails`**; all bot service accounts via **`@bots.edgetilt.local`**. Moderators count unless blocklisted. See **`docs/test-user-roles.md`** §5.
+- **Monitor:** **Product** tab → **`EdgeMonitorAppSectionUsagePanel`** (tab visits, calculator opens, logbook/poker session breakdowns) + **`EdgeMonitorAppSectionMemberUsagePanel`** (top 25 members + handle lookup). Excludes Monitor/Bots tabs.
 
 ---
 

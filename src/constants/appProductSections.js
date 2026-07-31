@@ -15,9 +15,8 @@ export const APP_PRODUCT_SECTIONS = Object.freeze([
   { id: 'poker-hub', label: 'Poker hub', sort: 9 },
   { id: 'poker-bankroll', label: 'Poker Bankroll', sort: 10 },
   { id: 'poker-stable', label: 'Poker Stable', sort: 11 },
-  { id: 'intel', label: 'Intel', sort: 12 },
-  { id: 'affiliates', label: 'Affiliates', sort: 13 },
-  { id: 'creator', label: 'Creator portal', sort: 14 },
+  { id: 'affiliates', label: 'Affiliates', sort: 12 },
+  { id: 'creator', label: 'Creator portal', sort: 13 },
 ])
 
 /** @type {Readonly<Record<string, string>>} */
@@ -31,7 +30,6 @@ const TAB_TO_SECTION = Object.freeze({
   bankroll: 'bankroll',
   logbook: 'play-logbook',
   offers: 'offers',
-  intel: 'intel',
   'poker-bankroll': 'poker-bankroll',
   'poker-stable': 'poker-stable',
   affiliates: 'affiliates',

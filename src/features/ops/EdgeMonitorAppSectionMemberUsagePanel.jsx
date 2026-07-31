@@ -15,6 +15,17 @@ function calculatorLabel(key) {
   return CALCULATOR_CATALOG_ENTRIES.find((row) => row.key === id)?.title || id || 'Unknown'
 }
 
+/** @param {Record<string, unknown> | null | undefined} row */
+function memberHasBreakdown(row) {
+  if (!row) return false
+  return (
+    (row.sections?.length || 0) > 0
+    || (row.calculators?.length || 0) > 0
+    || (row.session_breakdown?.length || 0) > 0
+    || (row.lounge_activity?.length || 0) > 0
+  )
+}
+
 /**
  * @param {{
  *   data: object | null | undefined,
@@ -37,13 +48,19 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
 }) {
   const theme = OPS_SECTION_THEMES.users
   const topMembers = data?.top_members || []
+  const topLoungeMembers = data?.top_lounge_members || []
   const member = data?.member
   const topLimit = data?.top_limit ?? 25
-  const [expandedUserId, setExpandedUserId] = useState(null)
+  const [expandedKey, setExpandedKey] = useState(null)
 
-  const toggleExpanded = (userId) => {
-    setExpandedUserId((current) => (current === userId ? null : userId))
+  const toggleExpanded = (listKey, userId) => {
+    const next = `${listKey}:${userId}`
+    setExpandedKey((current) => (current === next ? null : next))
   }
+
+  const memberInLists =
+    topMembers.some((row) => row.user_id === member?.user_id)
+    || topLoungeMembers.some((row) => row.user_id === member?.user_id)
 
   return (
     <section
@@ -60,7 +77,7 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
             <div className="text-white font-bold text-[15px]">Member activity</div>
           </div>
           <div className="text-zinc-500 text-xs mt-0.5 leading-relaxed">
-            Top {topLimit} active members (7d) · expand a row for app sections, Lounge posts, interactions, calculators, and logged sessions
+            Top {topLimit} by app usage and Lounge contributors (7d) · expand a row for full section, Lounge, calculator, and session breakdown
           </div>
         </div>
         {data?.generated_at ? (
@@ -106,7 +123,7 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
 
       {error ? (
         <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-950/25 px-3 py-2 text-amber-100 text-xs">
-          {error} ... apply migrations <span className="font-mono">20260731222000</span>–<span className="font-mono">22400</span>.
+          {error} ... apply migrations <span className="font-mono">20260731222000</span>–<span className="font-mono">22500</span>.
         </div>
       ) : null}
 
@@ -122,7 +139,7 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
         </div>
       ) : null}
 
-      {member?.user_id && !topMembers.some((row) => row.user_id === member.user_id) ? (
+      {member?.user_id && !memberInLists ? (
         <MemberBreakdownCard member={member} className="mb-3" />
       ) : null}
 
@@ -131,103 +148,199 @@ export default function EdgeMonitorAppSectionMemberUsagePanel({
       ) : null}
 
       {data ? (
-        <div className="overflow-x-auto rounded-xl border border-zinc-800">
-          <table className="w-full min-w-[720px] text-left text-xs">
-            <thead className="bg-zinc-950 text-zinc-500 uppercase text-[10px]">
-              <tr>
-                <th className="w-8 px-2 py-2 font-semibold" aria-hidden />
-                <th className="px-3 py-2 font-semibold">Member</th>
-                <th className="px-3 py-2 font-semibold text-right">Events 7d</th>
-                <th className="px-3 py-2 font-semibold text-right">Tab 7d</th>
-                <th className="px-3 py-2 font-semibold text-right">Sessions 7d</th>
-                <th className="px-3 py-2 font-semibold">Top section</th>
-                <th className="px-3 py-2 font-semibold text-right">Last active</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/80">
-              {topMembers.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-3 py-4 text-zinc-500">
-                    No member activity in the last 7 days yet.
-                  </td>
-                </tr>
-              ) : (
-                topMembers.map((row) => {
-                  const href = opsMonitorProfileHref(row)
-                  const expanded = expandedUserId === row.user_id
-                  const hasBreakdown =
-                    (row.sections?.length || 0) > 0
-                    || (row.calculators?.length || 0) > 0
-                    || (row.session_breakdown?.length || 0) > 0
-                    || (row.lounge_activity?.length || 0) > 0
-
-                  return (
-                    <Fragment key={row.user_id}>
-                      <tr
-                        className={`bg-zinc-950/40 ${hasBreakdown ? 'cursor-pointer hover:bg-zinc-900/70' : ''} ${expanded ? 'bg-zinc-900/80' : ''}`}
-                        onClick={() => {
-                          if (hasBreakdown) toggleExpanded(row.user_id)
-                        }}
-                        aria-expanded={hasBreakdown ? expanded : undefined}
-                      >
-                        <td className="px-2 py-2.5 text-center">
-                          {hasBreakdown ? (
-                            <ChevronDown
-                              className={`mx-auto h-4 w-4 text-zinc-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                              aria-hidden
-                            />
-                          ) : (
-                            <span className="inline-block w-4" aria-hidden />
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {href ? (
-                            <a
-                              href={href}
-                              onClick={(e) => e.stopPropagation()}
-                              className="font-semibold text-cyan-300 hover:text-cyan-200"
-                            >
-                              {formatOpsRosterHandle(row.handle)}
-                            </a>
-                          ) : (
-                            <span className="font-semibold text-zinc-100">{formatOpsRosterHandle(row.handle)}</span>
-                          )}
-                          {row.display_name ? (
-                            <div className="text-zinc-500 text-[10px] truncate max-w-[160px]">{row.display_name}</div>
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-zinc-200">
-                          {formatOpsMonitorCount(row.events_7d)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-zinc-300">
-                          {formatOpsMonitorCount(row.tab_visits_7d)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-zinc-300">
-                          {formatOpsMonitorCount(row.sessions_7d)}
-                        </td>
-                        <td className="px-3 py-2.5 text-zinc-300">
-                          {row.top_section_label || appProductSectionLabel(row.top_section_id) || '—'}
-                        </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-zinc-400">
-                          {formatOpsMonitorRelativeTime(row.last_active_at)}
-                        </td>
-                      </tr>
-                      {expanded ? (
-                        <tr className="bg-zinc-950/60">
-                          <td colSpan={7} className="px-3 py-3">
-                            <MemberBreakdownBody member={row} compact />
-                          </td>
-                        </tr>
-                      ) : null}
-                    </Fragment>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <MemberRankingTable
+            title="Top app activity (7d)"
+            emptyMessage="No app section activity in the last 7 days yet."
+            listKey="app"
+            rows={topMembers}
+            expandedKey={expandedKey}
+            onToggleExpanded={toggleExpanded}
+            columns={[
+              { key: 'events', label: 'Events 7d', value: (row) => row.events_7d },
+              { key: 'tab', label: 'Tab 7d', value: (row) => row.tab_visits_7d, tone: 'muted' },
+              { key: 'sessions', label: 'Sessions 7d', value: (row) => row.sessions_7d, tone: 'muted' },
+              {
+                key: 'top',
+                label: 'Top section',
+                align: 'left',
+                value: (row) => row.top_section_label || appProductSectionLabel(row.top_section_id) || '—',
+                tone: 'muted',
+                tabular: false,
+              },
+              {
+                key: 'last',
+                label: 'Last active',
+                value: (row) => formatOpsMonitorRelativeTime(row.last_active_at),
+                tone: 'faint',
+              },
+            ]}
+          />
+          <MemberRankingTable
+            title="Top Lounge contributors (7d)"
+            emptyMessage="No Lounge posts or interactions in the last 7 days yet."
+            listKey="lounge"
+            rows={topLoungeMembers}
+            expandedKey={expandedKey}
+            onToggleExpanded={toggleExpanded}
+            className="mt-4"
+            columns={[
+              { key: 'events', label: 'Lounge 7d', value: (row) => row.lounge_events_7d },
+              { key: 'posts', label: 'Posts 7d', value: (row) => row.posts_7d, tone: 'muted' },
+              { key: 'comments', label: 'Comments 7d', value: (row) => row.comments_7d, tone: 'muted' },
+              {
+                key: 'interactions',
+                label: 'Interactions 7d',
+                value: (row) => row.interactions_7d,
+                tone: 'muted',
+              },
+              {
+                key: 'last',
+                label: 'Last active',
+                value: (row) => formatOpsMonitorRelativeTime(row.last_lounge_at || row.last_active_at),
+                tone: 'faint',
+              },
+            ]}
+          />
+        </>
       ) : null}
     </section>
+  )
+}
+
+/**
+ * @param {{
+ *   title: string,
+ *   emptyMessage: string,
+ *   listKey: string,
+ *   rows: Array<Record<string, unknown>>,
+ *   expandedKey: string | null,
+ *   onToggleExpanded: (listKey: string, userId: string) => void,
+ *   columns: Array<{
+ *     key: string,
+ *     label: string,
+ *     value: (row: Record<string, unknown>) => unknown,
+ *     align?: 'left' | 'right',
+ *     tone?: 'default' | 'muted' | 'faint',
+ *     tabular?: boolean,
+ *   }>,
+ *   className?: string,
+ * }} props
+ */
+function MemberRankingTable({
+  title,
+  emptyMessage,
+  listKey,
+  rows,
+  expandedKey,
+  onToggleExpanded,
+  columns,
+  className = '',
+}) {
+  return (
+    <div className={className}>
+      <div className="mb-2 text-white text-sm font-semibold">{title}</div>
+      <div className="overflow-x-auto rounded-xl border border-zinc-800">
+        <table className="w-full min-w-[720px] text-left text-xs">
+          <thead className="bg-zinc-950 text-zinc-500 uppercase text-[10px]">
+            <tr>
+              <th className="w-8 px-2 py-2 font-semibold" aria-hidden />
+              <th className="px-3 py-2 font-semibold">Member</th>
+              {columns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`px-3 py-2 font-semibold ${col.align === 'left' ? 'text-left' : 'text-right'}`}
+                >
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-800/80">
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 2} className="px-3 py-4 text-zinc-500">
+                  {emptyMessage}
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => {
+                const href = opsMonitorProfileHref(row)
+                const rowKey = `${listKey}:${row.user_id}`
+                const expanded = expandedKey === rowKey
+                const hasBreakdown = memberHasBreakdown(row)
+
+                return (
+                  <Fragment key={rowKey}>
+                    <tr
+                      className={`bg-zinc-950/40 ${hasBreakdown ? 'cursor-pointer hover:bg-zinc-900/70' : ''} ${expanded ? 'bg-zinc-900/80' : ''}`}
+                      onClick={() => {
+                        if (hasBreakdown) onToggleExpanded(listKey, String(row.user_id))
+                      }}
+                      aria-expanded={hasBreakdown ? expanded : undefined}
+                    >
+                      <td className="px-2 py-2.5 text-center">
+                        {hasBreakdown ? (
+                          <ChevronDown
+                            className={`mx-auto h-4 w-4 text-zinc-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                            aria-hidden
+                          />
+                        ) : (
+                          <span className="inline-block w-4" aria-hidden />
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {href ? (
+                          <a
+                            href={href}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-semibold text-cyan-300 hover:text-cyan-200"
+                          >
+                            {formatOpsRosterHandle(row.handle)}
+                          </a>
+                        ) : (
+                          <span className="font-semibold text-zinc-100">{formatOpsRosterHandle(row.handle)}</span>
+                        )}
+                        {row.display_name ? (
+                          <div className="text-zinc-500 text-[10px] truncate max-w-[160px]">{row.display_name}</div>
+                        ) : null}
+                      </td>
+                      {columns.map((col) => {
+                        const toneClass =
+                          col.tone === 'faint'
+                            ? 'text-zinc-400'
+                            : col.tone === 'muted'
+                              ? 'text-zinc-300'
+                              : 'text-zinc-200'
+                        const tabular = col.tabular !== false
+
+                        return (
+                          <td
+                            key={col.key}
+                            className={`px-3 py-2.5 ${col.align === 'left' ? 'text-left' : 'text-right'} ${tabular ? 'tabular-nums' : ''} ${toneClass}`}
+                          >
+                            {col.tabular === false
+                              ? String(col.value(row) ?? '—')
+                              : formatOpsMonitorCount(col.value(row))}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                    {expanded ? (
+                      <tr className="bg-zinc-950/60">
+                        <td colSpan={columns.length + 2} className="px-3 py-3">
+                          <MemberBreakdownBody member={row} compact />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 
@@ -253,8 +366,15 @@ function MemberBreakdownCard({ member, className = '', compact = false }) {
           ) : null}
         </div>
         <div className="text-right text-[10px] text-zinc-500 tabular-nums">
-          <div>7d events {formatOpsMonitorCount(member.events_7d)}</div>
-          <div>Last {formatOpsMonitorRelativeTime(member.last_active_at)}</div>
+          <div>
+            7d{' '}
+            {member.lounge_events_7d != null
+              ? `Lounge ${formatOpsMonitorCount(member.lounge_events_7d)}`
+              : `events ${formatOpsMonitorCount(member.events_7d)}`}
+          </div>
+          <div>
+            Last {formatOpsMonitorRelativeTime(member.last_lounge_at || member.last_active_at)}
+          </div>
         </div>
       </div>
       <MemberBreakdownBody member={member} compact={compact} />

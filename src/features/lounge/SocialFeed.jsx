@@ -8018,15 +8018,13 @@ export default function SocialFeed({
       onRequireAuth?.()
       return
     }
-    ensureLoungeFeedVisible()
     dismissLoungeStackForDockNavRef.current()
     setLoungeDockPanel((p) => (p === 'search' ? null : 'search'))
-  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth, ensureLoungeFeedVisible])
+  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
   const onLoungeDockNotifications = useCallback(() => {
-    ensureLoungeFeedVisible()
     dismissLoungeStackForDockNavRef.current()
     setLoungeDockPanel((p) => (p === 'notifications' ? null : 'notifications'))
-  }, [ensureLoungeFeedVisible])
+  }, [])
 
   const refreshLoungeNotificationsUnread = useCallback(async () => {
     if (!composerUserId || loungeFeedBrowseMode === 'anonymous') {
@@ -8276,10 +8274,9 @@ export default function SocialFeed({
       onRequireAuth?.()
       return
     }
-    ensureLoungeFeedVisible()
     dismissLoungeStackForDockNavRef.current()
     setLoungeDockPanel((p) => (p === 'settings' ? null : 'settings'))
-  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth, ensureLoungeFeedVisible])
+  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
 
   const onLoungeOpenSettingsSection = useCallback(
     (section) => {
@@ -8287,12 +8284,11 @@ export default function SocialFeed({
         onRequireAuth?.()
         return
       }
-      ensureLoungeFeedVisible()
       dismissLoungeStackForDockNavRef.current()
       setLoungeSettingsFocusSection(section)
       setLoungeDockPanel('settings')
     },
-    [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth, ensureLoungeFeedVisible],
+    [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
   )
 
   useEffect(() => {
@@ -15164,6 +15160,96 @@ export default function SocialFeed({
     return [loungePostDetail, ...communityPosts]
   }, [communityPosts, loungePostDetail])
 
+  const loungeDockSlidePanelsEl = loungeDockPanel ? (
+    <LoungeDockSlidePanels
+      key={loungeDockPanel === 'search' ? `search-${loungeDockSearchQueryVersion}` : loungeDockPanel}
+      initialSearchQuery={loungeDockPanel === 'search' ? loungeDockSearchQuery : ''}
+      openPanel={loungeDockPanel}
+      onClose={onLoungeDockPanelClose}
+      panelScrollRefOut={loungeDockPanelScrollRef}
+      restorePanelScrollTop={dockPanelScrollRestore}
+      onPanelScrollRestored={onDockPanelScrollRestored}
+      communityPosts={communityPosts}
+      viewportTitleTopPx={loungeFeedViewportTopPx}
+      titleBarNavSlot={titleBarNavSlot}
+      communityFeedLoading={communityFeedLoading}
+      onHome={onLoungeDockHome}
+      onSearch={onLoungeDockSearch}
+      onFollowingFilterToggle={onLoungeFollowingFilterToggle}
+      followingFilterOn={loungeFollowingFilterOn}
+      followingFilterDisabled={loungeFeedBrowseMode === 'anonymous'}
+      onNotifications={onLoungeDockNotifications}
+      onChat={onLoungeDockChat}
+      onSettings={onLoungeDockSettings}
+      onOpenSettingsSection={onLoungeOpenSettingsSection}
+      settingsFocusSection={loungeSettingsFocusSection}
+      onSettingsFocusSectionHandled={onLoungeSettingsFocusSectionHandled}
+      activePanel={loungeDockPanel}
+      postCardProps={profilePostCardProps}
+      onOpenPostFromSearch={onLoungeDockOpenPostFromSearch}
+      searchSupabaseClient={supabaseClient}
+      hydrateSearchPosts={hydrateCommunityPosts}
+      onOpenProfileFromSearch={onLoungeDockOpenProfileFromSearch}
+      chatSupabaseClient={supabaseClient}
+      chatViewerUserId={composerUserId || ''}
+      chatHasActiveSubscription={hasActiveSubscription}
+      chatIsStaff={chatDockIsStaff}
+      chatInitialPeerUserId={chatDockInitialPeerUserId}
+      onChatInitialPeerCleared={clearChatDockInitialPeer}
+      chatOnOpenRoom={onOpenChatRoomFromDock}
+      notificationsSupabaseClient={supabaseClient}
+      notificationsViewerUserId={composerUserId || ''}
+      onOpenPostFromNotifications={onLoungeOpenPostFromNotifications}
+      onOpenProfileFromNotifications={onLoungeOpenProfileFromNotifications}
+      onOpenProfileFromSettings={onLoungeOpenProfileFromNotifications}
+      onOpenOwnProfileFollowers={onLoungeOpenOwnProfileFollowers}
+      onNotificationsUnreadChange={onLoungeNotificationsUnreadChange}
+      notificationInteractionProps={notificationInteractionProps}
+      notificationInteractionCountsRefreshKey={notificationInteractionCountsRefreshKey}
+      blockUnderlyingPointer={loungeFabPointerBlocked}
+      dockMenuLayout={loungeDockMenuLayout}
+      onDockMenuLayoutChange={writeLoungeDockMenuLayout}
+      feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
+      onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
+      feedVideoDebugEnabled={loungeFeedVideoDebugEnabled}
+      onFeedVideoDebugChange={onLoungeFeedVideoDebugChange}
+      consoleLogHudEnabled={loungeConsoleLogHudEnabled}
+      onConsoleLogHudChange={onLoungeConsoleLogHudChange}
+      settingsViewerIsStaff={loungeStaffToolsEnabled}
+      buildBadgeEnabled={loungeBuildBadgeEnabled}
+      onBuildBadgeChange={onLoungeBuildBadgeChange}
+      onTitleRevealChange={onLoungePanelTitleReveal}
+      videoCoordinatorSuspended={Boolean(loungePostDetail?.id)}
+      pushNotificationsEnabled={loungePushActive}
+      onPushNotificationsChange={onLoungePushToggle}
+      pushNotificationsStatusHint={loungePushStatusHint}
+      pushNotificationsBusy={loungePushBusy}
+      pushNotificationsStatusMessage={loungePushStatusMessage}
+      notificationPrefs={loungeNotificationPrefs}
+      notificationPrefsLoading={loungeNotificationPrefsLoading}
+      notificationPrefsSavingKey={loungeNotificationPrefsSavingKey}
+      notificationPrefsSchemaMissing={loungeNotificationPrefsSchemaMissing}
+      notificationPrefsError={loungeNotificationPrefsError}
+      onNotificationPrefToggle={onLoungeNotificationPrefToggle}
+      settingsAccountEmail={String(composerAuthUser?.email || '').trim()}
+      settingsAuthUser={composerAuthUser}
+      onAccountInfoUpdated={onProfileScreenUpdated}
+      settingsHasActiveSubscription={hasActiveSubscription}
+      settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
+      settingsHasSlotsEdgePro={hasSlotsEdgePro}
+      settingsHasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
+      settingsOnOpenBillingManage={onOpenBillingManage}
+      settingsSupabaseClient={supabaseClient}
+      onSettingsEditProfile={onLoungeSettingsEditProfile}
+      onLogout={onLogout}
+      onDeleteAccount={onDeleteAccount}
+      deleteAccountBusy={deleteAccountBusy}
+      onOpenLegalDocument={onOpenLegalDocument}
+      onSimulateTabError={onSimulateTabError}
+      onResetTabErrorStrikes={onResetTabErrorStrikes}
+    />
+  ) : null
+
   return (
     <div
       className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))] pb-0`}
@@ -17731,95 +17817,10 @@ export default function SocialFeed({
         </div>
       ) : null}
 
-      {loungeDockPanel ? (
-        <LoungeDockSlidePanels
-          key={loungeDockPanel === 'search' ? `search-${loungeDockSearchQueryVersion}` : loungeDockPanel}
-          initialSearchQuery={loungeDockPanel === 'search' ? loungeDockSearchQuery : ''}
-          openPanel={loungeDockPanel}
-          onClose={onLoungeDockPanelClose}
-          panelScrollRefOut={loungeDockPanelScrollRef}
-          restorePanelScrollTop={dockPanelScrollRestore}
-          onPanelScrollRestored={onDockPanelScrollRestored}
-          communityPosts={communityPosts}
-          viewportTitleTopPx={loungeFeedViewportTopPx}
-          titleBarNavSlot={titleBarNavSlot}
-          communityFeedLoading={communityFeedLoading}
-          onHome={onLoungeDockHome}
-          onSearch={onLoungeDockSearch}
-          onFollowingFilterToggle={onLoungeFollowingFilterToggle}
-          followingFilterOn={loungeFollowingFilterOn}
-          followingFilterDisabled={loungeFeedBrowseMode === 'anonymous'}
-          onNotifications={onLoungeDockNotifications}
-          onChat={onLoungeDockChat}
-          onSettings={onLoungeDockSettings}
-          onOpenSettingsSection={onLoungeOpenSettingsSection}
-          settingsFocusSection={loungeSettingsFocusSection}
-          onSettingsFocusSectionHandled={onLoungeSettingsFocusSectionHandled}
-          activePanel={loungeDockPanel}
-          postCardProps={profilePostCardProps}
-          onOpenPostFromSearch={onLoungeDockOpenPostFromSearch}
-          searchSupabaseClient={supabaseClient}
-          hydrateSearchPosts={hydrateCommunityPosts}
-          onOpenProfileFromSearch={onLoungeDockOpenProfileFromSearch}
-          chatSupabaseClient={supabaseClient}
-          chatViewerUserId={composerUserId || ''}
-          chatHasActiveSubscription={hasActiveSubscription}
-          chatIsStaff={chatDockIsStaff}
-          chatInitialPeerUserId={chatDockInitialPeerUserId}
-          onChatInitialPeerCleared={clearChatDockInitialPeer}
-          chatOnOpenRoom={onOpenChatRoomFromDock}
-          notificationsSupabaseClient={supabaseClient}
-          notificationsViewerUserId={composerUserId || ''}
-          onOpenPostFromNotifications={onLoungeOpenPostFromNotifications}
-          onOpenProfileFromNotifications={onLoungeOpenProfileFromNotifications}
-          onOpenProfileFromSettings={onLoungeOpenProfileFromNotifications}
-          onOpenOwnProfileFollowers={onLoungeOpenOwnProfileFollowers}
-          onNotificationsUnreadChange={onLoungeNotificationsUnreadChange}
-          notificationInteractionProps={notificationInteractionProps}
-          notificationInteractionCountsRefreshKey={notificationInteractionCountsRefreshKey}
-          blockUnderlyingPointer={loungeFabPointerBlocked}
-          dockMenuLayout={loungeDockMenuLayout}
-          onDockMenuLayoutChange={writeLoungeDockMenuLayout}
-          feedVideoAutoplayEnabled={loungeFeedVideoAutoplayEnabled}
-          onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
-          feedVideoDebugEnabled={loungeFeedVideoDebugEnabled}
-          onFeedVideoDebugChange={onLoungeFeedVideoDebugChange}
-          consoleLogHudEnabled={loungeConsoleLogHudEnabled}
-          onConsoleLogHudChange={onLoungeConsoleLogHudChange}
-          settingsViewerIsStaff={loungeStaffToolsEnabled}
-          buildBadgeEnabled={loungeBuildBadgeEnabled}
-          onBuildBadgeChange={onLoungeBuildBadgeChange}
-          onTitleRevealChange={onLoungePanelTitleReveal}
-          videoCoordinatorSuspended={Boolean(loungePostDetail?.id)}
-          pushNotificationsEnabled={loungePushActive}
-          onPushNotificationsChange={onLoungePushToggle}
-          pushNotificationsStatusHint={loungePushStatusHint}
-          pushNotificationsBusy={loungePushBusy}
-          pushNotificationsStatusMessage={loungePushStatusMessage}
-          notificationPrefs={loungeNotificationPrefs}
-          notificationPrefsLoading={loungeNotificationPrefsLoading}
-          notificationPrefsSavingKey={loungeNotificationPrefsSavingKey}
-          notificationPrefsSchemaMissing={loungeNotificationPrefsSchemaMissing}
-          notificationPrefsError={loungeNotificationPrefsError}
-          onNotificationPrefToggle={onLoungeNotificationPrefToggle}
-          settingsAccountEmail={String(composerAuthUser?.email || '').trim()}
-          settingsAuthUser={composerAuthUser}
-          onAccountInfoUpdated={onProfileScreenUpdated}
-          settingsHasActiveSubscription={hasActiveSubscription}
-          settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
-          settingsHasSlotsEdgePro={hasSlotsEdgePro}
-          settingsHasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
-          settingsOnOpenBillingManage={onOpenBillingManage}
-          settingsSupabaseClient={supabaseClient}
-          onSettingsEditProfile={onLoungeSettingsEditProfile}
-          onLogout={onLogout}
-          onDeleteAccount={onDeleteAccount}
-          deleteAccountBusy={deleteAccountBusy}
-          onOpenLegalDocument={onOpenLegalDocument}
-          onSimulateTabError={onSimulateTabError}
-          onResetTabErrorStrikes={onResetTabErrorStrikes}
-        />
-      ) : null}
+      {isActivePage ? loungeDockSlidePanelsEl : null}
+      {!isActivePage && loungeDockSlidePanelsEl && typeof document !== 'undefined'
+        ? createPortal(loungeDockSlidePanelsEl, document.body)
+        : null}
 
       {profileModalOpen && profileModalData?.user_id ? (
         <LoungeProfileFullScreen

@@ -1977,6 +1977,45 @@ export default function GuidesScreen({
                   ].join(' ')}
                 >
                   <div className="relative">
+                    {isAdmin ? (
+                      <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 pointer-events-none">
+                        <div className="flex items-start gap-2">
+                          {favoriteBtn}
+                          {!isLocalDemoGuide(row) ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setDeleteConfirm({
+                                  guideId: row.id,
+                                  machineId: m?.id ?? null,
+                                  slug,
+                                  name: m?.name || row.title || slug,
+                                })
+                              }}
+                              className="pointer-events-auto shrink-0 rounded-xl border border-red-500/70 bg-red-950/75 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-red-200 backdrop-blur-sm hover:bg-red-950/95 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                            >
+                              Delete
+                            </button>
+                          ) : null}
+                        </div>
+                        <div className="pointer-events-auto shrink-0">
+                          <ContentAccessAdminSwitch
+                            locked={adminGuideLocked}
+                            busy={gateBusySlug === normalizedGuideSlug}
+                            disabled={!gatesDbReady}
+                            label={`${m?.name || row.title} Slots Edge lock`}
+                            onLockedChange={(nextLocked) =>
+                              void handleAdminGuideLockToggle(slug, nextLocked)
+                            }
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="absolute left-3 top-3 z-20 pointer-events-none">
+                        {favoriteBtn}
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => toggleGuideExpanded(slug)}
@@ -1988,45 +2027,6 @@ export default function GuidesScreen({
                           expanded ? 'flex justify-center overflow-hidden' : 'h-[10.5rem] overflow-hidden'
                         }`}
                       >
-                        {isAdmin ? (
-                          <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 pointer-events-none">
-                            <div className="flex items-start gap-2">
-                              {favoriteBtn}
-                              {!isLocalDemoGuide(row) ? (
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    setDeleteConfirm({
-                                      guideId: row.id,
-                                      machineId: m?.id ?? null,
-                                      slug,
-                                      name: m?.name || row.title || slug,
-                                    })
-                                  }}
-                                  className="pointer-events-auto shrink-0 rounded-xl border border-red-500/70 bg-red-950/75 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-red-200 backdrop-blur-sm hover:bg-red-950/95 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                                >
-                                  Delete
-                                </button>
-                              ) : null}
-                            </div>
-                            <div className="pointer-events-auto shrink-0">
-                              <ContentAccessAdminSwitch
-                                locked={adminGuideLocked}
-                                busy={gateBusySlug === normalizedGuideSlug}
-                                disabled={!gatesDbReady}
-                                label={`${m?.name || row.title} Slots Edge lock`}
-                                onLockedChange={(nextLocked) =>
-                                  void handleAdminGuideLockToggle(slug, nextLocked)
-                                }
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="absolute left-3 top-3 z-20 pointer-events-none">
-                            {favoriteBtn}
-                          </div>
-                        )}
                         {heroThumb ? (
                           <img
                             src={heroThumb}

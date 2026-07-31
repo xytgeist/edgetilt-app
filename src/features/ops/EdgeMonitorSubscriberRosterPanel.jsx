@@ -20,6 +20,7 @@ import {
 } from './opsMonitorSubscriberRoster.js'
 
 const TABS = [
+  { id: 'platform', label: 'Platform subs' },
   { id: 'fan', label: 'Fan subs' },
   { id: 'creators', label: 'Creators' },
   { id: 'cancels', label: 'Cancels' },
@@ -193,17 +194,14 @@ export default function EdgeMonitorSubscriberRosterPanel({
   refreshing,
   onReload,
 }) {
-  const [tab, setTab] = useState('fan')
+  const [tab, setTab] = useState('platform')
   const [search, setSearch] = useState('')
-  const [platformSearch, setPlatformSearch] = useState('')
   const [paidOnly, setPaidOnly] = useState(false)
-  const [platformPaidOnly, setPlatformPaidOnly] = useState(false)
   const [listOpen, setListOpen] = useState(false)
 
   const summary = useMemo(() => opsMonitorRosterSummary(roster), [roster])
   const theme = OPS_SECTION_THEMES.subs
   const q = search.trim().toLowerCase()
-  const platformQ = platformSearch.trim().toLowerCase()
 
   const platform = roster?.platform || {}
   const fan = roster?.creator_fan || {}
@@ -219,7 +217,7 @@ export default function EdgeMonitorSubscriberRosterPanel({
     const rows = Array.isArray(platform.active_roster) ? platform.active_roster : []
     const filtered = rows.filter(
       (r) =>
-        passesPaidFilter(r, platformPaidOnly)
+        passesPaidFilter(r, paidOnly)
         && filterText(
           [
             r.handle,
@@ -229,11 +227,11 @@ export default function EdgeMonitorSubscriberRosterPanel({
             r.status,
             formatOpsMonitorBillingSourceLabel(opsMonitorRowBillingSource(r)),
           ],
-          platformQ,
+          q,
         ),
     )
     return opsMonitorSortByRecent(filtered, ['subscribed_at', 'updated_at', 'created_at'])
-  }, [platform.active_roster, platformQ, platformPaidOnly])
+  }, [platform.active_roster, q, paidOnly])
 
   const fanActive = useMemo(() => {
     const rows = Array.isArray(fan.active_roster) ? fan.active_roster : []
@@ -316,6 +314,10 @@ export default function EdgeMonitorSubscriberRosterPanel({
 
   const activeTabMeta = useMemo(() => {
     const tabDef = TABS.find((t) => t.id === tab) || TABS[0]
+    if (tab === 'platform') {
+      const total = Array.isArray(platform.active_roster) ? platform.active_roster.length : 0
+      return { label: tabDef.label, shown: activePlatform.length, total }
+    }
     if (tab === 'fan') {
       const total = Array.isArray(fan.active_roster) ? fan.active_roster.length : 0
       return { label: tabDef.label, shown: fanActive.length, total }
@@ -335,10 +337,12 @@ export default function EdgeMonitorSubscriberRosterPanel({
     }
   }, [
     tab,
+    activePlatform.length,
     fanActive.length,
     creators.length,
     pendingAll.length,
     canceledAll.length,
+    platform.active_roster,
     fan.active_roster,
     fan.monetized_creators,
     platform.pending_cancel,
@@ -347,29 +351,23 @@ export default function EdgeMonitorSubscriberRosterPanel({
     fan.canceled_recent,
   ])
 
-  const platformListHint = useMemo(() => {
-    const total = Array.isArray(platform.active_roster) ? platform.active_roster.length : 0
-    const parts = [`${activePlatform.length}`]
-    if (platformQ || platformPaidOnly) parts.push(`of ${total}`)
-    parts.push('rows')
-    if (platformPaidOnly) parts.push('· paid only')
-    parts.push('· newest first')
-    return parts.join(' ')
-  }, [activePlatform.length, platform.active_roster, platformQ, platformPaidOnly])
-
   const rosterListHint = useMemo(() => {
     const parts = [`${activeTabMeta.shown}`]
     if (q || paidOnly) parts.push(`of ${activeTabMeta.total}`)
     parts.push('rows')
     if (paidOnly && tab !== 'creators') parts.push('· paid only')
     parts.push('· newest first')
-    parts.push(`· tap to ${listOpen ? 'hide' : 'browse'}`)
     return parts.join(' ')
-  }, [activeTabMeta.shown, activeTabMeta.total, q, paidOnly, tab, listOpen])
+  }, [activeTabMeta.shown, activeTabMeta.total, q, paidOnly, tab])
 
   const onExport = () => {
     const stamp = new Date().toISOString().slice(0, 10)
-    if (tab === 'fan') {
+    if (tab === 'platform') {
+      downloadOpsMonitorCsv(
+        opsPlatformSubscribersToCsv(activePlatform),
+        `edge-platform-subs-${stamp}.csv`,
+      )
+    } else if (tab === 'fan') {
       downloadOpsMonitorCsv(opsFanSubscribersToCsv(fanActive), `edge-fan-subs-${stamp}.csv`)
     } else if (tab === 'cancels') {
       const cancelRows = [...pendingAll, ...canceledAll]
@@ -378,14 +376,6 @@ export default function EdgeMonitorSubscriberRosterPanel({
         `edge-cancels-${stamp}.csv`,
       )
     }
-  }
-
-  const onExportPlatform = () => {
-    const stamp = new Date().toISOString().slice(0, 10)
-    downloadOpsMonitorCsv(
-      opsPlatformSubscribersToCsv(activePlatform),
-      `edge-platform-subs-${stamp}.csv`,
-    )
   }
 
   return (
@@ -447,7 +437,7 @@ export default function EdgeMonitorSubscriberRosterPanel({
 
         {roster ? (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               <div className="min-w-0">
                 {byProduct.length > 0 ? (
                   <div className="mb-4">
@@ -479,128 +469,29 @@ export default function EdgeMonitorSubscriberRosterPanel({
                 </div>
               </div>
 
-              <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-col min-h-0 lg:max-h-[420px]">
-                <div className="flex items-start justify-between gap-2 px-3 py-2.5 border-b border-zinc-800/80">
+              <div className="min-w-0 rounded-xl border border-zinc-800 bg-zinc-950 flex flex-col min-h-0 lg:max-h-[480px]">
+                <button
+                  type="button"
+                  onClick={() => setListOpen((v) => !v)}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left touch-manipulation hover:bg-zinc-900/80 lg:pointer-events-none lg:cursor-default border-b border-zinc-800/80"
+                  aria-expanded={listOpen}
+                >
                   <div className="min-w-0">
-                    <div className="text-white text-sm font-semibold">Platform subs</div>
-                    <div className="text-zinc-500 text-[10px] mt-0.5">{platformListHint}</div>
+                    <div className="text-white text-sm font-semibold">{activeTabMeta.label}</div>
+                    <div className="text-zinc-500 text-[10px] mt-0.5">
+                      {rosterListHint}
+                      <span className="lg:hidden"> · tap to {listOpen ? 'hide' : 'browse'}</span>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={onExportPlatform}
-                    disabled={!roster || loading}
-                    className="min-h-7 inline-flex shrink-0 items-center gap-1 rounded-lg bg-zinc-800 px-2.5 text-zinc-200 text-[10px] font-semibold hover:bg-zinc-700 disabled:opacity-50"
-                  >
-                    <Download className="h-3 w-3" aria-hidden />
-                    CSV
-                  </button>
-                </div>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform lg:hidden ${listOpen ? 'rotate-180' : ''}`}
+                    aria-hidden
+                  />
+                </button>
 
-                <div className="px-3 pb-3 pt-2 flex flex-col min-h-0 flex-1">
-                  <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <input
-                      type="search"
-                      value={platformSearch}
-                      onChange={(e) => setPlatformSearch(e.target.value)}
-                      placeholder="Filter handle, email, product, billing…"
-                      className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setPlatformPaidOnly((v) => !v)}
-                      aria-pressed={platformPaidOnly}
-                      className={`min-h-8 shrink-0 rounded-lg px-3 text-[11px] font-semibold touch-manipulation ${
-                        platformPaidOnly
-                          ? 'bg-emerald-700 text-white'
-                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                      }`}
-                    >
-                      Paid only
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto overflow-y-auto max-h-52 lg:max-h-none lg:flex-1 rounded-lg border border-zinc-800">
-                    <table className="w-full min-w-[640px] text-left text-xs">
-                      <thead className="sticky top-0 z-10 bg-zinc-950 text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800/80">
-                        <tr>
-                          <th className="px-3 py-2 font-semibold">Member</th>
-                          <th className="px-3 py-2 font-semibold">Product</th>
-                          <th className="px-3 py-2 font-semibold">Billing</th>
-                          <th className="px-3 py-2 font-semibold">Status</th>
-                          <th className="px-3 py-2 font-semibold">Subscribed</th>
-                          <th className="px-3 py-2 font-semibold">Renews</th>
-                          <th className="px-3 py-2 font-semibold">Cancel?</th>
-                          <th className="px-3 py-2 font-semibold">Stripe</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-800/60">
-                        {activePlatform.length === 0 ? (
-                          <EmptyRow colSpan={8}>
-                            {platformPaidOnly ? 'No paid platform subscriptions' : 'No active platform subscriptions'}
-                          </EmptyRow>
-                        ) : (
-                          activePlatform.map((row) => (
-                            <tr key={`${row.user_id}-${row.product_slug}-${row.stripe_subscription_id}`}>
-                              <RosterProfileCell
-                                handle={row.handle}
-                                userId={row.user_id}
-                                displayName={row.display_name}
-                                email={row.email}
-                              />
-                              <td className="px-3 py-2.5 text-zinc-200">
-                                <div>{row.product_slug}</div>
-                                <div className="text-zinc-500">{row.price_interval || '...'}</div>
-                              </td>
-                              <RosterBillingCell row={row} />
-                              <td className="px-3 py-2.5 capitalize text-zinc-300">{row.status}</td>
-                              <td className="px-3 py-2.5 text-zinc-400 tabular-nums whitespace-nowrap">
-                                {formatOpsRosterWhen(row.subscribed_at)}
-                              </td>
-                              <td className="px-3 py-2.5 text-zinc-400 tabular-nums">
-                                {formatOpsRosterWhen(row.current_period_end)}
-                              </td>
-                              <td className="px-3 py-2.5">
-                                {row.cancel_at_period_end ? (
-                                  <span className="text-orange-300 font-semibold">Pending</span>
-                                ) : (
-                                  <span className="text-zinc-500">No</span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2.5">
-                                <RosterStripeLinks
-                                  customerId={row.stripe_customer_id}
-                                  subscriptionId={row.stripe_subscription_id}
-                                />
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950">
-              <button
-                type="button"
-                onClick={() => setListOpen((v) => !v)}
-                className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left touch-manipulation hover:bg-zinc-900/80"
-                aria-expanded={listOpen}
-              >
-                <div className="min-w-0">
-                  <div className="text-white text-sm font-semibold">{activeTabMeta.label}</div>
-                  <div className="text-zinc-500 text-[10px] mt-0.5">{rosterListHint}</div>
-                </div>
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${listOpen ? 'rotate-180' : ''}`}
-                  aria-hidden
-                />
-              </button>
-
-              {listOpen ? (
-                <div className="border-t border-zinc-800 px-3 pb-3 pt-2">
+                <div
+                  className={`px-3 pb-3 pt-2 flex flex-col min-h-0 flex-1 ${listOpen ? '' : 'hidden lg:flex'}`}
+                >
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {TABS.map((t) => (
                       <button
@@ -642,7 +533,67 @@ export default function EdgeMonitorSubscriberRosterPanel({
                     ) : null}
                   </div>
 
-                  <div className="overflow-x-auto overflow-y-auto max-h-52 rounded-lg border border-zinc-800">
+                  <div className="overflow-x-auto overflow-y-auto max-h-52 lg:max-h-none lg:flex-1 rounded-lg border border-zinc-800">
+              {tab === 'platform' ? (
+                <table className="w-full min-w-[640px] text-left text-xs">
+                  <thead className="sticky top-0 z-10 bg-zinc-950 text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800/80">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Member</th>
+                      <th className="px-3 py-2 font-semibold">Product</th>
+                      <th className="px-3 py-2 font-semibold">Billing</th>
+                      <th className="px-3 py-2 font-semibold">Status</th>
+                      <th className="px-3 py-2 font-semibold">Subscribed</th>
+                      <th className="px-3 py-2 font-semibold">Renews</th>
+                      <th className="px-3 py-2 font-semibold">Cancel?</th>
+                      <th className="px-3 py-2 font-semibold">Stripe</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60">
+                    {activePlatform.length === 0 ? (
+                      <EmptyRow colSpan={8}>
+                        {paidOnly ? 'No paid platform subscriptions' : 'No active platform subscriptions'}
+                      </EmptyRow>
+                    ) : (
+                      activePlatform.map((row) => (
+                        <tr key={`${row.user_id}-${row.product_slug}-${row.stripe_subscription_id}`}>
+                          <RosterProfileCell
+                            handle={row.handle}
+                            userId={row.user_id}
+                            displayName={row.display_name}
+                            email={row.email}
+                          />
+                          <td className="px-3 py-2.5 text-zinc-200">
+                            <div>{row.product_slug}</div>
+                            <div className="text-zinc-500">{row.price_interval || '...'}</div>
+                          </td>
+                          <RosterBillingCell row={row} />
+                          <td className="px-3 py-2.5 capitalize text-zinc-300">{row.status}</td>
+                          <td className="px-3 py-2.5 text-zinc-400 tabular-nums whitespace-nowrap">
+                            {formatOpsRosterWhen(row.subscribed_at)}
+                          </td>
+                          <td className="px-3 py-2.5 text-zinc-400 tabular-nums">
+                            {formatOpsRosterWhen(row.current_period_end)}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {row.cancel_at_period_end ? (
+                              <span className="text-orange-300 font-semibold">Pending</span>
+                            ) : (
+                              <span className="text-zinc-500">No</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <RosterStripeLinks
+                              customerId={row.stripe_customer_id}
+                              subscriptionId={row.stripe_subscription_id}
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              ) : null}
+
               {tab === 'fan' ? (
                 <table className="w-full min-w-[640px] text-left text-xs">
                   <thead className="text-zinc-500 uppercase text-[10px] tracking-wide border-b border-zinc-800/80">
@@ -893,7 +844,7 @@ export default function EdgeMonitorSubscriberRosterPanel({
               ) : null}
                   </div>
                 </div>
-              ) : null}
+              </div>
             </div>
           </>
         ) : null}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
 import * as Sentry from '@sentry/react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
@@ -53,7 +54,7 @@ import {
   requestPwaMicrophoneAccess,
 } from '../../utils/pwaMicrophonePrompt'
 import { stashPendingChatCallDeepLink } from '../../utils/pendingChatCallDeepLink.js'
-import { chatClaimPlatformSubMembership } from '../chat/chatApi.js'
+import { chatClaimPlatformSubMembership, chatGetPlatformSubRoomId } from '../chat/chatApi.js'
 import { takePendingAppNavigateFromSw } from '../../utils/pendingAppNavigateFromSw.js'
 import { syncLoungeFeedVideoDebugFromUrl } from '../../utils/loungeFeedVideoDebugPref.js'
 import AppConsoleLogDebugHud from '../../components/AppConsoleLogDebugHud.jsx'
@@ -325,7 +326,12 @@ export default function AppShell({
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
-  const [pendingChatPrivateSubsOpen, setPendingChatPrivateSubsOpen] = useState(false)
+  /** Room id AppShell sets synchronously before switching to chat (avoids inbox / Private Subs flash). */
+  const [shellDirectOpenRoomId, setShellDirectOpenRoomId] = useState(/** @type {string | null} */ (null))
+  /** @type {React.MutableRefObject<import('../chat/ChatTab.jsx').ChatDirectNavApi | null>} */
+  const chatDirectNavRef = useRef(null)
+  /** Cached singleton Slots Pro Lounge room id for instant hub navigation. */
+  const slotsProLoungeRoomIdRef = useRef(/** @type {string | null} */ (null))
   const [pendingChatCallId, setPendingChatCallId] = useState(null)
   /** When set, deep link should open call-back prompt (missedCall=) not accept UI. */
   const [pendingChatCallIntent, setPendingChatCallIntent] = useState(/** @type {'ring' | 'callback'} */ ('ring'))
@@ -1346,7 +1352,32 @@ export default function AppShell({
     setMenuOpen(false)
   }
 
-  const openSlotsProLounge = useCallback(async () => {
+  const registerChatDirectNav = useCallback((api) => {
+    chatDirectNavRef.current = api
+  }, [])
+
+  const openChatRoomDirect = useCallback((roomId, opts) => {
+    const id = String(roomId || '').trim()
+    if (!id) return
+    flushSync(() => {
+      setShellDirectOpenRoomId(id)
+      const api = chatDirectNavRef.current
+      if (opts?.skipReloadIfSame !== false && api?.getOpenRoomId?.() === id) {
+        setTab('chat')
+        setMenuOpen(false)
+        return
+      }
+      api?.openRoomById?.(id, opts)
+      setTab('chat')
+      setMenuOpen(false)
+    })
+  }, [])
+
+  const handleShellDirectOpenConsumed = useCallback(() => {
+    setShellDirectOpenRoomId(null)
+  }, [])
+
+  const openSlotsProLounge = useCallback(() => {
     if (browseMode !== 'member') {
       onOpenAuth?.('login')
       return
@@ -1356,25 +1387,37 @@ export default function AppShell({
       return
     }
     if (!supabaseClient) return
-    try {
-      const roomId = await chatClaimPlatformSubMembership(supabaseClient)
-      if (!roomId) throw new Error('Slots Pro Lounge is not available yet.')
-      setPendingChatPrivateSubsOpen(true)
-      setPendingChatRoomId(String(roomId))
-      setTab('chat')
-      setMenuOpen(false)
-    } catch (e) {
-      console.warn('openSlotsProLounge', e)
-      setPendingChatPrivateSubsOpen(true)
-      setTab('chat')
-      setMenuOpen(false)
+
+    const openResolvedRoom = (roomId) => {
+      const id = String(roomId || '').trim()
+      if (!id) return
+      slotsProLoungeRoomIdRef.current = id
+      openChatRoomDirect(id, { skipReloadIfSame: true })
     }
+
+    const cachedId = slotsProLoungeRoomIdRef.current
+    if (cachedId) {
+      openResolvedRoom(cachedId)
+    }
+
+    void (async () => {
+      try {
+        const roomId = await chatClaimPlatformSubMembership(supabaseClient)
+        if (!roomId) throw new Error('Slots Pro Lounge is not available yet.')
+        if (!cachedId || String(roomId) !== cachedId) {
+          openResolvedRoom(String(roomId))
+        }
+      } catch (e) {
+        console.warn('openSlotsProLounge', e)
+      }
+    })()
   }, [
     browseMode,
     hasActiveSubscription,
     isStaff,
     onOpenAuth,
     onRequireSubscribe,
+    openChatRoomDirect,
     supabaseClient,
   ])
 
@@ -1653,6 +1696,12 @@ export default function AppShell({
   useEffect(() => {
     if (tab !== 'home') return undefined
     void importRoute(() => import('../guides/GuidesScreen.jsx'))
+    return undefined
+  }, [tab])
+
+  /** Prefetch Chat chunk on Lounge + Slots hub so direct room opens can run before first paint. */
+  useEffect(() => {
+    if (tab !== 'home' && tab !== 'slots') return undefined
     void importRoute(() => import('../chat/ChatTab.jsx'))
     return undefined
   }, [tab])
@@ -1661,6 +1710,19 @@ export default function AppShell({
     if (tab !== 'chat') return
     clearStaleChunkReloadGuard()
   }, [tab])
+
+  useEffect(() => {
+    if (browseMode !== 'member' || !supabaseClient) return undefined
+    if (!isStaff && !hasActiveSubscription) return undefined
+    let cancelled = false
+    void chatGetPlatformSubRoomId(supabaseClient)
+      .then((roomId) => {
+        if (cancelled || !roomId) return
+        slotsProLoungeRoomIdRef.current = String(roomId)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [browseMode, hasActiveSubscription, isStaff, supabaseClient])
 
   const openGuideFromLounge = useCallback((rawSlug) => {
     const slug = normalizeGuideAccessSlug(rawSlug)
@@ -1951,6 +2013,8 @@ export default function AppShell({
 
   const homeSuspenseFallback =
     tab === 'home' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null
+  const chatSuspenseFallback =
+    tab === 'chat' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null
 
   const renderTabContent = () => {
     /** Stay mounted across tabs so lounge composer / uploads are not torn down when browsing elsewhere in-app. */
@@ -2004,7 +2068,10 @@ export default function AppShell({
               setMenuOpen(false)
             }}
             onOpenChatRoomFromDock={(roomId) => {
-              if (roomId) setPendingChatRoomId(roomId)
+              if (roomId) {
+                openChatRoomDirect(roomId, { skipReloadIfSame: true })
+                return
+              }
               setTab('chat')
               setMenuOpen(false)
             }}
@@ -2012,9 +2079,7 @@ export default function AppShell({
             onRequestOpenProfileConsumed={() => setPendingLoungeProfileUserId(null)}
             requestOpenPost={pendingLoungePostOpen}
             onRequestOpenPostConsumed={() => setPendingLoungePostOpen(null)}
-            onReturnToChatRoom={(roomId) => {
-              const id = String(roomId || '').trim()
-              if (id) setPendingChatRoomId(id)
+            onReturnToChatRoom={() => {
               setTab('chat')
               setMenuOpen(false)
             }}
@@ -2024,6 +2089,50 @@ export default function AppShell({
             onResetTabErrorStrikes={handleResetTabErrorStrikes}
             showGlobalConfirm={showGlobalConfirm}
             onProfileFeedMuteChange={handleProfileFeedMuteChange}
+          />
+        </div>
+      </Suspense>
+    )
+
+    /** Stay mounted across tabs so an open conversation survives lounge post preview navigation. */
+    const keepAliveChatTab = (
+      <Suspense fallback={chatSuspenseFallback}>
+        <div
+          key="chat-keepalive"
+          className={tab === 'chat' ? 'contents min-h-0' : 'hidden'}
+          inert={tab !== 'chat'}
+        >
+          <ChatTab
+            supabaseClient={supabaseClient}
+            hasActiveSubscription={hasActiveSubscription}
+            isStaff={isStaff}
+            browseMode={browseMode}
+            onRequireAuth={() => onRequireAuth?.()}
+            titleBarNavSlot={renderTitleBarNavSlot()}
+            initialPeerUserId={pendingChatPeerUserId}
+            onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
+            initialRoomId={pendingChatRoomId}
+            onInitialRoomConsumed={() => setPendingChatRoomId(null)}
+            shellDirectOpenRoomId={shellDirectOpenRoomId}
+            onShellDirectOpenConsumed={handleShellDirectOpenConsumed}
+            onRequireSubscribe={onRequireSubscribe}
+            onViewProfile={(userId) => {
+              if (!userId) return
+              setPendingLoungeProfileUserId(userId)
+              setTab('home')
+              setMenuOpen(false)
+            }}
+            onOpenLoungePost={(postId, returnChatRoomId) => {
+              const id = String(postId || '').trim()
+              if (!id) return
+              setPendingLoungePostOpen({
+                postId: id,
+                returnChatRoomId: returnChatRoomId ? String(returnChatRoomId) : null,
+              })
+              setTab('home')
+              setMenuOpen(false)
+            }}
+            registerDirectNav={registerChatDirectNav}
           />
         </div>
       </Suspense>
@@ -2278,40 +2387,6 @@ export default function AppShell({
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
         />
       )
-    } else if (tab === 'chat') {
-      visibleTab = (
-        <ChatTab
-          supabaseClient={supabaseClient}
-          hasActiveSubscription={hasActiveSubscription}
-          isStaff={isStaff}
-          browseMode={browseMode}
-          onRequireAuth={() => onRequireAuth?.()}
-          titleBarNavSlot={renderTitleBarNavSlot()}
-          initialPeerUserId={pendingChatPeerUserId}
-          onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
-          initialRoomId={pendingChatRoomId}
-          onInitialRoomConsumed={() => setPendingChatRoomId(null)}
-          initialPrivateSubsContext={pendingChatPrivateSubsOpen}
-          onInitialPrivateSubsContextConsumed={() => setPendingChatPrivateSubsOpen(false)}
-          onRequireSubscribe={onRequireSubscribe}
-          onViewProfile={(userId) => {
-            if (!userId) return
-            setPendingLoungeProfileUserId(userId)
-            setTab('home')
-            setMenuOpen(false)
-          }}
-          onOpenLoungePost={(postId, returnChatRoomId) => {
-            const id = String(postId || '').trim()
-            if (!id) return
-            setPendingLoungePostOpen({
-              postId: id,
-              returnChatRoomId: returnChatRoomId ? String(returnChatRoomId) : null,
-            })
-            setTab('home')
-            setMenuOpen(false)
-          }}
-        />
-      )
     } else if (tab === 'monitor') {
       visibleTab = isAdmin ? (
         <EdgeMonitorScreen
@@ -2398,6 +2473,7 @@ export default function AppShell({
     return (
       <>
         {keepAliveSocialFeed}
+        {keepAliveChatTab}
         {visibleTab != null ? (
           <TabErrorBoundary onBack={() => setTab('home')}>
             <Suspense fallback={<TabLoadingFallback />}>{visibleTab}</Suspense>
@@ -2519,9 +2595,7 @@ export default function AppShell({
         }}
         onOpenRoom={(roomId) => {
           if (!roomId) return
-          setPendingChatRoomId(roomId)
-          setTab('chat')
-          setMenuOpen(false)
+          openChatRoomDirect(roomId, { skipReloadIfSame: true })
         }}
       >
         {shellTree}

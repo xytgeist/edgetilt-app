@@ -922,6 +922,9 @@ export default function SocialFeed({
   /** When profile opens from dock search/notifications, back restores that panel. @deprecated - use loungeNavReturnStackRef */
   const profileReturnDockPanelRef = useRef(null)
   const loungeNavReturnStackRef = useRef(createLoungeNavReturnStack())
+  /** When a lounge post opens from chat, back returns there without nav-stack restore. */
+  const loungePostReturnChatRoomIdRef = useRef(/** @type {string | null} */ (null))
+  const loungeSkipNavPopOnCloseRef = useRef(false)
   const loungeNavRestoringRef = useRef(false)
   const loungeNavSearchReturnPendingRef = useRef(false)
   const profileNavSnapshotRef = useRef({ tab: 'posts', scrollTop: 0 })
@@ -7509,6 +7512,9 @@ export default function SocialFeed({
     } catch {
       // ignore
     }
+    if (loungeSkipNavPopOnCloseRef.current) {
+      return
+    }
     if (loungeNavRestoringRef.current || loungeNavSearchReturnPendingRef.current) {
       return
     }
@@ -7534,6 +7540,17 @@ export default function SocialFeed({
 
   const closeLoungePostDetail = useCallback(() => {
     setLoungePostDetailMenuOpen(false)
+    const returnChatRoomId = String(loungePostReturnChatRoomIdRef.current || '').trim()
+    if (returnChatRoomId) {
+      loungePostReturnChatRoomIdRef.current = null
+      loungeSkipNavPopOnCloseRef.current = true
+      onReturnToChatRoom?.(returnChatRoomId)
+      requestAnimationFrame(() => {
+        finalizeLoungePostDetailClose()
+        loungeSkipNavPopOnCloseRef.current = false
+      })
+      return
+    }
     const reduce =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
@@ -7550,7 +7567,7 @@ export default function SocialFeed({
       loungePostDetailCloseFallbackTimerRef.current = 0
       if (!loungePostDetailVisibleRef.current) finalizeLoungePostDetailClose()
     }, 400)
-  }, [finalizeLoungePostDetailClose])
+  }, [finalizeLoungePostDetailClose, onReturnToChatRoom])
 
   const discardOptimisticVideoFeedPost = useCallback(
     async (postRow, targetKey) => {
@@ -13819,6 +13836,7 @@ export default function SocialFeed({
   const dismissLoungeStackForDockNav = useCallback(() => {
     profileReturnDockPanelRef.current = null
     loungeNavReturnStackRef.current.length = 0
+    loungePostReturnChatRoomIdRef.current = null
     loungeNavSearchReturnPendingRef.current = false
     if (loungePostDetail) finalizeLoungePostDetailClose()
     if (profileModalOpen || profileOverlayStack.length > 0) {
@@ -14259,12 +14277,6 @@ export default function SocialFeed({
             setLoungeDockPanel(frame.panel)
             break
           }
-          case 'chat': {
-            setLoungeDockPanel(null)
-            setProfileOverlayStack([])
-            onReturnToChatRoom?.(frame.roomId)
-            break
-          }
           default:
             break
         }
@@ -14279,7 +14291,6 @@ export default function SocialFeed({
       openLoungePostDetail,
       openProfileModal,
       profileModalOpen,
-      onReturnToChatRoom,
     ],
   )
 
@@ -14629,7 +14640,7 @@ export default function SocialFeed({
     const returnChatRoomId = String(requestOpenPost?.returnChatRoomId || '').trim()
     onRequestOpenPostConsumed?.()
     if (returnChatRoomId) {
-      pushLoungeNavReturnFrame(loungeNavReturnStackRef.current, { kind: 'chat', roomId: returnChatRoomId })
+      loungePostReturnChatRoomIdRef.current = returnChatRoomId
     }
     void openLoungePostById(postId, { skipNavCapture: true })
   }, [requestOpenPost, openLoungePostById, onRequestOpenPostConsumed])

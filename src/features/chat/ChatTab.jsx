@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
@@ -24,7 +24,6 @@ import {
   chatFetchRoomForViewer,
   chatSetReadReceiptsEnabled,
   buildProvisionalDmRoom,
-  chatClaimPlatformSubMembership,
   buildProvisionalFanRoom,
 } from './chatApi.js'
 import { LOUNGE_CHAT_TOPIC_CHANNELS } from '../../utils/loungeChatConstants.js'
@@ -43,13 +42,17 @@ import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.j
  *   onInitialPeerConsumed?: () => void,
  *   initialRoomId?: string | null,
  *   onInitialRoomConsumed?: () => void,
- *   initialPrivateSubsContext?: boolean,
- *   onInitialPrivateSubsContextConsumed?: () => void,
+ *   shellDirectOpenRoomId?: string | null,
+ *   onShellDirectOpenConsumed?: () => void,
  *   onRequireSubscribe?: ((productSlug?: string) => void) | null,
  *   onViewProfile?: ((userId: string) => void) | null,
  *   onOpenLoungePost?: ((postId: string, returnChatRoomId?: string | null) => void) | null,
+ *   registerDirectNav?: ((api: ChatDirectNavApi | null) => void) | null,
  * }} props
  */
+
+/** @typedef {{ openRoomById: (roomId: string, opts?: { skipReloadIfSame?: boolean }) => void, getActiveRoomId: () => string | null, getOpenRoomId: () => string | null }} ChatDirectNavApi */
+
 export default function ChatTab({
   supabaseClient,
   hasActiveSubscription = false,
@@ -61,11 +64,12 @@ export default function ChatTab({
   onInitialPeerConsumed,
   initialRoomId = null,
   onInitialRoomConsumed,
-  initialPrivateSubsContext = false,
-  onInitialPrivateSubsContextConsumed,
+  shellDirectOpenRoomId = null,
+  onShellDirectOpenConsumed,
   onRequireSubscribe = null,
   onViewProfile = null,
   onOpenLoungePost = null,
+  registerDirectNav = null,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -91,12 +95,30 @@ export default function ChatTab({
   const [searchBusy, setSearchBusy] = useState(false)
   const searchTimerRef = useRef(null)
   const openedFromPrivateSubsRef = useRef(false)
+  const activeRoomIdRef = useRef(activeRoomId)
+  const roomsRef = useRef(rooms)
+  const archivedRoomsRef = useRef(archivedRooms)
+  activeRoomIdRef.current = activeRoomId
+  roomsRef.current = rooms
+  archivedRoomsRef.current = archivedRooms
+
+  const pendingDeepLinkRoomId = useMemo(
+    () => String(initialRoomId || '').trim() || null,
+    [initialRoomId],
+  )
+  const shellPendingRoomId = useMemo(
+    () => String(shellDirectOpenRoomId || '').trim() || null,
+    [shellDirectOpenRoomId],
+  )
+  /** Set synchronously by direct nav before hydrate so we never flash inbox / Private Subs. */
+  const [directOpenRoomId, setDirectOpenRoomId] = useState(/** @type {string | null} */ (null))
+  const openRoomId = activeRoomId || directOpenRoomId || shellPendingRoomId || pendingDeepLinkRoomId
 
   // Long-press context menu on room rows
   const [roomMenu, setRoomMenu] = useState(/** @type {{ room: any, y: number, x: number } | null} */ (null))
   const [openSwipeRoomId, setOpenSwipeRoomId] = useState(/** @type {string | null} */ (null))
   const inboxRootRef = useRef(null)
-  const showInboxList = browseMode !== 'anonymous' && !activeRoomId
+  const showInboxList = browseMode !== 'anonymous' && !openRoomId
 
   // Group creation
   const [showGroupCreate, setShowGroupCreate] = useState(false)
@@ -110,6 +132,8 @@ export default function ChatTab({
   /** Room metadata when opening by id before/without inbox row (dock deep-link). */
   const [hydratedOpenRoom, setHydratedOpenRoom] = useState(/** @type {any | null} */ (null))
   const [hydrateOpenRoomDone, setHydrateOpenRoomDone] = useState(false)
+  const hydratedOpenRoomRef = useRef(/** @type {any | null} */ (null))
+  hydratedOpenRoomRef.current = hydratedOpenRoom
   /** @type {React.MutableRefObject<Record<string, any>>} */
   const profilesCacheRef = useRef({})
 
@@ -343,6 +367,105 @@ export default function ChatTab({
     return () => { void supabaseClient.removeChannel(channel) }
   }, [supabaseClient, viewerUserId, refreshInboxLists])
 
+  const roomHasLoadedData = useCallback((roomId) => {
+    const id = String(roomId || '').trim()
+    if (!id) return false
+    return (
+      roomsRef.current.some((r) => r.id === id)
+      || archivedRoomsRef.current.some((r) => r.id === id)
+      || hydratedOpenRoomRef.current?.id === id
+    )
+  }, [])
+
+  const openRoomById = useCallback((roomId, opts = {}) => {
+    const id = String(roomId || '').trim()
+    if (!id) return
+    setDirectOpenRoomId(id)
+    setTab('inbox')
+    openedFromPrivateSubsRef.current = false
+    const skipReloadIfSame = opts.skipReloadIfSame !== false
+    if (skipReloadIfSame && activeRoomIdRef.current === id) {
+      setActiveRoomId(id)
+      return
+    }
+    setActiveRoomId(id)
+    if (!viewerUserId || !supabaseClient) return
+    if (roomsRef.current.some((r) => r.id === id) || archivedRoomsRef.current.some((r) => r.id === id)) {
+      void loadRooms()
+      return
+    }
+    setHydrateOpenRoomDone(false)
+    void (async () => {
+      try {
+        const fetched = await chatFetchRoomForViewer(supabaseClient, id, viewerUserId)
+        if (fetched) {
+          setHydratedOpenRoom(fetched)
+        } else {
+          const catalog = await listCreatorFanPrivateSubs(supabaseClient, '')
+          const row = catalog.find((r) => r.room_id === id)
+          if (row) setHydratedOpenRoom(buildProvisionalFanRoom(row, viewerUserId))
+        }
+      } catch {
+        setHydratedOpenRoom(null)
+      } finally {
+        setHydrateOpenRoomDone(true)
+      }
+      void loadRooms()
+    })()
+  }, [viewerUserId, supabaseClient, loadRooms])
+
+  const directOpenRoomIdRef = useRef(directOpenRoomId)
+  directOpenRoomIdRef.current = directOpenRoomId
+
+  const openRoomByIdRef = useRef(openRoomById)
+  openRoomByIdRef.current = openRoomById
+
+  useLayoutEffect(() => {
+    if (!registerDirectNav) return undefined
+    registerDirectNav({
+      openRoomById: (roomId, opts) => openRoomByIdRef.current(roomId, opts),
+      getActiveRoomId: () => activeRoomIdRef.current,
+      getOpenRoomId: () =>
+        activeRoomIdRef.current || directOpenRoomIdRef.current || shellPendingRoomId,
+    })
+    return () => registerDirectNav(null)
+  }, [registerDirectNav, shellPendingRoomId])
+
+  useLayoutEffect(() => {
+    const id = String(shellDirectOpenRoomId || '').trim()
+    if (!id) return undefined
+    setDirectOpenRoomId(id)
+    setTab('inbox')
+    openedFromPrivateSubsRef.current = false
+    setActiveRoomId(id)
+    return undefined
+  }, [shellDirectOpenRoomId])
+
+  useEffect(() => {
+    if (!shellPendingRoomId) return undefined
+    if (activeRoomId === shellPendingRoomId || directOpenRoomId === shellPendingRoomId) {
+      onShellDirectOpenConsumed?.()
+    }
+    return undefined
+  }, [shellPendingRoomId, activeRoomId, directOpenRoomId, onShellDirectOpenConsumed])
+
+  useLayoutEffect(() => {
+    const id = String(initialRoomId || '').trim()
+    if (!id) return undefined
+    setDirectOpenRoomId(id)
+    setTab('inbox')
+    openedFromPrivateSubsRef.current = false
+    setActiveRoomId(id)
+    return undefined
+  }, [initialRoomId])
+
+  useEffect(() => {
+    if (!directOpenRoomId || !viewerUserId || !supabaseClient) return undefined
+    if (roomHasLoadedData(directOpenRoomId)) return undefined
+    openRoomByIdRef.current(directOpenRoomId, { skipReloadIfSame: false })
+    return undefined
+  }, [directOpenRoomId, viewerUserId, supabaseClient, roomHasLoadedData])
+
   // ── Handle initialPeerUserId (from profile Message tap) ──────────────────
   // Use a ref so we don't re-fire when loadRooms/supabaseClient identity changes.
   const handledPeerRef = useRef(/** @type {string|null} */ (null))
@@ -376,50 +499,50 @@ export default function ChatTab({
   // ── Handle initialRoomId (from deep link / push tap) ─────────────────────
 
   useEffect(() => {
-    if (!initialRoomId || !viewerUserId || !supabaseClient) return
+    if (!initialRoomId || !viewerUserId || !supabaseClient) return undefined
+    const targetRoomId = String(initialRoomId).trim()
+    if (!targetRoomId) return undefined
+
+    if (activeRoomIdRef.current === targetRoomId && roomHasLoadedData(targetRoomId)) {
+      onInitialRoomConsumed?.()
+      return undefined
+    }
+
     let cancelled = false
     void (async () => {
-      if (initialPrivateSubsContext) {
-        setTab('privateSubs')
-        openedFromPrivateSubsRef.current = true
-        onInitialPrivateSubsContextConsumed?.()
-      }
-      if (initialPrivateSubsContext && (hasActiveSubscription || isStaff)) {
+      if (cancelled) return
+      if (!roomHasLoadedData(targetRoomId)) {
+        setHydrateOpenRoomDone(false)
         try {
-          await chatClaimPlatformSubMembership(supabaseClient)
+          const fetched = await chatFetchRoomForViewer(supabaseClient, targetRoomId, viewerUserId)
+          if (cancelled) return
+          if (fetched) {
+            setHydratedOpenRoom(fetched)
+          } else {
+            const catalog = await listCreatorFanPrivateSubs(supabaseClient, '')
+            const row = catalog.find((r) => r.room_id === targetRoomId)
+            if (row) {
+              setHydratedOpenRoom(buildProvisionalFanRoom(row, viewerUserId))
+            }
+          }
         } catch {
-          /* room may already exist from webhook backfill */
-        }
-      }
-      await loadRooms()
-      if (cancelled) return
-      const fetched = await chatFetchRoomForViewer(supabaseClient, initialRoomId, viewerUserId)
-      if (fetched) {
-        setHydratedOpenRoom(fetched)
-        setHydrateOpenRoomDone(true)
-      } else if (initialPrivateSubsContext) {
-        const catalog = await listCreatorFanPrivateSubs(supabaseClient, '')
-        const row = catalog.find((r) => r.room_id === initialRoomId)
-        if (row) {
-          setHydratedOpenRoom(buildProvisionalFanRoom(row, viewerUserId))
-          setHydrateOpenRoomDone(true)
+          if (!cancelled) setHydratedOpenRoom(null)
+        } finally {
+          if (!cancelled) setHydrateOpenRoomDone(true)
         }
       }
       if (cancelled) return
-      setActiveRoomId(initialRoomId)
+      void loadRooms()
       onInitialRoomConsumed?.()
     })()
     return () => { cancelled = true }
   }, [
     initialRoomId,
-    initialPrivateSubsContext,
     viewerUserId,
     supabaseClient,
-    hasActiveSubscription,
-    isStaff,
     loadRooms,
     onInitialRoomConsumed,
-    onInitialPrivateSubsContextConsumed,
+    roomHasLoadedData,
   ])
 
   // ── Join topic channel ────────────────────────────────────────────────────
@@ -620,29 +743,32 @@ export default function ChatTab({
   // ── Active room data ──────────────────────────────────────────────────────
 
   const activeRoom = useMemo(
-    () => rooms.find((r) => r.id === activeRoomId)
-      || archivedRooms.find((r) => r.id === activeRoomId)
-      || hydratedOpenRoom
+    () => rooms.find((r) => r.id === openRoomId)
+      || archivedRooms.find((r) => r.id === openRoomId)
+      || (hydratedOpenRoom?.id === openRoomId ? hydratedOpenRoom : null)
       || null,
-    [rooms, archivedRooms, activeRoomId, hydratedOpenRoom],
+    [rooms, archivedRooms, openRoomId, hydratedOpenRoom],
   )
 
   useEffect(() => {
-    if (!activeRoomId || !viewerUserId || !supabaseClient) {
-      setHydratedOpenRoom(null)
-      setHydrateOpenRoomDone(false)
+    if (!openRoomId || !viewerUserId || !supabaseClient) {
+      if (!activeRoomId) {
+        setHydratedOpenRoom(null)
+        setHydrateOpenRoomDone(false)
+      }
       return undefined
     }
-    if (rooms.some((r) => r.id === activeRoomId) || archivedRooms.some((r) => r.id === activeRoomId)) {
+    if (rooms.some((r) => r.id === openRoomId) || archivedRooms.some((r) => r.id === openRoomId)) {
       setHydratedOpenRoom(null)
       setHydrateOpenRoomDone(true)
       return undefined
     }
+    if (activeRoomId !== openRoomId) return undefined
     setHydrateOpenRoomDone(false)
     let cancelled = false
     void (async () => {
       try {
-        const row = await chatFetchRoomForViewer(supabaseClient, activeRoomId, viewerUserId)
+        const row = await chatFetchRoomForViewer(supabaseClient, openRoomId, viewerUserId)
         if (!cancelled) setHydratedOpenRoom(row)
       } catch {
         if (!cancelled) setHydratedOpenRoom(null)
@@ -651,7 +777,7 @@ export default function ChatTab({
       }
     })()
     return () => { cancelled = true }
-  }, [activeRoomId, rooms, archivedRooms, supabaseClient, viewerUserId])
+  }, [openRoomId, activeRoomId, rooms, archivedRooms, supabaseClient, viewerUserId])
 
   // ── Profiles map for ChatConversation ─────────────────────────────────────
 
@@ -685,8 +811,8 @@ export default function ChatTab({
 
   // ── Conversation view (full-screen within this tab) ───────────────────────
 
-  if (activeRoomId) {
-    const room = activeRoom || hydratedOpenRoom
+  if (openRoomId) {
+    const room = activeRoom
     const resolvingRoom = !room && (roomsLoading || !hydrateOpenRoomDone)
     if (resolvingRoom) {
       return (
@@ -709,11 +835,11 @@ export default function ChatTab({
         </div>
       )
     }
-    const otherUnreadCount = rooms.filter((r) => r.id !== activeRoomId && r.hasUnread).length
-    const openedFromArchived = archivedRooms.some((r) => r.id === activeRoomId)
+    const otherUnreadCount = rooms.filter((r) => r.id !== openRoomId && r.hasUnread).length
+    const openedFromArchived = archivedRooms.some((r) => r.id === openRoomId)
     return (
       <ChatConversation
-        key={`${activeRoomId}-${iosResumeCount}`}
+        key={`${openRoomId}-${iosResumeCount}`}
         supabaseClient={supabaseClient}
         room={room}
         viewerUserId={viewerUserId}
@@ -725,6 +851,7 @@ export default function ChatTab({
             openedFromPrivateSubsRef.current = false
             setTab('privateSubs')
           }
+          setDirectOpenRoomId(null)
           setActiveRoomId(null)
           setHydratedOpenRoom(null)
           void refreshInboxLists()

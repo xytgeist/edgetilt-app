@@ -426,6 +426,13 @@ export async function chatClaimPlatformSubMembership(supabase) {
   return data
 }
 
+/** Resolve singleton Slots Pro Lounge room id (no membership write). */
+export async function chatGetPlatformSubRoomId(supabase, scope = 'slots_edge_pro') {
+  const { data, error } = await supabase.rpc('get_platform_sub_room_id', { p_scope: scope })
+  if (error) throw new Error(error.message)
+  return data
+}
+
 /**
  * Extract the peer user id from a DM room's dm_key.
  * dm_key format: "<uid_a>::<uid_b>" (lexically sorted).

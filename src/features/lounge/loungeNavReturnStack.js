@@ -44,13 +44,7 @@
  * @property {string} [searchQuery]
  */
 
-/**
- * @typedef {object} LoungeNavChatFrame
- * @property {'chat'} kind
- * @property {string} roomId
- */
-
-/** @typedef {LoungeNavFeedFrame | LoungeNavProfileFrame | LoungeNavPostDetailFrame | LoungeNavSearchFrame | LoungeNavDockFrame | LoungeNavChatFrame} LoungeNavReturnFrame */
+/** @typedef {LoungeNavFeedFrame | LoungeNavProfileFrame | LoungeNavPostDetailFrame | LoungeNavSearchFrame | LoungeNavDockFrame} LoungeNavReturnFrame */
 
 /** @returns {LoungeNavReturnFrame[]} */
 export function createLoungeNavReturnStack() {

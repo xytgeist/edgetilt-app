@@ -36,7 +36,9 @@ import { useEdgeMonitorLivePulse } from './useEdgeMonitorLivePulse.js'
 import { useEdgeMonitorSubscriberRoster } from './useEdgeMonitorSubscriberRoster.js'
 import { useEdgeMonitorSystemHealth } from './useEdgeMonitorSystemHealth.js'
 import { evaluateSystemHealthAlerts } from './opsMonitorSystemHealth.js'
+import EdgeMonitorSectionNav from './EdgeMonitorSectionNav.jsx'
 import { EDGE_MONITOR_PATH } from './opsMonitorNavigation.js'
+import { useEdgeMonitorSection } from './useEdgeMonitorSection.js'
 
 const MONITOR_PANEL = 'rounded-2xl border border-zinc-800 bg-zinc-900'
 const MONITOR_BTN = 'min-h-10 rounded-xl bg-zinc-800 px-3 text-zinc-200 text-xs font-semibold touch-manipulation hover:bg-zinc-700 disabled:opacity-50'
@@ -173,7 +175,7 @@ function MobileMonitorGlance({ heroKpis }) {
     <section className={`mb-4 ${MONITOR_PANEL} p-3`}>
       <div className="mb-2">
         <div className="text-white text-sm font-bold">At a glance</div>
-        <div className="text-zinc-500 text-[10px]">24h snapshot · new accounts + subscriber roster below</div>
+        <div className="text-zinc-500 text-[10px]">24h snapshot · use People tab for roster</div>
       </div>
       <div className="divide-y divide-zinc-800/70">
         {heroKpis.map((kpi) => (
@@ -187,6 +189,45 @@ function MobileMonitorGlance({ heroKpis }) {
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  )
+}
+
+function OverviewStatusStrip({ systemHealth, onOpenHealth }) {
+  const summary = systemHealth?.summary
+  if (!summary) return null
+
+  const overall = String(summary.overall || 'ok')
+  const jobsIssue = Number(summary.jobs_issue) || 0
+  const driftCritical = Number(summary.drift_critical) || 0
+  const driftWarn = Number(summary.drift_warn) || 0
+  const tone =
+    overall === 'critical'
+      ? 'border-red-500/35 bg-red-950/30 text-red-100'
+      : overall === 'warn'
+        ? 'border-amber-500/35 bg-amber-950/25 text-amber-100'
+        : 'border-emerald-500/25 bg-emerald-950/20 text-emerald-100'
+
+  return (
+    <section className={`mb-4 rounded-2xl border px-4 py-3 ${tone}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-bold uppercase tracking-wide opacity-80">System status</div>
+          <div className="mt-1 text-sm font-semibold capitalize">{overall}</div>
+          <div className="mt-1 text-[11px] opacity-80 leading-relaxed">
+            Jobs {jobsIssue > 0 ? `${jobsIssue} issue(s)` : 'OK'}
+            {' · '}
+            Billing drift {driftCritical > 0 ? `${driftCritical} critical` : driftWarn > 0 ? `${driftWarn} warn` : 'none'}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenHealth}
+          className="shrink-0 min-h-8 rounded-lg bg-black/20 px-3 text-[11px] font-semibold ring-1 ring-white/10 hover:bg-black/30"
+        >
+          Open Health →
+        </button>
       </div>
     </section>
   )
@@ -346,7 +387,11 @@ export default function EdgeMonitorDashboard({
   headerSlot = null,
 }) {
   const isDesktop = layout === 'desktop'
+  const { section, setSection } = useEdgeMonitorSection(layout)
   const [autoRefresh, setAutoRefresh] = useState(false)
+  const needsPeopleData = section === 'people'
+  const needsHealthData = section === 'health'
+  const needsOverviewData = section === 'overview'
   const { snapshot, loading, error, refreshing, load } = useEdgeMonitorSnapshot(supabaseClient, {
     autoRefreshMs: autoRefresh ? 90_000 : 0,
   })
@@ -354,7 +399,9 @@ export default function EdgeMonitorDashboard({
     useEdgeMonitorExternalHealth(supabaseClient)
   const { botOps, loading: botOpsLoading, error: botOpsError, reload: reloadBotOps } =
     useLoungeBotOps(supabaseClient)
-  const { live, error: liveError } = useEdgeMonitorLivePulse(supabaseClient, { enabled: Boolean(snapshot) })
+  const { live, error: liveError } = useEdgeMonitorLivePulse(supabaseClient, {
+    enabled: Boolean(snapshot) && needsOverviewData,
+  })
   const {
     roster,
     loading: rosterLoading,
@@ -362,7 +409,7 @@ export default function EdgeMonitorDashboard({
     refreshing: rosterRefreshing,
     load: loadRoster,
   } = useEdgeMonitorSubscriberRoster(supabaseClient, {
-    enabled: Boolean(snapshot),
+    enabled: Boolean(snapshot) && needsPeopleData,
     autoRefreshMs: autoRefresh ? 90_000 : 0,
   })
   const {
@@ -372,7 +419,7 @@ export default function EdgeMonitorDashboard({
     refreshing: systemHealthRefreshing,
     load: loadSystemHealth,
   } = useEdgeMonitorSystemHealth(supabaseClient, {
-    enabled: Boolean(snapshot),
+    enabled: Boolean(snapshot) && (needsOverviewData || needsHealthData),
     autoRefreshMs: autoRefresh ? 90_000 : 0,
   })
 
@@ -412,14 +459,31 @@ export default function EdgeMonitorDashboard({
   const trendLabels30d = useMemo(() => opsMonitorTrendLabels(trends30d, { every: 5 }), [trends30d])
   const trendLabels90d = useMemo(() => opsMonitorTrendLabels(trends90d, { every: 2 }), [trends90d])
   const pulseDatasets = useMemo(() => buildPulseDatasets(trends), [trends])
+  const systemAlerts = useMemo(() => evaluateSystemHealthAlerts(systemHealth), [systemHealth])
+  const metricAlerts = useMemo(
+    () => evaluateOpsMonitorAlerts({ snapshot, external, live }),
+    [snapshot, external, live],
+  )
   const alerts = useMemo(() => {
-    const systemAlerts = evaluateSystemHealthAlerts(systemHealth)
-    const metricAlerts = evaluateOpsMonitorAlerts({ snapshot, external, live })
     return [...systemAlerts, ...metricAlerts].sort((a, b) => {
       if (a.severity === b.severity) return a.label.localeCompare(b.label)
       return a.severity === 'critical' ? -1 : 1
     })
-  }, [snapshot, external, live, systemHealth])
+  }, [systemAlerts, metricAlerts])
+
+  const sectionBadges = useMemo(() => {
+    const criticalCount = alerts.filter((item) => item.severity === 'critical').length
+    const warnCount = alerts.filter((item) => item.severity === 'warn').length
+    const jobsIssue = Number(systemHealth?.summary?.jobs_issue) || 0
+    const driftCritical = Number(systemHealth?.summary?.drift_critical) || 0
+    const driftWarn = Number(systemHealth?.summary?.drift_warn) || 0
+    const healthCount = jobsIssue + driftCritical + (driftWarn > 0 ? 1 : 0)
+
+    return {
+      overview: criticalCount || warnCount,
+      health: healthCount,
+    }
+  }, [alerts, systemHealth])
 
   const roleDoughnut = useMemo(
     () =>
@@ -477,51 +541,9 @@ export default function EdgeMonitorDashboard({
     ],
   )
 
-  const pulseHeight = isDesktop ? 320 : 240
-  const chartPanel = (
-    <>
-      {trendLabels.length > 0 ? (
-        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4 lg:p-5 h-full`}>
-          <div className="mb-3">
-            <div className="text-white font-bold text-[15px] lg:text-base">7-day pulse</div>
-            <div className="text-zinc-500 text-xs mt-0.5">UTC daily · signups, posts, activity, chat</div>
-          </div>
-          <MonitorPulseChart labels={trendLabels} datasets={pulseDatasets} height={pulseHeight} />
-        </section>
-      ) : null}
+  const pulseHeight = isDesktop ? 280 : 220
 
-      <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4 lg:p-5`}>
-        <div className="mb-3">
-          <div className="text-white font-bold text-[15px] lg:text-base">Velocity</div>
-          <div className="text-zinc-500 text-xs mt-0.5">24h vs 7d totals</div>
-        </div>
-        <MonitorCompareBars items={velocityCompare} height={isDesktop ? 220 : 200} />
-      </section>
-
-      <div className={`grid gap-4 ${isDesktop ? 'grid-cols-1' : 'sm:grid-cols-2'}`}>
-        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
-          <div className="text-white font-bold text-sm mb-2">Role mix</div>
-          <MonitorDoughnutChart
-            labels={roleDoughnut.labels}
-            values={roleDoughnut.values}
-            colors={roleDoughnut.colors}
-            height={isDesktop ? 200 : 190}
-          />
-        </section>
-        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
-          <div className="text-white font-bold text-sm mb-2">Active subs by product</div>
-          <MonitorDoughnutChart
-            labels={subsDoughnut.labels}
-            values={subsDoughnut.values}
-            colors={subsDoughnut.colors}
-            height={isDesktop ? 200 : 190}
-          />
-        </section>
-      </div>
-    </>
-  )
-
-  const detailSections = snapshot ? (
+  const peopleDetailSections = snapshot ? (
     <>
       <MonitorSection
         themeKey="users"
@@ -569,7 +591,11 @@ export default function EdgeMonitorDashboard({
         <MetricTile label="Lifetime" value={formatOpsMonitorCount(subs.lifetime)} accent={OPS_CHART_COLORS.yellow} />
         <MetricTile label="Webhooks 24h" value={formatOpsMonitorCount(stripeWebhooks.events_24h)} accent={OPS_CHART_COLORS.yellow} />
       </MonitorSection>
+    </>
+  ) : null
 
+  const productDetailSections = snapshot ? (
+    <>
       <MonitorSection
         themeKey="lounge"
         title="Lounge"
@@ -678,27 +704,206 @@ export default function EdgeMonitorDashboard({
           hint="See Activity alerts panel above for full 24h / 7d table"
         />
       </MonitorSection>
-
-      <EdgeMonitorBotOpsPanel
-        botOps={botOps}
-        loading={botOpsLoading}
-        error={botOpsError}
-        onOpenPortal={onOpenBotPortal}
-      />
-
-      <ExternalHealthPanel
-        external={external}
-        loading={externalLoading}
-        error={externalError}
-        onReload={reloadExternal}
-      />
     </>
   ) : null
+
+  const overviewChartsDesktop = snapshot ? (
+    <div className="edge-monitor-desktop-charts mb-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
+      <div className="xl:col-span-8">
+        {trendLabels.length > 0 ? (
+          <section className={`edge-monitor-panel ${MONITOR_PANEL} p-5 h-full`}>
+            <div className="mb-3">
+              <div className="text-white font-bold text-base">7-day pulse</div>
+              <div className="text-zinc-500 text-xs mt-0.5">UTC daily · signups, posts, activity, chat</div>
+            </div>
+            <MonitorPulseChart labels={trendLabels} datasets={pulseDatasets} height={pulseHeight} />
+          </section>
+        ) : null}
+      </div>
+      <div className="xl:col-span-4">
+        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-5 h-full`}>
+          <div className="mb-3">
+            <div className="text-white font-bold text-base">Velocity</div>
+            <div className="text-zinc-500 text-xs mt-0.5">24h vs 7d</div>
+          </div>
+          <MonitorCompareBars items={velocityCompare} height={220} />
+        </section>
+      </div>
+    </div>
+  ) : null
+
+  const peopleChartsDesktop = snapshot ? (
+    <div className="mb-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
+      <div className="xl:col-span-4">
+        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
+          <div className="text-white font-bold text-sm mb-1">30-day signups</div>
+          <div className="text-zinc-500 text-[10px] mb-2">UTC daily sparkline</div>
+          <MonitorSparklineChart
+            labels={trendLabels30d}
+            values={opsMonitorTrendSeries(trends30d, 'signups')}
+            color={OPS_CHART_COLORS.cyan}
+            label="Signups"
+            height={130}
+          />
+        </section>
+      </div>
+      <div className="xl:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
+          <div className="text-white font-bold text-sm mb-2">Roles</div>
+          <MonitorDoughnutChart
+            labels={roleDoughnut.labels}
+            values={roleDoughnut.values}
+            colors={roleDoughnut.colors}
+            height={170}
+          />
+        </section>
+        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
+          <div className="text-white font-bold text-sm mb-2">Active subs by product</div>
+          <MonitorDoughnutChart
+            labels={subsDoughnut.labels}
+            values={subsDoughnut.values}
+            colors={subsDoughnut.colors}
+            height={170}
+          />
+        </section>
+      </div>
+    </div>
+  ) : null
+
+  const productChartsDesktop = snapshot ? (
+    <div className="mb-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
+        <div className="text-white font-bold text-sm mb-1">90-day activity</div>
+        <div className="text-zinc-500 text-[10px] mb-2">UTC weekly buckets</div>
+        <MonitorSparklineChart
+          labels={trendLabels90d}
+          values={opsMonitorTrendSeries(trends90d, 'activity')}
+          color={OPS_CHART_COLORS.purple}
+          label="Activity"
+          height={130}
+        />
+      </section>
+      <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
+        <div className="text-white font-bold text-sm mb-1">Velocity</div>
+        <div className="text-zinc-500 text-[10px] mb-2">24h vs 7d product traffic</div>
+        <MonitorCompareBars items={velocityCompare} height={180} />
+      </section>
+    </div>
+  ) : null
+
+  const overviewChartsMobile = snapshot ? (
+    <div className="mb-4 space-y-4">
+      {trendLabels.length > 0 ? (
+        <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
+          <div className="mb-3">
+            <div className="text-white font-bold text-[15px]">7-day pulse</div>
+            <div className="text-zinc-500 text-xs mt-0.5">UTC daily · signups, posts, activity, chat</div>
+          </div>
+          <MonitorPulseChart labels={trendLabels} datasets={pulseDatasets} height={pulseHeight} />
+        </section>
+      ) : null}
+      <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
+        <div className="mb-3">
+          <div className="text-white font-bold text-[15px]">Velocity</div>
+          <div className="text-zinc-500 text-xs mt-0.5">24h vs 7d totals</div>
+        </div>
+        <MonitorCompareBars items={velocityCompare} height={200} />
+      </section>
+    </div>
+  ) : null
+
+  const renderSectionContent = () => {
+    if (!snapshot) return null
+
+    if (section === 'overview') {
+      return (
+        <>
+          <AlertsBanner alerts={alerts} />
+          <OverviewStatusStrip systemHealth={systemHealth} onOpenHealth={() => setSection('health')} />
+          <LivePulseStrip live={live} error={liveError} show={isDesktop} />
+          {isDesktop ? (
+            <div className="grid gap-3 mb-4 grid-cols-5">
+              {heroKpis.map((kpi) => (
+                <HeroKpiCard key={kpi.id} kpi={kpi} compact={!isDesktop} />
+              ))}
+            </div>
+          ) : (
+            <MobileMonitorGlance heroKpis={heroKpis} />
+          )}
+          {isDesktop ? overviewChartsDesktop : overviewChartsMobile}
+        </>
+      )
+    }
+
+    if (section === 'health') {
+      return (
+        <>
+          <AlertsBanner alerts={[...systemAlerts, ...metricAlerts]} />
+          <EdgeMonitorSystemHealthPanel
+            systemHealth={systemHealth}
+            loading={systemHealthLoading}
+            error={systemHealthError}
+            refreshing={systemHealthRefreshing}
+            onReload={() => void loadSystemHealth(true)}
+            snapshot={snapshot}
+            external={external}
+          />
+          <EdgeMonitorBotOpsPanel
+            botOps={botOps}
+            loading={botOpsLoading}
+            error={botOpsError}
+            onOpenPortal={onOpenBotPortal}
+          />
+          <ExternalHealthPanel
+            external={external}
+            loading={externalLoading}
+            error={externalError}
+            onReload={reloadExternal}
+          />
+        </>
+      )
+    }
+
+    if (section === 'people') {
+      return (
+        <>
+          <EdgeMonitorUserSignupsPanel
+            roster={roster}
+            signupTrends30d={trends30d}
+            loading={rosterLoading}
+            error={rosterError}
+          />
+          <EdgeMonitorSubscriberRosterPanel
+            roster={roster}
+            loading={rosterLoading}
+            error={rosterError}
+            refreshing={rosterRefreshing}
+            onReload={() => void loadRoster(true)}
+          />
+          {isDesktop ? peopleChartsDesktop : null}
+          <div className={isDesktop ? 'edge-monitor-desktop-sections grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4'}>
+            {peopleDetailSections}
+          </div>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <EdgeMonitorActivityPanel snapshot={snapshot} loading={loading} />
+        {isDesktop ? productChartsDesktop : null}
+        <div className={isDesktop ? 'edge-monitor-desktop-sections grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4'}>
+          {productDetailSections}
+        </div>
+      </>
+    )
+  }
 
   return (
     <div
       data-edge-monitor
       data-edge-monitor-layout={layout}
+      data-edge-monitor-section={section}
       className={isDesktop ? 'edge-monitor-desktop' : 'edge-monitor-mobile'}
     >
       <div
@@ -728,7 +933,7 @@ export default function EdgeMonitorDashboard({
                     Desktop
                   </span>
                 </div>
-                <div className="text-zinc-400 text-sm mt-1">Live pulse · admin ops</div>
+                <div className="text-zinc-400 text-sm mt-1">Overview · Health · People · Product</div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <span className={MONITOR_META_PILL}>{opsMonitorSupabaseProjectRef()}</span>
                   <span className={MONITOR_META_PILL}>{APP_BUILD_SHA.slice(0, 7)}</span>
@@ -753,8 +958,12 @@ export default function EdgeMonitorDashboard({
                 disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing}
                 onClick={() => {
                   void load(true)
-                  void loadRoster(true)
-                  void loadSystemHealth(true)
+                  if (needsPeopleData) void loadRoster(true)
+                  if (needsOverviewData || needsHealthData) void loadSystemHealth(true)
+                  if (needsHealthData) {
+                    void reloadExternal()
+                    void reloadBotOps()
+                  }
                 }}
                 className={MONITOR_BTN_PRIMARY}
               >
@@ -778,7 +987,7 @@ export default function EdgeMonitorDashboard({
                 </span>
                 <div className="text-xl font-black tracking-tight text-white">Edge Monitor</div>
               </div>
-              <div className="text-zinc-400 text-sm mt-1">Live pulse · admin ops</div>
+              <div className="text-zinc-400 text-sm mt-1">Overview · Health · People · Product</div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {headerSlot}
@@ -802,8 +1011,12 @@ export default function EdgeMonitorDashboard({
                 disabled={loading || refreshing || rosterRefreshing || systemHealthRefreshing}
                 onClick={() => {
                   void load(true)
-                  void loadRoster(true)
-                  void loadSystemHealth(true)
+                  if (needsPeopleData) void loadRoster(true)
+                  if (needsOverviewData || needsHealthData) void loadSystemHealth(true)
+                  if (needsHealthData) {
+                    void reloadExternal()
+                    void reloadBotOps()
+                  }
                 }}
                 className={MONITOR_BTN_PRIMARY}
               >
@@ -847,121 +1060,8 @@ export default function EdgeMonitorDashboard({
 
       {snapshot ? (
         <>
-          <AlertsBanner alerts={alerts} />
-
-          <EdgeMonitorSystemHealthPanel
-            systemHealth={systemHealth}
-            loading={systemHealthLoading}
-            error={systemHealthError}
-            refreshing={systemHealthRefreshing}
-            onReload={() => void loadSystemHealth(true)}
-            snapshot={snapshot}
-            external={external}
-          />
-
-          <LivePulseStrip live={live} error={liveError} show={isDesktop} />
-
-          {isDesktop ? (
-            <div className={`grid gap-3 mb-4 grid-cols-5`}>
-              {heroKpis.map((kpi) => (
-                <HeroKpiCard key={kpi.id} kpi={kpi} compact={!isDesktop} />
-              ))}
-            </div>
-          ) : (
-            <MobileMonitorGlance heroKpis={heroKpis} />
-          )}
-
-          <EdgeMonitorActivityPanel snapshot={snapshot} loading={loading} />
-
-          <EdgeMonitorUserSignupsPanel
-            roster={roster}
-            signupTrends30d={trends30d}
-            loading={rosterLoading}
-            error={rosterError}
-          />
-
-          <EdgeMonitorSubscriberRosterPanel
-            roster={roster}
-            loading={rosterLoading}
-            error={rosterError}
-            refreshing={rosterRefreshing}
-            onReload={() => void loadRoster(true)}
-          />
-
-          {isDesktop ? (
-            <div className="edge-monitor-desktop-charts mb-6 grid grid-cols-1 xl:grid-cols-12 gap-4">
-              <div className="xl:col-span-8 space-y-4">
-                {trendLabels.length > 0 ? (
-                  <section className={`edge-monitor-panel ${MONITOR_PANEL} p-5 h-full`}>
-                    <div className="mb-3">
-                      <div className="text-white font-bold text-base">7-day pulse</div>
-                      <div className="text-zinc-500 text-xs mt-0.5">UTC daily · signups, posts, activity, chat</div>
-                    </div>
-                    <MonitorPulseChart labels={trendLabels} datasets={pulseDatasets} height={pulseHeight} />
-                  </section>
-                ) : null}
-              </div>
-              <div className="xl:col-span-4 space-y-4">
-                <section className={`edge-monitor-panel ${MONITOR_PANEL} p-5`}>
-                  <div className="mb-3">
-                    <div className="text-white font-bold text-base">Velocity</div>
-                    <div className="text-zinc-500 text-xs mt-0.5">24h vs 7d</div>
-                  </div>
-                  <MonitorCompareBars items={velocityCompare} height={220} />
-                </section>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
-                    <div className="text-white font-bold text-sm mb-1">30-day signups</div>
-                    <div className="text-zinc-500 text-[10px] mb-2">UTC daily sparkline</div>
-                    <MonitorSparklineChart
-                      labels={trendLabels30d}
-                      values={opsMonitorTrendSeries(trends30d, 'signups')}
-                      color={OPS_CHART_COLORS.cyan}
-                      label="Signups"
-                      height={130}
-                    />
-                  </section>
-                  <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
-                    <div className="text-white font-bold text-sm mb-1">90-day activity</div>
-                    <div className="text-zinc-500 text-[10px] mb-2">UTC weekly buckets</div>
-                    <MonitorSparklineChart
-                      labels={trendLabels90d}
-                      values={opsMonitorTrendSeries(trends90d, 'activity')}
-                      color={OPS_CHART_COLORS.purple}
-                      label="Activity"
-                      height={130}
-                    />
-                  </section>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
-                    <div className="text-white font-bold text-sm mb-2">Roles</div>
-                    <MonitorDoughnutChart
-                      labels={roleDoughnut.labels}
-                      values={roleDoughnut.values}
-                      colors={roleDoughnut.colors}
-                      height={170}
-                    />
-                  </section>
-                  <section className={`edge-monitor-panel ${MONITOR_PANEL} p-4`}>
-                    <div className="text-white font-bold text-sm mb-2">Subs</div>
-                    <MonitorDoughnutChart
-                      labels={subsDoughnut.labels}
-                      values={subsDoughnut.values}
-                      colors={subsDoughnut.colors}
-                      height={170}
-                    />
-                  </section>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mb-4 space-y-4">{chartPanel}</div>
-          )}
-
-          <div className={isDesktop ? 'edge-monitor-desktop-sections grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4'}>
-            {detailSections}
-          </div>
+          <EdgeMonitorSectionNav section={section} onSectionChange={setSection} badges={sectionBadges} />
+          {renderSectionContent()}
         </>
       ) : null}
     </div>

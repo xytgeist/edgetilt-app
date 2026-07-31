@@ -112,6 +112,7 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 - **Billing drift:** proactive cases naming users stuck **`incomplete`**, active sub + Free profile flag, profile paid flag with no active row, **`past_due`** lockout (warn), fan sub incomplete
 - **Dropped (40500):** orphan **`stripe_customer_id`** with no sub row (checkout noise)
 - **Copy diagnostic:** plain-text bundle for chat triage (project, user ids, Stripe ids, job failures)
+- **Four screens:** Overview · Health · People · Product (`?section=` on `/monitor` and `/?tab=monitor`)
 - **Alerts banner:** drift + critical job issues surface as red/critical alerts without searching subscriber roster
 
 **Deferred:** ops email on drift (reuse **`BILLING_ADMIN_ALERT_EMAILS`**).
@@ -126,4 +127,5 @@ _Update log: 2026-07-03 — v1 scaffold (RPC + EdgeMonitorScreen + AppShell tab)
 _Update log: 2026-07-03 — Phases 2–5 (extended RPC, external-health Edge fn, alerts/runbooks, live pulse poll)._
 _Update log: 2026-07-23 — Phase 6 subscriber roster (`admin_ops_subscriber_roster` + Monitor panel)._
 _Update log: 2026-07-30 — Phase 7 system health (cron registry + billing drift + copy diagnostic)._
+_Update log: 2026-07-30 — Monitor split into four screens (Overview · Health · People · Product) with URL `?section=`._
 _Update log: 2026-07-30 — **40800** poker catalog GitHub Actions heartbeat (`admin_ops_job_heartbeats`); Known gaps cleared._

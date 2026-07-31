@@ -5791,6 +5791,17 @@ html.light [data-auth-modal] [data-auth-legal-nudge] {
   transform: scale(0.98);
 }
 
+.edge-monitor-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+}
+
+html.light [data-edge-monitor] .edge-monitor-section-nav {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
 /* Edge Monitor — light mode (/?tab=monitor + /monitor). Dark default unchanged. */
 html.light [data-edge-monitor] .edge-monitor-section,
 html.light [data-edge-monitor] .edge-monitor-chart-shell,

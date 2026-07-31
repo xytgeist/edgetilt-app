@@ -17,6 +17,7 @@ export const OPS_ACTIVITY_EVENT_LABELS = {
   chat_dm: 'Chat DM alert',
   chat_group_invite: 'Chat group invite',
   starter_weekly_guide_drop: 'Starter weekly drop',
+  ap_guide_released: 'AP guide release',
   creator_fan_sub: 'Creator fan sub',
   poker_tournament_swap: 'Poker tournament swap',
   poker_tournament_swap_result: 'Poker tournament swap result',

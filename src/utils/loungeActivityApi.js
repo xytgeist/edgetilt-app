@@ -16,6 +16,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   PLAY_LOG_PARTNER_PAID: 'play_log_partner_paid',
   PLAY_LOG_PARTNER_UNPAID: 'play_log_partner_unpaid',
   STARTER_WEEKLY_GUIDE_DROP: 'starter_weekly_guide_drop',
+  AP_GUIDE_RELEASED: 'ap_guide_released',
   CREATOR_FAN_SUB: 'creator_fan_sub',
   CHAT_CALL_MISSED: 'chat_call_missed',
   POKER_TOURNAMENT_SWAP: 'poker_tournament_swap',
@@ -49,6 +50,8 @@ export function loungeActivityNotificationBadgeKind(eventType) {
       return 'play_log'
     case LOUNGE_ACTIVITY_EVENT_TYPES.STARTER_WEEKLY_GUIDE_DROP:
       return 'play_log'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED:
+      return 'mention'
     case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED:
       return 'missed_call'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
@@ -223,6 +226,12 @@ export function loungeActivityActionPhrase(event) {
     }
     case LOUNGE_ACTIVITY_EVENT_TYPES.STARTER_WEEKLY_GUIDE_DROP:
       return 'Weekly guide drop ready — scratch to reveal'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED: {
+      const guideTitle = String(event?.detail_text || '').trim()
+      return guideTitle
+        ? `New AP Slot Guide released: ${guideTitle}`
+        : 'New AP Slot Guide released'
+    }
     case LOUNGE_ACTIVITY_EVENT_TYPES.CHAT_CALL_MISSED:
       return 'called you'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
@@ -231,12 +240,25 @@ export function loungeActivityActionPhrase(event) {
       const detail = String(event?.detail_text || '').trim()
       return detail || 'finished a tournament swap with you'
     }
-    default:
+    default: {
+      if (String(event?.guide_slug || '').trim()) {
+        const guideTitle = String(event?.detail_text || '').trim()
+        return guideTitle
+          ? `New AP Slot Guide released: ${guideTitle}`
+          : 'New AP Slot Guide released'
+      }
       return 'interacted with you'
+    }
   }
 }
 
 export function loungeActivitySummary(event) {
+  if (
+    event?.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED ||
+    String(event?.guide_slug || '').trim()
+  ) {
+    return loungeActivityActionPhrase(event)
+  }
   const who = loungeActivityActorLabel(event)
   return `${who} ${loungeActivityActionPhrase(event)}`
 }

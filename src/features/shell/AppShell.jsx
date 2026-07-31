@@ -442,6 +442,7 @@ export default function AppShell({
         missedCallId,
         playLogEntryId,
         pokerSessionId,
+        guideSlug,
       } = navigateFromLoungeActivityPayload(payload)
 
       if (targetTab === 'chat') {
@@ -482,6 +483,29 @@ export default function AppShell({
           onRequireAuthRef.current?.()
         } else {
           setTab('offers')
+        }
+      } else if (targetTab === 'guides') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setActiveCalculator(null)
+          setMenuOpen(false)
+          void importRoute(() => import('../guides/GuidesScreen.jsx'))
+            .then(() => {
+              clearStaleChunkReloadGuard()
+              if (guideSlug) setGuideOpenCardSlug(normalizeGuideAccessSlug(guideSlug))
+              setTab('guides')
+            })
+            .catch(() => {
+              try {
+                if (guideSlug && !sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY)) {
+                  sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, '1')
+                  window.location.assign(`/?tab=guides&guide=${encodeURIComponent(guideSlug)}`)
+                }
+              } catch {
+                /* ignore */
+              }
+            })
         }
       } else {
         setTab('home')
@@ -1151,6 +1175,39 @@ export default function AppShell({
           }
         } catch {
           // ignore malformed url
+        }
+        return
+      }
+      if (targetTab === 'guides') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+          return
+        }
+        setMenuOpen(false)
+        try {
+          const msgUrl = new URL(data.url || '', window.location.origin)
+          const guideSlug = (msgUrl.searchParams.get('guide') || '').trim()
+          if (guideSlug) setGuideOpenCardSlug(normalizeGuideAccessSlug(guideSlug))
+        } catch {
+          // ignore malformed url
+        }
+        void importRoute(() => import('../guides/GuidesScreen.jsx'))
+          .then(() => {
+            clearStaleChunkReloadGuard()
+            setTab('guides')
+          })
+          .catch(() => {
+            /* ignore */
+          })
+        const activityEventId = data.activityEventId || null
+        const activityBatchId = data.activityBatchId || null
+        if (data.markActivityRead || activityEventId || activityBatchId) {
+          queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
+          window.dispatchEvent(
+            new CustomEvent('lounge-push-opened', {
+              detail: { activityEventId, activityBatchId },
+            }),
+          )
         }
         return
       }

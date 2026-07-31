@@ -34,7 +34,7 @@ import {
   LOUNGE_ACTIVITY_EVENT_TYPES,
   LOUNGE_ACTIVITY_PAGE_SIZE,
 } from '../../utils/loungeActivityApi.js'
-import { dispatchStarterWeeklyDropOpen } from '../billing/starterWeeklyDropApi.js'
+import { dispatchStarterWeeklyDropOpen, navigateToGuideSlug } from '../billing/starterWeeklyDropApi.js'
 import {
   hydrateLoungeActivityEventPreviews,
   loungeActivityShowsContextPreview,
@@ -399,6 +399,14 @@ export default function LoungeNotificationsPanel({
       }
 
       if (
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED &&
+        event.guide_slug
+      ) {
+        navigateToGuideSlug(String(event.guide_slug))
+        return
+      }
+
+      if (
         (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_SHARED ||
           event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_PAID ||
           event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_UNPAID) &&
@@ -708,6 +716,9 @@ export default function LoungeNotificationsPanel({
     const when = formatLoungeActivityWhen(event.created_at)
     const actionPhrase = loungeActivityActionPhrase(event)
     const summary = loungeActivitySummary(event)
+    const isGuideRelease =
+      event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED ||
+      Boolean(String(event.guide_slug || '').trim())
     const showContext = loungeActivityShowsContextPreview(event.event_type)
     const previewText = showContext ? String(event.preview_text || '').trim() : ''
     const previewPosterUrl = showContext ? String(event.preview_poster_url || '').trim() : ''
@@ -738,15 +749,19 @@ export default function LoungeNotificationsPanel({
           >
             <button
               type="button"
-              title="View profile"
-              aria-label={`View ${displayName}'s profile`}
+              title={isGuideRelease ? 'AP Guides' : 'View profile'}
+              aria-label={isGuideRelease ? 'AP Guides' : `View ${displayName}'s profile`}
               onClick={(e) => {
                 e.stopPropagation()
-                openActorProfile(actorProfile)
+                if (!isGuideRelease) openActorProfile(actorProfile)
               }}
-              className={`${LOUNGE_NOTIFICATION_AUTHOR_AVATAR_CLASS} flex items-center justify-center overflow-hidden touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+              className={`${LOUNGE_NOTIFICATION_AUTHOR_AVATAR_CLASS} flex items-center justify-center overflow-hidden touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                isGuideRelease ? 'pointer-events-none' : ''
+              }`}
             >
-              {avatarUrl ? (
+              {isGuideRelease ? (
+                <LoungeNotificationActionBadge eventType={event.event_type} slot="avatar" />
+              ) : avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt=""
@@ -764,29 +779,46 @@ export default function LoungeNotificationsPanel({
             </button>
             <span className={`min-w-0 flex-1 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
               <div className={LOUNGE_FEED_META_TEXT_COLUMN_CLASS}>
-                <div className={LOUNGE_FEED_META_ROW_CLASS}>
-                  <LoungeFeedAuthorMetaBadges
-                    role={actorProfile.role}
-                    isOg={event.actor_is_og === true}
-                    displayName={displayName}
-                    displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
-                  />
-                  {when ? (
-                    <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
-                      <span className="min-w-0 truncate">{handleLabel}</span>
-                      <span className="shrink-0 text-zinc-600">·</span>
-                      <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{when}</span>
+                {isGuideRelease ? (
+                  <>
+                    <div className={LOUNGE_FEED_META_ROW_CLASS}>
+                      <span className={`${LOUNGE_FEED_DISPLAY_NAME_CLASS} text-zinc-200`}>AP Guides</span>
+                      {when ? (
+                        <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                          <span className="shrink-0 text-zinc-600">·</span>
+                          <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{when}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-0.5 min-w-0 text-[15px] leading-snug text-zinc-300">{actionPhrase}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className={LOUNGE_FEED_META_ROW_CLASS}>
+                      <LoungeFeedAuthorMetaBadges
+                        role={actorProfile.role}
+                        isOg={event.actor_is_og === true}
+                        displayName={displayName}
+                        displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
+                      />
+                      {when ? (
+                        <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                          <span className="min-w-0 truncate">{handleLabel}</span>
+                          <span className="shrink-0 text-zinc-600">·</span>
+                          <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">{when}</span>
+                        </span>
+                      ) : (
+                        <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                          <span className="min-w-0 truncate">{handleLabel}</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[15px] leading-snug text-zinc-400">
+                      <LoungeNotificationActionBadge eventType={event.event_type} slot="inline" />
+                      <span className="min-w-0">{actionPhrase}</span>
                     </span>
-                  ) : (
-                    <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
-                      <span className="min-w-0 truncate">{handleLabel}</span>
-                    </span>
-                  )}
-                </div>
-                <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[15px] leading-snug text-zinc-400">
-                  <LoungeNotificationActionBadge eventType={event.event_type} slot="inline" />
-                  <span className="min-w-0">{actionPhrase}</span>
-                </span>
+                  </>
+                )}
                 {previewText ? (
                   <p
                     className={`${LOUNGE_FEED_CAPTION_TEXT_CLASS} mt-1 ${clampClass} text-zinc-300`}

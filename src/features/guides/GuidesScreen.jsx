@@ -1840,20 +1840,11 @@ export default function GuidesScreen({
     return () => observer.disconnect()
   }, [filtered.length, loading, visibleCount])
 
-  // Deep-link: when openCardSlug is provided (from Lounge guide embed tap), expand + scroll to card
+  // Deep-link: announcement / push URLs always land on the card (lock UI stays on-card).
   useEffect(() => {
     if (!openCardSlug || loading) return
     const slug = normalizeGuideAccessSlug(openCardSlug)
     if (!slug) return
-    if (
-      !canOpenGuide(slug, {
-        ...access,
-        releaseYear: resolveGuideReleaseYear(slug),
-      })
-    ) {
-      onRequireSubscribe?.('slots-edge')
-      return
-    }
     const idx = filtered.findIndex((row) => {
       const m = machineForGuide(row)
       const cardSlug = normalizeGuideAccessSlug(m?.slug || row.slug)
@@ -1865,18 +1856,7 @@ export default function GuidesScreen({
       )
     }
     setExpandedSlug(slug)
-  }, [
-    openCardSlug,
-    loading,
-    filtered,
-    isStaff,
-    hasSlotsEdge,
-    hasSlotsEdgeStarter,
-    starterUnlockedGuideSlugs,
-    gatesMap,
-    onRequireSubscribe,
-    resolveGuideReleaseYear,
-  ])
+  }, [openCardSlug, loading, filtered])
 
   useLayoutEffect(() => {
     const reduceMotion =

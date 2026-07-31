@@ -121,13 +121,43 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 
 **Poker catalog heartbeat (40800):** GitHub Actions sync writes **`admin_ops_job_heartbeats`**; Monitor stale if last success >4 days.
 
-## Phase 8 — app section visits (shipped)
+## Phase 8 — app section visits + member activity (shipped, prod 2026-07-31)
 
-**Migrations:** **`20260731210000`**–**`20260731210701`** (`app_section_visits`, **`record_app_section_visit()`**, **`admin_ops_app_section_usage_snapshot()`**); drill-down **`20260731220000`**–**`20260731220600`**; exclusions **`20260731220700`**–**`20260731221500`**; remove Intel **`21600`**–**`21900`**; member activity **`20260731222000`**–**`20260731222100`** (`admin_ops_app_section_member_usage_snapshot()`).
+**Apply order (test + prod):** use **`node scripts/apply-migration-once.mjs --target=test|production <file.sql>`** for each file below (multi-statement RPCs; do not fan out bare **`db:query:* -f`**).
 
-- **Client:** **`AppShell`** tab changes → debounced **`record_app_section_visit`** (45s per section, members only). **`activeCalculator`** → calculator drill-down. **`PlayLogbook`** / **`PokerBankrollTracker`** → **`session_recorded`** on new saves. Canonical map: **`src/constants/appProductSections.js`**.
-- **Exclusions:** all **`profiles.role = admin`**; optional handles in **`app_product_analytics_excluded_handles`**; optional emails in **`app_product_analytics_excluded_emails`**; all bot service accounts via **`@bots.edgetilt.local`**. Moderators count unless blocklisted. See **`docs/test-user-roles.md`** §5.
-- **Monitor:** **Product** tab → **`EdgeMonitorAppSectionUsagePanel`** (tab visits, calculator opens, logbook/poker session breakdowns) + **`EdgeMonitorAppSectionMemberUsagePanel`** (top 25 members + handle lookup). Excludes Monitor/Bots tabs.
+| Range | What |
+| --- | --- |
+| **`20260731210000`**–**`10701`** | **`app_section_visits`**, **`record_app_section_visit()`**, **`admin_ops_app_section_usage_snapshot()`** |
+| **`20260731220000`**–**`20600`** | **`sub_section_id`**, **`event_kind`** (`visit` \| `session_recorded`), drill-down RPC v2 |
+| **`20260731220700`**–**`21500`** | Exclusion blocklists + **`app_product_analytics_user_excluded()`**; seed staff emails |
+| **`20260731221600`**–**`21900`** | Drop **Intel** from section catalog + constraint |
+| **`20260731222000`**–**`22100`** | **`admin_ops_app_section_member_usage_snapshot()`** (grants) |
+| **`20260731222200`** | Blocklist **`chunky.unc@gmail.com`** + purge duplicate test account visits |
+| **`20260731222300`** | Per-member breakdown embedded in top-N rows (**`app_product_analytics_member_breakdown`**) |
+| **`20260731222400`** | Lounge posts + interactions on member expand (**`app_product_analytics_member_lounge_activity`**) |
+| **`20260731222500`** | **Top Lounge contributors** list + **prod fix:** skip legacy **`post_reposts`** when table absent (prod uses feed-card reposts only; see **`feed_repost_quote_posts.sql`**) |
+
+**Client tracking**
+
+- **`src/constants/appProductSections.js`** — canonical section ids (no **`intel`**).
+- **`src/utils/appSectionVisitTracking.js`** — 45s debounce per section tab visit; immediate **`session_recorded`**.
+- **`AppShell.jsx`** — tab visits (members only; **skips when `isAdmin`**); calculator opens via **`activeCalculator`**.
+- **`PlayLogbook.jsx`** / **`PokerBankrollTracker.jsx`** — **`session_recorded`** on new session insert.
+
+**Exclusions:** all **`profiles.role = admin`**; optional handles/emails tables; all **`@bots.edgetilt.local`**. Moderators count unless blocklisted. Recipes: **`docs/test-user-roles.md`** §5.
+
+**Monitor — Product tab (`?section=product`)**
+
+- **`EdgeMonitorAppSectionUsagePanel`** — aggregate section usage, calculator/session drill-down, collapsible **All sections** table (collapsed by default).
+- **`EdgeMonitorAppSectionMemberUsagePanel`** — two ranked tables:
+  1. **Top app activity (7d)** — ranked by **`app_section_visits`** events.
+  2. **Top Lounge contributors (7d)** — posts + comments + likes/bookmarks/reposts given ( **`top_lounge_members`** ).
+- Expand any row → full breakdown: Lounge created/interactions/received, app sections, calculator opens, logbook/poker sessions (24h + 7d).
+- **`@handle` search** — any member (even if not in either top-25 list).
+
+**RPCs:** **`admin_ops_app_section_usage_snapshot()`**, **`admin_ops_app_section_member_usage_snapshot(p_lookup_handle, p_top_limit)`**.
+
+**Prod promote:** **`main`** @ **`567070d6`** (2026-07-31). **No Edge redeploy.**
 
 ---
 
@@ -136,4 +166,4 @@ _Update log: 2026-07-03 — Phases 2–5 (extended RPC, external-health Edge fn,
 _Update log: 2026-07-23 — Phase 6 subscriber roster (`admin_ops_subscriber_roster` + Monitor panel)._
 _Update log: 2026-07-30 — Phase 7 system health (cron registry + billing drift + copy diagnostic)._
 _Update log: 2026-07-30 — Monitor split into four screens (Overview · Health · People · Product) with URL `?section=`._
-_Update log: 2026-07-30 — **40800** poker catalog GitHub Actions heartbeat (`admin_ops_job_heartbeats`); Known gaps cleared._
+_Update log: 2026-07-31 — Phase 8 app section visits + member activity through **`20260731222500`** (aggregate panel, dual top-25 tables, Lounge contributor ranking, exclusions, prod **`post_reposts`** guard). Prod **`567070d6`**._

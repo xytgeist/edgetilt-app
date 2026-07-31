@@ -209,13 +209,13 @@ Reload app. **`get_my_starter_weekly_guide_slugs()`** should include the slug; A
 
 ## 5. Edge Monitor product analytics exclusions
 
-Migration chain **`20260731220700`**–**`20260731221500`**: handle blocklist, email blocklist, bot auth emails (`*@bots.edgetilt.local`), and **`app_product_analytics_user_excluded()`**.
+Migration chain **`20260731220700`**–**`20260731222200`**: handle blocklist, email blocklist, bot auth emails (`*@bots.edgetilt.local`), and **`app_product_analytics_user_excluded()`**.
 
 | Who is excluded | How |
 | --- | --- |
 | **Admin** | Always (`profiles.role = admin`) |
 | **Moderators** | **Not** excluded unless blocklisted |
-| **Test / smoke accounts** | Email and/or handle blocklist tables |
+| **Test / smoke accounts** | Email and/or handle blocklist tables (seed in **`20260731221500`**; **`20260731222200`** adds **`chunky.unc@gmail.com`** — separate auth user from **`chunkyunc@gmail.com`**) |
 | **Lounge bots** | Any auth email ending **`@bots.edgetilt.local`** |
 
 **Blocklist an email:**

@@ -7,6 +7,7 @@ import {
   canReassignGuestSlice,
   dealTermsHeader,
   sliceTermsSummary,
+  stakeDealCanBeCancelled,
   stakeeCanEditDealTerms,
   termsPayloadToFormState,
 } from './pokerStableTerms.js'
@@ -162,6 +163,7 @@ export default function PokerStableDealTermsSheet({
   onAcceptProposal,
   onDeclineProposal,
   onReassignGuest,
+  onCancelStake,
   onError,
 }) {
   const [reassignSliceId, setReassignSliceId] = useState(null)
@@ -195,6 +197,10 @@ export default function PokerStableDealTermsSheet({
     isStakee &&
     stakeeCanEditDealTerms(deal, slices, { hasProposal }) &&
     typeof onEdit === 'function'
+  const canCancel =
+    isStakee &&
+    stakeDealCanBeCancelled(deal, slices, { userId }) &&
+    typeof onCancelStake === 'function'
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -350,6 +356,16 @@ export default function PokerStableDealTermsSheet({
               className="w-full rounded-2xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
             >
               Edit terms
+            </button>
+          ) : null}
+          {canCancel ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void onCancelStake?.()}
+              className="w-full rounded-2xl py-3 text-sm font-semibold text-rose-400 touch-manipulation disabled:opacity-50"
+            >
+              {saving ? 'Deleting…' : 'Delete stake'}
             </button>
           ) : null}
         </div>

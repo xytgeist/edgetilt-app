@@ -31,6 +31,7 @@ import {
 } from './pokerCurrencies.js'
 import {
   acceptProposedDealTerms,
+  cancelStakeDeal,
   declineProposedDealTerms,
   isMissingStableTableError,
   loadDealBankrollProfiles,
@@ -2729,6 +2730,31 @@ export default function PokerBankrollTracker({
               await loadData()
             } catch (e) {
               setError(e?.message || 'Could not assign guest backer.')
+            } finally {
+              setStableSaving(false)
+            }
+          }}
+          onCancelStake={async () => {
+            const deal = stakeeDeals.find((d) => d.id === termsDealId)
+            const label = deal?.label?.trim() || 'this stake'
+            if (
+              !window.confirm(
+                `Delete ${label}? This removes the stake and any sessions logged on it before backers accept. This cannot be undone.`,
+              )
+            ) {
+              return
+            }
+            setStableSaving(true)
+            setError('')
+            try {
+              const { error } = await cancelStakeDeal(supabaseClient, termsDealId, userId)
+              if (error) throw error
+              if (bankrollScope === termsDealId) setBankrollScope('personal')
+              setTermsDealId(null)
+              showStakeNotice('Stake deleted.')
+              await loadData()
+            } catch (e) {
+              setError(e?.message || 'Could not delete stake.')
             } finally {
               setStableSaving(false)
             }

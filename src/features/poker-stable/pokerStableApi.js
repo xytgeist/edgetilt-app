@@ -486,6 +486,15 @@ export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId
   return { slice, error: loadErr }
 }
 
+/** Stakee deletes a stake before any Edge backer has accepted. Removes stake sessions too. */
+export async function cancelStakeDeal(supabase, dealId, stakeeUserId) {
+  const { error } = await supabase.rpc('poker_stable_cancel_stake_deal', {
+    p_deal_id: dealId,
+  })
+  if (error) return { error }
+  return { error: null }
+}
+
 /** Backer proposes revised terms; stakee must accept before they apply. */
 export async function proposePendingDealTerms(supabase, dealId, backerUserId, termsPayload) {
   const { error } = await supabase.rpc('poker_stable_propose_terms', {

@@ -24,7 +24,30 @@ function getVisualViewportBounds() {
 }
 
 /**
- * Scroll the stable deal sheet so a rect (input + optional dropdown) stays visible.
+ * Rect to keep above the keyboard. When the picker opens upward, only the input
+ * matters ... scrolling for the list top would shove header fields off-screen.
+ * @param {DOMRect} inputRect
+ * @param {DOMRect | undefined} listRect
+ */
+function fieldScrollRect(inputRect, listRect) {
+  if (!listRect || listRect.width <= 0 || listRect.height <= 0) {
+    return { top: inputRect.top, bottom: inputRect.bottom }
+  }
+
+  const listAboveInput = listRect.bottom <= inputRect.top + 1
+  if (listAboveInput) {
+    return { top: inputRect.top, bottom: inputRect.bottom }
+  }
+
+  return {
+    top: inputRect.top,
+    bottom: Math.max(inputRect.bottom, listRect.bottom),
+  }
+}
+
+/**
+ * Scroll the stable deal sheet only when the field is covered by the keyboard.
+ * Never scrolls upward to reveal content above the focused field.
  * @param {HTMLElement | null | undefined} inputEl
  * @param {HTMLElement | null | undefined} [listEl]
  */
@@ -34,27 +57,17 @@ export function scrollPokerStableFieldIntoView(inputEl, listEl) {
   const sheet = inputEl.closest?.(SHEET_SELECTOR)
   const inputRect = inputEl.getBoundingClientRect()
   const listRect = listEl?.getBoundingClientRect()
-  const rect = listRect
-    ? {
-        top: Math.min(inputRect.top, listRect.top),
-        bottom: Math.max(inputRect.bottom, listRect.bottom),
-      }
-    : {
-        top: inputRect.top,
-        bottom: inputRect.bottom,
-      }
+  const rect = fieldScrollRect(inputRect, listRect)
 
   if (!sheet) {
-    inputEl.scrollIntoView?.({ block: 'center', behavior: 'auto' })
+    inputEl.scrollIntoView?.({ block: 'nearest', behavior: 'auto' })
     return
   }
 
-  const { top: vTop, bottom: vBottom } = getVisualViewportBounds()
-  let delta = 0
-  if (rect.bottom > vBottom) delta += rect.bottom - vBottom
-  if (rect.top < vTop) delta += rect.top - vTop
-  if (Math.abs(delta) < 0.5) return
-  sheet.scrollTop += delta
+  const { bottom: vBottom } = getVisualViewportBounds()
+  if (rect.bottom <= vBottom) return
+
+  sheet.scrollTop += rect.bottom - vBottom
 }
 
 /**
@@ -126,12 +139,9 @@ export function usePokerStableSheetKeyboardLift(overlayRef) {
   return liftPx
 }
 
-/** Run scroll helper across the iOS keyboard animation. */
+/** Retry once after the iOS keyboard finishes animating. */
 export function schedulePokerStableFieldScroll(inputEl, listEl) {
-  const run = () => scrollPokerStableFieldIntoView(inputEl, listEl)
-  run()
-  requestAnimationFrame(run)
-  window.setTimeout(run, 60)
-  window.setTimeout(run, 180)
-  window.setTimeout(run, 360)
+  scrollPokerStableFieldIntoView(inputEl, listEl)
+  requestAnimationFrame(() => scrollPokerStableFieldIntoView(inputEl, listEl))
+  window.setTimeout(() => scrollPokerStableFieldIntoView(inputEl, listEl), 180)
 }

@@ -3,7 +3,6 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
 import {
-  readKeyboardOverlapPx,
   schedulePokerStableFieldScroll,
 } from './pokerStableSheetScroll.js'
 
@@ -148,11 +147,7 @@ export default function EdgeHandleTypeahead({
       const listHeight = Math.min(list?.offsetHeight || MAX_LIST_HEIGHT_PX, MAX_LIST_HEIGHT_PX)
       const spaceBelow = vBottom - rect.bottom - GAP_PX
       const spaceAbove = rect.top - vTop - GAP_PX
-      const keyboardOpen = readKeyboardOverlapPx() > 8
-      setOpenUpward(
-        keyboardOpen ||
-          (listHeight > 0 && spaceBelow < listHeight && spaceAbove > spaceBelow),
-      )
+      setOpenUpward(listHeight > 0 && spaceBelow < listHeight && spaceAbove > spaceBelow)
     }
 
     updatePlacement()
@@ -196,11 +191,10 @@ export default function EdgeHandleTypeahead({
     if (!sheet) return undefined
     const prevPaddingBottom = sheet.style.paddingBottom
     sheet.style.paddingBottom = `${MAX_LIST_HEIGHT_PX + GAP_PX}px`
-    scrollFieldIntoView()
     return () => {
       sheet.style.paddingBottom = prevPaddingBottom
     }
-  }, [showList, openUpward, scrollFieldIntoView])
+  }, [showList, openUpward])
 
   useEffect(() => {
     if (!open) return undefined
@@ -231,7 +225,6 @@ export default function EdgeHandleTypeahead({
         value={value ?? ''}
         onChange={(e) => {
           onChange(e.target.value)
-          if (!isLockedSelection) scrollFieldIntoView()
         }}
         onFocus={() => {
           if (isLockedSelection) return

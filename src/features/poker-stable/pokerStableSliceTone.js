@@ -1,4 +1,4 @@
-/** Distinct subtle tints for backer slice cards (cycles after 6). */
+/** Distinct subtle tints for backer slice cards — 0=cyan, then violet, emerald, rose, sky, amber. */
 export const POKER_STABLE_SLICE_TONE_COUNT = 6
 
 /**

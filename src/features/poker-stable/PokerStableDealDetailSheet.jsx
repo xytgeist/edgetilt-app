@@ -25,7 +25,7 @@ import {
   computeSliceLedgerOwed,
   dealTypeLabel,
 } from './pokerStableMath.js'
-import { stakeeCanSettleStake } from './pokerStableTerms.js'
+import { stakeeCanSettleStake, dealAllowsPeriodicSettle, dealHasRakebackEnabled } from './pokerStableTerms.js'
 
 /**
  * Deal detail: baseline, makeup, top-up, settle, ledger.
@@ -52,6 +52,9 @@ export default function PokerStableDealDetailSheet({
   const [claimAmounts, setClaimAmounts] = useState({})
 
   const isStakee = deal?.stakee_user_id === userId
+  const canSettleStake = stakeeCanSettleStake(deal, slices, { userId })
+  const showPeriodicSettle = canSettleStake && dealAllowsPeriodicSettle(deal)
+  const showRakebackField = canSettleStake && dealHasRakebackEnabled(slices)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
@@ -387,7 +390,7 @@ export default function PokerStableDealDetailSheet({
           })}
         </div>
 
-        {stakeeCanSettleStake(deal, slices, { userId: userId }) ? (
+        {canSettleStake ? (
           <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Top-up stake
@@ -415,29 +418,39 @@ export default function PokerStableDealDetailSheet({
               Settle stake
             </h4>
             <p className="mb-2 text-xs text-zinc-500">
-              Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together. Periodic
-              settle keeps the stake open; close ends it and merges sessions into personal history.
+              Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
+              {showPeriodicSettle
+                ? ' Periodic settle keeps the stake open; close ends it and merges sessions into personal history.'
+                : ' Close ends the package and merges sessions into personal history.'}
             </p>
-            <MoneyInputField
-              value={rakebackTotal}
-              onChange={setRakebackTotal}
-              placeholder="Rakeback total"
-              focusRingClass="focus:ring-2 focus:ring-amber-500/40"
-              className="mb-3"
-            />
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void onPeriodicSettle()}
-              className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
-            >
-              Periodic settle
-            </button>
+            {showRakebackField ? (
+              <MoneyInputField
+                value={rakebackTotal}
+                onChange={setRakebackTotal}
+                placeholder="Rakeback total"
+                focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                className="mb-3"
+              />
+            ) : null}
+            {showPeriodicSettle ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void onPeriodicSettle()}
+                className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
+              >
+                Periodic settle
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={saving}
               onClick={() => void onCloseDeal()}
-              className="mb-2 w-full rounded-3xl bg-zinc-800 py-3 text-base font-bold text-zinc-100 disabled:opacity-50"
+              className={`mb-2 w-full rounded-3xl py-3 text-base font-bold disabled:opacity-50 ${
+                showPeriodicSettle
+                  ? 'bg-zinc-800 text-zinc-100'
+                  : 'bg-emerald-600 text-white'
+              }`}
             >
               Close stake
             </button>

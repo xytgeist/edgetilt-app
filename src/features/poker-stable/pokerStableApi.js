@@ -41,7 +41,7 @@ export function normalizeHandleInput(raw) {
 }
 
 const DEAL_SELECT =
-  'id, staker_user_id, stakee_user_id, status, deal_type, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, terms_revised_at, terms_revised_by'
+  'id, staker_user_id, stakee_user_id, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, terms_revised_at, terms_revised_by'
 
 const SLICE_SELECT =
   'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_phone, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at'
@@ -308,6 +308,7 @@ export async function createBackingDeal(supabase, args) {
     stakeWideStartingPl,
     lifetimePlDisplay,
     manifestEditMode = 'locked',
+    venueKind = 'live',
     slices = [],
     activate = false,
   } = args
@@ -338,6 +339,7 @@ export async function createBackingDeal(supabase, args) {
       stake_wide_starting_pl: stakeWideStartingPl ?? null,
       lifetime_pl_display: lifetimePlDisplay ?? null,
       manifest_edit_mode: manifestEditMode,
+      venue_kind: venueKind,
       responded_at: activate ? new Date().toISOString() : null,
     })
     .select(DEAL_SELECT)

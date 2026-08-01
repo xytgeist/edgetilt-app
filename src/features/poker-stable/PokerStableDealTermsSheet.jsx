@@ -7,6 +7,8 @@ import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { computeProfitAboveBaseline } from './pokerStableMath.js'
 import {
   canReassignGuestSlice,
+  dealAllowsPeriodicSettle,
+  dealHasRakebackEnabled,
   dealTermsMeta,
   sliceTermsSummary,
   stakeDealCanBeCancelled,
@@ -220,6 +222,8 @@ export default function PokerStableDealTermsSheet({
   const canSettle =
     stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
+  const showPeriodicSettle = canSettle && dealAllowsPeriodicSettle(deal)
+  const showRakebackField = canSettle && dealHasRakebackEnabled(slices)
   const rollValue =
     dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0
   const profitUp = computeProfitAboveBaseline({
@@ -402,17 +406,21 @@ export default function PokerStableDealTermsSheet({
                 Settle stake
               </h4>
               <p className="text-xs text-zinc-500">
-                Profit above baseline: {fmtPoker$(profitUp)} · periodic keeps the stake open; close
-                merges sessions into personal history.
+                Profit above baseline: {fmtPoker$(profitUp)}
+                {showPeriodicSettle
+                  ? ' · periodic keeps the stake open; close merges sessions into personal history.'
+                  : ' · close settles the package and merges sessions into personal history.'}
               </p>
-              <MoneyInputField
-                value={rakebackTotal}
-                onChange={setRakebackTotal}
-                placeholder="Rakeback total"
-                focusRingClass="focus:ring-2 focus:ring-amber-500/40"
-                className="mt-2"
-              />
-              {typeof onPeriodicSettle === 'function' ? (
+              {showRakebackField ? (
+                <MoneyInputField
+                  value={rakebackTotal}
+                  onChange={setRakebackTotal}
+                  placeholder="Rakeback total"
+                  focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                  className="mt-2"
+                />
+              ) : null}
+              {showPeriodicSettle && typeof onPeriodicSettle === 'function' ? (
                 <button
                   type="button"
                   disabled={saving}
@@ -429,7 +437,11 @@ export default function PokerStableDealTermsSheet({
                   type="button"
                   disabled={saving}
                   onClick={() => void onCloseStake(parseMoneyInputNumber(rakebackTotal) || 0)}
-                  className="w-full rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
+                  className={`w-full rounded-xl py-3 text-sm font-semibold touch-manipulation disabled:opacity-50 ${
+                    showPeriodicSettle
+                      ? 'bg-zinc-800 text-zinc-100'
+                      : 'bg-emerald-600 font-bold text-white'
+                  }`}
                 >
                   Close stake
                 </button>

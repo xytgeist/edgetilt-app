@@ -107,6 +107,7 @@ function SliceEditor({
   canRemove,
   title,
   lockUserId = null,
+  showRakeback = true,
 }) {
   return (
     <div
@@ -237,27 +238,31 @@ function SliceEditor({
           />
         </InField>
       )}
-      <InField label="Rakeback" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
-        <select
-          value={sl.rakebackMode}
-          onChange={(e) => onChange({ rakebackMode: e.target.value })}
-          className={`${INFIELD_CONTROL} appearance-none`}
-        >
-          <option value="all_to_stake">100% to stake</option>
-          <option value="custom">Custom split</option>
-          <option value="disabled">Disabled</option>
-        </select>
-      </InField>
-      {sl.rakebackMode === 'custom' ? (
-        <InField label="Player rakeback %" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
-          <input
-            value={sl.rakebackPlayerPct}
-            onChange={(e) => onChange({ rakebackPlayerPct: e.target.value })}
-            placeholder="50"
-            inputMode="decimal"
-            className={INFIELD_CONTROL}
-          />
-        </InField>
+      {showRakeback ? (
+        <>
+          <InField label="Rakeback" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+            <select
+              value={sl.rakebackMode}
+              onChange={(e) => onChange({ rakebackMode: e.target.value })}
+              className={`${INFIELD_CONTROL} appearance-none`}
+            >
+              <option value="all_to_stake">100% to stake</option>
+              <option value="custom">Custom split</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </InField>
+          {sl.rakebackMode === 'custom' ? (
+            <InField label="Player rakeback %" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <input
+                value={sl.rakebackPlayerPct}
+                onChange={(e) => onChange({ rakebackPlayerPct: e.target.value })}
+                placeholder="50"
+                inputMode="decimal"
+                className={INFIELD_CONTROL}
+              />
+            </InField>
+          ) : null}
+        </>
       ) : null}
     </div>
   )
@@ -296,6 +301,8 @@ function PokerStableDealFormSheet({
   const showHorsePicker = isBacker && !isEdit && !isBackerPropose
   const showPlayerTermsForm = !isBacker || isBackerPropose
   const [label, setLabel] = useState('')
+  const [dealType, setDealType] = useState('cash_backing')
+  const [venueKind, setVenueKind] = useState('live')
   const [baseline, setBaseline] = useState('')
   const [isMigration, setIsMigration] = useState(false)
   const [startingRoll, setStartingRoll] = useState('')
@@ -311,6 +318,15 @@ function PokerStableDealFormSheet({
   const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
   usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef)
+
+  function onDealTypeChange(next) {
+    setDealType(next)
+    if (next === 'tournament_package') {
+      setSlices((prev) =>
+        prev.map((s) => ({ ...s, rakebackMode: 'disabled', rakebackPlayerPct: '' })),
+      )
+    }
+  }
 
   useEffect(() => {
     if (!editDeal) return
@@ -509,7 +525,8 @@ function PokerStableDealFormSheet({
         }
         const { deal, error } = await createBackingDeal(supabaseClient, {
           stakeeUserId: userId,
-          dealType: 'cash_backing',
+          dealType,
+          venueKind,
           label,
           baselineBankroll: baselineAmount,
           startingRoll:
@@ -629,6 +646,33 @@ function PokerStableDealFormSheet({
           />
         </InField>
 
+        {showPlayerTermsForm && !isEdit ? (
+          <>
+            <InField label="Stake type" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <select
+                value={dealType}
+                onChange={(e) => onDealTypeChange(e.target.value)}
+                className={`${INFIELD_CONTROL} appearance-none`}
+                data-poker-stable-deal-type-select
+              >
+                <option value="cash_backing">Cash game</option>
+                <option value="tournament_package">Tournament package</option>
+              </select>
+            </InField>
+            <InField label="Venue" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <select
+                value={venueKind}
+                onChange={(e) => setVenueKind(e.target.value)}
+                className={`${INFIELD_CONTROL} appearance-none`}
+                data-poker-stable-venue-kind-select
+              >
+                <option value="live">Live</option>
+                <option value="online">Online</option>
+              </select>
+            </InField>
+          </>
+        ) : null}
+
         {showPlayerTermsForm ? (
           <>
             <MoneyInputField
@@ -710,6 +754,7 @@ function PokerStableDealFormSheet({
                 supabaseClient={supabaseClient}
                 title={pokerStableBackerSliceLabel(slices.length, idx)}
                 canRemove={slices.length > 1}
+                showRakeback={dealType === 'cash_backing'}
                 onChange={(patch) => updateSlice(idx, patch)}
                 onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}
               />

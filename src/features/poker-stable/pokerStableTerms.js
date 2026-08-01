@@ -137,6 +137,20 @@ export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal =
   return isOngoingDealType(deal.deal_type)
 }
 
+/** True when any active slice has rakeback enabled (not disabled). */
+export function dealHasRakebackEnabled(slices = []) {
+  return (slices || []).some((slice) => {
+    if (slice.status === 'cancelled' || slice.status === 'declined') return false
+    const mode = slice.rakeback_mode || slice.rakebackMode || 'disabled'
+    return mode !== 'disabled'
+  })
+}
+
+/** Periodic settle applies to cash backing only; tournament packages close out once. */
+export function dealAllowsPeriodicSettle(deal) {
+  return deal?.deal_type === 'cash_backing'
+}
+
 export function dealTermsMeta(deal) {
   const parts = []
   if (deal?.baseline_bankroll != null) {

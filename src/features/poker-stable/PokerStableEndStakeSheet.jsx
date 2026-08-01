@@ -3,13 +3,15 @@ import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { computeDealMakeup, computeProfitAboveBaseline } from './pokerStableMath.js'
+import { computeDealMakeup, computeProfitAboveBaseline, dealTypeLabel } from './pokerStableMath.js'
+import { dealAllowsPeriodicSettle, dealHasRakebackEnabled } from './pokerStableTerms.js'
 
 /**
  * Focused settle / end flow for stakee on Bankroll (periodic vs close).
  */
 export default function PokerStableEndStakeSheet({
   deal,
+  slices = [],
   dealRoll = null,
   saving = false,
   onClose,
@@ -25,7 +27,9 @@ export default function PokerStableEndStakeSheet({
   const baseline = Number(deal.baseline_bankroll) || 0
   const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
-  const label = deal.label?.trim() || 'Cash backing'
+  const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+  const showPeriodic = dealAllowsPeriodicSettle(deal)
+  const showRakeback = dealHasRakebackEnabled(slices)
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -75,37 +79,45 @@ export default function PokerStableEndStakeSheet({
           </div>
         </div>
 
-        <p className="mb-3 text-xs leading-relaxed text-zinc-500">
-          <span className="font-semibold text-zinc-400">Periodic settle</span> resets the stake roll
-          to baseline, credits your personal bankroll with your share, and keeps the stake open for
-          more sessions.
-        </p>
+        {showPeriodic ? (
+          <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+            <span className="font-semibold text-zinc-400">Periodic settle</span> resets the stake
+            roll to baseline, credits your personal bankroll with your share, and keeps the stake
+            open for more sessions.
+          </p>
+        ) : null}
         <p className="mb-4 text-xs leading-relaxed text-zinc-500">
-          <span className="font-semibold text-zinc-400">Close stake</span> runs the same final
-          accounting, then archives the stake and moves its sessions onto your personal timeline.
+          <span className="font-semibold text-zinc-400">Close stake</span>
+          {showPeriodic
+            ? ' runs the same final accounting, then archives the stake and moves its sessions onto your personal timeline.'
+            : ' settles the package, archives the stake, and moves its sessions onto your personal timeline.'}
         </p>
 
-        <MoneyInputField
-          value={rakebackTotal}
-          onChange={setRakebackTotal}
-          placeholder="Rakeback total (optional)"
-          focusRingClass="focus:ring-2 focus:ring-amber-500/40"
-          className="mb-4"
-        />
+        {showRakeback ? (
+          <MoneyInputField
+            value={rakebackTotal}
+            onChange={setRakebackTotal}
+            placeholder="Rakeback total (optional)"
+            focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+            className="mb-4"
+          />
+        ) : null}
 
         <div className="space-y-2">
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => {
-              onError?.('')
-              void onPeriodicSettle?.(parseMoneyInputNumber(rakebackTotal) || 0)
-            }}
-            data-poker-stable-end-stake-periodic-btn
-            className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Periodic settle'}
-          </button>
+          {showPeriodic ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                onError?.('')
+                void onPeriodicSettle?.(parseMoneyInputNumber(rakebackTotal) || 0)
+              }}
+              data-poker-stable-end-stake-periodic-btn
+              className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Periodic settle'}
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={saving}
@@ -114,7 +126,11 @@ export default function PokerStableEndStakeSheet({
               void onCloseStake?.(parseMoneyInputNumber(rakebackTotal) || 0)
             }}
             data-poker-stable-end-stake-close-btn
-            className="w-full rounded-xl bg-zinc-100 py-3.5 text-base font-bold text-zinc-900 touch-manipulation disabled:opacity-50"
+            className={`w-full rounded-xl py-3.5 text-base font-bold touch-manipulation disabled:opacity-50 ${
+              showPeriodic
+                ? 'bg-zinc-100 text-zinc-900'
+                : 'bg-emerald-600 text-white'
+            }`}
           >
             {saving ? 'Saving…' : 'Close stake'}
           </button>

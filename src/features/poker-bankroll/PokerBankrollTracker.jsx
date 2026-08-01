@@ -204,6 +204,43 @@ function emptyForm() {
   }
 }
 
+/** Prefill Start Session / Log past from personal defaults or active stake deal. */
+function defaultNewSessionForm(activeDeal, scopedSessions, completedSessions) {
+  const base = emptyForm()
+  const venueKind = activeDeal?.venue_kind || 'live'
+
+  if (activeDeal?.deal_type === 'tournament_package') {
+    const lastTourneyGame = lastTournamentGameFromSessions(scopedSessions)
+    const next = {
+      ...base,
+      session_type: 'tournament',
+      venue_kind: venueKind,
+      game_variant: lastTourneyGame.game_variant,
+      game_custom_name: lastTourneyGame.game_custom_name,
+      tournament_event_pick: '',
+    }
+    if (venueKind === 'club') {
+      const last = lastClubAppFromSessions(completedSessions)
+      if (last) {
+        next.venue_name = last.venue_name
+        next.club_app_pick = last.club_app_pick
+      }
+    } else if (venueKind === 'online') {
+      const site = resolveOnlineSitePickFromSessions(completedSessions)
+      next.venue_name = site.venue_name
+      next.online_site_pick = site.online_site_pick
+      const siteCurrency = currencyFromOnlineSiteId(site.online_site_pick)
+      if (siteCurrency) next.currency = normalizePokerCurrency(siteCurrency)
+    }
+    return next
+  }
+
+  return formWithDefaultCashGame(
+    { ...base, venue_kind: venueKind },
+    buildCashGamePresetsFromSessions(scopedSessions, venueKind),
+  )
+}
+
 /**
  * Poker Bankroll Manager — separate from slots Bankroll.
  * Core start fields: type, table size, location, game (+ stake/tourney details).
@@ -1251,17 +1288,15 @@ export default function PokerBankrollTracker({
     setNearbyCasinos([])
     setDraftSwaps([])
     setIncomingAcceptSwap(null)
-    setForm(
-      formWithDefaultCashGame(
-        emptyForm(),
-        buildCashGamePresetsFromSessions(scopedSessions, 'live'),
-      ),
-    )
+    const nextForm = defaultNewSessionForm(activeDeal, scopedSessions, completedSessions)
+    setForm(nextForm)
     setError('')
     setSheet('start')
     triggerTapHapticLight()
     applyGeoCurrencyDefault()
-    void fetchNearby((name) => setForm((f) => patchLiveVenueFromGps(f, name)))
+    if (nextForm.venue_kind === 'live') {
+      void fetchNearby((name) => setForm((f) => patchLiveVenueFromGps(f, name)))
+    }
   }
 
   /** Start Session prefilled from an incoming soft-event swap (no matching session yet). */
@@ -1320,17 +1355,15 @@ export default function PokerBankrollTracker({
     setEditingPrevWl(0)
     setNearbyCasinos([])
     setDraftSwaps([])
-    setForm(
-      formWithDefaultCashGame(
-        emptyForm(),
-        buildCashGamePresetsFromSessions(scopedSessions, 'live'),
-      ),
-    )
+    const nextForm = defaultNewSessionForm(activeDeal, scopedSessions, completedSessions)
+    setForm(nextForm)
     setError('')
     setSheet('session')
     triggerTapHapticLight()
     applyGeoCurrencyDefault()
-    void fetchNearby((name) => setForm((f) => patchLiveVenueFromGps(f, name)))
+    if (nextForm.venue_kind === 'live') {
+      void fetchNearby((name) => setForm((f) => patchLiveVenueFromGps(f, name)))
+    }
   }
 
   function openEndSession() {
@@ -3157,6 +3190,7 @@ export default function PokerBankrollTracker({
       {endStakeDealId && supabaseClient && userId ? (
         <PokerStableEndStakeSheet
           deal={stakeeDeals.find((d) => d.id === endStakeDealId) ?? null}
+          slices={slicesByDeal[endStakeDealId] || []}
           dealRoll={dealProfiles[endStakeDealId] ?? null}
           saving={stableSaving}
           onClose={() => setEndStakeDealId(null)}

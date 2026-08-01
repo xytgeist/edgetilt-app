@@ -2,9 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
-import {
-  schedulePokerStableFieldScroll,
-} from './pokerStableSheetScroll.js'
+import { schedulePokerStableFieldScroll } from './pokerStableSheetScroll.js'
 
 const DEBOUNCE_MS = 120
 const GAP_PX = 4
@@ -81,21 +79,6 @@ export default function EdgeHandleTypeahead({
     schedulePokerStableFieldScroll(inputRef.current, listRef.current)
   }, [])
 
-  useLayoutEffect(() => {
-    if (!showList) return undefined
-
-    scrollFieldIntoView()
-
-    const vv = window.visualViewport
-    vv?.addEventListener('resize', scrollFieldIntoView)
-    vv?.addEventListener('scroll', scrollFieldIntoView)
-
-    return () => {
-      vv?.removeEventListener('resize', scrollFieldIntoView)
-      vv?.removeEventListener('scroll', scrollFieldIntoView)
-    }
-  }, [showList, scrollFieldIntoView, suggestions.length, loading, openUpward])
-
   useEffect(() => {
     if (!supabaseClient || disabled || isLockedSelection) {
       closeList()
@@ -155,33 +138,17 @@ export default function EdgeHandleTypeahead({
 
     const vv = window.visualViewport
     vv?.addEventListener('resize', updatePlacement)
-    vv?.addEventListener('scroll', updatePlacement)
     window.addEventListener('resize', updatePlacement)
-    window.addEventListener('scroll', updatePlacement, true)
 
     const anchor = containerRef.current
     const ro = typeof ResizeObserver !== 'undefined' && anchor ? new ResizeObserver(updatePlacement) : null
     ro?.observe(anchor)
 
-    const scrollParents = []
-    let node = anchor?.parentElement
-    while (node) {
-      const style = window.getComputedStyle(node)
-      if (/(auto|scroll)/.test(style.overflowY) || /(auto|scroll)/.test(style.overflow)) {
-        scrollParents.push(node)
-        node.addEventListener('scroll', updatePlacement, { passive: true })
-      }
-      node = node.parentElement
-    }
-
     return () => {
       cancelAnimationFrame(raf)
       vv?.removeEventListener('resize', updatePlacement)
-      vv?.removeEventListener('scroll', updatePlacement)
       window.removeEventListener('resize', updatePlacement)
-      window.removeEventListener('scroll', updatePlacement, true)
       ro?.disconnect()
-      for (const el of scrollParents) el.removeEventListener('scroll', updatePlacement)
     }
   }, [showList, suggestions.length, loading, activeIndex, normalizedValue])
 

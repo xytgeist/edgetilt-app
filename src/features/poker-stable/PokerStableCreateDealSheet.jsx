@@ -9,7 +9,6 @@ import { createBackingDeal, lookupProfileByHandle, requestBackingDeal } from './
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
   scrollPokerStableSliceIntoView,
-  usePokerStableSheetKeyboardLift,
 } from './pokerStableSheetScroll.js'
 
 const STABLE_INFIELD_FOCUS = 'focus-within:ring-2 focus-within:ring-amber-500/40'
@@ -254,10 +253,8 @@ function PokerStableDealFormSheet({
   const [mySlice, setMySlice] = useState({ ...EMPTY_SLICE, stakerUserId: userId })
   const [friendSlices, setFriendSlices] = useState([])
   const [slices, setSlices] = useState([{ ...EMPTY_SLICE }])
-  const overlayRef = useRef(null)
   const sheetRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
-  const keyboardLiftPx = usePokerStableSheetKeyboardLift(overlayRef)
 
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
@@ -371,12 +368,7 @@ function PokerStableDealFormSheet({
   const submitLabel = isBacker ? 'Send request' : 'Create stake'
 
   return (
-    <div
-      ref={overlayRef}
-      className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-      style={keyboardLiftPx > 0 ? { paddingBottom: keyboardLiftPx } : undefined}
-      onClick={onClose}
-    >
+    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
       <div
         ref={sheetRef}
         data-poker-stable-sheet

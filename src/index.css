@@ -4608,6 +4608,14 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   border-color: #d4d4d8 !important;
 }
 
+/* Poker Stable deal sheet — native focus scroll keeps fields above keyboard without lifting the panel. */
+[data-poker-stable-sheet] input,
+[data-poker-stable-sheet] select,
+[data-poker-stable-sheet] textarea {
+  scroll-margin-top: 4.5rem;
+  scroll-margin-bottom: min(16rem, 42vh);
+}
+
 /* ── Poker Stable sheet - light mode (dark unchanged) ──── */
 html.light [data-poker-stable-sheet] {
   background-color: #ffffff !important;

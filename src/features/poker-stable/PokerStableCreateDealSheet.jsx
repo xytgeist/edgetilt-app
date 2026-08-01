@@ -13,7 +13,6 @@ import {
   usePokerStableSheetKeyboardDismissScroll,
 } from './pokerStableSheetScroll.js'
 import {
-  POKER_STABLE_SLICE_INNER_CLASS,
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
   pokerStableBackerSliceLabel,
@@ -124,7 +123,6 @@ function SliceEditor({
           </button>
         ) : null}
       </div>
-      <div className={POKER_STABLE_SLICE_INNER_CLASS}>
       {!lockUserId ? (
         <>
           <label className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
@@ -260,7 +258,6 @@ function SliceEditor({
           />
         </InField>
       ) : null}
-      </div>
     </div>
   )
 }

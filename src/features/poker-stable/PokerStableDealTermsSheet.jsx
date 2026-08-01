@@ -11,7 +11,6 @@ import {
   termsPayloadToFormState,
 } from './pokerStableTerms.js'
 import {
-  POKER_STABLE_SLICE_INNER_CLASS,
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
   pokerStableSliceToneAttr,
@@ -113,7 +112,7 @@ function TermsSliceCard({
           </span>
         ) : null}
       </div>
-      <div className={`${POKER_STABLE_SLICE_INNER_CLASS} space-y-1.5 text-sm text-zinc-300`}>
+      <div className="space-y-1.5 text-sm text-zinc-300">
         {summary.lines.map((line) => (
           <p key={line.label}>
             <span className="text-zinc-500">{line.label}: </span>

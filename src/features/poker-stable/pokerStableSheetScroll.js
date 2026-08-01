@@ -111,7 +111,7 @@ function isSheetFormField(el, sheet) {
 function fieldWasInSlice(el) {
   return Boolean(
     el instanceof HTMLElement &&
-      (el.closest('[data-poker-stable-slice]') || el.closest('.poker-stable-slice-inner')),
+      el.closest('[data-poker-stable-slice]'),
   )
 }
 

@@ -14,7 +14,6 @@ import {
   sliceDisplayName,
 } from './pokerStableApi.js'
 import {
-  POKER_STABLE_SLICE_INNER_CLASS,
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
   pokerStableSliceToneAttr,
@@ -278,7 +277,6 @@ export default function PokerStableDealDetailSheet({
                   </div>
                   <span className="text-[10px] font-bold uppercase text-zinc-500">{slice.status}</span>
                 </div>
-                <div className={POKER_STABLE_SLICE_INNER_CLASS}>
                 {line ? (
                   <div className="mt-2 text-sm text-zinc-300">
                     Settled IOU: {fmtPoker$(line.total_owed)}
@@ -351,7 +349,6 @@ export default function PokerStableDealDetailSheet({
                     )}
                   </div>
                 ) : null}
-                </div>
               </div>
             )
           })}

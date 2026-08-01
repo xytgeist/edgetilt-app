@@ -4797,13 +4797,6 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card .text-zinc-300 {
 html.light [data-poker-stable-sheet] .poker-stable-slice-card .text-zinc-500 {
   color: #71717a !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-inner {
-  background-color: #ffffff !important;
-  border-color: #e4e4e7 !important;
-}
-html.light [data-poker-stable-sheet] .poker-stable-slice-inner .bg-zinc-800 {
-  background-color: #f4f4f5 !important;
-}
 html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.bg-zinc-800 {
   background-color: #ffffff !important;
   border: 1px solid #e4e4e7 !important;

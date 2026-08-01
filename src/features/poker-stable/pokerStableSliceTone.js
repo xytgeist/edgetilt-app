@@ -58,6 +58,3 @@ export function pokerStableBackerSliceLabel(sliceCount, sliceIndex) {
   return `Backer ${index + 1}`
 }
 
-/** Neutral inner panel — fields sit on zinc like swap draft cards. */
-export const POKER_STABLE_SLICE_INNER_CLASS =
-  'poker-stable-slice-inner rounded-2xl border border-zinc-700/80 bg-zinc-900/70 p-3'

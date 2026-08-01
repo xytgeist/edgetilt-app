@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 
-const PEEK_PX = 44
-const SLIDE_GAP_PX = 8
-
 /**
- * Horizontal peek carousel for Personal + stake bankroll hero cards.
+ * Horizontal snap carousel for Personal + stake bankroll hero cards.
  * @param {{ slides: Array<{ id: string }>, activeId: string, onActiveIdChange: (id: string) => void, renderSlide: (slide: { id: string }, index: number) => import('react').ReactNode }} props
  */
 export default function PokerBankrollHeroCarousel({
@@ -28,7 +25,7 @@ export default function PokerBankrollHeroCarousel({
     if (!el || !scroller) return
     ignoreScrollRef.current = true
     scroller.scrollTo({
-      left: el.offsetLeft - PEEK_PX,
+      left: el.offsetLeft,
       behavior: smooth ? 'smooth' : 'auto',
     })
     window.setTimeout(() => {
@@ -49,12 +46,12 @@ export default function PokerBankrollHeroCarousel({
       if (ignoreScrollRef.current) return
       window.clearTimeout(t)
       t = window.setTimeout(() => {
-        const left = scroller.scrollLeft + PEEK_PX + 24
+        const anchor = scroller.scrollLeft + 8
         let bestIdx = 0
         let bestDist = Infinity
         slideRefs.current.forEach((el, idx) => {
           if (!el) return
-          const dist = Math.abs(el.offsetLeft - left)
+          const dist = Math.abs(el.offsetLeft - anchor)
           if (dist < bestDist) {
             bestDist = dist
             bestIdx = idx
@@ -76,15 +73,11 @@ export default function PokerBankrollHeroCarousel({
   }
 
   return (
-    <div data-poker-bankroll-carousel className="mb-4 -mx-3">
+    <div data-poker-bankroll-carousel className="mb-4">
       <div
         ref={scrollerRef}
-        className="flex snap-x snap-mandatory overflow-x-auto overflow-y-visible px-3 pb-1 no-scrollbar"
-        style={{
-          scrollPaddingLeft: PEEK_PX,
-          gap: SLIDE_GAP_PX,
-          WebkitOverflowScrolling: 'touch',
-        }}
+        className="flex snap-x snap-mandatory overflow-x-auto overflow-y-visible no-scrollbar"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {slides.map((slide, index) => (
           <div
@@ -92,11 +85,7 @@ export default function PokerBankrollHeroCarousel({
             ref={(el) => {
               slideRefs.current[index] = el
             }}
-            className="snap-start shrink-0"
-            style={{
-              width: `calc(100% - ${PEEK_PX}px)`,
-              flexBasis: `calc(100% - ${PEEK_PX}px)`,
-            }}
+            className="w-full shrink-0 grow-0 basis-full snap-start"
           >
             {renderSlide(slide, index)}
           </div>

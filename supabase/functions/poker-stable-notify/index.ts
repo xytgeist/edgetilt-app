@@ -1,8 +1,9 @@
 /**
- * Notify guest backers on a Poker Stable cash stake offer or deletion.
+ * Notify guest backers on a Poker Stable cash stake offer, terms edit, or deletion.
  *
  * body.kind:
- *   - offer (default): player created/updated stake terms
+ *   - offer (default): player created stake terms
+ *   - terms_edited: player edited stake terms (requires terms_edit.before / terms_edit.after)
  *   - deleted: player deleted the stake (call before DB delete)
  *
  * Player-created deals: stakee invokes when guest slices have contact info.
@@ -139,6 +140,101 @@ function formatStakeMessageCopy(args: {
   return { subject, text, html }
 }
 
+type TermsEditSlice = {
+  slice_id?: string | null
+  slice_index?: number
+  guest_label?: string
+  action_pct: number
+  pricing_mode: string
+  player_profit_pct?: number | null
+  markup_rate?: number | null
+}
+
+type TermsEditPayload = {
+  deal_label: string
+  baseline_bankroll: number
+  slices: TermsEditSlice[]
+}
+
+function formatPricingLineFromEditSlice(slice: TermsEditSlice): string {
+  if (slice.pricing_mode === 'markup') {
+    const rate = Number(slice.markup_rate)
+    return Number.isFinite(rate) ? `Markup: ${formatPct(rate)}x` : 'Markup'
+  }
+  const playerPct = Number(slice.player_profit_pct)
+  const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : null
+  if (Number.isFinite(backerPct) && Number.isFinite(playerPct)) {
+    return `Profit split: Backer ${formatPct(backerPct)}% | Player ${formatPct(playerPct)}%`
+  }
+  return 'Profit split'
+}
+
+function formatTermsSectionLines(
+  deal: TermsEditPayload,
+  slice: TermsEditSlice | null,
+  ownVerb: 'own' | 'owned',
+): string[] {
+  if (!slice) return ['(You were not listed on this stake.)']
+  const label = String(deal.deal_label || '').trim() || '—'
+  const baselineLabel = fmtMoney(Number(deal.baseline_bankroll))
+  return [
+    `Name of stake: ${label}`,
+    `Total stake: ${baselineLabel} (you ${ownVerb} ${formatPct(slice.action_pct)}%)`,
+    formatPricingLineFromEditSlice(slice),
+  ]
+}
+
+function findEditSlice(
+  dbSlice: SliceRow,
+  editSlices: TermsEditSlice[] | undefined,
+  guestOrdinal: number,
+): TermsEditSlice | null {
+  if (!editSlices?.length) return null
+  const byId = editSlices.find((s) => s.slice_id && s.slice_id === dbSlice.id)
+  if (byId) return byId
+  const byIndex = editSlices.find((s) => s.slice_index === guestOrdinal)
+  if (byIndex) return byIndex
+  return editSlices[guestOrdinal] ?? null
+}
+
+function formatTermsEditedCopy(args: {
+  actorLabel: string
+  backerArticle: 'the' | 'a'
+  beforeDeal: TermsEditPayload
+  afterDeal: TermsEditPayload
+  beforeSlice: TermsEditSlice | null
+  afterSlice: TermsEditSlice | null
+  appUrl: string
+}): { subject: string; text: string; html: string } {
+  const introPlain = `${args.actorLabel} edited the terms of the stake on Edgetilt.com with you as ${args.backerArticle} backer.`
+  const beforeLines = formatTermsSectionLines(args.beforeDeal, args.beforeSlice, 'owned')
+  const afterLines = formatTermsSectionLines(args.afterDeal, args.afterSlice, 'own')
+  const text = [
+    introPlain,
+    '',
+    'Before:',
+    ...beforeLines,
+    '',
+    'After:',
+    ...afterLines,
+  ].join('\n')
+
+  const safeActor = escapeHtml(args.actorLabel)
+  const safeUrl = escapeHtml(args.appUrl)
+  const introHtml = `${safeActor} edited the terms of the stake on <a href="${safeUrl}">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
+  const beforeHtml = ['Before:', ...beforeLines.map((line) => escapeHtml(line))].join('<br>')
+  const afterHtml = ['After:', ...afterLines.map((line) => escapeHtml(line))].join('<br>')
+  const html = [
+    `<p style="margin:0 0 12px;line-height:1.5">${introHtml}</p>`,
+    `<p style="margin:0 0 12px;line-height:1.5">${beforeHtml}</p>`,
+    `<p style="margin:0;line-height:1.5">${afterHtml}</p>`,
+  ].join('')
+
+  const dealLabel = String(args.afterDeal.deal_label || args.beforeDeal.deal_label || '').trim()
+  const subject = `${args.actorLabel} edited stake terms: ${dealLabel || 'Untitled'}`
+  return { subject, text, html }
+}
+
 async function sendResendEmail(to: string, subject: string, html: string, text: string) {
   const key = Deno.env.get('RESEND_API_KEY')?.trim()
   if (!key) return { skipped: true as const, reason: 'RESEND_API_KEY not set' }
@@ -238,7 +334,12 @@ Deno.serve(async (req) => {
     const auth = await getUserFromJwt(admin, req)
     if ('error' in auth) return jsonResponse({ error: auth.error }, auth.status)
 
-    let body: { deal_id?: string; slice_ids?: string[]; kind?: string } = {}
+    let body: {
+      deal_id?: string
+      slice_ids?: string[]
+      kind?: string
+      terms_edit?: { before?: TermsEditPayload; after?: TermsEditPayload }
+    } = {}
     try {
       body = await req.json()
     } catch {
@@ -249,7 +350,18 @@ Deno.serve(async (req) => {
     if (!dealId) return jsonResponse({ error: 'deal_id is required.' }, 400)
 
     const kindRaw = String(body.kind || 'offer').trim().toLowerCase()
-    const kind: 'offer' | 'deleted' = kindRaw === 'deleted' ? 'deleted' : 'offer'
+    let kind: 'offer' | 'deleted' | 'terms_edited' = 'offer'
+    if (kindRaw === 'deleted') kind = 'deleted'
+    else if (kindRaw === 'terms_edited') kind = 'terms_edited'
+
+    const termsEditBefore = body.terms_edit?.before
+    const termsEditAfter = body.terms_edit?.after
+    if (kind === 'terms_edited' && (!termsEditBefore || !termsEditAfter)) {
+      return jsonResponse(
+        { error: 'terms_edit.before and terms_edit.after are required for terms_edited.' },
+        400,
+      )
+    }
 
     const sliceIdFilter = Array.isArray(body.slice_ids)
       ? body.slice_ids.map((id) => String(id || '').trim()).filter(Boolean)
@@ -276,10 +388,11 @@ Deno.serve(async (req) => {
     let sliceQuery = admin
       .from('poker_stable_deal_slices')
       .select(
-        'id, counterparty_kind, guest_email, guest_phone, guest_label, action_pct, pricing_mode, player_profit_pct, markup_rate, status',
+        'id, slice_index, counterparty_kind, guest_email, guest_phone, guest_label, action_pct, pricing_mode, player_profit_pct, markup_rate, status',
       )
       .eq('deal_id', dealId)
       .eq('counterparty_kind', 'guest')
+      .order('slice_index', { ascending: true })
 
     if (sliceIdFilter.length) {
       sliceQuery = sliceQuery.in('id', sliceIdFilter)
@@ -310,7 +423,8 @@ Deno.serve(async (req) => {
     const results: Record<string, unknown>[] = []
     let notifiedCount = 0
 
-    for (const slice of slices) {
+    for (let guestOrdinal = 0; guestOrdinal < slices.length; guestOrdinal += 1) {
+      const slice = slices[guestOrdinal]
       const email = String(slice.guest_email || '')
         .trim()
         .toLowerCase()
@@ -328,17 +442,44 @@ Deno.serve(async (req) => {
         continue
       }
 
-      const pricingLine = formatPricingLine(slice)
-      const { subject, text, html } = formatStakeMessageCopy({
-        kind,
-        actorLabel,
-        backerArticle,
-        dealLabel,
-        baselineLabel,
-        actionPct: Number(slice.action_pct),
-        pricingLine,
-        appUrl,
-      })
+      let subject = ''
+      let text = ''
+      let html = ''
+
+      if (kind === 'terms_edited') {
+        const beforeSlice = findEditSlice(slice, termsEditBefore?.slices, guestOrdinal)
+        const afterSlice = findEditSlice(slice, termsEditAfter?.slices, guestOrdinal)
+        if (!afterSlice) {
+          results.push({
+            slice_id: slice.id,
+            notified: false,
+            email: { skipped: true, reason: 'no after snapshot for slice' },
+            sms: { skipped: true, reason: 'no after snapshot for slice' },
+          })
+          continue
+        }
+        ;({ subject, text, html } = formatTermsEditedCopy({
+          actorLabel,
+          backerArticle,
+          beforeDeal: termsEditBefore as TermsEditPayload,
+          afterDeal: termsEditAfter as TermsEditPayload,
+          beforeSlice,
+          afterSlice,
+          appUrl,
+        }))
+      } else {
+        const pricingLine = formatPricingLine(slice)
+        ;({ subject, text, html } = formatStakeMessageCopy({
+          kind,
+          actorLabel,
+          backerArticle,
+          dealLabel,
+          baselineLabel,
+          actionPct: Number(slice.action_pct),
+          pricingLine,
+          appUrl,
+        }))
+      }
       const smsText = `${text}\n\n${appUrl}`
 
       const channels: Record<string, unknown> = { slice_id: slice.id }

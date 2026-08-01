@@ -1,6 +1,6 @@
 # `poker-stable-notify`
 
-Sends **Twilio SMS** and/or **Resend email** to guest backers when a player creates or updates a cash stake with guest slices.
+Sends **Twilio SMS** and/or **Resend email** to guest backers when a player creates a cash stake, edits stake terms, or deletes a stake with guest slices.
 
 Offer copy (email):
 
@@ -13,6 +13,22 @@ Profit split: Backer 50% | Player 50%
 ```
 
 Blank line after intro only; detail lines are single-spaced (`<br>` in HTML, not separate `<p>` tags).
+
+Terms edit copy (`kind=terms_edited`):
+
+```
+Chunky Unc (@chunkyunc) edited the terms of the stake on Edgetilt.com with you as the backer.
+
+Before:
+Name of stake: Testing
+Total stake: $1,000 (you owned 50%)
+Profit split: Backer 50% | Player 50%
+
+After:
+Name of stake: Testing
+Total stake: $1,500 (you own 60%)
+Profit split: Backer 40% | Player 60%
+```
 
 ## Secrets
 
@@ -36,9 +52,17 @@ supabase functions deploy poker-stable-notify --project-ref kcosfvmreeiosdjdzycb
 ## Body
 
 ```json
-{ "deal_id": "<uuid>", "slice_ids": ["<optional slice uuid>"], "kind": "offer" }
+{
+  "deal_id": "<uuid>",
+  "slice_ids": ["<optional slice uuid>"],
+  "kind": "offer",
+  "terms_edit": {
+    "before": { "deal_label": "...", "baseline_bankroll": 1000, "slices": [] },
+    "after": { "deal_label": "...", "baseline_bankroll": 1500, "slices": [] }
+  }
+}
 ```
 
-`kind`: `offer` (default) or `deleted`. For **deleted**, call **before** the deal row is removed so guest slice contact info is still readable.
+`kind`: `offer` (default), `terms_edited` (requires `terms_edit.before` + `terms_edit.after`), or `deleted`. For **deleted**, call **before** the deal row is removed so guest slice contact info is still readable. **Edit terms** uses `terms_edited` only (not `offer`).
 
 Caller must be the deal **stakee** (player who created the stake). JWT required.

@@ -1207,7 +1207,7 @@ function parseStableNotifyPayload(data) {
  * Notify guest backers (Twilio SMS + Resend email) via Edge Function.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
- * @param {{ sliceIds?: string[]; kind?: 'offer' | 'deleted' }} [opts]
+ * @param {{ sliceIds?: string[]; kind?: 'offer' | 'deleted' | 'terms_edited'; termsEdit?: { before: object; after: object } }} [opts]
  */
 export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
   let {
@@ -1226,6 +1226,10 @@ export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
   const body = { deal_id: dealId }
   if (opts.sliceIds?.length) body.slice_ids = opts.sliceIds
   if (opts.kind === 'deleted') body.kind = 'deleted'
+  else if (opts.kind === 'terms_edited') {
+    body.kind = 'terms_edited'
+    body.terms_edit = opts.termsEdit
+  } else if (opts.kind === 'offer') body.kind = 'offer'
 
   const { data, error, response } = await supabase.functions.invoke('poker-stable-notify', {
     body,

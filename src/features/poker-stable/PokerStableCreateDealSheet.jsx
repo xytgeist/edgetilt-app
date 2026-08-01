@@ -6,6 +6,7 @@ import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyI
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests } from './pokerStableApi.js'
+import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
 import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
@@ -395,7 +396,12 @@ function PokerStableDealFormSheet({
     setFormError('')
     try {
       let createdDeal = null
+      let beforeTermsEdit = null
+      let afterTermsEdit = null
       if (isEdit && showPlayerTermsForm) {
+        if (!isBackerPropose) {
+          beforeTermsEdit = buildStakeTermsEditNotifyPayload(editDeal, editSlices)
+        }
         const baselineAmount = parseMoneyInputNumber(baseline)
         if (!baseline.trim() || !Number.isFinite(baselineAmount) || baselineAmount <= 0) {
           throw new Error('Enter a baseline stake.')
@@ -455,6 +461,7 @@ function PokerStableDealFormSheet({
           })
           if (error) throw error
           createdDeal = deal
+          afterTermsEdit = buildStakeTermsEditNotifyPayload(createdDeal, parsedSlices)
           for (const reassignment of reassignments) {
             const { error: reassignErr } = await reassignGuestSliceToUser(
               supabaseClient,
@@ -521,15 +528,29 @@ function PokerStableDealFormSheet({
       let guestNotifyWarning = null
       if (!isBacker && !isBackerPropose && createdDeal?.id) {
         const hadGuestContact = formSlicesHadGuestContact()
-        const { error: notifyErr, notifiedCount } = await notifyStableStakeGuests(
-          supabaseClient,
-          createdDeal.id,
-        )
-        if (notifyErr) {
-          guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
-          console.warn('[poker-stable] guest notify failed', guestNotifyWarning)
-        } else if (hadGuestContact && notifiedCount === 0) {
-          guestNotifyWarning = 'Guest notify did not send. Check email/phone on the guest slice.'
+        let notifyOpts = null
+        if (beforeTermsEdit && afterTermsEdit) {
+          if (!stakeTermsEditNotifyPayloadsEqual(beforeTermsEdit, afterTermsEdit)) {
+            notifyOpts = {
+              kind: 'terms_edited',
+              termsEdit: { before: beforeTermsEdit, after: afterTermsEdit },
+            }
+          }
+        } else if (!isEdit) {
+          notifyOpts = { kind: 'offer' }
+        }
+        if (notifyOpts) {
+          const { error: notifyErr, notifiedCount } = await notifyStableStakeGuests(
+            supabaseClient,
+            createdDeal.id,
+            notifyOpts,
+          )
+          if (notifyErr) {
+            guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
+            console.warn('[poker-stable] guest notify failed', guestNotifyWarning)
+          } else if (hadGuestContact && notifiedCount === 0) {
+            guestNotifyWarning = 'Guest notify did not send. Check email/phone on the guest slice.'
+          }
         }
       }
       triggerTapHapticLight()

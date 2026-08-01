@@ -2577,10 +2577,11 @@ export default function PokerBankrollTracker({
                       <li key={item.id} className="py-1.5 text-center">
                         <p
                           data-poker-stake-history-line
-                          className="text-sm italic leading-snug text-zinc-500"
+                          data-poker-stake-history-kind={item.event.kind}
+                          className="text-sm italic leading-snug"
                         >
                           {item.event.text}
-                          <span className="not-italic text-zinc-600"> · {eventDate}</span>
+                          <span className="not-italic opacity-70"> · {eventDate}</span>
                         </p>
                       </li>
                     )

@@ -4797,12 +4797,121 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card .text-zinc-300 {
 html.light [data-poker-stable-sheet] .poker-stable-slice-card .text-zinc-500 {
   color: #71717a !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.bg-zinc-800 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.bg-zinc-800,
+html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-md.bg-zinc-800 {
   background-color: #ffffff !important;
   border: 1px solid #e4e4e7 !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.text-zinc-400 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.text-zinc-400,
+html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-md.text-zinc-400 {
   color: #71717a !important;
+}
+/* Slice form fields — white inset on tinted cards (light only) */
+html.light [data-poker-stable-sheet] .poker-stable-slice-card [data-in-field] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(24, 24, 27, 0.1) !important;
+  border-radius: 0.75rem !important;
+  box-shadow:
+    0 1px 2px rgba(24, 24, 27, 0.06),
+    inset 0 0 0 0.5px rgba(24, 24, 27, 0.05) !important;
+}
+/* Terms slice body — tone-matched copy on tinted shells */
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] [data-poker-stable-slice-body] {
+  color: rgb(199 210 254);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: rgba(129, 140, 248, 0.75);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] [data-poker-stable-slice-body] {
+  color: rgb(254 215 170);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: rgba(251, 146, 60, 0.8);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] [data-poker-stable-slice-body] {
+  color: rgb(254 205 211);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: rgba(251, 113, 133, 0.8);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] [data-poker-stable-slice-body] {
+  color: rgb(167 243 208);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: rgba(52, 211, 153, 0.8);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] [data-poker-stable-slice-body] {
+  color: rgb(191 219 254);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: rgba(96, 165, 250, 0.8);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] [data-poker-stable-slice-body] {
+  color: rgb(212 212 216);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: rgba(161, 161, 170, 0.9);
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] [data-poker-stable-slice-body] {
+  color: #312e81 !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: #4338ca !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] [data-poker-stable-slice-body] {
+  color: #7c2d12 !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: #c2410c !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] [data-poker-stable-slice-body] {
+  color: #881337 !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: #be123c !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] [data-poker-stable-slice-body] {
+  color: #14532d !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: #15803d !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] [data-poker-stable-slice-body] {
+  color: #1e3a8a !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: #1d4ed8 !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] [data-poker-stable-slice-body] {
+  color: #27272a !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] [data-poker-stable-slice-body] .text-zinc-500 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-deal-summary] {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-sheet-hint] {
+  border-color: #d4d4d8 !important;
+  color: #52525b !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stake-notice] {
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+[data-poker-stable-sheet] [data-poker-stable-terms-edit-btn] {
+  background-color: rgb(244 244 245);
+  color: rgb(24 24 27);
+}
+[data-poker-stable-sheet] [data-poker-stable-terms-edit-btn]:active {
+  background-color: rgb(228 228 231);
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-terms-edit-btn] {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-terms-edit-btn]:active {
+  background-color: #27272a !important;
 }
 html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-cancel-btn] {
   background-color: #f4f4f5 !important;
@@ -5326,11 +5435,36 @@ html.light [data-bankroll-card] {
 html.light [data-session-card] {
   box-shadow: 0 10px 20px -4px rgba(0,0,0,0.15), 0 4px 8px -4px rgba(0,0,0,0.1);
 }
-html.light [data-poker-stake-history-line] {
-  color: #71717a !important;
+/* Stake deal history lines — kind accent (Bankroll on-stake session list) */
+[data-poker-stake-history-line][data-poker-stake-history-kind='offer'] {
+  color: rgb(165 180 252);
 }
-html.light [data-poker-stake-history-line] .text-zinc-600 {
-  color: #a1a1aa !important;
+[data-poker-stake-history-line][data-poker-stake-history-kind='accept'] {
+  color: rgb(110 231 183);
+}
+[data-poker-stake-history-line][data-poker-stake-history-kind='decline'] {
+  color: rgb(251 113 133);
+}
+[data-poker-stake-history-line][data-poker-stake-history-kind='topup'] {
+  color: rgb(251 191 36);
+}
+[data-poker-stake-history-line][data-poker-stake-history-kind='settlement'] {
+  color: rgb(103 232 249);
+}
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='offer'] {
+  color: #4338ca !important;
+}
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='accept'] {
+  color: #047857 !important;
+}
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='decline'] {
+  color: #be123c !important;
+}
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='topup'] {
+  color: #b45309 !important;
+}
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='settlement'] {
+  color: #0e7490 !important;
 }
 html.light [data-start-session-btn] {
   box-shadow: 0 8px 20px -4px rgba(0,0,0,0.2);

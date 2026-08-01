@@ -37,7 +37,7 @@ export function pokerStableSliceToneAttr(sliceIndex) {
 /** Outer featured-style shell (matches tournament Swaps card). */
 export function pokerStableSliceCardClass(sliceIndex) {
   const tone = pokerStableSliceToneId(sliceIndex)
-  return `poker-stable-slice-card rounded-2xl border p-3 ${SLICE_TONE_OUTER_CLASS[tone]}`
+  return `poker-stable-slice-card rounded-xl border p-3 ${SLICE_TONE_OUTER_CLASS[tone]}`
 }
 
 /** Slice heading accent on the tinted shell. */

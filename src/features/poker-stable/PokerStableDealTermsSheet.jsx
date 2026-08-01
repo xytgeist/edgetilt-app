@@ -107,12 +107,12 @@ function TermsSliceCard({
           {proposed ? ' (proposed)' : ''}
         </span>
         {slice.status ? (
-          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-bold uppercase text-zinc-400">
+          <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-bold uppercase text-zinc-400">
             {slice.status}
           </span>
         ) : null}
       </div>
-      <div className="space-y-1.5 text-sm text-zinc-300">
+      <div className="space-y-1.5 text-sm text-zinc-300" data-poker-stable-slice-body>
         {summary.lines.map((line) => (
           <p key={line.label}>
             <span className="text-zinc-500">{line.label}: </span>
@@ -135,7 +135,7 @@ function TermsSliceCard({
             onError?.('')
             onReassignOpen?.()
           }}
-          className="mt-3 w-full rounded-2xl border py-2.5 text-sm font-semibold touch-manipulation disabled:opacity-50"
+          className="mt-3 w-full rounded-xl border py-2.5 text-sm font-semibold touch-manipulation disabled:opacity-50"
           data-poker-stable-guest-reassign-btn
         >
           Assign to Edge user
@@ -231,7 +231,7 @@ export default function PokerStableDealTermsSheet({
         {hasProposal && isStakee ? (
           <div
             data-poker-stake-notice
-            className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-950/40 px-4 py-3 text-sm text-amber-100"
+            className="mb-4 border-l-2 border-amber-500/70 pl-3 text-sm leading-relaxed text-amber-100"
           >
             A backer proposed new terms. Review below and accept to update your stake, or decline to
             keep your current terms.
@@ -239,13 +239,19 @@ export default function PokerStableDealTermsSheet({
         ) : null}
 
         {!hasProposal && isStakee && deal.status === 'active' && canEdit ? (
-          <div className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/40 px-4 py-3 text-xs text-zinc-400">
+          <div
+            data-poker-stable-sheet-hint
+            className="mb-4 border-l-2 border-zinc-600 pl-3 text-xs leading-relaxed text-zinc-400"
+          >
             Guest backers are not on Edge ... you can edit terms here or assign a guest to their
             Edge account when they join.
           </div>
         ) : null}
 
-        <div className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-4">
+        <div
+          data-poker-stable-deal-summary
+          className="mb-5 border-b border-zinc-700/80 pb-4"
+        >
           <p className="text-base font-bold leading-snug text-white">{deal.label || 'Cash backing'}</p>
           {dealTermsMeta(deal) ? (
             <p className="mt-1 text-sm text-zinc-400">{dealTermsMeta(deal)}</p>
@@ -268,7 +274,7 @@ export default function PokerStableDealTermsSheet({
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Current terms
             </h4>
-            <div className="mb-4 space-y-3">
+            <div className="mb-4 space-y-2">
               {slices.map((slice, idx) => (
                 <TermsSliceCard
                   key={slice.id || `cur-${idx}`}
@@ -298,7 +304,7 @@ export default function PokerStableDealTermsSheet({
                 </p>
               </>
             ) : null}
-            <div className="mb-4 space-y-3">
+            <div className="mb-4 space-y-2">
               {proposedSlices.map((slice, idx) => (
                 <TermsSliceCard
                   key={`prop-${idx}`}
@@ -311,7 +317,7 @@ export default function PokerStableDealTermsSheet({
             </div>
           </>
         ) : (
-          <div className="mb-4 space-y-3">
+          <div className="mb-4 space-y-2">
             {slices.map((slice, idx) => (
               <TermsSliceCard
                 key={slice.id || idx}
@@ -345,7 +351,7 @@ export default function PokerStableDealTermsSheet({
                 type="button"
                 disabled={saving}
                 onClick={() => void onAcceptProposal?.()}
-                className="w-full rounded-3xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
+                className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
               >
                 {saving ? 'Saving…' : 'Accept proposed terms'}
               </button>
@@ -353,7 +359,7 @@ export default function PokerStableDealTermsSheet({
                 type="button"
                 disabled={saving}
                 onClick={() => void onDeclineProposal?.()}
-                className="w-full rounded-2xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                className="w-full rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
               >
                 Decline proposal
               </button>
@@ -367,7 +373,8 @@ export default function PokerStableDealTermsSheet({
                 onError?.('')
                 onEdit?.()
               }}
-              className="w-full rounded-2xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+              data-poker-stable-terms-edit-btn
+              className="w-full rounded-xl bg-zinc-100 py-3 text-sm font-semibold text-zinc-900 touch-manipulation disabled:opacity-50"
             >
               Edit terms
             </button>
@@ -377,7 +384,7 @@ export default function PokerStableDealTermsSheet({
               type="button"
               disabled={saving}
               onClick={() => void onCancelStake?.()}
-              className="w-full rounded-2xl py-3 text-sm font-semibold text-rose-400 touch-manipulation disabled:opacity-50"
+              className="w-full rounded-xl py-3 text-sm font-semibold text-rose-400 touch-manipulation disabled:opacity-50"
             >
               {saving ? 'Deleting…' : 'Delete stake'}
             </button>

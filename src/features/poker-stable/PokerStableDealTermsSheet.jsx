@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
+import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import {
+  canReassignGuestSlice,
   dealTermsHeader,
-  pricingModeLabel,
-  rakebackModeLabel,
   sliceTermsSummary,
+  stakeeCanEditDealTerms,
   termsPayloadToFormState,
 } from './pokerStableTerms.js'
 import {
@@ -15,7 +17,76 @@ import {
   pokerStableSliceToneAttr,
 } from './pokerStableSliceTone.js'
 
-function TermsSliceCard({ slice, idx, profilesById, proposed = false }) {
+function GuestReassignPanel({
+  supabaseClient,
+  userId,
+  saving,
+  onCancel,
+  onConfirm,
+  onError,
+}) {
+  const [handle, setHandle] = useState('')
+  const [selectedProfile, setSelectedProfile] = useState(null)
+
+  return (
+    <div className="mt-3 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
+      <p className="mb-2 text-xs text-cyan-100">
+        Link this guest backer to their Edge account. They will get a slice invite in Stable to
+        accept.
+      </p>
+      <EdgeHandleTypeahead
+        supabaseClient={supabaseClient}
+        excludeUserId={userId}
+        value={handle}
+        onChange={setHandle}
+        onSelectProfile={setSelectedProfile}
+        selectedProfile={selectedProfile}
+        placeholder="@handle"
+      />
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => {
+            onError?.('')
+            if (!selectedProfile?.user_id) {
+              onError?.('Pick an Edge user by handle.')
+              return
+            }
+            void onConfirm?.(selectedProfile.user_id)
+          }}
+          className="flex-1 rounded-2xl bg-cyan-600 py-2.5 text-sm font-semibold text-white touch-manipulation disabled:opacity-50"
+        >
+          {saving ? 'Saving…' : 'Assign to Edge user'}
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={onCancel}
+          className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-300 touch-manipulation disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function TermsSliceCard({
+  slice,
+  idx,
+  profilesById,
+  proposed = false,
+  showReassign = false,
+  reassignOpen = false,
+  userId,
+  supabaseClient,
+  saving,
+  onReassignOpen,
+  onReassignCancel,
+  onReassignConfirm,
+  onError,
+}) {
   const summary = sliceTermsSummary(slice, profilesById)
   return (
     <div
@@ -48,6 +119,29 @@ function TermsSliceCard({ slice, idx, profilesById, proposed = false }) {
           </p>
         ) : null}
       </div>
+      {showReassign && !reassignOpen ? (
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => {
+            onError?.('')
+            onReassignOpen?.()
+          }}
+          className="mt-3 w-full rounded-2xl border border-cyan-500/40 py-2.5 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+        >
+          Assign to Edge user
+        </button>
+      ) : null}
+      {showReassign && reassignOpen ? (
+        <GuestReassignPanel
+          userId={userId}
+          supabaseClient={supabaseClient}
+          saving={saving}
+          onCancel={onReassignCancel}
+          onConfirm={onReassignConfirm}
+          onError={onError}
+        />
+      ) : null}
     </div>
   )
 }
@@ -61,13 +155,17 @@ export default function PokerStableDealTermsSheet({
   proposedPayload = null,
   profilesById = {},
   userId,
+  supabaseClient,
   saving = false,
   onClose,
   onEdit,
   onAcceptProposal,
   onDeclineProposal,
+  onReassignGuest,
   onError,
 }) {
+  const [reassignSliceId, setReassignSliceId] = useState(null)
+
   if (!deal) return null
 
   const isStakee = deal.stakee_user_id === userId
@@ -94,7 +192,9 @@ export default function PokerStableDealTermsSheet({
     })) || []
 
   const canEdit =
-    deal.status === 'pending' && !hasProposal && typeof onEdit === 'function'
+    isStakee &&
+    stakeeCanEditDealTerms(deal, slices, { hasProposal }) &&
+    typeof onEdit === 'function'
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -121,6 +221,13 @@ export default function PokerStableDealTermsSheet({
           >
             A backer proposed new terms. Review below and accept to update your stake, or decline to
             keep your current terms.
+          </div>
+        ) : null}
+
+        {!hasProposal && isStakee && deal.status === 'active' && canEdit ? (
+          <div className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/40 px-4 py-3 text-xs text-zinc-400">
+            Guest backers are not on Edge ... you can edit terms here or assign a guest to their
+            Edge account when they join.
           </div>
         ) : null}
 
@@ -191,6 +298,21 @@ export default function PokerStableDealTermsSheet({
                 slice={slice}
                 idx={idx}
                 profilesById={profilesById}
+                showReassign={
+                  canReassignGuestSlice({ deal, slice, userId, hasProposal }) &&
+                  typeof onReassignGuest === 'function'
+                }
+                reassignOpen={reassignSliceId === slice.id}
+                userId={userId}
+                supabaseClient={supabaseClient}
+                saving={saving}
+                onReassignOpen={() => setReassignSliceId(slice.id)}
+                onReassignCancel={() => setReassignSliceId(null)}
+                onReassignConfirm={async (stakerUserId) => {
+                  await onReassignGuest?.({ sliceId: slice.id, stakerUserId })
+                  setReassignSliceId(null)
+                }}
+                onError={onError}
               />
             ))}
           </div>

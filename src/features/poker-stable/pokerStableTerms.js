@@ -26,6 +26,30 @@ export function sliceTermsSummary(slice, profilesById = {}) {
   return { name, action, pricing, rake: `${rake}${rakeDetail}` }
 }
 
+export function dealHasEdgeStakerSlices(slices = []) {
+  return slices.some(
+    (slice) =>
+      slice?.counterparty_kind === 'user' ||
+      slice?.counterpartyKind === 'user' ||
+      Boolean(slice?.staker_user_id || slice?.stakerUserId),
+  )
+}
+
+/** Player may edit deal terms when pending, or active with guest-only backers. */
+export function stakeeCanEditDealTerms(deal, slices = [], { hasProposal = false } = {}) {
+  if (!deal || hasProposal) return false
+  if (deal.status === 'pending') return true
+  if (deal.status === 'active' && !dealHasEdgeStakerSlices(slices)) return true
+  return false
+}
+
+export function canReassignGuestSlice({ deal, slice, userId, hasProposal = false }) {
+  if (!deal || !slice || hasProposal) return false
+  if (deal.stakee_user_id !== userId) return false
+  if (!['pending', 'active'].includes(deal.status)) return false
+  return slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest'
+}
+
 export function dealTermsHeader(deal) {
   const parts = []
   if (deal?.label) parts.push(deal.label)
@@ -74,6 +98,8 @@ export function sliceRowToFormSlice(sliceRow, profilesById = {}) {
   if (isGuest) {
     return {
       ...base,
+      sliceId: sliceRow.id || null,
+      wasGuest: true,
       handle: '',
       selectedProfile: null,
       guestLabel: sliceRow.guest_label || sliceRow.guestLabel || '',
@@ -86,6 +112,8 @@ export function sliceRowToFormSlice(sliceRow, profilesById = {}) {
   const profile = stakerId ? profilesById[stakerId] || null : null
   return {
     ...base,
+    sliceId: sliceRow.id || null,
+    wasGuest: false,
     handle: profile?.handle ? String(profile.handle).replace(/^@+/, '') : '',
     selectedProfile: profile,
     guestLabel: '',

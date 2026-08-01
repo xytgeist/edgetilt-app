@@ -5,7 +5,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
-import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyPendingDealTerms, proposePendingDealTerms } from './pokerStableApi.js'
+import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser } from './pokerStableApi.js'
 import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
@@ -62,6 +62,7 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
   if (sl.isGuest) {
     if (!sl.guestLabel.trim()) throw new Error('Guest slices need a name.')
     return {
+      ...(sl.sliceId ? { sliceId: sl.sliceId } : {}),
       counterpartyKind: 'guest',
       guestLabel: sl.guestLabel.trim(),
       guestPhone: String(sl.guestPhone || '').trim() || undefined,
@@ -83,6 +84,7 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
   if (!profile?.user_id) throw new Error(`No Edge user for @${sl.handle}.`)
   if (!allowSelf && profile.user_id === userId) throw new Error('You cannot add yourself as a backer.')
   return {
+    ...(sl.sliceId ? { sliceId: sl.sliceId } : {}),
     counterpartyKind: 'user',
     stakerUserId: profile.user_id,
     actionPct,
@@ -386,8 +388,19 @@ function PokerStableDealFormSheet({
           throw new Error('Enter a baseline stake.')
         }
         const parsedSlices = []
+        const reassignments = []
         for (const sl of slices) {
-          parsedSlices.push(await resolveUserSlice(supabaseClient, sl, userId))
+          const parsed = await resolveUserSlice(supabaseClient, sl, userId)
+          if (
+            editDeal.status === 'active' &&
+            sl.sliceId &&
+            sl.wasGuest &&
+            !sl.isGuest
+          ) {
+            reassignments.push({ sliceId: sl.sliceId, stakerUserId: parsed.stakerUserId })
+          } else {
+            parsedSlices.push(parsed)
+          }
         }
         const dealFields = {
           label,
@@ -418,7 +431,10 @@ function PokerStableDealFormSheet({
           )
           if (error) throw error
         } else {
-          const { deal, error } = await applyPendingDealTerms(supabaseClient, {
+          if (editDeal.status === 'pending' && !parsedSlices.length) {
+            throw new Error('Add at least one backer slice.')
+          }
+          const { deal, error } = await applyStakeeDealTerms(supabaseClient, {
             dealId: editDeal.id,
             stakeeUserId: userId,
             dealFields,
@@ -426,6 +442,13 @@ function PokerStableDealFormSheet({
           })
           if (error) throw error
           createdDeal = deal
+          for (const reassignment of reassignments) {
+            const { error: reassignErr } = await reassignGuestSliceToUser(
+              supabaseClient,
+              reassignment,
+            )
+            if (reassignErr) throw reassignErr
+          }
         }
       } else if (isBacker) {
         const { profile, error: lookErr } = selectedPlayerProfile

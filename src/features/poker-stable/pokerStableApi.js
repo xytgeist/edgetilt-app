@@ -399,52 +399,91 @@ async function replacePendingDealSlices(supabase, dealId, slices) {
   return { error: insErr }
 }
 
+function sliceToTermsJson(sl) {
+  const counterpartyKind = sl.counterpartyKind || sl.counterparty_kind || 'guest'
+  return {
+    ...(sl.sliceId ? { id: sl.sliceId } : {}),
+    counterparty_kind: counterpartyKind,
+    staker_user_id: sl.stakerUserId || sl.staker_user_id || null,
+    guest_label: sl.guestLabel || sl.guest_label || null,
+    guest_phone: sl.guestPhone || sl.guest_phone || null,
+    guest_email: sl.guestEmail || sl.guest_email || null,
+    action_pct: sl.actionPct ?? sl.action_pct,
+    pricing_mode: sl.pricingMode || sl.pricing_mode,
+    player_profit_pct:
+      sl.playerProfitPct != null
+        ? sl.playerProfitPct
+        : sl.player_profit_pct != null
+          ? sl.player_profit_pct
+          : null,
+    markup_rate:
+      sl.markupRate != null ? sl.markupRate : sl.markup_rate != null ? sl.markup_rate : null,
+    rakeback_mode: sl.rakebackMode || sl.rakeback_mode || 'disabled',
+    rakeback_player_pct:
+      sl.rakebackPlayerPct != null
+        ? sl.rakebackPlayerPct
+        : sl.rakeback_player_pct != null
+          ? sl.rakeback_player_pct
+          : null,
+    label: sl.label || null,
+  }
+}
+
 /**
- * Apply deal + slice terms on a pending player-initiated deal (stakee only).
+ * Apply deal + slice terms (stakee only). Pending deals replace slices; active guest-only deals update in place.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  */
-export async function applyPendingDealTerms(supabase, args) {
+export async function applyStakeeDealTerms(supabase, args) {
   const { dealId, stakeeUserId, dealFields, slices, clearProposal = true } = args
   const actionTotal = sumSliceActionPct(slices)
   if (actionTotal > 100.001) {
     return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
   }
-  if (!slices.length) {
-    return { deal: null, error: new Error('Add at least one backer slice.') }
-  }
 
-  const baseline = roundMoney(dealFields.baselineBankroll)
-  const roll = roundMoney(dealFields.startingRoll ?? baseline)
-
-  const patch = {
+  const dealPayload = {
     label: dealFields.label?.trim() || null,
-    baseline_bankroll: baseline,
-    starting_roll: roll,
+    baseline_bankroll: roundMoney(dealFields.baselineBankroll),
+    starting_roll: roundMoney(dealFields.startingRoll ?? dealFields.baselineBankroll),
     is_migration: Boolean(dealFields.isMigration),
     stake_wide_starting_pl: dealFields.stakeWideStartingPl ?? null,
     lifetime_pl_display: dealFields.lifetimePlDisplay ?? null,
   }
-  if (clearProposal) {
-    patch.pending_terms_json = null
-    patch.stakee_terms_ack_required = false
-    patch.terms_revised_at = null
-    patch.terms_revised_by = null
-  }
 
-  const { data: deal, error: uErr } = await supabase
+  const { error } = await supabase.rpc('poker_stable_apply_stakee_terms', {
+    p_deal_id: dealId,
+    p_deal: dealPayload,
+    p_slices: slices.map(sliceToTermsJson),
+    p_clear_proposal: clearProposal,
+  })
+  if (error) return { deal: null, error }
+
+  const { data: deal, error: loadErr } = await supabase
     .from('poker_stable_deals')
-    .update(patch)
+    .select(DEAL_SELECT)
     .eq('id', dealId)
     .eq('stakee_user_id', stakeeUserId)
-    .eq('status', 'pending')
-    .select(DEAL_SELECT)
-    .single()
-  if (uErr) return { deal: null, error: uErr }
+    .maybeSingle()
+  return { deal, error: loadErr }
+}
 
-  const { error: slErr } = await replacePendingDealSlices(supabase, dealId, slices)
-  if (slErr) return { deal, error: slErr }
+/** @deprecated name kept for callers — delegates to applyStakeeDealTerms */
+export async function applyPendingDealTerms(supabase, args) {
+  return applyStakeeDealTerms(supabase, args)
+}
 
-  return { deal, error: null }
+/** Link a guest backer slice to an Edge user (slice invite pending accept in Stable). */
+export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId }) {
+  const { error } = await supabase.rpc('poker_stable_reassign_guest_slice', {
+    p_slice_id: sliceId,
+    p_staker_user_id: stakerUserId,
+  })
+  if (error) return { error }
+  const { data: slice, error: loadErr } = await supabase
+    .from('poker_stable_deal_slices')
+    .select(SLICE_SELECT)
+    .eq('id', sliceId)
+    .maybeSingle()
+  return { slice, error: loadErr }
 }
 
 /** Backer proposes revised terms; stakee must accept before they apply. */

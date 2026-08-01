@@ -37,6 +37,7 @@ import {
   loadDealCounterpartyProfiles,
   loadDealSlices,
   loadMyStableDeals,
+  reassignGuestSliceToUser,
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
@@ -2707,11 +2708,30 @@ export default function PokerBankrollTracker({
           }
           profilesById={stableProfilesById}
           userId={userId}
+          supabaseClient={supabaseClient}
           saving={stableSaving}
           onClose={() => setTermsDealId(null)}
+          onError={setError}
           onEdit={() => {
             setTermsDealId(null)
             setEditTermsDealId(termsDealId)
+          }}
+          onReassignGuest={async ({ sliceId, stakerUserId }) => {
+            setStableSaving(true)
+            setError('')
+            try {
+              const { error } = await reassignGuestSliceToUser(supabaseClient, {
+                sliceId,
+                stakerUserId,
+              })
+              if (error) throw error
+              showStakeNotice('Guest backer linked ... they can accept their slice in Stable.')
+              await loadData()
+            } catch (e) {
+              setError(e?.message || 'Could not assign guest backer.')
+            } finally {
+              setStableSaving(false)
+            }
           }}
           onAcceptProposal={async () => {
             setStableSaving(true)

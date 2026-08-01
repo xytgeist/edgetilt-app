@@ -100,6 +100,21 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
+function formatEmailFooter(appUrl: string): { text: string; html: string } {
+  const text = 'Create an account at EdgeTilt.com to manage your stable.'
+  const safeUrl = escapeHtml(appUrl)
+  const html = `Create an account at <a href="${safeUrl}">Edgetilt.com</a> to manage your stable.`
+  return { text, html }
+}
+
+function appendEmailFooter(text: string, html: string, appUrl: string): { text: string; html: string } {
+  const footer = formatEmailFooter(appUrl)
+  return {
+    text: `${text}\n\n${footer.text}`,
+    html: `${html}<p style="margin:12px 0 0;line-height:1.5">${footer.html}</p>`,
+  }
+}
+
 function formatStakeMessageCopy(args: {
   kind: 'offer' | 'deleted'
   actorLabel: string
@@ -137,7 +152,8 @@ function formatStakeMessageCopy(args: {
   const subject = isDeleted
     ? `${args.actorLabel} deleted a stake: ${args.dealLabel || 'Untitled'}`
     : `${args.actorLabel} created a stake: ${args.dealLabel || 'Untitled'}`
-  return { subject, text, html }
+  const withFooter = appendEmailFooter(text, html, args.appUrl)
+  return { subject, text: withFooter.text, html: withFooter.html }
 }
 
 type TermsEditSlice = {
@@ -232,7 +248,8 @@ function formatTermsEditedCopy(args: {
 
   const dealLabel = String(args.afterDeal.deal_label || args.beforeDeal.deal_label || '').trim()
   const subject = `${args.actorLabel} edited stake terms: ${dealLabel || 'Untitled'}`
-  return { subject, text, html }
+  const withFooter = appendEmailFooter(text, html, args.appUrl)
+  return { subject, text: withFooter.text, html: withFooter.html }
 }
 
 async function sendResendEmail(to: string, subject: string, html: string, text: string) {

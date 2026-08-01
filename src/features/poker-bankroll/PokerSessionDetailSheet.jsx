@@ -171,7 +171,10 @@ export default function PokerSessionDetailSheet({
                 </span>
               )}
               {stakeLabel ? (
-                <span className="rounded-full border border-cyan-500/30 bg-cyan-950/40 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
+                <span
+                  data-poker-session-stake-badge
+                  className="rounded-full border border-cyan-500/30 bg-cyan-950/40 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200"
+                >
                   On stake · {stakeLabel}
                 </span>
               ) : null}
@@ -268,7 +271,10 @@ export default function PokerSessionDetailSheet({
 
               {showPartyBreakdown ? (
                 <div className="mt-3 border-t border-zinc-800/80 pt-3">
-                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-400/90">
+                  <div
+                    data-poker-session-section-heading
+                    className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-400/90"
+                  >
                     By party
                   </div>
                   <div className="space-y-0.5">
@@ -291,7 +297,10 @@ export default function PokerSessionDetailSheet({
 
               {sessionSwaps.length > 0 ? (
                 <div className="mt-3 border-t border-zinc-800/80 pt-3">
-                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-400/90">
+                  <div
+                    data-poker-session-section-heading
+                    className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-400/90"
+                  >
                     Swaps
                   </div>
                   <ul className="space-y-2">

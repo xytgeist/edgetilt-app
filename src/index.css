@@ -4608,6 +4608,43 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   border-color: #d4d4d8 !important;
 }
 
+/* Session detail sheet (modal — outside [data-poker-bankroll] root) */
+html.light [data-poker-session-detail] {
+  --poker-money: #059669;
+  --poker-money-press: #047857;
+}
+html.light [data-poker-session-detail] [data-poker-session-stake-badge] {
+  background-color: #ecfeff !important;
+  border-color: #0891b2 !important;
+  color: #0e7490 !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-section-heading] {
+  color: #0e7490 !important;
+}
+html.light [data-poker-session-detail] .text-emerald-400,
+html.light [data-poker-session-detail] .text-emerald-400\/85 {
+  color: var(--poker-money) !important;
+}
+html.light [data-poker-session-detail] .text-rose-400,
+html.light [data-poker-session-detail] .text-rose-400\/85 {
+  color: #be123c !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-swap-amt='gain'] {
+  color: var(--poker-money) !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-swap-amt='loss'] {
+  color: #be123c !important;
+}
+html.light [data-poker-session-detail] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-session-detail] .bg-cyan-950\/40 {
+  background-color: #ecfeff !important;
+}
+html.light [data-poker-session-detail] .border-cyan-500\/30 {
+  border-color: #0891b2 !important;
+}
+
 /* ── Poker swap guest claim page (/poker-swap-claim) — light mode only ──── */
 html.light [data-poker-swap-claim] {
   background-color: #fafafa !important;

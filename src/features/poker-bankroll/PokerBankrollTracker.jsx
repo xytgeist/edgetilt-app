@@ -2566,23 +2566,21 @@ export default function PokerBankrollTracker({
               <ul className="space-y-2">
                 {historyFeed.map((item) => {
                   if (item.kind === 'event') {
+                    const eventDate = new Date(item.at).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
                     return (
-                      <li key={item.id}>
-                        <div
+                      <li key={item.id} className="py-1.5 text-center">
+                        <p
                           data-poker-stake-history-line
-                          data-elevated-card="surface"
-                          className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 px-3 py-2.5"
+                          className="text-sm italic leading-snug text-zinc-500"
                         >
-                          <div className="text-sm font-medium text-zinc-300">{item.event.text}</div>
-                          <div className="mt-0.5 text-[11px] text-zinc-600">
-                            {new Date(item.at).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                          </div>
-                        </div>
+                          {item.event.text}
+                          <span className="not-italic text-zinc-600"> · {eventDate}</span>
+                        </p>
                       </li>
                     )
                   }

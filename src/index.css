@@ -4619,8 +4619,96 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   scroll-margin-bottom: 1.25rem;
 }
 
+/* Guest reassign controls — tone tokens (dark defaults; html.light overrides per slice card) */
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] {
+  --pss-reassign-border: rgba(34, 211, 238, 0.4);
+  --pss-reassign-text: rgb(165, 243, 252);
+  --pss-reassign-panel-bg: rgba(8, 51, 68, 0.35);
+  --pss-reassign-btn-bg: rgba(8, 51, 68, 0.25);
+  --pss-reassign-btn-active: rgba(8, 51, 68, 0.5);
+  --pss-reassign-primary: rgb(8, 145, 178);
+  --pss-reassign-primary-active: rgb(14, 116, 144);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] {
+  --pss-reassign-border: rgba(167, 139, 250, 0.4);
+  --pss-reassign-text: rgb(221, 214, 254);
+  --pss-reassign-panel-bg: rgba(46, 16, 101, 0.35);
+  --pss-reassign-btn-bg: rgba(46, 16, 101, 0.25);
+  --pss-reassign-btn-active: rgba(46, 16, 101, 0.5);
+  --pss-reassign-primary: rgb(124, 58, 237);
+  --pss-reassign-primary-active: rgb(109, 40, 217);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] {
+  --pss-reassign-border: rgba(52, 211, 153, 0.4);
+  --pss-reassign-text: rgb(167, 243, 208);
+  --pss-reassign-panel-bg: rgba(6, 44, 28, 0.35);
+  --pss-reassign-btn-bg: rgba(6, 44, 28, 0.25);
+  --pss-reassign-btn-active: rgba(6, 44, 28, 0.5);
+  --pss-reassign-primary: rgb(5, 150, 105);
+  --pss-reassign-primary-active: rgb(4, 120, 87);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] {
+  --pss-reassign-border: rgba(251, 113, 133, 0.4);
+  --pss-reassign-text: rgb(254, 205, 211);
+  --pss-reassign-panel-bg: rgba(76, 5, 25, 0.35);
+  --pss-reassign-btn-bg: rgba(76, 5, 25, 0.25);
+  --pss-reassign-btn-active: rgba(76, 5, 25, 0.5);
+  --pss-reassign-primary: rgb(225, 29, 72);
+  --pss-reassign-primary-active: rgb(190, 18, 60);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] {
+  --pss-reassign-border: rgba(56, 189, 248, 0.4);
+  --pss-reassign-text: rgb(186, 230, 253);
+  --pss-reassign-panel-bg: rgba(12, 44, 63, 0.35);
+  --pss-reassign-btn-bg: rgba(12, 44, 63, 0.25);
+  --pss-reassign-btn-active: rgba(12, 44, 63, 0.5);
+  --pss-reassign-primary: rgb(2, 132, 199);
+  --pss-reassign-primary-active: rgb(3, 105, 161);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] {
+  --pss-reassign-border: rgba(245, 158, 11, 0.4);
+  --pss-reassign-text: rgb(253, 230, 138);
+  --pss-reassign-panel-bg: rgba(69, 26, 3, 0.35);
+  --pss-reassign-btn-bg: rgba(69, 26, 3, 0.25);
+  --pss-reassign-btn-active: rgba(69, 26, 3, 0.5);
+  --pss-reassign-primary: rgb(217, 119, 6);
+  --pss-reassign-primary-active: rgb(180, 83, 9);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-btn] {
+  background-color: var(--pss-reassign-btn-bg) !important;
+  border-color: var(--pss-reassign-border) !important;
+  color: var(--pss-reassign-text) !important;
+}
+[data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-btn]:active {
+  background-color: var(--pss-reassign-btn-active) !important;
+}
+[data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-panel] {
+  background-color: var(--pss-reassign-panel-bg) !important;
+  border-color: var(--pss-reassign-border) !important;
+}
+[data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-hint] {
+  color: var(--pss-reassign-text) !important;
+}
+[data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-primary-btn] {
+  background-color: var(--pss-reassign-primary) !important;
+  color: #ffffff !important;
+}
+[data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-primary-btn]:active {
+  background-color: var(--pss-reassign-primary-active) !important;
+}
+[data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-primary-btn]:disabled {
+  color: #ffffff !important;
+}
+
 /* Poker Stable slice cards — light mode (flat tinted shells; dark uses Swaps-style Tailwind on component) */
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] {
+  --pss-reassign-border: #818cf8;
+  --pss-reassign-text: #4338ca;
+  --pss-reassign-panel-bg: #ffffff;
+  --pss-reassign-btn-bg: #ffffff;
+  --pss-reassign-btn-active: #eef2ff;
+  --pss-reassign-primary: #6366f1;
+  --pss-reassign-primary-active: #4f46e5;
   background-color: #eef2ff !important;
   border-color: #818cf8 !important;
   box-shadow: none !important;
@@ -4629,6 +4717,13 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   color: #4338ca !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] {
+  --pss-reassign-border: #fb923c;
+  --pss-reassign-text: #c2410c;
+  --pss-reassign-panel-bg: #ffffff;
+  --pss-reassign-btn-bg: #ffffff;
+  --pss-reassign-btn-active: #fff7ed;
+  --pss-reassign-primary: #ea580c;
+  --pss-reassign-primary-active: #c2410c;
   background-color: #fff7ed !important;
   border-color: #fb923c !important;
   box-shadow: none !important;
@@ -4637,6 +4732,13 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   color: #c2410c !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] {
+  --pss-reassign-border: #fb7185;
+  --pss-reassign-text: #be123c;
+  --pss-reassign-panel-bg: #ffffff;
+  --pss-reassign-btn-bg: #ffffff;
+  --pss-reassign-btn-active: #fff1f2;
+  --pss-reassign-primary: #e11d48;
+  --pss-reassign-primary-active: #be123c;
   background-color: #fff1f2 !important;
   border-color: #fb7185 !important;
   box-shadow: none !important;
@@ -4645,6 +4747,13 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   color: #be123c !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] {
+  --pss-reassign-border: #86efac;
+  --pss-reassign-text: #15803d;
+  --pss-reassign-panel-bg: #ffffff;
+  --pss-reassign-btn-bg: #ffffff;
+  --pss-reassign-btn-active: #f0fdf4;
+  --pss-reassign-primary: #16a34a;
+  --pss-reassign-primary-active: #15803d;
   background-color: #f0fdf4 !important;
   border-color: #86efac !important;
   box-shadow: none !important;
@@ -4653,6 +4762,13 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   color: #15803d !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] {
+  --pss-reassign-border: #93c5fd;
+  --pss-reassign-text: #1d4ed8;
+  --pss-reassign-panel-bg: #ffffff;
+  --pss-reassign-btn-bg: #ffffff;
+  --pss-reassign-btn-active: #eff6ff;
+  --pss-reassign-primary: #2563eb;
+  --pss-reassign-primary-active: #1d4ed8;
   background-color: #eff6ff !important;
   border-color: #93c5fd !important;
   box-shadow: none !important;
@@ -4661,6 +4777,13 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   color: #1d4ed8 !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] {
+  --pss-reassign-border: #d4d4d8;
+  --pss-reassign-text: #52525b;
+  --pss-reassign-panel-bg: #ffffff;
+  --pss-reassign-btn-bg: #ffffff;
+  --pss-reassign-btn-active: #f4f4f5;
+  --pss-reassign-primary: #52525b;
+  --pss-reassign-primary-active: #3f3f46;
   background-color: #fafafa !important;
   border-color: #d4d4d8 !important;
   box-shadow: none !important;
@@ -4687,31 +4810,6 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.bg-z
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.text-zinc-400 {
   color: #71717a !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-btn] {
-  background-color: #ffffff !important;
-  border-color: #0891b2 !important;
-  color: #0e7490 !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-btn]:active {
-  background-color: #ecfeff !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-panel] {
-  background-color: #ecfeff !important;
-  border-color: #67e8f9 !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-panel] .text-cyan-100 {
-  color: #155e75 !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-primary-btn] {
-  background-color: #0891b2 !important;
-  color: #ffffff !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-primary-btn]:active {
-  background-color: #0e7490 !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-primary-btn]:disabled {
-  color: #ffffff !important;
 }
 html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-cancel-btn] {
   background-color: #f4f4f5 !important;
@@ -5225,14 +5323,10 @@ html.light [data-session-card] {
   box-shadow: 0 10px 20px -4px rgba(0,0,0,0.15), 0 4px 8px -4px rgba(0,0,0,0.1);
 }
 html.light [data-poker-stake-history-line] {
-  background-color: #fafafa !important;
-  border-color: #e4e4e7 !important;
-}
-html.light [data-poker-stake-history-line] .text-zinc-300 {
-  color: #3f3f46 !important;
+  color: #71717a !important;
 }
 html.light [data-poker-stake-history-line] .text-zinc-600 {
-  color: #71717a !important;
+  color: #a1a1aa !important;
 }
 html.light [data-start-session-btn] {
   box-shadow: 0 8px 20px -4px rgba(0,0,0,0.2);

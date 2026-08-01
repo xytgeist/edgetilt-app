@@ -31,9 +31,12 @@ function GuestReassignPanel({
   return (
     <div
       data-poker-stable-guest-reassign-panel
-      className="mt-3 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3"
+      className="mt-3 rounded-2xl border p-3"
     >
-      <p className="mb-2 text-xs text-cyan-100">
+      <p
+        data-poker-stable-guest-reassign-hint
+        className="mb-2 text-xs"
+      >
         Link this guest backer to their Edge account. They will get a slice invite in Stable to
         accept.
       </p>
@@ -58,7 +61,7 @@ function GuestReassignPanel({
             }
             void onConfirm?.(selectedProfile.user_id)
           }}
-          className="flex-1 rounded-2xl bg-cyan-600 py-2.5 text-sm font-semibold text-white touch-manipulation disabled:opacity-50"
+          className="flex-1 rounded-2xl py-2.5 text-sm font-semibold text-white touch-manipulation disabled:opacity-50"
           data-poker-stable-guest-reassign-primary-btn
         >
           {saving ? 'Saving…' : 'Assign to Edge user'}
@@ -135,7 +138,7 @@ function TermsSliceCard({
             onError?.('')
             onReassignOpen?.()
           }}
-          className="mt-3 w-full rounded-2xl border border-cyan-500/40 py-2.5 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+          className="mt-3 w-full rounded-2xl border py-2.5 text-sm font-semibold touch-manipulation disabled:opacity-50"
           data-poker-stable-guest-reassign-btn
         >
           Assign to Edge user

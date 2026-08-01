@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
-import { profileAvatarInitials } from '../profiles/profileGate.js'
+import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
 
 const DEBOUNCE_MS = 120
@@ -274,6 +274,8 @@ export default function EdgeHandleTypeahead({
           {suggestions.map((profile, idx) => {
             const handle = normalizeHandle(profile.handle)
             const active = idx === activeIndex
+            const initials = profileAvatarInitials(profile.display_name, profile.handle)
+            const toneClass = profileAvatarToneClass(profile.user_id || profile.handle || '')
             return (
               <li key={profile.user_id} role="option" aria-selected={active}>
                 <button
@@ -283,11 +285,25 @@ export default function EdgeHandleTypeahead({
                     pickProfile(profile)
                   }}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
-                    active ? 'bg-amber-600/20' : 'active:bg-zinc-800'
+                    active ? 'bg-zinc-800' : 'active:bg-zinc-800/60'
                   }`}
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
-                    {profileAvatarInitials(profile.display_name, profile.handle)}
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-800 text-xs font-bold text-zinc-200">
+                    {profile.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span
+                        className={`flex h-full w-full items-center justify-center font-bold text-white ${toneClass}`}
+                      >
+                        {initials}
+                      </span>
+                    )}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-white">

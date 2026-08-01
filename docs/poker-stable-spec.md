@@ -189,7 +189,7 @@ Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`pok
 ### Implementation checklist (open)
 
 - [ ] Stop adding swap delta to **stake-scoped** hero/stats/sparkline (stake roll = gross sessions only).
-- [ ] **`playerStakeSessionValue`** (+ `player_net_value`) shared helper; wire session cards (dual line + swap parens on net).
+- [x] **`playerStakeSessionValue`** (+ `player_net_value`) shared helper; session **detail sheet** shows gross + by-party + your net (swap overlay). Session cards + metrics still TODO.
 - [ ] Periodic settle RPC: roll → baseline, credit **player personal** + **backer** profiles from settle lines (deal stays `active`).
 - [ ] Close/end RPC: final settle + **session merge** + badges; no second personal bankroll pass on gross W/L.
 - [ ] Personal metrics Option B + hero copy when active stakes exist.
@@ -251,7 +251,8 @@ New / extended:
 
 ## Update log
 
-- **2026-08-01:** **Bankroll & session attribution** (Ryan design): three surfaces (stake roll, personal, backer); periodic settle vs close; Option B metrics (accrue `player_net_value` per session, bankroll moves on settle only); session cards gross + stake value + swap on net; merge on close without double-count; swaps never in stake settle. See § Bankroll & session attribution. **Not implemented yet.**
+- **2026-08-01:** **Session detail attribution (test):** `pokerSessionAttribution.js` (`playerStakeSessionValue`, `playerNetSessionValue`); Bankroll session detail sheet shows table result, **By party** (stake roll, your share, backer lines), swaps, **Your net**. Session cards + Option B metrics still open.
+- **2026-08-01:** **Bankroll & session attribution** (Ryan design): three surfaces (stake roll, personal, backer); periodic settle vs close; Option B metrics (accrue `player_net_value` per session, bankroll moves on settle only); session cards gross + stake value + swap on net; merge on close without double-count; swaps never in stake settle. See § Bankroll & session attribution. **Partial:** detail sheet + helpers; settle RPC + merge + metrics TODO.
 - **2026-08-01:** Guest stake notify: Edge **`poker-stable-notify`** (Resend email + Twilio SMS) on create (`kind=offer`), terms edit with before/after blocks (`kind=terms_edited`), and before stake delete (`kind=deleted`).
 - **2026-08-01:** Stake accent palette: heroes rotate **blue / emerald / rose** (oldest deal = blue). Light mode: tone gradient (slow fade) + neutral elevation; Terms slice cards match; no inset 3D shell.
 - **2026-08-01:** Stake delete (Bankroll **Terms → Delete stake**): stakee may remove a stake before any Edge backer accepts; deletes stake sessions on that deal (`20260801150000`).

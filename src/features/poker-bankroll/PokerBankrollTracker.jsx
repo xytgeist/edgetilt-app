@@ -385,6 +385,14 @@ export default function PokerBankrollTracker({
     const deal = stakeeDeals.find((d) => d.id === detailSession.deal_id)
     return String(deal?.label || '').trim() || 'Stake'
   }, [detailSession, stakeeDeals])
+  const detailDeal = useMemo(() => {
+    if (!detailSession?.deal_id) return null
+    return stakeeDeals.find((d) => d.id === detailSession.deal_id) ?? null
+  }, [detailSession, stakeeDeals])
+  const detailSlices = useMemo(() => {
+    if (!detailSession?.deal_id) return []
+    return slicesByDeal[detailSession.deal_id] || []
+  }, [detailSession, slicesByDeal])
   const pendingCounterpartySwaps = useMemo(
     () =>
       tournamentSwaps.filter(
@@ -2978,6 +2986,9 @@ export default function PokerBankrollTracker({
           isActive={detailSession.status === 'active'}
           elapsedSeconds={detailSession.id === activeSession?.id ? elapsed : 0}
           stakeLabel={detailStakeLabel}
+          deal={detailDeal}
+          slices={detailSlices}
+          stableProfilesById={stableProfilesById}
           userId={userId}
           supabaseClient={supabaseClient}
           sessionSwaps={detailSessionSwaps}

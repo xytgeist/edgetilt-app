@@ -101,9 +101,10 @@ function escapeHtml(value: string): string {
 }
 
 function formatEmailFooter(appUrl: string): { text: string; html: string } {
-  const text = 'Create an account at EdgeTilt.com to manage your stable.'
+  const text =
+    'Create a free account at EdgeTilt.com to manage your stable and get live progress updates.'
   const safeUrl = escapeHtml(appUrl)
-  const html = `Create an account at <a href="${safeUrl}">Edgetilt.com</a> to manage your stable.`
+  const html = `Create a free account at <a href="${safeUrl}">Edgetilt.com</a> to manage your stable and get live progress updates.`
   return { text, html }
 }
 

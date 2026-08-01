@@ -15,6 +15,7 @@ import {
   POKER_STABLE_SLICE_INNER_CLASS,
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
+  pokerStableBackerSliceLabel,
   pokerStableSliceToneAttr,
 } from './pokerStableSliceTone.js'
 
@@ -110,7 +111,7 @@ function SliceEditor({
         <span
           className={`text-xs font-black uppercase tracking-wide ${pokerStableSliceTitleClass(sliceIndex)}`}
         >
-          {title || `Slice ${idx + 1}`}
+          {title || pokerStableBackerSliceLabel(1, idx)}
         </span>
         {canRemove ? (
           <button type="button" onClick={onRemove} className="text-xs font-semibold text-rose-400">
@@ -539,6 +540,7 @@ function PokerStableDealFormSheet({
                 sliceIndex={idx}
                 userId={userId}
                 supabaseClient={supabaseClient}
+                title={pokerStableBackerSliceLabel(slices.length, idx)}
                 canRemove={slices.length > 1}
                 onChange={(patch) => updateSlice(idx, patch)}
                 onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}

@@ -1992,28 +1992,37 @@ export default function PokerBankrollTracker({
                 return (
                   <div
                     data-elevated-card={onStake ? 'accent' : 'surface'}
-                    className={
+                    className={`flex h-full min-h-0 flex-col ${
                       onStake
                         ? theme.card
                         : 'rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6'
-                    }
+                    }`}
                   >
-                    {onStake ? (
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <div className="mb-2 flex min-h-[1.375rem] flex-wrap items-center gap-2">
+                      {onStake ? (
+                        <>
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                              hero.deal?.status === 'pending'
+                                ? 'bg-zinc-500/40 text-zinc-200'
+                                : theme.badge
+                            }`}
+                          >
+                            {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
+                          </span>
+                          <span className={`truncate text-xs font-semibold ${theme.badgeText}`}>
+                            {hero.deal?.label || 'Stake deal'}
+                          </span>
+                        </>
+                      ) : (
                         <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
-                            hero.deal?.status === 'pending'
-                              ? 'bg-zinc-500/40 text-zinc-200'
-                              : theme.badge
-                          }`}
+                          className="rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider opacity-0"
+                          aria-hidden
                         >
-                          {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
+                          On stake
                         </span>
-                        <span className={`truncate text-xs font-semibold ${theme.badgeText}`}>
-                          {hero.deal?.label || 'Stake deal'}
-                        </span>
-                      </div>
-                    ) : null}
+                      )}
+                    </div>
                     <div className="mb-1.5 flex items-center justify-between gap-3">
                       <div
                         className={`text-xs font-semibold uppercase tracking-wide ${
@@ -2091,7 +2100,7 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${
+                        className={`mt-auto grid grid-cols-4 gap-2 border-t pt-4 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >

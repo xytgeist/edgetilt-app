@@ -1,22 +1,22 @@
-/** Distinct subtle tints for backer slice cards — 0=cyan, then violet, emerald, rose, sky, amber. */
+/** Distinct subtle tints for backer slice cards — 0=indigo, 1=orange, 2=rose, 3=green, 4=blue, 5=zinc. */
 export const POKER_STABLE_SLICE_TONE_COUNT = 6
 
 const SLICE_TONE_OUTER_CLASS = [
-  'border-cyan-500/40 bg-cyan-950/30 shadow-[inset_0_1px_0_0_rgba(34,211,238,0.12)]',
-  'border-violet-500/40 bg-violet-950/30 shadow-[inset_0_1px_0_0_rgba(167,139,250,0.12)]',
-  'border-emerald-500/40 bg-emerald-950/30 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.12)]',
+  'border-indigo-500/40 bg-indigo-950/30 shadow-[inset_0_1px_0_0_rgba(129,140,248,0.12)]',
+  'border-orange-500/40 bg-orange-950/30 shadow-[inset_0_1px_0_0_rgba(251,146,60,0.12)]',
   'border-rose-500/40 bg-rose-950/30 shadow-[inset_0_1px_0_0_rgba(251,113,133,0.12)]',
-  'border-sky-500/40 bg-sky-950/30 shadow-[inset_0_1px_0_0_rgba(56,189,248,0.12)]',
-  'border-amber-500/40 bg-amber-950/30 shadow-[inset_0_1px_0_0_rgba(245,158,11,0.12)]',
+  'border-emerald-500/40 bg-emerald-950/30 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.12)]',
+  'border-blue-500/40 bg-blue-950/30 shadow-[inset_0_1px_0_0_rgba(96,165,250,0.12)]',
+  'border-zinc-500/40 bg-zinc-900/50 shadow-[inset_0_1px_0_0_rgba(161,161,170,0.1)]',
 ]
 
 const SLICE_TONE_TITLE_CLASS = [
-  'text-cyan-300',
-  'text-violet-300',
-  'text-emerald-300',
+  'text-indigo-300',
+  'text-orange-300',
   'text-rose-300',
-  'text-sky-300',
-  'text-amber-300',
+  'text-emerald-300',
+  'text-blue-300',
+  'text-zinc-300',
 ]
 
 /**

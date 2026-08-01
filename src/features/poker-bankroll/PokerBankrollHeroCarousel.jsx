@@ -120,24 +120,24 @@ export function stakeHeroThemeIndexForDeal(dealId, stakeeDeals = []) {
   return idx >= 0 ? idx : 0
 }
 
-/** Stake hero accent variants (rotate per deal index). */
+/** Stake hero accent variants (rotate per deal index). Tone slug `amber` = indigo (legacy hook for light CSS). */
 export function stakeHeroTheme(stakeIndex) {
   const themes = [
     {
       tone: 'amber',
-      card: `${POKER_BANKROLL_HERO_SHELL} border-amber-400/70 bg-gradient-to-br from-amber-950 via-amber-900/80 to-zinc-950 shadow-[0_0_40px_-12px_rgba(251,191,36,0.55)]`,
-      label: 'text-amber-200/70',
-      badge: 'bg-amber-400 text-amber-950',
-      badgeText: 'text-amber-200/90',
-      amount: 'text-amber-50',
-      editBtn: 'bg-amber-500/25 text-amber-100 active:bg-amber-500/40',
-      borderStat: 'border-amber-400/25',
-      sparkUp: 'text-amber-400',
-      sparkDown: 'text-amber-500',
+      card: `${POKER_BANKROLL_HERO_SHELL} border-indigo-500/50 bg-indigo-950/45`,
+      label: 'text-indigo-200/70',
+      badge: 'bg-indigo-400 text-indigo-950',
+      badgeText: 'text-indigo-200/90',
+      amount: 'text-indigo-50',
+      editBtn: 'bg-indigo-500/25 text-indigo-100 active:bg-indigo-500/40',
+      borderStat: 'border-indigo-400/25',
+      sparkUp: 'text-indigo-400',
+      sparkDown: 'text-indigo-500',
     },
     {
       tone: 'orange',
-      card: `${POKER_BANKROLL_HERO_SHELL} border-orange-400/60 bg-gradient-to-br from-orange-950 via-orange-900/70 to-zinc-950 shadow-[0_0_36px_-12px_rgba(251,146,60,0.45)]`,
+      card: `${POKER_BANKROLL_HERO_SHELL} border-orange-500/50 bg-orange-950/45`,
       label: 'text-orange-200/70',
       badge: 'bg-orange-400 text-orange-950',
       badgeText: 'text-orange-200/90',
@@ -149,7 +149,7 @@ export function stakeHeroTheme(stakeIndex) {
     },
     {
       tone: 'rose',
-      card: `${POKER_BANKROLL_HERO_SHELL} border-rose-400/55 bg-gradient-to-br from-rose-950 via-rose-900/60 to-zinc-950 shadow-[0_0_36px_-12px_rgba(251,113,133,0.4)]`,
+      card: `${POKER_BANKROLL_HERO_SHELL} border-rose-500/50 bg-rose-950/45`,
       label: 'text-rose-200/70',
       badge: 'bg-rose-400 text-rose-950',
       badgeText: 'text-rose-200/90',

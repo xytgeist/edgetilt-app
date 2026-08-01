@@ -4621,58 +4621,58 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
 
 /* Guest reassign controls — tone tokens (dark defaults; html.light overrides per slice card) */
 [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] {
-  --pss-reassign-border: rgba(34, 211, 238, 0.4);
-  --pss-reassign-text: rgb(165, 243, 252);
-  --pss-reassign-panel-bg: rgba(8, 51, 68, 0.35);
-  --pss-reassign-btn-bg: rgba(8, 51, 68, 0.25);
-  --pss-reassign-btn-active: rgba(8, 51, 68, 0.5);
-  --pss-reassign-primary: rgb(8, 145, 178);
-  --pss-reassign-primary-active: rgb(14, 116, 144);
+  --pss-reassign-border: rgba(129, 140, 248, 0.45);
+  --pss-reassign-text: rgb(165, 180, 252);
+  --pss-reassign-panel-bg: rgba(30, 27, 75, 0.45);
+  --pss-reassign-btn-bg: rgba(30, 27, 75, 0.35);
+  --pss-reassign-btn-active: rgba(30, 27, 75, 0.6);
+  --pss-reassign-primary: rgb(99, 102, 241);
+  --pss-reassign-primary-active: rgb(79, 70, 229);
 }
 [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] {
-  --pss-reassign-border: rgba(167, 139, 250, 0.4);
-  --pss-reassign-text: rgb(221, 214, 254);
-  --pss-reassign-panel-bg: rgba(46, 16, 101, 0.35);
-  --pss-reassign-btn-bg: rgba(46, 16, 101, 0.25);
-  --pss-reassign-btn-active: rgba(46, 16, 101, 0.5);
-  --pss-reassign-primary: rgb(124, 58, 237);
-  --pss-reassign-primary-active: rgb(109, 40, 217);
+  --pss-reassign-border: rgba(251, 146, 60, 0.45);
+  --pss-reassign-text: rgb(254, 215, 170);
+  --pss-reassign-panel-bg: rgba(67, 20, 7, 0.45);
+  --pss-reassign-btn-bg: rgba(67, 20, 7, 0.35);
+  --pss-reassign-btn-active: rgba(67, 20, 7, 0.6);
+  --pss-reassign-primary: rgb(234, 88, 12);
+  --pss-reassign-primary-active: rgb(194, 65, 12);
 }
 [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] {
-  --pss-reassign-border: rgba(52, 211, 153, 0.4);
-  --pss-reassign-text: rgb(167, 243, 208);
-  --pss-reassign-panel-bg: rgba(6, 44, 28, 0.35);
-  --pss-reassign-btn-bg: rgba(6, 44, 28, 0.25);
-  --pss-reassign-btn-active: rgba(6, 44, 28, 0.5);
-  --pss-reassign-primary: rgb(5, 150, 105);
-  --pss-reassign-primary-active: rgb(4, 120, 87);
-}
-[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] {
-  --pss-reassign-border: rgba(251, 113, 133, 0.4);
+  --pss-reassign-border: rgba(251, 113, 133, 0.45);
   --pss-reassign-text: rgb(254, 205, 211);
-  --pss-reassign-panel-bg: rgba(76, 5, 25, 0.35);
-  --pss-reassign-btn-bg: rgba(76, 5, 25, 0.25);
-  --pss-reassign-btn-active: rgba(76, 5, 25, 0.5);
+  --pss-reassign-panel-bg: rgba(76, 5, 25, 0.45);
+  --pss-reassign-btn-bg: rgba(76, 5, 25, 0.35);
+  --pss-reassign-btn-active: rgba(76, 5, 25, 0.6);
   --pss-reassign-primary: rgb(225, 29, 72);
   --pss-reassign-primary-active: rgb(190, 18, 60);
 }
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] {
+  --pss-reassign-border: rgba(52, 211, 153, 0.45);
+  --pss-reassign-text: rgb(167, 243, 208);
+  --pss-reassign-panel-bg: rgba(6, 44, 28, 0.45);
+  --pss-reassign-btn-bg: rgba(6, 44, 28, 0.35);
+  --pss-reassign-btn-active: rgba(6, 44, 28, 0.6);
+  --pss-reassign-primary: rgb(16, 185, 129);
+  --pss-reassign-primary-active: rgb(5, 150, 105);
+}
 [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] {
-  --pss-reassign-border: rgba(56, 189, 248, 0.4);
-  --pss-reassign-text: rgb(186, 230, 253);
-  --pss-reassign-panel-bg: rgba(12, 44, 63, 0.35);
-  --pss-reassign-btn-bg: rgba(12, 44, 63, 0.25);
-  --pss-reassign-btn-active: rgba(12, 44, 63, 0.5);
-  --pss-reassign-primary: rgb(2, 132, 199);
-  --pss-reassign-primary-active: rgb(3, 105, 161);
+  --pss-reassign-border: rgba(96, 165, 250, 0.45);
+  --pss-reassign-text: rgb(191, 219, 254);
+  --pss-reassign-panel-bg: rgba(23, 37, 84, 0.45);
+  --pss-reassign-btn-bg: rgba(23, 37, 84, 0.35);
+  --pss-reassign-btn-active: rgba(23, 37, 84, 0.6);
+  --pss-reassign-primary: rgb(37, 99, 235);
+  --pss-reassign-primary-active: rgb(29, 78, 216);
 }
 [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] {
-  --pss-reassign-border: rgba(245, 158, 11, 0.4);
-  --pss-reassign-text: rgb(253, 230, 138);
-  --pss-reassign-panel-bg: rgba(69, 26, 3, 0.35);
-  --pss-reassign-btn-bg: rgba(69, 26, 3, 0.25);
-  --pss-reassign-btn-active: rgba(69, 26, 3, 0.5);
-  --pss-reassign-primary: rgb(217, 119, 6);
-  --pss-reassign-primary-active: rgb(180, 83, 9);
+  --pss-reassign-border: rgba(161, 161, 170, 0.45);
+  --pss-reassign-text: rgb(212, 212, 216);
+  --pss-reassign-panel-bg: rgba(39, 39, 42, 0.55);
+  --pss-reassign-btn-bg: rgba(39, 39, 42, 0.45);
+  --pss-reassign-btn-active: rgba(63, 63, 70, 0.65);
+  --pss-reassign-primary: rgb(82, 82, 91);
+  --pss-reassign-primary-active: rgb(63, 63, 70);
 }
 [data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-btn] {
   background-color: var(--pss-reassign-btn-bg) !important;
@@ -4713,7 +4713,7 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   border-color: #818cf8 !important;
   box-shadow: none !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] .text-cyan-300 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] .text-indigo-300 {
   color: #4338ca !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] {
@@ -4728,7 +4728,7 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   border-color: #fb923c !important;
   box-shadow: none !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] .text-violet-300 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] .text-orange-300 {
   color: #c2410c !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] {
@@ -4743,7 +4743,7 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   border-color: #fb7185 !important;
   box-shadow: none !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] .text-emerald-300 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] .text-rose-300 {
   color: #be123c !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] {
@@ -4758,7 +4758,7 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   border-color: #86efac !important;
   box-shadow: none !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] .text-rose-300 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] .text-emerald-300 {
   color: #15803d !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] {
@@ -4773,7 +4773,7 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   border-color: #93c5fd !important;
   box-shadow: none !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] .text-sky-300 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] .text-blue-300 {
   color: #1d4ed8 !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] {
@@ -4788,7 +4788,7 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   border-color: #d4d4d8 !important;
   box-shadow: none !important;
 }
-html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] .text-amber-300 {
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] .font-bold.text-zinc-300 {
   color: #52525b !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card .text-zinc-300 {
@@ -5210,28 +5210,22 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
   box-shadow: none !important;
 }
 
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-amber-200\/70,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-indigo-200\/70,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-orange-200\/70,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-rose-200\/70 {
   color: #78716c !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-amber-200\/90,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-indigo-200\/90,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-orange-200\/90,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-rose-200\/90 {
   color: #57534e !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-amber-50,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-indigo-50,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-orange-50,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-rose-50 {
   color: #18181b !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-amber-400,
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-orange-400,
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-rose-400 {
-  background-color: #fef3c7 !important;
-  color: #92400e !important;
-}
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] .bg-amber-400 {
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] .bg-indigo-400 {
   background-color: #e0e7ff !important;
   color: #3730a3 !important;
 }
@@ -5247,26 +5241,26 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
   background-color: #f4f4f5 !important;
   color: #52525b !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-amber-500\/25,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-indigo-500\/25,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-orange-500\/25,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-rose-500\/25 {
   background-color: #f4f4f5 !important;
   color: #3f3f46 !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-amber-100,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-indigo-100,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-orange-100,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-rose-100 {
   color: #3f3f46 !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-amber-400\/25,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-indigo-400\/25,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-orange-400\/25,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-rose-400\/25 {
   border-color: #e4e4e7 !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] .text-amber-400 {
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] .text-indigo-400 {
   color: #4f46e5 !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] .text-amber-500 {
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] .text-indigo-500 {
   color: #4338ca !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='orange'] .text-orange-400 {

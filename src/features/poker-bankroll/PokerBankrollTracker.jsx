@@ -2190,7 +2190,7 @@ export default function PokerBankrollTracker({
                               setTermsDealId(scopeId)
                               triggerTapHapticLight()
                             }}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wide touch-manipulation ${theme.termsBtn}`}
+                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${theme.termsBtn}`}
                             data-poker-hero-terms-btn
                           >
                             Terms

@@ -501,6 +501,8 @@ export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId
 
 /** Stakee deletes a stake before any Edge backer has accepted. Removes stake sessions too. */
 export async function cancelStakeDeal(supabase, dealId, stakeeUserId) {
+  const { error: notifyErr } = await notifyStableStakeGuests(supabase, dealId, { kind: 'deleted' })
+  if (notifyErr) console.warn('[poker-stable] guest delete notify failed', notifyErr.message)
   const { error } = await supabase.rpc('poker_stable_cancel_stake_deal', {
     p_deal_id: dealId,
   })
@@ -1145,11 +1147,12 @@ export function sliceDisplayName(slice, profilesById = {}) {
  * Notify guest backers (Twilio SMS + Resend email) via Edge Function.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
- * @param {{ sliceIds?: string[] }} [opts]
+ * @param {{ sliceIds?: string[]; kind?: 'offer' | 'deleted' }} [opts]
  */
 export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
   const body = { deal_id: dealId }
   if (opts.sliceIds?.length) body.slice_ids = opts.sliceIds
+  if (opts.kind === 'deleted') body.kind = 'deleted'
   const { data, error } = await supabase.functions.invoke('poker-stable-notify', { body })
   if (error) return { error }
   if (data?.error) return { error: new Error(data.error) }

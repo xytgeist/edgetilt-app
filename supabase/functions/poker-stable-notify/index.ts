@@ -1,7 +1,11 @@
 /**
- * Notify guest backers on a Poker Stable cash stake offer.
+ * Notify guest backers on a Poker Stable cash stake offer or deletion.
  *
- * Player-created deals: stakee invokes after create/edit when guest slices have contact info.
+ * body.kind:
+ *   - offer (default): player created/updated stake terms
+ *   - deleted: player deleted the stake (call before DB delete)
+ *
+ * Player-created deals: stakee invokes when guest slices have contact info.
  *
  * Channels:
  *   - guest → Twilio SMS and/or Resend email (informational; no guest claim UI yet)
@@ -95,7 +99,8 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function formatStakeNotifyCopy(args: {
+function formatStakeMessageCopy(args: {
+  kind: 'offer' | 'deleted'
   actorLabel: string
   backerArticle: 'the' | 'a'
   dealLabel: string
@@ -104,9 +109,13 @@ function formatStakeNotifyCopy(args: {
   pricingLine: string
   appUrl: string
 }): { subject: string; text: string; html: string } {
-  const introPlain = `${args.actorLabel} has created a stake on Edgetilt.com with you as ${args.backerArticle} backer.`
+  const isDeleted = args.kind === 'deleted'
+  const introPlain = isDeleted
+    ? `${args.actorLabel} has deleted a stake on Edgetilt.com that listed you as ${args.backerArticle} backer.`
+    : `${args.actorLabel} has created a stake on Edgetilt.com with you as ${args.backerArticle} backer.`
   const nameLine = `Name of stake: ${args.dealLabel || '—'}`
-  const stakeLine = `Total stake: ${args.baselineLabel} (you own ${formatPct(args.actionPct)}%)`
+  const ownVerb = isDeleted ? 'owned' : 'own'
+  const stakeLine = `Total stake: ${args.baselineLabel} (you ${ownVerb} ${formatPct(args.actionPct)}%)`
   const text = [introPlain, nameLine, stakeLine, args.pricingLine].join('\n\n')
 
   const safeActor = escapeHtml(args.actorLabel)
@@ -114,7 +123,9 @@ function formatStakeNotifyCopy(args: {
   const safeStakeLine = escapeHtml(stakeLine)
   const safePricingLine = escapeHtml(args.pricingLine)
   const safeUrl = escapeHtml(args.appUrl)
-  const introHtml = `${safeActor} has created a stake on <a href="${safeUrl}">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
+  const introHtml = isDeleted
+    ? `${safeActor} has deleted a stake on <a href="${safeUrl}">Edgetilt.com</a> that listed you as ${args.backerArticle} backer.`
+    : `${safeActor} has created a stake on <a href="${safeUrl}">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
   const html = [
     `<p style="margin:0 0 1em;line-height:1.5">${introHtml}</p>`,
     `<p style="margin:0 0 1em;line-height:1.5">${safeNameLine}</p>`,
@@ -122,7 +133,9 @@ function formatStakeNotifyCopy(args: {
     `<p style="margin:0;line-height:1.5">${safePricingLine}</p>`,
   ].join('')
 
-  const subject = `${args.actorLabel} created a stake with you on Edgetilt.com`
+  const subject = isDeleted
+    ? `${args.actorLabel} deleted a stake on Edgetilt.com`
+    : `${args.actorLabel} created a stake with you on Edgetilt.com`
   return { subject, text, html }
 }
 
@@ -218,7 +231,7 @@ Deno.serve(async (req) => {
     const auth = await getUserFromJwt(admin, req)
     if ('error' in auth) return jsonResponse({ error: auth.error }, auth.status)
 
-    let body: { deal_id?: string; slice_ids?: string[] } = {}
+    let body: { deal_id?: string; slice_ids?: string[]; kind?: string } = {}
     try {
       body = await req.json()
     } catch {
@@ -227,6 +240,9 @@ Deno.serve(async (req) => {
 
     const dealId = String(body.deal_id || '').trim()
     if (!dealId) return jsonResponse({ error: 'deal_id is required.' }, 400)
+
+    const kindRaw = String(body.kind || 'offer').trim().toLowerCase()
+    const kind: 'offer' | 'deleted' = kindRaw === 'deleted' ? 'deleted' : 'offer'
 
     const sliceIdFilter = Array.isArray(body.slice_ids)
       ? body.slice_ids.map((id) => String(id || '').trim()).filter(Boolean)
@@ -306,7 +322,8 @@ Deno.serve(async (req) => {
       }
 
       const pricingLine = formatPricingLine(slice)
-      const { subject, text, html } = formatStakeNotifyCopy({
+      const { subject, text, html } = formatStakeMessageCopy({
+        kind,
         actorLabel,
         backerArticle,
         dealLabel,
@@ -341,6 +358,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       ok: true,
+      kind,
       deal_id: dealId,
       notified_count: notifiedCount,
       slices: results,

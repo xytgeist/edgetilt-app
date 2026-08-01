@@ -36,7 +36,9 @@ supabase functions deploy poker-stable-notify --project-ref kcosfvmreeiosdjdzycb
 ## Body
 
 ```json
-{ "deal_id": "<uuid>", "slice_ids": ["<optional slice uuid>"] }
+{ "deal_id": "<uuid>", "slice_ids": ["<optional slice uuid>"], "kind": "offer" }
 ```
+
+`kind`: `offer` (default) or `deleted`. For **deleted**, call **before** the deal row is removed so guest slice contact info is still readable.
 
 Caller must be the deal **stakee** (player who created the stake). JWT required.

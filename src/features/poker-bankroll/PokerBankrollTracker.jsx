@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { DollarSign, Trophy } from 'lucide-react'
+import { DollarSign, FileText, Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -2166,7 +2166,21 @@ export default function PokerBankrollTracker({
                           </span>
                         ) : null}
                       </div>
-                      {!onStake ? (
+                      {onStake ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError('')
+                            setTermsDealId(scopeId)
+                            triggerTapHapticLight()
+                          }}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
+                          aria-label="Stake terms"
+                          data-poker-hero-terms-icon
+                        >
+                          <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
+                        </button>
+                      ) : (
                         <div className="flex shrink-0 items-center gap-1.5">
                           <button
                             type="button"
@@ -2189,7 +2203,7 @@ export default function PokerBankrollTracker({
                             Edit
                           </button>
                         </div>
-                      ) : null}
+                      )}
                     </div>
                     {loading ? (
                       <>
@@ -2229,47 +2243,31 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`mt-5 border-t pt-4 ${
+                        className={`mt-5 grid min-h-[4.25rem] grid-cols-4 gap-2 border-t pt-4 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >
-                        <div className="grid min-h-[4.25rem] grid-cols-4 gap-2">
-                          <BankrollStat
-                            label="Profit"
-                            value={fmtPoker$(hero.stats.profit)}
-                            tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
-                          />
-                          <BankrollStat
-                            label="Hourly"
-                            value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
-                            tone={
-                              hero.stats.hourly == null
-                                ? 'neutral'
-                                : hero.stats.hourly >= 0
-                                  ? 'good'
-                                  : 'bad'
-                            }
-                          />
-                          <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
-                          <BankrollStat
-                            label="Win rate"
-                            value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
-                          />
-                        </div>
-                        {onStake ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setError('')
-                              setTermsDealId(scopeId)
-                              triggerTapHapticLight()
-                            }}
-                            className="mt-1 block w-full text-right text-xs font-semibold text-zinc-400 underline decoration-zinc-500/40 underline-offset-2 touch-manipulation active:opacity-70"
-                            data-poker-hero-terms-link
-                          >
-                            Terms
-                          </button>
-                        ) : null}
+                        <BankrollStat
+                          label="Profit"
+                          value={fmtPoker$(hero.stats.profit)}
+                          tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
+                        />
+                        <BankrollStat
+                          label="Hourly"
+                          value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
+                          tone={
+                            hero.stats.hourly == null
+                              ? 'neutral'
+                              : hero.stats.hourly >= 0
+                                ? 'good'
+                                : 'bad'
+                          }
+                        />
+                        <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
+                        <BankrollStat
+                          label="Win rate"
+                          value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
+                        />
                       </div>
                     ) : null}
                   </div>

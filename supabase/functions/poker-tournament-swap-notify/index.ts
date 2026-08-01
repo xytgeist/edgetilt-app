@@ -19,18 +19,13 @@
  */
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import { createBillingAdmin, getUserFromJwt } from '../_shared/billingDb.ts'
+import { resolvePublicAppOrigin } from '../_shared/publicAppOrigin.ts'
 import {
   escapeHtml,
   transactionalEmailFallbackLink,
   transactionalEmailParagraph,
   wrapTransactionalEmailHtml,
 } from '../_shared/transactionalEmail.ts'
-
-function appOrigin(): string {
-  const fromEnv = Deno.env.get('PUBLIC_APP_URL')?.trim() || Deno.env.get('APP_ORIGIN')?.trim()
-  if (fromEnv) return fromEnv.replace(/\/$/, '')
-  return 'https://edgetilt.com'
-}
 
 function fromAddress(): string {
   return (
@@ -239,7 +234,7 @@ async function createGuestClaimUrl(
     expires_at: expiresAt,
   })
   if (tokErr) throw new Error(tokErr.message)
-  return `${appOrigin()}/poker-swap-claim?token=${raw}`
+  return `${resolvePublicAppOrigin()}/poker-swap-claim?token=${raw}`
 }
 
 Deno.serve(async (req) => {
@@ -338,7 +333,7 @@ Deno.serve(async (req) => {
             ? 'View swap details'
             : 'Enter your cash result'
           const text = `${subject}. ${cta}: ${claimUrl}`
-          const appUrl = appOrigin()
+          const appUrl = resolvePublicAppOrigin()
           const bodyHtml = [
             transactionalEmailParagraph(`${escapeHtml(subject)}.`),
             transactionalEmailFallbackLink(claimUrl),
@@ -435,7 +430,7 @@ Deno.serve(async (req) => {
 
       const claimUrl = await createGuestClaimUrl(admin, swapId)
       const text = `${offerLine}\nAccept / enter your result: ${claimUrl}`
-      const appUrl = appOrigin()
+      const appUrl = resolvePublicAppOrigin()
       const bodyHtml = [
         transactionalEmailParagraph(escapeHtml(offerLine)),
         transactionalEmailFallbackLink(claimUrl),

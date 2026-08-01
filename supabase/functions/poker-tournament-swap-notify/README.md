@@ -15,9 +15,9 @@ Guest **HTML email** uses the shared branded shell (`_shared/transactionalEmail.
 | `TWILIO_API_KEY_SECRET` | for SMS | Shown once when the key is created |
 | `TWILIO_FROM_NUMBER` | for SMS | E.164 Twilio number |
 | `TWILIO_AUTH_TOKEN` | optional | Legacy fallback if API key not set |
-| `PUBLIC_APP_URL` / `APP_ORIGIN` | optional | Claim link host (default `https://edgetilt.com`) |
+| `PUBLIC_APP_URL` / `APP_ORIGIN` | optional | Claim link host. Default **`https://edgetilt.com`** on prod; on **test** (`kcosfvmreeiosdjdzycb`) defaults to **`https://lvslotpro.com`** when unset. Set explicitly to override. |
 
-On **test**, set `PUBLIC_APP_URL` to the test frontend origin so claim links hit the right host.
+On **test**, claim links must land on **`lvslotpro.com`** so the SPA talks to the same Supabase project that stored the token hash.
 
 Create a **Standard** API key in Twilio (not the Auth Token). Basic auth is `API_KEY_SID:API_KEY_SECRET`; Account SID stays in the request path.
 

@@ -20,17 +20,12 @@
  */
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import { createBillingAdmin, getUserFromJwt } from '../_shared/billingDb.ts'
+import { resolvePublicAppOrigin } from '../_shared/publicAppOrigin.ts'
 import {
   escapeHtml,
   transactionalEmailParagraph,
   wrapTransactionalEmailHtml,
 } from '../_shared/transactionalEmail.ts'
-
-function appOrigin(): string {
-  const fromEnv = Deno.env.get('PUBLIC_APP_URL')?.trim() || Deno.env.get('APP_ORIGIN')?.trim()
-  if (fromEnv) return fromEnv.replace(/\/$/, '')
-  return 'https://edgetilt.com'
-}
 
 function fromAddress(): string {
   return (
@@ -493,7 +488,7 @@ Deno.serve(async (req) => {
 
     const baselineLabel = fmtMoney(Number(deal.baseline_bankroll))
     const dealLabel = String(deal.label || '').trim()
-    const appUrl = appOrigin()
+    const appUrl = resolvePublicAppOrigin()
 
     const results: Record<string, unknown>[] = []
     let notifiedCount = 0

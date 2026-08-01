@@ -9,6 +9,7 @@ import { createBackingDeal, lookupProfileByHandle, requestBackingDeal } from './
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
   scrollPokerStableSliceIntoView,
+  usePokerStableSheetKeyboardDismissScroll,
 } from './pokerStableSheetScroll.js'
 import {
   POKER_STABLE_SLICE_INNER_CLASS,
@@ -267,7 +268,9 @@ function PokerStableDealFormSheet({
   const [friendSlices, setFriendSlices] = useState([])
   const [slices, setSlices] = useState([{ ...EMPTY_SLICE }])
   const sheetRef = useRef(null)
+  const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
+  usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef)
 
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
@@ -544,6 +547,7 @@ function PokerStableDealFormSheet({
           )}
         </div>
 
+        <div ref={actionsRef} data-poker-stable-sheet-actions>
         <button
           type="button"
           onClick={addBackerSlice}
@@ -561,6 +565,7 @@ function PokerStableDealFormSheet({
         >
           {saving ? 'Saving…' : submitLabel}
         </button>
+        </div>
       </div>
     </div>
   )

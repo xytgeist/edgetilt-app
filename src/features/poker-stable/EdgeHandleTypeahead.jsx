@@ -70,7 +70,13 @@ export default function EdgeHandleTypeahead({
       onChange(handle)
       onSelectProfile?.(profile)
       closeList()
-      inputRef.current?.blur()
+      requestAnimationFrame(() => {
+        const input = inputRef.current
+        if (!input) return
+        if (document.activeElement !== input) {
+          input.focus({ preventScroll: true })
+        }
+      })
     },
     [onChange, onSelectProfile, closeList],
   )
@@ -271,6 +277,7 @@ export default function EdgeHandleTypeahead({
                     e.preventDefault()
                     pickProfile(profile)
                   }}
+                  onPointerDown={(e) => e.preventDefault()}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
                     active ? 'bg-zinc-800' : 'active:bg-zinc-800/60'
                   }`}

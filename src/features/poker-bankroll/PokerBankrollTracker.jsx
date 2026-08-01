@@ -2655,43 +2655,43 @@ export default function PokerBankrollTracker({
                           )}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="flex items-baseline justify-between gap-2">
+                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 gap-y-0.5">
                             <span className="truncate font-semibold text-white">
                               {pokerSessionStakesLabel(session)}
                             </span>
-                            <span className="flex shrink-0 flex-col items-end gap-0.5">
-                              <span
-                                className={`font-bold tabular-nums ${
-                                  wl == null
-                                    ? 'text-zinc-500'
-                                    : wl >= 0
-                                      ? 'text-emerald-400'
-                                      : 'text-rose-400'
-                                }`}
-                              >
-                                {wl == null ? '-' : fmtPoker$(wl)}
-                              </span>
-                              {isOnStake && playerShare != null ? (
-                                <span
-                                  data-poker-session-player-share
-                                  className="text-[10px] font-medium tabular-nums text-zinc-500"
-                                >
-                                  Your share{' '}
-                                  <span
-                                    className={
-                                      playerShare >= 0 ? 'text-emerald-400/85' : 'text-rose-400/85'
-                                    }
-                                  >
-                                    {fmtPoker$(playerShare)}
-                                  </span>
-                                </span>
-                              ) : null}
+                            <span
+                              className={`shrink-0 text-right font-bold tabular-nums ${
+                                wl == null
+                                  ? 'text-zinc-500'
+                                  : wl >= 0
+                                    ? 'text-emerald-400'
+                                    : 'text-rose-400'
+                              }`}
+                            >
+                              {wl == null ? '-' : fmtPoker$(wl)}
                             </span>
-                          </span>
-                          <span className="mt-0.5 block truncate text-[12px] text-zinc-500">
-                            {pokerSessionMetaLine(session)}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] text-zinc-600">
+                            <span className="min-w-0 truncate text-[12px] text-zinc-500">
+                              {pokerSessionMetaLine(session)}
+                            </span>
+                            {isOnStake && playerShare != null ? (
+                              <span
+                                data-poker-session-player-share
+                                className="shrink-0 whitespace-nowrap text-right text-[10px] font-medium tabular-nums text-zinc-500"
+                              >
+                                Your share{' '}
+                                <span
+                                  className={
+                                    playerShare >= 0
+                                      ? 'text-emerald-400/85'
+                                      : 'text-rose-400/85'
+                                  }
+                                >
+                                  {fmtPoker$(playerShare)}
+                                </span>
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="mt-0.5 block truncate text-[11px] text-zinc-600">
                             {new Date(session.start_at).toLocaleDateString('en-US', {
                               weekday: 'short',
                               month: 'short',

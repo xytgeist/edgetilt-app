@@ -2071,29 +2071,24 @@ export default function PokerBankrollTracker({
                     <div className="mb-1.5 flex h-8 items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                         <div
-                          className={`shrink-0 text-xs font-semibold uppercase tracking-wide ${
+                          className={`min-w-0 truncate text-xs font-semibold uppercase tracking-wide ${
                             onStake ? theme.label : 'text-zinc-400'
                           }`}
                         >
-                          {onStake ? 'Stake bankroll' : 'Poker bankroll'}
+                          {onStake
+                            ? hero.deal?.label?.trim() || 'Cash backing'
+                            : 'Poker bankroll'}
                         </div>
                         {onStake ? (
-                          <>
-                            <span
-                              className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                                hero.deal?.status === 'pending'
-                                  ? 'bg-zinc-500/40 text-zinc-200'
-                                  : theme.badge
-                              }`}
-                            >
-                              {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
-                            </span>
-                            {hero.deal?.label ? (
-                              <span className={`truncate text-[11px] font-semibold ${theme.badgeText}`}>
-                                {hero.deal.label}
-                              </span>
-                            ) : null}
-                          </>
+                          <span
+                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                              hero.deal?.status === 'pending'
+                                ? 'bg-zinc-500/40 text-zinc-200'
+                                : theme.badge
+                            }`}
+                          >
+                            {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
+                          </span>
                         ) : null}
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">

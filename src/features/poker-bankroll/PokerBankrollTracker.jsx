@@ -2041,7 +2041,8 @@ export default function PokerBankrollTracker({
                               setSheet('createStake')
                               triggerTapHapticLight()
                             }}
-                            className="rounded-xl bg-cyan-600/90 px-3 py-1.5 text-xs font-bold text-white touch-manipulation active:bg-cyan-500"
+                            className="rounded-xl bg-zinc-700/60 px-3 py-1.5 text-xs font-semibold text-cyan-400 touch-manipulation active:bg-zinc-600"
+                            data-poker-hero-stake-btn
                           >
                             + Stake
                           </button>

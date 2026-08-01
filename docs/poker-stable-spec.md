@@ -93,6 +93,110 @@ Partial payments supported. Guest slices: player authoritative only.
 
 ---
 
+## Bankroll & session attribution
+
+**Target model (Ryan 2026-08-01).** Not fully implemented yet ... current Bankroll UI may still mix swap deltas into stake-scoped stats; treat this section as canonical when building settle, merge, and metrics.
+
+### Three surfaces
+
+| Surface | What it tracks | Moves when |
+| --- | --- | --- |
+| **Stake roll** (`poker_deal_bankroll_profiles` for `deal_id`) | Table results on sessions logged to the deal (`deal_id` set). Gross session P/L only ... **not** swap IOUs. | Each completed stake session updates roll (implicitly or on recompute). |
+| **Player personal bankroll** (`poker_bankroll_profiles`, `deal_id` null scope) | Money the player keeps over time: personal-scope sessions, **swap settlements**, and **crystallized share** from stake settle/close events. | Personal sessions; swap settle; stake **periodic settle** and **close** transfers (see below). **Not** from merging stake session gross W/L. |
+| **Backer bankroll** (v2c rollup; per-staker profile TBD) | Each backer's economic result from deals they slice. | Stake **periodic settle** and **close** transfers, pro-rata per slice / settle lines. Underwater close: backers absorb loss by ownership; player personal unchanged. |
+
+**Swaps never enter stake settle math** (makeup, baseline, backer profit share). Swaps are peer IOUs ... see **Swap overlay** below.
+
+### Periodic settle vs close/end
+
+Both use the same **distribution engine** (profit above baseline, makeup cleared first, per-slice lines). They differ in deal lifecycle and session merge.
+
+| | **Periodic settle** (deal stays open) | **Close / end** (deal finished) |
+| --- | --- | --- |
+| Deal status after | `active` | `settled` (or closed equivalent) |
+| Roll after | Reset to **baseline** | Reset to **baseline** (final accounting) |
+| Player personal bankroll | **+** player's share of profit above baseline (or **unchanged** if underwater / no profit to distribute) | Same ... final transfer |
+| Backer bankroll(s) | **+** each slice's settle line (split across backers by terms) | Same; if underwater, backers take the hit by % |
+| Sessions | Stay on deal (`deal_id` unchanged) | **Merge** into personal play history (see **Session merge**) |
+| Example | Baseline $100k, roll $110k, 50/50 player/backer economics → player personal **+$5k**, backers **+$5k** total, roll back to $100k | Same transfer logic on final roll, then archive deal + merge sessions |
+
+**Underwater at close:** player personal bankroll is **not debited** for stake makeup (unless a future explicit payback product). Backers' bankrolls reflect their share of the loss.
+
+### Metrics vs bankroll (Option B)
+
+**Bankroll** and **metrics** intentionally diverge while a stake is open:
+
+- **Metrics** (profit, hourly, win rate, trend, sparkline on **personal** scope): accrue **`player_net_value` per session** as sessions complete ... includes stake attribution + swap overlay. Gives a live "how am I doing?" chart.
+- **Personal bankroll hero amount:** moves only on **settle/close events**, personal-scope sessions, and swap cash settlement ... **not** on each stake session completion.
+
+**Copy (personal hero / trend when active stakes exist):** e.g. *"Includes your share of on-stake sessions; bankroll updates when you settle with backers."*
+
+Win rate: count a session as a win when **`player_net_value > 0`**, not when gross table P/L > 0.
+
+### Session economics: gross, stake value, swap
+
+Every backed session card (on stake, and after merge on personal) shows up to **three layers**:
+
+1. **Gross (headline)** — table result: buy-in / rebuys / add-ons → cash out (+ bounties). `pokerSessionWinLoss(session)`. The story of what happened at the table.
+2. **Your stake value (subline, smaller)** — player's economic share of that session under **active deal slice terms** (not naive `100% − sold action%`). Profit split, markup, and unsold remainder each follow slice math.
+3. **Swap (parens, when settled)** — tournament swap settlement delta for the viewer on that session. Same pattern as today: `(+$25)` / `(−$25)`.
+
+**Swap rule:** swap W/L **adds to / subtracts from player net value only**, never from gross headline.
+
+```
+player_net_value = player_stake_value(session, deal, slices) + swap_settlement_delta(session, viewer)
+```
+
+Shared helper target: **`playerStakeSessionValue(session, deal, slices)`** in stable/bankroll math (name TBD), used by cards, metrics, and settle preview so UI and engine stay aligned.
+
+**Attribution note:** `player_stake_value` uses **deal terms** (per-slice `action_pct`, `pricing_mode`, `player_profit_pct`, markup, rakeback mode), not a single "ownership %" shortcut. Multi-slice deals may mix profit split and markup slices.
+
+### Session merge (on stake close/end)
+
+When a **`cash_backing`** or **`tournament_package`** deal closes:
+
+1. Run final settle (ledger + bankroll transfers above).
+2. **Re-parent or surface** deal sessions on the player's **personal timeline** (implementation: clear `deal_id`, or keep `deal_id` for audit with personal filter including settled deals ... product prefers visible merge with badge).
+3. **Do not** add gross session W/L again to personal bankroll ... settle already crystallized economics.
+4. Session cards show permanent **On stake** badge + stake label (and deal name if set).
+5. **Metrics** on personal scope continue to use **`player_net_value`** for those rows; gross remains display-only headline.
+
+Play history stays complete; double-counting is avoided.
+
+### Tournament package close
+
+Same bankroll rules as cash backing close, one payout when manifest is complete:
+
+- Roll reflects all package sessions (gross).
+- Close-out applies slice terms including **markup** (entry pricing) and **profit on sold action** separately in settle lines.
+- Player personal and each backer bankroll update from settle lines.
+- Session cards: gross + player stake value; swaps (if any) adjust player net only.
+- Then merge sessions to personal history with badges.
+
+**Tournament piece** (single session): swap-shaped piece on one session ... not ongoing stake roll; close at result. Swap integration **v2b**.
+
+### Swap overlay (cross-feature)
+
+| Question | Answer |
+| --- | --- |
+| Do swaps affect stake roll? | **No** |
+| Do swaps affect stake settle / backer share? | **No** |
+| Where do swap settlements post? | **Player personal** economics only (`player_net_value`, not personal bankroll until marked paid / settled if tracking cash separately) |
+| Cap on swap % | Player may swap only on **self-owned action** (`100% − sum of active backing sold action%`) ... see `playerSelfOwnedActionPct` in `pokerStableMath.js` |
+
+Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`poker-tournament-swap-notify`**, `sessionSwapSettlementDelta` in `pokerTournamentSwapMath.js`.
+
+### Implementation checklist (open)
+
+- [ ] Stop adding swap delta to **stake-scoped** hero/stats/sparkline (stake roll = gross sessions only).
+- [ ] **`playerStakeSessionValue`** (+ `player_net_value`) shared helper; wire session cards (dual line + swap parens on net).
+- [ ] Periodic settle RPC: roll → baseline, credit **player personal** + **backer** profiles from settle lines (deal stays `active`).
+- [ ] Close/end RPC: final settle + **session merge** + badges; no second personal bankroll pass on gross W/L.
+- [ ] Personal metrics Option B + hero copy when active stakes exist.
+- [ ] v2c: backer overall bankroll profile(s) updated on settle/close.
+
+---
+
 ## Entry points (UX pivot 2026-08-01)
 
 | Role | Create deal | Manage stake roll / sessions |
@@ -110,6 +214,7 @@ Stable no longer exposes player **+ New deal**. Syndicate slices on a backer req
 | --- | --- |
 | **Bones (shipped)** | 1:1 request/accept, On Stake roll, session sync |
 | **v2 foundation (in build)** | Schema: types, slices, baseline, top-ups, settlements, payment claims; migrate entry; cash backing create/settle/ledger UI |
+| **v2a** | **Bankroll & session attribution** (this spec §): periodic settle + close transfers, session merge, dual-line cards, Option B metrics, swap overlay on player net only |
 | **v2b** | Tournament piece on session (swap integration); tournament package manifest |
 | **v2c** | Notifications (`activity_events`); staker overall bankroll rollup |
 
@@ -136,6 +241,7 @@ New / extended:
 | --- | --- |
 | UI | `src/features/poker-stable/` |
 | Math | `src/features/poker-stable/pokerStableMath.js` |
+| Session + swap attribution (target) | `playerStakeSessionValue` / `player_net_value` (to add; see § Bankroll & session attribution) |
 | API | `src/features/poker-stable/pokerStableApi.js` |
 | On Stake | `src/features/poker-bankroll/PokerBankrollTracker.jsx`, `PokerBankrollHeroCarousel.jsx` |
 | Swap patterns | `src/features/poker-bankroll/pokerTournamentSwapApi.js` |
@@ -145,6 +251,7 @@ New / extended:
 
 ## Update log
 
+- **2026-08-01:** **Bankroll & session attribution** (Ryan design): three surfaces (stake roll, personal, backer); periodic settle vs close; Option B metrics (accrue `player_net_value` per session, bankroll moves on settle only); session cards gross + stake value + swap on net; merge on close without double-count; swaps never in stake settle. See § Bankroll & session attribution. **Not implemented yet.**
 - **2026-08-01:** Guest stake notify: Edge **`poker-stable-notify`** (Resend email + Twilio SMS) on create (`kind=offer`), terms edit with before/after blocks (`kind=terms_edited`), and before stake delete (`kind=deleted`).
 - **2026-08-01:** Stake accent palette: heroes rotate **blue / emerald / rose** (oldest deal = blue). Light mode: tone gradient (slow fade) + neutral elevation; Terms slice cards match; no inset 3D shell.
 - **2026-08-01:** Stake delete (Bankroll **Terms → Delete stake**): stakee may remove a stake before any Edge backer accepts; deletes stake sessions on that deal (`20260801150000`).

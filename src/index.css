@@ -4618,6 +4618,11 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
 [data-poker-stable-sheet] [data-poker-stable-sheet-actions] {
   scroll-margin-bottom: 1.25rem;
 }
+[data-poker-stable-sheet] input::placeholder,
+[data-poker-stable-sheet] textarea::placeholder {
+  color: #a1a1aa !important;
+  font-weight: 400;
+}
 
 /* Guest reassign controls — tone tokens (dark defaults; html.light overrides per slice card) */
 [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] {
@@ -4943,8 +4948,10 @@ html.light [data-poker-stable-sheet] [data-in-field] input,
 html.light [data-poker-stable-sheet] [data-in-field] select {
   background-color: transparent !important;
 }
-html.light [data-poker-stable-sheet] input::placeholder {
-  color: #71717a !important;
+html.light [data-poker-stable-sheet] input::placeholder,
+html.light [data-poker-stable-sheet] textarea::placeholder {
+  color: #a1a1aa !important;
+  font-weight: 400;
 }
 html.light [data-poker-stable-sheet] .bg-zinc-800 {
   background-color: #f4f4f5 !important;

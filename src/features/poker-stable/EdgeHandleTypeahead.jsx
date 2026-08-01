@@ -1,55 +1,19 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
 
 const DEBOUNCE_MS = 120
 const GAP_PX = 4
-const VIEWPORT_PAD_PX = 8
 const MAX_LIST_HEIGHT_PX = 208
 
 function normalizeHandle(value) {
   return String(value || '').trim().replace(/^@+/, '')
 }
 
-/** @param {HTMLElement} inputEl @param {HTMLElement | null | undefined} listEl */
-function measureDropdownPos(inputEl, listEl) {
-  const rect = inputEl.getBoundingClientRect()
-  if (rect.width <= 0 || rect.height <= 0) return null
-
-  const vv = window.visualViewport
-  const vTop = (vv?.offsetTop ?? 0) + VIEWPORT_PAD_PX
-  const vBottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - VIEWPORT_PAD_PX
-  const vWidth = vv?.width ?? window.innerWidth
-  const vLeft = (vv?.offsetLeft ?? 0) + VIEWPORT_PAD_PX
-
-  const listHeight = Math.min(listEl?.offsetHeight || MAX_LIST_HEIGHT_PX, MAX_LIST_HEIGHT_PX)
-  const spaceBelow = Math.max(0, vBottom - rect.bottom - GAP_PX)
-  const spaceAbove = Math.max(0, rect.top - vTop - GAP_PX)
-  const openUp = listHeight > 0 && spaceBelow < 120 && spaceAbove > spaceBelow
-
-  const maxHeight = Math.max(80, Math.min(MAX_LIST_HEIGHT_PX, openUp ? spaceAbove : spaceBelow))
-  let top = openUp ? rect.top - GAP_PX - maxHeight : rect.bottom + GAP_PX
-  top = Math.max(vTop, Math.min(top, vBottom - maxHeight))
-
-  const width = Math.min(rect.width, vWidth - VIEWPORT_PAD_PX * 2)
-  let left = rect.left
-  left = Math.max(vLeft, Math.min(left, vLeft + vWidth - VIEWPORT_PAD_PX - width))
-
-  return {
-    position: 'fixed',
-    top,
-    left,
-    width,
-    maxHeight,
-    zIndex: Z_APP_ALERT + 1,
-  }
-}
-
 /**
  * Inline @handle typeahead for Stable flows.
- * Dropdown portals to body so it is not clipped by sheet overflow.
+ * Dropdown anchors below the input (absolute) so it stays glued on mobile sheets.
  */
 export default function EdgeHandleTypeahead({
   supabaseClient,
@@ -66,7 +30,7 @@ export default function EdgeHandleTypeahead({
   const listId = useId()
   const containerRef = useRef(null)
   const inputRef = useRef(null)
-  const listPortalRef = useRef(null)
+  const listRef = useRef(null)
   const debounceRef = useRef(0)
   const fetchGenRef = useRef(0)
 
@@ -74,7 +38,7 @@ export default function EdgeHandleTypeahead({
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
-  const [menuStyle, setMenuStyle] = useState(/** @type {React.CSSProperties | null} */ (null))
+  const [openUpward, setOpenUpward] = useState(false)
 
   const normalizedValue = normalizeHandle(value)
   const selectedHandle = normalizeHandle(selectedProfile?.handle)
@@ -87,7 +51,7 @@ export default function EdgeHandleTypeahead({
     setSuggestions([])
     setLoading(false)
     setActiveIndex(0)
-    setMenuStyle(null)
+    setOpenUpward(false)
   }, [])
 
   const showList = useMemo(
@@ -144,40 +108,74 @@ export default function EdgeHandleTypeahead({
   }, [supabaseClient, normalizedValue, excludeUserId, disabled, isLockedSelection, closeList])
 
   useLayoutEffect(() => {
-    if (!showList) {
-      setMenuStyle(null)
-      return undefined
-    }
+    if (!showList) return undefined
 
-    const update = () => {
+    const updatePlacement = () => {
+      const anchor = containerRef.current
       const input = inputRef.current
-      if (!input) return
-      const pos = measureDropdownPos(input, listPortalRef.current)
-      if (pos) setMenuStyle(pos)
+      const list = listRef.current
+      if (!anchor || !input) return
+
+      const rect = input.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+
+      const vv = window.visualViewport
+      const vBottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - 8
+      const vTop = (vv?.offsetTop ?? 0) + 8
+      const listHeight = Math.min(list?.offsetHeight || MAX_LIST_HEIGHT_PX, MAX_LIST_HEIGHT_PX)
+      const spaceBelow = vBottom - rect.bottom - GAP_PX
+      const spaceAbove = rect.top - vTop - GAP_PX
+      setOpenUpward(listHeight > 0 && spaceBelow < listHeight && spaceAbove > spaceBelow)
     }
 
-    update()
-    const raf = requestAnimationFrame(update)
+    updatePlacement()
+    const raf = requestAnimationFrame(updatePlacement)
 
     const vv = window.visualViewport
-    vv?.addEventListener('resize', update)
-    vv?.addEventListener('scroll', update)
-    window.addEventListener('resize', update)
-    window.addEventListener('scroll', update, true)
+    vv?.addEventListener('resize', updatePlacement)
+    vv?.addEventListener('scroll', updatePlacement)
+    window.addEventListener('resize', updatePlacement)
+    window.addEventListener('scroll', updatePlacement, true)
 
-    const input = inputRef.current
-    const ro = typeof ResizeObserver !== 'undefined' && input ? new ResizeObserver(update) : null
-    ro?.observe(input)
+    const anchor = containerRef.current
+    const ro = typeof ResizeObserver !== 'undefined' && anchor ? new ResizeObserver(updatePlacement) : null
+    ro?.observe(anchor)
+
+    const scrollParents = []
+    let node = anchor?.parentElement
+    while (node) {
+      const style = window.getComputedStyle(node)
+      if (/(auto|scroll)/.test(style.overflowY) || /(auto|scroll)/.test(style.overflow)) {
+        scrollParents.push(node)
+        node.addEventListener('scroll', updatePlacement, { passive: true })
+      }
+      node = node.parentElement
+    }
 
     return () => {
       cancelAnimationFrame(raf)
-      vv?.removeEventListener('resize', update)
-      vv?.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-      window.removeEventListener('scroll', update, true)
+      vv?.removeEventListener('resize', updatePlacement)
+      vv?.removeEventListener('scroll', updatePlacement)
+      window.removeEventListener('resize', updatePlacement)
+      window.removeEventListener('scroll', updatePlacement, true)
       ro?.disconnect()
+      for (const el of scrollParents) el.removeEventListener('scroll', updatePlacement)
     }
   }, [showList, suggestions.length, loading, activeIndex, normalizedValue])
+
+  useLayoutEffect(() => {
+    if (!showList) return undefined
+    const sheet = containerRef.current?.closest('[data-poker-stable-sheet]')
+    if (!sheet) return undefined
+    const prevOverflow = sheet.style.overflow
+    const prevOverflowY = sheet.style.overflowY
+    sheet.style.overflow = 'visible'
+    sheet.style.overflowY = 'visible'
+    return () => {
+      sheet.style.overflow = prevOverflow
+      sheet.style.overflowY = prevOverflowY
+    }
+  }, [showList])
 
   useEffect(() => {
     if (!open) return undefined
@@ -185,7 +183,6 @@ export default function EdgeHandleTypeahead({
       const target = e.target
       if (!(target instanceof Node)) return
       if (containerRef.current?.contains(target)) return
-      if (listPortalRef.current?.contains(target)) return
       closeList()
     }
     document.addEventListener('pointerdown', onDocPointerDown)
@@ -196,55 +193,13 @@ export default function EdgeHandleTypeahead({
     e.stopPropagation()
   }
 
-  const listNode =
-    showList && menuStyle ? (
-      <ul
-        id={listId}
-        ref={listPortalRef}
-        role="listbox"
-        data-edge-handle-typeahead-list
-        style={menuStyle}
-        className="overflow-y-auto overscroll-contain rounded-2xl border border-zinc-700 bg-zinc-900 py-1 shadow-2xl"
-      >
-        {loading && suggestions.length === 0 ? (
-          <li className="px-4 py-3 text-sm text-zinc-500">Searching…</li>
-        ) : null}
-        {suggestions.map((profile, idx) => {
-          const handle = normalizeHandle(profile.handle)
-          const active = idx === activeIndex
-          return (
-            <li key={profile.user_id} role="option" aria-selected={active}>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  pickProfile(profile)
-                }}
-                className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
-                  active ? 'bg-amber-600/20' : 'active:bg-zinc-800'
-                }`}
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
-                  {profileAvatarInitials(profile.display_name, profile.handle)}
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-white">
-                    {profile.display_name || `@${handle}`}
-                  </span>
-                  <span className="block truncate text-xs text-zinc-500">@{handle}</span>
-                </span>
-              </button>
-            </li>
-          )
-        })}
-        {!loading && suggestions.length === 0 ? (
-          <li className="px-4 py-3 text-sm text-zinc-500">No matching handles.</li>
-        ) : null}
-      </ul>
-    ) : null
-
   return (
-    <div ref={containerRef} className="relative" onMouseDown={stopBubble} onPointerDown={stopBubble}>
+    <div
+      ref={containerRef}
+      className={`relative ${showList ? 'z-[131]' : ''}`}
+      onMouseDown={stopBubble}
+      onPointerDown={stopBubble}
+    >
       <input
         ref={inputRef}
         type="text"
@@ -302,7 +257,53 @@ export default function EdgeHandleTypeahead({
         </p>
       ) : null}
 
-      {typeof document !== 'undefined' && listNode ? createPortal(listNode, document.body) : null}
+      {showList ? (
+        <ul
+          id={listId}
+          ref={listRef}
+          role="listbox"
+          data-edge-handle-typeahead-list
+          className={`absolute left-0 right-0 overflow-y-auto overscroll-contain rounded-2xl border border-zinc-700 bg-zinc-900 py-1 shadow-2xl ${
+            openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+          style={{ maxHeight: MAX_LIST_HEIGHT_PX, zIndex: Z_APP_ALERT + 1 }}
+        >
+          {loading && suggestions.length === 0 ? (
+            <li className="px-4 py-3 text-sm text-zinc-500">Searching…</li>
+          ) : null}
+          {suggestions.map((profile, idx) => {
+            const handle = normalizeHandle(profile.handle)
+            const active = idx === activeIndex
+            return (
+              <li key={profile.user_id} role="option" aria-selected={active}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    pickProfile(profile)
+                  }}
+                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
+                    active ? 'bg-amber-600/20' : 'active:bg-zinc-800'
+                  }`}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-bold text-zinc-200">
+                    {profileAvatarInitials(profile.display_name, profile.handle)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-white">
+                      {profile.display_name || `@${handle}`}
+                    </span>
+                    <span className="block truncate text-xs text-zinc-500">@{handle}</span>
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+          {!loading && suggestions.length === 0 ? (
+            <li className="px-4 py-3 text-sm text-zinc-500">No matching handles.</li>
+          ) : null}
+        </ul>
+      ) : null}
     </div>
   )
 }

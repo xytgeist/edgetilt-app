@@ -2331,6 +2331,13 @@ export default function PokerBankrollTracker({
                 const theme = onStake
                   ? stakeHeroTheme(stakeHeroThemeIndexForDeal(scopeId, stakeeDeals))
                   : null
+                const showEndStake =
+                  onStake &&
+                  !loading &&
+                  stakeeCanSettleStake(hero.deal, slicesByDeal[scopeId] || [], {
+                    userId,
+                    hasProposal: stakeDealHasProposal(hero.deal),
+                  })
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -2457,51 +2464,48 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`mt-5 grid min-h-[4.25rem] grid-cols-4 gap-2 border-t pt-4 ${
+                        className={`relative mt-5 min-h-[4.25rem] border-t pt-4 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >
-                        <BankrollStat
-                          label="Profit"
-                          value={fmtPoker$(hero.stats.profit)}
-                          tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
-                        />
-                        <BankrollStat
-                          label="Hourly"
-                          value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
-                          tone={
-                            hero.stats.hourly == null
-                              ? 'neutral'
-                              : hero.stats.hourly >= 0
-                                ? 'good'
-                                : 'bad'
-                          }
-                        />
-                        <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
-                        <BankrollStat
-                          label="Win rate"
-                          value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
-                        />
+                        <div className="grid grid-cols-4 gap-2">
+                          <BankrollStat
+                            label="Profit"
+                            value={fmtPoker$(hero.stats.profit)}
+                            tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
+                          />
+                          <BankrollStat
+                            label="Hourly"
+                            value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
+                            tone={
+                              hero.stats.hourly == null
+                                ? 'neutral'
+                                : hero.stats.hourly >= 0
+                                  ? 'good'
+                                  : 'bad'
+                            }
+                          />
+                          <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
+                          <BankrollStat
+                            label="Win rate"
+                            value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
+                          />
+                        </div>
+                        {showEndStake ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setError('')
+                              setEndStakeDealId(scopeId)
+                              triggerTapHapticLight()
+                            }}
+                            className="absolute inset-x-0 bottom-0 text-center text-xs font-semibold text-zinc-400 underline touch-manipulation active:opacity-70"
+                            data-poker-hero-end-stake-link
+                          >
+                            End stake
+                          </button>
+                        ) : null}
                       </div>
-                    ) : null}
-                    {onStake &&
-                    !loading &&
-                    stakeeCanSettleStake(hero.deal, slicesByDeal[scopeId] || [], {
-                      userId,
-                      hasProposal: stakeDealHasProposal(hero.deal),
-                    }) ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setError('')
-                          setEndStakeDealId(scopeId)
-                          triggerTapHapticLight()
-                        }}
-                        className="mt-3 w-full text-center text-xs font-semibold text-zinc-400 underline touch-manipulation active:opacity-70"
-                        data-poker-hero-end-stake-link
-                      >
-                        End stake
-                      </button>
                     ) : null}
                   </div>
                 )

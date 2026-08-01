@@ -37,6 +37,26 @@ const EMPTY_SLICE = {
   rakebackPlayerPct: '',
 }
 
+function defaultPricingModeForDealType(dealType) {
+  return dealType === 'tournament_package' ? 'markup' : 'profit_split'
+}
+
+function newEmptySlice(dealType = 'cash_backing') {
+  const pricingMode = defaultPricingModeForDealType(dealType)
+  return { ...EMPTY_SLICE, pricingMode }
+}
+
+function applyDealTypePricingDefaults(slice, dealType) {
+  const pricingMode = defaultPricingModeForDealType(dealType)
+  if (slice.pricingMode === pricingMode) return slice
+  return {
+    ...slice,
+    pricingMode,
+    playerProfitPct: pricingMode === 'profit_split' ? '' : '',
+    markupRate: pricingMode === 'markup' ? '' : '',
+  }
+}
+
 async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false } = {}) {
   const actionPct = Number(sl.actionPct)
   if (!Number.isFinite(actionPct) || actionPct <= 0 || actionPct > 100) {
@@ -321,6 +341,7 @@ function PokerStableDealFormSheet({
 
   function onDealTypeChange(next) {
     setDealType(next)
+    setSlices((prev) => prev.map((s) => applyDealTypePricingDefaults(s, next)))
   }
 
   function onVenueKindChange(next) {
@@ -362,7 +383,7 @@ function PokerStableDealFormSheet({
     setSlices(
       rows.length
         ? rows.map((sl) => sliceRowToFormSlice(sl, editProfilesById))
-        : [{ ...EMPTY_SLICE }],
+        : [newEmptySlice(editDeal.deal_type || 'cash_backing')],
     )
     setFormError('')
   }, [editDeal, editSlices, editProfilesById])
@@ -370,7 +391,7 @@ function PokerStableDealFormSheet({
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
     if (isBacker) setFriendSlices((prev) => [...prev, { ...EMPTY_SLICE }])
-    else setSlices((prev) => [...prev, { ...EMPTY_SLICE }])
+    else setSlices((prev) => [...prev, newEmptySlice(dealType)])
   }
 
   useLayoutEffect(() => {

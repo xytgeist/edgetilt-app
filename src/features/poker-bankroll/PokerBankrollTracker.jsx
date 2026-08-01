@@ -124,9 +124,9 @@ import {
   acceptCounterpartySessionBind,
   cancelTournamentSwap,
   counterpartySessionNeedsSwapEventRelink,
+  ensureSessionTournamentEventLink,
   findCounterpartyBindCandidates,
   formatTournamentEventLabel,
-  ensureTournamentEvent,
   isMissingTournamentSwapTableError,
   loadMyTournamentSwaps,
   loadSwapCounterpartyProfiles,
@@ -139,6 +139,7 @@ import {
   swapViewerRole,
   syncCounterpartyResultsForSession,
   syncCreatorResultsForSession,
+  sessionSwapEventMismatch,
 } from './pokerTournamentSwapApi.js'
 import { eventDisplayNamesDiffer } from './pokerTournamentEventKeys.js'
 import {
@@ -1226,52 +1227,62 @@ export default function PokerBankrollTracker({
    * @param {object} sessionRow
    * @param {object[]} drafts
    */
+  function promptSameTournamentEventConfirm(existing) {
+    const existingLabel = String(existing.display_name || existing.venue_name || 'this event').trim()
+    return window.confirm(
+      `Looks like you're in "${existingLabel}" (same venue/date/buy-in/game). Same event?\n\nOK = same event · Cancel = different event`,
+    )
+  }
+
+  async function linkTournamentEventForSession(sessionRow) {
+    if (!supabaseClient || !userId || !sessionRow?.id) return sessionRow
+    const { session, error } = await ensureSessionTournamentEventLink(
+      supabaseClient,
+      userId,
+      sessionRow,
+      { onNeedsConfirm: promptSameTournamentEventConfirm },
+    )
+    if (error) {
+      console.warn('[poker-bankroll] event link failed', error.message)
+    }
+    return session
+  }
+
+  /**
+   * Before ending a tourney with swaps, warn when session facts don't match the swap event.
+   * @param {object} session
+   * @param {object[]} swaps
+   */
+  function confirmEndSessionSwapEventAlignment(session, swaps) {
+    for (const swap of swaps || []) {
+      const swapEvent = swap?.tournament_event_id
+        ? swapEventsById[swap.tournament_event_id] || null
+        : null
+      const mismatch = sessionSwapEventMismatch(session, swap, swapEvent)
+      if (!mismatch) continue
+      const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
+      const ok = window.confirm(
+        `Your swap with ${other} is for ${mismatch.swapLabel}. Your session doesn't match that tournament (venue, date, buy-in, or game).\n\nOK = end session anyway · Cancel = go back and fix`,
+      )
+      if (!ok) return false
+    }
+    return true
+  }
+
   async function attachDraftSwapsToSession(sessionRow, drafts) {
     if (!supabaseClient || !userId || !sessionRow?.id) return
     if (sessionRow.session_type !== 'tournament' || !drafts?.length) return
 
-    let tournamentEventId = sessionRow.tournament_event_id || null
-    if (!tournamentEventId) {
-      const eventDate = localYmd(new Date(sessionRow.start_at))
-      const eventInput = {
-        venue_name: sessionRow.venue_name || '',
-        event_date: eventDate,
-        buy_in: Number(sessionRow.buy_in) || 0,
-        game_variant: sessionRow.game_variant || null,
-        currency: sessionRow.currency || 'USD',
-        display_name: sessionRow.tournament_name || null,
-      }
-      let eventRes = await ensureTournamentEvent(supabaseClient, userId, eventInput)
-      if (eventRes.needsConfirm && eventRes.existing) {
-        const same = window.confirm(
-          `Looks like you’re in “${eventRes.existing.display_name || eventRes.existing.venue_name}” (same venue/date/buy-in/game). Same event?\n\nOK = same event · Cancel = different event`,
-        )
-        eventRes = await ensureTournamentEvent(supabaseClient, userId, {
-          ...eventInput,
-          confirmSameEvent: same,
-          forceSibling: !same,
-        })
-      }
-      if (eventRes.error) {
-        console.warn('[poker-bankroll] event link failed', eventRes.error.message)
-      } else if (eventRes.event?.id) {
-        tournamentEventId = eventRes.event.id
-        const { error: linkErr } = await supabaseClient
-          .from('poker_bankroll_sessions')
-          .update({ tournament_event_id: tournamentEventId })
-          .eq('id', sessionRow.id)
-          .eq('user_id', userId)
-        if (linkErr) console.warn('[poker-bankroll] session event link failed', linkErr.message)
-      }
-    }
+    const linked = await linkTournamentEventForSession(sessionRow)
+    const tournamentEventId = linked.tournament_event_id || null
 
     const { swaps, error: swapErr } = await persistDraftSwapsForSession(
       supabaseClient,
       userId,
-      sessionRow.id,
+      linked.id,
       drafts,
       tournamentEventId,
-      sessionRow,
+      linked,
     )
     if (swapErr) {
       if (!isMissingTournamentSwapTableError(swapErr)) {
@@ -1700,19 +1711,23 @@ export default function PokerBankrollTracker({
         .select('*')
         .single()
       if (iErr) throw iErr
+      let sessionRow = created
+      if (payload.session_type === 'tournament') {
+        sessionRow = await linkTournamentEventForSession(created)
+      }
       if (payload.session_type === 'tournament' && incomingAcceptSwap?.id) {
         const swapEvent = swapEventForIncomingSwap(incomingAcceptSwap)
         const { error: bindErr } = await acceptCounterpartySessionBind(
           supabaseClient,
           incomingAcceptSwap.id,
-          created.id,
-          created,
+          sessionRow.id,
+          sessionRow,
           { swapEvent, swapEventId: incomingAcceptSwap.tournament_event_id },
         )
         if (bindErr) throw bindErr
       }
       if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
-        await attachDraftSwapsToSession(created, draftSwaps)
+        await attachDraftSwapsToSession(sessionRow, draftSwaps)
       }
       setIncomingAcceptSwap(null)
       onPokerBankrollSessionCreated?.()
@@ -1747,9 +1762,20 @@ export default function PokerBankrollTracker({
         ? parseMoneyInputNumber(endBounties) || 0
         : 0
     const wl = cashOut + bounties - pokerSessionTotalCost(activeSession)
+    if (
+      activeSession.session_type === 'tournament' &&
+      activeSessionSwaps.length > 0 &&
+      !confirmEndSessionSwapEventAlignment(activeSession, activeSessionSwaps)
+    ) {
+      return
+    }
     setSaving(true)
     setError('')
     try {
+      let sessionRow = activeSession
+      if (activeSession.session_type === 'tournament') {
+        sessionRow = await linkTournamentEventForSession(activeSession)
+      }
       const { error: uErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .update({
@@ -1772,7 +1798,7 @@ export default function PokerBankrollTracker({
       await applyBankrollDelta(wl)
       if (activeSession.session_type === 'tournament') {
         const ended = {
-          ...activeSession,
+          ...sessionRow,
           status: 'completed',
           cash_out: cashOut,
           bounty_winnings:
@@ -2145,6 +2171,25 @@ export default function PokerBankrollTracker({
       delete payload.tournament_event_id
     }
 
+    const baseEditingSession = editingId ? sessions.find((s) => s.id === editingId) : null
+    if (
+      editingId &&
+      !editingActiveSession &&
+      payload.session_type === 'tournament' &&
+      editingSessionSwaps.length > 0 &&
+      baseEditingSession
+    ) {
+      const previewSession = {
+        ...baseEditingSession,
+        ...payload,
+        start_at: startAt,
+        end_at: endAt,
+      }
+      if (!confirmEndSessionSwapEventAlignment(previewSession, editingSessionSwaps)) {
+        return
+      }
+    }
+
     const newWl = editingActiveSession
       ? null
       : pokerSessionWinLoss({
@@ -2170,18 +2215,22 @@ export default function PokerBankrollTracker({
           .select('*')
           .single()
         if (uErr) throw uErr
+        let sessionRow = updated
+        if (payload.session_type === 'tournament') {
+          sessionRow = await linkTournamentEventForSession(updated)
+        }
         if (!editingActiveSession && newWl != null) {
           await applyBankrollDelta(newWl - editingPrevWl)
         }
         if (payload.session_type === 'tournament') {
           if (draftSwaps.length > 0) {
-            await attachDraftSwapsToSession(updated, draftSwaps)
+            await attachDraftSwapsToSession(sessionRow, draftSwaps)
           }
           if (!editingActiveSession) {
             const syncA = await syncCreatorResultsForSession(
               supabaseClient,
               editingId,
-              updated,
+              sessionRow,
             )
             if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
               console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
@@ -2189,7 +2238,7 @@ export default function PokerBankrollTracker({
             const syncB = await syncCounterpartyResultsForSession(
               supabaseClient,
               editingId,
-              updated,
+              sessionRow,
             )
             if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
               console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
@@ -2211,12 +2260,16 @@ export default function PokerBankrollTracker({
           .select('*')
           .single()
         if (iErr) throw iErr
+        let sessionRow = created
+        if (payload.session_type === 'tournament') {
+          sessionRow = await linkTournamentEventForSession(created)
+        }
         await applyBankrollDelta(newWl)
         if (created.deal_id) {
           await notifyGuestBackersOnSessionComplete(created.id, created.deal_id)
         }
         if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
-          await attachDraftSwapsToSession(created, draftSwaps)
+          await attachDraftSwapsToSession(sessionRow, draftSwaps)
         }
         void recordAppSessionRecorded(supabaseClient, 'poker-bankroll', payload.session_type)
         onPokerBankrollSessionCreated?.()

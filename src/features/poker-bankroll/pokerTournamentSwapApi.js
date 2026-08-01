@@ -368,6 +368,66 @@ export function sessionTournamentFingerprintKey(session) {
   return buildTournamentFingerprintKey(input)
 }
 
+/**
+ * Soft-link a tournament session to `poker_tournament_events` when fields allow.
+ * No-op when `tournament_event_id` is already set.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} userId
+ * @param {object} session
+ * @param {{ onNeedsConfirm?: (existing: object, input: object) => boolean | Promise<boolean> }} [opts]
+ */
+export async function ensureSessionTournamentEventLink(supabase, userId, session, opts = {}) {
+  if (!session?.id || session.session_type !== 'tournament') {
+    return { session, eventId: session?.tournament_event_id || null, error: null }
+  }
+  if (session.tournament_event_id) {
+    return { session, eventId: session.tournament_event_id, error: null }
+  }
+
+  const eventInput = sessionTournamentEventInput(session)
+  if (!eventInput) {
+    return { session, eventId: null, error: null }
+  }
+
+  let eventRes = await ensureTournamentEvent(supabase, userId, eventInput)
+  if (eventRes.needsConfirm && eventRes.existing) {
+    const confirmSame = opts.onNeedsConfirm
+      ? await opts.onNeedsConfirm(eventRes.existing, eventInput)
+      : false
+    eventRes = await ensureTournamentEvent(supabase, userId, {
+      ...eventInput,
+      confirmSameEvent: confirmSame,
+      forceSibling: !confirmSame,
+    })
+  }
+
+  if (eventRes.error) {
+    return { session, eventId: null, error: eventRes.error }
+  }
+
+  const eventId = eventRes.event?.id || null
+  if (!eventId) {
+    return { session, eventId: null, error: null }
+  }
+
+  const { error: linkErr } = await supabase
+    .from('poker_bankroll_sessions')
+    .update({ tournament_event_id: eventId })
+    .eq('id', session.id)
+    .eq('user_id', userId)
+
+  if (linkErr) {
+    return { session, eventId: null, error: linkErr }
+  }
+
+  return {
+    session: { ...session, tournament_event_id: eventId },
+    eventId,
+    error: null,
+  }
+}
+
 function sortCounterpartyBindCandidates(candidates) {
   return [...candidates].sort((a, b) => {
     if (a.status === 'active' && b.status !== 'active') return -1
@@ -381,13 +441,29 @@ function sortCounterpartyBindCandidates(candidates) {
  * @param {object} swap
  * @param {object | null | undefined} swapEvent
  */
-function sessionMatchesSwapEvent(session, swap, swapEvent) {
+export function sessionMatchesSwapEvent(session, swap, swapEvent) {
   const swapEventId = swap?.tournament_event_id || null
   if (swapEventId && session.tournament_event_id === swapEventId) return true
   const swapFingerprint = swapEvent?.fingerprint_key || null
   if (!swapFingerprint) return false
   const sessionFp = sessionTournamentFingerprintKey(session)
   return Boolean(sessionFp && sessionFp === swapFingerprint)
+}
+
+/**
+ * When a linked swap has a soft event but the session does not match it (UUID or fingerprint).
+ * @param {object} session
+ * @param {object} swap
+ * @param {object | null | undefined} swapEvent
+ * @returns {{ swapEvent: object, swapLabel: string } | null}
+ */
+export function sessionSwapEventMismatch(session, swap, swapEvent) {
+  if (!swap?.tournament_event_id || !swapEvent) return null
+  if (sessionMatchesSwapEvent(session, swap, swapEvent)) return null
+  return {
+    swapEvent,
+    swapLabel: formatTournamentEventLabel(swapEvent),
+  }
 }
 
 /**

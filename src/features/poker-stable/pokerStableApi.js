@@ -555,6 +555,38 @@ export async function requestBackingDeal(supabase, args) {
   return { deal, error: null }
 }
 
+/** Sum completed session P/L for a deal (used when bootstrapping roll on accept). */
+async function sumCompletedDealSessionProfit(supabase, dealId) {
+  const { data, error } = await supabase
+    .from('poker_bankroll_sessions')
+    .select('buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, status')
+    .eq('deal_id', dealId)
+    .eq('status', 'completed')
+  if (error) throw error
+  let profit = 0
+  for (const s of data || []) {
+    const wl = pokerSessionWinLoss(s)
+    if (wl != null) profit += wl
+  }
+  return roundMoney(profit)
+}
+
+async function bootstrapDealBankrollProfile(supabase, dealId, startingRoll) {
+  const base = roundMoney(startingRoll)
+  let sessionProfit = 0
+  try {
+    sessionProfit = await sumCompletedDealSessionProfit(supabase, dealId)
+  } catch {
+    sessionProfit = 0
+  }
+  const overallBankroll = roundMoney(base + sessionProfit)
+  const { error } = await supabase.from('poker_deal_bankroll_profiles').upsert(
+    { deal_id: dealId, overall_bankroll: overallBankroll },
+    { onConflict: 'deal_id' },
+  )
+  return { overallBankroll, error }
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
@@ -588,10 +620,7 @@ export async function acceptHorseDeal(supabase, dealId, stakeeUserId, startingRo
   }
   await sliceQuery
 
-  const { error: pErr } = await supabase.from('poker_deal_bankroll_profiles').upsert(
-    { deal_id: dealId, overall_bankroll: roll },
-    { onConflict: 'deal_id' },
-  )
+  const { error: pErr } = await bootstrapDealBankrollProfile(supabase, dealId, roll)
   if (pErr) return { deal, error: pErr }
   return { deal, error: null }
 }
@@ -627,10 +656,7 @@ export async function acceptSliceAsStaker(supabase, sliceId, stakerUserId) {
       .eq('id', data.deal_id)
       .in('status', ['pending', 'draft'])
     if (dealRow?.status !== 'active') {
-      await supabase.from('poker_deal_bankroll_profiles').upsert(
-        { deal_id: data.deal_id, overall_bankroll: roll },
-        { onConflict: 'deal_id' },
-      )
+      await bootstrapDealBankrollProfile(supabase, data.deal_id, roll)
     }
   }
   return { slice: data, error: null }

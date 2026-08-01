@@ -272,11 +272,24 @@ export default function PokerBankrollTracker({
   const stakeScopePending = activeDeal?.status === 'pending'
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
-  /** Missing profile rows count as $0 so users can start without a setup step. */
+  /** Missing profile rows count as starting roll + logged session P/L until accept bootstraps the profile. */
+  const stakeScopeSessionProfit = useMemo(() => {
+    if (!isOnStake || dealProfile != null) return 0
+    let profit = 0
+    for (const s of scopedSessions) {
+      if (s.status !== 'completed') continue
+      const base = pokerSessionWinLoss(s)
+      if (base == null) continue
+      profit += base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId)
+    }
+    return profit
+  }, [isOnStake, dealProfile, scopedSessions, tournamentSwaps, userId])
+
   const overallBankroll = isOnStake
     ? dealProfile != null
       ? Number(dealProfile.overall_bankroll) || 0
-      : 0
+      : (Number(activeDeal?.starting_roll ?? activeDeal?.baseline_bankroll) || 0) +
+        stakeScopeSessionProfit
     : profile != null
       ? Number(profile.overall_bankroll) || 0
       : 0
@@ -617,6 +630,7 @@ export default function PokerBankrollTracker({
 
   async function applyBankrollDelta(delta) {
     if (!Number.isFinite(delta) || Math.abs(delta) < 0.0005) return
+    if (isOnStake && stakeScopePending) return
     const current = isOnStake
       ? dealProfile
         ? Number(dealProfile.overall_bankroll)
@@ -741,15 +755,16 @@ export default function PokerBankrollTracker({
         count: counted,
       }
       const scopeDeal = onStake ? stakeeDeals.find((d) => d.id === scopeId) ?? null : null
-      const scopeRoll = onStake
+      let scopeRoll = onStake
         ? dealProfiles[scopeId] != null
           ? Number(dealProfiles[scopeId].overall_bankroll) || 0
-          : scopeDeal?.status === 'pending'
-            ? Number(scopeDeal.starting_roll ?? scopeDeal.baseline_bankroll) || 0
-            : 0
+          : Number(scopeDeal?.starting_roll ?? scopeDeal?.baseline_bankroll) || 0
         : profile != null
           ? Number(profile.overall_bankroll) || 0
           : 0
+      if (onStake && dealProfiles[scopeId] == null) {
+        scopeRoll += scopeStats.profit
+      }
       const ordered = [...scopeFiltered]
         .map((s) => {
           const base = pokerSessionWinLoss(s)
@@ -958,10 +973,6 @@ export default function PokerBankrollTracker({
       onRequireSubscribeForPokerBankroll?.()
       return
     }
-    if (stakeScopePending) {
-      setError('Waiting for backers to accept before you can start sessions.')
-      return
-    }
     if (activeSession) {
       setError('You already have a session in progress.')
       return
@@ -1032,10 +1043,6 @@ export default function PokerBankrollTracker({
   function openLogPast() {
     if (!canCreatePokerBankrollSession) {
       onRequireSubscribeForPokerBankroll?.()
-      return
-    }
-    if (stakeScopePending) {
-      setError('Waiting for backers to accept before you can log sessions.')
       return
     }
     setEditingId(null)
@@ -2270,10 +2277,10 @@ export default function PokerBankrollTracker({
                     onClick={openStartSession}
                     data-start-session-btn
                     data-start-session-locked={
-                      !canCreatePokerBankrollSession || stakeScopePending ? 'true' : undefined
+                      !canCreatePokerBankrollSession ? 'true' : undefined
                     }
                     className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
-                      !canCreatePokerBankrollSession || stakeScopePending
+                      !canCreatePokerBankrollSession
                         ? 'cursor-not-allowed opacity-45'
                         : ''
                     }`}
@@ -2285,10 +2292,10 @@ export default function PokerBankrollTracker({
                     onClick={openLogPast}
                     data-log-past-session-btn
                     data-log-past-session-locked={
-                      !canCreatePokerBankrollSession || stakeScopePending ? 'true' : undefined
+                      !canCreatePokerBankrollSession ? 'true' : undefined
                     }
                     className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
-                      !canCreatePokerBankrollSession || stakeScopePending
+                      !canCreatePokerBankrollSession
                         ? 'cursor-not-allowed opacity-45'
                         : ''
                     }`}
@@ -2404,11 +2411,11 @@ export default function PokerBankrollTracker({
               >
                 <p className="text-white font-semibold">No poker sessions yet</p>
                 <p className="mt-1 text-sm text-zinc-500">
-                  {stakeScopePending
-                    ? 'Backers must accept before you can log stake sessions.'
-                    : isOnStake
-                      ? 'Start or log a stake session for this deal.'
-                      : 'Start a live session, or log one from earlier.'}
+                  {isOnStake
+                    ? stakeScopePending
+                      ? 'Start or log stake sessions now ... backers see them in Stable once they accept.'
+                      : 'Start or log a stake session for this deal.'
+                    : 'Start a live session, or log one from earlier.'}
                 </p>
               </div>
             ) : (
@@ -2633,7 +2640,7 @@ export default function PokerBankrollTracker({
               pendingCarouselDealIdRef.current = deal.id
               if (deal.status === 'pending') {
                 showStakeNotice(
-                  'Stake request sent. Backers will see invites in Stable ... sessions unlock when they accept.',
+                  'Stake request sent. Backers will see invites in Stable ... you can log stake sessions now; they sync when backers accept.',
                 )
               } else {
                 showStakeNotice('Stake created. Swipe to your stake bankroll card to get started.')

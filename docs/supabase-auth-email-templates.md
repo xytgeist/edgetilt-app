@@ -17,6 +17,8 @@
 
 Build: `node scripts/build-edge-email-logo.mjs`
 
+**Edge transactional emails** (Poker Stable guest notify, tournament swap guest notify) use the same header + card shell via `supabase/functions/_shared/transactionalEmail.ts` (logo defaults to **`https://edgetilt.com/edge-email-header-dark.jpg`**; override with **`TRANSACTIONAL_EMAIL_LOGO_ORIGIN`** on the function if needed).
+
 **Until deploy:** temporary single logo (Gmail dark only):
 
 ```html

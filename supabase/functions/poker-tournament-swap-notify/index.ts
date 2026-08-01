@@ -19,6 +19,12 @@
  */
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import { createBillingAdmin, getUserFromJwt } from '../_shared/billingDb.ts'
+import {
+  escapeHtml,
+  transactionalEmailFallbackLink,
+  transactionalEmailParagraph,
+  wrapTransactionalEmailHtml,
+} from '../_shared/transactionalEmail.ts'
 
 function appOrigin(): string {
   const fromEnv = Deno.env.get('PUBLIC_APP_URL')?.trim() || Deno.env.get('APP_ORIGIN')?.trim()
@@ -332,7 +338,18 @@ Deno.serve(async (req) => {
             ? 'View swap details'
             : 'Enter your cash result'
           const text = `${subject}. ${cta}: ${claimUrl}`
-          const html = `<p>${subject}.</p><p><a href="${claimUrl}">${cta}</a></p><p style="color:#888;font-size:12px">${claimUrl}</p>`
+          const appUrl = appOrigin()
+          const bodyHtml = [
+            transactionalEmailParagraph(`${escapeHtml(subject)}.`),
+            transactionalEmailFallbackLink(claimUrl),
+          ].join('')
+          const html = wrapTransactionalEmailHtml({
+            title: `Tournament swap result · ${pctLine}`,
+            headline: 'Tournament swap result',
+            bodyHtml,
+            appUrl,
+            cta: { label: cta, href: claimUrl },
+          })
 
           if (hasEmail) {
             channels.email = await sendResendEmail(
@@ -418,7 +435,18 @@ Deno.serve(async (req) => {
 
       const claimUrl = await createGuestClaimUrl(admin, swapId)
       const text = `${offerLine}\nAccept / enter your result: ${claimUrl}`
-      const html = `<p>${offerLine}</p><p><a href="${claimUrl}">Accept / enter your result</a></p><p style="color:#888;font-size:12px">${claimUrl}</p>`
+      const appUrl = appOrigin()
+      const bodyHtml = [
+        transactionalEmailParagraph(escapeHtml(offerLine)),
+        transactionalEmailFallbackLink(claimUrl),
+      ].join('')
+      const html = wrapTransactionalEmailHtml({
+        title: `${guestActorName} swapping ${pctLine} with you`,
+        headline: 'Tournament swap invite',
+        bodyHtml,
+        appUrl,
+        cta: { label: 'Accept / enter your result', href: claimUrl },
+      })
 
       if (hasEmail) {
         channels.email = await sendResendEmail(

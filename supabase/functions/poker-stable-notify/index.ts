@@ -20,6 +20,11 @@
  */
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import { createBillingAdmin, getUserFromJwt } from '../_shared/billingDb.ts'
+import {
+  escapeHtml,
+  transactionalEmailParagraph,
+  wrapTransactionalEmailHtml,
+} from '../_shared/transactionalEmail.ts'
 
 function appOrigin(): string {
   const fromEnv = Deno.env.get('PUBLIC_APP_URL')?.trim() || Deno.env.get('APP_ORIGIN')?.trim()
@@ -92,28 +97,11 @@ function formatPricingLine(slice: SliceRow): string {
   return 'Profit split'
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-function formatEmailFooter(appUrl: string): { text: string; html: string } {
+function formatEmailFooter(): { text: string; htmlNote: string } {
   const text =
     'Create a free account at EdgeTilt.com to manage your stable and get live progress updates.'
-  const safeUrl = escapeHtml(appUrl)
-  const html = `Create a free account at <a href="${safeUrl}">Edgetilt.com</a> to manage your stable and get live progress updates.`
-  return { text, html }
-}
-
-function appendEmailFooter(text: string, html: string, appUrl: string): { text: string; html: string } {
-  const footer = formatEmailFooter(appUrl)
-  return {
-    text: `${text}\n\n${footer.text}`,
-    html: `${html}<p style="margin:12px 0 0;line-height:1.5">${footer.html}</p>`,
-  }
+  const htmlNote = 'Create a free account to manage your stable and get live progress updates.'
+  return { text, htmlNote }
 }
 
 function formatStakeMessageCopy(args: {
@@ -134,27 +122,34 @@ function formatStakeMessageCopy(args: {
   const ownVerb = isDeleted ? 'owned' : 'own'
   const stakeLine = `Total stake: ${args.baselineLabel} (you ${ownVerb} ${formatPct(args.actionPct)}%)`
   const detailLines = [nameLine, stakeLine, args.pricingLine]
-  const text = `${introPlain}\n\n${detailLines.join('\n')}`
+  const footer = formatEmailFooter()
+  const text = `${introPlain}\n\n${detailLines.join('\n')}\n\n${footer.text}`
 
   const safeActor = escapeHtml(args.actorLabel)
-  const safeNameLine = escapeHtml(nameLine)
-  const safeStakeLine = escapeHtml(stakeLine)
-  const safePricingLine = escapeHtml(args.pricingLine)
   const safeUrl = escapeHtml(args.appUrl)
   const introHtml = isDeleted
-    ? `${safeActor} has deleted a stake on <a href="${safeUrl}">Edgetilt.com</a> that listed you as ${args.backerArticle} backer.`
-    : `${safeActor} has created a stake on <a href="${safeUrl}">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
-  const detailsHtml = [safeNameLine, safeStakeLine, safePricingLine].join('<br>')
-  const html = [
-    `<p style="margin:0 0 12px;line-height:1.5">${introHtml}</p>`,
-    `<p style="margin:0;line-height:1.5">${detailsHtml}</p>`,
+    ? `${safeActor} has deleted a stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a> that listed you as ${args.backerArticle} backer.`
+    : `${safeActor} has created a stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
+  const detailsHtml = [nameLine, stakeLine, args.pricingLine]
+    .map((line) => escapeHtml(line))
+    .join('<br>')
+  const bodyHtml = [
+    transactionalEmailParagraph(introHtml),
+    transactionalEmailParagraph(detailsHtml, { marginBottom: '0' }),
   ].join('')
 
   const subject = isDeleted
     ? `${args.actorLabel} deleted a stake: ${args.dealLabel || 'Untitled'}`
     : `${args.actorLabel} created a stake: ${args.dealLabel || 'Untitled'}`
-  const withFooter = appendEmailFooter(text, html, args.appUrl)
-  return { subject, text: withFooter.text, html: withFooter.html }
+  const html = wrapTransactionalEmailHtml({
+    title: subject,
+    headline: isDeleted ? 'Stake deleted' : 'New stake offer',
+    bodyHtml,
+    appUrl: args.appUrl,
+    cta: { label: 'Create free account', href: args.appUrl },
+    footerNoteHtml: footer.htmlNote,
+  })
+  return { subject, text, html }
 }
 
 type TermsEditSlice = {
@@ -226,6 +221,7 @@ function formatTermsEditedCopy(args: {
   const introPlain = `${args.actorLabel} edited the terms of the stake on Edgetilt.com with you as ${args.backerArticle} backer.`
   const beforeLines = formatTermsSectionLines(args.beforeDeal, args.beforeSlice, 'owned')
   const afterLines = formatTermsSectionLines(args.afterDeal, args.afterSlice, 'own')
+  const footer = formatEmailFooter()
   const text = [
     introPlain,
     '',
@@ -234,23 +230,32 @@ function formatTermsEditedCopy(args: {
     '',
     'After:',
     ...afterLines,
+    '',
+    footer.text,
   ].join('\n')
 
   const safeActor = escapeHtml(args.actorLabel)
   const safeUrl = escapeHtml(args.appUrl)
-  const introHtml = `${safeActor} edited the terms of the stake on <a href="${safeUrl}">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
+  const introHtml = `${safeActor} edited the terms of the stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
   const beforeHtml = ['Before:', ...beforeLines.map((line) => escapeHtml(line))].join('<br>')
   const afterHtml = ['After:', ...afterLines.map((line) => escapeHtml(line))].join('<br>')
-  const html = [
-    `<p style="margin:0 0 12px;line-height:1.5">${introHtml}</p>`,
-    `<p style="margin:0 0 12px;line-height:1.5">${beforeHtml}</p>`,
-    `<p style="margin:0;line-height:1.5">${afterHtml}</p>`,
+  const bodyHtml = [
+    transactionalEmailParagraph(introHtml),
+    transactionalEmailParagraph(beforeHtml),
+    transactionalEmailParagraph(afterHtml, { marginBottom: '0' }),
   ].join('')
 
   const dealLabel = String(args.afterDeal.deal_label || args.beforeDeal.deal_label || '').trim()
   const subject = `${args.actorLabel} edited stake terms: ${dealLabel || 'Untitled'}`
-  const withFooter = appendEmailFooter(text, html, args.appUrl)
-  return { subject, text: withFooter.text, html: withFooter.html }
+  const html = wrapTransactionalEmailHtml({
+    title: subject,
+    headline: 'Stake terms updated',
+    bodyHtml,
+    appUrl: args.appUrl,
+    cta: { label: 'Create free account', href: args.appUrl },
+    footerNoteHtml: footer.htmlNote,
+  })
+  return { subject, text, html }
 }
 
 async function sendResendEmail(to: string, subject: string, html: string, text: string) {

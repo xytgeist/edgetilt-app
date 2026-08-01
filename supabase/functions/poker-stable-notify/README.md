@@ -16,6 +16,8 @@ Create a free account at EdgeTilt.com to manage your stable and get live progres
 
 Blank line after intro only; detail lines are single-spaced (`<br>` in HTML, not separate `<p>` tags).
 
+HTML uses the shared branded shell (`_shared/transactionalEmail.ts`): EDGE logo header, white card, cyan CTA (**Create free account**), and footer note about live stable updates.
+
 Terms edit copy (`kind=terms_edited`):
 
 ```

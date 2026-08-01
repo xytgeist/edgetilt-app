@@ -46,9 +46,7 @@ const FIELD =
  *   decliningIncoming?: boolean,
  *   onSendDraft?: (draft: object) => void | Promise<void>,
  *   sendingDrafts?: boolean,
- *   /** Max % of net the player can swap (100 minus stable backing sold). Default 100. */
  *   maxSwapGivePct?: number,
- *   /** Show remaining self-owned % (session details + active swap modal). */
  *   showOwnershipSummary?: boolean,
  * }} props
  */

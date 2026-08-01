@@ -18,6 +18,20 @@ export function isMissingStableTableError(err) {
   )
 }
 
+/** Player created via Bankroll + Stake (`staker_user_id` null on v2 deals). */
+export function isPlayerInitiatedBackingDeal(deal) {
+  return Boolean(deal?.stakee_user_id) && deal?.staker_user_id == null
+}
+
+/** Viewer is a backer on this deal (lead staker or slice participant). */
+export function isViewerBackingDeal(deal, userId, slicesByDeal = {}) {
+  if (!deal || !userId) return false
+  if (deal.staker_user_id === userId) return true
+  return (slicesByDeal[deal.id] || []).some(
+    (s) => s.staker_user_id === userId && s.status !== 'declined',
+  )
+}
+
 /** @param {string} raw */
 export function normalizeHandleInput(raw) {
   return String(raw || '')

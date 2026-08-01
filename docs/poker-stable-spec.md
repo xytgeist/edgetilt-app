@@ -145,6 +145,7 @@ New / extended:
 
 ## Update log
 
+- **2026-08-01:** Stable filters: player **+ Stake** deals no longer appear on Stable for the stakee; invite cards use amber chrome (not cyan).
 - **2026-08-01:** Post-create stake UX: pending player deals appear on Bankroll carousel (locked until accept); success banner after **Create stake**; push/in-app backer alerts still **v2c**.
 - **2026-08-01:** UX pivot: player **`+ Stake`** + stake carousel on Poker Bankroll; Stable backer-only (**Request horse** full form + syndicate slices); `requestBackingDeal` API; removed Personal/On Stake toggle.
 - **2026-08-01:** Spec distilled from Ryan + Theo design session; v2 foundation build started.

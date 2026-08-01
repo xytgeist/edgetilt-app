@@ -12,6 +12,7 @@ import {
   declineHorseDeal,
   declineSliceAsStaker,
   isMissingStableTableError,
+  isViewerBackingDeal,
   loadDealBankrollProfiles,
   loadDealCounterpartyProfiles,
   loadDealSessionStats,
@@ -33,7 +34,7 @@ function statusLabel(status) {
 
 function statusTone(status) {
   if (status === 'active') return 'bg-amber-500/20 text-amber-300'
-  if (status === 'pending') return 'bg-cyan-500/20 text-cyan-300'
+  if (status === 'pending') return 'bg-amber-500/15 text-amber-200/90'
   if (status === 'declined') return 'bg-zinc-700/60 text-zinc-400'
   return 'bg-rose-500/20 text-rose-300'
 }
@@ -144,24 +145,24 @@ export default function PokerStableScreen({
   }, [load])
 
   const asStaker = useMemo(
-    () =>
-      deals.filter((d) => {
-        if (d.staker_user_id === userId) return true
-        return (slicesByDeal[d.id] || []).some(
-          (s) => s.staker_user_id === userId && s.status !== 'declined',
-        )
-      }),
+    () => deals.filter((d) => isViewerBackingDeal(d, userId, slicesByDeal)),
     [deals, userId, slicesByDeal],
   )
   const incoming = useMemo(
     () =>
-      deals.filter((d) => d.stakee_user_id === userId && d.status === 'pending'),
+      deals.filter(
+        (d) =>
+          d.stakee_user_id === userId &&
+          d.status === 'pending' &&
+          d.staker_user_id != null,
+      ),
     [deals, userId],
   )
   const incomingSlices = useMemo(() => {
     /** @type {Array<{ deal: object, slice: object }>} */
     const rows = []
     for (const d of deals) {
+      if (d.stakee_user_id === userId) continue
       for (const s of slicesByDeal[d.id] || []) {
         if (s.staker_user_id === userId && s.status === 'pending') rows.push({ deal: d, slice: s })
       }
@@ -327,11 +328,12 @@ export default function PokerStableScreen({
               {incomingSlices.map(({ deal, slice }) => (
                 <div
                   key={slice.id}
-                  data-elevated-card="accent"
-                  className="rounded-2xl border border-cyan-500/25 bg-zinc-900/80 p-4"
+                  data-poker-stable-invite-card
+                  data-elevated-card="surface"
+                  className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
                 >
                   <div className="font-bold text-white">
-                    {partyLabel(deal, 'stakee')} offers {slice.action_pct}% ·{' '}
+                    {partyLabel(deal, 'stakee')} invited you · {slice.action_pct}% ·{' '}
                     {deal.label || dealTypeLabel(deal.deal_type)}
                   </div>
                   <div className="mt-3 flex gap-2">
@@ -367,8 +369,9 @@ export default function PokerStableScreen({
               {incoming.map((deal) => (
                 <div
                   key={deal.id}
-                  data-elevated-card="accent"
-                  className="rounded-2xl border border-cyan-500/25 bg-zinc-900/80 p-4"
+                  data-poker-stable-invite-card
+                  data-elevated-card="surface"
+                  className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -444,7 +447,7 @@ export default function PokerStableScreen({
                     key={deal.id}
                     type="button"
                     onClick={() => openDealDetail(deal.id)}
-                    data-elevated-card="accent"
+                    data-elevated-card="surface"
                     className="w-full rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/40 to-zinc-900 p-4 text-left touch-manipulation active:opacity-90"
                   >
                     <div className="flex items-start justify-between gap-2">

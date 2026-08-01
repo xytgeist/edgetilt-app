@@ -2242,8 +2242,8 @@ export default function PokerBankrollTracker({
                               <BankrollSparkline
                                 series={hero.spark}
                                 className="h-full w-full"
-                                upClass={onStake ? theme.sparkUp : 'text-emerald-400'}
-                                downClass={onStake ? theme.sparkDown : 'text-rose-400'}
+                                upClass="text-emerald-400"
+                                downClass="text-rose-400"
                               />
                             </button>
                           ) : null}

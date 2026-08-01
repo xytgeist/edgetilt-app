@@ -132,8 +132,6 @@ export function stakeHeroTheme(stakeIndex) {
       badgeText: 'text-blue-200/90',
       amount: 'text-blue-50',
       borderStat: 'border-blue-400/25',
-      sparkUp: 'text-blue-400',
-      sparkDown: 'text-blue-500',
     },
     {
       tone: 'emerald',
@@ -144,8 +142,6 @@ export function stakeHeroTheme(stakeIndex) {
       badgeText: 'text-emerald-200/90',
       amount: 'text-emerald-50',
       borderStat: 'border-emerald-400/25',
-      sparkUp: 'text-emerald-400',
-      sparkDown: 'text-emerald-500',
     },
     {
       tone: 'rose',
@@ -156,8 +152,6 @@ export function stakeHeroTheme(stakeIndex) {
       badgeText: 'text-rose-200/90',
       amount: 'text-rose-50',
       borderStat: 'border-rose-400/25',
-      sparkUp: 'text-rose-400',
-      sparkDown: 'text-rose-500',
     },
   ]
   return themes[stakeIndex % themes.length]

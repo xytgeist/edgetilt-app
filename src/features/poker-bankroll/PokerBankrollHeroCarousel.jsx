@@ -120,11 +120,11 @@ export function stakeHeroThemeIndexForDeal(dealId, stakeeDeals = []) {
   return idx >= 0 ? idx : 0
 }
 
-/** Stake hero accent variants (rotate per deal index). Tone slug `amber` = indigo (legacy hook for light CSS). Dark: gradient + glow; light flattens via index.css. */
+/** Stake hero accent variants (rotate per deal index). indigo / cyan / rose — no orange or amber. */
 export function stakeHeroTheme(stakeIndex) {
   const themes = [
     {
-      tone: 'amber',
+      tone: 'indigo',
       card: `${POKER_BANKROLL_HERO_SHELL} border-indigo-400/70 bg-gradient-to-br from-indigo-950 via-indigo-900/80 to-zinc-950 shadow-[0_0_40px_-12px_rgba(99,102,241,0.55)]`,
       label: 'text-indigo-200/70',
       title: 'text-indigo-100',
@@ -137,17 +137,17 @@ export function stakeHeroTheme(stakeIndex) {
       sparkDown: 'text-indigo-500',
     },
     {
-      tone: 'orange',
-      card: `${POKER_BANKROLL_HERO_SHELL} border-orange-400/60 bg-gradient-to-br from-orange-950 via-orange-900/70 to-zinc-950 shadow-[0_0_36px_-12px_rgba(251,146,60,0.45)]`,
-      label: 'text-orange-200/70',
-      title: 'text-orange-100',
-      badge: 'bg-orange-400 text-orange-950',
-      badgeText: 'text-orange-200/90',
-      amount: 'text-orange-50',
-      termsBtn: 'bg-orange-600 text-white active:bg-orange-500',
-      borderStat: 'border-orange-400/25',
-      sparkUp: 'text-orange-400',
-      sparkDown: 'text-orange-500',
+      tone: 'cyan',
+      card: `${POKER_BANKROLL_HERO_SHELL} border-cyan-400/60 bg-gradient-to-br from-cyan-950 via-cyan-900/70 to-zinc-950 shadow-[0_0_36px_-12px_rgba(34,211,238,0.45)]`,
+      label: 'text-cyan-200/70',
+      title: 'text-cyan-100',
+      badge: 'bg-cyan-400 text-cyan-950',
+      badgeText: 'text-cyan-200/90',
+      amount: 'text-cyan-50',
+      termsBtn: 'bg-cyan-600 text-white active:bg-cyan-500',
+      borderStat: 'border-cyan-400/25',
+      sparkUp: 'text-cyan-400',
+      sparkDown: 'text-cyan-500',
     },
     {
       tone: 'rose',

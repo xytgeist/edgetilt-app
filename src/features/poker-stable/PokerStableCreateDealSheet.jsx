@@ -4,6 +4,32 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal } from './pokerStableApi.js'
 
+function DollarInput({ value, onChange, placeholder, allowNegative = false, className = 'mb-3' }) {
+  return (
+    <div className={`relative ${className}`}>
+      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-semibold text-zinc-400">
+        $
+      </span>
+      <input
+        type="text"
+        inputMode={allowNegative ? 'text' : 'decimal'}
+        value={value}
+        onChange={(e) => {
+          const raw = e.target.value
+          if (allowNegative) {
+            const cleaned = raw.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
+            onChange(cleaned)
+          } else {
+            onChange(raw.replace(/[^0-9.]/g, ''))
+          }
+        }}
+        placeholder={placeholder}
+        className="w-full min-h-12 rounded-2xl bg-zinc-800 pl-8 pr-4 font-semibold text-white outline-none focus:ring-2 focus:ring-amber-500/40"
+      />
+    </div>
+  )
+}
+
 const EMPTY_SLICE = {
   handle: '',
   selectedProfile: null,
@@ -216,7 +242,7 @@ function PokerStableDealFormSheet({
 }) {
   const isBacker = mode === 'backer'
   const [label, setLabel] = useState('')
-  const [baseline, setBaseline] = useState(isBacker ? '0' : '100000')
+  const [baseline, setBaseline] = useState('')
   const [isMigration, setIsMigration] = useState(false)
   const [startingRoll, setStartingRoll] = useState('')
   const [stakeWidePl, setStakeWidePl] = useState('')
@@ -270,6 +296,10 @@ function PokerStableDealFormSheet({
         })
         if (error) throw error
       } else {
+        const baselineAmount = Number(baseline)
+        if (!baseline.trim() || !Number.isFinite(baselineAmount) || baselineAmount <= 0) {
+          throw new Error('Enter a baseline stake.')
+        }
         const parsedSlices = []
         for (const sl of slices) {
           parsedSlices.push(await resolveUserSlice(supabaseClient, sl, userId))
@@ -278,8 +308,8 @@ function PokerStableDealFormSheet({
           stakeeUserId: userId,
           dealType: 'cash_backing',
           label,
-          baselineBankroll: Number(baseline),
-          startingRoll: isMigration && startingRoll ? Number(startingRoll) : Number(baseline),
+          baselineBankroll: baselineAmount,
+          startingRoll: isMigration && startingRoll ? Number(startingRoll) : baselineAmount,
           isMigration,
           stakeWideStartingPl: stakeWidePl ? Number(stakeWidePl) : null,
           lifetimePlDisplay: lifetimePl ? Number(lifetimePl) : null,
@@ -357,13 +387,12 @@ function PokerStableDealFormSheet({
         {!isBacker ? (
           <>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Baseline stake ($)
+              Baseline stake
             </label>
-            <input
+            <DollarInput
               value={baseline}
-              onChange={(e) => setBaseline(e.target.value)}
-              inputMode="decimal"
-              className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
+              onChange={setBaseline}
+              placeholder="100,000"
             />
             <label className="mb-3 flex items-center gap-2 text-sm text-zinc-300">
               <input
@@ -411,14 +440,13 @@ function PokerStableDealFormSheet({
         ) : (
           <>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Proposed baseline ($, optional)
+              Proposed baseline (optional)
             </label>
-            <input
+            <DollarInput
               value={baseline}
-              onChange={(e) => setBaseline(e.target.value)}
+              onChange={setBaseline}
               placeholder="Player sets roll on accept if empty"
-              inputMode="decimal"
-              className="mb-4 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
+              className="mb-4"
             />
             <p className="mb-4 text-[12px] leading-relaxed text-zinc-500">
               They get an incoming request. After accept, their stake bankroll appears in Poker

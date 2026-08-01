@@ -2166,8 +2166,8 @@ export default function PokerBankrollTracker({
                           </span>
                         ) : null}
                       </div>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        {!onStake ? (
+                      {!onStake ? (
+                        <div className="flex shrink-0 items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => {
@@ -2181,22 +2181,6 @@ export default function PokerBankrollTracker({
                           >
                             + Stake
                           </button>
-                        ) : null}
-                        {onStake ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setError('')
-                              setTermsDealId(scopeId)
-                              triggerTapHapticLight()
-                            }}
-                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${theme.termsBtn}`}
-                            data-poker-hero-terms-btn
-                          >
-                            Terms
-                          </button>
-                        ) : null}
-                        {!onStake ? (
                           <button
                             type="button"
                             onClick={() => openSetBankroll(scopeId)}
@@ -2204,8 +2188,8 @@ export default function PokerBankrollTracker({
                           >
                             Edit
                           </button>
-                        ) : null}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                     {loading ? (
                       <>
@@ -2245,31 +2229,47 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`mt-5 grid min-h-[4.25rem] grid-cols-4 gap-2 border-t pt-4 ${
+                        className={`mt-5 border-t pt-4 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >
-                        <BankrollStat
-                          label="Profit"
-                          value={fmtPoker$(hero.stats.profit)}
-                          tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
-                        />
-                        <BankrollStat
-                          label="Hourly"
-                          value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
-                          tone={
-                            hero.stats.hourly == null
-                              ? 'neutral'
-                              : hero.stats.hourly >= 0
-                                ? 'good'
-                                : 'bad'
-                          }
-                        />
-                        <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
-                        <BankrollStat
-                          label="Win rate"
-                          value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
-                        />
+                        <div className="grid min-h-[4.25rem] grid-cols-4 gap-2">
+                          <BankrollStat
+                            label="Profit"
+                            value={fmtPoker$(hero.stats.profit)}
+                            tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
+                          />
+                          <BankrollStat
+                            label="Hourly"
+                            value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
+                            tone={
+                              hero.stats.hourly == null
+                                ? 'neutral'
+                                : hero.stats.hourly >= 0
+                                  ? 'good'
+                                  : 'bad'
+                            }
+                          />
+                          <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
+                          <BankrollStat
+                            label="Win rate"
+                            value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
+                          />
+                        </div>
+                        {onStake ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setError('')
+                              setTermsDealId(scopeId)
+                              triggerTapHapticLight()
+                            }}
+                            className="mt-1 block w-full text-right text-xs font-semibold text-zinc-400 underline decoration-zinc-500/40 underline-offset-2 touch-manipulation active:opacity-70"
+                            data-poker-hero-terms-link
+                          >
+                            Terms
+                          </button>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>

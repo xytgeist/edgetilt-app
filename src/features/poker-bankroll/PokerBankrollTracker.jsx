@@ -52,7 +52,10 @@ import {
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
-import { buildStakeDealHistoryEvents } from '../poker-stable/pokerStableDealHistory.js'
+import {
+  buildPersonalSettlementHistoryEvents,
+  buildStakeDealHistoryEvents,
+} from '../poker-stable/pokerStableDealHistory.js'
 import { playerSelfOwnedActionPct } from '../poker-stable/pokerStableMath.js'
 import {
   fmtPoker$,
@@ -880,6 +883,15 @@ export default function PokerBankrollTracker({
     dealSettlementsByDeal,
   ])
 
+  const personalSettlementEvents = useMemo(() => {
+    if (isOnStake) return []
+    return buildPersonalSettlementHistoryEvents({
+      dealsById: stakeeDealsById,
+      settlementsByDeal: dealSettlementsByDeal,
+      slicesByDeal,
+    })
+  }, [isOnStake, stakeeDealsById, dealSettlementsByDeal, slicesByDeal])
+
   const historyFeed = useMemo(() => {
     const sessionItems = filtered.map((session) => ({
       kind: 'session',
@@ -887,12 +899,13 @@ export default function PokerBankrollTracker({
       at: session.end_at || session.start_at,
       session,
     }))
-    if (!isOnStake) {
+    const historyEvents = isOnStake ? stakeHistoryEvents : personalSettlementEvents
+    if (!historyEvents.length) {
       return sessionItems.sort(
         (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
       )
     }
-    const eventItems = stakeHistoryEvents.map((event) => ({
+    const eventItems = historyEvents.map((event) => ({
       kind: 'event',
       id: event.id,
       at: event.at,
@@ -901,7 +914,7 @@ export default function PokerBankrollTracker({
     return [...sessionItems, ...eventItems].sort(
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
     )
-  }, [filtered, isOnStake, stakeHistoryEvents])
+  }, [filtered, isOnStake, stakeHistoryEvents, personalSettlementEvents])
 
   /** Bankroll-card stats follow All/Cash/Tourney + Any/Live/Online filters. */
   const stats = useMemo(() => {

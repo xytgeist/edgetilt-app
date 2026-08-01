@@ -5695,7 +5695,8 @@ html.light [data-session-card] {
 [data-poker-stake-history-line][data-poker-stake-history-kind='topup'] {
   color: rgb(96 165 250);
 }
-[data-poker-stake-history-line][data-poker-stake-history-kind='settlement'] {
+[data-poker-stake-history-line][data-poker-stake-history-kind='settlement'],
+[data-poker-stake-history-line][data-poker-stake-history-kind='close'] {
   color: rgb(96 165 250);
 }
 html.light [data-poker-stake-history-line][data-poker-stake-history-kind='offer'] {
@@ -5710,7 +5711,8 @@ html.light [data-poker-stake-history-line][data-poker-stake-history-kind='declin
 html.light [data-poker-stake-history-line][data-poker-stake-history-kind='topup'] {
   color: #2563eb !important;
 }
-html.light [data-poker-stake-history-line][data-poker-stake-history-kind='settlement'] {
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='settlement'],
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='close'] {
   color: #1d4ed8 !important;
 }
 html.light [data-start-session-btn] {

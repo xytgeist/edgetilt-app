@@ -2142,24 +2142,18 @@ export default function PokerBankrollTracker({
                         : `${POKER_BANKROLL_HERO_SHELL} border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800`
                     }
                   >
-                    <div className="mb-2">
-                      <div
-                        data-poker-bankroll-hero-title
-                        className={`${
-                          onStake ? 'line-clamp-2' : 'truncate'
-                        } text-base font-bold leading-snug ${
-                          onStake ? theme.title : 'text-zinc-100'
-                        }`}
-                      >
-                        {onStake
-                          ? hero.deal?.label?.trim() || 'Cash backing'
-                          : 'Poker bankroll'}
-                      </div>
-                      <div
-                        className={`mt-2 flex items-center gap-2 ${
-                          onStake ? '' : 'justify-end'
-                        }`}
-                      >
+                    <div className="mb-2 flex min-h-9 items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                        <div
+                          data-poker-bankroll-hero-title
+                          className={`min-w-0 truncate ${
+                            onStake ? theme.title : 'text-zinc-100'
+                          }`}
+                        >
+                          {onStake
+                            ? hero.deal?.label?.trim() || 'Cash backing'
+                            : 'Poker bankroll'}
+                        </div>
                         {onStake ? (
                           <span
                             className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
@@ -2171,11 +2165,8 @@ export default function PokerBankrollTracker({
                             {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
                           </span>
                         ) : null}
-                        <div
-                          className={`flex shrink-0 items-center gap-1.5 ${
-                            onStake ? 'ml-auto' : ''
-                          }`}
-                        >
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
                         {!onStake ? (
                           <button
                             type="button"
@@ -2185,9 +2176,8 @@ export default function PokerBankrollTracker({
                               setSheet('createStake')
                               triggerTapHapticLight()
                             }}
-                            className="rounded-lg bg-zinc-700/60 px-3 py-1.5 text-xs font-semibold text-cyan-400 touch-manipulation active:bg-zinc-600"
+                            className="rounded-xl bg-zinc-700/60 px-3 py-1.5 text-xs font-semibold text-cyan-400 touch-manipulation active:bg-zinc-600"
                             data-poker-hero-stake-btn
-                            data-poker-hero-action-btn
                           >
                             + Stake
                           </button>
@@ -2200,12 +2190,11 @@ export default function PokerBankrollTracker({
                               setTermsDealId(scopeId)
                               triggerTapHapticLight()
                             }}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
                               onStake
                                 ? theme.editBtn
                                 : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
                             }`}
-                            data-poker-hero-action-btn
                           >
                             Terms
                           </button>
@@ -2214,17 +2203,15 @@ export default function PokerBankrollTracker({
                           <button
                             type="button"
                             onClick={() => openSetBankroll(scopeId)}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
                               onStake
                                 ? theme.editBtn
                                 : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
                             }`}
-                            data-poker-hero-action-btn
                           >
                             Edit
                           </button>
                         ) : null}
-                        </div>
                       </div>
                     </div>
                     {loading ? (

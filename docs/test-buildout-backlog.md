@@ -719,7 +719,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [x] **`poker-tournament-swap-notify`** (guest Twilio SMS + Resend email; claim token when contact present) — deployed **test + prod** (**2026-07-30** promote). Prefer API key secrets over Auth Token. **`PUBLIC_APP_URL`** must match host (prod `https://edgetilt.com`). Guest SMS open until Twilio From number. Source: `supabase/functions/poker-tournament-swap-notify/README.md`. Redeploy **`lounge-send-activity-push`** with swap activity deep links (done on promote).
 
-- [ ] **`poker-stable-notify`** (guest Twilio SMS + Resend email on stake offer) — deploy on **test** after code lands; shares Resend/Twilio secrets with swap notify. Source: `supabase/functions/poker-stable-notify/README.md`. Client invokes after Bankroll **Create stake** / **Edit terms**.
+- [x] **`poker-stable-notify`** (guest Twilio SMS + Resend email on stake offer) — deployed **test** (**2026-08-01**). Shares Resend/Twilio secrets with swap notify. Client invokes after Bankroll **Create stake** / **Edit terms**. Source: `supabase/functions/poker-stable-notify/README.md`.
 
 - [ ] Function-by-function smoke notes captured  
   - Change: Record minimal expected input/output for each function.

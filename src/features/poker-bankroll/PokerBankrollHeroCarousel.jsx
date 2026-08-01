@@ -110,6 +110,16 @@ export default function PokerBankrollHeroCarousel({
   )
 }
 
+/** Oldest stake = 0, next = 1, … stable even when carousel order changes. */
+export function stakeHeroThemeIndexForDeal(dealId, stakeeDeals = []) {
+  if (!dealId || dealId === 'personal') return 0
+  const sorted = [...stakeeDeals].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )
+  const idx = sorted.findIndex((d) => d.id === dealId)
+  return idx >= 0 ? idx : 0
+}
+
 /** Stake hero accent variants (rotate per deal index). */
 export function stakeHeroTheme(stakeIndex) {
   const themes = [

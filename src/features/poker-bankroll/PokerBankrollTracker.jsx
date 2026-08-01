@@ -15,6 +15,7 @@ import PokerBankrollChartsTab from './PokerBankrollChartsTab.jsx'
 import PokerBankrollHeroCarousel, {
   POKER_BANKROLL_HERO_SHELL,
   stakeHeroTheme,
+  stakeHeroThemeIndexForDeal,
 } from './PokerBankrollHeroCarousel.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
@@ -2053,7 +2054,9 @@ export default function PokerBankrollTracker({
                 const scopeId = slide.id
                 const onStake = scopeId !== 'personal'
                 const hero = heroByScope[scopeId] || heroByScope.personal
-                const theme = onStake ? stakeHeroTheme(Math.max(0, slideIndex - 1)) : null
+                const theme = onStake
+                  ? stakeHeroTheme(stakeHeroThemeIndexForDeal(scopeId, stakeeDeals))
+                  : null
                 return (
                   <div
                     data-poker-bankroll-hero-card

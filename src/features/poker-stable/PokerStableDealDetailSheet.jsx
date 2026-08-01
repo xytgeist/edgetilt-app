@@ -5,12 +5,13 @@ import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
+  closeBackingDeal,
   createPaymentClaim,
   loadLatestSettlement,
   loadPaymentClaims,
+  periodicSettleBackingDeal,
   recordDealTopup,
   respondToPaymentClaim,
-  settleBackingDeal,
   sliceDisplayName,
 } from './pokerStableApi.js'
 import {
@@ -108,15 +109,20 @@ export default function PokerStableDealDetailSheet({
     }
   }
 
-  async function onSettle() {
+  async function onPeriodicSettle() {
     if (!isStakee || !deal) return
-    if (!window.confirm('Settle all slices? Roll resets to baseline and IOU lines are posted.')) return
+    if (
+      !window.confirm(
+        'Periodic settle? Roll resets to baseline, your personal bankroll gets your share, and the stake stays open.',
+      )
+    ) {
+      return
+    }
     onSavingChange(true)
     onError('')
     try {
-      const { error } = await settleBackingDeal(supabaseClient, {
+      const { error } = await periodicSettleBackingDeal(supabaseClient, {
         dealId: deal.id,
-        stakeeUserId: userId,
         rakebackTotal: parseMoneyInputNumber(rakebackTotal) || 0,
       })
       if (error) throw error
@@ -125,6 +131,33 @@ export default function PokerStableDealDetailSheet({
       await loadLedger()
     } catch (e) {
       onError(e?.message || 'Settle failed.')
+    } finally {
+      onSavingChange(false)
+    }
+  }
+
+  async function onCloseDeal() {
+    if (!isStakee || !deal) return
+    if (
+      !window.confirm(
+        'Close this stake? Final settle runs, sessions merge into your personal history, and backers see settled IOUs.',
+      )
+    ) {
+      return
+    }
+    onSavingChange(true)
+    onError('')
+    try {
+      const { error } = await closeBackingDeal(supabaseClient, {
+        dealId: deal.id,
+        rakebackTotal: parseMoneyInputNumber(rakebackTotal) || 0,
+      })
+      if (error) throw error
+      triggerTapHapticLight()
+      await onRefresh()
+      await loadLedger()
+    } catch (e) {
+      onError(e?.message || 'Close failed.')
     } finally {
       onSavingChange(false)
     }
@@ -379,10 +412,11 @@ export default function PokerStableDealDetailSheet({
             </div>
 
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Settle deal
+              Settle stake
             </h4>
             <p className="mb-2 text-xs text-zinc-500">
-              Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
+              Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together. Periodic
+              settle keeps the stake open; close ends it and merges sessions into personal history.
             </p>
             <MoneyInputField
               value={rakebackTotal}
@@ -394,10 +428,18 @@ export default function PokerStableDealDetailSheet({
             <button
               type="button"
               disabled={saving}
-              onClick={() => void onSettle()}
+              onClick={() => void onPeriodicSettle()}
               className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
             >
-              Settle all slices
+              Periodic settle
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void onCloseDeal()}
+              className="mb-2 w-full rounded-3xl bg-zinc-800 py-3 text-base font-bold text-zinc-100 disabled:opacity-50"
+            >
+              Close stake
             </button>
           </>
         ) : null}

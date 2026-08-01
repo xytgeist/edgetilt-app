@@ -7,20 +7,63 @@ import { roundMoney, stableNum, sumSliceActionPct } from '../poker-stable/pokerS
 import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
 
 /**
+ * Personal play history: own sessions + merged stake sessions after close.
+ * @param {object | null | undefined} session
+ * @param {Record<string, object>} [dealsById]
+ */
+export function isPersonalHistorySession(session, dealsById = {}) {
+  if (!session?.deal_id) return true
+  return dealsById[session.deal_id]?.status === 'settled'
+}
+
+/**
+ * Personal metrics (Option B): own sessions + on-stake + merged stake sessions.
+ * @param {object | null | undefined} session
+ * @param {Record<string, object>} [dealsById]
+ */
+export function isPersonalMetricSession(session, dealsById = {}) {
+  if (!session?.deal_id) return true
+  const status = dealsById[session.deal_id]?.status
+  return status === 'active' || status === 'pending' || status === 'settled'
+}
+
+/**
  * Win/loss for hero stats, sparklines, and stake session card headlines.
  * Stake scope: gross table P/L only (swaps never hit stake roll).
- * Personal scope: gross + swap overlay (Option B interim until full player_net_value).
+ * Personal scope: player_net_value (stake attribution + swap overlay).
  *
  * @param {object | null | undefined} session
  * @param {object[]} swaps
  * @param {string} userId
- * @param {{ stakeScope?: boolean }} [opts]
+ * @param {{ stakeScope?: boolean, deal?: object | null, slices?: object[] }} [opts]
  */
 export function sessionMetricWinLoss(session, swaps, userId, opts = {}) {
   const gross = pokerSessionWinLoss(session)
   if (gross == null) return null
   if (opts.stakeScope) return gross
-  return roundMoney(gross + sessionSwapSettlementDelta(swaps, session.id, userId))
+
+  const swapDelta = sessionSwapSettlementDelta(swaps, session.id, userId)
+  if (session?.deal_id && opts.deal) {
+    return playerNetSessionValue(session, opts.deal, opts.slices || [], swapDelta)
+  }
+  return roundMoney(gross + swapDelta)
+}
+
+/**
+ * @param {object | null | undefined} session
+ * @param {object[]} swaps
+ * @param {string} userId
+ * @param {{ stakeScope?: boolean, dealsById?: Record<string, object>, slicesByDeal?: Record<string, object[]> }} opts
+ */
+export function resolveSessionMetricWinLoss(session, swaps, userId, opts) {
+  const deal =
+    !opts.stakeScope && session?.deal_id ? opts.dealsById?.[session.deal_id] ?? null : null
+  const slices = deal ? opts.slicesByDeal?.[session.deal_id] || [] : []
+  return sessionMetricWinLoss(session, swaps, userId, {
+    stakeScope: opts.stakeScope,
+    deal,
+    slices,
+  })
 }
 
 /**

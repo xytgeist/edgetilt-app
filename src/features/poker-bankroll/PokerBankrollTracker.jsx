@@ -38,6 +38,7 @@ import {
 import {
   acceptProposedDealTerms,
   cancelStakeDeal,
+  closeBackingDeal,
   declineProposedDealTerms,
   isMissingStableTableError,
   loadDealBankrollProfiles,
@@ -46,6 +47,7 @@ import {
   loadDealSlices,
   loadDealTopups,
   loadMyStableDeals,
+  periodicSettleBackingDeal,
   reassignGuestSliceToUser,
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
@@ -96,7 +98,12 @@ import {
   pokerSessionMetaLine,
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
-import { sessionMetricWinLoss, playerStakeSessionValue } from './pokerSessionAttribution.js'
+import {
+  isPersonalHistorySession,
+  isPersonalMetricSession,
+  playerStakeSessionValue,
+  resolveSessionMetricWinLoss,
+} from './pokerSessionAttribution.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import {
   applySoftTournamentEventToForm,
@@ -219,8 +226,10 @@ export default function PokerBankrollTracker({
   const [profile, setProfile] = useState(null)
   /** All sessions for this user (personal + deal-scoped). */
   const [sessions, setSessions] = useState([])
-  /** Active deals where I am the horse (stakee). */
+  /** Active + pending deals where I am the horse (stakee) — carousel cards. */
   const [stakeeDeals, setStakeeDeals] = useState([])
+  /** All stakee deals including settled (attribution + merged history badges). */
+  const [stakeeDealsById, setStakeeDealsById] = useState(/** @type {Record<string, object>} */ ({}))
   /** @type {Record<string, object[]>} */
   const [slicesByDeal, setSlicesByDeal] = useState({})
   /** @type {Record<string, object>} */
@@ -296,9 +305,35 @@ export default function PokerBankrollTracker({
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
   const scopedSessions = useMemo(() => {
-    if (!isOnStake) return sessions.filter((s) => s.deal_id == null)
+    if (!isOnStake) {
+      return sessions.filter((s) => isPersonalHistorySession(s, stakeeDealsById))
+    }
     return sessions.filter((s) => s.deal_id === bankrollScope)
-  }, [sessions, isOnStake, bankrollScope])
+  }, [sessions, isOnStake, bankrollScope, stakeeDealsById])
+
+  const personalMetricSessions = useMemo(
+    () => sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById)),
+    [sessions, stakeeDealsById],
+  )
+
+  const metricSessions = useMemo(
+    () => (isOnStake ? scopedSessions : personalMetricSessions),
+    [isOnStake, scopedSessions, personalMetricSessions],
+  )
+
+  const hasActiveStakeDeals = useMemo(
+    () => stakeeDeals.some((d) => d.status === 'active'),
+    [stakeeDeals],
+  )
+
+  const metricContext = useMemo(
+    () => ({
+      stakeScope: isOnStake,
+      dealsById: stakeeDealsById,
+      slicesByDeal,
+    }),
+    [isOnStake, stakeeDealsById, slicesByDeal],
+  )
 
   /** Missing profile rows count as starting roll + logged session P/L until accept bootstraps the profile. */
   const stakeScopeSessionProfit = useMemo(() => {
@@ -383,13 +418,13 @@ export default function PokerBankrollTracker({
   )
   const detailStakeLabel = useMemo(() => {
     if (!detailSession?.deal_id) return ''
-    const deal = stakeeDeals.find((d) => d.id === detailSession.deal_id)
+    const deal = stakeeDealsById[detailSession.deal_id]
     return String(deal?.label || '').trim() || 'Stake'
-  }, [detailSession, stakeeDeals])
+  }, [detailSession, stakeeDealsById])
   const detailDeal = useMemo(() => {
     if (!detailSession?.deal_id) return null
-    return stakeeDeals.find((d) => d.id === detailSession.deal_id) ?? null
-  }, [detailSession, stakeeDeals])
+    return stakeeDealsById[detailSession.deal_id] ?? null
+  }, [detailSession, stakeeDealsById])
   const detailSlices = useMemo(() => {
     if (!detailSession?.deal_id) return []
     return slicesByDeal[detailSession.deal_id] || []
@@ -446,6 +481,7 @@ export default function PokerBankrollTracker({
       setSessions([])
       setProfile(null)
       setStakeeDeals([])
+      setStakeeDealsById({})
       setDealProfiles({})
       setCustomVenues([])
       setLoading(false)
@@ -489,17 +525,22 @@ export default function PokerBankrollTracker({
           console.warn('[poker-bankroll] stable deals load failed', dealsRes.error.message)
         }
         setStakeeDeals([])
+      setStakeeDealsById({})
         setDealProfiles({})
         setSlicesByDeal({})
         setStableProfilesById({})
         setDealTopupsByDeal({})
         setDealSettlementsByDeal({})
       } else {
-        const mine = (dealsRes.deals || []).filter(
-          (d) =>
-            d.stakee_user_id === userId && (d.status === 'active' || d.status === 'pending'),
+        const mine = (dealsRes.deals || []).filter((d) => d.stakee_user_id === userId)
+        const carouselDeals = mine.filter(
+          (d) => d.status === 'active' || d.status === 'pending',
         )
-        setStakeeDeals(mine)
+        setStakeeDeals(carouselDeals)
+        /** @type {Record<string, object>} */
+        const dealsById = {}
+        for (const d of mine) dealsById[d.id] = d
+        setStakeeDealsById(dealsById)
         const dealIds = mine.map((d) => d.id)
         if (dealIds.length) {
           const { byDeal: sliceMap, error: sliceErr } = await loadDealSlices(
@@ -528,7 +569,7 @@ export default function PokerBankrollTracker({
         }
         const { byDeal, error: rollErr } = await loadDealBankrollProfiles(
           supabaseClient,
-          mine.filter((d) => d.status === 'active').map((d) => d.id),
+          carouselDeals.filter((d) => d.status === 'active').map((d) => d.id),
         )
         if (rollErr && !isMissingStableTableError(rollErr)) {
           console.warn('[poker-bankroll] deal rolls load failed', rollErr.message)
@@ -761,6 +802,11 @@ export default function PokerBankrollTracker({
     return () => window.clearInterval(id)
   }, [activeSession])
 
+  const metricCompleted = useMemo(
+    () => metricSessions.filter((s) => s.status !== 'active'),
+    [metricSessions],
+  )
+
   const filtered = useMemo(() => {
     return completedSessions.filter((s) => {
       if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
@@ -768,6 +814,14 @@ export default function PokerBankrollTracker({
       return true
     })
   }, [completedSessions, typeFilter, venueFilter])
+
+  const metricFiltered = useMemo(() => {
+    return metricCompleted.filter((s) => {
+      if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
+      if (venueFilter !== 'all' && s.venue_kind !== venueFilter) return false
+      return true
+    })
+  }, [metricCompleted, typeFilter, venueFilter])
 
   const stakeHistoryEvents = useMemo(() => {
     if (!isOnStake || !activeDeal) return []
@@ -817,8 +871,8 @@ export default function PokerBankrollTracker({
     let hours = 0
     let wins = 0
     let counted = 0
-    for (const s of filtered) {
-      const wl = sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: isOnStake })
+    for (const s of metricFiltered) {
+      const wl = resolveSessionMetricWinLoss(s, tournamentSwaps, userId, metricContext)
       if (wl == null) continue
       counted += 1
       profit += wl
@@ -832,26 +886,35 @@ export default function PokerBankrollTracker({
       winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
       count: counted,
     }
-  }, [filtered, isOnStake, tournamentSwaps, userId])
+  }, [metricFiltered, metricContext, tournamentSwaps, userId])
 
   /** Running bankroll after each filtered session (inferred start = current − filtered profit). */
   const bankrollSparkSeries = useMemo(() => {
-    const ordered = [...filtered]
+    const ordered = [...metricFiltered]
       .map((s) => ({
         at: s.end_at || s.start_at || null,
-        wl: sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: isOnStake }),
+        wl: resolveSessionMetricWinLoss(s, tournamentSwaps, userId, metricContext),
       }))
       .filter((x) => x.wl != null && x.at)
       .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
-    if (ordered.length === 0 || overallBankroll == null) return []
-    let run = Number(overallBankroll) - ordered.reduce((sum, x) => sum + x.wl, 0)
+    if (ordered.length === 0) return []
+    if (isOnStake && overallBankroll != null) {
+      let run = Number(overallBankroll) - ordered.reduce((sum, x) => sum + x.wl, 0)
+      const points = [run]
+      for (const x of ordered) {
+        run += x.wl
+        points.push(run)
+      }
+      return points
+    }
+    let run = 0
     const points = [run]
     for (const x of ordered) {
       run += x.wl
       points.push(run)
     }
     return points
-  }, [filtered, isOnStake, overallBankroll, tournamentSwaps, userId])
+  }, [metricFiltered, isOnStake, overallBankroll, metricContext, tournamentSwaps, userId])
 
   const bankrollSlides = useMemo(() => {
     const slides = [{ id: 'personal', deal: null }]
@@ -865,19 +928,24 @@ export default function PokerBankrollTracker({
       const onStake = scopeId !== 'personal'
       const scopeSessions = onStake
         ? sessions.filter((s) => s.deal_id === scopeId)
-        : sessions.filter((s) => s.deal_id == null)
+        : sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById))
       const scopeCompleted = scopeSessions.filter((s) => s.status !== 'active')
       const scopeFiltered = scopeCompleted.filter((s) => {
         if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
         if (venueFilter !== 'all' && s.venue_kind !== venueFilter) return false
         return true
       })
+      const scopeMetricContext = {
+        stakeScope: onStake,
+        dealsById: stakeeDealsById,
+        slicesByDeal,
+      }
       let profit = 0
       let hours = 0
       let wins = 0
       let counted = 0
       for (const s of scopeFiltered) {
-        const wl = sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: onStake })
+        const wl = resolveSessionMetricWinLoss(s, tournamentSwaps, userId, scopeMetricContext)
         if (wl == null) continue
         counted += 1
         profit += wl
@@ -905,19 +973,29 @@ export default function PokerBankrollTracker({
       const ordered = [...scopeFiltered]
         .map((s) => ({
           at: s.end_at || s.start_at || null,
-          wl: sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: onStake }),
+          wl: resolveSessionMetricWinLoss(s, tournamentSwaps, userId, scopeMetricContext),
         }))
         .filter((x) => x.wl != null && x.at)
         .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
       let spark = []
-      if (ordered.length > 0 && scopeRoll != null) {
-        let run = Number(scopeRoll) - ordered.reduce((sum, x) => sum + x.wl, 0)
-        const points = [run]
-        for (const x of ordered) {
-          run += x.wl
-          points.push(run)
+      if (ordered.length > 0) {
+        if (onStake && scopeRoll != null) {
+          let run = Number(scopeRoll) - ordered.reduce((sum, x) => sum + x.wl, 0)
+          const points = [run]
+          for (const x of ordered) {
+            run += x.wl
+            points.push(run)
+          }
+          spark = points
+        } else {
+          let run = 0
+          const points = [run]
+          for (const x of ordered) {
+            run += x.wl
+            points.push(run)
+          }
+          spark = points
         }
-        spark = points
       }
       return {
         stats: scopeStats,
@@ -933,6 +1011,7 @@ export default function PokerBankrollTracker({
   }, [
     sessions,
     stakeeDeals,
+    stakeeDealsById,
     dealProfiles,
     profile,
     typeFilter,
@@ -2231,6 +2310,15 @@ export default function PokerBankrollTracker({
                         </div>
                       )}
                     </div>
+                    {!onStake && hasActiveStakeDeals ? (
+                      <p
+                        data-poker-bankroll-hero-hint
+                        className="mb-2 text-[11px] leading-snug text-zinc-500"
+                      >
+                        Includes your share of on-stake sessions; bankroll updates when you settle
+                        with backers.
+                      </p>
+                    ) : null}
                     {loading ? (
                       <>
                         <div className="min-h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
@@ -2606,30 +2694,33 @@ export default function PokerBankrollTracker({
 
                   const session = item.session
                   const baseWl = pokerSessionWinLoss(session)
-                  const swapDelta = sessionSwapSettlementDelta(
-                    tournamentSwaps,
-                    session.id,
-                    userId,
-                  )
                   const sessionDeal = session.deal_id
-                    ? stakeeDeals.find((d) => d.id === session.deal_id) ?? null
+                    ? stakeeDealsById[session.deal_id] ?? null
                     : null
+                  const isMergedStakeSession =
+                    !isOnStake && sessionDeal?.status === 'settled'
                   const playerShare =
-                    isOnStake && sessionDeal
+                    (isOnStake || isMergedStakeSession) && sessionDeal
                       ? playerStakeSessionValue(
                           session,
                           sessionDeal,
                           slicesByDeal[session.deal_id] || [],
                         )
                       : null
-                  const wl =
-                    baseWl == null
-                      ? null
-                      : isOnStake
-                        ? baseWl
-                        : baseWl + swapDelta
+                  const wl = resolveSessionMetricWinLoss(
+                    session,
+                    tournamentSwaps,
+                    userId,
+                    {
+                      stakeScope: isOnStake,
+                      dealsById: stakeeDealsById,
+                      slicesByDeal,
+                    },
+                  )
+                  const displayWl =
+                    isOnStake || isMergedStakeSession ? baseWl : wl
                   const hrs = pokerSessionDurationHours(session)
-                  const hourly = wl != null && hrs >= 0.02 ? wl / hrs : null
+                  const hourly = displayWl != null && hrs >= 0.02 ? displayWl / hrs : null
                   const bbh = pokerSessionBbPerHour(session)
                   const sessionSwaps = swapsBySessionId[session.id] || []
                   return (
@@ -2657,23 +2748,51 @@ export default function PokerBankrollTracker({
                         <span className="min-w-0 flex-1">
                           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 gap-y-0.5">
                             <span className="truncate font-semibold text-white">
+                              {isMergedStakeSession ? (
+                                <>
+                                  <span
+                                    data-poker-session-stake-badge
+                                    className="mr-1.5 inline-flex rounded-md bg-zinc-700/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-300"
+                                  >
+                                    On stake
+                                  </span>
+                                  {sessionDeal?.label?.trim() || 'Stake'}
+                                  <span className="mx-1 text-zinc-600">·</span>
+                                </>
+                              ) : null}
                               {pokerSessionStakesLabel(session)}
                             </span>
                             <span
                               className={`shrink-0 text-right font-bold tabular-nums ${
-                                wl == null
+                                displayWl == null
                                   ? 'text-zinc-500'
-                                  : wl >= 0
+                                  : displayWl >= 0
                                     ? 'text-emerald-400'
                                     : 'text-rose-400'
                               }`}
                             >
-                              {wl == null ? '-' : fmtPoker$(wl)}
+                              {displayWl == null ? '-' : fmtPoker$(displayWl)}
                             </span>
                             <span className="min-w-0 truncate text-[12px] text-zinc-500">
                               {pokerSessionMetaLine(session)}
                             </span>
                             {isOnStake && playerShare != null ? (
+                              <span
+                                data-poker-session-player-share
+                                className="shrink-0 whitespace-nowrap text-right text-[10px] font-medium tabular-nums text-zinc-500"
+                              >
+                                Your share{' '}
+                                <span
+                                  className={
+                                    playerShare >= 0
+                                      ? 'text-emerald-400/85'
+                                      : 'text-rose-400/85'
+                                  }
+                                >
+                                  {fmtPoker$(playerShare)}
+                                </span>
+                              </span>
+                            ) : isMergedStakeSession && playerShare != null ? (
                               <span
                                 data-poker-session-player-share
                                 className="shrink-0 whitespace-nowrap text-right text-[10px] font-medium tabular-nums text-zinc-500"
@@ -2837,8 +2956,11 @@ export default function PokerBankrollTracker({
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
           ) : (
             <PokerBankrollTrendTab
-              sessions={completedSessions}
+              sessions={metricCompleted}
               initialBankroll={overallBankroll}
+              metricContext={metricContext}
+              tournamentSwaps={tournamentSwaps}
+              userId={userId}
             />
           )
         ) : null}
@@ -2908,6 +3030,57 @@ export default function PokerBankrollTracker({
               await loadData()
             } catch (e) {
               setError(e?.message || 'Could not delete stake.')
+            } finally {
+              setStableSaving(false)
+            }
+          }}
+          dealRoll={dealProfiles[termsDealId] ?? null}
+          onPeriodicSettle={async (rakebackTotal) => {
+            if (
+              !window.confirm(
+                'Periodic settle? Roll resets to baseline, your personal bankroll gets your share, and the stake stays open.',
+              )
+            ) {
+              return
+            }
+            setStableSaving(true)
+            setError('')
+            try {
+              const { error } = await periodicSettleBackingDeal(supabaseClient, {
+                dealId: termsDealId,
+                rakebackTotal,
+              })
+              if (error) throw error
+              showStakeNotice('Periodic settle complete ... roll reset to baseline.')
+              await loadData()
+            } catch (e) {
+              setError(e?.message || 'Settle failed.')
+            } finally {
+              setStableSaving(false)
+            }
+          }}
+          onCloseStake={async (rakebackTotal) => {
+            if (
+              !window.confirm(
+                'Close this stake? Final settle runs and sessions merge into your personal history.',
+              )
+            ) {
+              return
+            }
+            setStableSaving(true)
+            setError('')
+            try {
+              const { error } = await closeBackingDeal(supabaseClient, {
+                dealId: termsDealId,
+                rakebackTotal,
+              })
+              if (error) throw error
+              showStakeNotice('Stake closed ... sessions are on your personal timeline now.')
+              setTermsDealId(null)
+              if (bankrollScope === termsDealId) setBankrollScope('personal')
+              await loadData()
+            } catch (e) {
+              setError(e?.message || 'Close failed.')
             } finally {
               setStableSaving(false)
             }

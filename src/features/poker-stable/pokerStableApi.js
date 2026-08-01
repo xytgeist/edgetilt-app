@@ -1,5 +1,5 @@
 import { pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
-import { computeDealSettlement, roundMoney, stableNum, sumSliceActionPct } from './pokerStableMath.js'
+import { roundMoney, stableNum, sumSliceActionPct } from './pokerStableMath.js'
 
 /**
  * Poker Stable API. Graceful when migration not yet applied on the env.
@@ -1035,74 +1035,90 @@ export async function recordDealTopup(supabase, args) {
   return { topup, error: uRoll }
 }
 
+async function loadSettlementBundle(supabase, settlementId) {
+  const { data: settlement, error: stErr } = await supabase
+    .from('poker_stable_deal_settlements')
+    .select('*')
+    .eq('id', settlementId)
+    .maybeSingle()
+  if (stErr) return { settlement: null, lines: [], calc: null, error: stErr }
+  if (!settlement) return { settlement: null, lines: [], calc: null, error: new Error('Settlement not found.') }
+
+  const { data: lines, error: lErr } = await supabase
+    .from('poker_stable_deal_settlement_lines')
+    .select('*')
+    .eq('settlement_id', settlementId)
+  if (lErr) return { settlement, lines: [], calc: null, error: lErr }
+
+  const calc = {
+    baseline_at_settle: stableNum(settlement.baseline_at_settle),
+    roll_at_settle: stableNum(settlement.roll_at_settle),
+    profit_above_baseline: stableNum(settlement.profit_above_baseline),
+    makeup_at_settle: stableNum(settlement.makeup_at_settle),
+    rakeback_total: stableNum(settlement.rakeback_total),
+    lines: (lines || []).map((l) => ({
+      slice_id: l.slice_id,
+      profitShare: stableNum(l.profit_share),
+      rakebackShare: stableNum(l.rakeback_share),
+      total_owed: stableNum(l.total_owed),
+      direction: l.direction,
+    })),
+    player_net: roundMoney(
+      stableNum(settlement.profit_above_baseline) -
+        (lines || []).reduce(
+          (sum, l) =>
+            sum +
+            (l.direction === 'player_to_staker'
+              ? stableNum(l.total_owed)
+              : -stableNum(l.total_owed)),
+          0,
+        ),
+    ),
+  }
+
+  return { settlement, lines: lines || [], calc, error: null }
+}
+
 /**
+ * Periodic settle: roll → baseline, credit player personal bankroll, deal stays active.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {object} args
+ */
+export async function periodicSettleBackingDeal(supabase, args) {
+  const { dealId, rakebackTotal = 0, note } = args
+  const { data: settlementId, error } = await supabase.rpc('poker_stable_periodic_settle', {
+    p_deal_id: dealId,
+    p_rakeback_total: roundMoney(rakebackTotal),
+    p_note: note?.trim() || null,
+  })
+  if (error) return { settlement: null, lines: [], calc: null, error }
+  return loadSettlementBundle(supabase, settlementId)
+}
+
+/**
+ * Close/end stake: final settle + deal status settled (sessions merge to personal history).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {object} args
+ */
+export async function closeBackingDeal(supabase, args) {
+  const { dealId, rakebackTotal = 0, note } = args
+  const { data: settlementId, error } = await supabase.rpc('poker_stable_close_deal', {
+    p_deal_id: dealId,
+    p_rakeback_total: roundMoney(rakebackTotal),
+    p_note: note?.trim() || null,
+  })
+  if (error) return { settlement: null, lines: [], calc: null, error }
+  return loadSettlementBundle(supabase, settlementId)
+}
+
+/**
+ * @deprecated Prefer periodicSettleBackingDeal or closeBackingDeal.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {object} args
  */
 export async function settleBackingDeal(supabase, args) {
-  const { dealId, stakeeUserId, rakebackTotal = 0, note } = args
-
-  const { data: deal, error: dErr } = await supabase
-    .from('poker_stable_deals')
-    .select(`${DEAL_SELECT}, poker_deal_bankroll_profiles(overall_bankroll)`)
-    .eq('id', dealId)
-    .eq('stakee_user_id', stakeeUserId)
-    .eq('status', 'active')
-    .single()
-  if (dErr) return { settlement: null, error: dErr }
-
-  const { data: slices, error: sErr } = await supabase
-    .from('poker_stable_deal_slices')
-    .select(SLICE_SELECT)
-    .eq('deal_id', dealId)
-    .eq('status', 'active')
-  if (sErr) return { settlement: null, error: sErr }
-
-  const profile = deal.poker_deal_bankroll_profiles
-  const roll = stableNum(
-    Array.isArray(profile) ? profile[0]?.overall_bankroll : profile?.overall_bankroll,
-  )
-  const calc = computeDealSettlement(
-    { baseline_bankroll: deal.baseline_bankroll, roll },
-    slices || [],
-    rakebackTotal,
-  )
-
-  const { data: settlement, error: stErr } = await supabase
-    .from('poker_stable_deal_settlements')
-    .insert({
-      deal_id: dealId,
-      baseline_at_settle: calc.baseline_at_settle,
-      roll_at_settle: calc.roll_at_settle,
-      profit_above_baseline: calc.profit_above_baseline,
-      makeup_at_settle: calc.makeup_at_settle,
-      rakeback_total: calc.rakeback_total,
-      settled_by_user_id: stakeeUserId,
-      note: note?.trim() || null,
-    })
-    .select('*')
-    .single()
-  if (stErr) return { settlement: null, error: stErr }
-
-  const lineRows = calc.lines.map((l) => ({
-    settlement_id: settlement.id,
-    slice_id: l.slice_id,
-    profit_share: l.profitShare,
-    rakeback_share: l.rakebackShare,
-    total_owed: l.total_owed,
-    direction: l.direction,
-  }))
-  const { error: lErr } = await supabase.from('poker_stable_deal_settlement_lines').insert(lineRows)
-  if (lErr) return { settlement, error: lErr }
-
-  const baseline = calc.baseline_at_settle
-  await supabase.from('poker_deal_bankroll_profiles').update({ overall_bankroll: baseline }).eq('deal_id', dealId)
-  await supabase
-    .from('poker_stable_deals')
-    .update({ settled_at: new Date().toISOString(), status: 'settled' })
-    .eq('id', dealId)
-
-  return { settlement, lines: lineRows, calc, error: null }
+  const { dealId, rakebackTotal = 0, note } = args
+  return closeBackingDeal(supabase, { dealId, rakebackTotal, note })
 }
 
 /**

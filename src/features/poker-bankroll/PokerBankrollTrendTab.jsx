@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import {
   Chart as ChartJS,
   LineElement,
@@ -15,7 +15,7 @@ import {
   pokerSessionTotalCost,
   pokerSessionWinLoss,
 } from './pokerBankrollMath.js'
-import { pokerSessionStakesLabel } from './pokerSessionLabels.js'
+import { resolveSessionMetricWinLoss } from './pokerSessionAttribution.js'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler)
 
@@ -390,7 +390,14 @@ function TrendDockPill({ active, onClick, label }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PokerBankrollTrendTab({ sessions, adjustments = [], initialBankroll }) {
+export default function PokerBankrollTrendTab({
+  sessions,
+  adjustments = [],
+  initialBankroll,
+  metricContext = null,
+  tournamentSwaps = [],
+  userId = '',
+}) {
   const [filter, setFilter] = useState('MAX')
   /** @type {'all' | 'cash' | 'tournament'} */
   const [typeFilter, setTypeFilter] = useState('all')
@@ -426,6 +433,16 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
   const fanStyle = useMemo(() => fanChartStyle(isDark), [isDark])
 
   const showInfo = (key) => setInfoModal(INFO[key])
+
+  const sessionMetricWl = useCallback(
+    (session) => {
+      if (metricContext && userId) {
+        return resolveSessionMetricWinLoss(session, tournamentSwaps, userId, metricContext) ?? 0
+      }
+      return pokerSessionWinLoss(session) ?? 0
+    },
+    [metricContext, tournamentSwaps, userId],
+  )
 
   const scopedSessions = useMemo(() => {
     return (sessions || []).filter((s) => {
@@ -483,7 +500,7 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
     let idx = 0
     for (const ev of events) {
       if (ev.type === 'session') {
-        const wl = pokerSessionWinLoss(ev.session) ?? 0
+        const wl = sessionMetricWl(ev.session)
         running += wl
         idx++
         labels.push(`#${idx}`)
@@ -496,7 +513,7 @@ export default function PokerBankrollTrendTab({ sessions, adjustments = [], init
     }
 
     return { labels, dataPoints, sessionResults, orderedSessions, adjMarkers }
-  }, [filteredSessions, adjustments, filter])
+  }, [filteredSessions, adjustments, filter, sessionMetricWl])
 
   orderedSessionsRef.current = orderedSessions
   sessionResultsRef.current = sessionResults

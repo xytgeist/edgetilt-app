@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import MoneyInputField from '../../components/MoneyInputField.jsx'
+import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
+import { computeProfitAboveBaseline, isOngoingDealType } from './pokerStableMath.js'
 import {
   canReassignGuestSlice,
   dealTermsMeta,
@@ -172,9 +175,13 @@ export default function PokerStableDealTermsSheet({
   onDeclineProposal,
   onReassignGuest,
   onCancelStake,
+  onPeriodicSettle,
+  onCloseStake,
+  dealRoll = null,
   onError,
 }) {
   const [reassignSliceId, setReassignSliceId] = useState(null)
+  const [rakebackTotal, setRakebackTotal] = useState('')
 
   if (!deal) return null
 
@@ -209,6 +216,18 @@ export default function PokerStableDealTermsSheet({
     isStakee &&
     stakeDealCanBeCancelled(deal, slices, { userId }) &&
     typeof onCancelStake === 'function'
+  const canSettle =
+    isStakee &&
+    deal.status === 'active' &&
+    isOngoingDealType(deal.deal_type) &&
+    !hasProposal &&
+    (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
+  const rollValue =
+    dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0
+  const profitUp = computeProfitAboveBaseline({
+    baseline_bankroll: deal.baseline_bankroll,
+    roll: rollValue,
+  })
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -378,6 +397,46 @@ export default function PokerStableDealTermsSheet({
             >
               Edit terms
             </button>
+          ) : null}
+          {canSettle ? (
+            <>
+              <h4 className="pt-1 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                Settle stake
+              </h4>
+              <p className="text-xs text-zinc-500">
+                Profit above baseline: {fmtPoker$(profitUp)} · periodic keeps the stake open; close
+                merges sessions into personal history.
+              </p>
+              <MoneyInputField
+                value={rakebackTotal}
+                onChange={setRakebackTotal}
+                placeholder="Rakeback total"
+                focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                className="mt-2"
+              />
+              {typeof onPeriodicSettle === 'function' ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() =>
+                    void onPeriodicSettle(parseMoneyInputNumber(rakebackTotal) || 0)
+                  }
+                  className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+                >
+                  Periodic settle
+                </button>
+              ) : null}
+              {typeof onCloseStake === 'function' ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void onCloseStake(parseMoneyInputNumber(rakebackTotal) || 0)}
+                  className="w-full rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
+                >
+                  Close stake
+                </button>
+              ) : null}
+            </>
           ) : null}
           {canCancel ? (
             <button

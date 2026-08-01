@@ -189,10 +189,10 @@ Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`pok
 ### Implementation checklist (open)
 
 - [x] Stop adding swap delta to **stake-scoped** hero/stats/sparkline (stake roll = gross sessions only).
-- [x] **`playerStakeSessionValue`** (+ `player_net_value`) shared helper; session **detail sheet** shows gross + by-party + your net (swap overlay). Session cards + metrics still TODO.
-- [ ] Periodic settle RPC: roll → baseline, credit **player personal** + **backer** profiles from settle lines (deal stays `active`).
-- [ ] Close/end RPC: final settle + **session merge** + badges; no second personal bankroll pass on gross W/L.
-- [ ] Personal metrics Option B + hero copy when active stakes exist.
+- [x] **`playerStakeSessionValue`** (+ `player_net_value`) shared helper; session **detail sheet** + **session cards** (dual line gross + your share).
+- [x] Periodic settle RPC: roll → baseline, credit **player personal** from settle lines (deal stays `active`).
+- [x] Close/end RPC: final settle + **session merge** (settled deals on personal timeline + badges); no second personal bankroll pass on gross W/L.
+- [x] Personal metrics Option B + hero copy when active stakes exist.
 - [ ] v2c: backer overall bankroll profile(s) updated on settle/close.
 
 ---
@@ -251,7 +251,8 @@ New / extended:
 
 ## Update log
 
-- **2026-08-01:** **Session detail attribution (test):** `pokerSessionAttribution.js` (`playerStakeSessionValue`, `playerNetSessionValue`); Bankroll session detail sheet shows table result, **By party** (stake roll, your share, backer lines), swaps, **Your net**. Session cards + Option B metrics still open.
+- **2026-08-01:** **v2a bankroll attribution (test):** RPCs `poker_stable_periodic_settle` + `poker_stable_close_deal` (`20260802000000`); player personal bankroll credited on settle; close merges stake sessions to personal timeline (keep `deal_id`, settled badge). Option B personal metrics (`player_net_value`), hero hint, Trend tab; Terms + Stable detail periodic vs close settle UI. Backer bankroll rollup still **v2c**.
+- **2026-08-01:** **Session detail attribution (test):** `pokerSessionAttribution.js` (`playerStakeSessionValue`, `playerNetSessionValue`); Bankroll session detail sheet shows table result, **By party**, swaps, **Your net**; stake session cards dual-line gross + your share.
 - **2026-08-01:** **Bankroll & session attribution** (Ryan design): three surfaces (stake roll, personal, backer); periodic settle vs close; Option B metrics (accrue `player_net_value` per session, bankroll moves on settle only); session cards gross + stake value + swap on net; merge on close without double-count; swaps never in stake settle. See § Bankroll & session attribution. **Partial:** detail sheet + helpers; settle RPC + merge + metrics TODO.
 - **2026-08-01:** Guest stake notify: Edge **`poker-stable-notify`** (Resend email + Twilio SMS) on create (`kind=offer`), terms edit with before/after blocks (`kind=terms_edited`), and before stake delete (`kind=deleted`).
 - **2026-08-01:** Stake accent palette: heroes rotate **blue / emerald / rose** (oldest deal = blue). Light mode: tone gradient (slow fade) + neutral elevation; Terms slice cards match; no inset 3D shell.

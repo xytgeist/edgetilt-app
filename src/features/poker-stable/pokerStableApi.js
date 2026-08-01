@@ -333,7 +333,7 @@ export async function createBackingDeal(supabase, args) {
   const { error: slErr } = await supabase.from('poker_stable_deal_slices').insert(sliceRows)
   if (slErr) return { deal, error: slErr }
 
-  if (activate || dealType === 'cash_backing') {
+  if (activate) {
     const { error: pErr } = await supabase.from('poker_deal_bankroll_profiles').upsert(
       { deal_id: deal.id, overall_bankroll: roll },
       { onConflict: 'deal_id' },

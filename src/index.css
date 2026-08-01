@@ -5026,7 +5026,7 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
 
 /*
  * Bankroll hero carousel — light only.
- * Stake cards keep dark amber/orange/rose gradients in dark mode; light gets soft tinted shells + readable type (amber → indigo in light).
+ * Stake cards: flat shells + tone border (no dark-mode-style gradient fade or glow).
  */
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-elevated-card='surface'] {
   background: linear-gradient(to bottom right, #fafafa, #ffffff) !important;
@@ -5054,19 +5054,19 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-elevated-c
 }
 
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] {
-  background: linear-gradient(to bottom right, #eef2ff, #ffffff) !important;
+  background: #ffffff !important;
   border-color: #818cf8 !important;
-  box-shadow: 0 0 28px -8px rgba(99, 102, 241, 0.28) !important;
+  box-shadow: none !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='orange'] {
-  background: linear-gradient(to bottom right, #fff7ed, #ffffff) !important;
+  background: #ffffff !important;
   border-color: #fb923c !important;
-  box-shadow: 0 0 28px -8px rgba(251, 146, 60, 0.34) !important;
+  box-shadow: none !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='rose'] {
-  background: linear-gradient(to bottom right, #fff1f2, #ffffff) !important;
+  background: #ffffff !important;
   border-color: #fb7185 !important;
-  box-shadow: 0 0 28px -8px rgba(251, 113, 133, 0.32) !important;
+  box-shadow: none !important;
 }
 
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-amber-200\/70,

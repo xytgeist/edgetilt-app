@@ -96,6 +96,7 @@ import {
   pokerSessionMetaLine,
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
+import { sessionMetricWinLoss } from './pokerSessionAttribution.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import {
   applySoftTournamentEventToForm,
@@ -305,10 +306,10 @@ export default function PokerBankrollTracker({
       if (s.status !== 'completed') continue
       const base = pokerSessionWinLoss(s)
       if (base == null) continue
-      profit += base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId)
+      profit += base
     }
     return profit
-  }, [isOnStake, dealProfile, scopedSessions, tournamentSwaps, userId])
+  }, [isOnStake, dealProfile, scopedSessions])
 
   const overallBankroll = isOnStake
     ? dealProfile != null
@@ -815,9 +816,8 @@ export default function PokerBankrollTracker({
     let wins = 0
     let counted = 0
     for (const s of filtered) {
-      const base = pokerSessionWinLoss(s)
-      if (base == null) continue
-      const wl = base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId)
+      const wl = sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: isOnStake })
+      if (wl == null) continue
       counted += 1
       profit += wl
       hours += pokerSessionDurationHours(s)
@@ -830,21 +830,15 @@ export default function PokerBankrollTracker({
       winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
       count: counted,
     }
-  }, [filtered, tournamentSwaps, userId])
+  }, [filtered, isOnStake, tournamentSwaps, userId])
 
   /** Running bankroll after each filtered session (inferred start = current − filtered profit). */
   const bankrollSparkSeries = useMemo(() => {
     const ordered = [...filtered]
-      .map((s) => {
-        const base = pokerSessionWinLoss(s)
-        return {
-          at: s.end_at || s.start_at || null,
-          wl:
-            base == null
-              ? null
-              : base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId),
-        }
-      })
+      .map((s) => ({
+        at: s.end_at || s.start_at || null,
+        wl: sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: isOnStake }),
+      }))
       .filter((x) => x.wl != null && x.at)
       .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
     if (ordered.length === 0 || overallBankroll == null) return []
@@ -855,7 +849,7 @@ export default function PokerBankrollTracker({
       points.push(run)
     }
     return points
-  }, [filtered, overallBankroll, tournamentSwaps, userId])
+  }, [filtered, isOnStake, overallBankroll, tournamentSwaps, userId])
 
   const bankrollSlides = useMemo(() => {
     const slides = [{ id: 'personal', deal: null }]
@@ -881,9 +875,8 @@ export default function PokerBankrollTracker({
       let wins = 0
       let counted = 0
       for (const s of scopeFiltered) {
-        const base = pokerSessionWinLoss(s)
-        if (base == null) continue
-        const wl = base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId)
+        const wl = sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: onStake })
+        if (wl == null) continue
         counted += 1
         profit += wl
         hours += pokerSessionDurationHours(s)
@@ -908,16 +901,10 @@ export default function PokerBankrollTracker({
         scopeRoll += scopeStats.profit
       }
       const ordered = [...scopeFiltered]
-        .map((s) => {
-          const base = pokerSessionWinLoss(s)
-          return {
-            at: s.end_at || s.start_at || null,
-            wl:
-              base == null
-                ? null
-                : base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId),
-          }
-        })
+        .map((s) => ({
+          at: s.end_at || s.start_at || null,
+          wl: sessionMetricWinLoss(s, tournamentSwaps, userId, { stakeScope: onStake }),
+        }))
         .filter((x) => x.wl != null && x.at)
         .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
       let spark = []
@@ -2622,7 +2609,12 @@ export default function PokerBankrollTracker({
                     session.id,
                     userId,
                   )
-                  const wl = baseWl == null ? null : baseWl + swapDelta
+                  const wl =
+                    baseWl == null
+                      ? null
+                      : isOnStake
+                        ? baseWl
+                        : baseWl + swapDelta
                   const hrs = pokerSessionDurationHours(session)
                   const hourly = wl != null && hrs >= 0.02 ? wl / hrs : null
                   const bbh = pokerSessionBbPerHour(session)

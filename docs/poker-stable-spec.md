@@ -188,7 +188,7 @@ Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`pok
 
 ### Implementation checklist (open)
 
-- [ ] Stop adding swap delta to **stake-scoped** hero/stats/sparkline (stake roll = gross sessions only).
+- [x] Stop adding swap delta to **stake-scoped** hero/stats/sparkline (stake roll = gross sessions only).
 - [x] **`playerStakeSessionValue`** (+ `player_net_value`) shared helper; session **detail sheet** shows gross + by-party + your net (swap overlay). Session cards + metrics still TODO.
 - [ ] Periodic settle RPC: roll → baseline, credit **player personal** + **backer** profiles from settle lines (deal stays `active`).
 - [ ] Close/end RPC: final settle + **session merge** + badges; no second personal bankroll pass on gross W/L.

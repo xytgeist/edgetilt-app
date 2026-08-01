@@ -2,8 +2,26 @@
  * Per-session stake attribution. See docs/poker-stable-spec.md § Bankroll & session attribution.
  */
 import { pokerSessionWinLoss } from './pokerBankrollMath.js'
+import { sessionSwapSettlementDelta } from './pokerTournamentSwapMath.js'
 import { roundMoney, stableNum, sumSliceActionPct } from '../poker-stable/pokerStableMath.js'
 import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
+
+/**
+ * Win/loss for hero stats, sparklines, and stake session card headlines.
+ * Stake scope: gross table P/L only (swaps never hit stake roll).
+ * Personal scope: gross + swap overlay (Option B interim until full player_net_value).
+ *
+ * @param {object | null | undefined} session
+ * @param {object[]} swaps
+ * @param {string} userId
+ * @param {{ stakeScope?: boolean }} [opts]
+ */
+export function sessionMetricWinLoss(session, swaps, userId, opts = {}) {
+  const gross = pokerSessionWinLoss(session)
+  if (gross == null) return null
+  if (opts.stakeScope) return gross
+  return roundMoney(gross + sessionSwapSettlementDelta(swaps, session.id, userId))
+}
 
 /**
  * Player economic share of session gross under deal slice terms (excludes swaps).

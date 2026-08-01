@@ -3,8 +3,8 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
 import {
-  POKER_STABLE_TYPEAHEAD_RESERVE_PX,
-  scrollPokerStableSheetToElement,
+  readKeyboardOverlapPx,
+  schedulePokerStableFieldScroll,
 } from './pokerStableSheetScroll.js'
 
 const DEBOUNCE_MS = 120
@@ -78,32 +78,24 @@ export default function EdgeHandleTypeahead({
     [onChange, onSelectProfile, closeList],
   )
 
-  const scrollInputIntoView = useCallback(() => {
-    const input = inputRef.current
-    if (!input) return
-    scrollPokerStableSheetToElement(input, {
-      reserveBelowPx: POKER_STABLE_TYPEAHEAD_RESERVE_PX,
-    })
+  const scrollFieldIntoView = useCallback(() => {
+    schedulePokerStableFieldScroll(inputRef.current, listRef.current)
   }, [])
 
   useLayoutEffect(() => {
     if (!showList) return undefined
 
-    scrollInputIntoView()
-    const raf = requestAnimationFrame(scrollInputIntoView)
-    const timer = window.setTimeout(scrollInputIntoView, 120)
+    scrollFieldIntoView()
 
     const vv = window.visualViewport
-    vv?.addEventListener('resize', scrollInputIntoView)
-    vv?.addEventListener('scroll', scrollInputIntoView)
+    vv?.addEventListener('resize', scrollFieldIntoView)
+    vv?.addEventListener('scroll', scrollFieldIntoView)
 
     return () => {
-      cancelAnimationFrame(raf)
-      window.clearTimeout(timer)
-      vv?.removeEventListener('resize', scrollInputIntoView)
-      vv?.removeEventListener('scroll', scrollInputIntoView)
+      vv?.removeEventListener('resize', scrollFieldIntoView)
+      vv?.removeEventListener('scroll', scrollFieldIntoView)
     }
-  }, [showList, scrollInputIntoView, suggestions.length, loading])
+  }, [showList, scrollFieldIntoView, suggestions.length, loading, openUpward])
 
   useEffect(() => {
     if (!supabaseClient || disabled || isLockedSelection) {
@@ -156,7 +148,11 @@ export default function EdgeHandleTypeahead({
       const listHeight = Math.min(list?.offsetHeight || MAX_LIST_HEIGHT_PX, MAX_LIST_HEIGHT_PX)
       const spaceBelow = vBottom - rect.bottom - GAP_PX
       const spaceAbove = rect.top - vTop - GAP_PX
-      setOpenUpward(listHeight > 0 && spaceBelow < listHeight && spaceAbove > spaceBelow)
+      const keyboardOpen = readKeyboardOverlapPx() > 8
+      setOpenUpward(
+        keyboardOpen ||
+          (listHeight > 0 && spaceBelow < listHeight && spaceAbove > spaceBelow),
+      )
     }
 
     updatePlacement()
@@ -195,18 +191,16 @@ export default function EdgeHandleTypeahead({
   }, [showList, suggestions.length, loading, activeIndex, normalizedValue])
 
   useLayoutEffect(() => {
-    if (!showList) return undefined
+    if (!showList || openUpward) return undefined
     const sheet = containerRef.current?.closest('[data-poker-stable-sheet]')
     if (!sheet) return undefined
-    const prevOverflow = sheet.style.overflow
-    const prevOverflowY = sheet.style.overflowY
-    sheet.style.overflow = 'visible'
-    sheet.style.overflowY = 'visible'
+    const prevPaddingBottom = sheet.style.paddingBottom
+    sheet.style.paddingBottom = `${MAX_LIST_HEIGHT_PX + GAP_PX}px`
+    scrollFieldIntoView()
     return () => {
-      sheet.style.overflow = prevOverflow
-      sheet.style.overflowY = prevOverflowY
+      sheet.style.paddingBottom = prevPaddingBottom
     }
-  }, [showList])
+  }, [showList, openUpward, scrollFieldIntoView])
 
   useEffect(() => {
     if (!open) return undefined
@@ -237,12 +231,12 @@ export default function EdgeHandleTypeahead({
         value={value ?? ''}
         onChange={(e) => {
           onChange(e.target.value)
+          if (!isLockedSelection) scrollFieldIntoView()
         }}
         onFocus={() => {
           if (isLockedSelection) return
           if (normalizedValue.length >= 1) setOpen(true)
-          scrollInputIntoView()
-          requestAnimationFrame(scrollInputIntoView)
+          scrollFieldIntoView()
         }}
         onMouseDown={stopBubble}
         onPointerDown={stopBubble}

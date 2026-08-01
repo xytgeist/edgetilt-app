@@ -177,6 +177,36 @@ export function sumSliceActionPct(slices) {
   return roundMoney((slices || []).reduce((s, sl) => s + stableNum(sl.action_pct), 0), 3)
 }
 
+/**
+ * Action % sold by the player (stakee) across stable deals.
+ * @param {object[]} deals
+ * @param {Record<string, object[]>} slicesByDeal
+ * @param {{ dealStatuses?: string[] }} [opts]
+ */
+export function sumStakeeSoldActionPct(deals, slicesByDeal, opts = {}) {
+  const dealStatuses = opts.dealStatuses ?? ['active', 'pending']
+  let total = 0
+  for (const deal of deals || []) {
+    if (!dealStatuses.includes(deal.status)) continue
+    for (const sl of slicesByDeal[deal.id] || []) {
+      if (sl.status === 'cancelled' || sl.status === 'declined') continue
+      total += stableNum(sl.action_pct)
+    }
+  }
+  return roundMoney(total, 3)
+}
+
+/**
+ * Player self-owned action % (100 minus sold backing slices).
+ * @param {object[]} deals
+ * @param {Record<string, object[]>} slicesByDeal
+ * @param {{ dealStatuses?: string[] }} [opts]
+ */
+export function playerSelfOwnedActionPct(deals, slicesByDeal, opts) {
+  const sold = sumStakeeSoldActionPct(deals, slicesByDeal, opts)
+  return roundMoney(Math.max(0, 100 - sold), 3)
+}
+
 /** @param {string} dealType */
 export function dealTypeLabel(dealType) {
   if (dealType === 'cash_piece') return 'Cash piece'

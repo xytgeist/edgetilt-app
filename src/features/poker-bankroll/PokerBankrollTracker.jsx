@@ -46,6 +46,7 @@ import {
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
 import { buildStakeDealHistoryEvents } from '../poker-stable/pokerStableDealHistory.js'
+import { playerSelfOwnedActionPct } from '../poker-stable/pokerStableMath.js'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -348,6 +349,11 @@ export default function PokerBankrollTracker({
           )
         : [],
     [tournamentSwaps, editingId],
+  )
+  /** Max % of net the player can swap after stable backing sold action. */
+  const swapSelfOwnedPct = useMemo(
+    () => playerSelfOwnedActionPct(stakeeDeals, slicesByDeal),
+    [stakeeDeals, slicesByDeal],
   )
   /** Session id → non-cancelled swaps linked as creator or counterparty. */
   const swapsBySessionId = useMemo(() => {
@@ -3035,6 +3041,7 @@ export default function PokerBankrollTracker({
               supabaseClient={supabaseClient}
               userId={userId}
               enabled={form.session_type === 'tournament'}
+              maxSwapGivePct={swapSelfOwnedPct}
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={editingSessionSwaps}
@@ -3272,6 +3279,7 @@ export default function PokerBankrollTracker({
               supabaseClient={supabaseClient}
               userId={userId}
               enabled={form.session_type === 'tournament'}
+              maxSwapGivePct={swapSelfOwnedPct}
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={[]}
@@ -3328,6 +3336,7 @@ export default function PokerBankrollTracker({
               supabaseClient={supabaseClient}
               userId={userId}
               enabled
+              maxSwapGivePct={swapSelfOwnedPct}
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={activeSessionSwaps}

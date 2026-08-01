@@ -1,10 +1,51 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
 
 const DEBOUNCE_MS = 120
+const GAP_PX = 4
+const VIEWPORT_PAD_PX = 8
+const MAX_LIST_HEIGHT_PX = 208
+
+function normalizeHandle(value) {
+  return String(value || '').trim().replace(/^@+/, '')
+}
+
+/** @param {HTMLElement} inputEl @param {HTMLElement | null | undefined} listEl */
+function measureDropdownPos(inputEl, listEl) {
+  const rect = inputEl.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) return null
+
+  const vv = window.visualViewport
+  const vTop = (vv?.offsetTop ?? 0) + VIEWPORT_PAD_PX
+  const vBottom = (vv ? vv.offsetTop + vv.height : window.innerHeight) - VIEWPORT_PAD_PX
+  const vWidth = vv?.width ?? window.innerWidth
+  const vLeft = (vv?.offsetLeft ?? 0) + VIEWPORT_PAD_PX
+
+  const listHeight = Math.min(listEl?.offsetHeight || MAX_LIST_HEIGHT_PX, MAX_LIST_HEIGHT_PX)
+  const spaceBelow = Math.max(0, vBottom - rect.bottom - GAP_PX)
+  const spaceAbove = Math.max(0, rect.top - vTop - GAP_PX)
+  const openUp = listHeight > 0 && spaceBelow < 120 && spaceAbove > spaceBelow
+
+  const maxHeight = Math.max(80, Math.min(MAX_LIST_HEIGHT_PX, openUp ? spaceAbove : spaceBelow))
+  let top = openUp ? rect.top - GAP_PX - maxHeight : rect.bottom + GAP_PX
+  top = Math.max(vTop, Math.min(top, vBottom - maxHeight))
+
+  const width = Math.min(rect.width, vWidth - VIEWPORT_PAD_PX * 2)
+  let left = rect.left
+  left = Math.max(vLeft, Math.min(left, vLeft + vWidth - VIEWPORT_PAD_PX - width))
+
+  return {
+    position: 'fixed',
+    top,
+    left,
+    width,
+    maxHeight,
+    zIndex: Z_APP_ALERT + 1,
+  }
+}
 
 /**
  * Inline @handle typeahead for Stable flows.
@@ -35,6 +76,10 @@ export default function EdgeHandleTypeahead({
   const [activeIndex, setActiveIndex] = useState(0)
   const [menuStyle, setMenuStyle] = useState(/** @type {React.CSSProperties | null} */ (null))
 
+  const normalizedValue = normalizeHandle(value)
+  const selectedHandle = normalizeHandle(selectedProfile?.handle)
+  const isLockedSelection = Boolean(selectedHandle && normalizedValue === selectedHandle)
+
   const closeList = useCallback(() => {
     fetchGenRef.current += 1
     window.clearTimeout(debounceRef.current)
@@ -45,33 +90,18 @@ export default function EdgeHandleTypeahead({
     setMenuStyle(null)
   }, [])
 
-  const updateMenuPosition = useCallback(() => {
-    const el = inputRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    if (rect.width <= 0 || rect.height <= 0) return
-    const maxHeight = 208
-    const spaceBelow = window.innerHeight - rect.bottom - 8
-    const spaceAbove = rect.top - 8
-    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow
-    const height = Math.min(maxHeight, openUp ? spaceAbove - 4 : spaceBelow - 4)
-
-    setMenuStyle({
-      position: 'fixed',
-      left: rect.left,
-      width: rect.width,
-      maxHeight: Math.max(height, 120),
-      zIndex: Z_APP_ALERT + 1,
-      ...(openUp
-        ? { bottom: window.innerHeight - rect.top + 4 }
-        : { top: rect.bottom + 4 }),
-    })
-  }, [])
+  const showList = useMemo(
+    () =>
+      !isLockedSelection &&
+      open &&
+      (loading || suggestions.length > 0 || normalizedValue.length >= 1),
+    [isLockedSelection, open, loading, suggestions.length, normalizedValue.length],
+  )
 
   const pickProfile = useCallback(
     (profile) => {
       if (!profile) return
-      const handle = String(profile.handle || '').replace(/^@+/, '')
+      const handle = normalizeHandle(profile.handle)
       onChange(handle)
       onSelectProfile?.(profile)
       closeList()
@@ -81,12 +111,11 @@ export default function EdgeHandleTypeahead({
   )
 
   useEffect(() => {
-    if (!supabaseClient || disabled) {
+    if (!supabaseClient || disabled || isLockedSelection) {
       closeList()
       return undefined
     }
-    const q = String(value || '').trim()
-    if (q.length < 1) {
+    if (normalizedValue.length < 1) {
       closeList()
       return undefined
     }
@@ -96,38 +125,59 @@ export default function EdgeHandleTypeahead({
     window.clearTimeout(debounceRef.current)
     const gen = (fetchGenRef.current += 1)
     debounceRef.current = window.setTimeout(() => {
-      void searchEdgeProfilesByHandle(supabaseClient, q, { excludeUserId }).then(({ profiles, error }) => {
-        if (fetchGenRef.current !== gen) return
-        if (error) {
-          setSuggestions([])
+      void searchEdgeProfilesByHandle(supabaseClient, normalizedValue, { excludeUserId }).then(
+        ({ profiles, error }) => {
+          if (fetchGenRef.current !== gen) return
+          if (error) {
+            setSuggestions([])
+            setLoading(false)
+            return
+          }
+          setSuggestions(profiles)
+          setActiveIndex(0)
           setLoading(false)
-          return
-        }
-        setSuggestions(profiles)
-        setActiveIndex(0)
-        setLoading(false)
-      })
+        },
+      )
     }, DEBOUNCE_MS)
 
     return () => window.clearTimeout(debounceRef.current)
-  }, [supabaseClient, value, excludeUserId, disabled, closeList])
+  }, [supabaseClient, normalizedValue, excludeUserId, disabled, isLockedSelection, closeList])
 
-  const showList = open && (loading || suggestions.length > 0 || String(value || '').trim().length >= 1)
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!showList) {
       setMenuStyle(null)
       return undefined
     }
-    updateMenuPosition()
-    const onReflow = () => updateMenuPosition()
-    window.addEventListener('scroll', onReflow, true)
-    window.addEventListener('resize', onReflow)
-    return () => {
-      window.removeEventListener('scroll', onReflow, true)
-      window.removeEventListener('resize', onReflow)
+
+    const update = () => {
+      const input = inputRef.current
+      if (!input) return
+      const pos = measureDropdownPos(input, listPortalRef.current)
+      if (pos) setMenuStyle(pos)
     }
-  }, [showList, updateMenuPosition, suggestions.length, loading])
+
+    update()
+    const raf = requestAnimationFrame(update)
+
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', update)
+    vv?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+
+    const input = inputRef.current
+    const ro = typeof ResizeObserver !== 'undefined' && input ? new ResizeObserver(update) : null
+    ro?.observe(input)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      vv?.removeEventListener('resize', update)
+      vv?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+      ro?.disconnect()
+    }
+  }, [showList, suggestions.length, loading, activeIndex, normalizedValue])
 
   useEffect(() => {
     if (!open) return undefined
@@ -154,20 +204,22 @@ export default function EdgeHandleTypeahead({
         role="listbox"
         data-edge-handle-typeahead-list
         style={menuStyle}
-        className="pointer-events-none overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-900 py-1 shadow-2xl"
+        className="overflow-y-auto overscroll-contain rounded-2xl border border-zinc-700 bg-zinc-900 py-1 shadow-2xl"
       >
         {loading && suggestions.length === 0 ? (
-          <li className="pointer-events-none px-4 py-3 text-sm text-zinc-500">Searching…</li>
+          <li className="px-4 py-3 text-sm text-zinc-500">Searching…</li>
         ) : null}
         {suggestions.map((profile, idx) => {
-          const handle = String(profile.handle || '').replace(/^@+/, '')
+          const handle = normalizeHandle(profile.handle)
           const active = idx === activeIndex
           return (
-            <li key={profile.user_id} role="option" aria-selected={active} className="pointer-events-auto">
+            <li key={profile.user_id} role="option" aria-selected={active}>
               <button
                 type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => pickProfile(profile)}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  pickProfile(profile)
+                }}
                 className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
                   active ? 'bg-amber-600/20' : 'active:bg-zinc-800'
                 }`}
@@ -186,7 +238,7 @@ export default function EdgeHandleTypeahead({
           )
         })}
         {!loading && suggestions.length === 0 ? (
-          <li className="pointer-events-none px-4 py-3 text-sm text-zinc-500">No matching handles.</li>
+          <li className="px-4 py-3 text-sm text-zinc-500">No matching handles.</li>
         ) : null}
       </ul>
     ) : null
@@ -201,7 +253,8 @@ export default function EdgeHandleTypeahead({
           onChange(e.target.value)
         }}
         onFocus={() => {
-          if (String(value || '').trim().length >= 1) setOpen(true)
+          if (isLockedSelection) return
+          if (normalizedValue.length >= 1) setOpen(true)
         }}
         onMouseDown={stopBubble}
         onPointerDown={stopBubble}
@@ -244,7 +297,7 @@ export default function EdgeHandleTypeahead({
 
       {selectedProfile?.handle ? (
         <p className="mt-1.5 text-xs text-emerald-400">
-          Selected @{String(selectedProfile.handle).replace(/^@+/, '')}
+          Selected @{normalizeHandle(selectedProfile.handle)}
           {selectedProfile.display_name ? ` · ${selectedProfile.display_name}` : ''}
         </p>
       ) : null}

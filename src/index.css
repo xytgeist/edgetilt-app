@@ -4626,6 +4626,14 @@ html.light [data-poker-stable-sheet] input {
   background-color: #f4f4f5 !important;
   color: #18181b !important;
 }
+html.light [data-poker-stable-sheet] select {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+html.light [data-poker-stable-sheet] [data-in-field] input,
+html.light [data-poker-stable-sheet] [data-in-field] select {
+  background-color: transparent !important;
+}
 html.light [data-poker-stable-sheet] input::placeholder {
   color: #71717a !important;
 }

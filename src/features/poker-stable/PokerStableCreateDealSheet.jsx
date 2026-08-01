@@ -1,34 +1,13 @@
 import { useState } from 'react'
+import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
+import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal } from './pokerStableApi.js'
 
-function DollarInput({ value, onChange, placeholder, allowNegative = false, className = 'mb-3' }) {
-  return (
-    <div className={`relative ${className}`}>
-      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-semibold text-zinc-400">
-        $
-      </span>
-      <input
-        type="text"
-        inputMode={allowNegative ? 'text' : 'decimal'}
-        value={value}
-        onChange={(e) => {
-          const raw = e.target.value
-          if (allowNegative) {
-            const cleaned = raw.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
-            onChange(cleaned)
-          } else {
-            onChange(raw.replace(/[^0-9.]/g, ''))
-          }
-        }}
-        placeholder={placeholder}
-        className="w-full min-h-12 rounded-2xl bg-zinc-800 pl-8 pr-4 font-semibold text-white outline-none focus:ring-2 focus:ring-amber-500/40"
-      />
-    </div>
-  )
-}
+const STABLE_INFIELD_FOCUS = 'focus-within:ring-2 focus-within:ring-amber-500/40'
 
 const EMPTY_SLICE = {
   handle: '',
@@ -130,32 +109,34 @@ function SliceEditor({
             Guest backer
           </label>
           {sl.isGuest ? (
-            <input
-              value={sl.guestLabel}
-              onChange={(e) => onChange({ guestLabel: e.target.value })}
-              placeholder="Guest name"
-              className="mb-2 w-full min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
-            />
+            <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <input
+                value={sl.guestLabel}
+                onChange={(e) => onChange({ guestLabel: e.target.value })}
+                placeholder="Name"
+                className={INFIELD_CONTROL}
+              />
+            </InField>
           ) : (
             <div className="mb-2">
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                Edge handle
-              </label>
-              <EdgeHandleTypeahead
-                supabaseClient={supabaseClient}
-                excludeUserId={userId}
-                value={sl.handle}
-                onChange={(next) => onChange({ handle: next, selectedProfile: null })}
-                onSelectProfile={(profile) => {
-                  if (!profile) return
-                  onChange({
-                    handle: String(profile.handle || '').replace(/^@+/, ''),
-                    selectedProfile: profile,
-                  })
-                }}
-                selectedProfile={sl.selectedProfile}
-                inputClassName="w-full min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/40"
-              />
+              <InField label="Edge handle" focusRingClass={STABLE_INFIELD_FOCUS}>
+                <EdgeHandleTypeahead
+                  supabaseClient={supabaseClient}
+                  excludeUserId={userId}
+                  value={sl.handle}
+                  onChange={(next) => onChange({ handle: next, selectedProfile: null })}
+                  onSelectProfile={(profile) => {
+                    if (!profile) return
+                    onChange({
+                      handle: String(profile.handle || '').replace(/^@+/, ''),
+                      selectedProfile: profile,
+                    })
+                  }}
+                  selectedProfile={sl.selectedProfile}
+                  inputClassName={INFIELD_CONTROL}
+                  placeholder="@handle"
+                />
+              </InField>
             </div>
           )}
         </>
@@ -163,56 +144,68 @@ function SliceEditor({
         <p className="mb-2 text-sm text-zinc-400">Your backing slice (you)</p>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <input
-          value={sl.actionPct}
-          onChange={(e) => onChange({ actionPct: e.target.value })}
-          placeholder="Action %"
-          inputMode="decimal"
-          className="min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
-        />
-        <select
-          value={sl.pricingMode}
-          onChange={(e) => onChange({ pricingMode: e.target.value })}
-          className="min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
-        >
-          <option value="profit_split">Profit split</option>
-          <option value="markup">Markup</option>
-        </select>
+        <InField label="Action %" focusRingClass={STABLE_INFIELD_FOCUS}>
+          <input
+            value={sl.actionPct}
+            onChange={(e) => onChange({ actionPct: e.target.value })}
+            placeholder="50"
+            inputMode="decimal"
+            className={INFIELD_CONTROL}
+          />
+        </InField>
+        <InField label="Pricing" focusRingClass={STABLE_INFIELD_FOCUS}>
+          <select
+            value={sl.pricingMode}
+            onChange={(e) => onChange({ pricingMode: e.target.value })}
+            className={`${INFIELD_CONTROL} appearance-none`}
+          >
+            <option value="profit_split">Profit split</option>
+            <option value="markup">Markup</option>
+          </select>
+        </InField>
       </div>
       {sl.pricingMode === 'profit_split' ? (
-        <input
-          value={sl.playerProfitPct}
-          onChange={(e) => onChange({ playerProfitPct: e.target.value })}
-          placeholder="Player profit % (e.g. 70)"
-          inputMode="decimal"
-          className="mt-2 w-full min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
-        />
+        <InField label="Player profit %" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+          <input
+            value={sl.playerProfitPct}
+            onChange={(e) => onChange({ playerProfitPct: e.target.value })}
+            placeholder="70"
+            inputMode="decimal"
+            className={INFIELD_CONTROL}
+          />
+        </InField>
       ) : (
-        <input
-          value={sl.markupRate}
-          onChange={(e) => onChange({ markupRate: e.target.value })}
-          placeholder="Markup rate (e.g. 1.2)"
-          inputMode="decimal"
-          className="mt-2 w-full min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
-        />
+        <InField label="Markup rate" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+          <input
+            value={sl.markupRate}
+            onChange={(e) => onChange({ markupRate: e.target.value })}
+            placeholder="1.2"
+            inputMode="decimal"
+            className={INFIELD_CONTROL}
+          />
+        </InField>
       )}
-      <select
-        value={sl.rakebackMode}
-        onChange={(e) => onChange({ rakebackMode: e.target.value })}
-        className="mt-2 w-full min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
-      >
-        <option value="all_to_stake">Rakeback: 100% to stake</option>
-        <option value="custom">Rakeback: custom split</option>
-        <option value="disabled">Rakeback: disabled</option>
-      </select>
+      <InField label="Rakeback" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+        <select
+          value={sl.rakebackMode}
+          onChange={(e) => onChange({ rakebackMode: e.target.value })}
+          className={`${INFIELD_CONTROL} appearance-none`}
+        >
+          <option value="all_to_stake">100% to stake</option>
+          <option value="custom">Custom split</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </InField>
       {sl.rakebackMode === 'custom' ? (
-        <input
-          value={sl.rakebackPlayerPct}
-          onChange={(e) => onChange({ rakebackPlayerPct: e.target.value })}
-          placeholder="Player rakeback %"
-          inputMode="decimal"
-          className="mt-2 w-full min-h-10 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
-        />
+        <InField label="Player rakeback %" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+          <input
+            value={sl.rakebackPlayerPct}
+            onChange={(e) => onChange({ rakebackPlayerPct: e.target.value })}
+            placeholder="50"
+            inputMode="decimal"
+            className={INFIELD_CONTROL}
+          />
+        </InField>
       ) : null}
     </div>
   )
@@ -291,12 +284,12 @@ function PokerStableDealFormSheet({
           stakerUserId: userId,
           stakeeUserId: profile.user_id,
           label,
-          baselineBankroll: Number(baseline) || 0,
+          baselineBankroll: parseMoneyInputNumber(baseline) || 0,
           slices: allSlices,
         })
         if (error) throw error
       } else {
-        const baselineAmount = Number(baseline)
+        const baselineAmount = parseMoneyInputNumber(baseline)
         if (!baseline.trim() || !Number.isFinite(baselineAmount) || baselineAmount <= 0) {
           throw new Error('Enter a baseline stake.')
         }
@@ -309,10 +302,13 @@ function PokerStableDealFormSheet({
           dealType: 'cash_backing',
           label,
           baselineBankroll: baselineAmount,
-          startingRoll: isMigration && startingRoll ? Number(startingRoll) : baselineAmount,
+          startingRoll:
+            isMigration && startingRoll.trim()
+              ? parseMoneyInputNumber(startingRoll)
+              : baselineAmount,
           isMigration,
-          stakeWideStartingPl: stakeWidePl ? Number(stakeWidePl) : null,
-          lifetimePlDisplay: lifetimePl ? Number(lifetimePl) : null,
+          stakeWideStartingPl: stakeWidePl.trim() ? parseMoneyInputNumber(stakeWidePl) : null,
+          lifetimePlDisplay: lifetimePl.trim() ? parseMoneyInputNumber(lifetimePl) : null,
           slices: parsedSlices,
           activate: parsedSlices.every((s) => s.counterpartyKind === 'guest'),
         })
@@ -353,46 +349,42 @@ function PokerStableDealFormSheet({
         </div>
 
         {isBacker ? (
-          <>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Player handle
-            </label>
-            <div className="mb-3">
-              <EdgeHandleTypeahead
-                supabaseClient={supabaseClient}
-                excludeUserId={userId}
-                value={playerHandle}
-                onChange={(next) => {
-                  setPlayerHandle(next)
-                  setSelectedPlayerProfile(null)
-                }}
-                onSelectProfile={setSelectedPlayerProfile}
-                selectedProfile={selectedPlayerProfile}
-                autoFocus
-              />
-            </div>
-          </>
+          <InField label="Player handle" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+            <EdgeHandleTypeahead
+              supabaseClient={supabaseClient}
+              excludeUserId={userId}
+              value={playerHandle}
+              onChange={(next) => {
+                setPlayerHandle(next)
+                setSelectedPlayerProfile(null)
+              }}
+              onSelectProfile={setSelectedPlayerProfile}
+              selectedProfile={selectedPlayerProfile}
+              inputClassName={INFIELD_CONTROL}
+              placeholder="@handle"
+              autoFocus
+            />
+          </InField>
         ) : null}
 
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          Deal label
-        </label>
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder={isBacker ? 'e.g. 50/50 makeup' : 'e.g. $10/20 backing'}
-          className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
-        />
+        <InField label="Deal label" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={isBacker ? '50/50 makeup' : '$10/20 backing'}
+            className={INFIELD_CONTROL}
+          />
+        </InField>
 
         {!isBacker ? (
           <>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Baseline stake
-            </label>
-            <DollarInput
+            <MoneyInputField
+              label="Baseline stake"
               value={baseline}
               onChange={setBaseline}
               placeholder="100,000"
+              inFieldFocusRingClass={STABLE_INFIELD_FOCUS}
+              className="mb-3"
             />
             <label className="mb-3 flex items-center gap-2 text-sm text-zinc-300">
               <input
@@ -405,47 +397,42 @@ function PokerStableDealFormSheet({
             </label>
             {isMigration ? (
               <>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Current roll ($)
-                </label>
-                <input
+                <MoneyInputField
+                  label="Current roll"
                   value={startingRoll}
-                  onChange={(e) => setStartingRoll(e.target.value)}
+                  onChange={setStartingRoll}
                   placeholder="Same as baseline if empty"
-                  inputMode="decimal"
-                  className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
+                  inFieldFocusRingClass={STABLE_INFIELD_FOCUS}
+                  className="mb-3"
                 />
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Stake-wide starting P/L ($, optional)
-                </label>
-                <input
+                <MoneyInputField
+                  label="Stake-wide starting P/L"
                   value={stakeWidePl}
-                  onChange={(e) => setStakeWidePl(e.target.value)}
-                  placeholder="Negative = makeup, split pro-rata"
-                  inputMode="decimal"
-                  className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
+                  onChange={setStakeWidePl}
+                  placeholder="Negative = makeup"
+                  allowNegative
+                  inFieldFocusRingClass={STABLE_INFIELD_FOCUS}
+                  className="mb-3"
                 />
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Lifetime P/L display ($, optional)
-                </label>
-                <input
+                <MoneyInputField
+                  label="Lifetime P/L display"
                   value={lifetimePl}
-                  onChange={(e) => setLifetimePl(e.target.value)}
-                  inputMode="decimal"
-                  className="mb-4 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
+                  onChange={setLifetimePl}
+                  allowNegative
+                  inFieldFocusRingClass={STABLE_INFIELD_FOCUS}
+                  className="mb-4"
                 />
               </>
             ) : null}
           </>
         ) : (
           <>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Proposed baseline (optional)
-            </label>
-            <DollarInput
+            <MoneyInputField
+              label="Proposed baseline"
               value={baseline}
               onChange={setBaseline}
-              placeholder="Player sets roll on accept if empty"
+              placeholder="Optional"
+              inFieldFocusRingClass={STABLE_INFIELD_FOCUS}
               className="mb-4"
             />
             <p className="mb-4 text-[12px] leading-relaxed text-zinc-500">

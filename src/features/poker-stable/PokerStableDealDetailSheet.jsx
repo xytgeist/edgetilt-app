@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
@@ -37,7 +39,7 @@ export default function PokerStableDealDetailSheet({
   onOpenPokerBankroll,
 }) {
   const [topupAmount, setTopupAmount] = useState('')
-  const [rakebackTotal, setRakebackTotal] = useState('0')
+  const [rakebackTotal, setRakebackTotal] = useState('')
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [claims, setClaims] = useState([])
@@ -87,7 +89,7 @@ export default function PokerStableDealDetailSheet({
       const { error } = await recordDealTopup(supabaseClient, {
         dealId: deal.id,
         stakeeUserId: userId,
-        amount: Number(topupAmount),
+        amount: parseMoneyInputNumber(topupAmount),
       })
       if (error) throw error
       setTopupAmount('')
@@ -110,7 +112,7 @@ export default function PokerStableDealDetailSheet({
       const { error } = await settleBackingDeal(supabaseClient, {
         dealId: deal.id,
         stakeeUserId: userId,
-        rakebackTotal: Number(rakebackTotal) || 0,
+        rakebackTotal: parseMoneyInputNumber(rakebackTotal) || 0,
       })
       if (error) throw error
       triggerTapHapticLight()
@@ -124,7 +126,7 @@ export default function PokerStableDealDetailSheet({
   }
 
   async function onClaim(sliceId, claimKind) {
-    const amount = Number(claimAmounts[sliceId])
+    const amount = parseMoneyInputNumber(claimAmounts[sliceId])
     if (!Number.isFinite(amount) || amount <= 0) {
       onError('Enter a payment amount.')
       return
@@ -310,14 +312,15 @@ export default function PokerStableDealDetailSheet({
 
                 {settlement && (viewerIsPlayer || viewerIsStaker) && slice.counterparty_kind === 'user' ? (
                   <div className="mt-2 flex gap-2">
-                    <input
+                    <MoneyInputField
+                      compact
                       value={claimAmounts[slice.id] || ''}
-                      onChange={(e) =>
-                        setClaimAmounts((prev) => ({ ...prev, [slice.id]: e.target.value }))
+                      onChange={(next) =>
+                        setClaimAmounts((prev) => ({ ...prev, [slice.id]: next }))
                       }
-                      placeholder="$ Payment"
-                      inputMode="decimal"
-                      className="min-h-9 flex-1 rounded-xl bg-zinc-800 px-3 text-sm text-white outline-none"
+                      placeholder="Payment"
+                      focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                      className="min-w-0 flex-1"
                     />
                     {viewerIsPlayer ? (
                       <button
@@ -351,12 +354,12 @@ export default function PokerStableDealDetailSheet({
               Top-up stake
             </h4>
             <div className="mb-4 flex gap-2">
-              <input
+              <MoneyInputField
                 value={topupAmount}
-                onChange={(e) => setTopupAmount(e.target.value)}
+                onChange={setTopupAmount}
                 placeholder="Amount"
-                inputMode="decimal"
-                className="min-h-11 flex-1 rounded-2xl bg-zinc-800 px-4 text-white outline-none"
+                focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                className="min-w-0 flex-1"
               />
               <button
                 type="button"
@@ -375,12 +378,12 @@ export default function PokerStableDealDetailSheet({
             <p className="mb-2 text-xs text-zinc-500">
               Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
             </p>
-            <input
+            <MoneyInputField
               value={rakebackTotal}
-              onChange={(e) => setRakebackTotal(e.target.value)}
-              placeholder="Rakeback total ($)"
-              inputMode="decimal"
-              className="mb-3 w-full min-h-11 rounded-2xl bg-zinc-800 px-4 text-white outline-none"
+              onChange={setRakebackTotal}
+              placeholder="Rakeback total"
+              focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+              className="mb-3"
             />
             <button
               type="button"

@@ -8,6 +8,7 @@ import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { recordAppSessionRecorded } from '../../utils/appSectionVisitTracking.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollChartsTab from './PokerBankrollChartsTab.jsx'
@@ -797,9 +798,9 @@ export default function PokerBankrollTracker({
     if (scopeId !== bankrollScope) setBankrollScope(scopeId)
     if (onStake) {
       const dp = dealProfiles[scopeId]
-      setBankrollInput(dp != null ? String(dp.overall_bankroll) : '')
+      setBankrollInput(dp != null ? formatMoneyInputValue(String(dp.overall_bankroll)) : '')
     } else {
-      setBankrollInput(profile != null ? String(profile.overall_bankroll) : '')
+      setBankrollInput(profile != null ? formatMoneyInputValue(String(profile.overall_bankroll)) : '')
     }
     setError('')
     setSheet('bankroll')
@@ -807,7 +808,7 @@ export default function PokerBankrollTracker({
   }
 
   async function saveBankroll() {
-    const val = parseFloat(bankrollInput)
+    const val = parseMoneyInputNumber(bankrollInput)
     if (!Number.isFinite(val) || val < 0) {
       setError('Enter a valid bankroll amount.')
       return
@@ -1116,7 +1117,7 @@ export default function PokerBankrollTracker({
 
   async function saveRebuy() {
     if (!supabaseClient || !userId || !activeSession) return
-    const add = parseFloat(rebuyAmount)
+    const add = parseMoneyInputNumber(rebuyAmount)
     const isAddon = rebuyKind === 'addon'
     const isTourney = activeSession.session_type === 'tournament'
     if (!Number.isFinite(add) || add <= 0) {
@@ -1175,7 +1176,7 @@ export default function PokerBankrollTracker({
       onRequireSubscribeForPokerBankroll?.()
       return
     }
-    const buyIn = parseFloat(form.buy_in)
+    const buyIn = parseMoneyInputNumber(form.buy_in)
     if (!Number.isFinite(buyIn) || buyIn < 0) {
       setError(
         form.session_type === 'tournament'
@@ -1186,11 +1187,11 @@ export default function PokerBankrollTracker({
     }
     const rebuyAmt =
       form.session_type === 'tournament' && form.rebuy_amount !== ''
-        ? parseFloat(form.rebuy_amount)
+        ? parseMoneyInputNumber(form.rebuy_amount)
         : 0
     const addonAmt =
       form.session_type === 'tournament' && form.addon_amount !== ''
-        ? parseFloat(form.addon_amount)
+        ? parseMoneyInputNumber(form.addon_amount)
         : 0
     if (form.session_type === 'tournament') {
       if (form.rebuy_amount !== '' && (!Number.isFinite(rebuyAmt) || rebuyAmt < 0)) {
@@ -1241,15 +1242,15 @@ export default function PokerBankrollTracker({
       tables_count: tablesCountForPayload(form),
       small_blind:
         form.session_type === 'cash' && form.small_blind !== ''
-          ? parseFloat(form.small_blind)
+          ? parseMoneyInputNumber(form.small_blind)
           : null,
       big_blind:
-        form.session_type === 'cash' && form.big_blind !== '' ? parseFloat(form.big_blind) : null,
+        form.session_type === 'cash' && form.big_blind !== '' ? parseMoneyInputNumber(form.big_blind) : null,
       third_blind:
         form.session_type === 'cash' && form.third_blind !== ''
-          ? parseFloat(form.third_blind)
+          ? parseMoneyInputNumber(form.third_blind)
           : null,
-      ante: form.session_type === 'cash' && form.ante !== '' ? parseFloat(form.ante) : null,
+      ante: form.session_type === 'cash' && form.ante !== '' ? parseMoneyInputNumber(form.ante) : null,
       tournament_name:
         form.session_type === 'tournament' ? form.tournament_name.trim() || null : null,
       tournament_event_id:
@@ -1262,7 +1263,7 @@ export default function PokerBankrollTracker({
           : null,
       start_stack:
         form.session_type === 'tournament' && form.start_stack !== ''
-          ? parseFloat(form.start_stack)
+          ? parseMoneyInputNumber(form.start_stack)
           : null,
       finish_place: null,
       bounty_winnings: null,
@@ -1304,14 +1305,14 @@ export default function PokerBankrollTracker({
 
   async function endLiveSession() {
     if (!supabaseClient || !userId || !activeSession) return
-    const cashOut = parseFloat(endCashOut)
+    const cashOut = parseMoneyInputNumber(endCashOut)
     if (!Number.isFinite(cashOut) || cashOut < 0) {
       setError('Enter cash out (what you walked with).')
       return
     }
     const bounties =
       activeSession.session_type === 'tournament' && endBounties !== ''
-        ? parseFloat(endBounties) || 0
+        ? parseMoneyInputNumber(endBounties) || 0
         : 0
     const wl = cashOut + bounties - pokerSessionTotalCost(activeSession)
     setSaving(true)
@@ -1325,7 +1326,7 @@ export default function PokerBankrollTracker({
           cash_out: cashOut,
           bounty_winnings:
             activeSession.session_type === 'tournament' && endBounties !== ''
-              ? parseFloat(endBounties)
+              ? parseMoneyInputNumber(endBounties)
               : null,
           finish_place:
             activeSession.session_type === 'tournament' && endFinishPlace !== ''
@@ -1344,7 +1345,7 @@ export default function PokerBankrollTracker({
           cash_out: cashOut,
           bounty_winnings:
             activeSession.session_type === 'tournament' && endBounties !== ''
-              ? parseFloat(endBounties)
+              ? parseMoneyInputNumber(endBounties)
               : null,
         }
         const syncA = await syncCreatorResultsForSession(
@@ -1407,10 +1408,10 @@ export default function PokerBankrollTracker({
       date: localYmd(start),
       start_time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
       duration_hours: formatDurationHoursField(hrs || 0),
-      buy_in: session.buy_in != null ? String(session.buy_in) : '',
-      rebuy_amount: session.rebuy_amount != null ? String(session.rebuy_amount) : '',
-      addon_amount: session.addon_amount != null ? String(session.addon_amount) : '',
-      cash_out: session.cash_out != null ? String(session.cash_out) : '',
+      buy_in: session.buy_in != null ? formatMoneyInputValue(String(session.buy_in)) : '',
+      rebuy_amount: session.rebuy_amount != null ? formatMoneyInputValue(String(session.rebuy_amount)) : '',
+      addon_amount: session.addon_amount != null ? formatMoneyInputValue(String(session.addon_amount)) : '',
+      cash_out: session.cash_out != null ? formatMoneyInputValue(String(session.cash_out)) : '',
       cash_game_pick:
         sessionType === 'cash' && cashLabel
           ? cashGamePresetIdFromName(cashLabel)
@@ -1425,16 +1426,16 @@ export default function PokerBankrollTracker({
       table_size: session.table_size || 'full_ring',
       tables_count:
         session.tables_count != null ? String(session.tables_count) : '1',
-      small_blind: session.small_blind != null ? String(session.small_blind) : '',
-      big_blind: session.big_blind != null ? String(session.big_blind) : '',
-      third_blind: session.third_blind != null ? String(session.third_blind) : '',
-      ante: session.ante != null ? String(session.ante) : '',
+      small_blind: session.small_blind != null ? formatMoneyInputValue(String(session.small_blind)) : '',
+      big_blind: session.big_blind != null ? formatMoneyInputValue(String(session.big_blind)) : '',
+      third_blind: session.third_blind != null ? formatMoneyInputValue(String(session.third_blind)) : '',
+      ante: session.ante != null ? formatMoneyInputValue(String(session.ante)) : '',
       tournament_name: session.tournament_name || '',
       tournament_event_pick: session.tournament_event_id || '',
       field_size: session.field_size != null ? String(session.field_size) : '',
-      start_stack: session.start_stack != null ? String(session.start_stack) : '',
+      start_stack: session.start_stack != null ? formatMoneyInputValue(String(session.start_stack)) : '',
       finish_place: session.finish_place != null ? String(session.finish_place) : '',
-      bounty_winnings: session.bounty_winnings != null ? String(session.bounty_winnings) : '',
+      bounty_winnings: session.bounty_winnings != null ? formatMoneyInputValue(String(session.bounty_winnings)) : '',
       reentries: session.reentries != null ? String(session.reentries) : '',
       notes: session.notes || '',
     })
@@ -1571,19 +1572,19 @@ export default function PokerBankrollTracker({
 
   async function saveSession() {
     if (!supabaseClient || !userId) return
-    const buyIn = parseFloat(form.buy_in)
-    const cashOut = parseFloat(form.cash_out)
+    const buyIn = parseMoneyInputNumber(form.buy_in)
+    const cashOut = parseMoneyInputNumber(form.cash_out)
     if (!Number.isFinite(buyIn) || buyIn < 0) {
       setError('Enter a valid buy-in / bring-in amount.')
       return
     }
     const rebuyAmt =
       form.session_type === 'tournament' && form.rebuy_amount !== ''
-        ? parseFloat(form.rebuy_amount)
+        ? parseMoneyInputNumber(form.rebuy_amount)
         : 0
     const addonAmt =
       form.session_type === 'tournament' && form.addon_amount !== ''
-        ? parseFloat(form.addon_amount)
+        ? parseMoneyInputNumber(form.addon_amount)
         : 0
     if (form.session_type === 'tournament') {
       if (form.rebuy_amount !== '' && (!Number.isFinite(rebuyAmt) || rebuyAmt < 0)) {
@@ -1652,17 +1653,17 @@ export default function PokerBankrollTracker({
       tables_count: tablesCountForPayload(form),
       small_blind:
         form.session_type === 'cash' && form.small_blind !== ''
-          ? parseFloat(form.small_blind)
+          ? parseMoneyInputNumber(form.small_blind)
           : null,
       big_blind:
         form.session_type === 'cash' && form.big_blind !== ''
-          ? parseFloat(form.big_blind)
+          ? parseMoneyInputNumber(form.big_blind)
           : null,
       third_blind:
         form.session_type === 'cash' && form.third_blind !== ''
-          ? parseFloat(form.third_blind)
+          ? parseMoneyInputNumber(form.third_blind)
           : null,
-      ante: form.session_type === 'cash' && form.ante !== '' ? parseFloat(form.ante) : null,
+      ante: form.session_type === 'cash' && form.ante !== '' ? parseMoneyInputNumber(form.ante) : null,
       tournament_name:
         form.session_type === 'tournament' ? form.tournament_name.trim() || null : null,
       tournament_event_id:
@@ -1675,7 +1676,7 @@ export default function PokerBankrollTracker({
           : null,
       start_stack:
         form.session_type === 'tournament' && form.start_stack !== ''
-          ? parseFloat(form.start_stack)
+          ? parseMoneyInputNumber(form.start_stack)
           : null,
       finish_place: editingActiveSession
         ? null
@@ -1685,7 +1686,7 @@ export default function PokerBankrollTracker({
       bounty_winnings: editingActiveSession
         ? null
         : form.session_type === 'tournament' && form.bounty_winnings !== ''
-          ? parseFloat(form.bounty_winnings)
+          ? parseMoneyInputNumber(form.bounty_winnings)
           : null,
       reentries:
         form.session_type === 'tournament' && form.reentries !== ''
@@ -1708,7 +1709,7 @@ export default function PokerBankrollTracker({
           cash_out: cashOut,
           bounty_winnings:
             form.session_type === 'tournament' && form.bounty_winnings !== ''
-              ? parseFloat(form.bounty_winnings) || 0
+              ? parseMoneyInputNumber(form.bounty_winnings) || 0
               : 0,
         })
 
@@ -1865,17 +1866,17 @@ export default function PokerBankrollTracker({
   }
 
   const previewWl = (() => {
-    const buyIn = parseFloat(form.buy_in)
-    const cashOut = parseFloat(form.cash_out)
-    const bounties = parseFloat(form.bounty_winnings) || 0
+    const buyIn = parseMoneyInputNumber(form.buy_in)
+    const cashOut = parseMoneyInputNumber(form.cash_out)
+    const bounties = parseMoneyInputNumber(form.bounty_winnings) || 0
     if (!Number.isFinite(buyIn) || !Number.isFinite(cashOut)) return null
     const rebuy =
       form.session_type === 'tournament' && form.rebuy_amount !== ''
-        ? parseFloat(form.rebuy_amount) || 0
+        ? parseMoneyInputNumber(form.rebuy_amount) || 0
         : 0
     const addon =
       form.session_type === 'tournament' && form.addon_amount !== ''
-        ? parseFloat(form.addon_amount) || 0
+        ? parseMoneyInputNumber(form.addon_amount) || 0
         : 0
     return cashOut + bounties - (buyIn + rebuy + addon)
   })()
@@ -3114,11 +3115,11 @@ export default function PokerBankrollTracker({
             </InField>
 
             {(() => {
-              const cashOut = parseFloat(endCashOut)
+              const cashOut = parseMoneyInputNumber(endCashOut)
               if (!Number.isFinite(cashOut)) return null
               const bounties =
                 activeSession.session_type === 'tournament' && endBounties !== ''
-                  ? parseFloat(endBounties) || 0
+                  ? parseMoneyInputNumber(endBounties) || 0
                   : 0
               const wl = cashOut + bounties - pokerSessionTotalCost(activeSession)
               return (
@@ -3834,7 +3835,7 @@ function NumInput({ value, onChange, label }) {
 }
 
 function MoneyInput({ value, onChange, colorize = false, label }) {
-  const numVal = parseFloat(value)
+  const numVal = parseMoneyInputNumber(value)
   const hasValue = value !== '' && value !== '-'
   const textClass =
     colorize && hasValue
@@ -3853,7 +3854,7 @@ function MoneyInput({ value, onChange, colorize = false, label }) {
             type="text"
             inputMode="decimal"
             value={value}
-            onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
+            onChange={(e) => onChange(formatMoneyInputValue(e.target.value))}
             aria-label={label}
             className={`w-full bg-transparent pl-4 outline-none ${textClass} text-sm font-semibold`}
           />
@@ -3870,7 +3871,7 @@ function MoneyInput({ value, onChange, colorize = false, label }) {
         type="text"
         inputMode="decimal"
         value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
+        onChange={(e) => onChange(formatMoneyInputValue(e.target.value))}
         className={`w-full min-h-12 rounded-2xl bg-zinc-800 pl-8 pr-4 outline-none focus:ring-2 focus:ring-cyan-500/40 ${textClass}`}
       />
     </div>

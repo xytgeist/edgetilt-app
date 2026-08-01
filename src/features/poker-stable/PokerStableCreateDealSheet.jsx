@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
@@ -6,6 +6,10 @@ import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal } from './pokerStableApi.js'
+import {
+  POKER_STABLE_TYPEAHEAD_RESERVE_PX,
+  scrollPokerStableSliceIntoView,
+} from './pokerStableSheetScroll.js'
 
 const STABLE_INFIELD_FOCUS = 'focus-within:ring-2 focus-within:ring-amber-500/40'
 
@@ -80,6 +84,7 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
 function SliceEditor({
   sl,
   idx,
+  sliceIndex,
   userId,
   supabaseClient,
   onChange,
@@ -89,7 +94,10 @@ function SliceEditor({
   lockUserId = null,
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-700 bg-zinc-900/60 p-3">
+    <div
+      data-poker-stable-slice={sliceIndex}
+      className="rounded-2xl border border-zinc-700 bg-zinc-900/60 p-3"
+    >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-bold uppercase text-zinc-500">{title || `Slice ${idx + 1}`}</span>
         {canRemove ? (
@@ -245,6 +253,37 @@ function PokerStableDealFormSheet({
   const [mySlice, setMySlice] = useState({ ...EMPTY_SLICE, stakerUserId: userId })
   const [friendSlices, setFriendSlices] = useState([])
   const [slices, setSlices] = useState([{ ...EMPTY_SLICE }])
+  const sheetRef = useRef(null)
+  const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
+
+  function addBackerSlice() {
+    scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
+    if (isBacker) setFriendSlices((prev) => [...prev, { ...EMPTY_SLICE }])
+    else setSlices((prev) => [...prev, { ...EMPTY_SLICE }])
+  }
+
+  useLayoutEffect(() => {
+    const targetIdx = scrollSliceIdxRef.current
+    if (targetIdx == null) return undefined
+    scrollSliceIdxRef.current = null
+
+    const run = () => {
+      const sliceEl = sheetRef.current?.querySelector(`[data-poker-stable-slice="${targetIdx}"]`)
+      if (sliceEl instanceof HTMLElement) {
+        scrollPokerStableSliceIntoView(sliceEl, {
+          reserveBelowPx: POKER_STABLE_TYPEAHEAD_RESERVE_PX,
+        })
+      }
+    }
+
+    run()
+    const raf = requestAnimationFrame(run)
+    const timer = window.setTimeout(run, 120)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
+    }
+  }, [slices.length, friendSlices.length])
 
   function updateSlice(idx, patch) {
     setSlices((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))
@@ -331,6 +370,7 @@ function PokerStableDealFormSheet({
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
       <div
+        ref={sheetRef}
         data-poker-stable-sheet
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
@@ -451,6 +491,7 @@ function PokerStableDealFormSheet({
               <SliceEditor
                 sl={mySlice}
                 idx={0}
+                sliceIndex={0}
                 userId={userId}
                 supabaseClient={supabaseClient}
                 lockUserId={userId}
@@ -463,6 +504,7 @@ function PokerStableDealFormSheet({
                   key={idx}
                   sl={sl}
                   idx={idx + 1}
+                  sliceIndex={idx + 1}
                   userId={userId}
                   supabaseClient={supabaseClient}
                   title={`Syndicate slice ${idx + 1}`}
@@ -478,6 +520,7 @@ function PokerStableDealFormSheet({
                 key={idx}
                 sl={sl}
                 idx={idx}
+                sliceIndex={idx}
                 userId={userId}
                 supabaseClient={supabaseClient}
                 canRemove={slices.length > 1}
@@ -490,10 +533,7 @@ function PokerStableDealFormSheet({
 
         <button
           type="button"
-          onClick={() => {
-            if (isBacker) setFriendSlices((prev) => [...prev, { ...EMPTY_SLICE }])
-            else setSlices((prev) => [...prev, { ...EMPTY_SLICE }])
-          }}
+          onClick={addBackerSlice}
           className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
         >
           {isBacker ? '+ Add syndicate backer' : '+ Add backer slice'}

@@ -2,6 +2,10 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
+import {
+  POKER_STABLE_TYPEAHEAD_RESERVE_PX,
+  scrollPokerStableSheetToElement,
+} from './pokerStableSheetScroll.js'
 
 const DEBOUNCE_MS = 120
 const GAP_PX = 4
@@ -73,6 +77,33 @@ export default function EdgeHandleTypeahead({
     },
     [onChange, onSelectProfile, closeList],
   )
+
+  const scrollInputIntoView = useCallback(() => {
+    const input = inputRef.current
+    if (!input) return
+    scrollPokerStableSheetToElement(input, {
+      reserveBelowPx: POKER_STABLE_TYPEAHEAD_RESERVE_PX,
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showList) return undefined
+
+    scrollInputIntoView()
+    const raf = requestAnimationFrame(scrollInputIntoView)
+    const timer = window.setTimeout(scrollInputIntoView, 120)
+
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', scrollInputIntoView)
+    vv?.addEventListener('scroll', scrollInputIntoView)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
+      vv?.removeEventListener('resize', scrollInputIntoView)
+      vv?.removeEventListener('scroll', scrollInputIntoView)
+    }
+  }, [showList, scrollInputIntoView, suggestions.length, loading])
 
   useEffect(() => {
     if (!supabaseClient || disabled || isLockedSelection) {
@@ -210,6 +241,8 @@ export default function EdgeHandleTypeahead({
         onFocus={() => {
           if (isLockedSelection) return
           if (normalizedValue.length >= 1) setOpen(true)
+          scrollInputIntoView()
+          requestAnimationFrame(scrollInputIntoView)
         }}
         onMouseDown={stopBubble}
         onPointerDown={stopBubble}

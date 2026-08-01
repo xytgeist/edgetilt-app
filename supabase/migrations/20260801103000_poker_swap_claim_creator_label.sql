@@ -62,6 +62,3 @@ begin
   );
 end;
 $$;
-
-revoke all on function public.poker_tournament_swap_claim_preview(text) from public;
-grant execute on function public.poker_tournament_swap_claim_preview(text) to anon, authenticated, service_role;

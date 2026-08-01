@@ -2067,29 +2067,26 @@ export default function PokerBankrollTracker({
                         >
                           {fmtPoker$(hero.overallBankroll)}
                         </div>
-                        {onStake && hero.deal?.status === 'pending' ? (
-                          <p className={`mt-1.5 text-[11px] leading-snug ${theme.badgeText}`}>
-                            Waiting on backers in Stable before sessions unlock.
-                          </p>
-                        ) : null}
-                        {hero.spark.length >= 2 ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (scopeId !== bankrollScope) setBankrollScope(scopeId)
-                              setActiveTab('trend')
-                            }}
-                            className="mt-3 block w-full touch-manipulation active:opacity-80"
-                            aria-label="Open Trend chart"
-                          >
-                            <BankrollSparkline
-                              series={hero.spark}
-                              className="h-10 w-full"
-                              upClass={onStake ? theme.sparkUp : 'text-emerald-400'}
-                              downClass={onStake ? theme.sparkDown : 'text-rose-400'}
-                            />
-                          </button>
-                        ) : null}
+                        <div className="mt-3 h-10 w-full">
+                          {hero.spark.length >= 2 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (scopeId !== bankrollScope) setBankrollScope(scopeId)
+                                setActiveTab('trend')
+                              }}
+                              className="block h-full w-full touch-manipulation active:opacity-80"
+                              aria-label="Open Trend chart"
+                            >
+                              <BankrollSparkline
+                                series={hero.spark}
+                                className="h-full w-full"
+                                upClass={onStake ? theme.sparkUp : 'text-emerald-400'}
+                                downClass={onStake ? theme.sparkDown : 'text-rose-400'}
+                              />
+                            </button>
+                          ) : null}
+                        </div>
                       </>
                     )}
                     {!loading ? (

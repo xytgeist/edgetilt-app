@@ -107,7 +107,7 @@ function SliceEditor({
   canRemove,
   title,
   lockUserId = null,
-  showRakeback = true,
+  showRakeback = false,
 }) {
   return (
     <div
@@ -133,7 +133,7 @@ function SliceEditor({
               checked={sl.isGuest}
               onChange={(e) => onChange({ isGuest: e.target.checked })}
             />
-            Guest backer
+            Guest backer (not on Edge)
           </label>
           {sl.isGuest ? (
             <>
@@ -321,7 +321,11 @@ function PokerStableDealFormSheet({
 
   function onDealTypeChange(next) {
     setDealType(next)
-    if (next === 'tournament_package') {
+  }
+
+  function onVenueKindChange(next) {
+    setVenueKind(next)
+    if (next !== 'online') {
       setSlices((prev) =>
         prev.map((s) => ({ ...s, rakebackMode: 'disabled', rakebackPlayerPct: '' })),
       )
@@ -330,6 +334,8 @@ function PokerStableDealFormSheet({
 
   useEffect(() => {
     if (!editDeal) return
+    setDealType(editDeal.deal_type || 'cash_backing')
+    setVenueKind(editDeal.venue_kind || 'live')
     setLabel(editDeal.label || '')
     setBaseline(
       editDeal.baseline_bankroll != null
@@ -647,8 +653,8 @@ function PokerStableDealFormSheet({
         </InField>
 
         {showPlayerTermsForm && !isEdit ? (
-          <>
-            <InField label="Stake type" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <InField label="Stake type" focusRingClass={STABLE_INFIELD_FOCUS}>
               <select
                 value={dealType}
                 onChange={(e) => onDealTypeChange(e.target.value)}
@@ -659,10 +665,10 @@ function PokerStableDealFormSheet({
                 <option value="tournament_package">Tournament package</option>
               </select>
             </InField>
-            <InField label="Venue" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+            <InField label="Venue" focusRingClass={STABLE_INFIELD_FOCUS}>
               <select
                 value={venueKind}
-                onChange={(e) => setVenueKind(e.target.value)}
+                onChange={(e) => onVenueKindChange(e.target.value)}
                 className={`${INFIELD_CONTROL} appearance-none`}
                 data-poker-stable-venue-kind-select
               >
@@ -670,7 +676,7 @@ function PokerStableDealFormSheet({
                 <option value="online">Online</option>
               </select>
             </InField>
-          </>
+          </div>
         ) : null}
 
         {showPlayerTermsForm ? (
@@ -754,7 +760,7 @@ function PokerStableDealFormSheet({
                 supabaseClient={supabaseClient}
                 title={pokerStableBackerSliceLabel(slices.length, idx)}
                 canRemove={slices.length > 1}
-                showRakeback={dealType === 'cash_backing'}
+                showRakeback={venueKind === 'online'}
                 onChange={(patch) => updateSlice(idx, patch)}
                 onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}
               />

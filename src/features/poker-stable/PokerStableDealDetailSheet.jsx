@@ -25,7 +25,7 @@ import {
   computeSliceLedgerOwed,
   dealTypeLabel,
 } from './pokerStableMath.js'
-import { stakeeCanSettleStake, dealAllowsPeriodicSettle, dealHasRakebackEnabled } from './pokerStableTerms.js'
+import { stakeeCanSettleStake, dealAllowsPeriodicSettle, dealHasRakebackEnabled, dealHasMakeup } from './pokerStableTerms.js'
 
 /**
  * Deal detail: baseline, makeup, top-up, settle, ledger.
@@ -54,7 +54,8 @@ export default function PokerStableDealDetailSheet({
   const isStakee = deal?.stakee_user_id === userId
   const canSettleStake = stakeeCanSettleStake(deal, slices, { userId })
   const showPeriodicSettle = canSettleStake && dealAllowsPeriodicSettle(deal)
-  const showRakebackField = canSettleStake && dealHasRakebackEnabled(slices)
+  const showRakebackField = canSettleStake && dealHasRakebackEnabled(slices, deal)
+  const showMakeup = dealHasMakeup(deal)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
@@ -236,7 +237,11 @@ export default function PokerStableDealDetailSheet({
           </button>
         </div>
 
-        <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-amber-500/20 bg-amber-950/20 p-3 text-center">
+        <div
+          className={`mb-4 grid gap-2 rounded-2xl border border-amber-500/20 bg-amber-950/20 p-3 text-center ${
+            showMakeup ? 'grid-cols-3' : 'grid-cols-2'
+          }`}
+        >
           <div>
             <div className="text-[10px] font-semibold uppercase text-zinc-500">Baseline</div>
             <div className="mt-0.5 text-sm font-bold tabular-nums text-white">{fmtPoker$(baseline)}</div>
@@ -245,10 +250,12 @@ export default function PokerStableDealDetailSheet({
             <div className="text-[10px] font-semibold uppercase text-zinc-500">Roll</div>
             <div className="mt-0.5 text-sm font-bold tabular-nums text-white">{fmtPoker$(rollValue)}</div>
           </div>
-          <div>
-            <div className="text-[10px] font-semibold uppercase text-zinc-500">Makeup</div>
-            <div className="mt-0.5 text-sm font-bold tabular-nums text-rose-400">{fmtPoker$(makeup)}</div>
-          </div>
+          {showMakeup ? (
+            <div>
+              <div className="text-[10px] font-semibold uppercase text-zinc-500">Makeup</div>
+              <div className="mt-0.5 text-sm font-bold tabular-nums text-rose-400">{fmtPoker$(makeup)}</div>
+            </div>
+          ) : null}
         </div>
 
         {deal.lifetime_pl_display != null ? (

@@ -223,7 +223,7 @@ export default function PokerStableDealTermsSheet({
     stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
   const showPeriodicSettle = canSettle && dealAllowsPeriodicSettle(deal)
-  const showRakebackField = canSettle && dealHasRakebackEnabled(slices)
+  const showRakebackField = canSettle && dealHasRakebackEnabled(slices, deal)
   const rollValue =
     dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0
   const profitUp = computeProfitAboveBaseline({

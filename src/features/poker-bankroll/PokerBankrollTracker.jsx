@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { DollarSign, FileText, Trophy } from 'lucide-react'
+import { DollarSign, FileText, Info, Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -335,6 +335,7 @@ export default function PokerBankrollTracker({
   const currencyAutoDefaultRef = useRef('USD')
   /** @type {'overview' | 'details' | 'locations' | 'charts' | 'trend'} */
   const [activeTab, setActiveTab] = useState('overview')
+  const [bankrollInfoOpen, setBankrollInfoOpen] = useState(false)
 
   const isOnStake = bankrollScope !== 'personal'
   const activeDeal = useMemo(
@@ -359,11 +360,6 @@ export default function PokerBankrollTracker({
   const metricSessions = useMemo(
     () => (isOnStake ? scopedSessions : personalMetricSessions),
     [isOnStake, scopedSessions, personalMetricSessions],
-  )
-
-  const hasActiveStakeDeals = useMemo(
-    () => stakeeDeals.some((d) => d.status === 'active'),
-    [stakeeDeals],
   )
 
   const metricContext = useMemo(
@@ -2342,7 +2338,7 @@ export default function PokerBankrollTracker({
                     }
                   >
                     <div className="mb-2 flex min-h-9 items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
                         <div
                           data-poker-bankroll-hero-title
                           className={`min-w-0 truncate ${
@@ -2353,6 +2349,20 @@ export default function PokerBankrollTracker({
                             ? hero.deal?.label?.trim() || 'Cash backing'
                             : 'Poker bankroll'}
                         </div>
+                        {!onStake ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBankrollInfoOpen(true)
+                              triggerTapHapticLight()
+                            }}
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-600/80 text-zinc-500 touch-manipulation active:border-zinc-400 active:text-zinc-300"
+                            aria-label="About poker bankroll"
+                            data-poker-bankroll-info-btn
+                          >
+                            <Info className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                          </button>
+                        ) : null}
                         {onStake ? (
                           <span
                             className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
@@ -2404,15 +2414,6 @@ export default function PokerBankrollTracker({
                         </div>
                       )}
                     </div>
-                    {!onStake && hasActiveStakeDeals ? (
-                      <p
-                        data-poker-bankroll-hero-hint
-                        className="mb-2 text-[11px] leading-snug text-zinc-500"
-                      >
-                        Includes your share of on-stake sessions; bankroll updates when you settle
-                        with backers.
-                      </p>
-                    ) : null}
                     {loading ? (
                       <>
                         <div className="min-h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
@@ -3880,6 +3881,35 @@ export default function PokerBankrollTracker({
             >
               Delete session
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {bankrollInfoOpen ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm"
+          onClick={() => setBankrollInfoOpen(false)}
+        >
+          <div
+            data-poker-bankroll-info-modal
+            className="w-full max-w-md rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 pb-6 pt-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <h3 className="text-base font-bold leading-tight text-white">Poker bankroll</h3>
+              <button
+                type="button"
+                onClick={() => setBankrollInfoOpen(false)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400 touch-manipulation active:bg-zinc-700"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Includes your share of on-stake sessions; bankroll updates when you settle with
+              backers.
+            </p>
           </div>
         </div>
       ) : null}

@@ -4,7 +4,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { computeDealMakeup, computeProfitAboveBaseline, dealTypeLabel } from './pokerStableMath.js'
-import { dealAllowsPeriodicSettle, dealHasRakebackEnabled } from './pokerStableTerms.js'
+import { dealAllowsPeriodicSettle, dealHasRakebackEnabled, dealHasMakeup } from './pokerStableTerms.js'
 
 /**
  * Focused settle / end flow for stakee on Bankroll (periodic vs close).
@@ -29,7 +29,8 @@ export default function PokerStableEndStakeSheet({
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
   const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
   const showPeriodic = dealAllowsPeriodicSettle(deal)
-  const showRakeback = dealHasRakebackEnabled(slices)
+  const showRakeback = dealHasRakebackEnabled(slices, deal)
+  const showMakeup = dealHasMakeup(deal)
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -57,7 +58,9 @@ export default function PokerStableEndStakeSheet({
 
         <div
           data-poker-stable-end-stake-summary
-          className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-3 text-center"
+          className={`mb-4 grid gap-2 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-3 text-center ${
+            showMakeup ? 'grid-cols-2' : 'grid-cols-1'
+          }`}
         >
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
@@ -71,12 +74,14 @@ export default function PokerStableEndStakeSheet({
               {fmtPoker$(profitUp)}
             </div>
           </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Makeup</div>
-            <div className="mt-1 text-base font-bold tabular-nums text-amber-300/90">
-              {fmtPoker$(makeup)}
+          {showMakeup ? (
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Makeup</div>
+              <div className="mt-1 text-base font-bold tabular-nums text-amber-300/90">
+                {fmtPoker$(makeup)}
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
 
         {showPeriodic ? (

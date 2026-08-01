@@ -2,7 +2,16 @@
 
 Sends **Twilio SMS** and/or **Resend email** to guest backers when a player creates or updates a cash stake with guest slices.
 
-Offer copy looks like: `{Display Name} has you on a 10% cash stake ($100,000 baseline) from EdgeTilt.com` plus pricing terms.
+Offer copy (email):
+
+```
+Chunky Unc (@chunkyunc_1) has created a stake on Edgetilt.com with you as a backer.
+Name of stake: WSOP
+Total stake: $100,000 (you own 30%)
+Markup: 1.15x
+```
+
+Uses "the backer" when they are the only slice on the deal; "a backer" when syndicated.
 
 ## Secrets
 

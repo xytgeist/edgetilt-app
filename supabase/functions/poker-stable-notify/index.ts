@@ -34,12 +34,13 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
-function formatGuestActorName(profile: { display_name?: string | null; handle?: string | null } | null) {
+function formatProfileLabel(profile: { display_name?: string | null; handle?: string | null } | null) {
   const name = String(profile?.display_name || '').trim()
-  if (name) return name
   const handleRaw = String(profile?.handle || '')
     .trim()
     .replace(/^@/, '')
+  if (name && handleRaw) return `${name} (@${handleRaw})`
+  if (name) return name
   if (handleRaw) return `@${handleRaw}`
   return 'Someone'
 }
@@ -73,24 +74,34 @@ function formatPct(value: unknown): string {
   return n.toFixed(2).replace(/\.?0+$/, '')
 }
 
-function formatSliceTerms(slice: SliceRow): string {
+function formatPricingLine(slice: SliceRow): string {
   if (slice.pricing_mode === 'markup') {
     const rate = Number(slice.markup_rate)
-    return Number.isFinite(rate) ? `Markup ${rate}x` : 'Markup'
+    return Number.isFinite(rate) ? `Markup: ${formatPct(rate)}x` : 'Markup'
   }
-  const pct = Number(slice.player_profit_pct)
-  if (Number.isFinite(pct)) return `Profit split · player ${formatPct(pct)}%`
+  const playerPct = Number(slice.player_profit_pct)
+  const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : null
+  if (Number.isFinite(backerPct) && Number.isFinite(playerPct)) {
+    return `Profit split: Backer ${formatPct(backerPct)}% | Player ${formatPct(playerPct)}%`
+  }
   return 'Profit split'
 }
 
-function formatGuestOfferLine(
-  actorName: string,
-  actionPct: number,
-  baselineLabel: string,
-  dealLabel: string,
-) {
-  const stakeBit = dealLabel ? ` stake: ${dealLabel}` : ''
-  return `${actorName} has you on a ${formatPct(actionPct)}% cash stake (${baselineLabel} baseline${stakeBit}) from EdgeTilt.com`
+function formatStakeNotifyCopy(args: {
+  actorLabel: string
+  backerArticle: 'the' | 'a'
+  dealLabel: string
+  baselineLabel: string
+  actionPct: number
+  pricingLine: string
+}): { subject: string; text: string; html: string } {
+  const intro = `${args.actorLabel} has created a stake on Edgetilt.com with you as ${args.backerArticle} backer.`
+  const nameLine = `Name of stake: ${args.dealLabel || '—'}`
+  const stakeLine = `Total stake: ${args.baselineLabel} (you own ${formatPct(args.actionPct)}%)`
+  const text = [intro, nameLine, stakeLine, args.pricingLine].join('\n')
+  const html = `<p>${intro}</p><p>${nameLine}</p><p>${stakeLine}</p><p>${args.pricingLine}</p>`
+  const subject = `${args.actorLabel} created a stake with you on Edgetilt.com`
+  return { subject, text, html }
 }
 
 async function sendResendEmail(to: string, subject: string, html: string, text: string) {
@@ -233,12 +244,19 @@ Deno.serve(async (req) => {
     if (sliceErr) throw new Error(sliceErr.message)
     const slices = (slicesRaw || []) as SliceRow[]
 
+    const { count: totalSliceCount, error: countErr } = await admin
+      .from('poker_stable_deal_slices')
+      .select('id', { count: 'exact', head: true })
+      .eq('deal_id', dealId)
+    if (countErr) throw new Error(countErr.message)
+    const backerArticle: 'the' | 'a' = totalSliceCount === 1 ? 'the' : 'a'
+
     const { data: actorProfile } = await admin
       .from('profiles')
       .select('display_name, handle')
       .eq('user_id', uid)
       .maybeSingle()
-    const guestActorName = formatGuestActorName(actorProfile)
+    const actorLabel = formatProfileLabel(actorProfile)
 
     const baselineLabel = fmtMoney(Number(deal.baseline_bankroll))
     const dealLabel = String(deal.label || '').trim()
@@ -265,16 +283,16 @@ Deno.serve(async (req) => {
         continue
       }
 
-      const offerLine = formatGuestOfferLine(
-        guestActorName,
-        Number(slice.action_pct),
-        baselineLabel,
+      const pricingLine = formatPricingLine(slice)
+      const { subject, text, html } = formatStakeNotifyCopy({
+        actorLabel,
+        backerArticle,
         dealLabel,
-      )
-      const termsLine = formatSliceTerms(slice)
-      const subject = `${guestActorName} has you on a ${formatPct(slice.action_pct)}% cash stake`
-      const text = `${offerLine}\n${termsLine}\n${appUrl}`
-      const html = `<p>${offerLine}</p><p>${termsLine}</p><p><a href="${appUrl}">${appUrl}</a></p>`
+        baselineLabel,
+        actionPct: Number(slice.action_pct),
+        pricingLine,
+      })
+      const smsText = `${text}\n${appUrl}`
 
       const channels: Record<string, unknown> = { slice_id: slice.id }
 
@@ -285,7 +303,7 @@ Deno.serve(async (req) => {
       }
 
       if (hasPhone && phone) {
-        channels.sms = await sendTwilioSms(phone, text)
+        channels.sms = await sendTwilioSms(phone, smsText)
       } else {
         channels.sms = { skipped: true, reason: 'no guest phone' }
       }

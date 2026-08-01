@@ -4608,6 +4608,138 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   border-color: #d4d4d8 !important;
 }
 
+/* ── Poker Stable sheet - light mode (dark unchanged) ──── */
+html.light [data-poker-stable-sheet] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-sheet] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable-sheet] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-sheet] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-sheet] input {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+html.light [data-poker-stable-sheet] input::placeholder {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-sheet] .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn] {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:active {
+  background-color: #b45309 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:disabled {
+  color: #ffffff !important;
+}
+
+/* ── Poker Stable page - light mode (dark unchanged) ──── */
+html.light [data-poker-stable] {
+  --poker-stable-chrome: #d97706;
+  --poker-stable-chrome-soft: #fffbeb;
+  --poker-stable-chrome-border: #fcd34d;
+}
+html.light [data-poker-stable] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable] .text-zinc-600 {
+  color: #a1a1aa !important;
+}
+html.light [data-poker-stable] .text-amber-100 {
+  color: #92400e !important;
+}
+html.light [data-poker-stable] .text-rose-400 {
+  color: #be123c !important;
+}
+html.light [data-poker-stable] .text-emerald-400 {
+  color: #059669 !important;
+}
+html.light [data-poker-stable] .border-zinc-700,
+html.light [data-poker-stable] .border-dashed.border-zinc-700 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-stable] .bg-zinc-900\/40,
+html.light [data-poker-stable] .bg-zinc-900\/80 {
+  background-color: #fafafa !important;
+}
+html.light [data-poker-stable] .bg-zinc-700 {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable] .from-amber-950\/40 {
+  --tw-gradient-from: #fffbeb !important;
+}
+html.light [data-poker-stable] .to-zinc-900 {
+  --tw-gradient-to: #ffffff !important;
+}
+html.light [data-poker-stable] .border-amber-500\/15,
+html.light [data-poker-stable] .border-amber-500\/20,
+html.light [data-poker-stable] .border-amber-500\/25,
+html.light [data-poker-stable] .border-amber-500\/30 {
+  border-color: var(--poker-stable-chrome-border) !important;
+}
+html.light [data-poker-stable] .bg-amber-950\/30,
+html.light [data-poker-stable] .bg-amber-950\/40 {
+  background-color: var(--poker-stable-chrome-soft) !important;
+}
+html.light [data-poker-stable] .border-cyan-500\/25 {
+  border-color: #67e8f9 !important;
+}
+html.light [data-poker-stable] .bg-amber-500\/20.text-amber-300 {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+html.light [data-poker-stable] .bg-cyan-500\/20.text-cyan-300 {
+  background-color: #ecfeff !important;
+  color: #0e7490 !important;
+}
+html.light [data-poker-stable] .bg-zinc-700\/60.text-zinc-400 {
+  background-color: #f4f4f5 !important;
+  color: #71717a !important;
+}
+html.light [data-poker-stable] .bg-rose-500\/20.text-rose-300 {
+  background-color: #fff1f2 !important;
+  color: #be123c !important;
+}
+html.light [data-poker-stable] [data-poker-stable-primary-btn],
+html.light [data-poker-stable] .bg-amber-600,
+html.light [data-poker-stable] .bg-amber-600\/90 {
+  background-color: var(--poker-stable-chrome) !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable] [data-poker-stable-primary-btn]:active,
+html.light [data-poker-stable] .active\:bg-amber-500:active {
+  background-color: #b45309 !important;
+}
+html.light [data-poker-stable] .bg-emerald-600 {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable] .active\:bg-emerald-500:active {
+  background-color: #047857 !important;
+}
+
 html.light [data-poker-bankroll] [data-poker-incoming-swaps] button.border-zinc-600\/80 {
   border-color: #d4d4d8 !important;
   color: #52525b !important;

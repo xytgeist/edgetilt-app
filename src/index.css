@@ -5224,6 +5224,7 @@ html.light [data-poker-bankroll] {
 }
 
 html.light [data-poker-bankroll] .text-emerald-400,
+html.light [data-poker-bankroll] .text-emerald-400\/85,
 html.light [data-poker-bankroll] .text-emerald-300,
 html.light [data-poker-bankroll] .text-emerald-200 {
   color: var(--poker-money) !important;
@@ -5241,6 +5242,7 @@ html.light [data-poker-bankroll] [data-poker-session-swap-amt='gain'] {
   color: var(--poker-money) !important;
 }
 html.light [data-poker-bankroll] .text-rose-400,
+html.light [data-poker-bankroll] .text-rose-400\/85,
 html.light [data-poker-bankroll] .text-rose-300 {
   color: #be123c !important;
 }

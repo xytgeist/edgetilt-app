@@ -92,7 +92,6 @@ import {
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
-import PokerSwapOwnershipSummary from './PokerSwapOwnershipSummary.jsx'
 import {
   applySoftTournamentEventToForm,
   isSoftTournamentEventPick,
@@ -3026,15 +3025,6 @@ export default function PokerBankrollTracker({
               </button>
             </div>
 
-            {editingActiveSession && form.session_type === 'tournament' ? (
-              <PokerSwapOwnershipSummary
-                maxSwapGivePct={swapSelfOwnedPct}
-                draftSwaps={draftSwaps}
-                savedSwaps={editingSessionSwaps}
-                userId={userId}
-              />
-            ) : null}
-
             <PokerSessionCoreFields
               form={form}
               setField={setField}
@@ -3052,6 +3042,7 @@ export default function PokerBankrollTracker({
               userId={userId}
               enabled={form.session_type === 'tournament'}
               maxSwapGivePct={swapSelfOwnedPct}
+              showOwnershipSummary={editingActiveSession}
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={editingSessionSwaps}
@@ -3342,18 +3333,12 @@ export default function PokerBankrollTracker({
                 ✕
               </button>
             </div>
-            <PokerSwapOwnershipSummary
-              maxSwapGivePct={swapSelfOwnedPct}
-              draftSwaps={draftSwaps}
-              savedSwaps={activeSessionSwaps}
-              userId={userId}
-              compact
-            />
             <PokerTournamentSwapsSection
               supabaseClient={supabaseClient}
               userId={userId}
               enabled
               maxSwapGivePct={swapSelfOwnedPct}
+              showOwnershipSummary
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={activeSessionSwaps}

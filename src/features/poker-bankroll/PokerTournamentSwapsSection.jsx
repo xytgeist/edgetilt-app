@@ -5,6 +5,7 @@ import {
   computeMySideSwapTotalPct,
   computeSwapOwnershipStats,
 } from './pokerSwapOwnershipSummary.js'
+import PokerSwapOwnershipSummary from './PokerSwapOwnershipSummary.jsx'
 import {
   cancelTournamentSwap,
   emptyDraftSwap,
@@ -47,6 +48,8 @@ const FIELD =
  *   sendingDrafts?: boolean,
  *   /** Max % of net the player can swap (100 minus stable backing sold). Default 100. */
  *   maxSwapGivePct?: number,
+ *   /** Show remaining self-owned % (session details + active swap modal). */
+ *   showOwnershipSummary?: boolean,
  * }} props
  */
 export default function PokerTournamentSwapsSection({
@@ -65,6 +68,7 @@ export default function PokerTournamentSwapsSection({
   onSendDraft,
   sendingDrafts = false,
   maxSwapGivePct = 100,
+  showOwnershipSummary = false,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   /** swapId → show manual payout fields */
@@ -292,6 +296,17 @@ export default function PokerTournamentSwapsSection({
         Bilateral % of net (prize − buy-in). Busts owe $0 from that side. Settlement when both
         results are in.
       </p>
+
+      {showOwnershipSummary ? (
+        <PokerSwapOwnershipSummary
+          maxSwapGivePct={maxSwapGivePct}
+          draftSwaps={draftSwaps}
+          savedSwaps={savedSwaps}
+          incomingAcceptSwap={incomingAcceptSwap}
+          userId={userId}
+          compact={compact}
+        />
+      ) : null}
 
       {!hasAnySwaps ? (
         <p

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 
-const PEEK_PX = 44
+const PEEK_PX = 24
 const SLIDE_GAP_PX = 8
 
 /** Shared box model so personal + stake hero cards match in the peek carousel. */

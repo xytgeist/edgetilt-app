@@ -2136,26 +2136,14 @@ export default function PokerBankrollTracker({
                     data-poker-bankroll-hero-card
                     data-elevated-card={onStake ? 'accent' : 'surface'}
                     data-stake-hero-tone={onStake ? theme.tone : undefined}
-                    className={`relative ${
+                    className={
                       onStake
                         ? theme.card
                         : `${POKER_BANKROLL_HERO_SHELL} border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800`
-                    }`}
+                    }
                   >
-                    {onStake ? (
-                      <span
-                        data-poker-bankroll-hero-status
-                        className={`rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                          hero.deal?.status === 'pending'
-                            ? 'bg-zinc-500/40 text-zinc-200'
-                            : theme.badge
-                        }`}
-                      >
-                        {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
-                      </span>
-                    ) : null}
                     <div className="mb-2 flex min-h-9 items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-1 items-center overflow-hidden">
+                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                         <div
                           data-poker-bankroll-hero-title
                           className={`min-w-0 truncate ${
@@ -2166,6 +2154,17 @@ export default function PokerBankrollTracker({
                             ? hero.deal?.label?.trim() || 'Cash backing'
                             : 'Poker bankroll'}
                         </div>
+                        {onStake ? (
+                          <span
+                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                              hero.deal?.status === 'pending'
+                                ? 'bg-zinc-500/40 text-zinc-200'
+                                : theme.badge
+                            }`}
+                          >
+                            {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
+                          </span>
+                        ) : null}
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         {!onStake ? (

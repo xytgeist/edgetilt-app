@@ -5296,22 +5296,6 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
   line-height: 1.25;
   text-transform: uppercase;
 }
-/* Stake status pill — centered in gap from card top padding to title cap height */
-[data-poker-bankroll-hero-card] {
-  --poker-hero-shell-pad: 1.5rem;
-  --poker-hero-header-min: 2.25rem;
-  --poker-hero-title-line: 1.25rem;
-}
-[data-poker-bankroll-hero-status] {
-  position: absolute;
-  left: var(--poker-hero-shell-pad);
-  top: calc(
-    var(--poker-hero-shell-pad) +
-      (var(--poker-hero-header-min) - var(--poker-hero-title-line)) / 4
-  );
-  transform: translateY(-50%);
-  z-index: 1;
-}
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-bankroll-hero-title] {
   color: #18181b !important;
 }

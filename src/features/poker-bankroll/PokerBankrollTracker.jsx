@@ -272,6 +272,11 @@ export default function PokerBankrollTracker({
   const stakeScopePending = activeDeal?.status === 'pending'
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
+  const scopedSessions = useMemo(() => {
+    if (!isOnStake) return sessions.filter((s) => s.deal_id == null)
+    return sessions.filter((s) => s.deal_id === bankrollScope)
+  }, [sessions, isOnStake, bankrollScope])
+
   /** Missing profile rows count as starting roll + logged session P/L until accept bootstraps the profile. */
   const stakeScopeSessionProfit = useMemo(() => {
     if (!isOnStake || dealProfile != null) return 0
@@ -294,11 +299,6 @@ export default function PokerBankrollTracker({
       ? Number(profile.overall_bankroll) || 0
       : 0
   const hasBankrollProfile = isOnStake ? dealProfile != null : profile != null
-
-  const scopedSessions = useMemo(() => {
-    if (!isOnStake) return sessions.filter((s) => s.deal_id == null)
-    return sessions.filter((s) => s.deal_id === bankrollScope)
-  }, [sessions, isOnStake, bankrollScope])
 
   const activeSession = useMemo(
     () => scopedSessions.find((s) => s.status === 'active') ?? null,

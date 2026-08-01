@@ -5,13 +5,14 @@ Sends **Twilio SMS** and/or **Resend email** to guest backers when a player crea
 Offer copy (email):
 
 ```
-Chunky Unc (@chunkyunc_1) has created a stake on Edgetilt.com with you as a backer.
-Name of stake: WSOP
-Total stake: $100,000 (you own 30%)
-Markup: 1.15x
+Chunky Unc (@chunkyunc) has created a stake on Edgetilt.com with you as the backer.
+
+Name of stake: $10/20 Live Backing
+Total stake: $100,000 (you own 100%)
+Profit split: Backer 50% | Player 50%
 ```
 
-Uses "the backer" when they are the only slice on the deal; "a backer" when syndicated.
+Blank lines between blocks. **Edgetilt.com** is a hyperlink in the HTML part (plain-text fallback has no link). Uses "the backer" when sole slice; "a backer" when syndicated.
 
 ## Secrets
 

@@ -87,6 +87,14 @@ function formatPricingLine(slice: SliceRow): string {
   return 'Profit split'
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function formatStakeNotifyCopy(args: {
   actorLabel: string
   backerArticle: 'the' | 'a'
@@ -94,12 +102,26 @@ function formatStakeNotifyCopy(args: {
   baselineLabel: string
   actionPct: number
   pricingLine: string
+  appUrl: string
 }): { subject: string; text: string; html: string } {
-  const intro = `${args.actorLabel} has created a stake on Edgetilt.com with you as ${args.backerArticle} backer.`
+  const introPlain = `${args.actorLabel} has created a stake on Edgetilt.com with you as ${args.backerArticle} backer.`
   const nameLine = `Name of stake: ${args.dealLabel || '—'}`
   const stakeLine = `Total stake: ${args.baselineLabel} (you own ${formatPct(args.actionPct)}%)`
-  const text = [intro, nameLine, stakeLine, args.pricingLine].join('\n')
-  const html = `<p>${intro}</p><p>${nameLine}</p><p>${stakeLine}</p><p>${args.pricingLine}</p>`
+  const text = [introPlain, nameLine, stakeLine, args.pricingLine].join('\n\n')
+
+  const safeActor = escapeHtml(args.actorLabel)
+  const safeNameLine = escapeHtml(nameLine)
+  const safeStakeLine = escapeHtml(stakeLine)
+  const safePricingLine = escapeHtml(args.pricingLine)
+  const safeUrl = escapeHtml(args.appUrl)
+  const introHtml = `${safeActor} has created a stake on <a href="${safeUrl}">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
+  const html = [
+    `<p style="margin:0 0 1em;line-height:1.5">${introHtml}</p>`,
+    `<p style="margin:0 0 1em;line-height:1.5">${safeNameLine}</p>`,
+    `<p style="margin:0 0 1em;line-height:1.5">${safeStakeLine}</p>`,
+    `<p style="margin:0;line-height:1.5">${safePricingLine}</p>`,
+  ].join('')
+
   const subject = `${args.actorLabel} created a stake with you on Edgetilt.com`
   return { subject, text, html }
 }
@@ -291,8 +313,9 @@ Deno.serve(async (req) => {
         baselineLabel,
         actionPct: Number(slice.action_pct),
         pricingLine,
+        appUrl,
       })
-      const smsText = `${text}\n${appUrl}`
+      const smsText = `${text}\n\n${appUrl}`
 
       const channels: Record<string, unknown> = { slice_id: slice.id }
 

@@ -1013,6 +1013,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - 2026-07-28: **Poker bankroll hero sparkline:** tiny running-bankroll polyline beside the Session roll amount (inferred start = current − lifetime profit).
 - 2026-07-28: **Poker bankroll pill tabs:** match slots bankroll pills; landing **OVERVIEW** (was Session); former Overview aggregates → **DETAILS**; LOCATIONS / CHARTS unchanged.
 - 2026-07-28: **Poker bankroll hero stats filter:** Profit / Hourly / Hours / Win rate on the Overview bankroll card follow Cash/Tourney + Live/Online chips (same as history).
+- 2026-08-01: **Poker Stable player deal history (test):** On Stake Bankroll session list shows text lines for offer / accept / re-up / settle mixed with session rows (`pokerStableDealHistory.js`).
 - 2026-08-01: **Poker Stable stake delete (test):** Bankroll Terms → **Delete stake** before any Edge backer accepts; removes stake + stake sessions (`20260801150000`).
 - 2026-08-01: **Poker Stable guest terms + reassign (test):** Player edits **active guest-only** stakes on Bankroll; **Assign to Edge user** on guest slices (`20260801140000`). Apply migration + RPCs on test before smoke.
 - 2026-08-01: **Poker Stable stake terms view/edit (test):** Terms sheet on Bankroll + Stable; player edits pending deals; backer proposals require player accept (`20260801130000`). Apply migration + RPCs on test before smoke.

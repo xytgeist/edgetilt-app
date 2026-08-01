@@ -2,7 +2,7 @@ import { useLayoutEffect, useEffect, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
+import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser } from './pokerStableApi.js'
@@ -320,15 +320,25 @@ function PokerStableDealFormSheet({
     if (!editDeal) return
     setLabel(editDeal.label || '')
     setBaseline(
-      editDeal.baseline_bankroll != null ? String(editDeal.baseline_bankroll) : '',
+      editDeal.baseline_bankroll != null
+        ? formatMoneyInputValue(String(editDeal.baseline_bankroll))
+        : '',
     )
     setIsMigration(Boolean(editDeal.is_migration))
-    setStartingRoll(editDeal.starting_roll != null ? String(editDeal.starting_roll) : '')
+    setStartingRoll(
+      editDeal.starting_roll != null
+        ? formatMoneyInputValue(String(editDeal.starting_roll))
+        : '',
+    )
     setStakeWidePl(
-      editDeal.stake_wide_starting_pl != null ? String(editDeal.stake_wide_starting_pl) : '',
+      editDeal.stake_wide_starting_pl != null
+        ? formatMoneyInputValue(String(editDeal.stake_wide_starting_pl), { allowNegative: true })
+        : '',
     )
     setLifetimePl(
-      editDeal.lifetime_pl_display != null ? String(editDeal.lifetime_pl_display) : '',
+      editDeal.lifetime_pl_display != null
+        ? formatMoneyInputValue(String(editDeal.lifetime_pl_display), { allowNegative: true })
+        : '',
     )
     const rows = editSlices || []
     setSlices(

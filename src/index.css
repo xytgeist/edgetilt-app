@@ -5187,6 +5187,16 @@ html.light [data-bankroll-card] {
 html.light [data-session-card] {
   box-shadow: 0 10px 20px -4px rgba(0,0,0,0.15), 0 4px 8px -4px rgba(0,0,0,0.1);
 }
+html.light [data-poker-stake-history-line] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-history-line] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stake-history-line] .text-zinc-600 {
+  color: #71717a !important;
+}
 html.light [data-start-session-btn] {
   box-shadow: 0 8px 20px -4px rgba(0,0,0,0.2);
 }

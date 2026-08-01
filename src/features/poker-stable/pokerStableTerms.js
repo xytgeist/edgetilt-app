@@ -1,4 +1,5 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
+import { formatMoneyInputValue } from '../../utils/moneyInputFormat.js'
 
 export function pricingModeLabel(mode) {
   return mode === 'markup' ? 'Markup' : 'Profit split'
@@ -14,7 +15,7 @@ function formatTermsPct(value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return '—'
   if (Number.isInteger(n)) return String(n)
-  return String(Number(n.toFixed(2)).replace(/\.?0+$/, ''))
+  return n.toFixed(2).replace(/\.?0+$/, '')
 }
 
 function sliceBackerShortName(slice, profilesById = {}) {
@@ -233,13 +234,20 @@ export function termsPayloadToFormState(payload, profilesById = {}) {
   return {
     label: deal.label || '',
     baseline:
-      deal.baseline_bankroll != null ? String(deal.baseline_bankroll) : '',
+      deal.baseline_bankroll != null
+        ? formatMoneyInputValue(String(deal.baseline_bankroll))
+        : '',
     isMigration: Boolean(deal.is_migration),
-    startingRoll: deal.starting_roll != null ? String(deal.starting_roll) : '',
+    startingRoll:
+      deal.starting_roll != null ? formatMoneyInputValue(String(deal.starting_roll)) : '',
     stakeWidePl:
-      deal.stake_wide_starting_pl != null ? String(deal.stake_wide_starting_pl) : '',
+      deal.stake_wide_starting_pl != null
+        ? formatMoneyInputValue(String(deal.stake_wide_starting_pl), { allowNegative: true })
+        : '',
     lifetimePl:
-      deal.lifetime_pl_display != null ? String(deal.lifetime_pl_display) : '',
+      deal.lifetime_pl_display != null
+        ? formatMoneyInputValue(String(deal.lifetime_pl_display), { allowNegative: true })
+        : '',
     slices: sliceRows.map((sl) => sliceRowToFormSlice(sl, profilesById)),
   }
 }

@@ -248,6 +248,19 @@ export async function loadDealTopups(supabase, dealId) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
  */
+export async function loadDealSettlements(supabase, dealId) {
+  const { data, error } = await supabase
+    .from('poker_stable_deal_settlements')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+  return { settlements: data || [], error }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} dealId
+ */
 export async function loadLatestSettlement(supabase, dealId) {
   const { data: settlements, error: sErr } = await supabase
     .from('poker_stable_deal_settlements')

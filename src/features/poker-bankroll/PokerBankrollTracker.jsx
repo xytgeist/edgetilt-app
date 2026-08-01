@@ -37,12 +37,15 @@ import {
   isMissingStableTableError,
   loadDealBankrollProfiles,
   loadDealCounterpartyProfiles,
+  loadDealSettlements,
   loadDealSlices,
+  loadDealTopups,
   loadMyStableDeals,
   reassignGuestSliceToUser,
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
+import { buildStakeDealHistoryEvents } from '../poker-stable/pokerStableDealHistory.js'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -226,6 +229,10 @@ export default function PokerBankrollTracker({
   const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
+  /** @type {Record<string, object[]>} */
+  const [dealTopupsByDeal, setDealTopupsByDeal] = useState({})
+  /** @type {Record<string, object[]>} */
+  const [dealSettlementsByDeal, setDealSettlementsByDeal] = useState({})
   /** @type {'personal' | string} personal or deal id */
   const [bankrollScope, setBankrollScope] = useState('personal')
   const [loading, setLoading] = useState(true)
@@ -454,6 +461,8 @@ export default function PokerBankrollTracker({
         setDealProfiles({})
         setSlicesByDeal({})
         setStableProfilesById({})
+        setDealTopupsByDeal({})
+        setDealSettlementsByDeal({})
       } else {
         const mine = (dealsRes.deals || []).filter(
           (d) =>
@@ -483,6 +492,8 @@ export default function PokerBankrollTracker({
         } else {
           setSlicesByDeal({})
           setStableProfilesById({})
+          setDealTopupsByDeal({})
+          setDealSettlementsByDeal({})
         }
         const { byDeal, error: rollErr } = await loadDealBankrollProfiles(
           supabaseClient,
@@ -492,6 +503,27 @@ export default function PokerBankrollTracker({
           console.warn('[poker-bankroll] deal rolls load failed', rollErr.message)
         }
         setDealProfiles(byDeal)
+
+        const topupsByDeal = {}
+        const settlementsByDeal = {}
+        await Promise.all(
+          dealIds.map(async (dealId) => {
+            const [{ topups, error: topErr }, { settlements, error: stErr }] = await Promise.all([
+              loadDealTopups(supabaseClient, dealId),
+              loadDealSettlements(supabaseClient, dealId),
+            ])
+            if (topErr && !isMissingStableTableError(topErr)) {
+              console.warn('[poker-bankroll] deal topups load failed', topErr.message)
+            }
+            if (stErr && !isMissingStableTableError(stErr)) {
+              console.warn('[poker-bankroll] deal settlements load failed', stErr.message)
+            }
+            topupsByDeal[dealId] = topups || []
+            settlementsByDeal[dealId] = settlements || []
+          }),
+        )
+        setDealTopupsByDeal(topupsByDeal)
+        setDealSettlementsByDeal(settlementsByDeal)
       }
 
       const swapsRes = await loadMyTournamentSwaps(supabaseClient, userId)
@@ -705,6 +737,48 @@ export default function PokerBankrollTracker({
       return true
     })
   }, [completedSessions, typeFilter, venueFilter])
+
+  const stakeHistoryEvents = useMemo(() => {
+    if (!isOnStake || !activeDeal) return []
+    return buildStakeDealHistoryEvents({
+      deal: activeDeal,
+      slices: slicesByDeal[bankrollScope] || [],
+      profilesById: stableProfilesById,
+      topups: dealTopupsByDeal[bankrollScope] || [],
+      settlements: dealSettlementsByDeal[bankrollScope] || [],
+    })
+  }, [
+    isOnStake,
+    activeDeal,
+    bankrollScope,
+    slicesByDeal,
+    stableProfilesById,
+    dealTopupsByDeal,
+    dealSettlementsByDeal,
+  ])
+
+  const historyFeed = useMemo(() => {
+    const sessionItems = filtered.map((session) => ({
+      kind: 'session',
+      id: session.id,
+      at: session.end_at || session.start_at,
+      session,
+    }))
+    if (!isOnStake) {
+      return sessionItems.sort(
+        (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+      )
+    }
+    const eventItems = stakeHistoryEvents.map((event) => ({
+      kind: 'event',
+      id: event.id,
+      at: event.at,
+      event,
+    }))
+    return [...sessionItems, ...eventItems].sort(
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+    )
+  }, [filtered, isOnStake, stakeHistoryEvents])
 
   /** Bankroll-card stats follow All/Cash/Tourney + Any/Live/Online filters. */
   const stats = useMemo(() => {
@@ -2474,7 +2548,7 @@ export default function PokerBankrollTracker({
 
             {loading ? (
               <p className="py-16 text-center text-sm text-zinc-500">Loading sessions…</p>
-            ) : filtered.length === 0 ? (
+            ) : historyFeed.length === 0 ? (
               <div
                 data-elevated-card="surface"
                 className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
@@ -2490,7 +2564,30 @@ export default function PokerBankrollTracker({
               </div>
             ) : (
               <ul className="space-y-2">
-                {filtered.map((session) => {
+                {historyFeed.map((item) => {
+                  if (item.kind === 'event') {
+                    return (
+                      <li key={item.id}>
+                        <div
+                          data-poker-stake-history-line
+                          data-elevated-card="surface"
+                          className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 px-3 py-2.5"
+                        >
+                          <div className="text-sm font-medium text-zinc-300">{item.event.text}</div>
+                          <div className="mt-0.5 text-[11px] text-zinc-600">
+                            {new Date(item.at).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                        </div>
+                      </li>
+                    )
+                  }
+
+                  const session = item.session
                   const baseWl = pokerSessionWinLoss(session)
                   const swapDelta = sessionSwapSettlementDelta(
                     tournamentSwaps,

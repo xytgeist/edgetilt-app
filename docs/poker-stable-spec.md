@@ -97,7 +97,7 @@ Partial payments supported. Guest slices: player authoritative only.
 
 | Role | Create deal | Manage stake roll / sessions |
 | --- | --- | --- |
-| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll only (personal + pending/active deal cards). **Not Stable.** May log stake sessions while pending; backers see history in Stable after accept. |
+| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll only (personal + pending/active deal cards). **Not Stable.** May log stake sessions while pending; backers see history in Stable after accept. On Stake session list also shows deal **history lines** (offer, accept, re-up, settle) as text rows mixed with sessions. |
 | **Backer (staker)** | Stable **Request horse** → player handle + your slice + optional syndicate slices | Stable horses list, invites, settle/ledger |
 
 Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice invite (player accept activates lead backer slice only).
@@ -145,6 +145,7 @@ New / extended:
 
 ## Update log
 
+- **2026-08-01:** Player stake history on Bankroll: On Stake session list interleaves text rows for offer, Edge accept, re-up, and settle (`pokerStableDealHistory.js`).
 - **2026-08-01:** Stake delete (Bankroll **Terms → Delete stake**): stakee may remove a stake before any Edge backer accepts; deletes stake sessions on that deal (`20260801150000`).
 - **2026-08-01:** Guest-only active stakes: player may **Edit terms** on Bankroll when all backers are guests (auto-active deals); **Assign to Edge user** re-links a guest slice to an Edge account (slice invite pending in Stable). RPCs `poker_stable_apply_stakee_terms`, `poker_stable_reassign_guest_slice` (`20260801140000`).
 - **2026-08-01:** Stake terms view/edit: **Terms** on Bankroll stake cards + Stable invites; player edits pending deals directly; backer **Edit terms** stores a proposal until the player accepts (`pending_terms_json`, `20260801130000`).

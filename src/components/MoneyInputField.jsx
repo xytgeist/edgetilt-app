@@ -46,13 +46,15 @@ export default function MoneyInputField({
         compact ? 'left-3 text-sm' : 'left-4'
       }`
 
+  const displayValue = formatMoneyInputValue(value, { allowNegative })
+
   const input = (
     <div className="relative">
       {!hidePrefix ? <span className={prefixClass}>$</span> : null}
       <input
         type="text"
         inputMode={allowNegative ? 'text' : 'decimal'}
-        value={value}
+        value={displayValue}
         onChange={(e) => onChange(formatMoneyInputValue(e.target.value, { allowNegative }))}
         placeholder={placeholder}
         autoFocus={autoFocus}

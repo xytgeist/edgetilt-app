@@ -40,6 +40,10 @@ export type WrapTransactionalEmailArgs = {
   cta?: TransactionalEmailCta
   /** Optional note above the standard EdgeTilt footer bar */
   footerNoteHtml?: string
+  /** When true, footer note renders before the CTA button (stable guest emails). */
+  ctaAfterFooterNote?: boolean
+  /** Extra top margin on footer note (e.g. "24px" for a blank line after details). */
+  footerNoteMarginTop?: string
 }
 
 /** Styled paragraph for transactional body copy. */
@@ -82,8 +86,13 @@ export function wrapTransactionalEmailHtml(args: WrapTransactionalEmailArgs): st
 
   let footerNoteBlock = ''
   if (args.footerNoteHtml) {
-    footerNoteBlock = `<p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#71717a;">${args.footerNoteHtml}</p>`
+    const noteMarginTop = args.footerNoteMarginTop || '0'
+    footerNoteBlock = `<p style="margin:${noteMarginTop} 0 16px;font-size:13px;line-height:1.6;color:#71717a;">${args.footerNoteHtml}</p>`
   }
+
+  const actionBlocks = args.ctaAfterFooterNote
+    ? `${footerNoteBlock}${ctaBlock}`
+    : `${ctaBlock}${footerNoteBlock}`
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -108,8 +117,7 @@ export function wrapTransactionalEmailHtml(args: WrapTransactionalEmailArgs): st
             <td style="padding:32px 32px 8px;color:#18181b;">
               ${headlineBlock}
               ${args.bodyHtml}
-              ${ctaBlock}
-              ${footerNoteBlock}
+              ${actionBlocks}
             </td>
           </tr>
           <tr>

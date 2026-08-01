@@ -11,12 +11,12 @@ Name of stake: $10/20 Live Backing
 Total stake: $100,000 (you own 100%)
 Profit split: Backer 50% | Player 50%
 
-Create a free account at EdgeTilt.com to manage your stable and get live progress updates.
+Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.
 ```
 
 Blank line after intro only; detail lines are single-spaced (`<br>` in HTML, not separate `<p>` tags).
 
-HTML uses the shared branded shell (`_shared/transactionalEmail.ts`): EDGE logo header, white card, cyan CTA (**Create free account**), and footer note about live stable updates.
+HTML uses the shared branded shell (`_shared/transactionalEmail.ts`): EDGE logo header, white card, italic signup line (double-spaced after details), cyan **Create free account** button, and footer bar.
 
 Terms edit copy (`kind=terms_edited`):
 
@@ -33,7 +33,7 @@ Name of stake: Testing
 Total stake: $1,500 (you own 60%)
 Profit split: Backer 40% | Player 60%
 
-Create a free account at EdgeTilt.com to manage your stable and get live progress updates.
+Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.
 ```
 
 ## Secrets

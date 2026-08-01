@@ -98,10 +98,12 @@ function formatPricingLine(slice: SliceRow): string {
 }
 
 function formatEmailFooter(): { text: string; htmlNote: string } {
-  const text =
-    'Create a free account at EdgeTilt.com to manage your stable and get live progress updates.'
-  const htmlNote = 'Create a free account to manage your stable and get live progress updates.'
-  return { text, htmlNote }
+  const line =
+    'Create a free account to manage your stable and get real-time progress updates.'
+  return {
+    text: `Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.`,
+    htmlNote: `<em>${escapeHtml(line)}</em>`,
+  }
 }
 
 function formatStakeMessageCopy(args: {
@@ -148,6 +150,8 @@ function formatStakeMessageCopy(args: {
     appUrl: args.appUrl,
     cta: { label: 'Create free account', href: args.appUrl },
     footerNoteHtml: footer.htmlNote,
+    ctaAfterFooterNote: true,
+    footerNoteMarginTop: '24px',
   })
   return { subject, text, html }
 }
@@ -254,6 +258,8 @@ function formatTermsEditedCopy(args: {
     appUrl: args.appUrl,
     cta: { label: 'Create free account', href: args.appUrl },
     footerNoteHtml: footer.htmlNote,
+    ctaAfterFooterNote: true,
+    footerNoteMarginTop: '24px',
   })
   return { subject, text, html }
 }

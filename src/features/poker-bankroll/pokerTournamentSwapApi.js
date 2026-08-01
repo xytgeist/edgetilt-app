@@ -3,7 +3,7 @@ import {
   eventDisplayNamesDiffer,
   pickCanonicalEventDisplayName,
 } from './pokerTournamentEventKeys.js'
-import { pokerSessionTotalCost } from './pokerBankrollMath.js'
+import { localYmd, pokerSessionTotalCost } from './pokerBankrollMath.js'
 import { parseSwapPct } from './pokerTournamentSwapMath.js'
 
 export function isMissingTournamentSwapTableError(err) {
@@ -344,14 +344,143 @@ export async function setCounterpartyManualResult(supabase, swapId, buyIn, prize
 }
 
 /**
+ * Soft-event fields derived from a logged tournament session (local calendar date).
+ * @param {object | null | undefined} session
+ */
+export function sessionTournamentEventInput(session) {
+  if (!session?.start_at) return null
+  const start = new Date(session.start_at)
+  if (Number.isNaN(start.getTime())) return null
+  return {
+    venue_name: session.venue_name || '',
+    event_date: localYmd(start),
+    buy_in: Number(session.buy_in) || 0,
+    game_variant: session.game_variant || null,
+    currency: session.currency || 'USD',
+    display_name: session.tournament_name || null,
+  }
+}
+
+/** @param {object | null | undefined} session */
+export function sessionTournamentFingerprintKey(session) {
+  const input = sessionTournamentEventInput(session)
+  if (!input) return null
+  return buildTournamentFingerprintKey(input)
+}
+
+function sortCounterpartyBindCandidates(candidates) {
+  return [...candidates].sort((a, b) => {
+    if (a.status === 'active' && b.status !== 'active') return -1
+    if (b.status === 'active' && a.status !== 'active') return 1
+    return new Date(b.start_at).getTime() - new Date(a.start_at).getTime()
+  })
+}
+
+/**
+ * @param {object} session
+ * @param {object} swap
+ * @param {object | null | undefined} swapEvent
+ */
+function sessionMatchesSwapEvent(session, swap, swapEvent) {
+  const swapEventId = swap?.tournament_event_id || null
+  if (swapEventId && session.tournament_event_id === swapEventId) return true
+  const swapFingerprint = swapEvent?.fingerprint_key || null
+  if (!swapFingerprint) return false
+  const sessionFp = sessionTournamentFingerprintKey(session)
+  return Boolean(sessionFp && sessionFp === swapFingerprint)
+}
+
+/**
+ * Tournament sessions that can bind to an incoming swap (exact event id or fingerprint match).
+ * @param {object} swap
+ * @param {object[]} sessions
+ * @param {object | null | undefined} [swapEvent]
+ */
+export function findCounterpartyBindCandidates(swap, sessions, swapEvent = null) {
+  const list = Array.isArray(sessions) ? sessions : []
+  const tourneys = list.filter(
+    (s) => s?.session_type === 'tournament' && (s.status === 'active' || s.status === 'completed'),
+  )
+  const eventId = swap?.tournament_event_id || null
+  const ev = swapEvent || null
+
+  if (eventId || ev?.fingerprint_key) {
+    const matched = tourneys.filter((s) => sessionMatchesSwapEvent(s, swap, ev))
+    if (matched.length) return sortCounterpartyBindCandidates(matched)
+  }
+
+  // Legacy: swap with no soft event — sole active tourney or only tourney on file.
+  if (!eventId) {
+    let candidates = tourneys.filter((s) => s.status === 'active')
+    if (candidates.length !== 1) {
+      if (tourneys.length === 1) candidates = tourneys
+      else return []
+    }
+    return sortCounterpartyBindCandidates(candidates)
+  }
+
+  return []
+}
+
+/**
+ * Pick the counterparty session that should bind to an incoming swap.
+ * Returns null when zero or multiple candidates (use findCounterpartyBindCandidates + picker).
+ * @param {object} swap
+ * @param {object[]} sessions
+ * @param {object | null | undefined} [swapEvent]
+ */
+export function findCounterpartyBindSession(swap, sessions, swapEvent = null) {
+  const candidates = findCounterpartyBindCandidates(swap, sessions, swapEvent)
+  if (candidates.length === 1) return candidates[0]
+  return null
+}
+
+/**
+ * Whether Accept should relink the session to the swap soft event before bind.
+ * @param {object} session
+ * @param {object} swap
+ */
+export function counterpartySessionNeedsSwapEventRelink(session, swap) {
+  const swapEventId = swap?.tournament_event_id || null
+  if (!swapEventId) return false
+  return String(session?.tournament_event_id || '') !== String(swapEventId)
+}
+
+/**
  * Counterparty accepts binding this swap onto one of their sessions.
+ * Links manual (or mismatched-id) sessions onto the swap soft event when fingerprints match.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
  * @param {string} sessionId
  * @param {object} session
+ * @param {{ swapEvent?: object | null, swapEventId?: string | null }} [opts]
  */
-export async function acceptCounterpartySessionBind(supabase, swapId, sessionId, session) {
-  const snap = sessionResultSnapshot(session)
+export async function acceptCounterpartySessionBind(
+  supabase,
+  swapId,
+  sessionId,
+  session,
+  opts = {},
+) {
+  const swapEvent = opts.swapEvent || null
+  const swapEventId = opts.swapEventId || swapEvent?.id || null
+  let boundSession = session
+
+  if (swapEventId && counterpartySessionNeedsSwapEventRelink(session, { tournament_event_id: swapEventId })) {
+    const swapFingerprint = swapEvent?.fingerprint_key || null
+    const sessionFp = sessionTournamentFingerprintKey(session)
+    if (swapFingerprint && sessionFp !== swapFingerprint) {
+      return { error: new Error('Session does not match this swap tournament.') }
+    }
+    const { error: linkErr } = await supabase
+      .from('poker_bankroll_sessions')
+      .update({ tournament_event_id: swapEventId })
+      .eq('id', sessionId)
+    if (linkErr) return { error: linkErr }
+    boundSession = { ...session, tournament_event_id: swapEventId }
+  }
+
+  const snap = sessionResultSnapshot(boundSession)
   const patch = {
     counterparty_session_id: sessionId,
     counterparty_session_accepted_at: new Date().toISOString(),
@@ -487,34 +616,6 @@ export function formatTournamentEventLabel(ev) {
   if (venue) return date ? `${venue} · ${date}` : venue
   if (biStr) return `${biStr} buy-in`
   return 'Tournament'
-}
-
-/**
- * Pick the counterparty session that should bind to an incoming swap.
- * Prefers same soft event; then sole active tourney when the swap has no event id.
- * @param {object} swap
- * @param {object[]} sessions
- */
-export function findCounterpartyBindSession(swap, sessions) {
-  const list = Array.isArray(sessions) ? sessions : []
-  const tourneys = list.filter(
-    (s) => s?.session_type === 'tournament' && (s.status === 'active' || s.status === 'completed'),
-  )
-  const eventId = swap?.tournament_event_id || null
-  let candidates = eventId
-    ? tourneys.filter((s) => s.tournament_event_id === eventId)
-    : tourneys.filter((s) => s.status === 'active')
-  if (!eventId && candidates.length !== 1) {
-    if (tourneys.length === 1) candidates = tourneys
-    else return null
-  }
-  if (!candidates.length) return null
-  candidates = [...candidates].sort((a, b) => {
-    if (a.status === 'active' && b.status !== 'active') return -1
-    if (b.status === 'active' && a.status !== 'active') return 1
-    return new Date(b.start_at).getTime() - new Date(a.start_at).getTime()
-  })
-  return candidates[0] || null
 }
 
 /** @returns {object} */

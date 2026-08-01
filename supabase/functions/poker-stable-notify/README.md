@@ -21,11 +21,11 @@ Session complete copy (`kind=session_complete`):
 Chunky Unc (@chunkyunc) completed a stake session on Edgetilt.com.
 
 Stake: $10/20 Live Backing
-Session: 2/5
+Session stakes: $2/5
 Cash · Live · Bellagio · Sat, Aug 1, 2026
-Table result: +$450
-Your share (50%): +$225
-Profit split: Backer 50% | Player 50%
+Table result: -$485
+Stake impact: -$242
+Your share (50%): -$121
 
 Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.
 ```

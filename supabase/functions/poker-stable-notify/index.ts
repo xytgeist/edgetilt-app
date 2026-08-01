@@ -325,6 +325,7 @@ type SessionRow = {
   game_variant: string | null
   small_blind: number | null
   big_blind: number | null
+  third_blind: number | null
   finish_place: number | null
 }
 
@@ -338,16 +339,34 @@ function pokerSessionWinLoss(session: SessionRow): number | null {
   return Math.round((out - cost) * 100) / 100
 }
 
-function computeSliceBackerShare(gross: number, slice: SliceRow): number {
+function computeSliceStakeImpact(gross: number, slice: SliceRow): number {
   const actionPct = Number(slice.action_pct)
   if (!Number.isFinite(actionPct) || actionPct <= 0) return 0
-  const grossOnSlice = gross * (actionPct / 100)
+  return Math.round(gross * (actionPct / 100) * 100) / 100
+}
+
+function computeSliceBackerShare(gross: number, slice: SliceRow): number {
+  const grossOnSlice = computeSliceStakeImpact(gross, slice)
   if (slice.pricing_mode === 'markup') {
-    return Math.round(grossOnSlice * 100) / 100
+    return grossOnSlice
   }
   const playerPct = Number(slice.player_profit_pct)
   const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : 100
   return Math.round(grossOnSlice * (backerPct / 100) * 100) / 100
+}
+
+function formatCashBlindPart(value: unknown): string | null {
+  if (value == null || value === '') return null
+  const raw = String(value).trim()
+  const num = Number(raw)
+  if (!Number.isFinite(num) || num <= 0) return null
+  if (/^\d+$/.test(raw)) return String(parseInt(raw, 10))
+  if (/^0\.\d+$/.test(raw)) return raw.slice(1)
+  if (/^\.\d+$/.test(raw)) return raw
+  if (/^\d+\.\d+$/.test(raw)) return raw
+  if (Number.isInteger(num)) return String(num)
+  const s = String(num)
+  return s.startsWith('0.') ? s.slice(1) : s
 }
 
 function formatSessionStakesLabel(session: SessionRow): string {
@@ -360,10 +379,12 @@ function formatSessionStakesLabel(session: SessionRow): string {
     if (biStr) return `${biStr} buy-in`
     return 'Tournament'
   }
-  const sb = Number(session.small_blind)
-  const bb = Number(session.big_blind)
-  if (Number.isFinite(sb) && Number.isFinite(bb) && bb > 0) {
-    return `${sb}/${bb}`
+  const sb = formatCashBlindPart(session.small_blind)
+  const bb = formatCashBlindPart(session.big_blind)
+  const third = formatCashBlindPart(session.third_blind)
+  if (sb && bb) {
+    if (third) return `$${sb}/${bb}/${third}`
+    return `$${sb}/${bb}`
   }
   return String(session.game_variant || 'Cash game')
 }
@@ -398,21 +419,22 @@ function formatSessionCompleteCopy(args: {
   sessionMeta: string
   sessionDate: string
   gross: number
+  stakeImpact: number
   backerShare: number
   actionPct: number
-  pricingLine: string
   appUrl: string
 }): { subject: string; text: string; html: string } {
   const grossLabel = fmtMoney(args.gross)
+  const stakeImpactLabel = fmtMoney(args.stakeImpact)
   const shareLabel = fmtMoney(args.backerShare)
   const introPlain = `${args.actorLabel} completed a stake session on Edgetilt.com.`
   const detailLines = [
     `Stake: ${args.dealLabel || '—'}`,
-    `Session: ${args.sessionStakes}`,
+    `Session stakes: ${args.sessionStakes}`,
     `${args.sessionMeta} · ${args.sessionDate}`,
     `Table result: ${grossLabel}`,
+    `Stake impact: ${stakeImpactLabel}`,
     `Your share (${formatPct(args.actionPct)}%): ${shareLabel}`,
-    args.pricingLine,
   ]
   const footer = formatEmailFooter()
   const text = `${introPlain}\n\n${detailLines.join('\n')}\n\n${footer.text}`
@@ -608,7 +630,7 @@ Deno.serve(async (req) => {
       const { data: sessionRaw, error: sessionErr } = await admin
         .from('poker_bankroll_sessions')
         .select(
-          'id, user_id, deal_id, status, session_type, venue_kind, venue_name, start_at, end_at, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, tournament_name, game_variant, small_blind, big_blind, finish_place',
+          'id, user_id, deal_id, status, session_type, venue_kind, venue_name, start_at, end_at, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, tournament_name, game_variant, small_blind, big_blind, third_blind, finish_place',
         )
         .eq('id', sessionId)
         .maybeSingle()
@@ -676,8 +698,8 @@ Deno.serve(async (req) => {
           continue
         }
 
+        const stakeImpact = computeSliceStakeImpact(gross, slice)
         const backerShare = computeSliceBackerShare(gross, slice)
-        const pricingLine = formatPricingLine(slice)
         const { subject, text, html } = formatSessionCompleteCopy({
           actorLabel,
           dealLabel,
@@ -685,9 +707,9 @@ Deno.serve(async (req) => {
           sessionMeta,
           sessionDate,
           gross,
+          stakeImpact,
           backerShare,
           actionPct: Number(slice.action_pct),
-          pricingLine,
           appUrl,
         })
         const smsText = `${text}\n\n${appUrl}`

@@ -426,6 +426,7 @@ export default function PokerSessionDetailSheet({
               <button
                 type="button"
                 onClick={() => onOpenSwaps?.()}
+                data-poker-session-swap-btn
                 className="rounded-2xl border border-cyan-400/40 bg-cyan-950/50 py-3 text-sm font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
               >
                 Swaps
@@ -434,6 +435,7 @@ export default function PokerSessionDetailSheet({
               <button
                 type="button"
                 onClick={() => onRebuy?.()}
+                data-poker-session-rebuy-btn
                 className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 py-3 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
               >
                 Re-buy

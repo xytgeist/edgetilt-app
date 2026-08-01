@@ -96,7 +96,7 @@ import {
   pokerSessionMetaLine,
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
-import { sessionMetricWinLoss } from './pokerSessionAttribution.js'
+import { sessionMetricWinLoss, playerStakeSessionValue } from './pokerSessionAttribution.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import {
   applySoftTournamentEventToForm,
@@ -2611,6 +2611,17 @@ export default function PokerBankrollTracker({
                     session.id,
                     userId,
                   )
+                  const sessionDeal = session.deal_id
+                    ? stakeeDeals.find((d) => d.id === session.deal_id) ?? null
+                    : null
+                  const playerShare =
+                    isOnStake && sessionDeal
+                      ? playerStakeSessionValue(
+                          session,
+                          sessionDeal,
+                          slicesByDeal[session.deal_id] || [],
+                        )
+                      : null
                   const wl =
                     baseWl == null
                       ? null
@@ -2648,16 +2659,33 @@ export default function PokerBankrollTracker({
                             <span className="truncate font-semibold text-white">
                               {pokerSessionStakesLabel(session)}
                             </span>
-                            <span
-                              className={`shrink-0 font-bold tabular-nums ${
-                                wl == null
-                                  ? 'text-zinc-500'
-                                  : wl >= 0
-                                    ? 'text-emerald-400'
-                                    : 'text-rose-400'
-                              }`}
-                            >
-                              {wl == null ? '-' : fmtPoker$(wl)}
+                            <span className="flex shrink-0 flex-col items-end gap-0.5">
+                              <span
+                                className={`font-bold tabular-nums ${
+                                  wl == null
+                                    ? 'text-zinc-500'
+                                    : wl >= 0
+                                      ? 'text-emerald-400'
+                                      : 'text-rose-400'
+                                }`}
+                              >
+                                {wl == null ? '-' : fmtPoker$(wl)}
+                              </span>
+                              {isOnStake && playerShare != null ? (
+                                <span
+                                  data-poker-session-player-share
+                                  className="text-[10px] font-medium tabular-nums text-zinc-500"
+                                >
+                                  Your share{' '}
+                                  <span
+                                    className={
+                                      playerShare >= 0 ? 'text-emerald-400/85' : 'text-rose-400/85'
+                                    }
+                                  >
+                                    {fmtPoker$(playerShare)}
+                                  </span>
+                                </span>
+                              ) : null}
                             </span>
                           </span>
                           <span className="mt-0.5 block truncate text-[12px] text-zinc-500">

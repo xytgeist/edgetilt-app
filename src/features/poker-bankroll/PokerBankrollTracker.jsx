@@ -52,8 +52,6 @@ import {
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
-import PokerStableEndStakeSheet from '../poker-stable/PokerStableEndStakeSheet.jsx'
-import { stakeeCanSettleStake } from '../poker-stable/pokerStableTerms.js'
 import { buildStakeDealHistoryEvents } from '../poker-stable/pokerStableDealHistory.js'
 import { playerSelfOwnedActionPct } from '../poker-stable/pokerStableMath.js'
 import {
@@ -274,7 +272,6 @@ export default function PokerBankrollTracker({
   /** @type {Record<string, object>} */
   const [stableProfilesById, setStableProfilesById] = useState({})
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
-  const [endStakeDealId, setEndStakeDealId] = useState(/** @type {string | null} */ (null))
   const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
@@ -1096,7 +1093,7 @@ export default function PokerBankrollTracker({
       })
       if (error) throw error
       showStakeNotice('Periodic settle complete ... roll reset to baseline.')
-      setEndStakeDealId(null)
+      setTermsDealId(null)
       await loadData()
     } catch (e) {
       setError(e?.message || 'Settle failed.')
@@ -1122,7 +1119,6 @@ export default function PokerBankrollTracker({
       })
       if (error) throw error
       showStakeNotice('Stake closed ... sessions are on your personal timeline now.')
-      setEndStakeDealId(null)
       setTermsDealId(null)
       if (bankrollScope === dealId) setBankrollScope('personal')
       await loadData()
@@ -1131,10 +1127,6 @@ export default function PokerBankrollTracker({
     } finally {
       setStableSaving(false)
     }
-  }
-
-  function stakeDealHasProposal(deal) {
-    return Boolean(deal?.stakee_terms_ack_required && deal?.pending_terms_json)
   }
 
   useEffect(
@@ -2331,13 +2323,6 @@ export default function PokerBankrollTracker({
                 const theme = onStake
                   ? stakeHeroTheme(stakeHeroThemeIndexForDeal(scopeId, stakeeDeals))
                   : null
-                const showEndStake =
-                  onStake &&
-                  !loading &&
-                  stakeeCanSettleStake(hero.deal, slicesByDeal[scopeId] || [], {
-                    userId,
-                    hasProposal: stakeDealHasProposal(hero.deal),
-                  })
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -2464,47 +2449,31 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`relative mt-5 min-h-[4.25rem] border-t pt-4 ${
+                        className={`mt-5 grid min-h-[4.25rem] grid-cols-4 gap-2 border-t pt-4 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >
-                        <div className="grid grid-cols-4 gap-2">
-                          <BankrollStat
-                            label="Profit"
-                            value={fmtPoker$(hero.stats.profit)}
-                            tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
-                          />
-                          <BankrollStat
-                            label="Hourly"
-                            value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
-                            tone={
-                              hero.stats.hourly == null
-                                ? 'neutral'
-                                : hero.stats.hourly >= 0
-                                  ? 'good'
-                                  : 'bad'
-                            }
-                          />
-                          <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
-                          <BankrollStat
-                            label="Win rate"
-                            value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
-                          />
-                        </div>
-                        {showEndStake ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setError('')
-                              setEndStakeDealId(scopeId)
-                              triggerTapHapticLight()
-                            }}
-                            className="absolute inset-x-0 bottom-0 text-center text-xs font-semibold text-zinc-400 underline touch-manipulation active:opacity-70"
-                            data-poker-hero-end-stake-link
-                          >
-                            End stake
-                          </button>
-                        ) : null}
+                        <BankrollStat
+                          label="Profit"
+                          value={fmtPoker$(hero.stats.profit)}
+                          tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
+                        />
+                        <BankrollStat
+                          label="Hourly"
+                          value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
+                          tone={
+                            hero.stats.hourly == null
+                              ? 'neutral'
+                              : hero.stats.hourly >= 0
+                                ? 'good'
+                                : 'bad'
+                          }
+                        />
+                        <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
+                        <BankrollStat
+                          label="Win rate"
+                          value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
+                        />
                       </div>
                     ) : null}
                   </div>
@@ -3194,19 +3163,6 @@ export default function PokerBankrollTracker({
               setStableSaving(false)
             }
           }}
-        />
-      ) : null}
-
-      {endStakeDealId && supabaseClient && userId ? (
-        <PokerStableEndStakeSheet
-          deal={stakeeDeals.find((d) => d.id === endStakeDealId) ?? null}
-          slices={slicesByDeal[endStakeDealId] || []}
-          dealRoll={dealProfiles[endStakeDealId] ?? null}
-          saving={stableSaving}
-          onClose={() => setEndStakeDealId(null)}
-          onError={setError}
-          onPeriodicSettle={(rakebackTotal) => runPeriodicSettle(endStakeDealId, rakebackTotal)}
-          onCloseStake={(rakebackTotal) => runCloseStake(endStakeDealId, rakebackTotal)}
         />
       ) : null}
 

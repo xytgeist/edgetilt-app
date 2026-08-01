@@ -696,7 +696,7 @@ function PokerStableDealFormSheet({
                 onChange={(e) => setIsMigration(e.target.checked)}
                 className="rounded"
               />
-              Migrating an existing deal
+              Migrate an existing deal
             </label>
             {isMigration ? (
               <>

@@ -120,21 +120,21 @@ export function stakeHeroThemeIndexForDeal(dealId, stakeeDeals = []) {
   return idx >= 0 ? idx : 0
 }
 
-/** Stake hero accent variants (rotate per deal index). indigo / blue / rose. */
+/** Stake hero accent variants (rotate per deal index). emerald / blue / rose. */
 export function stakeHeroTheme(stakeIndex) {
   const themes = [
     {
-      tone: 'indigo',
-      card: `${POKER_BANKROLL_HERO_SHELL} border-indigo-400/70 bg-gradient-to-br from-indigo-950 via-indigo-900/80 to-zinc-950 shadow-[0_0_40px_-12px_rgba(99,102,241,0.55)]`,
-      label: 'text-indigo-200/70',
-      title: 'text-indigo-100',
-      badge: 'bg-indigo-400 text-indigo-950',
-      badgeText: 'text-indigo-200/90',
-      amount: 'text-indigo-50',
-      termsBtn: 'bg-indigo-600 text-white active:bg-indigo-500',
-      borderStat: 'border-indigo-400/25',
-      sparkUp: 'text-indigo-400',
-      sparkDown: 'text-indigo-500',
+      tone: 'emerald',
+      card: `${POKER_BANKROLL_HERO_SHELL} border-emerald-400/70 bg-gradient-to-br from-emerald-950 via-emerald-900/80 to-zinc-950 shadow-[0_0_40px_-12px_rgba(16,185,129,0.55)]`,
+      label: 'text-emerald-200/70',
+      title: 'text-emerald-100',
+      badge: 'bg-emerald-400 text-emerald-950',
+      badgeText: 'text-emerald-200/90',
+      amount: 'text-emerald-50',
+      termsBtn: 'bg-emerald-600 text-white active:bg-emerald-500',
+      borderStat: 'border-emerald-400/25',
+      sparkUp: 'text-emerald-400',
+      sparkDown: 'text-emerald-500',
     },
     {
       tone: 'blue',

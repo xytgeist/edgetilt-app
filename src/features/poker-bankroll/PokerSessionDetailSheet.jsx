@@ -23,7 +23,10 @@ import {
   swapViewerRole,
 } from './pokerTournamentSwapApi.js'
 import {
-  formatSwapSessionStatusLine,
+  formatSwapIouLine,
+  formatSwapPaidLine,
+  formatSwapSettledParenAmount,
+  formatSwapWaitingStatus,
   sessionSwapSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
@@ -295,17 +298,24 @@ export default function PokerSessionDetailSheet({
                       const role = swapViewerRole(swap, userId) || 'creator'
                       const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
                       const paid = swapIsMarkedPaid(swap)
-                      const statusLine = formatSwapSessionStatusLine(
-                        swap,
-                        role,
-                        other,
-                        fmtPoker$,
-                        { paid },
-                      )
+                      const signed = swapViewerSettlementDelta(swap, role)
+                      const statusLine =
+                        swap.status === 'settled'
+                          ? paid
+                            ? formatSwapPaidLine(signed, other, fmtPoker$)
+                            : formatSwapIouLine(
+                                swap.settlement_amount,
+                                role,
+                                other,
+                                fmtPoker$,
+                              )
+                          : formatSwapWaitingStatus(swap, role, other)
                       const canMarkSettled =
                         swap.status === 'settled' &&
                         !paid &&
                         Math.abs(Number(swap.settlement_amount) || 0) >= 0.005
+                      const amtTone =
+                        signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
                       return (
                         <li
                           key={swap.id}
@@ -333,6 +343,22 @@ export default function PokerSessionDetailSheet({
                                 : null}
                               {statusLine ? ` · ${statusLine}` : null}
                             </div>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            {paid && swap.status === 'settled' ? (
+                              <span
+                                data-poker-session-swap-amt={amtTone}
+                                className={`text-sm font-bold tabular-nums ${
+                                  amtTone === 'loss'
+                                    ? 'text-rose-400'
+                                    : amtTone === 'gain'
+                                      ? 'text-emerald-400'
+                                      : 'text-zinc-400'
+                                }`}
+                              >
+                                {formatSwapSettledParenAmount(signed, fmtPoker$)}
+                              </span>
+                            ) : null}
                           </div>
                         </li>
                       )

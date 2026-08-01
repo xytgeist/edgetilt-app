@@ -125,7 +125,9 @@ import {
   syncCreatorResultsForSession,
 } from './pokerTournamentSwapApi.js'
 import {
-  formatSwapSessionStatusLine,
+  formatSwapIouLine,
+  formatSwapSettledParenAmount,
+  formatSwapWaitingStatus,
   sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
@@ -2687,17 +2689,23 @@ export default function PokerBankrollTracker({
                                   userId,
                                 )
                                 const paid = swapIsMarkedPaid(swap)
-                                const statusLine = formatSwapSessionStatusLine(
-                                  swap,
-                                  role,
-                                  other,
-                                  fmtPoker$,
-                                  { paid },
-                                )
+                                const signed = swapViewerSettlementDelta(swap, role)
+                                const waitingLine =
+                                  swap.status === 'settled'
+                                    ? formatSwapIouLine(
+                                        swap.settlement_amount,
+                                        role,
+                                        other,
+                                        fmtPoker$,
+                                      )
+                                    : formatSwapWaitingStatus(swap, role, other)
+                                const showSettledAmt = paid && swap.status === 'settled'
                                 const canMarkSettled =
                                   swap.status === 'settled' &&
                                   !paid &&
                                   Math.abs(Number(swap.settlement_amount) || 0) >= 0.005
+                                const amtTone =
+                                  signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
                                 return (
                                   <div
                                     key={swap.id}
@@ -2732,7 +2740,25 @@ export default function PokerBankrollTracker({
                                       swap.pct_counterparty_gives != null
                                         ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
                                         : ''}
-                                      {statusLine ? ` · ${statusLine}` : null}
+                                      {showSettledAmt ? (
+                                        <>
+                                          {' · Settled '}
+                                          <span
+                                            data-poker-session-swap-amt={amtTone}
+                                            className={
+                                              amtTone === 'loss'
+                                                ? 'text-rose-400'
+                                                : amtTone === 'gain'
+                                                  ? 'text-emerald-400'
+                                                  : 'text-inherit'
+                                            }
+                                          >
+                                            {formatSwapSettledParenAmount(signed, fmtPoker$)}
+                                          </span>
+                                        </>
+                                      ) : waitingLine ? (
+                                        ` · ${waitingLine}`
+                                      ) : null}
                                     </span>
                                   </div>
                                 )

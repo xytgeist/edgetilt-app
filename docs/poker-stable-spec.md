@@ -97,7 +97,7 @@ Partial payments supported. Guest slices: player authoritative only.
 
 | Role | Create deal | Manage stake roll / sessions |
 | --- | --- | --- |
-| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll overview (personal + one card per active deal; **pending** deals show as a locked card until backers accept) |
+| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll only (personal + pending/active deal cards). **Not Stable.** |
 | **Backer (staker)** | Stable **Request horse** → player handle + your slice + optional syndicate slices | Stable horses list, invites, settle/ledger |
 
 Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice invite (player accept activates lead backer slice only).

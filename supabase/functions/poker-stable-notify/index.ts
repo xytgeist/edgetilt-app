@@ -190,7 +190,7 @@ function formatStakeMessageCopy(args: {
     : `${args.actorLabel} created a stake: ${args.dealLabel || 'Untitled'}`
   const html = wrapTransactionalEmailHtml({
     title: subject,
-    headline: isDeleted ? 'Stake deleted' : 'New stake offer',
+    headline: isDeleted ? 'Stake deleted' : 'New stake created',
     bodyHtml,
     appUrl: args.appUrl,
     cta: { label: 'Create free account', href: args.appUrl },

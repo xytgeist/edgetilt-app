@@ -5276,6 +5276,7 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.25;
+  text-transform: uppercase;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-bankroll-hero-title] {
   color: #18181b !important;

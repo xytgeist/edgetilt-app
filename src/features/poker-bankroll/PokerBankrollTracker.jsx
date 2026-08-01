@@ -23,6 +23,11 @@ import PokerBankrollTrendTab from './PokerBankrollTrendTab.jsx'
 import PokerCashGamePicker from './PokerCashGamePicker.jsx'
 import PokerFieldMenu from './PokerFieldMenu.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
+import PokerSessionDetailSheet from './PokerSessionDetailSheet.jsx'
+import {
+  POKER_SHEET_PANEL_CLASS,
+  POKER_SHEET_PANEL_TALL_CLASS,
+} from './pokerBankrollTrackerSheet.js'
 import {
   POKER_CURRENCIES,
   normalizePokerCurrency,
@@ -138,13 +143,6 @@ const POKER_INFIELD_LABEL =
 const POKER_INFIELD_CONTROL =
   'w-full min-h-0 rounded-none border-0 bg-transparent px-0 text-sm font-semibold text-white outline-none focus:ring-0'
 
-/** Shared poker sheet chrome (content-sized unless tall class is added). */
-const POKER_SHEET_PANEL_CLASS = `${APP_MODAL_SHEET_PANEL_CLASS} !max-h-[min(96dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] max-w-[100vw] min-w-0 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`
-
-/** Extra height for cash Start / Log / Edit (Game + Currency pickers need room). */
-const POKER_SHEET_PANEL_TALL_CLASS =
-  'min-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-1.25rem))]'
-
 /** @param {object} form */
 function pokerSessionSheetNeedsTall(form) {
   return form?.session_type === 'cash'
@@ -241,8 +239,10 @@ export default function PokerBankrollTracker({
   const [error, setError] = useState('')
   /** Brief success copy after + Stake create (pending or active). */
   const [stakeNotice, setStakeNotice] = useState('')
-  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
+  /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
+  /** Read-only session detail before edit. */
+  const [detailSessionId, setDetailSessionId] = useState(null)
   const [stableSaving, setStableSaving] = useState(false)
   /** After + Stake, scroll carousel to this deal id once reload completes. */
   const pendingCarouselDealIdRef = useRef(null)
@@ -372,6 +372,19 @@ export default function PokerBankrollTracker({
     }
     return map
   }, [tournamentSwaps])
+  const detailSession = useMemo(
+    () => (detailSessionId ? sessions.find((s) => s.id === detailSessionId) ?? null : null),
+    [sessions, detailSessionId],
+  )
+  const detailSessionSwaps = useMemo(
+    () => (detailSession ? swapsBySessionId[detailSession.id] || [] : []),
+    [detailSession, swapsBySessionId],
+  )
+  const detailStakeLabel = useMemo(() => {
+    if (!detailSession?.deal_id) return ''
+    const deal = stakeeDeals.find((d) => d.id === detailSession.deal_id)
+    return String(deal?.label || '').trim() || 'Stake'
+  }, [detailSession, stakeeDeals])
   const pendingCounterpartySwaps = useMemo(
     () =>
       tournamentSwaps.filter(
@@ -633,9 +646,9 @@ export default function PokerBankrollTracker({
       onOpenSessionConsumed?.()
       return
     }
-    openEdit(session)
+    openSessionDetail(session)
     onOpenSessionConsumed?.()
-    // openEdit is a stable-enough local opener; intentionally omit from deps.
+    // openSessionDetail is a stable-enough local opener; intentionally omit from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deep-link one-shot
   }, [openSessionId, loading, sessions, onOpenSessionConsumed])
 
@@ -1549,6 +1562,14 @@ export default function PokerBankrollTracker({
     }
   }
 
+  function openSessionDetail(session) {
+    if (!session?.id) return
+    setDetailSessionId(session.id)
+    setError('')
+    setSheet('sessionDetail')
+    triggerTapHapticLight()
+  }
+
   function openEdit(session) {
     const start = new Date(session.start_at)
     const hrs = pokerSessionDurationHours(session)
@@ -1737,6 +1758,7 @@ export default function PokerBankrollTracker({
   function dismissSheet() {
     setError('')
     setIncomingAcceptSwap(null)
+    setDetailSessionId(null)
     setSheet(null)
   }
 
@@ -2290,11 +2312,11 @@ export default function PokerBankrollTracker({
                 data-elevated-card="accent"
                 role="button"
                 tabIndex={0}
-                onClick={() => openEdit(activeSession)}
+                onClick={() => openSessionDetail(activeSession)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    openEdit(activeSession)
+                    openSessionDetail(activeSession)
                   }
                 }}
                 className="mb-4 cursor-pointer rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5 touch-manipulation active:bg-emerald-950/80"
@@ -2603,7 +2625,7 @@ export default function PokerBankrollTracker({
                     <li key={session.id}>
                       <button
                         type="button"
-                        onClick={() => openEdit(session)}
+                        onClick={() => openSessionDetail(session)}
                         data-elevated-card="surface"
                         className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
                       >
@@ -2770,7 +2792,7 @@ export default function PokerBankrollTracker({
           <PokerLocationsTab
             sessions={completedSessions}
             loading={loading}
-            onEditSession={openEdit}
+            onOpenSession={openSessionDetail}
           />
         ) : null}
 
@@ -2950,6 +2972,40 @@ export default function PokerBankrollTracker({
         />
       ) : null}
 
+      {sheet === 'sessionDetail' && detailSession ? (
+        <PokerSessionDetailSheet
+          session={detailSession}
+          isActive={detailSession.status === 'active'}
+          elapsedSeconds={detailSession.id === activeSession?.id ? elapsed : 0}
+          stakeLabel={detailStakeLabel}
+          userId={userId}
+          supabaseClient={supabaseClient}
+          sessionSwaps={detailSessionSwaps}
+          swapProfilesById={swapProfilesById}
+          maxSwapGivePct={swapSelfOwnedPct}
+          sessionCardSwapBusyId={sessionCardSwapBusyId}
+          onClose={dismissSheet}
+          onEdit={() => {
+            openEdit(detailSession)
+            setDetailSessionId(null)
+          }}
+          onSavedSwapsMutated={() => void loadData()}
+          onMarkSwapSettled={(swap) => void markSessionCardSwapSettled(swap)}
+          onEndSession={() => {
+            setDetailSessionId(null)
+            openEndSession()
+          }}
+          onOpenSwaps={() => {
+            setDetailSessionId(null)
+            openActiveSwaps()
+          }}
+          onRebuy={() => {
+            setDetailSessionId(null)
+            openRebuy('rebuy')
+          }}
+        />
+      ) : null}
+
       {sheet === 'bankroll' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
@@ -3012,11 +3068,7 @@ export default function PokerBankrollTracker({
           >
             <div className="mb-4 flex items-center justify-between">
               <div className="text-lg font-bold text-white">
-                {editingActiveSession
-                  ? 'Session details'
-                  : editingId
-                    ? 'Edit session'
-                    : 'Log previous session'}
+                {editingId ? 'Edit session' : 'Log previous session'}
               </div>
               <button
                 type="button"
@@ -3043,9 +3095,9 @@ export default function PokerBankrollTracker({
             <PokerTournamentSwapsSection
               supabaseClient={supabaseClient}
               userId={userId}
-              enabled={form.session_type === 'tournament'}
+              enabled={form.session_type === 'tournament' && !editingActiveSession}
               maxSwapGivePct={swapSelfOwnedPct}
-              showOwnershipSummary={editingActiveSession}
+              showOwnershipSummary={false}
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={editingSessionSwaps}

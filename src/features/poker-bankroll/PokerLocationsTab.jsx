@@ -639,7 +639,7 @@ function SessionRow({ session, onClick }) {
   )
 }
 
-function LocationDetailModal({ location, onClose, onEditSession }) {
+function LocationDetailModal({ location, onClose, onOpenSession }) {
   const [yearFilter, setYearFilter] = useState('all')
 
   const completed = useMemo(
@@ -824,7 +824,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
                   session={s}
                   onClick={(session) => {
                     onClose()
-                    onEditSession?.(session)
+                    onOpenSession?.(session)
                   }}
                 />
               ))}
@@ -870,7 +870,7 @@ function LocationDetailModal({ location, onClose, onEditSession }) {
                     session={s}
                     onClick={(session) => {
                       onClose()
-                      onEditSession?.(session)
+                      onOpenSession?.(session)
                     }}
                   />
                 ))}
@@ -890,7 +890,7 @@ const VENUE_FILTERS = [
   { id: 'club', label: 'Club' },
 ]
 
-export default function PokerLocationsTab({ sessions, loading, onEditSession }) {
+export default function PokerLocationsTab({ sessions, loading, onOpenSession }) {
   const [selectedLocation, setSelectedLocation] = useState(null)
   /** @type {'all' | 'live' | 'online' | 'club'} */
   const [venueFilter, setVenueFilter] = useState('all')
@@ -1011,7 +1011,7 @@ export default function PokerLocationsTab({ sessions, loading, onEditSession }) 
         <LocationDetailModal
           location={selectedLocation}
           onClose={() => setSelectedLocation(null)}
-          onEditSession={onEditSession}
+          onOpenSession={onOpenSession}
         />
       ) : null}
     </>

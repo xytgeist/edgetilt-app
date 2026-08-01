@@ -4729,12 +4729,6 @@ html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] .bg-zinc-
 html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] .text-zinc-500 {
   color: #71717a !important;
 }
-html.light [data-poker-bankroll-carousel] .bg-zinc-600 {
-  background-color: #d4d4d8 !important;
-}
-html.light [data-poker-bankroll-carousel] .bg-cyan-500 {
-  background-color: #0891b2 !important;
-}
 
 /* Portaled handle typeahead (New deal + Request horse) */
 html.light [data-edge-handle-typeahead-list] {

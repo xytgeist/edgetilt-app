@@ -102,21 +102,6 @@ export default function PokerBankrollHeroCarousel({
           </div>
         ))}
       </div>
-      {slides.length > 1 ? (
-        <div className="mt-2 flex justify-center gap-1.5">
-          {slides.map((slide) => (
-            <button
-              key={slide.id}
-              type="button"
-              aria-label={slide.id === 'personal' ? 'Personal bankroll' : 'Stake bankroll'}
-              onClick={() => onActiveIdChange(slide.id)}
-              className={`h-1.5 rounded-full touch-manipulation transition-all ${
-                slide.id === activeId ? 'w-5 bg-cyan-500' : 'w-1.5 bg-zinc-600'
-              }`}
-            />
-          ))}
-        </div>
-      ) : null}
     </div>
   )
 }

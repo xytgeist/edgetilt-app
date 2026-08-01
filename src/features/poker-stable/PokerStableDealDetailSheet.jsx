@@ -14,7 +14,9 @@ import {
   sliceDisplayName,
 } from './pokerStableApi.js'
 import {
-  POKER_STABLE_SLICE_CARD_CLASS,
+  POKER_STABLE_SLICE_INNER_CLASS,
+  pokerStableSliceCardClass,
+  pokerStableSliceTitleClass,
   pokerStableSliceToneAttr,
 } from './pokerStableSliceTone.js'
 import {
@@ -260,11 +262,11 @@ export default function PokerStableDealDetailSheet({
               <div
                 key={slice.id}
                 data-poker-stable-slice-tone={pokerStableSliceToneAttr(slice.slice_index)}
-                className={POKER_STABLE_SLICE_CARD_CLASS}
+                className={pokerStableSliceCardClass(slice.slice_index)}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
-                    <div className="font-semibold text-white">
+                    <div className={`font-semibold ${pokerStableSliceTitleClass(slice.slice_index)}`}>
                       {sliceDisplayName(slice, profilesById)}
                     </div>
                     <div className="text-xs text-zinc-500">
@@ -276,6 +278,7 @@ export default function PokerStableDealDetailSheet({
                   </div>
                   <span className="text-[10px] font-bold uppercase text-zinc-500">{slice.status}</span>
                 </div>
+                <div className={POKER_STABLE_SLICE_INNER_CLASS}>
                 {line ? (
                   <div className="mt-2 text-sm text-zinc-300">
                     Settled IOU: {fmtPoker$(line.total_owed)}
@@ -348,6 +351,7 @@ export default function PokerStableDealDetailSheet({
                     )}
                   </div>
                 ) : null}
+                </div>
               </div>
             )
           })}

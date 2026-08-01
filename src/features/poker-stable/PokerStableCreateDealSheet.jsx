@@ -11,7 +11,9 @@ import {
   scrollPokerStableSliceIntoView,
 } from './pokerStableSheetScroll.js'
 import {
-  POKER_STABLE_SLICE_CARD_CLASS,
+  POKER_STABLE_SLICE_INNER_CLASS,
+  pokerStableSliceCardClass,
+  pokerStableSliceTitleClass,
   pokerStableSliceToneAttr,
 } from './pokerStableSliceTone.js'
 
@@ -101,16 +103,21 @@ function SliceEditor({
     <div
       data-poker-stable-slice={sliceIndex}
       data-poker-stable-slice-tone={pokerStableSliceToneAttr(sliceIndex)}
-      className={POKER_STABLE_SLICE_CARD_CLASS}
+      className={pokerStableSliceCardClass(sliceIndex)}
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-bold uppercase text-zinc-500">{title || `Slice ${idx + 1}`}</span>
+        <span
+          className={`text-xs font-black uppercase tracking-wide ${pokerStableSliceTitleClass(sliceIndex)}`}
+        >
+          {title || `Slice ${idx + 1}`}
+        </span>
         {canRemove ? (
           <button type="button" onClick={onRemove} className="text-xs font-semibold text-rose-400">
             Remove
           </button>
         ) : null}
       </div>
+      <div className={POKER_STABLE_SLICE_INNER_CLASS}>
       {!lockUserId ? (
         <>
           <label className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
@@ -220,6 +227,7 @@ function SliceEditor({
           />
         </InField>
       ) : null}
+      </div>
     </div>
   )
 }

@@ -2142,11 +2142,12 @@ export default function PokerBankrollTracker({
                         : `${POKER_BANKROLL_HERO_SHELL} border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800`
                     }
                   >
-                    <div className="mb-1.5 flex h-8 items-center justify-between gap-3">
+                    <div className="mb-2 flex min-h-9 items-center justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                         <div
-                          className={`min-w-0 truncate text-xs font-semibold uppercase tracking-wide ${
-                            onStake ? theme.label : 'text-zinc-400'
+                          data-poker-bankroll-hero-title
+                          className={`min-w-0 truncate ${
+                            onStake ? theme.title : 'text-zinc-100'
                           }`}
                         >
                           {onStake

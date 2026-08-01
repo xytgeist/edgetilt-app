@@ -5169,6 +5169,23 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
  * Bankroll hero carousel — light only.
  * Stake cards: flat tinted shell (lighter than border) + tone border, no glow.
  */
+[data-poker-bankroll-hero-title] {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-bankroll-hero-title] {
+  color: #18181b !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='amber'] [data-poker-bankroll-hero-title] {
+  color: #4338ca !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='orange'] [data-poker-bankroll-hero-title] {
+  color: #c2410c !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='rose'] [data-poker-bankroll-hero-title] {
+  color: #be123c !important;
+}
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-elevated-card='surface'] {
   background: linear-gradient(to bottom right, #fafafa, #ffffff) !important;
   border-color: #e4e4e7 !important;

@@ -103,9 +103,7 @@ function TermsSliceCard({
       className={pokerStableSliceCardClass(idx)}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span
-          className={`min-w-0 truncate text-sm font-bold ${pokerStableSliceTitleClass(idx)}`}
-        >
+        <span className={pokerStableSliceTitleClass(idx)}>
           {summary.name}
           {proposed ? ' (proposed)' : ''}
         </span>
@@ -249,7 +247,7 @@ export default function PokerStableDealTermsSheet({
         ) : null}
 
         <div className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-4">
-          <p className="text-sm font-semibold text-white">{deal.label || 'Cash backing'}</p>
+          <p className="text-base font-bold leading-snug text-white">{deal.label || 'Cash backing'}</p>
           {dealTermsMeta(deal) ? (
             <p className="mt-1 text-sm text-zinc-400">{dealTermsMeta(deal)}</p>
           ) : null}

@@ -42,8 +42,12 @@ export function pokerStableSliceCardClass(sliceIndex) {
 
 /** Slice heading accent on the tinted shell. */
 export function pokerStableSliceTitleClass(sliceIndex) {
-  return SLICE_TONE_TITLE_CLASS[pokerStableSliceToneId(sliceIndex)]
+  return `${POKER_STABLE_SLICE_TITLE_ROW_CLASS} ${SLICE_TONE_TITLE_CLASS[pokerStableSliceToneId(sliceIndex)]}`
 }
+
+/** Shared slice card title row (backer name / Backer N). */
+export const POKER_STABLE_SLICE_TITLE_ROW_CLASS =
+  'min-w-0 truncate text-base font-bold leading-snug'
 
 /** Player deal form card title: Backer, or Backer 1 / Backer 2 when multiple. */
 export function pokerStableBackerSliceLabel(sliceCount, sliceIndex) {

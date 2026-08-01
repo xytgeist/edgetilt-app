@@ -115,9 +115,7 @@ function SliceEditor({
       className={pokerStableSliceCardClass(sliceIndex)}
     >
       <div className="mb-2 flex items-center justify-between">
-        <span
-          className={`text-xs font-black uppercase tracking-wide ${pokerStableSliceTitleClass(sliceIndex)}`}
-        >
+        <span className={pokerStableSliceTitleClass(sliceIndex)}>
           {title || pokerStableBackerSliceLabel(1, idx)}
         </span>
         {canRemove ? (

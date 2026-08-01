@@ -4681,6 +4681,43 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-inner {
 html.light [data-poker-stable-sheet] .poker-stable-slice-inner .bg-zinc-800 {
   background-color: #f4f4f5 !important;
 }
+html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.bg-zinc-800 {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card .rounded-full.text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-btn] {
+  background-color: #ffffff !important;
+  border-color: #0891b2 !important;
+  color: #0e7490 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-btn]:active {
+  background-color: #ecfeff !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-panel] {
+  background-color: #ecfeff !important;
+  border-color: #67e8f9 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-panel] .text-cyan-100 {
+  color: #155e75 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-primary-btn] {
+  background-color: #0891b2 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-primary-btn]:active {
+  background-color: #0e7490 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-primary-btn]:disabled {
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-cancel-btn] {
+  background-color: #f4f4f5 !important;
+  border: 1px solid #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
 
 /* ── Poker Stable sheet - light mode (dark unchanged) ──── */
 html.light [data-poker-stable-sheet] {

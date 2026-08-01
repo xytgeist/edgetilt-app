@@ -97,6 +97,50 @@ function formatPricingLine(slice: SliceRow): string {
   return 'Profit split'
 }
 
+type GuestExposureInput = {
+  baselineBankroll: number
+  actionPct: number
+  pricingMode: string
+  markupRate?: number | null
+}
+
+/** Profit split: baseline × action%. Markup: baseline × action% × markup rate. */
+function computeGuestExposure(input: GuestExposureInput): number {
+  const baseline = Number(input.baselineBankroll)
+  const actionPct = Number(input.actionPct)
+  if (!Number.isFinite(baseline) || baseline <= 0 || !Number.isFinite(actionPct) || actionPct <= 0) {
+    return 0
+  }
+  let exposure = baseline * (actionPct / 100)
+  if (input.pricingMode === 'markup') {
+    const markup = Number(input.markupRate)
+    if (Number.isFinite(markup) && markup > 0) exposure *= markup
+  }
+  return Math.round(exposure * 100) / 100
+}
+
+function formatExposureLine(input: GuestExposureInput): string {
+  return `Your exposure: ${fmtMoney(computeGuestExposure(input))}`
+}
+
+function guestExposureFromSliceRow(slice: SliceRow, baselineBankroll: number): GuestExposureInput {
+  return {
+    baselineBankroll,
+    actionPct: Number(slice.action_pct),
+    pricingMode: slice.pricing_mode,
+    markupRate: slice.markup_rate,
+  }
+}
+
+function guestExposureFromEditSlice(slice: TermsEditSlice, baselineBankroll: number): GuestExposureInput {
+  return {
+    baselineBankroll,
+    actionPct: Number(slice.action_pct),
+    pricingMode: slice.pricing_mode,
+    markupRate: slice.markup_rate,
+  }
+}
+
 function formatEmailFooter(): { text: string; htmlNote: string } {
   const line =
     'Create a free account to manage your stable and get real-time progress updates.'
@@ -114,6 +158,7 @@ function formatStakeMessageCopy(args: {
   baselineLabel: string
   actionPct: number
   pricingLine: string
+  exposureLine: string
   appUrl: string
 }): { subject: string; text: string; html: string } {
   const isDeleted = args.kind === 'deleted'
@@ -123,7 +168,7 @@ function formatStakeMessageCopy(args: {
   const nameLine = `Name of stake: ${args.dealLabel || '—'}`
   const ownVerb = isDeleted ? 'owned' : 'own'
   const stakeLine = `Total stake: ${args.baselineLabel} (you ${ownVerb} ${formatPct(args.actionPct)}%)`
-  const detailLines = [nameLine, stakeLine, args.pricingLine]
+  const detailLines = [nameLine, stakeLine, args.pricingLine, args.exposureLine]
   const footer = formatEmailFooter()
   const text = `${introPlain}\n\n${detailLines.join('\n')}\n\n${footer.text}`
 
@@ -132,7 +177,7 @@ function formatStakeMessageCopy(args: {
   const introHtml = isDeleted
     ? `${safeActor} has deleted a stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a> that listed you as ${args.backerArticle} backer.`
     : `${safeActor} has created a stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
-  const detailsHtml = [nameLine, stakeLine, args.pricingLine]
+  const detailsHtml = [nameLine, stakeLine, args.pricingLine, args.exposureLine]
     .map((line) => escapeHtml(line))
     .join('<br>')
   const bodyHtml = [
@@ -197,6 +242,7 @@ function formatTermsSectionLines(
     `Name of stake: ${label}`,
     `Total stake: ${baselineLabel} (you ${ownVerb} ${formatPct(slice.action_pct)}%)`,
     formatPricingLineFromEditSlice(slice),
+    formatExposureLine(guestExposureFromEditSlice(slice, Number(deal.baseline_bankroll))),
   ]
 }
 
@@ -498,6 +544,9 @@ Deno.serve(async (req) => {
         }))
       } else {
         const pricingLine = formatPricingLine(slice)
+        const exposureLine = formatExposureLine(
+          guestExposureFromSliceRow(slice, Number(deal.baseline_bankroll)),
+        )
         ;({ subject, text, html } = formatStakeMessageCopy({
           kind,
           actorLabel,
@@ -506,6 +555,7 @@ Deno.serve(async (req) => {
           baselineLabel,
           actionPct: Number(slice.action_pct),
           pricingLine,
+          exposureLine,
           appUrl,
         }))
       }

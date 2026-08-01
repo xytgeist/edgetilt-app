@@ -10,6 +10,7 @@ Chunky Unc (@chunkyunc) has created a stake on Edgetilt.com with you as the back
 Name of stake: $10/20 Live Backing
 Total stake: $100,000 (you own 100%)
 Profit split: Backer 50% | Player 50%
+Your exposure: $50,000
 
 Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.
 ```
@@ -32,6 +33,7 @@ After:
 Name of stake: Testing
 Total stake: $1,500 (you own 60%)
 Profit split: Backer 40% | Player 60%
+Your exposure: $900
 
 Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.
 ```

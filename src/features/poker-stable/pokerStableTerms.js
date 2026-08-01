@@ -1,5 +1,6 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue } from '../../utils/moneyInputFormat.js'
+import { isOngoingDealType } from './pokerStableMath.js'
 
 export function pricingModeLabel(mode) {
   return mode === 'markup' ? 'Markup' : 'Profit split'
@@ -126,6 +127,14 @@ export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
       slice.status === 'active',
   )
   return !hasActiveEdgeSlice
+}
+
+/** Player may periodic-settle or close an active ongoing stake (Bankroll end-stake flow). */
+export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal = false } = {}) {
+  if (!deal || !userId || deal.stakee_user_id !== userId) return false
+  if (deal.status !== 'active') return false
+  if (hasProposal) return false
+  return isOngoingDealType(deal.deal_type)
 }
 
 export function dealTermsMeta(deal) {

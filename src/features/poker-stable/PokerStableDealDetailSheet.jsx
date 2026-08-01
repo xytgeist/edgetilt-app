@@ -24,8 +24,8 @@ import {
   computeProfitAboveBaseline,
   computeSliceLedgerOwed,
   dealTypeLabel,
-  isOngoingDealType,
 } from './pokerStableMath.js'
+import { stakeeCanSettleStake } from './pokerStableTerms.js'
 
 /**
  * Deal detail: baseline, makeup, top-up, settle, ledger.
@@ -387,7 +387,7 @@ export default function PokerStableDealDetailSheet({
           })}
         </div>
 
-        {isStakee && deal.status === 'active' && isOngoingDealType(deal.deal_type) ? (
+        {stakeeCanSettleStake(deal, slices, { userId: userId }) ? (
           <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Top-up stake

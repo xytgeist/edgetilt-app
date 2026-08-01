@@ -52,6 +52,8 @@ import {
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
+import PokerStableEndStakeSheet from '../poker-stable/PokerStableEndStakeSheet.jsx'
+import { stakeeCanSettleStake } from '../poker-stable/pokerStableTerms.js'
 import { buildStakeDealHistoryEvents } from '../poker-stable/pokerStableDealHistory.js'
 import { playerSelfOwnedActionPct } from '../poker-stable/pokerStableMath.js'
 import {
@@ -235,6 +237,7 @@ export default function PokerBankrollTracker({
   /** @type {Record<string, object>} */
   const [stableProfilesById, setStableProfilesById] = useState({})
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
+  const [endStakeDealId, setEndStakeDealId] = useState(/** @type {string | null} */ (null))
   const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
@@ -1036,6 +1039,64 @@ export default function PokerBankrollTracker({
       stakeNoticeTimerRef.current = 0
       setStakeNotice('')
     }, 6500)
+  }
+
+  async function runPeriodicSettle(dealId, rakebackTotal) {
+    if (
+      !window.confirm(
+        'Periodic settle? Roll resets to baseline, your personal bankroll gets your share, and the stake stays open.',
+      )
+    ) {
+      return
+    }
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await periodicSettleBackingDeal(supabaseClient, {
+        dealId,
+        rakebackTotal,
+      })
+      if (error) throw error
+      showStakeNotice('Periodic settle complete ... roll reset to baseline.')
+      setEndStakeDealId(null)
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Settle failed.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
+  async function runCloseStake(dealId, rakebackTotal) {
+    if (
+      !window.confirm(
+        'Close this stake? Final settle runs and sessions merge into your personal history.',
+      )
+    ) {
+      return
+    }
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await closeBackingDeal(supabaseClient, {
+        dealId,
+        rakebackTotal,
+      })
+      if (error) throw error
+      showStakeNotice('Stake closed ... sessions are on your personal timeline now.')
+      setEndStakeDealId(null)
+      setTermsDealId(null)
+      if (bankrollScope === dealId) setBankrollScope('personal')
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Close failed.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
+  function stakeDealHasProposal(deal) {
+    return Boolean(deal?.stakee_terms_ack_required && deal?.pending_terms_json)
   }
 
   useEffect(
@@ -2272,19 +2333,38 @@ export default function PokerBankrollTracker({
                         ) : null}
                       </div>
                       {onStake ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setError('')
-                            setTermsDealId(scopeId)
-                            triggerTapHapticLight()
-                          }}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
-                          aria-label="Stake terms"
-                          data-poker-hero-terms-icon
-                        >
-                          <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
-                        </button>
+                        <div className="flex shrink-0 items-center gap-1">
+                          {stakeeCanSettleStake(hero.deal, slicesByDeal[scopeId] || [], {
+                            userId,
+                            hasProposal: stakeDealHasProposal(hero.deal),
+                          }) ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setError('')
+                                setEndStakeDealId(scopeId)
+                                triggerTapHapticLight()
+                              }}
+                              className="rounded-xl bg-zinc-700/60 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600"
+                              data-poker-hero-end-stake-btn
+                            >
+                              End stake
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setError('')
+                              setTermsDealId(scopeId)
+                              triggerTapHapticLight()
+                            }}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
+                            aria-label="Stake terms"
+                            data-poker-hero-terms-icon
+                          >
+                            <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
+                          </button>
+                        </div>
                       ) : (
                         <div className="flex shrink-0 items-center gap-1.5">
                           <button
@@ -3035,56 +3115,8 @@ export default function PokerBankrollTracker({
             }
           }}
           dealRoll={dealProfiles[termsDealId] ?? null}
-          onPeriodicSettle={async (rakebackTotal) => {
-            if (
-              !window.confirm(
-                'Periodic settle? Roll resets to baseline, your personal bankroll gets your share, and the stake stays open.',
-              )
-            ) {
-              return
-            }
-            setStableSaving(true)
-            setError('')
-            try {
-              const { error } = await periodicSettleBackingDeal(supabaseClient, {
-                dealId: termsDealId,
-                rakebackTotal,
-              })
-              if (error) throw error
-              showStakeNotice('Periodic settle complete ... roll reset to baseline.')
-              await loadData()
-            } catch (e) {
-              setError(e?.message || 'Settle failed.')
-            } finally {
-              setStableSaving(false)
-            }
-          }}
-          onCloseStake={async (rakebackTotal) => {
-            if (
-              !window.confirm(
-                'Close this stake? Final settle runs and sessions merge into your personal history.',
-              )
-            ) {
-              return
-            }
-            setStableSaving(true)
-            setError('')
-            try {
-              const { error } = await closeBackingDeal(supabaseClient, {
-                dealId: termsDealId,
-                rakebackTotal,
-              })
-              if (error) throw error
-              showStakeNotice('Stake closed ... sessions are on your personal timeline now.')
-              setTermsDealId(null)
-              if (bankrollScope === termsDealId) setBankrollScope('personal')
-              await loadData()
-            } catch (e) {
-              setError(e?.message || 'Close failed.')
-            } finally {
-              setStableSaving(false)
-            }
-          }}
+          onPeriodicSettle={(rakebackTotal) => runPeriodicSettle(termsDealId, rakebackTotal)}
+          onCloseStake={(rakebackTotal) => runCloseStake(termsDealId, rakebackTotal)}
           onAcceptProposal={async () => {
             setStableSaving(true)
             setError('')
@@ -3119,6 +3151,18 @@ export default function PokerBankrollTracker({
               setStableSaving(false)
             }
           }}
+        />
+      ) : null}
+
+      {endStakeDealId && supabaseClient && userId ? (
+        <PokerStableEndStakeSheet
+          deal={stakeeDeals.find((d) => d.id === endStakeDealId) ?? null}
+          dealRoll={dealProfiles[endStakeDealId] ?? null}
+          saving={stableSaving}
+          onClose={() => setEndStakeDealId(null)}
+          onError={setError}
+          onPeriodicSettle={(rakebackTotal) => runPeriodicSettle(endStakeDealId, rakebackTotal)}
+          onCloseStake={(rakebackTotal) => runCloseStake(endStakeDealId, rakebackTotal)}
         />
       ) : null}
 

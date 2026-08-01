@@ -4,13 +4,14 @@ import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
-import { computeProfitAboveBaseline, isOngoingDealType } from './pokerStableMath.js'
+import { computeProfitAboveBaseline } from './pokerStableMath.js'
 import {
   canReassignGuestSlice,
   dealTermsMeta,
   sliceTermsSummary,
   stakeDealCanBeCancelled,
   stakeeCanEditDealTerms,
+  stakeeCanSettleStake,
   termsPayloadToFormState,
 } from './pokerStableTerms.js'
 import {
@@ -217,10 +218,7 @@ export default function PokerStableDealTermsSheet({
     stakeDealCanBeCancelled(deal, slices, { userId }) &&
     typeof onCancelStake === 'function'
   const canSettle =
-    isStakee &&
-    deal.status === 'active' &&
-    isOngoingDealType(deal.deal_type) &&
-    !hasProposal &&
+    stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
   const rollValue =
     dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0

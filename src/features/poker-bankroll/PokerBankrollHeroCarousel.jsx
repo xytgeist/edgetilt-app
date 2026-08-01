@@ -79,7 +79,7 @@ export default function PokerBankrollHeroCarousel({
     <div data-poker-bankroll-carousel className="mb-4 -mx-3">
       <div
         ref={scrollerRef}
-        className="flex snap-x snap-mandatory items-stretch overflow-x-auto overflow-y-visible px-3 pb-1 no-scrollbar"
+        className="flex snap-x snap-mandatory overflow-x-auto overflow-y-visible px-3 pb-1 no-scrollbar"
         style={{
           scrollPaddingLeft: PEEK_PX,
           gap: SLIDE_GAP_PX,
@@ -92,7 +92,7 @@ export default function PokerBankrollHeroCarousel({
             ref={(el) => {
               slideRefs.current[index] = el
             }}
-            className="flex snap-start shrink-0 flex-col"
+            className="snap-start shrink-0"
             style={{
               width: `calc(100% - ${PEEK_PX}px)`,
               flexBasis: `calc(100% - ${PEEK_PX}px)`,

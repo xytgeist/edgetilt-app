@@ -1992,44 +1992,39 @@ export default function PokerBankrollTracker({
                 return (
                   <div
                     data-elevated-card={onStake ? 'accent' : 'surface'}
-                    className={`flex h-full min-h-0 flex-col ${
+                    className={
                       onStake
                         ? theme.card
                         : 'rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6'
-                    }`}
+                    }
                   >
-                    <div className="mb-2 flex min-h-[1.375rem] flex-wrap items-center gap-2">
-                      {onStake ? (
-                        <>
-                          <span
-                            className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
-                              hero.deal?.status === 'pending'
-                                ? 'bg-zinc-500/40 text-zinc-200'
-                                : theme.badge
-                            }`}
-                          >
-                            {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
-                          </span>
-                          <span className={`truncate text-xs font-semibold ${theme.badgeText}`}>
-                            {hero.deal?.label || 'Stake deal'}
-                          </span>
-                        </>
-                      ) : (
-                        <span
-                          className="rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider opacity-0"
-                          aria-hidden
-                        >
-                          On stake
-                        </span>
-                      )}
-                    </div>
                     <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <div
-                        className={`text-xs font-semibold uppercase tracking-wide ${
-                          onStake ? theme.label : 'text-zinc-400'
-                        }`}
-                      >
-                        {onStake ? 'Stake bankroll' : 'Poker bankroll'}
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div
+                          className={`shrink-0 text-xs font-semibold uppercase tracking-wide ${
+                            onStake ? theme.label : 'text-zinc-400'
+                          }`}
+                        >
+                          {onStake ? 'Stake bankroll' : 'Poker bankroll'}
+                        </div>
+                        {onStake ? (
+                          <>
+                            <span
+                              className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                                hero.deal?.status === 'pending'
+                                  ? 'bg-zinc-500/40 text-zinc-200'
+                                  : theme.badge
+                              }`}
+                            >
+                              {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
+                            </span>
+                            {hero.deal?.label ? (
+                              <span className={`truncate text-[11px] font-semibold ${theme.badgeText}`}>
+                                {hero.deal.label}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : null}
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         {!onStake ? (
@@ -2073,9 +2068,8 @@ export default function PokerBankrollTracker({
                           {fmtPoker$(hero.overallBankroll)}
                         </div>
                         {onStake && hero.deal?.status === 'pending' ? (
-                          <p className={`mt-2 text-sm ${theme.badgeText}`}>
-                            Waiting for backers to accept in Stable. Sessions unlock when the deal
-                            goes live.
+                          <p className={`mt-1.5 text-[11px] leading-snug ${theme.badgeText}`}>
+                            Waiting on backers in Stable before sessions unlock.
                           </p>
                         ) : null}
                         {hero.spark.length >= 2 ? (
@@ -2100,7 +2094,7 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`mt-auto grid grid-cols-4 gap-2 border-t pt-4 ${
+                        className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >

@@ -2333,38 +2333,19 @@ export default function PokerBankrollTracker({
                         ) : null}
                       </div>
                       {onStake ? (
-                        <div className="flex shrink-0 items-center gap-1">
-                          {stakeeCanSettleStake(hero.deal, slicesByDeal[scopeId] || [], {
-                            userId,
-                            hasProposal: stakeDealHasProposal(hero.deal),
-                          }) ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setError('')
-                                setEndStakeDealId(scopeId)
-                                triggerTapHapticLight()
-                              }}
-                              className="rounded-xl bg-zinc-700/60 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600"
-                              data-poker-hero-end-stake-btn
-                            >
-                              End stake
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setError('')
-                              setTermsDealId(scopeId)
-                              triggerTapHapticLight()
-                            }}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
-                            aria-label="Stake terms"
-                            data-poker-hero-terms-icon
-                          >
-                            <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError('')
+                            setTermsDealId(scopeId)
+                            triggerTapHapticLight()
+                          }}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
+                          aria-label="Stake terms"
+                          data-poker-hero-terms-icon
+                        >
+                          <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
+                        </button>
                       ) : (
                         <div className="flex shrink-0 items-center gap-1.5">
                           <button
@@ -2463,6 +2444,25 @@ export default function PokerBankrollTracker({
                           value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
                         />
                       </div>
+                    ) : null}
+                    {onStake &&
+                    !loading &&
+                    stakeeCanSettleStake(hero.deal, slicesByDeal[scopeId] || [], {
+                      userId,
+                      hasProposal: stakeDealHasProposal(hero.deal),
+                    }) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError('')
+                          setEndStakeDealId(scopeId)
+                          triggerTapHapticLight()
+                        }}
+                        className="mt-3 w-full text-center text-xs font-semibold text-zinc-400 underline touch-manipulation active:opacity-70"
+                        data-poker-hero-end-stake-link
+                      >
+                        End stake
+                      </button>
                     ) : null}
                   </div>
                 )

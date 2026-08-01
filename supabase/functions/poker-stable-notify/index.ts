@@ -1,10 +1,11 @@
 /**
- * Notify guest backers on a Poker Stable cash stake offer, terms edit, or deletion.
+ * Notify guest backers on a Poker Stable cash stake offer, terms edit, deletion, or session complete.
  *
  * body.kind:
  *   - offer (default): player created stake terms
  *   - terms_edited: player edited stake terms (requires terms_edit.before / terms_edit.after)
  *   - deleted: player deleted the stake (call before DB delete)
+ *   - session_complete: player completed a stake session (requires session_id)
  *
  * Player-created deals: stakee invokes when guest slices have contact info.
  *
@@ -305,6 +306,140 @@ function formatTermsEditedCopy(args: {
   return { subject, text, html }
 }
 
+type SessionRow = {
+  id: string
+  user_id: string
+  deal_id: string | null
+  status: string
+  session_type: string
+  venue_kind: string | null
+  venue_name: string | null
+  start_at: string
+  end_at: string | null
+  buy_in: number
+  rebuy_amount: number | null
+  addon_amount: number | null
+  cash_out: number | null
+  bounty_winnings: number | null
+  tournament_name: string | null
+  game_variant: string | null
+  small_blind: number | null
+  big_blind: number | null
+  finish_place: number | null
+}
+
+function pokerSessionWinLoss(session: SessionRow): number | null {
+  if (session.cash_out == null) return null
+  const cost =
+    (Number(session.buy_in) || 0) +
+    (Number(session.rebuy_amount) || 0) +
+    (Number(session.addon_amount) || 0)
+  const out = Number(session.cash_out) + (Number(session.bounty_winnings) || 0)
+  return Math.round((out - cost) * 100) / 100
+}
+
+function computeSliceBackerShare(gross: number, slice: SliceRow): number {
+  const actionPct = Number(slice.action_pct)
+  if (!Number.isFinite(actionPct) || actionPct <= 0) return 0
+  const grossOnSlice = gross * (actionPct / 100)
+  if (slice.pricing_mode === 'markup') {
+    return Math.round(grossOnSlice * 100) / 100
+  }
+  const playerPct = Number(slice.player_profit_pct)
+  const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : 100
+  return Math.round(grossOnSlice * (backerPct / 100) * 100) / 100
+}
+
+function formatSessionStakesLabel(session: SessionRow): string {
+  if (session.session_type === 'tournament') {
+    const bi = Number(session.buy_in)
+    const biStr = Number.isFinite(bi) ? fmtMoney(bi) : ''
+    const name = String(session.tournament_name || '').trim()
+    if (name && biStr) return `${biStr} · ${name}`
+    if (name) return name
+    if (biStr) return `${biStr} buy-in`
+    return 'Tournament'
+  }
+  const sb = Number(session.small_blind)
+  const bb = Number(session.big_blind)
+  if (Number.isFinite(sb) && Number.isFinite(bb) && bb > 0) {
+    return `${sb}/${bb}`
+  }
+  return String(session.game_variant || 'Cash game')
+}
+
+function formatSessionMetaLine(session: SessionRow): string {
+  const bits: string[] = []
+  bits.push(session.session_type === 'tournament' ? 'Tourney' : 'Cash')
+  bits.push(
+    session.venue_kind === 'online' ? 'Online' : session.venue_kind === 'club' ? 'Club' : 'Live',
+  )
+  if (session.venue_name) bits.push(String(session.venue_name))
+  return bits.join(' · ')
+}
+
+function formatSessionDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  } catch {
+    return iso
+  }
+}
+
+function formatSessionCompleteCopy(args: {
+  actorLabel: string
+  dealLabel: string
+  sessionStakes: string
+  sessionMeta: string
+  sessionDate: string
+  gross: number
+  backerShare: number
+  actionPct: number
+  pricingLine: string
+  appUrl: string
+}): { subject: string; text: string; html: string } {
+  const grossLabel = fmtMoney(args.gross)
+  const shareLabel = fmtMoney(args.backerShare)
+  const introPlain = `${args.actorLabel} completed a stake session on Edgetilt.com.`
+  const detailLines = [
+    `Stake: ${args.dealLabel || '—'}`,
+    `Session: ${args.sessionStakes}`,
+    `${args.sessionMeta} · ${args.sessionDate}`,
+    `Table result: ${grossLabel}`,
+    `Your share (${formatPct(args.actionPct)}%): ${shareLabel}`,
+    args.pricingLine,
+  ]
+  const footer = formatEmailFooter()
+  const text = `${introPlain}\n\n${detailLines.join('\n')}\n\n${footer.text}`
+
+  const safeActor = escapeHtml(args.actorLabel)
+  const safeUrl = escapeHtml(args.appUrl)
+  const introHtml = `${safeActor} completed a stake session on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a>.`
+  const detailsHtml = detailLines.map((line) => escapeHtml(line)).join('<br>')
+  const bodyHtml = [
+    transactionalEmailParagraph(introHtml),
+    transactionalEmailParagraph(detailsHtml, { marginBottom: '0' }),
+  ].join('')
+
+  const subject = `${args.actorLabel} completed a session · ${shareLabel} your share`
+  const html = wrapTransactionalEmailHtml({
+    title: subject,
+    headline: 'Stake session completed',
+    bodyHtml,
+    appUrl: args.appUrl,
+    cta: { label: 'Create free account', href: args.appUrl },
+    footerNoteHtml: footer.htmlNote,
+    ctaAfterFooterNote: true,
+    footerNoteMarginTop: '24px',
+  })
+  return { subject, text, html }
+}
+
 async function sendResendEmail(to: string, subject: string, html: string, text: string) {
   const key = Deno.env.get('RESEND_API_KEY')?.trim()
   if (!key) return { skipped: true as const, reason: 'RESEND_API_KEY not set' }
@@ -406,6 +541,7 @@ Deno.serve(async (req) => {
 
     let body: {
       deal_id?: string
+      session_id?: string
       slice_ids?: string[]
       kind?: string
       terms_edit?: { before?: TermsEditPayload; after?: TermsEditPayload }
@@ -420,9 +556,15 @@ Deno.serve(async (req) => {
     if (!dealId) return jsonResponse({ error: 'deal_id is required.' }, 400)
 
     const kindRaw = String(body.kind || 'offer').trim().toLowerCase()
-    let kind: 'offer' | 'deleted' | 'terms_edited' = 'offer'
+    let kind: 'offer' | 'deleted' | 'terms_edited' | 'session_complete' = 'offer'
     if (kindRaw === 'deleted') kind = 'deleted'
     else if (kindRaw === 'terms_edited') kind = 'terms_edited'
+    else if (kindRaw === 'session_complete') kind = 'session_complete'
+
+    const sessionId = String(body.session_id || '').trim()
+    if (kind === 'session_complete' && !sessionId) {
+      return jsonResponse({ error: 'session_id is required for session_complete.' }, 400)
+    }
 
     const termsEditBefore = body.terms_edit?.before
     const termsEditAfter = body.terms_edit?.after
@@ -455,6 +597,133 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Only the player can notify guest backers on this stake.' }, 403)
     }
 
+    const { data: actorProfile } = await admin
+      .from('profiles')
+      .select('display_name, handle')
+      .eq('user_id', uid)
+      .maybeSingle()
+    const actorLabel = formatProfileLabel(actorProfile)
+
+    if (kind === 'session_complete') {
+      const { data: sessionRaw, error: sessionErr } = await admin
+        .from('poker_bankroll_sessions')
+        .select(
+          'id, user_id, deal_id, status, session_type, venue_kind, venue_name, start_at, end_at, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, tournament_name, game_variant, small_blind, big_blind, finish_place',
+        )
+        .eq('id', sessionId)
+        .maybeSingle()
+      if (sessionErr) throw new Error(sessionErr.message)
+      if (!sessionRaw) return jsonResponse({ error: 'Session not found.' }, 404)
+      const session = sessionRaw as SessionRow
+
+      if (session.user_id !== uid) {
+        return jsonResponse({ error: 'Only the session owner can notify on this session.' }, 403)
+      }
+      if (session.deal_id !== dealId) {
+        return jsonResponse({ error: 'Session does not belong to this stake.' }, 400)
+      }
+      if (session.status !== 'completed') {
+        return jsonResponse({ error: 'Session is not completed.' }, 400)
+      }
+
+      const gross = pokerSessionWinLoss(session)
+      if (gross == null) {
+        return jsonResponse({ error: 'Session has no result to notify.' }, 400)
+      }
+
+      let sliceQuery = admin
+        .from('poker_stable_deal_slices')
+        .select(
+          'id, slice_index, counterparty_kind, guest_email, guest_phone, guest_label, action_pct, pricing_mode, player_profit_pct, markup_rate, status',
+        )
+        .eq('deal_id', dealId)
+        .eq('counterparty_kind', 'guest')
+        .eq('status', 'active')
+        .order('slice_index', { ascending: true })
+
+      if (sliceIdFilter.length) {
+        sliceQuery = sliceQuery.in('id', sliceIdFilter)
+      }
+
+      const { data: slicesRaw, error: sliceErr } = await sliceQuery
+      if (sliceErr) throw new Error(sliceErr.message)
+      const slices = (slicesRaw || []) as SliceRow[]
+
+      const dealLabel = String(deal.label || '').trim()
+      const sessionStakes = formatSessionStakesLabel(session)
+      const sessionMeta = formatSessionMetaLine(session)
+      const sessionDate = formatSessionDate(session.end_at || session.start_at)
+      const appUrl = resolvePublicAppOrigin()
+
+      const results: Record<string, unknown>[] = []
+      let notifiedCount = 0
+
+      for (const slice of slices) {
+        const email = String(slice.guest_email || '')
+          .trim()
+          .toLowerCase()
+        const phone = normalizePhone(String(slice.guest_phone || ''))
+        const hasEmail = Boolean(email && isValidEmail(email))
+        const hasPhone = Boolean(phone)
+
+        if (!hasEmail && !hasPhone) {
+          results.push({
+            slice_id: slice.id,
+            notified: false,
+            email: { skipped: true, reason: 'no guest email' },
+            sms: { skipped: true, reason: 'no guest phone' },
+          })
+          continue
+        }
+
+        const backerShare = computeSliceBackerShare(gross, slice)
+        const pricingLine = formatPricingLine(slice)
+        const { subject, text, html } = formatSessionCompleteCopy({
+          actorLabel,
+          dealLabel,
+          sessionStakes,
+          sessionMeta,
+          sessionDate,
+          gross,
+          backerShare,
+          actionPct: Number(slice.action_pct),
+          pricingLine,
+          appUrl,
+        })
+        const smsText = `${text}\n\n${appUrl}`
+
+        const channels: Record<string, unknown> = { slice_id: slice.id }
+
+        if (hasEmail) {
+          channels.email = await sendResendEmail(email, subject, html, text)
+        } else {
+          channels.email = { skipped: true, reason: 'no guest email' }
+        }
+
+        if (hasPhone && phone) {
+          channels.sms = await sendTwilioSms(phone, smsText)
+        } else {
+          channels.sms = { skipped: true, reason: 'no guest phone' }
+        }
+
+        const sent =
+          (channels.email && !(channels.email as { skipped?: boolean }).skipped) ||
+          (channels.sms && !(channels.sms as { skipped?: boolean }).skipped)
+        if (sent) notifiedCount += 1
+        channels.notified = sent
+        results.push(channels)
+      }
+
+      return jsonResponse({
+        ok: true,
+        kind,
+        deal_id: dealId,
+        session_id: sessionId,
+        notified_count: notifiedCount,
+        slices: results,
+      })
+    }
+
     let sliceQuery = admin
       .from('poker_stable_deal_slices')
       .select(
@@ -478,13 +747,6 @@ Deno.serve(async (req) => {
       .eq('deal_id', dealId)
     if (countErr) throw new Error(countErr.message)
     const backerArticle: 'the' | 'a' = totalSliceCount === 1 ? 'the' : 'a'
-
-    const { data: actorProfile } = await admin
-      .from('profiles')
-      .select('display_name, handle')
-      .eq('user_id', uid)
-      .maybeSingle()
-    const actorLabel = formatProfileLabel(actorProfile)
 
     const baselineLabel = fmtMoney(Number(deal.baseline_bankroll))
     const dealLabel = String(deal.label || '').trim()

@@ -1,6 +1,6 @@
 # `poker-stable-notify`
 
-Sends **Twilio SMS** and/or **Resend email** to guest backers when a player creates a cash stake, edits stake terms, or deletes a stake with guest slices.
+Sends **Twilio SMS** and/or **Resend email** to guest backers when a player creates a cash stake, edits stake terms, deletes a stake with guest slices, or **completes a stake session**.
 
 Offer copy (email):
 
@@ -11,6 +11,21 @@ Name of stake: $10/20 Live Backing
 Total stake: $100,000 (you own 100%)
 Profit split: Backer 50% | Player 50%
 Your exposure: $50,000
+
+Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.
+```
+
+Session complete copy (`kind=session_complete`):
+
+```
+Chunky Unc (@chunkyunc) completed a stake session on Edgetilt.com.
+
+Stake: $10/20 Live Backing
+Session: 2/5
+Cash · Live · Bellagio · Sat, Aug 1, 2026
+Table result: +$450
+Your share (50%): +$225
+Profit split: Backer 50% | Player 50%
 
 Create a free account at EdgeTilt.com to manage your stable and get real-time progress updates.
 ```
@@ -62,6 +77,7 @@ supabase functions deploy poker-stable-notify --project-ref kcosfvmreeiosdjdzycb
 ```json
 {
   "deal_id": "<uuid>",
+  "session_id": "<uuid>",
   "slice_ids": ["<optional slice uuid>"],
   "kind": "offer",
   "terms_edit": {
@@ -71,6 +87,6 @@ supabase functions deploy poker-stable-notify --project-ref kcosfvmreeiosdjdzycb
 }
 ```
 
-`kind`: `offer` (default), `terms_edited` (requires `terms_edit.before` + `terms_edit.after`), or `deleted`. For **deleted**, call **before** the deal row is removed so guest slice contact info is still readable. **Edit terms** uses `terms_edited` only (not `offer`).
+`kind`: `offer` (default), `terms_edited` (requires `terms_edit.before` + `terms_edit.after`), `deleted`, or `session_complete` (requires `session_id`; session must be `completed` and linked to `deal_id`). For **deleted**, call **before** the deal row is removed so guest slice contact info is still readable. **Edit terms** uses `terms_edited` only (not `offer`). **Session complete** is invoked from Bankroll after End Session or Log session on a stake deal.
 
 Caller must be the deal **stakee** (player who created the stake). JWT required.

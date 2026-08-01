@@ -47,6 +47,7 @@ import {
   loadDealSlices,
   loadDealTopups,
   loadMyStableDeals,
+  notifyStableSessionComplete,
   periodicSettleBackingDeal,
   reassignGuestSliceToUser,
 } from '../poker-stable/pokerStableApi.js'
@@ -1646,6 +1647,15 @@ export default function PokerBankrollTracker({
     }
   }
 
+  /** Fire-and-forget guest backer email/SMS when a stake session completes. */
+  async function notifyGuestBackersOnSessionComplete(sessionId, dealId) {
+    if (!supabaseClient || !sessionId || !dealId) return
+    const { error } = await notifyStableSessionComplete(supabaseClient, dealId, sessionId)
+    if (error) {
+      console.warn('[poker-bankroll] guest session notify failed', error.message)
+    }
+  }
+
   async function endLiveSession() {
     if (!supabaseClient || !userId || !activeSession) return
     const cashOut = parseMoneyInputNumber(endCashOut)
@@ -1711,6 +1721,9 @@ export default function PokerBankrollTracker({
           ...(syncA.swapIds || []),
           ...(syncB.swapIds || []),
         ])
+      }
+      if (activeSession.deal_id) {
+        await notifyGuestBackersOnSessionComplete(activeSession.id, activeSession.deal_id)
       }
       setSheet(null)
       triggerTapHapticLight()
@@ -2119,6 +2132,9 @@ export default function PokerBankrollTracker({
           .single()
         if (iErr) throw iErr
         await applyBankrollDelta(newWl)
+        if (created.deal_id) {
+          await notifyGuestBackersOnSessionComplete(created.id, created.deal_id)
+        }
         if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
           await attachDraftSwapsToSession(created, draftSwaps)
         }

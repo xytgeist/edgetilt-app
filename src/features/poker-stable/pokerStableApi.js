@@ -1264,3 +1264,43 @@ export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
   const notifiedCount = Number(payload?.notified_count) || 0
   return { data: payload, error: null, notifiedCount }
 }
+
+/**
+ * Notify guest backers when a stake session is completed (Resend email + Twilio SMS).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} dealId
+ * @param {string} sessionId
+ */
+export async function notifyStableSessionComplete(supabase, dealId, sessionId) {
+  let {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    return { data: null, error: new Error('Sign in again, then retry.'), notifiedCount: 0 }
+  }
+
+  const nowSecs = Math.floor(Date.now() / 1000)
+  if (!session.expires_at || session.expires_at - nowSecs < 60) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    if (refreshed?.session?.access_token) session = refreshed.session
+  }
+
+  const { data, error, response } = await supabase.functions.invoke('poker-stable-notify', {
+    body: {
+      deal_id: dealId,
+      session_id: sessionId,
+      kind: 'session_complete',
+    },
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  if (error) {
+    const msg = await messageFromStableNotifyInvoke(error, response)
+    return { data: null, error: new Error(msg), notifiedCount: 0 }
+  }
+  const payload = parseStableNotifyPayload(data)
+  if (payload?.error) {
+    return { data: payload, error: new Error(payload.error), notifiedCount: 0 }
+  }
+  const notifiedCount = Number(payload?.notified_count) || 0
+  return { data: payload, error: null, notifiedCount }
+}

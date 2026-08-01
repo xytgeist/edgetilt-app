@@ -336,8 +336,9 @@ export default function PokerBankrollTracker({
     () =>
       tournamentSwaps.filter(
         (s) =>
-          s.creator_session_id === activeSession?.id ||
-          s.counterparty_session_id === activeSession?.id,
+          s.status !== 'cancelled' &&
+          (s.creator_session_id === activeSession?.id ||
+            s.counterparty_session_id === activeSession?.id),
       ),
     [tournamentSwaps, activeSession?.id],
   )
@@ -345,7 +346,9 @@ export default function PokerBankrollTracker({
     () =>
       editingId
         ? tournamentSwaps.filter(
-            (s) => s.creator_session_id === editingId || s.counterparty_session_id === editingId,
+            (s) =>
+              s.status !== 'cancelled' &&
+              (s.creator_session_id === editingId || s.counterparty_session_id === editingId),
           )
         : [],
     [tournamentSwaps, editingId],

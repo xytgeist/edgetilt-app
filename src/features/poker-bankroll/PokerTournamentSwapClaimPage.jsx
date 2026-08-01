@@ -105,7 +105,10 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-50">
+    <div
+      data-poker-swap-claim
+      className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-50"
+    >
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 text-center">
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400/90">

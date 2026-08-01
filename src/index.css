@@ -4608,6 +4608,64 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   border-color: #d4d4d8 !important;
 }
 
+/* ── Poker swap guest claim page (/poker-swap-claim) — light mode only ──── */
+html.light [data-poker-swap-claim] {
+  background-color: #fafafa !important;
+  color: #18181b;
+}
+html.light [data-poker-swap-claim] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-swap-claim] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-swap-claim] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-swap-claim] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-swap-claim] .bg-zinc-900\/80 {
+  background-color: #ffffff !important;
+}
+html.light [data-poker-swap-claim] .border-zinc-800 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-swap-claim] input:not([type='checkbox']) {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+  border: 1px solid #d4d4d8;
+}
+html.light [data-poker-swap-claim] input[type='checkbox'] {
+  border-color: #a1a1aa;
+  accent-color: #059669;
+}
+html.light [data-poker-swap-claim] .bg-emerald-950\/50 {
+  background-color: #ecfdf5 !important;
+  border: 1px solid #a7f3d0;
+}
+html.light [data-poker-swap-claim] .text-emerald-200,
+html.light [data-poker-swap-claim] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-swap-claim] .text-emerald-400\/90 {
+  color: #059669 !important;
+}
+html.light [data-poker-swap-claim] .bg-emerald-600,
+html.light [data-poker-swap-claim] .bg-emerald-600.text-white {
+  color: #ffffff !important;
+}
+html.light [data-poker-swap-claim] .border-rose-500\/40.bg-rose-950\/40 {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+}
+html.light [data-poker-swap-claim] .text-rose-200 {
+  color: #be123c !important;
+}
+html.light [data-poker-swap-claim] .text-rose-400 {
+  color: #e11d48 !important;
+}
+
 /* Poker Stable deal sheet — native focus scroll keeps fields above keyboard without lifting the panel. */
 [data-poker-stable-sheet] input,
 [data-poker-stable-sheet] select,

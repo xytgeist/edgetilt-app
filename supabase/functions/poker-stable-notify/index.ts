@@ -134,8 +134,8 @@ function formatStakeMessageCopy(args: {
   ].join('')
 
   const subject = isDeleted
-    ? `${args.actorLabel} deleted a stake on Edgetilt.com`
-    : `${args.actorLabel} created a stake with you on Edgetilt.com`
+    ? `${args.actorLabel} deleted a stake: ${args.dealLabel || 'Untitled'}`
+    : `${args.actorLabel} created a stake: ${args.dealLabel || 'Untitled'}`
   return { subject, text, html }
 }
 
@@ -160,7 +160,14 @@ async function sendResendEmail(to: string, subject: string, html: string, text: 
     const body = await res.text()
     throw new Error(`Resend failed (${res.status}): ${body}`)
   }
-  return { skipped: false as const }
+  let resendId = null
+  try {
+    const parsed = await res.json()
+    resendId = parsed?.id ? String(parsed.id) : null
+  } catch {
+    /* ignore */
+  }
+  return { skipped: false as const, id: resendId }
 }
 
 async function sendTwilioSms(to: string, body: string) {

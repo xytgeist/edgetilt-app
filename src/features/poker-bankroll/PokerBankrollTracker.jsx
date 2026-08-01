@@ -2833,11 +2833,19 @@ export default function PokerBankrollTracker({
             setStableSaving(true)
             setError('')
             try {
-              const { error } = await cancelStakeDeal(supabaseClient, termsDealId, userId)
+              const { error, notifyWarning } = await cancelStakeDeal(
+                supabaseClient,
+                termsDealId,
+                userId,
+              )
               if (error) throw error
               if (bankrollScope === termsDealId) setBankrollScope('personal')
               setTermsDealId(null)
-              showStakeNotice('Stake deleted.')
+              showStakeNotice(
+                notifyWarning
+                  ? `Stake deleted. ${notifyWarning}`
+                  : 'Stake deleted.',
+              )
               await loadData()
             } catch (e) {
               setError(e?.message || 'Could not delete stake.')
@@ -2893,8 +2901,11 @@ export default function PokerBankrollTracker({
           editProfilesById={stableProfilesById}
           termsIntent="stakee_update"
           onClose={() => setEditTermsDealId(null)}
-          onUpdated={() => {
-            showStakeNotice('Stake terms updated.')
+          onUpdated={(_deal, meta) => {
+            const warn = meta?.guestNotifyWarning
+            showStakeNotice(
+              warn ? `Stake terms updated. ${warn}` : 'Stake terms updated.',
+            )
             void loadData()
           }}
         />
@@ -2907,15 +2918,22 @@ export default function PokerBankrollTracker({
           saving={stableSaving}
           onSavingChange={setStableSaving}
           onClose={() => setSheet(null)}
-          onCreated={(deal) => {
+          onCreated={(deal, meta) => {
             if (deal?.id) {
               pendingCarouselDealIdRef.current = deal.id
+              const warn = meta?.guestNotifyWarning
               if (deal.status === 'pending') {
                 showStakeNotice(
-                  'Stake request sent. Backers will see invites in Stable ... you can log stake sessions now; they sync when backers accept.',
+                  warn
+                    ? `Stake request sent. ${warn}`
+                    : 'Stake request sent. Backers will see invites in Stable ... you can log stake sessions now; they sync when backers accept.',
                 )
               } else {
-                showStakeNotice('Stake created. Swipe to your stake bankroll card to get started.')
+                showStakeNotice(
+                  warn
+                    ? `Stake created. ${warn}`
+                    : 'Stake created. Swipe to your stake bankroll card to get started.',
+                )
               }
             }
             void loadData()

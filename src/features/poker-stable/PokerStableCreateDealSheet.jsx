@@ -381,6 +381,14 @@ function PokerStableDealFormSheet({
     setFriendSlices((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))
   }
 
+  function formSlicesHadGuestContact() {
+    return slices.some(
+      (sl) =>
+        sl.isGuest &&
+        (String(sl.guestEmail || '').trim() || String(sl.guestPhone || '').trim()),
+    )
+  }
+
   async function submit() {
     if (!supabaseClient || !userId) return
     onSavingChange(true)
@@ -510,13 +518,23 @@ function PokerStableDealFormSheet({
         if (error) throw error
         createdDeal = deal
       }
+      let guestNotifyWarning = null
       if (!isBacker && !isBackerPropose && createdDeal?.id) {
-        const { error: notifyErr } = await notifyStableStakeGuests(supabaseClient, createdDeal.id)
-        if (notifyErr) console.warn('[poker-stable] guest notify failed', notifyErr.message)
+        const hadGuestContact = formSlicesHadGuestContact()
+        const { error: notifyErr, notifiedCount } = await notifyStableStakeGuests(
+          supabaseClient,
+          createdDeal.id,
+        )
+        if (notifyErr) {
+          guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
+          console.warn('[poker-stable] guest notify failed', guestNotifyWarning)
+        } else if (hadGuestContact && notifiedCount === 0) {
+          guestNotifyWarning = 'Guest notify did not send. Check email/phone on the guest slice.'
+        }
       }
       triggerTapHapticLight()
-      if (isEdit) onUpdated?.(createdDeal)
-      else onCreated?.(createdDeal)
+      if (isEdit) onUpdated?.(createdDeal, { guestNotifyWarning })
+      else onCreated?.(createdDeal, { guestNotifyWarning })
       onClose()
     } catch (e) {
       const message = e?.message || 'Could not save deal.'

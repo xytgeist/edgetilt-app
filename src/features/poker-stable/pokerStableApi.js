@@ -501,13 +501,32 @@ export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId
 
 /** Stakee deletes a stake before any Edge backer has accepted. Removes stake sessions too. */
 export async function cancelStakeDeal(supabase, dealId, stakeeUserId) {
-  const { error: notifyErr } = await notifyStableStakeGuests(supabase, dealId, { kind: 'deleted' })
-  if (notifyErr) console.warn('[poker-stable] guest delete notify failed', notifyErr.message)
+  const { error: notifyErr, notifiedCount, data: notifyData } = await notifyStableStakeGuests(
+    supabase,
+    dealId,
+    { kind: 'deleted' },
+  )
+  let notifyWarning = null
+  if (notifyErr) {
+    notifyWarning = notifyErr.message || 'Guest notify failed.'
+    console.warn('[poker-stable] guest delete notify failed', notifyWarning)
+  } else if (notifiedCount === 0) {
+    const sliceResults = notifyData?.slices || []
+    const contactMissingOnly = sliceResults.every(
+      (s) =>
+        s.email?.reason === 'no guest email' &&
+        s.sms?.reason === 'no guest phone',
+    )
+    if (sliceResults.length && !contactMissingOnly) {
+      notifyWarning = 'Guest notify did not send.'
+    }
+  }
+
   const { error } = await supabase.rpc('poker_stable_cancel_stake_deal', {
     p_deal_id: dealId,
   })
-  if (error) return { error }
-  return { error: null }
+  if (error) return { error, notifyWarning: null }
+  return { error: null, notifyWarning }
 }
 
 /** Backer proposes revised terms; stakee must accept before they apply. */
@@ -1143,6 +1162,47 @@ export function sliceDisplayName(slice, profilesById = {}) {
   return p?.display_name || (p?.handle ? `@${p.handle}` : 'Backer')
 }
 
+async function messageFromStableNotifyInvoke(error, response) {
+  const fallback = String(error?.message || 'Guest notify failed.').trim() || 'Guest notify failed.'
+  const res =
+    response && typeof response === 'object' && typeof response.status === 'number'
+      ? response
+      : error?.context && typeof error.context === 'object' && typeof error.context.status === 'number'
+        ? error.context
+        : null
+  if (!res) return fallback
+  try {
+    const body = await res.clone().json()
+    if (body?.error) return String(body.error)
+  } catch {
+    try {
+      const text = await res.clone().text()
+      if (text?.trim()) return text.trim().slice(0, 500)
+    } catch {
+      /* ignore */
+    }
+  }
+  if (res.status === 404) {
+    return 'Guest notify service is not deployed on this environment.'
+  }
+  if (res.status === 401) {
+    return 'Sign in again, then retry (session expired).'
+  }
+  return fallback
+}
+
+function parseStableNotifyPayload(data) {
+  if (!data) return null
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data)
+    } catch {
+      return null
+    }
+  }
+  return data
+}
+
 /**
  * Notify guest backers (Twilio SMS + Resend email) via Edge Function.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
@@ -1153,8 +1213,15 @@ export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
   const body = { deal_id: dealId }
   if (opts.sliceIds?.length) body.slice_ids = opts.sliceIds
   if (opts.kind === 'deleted') body.kind = 'deleted'
-  const { data, error } = await supabase.functions.invoke('poker-stable-notify', { body })
-  if (error) return { error }
-  if (data?.error) return { error: new Error(data.error) }
-  return { data, error: null }
+  const { data, error, response } = await supabase.functions.invoke('poker-stable-notify', { body })
+  if (error) {
+    const msg = await messageFromStableNotifyInvoke(error, response)
+    return { data: null, error: new Error(msg), notifiedCount: 0 }
+  }
+  const payload = parseStableNotifyPayload(data)
+  if (payload?.error) {
+    return { data: payload, error: new Error(payload.error), notifiedCount: 0 }
+  }
+  const notifiedCount = Number(payload?.notified_count) || 0
+  return { data: payload, error: null, notifiedCount }
 }

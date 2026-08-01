@@ -88,3 +88,9 @@ verify_jwt = false
 # Edge Monitor Phase 3: admin JWT + profiles.role check inside function.
 [functions.admin-ops-external-health]
 verify_jwt = true
+
+[functions.poker-tournament-swap-notify]
+verify_jwt = true
+
+[functions.poker-stable-notify]
+verify_jwt = true

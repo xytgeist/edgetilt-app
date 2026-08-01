@@ -4642,6 +4642,13 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   border-color: rgb(245 158 11 / 0.24);
 }
 
+/* Lift in-field controls off the tinted slice surface */
+[data-poker-stable-sheet] .poker-stable-slice-card [data-in-field] {
+  background-color: rgb(9 9 11 / 0.94);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
 /* ── Poker Stable sheet - light mode (dark unchanged) ──── */
 html.light [data-poker-stable-sheet] {
   background-color: #ffffff !important;
@@ -4718,6 +4725,11 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] {
   background-color: rgb(255 251 235 / 0.95) !important;
   border-color: rgb(252 211 77 / 0.55) !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card [data-in-field] {
+  background-color: #ffffff !important;
+  border: 1px solid rgb(212 212 216 / 0.95) !important;
+  box-shadow: 0 1px 2px rgb(24 24 27 / 0.06) !important;
 }
 html.light [data-poker-bankroll-carousel] .bg-zinc-600 {
   background-color: #d4d4d8 !important;

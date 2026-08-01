@@ -116,7 +116,8 @@ function formatStakeMessageCopy(args: {
   const nameLine = `Name of stake: ${args.dealLabel || '—'}`
   const ownVerb = isDeleted ? 'owned' : 'own'
   const stakeLine = `Total stake: ${args.baselineLabel} (you ${ownVerb} ${formatPct(args.actionPct)}%)`
-  const text = [introPlain, nameLine, stakeLine, args.pricingLine].join('\n\n')
+  const detailLines = [nameLine, stakeLine, args.pricingLine]
+  const text = `${introPlain}\n\n${detailLines.join('\n')}`
 
   const safeActor = escapeHtml(args.actorLabel)
   const safeNameLine = escapeHtml(nameLine)
@@ -126,11 +127,10 @@ function formatStakeMessageCopy(args: {
   const introHtml = isDeleted
     ? `${safeActor} has deleted a stake on <a href="${safeUrl}">Edgetilt.com</a> that listed you as ${args.backerArticle} backer.`
     : `${safeActor} has created a stake on <a href="${safeUrl}">Edgetilt.com</a> with you as ${args.backerArticle} backer.`
+  const detailsHtml = [safeNameLine, safeStakeLine, safePricingLine].join('<br>')
   const html = [
-    `<p style="margin:0 0 1em;line-height:1.5">${introHtml}</p>`,
-    `<p style="margin:0 0 1em;line-height:1.5">${safeNameLine}</p>`,
-    `<p style="margin:0 0 1em;line-height:1.5">${safeStakeLine}</p>`,
-    `<p style="margin:0;line-height:1.5">${safePricingLine}</p>`,
+    `<p style="margin:0 0 12px;line-height:1.5">${introHtml}</p>`,
+    `<p style="margin:0;line-height:1.5">${detailsHtml}</p>`,
   ].join('')
 
   const subject = isDeleted

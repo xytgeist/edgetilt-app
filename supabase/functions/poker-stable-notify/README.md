@@ -12,7 +12,7 @@ Total stake: $100,000 (you own 100%)
 Profit split: Backer 50% | Player 50%
 ```
 
-Blank lines between blocks. **Edgetilt.com** is a hyperlink in the HTML part (plain-text fallback has no link). Uses "the backer" when sole slice; "a backer" when syndicated.
+Blank line after intro only; detail lines are single-spaced (`<br>` in HTML, not separate `<p>` tags).
 
 ## Secrets
 

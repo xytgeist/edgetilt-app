@@ -20,7 +20,7 @@ Canonical spec for Stable staking: deal types, slices, makeup, settle, top-up, a
 - **One pricing mode per slice:** `profit_split` **or** `markup`, never both.
 - **Profit split:** `player_profit_pct` = player share of winnings on that slice (backer gets complement).
 - **Markup:** backer pays `action_pct × buy-in × markup_rate`; typically 100% of profit on sold action to backer.
-- **Guests:** player-entered terms authoritative; notify-only (no guest ledger UI).
+- **Guests:** player-entered terms authoritative; optional phone/email for notify (SMS/email delivery **v2c**); no guest ledger UI.
 - **Edge stakers:** full slice UI + asymmetric ledger confirm/dispute.
 
 ### Cash backing extras
@@ -145,6 +145,7 @@ New / extended:
 
 ## Update log
 
+- **2026-08-01:** Guest backer slices: phone + email fields on stake form (stored on slice; outbound notify **v2c**).
 - **2026-08-01:** Pending stake sessions: player may **Start Session** / log past on pending deals; sessions attach to `deal_id` immediately; stake bankroll profile bootstraps on accept with starting roll + logged P/L; backers see sessions in Stable after accept (`20260801110000`).
 - **2026-08-01:** Stable filters: player **+ Stake** deals no longer appear on Stable for the stakee; invite cards use amber chrome (not cyan).
 - **2026-08-01:** Post-create stake UX: pending player deals appear on Bankroll carousel; success banner after **Create stake**; push/in-app backer alerts still **v2c**.

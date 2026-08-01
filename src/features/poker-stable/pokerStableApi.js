@@ -44,7 +44,7 @@ const DEAL_SELECT =
   'id, staker_user_id, stakee_user_id, status, deal_type, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at'
 
 const SLICE_SELECT =
-  'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at'
+  'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_phone, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at'
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
@@ -337,7 +337,8 @@ export async function createBackingDeal(supabase, args) {
     counterparty_kind: sl.counterpartyKind || 'user',
     staker_user_id: sl.stakerUserId || null,
     guest_label: sl.guestLabel?.trim() || null,
-    guest_email: sl.guestEmail?.trim() || null,
+    guest_phone: sl.guestPhone?.trim() || null,
+    guest_email: sl.guestEmail?.trim()?.toLowerCase() || null,
     action_pct: sl.actionPct,
     pricing_mode: sl.pricingMode,
     player_profit_pct: sl.pricingMode === 'profit_split' ? sl.playerProfitPct : null,
@@ -538,7 +539,8 @@ export async function requestBackingDeal(supabase, args) {
     counterparty_kind: sl.counterpartyKind || 'user',
     staker_user_id: sl.stakerUserId || null,
     guest_label: sl.guestLabel?.trim() || null,
-    guest_email: sl.guestEmail?.trim() || null,
+    guest_phone: sl.guestPhone?.trim() || null,
+    guest_email: sl.guestEmail?.trim()?.toLowerCase() || null,
     action_pct: sl.actionPct,
     pricing_mode: sl.pricingMode,
     player_profit_pct: sl.pricingMode === 'profit_split' ? sl.playerProfitPct : null,

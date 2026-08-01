@@ -25,6 +25,8 @@ const EMPTY_SLICE = {
   handle: '',
   selectedProfile: null,
   guestLabel: '',
+  guestPhone: '',
+  guestEmail: '',
   isGuest: false,
   actionPct: '',
   pricingMode: 'profit_split',
@@ -61,6 +63,8 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
     return {
       counterpartyKind: 'guest',
       guestLabel: sl.guestLabel.trim(),
+      guestPhone: String(sl.guestPhone || '').trim() || undefined,
+      guestEmail: String(sl.guestEmail || '').trim().toLowerCase() || undefined,
       actionPct,
       pricingMode: sl.pricingMode,
       playerProfitPct: sl.pricingMode === 'profit_split' ? Number(sl.playerProfitPct) : undefined,
@@ -131,14 +135,39 @@ function SliceEditor({
             Guest backer
           </label>
           {sl.isGuest ? (
-            <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
-              <input
-                value={sl.guestLabel}
-                onChange={(e) => onChange({ guestLabel: e.target.value })}
-                placeholder="Name"
-                className={INFIELD_CONTROL}
-              />
-            </InField>
+            <>
+              <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+                <input
+                  value={sl.guestLabel}
+                  onChange={(e) => onChange({ guestLabel: e.target.value })}
+                  placeholder="Name"
+                  className={INFIELD_CONTROL}
+                />
+              </InField>
+              <InField label="Phone (optional SMS)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+                <input
+                  value={sl.guestPhone}
+                  onChange={(e) => onChange({ guestPhone: e.target.value })}
+                  placeholder="Phone (optional SMS)"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  className={INFIELD_CONTROL}
+                />
+              </InField>
+              <InField label="Email (optional)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+                <input
+                  value={sl.guestEmail}
+                  onChange={(e) => onChange({ guestEmail: e.target.value })}
+                  placeholder="Email (optional)"
+                  inputMode="email"
+                  autoComplete="email"
+                  className={INFIELD_CONTROL}
+                />
+              </InField>
+              <p className="mb-2 text-[11px] leading-snug text-zinc-500">
+                Phone/email optional ... only used to notify them about this stake.
+              </p>
+            </>
           ) : (
             <div className="mb-2">
               <InField label="Edge handle" focusRingClass={STABLE_INFIELD_FOCUS}>

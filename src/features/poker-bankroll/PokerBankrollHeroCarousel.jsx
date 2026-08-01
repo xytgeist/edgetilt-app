@@ -120,7 +120,7 @@ export function stakeHeroThemeIndexForDeal(dealId, stakeeDeals = []) {
   return idx >= 0 ? idx : 0
 }
 
-/** Stake hero accent variants (rotate per deal index). indigo / violet / rose — no orange, amber, or cyan. */
+/** Stake hero accent variants (rotate per deal index). indigo / blue / rose. */
 export function stakeHeroTheme(stakeIndex) {
   const themes = [
     {
@@ -137,17 +137,17 @@ export function stakeHeroTheme(stakeIndex) {
       sparkDown: 'text-indigo-500',
     },
     {
-      tone: 'violet',
-      card: `${POKER_BANKROLL_HERO_SHELL} border-violet-400/60 bg-gradient-to-br from-violet-950 via-violet-900/70 to-zinc-950 shadow-[0_0_36px_-12px_rgba(139,92,246,0.45)]`,
-      label: 'text-violet-200/70',
-      title: 'text-violet-100',
-      badge: 'bg-violet-400 text-violet-950',
-      badgeText: 'text-violet-200/90',
-      amount: 'text-violet-50',
-      termsBtn: 'bg-violet-600 text-white active:bg-violet-500',
-      borderStat: 'border-violet-400/25',
-      sparkUp: 'text-violet-400',
-      sparkDown: 'text-violet-500',
+      tone: 'blue',
+      card: `${POKER_BANKROLL_HERO_SHELL} border-blue-400/60 bg-gradient-to-br from-blue-950 via-blue-900/70 to-zinc-950 shadow-[0_0_36px_-12px_rgba(37,99,235,0.45)]`,
+      label: 'text-blue-200/70',
+      title: 'text-blue-100',
+      badge: 'bg-blue-400 text-blue-950',
+      badgeText: 'text-blue-200/90',
+      amount: 'text-blue-50',
+      termsBtn: 'bg-blue-600 text-white active:bg-blue-500',
+      borderStat: 'border-blue-400/25',
+      sparkUp: 'text-blue-400',
+      sparkDown: 'text-blue-500',
     },
     {
       tone: 'rose',

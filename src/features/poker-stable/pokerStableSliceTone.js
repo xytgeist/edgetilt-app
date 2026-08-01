@@ -1,9 +1,9 @@
-/** Distinct subtle tints for backer slice cards — 0=indigo, 1=violet, 2=rose, 3=green, 4=blue, 5=zinc. */
+/** Distinct subtle tints for backer slice cards — 0=indigo, 1=blue, 2=rose, 3=green, 4=blue, 5=zinc. */
 export const POKER_STABLE_SLICE_TONE_COUNT = 6
 
 const SLICE_TONE_OUTER_CLASS = [
   'border-indigo-500/40 bg-indigo-950/30 shadow-[inset_0_1px_0_0_rgba(129,140,248,0.12)]',
-  'border-violet-500/40 bg-violet-950/30 shadow-[inset_0_1px_0_0_rgba(167,139,250,0.12)]',
+  'border-blue-500/40 bg-blue-950/30 shadow-[inset_0_1px_0_0_rgba(96,165,250,0.12)]',
   'border-rose-500/40 bg-rose-950/30 shadow-[inset_0_1px_0_0_rgba(251,113,133,0.12)]',
   'border-emerald-500/40 bg-emerald-950/30 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.12)]',
   'border-blue-500/40 bg-blue-950/30 shadow-[inset_0_1px_0_0_rgba(96,165,250,0.12)]',
@@ -12,7 +12,7 @@ const SLICE_TONE_OUTER_CLASS = [
 
 const SLICE_TONE_TITLE_CLASS = [
   'text-indigo-300',
-  'text-violet-300',
+  'text-blue-300',
   'text-rose-300',
   'text-emerald-300',
   'text-blue-300',

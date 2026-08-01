@@ -15,6 +15,7 @@ import {
   sliceDisplayName,
 } from './pokerStableApi.js'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
+import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
 import {
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
@@ -26,7 +27,7 @@ import {
   computeSliceLedgerOwed,
   dealTypeLabel,
 } from './pokerStableMath.js'
-import { stakeeCanSettleStake, dealCanPeriodicSettle, dealHasRakebackEnabled, dealHasMakeup } from './pokerStableTerms.js'
+import { stakeeCanSettleStake, dealCanPeriodicSettle, dealHasMakeup } from './pokerStableTerms.js'
 
 /**
  * Deal detail: baseline, makeup, top-up, settle, ledger.
@@ -46,17 +47,16 @@ export default function PokerStableDealDetailSheet({
   onOpenPokerBankroll,
 }) {
   const [topupAmount, setTopupAmount] = useState('')
-  const [rakebackTotal, setRakebackTotal] = useState('')
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [claims, setClaims] = useState([])
   const [claimAmounts, setClaimAmounts] = useState({})
   const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
+  const [closeStakeOpen, setCloseStakeOpen] = useState(false)
 
   const isStakee = deal?.stakee_user_id === userId
   const canSettleStake = stakeeCanSettleStake(deal, slices, { userId })
   const showPeriodicSettle = canSettleStake && dealCanPeriodicSettle(deal, roll)
-  const showRakebackField = canSettleStake && dealHasRakebackEnabled(slices, deal)
   const showMakeup = dealHasMakeup(deal)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
@@ -136,24 +136,18 @@ export default function PokerStableDealDetailSheet({
     }
   }
 
-  async function onCloseDeal() {
+  async function confirmCloseStake(rakebackAmount) {
     if (!isStakee || !deal) return
-    if (
-      !window.confirm(
-        'Close this stake? Final settle runs, sessions merge into your personal history, and backers see settled IOUs.',
-      )
-    ) {
-      return
-    }
     onSavingChange(true)
     onError('')
     try {
       const { error } = await closeBackingDeal(supabaseClient, {
         dealId: deal.id,
-        rakebackTotal: parseMoneyInputNumber(rakebackTotal) || 0,
+        rakebackTotal: rakebackAmount,
       })
       if (error) throw error
       triggerTapHapticLight()
+      setCloseStakeOpen(false)
       await onRefresh()
       await loadLedger()
     } catch (e) {
@@ -426,15 +420,6 @@ export default function PokerStableDealDetailSheet({
                 ? ' Periodic settle keeps the stake open; close ends it and merges sessions into personal history.'
                 : ' Close ends the package and merges sessions into personal history.'}
             </p>
-            {showRakebackField ? (
-              <MoneyInputField
-                value={rakebackTotal}
-                onChange={setRakebackTotal}
-                placeholder="Rakeback total"
-                focusRingClass="focus:ring-2 focus:ring-amber-500/40"
-                className="mb-3"
-              />
-            ) : null}
             {showPeriodicSettle ? (
               <button
                 type="button"
@@ -448,7 +433,7 @@ export default function PokerStableDealDetailSheet({
             <button
               type="button"
               disabled={saving}
-              onClick={() => void onCloseDeal()}
+              onClick={() => setCloseStakeOpen(true)}
               className={`mb-2 w-full rounded-3xl py-3 text-base font-bold disabled:opacity-50 ${
                 showPeriodicSettle
                   ? 'bg-zinc-800 text-zinc-100'
@@ -474,6 +459,18 @@ export default function PokerStableDealDetailSheet({
           onClose={() => setPeriodicSettleOpen(false)}
           onError={onError}
           onConfirm={(rakebackAmount) => void confirmPeriodicSettle(rakebackAmount)}
+        />
+      ) : null}
+
+      {closeStakeOpen ? (
+        <PokerStableCloseStakeSheet
+          deal={deal}
+          slices={slices}
+          dealRoll={roll}
+          saving={saving}
+          onClose={() => setCloseStakeOpen(false)}
+          onError={onError}
+          onConfirm={(rakebackAmount) => void confirmCloseStake(rakebackAmount)}
         />
       ) : null}
     </div>

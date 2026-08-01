@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import MoneyInputField from '../../components/MoneyInputField.jsx'
-import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
+import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { computeProfitAboveBaseline } from './pokerStableMath.js'
 import {
   canReassignGuestSlice,
   dealCanPeriodicSettle,
-  dealHasRakebackEnabled,
   dealTermsMeta,
   sliceTermsSummary,
   stakeDealCanBeCancelled,
@@ -185,8 +183,8 @@ export default function PokerStableDealTermsSheet({
   onError,
 }) {
   const [reassignSliceId, setReassignSliceId] = useState(null)
-  const [rakebackTotal, setRakebackTotal] = useState('')
   const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
+  const [closeStakeOpen, setCloseStakeOpen] = useState(false)
 
   if (!deal) return null
 
@@ -225,7 +223,6 @@ export default function PokerStableDealTermsSheet({
     stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
   const showPeriodicSettle = canSettle && dealCanPeriodicSettle(deal, dealRoll)
-  const showRakebackField = canSettle && dealHasRakebackEnabled(slices, deal)
   const rollValue =
     dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0
   const profitUp = computeProfitAboveBaseline({
@@ -413,15 +410,6 @@ export default function PokerStableDealTermsSheet({
                   ? ' · periodic keeps the stake open; close merges sessions into personal history.'
                   : ' · close settles the package and merges sessions into personal history.'}
               </p>
-              {showRakebackField && typeof onCloseStake === 'function' ? (
-                <MoneyInputField
-                  value={rakebackTotal}
-                  onChange={setRakebackTotal}
-                  placeholder="Rakeback total"
-                  focusRingClass="focus:ring-2 focus:ring-amber-500/40"
-                  className="mt-2"
-                />
-              ) : null}
               {showPeriodicSettle && typeof onPeriodicSettle === 'function' ? (
                 <button
                   type="button"
@@ -436,7 +424,7 @@ export default function PokerStableDealTermsSheet({
                 <button
                   type="button"
                   disabled={saving}
-                  onClick={() => void onCloseStake(parseMoneyInputNumber(rakebackTotal) || 0)}
+                  onClick={() => setCloseStakeOpen(true)}
                   className={`w-full rounded-xl py-3 text-sm font-semibold touch-manipulation disabled:opacity-50 ${
                     showPeriodicSettle
                       ? 'bg-zinc-800 text-zinc-100'
@@ -472,6 +460,21 @@ export default function PokerStableDealTermsSheet({
           onConfirm={(rakebackAmount) => {
             onError?.('')
             void onPeriodicSettle?.(rakebackAmount)
+          }}
+        />
+      ) : null}
+
+      {closeStakeOpen ? (
+        <PokerStableCloseStakeSheet
+          deal={deal}
+          slices={slices}
+          dealRoll={dealRoll}
+          saving={saving}
+          onClose={() => setCloseStakeOpen(false)}
+          onError={onError}
+          onConfirm={(rakebackAmount) => {
+            onError?.('')
+            void onCloseStake?.(rakebackAmount)
           }}
         />
       ) : null}

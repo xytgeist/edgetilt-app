@@ -5138,6 +5138,66 @@ html.light [data-poker-stable-periodic-settle-sheet] input::placeholder {
   color: #a1a1aa !important;
 }
 
+/* Close stake review sheet — light mode only (dark unchanged) */
+html.light [data-poker-stable-close-stake-sheet] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-zinc-500 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-summary] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-summary] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-emerald-400 {
+  color: #059669 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-amber-300\/90 {
+  color: #b45309 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .bg-emerald-950\/30 {
+  background-color: #ecfdf5 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .border-emerald-500\/25 {
+  border-color: #6ee7b7 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-emerald-300\/80 {
+  color: #047857 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-stable-close-stake-sheet] .text-rose-300 {
+  color: #be123c !important;
+}
+html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-confirm-btn] {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-confirm-btn]:active {
+  background-color: #27272a !important;
+}
+html.light [data-poker-stable-close-stake-sheet] input {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+html.light [data-poker-stable-close-stake-sheet] input::placeholder {
+  color: #a1a1aa !important;
+}
+
 /* Portaled handle typeahead (New deal + Request horse) */
 html.light [data-edge-handle-typeahead-list] {
   background-color: #ffffff !important;

@@ -1096,13 +1096,6 @@ export default function PokerBankrollTracker({
   }
 
   async function runCloseStake(dealId, rakebackTotal) {
-    if (
-      !window.confirm(
-        'Close this stake? Final settle runs and sessions merge into your personal history.',
-      )
-    ) {
-      return
-    }
     setStableSaving(true)
     setError('')
     try {

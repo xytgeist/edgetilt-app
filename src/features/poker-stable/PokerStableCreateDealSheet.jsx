@@ -1,11 +1,12 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useEffect, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
-import { createBackingDeal, lookupProfileByHandle, requestBackingDeal } from './pokerStableApi.js'
+import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyPendingDealTerms, proposePendingDealTerms } from './pokerStableApi.js'
+import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
   scrollPokerStableSliceIntoView,
@@ -284,9 +285,18 @@ function PokerStableDealFormSheet({
   onSavingChange,
   onClose,
   onCreated,
+  onUpdated,
   onError,
+  editDeal = null,
+  editSlices = null,
+  editProfilesById = {},
+  termsIntent = 'create',
 }) {
   const isBacker = mode === 'backer'
+  const isEdit = Boolean(editDeal?.id)
+  const isBackerPropose = termsIntent === 'backer_propose'
+  const showHorsePicker = isBacker && !isEdit && !isBackerPropose
+  const showPlayerTermsForm = !isBacker || isBackerPropose
   const [label, setLabel] = useState('')
   const [baseline, setBaseline] = useState('')
   const [isMigration, setIsMigration] = useState(false)
@@ -303,6 +313,29 @@ function PokerStableDealFormSheet({
   const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
   usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef)
+
+  useEffect(() => {
+    if (!editDeal) return
+    setLabel(editDeal.label || '')
+    setBaseline(
+      editDeal.baseline_bankroll != null ? String(editDeal.baseline_bankroll) : '',
+    )
+    setIsMigration(Boolean(editDeal.is_migration))
+    setStartingRoll(editDeal.starting_roll != null ? String(editDeal.starting_roll) : '')
+    setStakeWidePl(
+      editDeal.stake_wide_starting_pl != null ? String(editDeal.stake_wide_starting_pl) : '',
+    )
+    setLifetimePl(
+      editDeal.lifetime_pl_display != null ? String(editDeal.lifetime_pl_display) : '',
+    )
+    const rows = editSlices || []
+    setSlices(
+      rows.length
+        ? rows.map((sl) => sliceRowToFormSlice(sl, editProfilesById))
+        : [{ ...EMPTY_SLICE }],
+    )
+    setFormError('')
+  }, [editDeal, editSlices, editProfilesById])
 
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
@@ -347,7 +380,54 @@ function PokerStableDealFormSheet({
     setFormError('')
     try {
       let createdDeal = null
-      if (isBacker) {
+      if (isEdit && showPlayerTermsForm) {
+        const baselineAmount = parseMoneyInputNumber(baseline)
+        if (!baseline.trim() || !Number.isFinite(baselineAmount) || baselineAmount <= 0) {
+          throw new Error('Enter a baseline stake.')
+        }
+        const parsedSlices = []
+        for (const sl of slices) {
+          parsedSlices.push(await resolveUserSlice(supabaseClient, sl, userId))
+        }
+        const dealFields = {
+          label,
+          baselineBankroll: baselineAmount,
+          startingRoll:
+            isMigration && startingRoll.trim()
+              ? parseMoneyInputNumber(startingRoll)
+              : baselineAmount,
+          isMigration,
+          stakeWideStartingPl: stakeWidePl.trim() ? parseMoneyInputNumber(stakeWidePl) : null,
+          lifetimePlDisplay: lifetimePl.trim() ? parseMoneyInputNumber(lifetimePl) : null,
+        }
+        if (isBackerPropose) {
+          const payload = buildTermsPayload({
+            label,
+            baseline: baselineAmount,
+            isMigration,
+            startingRoll: dealFields.startingRoll,
+            stakeWidePl: dealFields.stakeWideStartingPl,
+            lifetimePl: dealFields.lifetimePlDisplay,
+            slices: parsedSlices,
+          })
+          const { error } = await proposePendingDealTerms(
+            supabaseClient,
+            editDeal.id,
+            userId,
+            payload,
+          )
+          if (error) throw error
+        } else {
+          const { deal, error } = await applyPendingDealTerms(supabaseClient, {
+            dealId: editDeal.id,
+            stakeeUserId: userId,
+            dealFields,
+            slices: parsedSlices,
+          })
+          if (error) throw error
+          createdDeal = deal
+        }
+      } else if (isBacker) {
         const { profile, error: lookErr } = selectedPlayerProfile
           ? { profile: selectedPlayerProfile, error: null }
           : await lookupProfileByHandle(supabaseClient, playerHandle)
@@ -403,7 +483,8 @@ function PokerStableDealFormSheet({
         createdDeal = deal
       }
       triggerTapHapticLight()
-      onCreated?.(createdDeal)
+      if (isEdit) onUpdated?.(createdDeal)
+      else onCreated?.(createdDeal)
       onClose()
     } catch (e) {
       const message = e?.message || 'Could not save deal.'
@@ -413,8 +494,20 @@ function PokerStableDealFormSheet({
     }
   }
 
-  const title = isBacker ? 'Request horse' : 'New stake deal'
-  const submitLabel = isBacker ? 'Send request' : 'Create stake'
+  const title = isBackerPropose
+    ? 'Propose stake terms'
+    : isEdit
+      ? 'Edit stake terms'
+      : isBacker
+        ? 'Request horse'
+        : 'New stake deal'
+  const submitLabel = isBackerPropose
+    ? 'Send proposal'
+    : isEdit
+      ? 'Save terms'
+      : isBacker
+        ? 'Send request'
+        : 'Create stake'
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -437,7 +530,7 @@ function PokerStableDealFormSheet({
           </button>
         </div>
 
-        {isBacker ? (
+        {showHorsePicker ? (
           <InField label="Player handle" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
             <EdgeHandleTypeahead
               supabaseClient={supabaseClient}
@@ -465,7 +558,7 @@ function PokerStableDealFormSheet({
           />
         </InField>
 
-        {!isBacker ? (
+        {showPlayerTermsForm ? (
           <>
             <MoneyInputField
               label="Baseline stake"
@@ -532,10 +625,25 @@ function PokerStableDealFormSheet({
         )}
 
         <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-          {isBacker ? 'Your backing slice' : 'Backer slices'}
+          {showPlayerTermsForm ? 'Backer slices' : 'Your backing slice'}
         </h4>
         <div className="mb-4 space-y-3">
-          {isBacker ? (
+          {showPlayerTermsForm ? (
+            slices.map((sl, idx) => (
+              <SliceEditor
+                key={idx}
+                sl={sl}
+                idx={idx}
+                sliceIndex={idx}
+                userId={userId}
+                supabaseClient={supabaseClient}
+                title={pokerStableBackerSliceLabel(slices.length, idx)}
+                canRemove={slices.length > 1}
+                onChange={(patch) => updateSlice(idx, patch)}
+                onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}
+              />
+            ))
+          ) : (
             <>
               <SliceEditor
                 sl={mySlice}
@@ -563,21 +671,6 @@ function PokerStableDealFormSheet({
                 />
               ))}
             </>
-          ) : (
-            slices.map((sl, idx) => (
-              <SliceEditor
-                key={idx}
-                sl={sl}
-                idx={idx}
-                sliceIndex={idx}
-                userId={userId}
-                supabaseClient={supabaseClient}
-                title={pokerStableBackerSliceLabel(slices.length, idx)}
-                canRemove={slices.length > 1}
-                onChange={(patch) => updateSlice(idx, patch)}
-                onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}
-              />
-            ))
           )}
         </div>
 
@@ -591,13 +684,23 @@ function PokerStableDealFormSheet({
             {formError}
           </p>
         ) : null}
+        {showPlayerTermsForm ? (
         <button
           type="button"
           onClick={addBackerSlice}
           className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
         >
-          {isBacker ? '+ Add syndicate backer' : '+ Add backer slice'}
+          + Add backer slice
         </button>
+        ) : (
+        <button
+          type="button"
+          onClick={addBackerSlice}
+          className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+        >
+          + Add syndicate backer
+        </button>
+        )}
 
         <button
           type="button"

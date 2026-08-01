@@ -4,12 +4,14 @@ import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitl
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { PokerStableBackerDealSheet } from './PokerStableCreateDealSheet.jsx'
+import { PokerStableBackerDealSheet, PokerStablePlayerDealSheet } from './PokerStableCreateDealSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
+import PokerStableDealTermsSheet from './PokerStableDealTermsSheet.jsx'
 import {
   acceptHorseDeal,
   acceptSliceAsStaker,
   declineHorseDeal,
+  declineProposedDealTerms,
   declineSliceAsStaker,
   isMissingStableTableError,
   isViewerBackingDeal,
@@ -64,6 +66,8 @@ export default function PokerStableScreen({
   const [slicesByDeal, setSlicesByDeal] = useState(/** @type {Record<string, object[]>} */ ({}))
   const [sheet, setSheet] = useState(/** @type {null | 'request'} */ (null))
   const [detailDealId, setDetailDealId] = useState(/** @type {string | null} */ (null))
+  const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
+  const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -336,10 +340,34 @@ export default function PokerStableScreen({
                     {partyLabel(deal, 'stakee')} invited you · {slice.action_pct}% ·{' '}
                     {deal.label || dealTypeLabel(deal.deal_type)}
                   </div>
+                  {deal.stakee_terms_ack_required ? (
+                    <p className="mt-2 text-xs text-amber-200/90">
+                      Waiting for the player to accept revised terms before you can accept your slice.
+                    </p>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTermsDealId(deal.id)}
+                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+                    >
+                      Terms
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTermsDealId(null)
+                        setEditTermsDealId(deal.id)
+                      }}
+                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+                    >
+                      Edit terms
+                    </button>
+                  </div>
                   <div className="mt-3 flex gap-2">
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={saving || deal.stakee_terms_ack_required}
                       onClick={() => void onAcceptSlice(slice.id)}
                       className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
                     >
@@ -388,6 +416,15 @@ export default function PokerStableScreen({
                     >
                       {statusLabel(deal.status)}
                     </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTermsDealId(deal.id)}
+                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+                    >
+                      Terms
+                    </button>
                   </div>
                   <div className="mt-3 flex gap-2">
                     <button
@@ -529,6 +566,53 @@ export default function PokerStableScreen({
           onSavingChange={setSaving}
           onClose={() => setSheet(null)}
           onCreated={() => void load()}
+        />
+      ) : null}
+
+      {termsDealId && supabaseClient && userId ? (
+        <PokerStableDealTermsSheet
+          deal={deals.find((d) => d.id === termsDealId) ?? null}
+          slices={slicesByDeal[termsDealId] || []}
+          proposedPayload={deals.find((d) => d.id === termsDealId)?.pending_terms_json ?? null}
+          profilesById={profilesById}
+          userId={userId}
+          saving={saving}
+          onClose={() => setTermsDealId(null)}
+          onEdit={() => {
+            setTermsDealId(null)
+            setEditTermsDealId(termsDealId)
+          }}
+          onDeclineProposal={async () => {
+            setSaving(true)
+            try {
+              const { error } = await declineProposedDealTerms(supabaseClient, termsDealId)
+              if (error) throw error
+              setTermsDealId(null)
+              await load()
+            } catch (e) {
+              setError(e?.message || 'Could not decline proposal.')
+            } finally {
+              setSaving(false)
+            }
+          }}
+        />
+      ) : null}
+
+      {editTermsDealId && supabaseClient && userId ? (
+        <PokerStablePlayerDealSheet
+          supabaseClient={supabaseClient}
+          userId={userId}
+          saving={saving}
+          onSavingChange={setSaving}
+          editDeal={deals.find((d) => d.id === editTermsDealId) ?? null}
+          editSlices={slicesByDeal[editTermsDealId] || []}
+          editProfilesById={profilesById}
+          termsIntent="backer_propose"
+          onClose={() => setEditTermsDealId(null)}
+          onUpdated={() => {
+            setEditTermsDealId(null)
+            void load()
+          }}
         />
       ) : null}
 

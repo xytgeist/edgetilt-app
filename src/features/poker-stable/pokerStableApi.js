@@ -41,7 +41,7 @@ export function normalizeHandleInput(raw) {
 }
 
 const DEAL_SELECT =
-  'id, staker_user_id, stakee_user_id, status, deal_type, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at'
+  'id, staker_user_id, stakee_user_id, status, deal_type, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, terms_revised_at, terms_revised_by'
 
 const SLICE_SELECT =
   'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_phone, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at'
@@ -363,6 +363,179 @@ export async function createBackingDeal(supabase, args) {
   }
 
   return { deal, error: null }
+}
+
+function sliceRowsFromTerms(dealId, slices) {
+  return slices.map((sl, idx) => ({
+    deal_id: dealId,
+    slice_index: idx,
+    counterparty_kind: sl.counterpartyKind || 'user',
+    staker_user_id: sl.stakerUserId || null,
+    guest_label: sl.guestLabel?.trim() || null,
+    guest_phone: sl.guestPhone?.trim() || null,
+    guest_email: sl.guestEmail?.trim()?.toLowerCase() || null,
+    action_pct: sl.actionPct,
+    pricing_mode: sl.pricingMode,
+    player_profit_pct: sl.pricingMode === 'profit_split' ? sl.playerProfitPct : null,
+    markup_rate: sl.pricingMode === 'markup' ? sl.markupRate : null,
+    rakeback_mode: sl.rakebackMode || 'disabled',
+    rakeback_player_pct: sl.rakebackMode === 'custom' ? sl.rakebackPlayerPct : null,
+    status: sl.counterpartyKind === 'guest' ? 'active' : 'pending',
+    label: sl.label?.trim() || null,
+    responded_at: sl.counterpartyKind === 'guest' ? new Date().toISOString() : null,
+  }))
+}
+
+async function replacePendingDealSlices(supabase, dealId, slices) {
+  const { error: delErr } = await supabase
+    .from('poker_stable_deal_slices')
+    .delete()
+    .eq('deal_id', dealId)
+  if (delErr) return { error: delErr }
+  if (!slices.length) return { error: new Error('Add at least one backer slice.') }
+  const { error: insErr } = await supabase
+    .from('poker_stable_deal_slices')
+    .insert(sliceRowsFromTerms(dealId, slices))
+  return { error: insErr }
+}
+
+/**
+ * Apply deal + slice terms on a pending player-initiated deal (stakee only).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ */
+export async function applyPendingDealTerms(supabase, args) {
+  const { dealId, stakeeUserId, dealFields, slices, clearProposal = true } = args
+  const actionTotal = sumSliceActionPct(slices)
+  if (actionTotal > 100.001) {
+    return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
+  }
+  if (!slices.length) {
+    return { deal: null, error: new Error('Add at least one backer slice.') }
+  }
+
+  const baseline = roundMoney(dealFields.baselineBankroll)
+  const roll = roundMoney(dealFields.startingRoll ?? baseline)
+
+  const patch = {
+    label: dealFields.label?.trim() || null,
+    baseline_bankroll: baseline,
+    starting_roll: roll,
+    is_migration: Boolean(dealFields.isMigration),
+    stake_wide_starting_pl: dealFields.stakeWideStartingPl ?? null,
+    lifetime_pl_display: dealFields.lifetimePlDisplay ?? null,
+  }
+  if (clearProposal) {
+    patch.pending_terms_json = null
+    patch.stakee_terms_ack_required = false
+    patch.terms_revised_at = null
+    patch.terms_revised_by = null
+  }
+
+  const { data: deal, error: uErr } = await supabase
+    .from('poker_stable_deals')
+    .update(patch)
+    .eq('id', dealId)
+    .eq('stakee_user_id', stakeeUserId)
+    .eq('status', 'pending')
+    .select(DEAL_SELECT)
+    .single()
+  if (uErr) return { deal: null, error: uErr }
+
+  const { error: slErr } = await replacePendingDealSlices(supabase, dealId, slices)
+  if (slErr) return { deal, error: slErr }
+
+  return { deal, error: null }
+}
+
+/** Backer proposes revised terms; stakee must accept before they apply. */
+export async function proposePendingDealTerms(supabase, dealId, backerUserId, termsPayload) {
+  const { error } = await supabase.rpc('poker_stable_propose_terms', {
+    p_deal_id: dealId,
+    p_terms: termsPayload,
+  })
+  if (error) return { error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal, error: loadErr }
+}
+
+/** Stakee accepts backer-proposed terms (applies pending_terms_json). */
+export async function acceptProposedDealTerms(supabase, dealId, stakeeUserId) {
+  const { data: row, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .eq('stakee_user_id', stakeeUserId)
+    .eq('status', 'pending')
+    .maybeSingle()
+  if (loadErr) return { deal: null, error: loadErr }
+  if (!row?.stakee_terms_ack_required || !row.pending_terms_json) {
+    return { deal: null, error: new Error('No proposed terms to accept.') }
+  }
+
+  const payload = row.pending_terms_json
+  const dealPart = payload.deal || {}
+  const slices = Array.isArray(payload.slices) ? payload.slices : []
+
+  return applyPendingDealTerms(supabase, {
+    dealId,
+    stakeeUserId,
+    dealFields: {
+      label: dealPart.label,
+      baselineBankroll: dealPart.baseline_bankroll,
+      startingRoll: dealPart.starting_roll,
+      isMigration: dealPart.is_migration,
+      stakeWideStartingPl: dealPart.stake_wide_starting_pl,
+      lifetimePlDisplay: dealPart.lifetime_pl_display,
+    },
+    slices: slices.map((sl) => ({
+      counterpartyKind: sl.counterpartyKind || sl.counterparty_kind,
+      stakerUserId: sl.stakerUserId || sl.staker_user_id,
+      guestLabel: sl.guestLabel || sl.guest_label,
+      guestPhone: sl.guestPhone || sl.guest_phone,
+      guestEmail: sl.guestEmail || sl.guest_email,
+      actionPct: Number(sl.actionPct ?? sl.action_pct),
+      pricingMode: sl.pricingMode || sl.pricing_mode,
+      playerProfitPct:
+        sl.playerProfitPct != null
+          ? Number(sl.playerProfitPct)
+          : sl.player_profit_pct != null
+            ? Number(sl.player_profit_pct)
+            : null,
+      markupRate:
+        sl.markupRate != null
+          ? Number(sl.markupRate)
+          : sl.markup_rate != null
+            ? Number(sl.markup_rate)
+            : null,
+      rakebackMode: sl.rakebackMode || sl.rakeback_mode || 'disabled',
+      rakebackPlayerPct:
+        sl.rakebackPlayerPct != null
+          ? Number(sl.rakebackPlayerPct)
+          : sl.rakeback_player_pct != null
+            ? Number(sl.rakeback_player_pct)
+            : null,
+      label: sl.label,
+    })),
+    clearProposal: true,
+  })
+}
+
+/** Stakee or proposing backer clears a pending terms revision without applying. */
+export async function declineProposedDealTerms(supabase, dealId) {
+  const { error } = await supabase.rpc('poker_stable_clear_proposed_terms', {
+    p_deal_id: dealId,
+  })
+  if (error) return { error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal, error: loadErr }
 }
 
 /**

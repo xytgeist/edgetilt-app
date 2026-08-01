@@ -30,11 +30,16 @@ import {
   currencyFromOnlineSiteId,
 } from './pokerCurrencies.js'
 import {
+  acceptProposedDealTerms,
+  declineProposedDealTerms,
   isMissingStableTableError,
   loadDealBankrollProfiles,
+  loadDealCounterpartyProfiles,
+  loadDealSlices,
   loadMyStableDeals,
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
+import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -210,6 +215,12 @@ export default function PokerBankrollTracker({
   const [sessions, setSessions] = useState([])
   /** Active deals where I am the horse (stakee). */
   const [stakeeDeals, setStakeeDeals] = useState([])
+  /** @type {Record<string, object[]>} */
+  const [slicesByDeal, setSlicesByDeal] = useState({})
+  /** @type {Record<string, object>} */
+  const [stableProfilesById, setStableProfilesById] = useState({})
+  const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
+  const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
   /** @type {'personal' | string} personal or deal id */
@@ -438,12 +449,38 @@ export default function PokerBankrollTracker({
         }
         setStakeeDeals([])
         setDealProfiles({})
+        setSlicesByDeal({})
+        setStableProfilesById({})
       } else {
         const mine = (dealsRes.deals || []).filter(
           (d) =>
             d.stakee_user_id === userId && (d.status === 'active' || d.status === 'pending'),
         )
         setStakeeDeals(mine)
+        const dealIds = mine.map((d) => d.id)
+        if (dealIds.length) {
+          const { byDeal: sliceMap, error: sliceErr } = await loadDealSlices(
+            supabaseClient,
+            dealIds,
+          )
+          if (sliceErr && !isMissingStableTableError(sliceErr)) {
+            console.warn('[poker-bankroll] deal slices load failed', sliceErr.message)
+          }
+          setSlicesByDeal(sliceMap || {})
+          const { byId, error: profErr } = await loadDealCounterpartyProfiles(
+            supabaseClient,
+            mine,
+            userId,
+            sliceMap || {},
+          )
+          if (profErr && !isMissingStableTableError(profErr)) {
+            console.warn('[poker-bankroll] stable profiles load failed', profErr.message)
+          }
+          setStableProfilesById(byId)
+        } else {
+          setSlicesByDeal({})
+          setStableProfilesById({})
+        }
         const { byDeal, error: rollErr } = await loadDealBankrollProfiles(
           supabaseClient,
           mine.filter((d) => d.status === 'active').map((d) => d.id),
@@ -1980,6 +2017,22 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
+        {activeDeal?.stakee_terms_ack_required && activeTab === 'overview' && isOnStake ? (
+          <div
+            data-poker-stake-notice
+            className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-center text-sm text-amber-100"
+          >
+            A backer proposed new stake terms.{' '}
+            <button
+              type="button"
+              onClick={() => setTermsDealId(bankrollScope)}
+              className="font-semibold text-amber-200 underline touch-manipulation"
+            >
+              Review terms
+            </button>
+          </div>
+        ) : null}
+
         {activeTab === 'details' ? (
           loading ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
@@ -2052,6 +2105,23 @@ export default function PokerBankrollTracker({
                             data-poker-hero-stake-btn
                           >
                             + Stake
+                          </button>
+                        ) : null}
+                        {onStake ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setError('')
+                              setTermsDealId(scopeId)
+                              triggerTapHapticLight()
+                            }}
+                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+                              onStake
+                                ? theme.editBtn
+                                : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
+                            }`}
+                          >
+                            Terms
                           </button>
                         ) : null}
                         {!onStake || hero.deal?.status !== 'pending' ? (
@@ -2627,6 +2697,76 @@ export default function PokerBankrollTracker({
         ) : null}
         </div>
       </ScrollLinkedEdgeTitleBarShell>
+
+      {termsDealId && supabaseClient && userId ? (
+        <PokerStableDealTermsSheet
+          deal={stakeeDeals.find((d) => d.id === termsDealId) ?? null}
+          slices={slicesByDeal[termsDealId] || []}
+          proposedPayload={
+            stakeeDeals.find((d) => d.id === termsDealId)?.pending_terms_json ?? null
+          }
+          profilesById={stableProfilesById}
+          userId={userId}
+          saving={stableSaving}
+          onClose={() => setTermsDealId(null)}
+          onEdit={() => {
+            setTermsDealId(null)
+            setEditTermsDealId(termsDealId)
+          }}
+          onAcceptProposal={async () => {
+            setStableSaving(true)
+            setError('')
+            try {
+              const { error } = await acceptProposedDealTerms(
+                supabaseClient,
+                termsDealId,
+                userId,
+              )
+              if (error) throw error
+              showStakeNotice('Proposed terms accepted.')
+              setTermsDealId(null)
+              await loadData()
+            } catch (e) {
+              setError(e?.message || 'Could not accept proposed terms.')
+            } finally {
+              setStableSaving(false)
+            }
+          }}
+          onDeclineProposal={async () => {
+            setStableSaving(true)
+            setError('')
+            try {
+              const { error } = await declineProposedDealTerms(supabaseClient, termsDealId)
+              if (error) throw error
+              showStakeNotice('Proposal declined. Your terms are unchanged.')
+              setTermsDealId(null)
+              await loadData()
+            } catch (e) {
+              setError(e?.message || 'Could not decline proposal.')
+            } finally {
+              setStableSaving(false)
+            }
+          }}
+        />
+      ) : null}
+
+      {editTermsDealId && supabaseClient && userId ? (
+        <PokerStablePlayerDealSheet
+          supabaseClient={supabaseClient}
+          userId={userId}
+          saving={stableSaving}
+          onSavingChange={setStableSaving}
+          editDeal={stakeeDeals.find((d) => d.id === editTermsDealId) ?? null}
+          editSlices={slicesByDeal[editTermsDealId] || []}
+          editProfilesById={stableProfilesById}
+          termsIntent="stakee_update"
+          onClose={() => setEditTermsDealId(null)}
+          onUpdated={() => {
+            showStakeNotice('Stake terms updated.')
+            void loadData()
+          }}
+        />
+      ) : null}
 
       {sheet === 'createStake' && supabaseClient && userId ? (
         <PokerStablePlayerDealSheet

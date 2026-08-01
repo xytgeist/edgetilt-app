@@ -529,7 +529,6 @@ export default function PokerStableScreen({
           onSavingChange={setSaving}
           onClose={() => setSheet(null)}
           onCreated={() => void load()}
-          onError={setError}
         />
       ) : null}
 

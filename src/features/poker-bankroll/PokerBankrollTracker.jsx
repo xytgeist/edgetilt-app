@@ -2648,7 +2648,6 @@ export default function PokerBankrollTracker({
             }
             void loadData()
           }}
-          onError={setError}
         />
       ) : null}
 

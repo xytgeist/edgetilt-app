@@ -269,6 +269,7 @@ function PokerStableDealFormSheet({
   const [mySlice, setMySlice] = useState({ ...EMPTY_SLICE, stakerUserId: userId })
   const [friendSlices, setFriendSlices] = useState([])
   const [slices, setSlices] = useState([{ ...EMPTY_SLICE }])
+  const [formError, setFormError] = useState('')
   const sheetRef = useRef(null)
   const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
@@ -314,7 +315,7 @@ function PokerStableDealFormSheet({
   async function submit() {
     if (!supabaseClient || !userId) return
     onSavingChange(true)
-    onError('')
+    setFormError('')
     try {
       let createdDeal = null
       if (isBacker) {
@@ -376,7 +377,8 @@ function PokerStableDealFormSheet({
       onCreated?.(createdDeal)
       onClose()
     } catch (e) {
-      onError(e?.message || 'Could not save deal.')
+      const message = e?.message || 'Could not save deal.'
+      setFormError(message)
     } finally {
       onSavingChange(false)
     }
@@ -551,6 +553,15 @@ function PokerStableDealFormSheet({
         </div>
 
         <div ref={actionsRef} data-poker-stable-sheet-actions>
+        {formError ? (
+          <p
+            data-poker-stable-form-error
+            className="mb-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-center text-sm text-rose-300"
+            role="alert"
+          >
+            {formError}
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={addBackerSlice}

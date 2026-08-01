@@ -54,7 +54,7 @@ export async function lookupProfileByHandle(supabase, handle, opts = {}) {
 }
 
 /**
- * Prefix search for Edge handle typeahead (Request horse, slice pickers).
+ * Prefix search for Edge profiles by @handle or display name (Stable typeahead).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} query
  * @param {{ excludeUserId?: string, limit?: number }} [opts]
@@ -69,7 +69,8 @@ export async function searchEdgeProfilesByHandle(supabase, query, opts = {}) {
     .not('handle', 'is', null)
     .is('banned_at', null)
     .or('is_bot.is.null,is_bot.eq.false')
-    .ilike('handle', `${q}%`)
+    .or(`handle.ilike.${q}%,display_name.ilike.${q}%`)
+    .order('display_name', { ascending: true, nullsFirst: false })
     .order('handle', { ascending: true })
     .limit(limit)
   if (excludeUserId) req = req.neq('user_id', excludeUserId)

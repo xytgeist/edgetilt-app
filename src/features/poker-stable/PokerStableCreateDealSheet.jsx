@@ -157,7 +157,7 @@ function SliceEditor({
                   }}
                   selectedProfile={sl.selectedProfile}
                   inputClassName={INFIELD_CONTROL}
-                  placeholder="@handle"
+                  placeholder="Name or @handle"
                 />
               </InField>
             </div>
@@ -419,7 +419,7 @@ function PokerStableDealFormSheet({
               onSelectProfile={setSelectedPlayerProfile}
               selectedProfile={selectedPlayerProfile}
               inputClassName={INFIELD_CONTROL}
-              placeholder="@handle"
+              placeholder="Name or @handle"
               autoFocus
             />
           </InField>

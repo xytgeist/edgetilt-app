@@ -23,7 +23,7 @@ export default function EdgeHandleTypeahead({
   onChange,
   onSelectProfile,
   selectedProfile = null,
-  placeholder = '@handle',
+  placeholder = 'Name or @handle',
   disabled = false,
   inputClassName = '',
   autoFocus = false,

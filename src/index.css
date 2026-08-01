@@ -4615,6 +4615,9 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   scroll-margin-top: 4.5rem;
   scroll-margin-bottom: min(16rem, 42vh);
 }
+[data-poker-stable-sheet] [data-poker-stable-sheet-actions] {
+  scroll-margin-bottom: 1.25rem;
+}
 
 /* Poker Stable slice cards — light mode (dark uses Swaps-style Tailwind on component) */
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] {

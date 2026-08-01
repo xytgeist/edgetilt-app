@@ -89,7 +89,15 @@ export function schedulePokerStableFieldScroll(inputEl, listEl) {
   window.setTimeout(() => scrollPokerStableFieldIntoView(inputEl, listEl), 160)
 }
 
-const ACTIONS_FOOTER_GAP_PX = 16
+const ACTIONS_FOOTER_GAP_PX = 20
+
+function getVisibleScrollBottom(sheet) {
+  const vv = window.visualViewport
+  const vvBottom = vv ? vv.offsetTop + vv.height : window.innerHeight
+  const sheetRect = sheet instanceof HTMLElement ? sheet.getBoundingClientRect() : null
+  const clipBottom = sheetRect ? Math.min(sheetRect.bottom, vvBottom) : vvBottom
+  return clipBottom - ACTIONS_FOOTER_GAP_PX
+}
 
 function isSheetFormField(el, sheet) {
   return (
@@ -107,25 +115,41 @@ function fieldWasInSlice(el) {
   )
 }
 
-/** After keyboard dismiss, reveal the sheet footer actions (+ slice / submit). */
+/** After keyboard dismiss, pin footer actions into the visible sheet area. */
 export function scrollPokerStableSheetActionsIntoView(actionsEl) {
   if (typeof window === 'undefined' || !actionsEl) return
 
   const sheet = actionsEl.closest?.(SHEET_SELECTOR)
-  const rect = actionsEl.getBoundingClientRect()
-  const vTop = (window.visualViewport?.offsetTop ?? 0) + SCROLL_GAP_PX
-  const vBottom = getVisualViewportBottom() - ACTIONS_FOOTER_GAP_PX
-
-  if (rect.bottom <= vBottom && rect.top >= vTop) return
-
   if (!sheet) {
     actionsEl.scrollIntoView?.({ block: 'end', behavior: 'auto' })
     return
   }
 
-  if (rect.bottom > vBottom) {
-    sheet.scrollTop += rect.bottom - vBottom
+  const submitEl = actionsEl.querySelector('[data-poker-stable-primary-btn]') || actionsEl
+  const maxScroll = Math.max(0, sheet.scrollHeight - sheet.clientHeight)
+
+  const alignActionsToVisibleBottom = () => {
+    const visibleBottom = getVisibleScrollBottom(sheet)
+    const bottom = submitEl.getBoundingClientRect().bottom
+    const delta = bottom - visibleBottom
+    if (delta > 0.5) {
+      sheet.scrollTop = Math.min(sheet.scrollTop + delta, maxScroll)
+    }
   }
+
+  alignActionsToVisibleBottom()
+
+  if (submitEl.getBoundingClientRect().bottom > getVisibleScrollBottom(sheet) + 0.5) {
+    sheet.scrollTop = maxScroll
+    alignActionsToVisibleBottom()
+  }
+}
+
+function schedulePokerStableActionsScroll(actionsEl) {
+  scrollPokerStableSheetActionsIntoView(actionsEl)
+  requestAnimationFrame(() => scrollPokerStableSheetActionsIntoView(actionsEl))
+  window.setTimeout(() => scrollPokerStableSheetActionsIntoView(actionsEl), 120)
+  window.setTimeout(() => scrollPokerStableSheetActionsIntoView(actionsEl), 320)
 }
 
 /** When the keyboard closes after editing a slice field, scroll to footer actions. */
@@ -134,37 +158,57 @@ export function usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef) {
     if (typeof window === 'undefined') return undefined
 
     let keyboardOpen = readKeyboardOverlapPx() > 8
-    let blurFromSlice = false
+    let pendingSliceDismiss = false
+    let dismissTimer = 0
 
-    const revealActionsIfNeeded = () => {
-      if (!blurFromSlice) return
+    const clearDismissTimer = () => {
+      if (dismissTimer) window.clearTimeout(dismissTimer)
+      dismissTimer = 0
+    }
+
+    const shouldRevealActions = () => {
       const sheet = sheetRef.current
       const active = document.activeElement
-      if (isSheetFormField(active, sheet)) return
+      return pendingSliceDismiss && !isSheetFormField(active, sheet) && readKeyboardOverlapPx() <= 8
+    }
 
-      const run = () => scrollPokerStableSheetActionsIntoView(actionsRef.current)
-      run()
-      window.setTimeout(run, 120)
-      blurFromSlice = false
+    const revealActionsIfNeeded = () => {
+      if (!shouldRevealActions()) return
+      schedulePokerStableActionsScroll(actionsRef.current)
+      pendingSliceDismiss = false
+      clearDismissTimer()
+    }
+
+    const queueRevealAfterBlur = () => {
+      clearDismissTimer()
+      dismissTimer = window.setTimeout(revealActionsIfNeeded, 280)
     }
 
     const onFocusIn = (e) => {
       const target = e.target
       if (!isSheetFormField(target, sheetRef.current)) return
-      if (!fieldWasInSlice(target)) blurFromSlice = false
+      if (!fieldWasInSlice(target)) {
+        pendingSliceDismiss = false
+        clearDismissTimer()
+      }
     }
 
     const onFocusOut = (e) => {
       const target = e.target
       if (!isSheetFormField(target, sheetRef.current)) return
-      blurFromSlice = fieldWasInSlice(target)
+      if (!fieldWasInSlice(target)) return
+      pendingSliceDismiss = true
+      queueRevealAfterBlur()
     }
 
     const onViewportChange = () => {
       const overlap = readKeyboardOverlapPx()
       const wasOpen = keyboardOpen
       keyboardOpen = overlap > 8
-      if (wasOpen && !keyboardOpen) revealActionsIfNeeded()
+      if (wasOpen && !keyboardOpen) {
+        revealActionsIfNeeded()
+        if (pendingSliceDismiss) queueRevealAfterBlur()
+      }
     }
 
     const vv = window.visualViewport
@@ -174,6 +218,7 @@ export function usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef) {
     document.addEventListener('focusout', onFocusOut)
 
     return () => {
+      clearDismissTimer()
       vv?.removeEventListener('resize', onViewportChange)
       vv?.removeEventListener('scroll', onViewportChange)
       document.removeEventListener('focusin', onFocusIn)

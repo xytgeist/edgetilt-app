@@ -14,6 +14,10 @@ import {
   sliceDisplayName,
 } from './pokerStableApi.js'
 import {
+  POKER_STABLE_SLICE_CARD_CLASS,
+  pokerStableSliceToneAttr,
+} from './pokerStableSliceTone.js'
+import {
   computeDealMakeup,
   computeProfitAboveBaseline,
   computeSliceLedgerOwed,
@@ -255,7 +259,8 @@ export default function PokerStableDealDetailSheet({
             return (
               <div
                 key={slice.id}
-                className="rounded-2xl border border-zinc-700 bg-zinc-900/60 p-3"
+                data-poker-stable-slice-tone={pokerStableSliceToneAttr(slice.slice_index)}
+                className={POKER_STABLE_SLICE_CARD_CLASS}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>

@@ -10,6 +10,10 @@ import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
   scrollPokerStableSliceIntoView,
 } from './pokerStableSheetScroll.js'
+import {
+  POKER_STABLE_SLICE_CARD_CLASS,
+  pokerStableSliceToneAttr,
+} from './pokerStableSliceTone.js'
 
 const STABLE_INFIELD_FOCUS = 'focus-within:ring-2 focus-within:ring-amber-500/40'
 
@@ -96,7 +100,8 @@ function SliceEditor({
   return (
     <div
       data-poker-stable-slice={sliceIndex}
-      className="rounded-2xl border border-zinc-700 bg-zinc-900/60 p-3"
+      data-poker-stable-slice-tone={pokerStableSliceToneAttr(sliceIndex)}
+      className={POKER_STABLE_SLICE_CARD_CLASS}
     >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-bold uppercase text-zinc-500">{title || `Slice ${idx + 1}`}</span>

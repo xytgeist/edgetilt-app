@@ -4616,6 +4616,32 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   scroll-margin-bottom: min(16rem, 42vh);
 }
 
+/* Poker Stable slice cards — subtle per-slice tint */
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] {
+  background-color: rgb(69 26 3 / 0.28);
+  border-color: rgb(245 158 11 / 0.24);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] {
+  background-color: rgb(22 78 99 / 0.26);
+  border-color: rgb(34 211 238 / 0.22);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] {
+  background-color: rgb(46 16 101 / 0.28);
+  border-color: rgb(167 139 250 / 0.22);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] {
+  background-color: rgb(6 47 40 / 0.28);
+  border-color: rgb(52 211 153 / 0.22);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] {
+  background-color: rgb(76 5 25 / 0.24);
+  border-color: rgb(251 113 133 / 0.22);
+}
+[data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] {
+  background-color: rgb(12 44 84 / 0.26);
+  border-color: rgb(56 189 248 / 0.22);
+}
+
 /* ── Poker Stable sheet - light mode (dark unchanged) ──── */
 html.light [data-poker-stable-sheet] {
   background-color: #ffffff !important;
@@ -4668,6 +4694,30 @@ html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] .bg-zinc-
 }
 html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] .text-zinc-500 {
   color: #71717a !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] {
+  background-color: rgb(255 251 235 / 0.95) !important;
+  border-color: rgb(252 211 77 / 0.55) !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] {
+  background-color: rgb(236 254 255 / 0.95) !important;
+  border-color: rgb(103 232 249 / 0.45) !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] {
+  background-color: rgb(245 243 255 / 0.95) !important;
+  border-color: rgb(196 181 253 / 0.5) !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] {
+  background-color: rgb(236 253 245 / 0.95) !important;
+  border-color: rgb(110 231 183 / 0.45) !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] {
+  background-color: rgb(255 241 242 / 0.95) !important;
+  border-color: rgb(253 164 175 / 0.5) !important;
+}
+html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] {
+  background-color: rgb(240 249 255 / 0.95) !important;
+  border-color: rgb(125 211 252 / 0.45) !important;
 }
 html.light [data-poker-bankroll-carousel] .bg-zinc-600 {
   background-color: #d4d4d8 !important;

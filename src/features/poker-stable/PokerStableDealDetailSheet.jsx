@@ -14,6 +14,7 @@ import {
   respondToPaymentClaim,
   sliceDisplayName,
 } from './pokerStableApi.js'
+import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
 import {
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
@@ -50,6 +51,7 @@ export default function PokerStableDealDetailSheet({
   const [settlementLines, setSettlementLines] = useState([])
   const [claims, setClaims] = useState([])
   const [claimAmounts, setClaimAmounts] = useState({})
+  const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
 
   const isStakee = deal?.stakee_user_id === userId
   const canSettleStake = stakeeCanSettleStake(deal, slices, { userId })
@@ -113,24 +115,18 @@ export default function PokerStableDealDetailSheet({
     }
   }
 
-  async function onPeriodicSettle() {
+  async function confirmPeriodicSettle(rakebackAmount) {
     if (!isStakee || !deal) return
-    if (
-      !window.confirm(
-        'Periodic settle? Roll resets to baseline, your personal bankroll gets your share, and the stake stays open.',
-      )
-    ) {
-      return
-    }
     onSavingChange(true)
     onError('')
     try {
       const { error } = await periodicSettleBackingDeal(supabaseClient, {
         dealId: deal.id,
-        rakebackTotal: parseMoneyInputNumber(rakebackTotal) || 0,
+        rakebackTotal: rakebackAmount,
       })
       if (error) throw error
       triggerTapHapticLight()
+      setPeriodicSettleOpen(false)
       await onRefresh()
       await loadLedger()
     } catch (e) {
@@ -443,7 +439,7 @@ export default function PokerStableDealDetailSheet({
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => void onPeriodicSettle()}
+                onClick={() => setPeriodicSettleOpen(true)}
                 className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
               >
                 Periodic settle
@@ -468,6 +464,18 @@ export default function PokerStableDealDetailSheet({
           <p className="text-center text-sm text-emerald-400">Deal settled · roll reset to baseline</p>
         ) : null}
       </div>
+
+      {periodicSettleOpen ? (
+        <PokerStablePeriodicSettleSheet
+          deal={deal}
+          slices={slices}
+          dealRoll={roll}
+          saving={saving}
+          onClose={() => setPeriodicSettleOpen(false)}
+          onError={onError}
+          onConfirm={(rakebackAmount) => void confirmPeriodicSettle(rakebackAmount)}
+        />
+      ) : null}
     </div>
   )
 }

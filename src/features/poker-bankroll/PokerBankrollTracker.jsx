@@ -1077,13 +1077,6 @@ export default function PokerBankrollTracker({
   }
 
   async function runPeriodicSettle(dealId, rakebackTotal) {
-    if (
-      !window.confirm(
-        'Periodic settle? Roll resets to baseline, your personal bankroll gets your share, and the stake stays open.',
-      )
-    ) {
-      return
-    }
     setStableSaving(true)
     setError('')
     try {

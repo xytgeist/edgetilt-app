@@ -3,6 +3,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
+import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { computeProfitAboveBaseline } from './pokerStableMath.js'
 import {
@@ -185,6 +186,7 @@ export default function PokerStableDealTermsSheet({
 }) {
   const [reassignSliceId, setReassignSliceId] = useState(null)
   const [rakebackTotal, setRakebackTotal] = useState('')
+  const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
 
   if (!deal) return null
 
@@ -411,7 +413,7 @@ export default function PokerStableDealTermsSheet({
                   ? ' · periodic keeps the stake open; close merges sessions into personal history.'
                   : ' · close settles the package and merges sessions into personal history.'}
               </p>
-              {showRakebackField ? (
+              {showRakebackField && typeof onCloseStake === 'function' ? (
                 <MoneyInputField
                   value={rakebackTotal}
                   onChange={setRakebackTotal}
@@ -424,9 +426,7 @@ export default function PokerStableDealTermsSheet({
                 <button
                   type="button"
                   disabled={saving}
-                  onClick={() =>
-                    void onPeriodicSettle(parseMoneyInputNumber(rakebackTotal) || 0)
-                  }
+                  onClick={() => setPeriodicSettleOpen(true)}
                   className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
                 >
                   Periodic settle
@@ -460,6 +460,21 @@ export default function PokerStableDealTermsSheet({
           ) : null}
         </div>
       </div>
+
+      {periodicSettleOpen ? (
+        <PokerStablePeriodicSettleSheet
+          deal={deal}
+          slices={slices}
+          dealRoll={dealRoll}
+          saving={saving}
+          onClose={() => setPeriodicSettleOpen(false)}
+          onError={onError}
+          onConfirm={(rakebackAmount) => {
+            onError?.('')
+            void onPeriodicSettle?.(rakebackAmount)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

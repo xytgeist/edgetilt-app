@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef } from 'react'
 const PEEK_PX = 44
 const SLIDE_GAP_PX = 8
 
+/** Shared box model so personal + stake hero cards match in the peek carousel. */
+export const POKER_BANKROLL_HERO_SHELL =
+  'rounded-3xl border-2 p-6 shadow-none'
+
 /**
  * Horizontal peek carousel for Personal + stake bankroll hero cards.
  * @param {{ slides: Array<{ id: string }>, activeId: string, onActiveIdChange: (id: string) => void, renderSlide: (slide: { id: string }, index: number) => import('react').ReactNode }} props
@@ -110,7 +114,7 @@ export default function PokerBankrollHeroCarousel({
 export function stakeHeroTheme(stakeIndex) {
   const themes = [
     {
-      card: 'rounded-3xl border-2 border-amber-400/70 bg-gradient-to-br from-amber-950 via-amber-900/80 to-zinc-950 p-6 shadow-[0_0_40px_-12px_rgba(251,191,36,0.55)]',
+      card: `${POKER_BANKROLL_HERO_SHELL} border-amber-400/70 bg-gradient-to-br from-amber-950 via-amber-900/80 to-zinc-950 shadow-[0_0_40px_-12px_rgba(251,191,36,0.55)]`,
       label: 'text-amber-200/70',
       badge: 'bg-amber-400 text-amber-950',
       badgeText: 'text-amber-200/90',
@@ -121,7 +125,7 @@ export function stakeHeroTheme(stakeIndex) {
       sparkDown: 'text-amber-500',
     },
     {
-      card: 'rounded-3xl border-2 border-orange-400/60 bg-gradient-to-br from-orange-950 via-orange-900/70 to-zinc-950 p-6 shadow-[0_0_36px_-12px_rgba(251,146,60,0.45)]',
+      card: `${POKER_BANKROLL_HERO_SHELL} border-orange-400/60 bg-gradient-to-br from-orange-950 via-orange-900/70 to-zinc-950 shadow-[0_0_36px_-12px_rgba(251,146,60,0.45)]`,
       label: 'text-orange-200/70',
       badge: 'bg-orange-400 text-orange-950',
       badgeText: 'text-orange-200/90',
@@ -132,7 +136,7 @@ export function stakeHeroTheme(stakeIndex) {
       sparkDown: 'text-orange-500',
     },
     {
-      card: 'rounded-3xl border-2 border-rose-400/55 bg-gradient-to-br from-rose-950 via-rose-900/60 to-zinc-950 p-6 shadow-[0_0_36px_-12px_rgba(251,113,133,0.4)]',
+      card: `${POKER_BANKROLL_HERO_SHELL} border-rose-400/55 bg-gradient-to-br from-rose-950 via-rose-900/60 to-zinc-950 shadow-[0_0_36px_-12px_rgba(251,113,133,0.4)]`,
       label: 'text-rose-200/70',
       badge: 'bg-rose-400 text-rose-950',
       badgeText: 'text-rose-200/90',

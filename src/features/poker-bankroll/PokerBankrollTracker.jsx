@@ -12,7 +12,10 @@ import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyI
 import { recordAppSessionRecorded } from '../../utils/appSectionVisitTracking.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollChartsTab from './PokerBankrollChartsTab.jsx'
-import PokerBankrollHeroCarousel, { stakeHeroTheme } from './PokerBankrollHeroCarousel.jsx'
+import PokerBankrollHeroCarousel, {
+  POKER_BANKROLL_HERO_SHELL,
+  stakeHeroTheme,
+} from './PokerBankrollHeroCarousel.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import PokerBankrollTrendTab from './PokerBankrollTrendTab.jsx'
@@ -1991,15 +1994,16 @@ export default function PokerBankrollTracker({
                 const theme = onStake ? stakeHeroTheme(Math.max(0, slideIndex - 1)) : null
                 return (
                   <div
+                    data-poker-bankroll-hero-card
                     data-elevated-card={onStake ? 'accent' : 'surface'}
                     className={
                       onStake
                         ? theme.card
-                        : 'rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6'
+                        : `${POKER_BANKROLL_HERO_SHELL} border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800`
                     }
                   >
-                    <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
+                    <div className="mb-1.5 flex h-8 items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                         <div
                           className={`shrink-0 text-xs font-semibold uppercase tracking-wide ${
                             onStake ? theme.label : 'text-zinc-400'
@@ -2057,11 +2061,14 @@ export default function PokerBankrollTracker({
                       </div>
                     </div>
                     {loading ? (
-                      <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
+                      <>
+                        <div className="min-h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
+                        <div className="mt-3 h-10 w-full" aria-hidden />
+                      </>
                     ) : (
                       <>
                         <div
-                          className={`text-5xl font-black tracking-tight ${
+                          className={`flex min-h-12 items-end text-5xl font-black leading-none tracking-tight ${
                             onStake ? theme.amount : 'text-white'
                           }`}
                         >
@@ -2091,7 +2098,7 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${
+                        className={`mt-5 grid min-h-[4.25rem] grid-cols-4 gap-2 border-t pt-4 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >

@@ -194,6 +194,9 @@ export default function PokerBankrollTracker({
   /** Deep link: open session details sheet for this id (swap result notify). */
   openSessionId = null,
   onOpenSessionConsumed = null,
+  /** Deep link: switch to On Stake for this deal (Stable → Bankroll). */
+  openStableDealId = null,
+  onOpenStableDealConsumed = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -334,6 +337,14 @@ export default function PokerBankrollTracker({
       setBankrollScope('personal')
     }
   }, [bankrollScope, stakeeDeals])
+
+  useEffect(() => {
+    if (!openStableDealId) return
+    const deal = stakeeDeals.find((d) => d.id === openStableDealId && d.status === 'active')
+    if (!deal) return
+    setBankrollScope(openStableDealId)
+    onOpenStableDealConsumed?.()
+  }, [openStableDealId, stakeeDeals, onOpenStableDealConsumed])
 
   useEffect(() => {
     if (!supabaseClient) return undefined

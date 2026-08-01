@@ -15,7 +15,6 @@ const POKER_TOOLS = [
     Icon: Users,
     color: '#22d3ee',
     description: 'Track horses · per-deal On Stake sync',
-    comingSoon: true,
   },
 ]
 

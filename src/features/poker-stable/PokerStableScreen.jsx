@@ -35,12 +35,14 @@ function statusTone(status) {
 
 /**
  * Stable Manager — staker tracks horses via per-deal On Stake bankrolls.
- * Bones: request / accept / list + synced P/L stub. Apply SQL on test first.
+ * Bones: request / accept / list + synced roll/P/L. Apply SQL on test first.
  */
 export default function PokerStableScreen({
   supabaseClient,
   titleBarNavSlot = null,
   titleBarToolCloseVisible = false,
+  /** @type {(dealId: string) => void} */
+  onOpenPokerBankroll = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [deals, setDeals] = useState([])
@@ -119,6 +121,15 @@ export default function PokerStableScreen({
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
 
   const asStaker = useMemo(
@@ -436,6 +447,18 @@ export default function PokerStableScreen({
                   <div className="font-semibold text-amber-100">
                     {deal.label || 'On Stake'} · staker {partyLabel(deal, 'stakee')}
                   </div>
+                  {typeof onOpenPokerBankroll === 'function' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerTapHapticLight()
+                        onOpenPokerBankroll(deal.id)
+                      }}
+                      className="mt-2 w-full rounded-2xl bg-amber-600/90 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-amber-500"
+                    >
+                      Open Poker Bankroll (On Stake)
+                    </button>
+                  ) : null}
                 </div>
               ))}
             </div>

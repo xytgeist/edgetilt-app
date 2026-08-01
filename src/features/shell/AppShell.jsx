@@ -327,6 +327,7 @@ export default function AppShell({
   const [tab, setTab] = useState('home')
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
+  const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
@@ -490,6 +491,13 @@ export default function AppShell({
           setTab('poker-bankroll')
           setMenuOpen(false)
           if (pokerSessionId) setPendingPokerSessionId(pokerSessionId)
+        }
+      } else if (targetTab === 'poker-stable') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('poker-stable')
+          setMenuOpen(false)
         }
       } else if (targetTab === 'offers') {
         if (browseMode === 'anonymous') {
@@ -1057,6 +1065,16 @@ export default function AppShell({
           setMenuOpen(false)
           const pokerSession = (params.get('pokerSession') || '').trim()
           if (pokerSession) setPendingPokerSessionId(pokerSession)
+          const stableDeal = (params.get('stableDeal') || '').trim()
+          if (stableDeal) setPendingPokerStableDealId(stableDeal)
+        }
+      }
+      if (targetTab === 'poker-stable') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('poker-stable')
+          setMenuOpen(false)
         }
       }
       const guideFromQuery = (params.get('guide') || '').trim()
@@ -1150,6 +1168,10 @@ export default function AppShell({
             data.pokerSessionId || msgUrl.searchParams.get('pokerSession') || '',
           ).trim()
           if (pokerSession) setPendingPokerSessionId(pokerSession)
+          const stableDeal = String(
+            data.stableDealId || msgUrl.searchParams.get('stableDeal') || '',
+          ).trim()
+          if (stableDeal) setPendingPokerStableDealId(stableDeal)
         } catch {
           // ignore malformed url
         }
@@ -1163,6 +1185,15 @@ export default function AppShell({
             }),
           )
         }
+        return
+      }
+      if (targetTab === 'poker-stable') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+          return
+        }
+        setTab('poker-stable')
+        setMenuOpen(false)
         return
       }
       if (targetTab === 'chat') {
@@ -2370,6 +2401,8 @@ export default function AppShell({
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
           openSessionId={pendingPokerSessionId}
           onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
+          openStableDealId={pendingPokerStableDealId}
+          onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
         />
       )
     } else if (tab === 'poker-stable') {
@@ -2378,6 +2411,10 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+          onOpenPokerBankroll={(dealId) => {
+            setPendingPokerStableDealId(dealId)
+            setTab('poker-bankroll')
+          }}
         />
       )
     } else if (tab === 'logbook') {

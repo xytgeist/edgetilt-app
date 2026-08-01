@@ -1,3 +1,5 @@
+import { pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
+
 /**
  * Thin Stable Manager API. Graceful when migration not yet applied on the env.
  */
@@ -112,7 +114,7 @@ export async function loadDealSessionStats(supabase, dealIds) {
 
   const { data, error } = await supabase
     .from('poker_bankroll_sessions')
-    .select('deal_id, buy_in, cash_out, bounty_winnings, status')
+    .select('deal_id, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, status')
     .in('deal_id', dealIds)
     .eq('status', 'completed')
     .limit(2000)
@@ -121,9 +123,8 @@ export async function loadDealSessionStats(supabase, dealIds) {
   for (const s of data || []) {
     const id = s.deal_id
     if (!id || !byDeal[id]) continue
-    if (s.cash_out == null) continue
-    const wl =
-      (Number(s.cash_out) || 0) + (Number(s.bounty_winnings) || 0) - (Number(s.buy_in) || 0)
+    const wl = pokerSessionWinLoss(s)
+    if (wl == null) continue
     byDeal[id].sessions += 1
     byDeal[id].profit += wl
   }
@@ -137,6 +138,21 @@ export async function loadDealSessionStats(supabase, dealIds) {
 export async function requestHorseDeal(supabase, { stakerUserId, stakeeUserId, label, notes }) {
   if (stakerUserId === stakeeUserId) {
     return { deal: null, error: new Error('You cannot stake yourself.') }
+  }
+  const { data: existing, error: existErr } = await supabase
+    .from('poker_stable_deals')
+    .select('id, status')
+    .eq('staker_user_id', stakerUserId)
+    .eq('stakee_user_id', stakeeUserId)
+    .in('status', ['pending', 'active'])
+    .maybeSingle()
+  if (existErr) return { deal: null, error: existErr }
+  if (existing) {
+    const msg =
+      existing.status === 'pending'
+        ? 'You already have a pending request with this player.'
+        : 'You already have an active deal with this player.'
+    return { deal: null, error: new Error(msg) }
   }
   const { data, error } = await supabase
     .from('poker_stable_deals')

@@ -5167,7 +5167,7 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
 
 /*
  * Bankroll hero carousel — light only.
- * Stake cards: flat tinted shell (lighter than border) + tone border, no glow.
+ * Stake cards: flat tinted shell (lighter than border) + tone border; dark keeps gradient/glow on heroes.
  */
 [data-poker-bankroll-hero-title] {
   font-size: 1rem;

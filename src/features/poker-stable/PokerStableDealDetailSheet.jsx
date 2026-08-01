@@ -26,7 +26,7 @@ import {
   computeSliceLedgerOwed,
   dealTypeLabel,
 } from './pokerStableMath.js'
-import { stakeeCanSettleStake, dealAllowsPeriodicSettle, dealHasRakebackEnabled, dealHasMakeup } from './pokerStableTerms.js'
+import { stakeeCanSettleStake, dealCanPeriodicSettle, dealHasRakebackEnabled, dealHasMakeup } from './pokerStableTerms.js'
 
 /**
  * Deal detail: baseline, makeup, top-up, settle, ledger.
@@ -55,7 +55,7 @@ export default function PokerStableDealDetailSheet({
 
   const isStakee = deal?.stakee_user_id === userId
   const canSettleStake = stakeeCanSettleStake(deal, slices, { userId })
-  const showPeriodicSettle = canSettleStake && dealAllowsPeriodicSettle(deal)
+  const showPeriodicSettle = canSettleStake && dealCanPeriodicSettle(deal, roll)
   const showRakebackField = canSettleStake && dealHasRakebackEnabled(slices, deal)
   const showMakeup = dealHasMakeup(deal)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0

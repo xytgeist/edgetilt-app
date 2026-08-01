@@ -4,7 +4,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { computeDealMakeup, computeProfitAboveBaseline, dealTypeLabel } from './pokerStableMath.js'
-import { dealAllowsPeriodicSettle, dealHasRakebackEnabled, dealHasMakeup } from './pokerStableTerms.js'
+import { dealCanPeriodicSettle, dealHasRakebackEnabled, dealHasMakeup } from './pokerStableTerms.js'
 
 /**
  * Focused settle / end flow for stakee on Bankroll (periodic vs close).
@@ -28,7 +28,7 @@ export default function PokerStableEndStakeSheet({
   const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
   const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
-  const showPeriodic = dealAllowsPeriodicSettle(deal)
+  const showPeriodic = dealCanPeriodicSettle(deal, dealRoll)
   const showRakeback = dealHasRakebackEnabled(slices, deal)
   const showMakeup = dealHasMakeup(deal)
 

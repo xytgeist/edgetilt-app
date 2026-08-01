@@ -1,6 +1,6 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue } from '../../utils/moneyInputFormat.js'
-import { isOngoingDealType } from './pokerStableMath.js'
+import { computeDealMakeup, isOngoingDealType } from './pokerStableMath.js'
 
 export function pricingModeLabel(mode) {
   return mode === 'markup' ? 'Markup' : 'Profit split'
@@ -155,6 +155,29 @@ export function dealHasRakebackEnabled(slices = [], deal = null) {
 /** Periodic settle applies to cash backing only; tournament packages close out once. */
 export function dealAllowsPeriodicSettle(deal) {
   return deal?.deal_type === 'cash_backing'
+}
+
+/** @param {object | null | undefined} deal @param {{ overall_bankroll?: number } | number | null | undefined} dealRoll */
+export function dealRollValue(deal, dealRoll = null) {
+  if (dealRoll != null && typeof dealRoll === 'object' && dealRoll.overall_bankroll != null) {
+    return Number(dealRoll.overall_bankroll) || 0
+  }
+  if (typeof dealRoll === 'number' && Number.isFinite(dealRoll)) return dealRoll
+  return Number(deal?.starting_roll ?? deal?.baseline_bankroll) || 0
+}
+
+/** True when cash-backing roll is below baseline (makeup owed). */
+export function dealIsInMakeup(deal, dealRoll = null) {
+  if (!dealHasMakeup(deal)) return false
+  const baseline = Number(deal?.baseline_bankroll) || 0
+  const roll = dealRollValue(deal, dealRoll)
+  return computeDealMakeup({ baseline_bankroll: baseline, roll }) > 0.005
+}
+
+/** Periodic settle only when cash backing and not underwater vs baseline. */
+export function dealCanPeriodicSettle(deal, dealRoll = null) {
+  if (!dealAllowsPeriodicSettle(deal)) return false
+  return !dealIsInMakeup(deal, dealRoll)
 }
 
 /** Cash backing tracks makeup vs baseline; tournament packages do not. */

@@ -8,7 +8,7 @@ import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { computeProfitAboveBaseline } from './pokerStableMath.js'
 import {
   canReassignGuestSlice,
-  dealAllowsPeriodicSettle,
+  dealCanPeriodicSettle,
   dealHasRakebackEnabled,
   dealTermsMeta,
   sliceTermsSummary,
@@ -224,7 +224,7 @@ export default function PokerStableDealTermsSheet({
   const canSettle =
     stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
-  const showPeriodicSettle = canSettle && dealAllowsPeriodicSettle(deal)
+  const showPeriodicSettle = canSettle && dealCanPeriodicSettle(deal, dealRoll)
   const showRakebackField = canSettle && dealHasRakebackEnabled(slices, deal)
   const rollValue =
     dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0

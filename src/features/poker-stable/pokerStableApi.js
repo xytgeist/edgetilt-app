@@ -50,6 +50,31 @@ export async function lookupProfileByHandle(supabase, handle) {
 }
 
 /**
+ * Prefix search for Edge handle typeahead (Request horse, slice pickers).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} query
+ * @param {{ excludeUserId?: string, limit?: number }} [opts]
+ */
+export async function searchEdgeProfilesByHandle(supabase, query, opts = {}) {
+  const q = normalizeHandleInput(query)
+  if (!q) return { profiles: [], error: null }
+  const { excludeUserId, limit = 8 } = opts
+  let req = supabase
+    .from('profiles')
+    .select('user_id, handle, display_name, avatar_url')
+    .not('handle', 'is', null)
+    .is('banned_at', null)
+    .or('is_bot.is.null,is_bot.eq.false')
+    .ilike('handle', `${q}%`)
+    .order('handle', { ascending: true })
+    .limit(limit)
+  if (excludeUserId) req = req.neq('user_id', excludeUserId)
+  const { data, error } = await req
+  if (error) return { profiles: [], error }
+  return { profiles: data || [], error: null }
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} userId
  */
@@ -297,7 +322,7 @@ export async function createBackingDeal(supabase, args) {
     pricing_mode: sl.pricingMode,
     player_profit_pct: sl.pricingMode === 'profit_split' ? sl.playerProfitPct : null,
     markup_rate: sl.pricingMode === 'markup' ? sl.markupRate : null,
-    rakeback_mode: sl.rakebackMode || 'all_to_stake',
+    rakeback_mode: sl.rakebackMode || 'disabled',
     rakeback_player_pct: sl.rakebackMode === 'custom' ? sl.rakebackPlayerPct : null,
     starting_pl: sl.startingPl ?? null,
     status: sl.counterpartyKind === 'guest' || activate ? 'active' : 'pending',
@@ -404,6 +429,113 @@ export async function requestHorseDeal(supabase, args) {
 }
 
 /**
+ * Backer proposes a horse deal with one or more slices (lead + optional syndicate).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ stakerUserId: string, stakeeUserId: string, label?: string, notes?: string, baselineBankroll?: number, slices?: object[] }} args
+ */
+export async function requestBackingDeal(supabase, args) {
+  const {
+    stakerUserId,
+    stakeeUserId,
+    label,
+    notes,
+    baselineBankroll = 0,
+    slices = [],
+  } = args
+  if (stakerUserId === stakeeUserId) {
+    return { deal: null, error: new Error('You cannot stake yourself.') }
+  }
+  if (!slices.length) {
+    return { deal: null, error: new Error('Add at least one backing slice.') }
+  }
+  const leadSlice = slices.find((s) => s.stakerUserId === stakerUserId)
+  if (!leadSlice) {
+    return { deal: null, error: new Error('Your backing slice is required.') }
+  }
+
+  const actionTotal = sumSliceActionPct(slices)
+  if (actionTotal > 100.001) {
+    return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
+  }
+
+  const { data: legacyDeals } = await supabase
+    .from('poker_stable_deals')
+    .select('id, status')
+    .eq('staker_user_id', stakerUserId)
+    .eq('stakee_user_id', stakeeUserId)
+    .in('status', ['pending', 'active'])
+  if (legacyDeals?.length) {
+    const legacy = legacyDeals[0]
+    const msg =
+      legacy.status === 'pending'
+        ? 'You already have a pending request with this player.'
+        : 'You already have an active deal with this player.'
+    return { deal: null, error: new Error(msg) }
+  }
+
+  const { data: sliceDeals } = await supabase
+    .from('poker_stable_deal_slices')
+    .select('id, status, deal_id')
+    .eq('staker_user_id', stakerUserId)
+    .in('status', ['pending', 'active'])
+  if (sliceDeals?.length) {
+    const dealIds = sliceDeals.map((s) => s.deal_id)
+    const { data: matched } = await supabase
+      .from('poker_stable_deals')
+      .select('id')
+      .in('id', dealIds)
+      .eq('stakee_user_id', stakeeUserId)
+      .maybeSingle()
+    if (matched) {
+      return {
+        deal: null,
+        error: new Error('You already have a pending or active deal with this player.'),
+      }
+    }
+  }
+
+  const baseline = roundMoney(baselineBankroll)
+
+  const { data: deal, error: dErr } = await supabase
+    .from('poker_stable_deals')
+    .insert({
+      staker_user_id: stakerUserId,
+      stakee_user_id: stakeeUserId,
+      deal_type: 'cash_backing',
+      status: 'pending',
+      label: label?.trim() || null,
+      notes: notes?.trim() || null,
+      baseline_bankroll: baseline,
+      starting_roll: 0,
+    })
+    .select(DEAL_SELECT)
+    .single()
+  if (dErr) return { deal: null, error: dErr }
+
+  const sliceRows = slices.map((sl, idx) => ({
+    deal_id: deal.id,
+    slice_index: idx,
+    counterparty_kind: sl.counterpartyKind || 'user',
+    staker_user_id: sl.stakerUserId || null,
+    guest_label: sl.guestLabel?.trim() || null,
+    guest_email: sl.guestEmail?.trim() || null,
+    action_pct: sl.actionPct,
+    pricing_mode: sl.pricingMode,
+    player_profit_pct: sl.pricingMode === 'profit_split' ? sl.playerProfitPct : null,
+    markup_rate: sl.pricingMode === 'markup' ? sl.markupRate : null,
+    rakeback_mode: sl.rakebackMode || 'disabled',
+    rakeback_player_pct: sl.rakebackMode === 'custom' ? sl.rakebackPlayerPct : null,
+    status: 'pending',
+    label: sl.label?.trim() || null,
+  }))
+
+  const { error: slErr } = await supabase.from('poker_stable_deal_slices').insert(sliceRows)
+  if (slErr) return { deal, error: slErr }
+
+  return { deal, error: null }
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
  * @param {string} stakeeUserId
@@ -426,11 +558,15 @@ export async function acceptHorseDeal(supabase, dealId, stakeeUserId, startingRo
     .single()
   if (uErr) return { deal: null, error: uErr }
 
-  await supabase
+  let sliceQuery = supabase
     .from('poker_stable_deal_slices')
     .update({ status: 'active', responded_at: new Date().toISOString() })
     .eq('deal_id', dealId)
     .eq('status', 'pending')
+  if (deal.staker_user_id) {
+    sliceQuery = sliceQuery.eq('staker_user_id', deal.staker_user_id)
+  }
+  await sliceQuery
 
   const { error: pErr } = await supabase.from('poker_deal_bankroll_profiles').upsert(
     { deal_id: dealId, overall_bankroll: roll },

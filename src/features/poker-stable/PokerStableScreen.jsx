@@ -2,10 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Users } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import PokerStableCreateDealSheet from './PokerStableCreateDealSheet.jsx'
+import { PokerStableBackerDealSheet } from './PokerStableCreateDealSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
 import {
   acceptHorseDeal,
@@ -18,8 +17,6 @@ import {
   loadDealSessionStats,
   loadDealSlices,
   loadMyStableDeals,
-  normalizeHandleInput,
-  requestHorseDeal,
   revokeHorseDeal,
   sliceDisplayName,
 } from './pokerStableApi.js'
@@ -64,10 +61,8 @@ export default function PokerStableScreen({
   const [error, setError] = useState('')
   const [schemaMissing, setSchemaMissing] = useState(false)
   const [slicesByDeal, setSlicesByDeal] = useState(/** @type {Record<string, object[]>} */ ({}))
-  const [sheet, setSheet] = useState(/** @type {null | 'request' | 'create'} */ (null))
+  const [sheet, setSheet] = useState(/** @type {null | 'request'} */ (null))
   const [detailDealId, setDetailDealId] = useState(/** @type {string | null} */ (null))
-  const [handleInput, setHandleInput] = useState('')
-  const [dealLabel, setDealLabel] = useState('')
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -173,59 +168,10 @@ export default function PokerStableScreen({
     }
     return rows
   }, [deals, userId, slicesByDeal])
-  const myActiveAsHorse = useMemo(
-    () => deals.filter((d) => d.stakee_user_id === userId && d.status === 'active'),
-    [deals, userId],
-  )
-  const myDealsAsPlayer = useMemo(
-    () => deals.filter((d) => d.stakee_user_id === userId),
-    [deals, userId],
-  )
   const detailDeal = useMemo(
     () => deals.find((d) => d.id === detailDealId) || null,
     [deals, detailDealId],
   )
-
-  async function submitRequest() {
-    if (!supabaseClient || !userId) return
-    const handle = normalizeHandleInput(handleInput)
-    if (!handle) {
-      setError('Enter an Edge handle.')
-      return
-    }
-    setSaving(true)
-    setError('')
-    try {
-      const { data: profile, error: lookErr } = await supabaseClient
-        .from('profiles')
-        .select('user_id, handle')
-        .ilike('handle', handle)
-        .maybeSingle()
-      if (lookErr) throw lookErr
-      if (!profile) throw new Error(`No Edge user @${handle}.`)
-      const { error: reqErr } = await requestHorseDeal(supabaseClient, {
-        stakerUserId: userId,
-        stakeeUserId: profile.user_id,
-        label: dealLabel,
-      })
-      if (reqErr) {
-        if (isMissingStableTableError(reqErr)) {
-          setSchemaMissing(true)
-          throw new Error('Stable SQL not applied on this env yet.')
-        }
-        throw reqErr
-      }
-      setSheet(null)
-      setHandleInput('')
-      setDealLabel('')
-      triggerTapHapticLight()
-      await load()
-    } catch (e) {
-      setError(e?.message || 'Could not send request.')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   async function onAccept(dealId) {
     if (!supabaseClient || !userId) return
@@ -340,7 +286,7 @@ export default function PokerStableScreen({
           center={
             <div className="text-center">
               <div className="text-lg font-black tracking-tight text-white">Stable</div>
-              <div className="text-[11px] text-zinc-500">Track horses · per-deal On Stake</div>
+              <div className="text-[11px] text-zinc-500">Back horses · sync stake rolls</div>
             </div>
           }
         />
@@ -356,19 +302,7 @@ export default function PokerStableScreen({
         {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
 
         {!schemaMissing ? (
-          <div className="mb-5 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setError('')
-                setSheet('create')
-                triggerTapHapticLight()
-              }}
-              className="rounded-3xl bg-amber-600 py-4 text-sm font-bold text-white touch-manipulation active:bg-amber-500"
-              data-poker-stable-primary-btn
-            >
-              + New deal
-            </button>
+          <div className="mb-5">
             <button
               type="button"
               onClick={() => {
@@ -376,7 +310,8 @@ export default function PokerStableScreen({
                 setSheet('request')
                 triggerTapHapticLight()
               }}
-              className="rounded-3xl border border-zinc-600 bg-zinc-800 py-4 text-sm font-bold text-zinc-200 touch-manipulation active:bg-zinc-700"
+              className="w-full rounded-3xl bg-amber-600 py-4 text-sm font-bold text-white touch-manipulation active:bg-amber-500"
+              data-poker-stable-primary-btn
             >
               Request horse
             </button>
@@ -489,8 +424,8 @@ export default function PokerStableScreen({
               <Users className="mx-auto mb-3 text-zinc-600" size={28} strokeWidth={1.5} />
               <p className="text-sm font-semibold text-zinc-300">No horses yet</p>
               <p className="mt-1 text-sm leading-relaxed text-zinc-500">
-                Request an Edge player by handle. When they accept, you sync their On Stake bankroll
-                for that deal… separate from their personal roll.
+                Request an Edge player by handle with your slice terms. When they accept, their
+                stake bankroll syncs here… separate from their personal roll.
               </p>
             </div>
           ) : (
@@ -580,91 +515,11 @@ export default function PokerStableScreen({
             </div>
           )}
         </section>
-
-        {myDealsAsPlayer.length > 0 ? (
-          <section className="mb-6">
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              My deals (player)
-            </h2>
-            <div className="space-y-2">
-              {myDealsAsPlayer.map((deal) => (
-                <button
-                  key={deal.id}
-                  type="button"
-                  onClick={() => openDealDetail(deal.id)}
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-900/60 px-4 py-3 text-left touch-manipulation active:opacity-90"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold text-white">
-                        {deal.label || dealTypeLabel(deal.deal_type)}
-                      </div>
-                      <div className="text-xs text-zinc-500">
-                        {(slicesByDeal[deal.id] || []).length} slice(s) · baseline{' '}
-                        {fmtPoker$(deal.baseline_bankroll || 0)}
-                      </div>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone(deal.status)}`}
-                    >
-                      {statusLabel(deal.status)}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {myActiveAsHorse.length > 0 ? (
-          <section className="mb-4">
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              You are on stake
-            </h2>
-            <p className="mb-2 text-sm text-zinc-500">
-              Log sessions under On Stake in Poker Bankroll for these deals.
-            </p>
-            <div className="space-y-2">
-              {myActiveAsHorse.map((deal) => (
-                <div
-                  key={deal.id}
-                  data-elevated-card="accent"
-                  className="rounded-2xl border border-amber-500/25 bg-amber-950/30 px-4 py-3"
-                >
-                  <button
-                    type="button"
-                    onClick={() => openDealDetail(deal.id)}
-                    className="w-full text-left"
-                  >
-                    <div className="font-semibold text-amber-100">
-                      {deal.label || dealTypeLabel(deal.deal_type)}
-                    </div>
-                    <div className="text-xs text-amber-200/70">
-                      {(slicesByDeal[deal.id] || []).length} backer slice(s)
-                    </div>
-                  </button>
-                  {typeof onOpenPokerBankroll === 'function' ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerTapHapticLight()
-                        onOpenPokerBankroll(deal.id)
-                      }}
-                      className="mt-2 w-full rounded-2xl bg-amber-600/90 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-amber-500"
-                    >
-                      Open Poker Bankroll (On Stake)
-                    </button>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
         </div>
       </ScrollLinkedEdgeTitleBarShell>
 
-      {sheet === 'create' && supabaseClient && userId ? (
-        <PokerStableCreateDealSheet
+      {sheet === 'request' && supabaseClient && userId ? (
+        <PokerStableBackerDealSheet
           supabaseClient={supabaseClient}
           userId={userId}
           saving={saving}
@@ -690,63 +545,6 @@ export default function PokerStableScreen({
           onError={setError}
           onOpenPokerBankroll={onOpenPokerBankroll}
         />
-      ) : null}
-
-      {sheet === 'request' ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          onClick={() => setSheet(null)}
-        >
-          <div
-            data-poker-stable-sheet
-            className={`relative z-10 w-full max-w-lg ${APP_MODAL_SHEET_PANEL_CLASS}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Request horse</h3>
-              <button
-                type="button"
-                onClick={() => setSheet(null)}
-                className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
-              >
-                Cancel
-              </button>
-            </div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Edge handle
-            </label>
-            <input
-              value={handleInput}
-              onChange={(e) => setHandleInput(e.target.value)}
-              placeholder="@handle"
-              autoCapitalize="none"
-              autoCorrect="off"
-              className="mb-3 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
-            />
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Deal label (optional)
-            </label>
-            <input
-              value={dealLabel}
-              onChange={(e) => setDealLabel(e.target.value)}
-              placeholder="e.g. 50/50 makeup"
-              className="mb-4 w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-amber-500/40"
-            />
-            <p className="mb-4 text-[12px] leading-relaxed text-zinc-500">
-              They get an incoming request. After accept, they switch Poker Bankroll to On Stake for
-              this deal… you sync that roll here.
-            </p>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void submitRequest()}
-              data-poker-stable-primary-btn
-              className="w-full rounded-3xl bg-amber-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"
-            >
-              {saving ? 'Sending…' : 'Send request'}
-            </button>
-          </div>
-        </div>
       ) : null}
     </>
   )

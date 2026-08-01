@@ -11,6 +11,7 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { recordAppSessionRecorded } from '../../utils/appSectionVisitTracking.js'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
 import PokerBankrollChartsTab from './PokerBankrollChartsTab.jsx'
+import PokerBankrollHeroCarousel, { stakeHeroTheme } from './PokerBankrollHeroCarousel.jsx'
 import PokerBankrollImportSheet from './PokerBankrollImportSheet.jsx'
 import PokerBankrollOverview from './PokerBankrollOverview.jsx'
 import PokerBankrollTrendTab from './PokerBankrollTrendTab.jsx'
@@ -29,6 +30,7 @@ import {
   loadDealBankrollProfiles,
   loadMyStableDeals,
 } from '../poker-stable/pokerStableApi.js'
+import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -211,8 +213,11 @@ export default function PokerBankrollTracker({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps'} */
+  /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
+  const [stableSaving, setStableSaving] = useState(false)
+  /** After + Stake, scroll carousel to this deal id once reload completes. */
+  const pendingCarouselDealIdRef = useRef(null)
   /** @type {object[]} */
   const [draftSwaps, setDraftSwaps] = useState([])
   /**
@@ -577,7 +582,7 @@ export default function PokerBankrollTracker({
   async function upsertBankroll(nextAmount) {
     if (isOnStake) {
       if (!bankrollScope || bankrollScope === 'personal') {
-        throw new Error('Pick an On Stake deal first.')
+        throw new Error('Pick a stake deal first.')
       }
       const { data, error: err } = await supabaseClient
         .from('poker_deal_bankroll_profiles')
@@ -687,9 +692,112 @@ export default function PokerBankrollTracker({
     return points
   }, [filtered, overallBankroll, tournamentSwaps, userId])
 
-  function openSetBankroll() {
-    if (isOnStake) {
-      setBankrollInput(dealProfile != null ? String(dealProfile.overall_bankroll) : '')
+  const bankrollSlides = useMemo(() => {
+    const slides = [{ id: 'personal', deal: null }]
+    for (const d of stakeeDeals) slides.push({ id: d.id, deal: d })
+    return slides
+  }, [stakeeDeals])
+
+  const heroByScope = useMemo(() => {
+    /** @param {'personal' | string} scopeId */
+    function buildScopeHero(scopeId) {
+      const onStake = scopeId !== 'personal'
+      const scopeSessions = onStake
+        ? sessions.filter((s) => s.deal_id === scopeId)
+        : sessions.filter((s) => s.deal_id == null)
+      const scopeCompleted = scopeSessions.filter((s) => s.status !== 'active')
+      const scopeFiltered = scopeCompleted.filter((s) => {
+        if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
+        if (venueFilter !== 'all' && s.venue_kind !== venueFilter) return false
+        return true
+      })
+      let profit = 0
+      let hours = 0
+      let wins = 0
+      let counted = 0
+      for (const s of scopeFiltered) {
+        const base = pokerSessionWinLoss(s)
+        if (base == null) continue
+        const wl = base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId)
+        counted += 1
+        profit += wl
+        hours += pokerSessionDurationHours(s)
+        if (wl > 0) wins += 1
+      }
+      const scopeStats = {
+        profit,
+        hours,
+        hourly: hours >= 0.02 ? profit / hours : null,
+        winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
+        count: counted,
+      }
+      const scopeRoll = onStake
+        ? dealProfiles[scopeId] != null
+          ? Number(dealProfiles[scopeId].overall_bankroll) || 0
+          : 0
+        : profile != null
+          ? Number(profile.overall_bankroll) || 0
+          : 0
+      const ordered = [...scopeFiltered]
+        .map((s) => {
+          const base = pokerSessionWinLoss(s)
+          return {
+            at: s.end_at || s.start_at || null,
+            wl:
+              base == null
+                ? null
+                : base + sessionSwapSettlementDelta(tournamentSwaps, s.id, userId),
+          }
+        })
+        .filter((x) => x.wl != null && x.at)
+        .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+      let spark = []
+      if (ordered.length > 0 && scopeRoll != null) {
+        let run = Number(scopeRoll) - ordered.reduce((sum, x) => sum + x.wl, 0)
+        const points = [run]
+        for (const x of ordered) {
+          run += x.wl
+          points.push(run)
+        }
+        spark = points
+      }
+      return {
+        stats: scopeStats,
+        spark,
+        overallBankroll: scopeRoll,
+        deal: onStake ? stakeeDeals.find((d) => d.id === scopeId) ?? null : null,
+      }
+    }
+    /** @type {Record<string, ReturnType<typeof buildScopeHero>>} */
+    const map = { personal: buildScopeHero('personal') }
+    for (const d of stakeeDeals) map[d.id] = buildScopeHero(d.id)
+    return map
+  }, [
+    sessions,
+    stakeeDeals,
+    dealProfiles,
+    profile,
+    typeFilter,
+    venueFilter,
+    tournamentSwaps,
+    userId,
+  ])
+
+  useEffect(() => {
+    const pendingId = pendingCarouselDealIdRef.current
+    if (!pendingId) return
+    if (stakeeDeals.some((d) => d.id === pendingId)) {
+      setBankrollScope(pendingId)
+      pendingCarouselDealIdRef.current = null
+    }
+  }, [stakeeDeals])
+
+  function openSetBankroll(scopeId = bankrollScope) {
+    const onStake = scopeId !== 'personal'
+    if (scopeId !== bankrollScope) setBankrollScope(scopeId)
+    if (onStake) {
+      const dp = dealProfiles[scopeId]
+      setBankrollInput(dp != null ? String(dp.overall_bankroll) : '')
     } else {
       setBankrollInput(profile != null ? String(profile.overall_bankroll) : '')
     }
@@ -1815,57 +1923,6 @@ export default function PokerBankrollTracker({
           <p className="mb-3 text-center text-sm text-rose-400">{error}</p>
         ) : null}
 
-        {/* Personal ↔ On Stake (per-deal) — same screen, different data */}
-        {stakeeDeals.length > 0 ? (
-          <div className="mb-4">
-            <div className="flex gap-1 rounded-2xl bg-zinc-900 p-1">
-              <button
-                type="button"
-                onClick={() => setBankrollScope('personal')}
-                className={`flex-1 rounded-xl py-2.5 text-xs font-bold tracking-wide touch-manipulation transition-colors ${
-                  !isOnStake
-                    ? 'bg-zinc-700 text-white'
-                    : 'text-zinc-500 active:text-zinc-300'
-                }`}
-              >
-                Personal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const first = stakeeDeals[0]
-                  if (first) setBankrollScope(first.id)
-                }}
-                className={`flex-1 rounded-xl py-2.5 text-xs font-bold tracking-wide touch-manipulation transition-colors ${
-                  isOnStake
-                    ? 'bg-amber-600 text-white shadow-inner shadow-amber-900/40'
-                    : 'text-zinc-500 active:text-zinc-300'
-                }`}
-              >
-                On Stake
-              </button>
-            </div>
-            {isOnStake && stakeeDeals.length > 1 ? (
-              <div className="mt-2 flex gap-1.5 overflow-x-auto no-scrollbar">
-                {stakeeDeals.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => setBankrollScope(d.id)}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold touch-manipulation ${
-                      bankrollScope === d.id
-                        ? 'bg-amber-500/30 text-amber-200 ring-1 ring-amber-400/50'
-                        : 'bg-zinc-800 text-zinc-500'
-                    }`}
-                  >
-                    {d.label || 'Deal'}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
         {activeTab === 'details' ? (
           loading ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
@@ -1876,97 +1933,135 @@ export default function PokerBankrollTracker({
 
         {activeTab === 'overview' ? (
           <>
-            {/* Bankroll hero — personal (zinc) vs On Stake (amber, hard to miss) */}
-            <div
-              data-elevated-card={isOnStake ? 'accent' : 'surface'}
-              className={
-                isOnStake
-                  ? 'mb-4 rounded-3xl border-2 border-amber-400/70 bg-gradient-to-br from-amber-950 via-amber-900/80 to-zinc-950 p-6 shadow-[0_0_40px_-12px_rgba(251,191,36,0.55)]'
-                  : 'mb-4 rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6'
-              }
-            >
-              {isOnStake ? (
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-950">
-                    On stake
-                  </span>
-                  <span className="truncate text-xs font-semibold text-amber-200/90">
-                    {activeDeal?.label || 'Stake deal'}
-                  </span>
-                </div>
-              ) : null}
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <div
-                  className={`text-xs font-semibold uppercase tracking-wide ${
-                    isOnStake ? 'text-amber-200/70' : 'text-zinc-400'
-                  }`}
-                >
-                  {isOnStake ? 'On Stake bankroll' : 'Poker bankroll'}
-                </div>
-                <button
-                  type="button"
-                  onClick={openSetBankroll}
-                  className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
-                    isOnStake
-                      ? 'bg-amber-500/25 text-amber-100 active:bg-amber-500/40'
-                      : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
-                  }`}
-                >
-                  Edit
-                </button>
-              </div>
-              {loading ? (
-                <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
-              ) : (
-                <>
+            <PokerBankrollHeroCarousel
+              slides={bankrollSlides}
+              activeId={bankrollScope}
+              onActiveIdChange={setBankrollScope}
+              renderSlide={(slide, slideIndex) => {
+                const scopeId = slide.id
+                const onStake = scopeId !== 'personal'
+                const hero = heroByScope[scopeId] || heroByScope.personal
+                const theme = onStake ? stakeHeroTheme(Math.max(0, slideIndex - 1)) : null
+                return (
                   <div
-                    className={`text-5xl font-black tracking-tight ${
-                      isOnStake ? 'text-amber-50' : 'text-white'
-                    }`}
+                    data-elevated-card={onStake ? 'accent' : 'surface'}
+                    className={
+                      onStake
+                        ? theme.card
+                        : 'rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6'
+                    }
                   >
-                    {fmtPoker$(overallBankroll)}
+                    {onStake ? (
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${theme.badge}`}
+                        >
+                          On stake
+                        </span>
+                        <span className={`truncate text-xs font-semibold ${theme.badgeText}`}>
+                          {hero.deal?.label || 'Stake deal'}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <div
+                        className={`text-xs font-semibold uppercase tracking-wide ${
+                          onStake ? theme.label : 'text-zinc-400'
+                        }`}
+                      >
+                        {onStake ? 'Stake bankroll' : 'Poker bankroll'}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {!onStake ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setError('')
+                              setSheet('createStake')
+                              triggerTapHapticLight()
+                            }}
+                            className="rounded-xl bg-cyan-600/90 px-3 py-1.5 text-xs font-bold text-white touch-manipulation active:bg-cyan-500"
+                          >
+                            + Stake
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => openSetBankroll(scopeId)}
+                          className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+                            onStake
+                              ? theme.editBtn
+                              : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
+                          }`}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                    {loading ? (
+                      <div className="h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
+                    ) : (
+                      <>
+                        <div
+                          className={`text-5xl font-black tracking-tight ${
+                            onStake ? theme.amount : 'text-white'
+                          }`}
+                        >
+                          {fmtPoker$(hero.overallBankroll)}
+                        </div>
+                        {hero.spark.length >= 2 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (scopeId !== bankrollScope) setBankrollScope(scopeId)
+                              setActiveTab('trend')
+                            }}
+                            className="mt-3 block w-full touch-manipulation active:opacity-80"
+                            aria-label="Open Trend chart"
+                          >
+                            <BankrollSparkline
+                              series={hero.spark}
+                              className="h-10 w-full"
+                              upClass={onStake ? theme.sparkUp : 'text-emerald-400'}
+                              downClass={onStake ? theme.sparkDown : 'text-rose-400'}
+                            />
+                          </button>
+                        ) : null}
+                      </>
+                    )}
+                    {!loading ? (
+                      <div
+                        className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${
+                          onStake ? theme.borderStat : 'border-zinc-700/40'
+                        }`}
+                      >
+                        <BankrollStat
+                          label="Profit"
+                          value={fmtPoker$(hero.stats.profit)}
+                          tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
+                        />
+                        <BankrollStat
+                          label="Hourly"
+                          value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
+                          tone={
+                            hero.stats.hourly == null
+                              ? 'neutral'
+                              : hero.stats.hourly >= 0
+                                ? 'good'
+                                : 'bad'
+                          }
+                        />
+                        <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
+                        <BankrollStat
+                          label="Win rate"
+                          value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
+                        />
+                      </div>
+                    ) : null}
                   </div>
-                  {bankrollSparkSeries.length >= 2 ? (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('trend')}
-                      className="mt-3 block w-full touch-manipulation active:opacity-80"
-                      aria-label="Open Trend chart"
-                    >
-                      <BankrollSparkline
-                        series={bankrollSparkSeries}
-                        className="h-10 w-full"
-                        upClass={isOnStake ? 'text-amber-400' : 'text-emerald-400'}
-                        downClass={isOnStake ? 'text-amber-500' : 'text-rose-400'}
-                      />
-                    </button>
-                  ) : null}
-                </>
-              )}
-              {!loading ? (
-                <div
-                  className={`mt-5 grid grid-cols-4 gap-2 border-t pt-4 ${
-                    isOnStake ? 'border-amber-400/25' : 'border-zinc-700/40'
-                  }`}
-                >
-                  <BankrollStat
-                    label="Profit"
-                    value={fmtPoker$(stats.profit)}
-                    tone={stats.profit >= 0 ? 'good' : 'bad'}
-                  />
-                  <BankrollStat
-                    label="Hourly"
-                    value={stats.hourly == null ? '-' : fmtPoker$(stats.hourly)}
-                    tone={stats.hourly == null ? 'neutral' : stats.hourly >= 0 ? 'good' : 'bad'}
-                  />
-                  <BankrollStat label="Hours" value={stats.hours.toFixed(1)} />
-                  <BankrollStat
-                    label="Win rate"
-                    value={stats.winRate == null ? '-' : `${stats.winRate}%`}
-                  />
-                </div>
-              ) : null}
-            </div>
+                )
+              }}
+            />
 
             {activeSession ? (
               <div
@@ -2233,7 +2328,7 @@ export default function PokerBankrollTracker({
                 <p className="text-white font-semibold">No poker sessions yet</p>
                 <p className="mt-1 text-sm text-zinc-500">
                   {isOnStake
-                    ? 'Start or log an On Stake session for this deal.'
+                    ? 'Start or log a stake session for this deal.'
                     : 'Start a live session, or log one from earlier.'}
                 </p>
               </div>
@@ -2447,6 +2542,23 @@ export default function PokerBankrollTracker({
         </div>
       </ScrollLinkedEdgeTitleBarShell>
 
+      {sheet === 'createStake' && supabaseClient && userId ? (
+        <PokerStablePlayerDealSheet
+          supabaseClient={supabaseClient}
+          userId={userId}
+          saving={stableSaving}
+          onSavingChange={setStableSaving}
+          onClose={() => setSheet(null)}
+          onCreated={(deal) => {
+            if (deal?.status === 'active' && deal?.id) {
+              pendingCarouselDealIdRef.current = deal.id
+            }
+            void loadData()
+          }}
+          onError={setError}
+        />
+      ) : null}
+
       {sheet === 'bankroll' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
@@ -2461,8 +2573,8 @@ export default function PokerBankrollTracker({
               <div className="text-lg font-bold text-white">
                 {isOnStake
                   ? hasBankrollProfile
-                    ? 'Edit On Stake bankroll'
-                    : 'On Stake starting bankroll'
+                    ? 'Edit stake bankroll'
+                    : 'Stake starting bankroll'
                   : hasBankrollProfile
                     ? 'Edit poker bankroll'
                     : 'Starting bankroll'}

@@ -4642,6 +4642,42 @@ html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:active {
 html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:disabled {
   color: #ffffff !important;
 }
+html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] .bg-zinc-700 {
+  background-color: #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-bankroll-carousel] .bg-zinc-600 {
+  background-color: #d4d4d8 !important;
+}
+html.light [data-poker-bankroll-carousel] .bg-cyan-500 {
+  background-color: #0891b2 !important;
+}
+
+/* Portaled handle typeahead (New deal + Request horse) */
+html.light [data-edge-handle-typeahead-list] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-edge-handle-typeahead-list] .text-white {
+  color: #18181b !important;
+}
+html.light [data-edge-handle-typeahead-list] .bg-zinc-700 {
+  background-color: #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-edge-handle-typeahead-list] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-edge-handle-typeahead-list] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
 
 /* ── Poker Stable page - light mode (dark unchanged) ──── */
 html.light [data-poker-stable] {

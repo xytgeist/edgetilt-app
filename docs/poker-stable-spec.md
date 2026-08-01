@@ -93,6 +93,17 @@ Partial payments supported. Guest slices: player authoritative only.
 
 ---
 
+## Entry points (UX pivot 2026-08-01)
+
+| Role | Create deal | Manage stake roll / sessions |
+| --- | --- | --- |
+| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll overview (personal + one card per active deal) |
+| **Backer (staker)** | Stable **Request horse** → player handle + your slice + optional syndicate slices | Stable horses list, invites, settle/ledger |
+
+Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice invite (player accept activates lead backer slice only).
+
+---
+
 ## Implementation phases
 
 | Phase | Scope |
@@ -126,7 +137,7 @@ New / extended:
 | UI | `src/features/poker-stable/` |
 | Math | `src/features/poker-stable/pokerStableMath.js` |
 | API | `src/features/poker-stable/pokerStableApi.js` |
-| On Stake | `src/features/poker-bankroll/PokerBankrollTracker.jsx` |
+| On Stake | `src/features/poker-bankroll/PokerBankrollTracker.jsx`, `PokerBankrollHeroCarousel.jsx` |
 | Swap patterns | `src/features/poker-bankroll/pokerTournamentSwapApi.js` |
 | Bones SQL | `supabase/migrations/20260730000000_poker_stable_deals.sql` |
 
@@ -134,4 +145,5 @@ New / extended:
 
 ## Update log
 
+- **2026-08-01:** UX pivot: player **`+ Stake`** + stake carousel on Poker Bankroll; Stable backer-only (**Request horse** full form + syndicate slices); `requestBackingDeal` API; removed Personal/On Stake toggle.
 - **2026-08-01:** Spec distilled from Ryan + Theo design session; v2 foundation build started.

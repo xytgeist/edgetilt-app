@@ -145,6 +145,21 @@ export function distanceForVenue(venueName, venueDistanceMap) {
 }
 
 /**
+ * MTTDB / catalog display_name often opens with "$100 NLH …"; skip duplicate buy-in prefix.
+ * @param {string | null | undefined} displayName
+ * @param {number} buyIn
+ */
+export function displayNameAlreadyHasLeadingBuyIn(displayName, buyIn) {
+  const name = String(displayName || '').trim()
+  if (!name || !Number.isFinite(buyIn)) return false
+  const match = name.match(/^\$(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/)
+  if (!match) return false
+  const leading = Number(match[1].replace(/,/g, ''))
+  if (!Number.isFinite(leading)) return false
+  return Math.abs(leading - buyIn) < 0.005
+}
+
+/**
  * @param {object} event
  * @param {number | null} distanceMi
  * @param {string} [todayIso]
@@ -158,7 +173,7 @@ export function formatSoftTournamentOptionLabel(event, distanceMi, todayIso) {
   const eventDate = String(event?.event_date || '').trim().slice(0, 10)
   const startTime = formatPickerStartTimeLabel(event?.starts_at)
   const bits = []
-  if (buyStr) bits.push(buyStr)
+  if (buyStr && !displayNameAlreadyHasLeadingBuyIn(name, buyIn)) bits.push(buyStr)
   bits.push(title)
   if (startTime) bits.push(startTime)
   else if (todayIso && eventDate && eventDate !== todayIso) {

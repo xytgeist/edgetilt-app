@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react'
 import PlayLogPartnerPickerModal from '../play-logbook/PlayLogPartnerPickerModal.jsx'
 import { fmtPoker$ } from './pokerBankrollMath.js'
 import {
+  computeMySideSwapTotalPct,
+  computeSwapOwnershipStats,
+} from './pokerSwapOwnershipSummary.js'
+import {
   cancelTournamentSwap,
   emptyDraftSwap,
   markSwapPaid,
@@ -85,48 +89,24 @@ export default function PokerTournamentSwapsSection({
   }, [draftSwaps, savedSwaps])
 
   /** Sum of % you give across draft + saved + pending incoming accept (your side). */
-  const mySideTotalPct = useMemo(() => {
-    let total = 0
-    for (const d of draftSwaps) {
-      const pct = parseSwapPct(d.pct_you_give)
-      if (pct != null) total += pct
-    }
-    for (const swap of savedSwaps) {
-      if (swap.status === 'cancelled') continue
-      const role = swapViewerRole(swap, userId)
-      const pct =
-        role === 'counterparty'
-          ? Number(swap.pct_counterparty_gives)
-          : Number(swap.pct_creator_gives)
-      if (Number.isFinite(pct)) total += pct
-    }
-    if (incomingAcceptSwap) {
-      const pct = Number(incomingAcceptSwap.pct_counterparty_gives)
-      if (Number.isFinite(pct)) total += pct
-    }
-    return Math.round(total * 1000) / 1000
-  }, [draftSwaps, savedSwaps, incomingAcceptSwap, userId])
-
-  const swapCapPct = useMemo(() => {
-    const cap = Number(maxSwapGivePct)
-    if (!Number.isFinite(cap)) return 100
-    return Math.max(0, Math.min(100, Math.round(cap * 1000) / 1000))
-  }, [maxSwapGivePct])
-
-  const backingSoldPct = useMemo(
-    () => Math.max(0, Math.round((100 - swapCapPct) * 1000) / 1000),
-    [swapCapPct],
+  const mySideTotalPct = useMemo(
+    () =>
+      computeMySideSwapTotalPct({
+        draftSwaps,
+        savedSwaps,
+        incomingAcceptSwap,
+        userId,
+      }),
+    [draftSwaps, savedSwaps, incomingAcceptSwap, userId],
   )
 
-  const remainingSwapPct = useMemo(
-    () => Math.max(0, Math.round((swapCapPct - mySideTotalPct) * 1000) / 1000),
-    [swapCapPct, mySideTotalPct],
+  const { mySideOver } = useMemo(
+    () => computeSwapOwnershipStats(maxSwapGivePct, mySideTotalPct),
+    [maxSwapGivePct, mySideTotalPct],
   )
 
   const hasAnySwaps =
     draftSwaps.length > 0 || savedSwaps.length > 0 || Boolean(incomingAcceptSwap)
-  const mySideOver = mySideTotalPct > swapCapPct
-  const showSwapPctSummary = hasAnySwaps || backingSoldPct > 0
   const incomingOther = incomingAcceptSwap
     ? swapOtherPartyLabel(incomingAcceptSwap, profilesById, userId)
     : ''
@@ -312,63 +292,6 @@ export default function PokerTournamentSwapsSection({
         Bilateral % of net (prize − buy-in). Busts owe $0 from that side. Settlement when both
         results are in.
       </p>
-
-      {showSwapPctSummary ? (
-        <div
-          className={`mb-3 rounded-2xl border px-3 py-2 ${
-            mySideOver
-              ? 'border-rose-500/40 bg-rose-950/30'
-              : compact
-                ? 'border-zinc-700/70 bg-zinc-900/50'
-                : 'border-emerald-500/25 bg-black/20'
-          }`}
-        >
-          {backingSoldPct > 0 ? (
-            <div className="mb-2 flex items-baseline justify-between gap-2 border-b border-white/5 pb-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                You keep (after backing)
-              </span>
-              <span className="text-sm font-bold tabular-nums text-zinc-200">{swapCapPct}%</span>
-            </div>
-          ) : null}
-          {hasAnySwaps ? (
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                Your side swapped
-              </span>
-              <span
-                className={`text-base font-bold tabular-nums ${
-                  mySideOver ? 'text-rose-300' : 'text-white'
-                }`}
-              >
-                {mySideTotalPct}%
-              </span>
-            </div>
-          ) : null}
-          <div
-            className={`flex items-baseline justify-between gap-2 ${
-              hasAnySwaps ? 'mt-2 border-t border-white/5 pt-2' : ''
-            }`}
-          >
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-              Remaining to swap
-            </span>
-            <span
-              className={`text-base font-bold tabular-nums ${
-                mySideOver ? 'text-rose-300' : 'text-emerald-200'
-              }`}
-            >
-              {remainingSwapPct}%
-            </span>
-          </div>
-          {mySideOver ? (
-            <p className="mt-1 text-[11px] text-rose-300/90">
-              Over your limit ... max {swapCapPct}% is yours to swap
-              {backingSoldPct > 0 ? ` (${backingSoldPct}% sold to backers)` : ''}.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
 
       {!hasAnySwaps ? (
         <p

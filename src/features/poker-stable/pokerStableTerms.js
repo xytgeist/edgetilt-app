@@ -1,5 +1,4 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { sliceDisplayName } from './pokerStableApi.js'
 
 export function pricingModeLabel(mode) {
   return mode === 'markup' ? 'Markup' : 'Profit split'
@@ -11,19 +10,82 @@ export function rakebackModeLabel(mode) {
   return 'Disabled'
 }
 
+function formatTermsPct(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  if (Number.isInteger(n)) return String(n)
+  return String(Number(n.toFixed(2)).replace(/\.?0+$/, ''))
+}
+
+function sliceBackerShortName(slice, profilesById = {}) {
+  if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {
+    return slice.guest_label || slice.guestLabel || 'Guest'
+  }
+  const stakerId = slice.staker_user_id || slice.stakerUserId
+  const profile = stakerId ? profilesById[stakerId] : null
+  const displayName = profile?.display_name?.trim()
+  if (displayName) {
+    const first = displayName.split(/\s+/)[0]
+    return first || displayName
+  }
+  const handle = profile?.handle ? String(profile.handle).replace(/^@+/, '') : ''
+  return handle ? `@${handle}` : 'Stake'
+}
+
+/** Terms sheet: "Joey K (@smokewagon)" or guest name only. */
+export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
+  if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {
+    return slice.guest_label || slice.guestLabel || 'Guest'
+  }
+  const stakerId = slice.staker_user_id || slice.stakerUserId
+  const profile = stakerId ? profilesById[stakerId] : null
+  const displayName = profile?.display_name?.trim()
+  const handle = profile?.handle ? String(profile.handle).replace(/^@+/, '') : ''
+  if (displayName && handle) return `${displayName} (@${handle})`
+  if (displayName) return displayName
+  if (handle) return `@${handle}`
+  return 'Backer'
+}
+
 export function sliceTermsSummary(slice, profilesById = {}) {
-  const name = sliceDisplayName(slice, profilesById)
-  const action = `${slice.action_pct}% action`
-  const pricing =
-    slice.pricing_mode === 'markup'
-      ? `Markup ${slice.markup_rate}x`
-      : `Player keeps ${slice.player_profit_pct}% of profit`
-  const rake = rakebackModeLabel(slice.rakeback_mode)
-  const rakeDetail =
-    slice.rakeback_mode === 'custom' && slice.rakeback_player_pct != null
-      ? ` · Player rakeback ${slice.rakeback_player_pct}%`
-      : ''
-  return { name, action, pricing, rake: `${rake}${rakeDetail}` }
+  const name = sliceCounterpartyDisplayName(slice, profilesById)
+  const backerShort = sliceBackerShortName(slice, profilesById)
+  const actionPct = formatTermsPct(slice.action_pct ?? slice.actionPct)
+  const pricingMode = slice.pricing_mode || slice.pricingMode || 'profit_split'
+  const rakeMode = slice.rakeback_mode || slice.rakebackMode || 'disabled'
+
+  /** @type {{ label: string, value: string }[]} */
+  const lines = [{ label: 'Action', value: `${actionPct}%` }]
+
+  if (pricingMode === 'markup') {
+    const rate = slice.markup_rate ?? slice.markupRate
+    lines.push({ label: 'Markup', value: `${formatTermsPct(rate)}x` })
+  } else {
+    const playerPct = Number(slice.player_profit_pct ?? slice.playerProfitPct)
+    const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : null
+    lines.push({
+      label: 'Profit split',
+      value:
+        Number.isFinite(backerPct) && Number.isFinite(playerPct)
+          ? `${backerShort} - ${formatTermsPct(backerPct)}% | Player - ${formatTermsPct(playerPct)}%`
+          : '—',
+    })
+  }
+
+  if (rakeMode === 'all_to_stake') {
+    lines.push({ label: 'Rakeback', value: '100% to Stake' })
+  } else if (rakeMode === 'custom') {
+    const playerRb = Number(slice.rakeback_player_pct ?? slice.rakebackPlayerPct)
+    const stakeRb = Number.isFinite(playerRb) ? 100 - playerRb : null
+    if (Number.isFinite(stakeRb) && Number.isFinite(playerRb)) {
+      lines.push({
+        label: 'Rakeback',
+        value: `Stake - ${formatTermsPct(stakeRb)}% | Player - ${formatTermsPct(playerRb)}%`,
+      })
+    }
+  }
+
+  return { name, lines }
 }
 
 export function dealHasEdgeStakerSlices(slices = []) {
@@ -65,9 +127,8 @@ export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
   return !hasActiveEdgeSlice
 }
 
-export function dealTermsHeader(deal) {
+export function dealTermsMeta(deal) {
   const parts = []
-  if (deal?.label) parts.push(deal.label)
   if (deal?.baseline_bankroll != null) {
     parts.push(`Baseline ${fmtPoker$(Number(deal.baseline_bankroll) || 0)}`)
   }
@@ -76,6 +137,11 @@ export function dealTermsHeader(deal) {
     if (deal.starting_roll != null) parts.push(`Roll ${fmtPoker$(Number(deal.starting_roll) || 0)}`)
   }
   return parts.join(' · ')
+}
+
+/** @deprecated use dealTermsMeta — label is shown separately in terms UI */
+export function dealTermsHeader(deal) {
+  return dealTermsMeta(deal)
 }
 
 /** @param {object} sliceRow @param {Record<string, object>} profilesById */

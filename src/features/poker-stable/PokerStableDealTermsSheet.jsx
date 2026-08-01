@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { sliceDisplayName } from './pokerStableApi.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import {
   canReassignGuestSlice,
-  dealTermsHeader,
+  dealTermsMeta,
   sliceTermsSummary,
   stakeDealCanBeCancelled,
   stakeeCanEditDealTerms,
@@ -97,7 +96,7 @@ function TermsSliceCard({
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <span
-          className={`text-xs font-black uppercase tracking-wide ${pokerStableSliceTitleClass(idx)}`}
+          className={`min-w-0 truncate text-sm font-bold ${pokerStableSliceTitleClass(idx)}`}
         >
           {summary.name}
           {proposed ? ' (proposed)' : ''}
@@ -108,10 +107,13 @@ function TermsSliceCard({
           </span>
         ) : null}
       </div>
-      <div className={`${POKER_STABLE_SLICE_INNER_CLASS} space-y-1 text-sm text-zinc-300`}>
-        <p>{summary.action}</p>
-        <p>{summary.pricing}</p>
-        <p>{summary.rake}</p>
+      <div className={`${POKER_STABLE_SLICE_INNER_CLASS} space-y-1.5 text-sm text-zinc-300`}>
+        {summary.lines.map((line) => (
+          <p key={line.label}>
+            <span className="text-zinc-500">{line.label}: </span>
+            {line.value}
+          </p>
+        ))}
         {(slice.guest_phone || slice.guest_email) && slice.counterparty_kind === 'guest' ? (
           <p className="text-xs text-zinc-500">
             {slice.guest_phone ? `SMS ${slice.guest_phone}` : null}
@@ -239,7 +241,9 @@ export default function PokerStableDealTermsSheet({
 
         <div className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-4">
           <p className="text-sm font-semibold text-white">{deal.label || 'Cash backing'}</p>
-          <p className="mt-1 text-sm text-zinc-400">{dealTermsHeader(deal)}</p>
+          {dealTermsMeta(deal) ? (
+            <p className="mt-1 text-sm text-zinc-400">{dealTermsMeta(deal)}</p>
+          ) : null}
           {deal.is_migration ? (
             <p className="mt-2 text-xs text-zinc-500">
               Migration · stake-wide P/L{' '}
@@ -272,17 +276,21 @@ export default function PokerStableDealTermsSheet({
               Proposed terms
             </h4>
             {proposedState ? (
-              <p className="mb-2 text-xs text-zinc-500">
-                {dealTermsHeader({
-                  ...deal,
-                  label: proposedState.label || deal.label,
-                  baseline_bankroll: proposedState.baseline,
-                  starting_roll: proposedState.startingRoll,
-                  is_migration: proposedState.isMigration,
-                  stake_wide_starting_pl: proposedState.stakeWidePl,
-                  lifetime_pl_display: proposedState.lifetimePl,
-                })}
-              </p>
+              <>
+                <p className="mb-1 text-sm font-semibold text-amber-100">
+                  {proposedState.label?.trim() || deal.label || 'Proposed terms'}
+                </p>
+                <p className="mb-2 text-xs text-zinc-500">
+                  {dealTermsMeta({
+                    ...deal,
+                    baseline_bankroll: proposedState.baseline,
+                    starting_roll: proposedState.startingRoll,
+                    is_migration: proposedState.isMigration,
+                    stake_wide_starting_pl: proposedState.stakeWidePl,
+                    lifetime_pl_display: proposedState.lifetimePl,
+                  })}
+                </p>
+              </>
             ) : null}
             <div className="mb-4 space-y-3">
               {proposedSlices.map((slice, idx) => (

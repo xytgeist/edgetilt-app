@@ -1996,6 +1996,7 @@ export default function PokerBankrollTracker({
                   <div
                     data-poker-bankroll-hero-card
                     data-elevated-card={onStake ? 'accent' : 'surface'}
+                    data-stake-hero-tone={onStake ? theme.tone : undefined}
                     className={
                       onStake
                         ? theme.card

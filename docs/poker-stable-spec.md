@@ -145,7 +145,7 @@ New / extended:
 
 ## Update log
 
-- **2026-08-01:** Stake accent palette: heroes + slice cards rotate **emerald / blue / rose**; light mode uses deeper tints + solid badges.
+- **2026-08-01:** Stake accent palette: heroes rotate **blue / emerald / rose** (oldest deal = blue); light mode uses deeper tints + solid badges.
 - **2026-08-01:** Stake delete (Bankroll **Terms → Delete stake**): stakee may remove a stake before any Edge backer accepts; deletes stake sessions on that deal (`20260801150000`).
 - **2026-08-01:** Guest-only active stakes: player may **Edit terms** on Bankroll when all backers are guests (auto-active deals); **Assign to Edge user** re-links a guest slice to an Edge account (slice invite pending in Stable). RPCs `poker_stable_apply_stakee_terms`, `poker_stable_reassign_guest_slice` (`20260801140000`).
 - **2026-08-01:** Stake terms view/edit: **Terms** on Bankroll stake cards + Stable invites; player edits pending deals directly; backer **Edit terms** stores a proposal until the player accepts (`pending_terms_json`, `20260801130000`).

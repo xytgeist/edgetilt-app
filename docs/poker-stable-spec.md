@@ -97,7 +97,7 @@ Partial payments supported. Guest slices: player authoritative only.
 
 | Role | Create deal | Manage stake roll / sessions |
 | --- | --- | --- |
-| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll overview (personal + one card per active deal) |
+| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll overview (personal + one card per active deal; **pending** deals show as a locked card until backers accept) |
 | **Backer (staker)** | Stable **Request horse** → player handle + your slice + optional syndicate slices | Stable horses list, invites, settle/ledger |
 
 Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice invite (player accept activates lead backer slice only).
@@ -145,5 +145,6 @@ New / extended:
 
 ## Update log
 
+- **2026-08-01:** Post-create stake UX: pending player deals appear on Bankroll carousel (locked until accept); success banner after **Create stake**; push/in-app backer alerts still **v2c**.
 - **2026-08-01:** UX pivot: player **`+ Stake`** + stake carousel on Poker Bankroll; Stable backer-only (**Request horse** full form + syndicate slices); `requestBackingDeal` API; removed Personal/On Stake toggle.
 - **2026-08-01:** Spec distilled from Ryan + Theo design session; v2 foundation build started.

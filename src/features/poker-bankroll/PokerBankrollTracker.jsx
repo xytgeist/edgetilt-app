@@ -214,11 +214,14 @@ export default function PokerBankrollTracker({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  /** Brief success copy after + Stake create (pending or active). */
+  const [stakeNotice, setStakeNotice] = useState('')
   /** @type {null | 'session' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
   const [stableSaving, setStableSaving] = useState(false)
   /** After + Stake, scroll carousel to this deal id once reload completes. */
   const pendingCarouselDealIdRef = useRef(null)
+  const stakeNoticeTimerRef = useRef(0)
   /** @type {object[]} */
   const [draftSwaps, setDraftSwaps] = useState([])
   /**
@@ -263,6 +266,7 @@ export default function PokerBankrollTracker({
     () => (isOnStake ? stakeeDeals.find((d) => d.id === bankrollScope) ?? null : null),
     [isOnStake, stakeeDeals, bankrollScope],
   )
+  const stakeScopePending = activeDeal?.status === 'pending'
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
   /** Missing profile rows count as $0 so users can start without a setup step. */
@@ -420,12 +424,13 @@ export default function PokerBankrollTracker({
         setDealProfiles({})
       } else {
         const mine = (dealsRes.deals || []).filter(
-          (d) => d.stakee_user_id === userId && d.status === 'active',
+          (d) =>
+            d.stakee_user_id === userId && (d.status === 'active' || d.status === 'pending'),
         )
         setStakeeDeals(mine)
         const { byDeal, error: rollErr } = await loadDealBankrollProfiles(
           supabaseClient,
-          mine.map((d) => d.id),
+          mine.filter((d) => d.status === 'active').map((d) => d.id),
         )
         if (rollErr && !isMissingStableTableError(rollErr)) {
           console.warn('[poker-bankroll] deal rolls load failed', rollErr.message)
@@ -732,10 +737,13 @@ export default function PokerBankrollTracker({
         winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
         count: counted,
       }
+      const scopeDeal = onStake ? stakeeDeals.find((d) => d.id === scopeId) ?? null : null
       const scopeRoll = onStake
         ? dealProfiles[scopeId] != null
           ? Number(dealProfiles[scopeId].overall_bankroll) || 0
-          : 0
+          : scopeDeal?.status === 'pending'
+            ? Number(scopeDeal.starting_roll ?? scopeDeal.baseline_bankroll) || 0
+            : 0
         : profile != null
           ? Number(profile.overall_bankroll) || 0
           : 0
@@ -766,7 +774,7 @@ export default function PokerBankrollTracker({
         stats: scopeStats,
         spark,
         overallBankroll: scopeRoll,
-        deal: onStake ? stakeeDeals.find((d) => d.id === scopeId) ?? null : null,
+        deal: scopeDeal,
       }
     }
     /** @type {Record<string, ReturnType<typeof buildScopeHero>>} */
@@ -793,10 +801,31 @@ export default function PokerBankrollTracker({
     }
   }, [stakeeDeals])
 
+  function showStakeNotice(message) {
+    setStakeNotice(message)
+    if (stakeNoticeTimerRef.current) window.clearTimeout(stakeNoticeTimerRef.current)
+    stakeNoticeTimerRef.current = window.setTimeout(() => {
+      stakeNoticeTimerRef.current = 0
+      setStakeNotice('')
+    }, 6500)
+  }
+
+  useEffect(
+    () => () => {
+      if (stakeNoticeTimerRef.current) window.clearTimeout(stakeNoticeTimerRef.current)
+    },
+    [],
+  )
+
   function openSetBankroll(scopeId = bankrollScope) {
     const onStake = scopeId !== 'personal'
     if (scopeId !== bankrollScope) setBankrollScope(scopeId)
     if (onStake) {
+      const deal = stakeeDeals.find((d) => d.id === scopeId)
+      if (deal?.status === 'pending') {
+        setError('Bankroll unlocks when backers accept this stake.')
+        return
+      }
       const dp = dealProfiles[scopeId]
       setBankrollInput(dp != null ? formatMoneyInputValue(String(dp.overall_bankroll)) : '')
     } else {
@@ -926,6 +955,10 @@ export default function PokerBankrollTracker({
       onRequireSubscribeForPokerBankroll?.()
       return
     }
+    if (stakeScopePending) {
+      setError('Waiting for backers to accept before you can start sessions.')
+      return
+    }
     if (activeSession) {
       setError('You already have a session in progress.')
       return
@@ -996,6 +1029,10 @@ export default function PokerBankrollTracker({
   function openLogPast() {
     if (!canCreatePokerBankrollSession) {
       onRequireSubscribeForPokerBankroll?.()
+      return
+    }
+    if (stakeScopePending) {
+      setError('Waiting for backers to accept before you can log sessions.')
       return
     }
     setEditingId(null)
@@ -1924,6 +1961,15 @@ export default function PokerBankrollTracker({
           <p className="mb-3 text-center text-sm text-rose-400">{error}</p>
         ) : null}
 
+        {stakeNotice && activeTab === 'overview' ? (
+          <div
+            data-poker-stake-notice
+            className="mb-3 rounded-2xl border border-cyan-500/40 bg-cyan-950/50 px-4 py-3 text-center text-sm text-cyan-100"
+          >
+            {stakeNotice}
+          </div>
+        ) : null}
+
         {activeTab === 'details' ? (
           loading ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
@@ -1955,9 +2001,13 @@ export default function PokerBankrollTracker({
                     {onStake ? (
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${theme.badge}`}
+                          className={`rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                            hero.deal?.status === 'pending'
+                              ? 'bg-zinc-500/40 text-zinc-200'
+                              : theme.badge
+                          }`}
                         >
-                          On stake
+                          {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
                         </span>
                         <span className={`truncate text-xs font-semibold ${theme.badgeText}`}>
                           {hero.deal?.label || 'Stake deal'}
@@ -1978,6 +2028,7 @@ export default function PokerBankrollTracker({
                             type="button"
                             onClick={() => {
                               setError('')
+                              setStakeNotice('')
                               setSheet('createStake')
                               triggerTapHapticLight()
                             }}
@@ -1986,17 +2037,19 @@ export default function PokerBankrollTracker({
                             + Stake
                           </button>
                         ) : null}
-                        <button
-                          type="button"
-                          onClick={() => openSetBankroll(scopeId)}
-                          className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
-                            onStake
-                              ? theme.editBtn
-                              : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
-                          }`}
-                        >
-                          Edit
-                        </button>
+                        {!onStake || hero.deal?.status !== 'pending' ? (
+                          <button
+                            type="button"
+                            onClick={() => openSetBankroll(scopeId)}
+                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold touch-manipulation ${
+                              onStake
+                                ? theme.editBtn
+                                : 'bg-zinc-700/60 text-zinc-300 active:bg-zinc-600'
+                            }`}
+                          >
+                            Edit
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                     {loading ? (
@@ -2010,6 +2063,12 @@ export default function PokerBankrollTracker({
                         >
                           {fmtPoker$(hero.overallBankroll)}
                         </div>
+                        {onStake && hero.deal?.status === 'pending' ? (
+                          <p className={`mt-2 text-sm ${theme.badgeText}`}>
+                            Waiting for backers to accept in Stable. Sessions unlock when the deal
+                            goes live.
+                          </p>
+                        ) : null}
                         {hero.spark.length >= 2 ? (
                           <button
                             type="button"
@@ -2201,9 +2260,13 @@ export default function PokerBankrollTracker({
                     type="button"
                     onClick={openStartSession}
                     data-start-session-btn
-                    data-start-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
+                    data-start-session-locked={
+                      !canCreatePokerBankrollSession || stakeScopePending ? 'true' : undefined
+                    }
                     className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
-                      !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
+                      !canCreatePokerBankrollSession || stakeScopePending
+                        ? 'cursor-not-allowed opacity-45'
+                        : ''
                     }`}
                   >
                     + Start Session
@@ -2212,9 +2275,13 @@ export default function PokerBankrollTracker({
                     type="button"
                     onClick={openLogPast}
                     data-log-past-session-btn
-                    data-log-past-session-locked={!canCreatePokerBankrollSession ? 'true' : undefined}
+                    data-log-past-session-locked={
+                      !canCreatePokerBankrollSession || stakeScopePending ? 'true' : undefined
+                    }
                     className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
-                      !canCreatePokerBankrollSession ? 'cursor-not-allowed opacity-45' : ''
+                      !canCreatePokerBankrollSession || stakeScopePending
+                        ? 'cursor-not-allowed opacity-45'
+                        : ''
                     }`}
                   >
                     Log previous session(s)
@@ -2328,9 +2395,11 @@ export default function PokerBankrollTracker({
               >
                 <p className="text-white font-semibold">No poker sessions yet</p>
                 <p className="mt-1 text-sm text-zinc-500">
-                  {isOnStake
-                    ? 'Start or log a stake session for this deal.'
-                    : 'Start a live session, or log one from earlier.'}
+                  {stakeScopePending
+                    ? 'Backers must accept before you can log stake sessions.'
+                    : isOnStake
+                      ? 'Start or log a stake session for this deal.'
+                      : 'Start a live session, or log one from earlier.'}
                 </p>
               </div>
             ) : (
@@ -2551,8 +2620,15 @@ export default function PokerBankrollTracker({
           onSavingChange={setStableSaving}
           onClose={() => setSheet(null)}
           onCreated={(deal) => {
-            if (deal?.status === 'active' && deal?.id) {
+            if (deal?.id) {
               pendingCarouselDealIdRef.current = deal.id
+              if (deal.status === 'pending') {
+                showStakeNotice(
+                  'Stake request sent. Backers will see invites in Stable ... sessions unlock when they accept.',
+                )
+              } else {
+                showStakeNotice('Stake created. Swipe to your stake bankroll card to get started.')
+              }
             }
             void loadData()
           }}

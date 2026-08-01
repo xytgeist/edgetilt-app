@@ -5008,6 +5008,12 @@ html.light [data-poker-bankroll] [data-poker-incoming-swaps] button.bg-cyan-600.
   color: #ffffff !important;
 }
 
+html.light [data-poker-bankroll] [data-poker-stake-notice] {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1e3a8a !important;
+}
+
 /* Active session card - light mode */
 html.light [data-session-card] {
   background-color: #ecfdf5 !important;

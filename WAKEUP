@@ -26,6 +26,7 @@ The agent should treat the following as **standing instructions for this session
 - **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning*.
 - **Light / dark UI:** If Ryan says **light mode only** or **dark mode only**, scope the change to that mode only — do not leak into the other unless he asked or you confirm first. See **`AGENTS.md`** → *LIGHT MODE vs DARK MODE* (`AGENT_RULE_THEME_MODE_ONLY`).
 - **Supabase default:** **test** (`kcosfvmreeiosdjdzycb`) unless Ryan explicitly asks for **prod** (`jtjgtucumuoswnbauxry`).
+- **Git (test):** After implementation work, **commit and push to `test` on your own** — Ryan pre-approved; do not ask every time. Still wait for explicit OK for **main**, prod deploy, or prod Supabase. See **`AGENTS.md`** → *GIT: COMMIT AND PUSH TO test* (`AGENT_RULE_COMMIT_PUSH_TEST`).
 
 ---
 

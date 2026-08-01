@@ -1,0 +1,32 @@
+---
+description: Ryan pre-authorized agents to commit and push to test without asking each time
+alwaysApply: true
+---
+
+# Commit and push to test — Ryan pre-approved
+
+**Ryan has standing permission for agents to commit and push to the `test` branch without asking him first and without him saying "commit and push" every time.**
+
+## When to do it
+
+After you **finish an implementation task** (code/docs/migrations intended for the test sandbox):
+
+1. Run `git status` / `git diff` — confirm only intended files changed.
+2. Commit with a concise message (why, not just what).
+3. Push to **`origin test`** (`git push origin test`).
+
+Tell Ryan what you committed (hash + one-line summary). **Do not** ask "want me to commit?" for routine test work.
+
+## When NOT to do it
+
+- **Question-only** turns — no commit (`AGENT_RULE_QUESTIONS_ANSWER_ONLY`).
+- **No meaningful diff** — do not empty-commit.
+- **Secrets or junk** — never commit `.env*`, `.tmp-*`, accidental untracked scratch files.
+- **`main`, production deploy, or prod Supabase** — still requires Ryan's explicit instruction.
+- **Force push, amend after push, git config changes** — follow existing git safety rules unless Ryan explicitly overrides.
+
+## Scope
+
+**Test git branch only.** This does **not** authorize prod ingest, prod SQL, prod Edge deploys, or merging to `main`.
+
+`AGENT_RULE_COMMIT_PUSH_TEST` — searchability token.

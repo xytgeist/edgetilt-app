@@ -51,6 +51,22 @@ Good: `composerFocused && IS_IOS ? { paddingTop: X } : undefined`
 
 ---
 
+## CRITICAL — GIT: COMMIT AND PUSH TO `test` (Ryan pre-approved)
+
+> **Ryan has standing permission to commit and push to the `test` branch without asking each time.** After finishing implementation work, commit and `git push origin test` — then tell him the hash and summary. **Do not** wait for "commit and push" every session.
+
+**Still ask / wait for explicit instruction before:**
+
+- Pushing to **`main`**, opening prod PRs, or production deploy steps
+- **Production** Supabase ingest, migrations, or destructive batch ops
+- Commits when Ryan asked a **question only** or there is **no meaningful diff**
+
+Follow normal git safety (no secrets, no force-push to main, no git config changes). Cursor rule: **`.cursor/rules/commit-push-test-autonomous.mdc`**.
+
+`AGENT_RULE_COMMIT_PUSH_TEST` — searchability token.
+
+---
+
 ## CRITICAL — READ BEFORE EDITING ANY EXISTING CODE
 
 > **DO NOT UNDER ANY CIRCUMSTANCES EDIT (ALREADY WRITTEN) CODE BEFORE PROPERLY CHECKING THAT IT WILL NOT NEGATIVELY IMPACT OR BREAK ANY OTHER CODE IN THE PROJECT.**

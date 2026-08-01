@@ -371,6 +371,11 @@ export default function PokerBankrollTracker({
     [isOnStake, stakeeDealsById, slicesByDeal],
   )
 
+  const hasAnyStakeDeals = useMemo(
+    () => Object.keys(stakeeDealsById).length > 0,
+    [stakeeDealsById],
+  )
+
   /** Missing profile rows count as starting roll + logged session P/L until accept bootstraps the profile. */
   const stakeScopeSessionProfit = useMemo(() => {
     if (!isOnStake || dealProfile != null) return 0
@@ -2349,18 +2354,18 @@ export default function PokerBankrollTracker({
                             ? hero.deal?.label?.trim() || 'Cash backing'
                             : 'Poker bankroll'}
                         </div>
-                        {!onStake ? (
+                        {!onStake && hasAnyStakeDeals ? (
                           <button
                             type="button"
                             onClick={() => {
                               setBankrollInfoOpen(true)
                               triggerTapHapticLight()
                             }}
-                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-600/80 text-zinc-500 touch-manipulation active:border-zinc-400 active:text-zinc-300"
+                            className="shrink-0 text-zinc-500 touch-manipulation active:text-zinc-300"
                             aria-label="About poker bankroll"
                             data-poker-bankroll-info-btn
                           >
-                            <Info className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                            <Info className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                           </button>
                         ) : null}
                         {onStake ? (

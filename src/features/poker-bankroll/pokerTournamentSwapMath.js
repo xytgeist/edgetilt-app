@@ -103,15 +103,46 @@ export function sessionSwapSettlementDelta(swaps, sessionId, viewerUserId) {
 
 /**
  * Parenthetical settled amount from viewer POV.
- * Positive gets an explicit + (parens alone read as negative in accounting).
- * e.g. (+$25) / (-$25) / ($0.00)
+ * Gain: plain amount (no parens, no +). Loss: parens with abs value (red styling elsewhere).
  */
 export function formatSwapSettledParenAmount(signedAmount, fmt$) {
   if (signedAmount == null || Number.isNaN(Number(signedAmount))) return null
   const n = Number(signedAmount)
-  const body = fmt$(n)
-  if (n > 0.005) return `(+${body})`
-  return `(${body})`
+  if (Math.abs(n) < 0.005) return fmt$(0)
+  if (n > 0.005) return fmt$(n)
+  return `(${fmt$(Math.abs(n))})`
+}
+
+/**
+ * Cash-settled copy from viewer POV (after mark settled).
+ * @param {number} signedAmount Viewer delta (+ received / − paid)
+ * @param {string} otherLabel
+ * @param {(n: number) => string} fmt$
+ */
+export function formatSwapPaidLine(signedAmount, otherLabel, fmt$) {
+  if (signedAmount == null || Number.isNaN(Number(signedAmount))) return null
+  const n = Number(signedAmount)
+  const label = String(otherLabel || 'them').trim() || 'them'
+  if (Math.abs(n) < 0.005) return `${label} · even`
+  if (n > 0.005) return `${label} paid you ${fmt$(n)}`
+  return `You paid ${label} ${fmt$(Math.abs(n))}`
+}
+
+/**
+ * Status line for session card / detail swap rows.
+ * @param {object} swap
+ * @param {'creator' | 'counterparty'} viewerRole
+ * @param {string} otherLabel
+ * @param {(n: number) => string} fmt$
+ * @param {{ paid?: boolean }} [opts]
+ */
+export function formatSwapSessionStatusLine(swap, viewerRole, otherLabel, fmt$, opts = {}) {
+  if (swap?.status === 'settled') {
+    const signed = swapViewerSettlementDelta(swap, viewerRole)
+    if (opts.paid) return formatSwapPaidLine(signed, otherLabel, fmt$)
+    return formatSwapIouLine(swap.settlement_amount, viewerRole, otherLabel, fmt$)
+  }
+  return formatSwapWaitingStatus(swap, viewerRole, otherLabel)
 }
 
 /**

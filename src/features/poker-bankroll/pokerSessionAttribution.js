@@ -142,7 +142,7 @@ export function computeSessionAttribution(session, deal, slices = [], profilesBy
     if (Math.abs(backerFromSlice) >= 0.005) {
       const detail =
         slice.pricing_mode === 'markup'
-          ? `${actionPct}% · ${slice.markup_rate ?? '?'}× markup`
+          ? `${actionPct}%`
           : `${actionPct}% · ${slice.player_profit_pct ?? '?'}% player split`
       parties.push({
         key: slice.id || name,

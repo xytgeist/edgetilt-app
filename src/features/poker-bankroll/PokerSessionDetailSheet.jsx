@@ -23,11 +23,8 @@ import {
   swapViewerRole,
 } from './pokerTournamentSwapApi.js'
 import {
-  formatSwapIouLine,
-  formatSwapSettledParenAmount,
-  formatSwapWaitingStatus,
+  formatSwapSessionStatusLine,
   sessionSwapSettlementDelta,
-  swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
 function pokerSessionInForLine(session) {
@@ -298,11 +295,13 @@ export default function PokerSessionDetailSheet({
                       const role = swapViewerRole(swap, userId) || 'creator'
                       const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
                       const paid = swapIsMarkedPaid(swap)
-                      const signed = swapViewerSettlementDelta(swap, role)
-                      const waitingLine =
-                        swap.status === 'settled'
-                          ? formatSwapIouLine(swap.settlement_amount, role, other, fmtPoker$)
-                          : formatSwapWaitingStatus(swap, role, other)
+                      const statusLine = formatSwapSessionStatusLine(
+                        swap,
+                        role,
+                        other,
+                        fmtPoker$,
+                        { paid },
+                      )
                       const canMarkSettled =
                         swap.status === 'settled' &&
                         !paid &&
@@ -314,41 +313,35 @@ export default function PokerSessionDetailSheet({
                           data-poker-session-swap-line={paid ? 'settled' : 'waiting'}
                         >
                           <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium text-zinc-200">{other}</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="truncate font-medium text-zinc-200">{other}</span>
+                              {canMarkSettled ? (
+                                <button
+                                  type="button"
+                                  disabled={sessionCardSwapBusyId === swap.id}
+                                  data-poker-session-swap-settle-btn
+                                  onClick={() => onMarkSwapSettled?.(swap)}
+                                  className="shrink-0 rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white touch-manipulation disabled:opacity-50"
+                                >
+                                  {sessionCardSwapBusyId === swap.id ? '…' : 'Mark settled'}
+                                </button>
+                              ) : null}
+                            </div>
                             <div className="mt-0.5 text-xs text-zinc-500">
                               {swap.pct_creator_gives != null && swap.pct_counterparty_gives != null
                                 ? `${swap.pct_creator_gives}% ↔ ${swap.pct_counterparty_gives}%`
                                 : null}
-                              {waitingLine ? ` · ${waitingLine}` : null}
+                              {statusLine ? ` · ${statusLine}` : null}
                             </div>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
-                            {paid && swap.status === 'settled' ? (
-                              <span
-                                data-poker-session-swap-amt={
-                                  signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
-                                }
-                                className={`text-sm font-bold tabular-nums ${sessionAttributionAmountClass(signed)}`}
-                              >
-                                {formatSwapSettledParenAmount(signed, fmtPoker$)}
-                              </span>
-                            ) : null}
-                            {canMarkSettled ? (
-                              <button
-                                type="button"
-                                disabled={sessionCardSwapBusyId === swap.id}
-                                data-poker-session-swap-settle-btn
-                                onClick={() => onMarkSwapSettled?.(swap)}
-                                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white touch-manipulation disabled:opacity-50"
-                              >
-                                {sessionCardSwapBusyId === swap.id ? '…' : 'Mark settled'}
-                              </button>
-                            ) : null}
                           </div>
                         </li>
                       )
                     })}
                   </ul>
+                  <p className="mt-2 text-[11px] leading-snug text-zinc-500">
+                    Swaps are peer deals separate from stake backing; cash settles to your personal
+                    bankroll when you mark them paid, not on stake settle with backers.
+                  </p>
                 </div>
               ) : null}
 

@@ -2142,21 +2142,15 @@ export default function PokerBankrollTracker({
                         : `${POKER_BANKROLL_HERO_SHELL} border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800`
                     }
                   >
-                    <div className="mb-2 flex min-h-9 items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                        <div
-                          data-poker-bankroll-hero-title
-                          className={`min-w-0 truncate ${
-                            onStake ? theme.title : 'text-zinc-100'
-                          }`}
-                        >
-                          {onStake
-                            ? hero.deal?.label?.trim() || 'Cash backing'
-                            : 'Poker bankroll'}
-                        </div>
+                    <div className="mb-2 flex h-9 items-center justify-between gap-3">
+                      <div
+                        className={`relative min-w-0 flex-1 ${
+                          onStake ? 'h-9' : 'flex h-9 items-center'
+                        }`}
+                      >
                         {onStake ? (
                           <span
-                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                            className={`absolute left-0 top-0 rounded-md px-1.5 py-px text-[9px] font-black uppercase leading-none tracking-wider ${
                               hero.deal?.status === 'pending'
                                 ? 'bg-zinc-500/40 text-zinc-200'
                                 : theme.badge
@@ -2165,6 +2159,18 @@ export default function PokerBankrollTracker({
                             {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
                           </span>
                         ) : null}
+                        <div
+                          data-poker-bankroll-hero-title
+                          className={`truncate ${
+                            onStake
+                              ? `absolute inset-x-0 bottom-0 ${theme.title}`
+                              : 'min-w-0 text-zinc-100'
+                          }`}
+                        >
+                          {onStake
+                            ? hero.deal?.label?.trim() || 'Cash backing'
+                            : 'Poker bankroll'}
+                        </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
                         {!onStake ? (

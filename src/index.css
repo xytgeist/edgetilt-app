@@ -4675,12 +4675,13 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
   --pss-reassign-primary-active: rgb(63, 63, 70);
 }
 [data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-btn] {
-  background-color: var(--pss-reassign-btn-bg) !important;
-  border-color: var(--pss-reassign-border) !important;
-  color: var(--pss-reassign-text) !important;
+  background-color: var(--pss-reassign-primary) !important;
+  border-color: var(--pss-reassign-primary) !important;
+  color: #ffffff !important;
 }
 [data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-btn]:active {
-  background-color: var(--pss-reassign-btn-active) !important;
+  background-color: var(--pss-reassign-primary-active) !important;
+  border-color: var(--pss-reassign-primary-active) !important;
 }
 [data-poker-stable-sheet] .poker-stable-slice-card [data-poker-stable-guest-reassign-panel] {
   background-color: var(--pss-reassign-panel-bg) !important;

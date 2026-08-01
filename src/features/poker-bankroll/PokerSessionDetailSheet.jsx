@@ -28,6 +28,7 @@ import {
   formatSwapSettledParenAmount,
   formatSwapWaitingStatus,
   sessionSwapSettlementDelta,
+  swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
 function pokerSessionInForLine(session) {

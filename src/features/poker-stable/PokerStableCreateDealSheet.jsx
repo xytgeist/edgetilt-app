@@ -5,7 +5,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
-import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser } from './pokerStableApi.js'
+import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests } from './pokerStableApi.js'
 import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
@@ -509,6 +509,10 @@ function PokerStableDealFormSheet({
         })
         if (error) throw error
         createdDeal = deal
+      }
+      if (!isBacker && !isBackerPropose && createdDeal?.id) {
+        const { error: notifyErr } = await notifyStableStakeGuests(supabaseClient, createdDeal.id)
+        if (notifyErr) console.warn('[poker-stable] guest notify failed', notifyErr.message)
       }
       triggerTapHapticLight()
       if (isEdit) onUpdated?.(createdDeal)

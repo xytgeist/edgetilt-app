@@ -719,6 +719,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [x] **`poker-tournament-swap-notify`** (guest Twilio SMS + Resend email; claim token when contact present) — deployed **test + prod** (**2026-07-30** promote). Prefer API key secrets over Auth Token. **`PUBLIC_APP_URL`** must match host (prod `https://edgetilt.com`). Guest SMS open until Twilio From number. Source: `supabase/functions/poker-tournament-swap-notify/README.md`. Redeploy **`lounge-send-activity-push`** with swap activity deep links (done on promote).
 
+- [ ] **`poker-stable-notify`** (guest Twilio SMS + Resend email on stake offer) — deploy on **test** after code lands; shares Resend/Twilio secrets with swap notify. Source: `supabase/functions/poker-stable-notify/README.md`. Client invokes after Bankroll **Create stake** / **Edit terms**.
+
 - [ ] Function-by-function smoke notes captured  
   - Change: Record minimal expected input/output for each function.
   - Source: function `README.md` files
@@ -1013,6 +1015,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - 2026-07-28: **Poker bankroll hero sparkline:** tiny running-bankroll polyline beside the Session roll amount (inferred start = current − lifetime profit).
 - 2026-07-28: **Poker bankroll pill tabs:** match slots bankroll pills; landing **OVERVIEW** (was Session); former Overview aggregates → **DETAILS**; LOCATIONS / CHARTS unchanged.
 - 2026-07-28: **Poker bankroll hero stats filter:** Profit / Hourly / Hours / Win rate on the Overview bankroll card follow Cash/Tourney + Live/Online chips (same as history).
+- 2026-08-01: **Poker Stable guest notify (test):** Edge **`poker-stable-notify`** sends Resend email / Twilio SMS to guest slice contacts after player **Create stake** or **Edit terms** (`pokerStableApi.notifyStableStakeGuests`). Deploy function on test; shares secrets with **`poker-tournament-swap-notify`**. Edge backer in-app alerts still **v2c**.
 - 2026-08-01: **Poker Stable player deal history (test):** On Stake Bankroll session list shows text lines for offer / accept / re-up / settle mixed with session rows (`pokerStableDealHistory.js`).
 - 2026-08-01: **Poker Stable stake delete (test):** Bankroll Terms → **Delete stake** before any Edge backer accepts; removes stake + stake sessions (`20260801150000`).
 - 2026-08-01: **Poker Stable guest terms + reassign (test):** Player edits **active guest-only** stakes on Bankroll; **Assign to Edge user** on guest slices (`20260801140000`). Apply migration + RPCs on test before smoke.

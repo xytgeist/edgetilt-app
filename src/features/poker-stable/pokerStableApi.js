@@ -1140,3 +1140,18 @@ export function sliceDisplayName(slice, profilesById = {}) {
   const p = profilesById[slice.staker_user_id]
   return p?.display_name || (p?.handle ? `@${p.handle}` : 'Backer')
 }
+
+/**
+ * Notify guest backers (Twilio SMS + Resend email) via Edge Function.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} dealId
+ * @param {{ sliceIds?: string[] }} [opts]
+ */
+export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
+  const body = { deal_id: dealId }
+  if (opts.sliceIds?.length) body.slice_ids = opts.sliceIds
+  const { data, error } = await supabase.functions.invoke('poker-stable-notify', { body })
+  if (error) return { error }
+  if (data?.error) return { error: new Error(data.error) }
+  return { data, error: null }
+}

@@ -2142,11 +2142,11 @@ export default function PokerBankrollTracker({
                         : `${POKER_BANKROLL_HERO_SHELL} border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800`
                     }
                   >
-                    <div className="mb-2 flex min-h-9 items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
                         <div
                           data-poker-bankroll-hero-title
-                          className={`min-w-0 truncate ${
+                          className={`truncate ${
                             onStake ? theme.title : 'text-zinc-100'
                           }`}
                         >
@@ -2156,7 +2156,7 @@ export default function PokerBankrollTracker({
                         </div>
                         {onStake ? (
                           <span
-                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                            className={`mt-1 inline-block rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
                               hero.deal?.status === 'pending'
                                 ? 'bg-zinc-500/40 text-zinc-200'
                                 : theme.badge

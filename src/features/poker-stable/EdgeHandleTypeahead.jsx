@@ -40,10 +40,14 @@ export default function EdgeHandleTypeahead({
   const [loading, setLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [openUpward, setOpenUpward] = useState(false)
+  const [excludedHandle, setExcludedHandle] = useState('')
 
   const normalizedValue = normalizeHandle(value)
   const selectedHandle = normalizeHandle(selectedProfile?.handle)
   const isLockedSelection = Boolean(selectedHandle && normalizedValue === selectedHandle)
+  const isSelfHandle = Boolean(
+    excludedHandle && normalizedValue && normalizedValue.toLowerCase() === excludedHandle.toLowerCase(),
+  )
 
   const closeList = useCallback(() => {
     fetchGenRef.current += 1
@@ -66,6 +70,7 @@ export default function EdgeHandleTypeahead({
   const pickProfile = useCallback(
     (profile) => {
       if (!profile) return
+      if (excludeUserId && profile.user_id === excludeUserId) return
       const handle = normalizeHandle(profile.handle)
       onChange(handle)
       onSelectProfile?.(profile)
@@ -78,8 +83,28 @@ export default function EdgeHandleTypeahead({
         }
       })
     },
-    [onChange, onSelectProfile, closeList],
+    [onChange, onSelectProfile, closeList, excludeUserId],
   )
+
+  useEffect(() => {
+    if (!supabaseClient || !excludeUserId) {
+      setExcludedHandle('')
+      return undefined
+    }
+    let cancelled = false
+    void supabaseClient
+      .from('profiles')
+      .select('handle')
+      .eq('user_id', excludeUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        setExcludedHandle(normalizeHandle(data?.handle || ''))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, excludeUserId])
 
   const scrollFieldIntoView = useCallback(() => {
     schedulePokerStableFieldScroll(inputRef.current, listRef.current)
@@ -108,7 +133,9 @@ export default function EdgeHandleTypeahead({
             setLoading(false)
             return
           }
-          setSuggestions(profiles)
+          setSuggestions(
+            (profiles || []).filter((p) => !excludeUserId || p.user_id !== excludeUserId),
+          )
           setActiveIndex(0)
           setLoading(false)
         },
@@ -248,6 +275,8 @@ export default function EdgeHandleTypeahead({
           Selected @{normalizeHandle(selectedProfile.handle)}
           {selectedProfile.display_name ? ` · ${selectedProfile.display_name}` : ''}
         </p>
+      ) : isSelfHandle ? (
+        <p className="mt-1.5 text-xs text-rose-400">You can&apos;t add yourself here.</p>
       ) : null}
 
       {showList ? (
@@ -310,7 +339,9 @@ export default function EdgeHandleTypeahead({
             )
           })}
           {!loading && suggestions.length === 0 ? (
-            <li className="px-4 py-3 text-sm text-zinc-500">No matching handles.</li>
+            <li className="px-4 py-3 text-sm text-zinc-500">
+              {isSelfHandle ? "You can't add yourself here." : 'No matching handles.'}
+            </li>
           ) : null}
         </ul>
       ) : null}

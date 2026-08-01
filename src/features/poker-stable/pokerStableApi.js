@@ -36,9 +36,10 @@ const SLICE_SELECT =
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} handle
  */
-export async function lookupProfileByHandle(supabase, handle) {
+export async function lookupProfileByHandle(supabase, handle, opts = {}) {
   const h = normalizeHandleInput(handle)
   if (!h) return { profile: null, error: new Error('Enter a handle.') }
+  const { excludeUserId } = opts
   const { data, error } = await supabase
     .from('profiles')
     .select('user_id, handle, display_name, avatar_url')
@@ -46,6 +47,9 @@ export async function lookupProfileByHandle(supabase, handle) {
     .maybeSingle()
   if (error) return { profile: null, error }
   if (!data) return { profile: null, error: new Error(`No Edge user @${h}.`) }
+  if (excludeUserId && data.user_id === excludeUserId) {
+    return { profile: null, error: new Error('You cannot add yourself as a backer.') }
+  }
   return { profile: data, error: null }
 }
 
@@ -71,7 +75,8 @@ export async function searchEdgeProfilesByHandle(supabase, query, opts = {}) {
   if (excludeUserId) req = req.neq('user_id', excludeUserId)
   const { data, error } = await req
   if (error) return { profiles: [], error }
-  return { profiles: data || [], error: null }
+  const profiles = (data || []).filter((p) => !excludeUserId || p.user_id !== excludeUserId)
+  return { profiles, error: null }
 }
 
 /**

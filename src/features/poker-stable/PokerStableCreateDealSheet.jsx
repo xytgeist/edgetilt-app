@@ -73,7 +73,7 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
     ? { profile: sl.selectedProfile, error: null }
     : sl.stakerUserId
       ? { profile: { user_id: sl.stakerUserId }, error: null }
-      : await lookupProfileByHandle(supabaseClient, sl.handle)
+      : await lookupProfileByHandle(supabaseClient, sl.handle, { excludeUserId: userId })
   if (lookErr) throw lookErr
   if (!profile?.user_id) throw new Error(`No Edge user for @${sl.handle}.`)
   if (!allowSelf && profile.user_id === userId) throw new Error('You cannot add yourself as a backer.')
@@ -149,6 +149,7 @@ function SliceEditor({
                   onChange={(next) => onChange({ handle: next, selectedProfile: null })}
                   onSelectProfile={(profile) => {
                     if (!profile) return
+                    if (profile.user_id === userId) return
                     onChange({
                       handle: String(profile.handle || '').replace(/^@+/, ''),
                       selectedProfile: profile,

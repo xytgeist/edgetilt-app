@@ -5,7 +5,7 @@ const SLIDE_GAP_PX = 8
 
 /** Shared box model so personal + stake hero cards match in the peek carousel. */
 export const POKER_BANKROLL_HERO_SHELL =
-  'rounded-3xl border-2 p-6 shadow-none'
+  'rounded-3xl border-2 px-6 pt-5 pb-3 shadow-none'
 
 /**
  * Horizontal peek carousel for Personal + stake bankroll hero cards.

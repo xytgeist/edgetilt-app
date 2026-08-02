@@ -379,7 +379,10 @@ function PokerStableDealFormSheet({
         ? formatMoneyInputValue(String(editDeal.lifetime_pl_display), { allowNegative: true })
         : '',
     )
-    const rows = editSlices || []
+    const rows =
+      editDeal.status === 'revoked'
+        ? []
+        : (editSlices || []).filter((sl) => sl.status !== 'declined')
     setSlices(
       rows.length
         ? rows.map((sl) => sliceRowToFormSlice(sl, editProfilesById))
@@ -493,7 +496,10 @@ function PokerStableDealFormSheet({
           )
           if (error) throw error
         } else {
-          if (editDeal.status === 'pending' && !parsedSlices.length) {
+          if (
+            (editDeal.status === 'pending' || editDeal.status === 'revoked') &&
+            !parsedSlices.length
+          ) {
             throw new Error('Add at least one backer slice.')
           }
           const { deal, error } = await applyStakeeDealTerms(supabaseClient, {

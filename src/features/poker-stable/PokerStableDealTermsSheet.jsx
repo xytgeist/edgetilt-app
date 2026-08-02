@@ -258,6 +258,15 @@ export default function PokerStableDealTermsSheet({
           </div>
         ) : null}
 
+        {!hasProposal && isStakee && deal.status === 'revoked' ? (
+          <div
+            data-poker-stable-sheet-hint
+            className="mb-4 border-l-2 border-rose-500/60 pl-3 text-xs leading-relaxed text-rose-200/90"
+          >
+            A backer revoked this stake. Edit backers to re-offer, or close the stake to archive it.
+          </div>
+        ) : null}
+
         {!hasProposal && isStakee && deal.status === 'active' && canEdit ? (
           <div
             data-poker-stable-sheet-hint

@@ -217,5 +217,72 @@ export function buildStakeDealHistoryEvents({
     })
   }
 
+  if (deal.status === 'revoked' && deal.responded_at) {
+    const revokedSlice = orderedSlices.find(
+      (slice) =>
+        slice.status === 'declined' &&
+        slice.responded_at &&
+        slice.counterparty_kind === 'user',
+    )
+    const revokerName = revokedSlice
+      ? sliceCounterpartyDisplayName(revokedSlice, profilesById)
+      : 'Backer'
+    events.push({
+      id: `revoke-${deal.id}`,
+      kind: 'revoke',
+      at: deal.responded_at,
+      text: `${revokerName} revoked stake`,
+    })
+  }
+
   return events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+}
+
+/**
+ * Full archived stake timeline: sessions + deal events, newest first.
+ * @param {object} args
+ * @param {object} args.deal
+ * @param {object[]} [args.slices]
+ * @param {Record<string, object>} [args.profilesById]
+ * @param {object[]} [args.topups]
+ * @param {object[]} [args.settlements]
+ * @param {object[]} [args.sessions]
+ * @param {string} [args.playerLabel]
+ * @returns {{ id: string, kind: string, at: string, text?: string, session?: object }[]}
+ */
+export function buildFullStakeArchiveTimeline({
+  deal,
+  slices = [],
+  profilesById = {},
+  topups = [],
+  settlements = [],
+  sessions = [],
+  playerLabel = 'You',
+}) {
+  const events = buildStakeDealHistoryEvents({
+    deal,
+    slices,
+    profilesById,
+    topups,
+    settlements,
+    playerLabel,
+  })
+  /** @type {{ id: string, kind: string, at: string, text?: string, session?: object }[]} */
+  const items = events.map((event) => ({
+    id: event.id,
+    kind: event.kind,
+    at: event.at,
+    text: event.text,
+  }))
+  for (const session of sessions) {
+    const at = session.end_at || session.start_at
+    if (!at) continue
+    items.push({
+      id: `session-${session.id}`,
+      kind: 'session',
+      at,
+      session,
+    })
+  }
+  return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 }

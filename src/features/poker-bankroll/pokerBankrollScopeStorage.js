@@ -7,7 +7,7 @@ function storageKey(userId) {
 }
 
 /**
- * Last hero carousel card: `personal` or an active/pending stake deal id.
+ * Last hero carousel card: `personal` or an active/pending/revoked stake deal id.
  * @param {string | null | undefined} userId
  * @returns {'personal' | string}
  */

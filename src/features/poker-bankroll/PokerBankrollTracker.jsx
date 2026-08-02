@@ -24,6 +24,7 @@ import PokerCashGamePicker from './PokerCashGamePicker.jsx'
 import PokerFieldMenu from './PokerFieldMenu.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
 import PokerSessionDetailSheet from './PokerSessionDetailSheet.jsx'
+import PokerStakeArchiveDetailModal from './PokerStakeArchiveDetailModal.jsx'
 import {
   POKER_SHEET_PANEL_CLASS,
   POKER_SHEET_PANEL_TALL_CLASS,
@@ -35,6 +36,8 @@ import {
   currencyFromNearbyCasinoName,
   currencyFromOnlineSiteId,
 } from './pokerCurrencies.js'
+import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
+import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
 import {
   acceptProposedDealTerms,
   cancelStakeDeal,
@@ -274,7 +277,7 @@ export default function PokerBankrollTracker({
   const [profile, setProfile] = useState(null)
   /** All sessions for this user (personal + deal-scoped). */
   const [sessions, setSessions] = useState([])
-  /** Active + pending deals where I am the horse (stakee) — carousel cards. */
+  /** Active, pending, and revoked deals where I am the horse (stakee) — carousel cards. */
   const [stakeeDeals, setStakeeDeals] = useState([])
   /** All stakee deals including settled (attribution + merged history badges). */
   const [stakeeDealsById, setStakeeDealsById] = useState(/** @type {Record<string, object>} */ ({}))
@@ -345,9 +348,10 @@ export default function PokerBankrollTracker({
   const casinoCoordCacheRef = useRef(null)
   /** Tracks auto-default currency so geo resolve can overwrite until the user picks. */
   const currencyAutoDefaultRef = useRef('USD')
-  /** @type {'overview' | 'details' | 'locations' | 'charts' | 'trend'} */
+  /** @type {'overview' | 'details' | 'locations' | 'charts' | 'trend' | 'archive'} */
   const [activeTab, setActiveTab] = useState('overview')
   const [bankrollInfoOpen, setBankrollInfoOpen] = useState(false)
+  const [archiveDetailDealId, setArchiveDetailDealId] = useState(/** @type {string | null} */ (null))
 
   const isOnStake = bankrollScope !== 'personal'
   const activeDeal = useMemo(
@@ -355,6 +359,8 @@ export default function PokerBankrollTracker({
     [isOnStake, stakeeDeals, bankrollScope],
   )
   const stakeScopePending = activeDeal?.status === 'pending'
+  const stakeScopeRevoked = activeDeal?.status === 'revoked'
+  const stakeScopeSessionBlocked = stakeScopePending || stakeScopeRevoked
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
   const scopedSessions = useMemo(() => {
@@ -387,6 +393,20 @@ export default function PokerBankrollTracker({
     () => Object.keys(stakeeDealsById).length > 0,
     [stakeeDealsById],
   )
+
+  const archivedStakeeDeals = useMemo(() => {
+    return Object.values(stakeeDealsById)
+      .filter(
+        (d) =>
+          d.stakee_user_id === userId &&
+          (d.status === 'settled' || d.status === 'closed'),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.settled_at || b.updated_at || b.created_at).getTime() -
+          new Date(a.settled_at || a.updated_at || a.created_at).getTime(),
+      )
+  }, [stakeeDealsById, userId])
 
   /** Missing profile rows count as starting roll + logged session P/L until accept bootstraps the profile. */
   const stakeScopeSessionProfit = useMemo(() => {
@@ -553,7 +573,8 @@ export default function PokerBankrollTracker({
     }
   }, [supabaseClient])
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (opts = {}) => {
+    const silent = Boolean(opts.silent)
     if (!supabaseClient || !userId) {
       setSessions([])
       setProfile(null)
@@ -564,7 +585,7 @@ export default function PokerBankrollTracker({
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (!silent) setLoading(true)
     setError('')
     try {
       const [sessRes, profRes, customRes, dealsRes] = await Promise.all([
@@ -611,7 +632,7 @@ export default function PokerBankrollTracker({
       } else {
         const mine = (dealsRes.deals || []).filter((d) => d.stakee_user_id === userId)
         const carouselDeals = mine.filter(
-          (d) => d.status === 'active' || d.status === 'pending',
+          (d) => d.status === 'active' || d.status === 'pending' || d.status === 'revoked',
         )
         setStakeeDeals(carouselDeals)
         /** @type {Record<string, object>} */
@@ -720,13 +741,62 @@ export default function PokerBankrollTracker({
       setError(e?.message || 'Could not load poker bankroll.')
       setSessions([])
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [supabaseClient, userId])
 
   useEffect(() => {
     void loadData()
   }, [loadData])
+
+  /** Reload stake carousel when tab/window refocuses (backer accept while app backgrounded). */
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return undefined
+    const refresh = () => void loadData({ silent: true })
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [loadData])
+
+  /** While any open stake card is pending or active, poll for backer accept/revoke without leaving Bankroll. */
+  const hasLiveStakeCarousel = stakeeDeals.some(
+    (d) => d.status === 'pending' || d.status === 'active',
+  )
+  useEffect(() => {
+    if (!supabaseClient || !userId || !hasLiveStakeCarousel) return undefined
+    const id = window.setInterval(() => {
+      void loadData({ silent: true })
+    }, 8000)
+    return () => window.clearInterval(id)
+  }, [supabaseClient, userId, hasLiveStakeCarousel, loadData])
+
+  /** Live stake status changes when a backer accepts or revokes (Realtime). */
+  useEffect(() => {
+    if (!supabaseClient || !userId) return undefined
+    const refresh = () => void loadData({ silent: true })
+    const channel = supabaseClient
+      .channel(`poker-stable-deals-stakee-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'poker_stable_deals',
+          filter: `stakee_user_id=eq.${userId}`,
+        },
+        refresh,
+      )
+      .subscribe()
+    return () => {
+      supabaseClient.removeChannel(channel)
+    }
+  }, [supabaseClient, userId, loadData])
 
   /** Keep swap cards in sync when the other party marks cash settled. */
   useEffect(() => {
@@ -851,7 +921,7 @@ export default function PokerBankrollTracker({
 
   async function applyBankrollDelta(delta) {
     if (!Number.isFinite(delta) || Math.abs(delta) < 0.0005) return
-    if (isOnStake && stakeScopePending) return
+    if (isOnStake && stakeScopeSessionBlocked) return
     const current = isOnStake
       ? dealProfile
         ? Number(dealProfile.overall_bankroll)
@@ -1181,6 +1251,10 @@ export default function PokerBankrollTracker({
         setError('Bankroll unlocks when backers accept this stake.')
         return
       }
+      if (deal?.status === 'revoked') {
+        setError('This stake was revoked. Re-offer backers or close it from stake terms.')
+        return
+      }
       const dp = dealProfiles[scopeId]
       setBankrollInput(dp != null ? formatMoneyInputValue(String(dp.overall_bankroll)) : '')
     } else {
@@ -1320,6 +1394,14 @@ export default function PokerBankrollTracker({
       onRequireSubscribeForPokerBankroll?.()
       return
     }
+    if (isOnStake && stakeScopeSessionBlocked) {
+      setError(
+        stakeScopeRevoked
+          ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
+          : 'Sessions unlock when backers accept this stake.',
+      )
+      return
+    }
     if (activeSession) {
       setError('You already have a session in progress.')
       return
@@ -1388,6 +1470,14 @@ export default function PokerBankrollTracker({
   function openLogPast() {
     if (!canCreatePokerBankrollSession) {
       onRequireSubscribeForPokerBankroll?.()
+      return
+    }
+    if (isOnStake && stakeScopeSessionBlocked) {
+      setError(
+        stakeScopeRevoked
+          ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
+          : 'Sessions unlock when backers accept this stake.',
+      )
       return
     }
     setEditingId(null)
@@ -2406,6 +2496,7 @@ export default function PokerBankrollTracker({
             { id: 'trend', label: 'TREND' },
             { id: 'locations', label: 'LOCATIONS' },
             { id: 'charts', label: 'CHARTS' },
+            { id: 'archive', label: 'ARCHIVE' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -2447,6 +2538,22 @@ export default function PokerBankrollTracker({
               className="font-semibold text-amber-200 underline touch-manipulation"
             >
               Review terms
+            </button>
+          </div>
+        ) : null}
+
+        {stakeScopeRevoked && activeTab === 'overview' && isOnStake ? (
+          <div
+            data-poker-stake-notice
+            className="mb-3 rounded-2xl border border-rose-500/40 bg-rose-950/40 px-4 py-3 text-center text-sm text-rose-100"
+          >
+            A backer revoked this stake. Re-offer backers or close it from terms.{' '}
+            <button
+              type="button"
+              onClick={() => setTermsDealId(bankrollScope)}
+              className="font-semibold text-rose-200 underline touch-manipulation"
+            >
+              Manage stake
             </button>
           </div>
         ) : null}
@@ -2514,10 +2621,16 @@ export default function PokerBankrollTracker({
                             className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
                               hero.deal?.status === 'pending'
                                 ? 'bg-zinc-500/40 text-zinc-200'
-                                : theme.badge
+                                : hero.deal?.status === 'revoked'
+                                  ? 'bg-rose-500/25 text-rose-200'
+                                  : theme.badge
                             }`}
                           >
-                            {hero.deal?.status === 'pending' ? 'Pending' : 'On stake'}
+                            {hero.deal?.status === 'pending'
+                              ? 'Pending'
+                              : hero.deal?.status === 'revoked'
+                                ? 'Revoked'
+                                : 'On stake'}
                           </span>
                         ) : null}
                       </div>
@@ -2598,7 +2711,7 @@ export default function PokerBankrollTracker({
                     )}
                     {!loading ? (
                       <div
-                        className={`mt-5 grid min-h-[4.25rem] grid-cols-4 gap-2 border-t pt-4 ${
+                        className={`mt-4 grid grid-cols-4 gap-2 border-t pt-3 ${
                           onStake ? theme.borderStat : 'border-zinc-700/40'
                         }`}
                       >
@@ -2769,10 +2882,12 @@ export default function PokerBankrollTracker({
                     onClick={openStartSession}
                     data-start-session-btn
                     data-start-session-locked={
-                      !canCreatePokerBankrollSession ? 'true' : undefined
+                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
+                        ? 'true'
+                        : undefined
                     }
                     className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
-                      !canCreatePokerBankrollSession
+                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
                         ? 'cursor-not-allowed opacity-45'
                         : ''
                     }`}
@@ -2784,10 +2899,12 @@ export default function PokerBankrollTracker({
                     onClick={openLogPast}
                     data-log-past-session-btn
                     data-log-past-session-locked={
-                      !canCreatePokerBankrollSession ? 'true' : undefined
+                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
+                        ? 'true'
+                        : undefined
                     }
                     className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
-                      !canCreatePokerBankrollSession
+                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
                         ? 'cursor-not-allowed opacity-45'
                         : ''
                     }`}
@@ -2907,9 +3024,11 @@ export default function PokerBankrollTracker({
                 <p className="text-white font-semibold">No poker sessions yet</p>
                 <p className="mt-1 text-sm text-zinc-500">
                   {isOnStake
-                    ? stakeScopePending
-                      ? 'Start or log stake sessions now ... backers see them in Stable once they accept.'
-                      : 'Start or log a stake session for this deal.'
+                    ? stakeScopeRevoked
+                      ? 'This stake was revoked. Manage it from stake terms.'
+                      : stakeScopePending
+                        ? 'Start or log stake sessions now ... backers see them in Stable once they accept.'
+                        : 'Start or log a stake session for this deal.'
                     : 'Start a live session, or log one from earlier.'}
                 </p>
               </div>
@@ -3184,6 +3303,77 @@ export default function PokerBankrollTracker({
           </>
         ) : null}
 
+        {activeTab === 'archive' ? (
+          loading ? (
+            <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
+          ) : archivedStakeeDeals.length === 0 ? (
+            <div
+              data-elevated-card="surface"
+              className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
+            >
+              <p className="text-white font-semibold">No archived stakes yet</p>
+              <p className="mt-1 text-sm text-zinc-500">
+                When you close a stake, it moves here with full session and event history.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {archivedStakeeDeals.map((deal) => {
+                const slices = slicesByDeal[deal.id] || []
+                const backerNames = slices
+                  .filter((slice) => slice.status !== 'declined')
+                  .map((slice) => sliceCounterpartyDisplayName(slice, stableProfilesById))
+                  .filter(Boolean)
+                const sessionCount = sessions.filter(
+                  (s) => s.deal_id === deal.id && s.status !== 'active',
+                ).length
+                const closedAt = deal.settled_at || deal.updated_at || deal.created_at
+                const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+                return (
+                  <li key={deal.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setArchiveDetailDealId(deal.id)
+                        triggerTapHapticLight()
+                      }}
+                      data-poker-stake-archive-card
+                      data-elevated-card="surface"
+                      className="flex w-full flex-col gap-1 rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-4 text-left touch-manipulation active:bg-zinc-800/80"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="min-w-0 truncate font-semibold text-white">{label}</span>
+                        <span className="shrink-0 rounded-md bg-zinc-700/60 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-300">
+                          Archived
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500">
+                        {dealTypeLabel(deal.deal_type)}
+                        {closedAt
+                          ? ` · ${new Date(closedAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}`
+                          : null}
+                      </p>
+                      {backerNames.length ? (
+                        <p className="text-xs text-zinc-400">
+                          {backerNames.join(', ')}
+                        </p>
+                      ) : null}
+                      <p className="text-[11px] text-zinc-500">
+                        {sessionCount} session{sessionCount === 1 ? '' : 's'} · baseline{' '}
+                        {fmtPoker$(deal.baseline_bankroll)}
+                      </p>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )
+        ) : null}
+
         {activeTab === 'locations' ? (
           <PokerLocationsTab
             sessions={completedSessions}
@@ -3216,9 +3406,25 @@ export default function PokerBankrollTracker({
         </div>
       </ScrollLinkedEdgeTitleBarShell>
 
+      {archiveDetailDealId ? (
+        <PokerStakeArchiveDetailModal
+          deal={stakeeDealsById[archiveDetailDealId] ?? null}
+          slices={slicesByDeal[archiveDetailDealId] || []}
+          profilesById={stableProfilesById}
+          topups={dealTopupsByDeal[archiveDetailDealId] || []}
+          settlements={dealSettlementsByDeal[archiveDetailDealId] || []}
+          sessions={sessions.filter((s) => s.deal_id === archiveDetailDealId)}
+          onClose={() => setArchiveDetailDealId(null)}
+        />
+      ) : null}
+
       {termsDealId && supabaseClient && userId ? (
         <PokerStableDealTermsSheet
-          deal={stakeeDeals.find((d) => d.id === termsDealId) ?? null}
+          deal={
+            stakeeDeals.find((d) => d.id === termsDealId) ??
+            stakeeDealsById[termsDealId] ??
+            null
+          }
           slices={slicesByDeal[termsDealId] || []}
           proposedPayload={
             stakeeDeals.find((d) => d.id === termsDealId)?.pending_terms_json ?? null
@@ -3329,16 +3535,28 @@ export default function PokerBankrollTracker({
           userId={userId}
           saving={stableSaving}
           onSavingChange={setStableSaving}
-          editDeal={stakeeDeals.find((d) => d.id === editTermsDealId) ?? null}
+          editDeal={
+            stakeeDeals.find((d) => d.id === editTermsDealId) ??
+            stakeeDealsById[editTermsDealId] ??
+            null
+          }
           editSlices={slicesByDeal[editTermsDealId] || []}
           editProfilesById={stableProfilesById}
           termsIntent="stakee_update"
           onClose={() => setEditTermsDealId(null)}
-          onUpdated={(_deal, meta) => {
+          onUpdated={(deal, meta) => {
             const warn = meta?.guestNotifyWarning
+            const wasRevoked = stakeeDealsById[editTermsDealId]?.status === 'revoked'
             showStakeNotice(
-              warn ? `Stake terms updated. ${warn}` : 'Stake terms updated.',
+              warn
+                ? wasRevoked
+                  ? `Stake re-offered. ${warn}`
+                  : `Stake terms updated. ${warn}`
+                : wasRevoked
+                  ? 'Stake re-offered ... waiting on backers.'
+                  : 'Stake terms updated.',
             )
+            setEditTermsDealId(null)
             void loadData()
           }}
         />

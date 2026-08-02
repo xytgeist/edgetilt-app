@@ -324,10 +324,20 @@ export async function createBackingDeal(supabase, args) {
   const baseline = roundMoney(baselineBankroll)
   const roll = roundMoney(startingRoll ?? baseline)
 
+  const { data: authData, error: authErr } = await supabase.auth.getUser()
+  if (authErr) return { deal: null, error: authErr }
+  const authUserId = authData?.user?.id
+  if (!authUserId) {
+    return { deal: null, error: new Error('Sign in to create a stake.') }
+  }
+  if (stakeeUserId && stakeeUserId !== authUserId) {
+    return { deal: null, error: new Error('Session mismatch — refresh and try again.') }
+  }
+
   const { data: deal, error: dErr } = await supabase
     .from('poker_stable_deals')
     .insert({
-      stakee_user_id: stakeeUserId,
+      stakee_user_id: authUserId,
       staker_user_id: null,
       deal_type: dealType,
       status: activate ? 'active' : 'pending',
@@ -918,13 +928,17 @@ export async function acceptSliceAsStaker(supabase, sliceId, stakerUserId) {
       .eq('id', data.deal_id)
       .single()
     const roll = roundMoney(dealRow?.starting_roll ?? dealRow?.baseline_bankroll ?? 0)
-    await supabase
+    const { error: dealActivateErr } = await supabase
       .from('poker_stable_deals')
       .update({ status: 'active', responded_at: new Date().toISOString() })
       .eq('id', data.deal_id)
       .in('status', ['pending', 'draft'])
+    if (dealActivateErr) {
+      return { slice: data, error: dealActivateErr }
+    }
     if (dealRow?.status !== 'active') {
-      await bootstrapDealBankrollProfile(supabase, data.deal_id, roll)
+      const { error: pErr } = await bootstrapDealBankrollProfile(supabase, data.deal_id, roll)
+      if (pErr) return { slice: data, error: pErr }
     }
   }
   return { slice: data, error: null }
@@ -969,20 +983,82 @@ export async function declineSliceAsStaker(supabase, sliceId, stakerUserId) {
 }
 
 /**
+ * Lead staker (legacy request) or slice backer revokes an active/pending deal.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
  * @param {string} stakerUserId
  */
 export async function revokeHorseDeal(supabase, dealId, stakerUserId) {
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .in('status', ['pending', 'active'])
+    .maybeSingle()
+  if (loadErr) return { deal: null, error: loadErr }
+  if (!deal) {
+    return { deal: null, error: new Error('Deal not found or already closed.') }
+  }
+
+  const isLeadStaker = deal.staker_user_id === stakerUserId
+  let canRevoke = isLeadStaker
+  if (!canRevoke) {
+    const { data: slices, error: sliceErr } = await supabase
+      .from('poker_stable_deal_slices')
+      .select('id')
+      .eq('deal_id', dealId)
+      .eq('staker_user_id', stakerUserId)
+      .neq('status', 'declined')
+    if (sliceErr) return { deal: null, error: sliceErr }
+    canRevoke = (slices || []).length > 0
+  }
+  if (!canRevoke) {
+    return { deal: null, error: new Error('You cannot revoke this deal.') }
+  }
+
+  const respondedAt = new Date().toISOString()
+  const { error: sliceErr } = await supabase
+    .from('poker_stable_deal_slices')
+    .update({ status: 'declined', responded_at: respondedAt })
+    .eq('deal_id', dealId)
+    .eq('staker_user_id', stakerUserId)
+    .in('status', ['pending', 'active'])
+  if (sliceErr) return { deal: null, error: sliceErr }
+
+  const { data: remainingActive, error: remainErr } = await supabase
+    .from('poker_stable_deal_slices')
+    .select('id')
+    .eq('deal_id', dealId)
+    .eq('status', 'active')
+  if (remainErr) return { deal: null, error: remainErr }
+
+  if ((remainingActive || []).length > 0) {
+    const { data: partialDeal, error: partialErr } = await supabase
+      .from('poker_stable_deals')
+      .select(DEAL_SELECT)
+      .eq('id', dealId)
+      .maybeSingle()
+    return { deal: partialDeal || null, error: partialErr }
+  }
+
   const { data, error } = await supabase
     .from('poker_stable_deals')
-    .update({ status: 'revoked', responded_at: new Date().toISOString() })
+    .update({ status: 'revoked', responded_at: respondedAt })
     .eq('id', dealId)
-    .eq('staker_user_id', stakerUserId)
     .in('status', ['pending', 'active'])
     .select(DEAL_SELECT)
     .single()
-  return { deal: data || null, error }
+  if (error) {
+    const msg = String(error.message || '')
+    if (/single json object/i.test(msg)) {
+      return {
+        deal: null,
+        error: new Error('Could not revoke this deal. It may already be closed.'),
+      }
+    }
+    return { deal: null, error }
+  }
+  return { deal: data, error: null }
 }
 
 /**

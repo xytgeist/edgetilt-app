@@ -99,10 +99,10 @@ export function dealHasEdgeStakerSlices(slices = []) {
   )
 }
 
-/** Player may edit deal terms when pending, or active with guest-only backers. */
+/** Player may edit deal terms when pending, revoked, or active with guest-only backers. */
 export function stakeeCanEditDealTerms(deal, slices = [], { hasProposal = false } = {}) {
   if (!deal || hasProposal) return false
-  if (deal.status === 'pending') return true
+  if (deal.status === 'pending' || deal.status === 'revoked') return true
   if (deal.status === 'active' && !dealHasEdgeStakerSlices(slices)) return true
   return false
 }
@@ -129,10 +129,10 @@ export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
   return !hasActiveEdgeSlice
 }
 
-/** Player may periodic-settle or close an active ongoing stake (Bankroll end-stake flow). */
+/** Player may periodic-settle or close an active/revoked ongoing stake (Bankroll end-stake flow). */
 export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal = false } = {}) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false
-  if (deal.status !== 'active') return false
+  if (!['active', 'revoked'].includes(deal.status)) return false
   if (hasProposal) return false
   return isOngoingDealType(deal.deal_type)
 }

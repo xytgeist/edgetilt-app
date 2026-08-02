@@ -249,7 +249,28 @@ New / extended:
 
 ---
 
+## Backer revoke / slice decline (multi-slice)
+
+When a backer exits after accept, the player stake card must **not disappear** ... it shows **Revoked** (whole deal) or stays **On stake** with a slice decline in history (partial exit).
+
+| Scenario | Behavior (Ryan 2026-08-02) |
+| --- | --- |
+| **Sole backer revokes** | Backer's slice → `declined`; no active slices remain → deal → `revoked`. Player carousel **Revoked**; sessions blocked. Player may **Edit terms** to re-offer (deal → `pending` + new slice invites) or **Close stake** to archive. **Delete stake** is **not** available here ... revoke only happens after accept. |
+| **One of several backers revokes** | Only that slice → `declined`; deal stays **`active`** if other slices remain. Declined action % returns to player's **self-owned %** (swap cap uses `playerSelfOwnedActionPct`; declined slices excluded). |
+| **Backer declines pending slice** | Slice → `declined`; deal stays **`pending`**. If **all** slices decline → deal stays an **editable draft** (no auto-revoke). Player edits terms to add/re-offer backers. |
+| **Re-offer after revoke** | Stakee **Edit terms** on revoked deal → `poker_stable_apply_stakee_terms` flips deal **`pending`**, replaces slices, new Edge invites. |
+| **Player notification** | Bankroll Realtime + **8s poll** while carousel has pending/active stakes. Edge in-app / push **v2c**. |
+
+**Delete stake** (separate rule): only on **`pending`** / **`active`** deals **before any Edge backer has accepted** (`stakeDealCanBeCancelled`). Unrelated to post-accept revoke.
+
+**Archive (closed stakes):** Bankroll **ARCHIVE** pill lists `settled` / `closed` deals; tap opens read-only modal with sessions + offer/accept/decline/revoke/top-up/settle/close lines (`buildFullStakeArchiveTimeline`).
+
+---
+
 ## Update log
+
+- **2026-08-02:** **Revoked re-offer (test):** migration **`20260802150000`** — stakee edit on **`revoked`** deal flips **`pending`** + replaces slices; pending draft may have zero slices when all backers declined. Product rules locked in § Backer revoke / slice decline.
+- **2026-08-02:** **Revoked stake UX + archive (test):** sole backer revoke keeps deal on player carousel (**Revoked** badge, banner, terms edit/close); partial multi-slice revoke declines slice only; Bankroll **ARCHIVE** pill + detail modal; poll widened to pending **or** active carousel stakes.
 
 - **2026-08-01:** **v2a bankroll attribution (test):** RPCs `poker_stable_periodic_settle` + `poker_stable_close_deal` (`20260802000000`); player personal bankroll credited on settle; close merges stake sessions to personal timeline (keep `deal_id`, settled badge). Option B personal metrics (`player_net_value`), hero hint, Trend tab; Terms + Stable detail periodic vs close settle UI. Backer bankroll rollup still **v2c**.
 - **2026-08-01:** **Session detail attribution (test):** `pokerSessionAttribution.js` (`playerStakeSessionValue`, `playerNetSessionValue`); Bankroll session detail sheet shows table result, **By party**, swaps, **Your net**; stake session cards dual-line gross + your share.

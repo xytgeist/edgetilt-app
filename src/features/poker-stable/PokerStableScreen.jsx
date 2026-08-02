@@ -656,7 +656,6 @@ export default function PokerStableScreen({
             horseDeals={horseDeals}
             sessions={stableSessions}
             slicesByDeal={slicesByDeal}
-            bankrollByDeal={bankrollByDeal}
             profilesById={profilesById}
             userId={userId}
             liquidBankroll={backerProfile?.bankroll_balance ?? 0}

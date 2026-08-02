@@ -11,10 +11,7 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import {
-  backerSliceSessionShare,
-  backerSliceStakeValue,
-} from './pokerStableBackerMath.js'
+import { backerSliceSessionShare } from './pokerStableBackerMath.js'
 import { dealTypeLabel, roundMoney } from './pokerStableMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
 
@@ -35,29 +32,35 @@ function viewerBackingSlice(dealId, slicesByDeal, userId) {
   )
 }
 
+/** Plot coordinate = backing bankroll floor + session performance (manual set shifts floor, not points). */
+function withCapitalFloor(capitalFloor, performance) {
+  return roundMoney(Number(capitalFloor) + Number(performance))
+}
+
 /**
  * Portfolio + per-horse cumulative session share (active + closed stakes).
+ * Chart points move only on stake sessions; backing bankroll sets the y-axis floor.
  */
 export default function PokerStableTrendTab({
   horseDeals = [],
   sessions = [],
   slicesByDeal = {},
-  bankrollByDeal = {},
   profilesById = {},
   userId,
   liquidBankroll = 0,
 }) {
   const [portfolioOnly, setPortfolioOnly] = useState(false)
+  const capitalFloor = roundMoney(liquidBankroll)
 
   const chartBundle = useMemo(() => {
     const deals = [...horseDeals]
     /** @type {Record<string, number>} */
-    const runByDeal = {}
+    const perfByDeal = {}
     /** @type {Record<string, number[]>} */
-    const horseSeries = {}
+    const horsePerformance = {}
     for (const deal of deals) {
-      runByDeal[deal.id] = 0
-      horseSeries[deal.id] = [0]
+      perfByDeal[deal.id] = 0
+      horsePerformance[deal.id] = [0]
     }
 
     const events = []
@@ -77,64 +80,48 @@ export default function PokerStableTrendTab({
     events.sort((a, b) => a.t - b.t)
 
     const labels = ['Start']
-    const portfolio = [0]
+    const portfolioPerf = [0]
 
     for (const ev of events) {
       const share = backerSliceSessionShare(ev.deal, ev.slice, ev.session)
-      runByDeal[ev.deal.id] = roundMoney(runByDeal[ev.deal.id] + share)
-      let port = 0
+      perfByDeal[ev.deal.id] = roundMoney(perfByDeal[ev.deal.id] + share)
+      let portPerf = 0
       for (const deal of deals) {
-        port = roundMoney(port + (runByDeal[deal.id] || 0))
+        portPerf = roundMoney(portPerf + (perfByDeal[deal.id] || 0))
       }
       labels.push(formatTrendLabel(ev.session.start_at || ev.session.created_at))
-      portfolio.push(port)
+      portfolioPerf.push(portPerf)
       for (const deal of deals) {
-        horseSeries[deal.id].push(runByDeal[deal.id] || 0)
+        horsePerformance[deal.id].push(perfByDeal[deal.id] || 0)
       }
     }
 
-    // Terminal point: backing bankroll + active stake MTM (matches hero portfolio concept).
-    let nowPortfolio = roundMoney(liquidBankroll)
+    const portfolio = portfolioPerf.map((p) => withCapitalFloor(capitalFloor, p))
+    /** @type {Record<string, number[]>} */
+    const horseSeries = {}
     for (const deal of deals) {
-      if (deal.status !== 'active') continue
-      const slice = viewerBackingSlice(deal.id, slicesByDeal, userId)
-      if (!slice) continue
-      nowPortfolio = roundMoney(
-        nowPortfolio + backerSliceStakeValue(deal, slice, bankrollByDeal[deal.id]),
+      horseSeries[deal.id] = horsePerformance[deal.id].map((p) =>
+        withCapitalFloor(capitalFloor, p),
       )
     }
 
-    if (events.length === 0) {
-      labels.push('Now')
-      portfolio.push(nowPortfolio)
-      for (const deal of deals) {
-        horseSeries[deal.id].push(deal.status === 'active' ? runByDeal[deal.id] || 0 : 0)
-      }
-    } else {
-      labels.push('Now')
-      portfolio.push(nowPortfolio)
-      for (const deal of deals) {
-        const last = horseSeries[deal.id][horseSeries[deal.id].length - 1] || 0
-        if (deal.status === 'active') {
-          const slice = viewerBackingSlice(deal.id, slicesByDeal, userId)
-          horseSeries[deal.id].push(
-            slice ? backerSliceStakeValue(deal, slice, bankrollByDeal[deal.id]) : last,
-          )
-        } else {
-          horseSeries[deal.id].push(last)
-        }
-      }
-    }
+    return { labels, portfolio, horseSeries, deals, capitalFloor }
+  }, [horseDeals, sessions, slicesByDeal, userId, capitalFloor])
 
-    return { labels, portfolio, horseSeries, deals }
-  }, [
-    horseDeals,
-    sessions,
-    slicesByDeal,
-    bankrollByDeal,
-    userId,
-    liquidBankroll,
-  ])
+  const yScale = useMemo(() => {
+    const values = [
+      ...chartBundle.portfolio,
+      ...Object.values(chartBundle.horseSeries).flat(),
+      chartBundle.capitalFloor,
+    ]
+    const minVal = Math.min(...values, chartBundle.capitalFloor)
+    const maxVal = Math.max(...values, chartBundle.capitalFloor)
+    const pad = Math.max(500, (maxVal - minVal) * 0.08)
+    return {
+      min: roundMoney(minVal - pad),
+      max: roundMoney(maxVal + pad),
+    }
+  }, [chartBundle])
 
   const datasets = useMemo(() => {
     const rows = [
@@ -154,7 +141,10 @@ export default function PokerStableTrendTab({
         if (!series?.length) return
         const slice = viewerBackingSlice(deal.id, slicesByDeal, userId)
         rows.push({
-          label: deal.label?.trim() || sliceDisplayName(slice || {}, profilesById) || dealTypeLabel(deal.deal_type),
+          label:
+            deal.label?.trim() ||
+            sliceDisplayName(slice || {}, profilesById) ||
+            dealTypeLabel(deal.deal_type),
           data: series,
           borderColor: HORSE_COLORS[idx % HORSE_COLORS.length],
           backgroundColor: 'transparent',
@@ -195,8 +185,13 @@ export default function PokerStableTrendTab({
                 },
               },
               scales: {
-                x: { ticks: { color: '#71717a', maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                x: {
+                  ticks: { color: '#71717a', maxRotation: 45 },
+                  grid: { color: 'rgba(255,255,255,0.04)' },
+                },
                 y: {
+                  min: yScale.min,
+                  max: yScale.max,
                   ticks: {
                     color: '#71717a',
                     callback: (v) => fmtPoker$(Number(v)),
@@ -211,9 +206,9 @@ export default function PokerStableTrendTab({
         )}
       </div>
       <p className="mt-2 text-xs text-zinc-500">
-        Per-horse lines accumulate your action % of on-stake session results (includes closed stakes).
-        Portfolio ends at backing bankroll plus active stake mark-to-market; settle crystallization is
-        separate.
+        Lines move only on stake sessions (your action % of gross results). Manual backing bankroll
+        sets the chart floor ({fmtPoker$(capitalFloor)}) without adding a jump point. Settle
+        crystallization is separate.
       </p>
     </div>
   )

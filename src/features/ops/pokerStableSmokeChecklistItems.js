@@ -185,13 +185,13 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
 export const POKER_STABLE_SMOKE_CHECKLIST_KEY = 'poker_stable_v2'
 export const POKER_STABLE_SMOKE_CHECKLIST_VERSION = '2026-08-02'
 
-/** @returns {Record<string, { checked: boolean, notes: string }>} */
+/** @returns {Record<string, { checked: boolean, notes: string, screenshots: string[] }>} */
 export function emptySmokeChecklistResponseMap() {
-  /** @type {Record<string, { checked: boolean, notes: string }>} */
+  /** @type {Record<string, { checked: boolean, notes: string, screenshots: string[] }>} */
   const map = {}
   for (const section of POKER_STABLE_SMOKE_SECTIONS) {
     for (const item of section.items) {
-      map[item.id] = { checked: false, notes: '' }
+      map[item.id] = { checked: false, notes: '', screenshots: [] }
     }
   }
   return map
@@ -199,7 +199,7 @@ export function emptySmokeChecklistResponseMap() {
 
 /**
  * @param {unknown} stored
- * @returns {Record<string, { checked: boolean, notes: string }>}
+ * @returns {Record<string, { checked: boolean, notes: string, screenshots: string[] }>}
  */
 export function mergeSmokeChecklistResponses(stored) {
   const map = emptySmokeChecklistResponseMap()
@@ -208,29 +208,36 @@ export function mergeSmokeChecklistResponses(stored) {
     if (!row || typeof row !== 'object') continue
     const id = String(row.id || '')
     if (!map[id]) continue
+    const screenshots = Array.isArray(row.screenshots)
+      ? row.screenshots.map((u) => String(u || '').trim()).filter(Boolean)
+      : []
     map[id] = {
       checked: Boolean(row.checked),
       notes: typeof row.notes === 'string' ? row.notes : '',
+      screenshots,
     }
   }
   return map
 }
 
 /**
- * @param {Record<string, { checked: boolean, notes: string }>} map
+ * @param {Record<string, { checked: boolean, notes: string, screenshots?: string[] }>} map
  */
 export function serializeSmokeChecklistResponses(map) {
-  /** @type {{ id: string, section: string, label: string, checked: boolean, notes: string }[]} */
+  /** @type {{ id: string, section: string, label: string, checked: boolean, notes: string, screenshots: string[] }[]} */
   const rows = []
   for (const section of POKER_STABLE_SMOKE_SECTIONS) {
     for (const item of section.items) {
-      const state = map[item.id] || { checked: false, notes: '' }
+      const state = map[item.id] || { checked: false, notes: '', screenshots: [] }
       rows.push({
         id: item.id,
         section: section.id,
         label: item.label,
         checked: Boolean(state.checked),
         notes: state.notes || '',
+        screenshots: Array.isArray(state.screenshots)
+          ? state.screenshots.map((u) => String(u || '').trim()).filter(Boolean)
+          : [],
       })
     }
   }

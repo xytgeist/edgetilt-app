@@ -231,7 +231,7 @@ Stable no longer exposes player **+ New deal**. Syndicate slices on a backer req
 
 Run on **lvslotpro.com** with player + second Edge backer (e.g. @edgelord) before checking off backlog **v2 smoke**.
 
-**In-app checklist (admin, test host):** hamburger **Stable smoke** or **`/?tab=stable-smoke`** ... checkboxes + per-step notes, **Save progress** / **Submit smoke report** (stored in Supabase **`admin_smoke_checklist_submissions`**). After submit, tell Theo in chat: *ok lets go over the smoke list*.
+**In-app checklist (admin, test host):** hamburger **Stable smoke** or **`/?tab=stable-smoke`** ... checkboxes + per-step notes + **paste/upload screenshots** (up to 4 per step, R2), **Save progress** / **Submit smoke report** (stored in Supabase **`admin_smoke_checklist_submissions`**). After submit, tell Theo in chat: *ok lets go over the smoke list*.
 
 | Step | Actor | Surface |
 | --- | --- | --- |

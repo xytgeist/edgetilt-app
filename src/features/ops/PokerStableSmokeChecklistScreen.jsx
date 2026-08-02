@@ -15,6 +15,12 @@ import {
   loadSmokeChecklistSubmission,
   saveSmokeChecklistSubmission,
 } from './smokeChecklistApi.js'
+import SmokeChecklistScreenshotAttachments from './SmokeChecklistScreenshotAttachments.jsx'
+import {
+  imageFilesFromClipboardEvent,
+  imageFilesFromNavigatorClipboardRead,
+} from '../../utils/clipboardImagePaste.js'
+import { uploadSmokeChecklistScreenshot } from './smokeChecklistScreenshotUpload.js'
 
 function formatSavedAt(iso) {
   if (!iso) return '—'
@@ -46,6 +52,8 @@ export default function PokerStableSmokeChecklistScreen({
   const [submittedAt, setSubmittedAt] = useState(/** @type {string | null} */ (null))
   const [updatedAt, setUpdatedAt] = useState(/** @type {string | null} */ (null))
   const [responses, setResponses] = useState(emptySmokeChecklistResponseMap)
+  const [userId, setUserId] = useState(/** @type {string | null} */ (null))
+  const [itemUploading, setItemUploading] = useState(/** @type {Record<string, boolean>} */ ({}))
 
   const totalItems = useMemo(
     () => POKER_STABLE_SMOKE_SECTIONS.reduce((sum, section) => sum + section.items.length, 0),
@@ -94,6 +102,28 @@ export default function PokerStableSmokeChecklistScreen({
     void loadSubmission()
   }, [loadSubmission])
 
+  useEffect(() => {
+    if (!supabaseClient) return undefined
+    let cancelled = false
+    void supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled) setUserId(session?.user?.id ?? null)
+    })
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null)
+    })
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [supabaseClient])
+
+  const anyItemUploading = useMemo(
+    () => Object.values(itemUploading).some(Boolean),
+    [itemUploading],
+  )
+
   async function persist(nextStatus) {
     if (!supabaseClient) return
     setSaving(true)
@@ -131,6 +161,51 @@ export default function PokerStableSmokeChecklistScreen({
         ...patch,
       },
     }))
+  }
+
+  async function pasteScreenshotsIntoItem(itemId, files) {
+    if (!supabaseClient || !userId) return
+    const incoming = (files || []).filter((f) => f && f.type?.startsWith('image/'))
+    if (!incoming.length) return
+
+    const current = responses[itemId]?.screenshots || []
+    const remaining = 4 - current.length
+    if (remaining <= 0) {
+      setError('Max 4 screenshots per step.')
+      return
+    }
+
+    setItemUploading((prev) => ({ ...prev, [itemId]: true }))
+    setError('')
+    try {
+      const next = [...current]
+      for (const file of incoming.slice(0, remaining)) {
+        const url = await uploadSmokeChecklistScreenshot(supabaseClient, userId, file)
+        next.push(url)
+      }
+      updateItem(itemId, { screenshots: next })
+      triggerTapHapticLight()
+    } catch (e) {
+      setError(e?.message || 'Screenshot upload failed.')
+    } finally {
+      setItemUploading((prev) => ({ ...prev, [itemId]: false }))
+    }
+  }
+
+  async function handleNotesPaste(itemId, e) {
+    const imageFiles = imageFilesFromClipboardEvent(e)
+    if (imageFiles.length) {
+      e.preventDefault()
+      await pasteScreenshotsIntoItem(itemId, imageFiles)
+      return
+    }
+    if (navigator.clipboard?.read) {
+      const asyncFiles = await imageFilesFromNavigatorClipboardRead()
+      if (asyncFiles.length) {
+        e.preventDefault()
+        await pasteScreenshotsIntoItem(itemId, asyncFiles)
+      }
+    }
   }
 
   if (!isAdmin) {
@@ -179,7 +254,8 @@ export default function PokerStableSmokeChecklistScreen({
 
         <p className="mb-4 text-xs leading-relaxed text-zinc-500">
           Run on lvslotpro.com with player + Edge backer (e.g. @edgelord). Check items as you go,
-          add notes per step, then submit so Theo can review your report in chat.
+          add notes, paste screenshots per step (Ctrl+V), then submit so Theo can review your report
+          in chat.
         </p>
 
         <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3">
@@ -227,7 +303,7 @@ export default function PokerStableSmokeChecklistScreen({
                 ) : null}
                 <ul className="mt-3 space-y-4">
                   {section.items.map((item) => {
-                    const state = responses[item.id] || { checked: false, notes: '' }
+                    const state = responses[item.id] || { checked: false, notes: '', screenshots: [] }
                     return (
                       <li
                         key={item.id}
@@ -260,11 +336,27 @@ export default function PokerStableSmokeChecklistScreen({
                           <textarea
                             value={state.notes}
                             onChange={(e) => updateItem(item.id, { notes: e.target.value })}
+                            onPaste={(e) => void handleNotesPaste(item.id, e)}
                             rows={2}
-                            placeholder="Findings, bugs, screenshots ref, pass/fail detail…"
+                            placeholder="Findings, pass/fail detail… (paste screenshot with Ctrl+V)"
                             className="w-full resize-y rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                           />
                         </label>
+                        {userId ? (
+                          <SmokeChecklistScreenshotAttachments
+                            supabaseClient={supabaseClient}
+                            userId={userId}
+                            screenshots={state.screenshots || []}
+                            onChange={(screenshots) => updateItem(item.id, { screenshots })}
+                            onError={setError}
+                            onUploadingChange={(uploading) =>
+                              setItemUploading((prev) => ({ ...prev, [item.id]: uploading }))
+                            }
+                          />
+                        ) : null}
+                        {itemUploading[item.id] ? (
+                          <p className="mt-2 text-xs text-amber-300/90">Uploading screenshot…</p>
+                        ) : null}
                       </li>
                     )
                   })}
@@ -288,7 +380,7 @@ export default function PokerStableSmokeChecklistScreen({
         <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-10 mt-6 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            disabled={saving || loading}
+            disabled={saving || loading || anyItemUploading}
             onClick={() => void persist('draft')}
             data-stable-smoke-save-btn
             className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
@@ -297,7 +389,7 @@ export default function PokerStableSmokeChecklistScreen({
           </button>
           <button
             type="button"
-            disabled={saving || loading}
+            disabled={saving || loading || anyItemUploading}
             onClick={() => void persist('submitted')}
             data-stable-smoke-submit-btn
             className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"

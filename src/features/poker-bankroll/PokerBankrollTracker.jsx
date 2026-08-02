@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DollarSign, FileText, Info, Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -1900,7 +1900,8 @@ export default function PokerBankrollTracker({
       third_blind: session.third_blind != null ? formatMoneyInputValue(String(session.third_blind)) : '',
       ante: session.ante != null ? formatMoneyInputValue(String(session.ante)) : '',
       tournament_name: session.tournament_name || '',
-      tournament_event_pick: session.tournament_event_id || '',
+      tournament_event_pick:
+        session.tournament_event_id || POKER_TOURNAMENT_MANUAL_PICK_ID,
       field_size: session.field_size != null ? String(session.field_size) : '',
       start_stack: session.start_stack != null ? formatMoneyInputValue(String(session.start_stack)) : '',
       finish_place: session.finish_place != null ? String(session.finish_place) : '',
@@ -4233,29 +4234,6 @@ function PokerSessionCoreFields({
       softEventsReqRef.current += 1
     }
   }, [showSoftTournamentPicker, supabaseClient, form.venue_kind, form.online_site_pick, nearbyCasinos])
-
-  // Default to closest catalog row (already distance-sorted) instead of blank "Select tournament…".
-  useLayoutEffect(() => {
-    if (!showSoftTournamentPicker || !softEventsReady || !softEvents.length) return
-    if (form.venue_kind === 'online' && !String(form.online_site_pick || '').trim()) return
-    const pick = String(form.tournament_event_pick || '')
-    if (pick === POKER_TOURNAMENT_MANUAL_PICK_ID) return
-    if (
-      isSoftTournamentEventPick(pick) &&
-      softEvents.some((e) => String(e.id) === pick)
-    ) {
-      return
-    }
-    setField('soft_tournament_event', softEvents[0])
-  }, [
-    showSoftTournamentPicker,
-    softEventsReady,
-    softEvents,
-    form.tournament_event_pick,
-    form.venue_kind,
-    form.online_site_pick,
-    setField,
-  ])
 
   const softTournamentOptions = useMemo(() => {
     const opts = softTournamentPickerOptions(softEvents)

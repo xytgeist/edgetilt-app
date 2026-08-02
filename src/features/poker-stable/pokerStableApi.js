@@ -805,13 +805,15 @@ export async function requestHorseDeal(supabase, args) {
 /**
  * Backer proposes a horse deal with one or more slices (lead + optional syndicate).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {{ stakerUserId: string, stakeeUserId?: string, stakeeGuest?: { label: string, phone?: string, email?: string }, label?: string, notes?: string, baselineBankroll?: number, slices?: object[] }} args
+ * @param {{ stakerUserId: string, stakeeUserId?: string, stakeeGuest?: { label: string, phone?: string, email?: string }, dealType?: string, venueKind?: string, label?: string, notes?: string, baselineBankroll?: number, slices?: object[] }} args
  */
 export async function requestBackingDeal(supabase, args) {
   const {
     stakerUserId,
     stakeeUserId = null,
     stakeeGuest = null,
+    dealType = 'cash_backing',
+    venueKind = 'live',
     label,
     notes,
     baselineBankroll = 0,
@@ -901,7 +903,8 @@ export async function requestBackingDeal(supabase, args) {
       stakee_guest_label: guestLabel || null,
       stakee_guest_phone: stakeeGuest?.phone?.trim() || null,
       stakee_guest_email: stakeeGuest?.email?.trim()?.toLowerCase() || null,
-      deal_type: 'cash_backing',
+      deal_type: dealType,
+      venue_kind: venueKind,
       status: 'pending',
       label: label?.trim() || null,
       notes: notes?.trim() || null,

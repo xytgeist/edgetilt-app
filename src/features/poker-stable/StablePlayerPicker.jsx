@@ -41,6 +41,10 @@ export default function StablePlayerPicker({
   onSelectGuestMode,
   onClearSelection,
   placeholder = 'Select player',
+  guestRowTitle = 'Guest player (not on Edge)',
+  guestRowSubtitle = 'Enter name and optional contact info',
+  lockedGuestFallback = 'Guest player (not on Edge)',
+  inputName = 'stable-player-picker',
   disabled = false,
   inputClassName = '',
   autoFocus = false,
@@ -49,6 +53,7 @@ export default function StablePlayerPicker({
   const containerRef = useRef(null)
   const inputRef = useRef(null)
   const listRef = useRef(null)
+  const suppressOpenOnFocusRef = useRef(Boolean(autoFocus))
 
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -69,7 +74,7 @@ export default function StablePlayerPicker({
   const lockedDisplayValue = isLockedEdge
     ? edgeProfileDisplayName(selectedProfile)
     : isLockedGuest
-      ? String(guestLabel || '').trim() || 'Guest player (not on Edge)'
+      ? String(guestLabel || '').trim() || lockedGuestFallback
       : ''
   const inputValue = isLockedSelection ? lockedDisplayValue : (value ?? '')
 
@@ -288,6 +293,10 @@ export default function StablePlayerPicker({
         }}
         onFocus={() => {
           if (disabled) return
+          if (suppressOpenOnFocusRef.current) {
+            suppressOpenOnFocusRef.current = false
+            return
+          }
           setOpen(true)
           scrollFieldIntoView()
         }}
@@ -307,7 +316,7 @@ export default function StablePlayerPicker({
         autoCorrect="off"
         autoComplete="off"
         spellCheck={false}
-        name="stable-player-picker"
+        name={inputName}
         data-1p-ignore
         data-lpignore="true"
         data-form-type="other"
@@ -374,11 +383,9 @@ export default function StablePlayerPicker({
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-white">
-                  Guest player (not on Edge)
+                  {guestRowTitle}
                 </span>
-                <span className="block truncate text-xs text-zinc-500">
-                  Enter name and optional contact info
-                </span>
+                <span className="block truncate text-xs text-zinc-500">{guestRowSubtitle}</span>
               </span>
             </button>
           </li>

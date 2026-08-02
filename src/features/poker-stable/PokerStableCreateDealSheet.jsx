@@ -6,7 +6,6 @@ import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import StablePlayerPicker from './StablePlayerPicker.jsx'
-import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests } from './pokerStableApi.js'
 import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
 import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
@@ -149,14 +148,67 @@ function SliceEditor({
       </div>
       {!lockUserId ? (
         <>
-          <label className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
-            <input
-              type="checkbox"
-              checked={sl.isGuest}
-              onChange={(e) => onChange({ isGuest: e.target.checked })}
+          <InField label="Backer" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+            <StablePlayerPicker
+              supabaseClient={supabaseClient}
+              userId={userId}
+              value={sl.handle}
+              onChange={(next) => {
+                if (sl.isGuest) {
+                  onChange({
+                    handle: next,
+                    selectedProfile: null,
+                    isGuest: false,
+                    guestLabel: '',
+                    guestPhone: '',
+                    guestEmail: '',
+                  })
+                } else {
+                  onChange({ handle: next, selectedProfile: null })
+                }
+              }}
+              selectedProfile={sl.selectedProfile}
+              isGuest={sl.isGuest}
+              guestLabel={sl.guestLabel}
+              onSelectProfile={(profile) => {
+                if (!profile) return
+                if (profile.user_id === userId) return
+                onChange({
+                  isGuest: false,
+                  handle: String(profile.handle || '').replace(/^@+/, ''),
+                  selectedProfile: profile,
+                  guestLabel: '',
+                  guestPhone: '',
+                  guestEmail: '',
+                })
+              }}
+              onSelectGuestMode={() => {
+                onChange({
+                  isGuest: true,
+                  handle: '',
+                  selectedProfile: null,
+                  guestLabel: '',
+                  guestPhone: '',
+                  guestEmail: '',
+                })
+              }}
+              onClearSelection={() => {
+                onChange({
+                  isGuest: false,
+                  handle: '',
+                  selectedProfile: null,
+                  guestLabel: '',
+                  guestPhone: '',
+                  guestEmail: '',
+                })
+              }}
+              guestRowTitle="Guest backer (not on Edge)"
+              lockedGuestFallback="Guest backer (not on Edge)"
+              inputName={`stable-backer-picker-${sliceIndex}`}
+              inputClassName={INFIELD_CONTROL}
+              placeholder="Select backer"
             />
-            Guest backer (not on Edge)
-          </label>
+          </InField>
           {sl.isGuest ? (
             <>
               <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
@@ -191,29 +243,7 @@ function SliceEditor({
                 Phone/email optional ... only used to notify them about this stake.
               </p>
             </>
-          ) : (
-            <div className="mb-2">
-              <InField label="Edge handle" focusRingClass={STABLE_INFIELD_FOCUS}>
-                <EdgeHandleTypeahead
-                  supabaseClient={supabaseClient}
-                  excludeUserId={userId}
-                  value={sl.handle}
-                  onChange={(next) => onChange({ handle: next, selectedProfile: null })}
-                  onSelectProfile={(profile) => {
-                    if (!profile) return
-                    if (profile.user_id === userId) return
-                    onChange({
-                      handle: String(profile.handle || '').replace(/^@+/, ''),
-                      selectedProfile: profile,
-                    })
-                  }}
-                  selectedProfile={sl.selectedProfile}
-                  inputClassName={INFIELD_CONTROL}
-                  placeholder="Name or @handle"
-                />
-              </InField>
-            </div>
-          )}
+          ) : null}
         </>
       ) : (
         <p className="mb-2 text-sm text-zinc-400">Your backing slice (you)</p>
@@ -357,15 +387,23 @@ function PokerStableDealFormSheet({
 
   function onDealTypeChange(next) {
     setDealType(next)
-    setSlices((prev) => prev.map((s) => applyDealTypePricingDefaults(s, next)))
+    const apply = (prev) => prev.map((s) => applyDealTypePricingDefaults(s, next))
+    setSlices(apply)
+    if (isBacker) {
+      setMySlice((prev) => applyDealTypePricingDefaults(prev, next))
+      setFriendSlices(apply)
+    }
   }
 
   function onVenueKindChange(next) {
     setVenueKind(next)
     if (next !== 'online') {
-      setSlices((prev) =>
-        prev.map((s) => ({ ...s, rakebackMode: 'disabled', rakebackPlayerPct: '' })),
-      )
+      const clearRakeback = (s) => ({ ...s, rakebackMode: 'disabled', rakebackPlayerPct: '' })
+      setSlices((prev) => prev.map(clearRakeback))
+      if (isBacker) {
+        setMySlice(clearRakeback)
+        setFriendSlices((prev) => prev.map(clearRakeback))
+      }
     }
   }
 
@@ -409,7 +447,7 @@ function PokerStableDealFormSheet({
 
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
-    if (isBacker) setFriendSlices((prev) => [...prev, { ...EMPTY_SLICE }])
+    if (isBacker) setFriendSlices((prev) => [...prev, newEmptySlice(dealType)])
     else setSlices((prev) => [...prev, newEmptySlice(dealType)])
   }
 
@@ -550,6 +588,8 @@ function PokerStableDealFormSheet({
 
         let requestArgs = {
           stakerUserId: userId,
+          dealType,
+          venueKind,
           label,
           baselineBankroll: parseMoneyInputNumber(baseline) || 0,
           slices: allSlices,
@@ -770,7 +810,7 @@ function PokerStableDealFormSheet({
           />
         </InField>
 
-        {showPlayerTermsForm && !isEdit ? (
+        {!isEdit ? (
           <div className="mb-3 grid grid-cols-2 gap-2">
             <InField label="Stake type" focusRingClass={STABLE_INFIELD_FOCUS}>
               <select
@@ -903,6 +943,7 @@ function PokerStableDealFormSheet({
                 lockUserId={userId}
                 title="Your slice"
                 canRemove={false}
+                showRakeback={venueKind === 'online'}
                 onChange={(patch) => setMySlice((prev) => ({ ...prev, ...patch }))}
               />
               {friendSlices.map((sl, idx) => (
@@ -915,6 +956,7 @@ function PokerStableDealFormSheet({
                   supabaseClient={supabaseClient}
                   title={`Syndicate slice ${idx + 1}`}
                   canRemove
+                  showRakeback={venueKind === 'online'}
                   onChange={(patch) => updateFriendSlice(idx, patch)}
                   onRemove={() => setFriendSlices((prev) => prev.filter((_, i) => i !== idx))}
                 />

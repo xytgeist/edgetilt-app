@@ -5,8 +5,17 @@ import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { PokerStableBackerDealSheet, PokerStablePlayerDealSheet } from './PokerStableCreateDealSheet.jsx'
+import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from './PokerStableDealTermsSheet.jsx'
+import PokerStableHorseCarousel from './PokerStableHorseCarousel.jsx'
+import PokerStableLocationsTab from './PokerStableLocationsTab.jsx'
+import PokerStablePortfolioHero from './PokerStablePortfolioHero.jsx'
+import PokerStableTrendTab from './PokerStableTrendTab.jsx'
+import {
+  computeBackerPortfolioMetrics,
+  partitionBackerDeals,
+} from './pokerStableBackerMath.js'
 import {
   acceptHorseDeal,
   acceptSliceAsStaker,
@@ -15,15 +24,25 @@ import {
   declineSliceAsStaker,
   isMissingStableTableError,
   isViewerBackingDeal,
+  loadBackerBankroll,
   loadDealBankrollProfiles,
   loadDealCounterpartyProfiles,
+  loadDealSessionsForStable,
   loadDealSessionStats,
   loadDealSlices,
   loadMyStableDeals,
+  loadPendingCommits,
   revokeHorseDeal,
+  setBackerBankroll,
   sliceDisplayName,
 } from './pokerStableApi.js'
 import { dealTypeLabel } from './pokerStableMath.js'
+
+const STABLE_TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'trend', label: 'Trend' },
+  { id: 'locations', label: 'Locations' },
+]
 
 function statusLabel(status) {
   if (status === 'active') return 'Active'
@@ -31,7 +50,7 @@ function statusLabel(status) {
   if (status === 'settled') return 'Settled'
   if (status === 'declined') return 'Declined'
   if (status === 'revoked') return 'Revoked'
-  return status || '—'
+  return status || 'Unknown'
 }
 
 function statusTone(status) {
@@ -70,6 +89,14 @@ export default function PokerStableScreen({
   const [detailDealId, setDetailDealId] = useState(/** @type {string | null} */ (null))
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
   const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
+  const [activeTab, setActiveTab] = useState('overview')
+  const [backerProfile, setBackerProfile] = useState(
+    /** @type {{ bankroll_balance: number, realized_backing_pl: number, has_profile: boolean } | null} */ (null),
+  )
+  const [pendingCommits, setPendingCommits] = useState(/** @type {object[]} */ ([]))
+  const [stableSessions, setStableSessions] = useState(/** @type {object[]} */ ([]))
+  const [attentionOpen, setAttentionOpen] = useState(false)
+  const [locationsDealId, setLocationsDealId] = useState(/** @type {string | null} */ (null))
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -123,12 +150,29 @@ export default function PokerStableScreen({
       setProfilesById(byId)
 
       const activeIds = rows.filter((d) => d.status === 'active').map((d) => d.id)
-      const [{ byDeal: rolls }, { byDeal: stats }] = await Promise.all([
-        loadDealBankrollProfiles(supabaseClient, activeIds),
-        loadDealSessionStats(supabaseClient, activeIds),
-      ])
+      const backingIds = rows
+        .filter((d) => isViewerBackingDeal(d, userId, sliceMap || {}))
+        .map((d) => d.id)
+      const [{ byDeal: rolls }, { byDeal: stats }, backerRes, commitsRes, sessionsRes] =
+        await Promise.all([
+          loadDealBankrollProfiles(supabaseClient, activeIds),
+          loadDealSessionStats(supabaseClient, activeIds),
+          loadBackerBankroll(supabaseClient),
+          loadPendingCommits(supabaseClient),
+          loadDealSessionsForStable(supabaseClient, backingIds),
+        ])
       setBankrollByDeal(rolls)
       setStatsByDeal(stats)
+      if (backerRes.error && !isMissingStableTableError(backerRes.error)) {
+        console.warn('[poker-stable] backer bankroll', backerRes.error.message)
+      }
+      setBackerProfile(backerRes.profile)
+      if (commitsRes.error && !isMissingStableTableError(commitsRes.error)) {
+        console.warn('[poker-stable] pending commits', commitsRes.error.message)
+      }
+      setPendingCommits(commitsRes.commits || [])
+      if (sessionsRes.error) console.warn('[poker-stable] sessions', sessionsRes.error.message)
+      setStableSessions(sessionsRes.sessions || [])
     } catch (e) {
       setError(e?.message || 'Could not load Stable.')
       setDeals([])
@@ -156,10 +200,6 @@ export default function PokerStableScreen({
     onOpenStableDealConsumed?.()
   }, [openStableDealId, loading, onOpenStableDealConsumed])
 
-  const asStaker = useMemo(
-    () => deals.filter((d) => isViewerBackingDeal(d, userId, slicesByDeal)),
-    [deals, userId, slicesByDeal],
-  )
   const incoming = useMemo(
     () =>
       deals.filter(
@@ -185,6 +225,44 @@ export default function PokerStableScreen({
     () => deals.find((d) => d.id === detailDealId) || null,
     [deals, detailDealId],
   )
+
+  const { activeDeals, historyDeals } = useMemo(
+    () => partitionBackerDeals(deals, slicesByDeal, userId),
+    [deals, slicesByDeal, userId],
+  )
+
+  const portfolioMetrics = useMemo(
+    () =>
+      computeBackerPortfolioMetrics({
+        deals,
+        slicesByDeal,
+        userId,
+        bankrollByDeal,
+        liquidBankroll: backerProfile?.bankroll_balance ?? 0,
+        realizedPl: backerProfile?.realized_backing_pl ?? 0,
+      }),
+    [deals, slicesByDeal, userId, bankrollByDeal, backerProfile],
+  )
+
+  async function onSetBackerBankroll(amount) {
+    if (!supabaseClient) return
+    setSaving(true)
+    setError('')
+    try {
+      const { profile, error: err } = await setBackerBankroll(supabaseClient, amount)
+      if (err) throw err
+      setBackerProfile((prev) => ({
+        bankroll_balance: profile?.bankroll_balance ?? amount,
+        realized_backing_pl: prev?.realized_backing_pl ?? 0,
+        has_profile: true,
+      }))
+      triggerTapHapticLight()
+    } catch (e) {
+      setError(e?.message || 'Could not update backing bankroll.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function onAccept(dealId) {
     if (!supabaseClient || !userId) return
@@ -331,6 +409,44 @@ export default function PokerStableScreen({
           </div>
         ) : null}
 
+        {!schemaMissing && userId ? (
+          <>
+            <PokerStablePortfolioHero
+              metrics={portfolioMetrics}
+              hasProfile={Boolean(backerProfile?.has_profile)}
+              saving={saving}
+              onSetBankroll={onSetBackerBankroll}
+              pendingCommitCount={pendingCommits.length}
+              onNeedsAttention={() => setAttentionOpen(true)}
+            />
+
+            <div
+              data-poker-stable-tabs
+              className="mb-4 flex gap-1 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-1"
+            >
+              {STABLE_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id)
+                    triggerTapHapticLight()
+                  }}
+                  className={`flex-1 rounded-xl py-2 text-xs font-bold uppercase tracking-wide touch-manipulation ${
+                    activeTab === tab.id
+                      ? 'bg-amber-600 text-white'
+                      : 'text-zinc-400 active:text-zinc-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {activeTab === 'overview' ? (
+          <>
         {incomingSlices.length > 0 ? (
           <section className="mb-6">
             <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
@@ -460,11 +576,11 @@ export default function PokerStableScreen({
 
         <section className="mb-6">
           <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-            Your horses
+            Active horses
           </h2>
           {loading ? (
             <p className="py-10 text-center text-sm text-zinc-500">Loading…</p>
-          ) : asStaker.length === 0 ? (
+          ) : activeDeals.length === 0 ? (
             <div
               data-elevated-card="surface"
               className="rounded-3xl border border-dashed border-zinc-700 bg-zinc-900/40 px-5 py-10 text-center"
@@ -477,92 +593,81 @@ export default function PokerStableScreen({
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {asStaker.map((deal) => {
-                const stats = statsByDeal[deal.id] || { sessions: 0, profit: 0 }
-                const roll = bankrollByDeal[deal.id]
-                const profitTone =
-                  stats.profit > 0
-                    ? 'text-emerald-400'
-                    : stats.profit < 0
-                      ? 'text-rose-400'
-                      : 'text-zinc-300'
-                return (
-                  <button
-                    key={deal.id}
-                    type="button"
-                    onClick={() => openDealDetail(deal.id)}
-                    data-elevated-card="surface"
-                    className="w-full rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/40 to-zinc-900 p-4 text-left touch-manipulation active:opacity-90"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="truncate text-lg font-bold text-white">
-                          {partyLabel(deal, 'staker')}
-                        </div>
-                        <div className="mt-0.5 truncate text-sm text-zinc-400">
-                          {deal.label || dealTypeLabel(deal.deal_type)}
-                        </div>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone(deal.status)}`}
-                      >
-                        {statusLabel(deal.status)}
-                      </span>
-                    </div>
-                    {deal.status === 'active' ? (
-                      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-amber-500/15 pt-3 text-center">
-                        <div>
-                          <div className="text-[10px] font-semibold uppercase text-zinc-500">
-                            Roll
-                          </div>
-                          <div className="mt-0.5 text-sm font-bold tabular-nums text-white">
-                            {roll ? fmtPoker$(roll.overall_bankroll) : '—'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-semibold uppercase text-zinc-500">
-                            Profit
-                          </div>
-                          <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
-                            {fmtPoker$(stats.profit)}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-semibold uppercase text-zinc-500">
-                            Sessions
-                          </div>
-                          <div className="mt-0.5 text-sm font-bold tabular-nums text-white">
-                            {stats.sessions}
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                    {(deal.status === 'pending' || deal.status === 'active') && (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void onRevoke(deal.id)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.stopPropagation()
-                            void onRevoke(deal.id)
-                          }
-                        }}
-                        className="mt-3 block w-full rounded-xl py-2 text-center text-xs font-semibold text-zinc-500 touch-manipulation active:text-zinc-300"
-                      >
-                        Revoke deal
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+            <PokerStableHorseCarousel
+              deals={activeDeals}
+              slicesByDeal={slicesByDeal}
+              bankrollByDeal={bankrollByDeal}
+              statsByDeal={statsByDeal}
+              profilesById={profilesById}
+              userId={userId}
+              partyLabel={partyLabel}
+              onOpenDeal={openDealDetail}
+              onRevoke={onRevoke}
+            />
           )}
         </section>
+
+        {historyDeals.length > 0 ? (
+          <section className="mb-6">
+            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Closed stakes
+            </h2>
+            <div className="space-y-2">
+              {historyDeals.map((deal) => (
+                <button
+                  key={deal.id}
+                  type="button"
+                  onClick={() => openDealDetail(deal.id)}
+                  data-elevated-card="surface"
+                  className="w-full rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-4 text-left touch-manipulation"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-bold text-white">
+                        {partyLabel(deal, 'staker')}
+                      </div>
+                      <div className="mt-0.5 text-sm text-zinc-500">
+                        {deal.label || dealTypeLabel(deal.deal_type)} · {statusLabel(deal.status)}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs text-zinc-500">
+                      {deal.settled_at
+                        ? new Date(deal.settled_at).toLocaleDateString()
+                        : deal.updated_at
+                          ? new Date(deal.updated_at).toLocaleDateString()
+                          : ''}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+          </>
+        ) : null}
+
+        {activeTab === 'trend' && userId ? (
+          <PokerStableTrendTab
+            activeDeals={activeDeals.filter((d) => d.status === 'active')}
+            slicesByDeal={slicesByDeal}
+            bankrollByDeal={bankrollByDeal}
+            profilesById={profilesById}
+            userId={userId}
+            liquidBankroll={backerProfile?.bankroll_balance ?? 0}
+          />
+        ) : null}
+
+        {activeTab === 'locations' && userId ? (
+          <PokerStableLocationsTab
+            sessions={stableSessions}
+            activeDeals={activeDeals.filter((d) => d.status === 'active')}
+            slicesByDeal={slicesByDeal}
+            profilesById={profilesById}
+            userId={userId}
+            selectedDealId={locationsDealId}
+            onSelectDealId={setLocationsDealId}
+          />
+        ) : null}
         </div>
       </ScrollLinkedEdgeTitleBarShell>
 
@@ -638,6 +743,19 @@ export default function PokerStableScreen({
           onRefresh={load}
           onError={setError}
           onOpenPokerBankroll={onOpenPokerBankroll}
+        />
+      ) : null}
+
+      {attentionOpen && supabaseClient ? (
+        <PokerStableAttentionSheet
+          supabaseClient={supabaseClient}
+          commits={pendingCommits}
+          saving={saving}
+          onSavingChange={setSaving}
+          onClose={() => setAttentionOpen(false)}
+          onSynced={load}
+          onOpenDeal={openDealDetail}
+          onError={setError}
         />
       ) : null}
     </>

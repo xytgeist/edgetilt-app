@@ -211,9 +211,25 @@ Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`pok
 | Role | Create deal | Manage stake roll / sessions |
 | --- | --- | --- |
 | **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll only (personal + pending/active deal cards). **Not Stable.** May log stake sessions while pending; backers see history in Stable after accept. On Stake session list also shows deal **history lines** (offer, accept, re-up, settle) as text rows mixed with sessions. **Terms → Open ledger** on active cash backing opens deal detail (top-up + propose settle). |
-| **Backer (staker)** | Stable **Request horse** → player handle + your slice + optional syndicate slices | Stable horses list, invites, settle/ledger |
+| **Backer (staker)** | Stable **Create Stake** → player handle + your slice + optional syndicate slices | Stable portfolio hero, horse carousel, **Overview / Trend / Locations**, closed stakes history, **Needs attention** commit inbox, deal ledger |
 
 Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice invite (player accept activates lead backer slice only).
+
+### Backer Stable v1 (2026-08-02 test, in build)
+
+**Separate from player personal bankroll.** Backers maintain a **backing bankroll pool** (`poker_stable_backer_bankrolls`) ... optional starting balance set in Stable hero. Slice allocations (`poker_stable_backer_allocations`) debit the pool when the backer has set a balance with sufficient funds; otherwise allocation rows stay `pending` until funded.
+
+| Surface | Behavior |
+| --- | --- |
+| **Portfolio hero** | Liquid backing bankroll + **portfolio value** (liquid + stake MTM). Metrics: capital at risk, stake MTM, active horses, realized backing P/L. |
+| **Horse carousel** | Active/pending horses with roll, your stake MTM, est. share, sessions/P/L. |
+| **Overview tab** | Invites + carousel + **Closed stakes** history (not a separate ARCHIVE tab). |
+| **Trend tab** | Portfolio line + per-horse lines (snapshot from active stakes). |
+| **Locations tab** | Stable-wide venue rollup from on-stake sessions; filter per horse. |
+| **Needs attention** | Pending **`poker_stable_deal_commits`** for counterparty ... **Commit to my books** action sheet. |
+| **Settle credits** | v2c still credits **personal** bankroll on settle sync; backing pool **`realized_backing_pl`** hook deferred. |
+
+Migration: **`20260802220000_poker_stable_backer_bankroll.sql`**. Math: **`pokerStableBackerMath.js`**.
 
 ---
 
@@ -351,6 +367,8 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-02:** **Backer Stable v1 UI (test, in build):** migration **`20260802220000`** — backing bankroll pool + slice allocations; Stable upgraded in place (portfolio hero, horse carousel, Overview/Trend/Locations tabs, closed stakes on overview, **Needs attention** commit sheet). Unilateral commit/sync from **`20260802210000`** retained. Apply SQL on test before smoke.
+- **2026-08-02:** **Unilateral commit/sync (test):** migration **`20260802210000`** — record top-up/reduce/settle updates recorder's books immediately; counterparties **Commit to my books** via **`poker_stable_sync_commit`**; settlement vote queue retired.
 - **2026-08-02:** **Settlement sync + ledger (test):** migration **`20260802180000`** — propose/respond settlement, **`poker_stable_ledger_entries`**, backer personal credit on accept; drops payment-claim activity triggers; **`PokerStableSettlementRequestActionModal`** on `stableSettlement=`. Redeploy **`lounge-send-activity-push`** on test after pull.
 - **2026-08-02:** **Stable v2c Edge notify (test):** migration **`20260802170000`** — slice invite + session complete activity (superseded for settle by **`20260802180000`**). Guest email/SMS unchanged (`poker-stable-notify`).
 - **2026-08-02:** **Close revoked stake (test + prod):** migration **`20260802160000`** — `poker_stable_run_settlement` allows finalize on **`revoked`** deals (fixes "Active stake not found" on Close stake); periodic settle still active-only. Applied on **`jtjgtucumuoswnbauxry`**.

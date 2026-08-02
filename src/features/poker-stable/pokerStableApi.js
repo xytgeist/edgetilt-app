@@ -231,6 +231,49 @@ export async function loadDealSessionStats(supabase, dealIds) {
   return { byDeal, error: null }
 }
 
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
+export async function loadBackerBankroll(supabase) {
+  const { data, error } = await supabase.rpc('poker_stable_get_backer_bankroll')
+  if (error) return { profile: null, error }
+  return {
+    profile: {
+      bankroll_balance: Number(data?.bankroll_balance) || 0,
+      realized_backing_pl: Number(data?.realized_backing_pl) || 0,
+      has_profile: Boolean(data?.has_profile),
+    },
+    error: null,
+  }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {number} amount */
+export async function setBackerBankroll(supabase, amount) {
+  const { data, error } = await supabase.rpc('poker_stable_set_backer_bankroll', {
+    p_amount: roundMoney(amount),
+  })
+  if (error) return { profile: null, error }
+  return {
+    profile: {
+      bankroll_balance: Number(data?.bankroll_balance) || 0,
+      has_profile: true,
+    },
+    error: null,
+  }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string[]} dealIds */
+export async function loadDealSessionsForStable(supabase, dealIds) {
+  if (!dealIds.length) return { sessions: [], error: null }
+  const { data, error } = await supabase
+    .from('poker_bankroll_sessions')
+    .select(
+      'id, deal_id, started_at, ended_at, win_loss, casino_name, game_variant, stakes_label, status, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings',
+    )
+    .in('deal_id', dealIds)
+    .eq('status', 'completed')
+    .order('started_at', { ascending: true })
+  return { sessions: data || [], error }
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId

@@ -129,6 +129,15 @@ export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
   return !hasActiveEdgeSlice
 }
 
+/** Player may open deal ledger (top-up + payment claims) on active cash backing. */
+export function stakeeCanOpenLedger(deal, { userId, hasProposal = false } = {}) {
+  if (!deal || !userId || deal.stakee_user_id !== userId) return false
+  if (deal.status !== 'active') return false
+  if (deal.deal_type !== 'cash_backing') return false
+  if (hasProposal) return false
+  return true
+}
+
 /** Player may periodic-settle or close an active/revoked ongoing stake (Bankroll end-stake flow). */
 export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal = false } = {}) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false

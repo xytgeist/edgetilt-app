@@ -59,6 +59,7 @@ import {
   reassignGuestSliceToUser,
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
+import PokerStableDealDetailSheet from '../poker-stable/PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
 import {
   archivedStakePersonalBankrollNet,
@@ -291,6 +292,7 @@ export default function PokerBankrollTracker({
   /** @type {Record<string, object>} */
   const [stableProfilesById, setStableProfilesById] = useState({})
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
+  const [ledgerDealId, setLedgerDealId] = useState(/** @type {string | null} */ (null))
   const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
@@ -3531,6 +3533,11 @@ export default function PokerBankrollTracker({
           dealRoll={dealProfiles[termsDealId] ?? null}
           onPeriodicSettle={(rakebackTotal) => runPeriodicSettle(termsDealId, rakebackTotal)}
           onCloseStake={(rakebackTotal) => runCloseStake(termsDealId, rakebackTotal)}
+          onOpenLedger={() => {
+            const dealId = termsDealId
+            setTermsDealId(null)
+            setLedgerDealId(dealId)
+          }}
           onAcceptProposal={async () => {
             setStableSaving(true)
             setError('')
@@ -3565,6 +3572,26 @@ export default function PokerBankrollTracker({
               setStableSaving(false)
             }
           }}
+        />
+      ) : null}
+
+      {ledgerDealId && supabaseClient && userId ? (
+        <PokerStableDealDetailSheet
+          supabaseClient={supabaseClient}
+          userId={userId}
+          deal={
+            stakeeDeals.find((d) => d.id === ledgerDealId) ??
+            stakeeDealsById[ledgerDealId] ??
+            null
+          }
+          slices={slicesByDeal[ledgerDealId] || []}
+          roll={dealProfiles[ledgerDealId] ?? null}
+          profilesById={stableProfilesById}
+          saving={stableSaving}
+          onSavingChange={setStableSaving}
+          onClose={() => setLedgerDealId(null)}
+          onRefresh={loadData}
+          onError={setError}
         />
       ) : null}
 

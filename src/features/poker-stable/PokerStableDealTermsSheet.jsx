@@ -12,6 +12,7 @@ import {
   sliceTermsSummary,
   stakeDealCanBeCancelled,
   stakeeCanEditDealTerms,
+  stakeeCanOpenLedger,
   stakeeCanSettleStake,
   termsPayloadToFormState,
 } from './pokerStableTerms.js'
@@ -179,6 +180,7 @@ export default function PokerStableDealTermsSheet({
   onCancelStake,
   onPeriodicSettle,
   onCloseStake,
+  onOpenLedger,
   dealRoll = null,
   onError,
 }) {
@@ -219,6 +221,8 @@ export default function PokerStableDealTermsSheet({
     isStakee &&
     stakeDealCanBeCancelled(deal, slices, { userId }) &&
     typeof onCancelStake === 'function'
+  const canOpenLedger =
+    stakeeCanOpenLedger(deal, { userId, hasProposal }) && typeof onOpenLedger === 'function'
   const canSettle =
     stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
@@ -407,6 +411,27 @@ export default function PokerStableDealTermsSheet({
             >
               Edit terms
             </button>
+          ) : null}
+          {canOpenLedger ? (
+            <>
+              <h4 className="pt-1 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                Ledger
+              </h4>
+              <p className="text-xs text-zinc-500">
+                Record top-ups and payment claims with your backers.
+              </p>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  onError?.('')
+                  onOpenLedger?.()
+                }}
+                className="w-full rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
+              >
+                Open ledger
+              </button>
+            </>
           ) : null}
           {canSettle ? (
             <>

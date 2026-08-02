@@ -201,7 +201,7 @@ Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`pok
 
 | Role | Create deal | Manage stake roll / sessions |
 | --- | --- | --- |
-| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll only (personal + pending/active deal cards). **Not Stable.** May log stake sessions while pending; backers see history in Stable after accept. On Stake session list also shows deal **history lines** (offer, accept, re-up, settle) as text rows mixed with sessions. |
+| **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll only (personal + pending/active deal cards). **Not Stable.** May log stake sessions while pending; backers see history in Stable after accept. On Stake session list also shows deal **history lines** (offer, accept, re-up, settle) as text rows mixed with sessions. **Terms → Open ledger** on active cash backing opens deal detail (top-up + payment claims). |
 | **Backer (staker)** | Stable **Request horse** → player handle + your slice + optional syndicate slices | Stable horses list, invites, settle/ledger |
 
 Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice invite (player accept activates lead backer slice only).
@@ -217,6 +217,21 @@ Stable no longer exposes player **+ New deal**. Syndicate slices on a backer req
 | **v2a** | **Bankroll & session attribution** (this spec §): periodic settle + close transfers, session merge, dual-line cards, Option B metrics, swap overlay on player net only |
 | **v2b** | Tournament piece on session (swap integration); tournament package manifest |
 | **v2c** | Notifications (`activity_events`); staker overall bankroll rollup |
+
+### Test smoke (v2 cash backing, test)
+
+Run on **lvslotpro.com** with player + second Edge backer (e.g. @edgelord) before checking off backlog **v2 smoke**:
+
+| Step | Actor | Surface |
+| --- | --- | --- |
+| 1 | Player | Bankroll **+ Stake** — cash backing, 2 slices, baseline/roll |
+| 2 | Backer(s) | Stable — accept slice(s) |
+| 3 | Player | On Stake — log 1–2 sessions (roll above baseline if possible) |
+| 4 | Player | Terms → **Open ledger** — record top-up (baseline + roll bump) |
+| 5 | Player | Periodic settle (cash, not in makeup) **or** close for first pass |
+| 6 | Player | Ledger — **I paid** partial/full claim on a slice |
+| 7 | Backer | Stable detail — **Confirm** or **Dispute** |
+| 8 | Player | Close stake → **ARCHIVE** → outcome badge + timeline |
 
 ---
 
@@ -322,6 +337,7 @@ Tracked in **`docs/test-buildout-backlog.md`** (Poker Stable open checkboxes). N
 
 ## Update log
 
+- **2026-08-02:** **Player ledger from Bankroll (test):** active cash backing **Terms → Open ledger** mounts **`PokerStableDealDetailSheet`** (top-up, payment claims; settle also available in detail). Gate **`stakeeCanOpenLedger`**; light mode reuses **`[data-poker-stable-sheet]`**. Manual v2 smoke script in § Test smoke (v2 cash backing).
 - **2026-08-02:** **Close revoked stake (test + prod):** migration **`20260802160000`** — `poker_stable_run_settlement` allows finalize on **`revoked`** deals (fixes "Active stake not found" on Close stake); periodic settle still active-only. Applied on **`jtjgtucumuoswnbauxry`**.
 - **2026-08-02:** **Open product decisions (TBD):** § Settlement sync, § Single backer cash-out, § Move session scope (personal ↔ stake with multi-stake picker) added to backlog; no implementation until Ryan locks rules.
 - **2026-08-02:** **Revoked re-offer (test):** migration **`20260802150000`** — stakee edit on **`revoked`** deal flips **`pending`** + replaces slices; pending draft may have zero slices when all backers declined. Product rules locked in § Backer revoke / slice decline.

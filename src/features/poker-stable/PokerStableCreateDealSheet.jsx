@@ -614,7 +614,7 @@ function PokerStableDealFormSheet({
     : isEdit
       ? 'Edit stake terms'
       : isBacker
-        ? 'Request horse'
+        ? 'Create Stake'
         : 'New stake deal'
   const submitLabel = isBackerPropose
     ? 'Send proposal'

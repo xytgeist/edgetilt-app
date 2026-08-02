@@ -318,7 +318,7 @@ export default function PokerStableScreen({
               className="w-full rounded-3xl bg-amber-600 py-4 text-sm font-bold text-white touch-manipulation active:bg-amber-500"
               data-poker-stable-primary-btn
             >
-              Request horse
+              Create Stake
             </button>
           </div>
         ) : null}

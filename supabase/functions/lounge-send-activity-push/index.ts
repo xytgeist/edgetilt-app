@@ -26,6 +26,8 @@ type ActivityEventRow = {
   guide_slug?: string | null
   detail_text?: string | null
   poker_tournament_swap_id?: string | null
+  poker_stable_deal_id?: string | null
+  poker_stable_settlement_request_id?: string | null
   created_at: string
 }
 
@@ -199,6 +201,14 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'offered you a tournament swap'
     case 'poker_tournament_swap_result':
       return 'finished a tournament swap with you'
+    case 'poker_stable_slice_invite':
+      return 'invited you to back a stake'
+    case 'poker_stable_session_complete':
+      return 'completed a stake session'
+    case 'poker_stable_settlement_proposed':
+      return 'proposed a settlement for you to review'
+    case 'poker_stable_settlement_resolved':
+      return 'responded to your settlement proposal'
     default:
       return 'interacted with you'
   }
@@ -231,6 +241,8 @@ function buildTargetUrl(
     | 'chat_call_id'
     | 'starter_weekly_unlock_id'
     | 'guide_slug'
+    | 'poker_stable_deal_id'
+    | 'poker_stable_settlement_request_id'
   >,
   actor: ActorProfile | null | undefined,
   markRead?: PushMarkReadIds,
@@ -282,6 +294,17 @@ function buildTargetUrl(
     event.event_type === 'poker_tournament_swap_result'
   ) {
     params.set('tab', 'poker-bankroll')
+  } else if (
+    event.event_type === 'poker_stable_slice_invite' ||
+    event.event_type === 'poker_stable_session_complete' ||
+    event.event_type === 'poker_stable_settlement_proposed' ||
+    event.event_type === 'poker_stable_settlement_resolved'
+  ) {
+    params.set('tab', 'poker-stable')
+    if (event.poker_stable_deal_id) params.set('stableDeal', event.poker_stable_deal_id)
+    if (event.poker_stable_settlement_request_id) {
+      params.set('stableSettlement', event.poker_stable_settlement_request_id)
+    }
   } else if (event.event_type === 'repost' && !event.comment_id) {
     params.set('lounge', 'notifications')
   } else if (event.post_id) {
@@ -369,6 +392,22 @@ function buildSingleNotification(
     return {
       title: pushTitleForEventType(event.event_type),
       body: `${who} tagged you in ${roomName}`,
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      activityEventId: event.id,
+      eventType: event.event_type,
+    }
+  }
+  if (
+    event.event_type === 'poker_stable_slice_invite' ||
+    event.event_type === 'poker_stable_session_complete' ||
+    event.event_type === 'poker_stable_settlement_proposed' ||
+    event.event_type === 'poker_stable_settlement_resolved'
+  ) {
+    const detail = String(event.detail_text || '').trim()
+    const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
+    return {
+      title: 'Poker Stable',
+      body: detail ? `${who} · ${detail}` : `${who} ${phrase}`,
       url: buildTargetUrl(event, actor, { activityEventId: event.id }),
       activityEventId: event.id,
       eventType: event.event_type,
@@ -474,7 +513,7 @@ async function handleImmediatePush(
   const { data: eventRow, error: eventError } = await admin
     .from('activity_events')
     .select(
-      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, chat_call_id, starter_weekly_unlock_id, guide_slug, detail_text, poker_tournament_swap_id, created_at',
+      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, chat_call_id, starter_weekly_unlock_id, guide_slug, detail_text, poker_tournament_swap_id, poker_stable_deal_id, poker_stable_settlement_request_id, created_at',
     )
     .eq('id', activityEventId)
     .maybeSingle()

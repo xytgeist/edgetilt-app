@@ -49,6 +49,8 @@ export default function PokerStableScreen({
   supabaseClient,
   titleBarNavSlot = null,
   titleBarToolCloseVisible = false,
+  openStableDealId = null,
+  onOpenStableDealConsumed = null,
   /** @type {(dealId: string) => void} */
   onOpenPokerBankroll = null,
 }) {
@@ -147,6 +149,12 @@ export default function PokerStableScreen({
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
+
+  useEffect(() => {
+    if (!openStableDealId || loading) return
+    setDetailDealId(openStableDealId)
+    onOpenStableDealConsumed?.()
+  }, [openStableDealId, loading, onOpenStableDealConsumed])
 
   const asStaker = useMemo(
     () => deals.filter((d) => isViewerBackingDeal(d, userId, slicesByDeal)),

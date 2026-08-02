@@ -129,7 +129,7 @@ export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
   return !hasActiveEdgeSlice
 }
 
-/** Player may open deal ledger (top-up + payment claims) on active cash backing. */
+/** Player may open deal ledger (top-up + settle) on active cash backing. */
 export function stakeeCanOpenLedger(deal, { userId, hasProposal = false } = {}) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false
   if (deal.status !== 'active') return false
@@ -144,6 +144,21 @@ export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal =
   if (!['active', 'revoked'].includes(deal.status)) return false
   if (hasProposal) return false
   return isOngoingDealType(deal.deal_type)
+}
+
+/** Player or active Edge backer may propose periodic settle / close (when no pending request). */
+export function canProposeSettleStake(deal, slices = [], { userId, hasProposal = false } = {}) {
+  if (hasProposal) return false
+  if (stakeeCanSettleStake(deal, slices, { userId, hasProposal: false })) return true
+  if (!deal || !userId) return false
+  if (!['active', 'revoked'].includes(deal.status)) return false
+  if (!isOngoingDealType(deal.deal_type)) return false
+  return slices.some(
+    (slice) =>
+      slice.status === 'active' &&
+      slice.counterparty_kind === 'user' &&
+      slice.staker_user_id === userId,
+  )
 }
 
 /** Rakeback applies to online stakes only (cash or tournament package). */

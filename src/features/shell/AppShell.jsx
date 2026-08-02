@@ -73,6 +73,7 @@ import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash
 import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
+import PokerStableSettlementRequestActionModal from '../poker-stable/PokerStableSettlementRequestActionModal.jsx'
 import {
   IN_APP_TOAST_ACCESS_BANNER,
   IN_APP_TOAST_ACCESS_BANNER_TEXT,
@@ -328,6 +329,7 @@ export default function AppShell({
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
+  const [pendingStableSettlementRequestId, setPendingStableSettlementRequestId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
@@ -457,7 +459,12 @@ export default function AppShell({
         playLogEntryId,
         pokerSessionId,
         guideSlug,
+        stableDealId,
+        stableSettlementRequestId,
       } = navigateFromLoungeActivityPayload(payload)
+
+      if (stableSettlementRequestId) setPendingStableSettlementRequestId(stableSettlementRequestId)
+      if (stableDealId) setPendingPokerStableDealId(stableDealId)
 
       if (targetTab === 'chat') {
         if (browseMode === 'anonymous') {
@@ -484,6 +491,13 @@ export default function AppShell({
           setMenuOpen(false)
           if (playLogEntryId) setPendingPlayLogEntryId(playLogEntryId)
         }
+      } else if (targetTab === 'poker-stable') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('poker-stable')
+          setMenuOpen(false)
+        }
       } else if (targetTab === 'poker-bankroll') {
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()
@@ -491,13 +505,6 @@ export default function AppShell({
           setTab('poker-bankroll')
           setMenuOpen(false)
           if (pokerSessionId) setPendingPokerSessionId(pokerSessionId)
-        }
-      } else if (targetTab === 'poker-stable') {
-        if (browseMode === 'anonymous') {
-          onRequireAuthRef.current?.()
-        } else {
-          setTab('poker-stable')
-          setMenuOpen(false)
         }
       } else if (targetTab === 'offers') {
         if (browseMode === 'anonymous') {
@@ -1067,6 +1074,8 @@ export default function AppShell({
           if (pokerSession) setPendingPokerSessionId(pokerSession)
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const stableSettlement = (params.get('stableSettlement') || '').trim()
+          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
         }
       }
       if (targetTab === 'poker-stable') {
@@ -1075,6 +1084,10 @@ export default function AppShell({
         } else {
           setTab('poker-stable')
           setMenuOpen(false)
+          const stableDeal = (params.get('stableDeal') || '').trim()
+          if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const stableSettlement = (params.get('stableSettlement') || '').trim()
+          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
         }
       }
       const guideFromQuery = (params.get('guide') || '').trim()
@@ -1172,6 +1185,10 @@ export default function AppShell({
             data.stableDealId || msgUrl.searchParams.get('stableDeal') || '',
           ).trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const stableSettlement = String(
+            data.stableSettlementRequestId || msgUrl.searchParams.get('stableSettlement') || '',
+          ).trim()
+          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
         } catch {
           // ignore malformed url
         }
@@ -1194,6 +1211,25 @@ export default function AppShell({
         }
         setTab('poker-stable')
         setMenuOpen(false)
+        try {
+          const msgUrl = new URL(data.url || '', window.location.origin)
+          const stableDeal = String(msgUrl.searchParams.get('stableDeal') || '').trim()
+          if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const stableSettlement = String(msgUrl.searchParams.get('stableSettlement') || '').trim()
+          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
+        } catch {
+          // ignore malformed url
+        }
+        const activityEventId = data.activityEventId || null
+        const activityBatchId = data.activityBatchId || null
+        if (data.markActivityRead || activityEventId || activityBatchId) {
+          queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
+          window.dispatchEvent(
+            new CustomEvent('lounge-push-opened', {
+              detail: { activityEventId, activityBatchId },
+            }),
+          )
+        }
         return
       }
       if (targetTab === 'chat') {
@@ -2411,6 +2447,8 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+          openStableDealId={pendingPokerStableDealId}
+          onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
           onOpenPokerBankroll={(dealId) => {
             setPendingPokerStableDealId(dealId)
             setTab('poker-bankroll')
@@ -2560,6 +2598,18 @@ export default function AppShell({
           toast={loungeActivityInAppToast}
           onDismiss={dismissLoungeActivityInAppToast}
           onOpen={openLoungeActivityInAppToast}
+        />
+      ) : null}
+
+      {pendingStableSettlementRequestId && supabaseClient && chatCallViewerUserId ? (
+        <PokerStableSettlementRequestActionModal
+          supabaseClient={supabaseClient}
+          userId={chatCallViewerUserId}
+          requestId={pendingStableSettlementRequestId}
+          onClose={() => setPendingStableSettlementRequestId(null)}
+          onResolved={() => {
+            window.dispatchEvent(new CustomEvent('lounge-push-opened'))
+          }}
         />
       ) : null}
 

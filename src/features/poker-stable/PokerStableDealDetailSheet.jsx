@@ -6,12 +6,12 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   closeBackingDeal,
-  createPaymentClaim,
   loadLatestSettlement,
-  loadPaymentClaims,
+  loadLedgerEntries,
+  loadPendingSettlementRequest,
   periodicSettleBackingDeal,
   recordDealTopup,
-  respondToPaymentClaim,
+  respondToSettlementRequest,
   sliceDisplayName,
 } from './pokerStableApi.js'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
@@ -24,13 +24,17 @@ import {
 import {
   computeDealMakeup,
   computeProfitAboveBaseline,
-  computeSliceLedgerOwed,
   dealTypeLabel,
 } from './pokerStableMath.js'
-import { stakeeCanSettleStake, dealCanPeriodicSettle, dealHasMakeup } from './pokerStableTerms.js'
+import {
+  canProposeSettleStake,
+  dealCanPeriodicSettle,
+  dealHasMakeup,
+} from './pokerStableTerms.js'
+import { pokerStableViewerCanRespondToSettlement } from './pokerStableActivity.js'
 
 /**
- * Deal detail: baseline, makeup, top-up, settle, ledger.
+ * Deal detail: baseline, makeup, top-up, settle proposal, ledger history.
  */
 export default function PokerStableDealDetailSheet({
   supabaseClient,
@@ -49,14 +53,16 @@ export default function PokerStableDealDetailSheet({
   const [topupAmount, setTopupAmount] = useState('')
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
-  const [claims, setClaims] = useState([])
-  const [claimAmounts, setClaimAmounts] = useState({})
+  const [ledgerEntries, setLedgerEntries] = useState([])
+  const [pendingRequest, setPendingRequest] = useState(null)
   const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
   const [closeStakeOpen, setCloseStakeOpen] = useState(false)
 
   const isStakee = deal?.stakee_user_id === userId
-  const canSettleStake = stakeeCanSettleStake(deal, slices, { userId })
-  const showPeriodicSettle = canSettleStake && dealCanPeriodicSettle(deal, roll)
+  const hasProposal = Boolean(pendingRequest)
+  const canProposeSettle = canProposeSettleStake(deal, slices, { userId, hasProposal })
+  const showPeriodicSettle = canProposeSettle && dealCanPeriodicSettle(deal, roll)
+  const canRespondToProposal = pokerStableViewerCanRespondToSettlement(pendingRequest, userId)
   const showMakeup = dealHasMakeup(deal)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
@@ -65,13 +71,19 @@ export default function PokerStableDealDetailSheet({
 
   const loadLedger = useCallback(async () => {
     if (!supabaseClient || !deal?.id) return
-    const [{ settlement: st, lines }, { claims: cl }] = await Promise.all([
+    const [
+      { settlement: st, lines },
+      { entries },
+      { request },
+    ] = await Promise.all([
       loadLatestSettlement(supabaseClient, deal.id),
-      loadPaymentClaims(supabaseClient, deal.id),
+      loadLedgerEntries(supabaseClient, deal.id),
+      loadPendingSettlementRequest(supabaseClient, deal.id),
     ])
     setSettlement(st)
     setSettlementLines(lines || [])
-    setClaims(cl || [])
+    setLedgerEntries(entries || [])
+    setPendingRequest(request)
   }, [supabaseClient, deal?.id])
 
   useEffect(() => {
@@ -84,14 +96,10 @@ export default function PokerStableDealDetailSheet({
     return map
   }, [settlementLines])
 
-  const claimsBySlice = useMemo(() => {
-    const map = {}
-    for (const c of claims) {
-      if (!map[c.slice_id]) map[c.slice_id] = []
-      map[c.slice_id].push(c)
-    }
-    return map
-  }, [claims])
+  const myLedgerEntries = useMemo(
+    () => ledgerEntries.filter((entry) => entry.user_id === userId),
+    [ledgerEntries, userId],
+  )
 
   async function onTopup() {
     if (!isStakee || !deal) return
@@ -116,19 +124,24 @@ export default function PokerStableDealDetailSheet({
   }
 
   async function confirmPeriodicSettle(rakebackAmount) {
-    if (!isStakee || !deal) return
+    if (!canProposeSettle || !deal) return
     onSavingChange(true)
     onError('')
     try {
-      const { error } = await periodicSettleBackingDeal(supabaseClient, {
+      const { error, immediate, requestId } = await periodicSettleBackingDeal(supabaseClient, {
         dealId: deal.id,
         rakebackTotal: rakebackAmount,
       })
       if (error) throw error
       triggerTapHapticLight()
       setPeriodicSettleOpen(false)
-      await onRefresh()
+      if (immediate) {
+        await onRefresh()
+      }
       await loadLedger()
+      if (!immediate && requestId) {
+        onError('')
+      }
     } catch (e) {
       onError(e?.message || 'Settle failed.')
     } finally {
@@ -137,18 +150,20 @@ export default function PokerStableDealDetailSheet({
   }
 
   async function confirmCloseStake(rakebackAmount) {
-    if (!isStakee || !deal) return
+    if (!canProposeSettle || !deal) return
     onSavingChange(true)
     onError('')
     try {
-      const { error } = await closeBackingDeal(supabaseClient, {
+      const { error, immediate } = await closeBackingDeal(supabaseClient, {
         dealId: deal.id,
         rakebackTotal: rakebackAmount,
       })
       if (error) throw error
       triggerTapHapticLight()
       setCloseStakeOpen(false)
-      await onRefresh()
+      if (immediate) {
+        await onRefresh()
+      }
       await loadLedger()
     } catch (e) {
       onError(e?.message || 'Close failed.')
@@ -157,45 +172,20 @@ export default function PokerStableDealDetailSheet({
     }
   }
 
-  async function onClaim(sliceId, claimKind) {
-    const amount = parseMoneyInputNumber(claimAmounts[sliceId])
-    if (!Number.isFinite(amount) || amount <= 0) {
-      onError('Enter a payment amount.')
-      return
-    }
+  async function onRespondProposal(response) {
+    if (!pendingRequest || !canRespondToProposal) return
     onSavingChange(true)
     onError('')
     try {
-      const { error } = await createPaymentClaim(supabaseClient, {
-        dealId: deal.id,
-        sliceId,
-        actorUserId: userId,
-        amount,
-        claimKind,
-        settlementId: settlement?.id,
-      })
-      if (error) throw error
-      setClaimAmounts((prev) => ({ ...prev, [sliceId]: '' }))
-      triggerTapHapticLight()
-      await loadLedger()
-    } catch (e) {
-      onError(e?.message || 'Could not log payment.')
-    } finally {
-      onSavingChange(false)
-    }
-  }
-
-  async function onRespond(claimId, response) {
-    onSavingChange(true)
-    onError('')
-    try {
-      const { error } = await respondToPaymentClaim(supabaseClient, {
-        claimId,
-        responderUserId: userId,
+      const { error, status } = await respondToSettlementRequest(supabaseClient, {
+        requestId: pendingRequest.id,
         response,
       })
       if (error) throw error
       triggerTapHapticLight()
+      if (status === 'accepted') {
+        await onRefresh()
+      }
       await loadLedger()
     } catch (e) {
       onError(e?.message || 'Could not respond.')
@@ -226,6 +216,41 @@ export default function PokerStableDealDetailSheet({
             Close
           </button>
         </div>
+
+        {pendingRequest ? (
+          <div className="mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
+            <p className="text-sm font-semibold text-cyan-100">
+              {pendingRequest.settle_kind === 'close'
+                ? 'Close settlement awaiting confirmation'
+                : 'Periodic settlement awaiting confirmation'}
+            </p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {canRespondToProposal
+                ? 'Review the proposal and confirm or deny.'
+                : 'Waiting for the other party to respond.'}
+            </p>
+            {canRespondToProposal ? (
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void onRespondProposal('confirmed')}
+                  className="flex-1 rounded-xl bg-emerald-600 py-2 text-sm font-bold text-white"
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void onRespondProposal('denied')}
+                  className="flex-1 rounded-xl bg-zinc-800 py-2 text-sm font-bold text-rose-200"
+                >
+                  Deny
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div
           className={`mb-4 grid gap-2 rounded-2xl border border-amber-500/20 bg-amber-950/20 p-3 text-center ${
@@ -272,23 +297,6 @@ export default function PokerStableDealDetailSheet({
         <div className="mb-4 space-y-2">
           {slices.map((slice) => {
             const line = linesBySlice[slice.id]
-            const sliceClaims = claimsBySlice[slice.id] || []
-            const stakerId = slice.staker_user_id
-            const viewerIsPlayer = isStakee
-            const viewerIsStaker = stakerId === userId
-            const ledger =
-              line && (viewerIsPlayer || viewerIsStaker)
-                ? computeSliceLedgerOwed({
-                    settleOwed: line.total_owed,
-                    viewerUserId: userId,
-                    playerUserId: deal.stakee_user_id,
-                    stakerUserId: stakerId,
-                    claims: sliceClaims,
-                  })
-                : null
-            const pendingForMe = sliceClaims.filter(
-              (c) => c.status === 'pending' && c.actor_user_id !== userId,
-            )
 
             return (
               <div
@@ -312,74 +320,7 @@ export default function PokerStableDealDetailSheet({
                 </div>
                 {line ? (
                   <div className="mt-2 text-sm text-zinc-300">
-                    Settled IOU: {fmtPoker$(line.total_owed)}
-                    {ledger ? (
-                      <span className="ml-2 text-amber-200">You show: {fmtPoker$(ledger.owed)}</span>
-                    ) : null}
-                  </div>
-                ) : null}
-                {ledger?.statusNotes?.length ? (
-                  <p className="mt-1 text-[11px] text-cyan-300">{ledger.statusNotes.join(' · ')}</p>
-                ) : null}
-
-                {pendingForMe.map((c) => (
-                  <div
-                    key={c.id}
-                    className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-zinc-800/80 px-2 py-2"
-                  >
-                    <span className="text-xs text-zinc-300">
-                      Claims {fmtPoker$(c.amount)} ({c.claim_kind.replace('_', ' ')})
-                    </span>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onRespond(c.id, 'confirmed')}
-                      className="rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onRespond(c.id, 'disputed')}
-                      className="rounded-lg bg-rose-900/80 px-2 py-1 text-xs font-bold text-rose-200"
-                    >
-                      Dispute
-                    </button>
-                  </div>
-                ))}
-
-                {settlement && (viewerIsPlayer || viewerIsStaker) && slice.counterparty_kind === 'user' ? (
-                  <div className="mt-2 flex gap-2">
-                    <MoneyInputField
-                      compact
-                      value={claimAmounts[slice.id] || ''}
-                      onChange={(next) =>
-                        setClaimAmounts((prev) => ({ ...prev, [slice.id]: next }))
-                      }
-                      placeholder="Payment"
-                      focusRingClass="focus:ring-2 focus:ring-amber-500/40"
-                      className="min-w-0 flex-1"
-                    />
-                    {viewerIsPlayer ? (
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => void onClaim(slice.id, 'payment_made')}
-                        className="rounded-xl bg-zinc-700 px-3 text-xs font-bold text-white"
-                      >
-                        I paid
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => void onClaim(slice.id, 'payment_received')}
-                        className="rounded-xl bg-zinc-700 px-3 text-xs font-bold text-white"
-                      >
-                        Received
-                      </button>
-                    )}
+                    Last settle slice: {fmtPoker$(line.total_owed)} ({line.direction.replace(/_/g, ' ')})
                   </div>
                 ) : null}
               </div>
@@ -387,7 +328,25 @@ export default function PokerStableDealDetailSheet({
           })}
         </div>
 
-        {canSettleStake ? (
+        {myLedgerEntries.length ? (
+          <>
+            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Your ledger
+            </h4>
+            <div className="mb-4 space-y-2">
+              {myLedgerEntries.slice(0, 8).map((entry) => (
+                <div
+                  key={entry.id}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs leading-relaxed text-zinc-300"
+                >
+                  {entry.message}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {isStakee && canProposeSettle ? (
           <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Top-up stake
@@ -410,15 +369,19 @@ export default function PokerStableDealDetailSheet({
                 Add
               </button>
             </div>
+          </>
+        ) : null}
 
+        {canProposeSettle ? (
+          <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Settle stake
             </h4>
             <p className="mb-2 text-xs text-zinc-500">
               Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
               {showPeriodicSettle
-                ? ' Periodic settle keeps the stake open; close ends it and merges sessions into personal history.'
-                : ' Close ends the package and merges sessions into personal history.'}
+                ? ' Periodic settle keeps the stake open; close ends it. Edge backers must confirm before it applies.'
+                : ' Close ends the package. Edge backers must confirm before it applies.'}
             </p>
             {showPeriodicSettle ? (
               <button
@@ -427,7 +390,7 @@ export default function PokerStableDealDetailSheet({
                 onClick={() => setPeriodicSettleOpen(true)}
                 className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
               >
-                Periodic settle
+                Propose periodic settle
               </button>
             ) : null}
             <button
@@ -440,7 +403,7 @@ export default function PokerStableDealDetailSheet({
                   : 'bg-emerald-600 text-white'
               }`}
             >
-              Close stake
+              Propose close stake
             </button>
           </>
         ) : null}

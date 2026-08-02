@@ -140,12 +140,15 @@ function settlementHistoryEventFromRow({
  * @param {Record<string, object>} [args.dealsById]
  * @param {Record<string, object[]>} [args.settlementsByDeal]
  * @param {Record<string, object[]>} [args.slicesByDeal]
+ * @param {Record<string, object[]>} [args.ledgerEntriesByDeal]
  * @returns {{ id: string, kind: string, at: string, text: string }[]}
  */
 export function buildPersonalSettlementHistoryEvents({
   dealsById = {},
   settlementsByDeal = {},
   slicesByDeal = {},
+  ledgerEntriesByDeal = {},
+  viewerUserId = null,
 }) {
   /** @type {{ id: string, kind: string, at: string, text: string }[]} */
   const events = []
@@ -154,9 +157,26 @@ export function buildPersonalSettlementHistoryEvents({
     const deal = dealsById[dealId]
     if (!deal || !settlements?.length) continue
     const slices = slicesByDeal[dealId] || []
+    const ledgerEntries = ledgerEntriesByDeal[dealId] || []
+    const ledgerBySettlement = {}
+    for (const entry of ledgerEntries) {
+      if (viewerUserId && entry.user_id !== viewerUserId) continue
+      if (entry.settlement_id) ledgerBySettlement[entry.settlement_id] = entry.message
+    }
 
     for (const st of settlements) {
       if (!st?.created_at) continue
+      const ledgerText = ledgerBySettlement[st.id]
+      if (ledgerText) {
+        const isClose = isCloseSettlement(st, deal, settlements)
+        events.push({
+          id: `settle-${st.id}`,
+          kind: isClose ? 'close' : 'settlement',
+          at: st.created_at,
+          text: ledgerText,
+        })
+        continue
+      }
       const { kind, text } = settlementHistoryEventFromRow({
         st,
         deal,
@@ -184,7 +204,8 @@ export function buildPersonalSettlementHistoryEvents({
  * @param {Record<string, object>} [args.profilesById]
  * @param {object[]} [args.topups]
  * @param {object[]} [args.settlements]
- * @param {string} [args.playerLabel]
+ * @param {object[]} [args.ledgerEntries]
+ * @param {string} [args.playerUserId]
  * @returns {{ id: string, kind: string, at: string, text: string }[]}
  */
 export function buildStakeDealHistoryEvents({
@@ -193,9 +214,18 @@ export function buildStakeDealHistoryEvents({
   profilesById = {},
   topups = [],
   settlements = [],
+  ledgerEntries = [],
+  playerUserId,
   playerLabel = 'You',
 }) {
   if (!deal?.id) return []
+
+  const stakeeId = playerUserId || deal.stakee_user_id
+  const ledgerBySettlement = {}
+  for (const entry of ledgerEntries) {
+    if (!entry?.settlement_id || entry.user_id !== stakeeId) continue
+    ledgerBySettlement[entry.settlement_id] = entry.message
+  }
 
   /** @type {{ id: string, kind: string, at: string, text: string }[]} */
   const events = []
@@ -256,6 +286,17 @@ export function buildStakeDealHistoryEvents({
 
   for (const st of settlements) {
     if (!st?.created_at) continue
+    const ledgerText = ledgerBySettlement[st.id]
+    if (ledgerText) {
+      const isClose = isCloseSettlement(st, deal, settlements)
+      events.push({
+        id: `settle-${st.id}`,
+        kind: isClose ? 'close' : 'settlement',
+        at: st.created_at,
+        text: ledgerText,
+      })
+      continue
+    }
     const { kind, text } = settlementHistoryEventFromRow({
       st,
       deal,

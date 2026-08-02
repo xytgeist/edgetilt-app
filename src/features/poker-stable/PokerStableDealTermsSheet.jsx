@@ -418,7 +418,7 @@ export default function PokerStableDealTermsSheet({
                 Ledger
               </h4>
               <p className="text-xs text-zinc-500">
-                Record top-ups and payment claims with your backers.
+                Record top-ups and settlements with your backers.
               </p>
               <button
                 type="button"

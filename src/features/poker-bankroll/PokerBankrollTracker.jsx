@@ -1207,13 +1207,17 @@ export default function PokerBankrollTracker({
     setStableSaving(true)
     setError('')
     try {
-      const { error } = await periodicSettleBackingDeal(supabaseClient, {
+      const { error, immediate } = await periodicSettleBackingDeal(supabaseClient, {
         dealId,
         rakebackTotal,
       })
       if (error) throw error
-      showStakeNotice('Periodic settle complete ... roll reset to baseline.')
-      setTermsDealId(null)
+      showStakeNotice(
+        immediate
+          ? 'Periodic settle complete ... roll reset to baseline.'
+          : 'Settlement proposed ... waiting for backer confirmation.',
+      )
+      if (immediate) setTermsDealId(null)
       await loadData()
     } catch (e) {
       setError(e?.message || 'Settle failed.')
@@ -1226,14 +1230,20 @@ export default function PokerBankrollTracker({
     setStableSaving(true)
     setError('')
     try {
-      const { error } = await closeBackingDeal(supabaseClient, {
+      const { error, immediate } = await closeBackingDeal(supabaseClient, {
         dealId,
         rakebackTotal,
       })
       if (error) throw error
-      showStakeNotice('Stake closed ... sessions are on your personal timeline now.')
-      setTermsDealId(null)
-      if (bankrollScope === dealId) setBankrollScope('personal')
+      showStakeNotice(
+        immediate
+          ? 'Stake closed ... sessions are on your personal timeline now.'
+          : 'Close settlement proposed ... waiting for confirmation.',
+      )
+      if (immediate) {
+        setTermsDealId(null)
+        if (bankrollScope === dealId) setBankrollScope('personal')
+      }
       await loadData()
     } catch (e) {
       setError(e?.message || 'Close failed.')

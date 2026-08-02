@@ -278,17 +278,11 @@ export async function loadLatestSettlement(supabase, dealId) {
   return { settlement, lines: lines || [], error: lErr }
 }
 
-/**
- * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {string} dealId
- */
+/** @deprecated Payment claims removed — use settlement sync ledger entries. */
 export async function loadPaymentClaims(supabase, dealId) {
-  const { data, error } = await supabase
-    .from('poker_stable_payment_claims')
-    .select('*')
-    .eq('deal_id', dealId)
-    .order('created_at', { ascending: false })
-  return { claims: data || [], error }
+  void supabase
+  void dealId
+  return { claims: [], error: null }
 }
 
 /**
@@ -1171,31 +1165,116 @@ async function loadSettlementBundle(supabase, settlementId) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {object} args
  */
-export async function periodicSettleBackingDeal(supabase, args) {
-  const { dealId, rakebackTotal = 0, note } = args
-  const { data: settlementId, error } = await supabase.rpc('poker_stable_periodic_settle', {
+/**
+ * Propose periodic settle or close. Edge-backed stakes await counterparty confirm/deny.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {object} args
+ */
+export async function proposeSettlement(supabase, args) {
+  const { dealId, finalize = false, rakebackTotal = 0, note } = args
+  const { data, error } = await supabase.rpc('poker_stable_propose_settlement', {
     p_deal_id: dealId,
+    p_finalize: finalize,
     p_rakeback_total: roundMoney(rakebackTotal),
     p_note: note?.trim() || null,
   })
-  if (error) return { settlement: null, lines: [], calc: null, error }
-  return loadSettlementBundle(supabase, settlementId)
+  if (error) {
+    return { immediate: false, settlement: null, requestId: null, lines: [], calc: null, error }
+  }
+  const immediate = Boolean(data?.immediate)
+  const requestId = data?.request_id || null
+  const settlementId = data?.settlement_id || null
+  if (immediate && settlementId) {
+    const bundle = await loadSettlementBundle(supabase, settlementId)
+    return { immediate: true, requestId: null, ...bundle, error: bundle.error }
+  }
+  return {
+    immediate: false,
+    settlement: null,
+    requestId,
+    lines: [],
+    calc: null,
+    error: null,
+  }
 }
 
 /**
- * Close/end stake: final settle + deal status settled (sessions merge to personal history).
+ * Confirm or deny a pending settlement proposal.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {object} args
+ */
+export async function respondToSettlementRequest(supabase, args) {
+  const { requestId, response } = args
+  if (response !== 'confirmed' && response !== 'denied') {
+    return { status: null, settlement: null, lines: [], calc: null, error: new Error('Invalid response.') }
+  }
+  const { data, error } = await supabase.rpc('poker_stable_respond_settlement', {
+    p_request_id: requestId,
+    p_response: response,
+  })
+  if (error) {
+    return { status: null, settlement: null, lines: [], calc: null, error }
+  }
+  const status = data?.status || null
+  const settlementId = data?.settlement_id || null
+  if (status === 'accepted' && settlementId) {
+    const bundle = await loadSettlementBundle(supabase, settlementId)
+    return { status, ...bundle, error: bundle.error }
+  }
+  return { status, settlement: null, lines: [], calc: null, error: null }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} dealId */
+export async function loadPendingSettlementRequest(supabase, dealId) {
+  const { data, error } = await supabase
+    .from('poker_stable_settlement_requests')
+    .select('*, votes:poker_stable_settlement_request_votes(*)')
+    .eq('deal_id', dealId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return { request: data || null, error }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} dealId */
+export async function loadLedgerEntries(supabase, dealId) {
+  const { data, error } = await supabase
+    .from('poker_stable_ledger_entries')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+  return { entries: data || [], error }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} requestId */
+export async function loadSettlementRequest(supabase, requestId) {
+  const { data, error } = await supabase
+    .from('poker_stable_settlement_requests')
+    .select('*, votes:poker_stable_settlement_request_votes(*)')
+    .eq('id', requestId)
+    .maybeSingle()
+  return { request: data || null, error }
+}
+
+/**
+ * Periodic settle: proposes settlement (immediate when guest-only backers).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {object} args
+ */
+export async function periodicSettleBackingDeal(supabase, args) {
+  const { dealId, rakebackTotal = 0, note } = args
+  return proposeSettlement(supabase, { dealId, finalize: false, rakebackTotal, note })
+}
+
+/**
+ * Close/end stake: proposes final settle (immediate when guest-only backers).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {object} args
  */
 export async function closeBackingDeal(supabase, args) {
   const { dealId, rakebackTotal = 0, note } = args
-  const { data: settlementId, error } = await supabase.rpc('poker_stable_close_deal', {
-    p_deal_id: dealId,
-    p_rakeback_total: roundMoney(rakebackTotal),
-    p_note: note?.trim() || null,
-  })
-  if (error) return { settlement: null, lines: [], calc: null, error }
-  return loadSettlementBundle(supabase, settlementId)
+  return proposeSettlement(supabase, { dealId, finalize: true, rakebackTotal, note })
 }
 
 /**
@@ -1208,54 +1287,14 @@ export async function settleBackingDeal(supabase, args) {
   return closeBackingDeal(supabase, { dealId, rakebackTotal, note })
 }
 
-/**
- * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {object} args
- */
-export async function createPaymentClaim(supabase, args) {
-  const { dealId, sliceId, actorUserId, amount, claimKind, settlementId, note } = args
-  const amt = roundMoney(amount)
-  if (amt <= 0) return { claim: null, error: new Error('Enter a positive amount.') }
-
-  const { data, error } = await supabase
-    .from('poker_stable_payment_claims')
-    .insert({
-      deal_id: dealId,
-      slice_id: sliceId,
-      settlement_id: settlementId || null,
-      actor_user_id: actorUserId,
-      amount: amt,
-      claim_kind: claimKind,
-      status: 'pending',
-      note: note?.trim() || null,
-    })
-    .select('*')
-    .single()
-  return { claim: data || null, error }
+/** @deprecated Payment claims removed — use settlement sync. */
+export async function createPaymentClaim(_supabase, _args) {
+  return { claim: null, error: new Error('Payment claims are no longer supported.') }
 }
 
-/**
- * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {object} args
- */
-export async function respondToPaymentClaim(supabase, args) {
-  const { claimId, responderUserId, response, respondNote } = args
-  if (response !== 'confirmed' && response !== 'disputed') {
-    return { claim: null, error: new Error('Invalid response.') }
-  }
-  const { data, error } = await supabase
-    .from('poker_stable_payment_claims')
-    .update({
-      status: response,
-      responded_by_user_id: responderUserId,
-      responded_at: new Date().toISOString(),
-      respond_note: respondNote?.trim() || null,
-    })
-    .eq('id', claimId)
-    .eq('status', 'pending')
-    .select('*')
-    .single()
-  return { claim: data || null, error }
+/** @deprecated Payment claims removed — use respondToSettlementRequest. */
+export async function respondToPaymentClaim(_supabase, _args) {
+  return { claim: null, error: new Error('Payment claims are no longer supported.') }
 }
 
 /** Slice display name for UI. */

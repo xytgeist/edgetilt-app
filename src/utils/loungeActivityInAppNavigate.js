@@ -10,6 +10,8 @@ export function navigateFromLoungeActivityPayload(payload) {
     playLogEntryId: null,
     pokerSessionId: null,
     guideSlug: null,
+    stableDealId: null,
+    stableSettlementRequestId: null,
     urlChanged: false,
   }
   if (typeof window === 'undefined') return empty
@@ -39,6 +41,9 @@ export function navigateFromLoungeActivityPayload(payload) {
     playLogEntryId: (parsed.searchParams.get('playLogEntry') || '').trim() || null,
     pokerSessionId: (parsed.searchParams.get('pokerSession') || '').trim() || null,
     guideSlug: (parsed.searchParams.get('guide') || '').trim() || null,
+    stableDealId: (parsed.searchParams.get('stableDeal') || '').trim() || null,
+    stableSettlementRequestId:
+      (parsed.searchParams.get('stableSettlement') || '').trim() || null,
     urlChanged,
   }
 }

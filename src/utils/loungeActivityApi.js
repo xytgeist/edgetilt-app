@@ -22,6 +22,10 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   CHAT_MENTION: 'chat_mention',
   POKER_TOURNAMENT_SWAP: 'poker_tournament_swap',
   POKER_TOURNAMENT_SWAP_RESULT: 'poker_tournament_swap_result',
+  POKER_STABLE_SLICE_INVITE: 'poker_stable_slice_invite',
+  POKER_STABLE_SESSION_COMPLETE: 'poker_stable_session_complete',
+  POKER_STABLE_SETTLEMENT_PROPOSED: 'poker_stable_settlement_proposed',
+  POKER_STABLE_SETTLEMENT_RESOLVED: 'poker_stable_settlement_resolved',
 }
 
 /** Maps `activity_events.event_type` → notification avatar badge kind (null = no badge). */
@@ -58,6 +62,11 @@ export function loungeActivityNotificationBadgeKind(eventType) {
       return 'missed_call'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT:
+      return 'play_log'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED:
       return 'play_log'
     default:
       return null
@@ -245,6 +254,22 @@ export function loungeActivityActionPhrase(event) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT: {
       const detail = String(event?.detail_text || '').trim()
       return detail || 'finished a tournament swap with you'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `invited you to back ${detail}` : 'invited you to back a stake'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `completed a stake session · ${detail}` : 'completed a stake session'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail || 'proposed a settlement that needs your response'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail || 'responded to your settlement proposal'
     }
     default: {
       if (String(event?.guide_slug || '').trim()) {

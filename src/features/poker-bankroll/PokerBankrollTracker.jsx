@@ -57,6 +57,7 @@ import {
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
 import {
+  archivedStakePersonalBankrollNet,
   buildPersonalSettlementHistoryEvents,
   buildStakeDealHistoryEvents,
 } from '../poker-stable/pokerStableDealHistory.js'
@@ -3329,6 +3330,12 @@ export default function PokerBankrollTracker({
                 ).length
                 const closedAt = deal.settled_at || deal.updated_at || deal.created_at
                 const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+                const personalNet = archivedStakePersonalBankrollNet({
+                  deal,
+                  slices,
+                  settlements: dealSettlementsByDeal[deal.id] || [],
+                })
+                const personalNeutral = Math.abs(personalNet) < 0.005
                 return (
                   <li key={deal.id}>
                     <button
@@ -3365,6 +3372,22 @@ export default function PokerBankrollTracker({
                       <p className="text-[11px] text-zinc-500">
                         {sessionCount} session{sessionCount === 1 ? '' : 's'} · baseline{' '}
                         {fmtPoker$(deal.baseline_bankroll)}
+                      </p>
+                      <p
+                        className={`text-[11px] font-semibold tabular-nums ${
+                          personalNeutral
+                            ? 'text-zinc-500'
+                            : personalNet >= 0
+                              ? 'text-emerald-400'
+                              : 'text-rose-400'
+                        }`}
+                      >
+                        Personal bankroll {fmtPoker$(personalNet)}
+                        {(() => {
+                          const settleRows = dealSettlementsByDeal[deal.id] || []
+                          if (settleRows.length <= 1) return null
+                          return ` · ${settleRows.length} settles`
+                        })()}
                       </p>
                     </button>
                   </li>

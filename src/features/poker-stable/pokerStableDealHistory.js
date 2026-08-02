@@ -1,6 +1,69 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { computeDealSettlement, dealTypeLabel } from './pokerStableMath.js'
+import { computeDealSettlement, dealTypeLabel, roundMoney } from './pokerStableMath.js'
 import { sliceCounterpartyDisplayName } from './pokerStableTerms.js'
+
+/**
+ * Personal bankroll credit from one settle/close row (matches settle RPC: credit only when profit above baseline).
+ * @param {object} st
+ * @param {object} deal
+ * @param {object[]} [slices]
+ */
+export function settlementPlayerPersonalCredit(st, deal, slices = []) {
+  const profit = Number(st?.profit_above_baseline) || 0
+  if (profit <= 0.005) return 0
+  const calc = computeDealSettlement(
+    {
+      ...deal,
+      baseline_bankroll: st.baseline_at_settle,
+      roll: st.roll_at_settle,
+    },
+    slices,
+    Number(st.rakeback_total) || 0,
+  )
+  return calc.player_net
+}
+
+/**
+ * Total personal bankroll delta from every settle event on an archived stake (periodic + close).
+ * @param {object} args
+ * @param {object} args.deal
+ * @param {object[]} [args.slices]
+ * @param {object[]} [args.settlements]
+ */
+export function archivedStakePersonalBankrollNet({ deal, slices = [], settlements = [] }) {
+  return archivedStakePersonalBankrollBreakdown({ deal, slices, settlements }).total
+}
+
+/**
+ * Per-settlement personal bankroll credits + running total (oldest first).
+ * @param {object} args
+ * @param {object} args.deal
+ * @param {object[]} [args.slices]
+ * @param {object[]} [args.settlements]
+ * @returns {{ total: number, items: { id: string, at: string, kind: string, label: string, credit: number }[] }}
+ */
+export function archivedStakePersonalBankrollBreakdown({ deal, slices = [], settlements = [] }) {
+  /** @type {{ id: string, at: string, kind: string, label: string, credit: number }[]} */
+  const items = []
+  const ordered = [...(settlements || [])]
+    .filter((st) => st?.created_at)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  for (const st of ordered) {
+    const credit = settlementPlayerPersonalCredit(st, deal, slices)
+    const isClose = isCloseSettlement(st, deal, settlements)
+    items.push({
+      id: st.id,
+      at: st.created_at,
+      kind: isClose ? 'close' : 'settlement',
+      label: isClose ? 'Close settle' : 'Periodic settle',
+      credit: roundMoney(credit),
+    })
+  }
+
+  const total = roundMoney(items.reduce((sum, row) => sum + row.credit, 0))
+  return { total, items }
+}
 
 /** @param {string[]} names */
 function formatBackerList(names) {
@@ -46,16 +109,7 @@ function settlementHistoryEventFromRow({
 
   let detail = ''
   if (personal) {
-    const calc = computeDealSettlement(
-      {
-        ...deal,
-        baseline_bankroll: st.baseline_at_settle,
-        roll: st.roll_at_settle,
-      },
-      slices,
-      Number(st.rakeback_total) || 0,
-    )
-    const credit = calc.player_net
+    const credit = settlementPlayerPersonalCredit(st, deal, slices)
     if (credit > 0.005) {
       detail = ` · +${fmtPoker$(credit)} to personal bankroll`
     } else if (makeup > 0.005) {

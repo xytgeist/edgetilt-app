@@ -1,7 +1,8 @@
 import { DollarSign, Trophy, X } from 'lucide-react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import { fmtPoker$ } from './pokerBankrollMath.js'
 import {
+  fmtPoker$,
+  fmtPokerBbPerHour,
   pokerSessionBbPerHour,
   pokerSessionDurationHours,
   pokerSessionWinLoss,
@@ -10,7 +11,10 @@ import {
   pokerSessionMetaLine,
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
-import { buildFullStakeArchiveTimeline } from '../poker-stable/pokerStableDealHistory.js'
+import {
+  archivedStakePersonalBankrollBreakdown,
+  buildFullStakeArchiveTimeline,
+} from '../poker-stable/pokerStableDealHistory.js'
 import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
 import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
 
@@ -53,6 +57,10 @@ export default function PokerStakeArchiveDetailModal({
 
   const dealLabel = deal.label?.trim() || dealTypeLabel(deal.deal_type)
   const closedAt = deal.settled_at || deal.responded_at || deal.updated_at
+  const { total: personalBankrollNet, items: personalBankrollItems } =
+    archivedStakePersonalBankrollBreakdown({ deal, slices, settlements })
+  const personalBankrollNeutral = Math.abs(personalBankrollNet) < 0.005
+  const settleCount = personalBankrollItems.length
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -82,6 +90,57 @@ export default function PokerStakeArchiveDetailModal({
           >
             <X className="h-5 w-5" strokeWidth={2.1} aria-hidden />
           </button>
+        </div>
+
+        <div
+          data-poker-stake-archive-summary
+          data-elevated-card="surface"
+          className="mb-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-3"
+        >
+          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+            Personal bankroll
+          </div>
+          <div
+            className={`mt-0.5 text-xl font-black tabular-nums ${
+              personalBankrollNeutral
+                ? 'text-zinc-400'
+                : personalBankrollNet >= 0
+                  ? 'text-emerald-400'
+                  : 'text-rose-400'
+            }`}
+          >
+            {fmtPoker$(personalBankrollNet)}
+          </div>
+          <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+            {settleCount === 0
+              ? 'No settle events recorded for this stake.'
+              : personalBankrollNeutral
+                ? `${settleCount} settle event${settleCount === 1 ? '' : 's'} · no net credit to personal bankroll.`
+                : `Sum of ${settleCount} settle event${settleCount === 1 ? '' : 's'} (periodic + close).`}
+          </p>
+          {settleCount > 0 ? (
+            <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">
+              {personalBankrollItems.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex items-baseline justify-between gap-3 text-[11px]"
+                >
+                  <span className="text-zinc-500">{row.label}</span>
+                  <span
+                    className={`shrink-0 font-semibold tabular-nums ${
+                      Math.abs(row.credit) < 0.005
+                        ? 'text-zinc-500'
+                        : row.credit >= 0
+                          ? 'text-emerald-400'
+                          : 'text-rose-400'
+                    }`}
+                  >
+                    {Math.abs(row.credit) < 0.005 ? '$0' : fmtPoker$(row.credit)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         {timeline.length === 0 ? (
@@ -117,6 +176,9 @@ export default function PokerStakeArchiveDetailModal({
                     className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3"
                   >
                     <span
+                      data-poker-session-type-icon={
+                        session.session_type === 'tournament' ? 'tournament' : 'cash'
+                      }
                       className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                         session.session_type === 'tournament'
                           ? 'bg-amber-500/15 text-amber-300'
@@ -151,7 +213,7 @@ export default function PokerStakeArchiveDetailModal({
                         </span>
                         <span className="shrink-0 text-right text-[10px] tabular-nums text-zinc-500">
                           {hourly != null ? `${fmtPoker$(hourly)}/hr` : null}
-                          {bbh != null ? ` · ${bbh} bb/hr` : null}
+                          {bbh != null ? ` · ${fmtPokerBbPerHour(bbh)}` : null}
                         </span>
                       </div>
                     </span>

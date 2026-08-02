@@ -127,6 +127,14 @@ export function pokerSessionBbWon(session) {
   return wl / bb
 }
 
+/** @param {number | null | undefined} n */
+export function fmtPokerBbPerHour(n) {
+  if (n == null || !Number.isFinite(Number(n))) return null
+  const num = Number(n)
+  const absStr = Math.abs(num).toFixed(2).replace(/\.?0+$/, '')
+  return `${num < 0 ? '-' : ''}${absStr} bb/hr`
+}
+
 /** @param {object} session */
 export function pokerSessionBbPerHour(session) {
   const bbWon = pokerSessionBbWon(session)

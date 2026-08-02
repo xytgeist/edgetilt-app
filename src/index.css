@@ -4616,6 +4616,8 @@ html.light [data-casino-autocomplete-menu] .active\:bg-zinc-700:active {
 html.light [data-poker-bankroll-sheet] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
+  --poker-money: #059669;
+  --poker-loss: #9f1239;
 }
 html.light [data-poker-bankroll-sheet] .text-white {
   color: #18181b !important;
@@ -4697,11 +4699,11 @@ html.light [data-poker-bankroll-sheet] .text-emerald-400\/85 {
   color: #047857 !important;
 }
 html.light [data-poker-bankroll-sheet] .text-red-300 {
-  color: #dc2626 !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-bankroll-sheet] .text-rose-300,
 html.light [data-poker-bankroll-sheet] .text-rose-400 {
-  color: #e11d48 !important;
+  color: var(--poker-loss) !important;
 }
 
 /* Featured Swaps card on Start/Log/Edit (dark uses emerald Tailwind classes as-is). */
@@ -4755,7 +4757,7 @@ html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-z
   color: #52525b !important;
 }
 html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .text-rose-300 {
-  color: #be123c !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-bankroll-sheet] [data-poker-incoming-accept-card] .border-rose-500\/40 {
   border-color: #fda4af !important;
@@ -4770,6 +4772,7 @@ html.light [data-poker-session-detail] {
   --poker-chrome: #2563eb;
   --poker-money: #059669;
   --poker-money-press: #047857;
+  --poker-loss: #9f1239;
 }
 html.light [data-poker-session-detail] [data-poker-session-active-badge] {
   background-color: #dbeafe !important;
@@ -4796,13 +4799,13 @@ html.light [data-poker-session-detail] .text-emerald-400\/85 {
 }
 html.light [data-poker-session-detail] .text-rose-400,
 html.light [data-poker-session-detail] .text-rose-400\/85 {
-  color: #be123c !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-swap-amt='gain'] {
   color: var(--poker-money) !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-swap-amt='loss'] {
-  color: #be123c !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-session-detail] .text-zinc-200 {
   color: #3f3f46 !important;
@@ -4848,6 +4851,74 @@ html.light [data-poker-session-detail] [data-poker-session-swap-btn] {
 }
 html.light [data-poker-session-detail] [data-poker-session-swap-btn]:active {
   background-color: #dbeafe !important;
+}
+
+/* Archive stake detail (modal — outside [data-poker-bankroll] root) */
+html.light [data-poker-stake-archive-modal] {
+  --poker-chrome: #2563eb;
+  --poker-money: #059669;
+  --poker-money-soft: rgba(5, 150, 105, 0.14);
+  --poker-loss: #9f1239;
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-archive-modal] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stake-archive-modal] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stake-archive-modal] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stake-archive-modal] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stake-archive-modal] .text-emerald-400,
+html.light [data-poker-stake-archive-modal] .text-emerald-300 {
+  color: var(--poker-money) !important;
+}
+html.light [data-poker-stake-archive-modal] .text-rose-400 {
+  color: var(--poker-loss) !important;
+}
+html.light [data-poker-stake-archive-modal] .bg-emerald-500\/15 {
+  background-color: var(--poker-money-soft) !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-session-type-icon='cash'] {
+  background-color: #f4f4f5 !important;
+  color: #52525b !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-session-type-icon='tournament'] {
+  background-color: #fffbeb !important;
+  color: #b45309 !important;
+}
+html.light [data-poker-stake-archive-modal] .bg-zinc-900\/70 {
+  background-color: #ffffff !important;
+}
+html.light [data-poker-stake-archive-modal] .border-zinc-800\/80 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-archive-modal] .active\:bg-zinc-800:active {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-summary] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-summary] .border-zinc-800\/60 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-summary] .text-emerald-400 {
+  color: var(--poker-money) !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-summary] .text-rose-400 {
+  color: var(--poker-loss) !important;
+}
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-emerald-400 {
+  color: var(--poker-money) !important;
+}
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-rose-400 {
+  color: var(--poker-loss) !important;
 }
 
 /* ── Poker swap guest claim page (/poker-swap-claim) — light mode only ──── */
@@ -5540,12 +5611,14 @@ html.light [data-poker-bankroll] [data-poker-incoming-swaps] button.border-zinc-
  * Poker Bankroll light palette (dark unchanged):
  *   chrome = same blue as remapped bg-cyan-600 tabs (#2563eb)
  *   money  = one emerald (#059669) for P/L, Start Session, sparkline, cash chip
+ *   loss   = rose-800 (#9f1239) for negative P/L on white
  */
 html.light [data-poker-bankroll] {
   --poker-chrome: #2563eb;
   --poker-money: #059669;
   --poker-money-soft: rgba(5, 150, 105, 0.14);
   --poker-money-press: #047857;
+  --poker-loss: #9f1239;
 }
 
 html.light [data-poker-bankroll] .text-emerald-400,
@@ -5561,7 +5634,7 @@ html.light [data-poker-bankroll] [data-poker-session-swap-line] {
 }
 /* Amount alone: red/green regardless of line tone */
 html.light [data-poker-bankroll] [data-poker-session-swap-amt='loss'] {
-  color: #be123c !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-bankroll] [data-poker-session-swap-amt='gain'] {
   color: var(--poker-money) !important;
@@ -5569,11 +5642,11 @@ html.light [data-poker-bankroll] [data-poker-session-swap-amt='gain'] {
 html.light [data-poker-bankroll] .text-rose-400,
 html.light [data-poker-bankroll] .text-rose-400\/85,
 html.light [data-poker-bankroll] .text-rose-300 {
-  color: #be123c !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-bankroll] .text-red-400,
 html.light [data-poker-bankroll] .text-red-300 {
-  color: #b91c1c !important;
+  color: var(--poker-loss) !important;
 }
 
 html.light [data-poker-bankroll] .bg-emerald-600,
@@ -5714,7 +5787,7 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
   color: #1d4ed8 !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='rose'] [data-poker-bankroll-hero-title] {
-  color: #be123c !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-elevated-card='surface'] {
   background: linear-gradient(to bottom right, #fafafa, #ffffff) !important;
@@ -5785,7 +5858,7 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
   color: #ffffff !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='rose'] .bg-rose-400 {
-  background-color: #be123c !important;
+  background-color: var(--poker-loss) !important;
   color: #ffffff !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-zinc-500\/40 {
@@ -5844,10 +5917,10 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
   color: #1d4ed8 !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='rose'] .text-rose-400 {
-  color: #e11d48 !important;
+  color: var(--poker-loss) !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='rose'] .text-rose-500 {
-  color: #be123c !important;
+  color: var(--poker-loss) !important;
 }
 
 /* Active session card - light mode */
@@ -5913,8 +5986,9 @@ html.light [data-poker-stake-history-line][data-poker-stake-history-kind='offer'
 html.light [data-poker-stake-history-line][data-poker-stake-history-kind='accept'] {
   color: #047857 !important;
 }
-html.light [data-poker-stake-history-line][data-poker-stake-history-kind='decline'] {
-  color: #be123c !important;
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='decline'],
+html.light [data-poker-stake-history-line][data-poker-stake-history-kind='revoke'] {
+  color: #9f1239 !important;
 }
 html.light [data-poker-stake-history-line][data-poker-stake-history-kind='topup'] {
   color: #2563eb !important;

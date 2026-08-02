@@ -2543,22 +2543,6 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
-        {stakeScopeRevoked && activeTab === 'overview' && isOnStake ? (
-          <div
-            data-poker-stake-notice
-            className="mb-3 rounded-2xl border border-rose-500/40 bg-rose-950/40 px-4 py-3 text-center text-sm text-rose-100"
-          >
-            A backer revoked this stake. Re-offer backers or close it from terms.{' '}
-            <button
-              type="button"
-              onClick={() => setTermsDealId(bankrollScope)}
-              className="font-semibold text-rose-200 underline touch-manipulation"
-            >
-              Manage stake
-            </button>
-          </div>
-        ) : null}
-
         {activeTab === 'details' ? (
           loading ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
@@ -2674,6 +2658,25 @@ export default function PokerBankrollTracker({
                         </div>
                       )}
                     </div>
+                    {onStake && hero.deal?.status === 'revoked' ? (
+                      <p
+                        data-poker-stake-revoked-notice
+                        className="-mt-1 mb-2 text-left text-xs leading-snug text-rose-200/90"
+                      >
+                        A backer revoked this stake. Re-offer backers or close it from terms.{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError('')
+                            setTermsDealId(scopeId)
+                            triggerTapHapticLight()
+                          }}
+                          className="font-semibold text-rose-100 underline touch-manipulation"
+                        >
+                          Manage stake
+                        </button>
+                      </p>
+                    ) : null}
                     {loading ? (
                       <>
                         <div className="min-h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />

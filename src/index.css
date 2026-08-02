@@ -5766,6 +5766,12 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
   border-color: #93c5fd !important;
   color: #1e3a8a !important;
 }
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-notice] {
+  color: #9f1239 !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-notice] button {
+  color: #be123c !important;
+}
 
 /*
  * Bankroll hero carousel — light only.

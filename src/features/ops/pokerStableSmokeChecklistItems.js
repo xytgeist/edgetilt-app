@@ -5,23 +5,39 @@
 export const POKER_STABLE_SMOKE_SECTIONS = [
   {
     id: 'A',
-    title: 'Setup',
+    title: 'Invite / accept / slice flows',
     intro: 'Fresh stake or reuse chunkyunc backing on lvslotpro.com.',
     items: [
       {
         id: 'A1',
-        label: 'Player: Bankroll + Stake — cash backing, 2 Edge slices, baseline + roll set.',
+        label: 'Player: Bankroll + Stake — cash backing, 2 Edge slices, baseline + roll set (invites sent).',
       },
       {
         id: 'A2',
-        label: 'Backer(s): Stable — accept slice(s).',
+        label: 'Backer: Stable → Incoming — slice invite visible before accept.',
       },
       {
         id: 'A3',
-        label: 'Player: Carousel shows On stake (not stuck Pending); poll/Realtime OK if accept while on Bankroll.',
+        label: 'Backer: Accept slice — slice status active; horse/deal visible in Stable.',
       },
       {
         id: 'A4',
+        label: 'Player: Carousel shows On stake (not stuck Pending); poll/Realtime OK if accept while on Bankroll.',
+      },
+      {
+        id: 'A5',
+        label: 'Second backer: Incoming invite → Accept slice (multi-slice setup).',
+      },
+      {
+        id: 'A6',
+        label: 'Slice invite alert/push received (see G1).',
+      },
+      {
+        id: 'A7',
+        label: 'Optional: Backer declines slice — player can edit terms / re-offer.',
+      },
+      {
+        id: 'A8',
         label: 'Player: Log 1–2 On stake sessions (ideally roll above baseline for settle math).',
       },
     ],
@@ -44,7 +60,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       },
       {
         id: 'B4',
-        label: 'Counterparty: Alert → Sync / Commit → personal bankroll + ledger updated.',
+        label: 'Counterparty: Alert or out-of-sync banner → Commit to my books → personal bankroll + ledger updated.',
       },
       {
         id: 'B5',
@@ -70,7 +86,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       },
       {
         id: 'C4',
-        label: 'Recorder backer credited pro-rata immediately; other backers sync to credit.',
+        label: 'Recorder backer credited pro-rata immediately; counterparty Commit to my books for their share.',
       },
       {
         id: 'C5',
@@ -140,7 +156,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       },
       {
         id: 'F2',
-        label: 'Deal settled/closed on deal record; parties sync personal bankroll credits.',
+        label: 'Deal settled/closed on deal record; counterparty Commit to my books for personal bankroll credit.',
       },
       {
         id: 'F3',
@@ -186,7 +202,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
 ]
 
 export const POKER_STABLE_SMOKE_CHECKLIST_KEY = 'poker_stable_v2'
-export const POKER_STABLE_SMOKE_CHECKLIST_VERSION = '2026-08-03'
+export const POKER_STABLE_SMOKE_CHECKLIST_VERSION = '2026-08-04'
 
 /** @returns {Record<string, { checked: boolean, notes: string, screenshots: string[] }>} */
 export function emptySmokeChecklistResponseMap() {

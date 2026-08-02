@@ -4920,6 +4920,19 @@ html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-emerald-4
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-rose-400 {
   color: var(--poker-loss) !important;
 }
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='closed'] {
+  background-color: #f4f4f5 !important;
+  color: #52525b !important;
+}
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='declined'] {
+  background-color: #f4f4f5 !important;
+  color: #71717a !important;
+}
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='revoked'].bg-rose-500\/25 {
+  background-color: #fff1f2 !important;
+  border: 1px solid #fca5a5 !important;
+  color: #dc2626 !important;
+}
 
 /* ── Poker swap guest claim page (/poker-swap-claim) — light mode only ──── */
 html.light [data-poker-swap-claim] {
@@ -5766,12 +5779,6 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
   border-color: #93c5fd !important;
   color: #1e3a8a !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-notice] {
-  color: #9f1239 !important;
-}
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-notice] button {
-  color: #be123c !important;
-}
 
 /*
  * Bankroll hero carousel — light only.
@@ -5850,6 +5857,9 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-rose-200\/90 {
   color: #3f3f46 !important;
 }
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-notice].text-rose-200\/90 {
+  color: #dc2626 !important;
+}
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-emerald-50,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-blue-50,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-rose-50 {
@@ -5876,6 +5886,12 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .bg-rose-500\/25 {
   background-color: #f4f4f5 !important;
   color: #3f3f46 !important;
+}
+/* Revoked stake — error palette (after generic rose badge remap above) */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-badge].bg-rose-500\/25 {
+  background-color: #fff1f2 !important;
+  border: 1px solid #fca5a5 !important;
+  color: #dc2626 !important;
 }
 [data-poker-bankroll-hero-card] [data-poker-hero-terms-icon] {
   color: rgb(161 161 170);
@@ -5904,6 +5920,9 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-blue-100,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .text-rose-100 {
   color: #3f3f46 !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-notice] button.text-rose-100 {
+  color: #b91c1c !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-emerald-400\/25,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-blue-400\/25,

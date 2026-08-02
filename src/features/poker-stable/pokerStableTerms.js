@@ -309,3 +309,30 @@ export function termsPayloadToFormState(payload, profilesById = {}) {
     slices: sliceRows.map((sl) => sliceRowToFormSlice(sl, profilesById)),
   }
 }
+
+/**
+ * Archive list badge label — how the stake ended (not redundant "Archived").
+ * @param {object | null | undefined} deal
+ * @param {object[]} [slices]
+ */
+export function archivedStakeOutcomeLabel(deal, slices = []) {
+  const status = deal?.status
+  if (status === 'declined') return 'Declined'
+  if (status === 'revoked') return 'Revoked'
+  if (status === 'closed') return 'Closed'
+  if (status === 'settled') {
+    const relevant = (slices || []).filter((s) => s.status !== 'cancelled')
+    const hasActive = relevant.some((s) => s.status === 'active')
+    if (!hasActive && relevant.some((s) => s.status === 'declined')) return 'Revoked'
+    return 'Closed'
+  }
+  if (status) return status.charAt(0).toUpperCase() + status.slice(1)
+  return 'Closed'
+}
+
+/** @param {string} label from {@link archivedStakeOutcomeLabel} */
+export function archivedStakeOutcomeBadgeClass(label) {
+  if (label === 'Revoked') return 'bg-rose-500/25 text-rose-200'
+  if (label === 'Declined') return 'bg-zinc-500/40 text-zinc-300'
+  return 'bg-zinc-700/60 text-zinc-300'
+}

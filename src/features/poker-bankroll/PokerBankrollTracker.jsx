@@ -37,7 +37,11 @@ import {
   currencyFromOnlineSiteId,
 } from './pokerCurrencies.js'
 import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
-import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
+import {
+  archivedStakeOutcomeBadgeClass,
+  archivedStakeOutcomeLabel,
+  sliceCounterpartyDisplayName,
+} from '../poker-stable/pokerStableTerms.js'
 import {
   acceptProposedDealTerms,
   cancelStakeDeal,
@@ -2603,6 +2607,9 @@ export default function PokerBankrollTracker({
                         ) : null}
                         {onStake ? (
                           <span
+                            data-poker-stake-revoked-badge={
+                              hero.deal?.status === 'revoked' ? '' : undefined
+                            }
                             className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
                               hero.deal?.status === 'pending'
                                 ? 'bg-zinc-500/40 text-zinc-200'
@@ -3339,6 +3346,7 @@ export default function PokerBankrollTracker({
                   settlements: dealSettlementsByDeal[deal.id] || [],
                 })
                 const personalNeutral = Math.abs(personalNet) < 0.005
+                const outcomeLabel = archivedStakeOutcomeLabel(deal, slices)
                 return (
                   <li key={deal.id}>
                     <button
@@ -3353,8 +3361,11 @@ export default function PokerBankrollTracker({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <span className="min-w-0 truncate font-semibold text-white">{label}</span>
-                        <span className="shrink-0 rounded-md bg-zinc-700/60 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-300">
-                          Archived
+                        <span
+                          data-poker-stake-archive-outcome={outcomeLabel.toLowerCase()}
+                          className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${archivedStakeOutcomeBadgeClass(outcomeLabel)}`}
+                        >
+                          {outcomeLabel}
                         </span>
                       </div>
                       <p className="text-xs text-zinc-500">

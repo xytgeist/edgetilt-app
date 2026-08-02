@@ -473,13 +473,16 @@ export default function LoungeNotificationsPanel({
       if (
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED
       ) {
         const params = new URLSearchParams()
         params.set('tab', 'poker-stable')
         if (event.poker_stable_deal_id) params.set('stableDeal', String(event.poker_stable_deal_id))
-        if (event.poker_stable_settlement_request_id) {
+        if (event.poker_stable_commit_id) {
+          params.set('stableCommit', String(event.poker_stable_commit_id))
+        } else if (event.poker_stable_settlement_request_id) {
           params.set('stableSettlement', String(event.poker_stable_settlement_request_id))
         }
         const nextPath = `/?${params.toString()}`

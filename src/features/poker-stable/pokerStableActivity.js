@@ -7,20 +7,18 @@ export function pokerStableSettlementKindLabel(settleKind) {
   return 'Settlement'
 }
 
-/** @param {object | null | undefined} request */
-export function pokerStableSettlementRequestStatusLabel(request) {
-  const status = request?.status
-  if (status === 'accepted') return 'Confirmed'
-  if (status === 'rejected') return 'Denied'
-  if (status === 'pending') return 'Pending confirmation'
-  return status || '—'
+/** @param {'topup' | 'reduction' | 'periodic_settle' | 'close_settle' | string | null | undefined} eventKind */
+export function pokerStableCommitEventLabel(eventKind) {
+  if (eventKind === 'topup') return 'Re-up'
+  if (eventKind === 'reduction') return 'Reduce stake'
+  if (eventKind === 'close_settle') return 'Close settlement'
+  if (eventKind === 'periodic_settle') return 'Periodic settlement'
+  return 'Stake update'
 }
 
-/** True when viewer must confirm or deny this settlement proposal. */
-export function pokerStableViewerCanRespondToSettlement(request, viewerUserId) {
-  if (!request || !viewerUserId || request.status !== 'pending') return false
-  const votes = Array.isArray(request.votes) ? request.votes : []
-  return votes.some(
-    (vote) => vote.user_id === viewerUserId && vote.status === 'pending',
-  )
+/** @param {object | null | undefined} commit */
+export function pokerStableCommitSummaryLine(commit) {
+  if (!commit) return ''
+  if (commit.summary) return String(commit.summary)
+  return pokerStableCommitEventLabel(commit.event_kind)
 }

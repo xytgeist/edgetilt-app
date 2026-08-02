@@ -8,12 +8,12 @@ import {
   closeBackingDeal,
   loadLatestSettlement,
   loadLedgerEntries,
-  loadPendingSettlementRequest,
+  loadPendingCommits,
   periodicSettleBackingDeal,
   recordDealTopup,
   recordDealReduction,
-  respondToSettlementRequest,
   sliceDisplayName,
+  syncDealCommit,
 } from './pokerStableApi.js'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
 import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
@@ -34,11 +34,12 @@ import {
   canProposeSettleStake,
   dealCanPeriodicSettle,
   dealHasMakeup,
+  userCanRecordDealEvent,
 } from './pokerStableTerms.js'
-import { pokerStableViewerCanRespondToSettlement } from './pokerStableActivity.js'
+import { pokerStableCommitSummaryLine } from './pokerStableActivity.js'
 
 /**
- * Deal detail: baseline, makeup, top-up, settle proposal, ledger history.
+ * Deal detail: baseline, makeup, top-up, settle, sync commits, ledger history.
  */
 export default function PokerStableDealDetailSheet({
   supabaseClient,
@@ -60,15 +61,14 @@ export default function PokerStableDealDetailSheet({
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [ledgerEntries, setLedgerEntries] = useState([])
-  const [pendingRequest, setPendingRequest] = useState(null)
+  const [pendingCommits, setPendingCommits] = useState([])
   const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
   const [closeStakeOpen, setCloseStakeOpen] = useState(false)
 
   const isStakee = deal?.stakee_user_id === userId
-  const hasProposal = Boolean(pendingRequest)
-  const canProposeSettle = canProposeSettleStake(deal, slices, { userId, hasProposal })
+  const canRecordEvents = userCanRecordDealEvent(deal, slices, userId)
+  const canProposeSettle = canProposeSettleStake(deal, slices, { userId, hasProposal: false })
   const showPeriodicSettle = canProposeSettle && dealCanPeriodicSettle(deal, roll)
-  const canRespondToProposal = pokerStableViewerCanRespondToSettlement(pendingRequest, userId)
   const showMakeup = dealHasMakeup(deal)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
@@ -103,19 +103,15 @@ export default function PokerStableDealDetailSheet({
 
   const loadLedger = useCallback(async () => {
     if (!supabaseClient || !deal?.id) return
-    const [
-      { settlement: st, lines },
-      { entries },
-      { request },
-    ] = await Promise.all([
+    const [{ settlement: st, lines }, { entries }, { commits }] = await Promise.all([
       loadLatestSettlement(supabaseClient, deal.id),
       loadLedgerEntries(supabaseClient, deal.id),
-      loadPendingSettlementRequest(supabaseClient, deal.id),
+      loadPendingCommits(supabaseClient, deal.id),
     ])
     setSettlement(st)
     setSettlementLines(lines || [])
     setLedgerEntries(entries || [])
-    setPendingRequest(request)
+    setPendingCommits(commits || [])
   }, [supabaseClient, deal?.id])
 
   useEffect(() => {
@@ -134,7 +130,7 @@ export default function PokerStableDealDetailSheet({
   )
 
   async function onTopup() {
-    if (!isStakee || !deal) return
+    if (!canRecordEvents || !deal) return
     onSavingChange(true)
     onError('')
     try {
@@ -155,7 +151,7 @@ export default function PokerStableDealDetailSheet({
   }
 
   async function onReduceStake() {
-    if (!isStakee || !deal) return
+    if (!canRecordEvents || !deal) return
     onError('')
     if (reduceInvalid) {
       if (reduceInputIncomplete) {
@@ -195,7 +191,7 @@ export default function PokerStableDealDetailSheet({
     onSavingChange(true)
     onError('')
     try {
-      const { error, immediate, requestId } = await periodicSettleBackingDeal(supabaseClient, {
+      const { error } = await periodicSettleBackingDeal(supabaseClient, {
         dealId: deal.id,
         rakebackTotal: rakebackAmount,
         stakeReductionTotal: stakeReductionAmount,
@@ -203,13 +199,8 @@ export default function PokerStableDealDetailSheet({
       if (error) throw error
       triggerTapHapticLight()
       setPeriodicSettleOpen(false)
-      if (immediate) {
-        await onRefresh()
-      }
+      await onRefresh()
       await loadLedger()
-      if (!immediate && requestId) {
-        onError('')
-      }
     } catch (e) {
       onError(e?.message || 'Settle failed.')
     } finally {
@@ -222,16 +213,14 @@ export default function PokerStableDealDetailSheet({
     onSavingChange(true)
     onError('')
     try {
-      const { error, immediate } = await closeBackingDeal(supabaseClient, {
+      const { error } = await closeBackingDeal(supabaseClient, {
         dealId: deal.id,
         rakebackTotal: rakebackAmount,
       })
       if (error) throw error
       triggerTapHapticLight()
       setCloseStakeOpen(false)
-      if (immediate) {
-        await onRefresh()
-      }
+      await onRefresh()
       await loadLedger()
     } catch (e) {
       onError(e?.message || 'Close failed.')
@@ -240,23 +229,18 @@ export default function PokerStableDealDetailSheet({
     }
   }
 
-  async function onRespondProposal(response) {
-    if (!pendingRequest || !canRespondToProposal) return
+  async function onSyncCommit(commitId) {
+    if (!commitId) return
     onSavingChange(true)
     onError('')
     try {
-      const { error, status } = await respondToSettlementRequest(supabaseClient, {
-        requestId: pendingRequest.id,
-        response,
-      })
+      const { error } = await syncDealCommit(supabaseClient, commitId)
       if (error) throw error
       triggerTapHapticLight()
-      if (status === 'accepted') {
-        await onRefresh()
-      }
+      await onRefresh()
       await loadLedger()
     } catch (e) {
-      onError(e?.message || 'Could not respond.')
+      onError(e?.message || 'Could not sync commit.')
     } finally {
       onSavingChange(false)
     }
@@ -285,38 +269,34 @@ export default function PokerStableDealDetailSheet({
           </button>
         </div>
 
-        {pendingRequest ? (
-          <div className="mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
-            <p className="text-sm font-semibold text-cyan-100">
-              {pendingRequest.settle_kind === 'close'
-                ? 'Close settlement awaiting confirmation'
-                : 'Periodic settlement awaiting confirmation'}
+        {pendingCommits.length ? (
+          <div className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-950/25 p-3">
+            <p className="text-sm font-semibold text-amber-100">
+              Out of sync with last commit ({pendingCommits.length})
             </p>
             <p className="mt-1 text-xs text-zinc-400">
-              {canRespondToProposal
-                ? 'Review the proposal and confirm or deny.'
-                : 'Waiting for the other party to respond.'}
+              Another party recorded an update. Commit to sync your personal bankroll and ledger.
             </p>
-            {canRespondToProposal ? (
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void onRespondProposal('confirmed')}
-                  className="flex-1 rounded-xl bg-emerald-600 py-2 text-sm font-bold text-white"
+            <div className="mt-3 space-y-2">
+              {pendingCommits.map((row) => (
+                <div
+                  key={row.commit_id}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2"
                 >
-                  Confirm
-                </button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void onRespondProposal('denied')}
-                  className="flex-1 rounded-xl bg-zinc-800 py-2 text-sm font-bold text-rose-200"
-                >
-                  Deny
-                </button>
-              </div>
-            ) : null}
+                  <p className="text-xs leading-relaxed text-zinc-300">
+                    {pokerStableCommitSummaryLine(row)}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void onSyncCommit(row.commit_id)}
+                    className="mt-2 w-full rounded-xl bg-emerald-600 py-2 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    Commit to my books
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
 
@@ -414,13 +394,14 @@ export default function PokerStableDealDetailSheet({
           </>
         ) : null}
 
-        {isStakee && deal.status === 'active' ? (
+        {canRecordEvents ? (
           <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Top-up stake
             </h4>
             <p className="mb-2 text-xs text-zinc-500">
-              Increases baseline and roll. Edge backers are debited their action % share (pro-rata).
+              Increases baseline and roll. Edge backers debit their action % share when they sync
+              (yours updates when you record if you are a backer).
             </p>
             <div className="mb-4 flex gap-2">
               <MoneyInputField
@@ -555,8 +536,8 @@ export default function PokerStableDealDetailSheet({
             <p className="mb-2 text-xs text-zinc-500">
               Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
               {showPeriodicSettle
-                ? ' Periodic settle keeps the stake open; close ends it. Edge backers must confirm before it applies.'
-                : ' Close ends the package. Edge backers must confirm before it applies.'}
+                ? ' Recording periodic settle updates your books immediately; others sync when ready.'
+                : ' Recording close ends the stake; others sync when ready.'}
             </p>
             {showPeriodicSettle ? (
               <button
@@ -565,7 +546,7 @@ export default function PokerStableDealDetailSheet({
                 onClick={() => setPeriodicSettleOpen(true)}
                 className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
               >
-                Propose periodic settle
+                Record periodic settle
               </button>
             ) : null}
             <button
@@ -578,7 +559,7 @@ export default function PokerStableDealDetailSheet({
                   : 'bg-emerald-600 text-white'
               }`}
             >
-              Propose close stake
+              Record close stake
             </button>
           </>
         ) : null}

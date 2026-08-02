@@ -1163,13 +1163,13 @@ async function loadSettlementBundle(supabase, settlementId) {
  * @param {object} args
  */
 /**
- * Propose periodic settle or close. Edge-backed stakes await counterparty confirm/deny.
+ * Record periodic settle or close. Updates recorder's books immediately; others sync via commit.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {object} args
  */
 export async function proposeSettlement(supabase, args) {
   const { dealId, finalize = false, rakebackTotal = 0, stakeReductionTotal = 0, note } = args
-  const { data, error } = await supabase.rpc('poker_stable_propose_settlement', {
+  const { data, error } = await supabase.rpc('poker_stable_record_settlement', {
     p_deal_id: dealId,
     p_finalize: finalize,
     p_rakeback_total: roundMoney(rakebackTotal),
@@ -1177,19 +1177,33 @@ export async function proposeSettlement(supabase, args) {
     p_stake_reduction_total: roundMoney(stakeReductionTotal),
   })
   if (error) {
-    return { immediate: false, settlement: null, requestId: null, lines: [], calc: null, error }
+    return {
+      immediate: false,
+      settlement: null,
+      commitId: null,
+      requestId: null,
+      lines: [],
+      calc: null,
+      error,
+    }
   }
-  const immediate = Boolean(data?.immediate)
-  const requestId = data?.request_id || null
   const settlementId = data?.settlement_id || null
-  if (immediate && settlementId) {
+  const commitId = data?.commit_id || null
+  if (settlementId) {
     const bundle = await loadSettlementBundle(supabase, settlementId)
-    return { immediate: true, requestId: null, ...bundle, error: bundle.error }
+    return {
+      immediate: true,
+      commitId,
+      requestId: null,
+      ...bundle,
+      error: bundle.error,
+    }
   }
   return {
     immediate: false,
     settlement: null,
-    requestId,
+    commitId,
+    requestId: null,
     lines: [],
     calc: null,
     error: null,
@@ -1197,42 +1211,51 @@ export async function proposeSettlement(supabase, args) {
 }
 
 /**
- * Confirm or deny a pending settlement proposal.
+ * Sync a counterparty-recorded stake commit onto the viewer's books.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {object} args
+ * @param {string} commitId
  */
-export async function respondToSettlementRequest(supabase, args) {
-  const { requestId, response } = args
-  if (response !== 'confirmed' && response !== 'denied') {
-    return { status: null, settlement: null, lines: [], calc: null, error: new Error('Invalid response.') }
-  }
-  const { data, error } = await supabase.rpc('poker_stable_respond_settlement', {
-    p_request_id: requestId,
-    p_response: response,
+export async function syncDealCommit(supabase, commitId) {
+  const { data, error } = await supabase.rpc('poker_stable_sync_commit', {
+    p_commit_id: commitId,
   })
-  if (error) {
-    return { status: null, settlement: null, lines: [], calc: null, error }
-  }
-  const status = data?.status || null
-  const settlementId = data?.settlement_id || null
-  if (status === 'accepted' && settlementId) {
-    const bundle = await loadSettlementBundle(supabase, settlementId)
-    return { status, ...bundle, error: bundle.error }
-  }
-  return { status, settlement: null, lines: [], calc: null, error: null }
+  if (error) return { status: null, error }
+  return { status: data?.status || 'synced', error: null }
 }
 
-/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} dealId */
-export async function loadPendingSettlementRequest(supabase, dealId) {
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string | null} [dealId] */
+export async function loadPendingCommits(supabase, dealId = null) {
+  const { data, error } = await supabase.rpc('poker_stable_pending_commits', {
+    p_deal_id: dealId || null,
+  })
+  return { commits: data || [], error }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} commitId */
+export async function loadDealCommit(supabase, commitId) {
   const { data, error } = await supabase
-    .from('poker_stable_settlement_requests')
-    .select('*, votes:poker_stable_settlement_request_votes(*)')
-    .eq('deal_id', dealId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-    .limit(1)
+    .from('poker_stable_deal_commits')
+    .select('*')
+    .eq('id', commitId)
     .maybeSingle()
-  return { request: data || null, error }
+  return { commit: data || null, error }
+}
+
+/** @deprecated Settlement votes retired — use loadPendingCommits + syncDealCommit. */
+export async function loadPendingSettlementRequest(supabase, dealId) {
+  const { commits, error } = await loadPendingCommits(supabase, dealId)
+  return { request: commits?.[0] || null, error }
+}
+
+/** @deprecated Use syncDealCommit. */
+export async function respondToSettlementRequest(_supabase, _args) {
+  return {
+    status: null,
+    settlement: null,
+    lines: [],
+    calc: null,
+    error: new Error('Settlement votes are retired — tap Sync on the stake commit alert.'),
+  }
 }
 
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} dealId */
@@ -1245,14 +1268,9 @@ export async function loadLedgerEntries(supabase, dealId) {
   return { entries: data || [], error }
 }
 
-/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} requestId */
+/** @deprecated Use loadDealCommit. */
 export async function loadSettlementRequest(supabase, requestId) {
-  const { data, error } = await supabase
-    .from('poker_stable_settlement_requests')
-    .select('*, votes:poker_stable_settlement_request_votes(*)')
-    .eq('id', requestId)
-    .maybeSingle()
-  return { request: data || null, error }
+  return loadDealCommit(supabase, requestId)
 }
 
 /**

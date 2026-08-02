@@ -26,6 +26,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   POKER_STABLE_SESSION_COMPLETE: 'poker_stable_session_complete',
   POKER_STABLE_SETTLEMENT_PROPOSED: 'poker_stable_settlement_proposed',
   POKER_STABLE_SETTLEMENT_RESOLVED: 'poker_stable_settlement_resolved',
+  POKER_STABLE_COMMIT_RECORDED: 'poker_stable_commit_recorded',
 }
 
 /** Maps `activity_events.event_type` → notification avatar badge kind (null = no badge). */

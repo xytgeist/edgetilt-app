@@ -146,7 +146,19 @@ export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal =
   return isOngoingDealType(deal.deal_type)
 }
 
-/** Player or active Edge backer may propose periodic settle / close (when no pending request). */
+/** Player or active Edge backer may record top-up / reduce / settle on an active stake. */
+export function userCanRecordDealEvent(deal, slices = [], userId) {
+  if (!deal || !userId || deal.status !== 'active') return false
+  if (deal.stakee_user_id === userId) return true
+  return (slices || []).some(
+    (s) =>
+      s.status === 'active' &&
+      s.counterparty_kind === 'user' &&
+      s.staker_user_id === userId,
+  )
+}
+
+/** Player or active Edge backer may record periodic settle / close (when no pending request). */
 export function canProposeSettleStake(deal, slices = [], { userId, hasProposal = false } = {}) {
   if (hasProposal) return false
   if (stakeeCanSettleStake(deal, slices, { userId, hasProposal: false })) return true

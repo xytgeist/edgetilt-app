@@ -73,7 +73,7 @@ import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash
 import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
-import PokerStableSettlementRequestActionModal from '../poker-stable/PokerStableSettlementRequestActionModal.jsx'
+import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
 import {
   IN_APP_TOAST_ACCESS_BANNER,
   IN_APP_TOAST_ACCESS_BANNER_TEXT,
@@ -333,7 +333,7 @@ export default function AppShell({
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
-  const [pendingStableSettlementRequestId, setPendingStableSettlementRequestId] = useState(null)
+  const [pendingStableCommitId, setPendingStableCommitId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
   const [pendingChatRoomId, setPendingChatRoomId] = useState(null)
@@ -464,10 +464,12 @@ export default function AppShell({
         pokerSessionId,
         guideSlug,
         stableDealId,
+        stableCommitId,
         stableSettlementRequestId,
       } = navigateFromLoungeActivityPayload(payload)
 
-      if (stableSettlementRequestId) setPendingStableSettlementRequestId(stableSettlementRequestId)
+      const commitId = stableCommitId || stableSettlementRequestId
+      if (commitId) setPendingStableCommitId(commitId)
       if (stableDealId) setPendingPokerStableDealId(stableDealId)
 
       if (targetTab === 'chat') {
@@ -1086,8 +1088,8 @@ export default function AppShell({
           if (pokerSession) setPendingPokerSessionId(pokerSession)
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
-          const stableSettlement = (params.get('stableSettlement') || '').trim()
-          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
+          const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
+          if (stableCommit) setPendingStableCommitId(stableCommit)
         }
       }
       if (targetTab === 'poker-stable') {
@@ -1098,8 +1100,8 @@ export default function AppShell({
           setMenuOpen(false)
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
-          const stableSettlement = (params.get('stableSettlement') || '').trim()
-          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
+          const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
+          if (stableCommit) setPendingStableCommitId(stableCommit)
         }
       }
       const guideFromQuery = (params.get('guide') || '').trim()
@@ -1197,10 +1199,14 @@ export default function AppShell({
             data.stableDealId || msgUrl.searchParams.get('stableDeal') || '',
           ).trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
-          const stableSettlement = String(
-            data.stableSettlementRequestId || msgUrl.searchParams.get('stableSettlement') || '',
+          const stableCommit = String(
+            data.stableCommitId ||
+              msgUrl.searchParams.get('stableCommit') ||
+              data.stableSettlementRequestId ||
+              msgUrl.searchParams.get('stableSettlement') ||
+              '',
           ).trim()
-          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
+          if (stableCommit) setPendingStableCommitId(stableCommit)
         } catch {
           // ignore malformed url
         }
@@ -1227,8 +1233,12 @@ export default function AppShell({
           const msgUrl = new URL(data.url || '', window.location.origin)
           const stableDeal = String(msgUrl.searchParams.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
-          const stableSettlement = String(msgUrl.searchParams.get('stableSettlement') || '').trim()
-          if (stableSettlement) setPendingStableSettlementRequestId(stableSettlement)
+          const stableCommit = String(
+            msgUrl.searchParams.get('stableCommit') ||
+              msgUrl.searchParams.get('stableSettlement') ||
+              '',
+          ).trim()
+          if (stableCommit) setPendingStableCommitId(stableCommit)
         } catch {
           // ignore malformed url
         }
@@ -2624,13 +2634,13 @@ export default function AppShell({
         />
       ) : null}
 
-      {pendingStableSettlementRequestId && supabaseClient && chatCallViewerUserId ? (
-        <PokerStableSettlementRequestActionModal
+      {pendingStableCommitId && supabaseClient && chatCallViewerUserId ? (
+        <PokerStableCommitSyncModal
           supabaseClient={supabaseClient}
           userId={chatCallViewerUserId}
-          requestId={pendingStableSettlementRequestId}
-          onClose={() => setPendingStableSettlementRequestId(null)}
-          onResolved={() => {
+          commitId={pendingStableCommitId}
+          onClose={() => setPendingStableCommitId(null)}
+          onSynced={() => {
             window.dispatchEvent(new CustomEvent('lounge-push-opened'))
           }}
         />

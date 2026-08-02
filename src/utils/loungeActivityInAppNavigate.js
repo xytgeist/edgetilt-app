@@ -11,6 +11,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     pokerSessionId: null,
     guideSlug: null,
     stableDealId: null,
+    stableCommitId: null,
     stableSettlementRequestId: null,
     urlChanged: false,
   }
@@ -42,6 +43,9 @@ export function navigateFromLoungeActivityPayload(payload) {
     pokerSessionId: (parsed.searchParams.get('pokerSession') || '').trim() || null,
     guideSlug: (parsed.searchParams.get('guide') || '').trim() || null,
     stableDealId: (parsed.searchParams.get('stableDeal') || '').trim() || null,
+    stableCommitId:
+      (parsed.searchParams.get('stableCommit') || parsed.searchParams.get('stableSettlement') || '')
+        .trim() || null,
     stableSettlementRequestId:
       (parsed.searchParams.get('stableSettlement') || '').trim() || null,
     urlChanged,

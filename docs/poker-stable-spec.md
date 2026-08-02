@@ -300,18 +300,22 @@ When a backer exits after accept, the player stake card must **not disappear** .
 
 Tracked in **`docs/test-buildout-backlog.md`** (Poker Stable open checkboxes). No Ryan sign-off yet.
 
-### Settlement sync (player ↔ backer) — **shipped (2026-08-02 test)**
+### Stake commits (unilateral record + optional sync) — **shipped (2026-08-03 test)**
 
-**Problem:** Calculated settle events could get out of sync between parties when one side ran settle unilaterally.
+**Problem:** Bilateral settlement votes were over-engineered ... real backing is not a bank.
 
-**Shipped:**
+**Shipped (`20260802210000`):**
 
-- **`poker_stable_propose_settlement`** / **`poker_stable_respond_settlement`** (`20260802180000`): player **or** active Edge backer proposes periodic settle or close; counterparty(ies) must **confirm** or **deny** before `poker_stable_apply_settlement` runs. Guest-only stakes (no Edge stakers) still settle immediately.
-- **`poker_stable_ledger_entries`**: on accept, each party gets a ledger line with Ryan copy (player paid / personal credit / stake rebalanced; backer paid you / personal credit / rebalanced).
-- Alerts + push: `poker_stable_settlement_proposed`, `poker_stable_settlement_resolved`; deep link `stableSettlement=`.
-- **Payment claims (`poker_stable_payment_claims`)** removed from product UX ... table retained only.
+- Anyone on either side may **record** top-up, reduce, periodic settle, or close on **their books** immediately (deal-level baseline/roll updates on record).
+- **`poker_stable_deal_commits`** + **`poker_stable_commit_syncs`**: counterparties get **`poker_stable_commit_recorded`** alerts; **Commit** (`poker_stable_sync_commit`) applies personal bankroll + ledger on their side. Skip sync = stay out of sync until ready.
+- Deep link **`stableCommit=`** (legacy **`stableSettlement=`** still opens sync modal).
+- **`poker_stable_settlement_requests`** vote queue **retired** (pending rows cancelled); payment claims remain removed.
 
-**Still open:** multi-slice "all backers must confirm" is implemented; dispute UX beyond deny TBD.
+**UI:** deal detail **Out of sync with last commit** banner; global **`PokerStableCommitSyncModal`**.
+
+### Settlement sync (retired 2026-08-03)
+
+Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`** flows.
 
 ### Single backer cash-out (multi-slice stake)
 

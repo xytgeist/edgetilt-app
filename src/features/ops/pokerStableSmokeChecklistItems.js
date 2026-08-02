@@ -28,11 +28,11 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
   },
   {
     id: 'B',
-    title: 'Top-up + pro-rata backer debit',
+    title: 'Top-up + pro-rata backer debit (commit/sync)',
     items: [
       {
         id: 'B1',
-        label: 'Player: Terms → Open ledger → top-up (e.g. $10k).',
+        label: 'Either side: Record top-up (e.g. $10k) from deal detail.',
       },
       {
         id: 'B2',
@@ -40,21 +40,25 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       },
       {
         id: 'B3',
-        label: 'Backer: Each Edge backer personal bankroll debited pro-rata by action %.',
+        label: 'Recorder: Their books update immediately (player: deal only; backer: pro-rata debit).',
       },
       {
         id: 'B4',
+        label: 'Counterparty: Alert → Sync / Commit → personal bankroll + ledger updated.',
+      },
+      {
+        id: 'B5',
         label: 'History: Bankroll timeline shows Re-up $X on active stake.',
       },
     ],
   },
   {
     id: 'C',
-    title: 'Standalone reduce stake',
+    title: 'Standalone reduce stake (commit/sync)',
     items: [
       {
         id: 'C1',
-        label: 'Player: Deal detail → Reduce stake checkbox → new baseline below current.',
+        label: 'Either side: Deal detail → Reduce stake → new baseline below current.',
       },
       {
         id: 'C2',
@@ -66,7 +70,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       },
       {
         id: 'C4',
-        label: 'Backer: Personal bankrolls credited pro-rata (inverse of top-up).',
+        label: 'Recorder backer credited pro-rata immediately; other backers sync to credit.',
       },
       {
         id: 'C5',
@@ -76,28 +80,27 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
   },
   {
     id: 'D',
-    title: 'Settlement sync — periodic',
+    title: 'Periodic settle (commit/sync)',
     items: [
       {
         id: 'D1',
-        label: 'Player: Propose periodic settle (no reduction first).',
+        label: 'Either side: Record periodic settle (no reduction first).',
       },
       {
         id: 'D2',
-        label: 'Stake stays open until backer confirms; pending proposal visible on deal detail.',
+        label: 'Recorder: Roll resets to baseline on deal; personal bankroll credited on their side.',
       },
       {
         id: 'D3',
-        label: 'Backer: Alert/push → Confirm (or stableSettlement= deep link modal).',
+        label: 'Counterparty: Out-of-sync banner or alert → Commit to my books.',
       },
       {
         id: 'D4',
-        label: 'On accept: roll resets to baseline; ledger entries for player + backers with readable copy.',
+        label: 'After sync: ledger entries for player + backers with readable copy.',
       },
       {
         id: 'D5',
-        label: 'Deny path: propose → backer Deny → no settle applied; stake still active.',
-        hint: 'Separate run or second stake if needed.',
+        label: 'Optional: Skip sync — counterparty stays out of sync until they commit later.',
       },
     ],
   },
@@ -107,19 +110,19 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
     items: [
       {
         id: 'E1',
-        label: 'Player: Periodic settle → Reduce stake → new baseline below current.',
+        label: 'Either side: Periodic settle → Reduce stake → new baseline below current.',
       },
       {
         id: 'E2',
-        label: 'UI: Same reduction preview as standalone; Propose periodic settle button.',
+        label: 'UI: Same reduction preview as standalone; Record periodic settle button.',
       },
       {
         id: 'E3',
-        label: 'Backer confirms.',
+        label: 'Counterparties sync pro-rata reduction credits + settle lines.',
       },
       {
         id: 'E4',
-        label: 'Settle applies and baseline/roll reduced; backer personal credits pro-rata.',
+        label: 'Settle applies and baseline/roll reduced on deal.',
       },
       {
         id: 'E5',
@@ -133,11 +136,11 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
     items: [
       {
         id: 'F1',
-        label: 'Player: Close stake (propose) → backer confirms.',
+        label: 'Either side: Record close stake.',
       },
       {
         id: 'F2',
-        label: 'Deal settled/closed; sessions merge to personal timeline; personal bankroll credits per ledger.',
+        label: 'Deal settled/closed on deal record; parties sync personal bankroll credits.',
       },
       {
         id: 'F3',
@@ -151,13 +154,13 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
   },
   {
     id: 'G',
-    title: 'Notifications (v2c)',
+    title: 'Notifications',
     items: [
       { id: 'G1', label: 'Slice invite → backer alert/push.' },
       { id: 'G2', label: 'Session complete on stake → backer alert (if enabled).' },
-      { id: 'G3', label: 'Settlement proposed → counterparty alert/push.' },
-      { id: 'G4', label: 'Settlement resolved (confirm/deny) → proposer notified.' },
-      { id: 'G5', label: 'Tap push → lands on settle modal / correct deal context.' },
+      { id: 'G3', label: 'Stake commit recorded → counterparty alert/push.' },
+      { id: 'G4', label: 'Tap push → stableCommit= deep link opens Sync modal.' },
+      { id: 'G5', label: 'Deal detail shows Out of sync with last commit when pending.' },
     ],
   },
   {
@@ -167,7 +170,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       { id: 'H1', label: 'No payment-claim UI anywhere (old IOU flow gone).' },
       {
         id: 'H2',
-        label: 'Guest-only stake: periodic settle / close applies immediately (no bilateral wait).',
+        label: 'Guest-only stake: top-up / settle / close still works (single party).',
       },
       {
         id: 'H3',
@@ -176,14 +179,14 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       },
       {
         id: 'H4',
-        label: 'Light + dark: deal detail / periodic settle / reduce block readable.',
+        label: 'Light + dark: deal detail / settle / reduce / sync banner readable.',
       },
     ],
   },
 ]
 
 export const POKER_STABLE_SMOKE_CHECKLIST_KEY = 'poker_stable_v2'
-export const POKER_STABLE_SMOKE_CHECKLIST_VERSION = '2026-08-02'
+export const POKER_STABLE_SMOKE_CHECKLIST_VERSION = '2026-08-03'
 
 /** @returns {Record<string, { checked: boolean, notes: string, screenshots: string[] }>} */
 export function emptySmokeChecklistResponseMap() {

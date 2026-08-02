@@ -4536,13 +4536,21 @@ html.light [data-poker-bankroll-sheet] .border-zinc-700\/80,
 html.light [data-poker-bankroll-sheet] .border-zinc-800 {
   border-color: #d4d4d8 !important;
 }
-/* Keep white label text on green primary / selected chips */
+/* Primary actions + money text — match [data-poker-bankroll] palette (sheets render outside that root) */
+html.light [data-poker-bankroll-sheet] .bg-emerald-600 {
+  background-color: #059669 !important;
+}
+html.light [data-poker-bankroll-sheet] .active\:bg-emerald-500:active {
+  background-color: #047857 !important;
+}
 html.light [data-poker-bankroll-sheet] .bg-emerald-600,
 html.light [data-poker-bankroll-sheet] .bg-emerald-600 .text-white,
 html.light [data-poker-bankroll-sheet] .bg-emerald-600.text-white {
   color: #ffffff !important;
 }
-html.light [data-poker-bankroll-sheet] .text-emerald-300 {
+html.light [data-poker-bankroll-sheet] .text-emerald-300,
+html.light [data-poker-bankroll-sheet] .text-emerald-400,
+html.light [data-poker-bankroll-sheet] .text-emerald-400\/85 {
   color: #047857 !important;
 }
 html.light [data-poker-bankroll-sheet] .text-red-300 {

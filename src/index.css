@@ -4623,8 +4623,20 @@ html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps] .bg-black\/
 
 /* Session detail sheet (modal — outside [data-poker-bankroll] root) */
 html.light [data-poker-session-detail] {
+  --poker-chrome: #2563eb;
   --poker-money: #059669;
   --poker-money-press: #047857;
+}
+html.light [data-poker-session-detail] [data-poker-session-active-badge] {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-active-dot] {
+  background-color: #2563eb !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-type-icon='cash'] {
+  background-color: #f4f4f5 !important;
+  color: #52525b !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-stake-badge] {
   background-color: #ecfeff !important;
@@ -4661,11 +4673,28 @@ html.light [data-poker-session-detail] .border-cyan-500\/30 {
 /* Live session secondary actions — match bankroll card chip styling (detail is outside [data-poker-bankroll]) */
 html.light [data-poker-session-detail] [data-poker-session-rebuy-btn] {
   background-color: #ffffff !important;
-  border-color: var(--poker-money) !important;
-  color: var(--poker-money) !important;
+  border-color: #d4d4d8 !important;
+  color: #3f3f46 !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-rebuy-btn]:active {
-  background-color: #d1fae5 !important;
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-end-btn],
+html.light [data-poker-session-detail] [data-poker-session-end-btn].text-white {
+  background-color: var(--poker-money) !important;
+  border-color: var(--poker-money) !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-end-btn]:active {
+  background-color: var(--poker-money-press) !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-edit-btn] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+  color: #18181b !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-edit-btn]:active {
+  background-color: #f4f4f5 !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-swap-btn] {
   background-color: #ffffff !important;

@@ -161,8 +161,14 @@ export default function PokerSessionDetailSheet({
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               {isActive ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <span
+                  data-poker-session-active-badge
+                  className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-300"
+                >
+                  <span
+                    data-poker-session-active-dot
+                    className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400"
+                  />
                   In progress
                 </span>
               ) : (
@@ -181,8 +187,9 @@ export default function PokerSessionDetailSheet({
             </div>
             <div className="flex items-start gap-2">
               <span
+                data-poker-session-type-icon={isTourney ? 'tournament' : 'cash'}
                 className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                  isTourney ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'
+                  isTourney ? 'bg-amber-500/15 text-amber-300' : 'bg-zinc-800 text-zinc-300'
                 }`}
                 aria-hidden
               >
@@ -436,7 +443,7 @@ export default function PokerSessionDetailSheet({
                 type="button"
                 onClick={() => onRebuy?.()}
                 data-poker-session-rebuy-btn
-                className="rounded-2xl border border-emerald-400/40 bg-emerald-950/80 py-3 text-sm font-bold text-emerald-200 touch-manipulation active:bg-emerald-900"
+                className="rounded-2xl border border-zinc-600 bg-zinc-800/80 py-3 text-sm font-bold text-zinc-200 touch-manipulation active:bg-zinc-700"
               >
                 Re-buy
               </button>
@@ -444,7 +451,8 @@ export default function PokerSessionDetailSheet({
             <button
               type="button"
               onClick={() => onEndSession?.()}
-              className="rounded-2xl border border-emerald-500 bg-emerald-500 py-3 text-sm font-bold text-white touch-manipulation active:bg-emerald-600"
+              data-poker-session-end-btn
+              className="rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white touch-manipulation active:bg-emerald-500"
             >
               End session
             </button>
@@ -454,7 +462,8 @@ export default function PokerSessionDetailSheet({
         <button
           type="button"
           onClick={() => onEdit?.()}
-          className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500"
+          data-poker-session-edit-btn
+          className="w-full rounded-2xl border border-zinc-600 bg-transparent py-3.5 text-base font-bold text-zinc-200 touch-manipulation active:bg-zinc-800"
         >
           Edit session
         </button>

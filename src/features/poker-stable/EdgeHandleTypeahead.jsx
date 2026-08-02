@@ -302,11 +302,10 @@ export default function EdgeHandleTypeahead({
               <li key={profile.user_id} role="option" aria-selected={active}>
                 <button
                   type="button"
-                  onMouseDown={(e) => {
+                  onPointerDown={(e) => {
                     e.preventDefault()
                     pickProfile(profile)
                   }}
-                  onPointerDown={(e) => e.preventDefault()}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
                     active ? 'bg-zinc-800' : 'active:bg-zinc-800/60'
                   }`}

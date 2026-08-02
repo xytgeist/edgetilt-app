@@ -443,30 +443,41 @@ export default function PokerSessionDetailSheet({
                 type="button"
                 onClick={() => onRebuy?.()}
                 data-poker-session-rebuy-btn
-                className="rounded-2xl border border-zinc-600 bg-zinc-800/80 py-3 text-sm font-bold text-zinc-200 touch-manipulation active:bg-zinc-700"
+                className="rounded-2xl border border-emerald-500 bg-white py-3 text-sm font-bold text-emerald-600 touch-manipulation active:bg-emerald-50"
               >
                 Re-buy
               </button>
             )}
             <button
               type="button"
-              onClick={() => onEndSession?.()}
-              data-poker-session-end-btn
-              className="rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white touch-manipulation active:bg-emerald-500"
+              onClick={() => onEdit?.()}
+              data-poker-session-edit-btn
+              className="rounded-2xl bg-zinc-700 py-3 text-sm font-bold text-white touch-manipulation active:bg-zinc-600"
             >
-              End session
+              Edit session
             </button>
           </div>
         ) : null}
 
-        <button
-          type="button"
-          onClick={() => onEdit?.()}
-          data-poker-session-edit-btn
-          className="w-full rounded-2xl border border-zinc-600 bg-transparent py-3.5 text-base font-bold text-zinc-200 touch-manipulation active:bg-zinc-800"
-        >
-          Edit session
-        </button>
+        {isActive ? (
+          <button
+            type="button"
+            onClick={() => onEndSession?.()}
+            data-poker-session-end-btn
+            className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500"
+          >
+            End session
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onEdit?.()}
+            data-poker-session-edit-btn
+            className="w-full rounded-2xl bg-zinc-700 py-3.5 text-base font-bold text-white touch-manipulation active:bg-zinc-600"
+          >
+            Edit session
+          </button>
+        )}
       </div>
     </div>
   )

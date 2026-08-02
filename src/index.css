@@ -4673,11 +4673,11 @@ html.light [data-poker-session-detail] .border-cyan-500\/30 {
 /* Live session secondary actions — match bankroll card chip styling (detail is outside [data-poker-bankroll]) */
 html.light [data-poker-session-detail] [data-poker-session-rebuy-btn] {
   background-color: #ffffff !important;
-  border-color: #d4d4d8 !important;
-  color: #3f3f46 !important;
+  border-color: var(--poker-money) !important;
+  color: var(--poker-money) !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-rebuy-btn]:active {
-  background-color: #f4f4f5 !important;
+  background-color: #ecfdf5 !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-end-btn],
 html.light [data-poker-session-detail] [data-poker-session-end-btn].text-white {
@@ -4688,13 +4688,14 @@ html.light [data-poker-session-detail] [data-poker-session-end-btn].text-white {
 html.light [data-poker-session-detail] [data-poker-session-end-btn]:active {
   background-color: var(--poker-money-press) !important;
 }
-html.light [data-poker-session-detail] [data-poker-session-edit-btn] {
-  background-color: #ffffff !important;
-  border-color: #d4d4d8 !important;
-  color: #18181b !important;
+html.light [data-poker-session-detail] [data-poker-session-edit-btn],
+html.light [data-poker-session-detail] [data-poker-session-edit-btn].text-white {
+  background-color: #3f3f46 !important;
+  border-color: #3f3f46 !important;
+  color: #ffffff !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-edit-btn]:active {
-  background-color: #f4f4f5 !important;
+  background-color: #27272a !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-swap-btn] {
   background-color: #ffffff !important;

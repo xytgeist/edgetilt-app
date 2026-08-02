@@ -1,5 +1,11 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { computeDealSettlement, dealTypeLabel, roundMoney } from './pokerStableMath.js'
+import { backerSliceSessionShare } from './pokerStableBackerMath.js'
+import {
+  computeDealSettlement,
+  computeSliceSettleShares,
+  dealTypeLabel,
+  roundMoney,
+} from './pokerStableMath.js'
 import { sliceCounterpartyDisplayName } from './pokerStableTerms.js'
 
 /**
@@ -63,6 +69,98 @@ export function archivedStakePersonalBankrollBreakdown({ deal, slices = [], sett
 
   const total = roundMoney(items.reduce((sum, row) => sum + row.credit, 0))
   return { total, items }
+}
+
+/**
+ * Backer's slice on a deal (viewer as staker).
+ * @param {object[]} [slices]
+ * @param {string} [viewerUserId]
+ */
+export function viewerBackingSlice(slices = [], viewerUserId) {
+  if (!viewerUserId) return null
+  return (
+    (slices || []).find(
+      (s) => s.staker_user_id === viewerUserId && s.status !== 'declined' && s.status !== 'cancelled',
+    ) || null
+  )
+}
+
+/**
+ * Backer backing-bankroll credit from one settlement row (matches settle RPC slice loop).
+ * @param {object} st
+ * @param {object} deal
+ * @param {object} slice
+ * @param {object} [line] optional persisted settlement line for this slice
+ */
+export function settlementBackerCredit(st, deal, slice, line = null) {
+  if (!st || !slice) return 0
+  if (line) {
+    let credit = roundMoney(
+      (Number(line.profit_share) || 0) + (Number(line.rakeback_share) || 0),
+    )
+    if (line.direction === 'staker_to_player') credit = -credit
+    return credit
+  }
+
+  const profit = Number(st.profit_above_baseline) || 0
+  const shares = computeSliceSettleShares(slice, profit, Number(st.rakeback_total) || 0)
+  let credit = roundMoney(shares.profitShare + shares.rakebackShare)
+  if (shares.totalOwed < 0) credit = -credit
+  return credit
+}
+
+/**
+ * Per-settlement backing credits for one backer's slice + running total (oldest first).
+ * @param {object} args
+ * @param {object} args.deal
+ * @param {object[]} [args.slices]
+ * @param {object[]} [args.settlements]
+ * @param {string} [args.viewerUserId]
+ * @param {Record<string, object[]>} [args.settlementLinesBySettlement]
+ */
+export function archivedStakeBackerEconomicsBreakdown({
+  deal,
+  slices = [],
+  settlements = [],
+  viewerUserId,
+  settlementLinesBySettlement = {},
+}) {
+  const slice = viewerBackingSlice(slices, viewerUserId)
+  if (!slice) return { total: 0, items: [], slice: null }
+
+  /** @type {{ id: string, at: string, kind: string, label: string, credit: number }[]} */
+  const items = []
+  const ordered = [...(settlements || [])]
+    .filter((st) => st?.created_at)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  for (const st of ordered) {
+    const lines = settlementLinesBySettlement[st.id] || []
+    const line = lines.find((row) => row.slice_id === slice.id) || null
+    const credit = settlementBackerCredit(st, deal, slice, line)
+    const isClose = isCloseSettlement(st, deal, settlements)
+    items.push({
+      id: st.id,
+      at: st.created_at,
+      kind: isClose ? 'close' : 'settlement',
+      label: isClose ? 'Close settle' : 'Periodic settle',
+      credit: roundMoney(credit),
+    })
+  }
+
+  const total = roundMoney(items.reduce((sum, row) => sum + row.credit, 0))
+  return { total, items, slice }
+}
+
+/** @param {object} args */
+export function archivedStakeBackerSessionShareTotal({ deal, slices = [], sessions = [], viewerUserId }) {
+  const slice = viewerBackingSlice(slices, viewerUserId)
+  if (!slice || !deal?.id) return 0
+  return roundMoney(
+    (sessions || [])
+      .filter((s) => s.deal_id === deal.id && s.status !== 'active')
+      .reduce((sum, session) => sum + backerSliceSessionShare(deal, slice, session), 0),
+  )
 }
 
 /** @param {string[]} names */

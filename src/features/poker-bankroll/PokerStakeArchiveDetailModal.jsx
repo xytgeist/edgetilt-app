@@ -12,8 +12,11 @@ import {
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
 import {
+  archivedStakeBackerEconomicsBreakdown,
+  archivedStakeBackerSessionShareTotal,
   archivedStakePersonalBankrollBreakdown,
   buildFullStakeArchiveTimeline,
+  viewerBackingSlice,
 } from '../poker-stable/pokerStableDealHistory.js'
 import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
 import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
@@ -38,9 +41,18 @@ export default function PokerStakeArchiveDetailModal({
   reductions = [],
   settlements = [],
   sessions = [],
+  /** @type {'player' | 'backer'} */
+  perspective = 'player',
+  viewerUserId = null,
   onClose,
 }) {
   if (!deal) return null
+
+  const isBackerView = perspective === 'backer'
+  const playerProfile = deal.stakee_user_id ? profilesById[deal.stakee_user_id] : null
+  const playerDisplayName = playerProfile?.handle
+    ? `@${playerProfile.handle}`
+    : playerProfile?.display_name?.trim() || 'Player'
 
   const timeline = buildFullStakeArchiveTimeline({
     deal,
@@ -50,6 +62,7 @@ export default function PokerStakeArchiveDetailModal({
     reductions,
     settlements,
     sessions,
+    playerLabel: isBackerView ? playerDisplayName : 'You',
   })
 
   const backerNames = slices
@@ -63,6 +76,25 @@ export default function PokerStakeArchiveDetailModal({
     archivedStakePersonalBankrollBreakdown({ deal, slices, settlements })
   const personalBankrollNeutral = Math.abs(personalBankrollNet) < 0.005
   const settleCount = personalBankrollItems.length
+
+  const { total: realizedBackingNet, items: realizedBackingItems } =
+    archivedStakeBackerEconomicsBreakdown({
+      deal,
+      slices,
+      settlements,
+      viewerUserId,
+    })
+  const realizedBackingNeutral = Math.abs(realizedBackingNet) < 0.005
+  const backerSettleCount = realizedBackingItems.length
+  const sessionShareTotal = archivedStakeBackerSessionShareTotal({
+    deal,
+    slices,
+    sessions,
+    viewerUserId,
+  })
+  const sessionShareNeutral = Math.abs(sessionShareTotal) < 0.005
+  const viewerSlice = viewerBackingSlice(slices, viewerUserId)
+  const viewerActionPct = viewerSlice ? Number(viewerSlice.action_pct) || 0 : null
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -78,10 +110,15 @@ export default function PokerStakeArchiveDetailModal({
               {dealTypeLabel(deal.deal_type)}
               {closedAt ? ` · Closed ${formatArchiveDate(closedAt)}` : null}
             </p>
-            {backerNames.length ? (
+            {isBackerView ? (
+              <p className="mt-1 text-xs text-zinc-400">Player: {playerDisplayName}</p>
+            ) : backerNames.length ? (
               <p className="mt-1 text-xs text-zinc-400">
                 Backers: {backerNames.join(', ')}
               </p>
+            ) : null}
+            {isBackerView && viewerActionPct != null ? (
+              <p className="mt-0.5 text-[11px] text-zinc-500">Your slice · {viewerActionPct}%</p>
             ) : null}
           </div>
           <button
@@ -94,55 +131,147 @@ export default function PokerStakeArchiveDetailModal({
           </button>
         </div>
 
-        <div
-          data-poker-stake-archive-summary
-          data-elevated-card="surface"
-          className="mb-4 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-3"
-        >
-          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-            Personal bankroll
-          </div>
+        {isBackerView ? (
+          <>
+            <div
+              data-poker-stake-archive-summary
+              data-poker-stake-archive-summary-kind="session-share"
+              data-elevated-card="surface"
+              className="mb-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-3"
+            >
+              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Session share
+              </div>
+              <div
+                className={`mt-0.5 text-xl font-black tabular-nums ${
+                  sessionShareNeutral
+                    ? 'text-zinc-400'
+                    : sessionShareTotal >= 0
+                      ? 'text-emerald-400'
+                      : 'text-rose-400'
+                }`}
+              >
+                {fmtPoker$(sessionShareTotal)}
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+                Gross session W/L × your action % on completed sessions for this horse.
+              </p>
+            </div>
+            <div
+              data-poker-stake-archive-summary
+              data-poker-stake-archive-summary-kind="realized-backing"
+              data-elevated-card="surface"
+              className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-3"
+            >
+              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Realized backing
+              </div>
+              <div
+                className={`mt-0.5 text-xl font-black tabular-nums ${
+                  realizedBackingNeutral
+                    ? 'text-zinc-400'
+                    : realizedBackingNet >= 0
+                      ? 'text-emerald-400'
+                      : 'text-rose-400'
+                }`}
+              >
+                {fmtPoker$(realizedBackingNet)}
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+                {backerSettleCount === 0
+                  ? 'No settle events recorded for this stake.'
+                  : realizedBackingNeutral
+                    ? `${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} · no net credit to your backing bankroll.`
+                    : `Sum of ${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} credited to Stable backing bankroll.`}
+              </p>
+              {backerSettleCount > 0 ? (
+                <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">
+                  {realizedBackingItems.map((row) => (
+                    <li
+                      key={row.id}
+                      className="flex items-baseline justify-between gap-3 text-[11px]"
+                    >
+                      <span className="text-zinc-500">{row.label}</span>
+                      <span
+                        className={`shrink-0 font-semibold tabular-nums ${
+                          Math.abs(row.credit) < 0.005
+                            ? 'text-zinc-500'
+                            : row.credit >= 0
+                              ? 'text-emerald-400'
+                              : 'text-rose-400'
+                        }`}
+                      >
+                        {Math.abs(row.credit) < 0.005 ? '$0' : fmtPoker$(row.credit)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </>
+        ) : (
           <div
-            className={`mt-0.5 text-xl font-black tabular-nums ${
-              personalBankrollNeutral
-                ? 'text-zinc-400'
-                : personalBankrollNet >= 0
-                  ? 'text-emerald-400'
-                  : 'text-rose-400'
-            }`}
+            data-poker-stake-archive-summary
+            data-elevated-card="surface"
+            className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-3"
           >
-            {fmtPoker$(personalBankrollNet)}
-          </div>
-          <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-            {settleCount === 0
-              ? 'No settle events recorded for this stake.'
-              : personalBankrollNeutral
-                ? `${settleCount} settle event${settleCount === 1 ? '' : 's'} · no net credit to personal bankroll.`
-                : `Sum of ${settleCount} settle event${settleCount === 1 ? '' : 's'} (periodic + close).`}
-          </p>
-          {settleCount > 0 ? (
-            <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">
-              {personalBankrollItems.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-baseline justify-between gap-3 text-[11px]"
-                >
-                  <span className="text-zinc-500">{row.label}</span>
-                  <span
-                    className={`shrink-0 font-semibold tabular-nums ${
-                      Math.abs(row.credit) < 0.005
-                        ? 'text-zinc-500'
-                        : row.credit >= 0
-                          ? 'text-emerald-400'
-                          : 'text-rose-400'
-                    }`}
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+              Personal bankroll
+            </div>
+            <div
+              className={`mt-0.5 text-xl font-black tabular-nums ${
+                personalBankrollNeutral
+                  ? 'text-zinc-400'
+                  : personalBankrollNet >= 0
+                    ? 'text-emerald-400'
+                    : 'text-rose-400'
+              }`}
+            >
+              {fmtPoker$(personalBankrollNet)}
+            </div>
+            <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+              {settleCount === 0
+                ? 'No settle events recorded for this stake.'
+                : personalBankrollNeutral
+                  ? `${settleCount} settle event${settleCount === 1 ? '' : 's'} · no net credit to personal bankroll.`
+                  : `Sum of ${settleCount} settle event${settleCount === 1 ? '' : 's'} (periodic + close).`}
+            </p>
+            {settleCount > 0 ? (
+              <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">
+                {personalBankrollItems.map((row) => (
+                  <li
+                    key={row.id}
+                    className="flex items-baseline justify-between gap-3 text-[11px]"
                   >
-                    {Math.abs(row.credit) < 0.005 ? '$0' : fmtPoker$(row.credit)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+                    <span className="text-zinc-500">{row.label}</span>
+                    <span
+                      className={`shrink-0 font-semibold tabular-nums ${
+                        Math.abs(row.credit) < 0.005
+                          ? 'text-zinc-500'
+                          : row.credit >= 0
+                            ? 'text-emerald-400'
+                            : 'text-rose-400'
+                      }`}
+                    >
+                      {Math.abs(row.credit) < 0.005 ? '$0' : fmtPoker$(row.credit)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        )}
+
+        <div
+          data-poker-stake-archive-history-divider
+          className="mb-4 mt-5 border-t-2 border-zinc-700/80 pt-4"
+        >
+          <div className="flex items-center gap-3">
+            <h4 className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              History
+            </h4>
+            <div className="h-px min-w-0 flex-1 bg-zinc-700/70" aria-hidden />
+          </div>
         </div>
 
         {timeline.length === 0 ? (

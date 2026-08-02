@@ -4914,6 +4914,12 @@ html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-summary] .
 html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-summary] .text-rose-400 {
   color: var(--poker-loss) !important;
 }
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-history-divider] {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-history-divider] .bg-zinc-700\/70 {
+  background-color: #d4d4d8 !important;
+}
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-emerald-400 {
   color: var(--poker-money) !important;
 }

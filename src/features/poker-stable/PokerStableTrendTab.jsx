@@ -11,20 +11,15 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { backerSliceSessionShare } from './pokerStableBackerMath.js'
+import {
+  computeBackerPortfolioTrendChart,
+} from './pokerStableBackerMath.js'
 import { dealTypeLabel, roundMoney } from './pokerStableMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend)
 
 const HORSE_COLORS = ['#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#a78bfa', '#fb7185']
-
-function formatTrendLabel(iso) {
-  if (!iso) return 'n/a'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return 'n/a'
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
 
 function viewerBackingSlice(dealId, slicesByDeal, userId) {
   return (slicesByDeal[dealId] || []).find(
@@ -45,52 +40,16 @@ export default function PokerStableTrendTab({
 }) {
   const [portfolioOnly, setPortfolioOnly] = useState(false)
 
-  const chartBundle = useMemo(() => {
-    const deals = [...horseDeals]
-    /** @type {Record<string, number>} */
-    const perfByDeal = {}
-    /** @type {Record<string, number[]>} */
-    const horseSeries = {}
-    for (const deal of deals) {
-      perfByDeal[deal.id] = 0
-      horseSeries[deal.id] = [0]
-    }
-
-    const events = []
-    for (const deal of deals) {
-      const slice = viewerBackingSlice(deal.id, slicesByDeal, userId)
-      if (!slice) continue
-      for (const session of sessions) {
-        if (session.deal_id !== deal.id) continue
-        events.push({
-          deal,
-          slice,
-          session,
-          t: new Date(session.start_at || session.created_at).getTime(),
-        })
-      }
-    }
-    events.sort((a, b) => a.t - b.t)
-
-    const labels = ['Start']
-    const portfolio = [0]
-
-    for (const ev of events) {
-      const share = backerSliceSessionShare(ev.deal, ev.slice, ev.session)
-      perfByDeal[ev.deal.id] = roundMoney(perfByDeal[ev.deal.id] + share)
-      let port = 0
-      for (const deal of deals) {
-        port = roundMoney(port + (perfByDeal[deal.id] || 0))
-      }
-      labels.push(formatTrendLabel(ev.session.start_at || ev.session.created_at))
-      portfolio.push(port)
-      for (const deal of deals) {
-        horseSeries[deal.id].push(perfByDeal[deal.id] || 0)
-      }
-    }
-
-    return { labels, portfolio, horseSeries, deals }
-  }, [horseDeals, sessions, slicesByDeal, userId])
+  const chartBundle = useMemo(
+    () =>
+      computeBackerPortfolioTrendChart({
+        horseDeals,
+        sessions,
+        slicesByDeal,
+        userId,
+      }),
+    [horseDeals, sessions, slicesByDeal, userId],
+  )
 
   const yScale = useMemo(() => {
     const values = [...chartBundle.portfolio, ...Object.values(chartBundle.horseSeries).flat(), 0]
@@ -186,7 +145,7 @@ export default function PokerStableTrendTab({
         )}
       </div>
       <p className="mt-2 text-xs text-zinc-500">
-        Stake session performance only (your action % of gross results). Deposits, withdrawals, and
+        Stake session performance only (your action % of gross results). Bankroll adjustments and
         settle crystallization do not move this chart.
       </p>
     </div>

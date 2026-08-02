@@ -245,6 +245,15 @@ export async function loadBackerBankroll(supabase) {
   }
 }
 
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
+export async function loadBackerBankrollAdjustments(supabase) {
+  const { data, error } = await supabase
+    .from('poker_stable_backer_bankroll_adjustments')
+    .select('id, amount, balance_after, occurred_at, created_at')
+    .order('occurred_at', { ascending: true })
+  return { adjustments: data || [], error }
+}
+
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {number} amount */
 export async function depositBackerBankroll(supabase, amount) {
   const { data, error } = await supabase.rpc('poker_stable_backer_deposit', {

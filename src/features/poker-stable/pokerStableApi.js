@@ -894,7 +894,16 @@ export async function acceptSliceAsStaker(supabase, sliceId, stakerUserId) {
     .eq('status', 'pending')
     .select('*')
     .single()
-  if (error) return { slice: null, error }
+  if (error) {
+    const msg = String(error.message || '')
+    if (/single json object/i.test(msg)) {
+      return {
+        slice: null,
+        error: new Error('Could not accept slice. It may already be accepted or you lack access.'),
+      }
+    }
+    return { slice: null, error }
+  }
 
   const { data: slices } = await supabase
     .from('poker_stable_deal_slices')

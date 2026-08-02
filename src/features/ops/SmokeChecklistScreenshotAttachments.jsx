@@ -4,8 +4,7 @@ import {
   imageFilesFromClipboardEvent,
   imageFilesFromNavigatorClipboardRead,
 } from '../../utils/clipboardImagePaste.js'
-import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
-import { uploadSmokeChecklistScreenshot } from './smokeChecklistScreenshotUpload.js'
+import { uploadSmokeChecklistScreenshot, smokeChecklistScreenshotPreviewUrl } from './smokeChecklistScreenshotUpload.js'
 
 const MAX_SCREENSHOTS_PER_ITEM = 4
 
@@ -98,9 +97,10 @@ export default function SmokeChecklistScreenshotAttachments({
             >
               <a href={url} target="_blank" rel="noopener noreferrer" className="block">
                 <img
-                  src={loungeFeedImageDeliveryUrl(url, 'composer')}
+                  src={smokeChecklistScreenshotPreviewUrl(url)}
                   alt={`Screenshot ${index + 1}`}
-                  className="aspect-video w-full object-cover"
+                  className="aspect-video w-full object-contain bg-zinc-950"
+                  loading="lazy"
                 />
               </a>
               <button

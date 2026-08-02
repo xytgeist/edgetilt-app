@@ -27,5 +27,30 @@ export async function uploadSmokeChecklistScreenshot(supabaseClient, userId, fil
   }
   if (error) throw error
   if (!data) throw new Error('Screenshot upload failed.')
-  return String(data)
+
+  const publicUrl = String(data)
+  await assertSmokeScreenshotPreviewLoads(publicUrl)
+  return publicUrl
+}
+
+/** Raw R2 URL for previews (skip /cdn-cgi/image/ — unreliable on test media). */
+export function smokeChecklistScreenshotPreviewUrl(storedUrl) {
+  return String(storedUrl || '').trim()
+}
+
+/**
+ * @param {string} url
+ */
+function assertSmokeScreenshotPreviewLoads(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(true)
+    img.onerror = () =>
+      reject(
+        new Error(
+          'Screenshot uploaded but preview failed to load. Check media-test.lvslotpro.com public access.',
+        ),
+      )
+    img.src = url
+  })
 }

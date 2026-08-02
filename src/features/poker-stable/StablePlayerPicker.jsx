@@ -3,6 +3,7 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import { fetchEdgeUserDirectoryPickerData } from '../play-logbook/playLogApi.js'
 import { schedulePokerStableFieldScroll } from './pokerStableSheetScroll.js'
+import { usePickerListTapSelect } from './pokerStablePickerTap.js'
 import { edgeProfileDisplayName } from './pokerStableTerms.js'
 
 const GAP_PX = 4
@@ -63,6 +64,7 @@ export default function StablePlayerPicker({
   const [loadedOnce, setLoadedOnce] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [openUpward, setOpenUpward] = useState(false)
+  const { bindRowSelect, listPointerProps } = usePickerListTapSelect(listRef)
 
   const normalizedValue = normalizeHandle(value)
   const selectedHandle = normalizeHandle(selectedProfile?.handle)
@@ -238,10 +240,7 @@ export default function StablePlayerPicker({
       <li key={profile.user_id} role="option" aria-selected={active}>
         <button
           type="button"
-          onPointerDown={(e) => {
-            e.preventDefault()
-            pickProfile(profile)
-          }}
+          {...bindRowSelect(() => pickProfile(profile))}
           className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
             active ? 'bg-zinc-800' : 'active:bg-zinc-800/60'
           }`}
@@ -361,6 +360,7 @@ export default function StablePlayerPicker({
           role="listbox"
           data-edge-handle-typeahead-list
           data-stable-player-picker-list
+          {...listPointerProps}
           className={`absolute left-0 right-0 overflow-y-auto overscroll-contain rounded-2xl border border-zinc-700 bg-zinc-900 py-1 shadow-2xl ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
@@ -369,10 +369,7 @@ export default function StablePlayerPicker({
           <li role="option" aria-selected={activeIndex === 0}>
             <button
               type="button"
-              onPointerDown={(e) => {
-                e.preventDefault()
-                pickGuest()
-              }}
+              {...bindRowSelect(pickGuest)}
               className={`flex w-full items-center gap-3 px-3 py-2.5 text-left touch-manipulation ${
                 activeIndex === 0 ? 'bg-zinc-800' : 'active:bg-zinc-800/60'
               }`}

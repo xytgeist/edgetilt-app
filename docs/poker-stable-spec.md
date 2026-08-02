@@ -322,7 +322,7 @@ Tracked in **`docs/test-buildout-backlog.md`** (Poker Stable open checkboxes). N
 
 ## Update log
 
-- **2026-08-02:** **Close revoked stake (test):** migration **`20260802160000`** — `poker_stable_run_settlement` allows finalize on **`revoked`** deals (fixes "Active stake not found" on Close stake); periodic settle still active-only.
+- **2026-08-02:** **Close revoked stake (test + prod):** migration **`20260802160000`** — `poker_stable_run_settlement` allows finalize on **`revoked`** deals (fixes "Active stake not found" on Close stake); periodic settle still active-only. Applied on **`jtjgtucumuoswnbauxry`**.
 - **2026-08-02:** **Open product decisions (TBD):** § Settlement sync, § Single backer cash-out, § Move session scope (personal ↔ stake with multi-stake picker) added to backlog; no implementation until Ryan locks rules.
 - **2026-08-02:** **Revoked re-offer (test):** migration **`20260802150000`** — stakee edit on **`revoked`** deal flips **`pending`** + replaces slices; pending draft may have zero slices when all backers declined. Product rules locked in § Backer revoke / slice decline.
 - **2026-08-02:** **Revoked stake UX + archive (test):** sole backer revoke keeps deal on player carousel (**Revoked** badge, banner, terms edit/close); partial multi-slice revoke declines slice only; Bankroll **ARCHIVE** pill + detail modal; poll widened to pending **or** active carousel stakes.

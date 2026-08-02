@@ -997,6 +997,7 @@ export default function PokerBankrollTracker({
       slices: slicesByDeal[bankrollScope] || [],
       profilesById: stableProfilesById,
       topups: dealTopupsByDeal[bankrollScope] || [],
+      reductions: dealReductionsByDeal[bankrollScope] || [],
       settlements: dealSettlementsByDeal[bankrollScope] || [],
     })
   }, [
@@ -1006,6 +1007,7 @@ export default function PokerBankrollTracker({
     slicesByDeal,
     stableProfilesById,
     dealTopupsByDeal,
+    dealReductionsByDeal,
     dealSettlementsByDeal,
   ])
 
@@ -3479,6 +3481,7 @@ export default function PokerBankrollTracker({
           slices={slicesByDeal[archiveDetailDealId] || []}
           profilesById={stableProfilesById}
           topups={dealTopupsByDeal[archiveDetailDealId] || []}
+          reductions={dealReductionsByDeal[archiveDetailDealId] || []}
           settlements={dealSettlementsByDeal[archiveDetailDealId] || []}
           sessions={sessions.filter((s) => s.deal_id === archiveDetailDealId)}
           onClose={() => setArchiveDetailDealId(null)}

@@ -203,6 +203,7 @@ export function buildPersonalSettlementHistoryEvents({
  * @param {object[]} [args.slices]
  * @param {Record<string, object>} [args.profilesById]
  * @param {object[]} [args.topups]
+ * @param {object[]} [args.reductions]
  * @param {object[]} [args.settlements]
  * @param {object[]} [args.ledgerEntries]
  * @param {string} [args.playerUserId]
@@ -213,6 +214,7 @@ export function buildStakeDealHistoryEvents({
   slices = [],
   profilesById = {},
   topups = [],
+  reductions = [],
   settlements = [],
   ledgerEntries = [],
   playerUserId,
@@ -284,6 +286,18 @@ export function buildStakeDealHistoryEvents({
     })
   }
 
+  for (const reduction of reductions) {
+    if (!reduction?.created_at) continue
+    const amt = Number(reduction.amount)
+    if (!Number.isFinite(amt) || amt <= 0) continue
+    events.push({
+      id: `reduction-${reduction.id}`,
+      kind: 'reduction',
+      at: reduction.created_at,
+      text: `Reduce stake ${fmtPoker$(amt)}`,
+    })
+  }
+
   for (const st of settlements) {
     if (!st?.created_at) continue
     const ledgerText = ledgerBySettlement[st.id]
@@ -340,6 +354,7 @@ export function buildStakeDealHistoryEvents({
  * @param {object[]} [args.slices]
  * @param {Record<string, object>} [args.profilesById]
  * @param {object[]} [args.topups]
+ * @param {object[]} [args.reductions]
  * @param {object[]} [args.settlements]
  * @param {object[]} [args.sessions]
  * @param {string} [args.playerLabel]
@@ -350,6 +365,7 @@ export function buildFullStakeArchiveTimeline({
   slices = [],
   profilesById = {},
   topups = [],
+  reductions = [],
   settlements = [],
   sessions = [],
   playerLabel = 'You',
@@ -359,6 +375,7 @@ export function buildFullStakeArchiveTimeline({
     slices,
     profilesById,
     topups,
+    reductions,
     settlements,
     playerLabel,
   })

@@ -35,6 +35,7 @@ export default function PokerStakeArchiveDetailModal({
   slices = [],
   profilesById = {},
   topups = [],
+  reductions = [],
   settlements = [],
   sessions = [],
   onClose,
@@ -46,6 +47,7 @@ export default function PokerStakeArchiveDetailModal({
     slices,
     profilesById,
     topups,
+    reductions,
     settlements,
     sessions,
   })

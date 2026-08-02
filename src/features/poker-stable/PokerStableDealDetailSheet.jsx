@@ -24,9 +24,11 @@ import {
 } from './pokerStableSliceTone.js'
 import {
   computeDealMakeup,
+  computeProRataBackerShares,
   computeProfitAboveBaseline,
   dealTypeLabel,
   maxStakeReductionAmount,
+  roundMoney,
 } from './pokerStableMath.js'
 import {
   canProposeSettleStake,
@@ -53,7 +55,8 @@ export default function PokerStableDealDetailSheet({
   onOpenPokerBankroll,
 }) {
   const [topupAmount, setTopupAmount] = useState('')
-  const [reduceAmount, setReduceAmount] = useState('')
+  const [reduceStake, setReduceStake] = useState(false)
+  const [newBaselineInput, setNewBaselineInput] = useState('')
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [ledgerEntries, setLedgerEntries] = useState([])
@@ -72,6 +75,31 @@ export default function PokerStableDealDetailSheet({
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
   const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
   const maxReduction = maxStakeReductionAmount(baseline, rollValue)
+
+  const newBaselineValue = parseMoneyInputNumber(newBaselineInput)
+  const hasNewBaselineInput = String(newBaselineInput || '').trim().length > 0
+  const newBaselineValid =
+    hasNewBaselineInput && Number.isFinite(newBaselineValue) && newBaselineValue >= 0
+  const reductionAmount =
+    reduceStake && newBaselineValid
+      ? roundMoney(Math.max(0, baseline - newBaselineValue))
+      : 0
+  const newBaselineTooHigh =
+    reduceStake && newBaselineValid && newBaselineValue >= baseline - 0.005
+  const reductionTooLarge = reductionAmount > maxReduction + 0.005
+  const reduceInputIncomplete = reduceStake && !newBaselineValid
+  const reduceInvalid =
+    reduceStake && (newBaselineTooHigh || reductionTooLarge || reduceInputIncomplete)
+
+  const backerReductionShares = useMemo(
+    () => computeProRataBackerShares(slices, reductionAmount),
+    [slices, reductionAmount],
+  )
+
+  useEffect(() => {
+    setReduceStake(false)
+    setNewBaselineInput('')
+  }, [deal?.id])
 
   const loadLedger = useCallback(async () => {
     if (!supabaseClient || !deal?.id) return
@@ -128,24 +156,30 @@ export default function PokerStableDealDetailSheet({
 
   async function onReduceStake() {
     if (!isStakee || !deal) return
-    const amt = parseMoneyInputNumber(reduceAmount)
-    if (!Number.isFinite(amt) || amt <= 0) {
-      onError('Enter a reduction amount.')
+    onError('')
+    if (reduceInvalid) {
+      if (reduceInputIncomplete) {
+        onError('Enter a new bankroll baseline.')
+      } else if (newBaselineTooHigh) {
+        onError(`New baseline must be below ${fmtPoker$(baseline)}.`)
+      } else if (reductionTooLarge) {
+        onError(`Reduction cannot exceed ${fmtPoker$(maxReduction)}.`)
+      }
       return
     }
-    if (amt > maxReduction + 0.005) {
-      onError(`Reduction cannot exceed ${fmtPoker$(maxReduction)}.`)
+    if (reductionAmount <= 0.005) {
+      onError('Enter a new bankroll baseline below current.')
       return
     }
     onSavingChange(true)
-    onError('')
     try {
       const { error } = await recordDealReduction(supabaseClient, {
         dealId: deal.id,
-        amount: amt,
+        amount: reductionAmount,
       })
       if (error) throw error
-      setReduceAmount('')
+      setReduceStake(false)
+      setNewBaselineInput('')
       triggerTapHapticLight()
       await onRefresh()
       await loadLedger()
@@ -407,29 +441,108 @@ export default function PokerStableDealDetailSheet({
               </button>
             </div>
 
-            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Reduce stake
-            </h4>
-            <p className="mb-2 text-xs text-zinc-500">
-              Lowers baseline and roll (max {fmtPoker$(maxReduction)}). Backers credited pro-rata.
-              For settle + reduce together, use periodic settle below.
-            </p>
-            <div className="mb-4 flex gap-2">
-              <MoneyInputField
-                value={reduceAmount}
-                onChange={setReduceAmount}
-                placeholder="Amount"
-                focusRingClass="focus:ring-2 focus:ring-amber-500/40"
-                className="min-w-0 flex-1"
-              />
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void onReduceStake()}
-                className="rounded-2xl bg-zinc-700 px-4 text-sm font-bold text-white disabled:opacity-50"
-              >
-                Reduce
-              </button>
+            <div
+              data-poker-stable-reduce-stake-block
+              className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-3"
+            >
+              <label className="flex cursor-pointer items-start gap-3 touch-manipulation">
+                <input
+                  type="checkbox"
+                  checked={reduceStake}
+                  onChange={(e) => {
+                    setReduceStake(e.target.checked)
+                    if (!e.target.checked) setNewBaselineInput('')
+                  }}
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500/40"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-zinc-200">Reduce stake</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
+                    Lowers baseline and roll by the reduction amount. Each Edge backer&apos;s personal
+                    bankroll is credited their action % share (the inverse of a top-up). For settle
+                    + reduce together, use periodic settle below.
+                  </span>
+                </span>
+              </label>
+
+              {reduceStake && reductionAmount > 0.005 ? (
+                <p className="mt-2 text-xs leading-relaxed text-cyan-200/90">
+                  Backers&apos; personal bankrolls will be credited{' '}
+                  <span className="font-semibold tabular-nums">{fmtPoker$(reductionAmount)}</span>{' '}
+                  total, split by action % (see below).
+                </p>
+              ) : reduceStake ? (
+                <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                  Enter a new baseline below current {fmtPoker$(baseline)}. Backers are credited the
+                  reduction pro-rata to personal bankroll.
+                </p>
+              ) : null}
+
+              {reduceStake ? (
+                <div className="mt-3 flex items-end gap-3">
+                  <div className="min-w-0 flex-1">
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                      New bankroll baseline
+                    </label>
+                    <MoneyInputField
+                      value={newBaselineInput}
+                      onChange={setNewBaselineInput}
+                      placeholder={`Below ${fmtPoker$(baseline)}`}
+                      focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+                  {reductionAmount > 0.005 ? (
+                    <div className="shrink-0 pb-2 text-right">
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                        Reduction
+                      </div>
+                      <div className="mt-0.5 text-base font-bold tabular-nums text-cyan-200">
+                        {fmtPoker$(reductionAmount)}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {reduceStake && newBaselineTooHigh ? (
+                <p className="mt-2 text-xs font-semibold text-rose-300">
+                  New baseline must be below {fmtPoker$(baseline)}.
+                </p>
+              ) : null}
+              {reduceStake && !newBaselineTooHigh && reductionTooLarge ? (
+                <p className="mt-2 text-xs font-semibold text-rose-300">
+                  Reduction cannot exceed {fmtPoker$(maxReduction)}.
+                </p>
+              ) : null}
+              {reduceStake && reductionAmount > 0.005 && backerReductionShares.length ? (
+                <div className="mt-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-400">
+                  {backerReductionShares.map((row) => (
+                    <div key={row.sliceId} className="flex justify-between gap-2 py-0.5">
+                      <span>
+                        {sliceDisplayName(
+                          slices.find((s) => s.id === row.sliceId) || {},
+                          profilesById,
+                        )}
+                      </span>
+                      <span className="font-semibold tabular-nums text-cyan-200">
+                        +{fmtPoker$(row.share)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {reduceStake ? (
+                <button
+                  type="button"
+                  disabled={saving || reduceInvalid}
+                  onClick={() => void onReduceStake()}
+                  data-poker-stable-reduce-stake-btn
+                  className="mt-3 w-full rounded-xl bg-zinc-700 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+                >
+                  {saving ? 'Reducing…' : 'Confirm reduction'}
+                </button>
+              ) : null}
             </div>
           </>
         ) : null}

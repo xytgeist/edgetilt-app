@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import PokerStableSheetHeader from './PokerStableSheetHeader.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { loadDealCommit, syncDealCommit } from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
@@ -98,16 +99,7 @@ export default function PokerStableCommitSyncModal({
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-bold text-white">Sync stake update</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
-          >
-            Close
-          </button>
-        </div>
+        <PokerStableSheetHeader title="Sync stake update" onClose={onClose} />
 
         {loading ? (
           <p className="text-sm text-zinc-400">Loading…</p>

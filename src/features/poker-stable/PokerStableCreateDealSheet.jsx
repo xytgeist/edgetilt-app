@@ -6,6 +6,7 @@ import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import StablePlayerPicker from './StablePlayerPicker.jsx'
+import PokerStableSheetHeader from './PokerStableSheetHeader.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests } from './pokerStableApi.js'
 import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
 import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
@@ -713,16 +714,7 @@ function PokerStableDealFormSheet({
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white">{title}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
-          >
-            Cancel
-          </button>
-        </div>
+        <PokerStableSheetHeader title={title} onClose={onClose} disabled={saving} />
 
         {showHorsePicker ? (
           <>

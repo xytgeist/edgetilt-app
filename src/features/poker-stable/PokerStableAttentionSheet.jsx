@@ -1,4 +1,5 @@
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import PokerStableSheetHeader from './PokerStableSheetHeader.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { syncDealCommit } from './pokerStableApi.js'
 import { pokerStableCommitSummaryLine } from './pokerStableActivity.js'
@@ -39,16 +40,7 @@ export default function PokerStableAttentionSheet({
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white">Needs your attention</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400"
-          >
-            Close
-          </button>
-        </div>
+        <PokerStableSheetHeader title="Needs your attention" onClose={onClose} disabled={saving} />
 
         {commits.length === 0 ? (
           <p className="text-sm text-zinc-400">You&apos;re synced up.</p>

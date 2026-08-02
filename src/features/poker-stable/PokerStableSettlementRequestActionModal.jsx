@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import PokerStableSheetHeader from './PokerStableSheetHeader.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { loadSettlementRequest, respondToSettlementRequest } from './pokerStableApi.js'
@@ -117,19 +118,12 @@ export default function PokerStableSettlementRequestActionModal({
         className={`relative z-10 w-full max-w-lg max-h-[92vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-white">{settleLabel}</h3>
-            <p className="text-xs text-zinc-500">Review and respond</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
-          >
-            Close
-          </button>
-        </div>
+        <PokerStableSheetHeader
+          title={settleLabel}
+          subtitle="Review and respond"
+          onClose={onClose}
+          disabled={saving}
+        />
 
         {loading ? (
           <p className="py-8 text-center text-sm text-zinc-500">Loading…</p>

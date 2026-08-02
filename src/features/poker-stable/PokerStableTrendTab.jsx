@@ -19,6 +19,24 @@ import { sliceDisplayName } from './pokerStableApi.js'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend)
 
+/** Chart.js axis chrome for Stable Trend (`html.light`). */
+function pokerStableTrendChartChrome() {
+  const isLight =
+    typeof document !== 'undefined' && document.documentElement.classList.contains('light')
+  if (isLight) {
+    return {
+      grid: 'rgba(24,24,27,0.06)',
+      ticks: '#71717a',
+      legend: '#52525b',
+    }
+  }
+  return {
+    grid: 'rgba(255,255,255,0.04)',
+    ticks: '#71717a',
+    legend: '#a1a1aa',
+  }
+}
+
 const HORSE_COLORS = ['#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#a78bfa', '#fb7185']
 
 function viewerBackingSlice(dealId, slicesByDeal, userId) {
@@ -96,6 +114,7 @@ export default function PokerStableTrendTab({
   }, [chartBundle, portfolioOnly, slicesByDeal, profilesById, userId])
 
   const hasHistory = sessions.length > 0 || horseDeals.length > 0
+  const chartChrome = useMemo(() => pokerStableTrendChartChrome(), [])
 
   return (
     <div data-poker-stable-trend className="pb-4">
@@ -116,7 +135,7 @@ export default function PokerStableTrendTab({
               responsive: true,
               maintainAspectRatio: true,
               plugins: {
-                legend: { labels: { color: '#a1a1aa', boxWidth: 12 } },
+                legend: { labels: { color: chartChrome.legend, boxWidth: 12 } },
                 tooltip: {
                   callbacks: {
                     label: (ctx) => `${ctx.dataset.label}: ${fmtPoker$(ctx.parsed.y)}`,
@@ -125,17 +144,17 @@ export default function PokerStableTrendTab({
               },
               scales: {
                 x: {
-                  ticks: { color: '#71717a', maxRotation: 45 },
-                  grid: { color: 'rgba(255,255,255,0.04)' },
+                  ticks: { color: chartChrome.ticks, maxRotation: 45 },
+                  grid: { color: chartChrome.grid },
                 },
                 y: {
                   min: yScale.min,
                   max: yScale.max,
                   ticks: {
-                    color: '#71717a',
+                    color: chartChrome.ticks,
                     callback: (v) => fmtPoker$(Number(v)),
                   },
-                  grid: { color: 'rgba(255,255,255,0.04)' },
+                  grid: { color: chartChrome.grid },
                 },
               },
             }}
@@ -145,7 +164,7 @@ export default function PokerStableTrendTab({
         )}
       </div>
       <p className="mt-2 text-xs text-zinc-500">
-        Stake session performance only (your action % of gross results). Bankroll adjustments and
+        Per-horse performance (your action % of gross results). Bankroll adjustments and
         settle crystallization do not move this chart.
       </p>
     </div>

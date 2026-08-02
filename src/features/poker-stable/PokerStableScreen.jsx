@@ -3,7 +3,7 @@ import { Users } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
-import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
+import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
 import { PokerStableBackerDealSheet, PokerStablePlayerDealSheet } from './PokerStableCreateDealSheet.jsx'
 import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
@@ -755,8 +755,6 @@ export default function PokerStableScreen({
                   sessions: stableSessions,
                   viewerUserId: userId,
                 })
-                const realizedNeutral = Math.abs(realizedBackingNet) < 0.005
-                const sessionShareNeutral = Math.abs(sessionShareTotal) < 0.005
                 const outcomeLabel = archivedStakeOutcomeLabel(deal, slices)
                 const settleRows = dealSettlementsByDeal[deal.id] || []
                 return (
@@ -796,24 +794,14 @@ export default function PokerStableScreen({
                       {fmtPoker$(deal.baseline_bankroll)}
                     </p>
                     <p
-                      className={`text-[11px] font-semibold tabular-nums ${
-                        sessionShareNeutral
-                          ? 'text-zinc-500'
-                          : sessionShareTotal >= 0
-                            ? 'text-emerald-400'
-                            : 'text-rose-400'
-                      }`}
+                      data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
+                      className="text-[11px] font-semibold tabular-nums"
                     >
-                      Session share {fmtPoker$(sessionShareTotal)}
+                      {playerName} performance {fmtPoker$(sessionShareTotal)}
                     </p>
                     <p
-                      className={`text-[11px] font-semibold tabular-nums ${
-                        realizedNeutral
-                          ? 'text-zinc-500'
-                          : realizedBackingNet >= 0
-                            ? 'text-emerald-400'
-                            : 'text-rose-400'
-                      }`}
+                      data-poker-pl-tone={pokerPlTone(realizedBackingNet)}
+                      className="text-[11px] font-semibold tabular-nums"
                     >
                       Realized backing {fmtPoker$(realizedBackingNet)}
                       {settleRows.length <= 1 ? null : ` · ${settleRows.length} settles`}

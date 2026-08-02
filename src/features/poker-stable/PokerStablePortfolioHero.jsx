@@ -383,7 +383,7 @@ export default function PokerStablePortfolioHero({
 
               <HeroInfoSection title="Sparkline">
                 <p>
-                  Cumulative <strong className="font-semibold text-zinc-300">session performance</strong> ... your
+                  Cumulative <strong className="font-semibold text-zinc-300">horse performance</strong> ... your
                   action % of gross table results across horses (active and closed). Green if net up, red if net down.
                 </p>
                 <p>Tap the sparkline to open the full Trend tab. Bankroll edits and settle events do not move this line.</p>
@@ -395,12 +395,12 @@ export default function PokerStablePortfolioHero({
                   on open horses (baseline × action %).
                 </p>
                 <p>
-                  <strong className="font-semibold text-zinc-300">At-risk ROI</strong> ... session share P/L ÷ current
+                  <strong className="font-semibold text-zinc-300">At-risk ROI</strong> ... horse performance P/L ÷ current
                   At risk. Shows — when nothing is deployed.
                 </p>
                 <p>
                   <strong className="font-semibold text-zinc-300">TWR</strong> ... time-weighted return on your manual
-                  backing pool. Splits at each Edit adjust; session share $ inside each period. Not the same as At-risk
+                  backing pool. Splits at each Edit adjust; horse performance $ inside each period. Not the same as At-risk
                   ROI.
                 </p>
                 <p>

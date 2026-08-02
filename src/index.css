@@ -4926,6 +4926,41 @@ html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-emerald-4
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-rose-400 {
   color: var(--poker-loss) !important;
 }
+html.light [data-poker-stable] [data-poker-stake-archive-card] .text-rose-400 {
+  color: #be123c !important;
+}
+html.light [data-poker-stable] [data-poker-stake-archive-card] .text-emerald-400 {
+  color: #059669 !important;
+}
+
+/* Archive / modal P/L tone — explicit gain/loss (light + dark) */
+[data-poker-stake-archive-card] [data-poker-pl-tone='gain'],
+[data-poker-stake-archive-modal] [data-poker-pl-tone='gain'] {
+  color: rgb(52 211 153);
+}
+[data-poker-stake-archive-card] [data-poker-pl-tone='loss'],
+[data-poker-stake-archive-modal] [data-poker-pl-tone='loss'] {
+  color: rgb(251 113 133);
+}
+[data-poker-stake-archive-card] [data-poker-pl-tone='neutral'],
+[data-poker-stake-archive-modal] [data-poker-pl-tone='neutral'] {
+  color: rgb(113 113 122);
+}
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-pl-tone='gain'],
+html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-pl-tone='gain'],
+html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='gain'] {
+  color: #059669 !important;
+}
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-pl-tone='loss'],
+html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-pl-tone='loss'],
+html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='loss'] {
+  color: #be123c !important;
+}
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-pl-tone='neutral'],
+html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-pl-tone='neutral'],
+html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='neutral'] {
+  color: #71717a !important;
+}
 
 /* Archive outcome badges — dark default */
 [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='closed'] {
@@ -4949,15 +4984,22 @@ html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-sta
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
-html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='declined'] {
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='declined'],
+html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='declined'] {
   background-color: #fffbeb !important;
   border-color: #fcd34d !important;
   color: #b45309 !important;
 }
-html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='revoked'] {
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='revoked'],
+html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='revoked'] {
   background-color: #fff1f2 !important;
   border-color: #fca5a5 !important;
   color: #dc2626 !important;
+}
+html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='closed'] {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
 }
 
 /* ── Poker swap guest claim page (/poker-swap-claim) — light mode only ──── */
@@ -5638,6 +5680,150 @@ html.light [data-poker-stable] .bg-emerald-600 {
 }
 html.light [data-poker-stable] .active\:bg-emerald-500:active {
   background-color: #047857 !important;
+}
+
+/* Stable portfolio hero, tabs, horses, closed stakes, locations — light mode only */
+html.light [data-poker-stable] .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light [data-poker-stable] .text-emerald-300 {
+  color: #059669 !important;
+}
+html.light [data-poker-stable] .text-rose-300 {
+  color: #be123c !important;
+}
+html.light [data-poker-stable] .text-amber-200\/80,
+html.light [data-poker-stable] .text-amber-200\/90 {
+  color: #92400e !important;
+}
+html.light [data-poker-stable] .from-amber-950\/50 {
+  --tw-gradient-from: #fffbeb !important;
+}
+html.light [data-poker-stable] .to-zinc-900\/80,
+html.light [data-poker-stable] .to-zinc-900\/90 {
+  --tw-gradient-to: #ffffff !important;
+}
+html.light [data-poker-stable] .bg-zinc-900\/50,
+html.light [data-poker-stable] .bg-zinc-900\/60,
+html.light [data-poker-stable] .bg-zinc-900\/70 {
+  background-color: #ffffff !important;
+}
+html.light [data-poker-stable] .border-zinc-800,
+html.light [data-poker-stable] .border-zinc-800\/80 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable] .border-zinc-700\/50,
+html.light [data-poker-stable] .border-zinc-700\/80 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-stable] .border-zinc-600\/80 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-stable] .bg-zinc-800\/80 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-stable] .active\:bg-zinc-800\/80:active {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-portfolio-hero] {
+  background: linear-gradient(to bottom right, #fffbeb, #ffffff) !important;
+  border-color: var(--poker-stable-chrome-border) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .border-amber-400\/40 {
+  border-color: #fcd34d !important;
+}
+html.light [data-poker-stable] [data-poker-stable-edit-btn] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+  color: #52525b !important;
+}
+html.light [data-poker-stable] [data-poker-stable-edit-btn]:active {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-adjust-bankroll] {
+  background-color: #fafafa !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-adjust-bankroll] input {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+html.light [data-poker-stable] [data-poker-stable-tabs] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] {
+  background: linear-gradient(to bottom right, #fffbeb, #ffffff) !important;
+  border-color: var(--poker-stable-chrome-border) !important;
+}
+html.light [data-poker-stable] [data-poker-stake-archive-card] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable] [data-poker-stake-archive-card]:active {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-locations] .rounded-2xl.border-zinc-800 {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-trend] .rounded-2xl.border-zinc-800 {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-trend] input[type='checkbox'] {
+  border-color: #a1a1aa !important;
+  accent-color: #d97706 !important;
+}
+
+/* Portaled Stable sheets — light mode only */
+html.light [data-poker-stable-portfolio-info-modal] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .text-amber-200\/90 {
+  color: #b45309 !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .border-zinc-800 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+  color: #52525b !important;
+}
+html.light [data-poker-stable-portfolio-info-modal] .active\:bg-zinc-700:active {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-attention-sheet] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-attention-sheet] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable-attention-sheet] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-attention-sheet] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-attention-sheet] .border-zinc-700\/80 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-attention-sheet] .bg-zinc-900\/60 {
+  background-color: #fafafa !important;
 }
 
 html.light [data-poker-bankroll] [data-poker-incoming-swaps] button.border-zinc-600\/80 {

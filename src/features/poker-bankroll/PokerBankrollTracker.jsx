@@ -72,6 +72,7 @@ import { playerSelfOwnedActionPct } from '../poker-stable/pokerStableMath.js'
 import {
   fmtPoker$,
   fmtPokerDuration,
+  pokerPlTone,
   formatDurationHoursField,
   localDateTimeToIso,
   localYmd,
@@ -3378,7 +3379,6 @@ export default function PokerBankrollTracker({
                   slices,
                   settlements: dealSettlementsByDeal[deal.id] || [],
                 })
-                const personalNeutral = Math.abs(personalNet) < 0.005
                 const outcomeLabel = archivedStakeOutcomeLabel(deal, slices)
                 return (
                   <li key={deal.id}>
@@ -3421,13 +3421,8 @@ export default function PokerBankrollTracker({
                         {fmtPoker$(deal.baseline_bankroll)}
                       </p>
                       <p
-                        className={`text-[11px] font-semibold tabular-nums ${
-                          personalNeutral
-                            ? 'text-zinc-500'
-                            : personalNet >= 0
-                              ? 'text-emerald-400'
-                              : 'text-rose-400'
-                        }`}
+                        data-poker-pl-tone={pokerPlTone(personalNet)}
+                        className="text-[11px] font-semibold tabular-nums"
                       >
                         Personal bankroll {fmtPoker$(personalNet)}
                         {(() => {

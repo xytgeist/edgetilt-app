@@ -22,6 +22,12 @@ export function fmtPoker$(n) {
   return num < 0 ? `-${str}` : str
 }
 
+/** @param {number | null | undefined} n @returns {'gain' | 'loss' | 'neutral'} */
+export function pokerPlTone(n) {
+  if (n == null || Number.isNaN(Number(n)) || Math.abs(Number(n)) < 0.005) return 'neutral'
+  return Number(n) > 0 ? 'gain' : 'loss'
+}
+
 /**
  * Hours played for a session.
  * Active sessions (no end_at) use a live clock. Completed tournaments without

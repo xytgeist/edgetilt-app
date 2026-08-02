@@ -3,6 +3,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import {
   fmtPoker$,
   fmtPokerBbPerHour,
+  pokerPlTone,
   pokerSessionBbPerHour,
   pokerSessionDurationHours,
   pokerSessionWinLoss,
@@ -28,6 +29,23 @@ function formatArchiveDate(iso) {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+/** Shared break between summary cards and the event timeline (player + backer archive). */
+function StakeArchiveHistoryDivider() {
+  return (
+    <div
+      data-poker-stake-archive-history-divider
+      className="mb-4 mt-5 border-t-2 border-zinc-700/80 pt-4"
+    >
+      <div className="flex items-center gap-3">
+        <h4 className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+          History
+        </h4>
+        <div className="h-px min-w-0 flex-1 bg-zinc-700/70" aria-hidden />
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -92,7 +110,6 @@ export default function PokerStakeArchiveDetailModal({
     sessions,
     viewerUserId,
   })
-  const sessionShareNeutral = Math.abs(sessionShareTotal) < 0.005
   const viewerSlice = viewerBackingSlice(slices, viewerUserId)
   const viewerActionPct = viewerSlice ? Number(viewerSlice.action_pct) || 0 : null
 
@@ -135,26 +152,21 @@ export default function PokerStakeArchiveDetailModal({
           <>
             <div
               data-poker-stake-archive-summary
-              data-poker-stake-archive-summary-kind="session-share"
+              data-poker-stake-archive-summary-kind="horse-performance"
               data-elevated-card="surface"
               className="mb-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-3"
             >
               <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-                Session share
+                {playerDisplayName} performance
               </div>
               <div
-                className={`mt-0.5 text-xl font-black tabular-nums ${
-                  sessionShareNeutral
-                    ? 'text-zinc-400'
-                    : sessionShareTotal >= 0
-                      ? 'text-emerald-400'
-                      : 'text-rose-400'
-                }`}
+                data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
+                className="mt-0.5 text-xl font-black tabular-nums"
               >
                 {fmtPoker$(sessionShareTotal)}
               </div>
               <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-                Gross session W/L × your action % on completed sessions for this horse.
+                How this horse played for your slice (not settle cash). Gross W/L × your action %.
               </p>
             </div>
             <div
@@ -167,13 +179,8 @@ export default function PokerStakeArchiveDetailModal({
                 Realized backing
               </div>
               <div
-                className={`mt-0.5 text-xl font-black tabular-nums ${
-                  realizedBackingNeutral
-                    ? 'text-zinc-400'
-                    : realizedBackingNet >= 0
-                      ? 'text-emerald-400'
-                      : 'text-rose-400'
-                }`}
+                data-poker-pl-tone={pokerPlTone(realizedBackingNet)}
+                className="mt-0.5 text-xl font-black tabular-nums"
               >
                 {fmtPoker$(realizedBackingNet)}
               </div>
@@ -192,15 +199,10 @@ export default function PokerStakeArchiveDetailModal({
                       className="flex items-baseline justify-between gap-3 text-[11px]"
                     >
                       <span className="text-zinc-500">{row.label}</span>
-                      <span
-                        className={`shrink-0 font-semibold tabular-nums ${
-                          Math.abs(row.credit) < 0.005
-                            ? 'text-zinc-500'
-                            : row.credit >= 0
-                              ? 'text-emerald-400'
-                              : 'text-rose-400'
-                        }`}
-                      >
+                  <span
+                    data-poker-pl-tone={pokerPlTone(row.credit)}
+                    className="shrink-0 font-semibold tabular-nums"
+                  >
                         {Math.abs(row.credit) < 0.005 ? '$0' : fmtPoker$(row.credit)}
                       </span>
                     </li>
@@ -212,6 +214,7 @@ export default function PokerStakeArchiveDetailModal({
         ) : (
           <div
             data-poker-stake-archive-summary
+            data-poker-stake-archive-summary-kind="personal-bankroll"
             data-elevated-card="surface"
             className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 px-4 py-3"
           >
@@ -219,13 +222,8 @@ export default function PokerStakeArchiveDetailModal({
               Personal bankroll
             </div>
             <div
-              className={`mt-0.5 text-xl font-black tabular-nums ${
-                personalBankrollNeutral
-                  ? 'text-zinc-400'
-                  : personalBankrollNet >= 0
-                    ? 'text-emerald-400'
-                    : 'text-rose-400'
-              }`}
+              data-poker-pl-tone={pokerPlTone(personalBankrollNet)}
+              className="mt-0.5 text-xl font-black tabular-nums"
             >
               {fmtPoker$(personalBankrollNet)}
             </div>
@@ -244,15 +242,10 @@ export default function PokerStakeArchiveDetailModal({
                     className="flex items-baseline justify-between gap-3 text-[11px]"
                   >
                     <span className="text-zinc-500">{row.label}</span>
-                    <span
-                      className={`shrink-0 font-semibold tabular-nums ${
-                        Math.abs(row.credit) < 0.005
-                          ? 'text-zinc-500'
-                          : row.credit >= 0
-                            ? 'text-emerald-400'
-                            : 'text-rose-400'
-                      }`}
-                    >
+                  <span
+                    data-poker-pl-tone={pokerPlTone(row.credit)}
+                    className="shrink-0 font-semibold tabular-nums"
+                  >
                       {Math.abs(row.credit) < 0.005 ? '$0' : fmtPoker$(row.credit)}
                     </span>
                   </li>
@@ -262,17 +255,7 @@ export default function PokerStakeArchiveDetailModal({
           </div>
         )}
 
-        <div
-          data-poker-stake-archive-history-divider
-          className="mb-4 mt-5 border-t-2 border-zinc-700/80 pt-4"
-        >
-          <div className="flex items-center gap-3">
-            <h4 className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              History
-            </h4>
-            <div className="h-px min-w-0 flex-1 bg-zinc-700/70" aria-hidden />
-          </div>
-        </div>
+        <StakeArchiveHistoryDivider />
 
         {timeline.length === 0 ? (
           <p className="py-10 text-center text-sm text-zinc-500">No history recorded for this stake.</p>

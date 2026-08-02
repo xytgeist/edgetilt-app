@@ -32,14 +32,9 @@ function viewerBackingSlice(dealId, slicesByDeal, userId) {
   )
 }
 
-/** Plot coordinate = backing bankroll floor + session performance (manual set shifts floor, not points). */
-function withCapitalFloor(capitalFloor, performance) {
-  return roundMoney(Number(capitalFloor) + Number(performance))
-}
-
 /**
  * Portfolio + per-horse cumulative session share (active + closed stakes).
- * Chart points move only on stake sessions; backing bankroll sets the y-axis floor.
+ * Session performance only ... deposits/withdrawals do not affect this chart.
  */
 export default function PokerStableTrendTab({
   horseDeals = [],
@@ -47,20 +42,18 @@ export default function PokerStableTrendTab({
   slicesByDeal = {},
   profilesById = {},
   userId,
-  liquidBankroll = 0,
 }) {
   const [portfolioOnly, setPortfolioOnly] = useState(false)
-  const capitalFloor = roundMoney(liquidBankroll)
 
   const chartBundle = useMemo(() => {
     const deals = [...horseDeals]
     /** @type {Record<string, number>} */
     const perfByDeal = {}
     /** @type {Record<string, number[]>} */
-    const horsePerformance = {}
+    const horseSeries = {}
     for (const deal of deals) {
       perfByDeal[deal.id] = 0
-      horsePerformance[deal.id] = [0]
+      horseSeries[deal.id] = [0]
     }
 
     const events = []
@@ -80,43 +73,30 @@ export default function PokerStableTrendTab({
     events.sort((a, b) => a.t - b.t)
 
     const labels = ['Start']
-    const portfolioPerf = [0]
+    const portfolio = [0]
 
     for (const ev of events) {
       const share = backerSliceSessionShare(ev.deal, ev.slice, ev.session)
       perfByDeal[ev.deal.id] = roundMoney(perfByDeal[ev.deal.id] + share)
-      let portPerf = 0
+      let port = 0
       for (const deal of deals) {
-        portPerf = roundMoney(portPerf + (perfByDeal[deal.id] || 0))
+        port = roundMoney(port + (perfByDeal[deal.id] || 0))
       }
       labels.push(formatTrendLabel(ev.session.start_at || ev.session.created_at))
-      portfolioPerf.push(portPerf)
+      portfolio.push(port)
       for (const deal of deals) {
-        horsePerformance[deal.id].push(perfByDeal[deal.id] || 0)
+        horseSeries[deal.id].push(perfByDeal[deal.id] || 0)
       }
     }
 
-    const portfolio = portfolioPerf.map((p) => withCapitalFloor(capitalFloor, p))
-    /** @type {Record<string, number[]>} */
-    const horseSeries = {}
-    for (const deal of deals) {
-      horseSeries[deal.id] = horsePerformance[deal.id].map((p) =>
-        withCapitalFloor(capitalFloor, p),
-      )
-    }
-
-    return { labels, portfolio, horseSeries, deals, capitalFloor }
-  }, [horseDeals, sessions, slicesByDeal, userId, capitalFloor])
+    return { labels, portfolio, horseSeries, deals }
+  }, [horseDeals, sessions, slicesByDeal, userId])
 
   const yScale = useMemo(() => {
-    const values = [
-      ...chartBundle.portfolio,
-      ...Object.values(chartBundle.horseSeries).flat(),
-      chartBundle.capitalFloor,
-    ]
-    const minVal = Math.min(...values, chartBundle.capitalFloor)
-    const maxVal = Math.max(...values, chartBundle.capitalFloor)
-    const pad = Math.max(500, (maxVal - minVal) * 0.08)
+    const values = [...chartBundle.portfolio, ...Object.values(chartBundle.horseSeries).flat(), 0]
+    const minVal = Math.min(...values)
+    const maxVal = Math.max(...values)
+    const pad = Math.max(500, Math.max(Math.abs(minVal), Math.abs(maxVal)) * 0.12)
     return {
       min: roundMoney(minVal - pad),
       max: roundMoney(maxVal + pad),
@@ -206,9 +186,8 @@ export default function PokerStableTrendTab({
         )}
       </div>
       <p className="mt-2 text-xs text-zinc-500">
-        Lines move only on stake sessions (your action % of gross results). Manual backing bankroll
-        sets the chart floor ({fmtPoker$(capitalFloor)}) without adding a jump point. Settle
-        crystallization is separate.
+        Stake session performance only (your action % of gross results). Deposits, withdrawals, and
+        settle crystallization do not move this chart.
       </p>
     </div>
   )

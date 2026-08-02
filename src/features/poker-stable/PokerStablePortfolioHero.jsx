@@ -10,20 +10,26 @@ export default function PokerStablePortfolioHero({
   metrics,
   hasProfile,
   saving = false,
-  onSetBankroll,
+  onDeposit,
+  onWithdraw,
   onNeedsAttention,
   pendingCommitCount = 0,
 }) {
-  const [editing, setEditing] = useState(false)
+  /** @type {null | 'deposit' | 'withdraw'} */
+  const [cashMode, setCashMode] = useState(null)
   const [input, setInput] = useState('')
 
   const m = metrics || {}
 
-  async function saveBankroll() {
+  async function submitCashMove() {
     const amt = parseMoneyInputNumber(input)
-    if (!Number.isFinite(amt) || amt < 0) return
-    await onSetBankroll?.(amt)
-    setEditing(false)
+    if (!Number.isFinite(amt) || amt <= 0) return
+    if (cashMode === 'deposit') {
+      await onDeposit?.(amt)
+    } else if (cashMode === 'withdraw') {
+      await onWithdraw?.(amt)
+    }
+    setCashMode(null)
     setInput('')
   }
 
@@ -91,42 +97,69 @@ export default function PokerStablePortfolioHero({
         </div>
       </div>
 
-      {editing ? (
-        <div className="mt-3 flex gap-2">
-          <MoneyInputField
-            value={input}
-            onChange={setInput}
-            placeholder={hasProfile ? 'New balance' : 'Starting bankroll'}
-            className="min-w-0 flex-1"
-          />
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void saveBankroll()}
-            className="rounded-xl bg-amber-600 px-4 text-sm font-bold text-white disabled:opacity-50"
-            data-poker-stable-primary-btn
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            className="rounded-xl bg-zinc-800 px-3 text-sm font-semibold text-zinc-300"
-          >
-            Cancel
-          </button>
+      {cashMode ? (
+        <div className="mt-3">
+          <p className="mb-2 text-xs text-zinc-400">
+            {cashMode === 'deposit'
+              ? 'Add capital to your backing bankroll. Does not change stake performance metrics or Trend.'
+              : 'Remove capital from your backing bankroll. Does not change stake performance metrics or Trend.'}
+          </p>
+          <div className="flex gap-2">
+            <MoneyInputField
+              value={input}
+              onChange={setInput}
+              placeholder={cashMode === 'deposit' ? 'Deposit amount' : 'Withdraw amount'}
+              className="min-w-0 flex-1"
+            />
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void submitCashMove()}
+              className={`rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${
+                cashMode === 'deposit' ? 'bg-emerald-600' : 'bg-rose-600'
+              }`}
+              data-poker-stable-primary-btn
+            >
+              {cashMode === 'deposit' ? 'Deposit' : 'Withdraw'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCashMode(null)
+                setInput('')
+              }}
+              className="rounded-xl bg-zinc-800 px-3 text-sm font-semibold text-zinc-300"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(true)
-            setInput(String(m.liquidBankroll ?? 0))
-          }}
-          className="mt-3 w-full rounded-xl bg-zinc-800/80 py-2 text-xs font-semibold text-zinc-300 touch-manipulation"
-        >
-          {hasProfile ? 'Update backing bankroll' : 'Set backing bankroll'}
-        </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setCashMode('deposit')
+              setInput('')
+            }}
+            className="rounded-xl bg-emerald-600/90 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-500"
+            data-poker-stable-deposit-btn
+          >
+            {hasProfile ? 'Deposit' : 'Deposit to start'}
+          </button>
+          <button
+            type="button"
+            disabled={!hasProfile && !(m.liquidBankroll > 0)}
+            onClick={() => {
+              setCashMode('withdraw')
+              setInput('')
+            }}
+            className="rounded-xl bg-zinc-800/90 py-2.5 text-sm font-bold text-zinc-200 touch-manipulation active:bg-zinc-700 disabled:opacity-40"
+            data-poker-stable-withdraw-btn
+          >
+            Withdraw
+          </button>
+        </div>
       )}
     </div>
   )

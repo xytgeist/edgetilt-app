@@ -33,7 +33,8 @@ import {
   loadMyStableDeals,
   loadPendingCommits,
   revokeHorseDeal,
-  setBackerBankroll,
+  depositBackerBankroll,
+  withdrawBackerBankroll,
   sliceDisplayName,
 } from './pokerStableApi.js'
 import { dealTypeLabel } from './pokerStableMath.js'
@@ -249,12 +250,12 @@ export default function PokerStableScreen({
     [deals, slicesByDeal, userId, bankrollByDeal, backerProfile],
   )
 
-  async function onSetBackerBankroll(amount) {
+  async function onDepositBackerBankroll(amount) {
     if (!supabaseClient) return
     setSaving(true)
     setError('')
     try {
-      const { profile, error: err } = await setBackerBankroll(supabaseClient, amount)
+      const { profile, error: err } = await depositBackerBankroll(supabaseClient, amount)
       if (err) throw err
       setBackerProfile((prev) => ({
         bankroll_balance: profile?.bankroll_balance ?? amount,
@@ -263,7 +264,27 @@ export default function PokerStableScreen({
       }))
       triggerTapHapticLight()
     } catch (e) {
-      setError(e?.message || 'Could not update backing bankroll.')
+      setError(e?.message || 'Could not deposit.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onWithdrawBackerBankroll(amount) {
+    if (!supabaseClient) return
+    setSaving(true)
+    setError('')
+    try {
+      const { profile, error: err } = await withdrawBackerBankroll(supabaseClient, amount)
+      if (err) throw err
+      setBackerProfile((prev) => ({
+        bankroll_balance: profile?.bankroll_balance ?? 0,
+        realized_backing_pl: prev?.realized_backing_pl ?? 0,
+        has_profile: true,
+      }))
+      triggerTapHapticLight()
+    } catch (e) {
+      setError(e?.message || 'Could not withdraw.')
     } finally {
       setSaving(false)
     }
@@ -420,7 +441,8 @@ export default function PokerStableScreen({
               metrics={portfolioMetrics}
               hasProfile={Boolean(backerProfile?.has_profile)}
               saving={saving}
-              onSetBankroll={onSetBackerBankroll}
+              onDeposit={onDepositBackerBankroll}
+              onWithdraw={onWithdrawBackerBankroll}
               pendingCommitCount={pendingCommits.length}
               onNeedsAttention={() => setAttentionOpen(true)}
             />
@@ -658,7 +680,6 @@ export default function PokerStableScreen({
             slicesByDeal={slicesByDeal}
             profilesById={profilesById}
             userId={userId}
-            liquidBankroll={backerProfile?.bankroll_balance ?? 0}
           />
         ) : null}
 

@@ -246,6 +246,36 @@ export async function loadBackerBankroll(supabase) {
 }
 
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {number} amount */
+export async function depositBackerBankroll(supabase, amount) {
+  const { data, error } = await supabase.rpc('poker_stable_backer_deposit', {
+    p_amount: roundMoney(amount),
+  })
+  if (error) return { profile: null, error }
+  return {
+    profile: {
+      bankroll_balance: Number(data?.bankroll_balance) || 0,
+      has_profile: true,
+    },
+    error: null,
+  }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {number} amount */
+export async function withdrawBackerBankroll(supabase, amount) {
+  const { data, error } = await supabase.rpc('poker_stable_backer_withdraw', {
+    p_amount: roundMoney(amount),
+  })
+  if (error) return { profile: null, error }
+  return {
+    profile: {
+      bankroll_balance: Number(data?.bankroll_balance) || 0,
+      has_profile: true,
+    },
+    error: null,
+  }
+}
+
+/** @deprecated Prefer depositBackerBankroll / withdrawBackerBankroll for manual capital moves. */
 export async function setBackerBankroll(supabase, amount) {
   const { data, error } = await supabase.rpc('poker_stable_set_backer_bankroll', {
     p_amount: roundMoney(amount),

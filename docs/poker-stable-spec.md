@@ -217,14 +217,14 @@ Stable no longer exposes player **+ New deal**. Syndicate slices on a backer req
 
 ### Backer Stable v1 (2026-08-02 test, in build)
 
-**Separate from player personal bankroll.** Backers maintain a **backing bankroll pool** (`poker_stable_backer_bankrolls`) ... optional starting balance set in Stable hero. Slice allocations (`poker_stable_backer_allocations`) debit the pool when the backer has set a balance with sufficient funds; otherwise allocation rows stay `pending` until funded.
+**Separate from player personal bankroll.** Backers use **`poker_stable_backer_bankrolls`**. **Deposit** / **Withdraw** (`20260802250000`) adjust liquid balance only ... no impact on Realized P/L, At risk, Stakes MTM, or Trend session chart.
 
 | Surface | Behavior |
 | --- | --- |
-| **Portfolio hero** | Liquid backing bankroll + **portfolio value** (liquid + stake MTM). Metrics: capital at risk, stake MTM, active horses, realized backing P/L. |
+| **Portfolio hero** | Liquid backing bankroll + **portfolio value** (liquid + stake MTM). **Deposit** / **Withdraw** buttons. Metrics: capital at risk, stake MTM, active horses, realized backing P/L. |
 | **Horse carousel** | Active/pending horses with roll, your stake MTM, est. share, sessions/P/L. |
 | **Overview tab** | Invites + carousel + **Closed stakes** history (not a separate ARCHIVE tab). |
-| **Trend tab** | Portfolio line + per-horse lines from on-stake **session history** (action % of gross W/L); includes **closed stakes**; terminal point = backing bankroll + active MTM. |
+| **Trend tab** | Session performance only (action % of gross W/L); deposits/withdrawals do not move the chart. |
 | **Locations tab** | Stable-wide venue rollup from on-stake sessions (active + closed); filter per horse. |
 | **Needs attention** | Pending **`poker_stable_deal_commits`** for counterparty ... **Commit to my books** action sheet. |
 | **Settle credits** | **Player:** personal Poker bankroll. **Backer:** Stable backing bankroll + Realized P/L (same signed settle $). **Never** cross-post between the two. |
@@ -367,6 +367,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-02:** **Backer deposit / withdraw (test):** migration **`20260802250000`** — manual capital moves adjust **`bankroll_balance`** only; hero **Deposit** / **Withdraw** buttons; Trend stays session-performance-only.
 - **2026-08-02:** **Stable Trend + Locations history (test):** migration **`20260802240000`** — backers read stake sessions on settled/revoked deals; fix session query columns (`start_at`, `venue_name`); Trend builds cumulative session-share lines for closed + active horses; Locations includes closed stakes in filters.
 - **2026-08-02:** **Backer bankroll routing (test):** migration **`20260802230000`** — all backer top-up / reduce / settle economics → **`poker_stable_backer_bankrolls`** (never **`poker_bankroll_profiles`**). Settle mirrors signed $ to **Realized P/L**. Player settle credits personal unchanged.
 - **2026-08-02:** **Backer Stable v1 UI (test, in build):** migration **`20260802220000`** — backing bankroll pool + slice allocations; Stable upgraded in place (portfolio hero, horse carousel, Overview/Trend/Locations tabs, closed stakes on overview, **Needs attention** commit sheet). Unilateral commit/sync from **`20260802210000`** retained. Apply SQL on test before smoke.

@@ -488,12 +488,13 @@ export default function PokerStableDealTermsSheet({
           deal={deal}
           slices={slices}
           dealRoll={dealRoll}
+          profilesById={profilesById}
           saving={saving}
           onClose={() => setPeriodicSettleOpen(false)}
           onError={onError}
-          onConfirm={(rakebackAmount) => {
+          onConfirm={(rakebackAmount, stakeReductionAmount) => {
             onError?.('')
-            void onPeriodicSettle?.(rakebackAmount)
+            void onPeriodicSettle?.(rakebackAmount, stakeReductionAmount)
           }}
         />
       ) : null}

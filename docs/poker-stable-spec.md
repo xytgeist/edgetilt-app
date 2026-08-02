@@ -63,8 +63,17 @@ At deal create (or **Migrate existing**):
 
 Example: baseline $100k, roll $65k, Mike re-funds $40k → baseline **$140k**, roll **$105k**, makeup **$35k**.
 
-- Logged as deal event + optional payment ledger.
-- Multi-slice: default **deal-wide baseline bump** (Ryan confirmed Mike example).
+- Logged as deal event.
+- Multi-slice: **deal-wide baseline bump** (Ryan confirmed Mike example).
+- Edge backers: personal bankroll **debited** pro-rata by action % (`poker_stable_record_topup`, **`20260802190000`**).
+
+## Reduce stake
+
+Inverse of top-up: lowers baseline and roll by the reduction amount.
+
+- Standalone: **`poker_stable_record_reduction`** on deal detail.
+- With periodic settle: optional **new baseline** on propose; applied after settle roll reset.
+- Edge backers: personal bankroll **credited** pro-rata by action % (same split as top-up debit).
 
 ---
 

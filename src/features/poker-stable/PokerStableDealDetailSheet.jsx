@@ -11,6 +11,7 @@ import {
   loadPendingSettlementRequest,
   periodicSettleBackingDeal,
   recordDealTopup,
+  recordDealReduction,
   respondToSettlementRequest,
   sliceDisplayName,
 } from './pokerStableApi.js'
@@ -25,6 +26,7 @@ import {
   computeDealMakeup,
   computeProfitAboveBaseline,
   dealTypeLabel,
+  maxStakeReductionAmount,
 } from './pokerStableMath.js'
 import {
   canProposeSettleStake,
@@ -51,6 +53,7 @@ export default function PokerStableDealDetailSheet({
   onOpenPokerBankroll,
 }) {
   const [topupAmount, setTopupAmount] = useState('')
+  const [reduceAmount, setReduceAmount] = useState('')
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [ledgerEntries, setLedgerEntries] = useState([])
@@ -68,6 +71,7 @@ export default function PokerStableDealDetailSheet({
   const baseline = deal?.baseline_bankroll ?? 0
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
   const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
+  const maxReduction = maxStakeReductionAmount(baseline, rollValue)
 
   const loadLedger = useCallback(async () => {
     if (!supabaseClient || !deal?.id) return
@@ -108,7 +112,6 @@ export default function PokerStableDealDetailSheet({
     try {
       const { error } = await recordDealTopup(supabaseClient, {
         dealId: deal.id,
-        stakeeUserId: userId,
         amount: parseMoneyInputNumber(topupAmount),
       })
       if (error) throw error
@@ -123,7 +126,37 @@ export default function PokerStableDealDetailSheet({
     }
   }
 
-  async function confirmPeriodicSettle(rakebackAmount) {
+  async function onReduceStake() {
+    if (!isStakee || !deal) return
+    const amt = parseMoneyInputNumber(reduceAmount)
+    if (!Number.isFinite(amt) || amt <= 0) {
+      onError('Enter a reduction amount.')
+      return
+    }
+    if (amt > maxReduction + 0.005) {
+      onError(`Reduction cannot exceed ${fmtPoker$(maxReduction)}.`)
+      return
+    }
+    onSavingChange(true)
+    onError('')
+    try {
+      const { error } = await recordDealReduction(supabaseClient, {
+        dealId: deal.id,
+        amount: amt,
+      })
+      if (error) throw error
+      setReduceAmount('')
+      triggerTapHapticLight()
+      await onRefresh()
+      await loadLedger()
+    } catch (e) {
+      onError(e?.message || 'Reduction failed.')
+    } finally {
+      onSavingChange(false)
+    }
+  }
+
+  async function confirmPeriodicSettle(rakebackAmount, stakeReductionAmount = 0) {
     if (!canProposeSettle || !deal) return
     onSavingChange(true)
     onError('')
@@ -131,6 +164,7 @@ export default function PokerStableDealDetailSheet({
       const { error, immediate, requestId } = await periodicSettleBackingDeal(supabaseClient, {
         dealId: deal.id,
         rakebackTotal: rakebackAmount,
+        stakeReductionTotal: stakeReductionAmount,
       })
       if (error) throw error
       triggerTapHapticLight()
@@ -346,11 +380,14 @@ export default function PokerStableDealDetailSheet({
           </>
         ) : null}
 
-        {isStakee && canProposeSettle ? (
+        {isStakee && deal.status === 'active' ? (
           <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Top-up stake
             </h4>
+            <p className="mb-2 text-xs text-zinc-500">
+              Increases baseline and roll. Edge backers are debited their action % share (pro-rata).
+            </p>
             <div className="mb-4 flex gap-2">
               <MoneyInputField
                 value={topupAmount}
@@ -367,6 +404,31 @@ export default function PokerStableDealDetailSheet({
                 className="rounded-2xl bg-amber-600 px-4 text-sm font-bold text-white disabled:opacity-50"
               >
                 Add
+              </button>
+            </div>
+
+            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Reduce stake
+            </h4>
+            <p className="mb-2 text-xs text-zinc-500">
+              Lowers baseline and roll (max {fmtPoker$(maxReduction)}). Backers credited pro-rata.
+              For settle + reduce together, use periodic settle below.
+            </p>
+            <div className="mb-4 flex gap-2">
+              <MoneyInputField
+                value={reduceAmount}
+                onChange={setReduceAmount}
+                placeholder="Amount"
+                focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                className="min-w-0 flex-1"
+              />
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void onReduceStake()}
+                className="rounded-2xl bg-zinc-700 px-4 text-sm font-bold text-white disabled:opacity-50"
+              >
+                Reduce
               </button>
             </div>
           </>
@@ -418,10 +480,13 @@ export default function PokerStableDealDetailSheet({
           deal={deal}
           slices={slices}
           dealRoll={roll}
+          profilesById={profilesById}
           saving={saving}
           onClose={() => setPeriodicSettleOpen(false)}
           onError={onError}
-          onConfirm={(rakebackAmount) => void confirmPeriodicSettle(rakebackAmount)}
+          onConfirm={(rakebackAmount, stakeReductionAmount) =>
+            void confirmPeriodicSettle(rakebackAmount, stakeReductionAmount)
+          }
         />
       ) : null}
 

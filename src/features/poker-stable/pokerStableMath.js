@@ -105,6 +105,32 @@ export function computeDealSettlement(deal, slices, rakebackTotal = 0) {
   }
 }
 
+/**
+ * Pro-rata Edge backer shares of a deal-wide top-up or reduction (by action %).
+ * @param {object[]} slices
+ * @param {number} amount
+ */
+export function computeProRataBackerShares(slices, amount) {
+  const amt = roundMoney(amount)
+  if (amt <= 0) return []
+  const active = (slices || []).filter((s) => s.status === 'active')
+  const totalAction = active.reduce((sum, s) => sum + stableNum(s.action_pct), 0)
+  if (totalAction <= 0) return []
+  return active
+    .filter((s) => s.counterparty_kind === 'user' && s.staker_user_id)
+    .map((s) => ({
+      sliceId: s.id,
+      stakerUserId: s.staker_user_id,
+      actionPct: stableNum(s.action_pct),
+      share: roundMoney(amt * (stableNum(s.action_pct) / totalAction)),
+    }))
+}
+
+/** @param {number} baseline @param {number} roll */
+export function maxStakeReductionAmount(baseline, roll) {
+  return roundMoney(Math.max(0, Math.min(stableNum(baseline), stableNum(roll))))
+}
+
 function fmtLedgerAmt(n) {
   return `$${roundMoney(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
 }

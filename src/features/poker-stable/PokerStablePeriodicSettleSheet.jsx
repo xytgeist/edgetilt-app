@@ -6,10 +6,14 @@ import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   computeDealMakeup,
   computeDealSettlement,
+  computeProRataBackerShares,
   computeProfitAboveBaseline,
+  maxStakeReductionAmount,
+  roundMoney,
   dealTypeLabel,
 } from './pokerStableMath.js'
 import { dealHasMakeup, dealHasRakebackEnabled } from './pokerStableTerms.js'
+import { sliceDisplayName } from './pokerStableApi.js'
 
 /**
  * Periodic settle review screen before the stakee confirms.
@@ -18,15 +22,20 @@ export default function PokerStablePeriodicSettleSheet({
   deal,
   slices = [],
   dealRoll = null,
+  profilesById = {},
   saving = false,
   onClose,
   onConfirm,
   onError,
 }) {
   const [rakebackTotal, setRakebackTotal] = useState('')
+  const [reduceStake, setReduceStake] = useState(false)
+  const [newBaselineInput, setNewBaselineInput] = useState('')
 
   useEffect(() => {
     setRakebackTotal('')
+    setReduceStake(false)
+    setNewBaselineInput('')
   }, [deal?.id])
 
   if (!deal) return null
@@ -39,6 +48,21 @@ export default function PokerStablePeriodicSettleSheet({
   const showMakeup = dealHasMakeup(deal)
   const showRakeback = dealHasRakebackEnabled(slices, deal)
   const rakebackAmount = parseMoneyInputNumber(rakebackTotal) || 0
+  const maxReduction = maxStakeReductionAmount(baseline, rollValue)
+
+  const newBaselineValue = parseMoneyInputNumber(newBaselineInput)
+  const hasNewBaselineInput = String(newBaselineInput || '').trim().length > 0
+  const newBaselineValid =
+    hasNewBaselineInput && Number.isFinite(newBaselineValue) && newBaselineValue >= 0
+  const reductionAmount =
+    reduceStake && newBaselineValid
+      ? roundMoney(Math.max(0, baseline - newBaselineValue))
+      : 0
+  const newBaselineTooHigh =
+    reduceStake && newBaselineValid && newBaselineValue >= baseline - 0.005
+  const reductionTooLarge = reductionAmount > maxReduction + 0.005
+  const reduceInputIncomplete = reduceStake && !newBaselineValid
+  const reduceInvalid = reduceStake && (newBaselineTooHigh || reductionTooLarge || reduceInputIncomplete)
 
   const settlement = useMemo(
     () =>
@@ -50,6 +74,15 @@ export default function PokerStablePeriodicSettleSheet({
     [deal, slices, baseline, rollValue, rakebackAmount],
   )
 
+  const backerReductionShares = useMemo(
+    () => computeProRataBackerShares(slices, reductionAmount),
+    [slices, reductionAmount],
+  )
+
+  const baselineAfterReduction =
+    reduceStake && newBaselineValid && !newBaselineTooHigh
+      ? roundMoney(newBaselineValue)
+      : baseline
   const playerCredit = settlement.player_net
 
   return (
@@ -120,8 +153,101 @@ export default function PokerStablePeriodicSettleSheet({
             {fmtPoker$(playerCredit)}
           </div>
           <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-            Stake roll resets to {fmtPoker$(baseline)} and the stake stays open for more sessions.
+            Stake roll resets to {fmtPoker$(baseline)}
+            {reduceStake && reductionAmount > 0
+              ? `, then reduces to ${fmtPoker$(baselineAfterReduction)}`
+              : ''}{' '}
+            and the stake stays open for more sessions.
           </p>
+        </div>
+
+        <div className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/40 p-3">
+          <label className="flex cursor-pointer items-start gap-3 touch-manipulation">
+            <input
+              type="checkbox"
+              checked={reduceStake}
+              onChange={(e) => {
+                setReduceStake(e.target.checked)
+                if (!e.target.checked) setNewBaselineInput('')
+              }}
+              className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500/40"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-zinc-200">Reduce stake</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
+                After settle, lower baseline and roll by the reduction amount. Each Edge
+                backer&apos;s personal bankroll is credited their action % share of that reduction
+                (the inverse of a top-up).
+              </span>
+            </span>
+          </label>
+
+          {reduceStake && reductionAmount > 0.005 ? (
+            <p className="mt-2 text-xs leading-relaxed text-cyan-200/90">
+              Backers&apos; personal bankrolls will be credited{' '}
+              <span className="font-semibold tabular-nums">{fmtPoker$(reductionAmount)}</span>{' '}
+              total, split by action % (see below).
+            </p>
+          ) : reduceStake ? (
+            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+              Enter a new baseline below current {fmtPoker$(baseline)}. Backers are credited the
+              reduction pro-rata to personal bankroll.
+            </p>
+          ) : null}
+
+          {reduceStake ? (
+            <div className="mt-3 flex items-end gap-3">
+              <div className="min-w-0 flex-1">
+                <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                  New bankroll baseline
+                </label>
+                <MoneyInputField
+                  value={newBaselineInput}
+                  onChange={setNewBaselineInput}
+                  placeholder={`Below ${fmtPoker$(baseline)}`}
+                  focusRingClass="focus:ring-2 focus:ring-amber-500/40"
+                />
+              </div>
+              {reductionAmount > 0.005 ? (
+                <div className="shrink-0 pb-2 text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                    Reduction
+                  </div>
+                  <div className="mt-0.5 text-base font-bold tabular-nums text-cyan-200">
+                    {fmtPoker$(reductionAmount)}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {reduceStake && newBaselineTooHigh ? (
+            <p className="mt-2 text-xs font-semibold text-rose-300">
+              New baseline must be below {fmtPoker$(baseline)}.
+            </p>
+          ) : null}
+          {reduceStake && !newBaselineTooHigh && reductionTooLarge ? (
+            <p className="mt-2 text-xs font-semibold text-rose-300">
+              Reduction cannot exceed {fmtPoker$(maxReduction)}.
+            </p>
+          ) : null}
+          {reduceStake && reductionAmount > 0.005 && backerReductionShares.length ? (
+            <div className="mt-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-400">
+              {backerReductionShares.map((row) => (
+                <div key={row.sliceId} className="flex justify-between gap-2 py-0.5">
+                  <span>
+                    {sliceDisplayName(
+                      slices.find((s) => s.id === row.sliceId) || {},
+                      profilesById,
+                    )}
+                  </span>
+                  <span className="font-semibold tabular-nums text-cyan-200">
+                    +{fmtPoker$(row.share)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <p className="mb-4 text-xs leading-relaxed text-zinc-500">
@@ -142,15 +268,25 @@ export default function PokerStablePeriodicSettleSheet({
 
         <button
           type="button"
-          disabled={saving}
+          disabled={saving || reduceInvalid}
           onClick={() => {
             onError?.('')
-            void onConfirm?.(rakebackAmount)
+            if (reduceInvalid) {
+              if (reduceInputIncomplete) {
+                onError?.('Enter a new bankroll baseline.')
+              } else if (newBaselineTooHigh) {
+                onError?.(`New baseline must be below ${fmtPoker$(baseline)}.`)
+              } else if (reductionTooLarge) {
+                onError?.(`Reduction cannot exceed ${fmtPoker$(maxReduction)}.`)
+              }
+              return
+            }
+            void onConfirm?.(rakebackAmount, reductionAmount)
           }}
           data-poker-stable-periodic-settle-confirm-btn
           className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
         >
-          {saving ? 'Settling…' : 'Confirm periodic settle'}
+          {saving ? 'Proposing…' : 'Propose periodic settle'}
         </button>
       </div>
     </div>

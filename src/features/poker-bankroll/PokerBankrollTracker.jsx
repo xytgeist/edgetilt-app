@@ -53,6 +53,7 @@ import {
   loadDealSettlements,
   loadDealSlices,
   loadDealTopups,
+  loadDealReductions,
   loadMyStableDeals,
   notifyStableSessionComplete,
   periodicSettleBackingDeal,
@@ -298,6 +299,7 @@ export default function PokerBankrollTracker({
   const [dealProfiles, setDealProfiles] = useState({})
   /** @type {Record<string, object[]>} */
   const [dealTopupsByDeal, setDealTopupsByDeal] = useState({})
+  const [dealReductionsByDeal, setDealReductionsByDeal] = useState({})
   /** @type {Record<string, object[]>} */
   const [dealSettlementsByDeal, setDealSettlementsByDeal] = useState({})
   /** @type {'personal' | string} personal or deal id */
@@ -682,24 +684,35 @@ export default function PokerBankrollTracker({
         setDealProfiles(byDeal)
 
         const topupsByDeal = {}
+        const reductionsByDeal = {}
         const settlementsByDeal = {}
         await Promise.all(
           dealIds.map(async (dealId) => {
-            const [{ topups, error: topErr }, { settlements, error: stErr }] = await Promise.all([
+            const [
+              { topups, error: topErr },
+              { reductions, error: redErr },
+              { settlements, error: stErr },
+            ] = await Promise.all([
               loadDealTopups(supabaseClient, dealId),
+              loadDealReductions(supabaseClient, dealId),
               loadDealSettlements(supabaseClient, dealId),
             ])
             if (topErr && !isMissingStableTableError(topErr)) {
               console.warn('[poker-bankroll] deal topups load failed', topErr.message)
             }
+            if (redErr && !isMissingStableTableError(redErr)) {
+              console.warn('[poker-bankroll] deal reductions load failed', redErr.message)
+            }
             if (stErr && !isMissingStableTableError(stErr)) {
               console.warn('[poker-bankroll] deal settlements load failed', stErr.message)
             }
             topupsByDeal[dealId] = topups || []
+            reductionsByDeal[dealId] = reductions || []
             settlementsByDeal[dealId] = settlements || []
           }),
         )
         setDealTopupsByDeal(topupsByDeal)
+        setDealReductionsByDeal(reductionsByDeal)
         setDealSettlementsByDeal(settlementsByDeal)
       }
 
@@ -1203,18 +1216,21 @@ export default function PokerBankrollTracker({
     }, 6500)
   }
 
-  async function runPeriodicSettle(dealId, rakebackTotal) {
+  async function runPeriodicSettle(dealId, rakebackTotal, stakeReductionTotal = 0) {
     setStableSaving(true)
     setError('')
     try {
       const { error, immediate } = await periodicSettleBackingDeal(supabaseClient, {
         dealId,
         rakebackTotal,
+        stakeReductionTotal,
       })
       if (error) throw error
       showStakeNotice(
         immediate
-          ? 'Periodic settle complete ... roll reset to baseline.'
+          ? stakeReductionTotal > 0
+            ? 'Periodic settle complete ... roll reset and stake reduced.'
+            : 'Periodic settle complete ... roll reset to baseline.'
           : 'Settlement proposed ... waiting for backer confirmation.',
       )
       if (immediate) setTermsDealId(null)
@@ -3541,7 +3557,9 @@ export default function PokerBankrollTracker({
             }
           }}
           dealRoll={dealProfiles[termsDealId] ?? null}
-          onPeriodicSettle={(rakebackTotal) => runPeriodicSettle(termsDealId, rakebackTotal)}
+          onPeriodicSettle={(rakebackTotal, stakeReductionTotal) =>
+            runPeriodicSettle(termsDealId, rakebackTotal, stakeReductionTotal)
+          }
           onCloseStake={(rakebackTotal) => runCloseStake(termsDealId, rakebackTotal)}
           onOpenLedger={() => {
             const dealId = termsDealId

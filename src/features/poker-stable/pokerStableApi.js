@@ -244,6 +244,16 @@ export async function loadDealTopups(supabase, dealId) {
   return { topups: data || [], error }
 }
 
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase @param {string} dealId */
+export async function loadDealReductions(supabase, dealId) {
+  const { data, error } = await supabase
+    .from('poker_stable_deal_reductions')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+  return { reductions: data || [], error }
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
@@ -1060,60 +1070,47 @@ export async function revokeHorseDeal(supabase, dealId, stakerUserId) {
  * @param {object} args
  */
 export async function recordDealTopup(supabase, args) {
-  const { dealId, stakeeUserId, amount, fundedBySliceId, fundingMode = 'deal_wide', note } = args
+  const { dealId, amount, note } = args
   const amt = roundMoney(amount)
   if (amt <= 0) return { topup: null, error: new Error('Enter a positive amount.') }
 
-  const { data: deal, error: dErr } = await supabase
-    .from('poker_stable_deals')
-    .select('id, baseline_bankroll, status')
-    .eq('id', dealId)
-    .eq('stakee_user_id', stakeeUserId)
-    .eq('status', 'active')
-    .single()
-  if (dErr) return { topup: null, error: dErr }
+  const { data: topupId, error } = await supabase.rpc('poker_stable_record_topup', {
+    p_deal_id: dealId,
+    p_amount: amt,
+    p_note: note?.trim() || null,
+  })
+  if (error) return { topup: null, error }
 
-  const { data: profile, error: pErr } = await supabase
-    .from('poker_deal_bankroll_profiles')
-    .select('overall_bankroll')
-    .eq('deal_id', dealId)
-    .single()
-  if (pErr) return { topup: null, error: pErr }
-
-  const baselineBefore = stableNum(deal.baseline_bankroll)
-  const rollBefore = stableNum(profile.overall_bankroll)
-  const baselineAfter = roundMoney(baselineBefore + amt)
-  const rollAfter = roundMoney(rollBefore + amt)
-
-  const { data: topup, error: tErr } = await supabase
+  const { data: topup, error: loadErr } = await supabase
     .from('poker_stable_deal_topups')
-    .insert({
-      deal_id: dealId,
-      amount: amt,
-      funded_by_slice_id: fundedBySliceId || null,
-      funding_mode: fundingMode,
-      baseline_before: baselineBefore,
-      baseline_after: baselineAfter,
-      roll_before: rollBefore,
-      roll_after: rollAfter,
-      logged_by_user_id: stakeeUserId,
-      note: note?.trim() || null,
-    })
     .select('*')
-    .single()
-  if (tErr) return { topup: null, error: tErr }
+    .eq('id', topupId)
+    .maybeSingle()
+  return { topup: topup || null, error: loadErr }
+}
 
-  const { error: uDeal } = await supabase
-    .from('poker_stable_deals')
-    .update({ baseline_bankroll: baselineAfter })
-    .eq('id', dealId)
-  if (uDeal) return { topup, error: uDeal }
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {object} args
+ */
+export async function recordDealReduction(supabase, args) {
+  const { dealId, amount, note } = args
+  const amt = roundMoney(amount)
+  if (amt <= 0) return { reduction: null, error: new Error('Enter a positive amount.') }
 
-  const { error: uRoll } = await supabase
-    .from('poker_deal_bankroll_profiles')
-    .update({ overall_bankroll: rollAfter })
-    .eq('deal_id', dealId)
-  return { topup, error: uRoll }
+  const { data: reductionId, error } = await supabase.rpc('poker_stable_record_reduction', {
+    p_deal_id: dealId,
+    p_amount: amt,
+    p_note: note?.trim() || null,
+  })
+  if (error) return { reduction: null, error }
+
+  const { data: reduction, error: loadErr } = await supabase
+    .from('poker_stable_deal_reductions')
+    .select('*')
+    .eq('id', reductionId)
+    .maybeSingle()
+  return { reduction: reduction || null, error: loadErr }
 }
 
 async function loadSettlementBundle(supabase, settlementId) {
@@ -1171,12 +1168,13 @@ async function loadSettlementBundle(supabase, settlementId) {
  * @param {object} args
  */
 export async function proposeSettlement(supabase, args) {
-  const { dealId, finalize = false, rakebackTotal = 0, note } = args
+  const { dealId, finalize = false, rakebackTotal = 0, stakeReductionTotal = 0, note } = args
   const { data, error } = await supabase.rpc('poker_stable_propose_settlement', {
     p_deal_id: dealId,
     p_finalize: finalize,
     p_rakeback_total: roundMoney(rakebackTotal),
     p_note: note?.trim() || null,
+    p_stake_reduction_total: roundMoney(stakeReductionTotal),
   })
   if (error) {
     return { immediate: false, settlement: null, requestId: null, lines: [], calc: null, error }
@@ -1263,8 +1261,14 @@ export async function loadSettlementRequest(supabase, requestId) {
  * @param {object} args
  */
 export async function periodicSettleBackingDeal(supabase, args) {
-  const { dealId, rakebackTotal = 0, note } = args
-  return proposeSettlement(supabase, { dealId, finalize: false, rakebackTotal, note })
+  const { dealId, rakebackTotal = 0, stakeReductionTotal = 0, note } = args
+  return proposeSettlement(supabase, {
+    dealId,
+    finalize: false,
+    rakebackTotal,
+    stakeReductionTotal,
+    note,
+  })
 }
 
 /**
@@ -1273,8 +1277,14 @@ export async function periodicSettleBackingDeal(supabase, args) {
  * @param {object} args
  */
 export async function closeBackingDeal(supabase, args) {
-  const { dealId, rakebackTotal = 0, note } = args
-  return proposeSettlement(supabase, { dealId, finalize: true, rakebackTotal, note })
+  const { dealId, rakebackTotal = 0, stakeReductionTotal = 0, note } = args
+  return proposeSettlement(supabase, {
+    dealId,
+    finalize: true,
+    rakebackTotal,
+    stakeReductionTotal,
+    note,
+  })
 }
 
 /**

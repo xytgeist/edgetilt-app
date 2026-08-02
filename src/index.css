@@ -4524,17 +4524,17 @@ html.light [data-slots-bankroll] [data-bankroll-card] .text-white {
   color: #18181b !important;
 }
 html.light [data-slots-bankroll] [data-session-card] {
-  background-color: #ffffff !important;
-  border-color: var(--slots-money) !important;
+  background-color: #ecfdf5 !important;
+  border-color: #059669 !important;
 }
 html.light [data-slots-bankroll] [data-session-card] .text-white {
   color: #18181b !important;
 }
 html.light [data-slots-bankroll] [data-session-card] .text-emerald-300 {
-  color: #1d4ed8 !important;
+  color: #047857 !important;
 }
 html.light [data-slots-bankroll] [data-session-card] .text-emerald-200 {
-  color: var(--slots-money-press) !important;
+  color: #047857 !important;
 }
 html.light [data-slots-bankroll] [data-session-card] .border-emerald-500\/60 {
   background-color: #ffffff !important;
@@ -5849,13 +5849,13 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 /* Active session card - light mode */
 html.light [data-session-card] {
   background-color: #ecfdf5 !important;
-  border-color: #6ee7b7 !important;
+  border-color: #059669 !important;
 }
 html.light [data-session-card] .text-emerald-300 {
-  color: #059669 !important;
+  color: #047857 !important;
 }
 html.light [data-session-card] .text-white {
-  color: #064e3b !important;
+  color: #18181b !important;
 }
 html.light [data-session-card] .text-zinc-400 {
   color: #6b7280 !important;
@@ -5875,25 +5875,6 @@ html.light [data-session-card] [data-poker-session-end-btn].text-white {
   background-color: #059669 !important; /* keep bright money green */
   border-color: #059669 !important;
   color: #ffffff !important; /* light label (session-card .text-white was forcing dark green) */
-}
-
-/* Poker Bankroll overview live session card (light mode) */
-html.light [data-poker-bankroll] [data-poker-live-session-card] {
-  background-color: #ffffff !important;
-  border-color: #d4d4d8 !important;
-}
-html.light [data-poker-bankroll] [data-poker-live-session-card] .text-white {
-  color: #18181b !important;
-}
-html.light [data-poker-bankroll] [data-poker-live-session-card] .text-emerald-300 {
-  color: #1d4ed8 !important;
-}
-html.light [data-poker-bankroll] [data-poker-live-session-card] .text-emerald-200 {
-  color: #047857 !important;
-}
-html.light [data-poker-bankroll] [data-poker-live-session-card] [data-poker-session-end-btn],
-html.light [data-poker-bankroll] [data-poker-live-session-card] [data-poker-session-end-btn].text-white {
-  color: #ffffff !important;
 }
 
 /* MoneyKeypad uses inline styles - no Tailwind overrides needed */

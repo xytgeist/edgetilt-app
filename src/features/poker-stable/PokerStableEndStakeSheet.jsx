@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import PokerStableSheetHeader from './PokerStableSheetHeader.jsx'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { computeDealMakeup, computeProfitAboveBaseline, dealTypeLabel } from './pokerStableMath.js'
@@ -40,7 +39,16 @@ export default function PokerStableEndStakeSheet({
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <PokerStableSheetHeader title="End stake" onClose={onClose} disabled={saving} />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-lg font-bold text-white">End stake</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+          >
+            Cancel
+          </button>
+        </div>
 
         <p className="mb-4 text-sm text-zinc-300">
           <span className="font-semibold text-white">{label}</span>

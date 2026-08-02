@@ -3,7 +3,6 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
 import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
-import PokerStableSheetHeader from './PokerStableSheetHeader.jsx'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { computeProfitAboveBaseline } from './pokerStableMath.js'
 import {
@@ -242,7 +241,16 @@ export default function PokerStableDealTermsSheet({
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <PokerStableSheetHeader title="Stake terms" onClose={onClose} />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-lg font-bold text-white">Stake terms</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+          >
+            Close
+          </button>
+        </div>
 
         {hasProposal && isStakee ? (
           <div

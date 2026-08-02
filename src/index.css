@@ -5379,23 +5379,6 @@ html.light [data-poker-stable-sheet] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
 }
-html.light [data-poker-stable-sheet] [data-poker-stable-sheet-close],
-html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-sheet-close],
-html.light [data-poker-stable-end-stake-sheet] [data-poker-stable-sheet-close],
-html.light [data-poker-stable-periodic-settle-sheet] [data-poker-stable-sheet-close],
-html.light [data-poker-stable-attention-sheet] [data-poker-stable-sheet-close],
-html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-sheet-close] {
-  background-color: #f4f4f5 !important;
-  color: #71717a !important;
-}
-html.light [data-poker-stable-sheet] [data-poker-stable-sheet-close]:active,
-html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-sheet-close]:active,
-html.light [data-poker-stable-end-stake-sheet] [data-poker-stable-sheet-close]:active,
-html.light [data-poker-stable-periodic-settle-sheet] [data-poker-stable-sheet-close]:active,
-html.light [data-poker-stable-attention-sheet] [data-poker-stable-sheet-close]:active,
-html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-sheet-close]:active {
-  background-color: #e4e4e7 !important;
-}
 html.light [data-poker-stable-sheet] .text-white {
   color: #18181b !important;
 }

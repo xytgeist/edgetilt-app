@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import PokerStableSheetHeader from './PokerStableSheetHeader.jsx'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
@@ -257,11 +256,19 @@ export default function PokerStableDealDetailSheet({
         className={`relative z-10 w-full max-w-lg max-h-[92vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <PokerStableSheetHeader
-          title={deal.label || 'Deal'}
-          subtitle={dealTypeLabel(deal.deal_type)}
-          onClose={onClose}
-        />
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-white">{deal.label || 'Deal'}</h3>
+            <p className="text-xs text-zinc-500">{dealTypeLabel(deal.deal_type)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+          >
+            Close
+          </button>
+        </div>
 
         {pendingCommits.length ? (
           <div className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-950/25 p-3">

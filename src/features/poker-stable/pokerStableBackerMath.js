@@ -82,13 +82,14 @@ export function computeBackerPortfolioMetrics({
   let pendingCommitCount = 0
 
   for (const deal of deals) {
+    if (!['active', 'pending'].includes(deal.status)) continue
+
     const slices = (slicesByDeal[deal.id] || []).filter(
       (s) => s.staker_user_id === userId && s.counterparty_kind === 'user',
     )
     if (!slices.length) continue
 
     const roll = bankrollByDeal[deal.id]
-    const isLive = deal.status === 'active' || deal.status === 'pending' || deal.status === 'revoked'
 
     for (const slice of slices) {
       if (slice.status !== 'active' && slice.status !== 'pending') continue
@@ -104,8 +105,6 @@ export function computeBackerPortfolioMetrics({
         stakeValueMtm = roundMoney(stakeValueMtm + allocated)
       }
     }
-
-    if (!isLive) continue
   }
 
   const portfolioValue = roundMoney(Number(liquidBankroll) + stakeValueMtm)

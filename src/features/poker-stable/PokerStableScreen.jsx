@@ -231,6 +231,11 @@ export default function PokerStableScreen({
     [deals, slicesByDeal, userId],
   )
 
+  const horseDeals = useMemo(
+    () => [...activeDeals, ...historyDeals],
+    [activeDeals, historyDeals],
+  )
+
   const portfolioMetrics = useMemo(
     () =>
       computeBackerPortfolioMetrics({
@@ -648,7 +653,8 @@ export default function PokerStableScreen({
 
         {activeTab === 'trend' && userId ? (
           <PokerStableTrendTab
-            activeDeals={activeDeals.filter((d) => d.status === 'active')}
+            horseDeals={horseDeals}
+            sessions={stableSessions}
             slicesByDeal={slicesByDeal}
             bankrollByDeal={bankrollByDeal}
             profilesById={profilesById}
@@ -660,7 +666,7 @@ export default function PokerStableScreen({
         {activeTab === 'locations' && userId ? (
           <PokerStableLocationsTab
             sessions={stableSessions}
-            activeDeals={activeDeals.filter((d) => d.status === 'active')}
+            horseDeals={horseDeals}
             slicesByDeal={slicesByDeal}
             profilesById={profilesById}
             userId={userId}

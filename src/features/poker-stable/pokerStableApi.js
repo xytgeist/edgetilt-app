@@ -266,11 +266,11 @@ export async function loadDealSessionsForStable(supabase, dealIds) {
   const { data, error } = await supabase
     .from('poker_bankroll_sessions')
     .select(
-      'id, deal_id, started_at, ended_at, win_loss, casino_name, game_variant, stakes_label, status, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings',
+      'id, deal_id, user_id, start_at, end_at, venue_name, venue_kind, session_type, game_variant, small_blind, big_blind, tournament_name, status, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, reentries, tables_count',
     )
     .in('deal_id', dealIds)
     .eq('status', 'completed')
-    .order('started_at', { ascending: true })
+    .order('start_at', { ascending: true })
   return { sessions: data || [], error }
 }
 

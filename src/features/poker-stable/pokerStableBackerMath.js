@@ -1,4 +1,5 @@
 import { roundMoney } from './pokerStableMath.js'
+import { pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
 
 /**
  * Backer's allocated capital for one slice (baseline × action %).
@@ -25,6 +26,19 @@ export function backerSliceStakeValue(deal, slice, dealRoll) {
     0
   const pct = Number(slice?.action_pct) || 0
   return roundMoney(roll * (pct / 100))
+}
+
+/**
+ * Backer's share of one completed stake session (gross session W/L × action %).
+ * @param {object} deal
+ * @param {object} slice
+ * @param {object} session
+ */
+export function backerSliceSessionShare(deal, slice, session) {
+  const wl = pokerSessionWinLoss(session)
+  if (wl == null) return 0
+  const pct = Number(slice?.action_pct) || 0
+  return roundMoney(wl * (pct / 100))
 }
 
 /**

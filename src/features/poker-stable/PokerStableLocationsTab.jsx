@@ -7,7 +7,7 @@ import { sliceDisplayName } from './pokerStableApi.js'
  */
 export default function PokerStableLocationsTab({
   sessions = [],
-  activeDeals = [],
+  horseDeals = [],
   slicesByDeal = {},
   profilesById = {},
   userId,
@@ -23,7 +23,7 @@ export default function PokerStableLocationsTab({
     /** @type {Map<string, { name: string, sessions: number, profit: number }>} */
     const map = new Map()
     for (const s of filteredSessions) {
-      const name = String(s.casino_name || s.stakes_label || 'Unknown').trim() || 'Unknown'
+      const name = String(s.venue_name || s.tournament_name || s.game_variant || 'Unknown').trim() || 'Unknown'
       const row = map.get(name) || { name, sessions: 0, profit: 0 }
       const wl = pokerSessionWinLoss(s) || 0
       row.sessions += 1
@@ -45,7 +45,7 @@ export default function PokerStableLocationsTab({
         >
           All horses
         </button>
-        {activeDeals.map((deal) => {
+        {horseDeals.map((deal) => {
           const slice = (slicesByDeal[deal.id] || []).find((s) => s.staker_user_id === userId)
           const label = deal.label?.trim() || sliceDisplayName(slice || {}, profilesById)
           return (

@@ -114,6 +114,7 @@ import {
   reloadOnceForStaleChunk,
 } from '../../utils/lazyImportWithChunkReload.js'
 import { ChatCallProvider } from '../chat/calls/ChatCallProvider.jsx'
+import { isSmokeChecklistHostAllowed } from '../ops/smokeChecklistHost.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
@@ -133,6 +134,9 @@ const EdgeMonitorScreen = lazyRoute(() => import('../ops/EdgeMonitorScreen.jsx')
 const BotManagementScreen = lazyRoute(() => import('../bots/BotManagementScreen.jsx'))
 const AffiliateAdminScreen = lazyRoute(() => import('../affiliates/AffiliateAdminScreen.jsx'))
 const CreatorAffiliateScreen = lazyRoute(() => import('../affiliates/CreatorAffiliateScreen.jsx'))
+const PokerStableSmokeChecklistScreen = lazyRoute(
+  () => import('../ops/PokerStableSmokeChecklistScreen.jsx'),
+)
 
 function TabLoadingFallback() {
   return (
@@ -1056,6 +1060,14 @@ export default function AppShell({
           setMenuOpen(false)
         }
       }
+      if (targetTab === 'stable-smoke') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else if (isAdmin && isSmokeChecklistHostAllowed()) {
+          setTab('stable-smoke')
+          setMenuOpen(false)
+        }
+      }
       if (targetTab === 'creator') {
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()
@@ -1589,6 +1601,9 @@ export default function AppShell({
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: '📊', subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: '🤖', subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'affiliates', label: 'Affiliates', icon: '🤝', subscriberGated: false }] : []),
+    ...(isAdmin && isSmokeChecklistHostAllowed()
+      ? [{ id: 'stable-smoke', label: 'Stable smoke', icon: '✅', subscriberGated: false }]
+      : []),
     ...(isActiveAffiliate
       ? [{ id: 'creator', label: 'Creator', icon: '✨', subscriberGated: false }]
       : []),
@@ -2524,6 +2539,14 @@ export default function AppShell({
             Affiliates admin is admin-only.
           </div>
         </ScrollLinkedEdgeTitleBarShell>
+      )
+    } else if (tab === 'stable-smoke') {
+      visibleTab = (
+        <PokerStableSmokeChecklistScreen
+          supabaseClient={supabaseClient}
+          isAdmin={isAdmin}
+          titleBarNavSlot={renderTitleBarNavSlot()}
+        />
       )
     } else if (tab === 'creator') {
       visibleTab = (

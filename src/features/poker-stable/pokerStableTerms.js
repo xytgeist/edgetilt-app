@@ -330,9 +330,11 @@ export function archivedStakeOutcomeLabel(deal, slices = []) {
   return 'Closed'
 }
 
-/** @param {string} label from {@link archivedStakeOutcomeLabel} */
-export function archivedStakeOutcomeBadgeClass(label) {
-  if (label === 'Revoked') return 'bg-rose-500/25 text-rose-200'
-  if (label === 'Declined') return 'bg-zinc-500/40 text-zinc-300'
-  return 'bg-zinc-700/60 text-zinc-300'
+/** Shared layout for archive outcome badges; colors via data-poker-stake-archive-outcome in index.css. */
+export const ARCHIVED_STAKE_OUTCOME_BADGE_CLASS =
+  'shrink-0 rounded-md border border-transparent px-2 py-0.5 text-[9px] font-black uppercase tracking-wider'
+
+/** @deprecated Colors live in CSS — use {@link ARCHIVED_STAKE_OUTCOME_BADGE_CLASS}. */
+export function archivedStakeOutcomeBadgeClass(_label) {
+  return ARCHIVED_STAKE_OUTCOME_BADGE_CLASS
 }

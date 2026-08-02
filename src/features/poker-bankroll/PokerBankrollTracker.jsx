@@ -2607,15 +2607,17 @@ export default function PokerBankrollTracker({
                         ) : null}
                         {onStake ? (
                           <span
-                            data-poker-stake-revoked-badge={
-                              hero.deal?.status === 'revoked' ? '' : undefined
-                            }
-                            className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                            data-poker-stake-hero-badge={
                               hero.deal?.status === 'pending'
-                                ? 'bg-zinc-500/40 text-zinc-200'
+                                ? 'pending'
                                 : hero.deal?.status === 'revoked'
-                                  ? 'bg-rose-500/25 text-rose-200'
-                                  : theme.badge
+                                  ? 'revoked'
+                                  : 'active'
+                            }
+                            className={`shrink-0 rounded-md border border-transparent px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                              hero.deal?.status === 'pending' || hero.deal?.status === 'revoked'
+                                ? ''
+                                : theme.badge
                             }`}
                           >
                             {hero.deal?.status === 'pending'
@@ -3363,7 +3365,7 @@ export default function PokerBankrollTracker({
                         <span className="min-w-0 truncate font-semibold text-white">{label}</span>
                         <span
                           data-poker-stake-archive-outcome={outcomeLabel.toLowerCase()}
-                          className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${archivedStakeOutcomeBadgeClass(outcomeLabel)}`}
+                          className={archivedStakeOutcomeBadgeClass(outcomeLabel)}
                         >
                           {outcomeLabel}
                         </span>

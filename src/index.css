@@ -4920,17 +4920,37 @@ html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-emerald-4
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-rose-400 {
   color: var(--poker-loss) !important;
 }
+
+/* Archive outcome badges — dark default */
+[data-poker-stake-archive-card] [data-poker-stake-archive-outcome='closed'] {
+  background-color: rgba(37, 99, 235, 0.22);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: rgb(147 197 253);
+}
+[data-poker-stake-archive-card] [data-poker-stake-archive-outcome='revoked'] {
+  background-color: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: rgb(251 113 133);
+}
+[data-poker-stake-archive-card] [data-poker-stake-archive-outcome='declined'] {
+  background-color: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: rgb(252 211 77);
+}
+
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='closed'] {
-  background-color: #f4f4f5 !important;
-  color: #52525b !important;
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
 }
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='declined'] {
-  background-color: #f4f4f5 !important;
-  color: #71717a !important;
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #b45309 !important;
 }
-html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='revoked'].bg-rose-500\/25 {
+html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-stake-archive-outcome='revoked'] {
   background-color: #fff1f2 !important;
-  border: 1px solid #fca5a5 !important;
+  border-color: #fca5a5 !important;
   color: #dc2626 !important;
 }
 
@@ -5887,10 +5907,28 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
   background-color: #f4f4f5 !important;
   color: #3f3f46 !important;
 }
-/* Revoked stake — error palette (after generic rose badge remap above) */
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-badge].bg-rose-500\/25 {
+
+/* Hero stake status badges — dark default */
+[data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='pending'] {
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: rgb(252 211 77);
+}
+[data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='revoked'] {
+  background-color: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: rgb(251 113 133);
+}
+
+/* Revoked / pending stake — light (after generic badge remaps above) */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='pending'] {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #b45309 !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='revoked'] {
   background-color: #fff1f2 !important;
-  border: 1px solid #fca5a5 !important;
+  border-color: #fca5a5 !important;
   color: #dc2626 !important;
 }
 [data-poker-bankroll-hero-card] [data-poker-hero-terms-icon] {

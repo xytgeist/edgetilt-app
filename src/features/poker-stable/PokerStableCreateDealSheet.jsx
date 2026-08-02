@@ -5,6 +5,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import StablePlayerPicker from './StablePlayerPicker.jsx'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests } from './pokerStableApi.js'
 import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
@@ -345,6 +346,15 @@ function PokerStableDealFormSheet({
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
   usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef)
 
+  function clearPlayerSelection() {
+    setPlayerIsGuest(false)
+    setSelectedPlayerProfile(null)
+    setPlayerHandle('')
+    setPlayerGuestLabel('')
+    setPlayerGuestPhone('')
+    setPlayerGuestEmail('')
+  }
+
   function onDealTypeChange(next) {
     setDealType(next)
     setSlices((prev) => prev.map((s) => applyDealTypePricingDefaults(s, next)))
@@ -676,21 +686,43 @@ function PokerStableDealFormSheet({
 
         {showHorsePicker ? (
           <>
-            <label className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
-              <input
-                type="checkbox"
-                checked={playerIsGuest}
-                onChange={(e) => {
-                  setPlayerIsGuest(e.target.checked)
-                  setPlayerHandle('')
+            <InField label="Player" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <StablePlayerPicker
+                supabaseClient={supabaseClient}
+                userId={userId}
+                value={playerHandle}
+                onChange={(next) => {
+                  setPlayerHandle(next)
+                  if (selectedPlayerProfile) setSelectedPlayerProfile(null)
+                  if (playerIsGuest) {
+                    setPlayerIsGuest(false)
+                    setPlayerGuestLabel('')
+                    setPlayerGuestPhone('')
+                    setPlayerGuestEmail('')
+                  }
+                }}
+                selectedProfile={selectedPlayerProfile}
+                isGuest={playerIsGuest}
+                guestLabel={playerGuestLabel}
+                onSelectProfile={(profile) => {
+                  clearPlayerSelection()
+                  setSelectedPlayerProfile(profile)
+                  setPlayerHandle(String(profile.handle || '').replace(/^@+/, ''))
+                }}
+                onSelectGuestMode={() => {
                   setSelectedPlayerProfile(null)
+                  setPlayerHandle('')
                   setPlayerGuestLabel('')
                   setPlayerGuestPhone('')
                   setPlayerGuestEmail('')
+                  setPlayerIsGuest(true)
                 }}
+                onClearSelection={clearPlayerSelection}
+                inputClassName={INFIELD_CONTROL}
+                placeholder="Select player"
+                autoFocus
               />
-              Guest player (not on Edge)
-            </label>
+            </InField>
             {playerIsGuest ? (
               <>
                 <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
@@ -699,7 +731,6 @@ function PokerStableDealFormSheet({
                     onChange={(e) => setPlayerGuestLabel(e.target.value)}
                     placeholder="Name"
                     className={INFIELD_CONTROL}
-                    autoFocus
                   />
                 </InField>
                 <InField label="Phone (optional SMS)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
@@ -726,24 +757,7 @@ function PokerStableDealFormSheet({
                   Phone/email optional ... only used to notify them about this stake.
                 </p>
               </>
-            ) : (
-              <InField label="Player" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
-                <EdgeHandleTypeahead
-                  supabaseClient={supabaseClient}
-                  excludeUserId={userId}
-                  value={playerHandle}
-                  onChange={(next) => {
-                    setPlayerHandle(next)
-                    setSelectedPlayerProfile(null)
-                  }}
-                  onSelectProfile={setSelectedPlayerProfile}
-                  selectedProfile={selectedPlayerProfile}
-                  inputClassName={INFIELD_CONTROL}
-                  placeholder="Name or @handle"
-                  autoFocus
-                />
-              </InField>
-            )}
+            ) : null}
           </>
         ) : null}
 
@@ -834,22 +848,20 @@ function PokerStableDealFormSheet({
           </>
         ) : (
           <>
-            <div
-              className="mb-2 flex items-baseline justify-between gap-2 text-[11px]"
+            <p
+              className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
               data-poker-stable-backing-bankroll-available
             >
-              <span className="font-semibold uppercase tracking-wide text-zinc-500">
-                Available backing bankroll
-              </span>
+              Available bankroll:{' '}
               <span className="font-bold tabular-nums text-zinc-300">
                 {fmtPoker$(backingBankrollBalance ?? 0)}
               </span>
-            </div>
+            </p>
             <MoneyInputField
-              label="Proposed baseline"
+              label="Stake baseline"
               value={baseline}
               onChange={setBaseline}
-              placeholder="Optional"
+              placeholder="100,000"
               inFieldFocusRingClass={STABLE_INFIELD_FOCUS}
               className="mb-4"
             />

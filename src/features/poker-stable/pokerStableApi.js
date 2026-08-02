@@ -41,7 +41,7 @@ export function normalizeHandleInput(raw) {
 }
 
 const DEAL_SELECT =
-  'id, staker_user_id, stakee_user_id, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, terms_revised_at, terms_revised_by'
+  'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_phone, stakee_guest_email, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, terms_revised_at, terms_revised_by'
 
 const SLICE_SELECT =
   'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_phone, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at'
@@ -805,18 +805,23 @@ export async function requestHorseDeal(supabase, args) {
 /**
  * Backer proposes a horse deal with one or more slices (lead + optional syndicate).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {{ stakerUserId: string, stakeeUserId: string, label?: string, notes?: string, baselineBankroll?: number, slices?: object[] }} args
+ * @param {{ stakerUserId: string, stakeeUserId?: string, stakeeGuest?: { label: string, phone?: string, email?: string }, label?: string, notes?: string, baselineBankroll?: number, slices?: object[] }} args
  */
 export async function requestBackingDeal(supabase, args) {
   const {
     stakerUserId,
-    stakeeUserId,
+    stakeeUserId = null,
+    stakeeGuest = null,
     label,
     notes,
     baselineBankroll = 0,
     slices = [],
   } = args
-  if (stakerUserId === stakeeUserId) {
+  const guestLabel = stakeeGuest?.label?.trim() || ''
+  if (!stakeeUserId && !guestLabel) {
+    return { deal: null, error: new Error('Pick a player or enter a guest name.') }
+  }
+  if (stakeeUserId && stakerUserId === stakeeUserId) {
     return { deal: null, error: new Error('You cannot stake yourself.') }
   }
   if (!slices.length) {
@@ -832,39 +837,57 @@ export async function requestBackingDeal(supabase, args) {
     return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
   }
 
-  const { data: legacyDeals } = await supabase
-    .from('poker_stable_deals')
-    .select('id, status')
-    .eq('staker_user_id', stakerUserId)
-    .eq('stakee_user_id', stakeeUserId)
-    .in('status', ['pending', 'active'])
-  if (legacyDeals?.length) {
-    const legacy = legacyDeals[0]
-    const msg =
-      legacy.status === 'pending'
-        ? 'You already have a pending request with this player.'
-        : 'You already have an active deal with this player.'
-    return { deal: null, error: new Error(msg) }
-  }
-
-  const { data: sliceDeals } = await supabase
-    .from('poker_stable_deal_slices')
-    .select('id, status, deal_id')
-    .eq('staker_user_id', stakerUserId)
-    .in('status', ['pending', 'active'])
-  if (sliceDeals?.length) {
-    const dealIds = sliceDeals.map((s) => s.deal_id)
-    const { data: matched } = await supabase
+  if (stakeeUserId) {
+    const { data: legacyDeals } = await supabase
       .from('poker_stable_deals')
-      .select('id')
-      .in('id', dealIds)
+      .select('id, status')
+      .eq('staker_user_id', stakerUserId)
       .eq('stakee_user_id', stakeeUserId)
-      .maybeSingle()
-    if (matched) {
-      return {
-        deal: null,
-        error: new Error('You already have a pending or active deal with this player.'),
+      .in('status', ['pending', 'active'])
+    if (legacyDeals?.length) {
+      const legacy = legacyDeals[0]
+      const msg =
+        legacy.status === 'pending'
+          ? 'You already have a pending request with this player.'
+          : 'You already have an active deal with this player.'
+      return { deal: null, error: new Error(msg) }
+    }
+
+    const { data: sliceDeals } = await supabase
+      .from('poker_stable_deal_slices')
+      .select('id, status, deal_id')
+      .eq('staker_user_id', stakerUserId)
+      .in('status', ['pending', 'active'])
+    if (sliceDeals?.length) {
+      const dealIds = sliceDeals.map((s) => s.deal_id)
+      const { data: matched } = await supabase
+        .from('poker_stable_deals')
+        .select('id')
+        .in('id', dealIds)
+        .eq('stakee_user_id', stakeeUserId)
+        .maybeSingle()
+      if (matched) {
+        return {
+          deal: null,
+          error: new Error('You already have a pending or active deal with this player.'),
+        }
       }
+    }
+  } else {
+    const { data: guestDeals } = await supabase
+      .from('poker_stable_deals')
+      .select('id, status')
+      .eq('staker_user_id', stakerUserId)
+      .is('stakee_user_id', null)
+      .ilike('stakee_guest_label', guestLabel)
+      .in('status', ['pending', 'active'])
+    if (guestDeals?.length) {
+      const existing = guestDeals[0]
+      const msg =
+        existing.status === 'pending'
+          ? 'You already have a pending request for this guest player.'
+          : 'You already have an active deal with this guest player.'
+      return { deal: null, error: new Error(msg) }
     }
   }
 
@@ -874,7 +897,10 @@ export async function requestBackingDeal(supabase, args) {
     .from('poker_stable_deals')
     .insert({
       staker_user_id: stakerUserId,
-      stakee_user_id: stakeeUserId,
+      stakee_user_id: stakeeUserId || null,
+      stakee_guest_label: guestLabel || null,
+      stakee_guest_phone: stakeeGuest?.phone?.trim() || null,
+      stakee_guest_email: stakeeGuest?.email?.trim()?.toLowerCase() || null,
       deal_type: 'cash_backing',
       status: 'pending',
       label: label?.trim() || null,

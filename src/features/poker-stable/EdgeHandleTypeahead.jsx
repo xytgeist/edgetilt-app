@@ -3,6 +3,7 @@ import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 import { searchEdgeProfilesByHandle } from './pokerStableApi.js'
 import { schedulePokerStableFieldScroll } from './pokerStableSheetScroll.js'
+import { edgeProfileDisplayName } from './pokerStableTerms.js'
 
 const DEBOUNCE_MS = 120
 const GAP_PX = 4
@@ -45,6 +46,8 @@ export default function EdgeHandleTypeahead({
   const normalizedValue = normalizeHandle(value)
   const selectedHandle = normalizeHandle(selectedProfile?.handle)
   const isLockedSelection = Boolean(selectedHandle && normalizedValue === selectedHandle)
+  const lockedDisplayValue = isLockedSelection ? edgeProfileDisplayName(selectedProfile) : ''
+  const inputValue = isLockedSelection ? lockedDisplayValue : (value ?? '')
   const isSelfHandle = Boolean(
     excludedHandle && normalizedValue && normalizedValue.toLowerCase() === excludedHandle.toLowerCase(),
   )
@@ -222,8 +225,11 @@ export default function EdgeHandleTypeahead({
       <input
         ref={inputRef}
         type="text"
-        value={value ?? ''}
+        value={inputValue}
         onChange={(e) => {
+          if (isLockedSelection) {
+            onSelectProfile?.(null)
+          }
           onChange(e.target.value)
         }}
         onFocus={() => {
@@ -270,12 +276,7 @@ export default function EdgeHandleTypeahead({
         }}
       />
 
-      {selectedProfile?.handle ? (
-        <p className="mt-1.5 text-xs text-emerald-400">
-          Selected @{normalizeHandle(selectedProfile.handle)}
-          {selectedProfile.display_name ? ` · ${selectedProfile.display_name}` : ''}
-        </p>
-      ) : isSelfHandle ? (
+      {isSelfHandle ? (
         <p className="mt-1.5 text-xs text-rose-400">You can&apos;t add yourself here.</p>
       ) : null}
 

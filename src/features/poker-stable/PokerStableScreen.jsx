@@ -51,6 +51,7 @@ import { dealTypeLabel } from './pokerStableMath.js'
 import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
+  dealStakeeDisplayName,
 } from './pokerStableTerms.js'
 
 const STABLE_TABS = [
@@ -462,10 +463,7 @@ export default function PokerStableScreen({
 
   function partyLabel(deal, role) {
     if (role === 'staker') {
-      const p = profilesById[deal.stakee_user_id]
-      if (p?.handle) return `@${p.handle}`
-      if (p?.display_name) return p.display_name
-      return 'Player'
+      return dealStakeeDisplayName(deal, profilesById)
     }
     const slices = slicesByDeal[deal.id] || []
     if (slices.length === 1) return sliceDisplayName(slices[0], profilesById)
@@ -845,6 +843,7 @@ export default function PokerStableScreen({
           userId={userId}
           saving={saving}
           onSavingChange={setSaving}
+          backingBankrollBalance={backerProfile?.bankroll_balance ?? 0}
           onClose={() => setSheet(null)}
           onCreated={() => void load()}
         />

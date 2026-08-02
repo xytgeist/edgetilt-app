@@ -2,6 +2,7 @@ import { useLayoutEffect, useEffect, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import EdgeHandleTypeahead from './EdgeHandleTypeahead.jsx'
@@ -314,6 +315,7 @@ function PokerStableDealFormSheet({
   editSlices = null,
   editProfilesById = {},
   termsIntent = 'create',
+  backingBankrollBalance = null,
 }) {
   const isBacker = mode === 'backer'
   const isEdit = Boolean(editDeal?.id)
@@ -330,6 +332,10 @@ function PokerStableDealFormSheet({
   const [lifetimePl, setLifetimePl] = useState('')
   const [playerHandle, setPlayerHandle] = useState('')
   const [selectedPlayerProfile, setSelectedPlayerProfile] = useState(null)
+  const [playerIsGuest, setPlayerIsGuest] = useState(false)
+  const [playerGuestLabel, setPlayerGuestLabel] = useState('')
+  const [playerGuestPhone, setPlayerGuestPhone] = useState('')
+  const [playerGuestEmail, setPlayerGuestEmail] = useState('')
   const [mySlice, setMySlice] = useState({ ...EMPTY_SLICE, stakerUserId: userId })
   const [friendSlices, setFriendSlices] = useState([])
   const [slices, setSlices] = useState([{ ...EMPTY_SLICE }])
@@ -520,13 +526,6 @@ function PokerStableDealFormSheet({
           }
         }
       } else if (isBacker) {
-        const { profile, error: lookErr } = selectedPlayerProfile
-          ? { profile: selectedPlayerProfile, error: null }
-          : await lookupProfileByHandle(supabaseClient, playerHandle)
-        if (lookErr) throw lookErr
-        if (!profile?.user_id) throw new Error('Pick a player by Edge handle.')
-        if (profile.user_id === userId) throw new Error('You cannot stake yourself.')
-
         const allSlices = [
           await resolveUserSlice(
             supabaseClient,
@@ -539,13 +538,37 @@ function PokerStableDealFormSheet({
           allSlices.push(await resolveUserSlice(supabaseClient, sl, userId))
         }
 
-        const { error } = await requestBackingDeal(supabaseClient, {
+        let requestArgs = {
           stakerUserId: userId,
-          stakeeUserId: profile.user_id,
           label,
           baselineBankroll: parseMoneyInputNumber(baseline) || 0,
           slices: allSlices,
-        })
+        }
+
+        if (playerIsGuest) {
+          if (!playerGuestLabel.trim()) throw new Error('Guest players need a name.')
+          requestArgs = {
+            ...requestArgs,
+            stakeeGuest: {
+              label: playerGuestLabel.trim(),
+              phone: String(playerGuestPhone || '').trim() || undefined,
+              email: String(playerGuestEmail || '').trim().toLowerCase() || undefined,
+            },
+          }
+        } else {
+          const { profile, error: lookErr } = selectedPlayerProfile
+            ? { profile: selectedPlayerProfile, error: null }
+            : await lookupProfileByHandle(supabaseClient, playerHandle)
+          if (lookErr) throw lookErr
+          if (!profile?.user_id) throw new Error('Pick a player by Edge handle.')
+          if (profile.user_id === userId) throw new Error('You cannot stake yourself.')
+          requestArgs = {
+            ...requestArgs,
+            stakeeUserId: profile.user_id,
+          }
+        }
+
+        const { error } = await requestBackingDeal(supabaseClient, requestArgs)
         if (error) throw error
       } else {
         const baselineAmount = parseMoneyInputNumber(baseline)
@@ -652,22 +675,76 @@ function PokerStableDealFormSheet({
         </div>
 
         {showHorsePicker ? (
-          <InField label="Player handle" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
-            <EdgeHandleTypeahead
-              supabaseClient={supabaseClient}
-              excludeUserId={userId}
-              value={playerHandle}
-              onChange={(next) => {
-                setPlayerHandle(next)
-                setSelectedPlayerProfile(null)
-              }}
-              onSelectProfile={setSelectedPlayerProfile}
-              selectedProfile={selectedPlayerProfile}
-              inputClassName={INFIELD_CONTROL}
-              placeholder="Name or @handle"
-              autoFocus
-            />
-          </InField>
+          <>
+            <label className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
+              <input
+                type="checkbox"
+                checked={playerIsGuest}
+                onChange={(e) => {
+                  setPlayerIsGuest(e.target.checked)
+                  setPlayerHandle('')
+                  setSelectedPlayerProfile(null)
+                  setPlayerGuestLabel('')
+                  setPlayerGuestPhone('')
+                  setPlayerGuestEmail('')
+                }}
+              />
+              Guest player (not on Edge)
+            </label>
+            {playerIsGuest ? (
+              <>
+                <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+                  <input
+                    value={playerGuestLabel}
+                    onChange={(e) => setPlayerGuestLabel(e.target.value)}
+                    placeholder="Name"
+                    className={INFIELD_CONTROL}
+                    autoFocus
+                  />
+                </InField>
+                <InField label="Phone (optional SMS)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+                  <input
+                    value={playerGuestPhone}
+                    onChange={(e) => setPlayerGuestPhone(e.target.value)}
+                    placeholder="Phone (optional SMS)"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    className={INFIELD_CONTROL}
+                  />
+                </InField>
+                <InField label="Email (optional)" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+                  <input
+                    value={playerGuestEmail}
+                    onChange={(e) => setPlayerGuestEmail(e.target.value)}
+                    placeholder="Email (optional)"
+                    inputMode="email"
+                    autoComplete="email"
+                    className={INFIELD_CONTROL}
+                  />
+                </InField>
+                <p className="mb-3 text-[11px] leading-snug text-zinc-500">
+                  Phone/email optional ... only used to notify them about this stake.
+                </p>
+              </>
+            ) : (
+              <InField label="Player" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
+                <EdgeHandleTypeahead
+                  supabaseClient={supabaseClient}
+                  excludeUserId={userId}
+                  value={playerHandle}
+                  onChange={(next) => {
+                    setPlayerHandle(next)
+                    setSelectedPlayerProfile(null)
+                  }}
+                  onSelectProfile={setSelectedPlayerProfile}
+                  selectedProfile={selectedPlayerProfile}
+                  inputClassName={INFIELD_CONTROL}
+                  placeholder="Name or @handle"
+                  autoFocus
+                />
+              </InField>
+            )}
+          </>
         ) : null}
 
         <InField label="Deal label" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
@@ -757,6 +834,17 @@ function PokerStableDealFormSheet({
           </>
         ) : (
           <>
+            <div
+              className="mb-2 flex items-baseline justify-between gap-2 text-[11px]"
+              data-poker-stable-backing-bankroll-available
+            >
+              <span className="font-semibold uppercase tracking-wide text-zinc-500">
+                Available backing bankroll
+              </span>
+              <span className="font-bold tabular-nums text-zinc-300">
+                {fmtPoker$(backingBankrollBalance ?? 0)}
+              </span>
+            </div>
             <MoneyInputField
               label="Proposed baseline"
               value={baseline}

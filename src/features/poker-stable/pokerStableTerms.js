@@ -34,6 +34,26 @@ function sliceBackerShortName(slice, profilesById = {}) {
   return handle ? `@${handle}` : 'Stake'
 }
 
+/** Edge profile picker / locked typeahead: "Joey K (@smokewagon)". */
+export function edgeProfileDisplayName(profile) {
+  if (!profile) return ''
+  const displayName = String(profile.display_name || '').trim()
+  const handle = profile.handle ? String(profile.handle).replace(/^@+/, '') : ''
+  if (displayName && handle) return `${displayName} (@${handle})`
+  if (displayName) return displayName
+  if (handle) return `@${handle}`
+  return ''
+}
+
+/** Horse / player name on a deal (Edge user or guest stakee). */
+export function dealStakeeDisplayName(deal, profilesById = {}) {
+  const guestLabel = deal?.stakee_guest_label || deal?.stakeeGuestLabel
+  if (guestLabel) return String(guestLabel).trim() || 'Guest player'
+  const stakeeId = deal?.stakee_user_id
+  const profile = stakeeId ? profilesById[stakeeId] : null
+  return edgeProfileDisplayName(profile) || 'Player'
+}
+
 /** Terms sheet: "Joey K (@smokewagon)" or guest name only. */
 export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
   if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {

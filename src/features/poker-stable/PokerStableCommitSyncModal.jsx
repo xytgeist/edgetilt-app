@@ -3,6 +3,7 @@ import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../cons
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { loadDealCommit, syncDealCommit } from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
+import { stableCommitSyncHint } from './pokerStableBooksCopy.js'
 
 /**
  * Global sync modal for counterparty-recorded Stable commits (from Alerts / push).
@@ -66,6 +67,9 @@ export default function PokerStableCommitSyncModal({
   }, [actorProfile])
 
   const alreadyMine = commit?.recorded_by_user_id === userId
+  const isStakee = deal?.stakee_user_id === userId
+  const isSettleCommit =
+    commit?.event_kind === 'periodic_settle' || commit?.event_kind === 'close_settle'
 
   async function onSync() {
     if (!commit || alreadyMine) return
@@ -126,8 +130,8 @@ export default function PokerStableCommitSyncModal({
               {pokerStableCommitSummaryLine(commit)}
             </p>
             <p className="mb-4 text-xs leading-relaxed text-zinc-500">
-              Sync applies this update to your personal bankroll and ledger. If you skip it, your
-              books stay out of sync until you commit later from the stake card.
+              {stableCommitSyncHint(isStakee, isSettleCommit)} If you skip it, your books stay out of
+              sync until you commit later from the stake card.
             </p>
             {alreadyMine ? (
               <p className="text-center text-sm text-emerald-400">You recorded this update.</p>

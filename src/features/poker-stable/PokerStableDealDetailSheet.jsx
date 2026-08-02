@@ -37,6 +37,7 @@ import {
   userCanRecordDealEvent,
 } from './pokerStableTerms.js'
 import { pokerStableCommitSummaryLine } from './pokerStableActivity.js'
+import { STABLE_BACKER_BANKROLL_PHRASE, stableCommitBooksPhrase } from './pokerStableBooksCopy.js'
 
 /**
  * Deal detail: baseline, makeup, top-up, settle, sync commits, ledger history.
@@ -275,7 +276,8 @@ export default function PokerStableDealDetailSheet({
               Out of sync with last commit ({pendingCommits.length})
             </p>
             <p className="mt-1 text-xs text-zinc-400">
-              Another party recorded an update. Commit to sync your personal bankroll and ledger.
+              Another party recorded an update. Commit to sync your{' '}
+              {stableCommitBooksPhrase(isStakee)}.
             </p>
             <div className="mt-3 space-y-2">
               {pendingCommits.map((row) => (
@@ -439,23 +441,24 @@ export default function PokerStableDealDetailSheet({
                 <span>
                   <span className="block text-sm font-semibold text-zinc-200">Reduce stake</span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
-                    Lowers baseline and roll by the reduction amount. Each Edge backer&apos;s personal
-                    bankroll is credited their action % share (the inverse of a top-up). For settle
-                    + reduce together, use periodic settle below.
+                    Lowers baseline and roll by the reduction amount. Each Edge backer&apos;s{' '}
+                    {STABLE_BACKER_BANKROLL_PHRASE.toLowerCase()} is credited their action % share
+                    (the inverse of a top-up). For settle + reduce together, use periodic settle
+                    below.
                   </span>
                 </span>
               </label>
 
               {reduceStake && reductionAmount > 0.005 ? (
                 <p className="mt-2 text-xs leading-relaxed text-cyan-200/90">
-                  Backers&apos; personal bankrolls will be credited{' '}
+                  Backers&apos; Stable backing bankrolls will be credited{' '}
                   <span className="font-semibold tabular-nums">{fmtPoker$(reductionAmount)}</span>{' '}
                   total, split by action % (see below).
                 </p>
               ) : reduceStake ? (
                 <p className="mt-2 text-xs leading-relaxed text-zinc-500">
                   Enter a new baseline below current {fmtPoker$(baseline)}. Backers are credited the
-                  reduction pro-rata to personal bankroll.
+                  reduction pro-rata to Stable backing bankroll.
                 </p>
               ) : null}
 

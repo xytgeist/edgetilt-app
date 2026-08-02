@@ -65,7 +65,7 @@ Example: baseline $100k, roll $65k, Mike re-funds $40k → baseline **$140k**, r
 
 - Logged as deal event.
 - Multi-slice: **deal-wide baseline bump** (Ryan confirmed Mike example).
-- Edge backers: personal bankroll **debited** pro-rata by action % (`poker_stable_record_topup`, **`20260802190000`**).
+- Edge backers: **Stable backing bankroll** debited pro-rata by action % (`poker_stable_record_topup`, **`20260802190000`**; routed **`20260802230000`**).
 
 ## Reduce stake
 
@@ -73,7 +73,7 @@ Inverse of top-up: lowers baseline and roll by the reduction amount.
 
 - Standalone: **`poker_stable_record_reduction`** on deal detail.
 - With periodic settle: optional **new baseline** on propose; applied after settle roll reset.
-- Edge backers: personal bankroll **credited** pro-rata by action % (same split as top-up debit).
+- Edge backers: **Stable backing bankroll** credited pro-rata by action % (same split as top-up debit; **`20260802230000`**).
 
 ---
 
@@ -112,7 +112,7 @@ Partial payments supported. Guest slices: player authoritative only.
 | --- | --- | --- |
 | **Stake roll** (`poker_deal_bankroll_profiles` for `deal_id`) | Table results on sessions logged to the deal (`deal_id` set). Gross session P/L only ... **not** swap IOUs. | Each completed stake session updates roll (implicitly or on recompute). |
 | **Player personal bankroll** (`poker_bankroll_profiles`, `deal_id` null scope) | Money the player keeps over time: personal-scope sessions, **swap settlements**, and **crystallized share** from stake settle/close events. | Personal sessions; swap settle; stake **periodic settle** and **close** transfers (see below). **Not** from merging stake session gross W/L. |
-| **Backer bankroll** (v2c rollup; per-staker profile TBD) | Each backer's economic result from deals they slice. | Stake **periodic settle** and **close** transfers, pro-rata per slice / settle lines. Underwater close: backers absorb loss by ownership; player personal unchanged. |
+| **Stable backing bankroll** (`poker_stable_backer_bankrolls`) | Backer capital + settle economics. **Never** `poker_bankroll_profiles`. | Slice allocation debit; top-up debit / reduce credit; settle credit/debit (+ **Realized P/L** mirrors signed settle $). |
 
 **Swaps never enter stake settle math** (makeup, baseline, backer profit share). Swaps are peer IOUs ... see **Swap overlay** below.
 
@@ -202,7 +202,7 @@ Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`pok
 - [x] Periodic settle RPC: roll → baseline, credit **player personal** from settle lines (deal stays `active`).
 - [x] Close/end RPC: final settle + **session merge** (settled deals on personal timeline + badges); no second personal bankroll pass on gross W/L.
 - [x] Personal metrics Option B + hero copy when active stakes exist.
-- [x] v2c: backer personal bankroll credited on settle/close (slice profit + rakeback share via **`poker_stable_apply_settlement`**, **`20260802180000`**).
+- [x] v2c: backer settle/top-up/reduce post to **Stable backing bankroll** (`poker_stable_backer_bankrolls`, **`20260802230000`**). **Player** settle still credits personal Poker bankroll.
 
 ---
 
@@ -227,7 +227,7 @@ Stable no longer exposes player **+ New deal**. Syndicate slices on a backer req
 | **Trend tab** | Portfolio line + per-horse lines (snapshot from active stakes). |
 | **Locations tab** | Stable-wide venue rollup from on-stake sessions; filter per horse. |
 | **Needs attention** | Pending **`poker_stable_deal_commits`** for counterparty ... **Commit to my books** action sheet. |
-| **Settle credits** | v2c still credits **personal** bankroll on settle sync; backing pool **`realized_backing_pl`** hook deferred. |
+| **Settle credits** | **Player:** personal Poker bankroll. **Backer:** Stable backing bankroll + Realized P/L (same signed settle $). **Never** cross-post between the two. |
 
 Migration: **`20260802220000_poker_stable_backer_bankroll.sql`**. Math: **`pokerStableBackerMath.js`**.
 
@@ -323,7 +323,7 @@ Tracked in **`docs/test-buildout-backlog.md`** (Poker Stable open checkboxes). N
 **Shipped (`20260802210000`):**
 
 - Anyone on either side may **record** top-up, reduce, periodic settle, or close on **their books** immediately (deal-level baseline/roll updates on record).
-- **`poker_stable_deal_commits`** + **`poker_stable_commit_syncs`**: counterparties get **`poker_stable_commit_recorded`** alerts; **Commit** (`poker_stable_sync_commit`) applies personal bankroll + ledger on their side. Skip sync = stay out of sync until ready.
+- **`poker_stable_deal_commits`** + **`poker_stable_commit_syncs`**: counterparties get **`poker_stable_commit_recorded`** alerts; **Commit** (`poker_stable_sync_commit`) applies **player personal** or **backer Stable backing bankroll** + ledger on their side. Skip sync = stay out of sync until ready.
 - Deep link **`stableCommit=`** (legacy **`stableSettlement=`** still opens sync modal).
 - **`poker_stable_settlement_requests`** vote queue **retired** (pending rows cancelled); payment claims remain removed.
 
@@ -367,6 +367,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-02:** **Backer bankroll routing (test):** migration **`20260802230000`** — all backer top-up / reduce / settle economics → **`poker_stable_backer_bankrolls`** (never **`poker_bankroll_profiles`**). Settle mirrors signed $ to **Realized P/L**. Player settle credits personal unchanged.
 - **2026-08-02:** **Backer Stable v1 UI (test, in build):** migration **`20260802220000`** — backing bankroll pool + slice allocations; Stable upgraded in place (portfolio hero, horse carousel, Overview/Trend/Locations tabs, closed stakes on overview, **Needs attention** commit sheet). Unilateral commit/sync from **`20260802210000`** retained. Apply SQL on test before smoke.
 - **2026-08-02:** **Unilateral commit/sync (test):** migration **`20260802210000`** — record top-up/reduce/settle updates recorder's books immediately; counterparties **Commit to my books** via **`poker_stable_sync_commit`**; settlement vote queue retired.
 - **2026-08-02:** **Settlement sync + ledger (test):** migration **`20260802180000`** — propose/respond settlement, **`poker_stable_ledger_entries`**, backer personal credit on accept; drops payment-claim activity triggers; **`PokerStableSettlementRequestActionModal`** on `stableSettlement=`. Redeploy **`lounge-send-activity-push`** on test after pull.

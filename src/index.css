@@ -2627,6 +2627,10 @@ html.light [data-event-detail-card] {
 /* Chip: light tint bg, colored border + text                                */
 /* Dot:  full dark color                                                      */
 
+html.light [data-offers-add-event-btn] {
+  color: #2563eb !important;
+}
+
 /* Week view cards: white card + colored left border */
 html.light [data-offer-type][data-card-view="week"] {
   background-color: #ffffff !important;

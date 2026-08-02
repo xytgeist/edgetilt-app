@@ -1062,7 +1062,8 @@ export default function OffersCalendar({
             <button
               type="button"
               onClick={handleAddEvent}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-[28px] font-bold leading-none text-violet-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              data-offers-add-event-btn
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-[28px] font-bold leading-none text-cyan-400 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               aria-label="Add event"
             >
               <span className="block translate-y-[-0.06em]" aria-hidden>

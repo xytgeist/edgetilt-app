@@ -662,6 +662,7 @@ export default function BankrollTracker({
 
         <SlotsToolPageHeader quickLinkDestinationId="bankroll" />
 
+        <div data-slots-bankroll>
         <FreemiumUsageCounter
           remaining={bankrollSessionsRemaining}
           limit={FREE_BANKROLL_SESSION_LIMIT}
@@ -1086,6 +1087,8 @@ export default function BankrollTracker({
         )}
 
         </>}
+
+        </div>
 
       </ScrollLinkedEdgeTitleBarShell>
 

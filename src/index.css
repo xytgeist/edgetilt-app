@@ -896,6 +896,10 @@ html.light [data-lounge-post-interaction-bar] .text-zinc-500 {
 html.light [data-lounge-post-interaction-bar] .text-zinc-100 {
   color: #71717a;
 }
+html.light [data-lounge-post-interaction-bar] .text-emerald-400,
+html.light [data-lounge-post-interaction-bar] .text-emerald-400\/90 {
+  color: #047857 !important;
+}
 
 /* Subs-only unlocked post row — left tint (dark: cyan; light: blue below). */
 [data-lounge-fan-only-row-tint] {
@@ -1282,7 +1286,7 @@ html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text
 }
 /* Hydrated interaction colors - keep feed semantics */
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-emerald-400 {
-  color: #34d399 !important;
+  color: #047857 !important;
 }
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-lv-red {
   color: #fd262d !important;
@@ -2418,6 +2422,15 @@ html.light [data-offer-form] .text-cyan-200    { color: #2563eb !important; }
 html.light [data-offer-form] .bg-emerald-950\/30 { background-color: rgba(220,252,231,0.6) !important; }
 html.light [data-offer-form] .border-emerald-500\/30 { border-color: rgba(34,197,94,0.4) !important; }
 html.light [data-offer-form] .text-emerald-100  { color: #166534 !important; }
+html.light [data-offer-form] .bg-emerald-500 {
+  background-color: #059669 !important;
+}
+html.light [data-offer-form] .border-emerald-400\/70 {
+  border-color: #047857 !important;
+}
+html.light [data-offer-form] .hover\:bg-emerald-400:hover {
+  background-color: #047857 !important;
+}
 
 /* Discard confirm dialog */
 html.light [data-offer-form] .bg-zinc-700\/95 { background-color: #e5e7eb !important; }
@@ -2736,6 +2749,16 @@ html.light [data-auth-modal] .bg-zinc-800           { box-shadow: inset 0 1px 3p
 html.light [data-auth-modal] .bg-orange-600         { box-shadow: 0 2px 8px rgba(234,88,12,0.35) !important; }
 html.light [data-auth-modal] .bg-white.border       { box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important; }
 html.light [data-auth-modal] .bg-zinc-800\/90       { box-shadow: inset 0 1px 2px rgba(0,0,0,0.06) !important; }
+html.light [data-auth-modal] .bg-emerald-900\/50 {
+  background-color: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+html.light [data-auth-modal] .border-emerald-500 {
+  border-color: #6ee7b7 !important;
+}
+html.light [data-auth-modal] .text-emerald-300 {
+  color: #047857 !important;
+}
 
 /* Subscribe modal (Slots Edge) - light mode */
 html.light [data-subscribe-modal] {
@@ -4277,6 +4300,12 @@ html.light [data-calc="buffalo-diamond"] .bg-red-900 .text-red-300 {
   color: #18181b;
 }
 
+/* Calculators — positive money text (Bankroll Risk Advisor + shared EV lines) */
+html.light [data-calc] .text-emerald-400,
+html.light [data-calc] .text-emerald-400\/70 {
+  color: #047857 !important;
+}
+
 /* WoF 4D CE calculator - icon green theme (#228e4e) */
 [data-calc="wof-collectors-edition"] h1.wof-ce-title {
   color: var(--wof-ce-accent-light, #3ecf7a);
@@ -4467,6 +4496,116 @@ html.light [data-bankroll-sheet] .text-zinc-400 {
 }
 html.light [data-bankroll-sheet] .bg-cyan-600 {
   background-color: #0891b2 !important;
+}
+
+/* Slots Bankroll — money green palette (light mode only) */
+html.light [data-slots-bankroll] {
+  --slots-money: #059669;
+  --slots-money-press: #047857;
+}
+html.light [data-slots-bankroll] [data-bankroll-card] .text-emerald-400,
+html.light [data-slots-bankroll] [data-bankroll-card] .text-emerald-500,
+html.light [data-slots-bankroll] [data-session-row] .text-emerald-400,
+html.light [data-slots-bankroll] [data-session-row] .text-emerald-500,
+html.light [data-slots-bankroll] [data-session-row] .text-emerald-300 {
+  color: var(--slots-money-press) !important;
+}
+html.light [data-slots-bankroll] [data-bankroll-card] .text-red-400,
+html.light [data-slots-bankroll] [data-session-row] .text-red-400,
+html.light [data-slots-bankroll] [data-session-row] .text-red-300,
+html.light [data-slots-bankroll] [data-session-row] .text-red-500 {
+  color: #dc2626 !important;
+}
+html.light [data-slots-bankroll] [data-bankroll-card] .text-white {
+  color: #18181b !important;
+}
+html.light [data-slots-bankroll] [data-session-card] {
+  background-color: #ffffff !important;
+  border-color: var(--slots-money) !important;
+}
+html.light [data-slots-bankroll] [data-session-card] .text-white {
+  color: #18181b !important;
+}
+html.light [data-slots-bankroll] [data-session-card] .text-emerald-300 {
+  color: #1d4ed8 !important;
+}
+html.light [data-slots-bankroll] [data-session-card] .text-emerald-200 {
+  color: var(--slots-money-press) !important;
+}
+html.light [data-slots-bankroll] [data-session-card] .border-emerald-500\/60 {
+  background-color: #ffffff !important;
+  border-color: var(--slots-money) !important;
+  color: var(--slots-money) !important;
+}
+html.light [data-slots-bankroll] [data-session-card] .bg-emerald-500,
+html.light [data-slots-bankroll] [data-session-card] .bg-emerald-500.text-white {
+  background-color: var(--slots-money) !important;
+  border-color: var(--slots-money) !important;
+  color: #ffffff !important;
+}
+html.light [data-slots-bankroll] [data-session-card] .active\:bg-emerald-600:active {
+  background-color: var(--slots-money-press) !important;
+}
+html.light [data-bankroll-sheet] .text-emerald-400,
+html.light [data-bankroll-sheet] .text-emerald-300,
+html.light [data-bankroll-sheet] .text-emerald-500 {
+  color: var(--slots-money-press, #047857) !important;
+}
+html.light [data-bankroll-sheet] .text-red-300,
+html.light [data-bankroll-sheet] .text-red-400 {
+  color: #dc2626 !important;
+}
+html.light [data-bankroll-sheet] .bg-emerald-600,
+html.light [data-bankroll-sheet] .bg-emerald-600.text-white {
+  background-color: var(--slots-money, #059669) !important;
+  color: #ffffff !important;
+}
+html.light [data-bankroll-sheet] .active\:bg-emerald-700:active,
+html.light [data-bankroll-sheet] .active\:bg-emerald-500:active {
+  background-color: var(--slots-money-press, #047857) !important;
+}
+html.light [data-bankroll-sheet] [data-wl-preview='win'] {
+  background-color: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+html.light [data-bankroll-sheet] [data-wl-preview='win'] .text-emerald-300 {
+  color: var(--slots-money, #059669) !important;
+}
+html.light [data-bankroll-import-sheet] .text-emerald-400,
+html.light [data-bankroll-import-sheet] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-bankroll-import-sheet] .bg-emerald-900\/60 {
+  background-color: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+html.light [data-bankroll-import-sheet] .border-emerald-500\/30 {
+  border-color: #6ee7b7 !important;
+}
+html.light [data-bankroll-import-sheet] .text-red-400 {
+  color: #dc2626 !important;
+}
+html.light [data-bankroll-import-sheet] .text-white {
+  color: #18181b !important;
+}
+
+/* Venue picker dropdown (CasinoAutocomplete) — light mode only */
+html.light [data-casino-autocomplete-menu] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-casino-autocomplete-menu] .text-emerald-400 {
+  color: #047857 !important;
+}
+html.light [data-casino-autocomplete-menu] .text-white {
+  color: #18181b !important;
+}
+html.light [data-casino-autocomplete-menu] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
+html.light [data-casino-autocomplete-menu] .hover\:bg-zinc-700\/60:hover,
+html.light [data-casino-autocomplete-menu] .active\:bg-zinc-700:active {
+  background-color: #f4f4f5 !important;
 }
 
 /* ── Poker Bankroll sheet - light mode (dark unchanged) ──── */
@@ -5734,6 +5873,25 @@ html.light [data-session-card] [data-poker-session-end-btn].text-white {
   color: #ffffff !important; /* light label (session-card .text-white was forcing dark green) */
 }
 
+/* Poker Bankroll overview live session card (light mode) */
+html.light [data-poker-bankroll] [data-poker-live-session-card] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-bankroll] [data-poker-live-session-card] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-bankroll] [data-poker-live-session-card] .text-emerald-300 {
+  color: #1d4ed8 !important;
+}
+html.light [data-poker-bankroll] [data-poker-live-session-card] .text-emerald-200 {
+  color: #047857 !important;
+}
+html.light [data-poker-bankroll] [data-poker-live-session-card] [data-poker-session-end-btn],
+html.light [data-poker-bankroll] [data-poker-live-session-card] [data-poker-session-end-btn].text-white {
+  color: #ffffff !important;
+}
+
 /* MoneyKeypad uses inline styles - no Tailwind overrides needed */
 
 /* Bankroll cards + button - shadows in light mode only */
@@ -5929,6 +6087,14 @@ html.light [data-play-logbook-entry] .text-white {
 }
 html.light [data-play-logbook-entry] .text-zinc-200 {
   color: #3f3f46 !important;
+}
+html.light [data-play-logbook] .text-emerald-400,
+html.light [data-play-logbook] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-play-logbook] .text-red-300,
+html.light [data-play-logbook] .text-red-400 {
+  color: #dc2626 !important;
 }
 
 /* Play Logbook game picker - Analyze tab (Log Play sheet uses bankroll-sheet rules) */
@@ -6127,6 +6293,9 @@ html.light .chat-composer-ce:empty::before {
 }
 html.light [data-chat-feature] .chat-composer-ce::placeholder {
   color: rgb(161 161 170); /* zinc-400 */
+}
+html.light [data-chat-feature] .text-emerald-400 {
+  color: #047857 !important;
 }
 /* Ensure line-height fills single-row wrapper so text is vertically centered */
 .chat-composer-ce:not(.leading-5) {

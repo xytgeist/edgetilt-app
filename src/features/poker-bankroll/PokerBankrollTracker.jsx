@@ -2633,6 +2633,7 @@ export default function PokerBankrollTracker({
             {activeSession ? (
               <div
                 data-session-card
+                data-poker-live-session-card
                 data-elevated-card="accent"
                 role="button"
                 tabIndex={0}

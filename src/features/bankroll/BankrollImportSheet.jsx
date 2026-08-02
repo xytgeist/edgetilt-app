@@ -188,7 +188,7 @@ export default function BankrollImportSheet({ supabaseClient, userId, completedS
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-[95] bg-zinc-950 flex flex-col">
+    <div className="fixed inset-0 z-[95] bg-zinc-950 flex flex-col" data-bankroll-import-sheet>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-lg mx-auto px-5 pt-6 pb-16">
 

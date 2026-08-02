@@ -1,5 +1,5 @@
 /**
- * Sticky title row for scrollable Stable bottom sheets ... close stays reachable while scrolling.
+ * Stable sheet title + sticky upper-right close (button only ... no title bar chrome).
  */
 export default function PokerStableSheetHeader({
   title,
@@ -9,11 +9,20 @@ export default function PokerStableSheetHeader({
   children = null,
 }) {
   return (
-    <div
-      data-poker-stable-sheet-header
-      className="sticky top-0 z-20 -mx-5 -mt-5 mb-4 flex items-start justify-between gap-3 border-b border-zinc-800/80 bg-zinc-900/95 px-5 pb-3 pt-5 backdrop-blur-sm"
-    >
-      <div className="min-w-0 flex-1 pr-1">
+    <>
+      <div className="pointer-events-none sticky top-0 z-30 -mt-5 flex h-0 justify-end pt-5">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={disabled}
+          data-poker-stable-sheet-close
+          className="pointer-events-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation active:bg-zinc-700 disabled:opacity-50"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="mb-4 pr-10">
         {children ?? (
           <>
             <h3 className="text-lg font-bold leading-snug text-white">{title}</h3>
@@ -21,16 +30,6 @@ export default function PokerStableSheetHeader({
           </>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={disabled}
-        data-poker-stable-sheet-close
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation active:bg-zinc-700 disabled:opacity-50"
-        aria-label="Close"
-      >
-        ✕
-      </button>
-    </div>
+    </>
   )
 }

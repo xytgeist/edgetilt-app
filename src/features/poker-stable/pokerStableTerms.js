@@ -174,8 +174,9 @@ export function dealIsInMakeup(deal, dealRoll = null) {
   return computeDealMakeup({ baseline_bankroll: baseline, roll }) > 0.005
 }
 
-/** Periodic settle only when cash backing and not underwater vs baseline. */
+/** Periodic settle only when cash backing, not underwater vs baseline, and deal still active. */
 export function dealCanPeriodicSettle(deal, dealRoll = null) {
+  if (deal?.status === 'revoked') return false
   if (!dealAllowsPeriodicSettle(deal)) return false
   return !dealIsInMakeup(deal, dealRoll)
 }

@@ -259,6 +259,7 @@ When a backer exits after accept, the player stake card must **not disappear** .
 | **One of several backers revokes** | Only that slice → `declined`; deal stays **`active`** if other slices remain. Declined action % returns to player's **self-owned %** (swap cap uses `playerSelfOwnedActionPct`; declined slices excluded). |
 | **Backer declines pending slice** | Slice → `declined`; deal stays **`pending`**. If **all** slices decline → deal stays an **editable draft** (no auto-revoke). Player edits terms to add/re-offer backers. |
 | **Re-offer after revoke** | Stakee **Edit terms** on revoked deal → `poker_stable_apply_stakee_terms` flips deal **`pending`**, replaces slices, new Edge invites. |
+| **Close revoked stake** | Stakee **Close stake** runs `poker_stable_close_deal` (finalize settle, no active slices → player keeps profit above baseline if any); deal → **`settled`** / archive. Periodic settle **not** allowed on revoked. |
 | **Player notification** | Bankroll Realtime + **8s poll** while carousel has pending/active stakes. Edge in-app / push **v2c**. |
 
 **Delete stake** (separate rule): only on **`pending`** / **`active`** deals **before any Edge backer has accepted** (`stakeDealCanBeCancelled`). Unrelated to post-accept revoke.
@@ -267,8 +268,62 @@ When a backer exits after accept, the player stake card must **not disappear** .
 
 ---
 
+## Open product decisions (TBD)
+
+Tracked in **`docs/test-buildout-backlog.md`** (Poker Stable open checkboxes). No Ryan sign-off yet.
+
+### Settlement sync (player ↔ backer)
+
+**Problem:** Calculated settle events can get out of sync between parties. Examples:
+
+- Player runs **periodic settle** or **close stake**; one or more backers have not acknowledged the settle (or disagree on timing / numbers).
+- Backer initiates or confirms a settle from Stable while the player has not logged the same event on Bankroll (or vice versa).
+
+**Today:** Player-initiated settle RPCs (`poker_stable_periodic_settle`, `poker_stable_close_deal`) write settlement rows + lines atomically; **off-platform cash** uses asymmetric **`poker_stable_payment_claims`** (§ Settle + asymmetric payment ledger). There is **no** bilateral accept/decline on the **calculated settle** itself yet.
+
+**Open questions:**
+
+- Who may initiate periodic settle vs close? Player-only, or backer proposal → player accept (mirror terms-edit pattern)?
+- If parties disagree on a settle snapshot, block further sessions? Allow edit/dispute/re-run?
+- How do UI surfaces stay aligned (Bankroll stake card vs Stable horse detail vs archive timeline)?
+- Relationship to payment claims: settle crystallizes economics; claims track cash movement ... both can be pending at once?
+
+### Single backer cash-out (multi-slice stake)
+
+**Problem:** One backer wants to **exit economically** mid-deal while other slices stay active ... distinct from **slice revoke/decline** (§ Backer revoke), which removes backing but may not fully reconcile makeup, settle lines, and action %.
+
+**Today:** Multi-slice **revoke** → slice `declined`, action % returns to player self-owned %; deal stays `active` if other slices remain. No dedicated **cash-out** flow (partial settle for one slice, buyout, transfer slice ownership, etc.).
+
+**Open questions:**
+
+- Cash-out = revoke + mandatory mini-settle for that slice? Or separate RPC with pro-rata makeup / profit split through exit date?
+- Does exiting backer's action % redistribute to remaining backers, player self-owned %, or require player re-offer?
+- Backer bankroll / personal bankroll credits on partial exit (v2c dependency)?
+- Guest slice cash-out: player-authoritative only (like payment claims)?
+
+### Move session scope (personal ↔ stake)
+
+**Problem:** Player logs a session on the wrong bankroll scope ... e.g. **Personal** when it should be **On stake** (or the reverse).
+
+**Proposed UX:** Session detail or edit flow → **Move to stake** (or **Move to personal**). When the player has **multiple** pending/active stakes, show a **stake picker dropdown** before confirm.
+
+**Today:** `poker_bankroll_sessions.deal_id` sets scope; stake roll and personal bankroll deltas apply on create/edit/delete. No **re-parent** flow between personal (`deal_id` null) and a stake deal.
+
+**Open questions:**
+
+- Who may move? Player only (stakee), or also backers with dispute path?
+- Allowed deal statuses: `pending` + `active` only? Block on `revoked` / after settle snapshot?
+- Roll / P/L recompute: move stake → personal removes from deal roll; personal → stake adds to deal roll ... atomic RPC?
+- Metrics: `player_net_value` / swap attribution recalc on move?
+- Backer visibility: notify on move (guest email/SMS + Edge v2c)?
+- History line on deal timeline (`session_moved_to_stake` / `session_moved_to_personal`)?
+
+---
+
 ## Update log
 
+- **2026-08-02:** **Close revoked stake (test):** migration **`20260802160000`** — `poker_stable_run_settlement` allows finalize on **`revoked`** deals (fixes "Active stake not found" on Close stake); periodic settle still active-only.
+- **2026-08-02:** **Open product decisions (TBD):** § Settlement sync, § Single backer cash-out, § Move session scope (personal ↔ stake with multi-stake picker) added to backlog; no implementation until Ryan locks rules.
 - **2026-08-02:** **Revoked re-offer (test):** migration **`20260802150000`** — stakee edit on **`revoked`** deal flips **`pending`** + replaces slices; pending draft may have zero slices when all backers declined. Product rules locked in § Backer revoke / slice decline.
 - **2026-08-02:** **Revoked stake UX + archive (test):** sole backer revoke keeps deal on player carousel (**Revoked** badge, banner, terms edit/close); partial multi-slice revoke declines slice only; Bankroll **ARCHIVE** pill + detail modal; poll widened to pending **or** active carousel stakes.
 

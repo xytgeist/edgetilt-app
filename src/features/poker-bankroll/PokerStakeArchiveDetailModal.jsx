@@ -154,7 +154,7 @@ export default function PokerStakeArchiveDetailModal({
                     <p
                       data-poker-stake-history-line
                       data-poker-stake-history-kind={item.kind}
-                      className="text-sm italic leading-snug text-zinc-300"
+                      className="text-sm italic leading-snug"
                     >
                       {item.text}
                       <span className="not-italic opacity-70"> · {formatArchiveDate(item.at)}</span>

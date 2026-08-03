@@ -1,12 +1,7 @@
 import { useState } from 'react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import { fmtPoker$ } from './pokerBankrollMath.js'
-import { dealTypeLabel, sumSliceActionPct } from '../poker-stable/pokerStableMath.js'
-import {
-  dealLeadBackerDisplayName,
-  sliceTermsSummary,
-} from '../poker-stable/pokerStableTerms.js'
-import { venueKindLabel } from './pokerStakeeOnboarding.js'
+import { PokerStableGuestClaimOfferDetails } from '../poker-stable/PokerStableGuestClaimOfferDetails.jsx'
+import { stakeOfferOnboardingDetails } from '../poker-stable/pokerStableGuestClaimOffer.js'
 
 /**
  * First-run guest stakee: blocking stake-offer sheet with terms visible.
@@ -23,11 +18,10 @@ export default function PokerStakeOfferOnboardingModal({
 
   if (!deal) return null
 
-  const label = deal.label?.trim() || dealTypeLabel(deal.deal_type) || 'Cash backing'
-  const backerName = dealLeadBackerDisplayName(deal, stableProfilesById) || 'Your backer'
-  const actionSold = sumSliceActionPct(slices)
-  const baseline = Number(deal.baseline_bankroll) || 0
-  const sliceSummaries = (slices || []).map((slice) => sliceTermsSummary(slice, stableProfilesById))
+  const backerName =
+    stakeOfferOnboardingDetails(deal, slices, stableProfilesById)?.rows?.[0]?.value || 'Your backer'
+  const offerDetails = stakeOfferOnboardingDetails(deal, slices, stableProfilesById)
+  const label = offerDetails?.label || 'Cash backing'
 
   return (
     <div
@@ -57,60 +51,11 @@ export default function PokerStakeOfferOnboardingModal({
           below, then accept, decline, or propose changes.
         </p>
 
-        <div className="mt-5 rounded-2xl border border-zinc-700/70 bg-zinc-950/70 p-4">
-          <div className="text-lg font-bold text-white">{label}</div>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-zinc-400">Backer</dt>
-              <dd className="text-right font-medium text-zinc-100">{backerName}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-zinc-400">Deal type</dt>
-              <dd className="text-right font-medium text-zinc-100">{dealTypeLabel(deal.deal_type)}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-zinc-400">Venue</dt>
-              <dd className="text-right font-medium text-zinc-100">
-                {venueKindLabel(deal.venue_kind)}
-              </dd>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-zinc-400">Baseline bankroll</dt>
-              <dd className="text-right font-medium text-zinc-100">{fmtPoker$(baseline)}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-zinc-400">Action sold</dt>
-              <dd className="text-right font-medium text-zinc-100">{actionSold}%</dd>
-            </div>
-          </dl>
-
-          {sliceSummaries.length ? (
-            <div className="mt-4 space-y-3 border-t border-zinc-800 pt-4">
-              {sliceSummaries.map((summary, idx) => (
-                <div key={`${summary.name}-${idx}`}>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Backer slice {sliceSummaries.length > 1 ? idx + 1 : ''}
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-zinc-200">{summary.name}</div>
-                  <ul className="mt-1 space-y-0.5 text-sm text-zinc-400">
-                    {summary.lines.map((line) => (
-                      <li key={line.label}>
-                        {line.label}: <span className="text-zinc-200">{line.value}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {deal.notes?.trim() ? (
-            <div className="mt-4 border-t border-zinc-800 pt-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Notes</div>
-              <p className="mt-1 text-sm leading-relaxed text-zinc-300">{deal.notes.trim()}</p>
-            </div>
-          ) : null}
-        </div>
+        {offerDetails ? (
+          <div className="mt-5">
+            <PokerStableGuestClaimOfferDetails {...offerDetails} />
+          </div>
+        ) : null}
 
         {declineConfirm ? (          <div className="mt-4 rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-sm text-rose-100">
             <p className="text-center">

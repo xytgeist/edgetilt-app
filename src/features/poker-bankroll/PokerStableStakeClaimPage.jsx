@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { fmtPoker$ } from './pokerBankrollMath.js'
 import { guestStakeeClaimByEmail, guestStakeeClaimLink, guestStakeeClaimPreview } from '../poker-stable/pokerStableApi.js'
+import { PokerStableGuestClaimOfferDetails } from '../poker-stable/PokerStableGuestClaimOfferDetails.jsx'
+import { guestStakeeClaimOfferDetails } from '../poker-stable/pokerStableGuestClaimOffer.js'
 import { buildStakeOnboardingBankrollUrl } from './pokerStakeeOnboarding.js'
 
 /**
@@ -106,6 +107,9 @@ export default function PokerStableStakeClaimPage({
     linkRetry,
   ])
 
+  const offerDetails = guestStakeeClaimOfferDetails(preview)
+  const backerName = preview?.backer_label || 'Your backer'
+
   return (
     <div
       data-poker-stake-claim
@@ -116,9 +120,14 @@ export default function PokerStableStakeClaimPage({
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400/90">
             EdgeTilt
           </div>
-          <h1 className="mt-2 text-2xl font-black tracking-tight">Backing stake</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Link your Edge account, then accept or counter the backer&apos;s terms on Bankroll.
+          <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300/90">
+            Backing invitation
+          </p>
+          <h1 className="mt-2 text-xl font-black tracking-tight text-white">Review your stake</h1>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+            {preview
+              ? `${backerName} invited you to a backing stake on EdgeTilt Poker Bankroll. Review the terms below, then create an account or sign in to link the stake.`
+              : "Link your Edge account, then accept or counter the backer's terms on Bankroll."}
           </p>
         </div>
 
@@ -128,26 +137,18 @@ export default function PokerStableStakeClaimPage({
           <p className="rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-center text-sm text-rose-200">
             {error}
           </p>
-        ) : preview ? (
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-5">
-            <div className="text-sm text-zinc-400">
-              {preview.backer_label} invited you as the player
-            </div>
-            <div className="mt-1 text-lg font-bold text-white">
-              {preview.deal_label?.trim() || 'Cash backing'}
-            </div>
-            <div className="mt-2 text-sm text-zinc-300">
-              Stake baseline {fmtPoker$(preview.baseline_bankroll)} · action sold{' '}
-              {Number(preview.action_sold_pct) || 0}%
-            </div>
+        ) : preview && offerDetails ? (
+          <>
+            <PokerStableGuestClaimOfferDetails {...offerDetails} />
+
             {preview.guest_email ? (
-              <div className="mt-2 text-xs text-zinc-500">
+              <p className="mt-3 text-center text-xs text-zinc-500">
                 Invitation sent to {preview.guest_email}
-              </div>
+              </p>
             ) : null}
 
             {linked ? (
-              <p className="mt-4 text-sm text-emerald-300">
+              <p className="mt-4 text-center text-sm text-emerald-300">
                 Stake linked. Opening Bankroll…
               </p>
             ) : !userId ? (
@@ -183,7 +184,7 @@ export default function PokerStableStakeClaimPage({
                 </button>
               </>
             ) : null}
-          </div>
+          </>
         ) : null}
       </div>
     </div>

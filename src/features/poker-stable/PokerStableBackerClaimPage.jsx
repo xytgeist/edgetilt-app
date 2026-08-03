@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   guestBackerClaimByEmail,
   guestBackerClaimLink,
   guestBackerClaimPreview,
 } from './pokerStableApi.js'
+import { PokerStableGuestClaimOfferDetails } from './PokerStableGuestClaimOfferDetails.jsx'
+import { guestBackerClaimOfferDetails } from './pokerStableGuestClaimOffer.js'
 
 /**
  * Guest backer claim: /poker-stable-claim?token=…
@@ -107,11 +108,8 @@ export default function PokerStableBackerClaimPage({
     linkRetry,
   ])
 
-  const pricingLabel = preview
-    ? preview.pricing_mode === 'markup'
-      ? `Markup ${Number(preview.markup_rate) || 0}x`
-      : `Profit split · player keeps ${Number(preview.player_profit_pct) || 0}%`
-    : ''
+  const offerDetails = guestBackerClaimOfferDetails(preview)
+  const playerName = preview?.player_label || 'the player'
 
   return (
     <div
@@ -123,9 +121,14 @@ export default function PokerStableBackerClaimPage({
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400/90">
             EdgeTilt
           </div>
-          <h1 className="mt-2 text-2xl font-black tracking-tight">Backing invitation</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Link your Edge account, then accept or decline your slice in Stable Manager.
+          <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300/90">
+            Backing invitation
+          </p>
+          <h1 className="mt-2 text-xl font-black tracking-tight text-white">Review your backing slice</h1>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+            {preview
+              ? `${playerName} invited you to back them on EdgeTilt Stable Manager. Review the terms below, then create an account or sign in to link your slice.`
+              : 'Link your Edge account, then accept or decline your slice in Stable Manager.'}
           </p>
         </div>
 
@@ -135,27 +138,18 @@ export default function PokerStableBackerClaimPage({
           <p className="rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-center text-sm text-rose-200">
             {error}
           </p>
-        ) : preview ? (
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-5">
-            <div className="text-sm text-zinc-400">
-              {preview.player_label} invited you as a backer
-            </div>
-            <div className="mt-1 text-lg font-bold text-white">
-              {preview.deal_label?.trim() || 'Cash backing'}
-            </div>
-            <div className="mt-2 text-sm text-zinc-300">
-              Stake baseline {fmtPoker$(preview.baseline_bankroll)} · your action{' '}
-              {Number(preview.action_pct) || 0}%
-            </div>
-            <div className="mt-1 text-xs text-zinc-500">{pricingLabel}</div>
+        ) : preview && offerDetails ? (
+          <>
+            <PokerStableGuestClaimOfferDetails {...offerDetails} />
+
             {preview.guest_email ? (
-              <div className="mt-2 text-xs text-zinc-500">
+              <p className="mt-3 text-center text-xs text-zinc-500">
                 Invitation sent to {preview.guest_email}
-              </div>
+              </p>
             ) : null}
 
             {linked ? (
-              <p className="mt-4 text-sm text-emerald-300">
+              <p className="mt-4 text-center text-sm text-emerald-300">
                 Slice linked. Opening Stable Manager…
               </p>
             ) : !userId ? (
@@ -191,7 +185,7 @@ export default function PokerStableBackerClaimPage({
                 </button>
               </>
             ) : null}
-          </div>
+          </>
         ) : null}
       </div>
     </div>

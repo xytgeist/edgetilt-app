@@ -5219,6 +5219,78 @@ html.light [data-poker-stake-claim] .text-emerald-300 {
   color: #059669 !important;
 }
 
+/* ── Poker guest backer claim page (/poker-stable-claim) — light mode only ─── */
+html.light [data-poker-stable-claim] {
+  background-color: #fafafa !important;
+  color: #18181b;
+}
+html.light [data-poker-stable-claim] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable-claim] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-claim] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-claim] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-claim] .text-cyan-400\/90,
+html.light [data-poker-stable-claim] .text-cyan-300\/90 {
+  color: #0891b2 !important;
+}
+html.light [data-poker-stable-claim] .bg-cyan-600,
+html.light [data-poker-stable-claim] .bg-cyan-600.text-white {
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-claim] .border-rose-500\/40.bg-rose-950\/40 {
+  background-color: #fff1f2 !important;
+  border-color: #fda4af !important;
+}
+html.light [data-poker-stable-claim] .text-rose-200,
+html.light [data-poker-stable-claim] .text-rose-400 {
+  color: #e11d48 !important;
+}
+html.light [data-poker-stable-claim] .text-emerald-300 {
+  color: #059669 !important;
+}
+html.light [data-poker-stable-claim] .border-zinc-600 {
+  border-color: #d4d4d8 !important;
+}
+
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer],
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer] .text-white,
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer] .text-zinc-100,
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer] .text-zinc-200,
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .text-zinc-100,
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .text-zinc-200 {
+  color: #27272a !important;
+}
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer] .text-zinc-300,
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer] .text-zinc-400,
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer] .text-zinc-500,
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stake-claim] [data-poker-guest-claim-offer] .border-zinc-800,
+html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .border-zinc-800 {
+  border-color: #e4e4e7 !important;
+}
+
 /* Poker Stable deal sheet — native focus scroll keeps fields above keyboard without lifting the panel. */
 [data-poker-stable-sheet] input,
 [data-poker-stable-sheet] select,

@@ -28,6 +28,7 @@ import PokerSessionDetailSheet from './PokerSessionDetailSheet.jsx'
 import PokerStakeArchiveDetailModal from './PokerStakeArchiveDetailModal.jsx'
 import { tryAutoLinkGuestStakeeOffers } from './pokerGuestStakeeAutoLink.js'
 import PokerStakeOfferOnboardingModal from './PokerStakeOfferOnboardingModal.jsx'
+import PokerStakeeClosedStakeSheet from './PokerStakeeClosedStakeSheet.jsx'
 import PokerBankrollCarouselCoachModal from './PokerBankrollCarouselCoachModal.jsx'
 import {
   clearPokerStakeOnboardingDeal,
@@ -51,10 +52,13 @@ import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
   dealLeadBackerDisplayName,
+  stakeeBankrollShowsClosedCarouselCard,
+  stakeeSkipsBackerCommitSync,
   sliceCounterpartyDisplayName,
 } from '../poker-stable/pokerStableTerms.js'
 import {
   acceptProposedDealTerms,
+  archiveStakeeBankrollDeal,
   cancelStakeDeal,
   closeBackingDeal,
   declineProposedDealTerms,
@@ -302,7 +306,7 @@ export default function PokerBankrollTracker({
   const [profile, setProfile] = useState(null)
   /** All sessions for this user (personal + deal-scoped). */
   const [sessions, setSessions] = useState([])
-  /** Active, pending, and revoked deals where I am the horse (stakee) — carousel cards. */
+  /** Active, pending, revoked, and closed-but-unarchived deals — carousel cards. */
   const [stakeeDeals, setStakeeDeals] = useState([])
   /** All stakee deals including settled (attribution + merged history badges). */
   const [stakeeDealsById, setStakeeDealsById] = useState(/** @type {Record<string, object>} */ ({}))
@@ -393,12 +397,19 @@ export default function PokerBankrollTracker({
 
   const isOnStake = bankrollScope !== 'personal'
   const activeDeal = useMemo(
-    () => (isOnStake ? stakeeDeals.find((d) => d.id === bankrollScope) ?? null : null),
-    [isOnStake, stakeeDeals, bankrollScope],
+    () =>
+      isOnStake
+        ? stakeeDeals.find((d) => d.id === bankrollScope) ??
+          stakeeDealsById[bankrollScope] ??
+          null
+        : null,
+    [isOnStake, stakeeDeals, stakeeDealsById, bankrollScope],
   )
   const stakeScopePending = activeDeal?.status === 'pending'
   const stakeScopeRevoked = activeDeal?.status === 'revoked'
-  const stakeScopeSessionBlocked = stakeScopePending || stakeScopeRevoked
+  const stakeScopeClosedUnarchived =
+    isOnStake && stakeeBankrollShowsClosedCarouselCard(activeDeal)
+  const stakeScopeSessionBlocked = stakeScopePending || stakeScopeClosedUnarchived
   const pendingBackerOffer =
     isOnStake &&
     activeDeal?.status === 'pending' &&
@@ -407,6 +418,18 @@ export default function PokerBankrollTracker({
     !activeDeal?.stakee_terms_ack_required
   const waitingBackerCounterResponse =
     isOnStake && activeDeal?.status === 'pending' && Boolean(activeDeal?.staker_terms_ack_required)
+  const termsDealForSheet = useMemo(() => {
+    if (!termsDealId) return null
+    return (
+      stakeeDeals.find((d) => d.id === termsDealId) ?? stakeeDealsById[termsDealId] ?? null
+    )
+  }, [termsDealId, stakeeDeals, stakeeDealsById])
+  const ledgerDealForSheet = useMemo(() => {
+    if (!ledgerDealId) return null
+    return (
+      stakeeDeals.find((d) => d.id === ledgerDealId) ?? stakeeDealsById[ledgerDealId] ?? null
+    )
+  }, [ledgerDealId, stakeeDeals, stakeeDealsById])
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
   const scopedSessions = useMemo(() => {
@@ -445,12 +468,16 @@ export default function PokerBankrollTracker({
       .filter(
         (d) =>
           d.stakee_user_id === userId &&
-          (d.status === 'settled' || d.status === 'closed'),
+          d.stakee_bankroll_archived_at &&
+          (d.status === 'settled' ||
+            d.status === 'closed' ||
+            d.status === 'declined' ||
+            d.status === 'revoked'),
       )
       .sort(
         (a, b) =>
-          new Date(b.settled_at || b.updated_at || b.created_at).getTime() -
-          new Date(a.settled_at || a.updated_at || a.created_at).getTime(),
+          new Date(b.stakee_bankroll_archived_at || b.settled_at || b.updated_at || b.created_at).getTime() -
+          new Date(a.stakee_bankroll_archived_at || a.settled_at || a.updated_at || a.created_at).getTime(),
       )
   }, [stakeeDealsById, userId])
 
@@ -723,7 +750,7 @@ export default function PokerBankrollTracker({
           console.warn('[poker-bankroll] stable deals load failed', dealsRes.error.message)
         }
         setStakeeDeals([])
-      setStakeeDealsById({})
+        setStakeeDealsById({})
         setDealProfiles({})
         setSlicesByDeal({})
         setStableProfilesById({})
@@ -731,9 +758,16 @@ export default function PokerBankrollTracker({
         setDealSettlementsByDeal({})
       } else {
         const mine = (dealsRes.deals || []).filter((d) => d.stakee_user_id === userId)
-        const carouselDeals = mine.filter(
-          (d) => d.status === 'active' || d.status === 'pending' || d.status === 'revoked',
-        )
+        const carouselDeals = mine.filter((d) => {
+          if (d.status === 'active' || d.status === 'pending' || d.status === 'revoked') return true
+          if (
+            (d.status === 'settled' || d.status === 'closed' || d.status === 'declined') &&
+            !d.stakee_bankroll_archived_at
+          ) {
+            return true
+          }
+          return false
+        })
         setStakeeDeals(carouselDeals)
         /** @type {Record<string, object>} */
         const dealsById = {}
@@ -1468,6 +1502,39 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
+  async function handleArchiveStakeeBankrollDeal(dealId) {
+    if (!supabaseClient || !dealId) return
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await archiveStakeeBankrollDeal(supabaseClient, dealId)
+      if (error) throw error
+      if (bankrollScope === dealId) setBankrollScope('personal')
+      setTermsDealId(null)
+      showStakeNotice('Stake archived.')
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not archive stake.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!ledgerDealId) return
+    const deal = stakeeDealsById[ledgerDealId]
+    if (
+      deal &&
+      (deal.status === 'settled' ||
+        deal.status === 'closed' ||
+        deal.status === 'declined' ||
+        isBackerInitiatedBackingDeal(deal))
+    ) {
+      setLedgerDealId(null)
+    }
+  }, [ledgerDealId, stakeeDealsById])
+
   useEffect(
     () => () => {
       if (stakeNoticeTimerRef.current) window.clearTimeout(stakeNoticeTimerRef.current)
@@ -1631,7 +1698,9 @@ export default function PokerBankrollTracker({
       setError(
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : 'Sessions unlock when backers accept this stake.',
+          : stakeScopeClosedUnarchived
+            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
+            : 'Sessions unlock when backers accept this stake.',
       )
       return
     }
@@ -1709,7 +1778,9 @@ export default function PokerBankrollTracker({
       setError(
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : 'Sessions unlock when backers accept this stake.',
+          : stakeScopeClosedUnarchived
+            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
+            : 'Sessions unlock when backers accept this stake.',
       )
       return
     }
@@ -2777,6 +2848,48 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
+        {waitingBackerCounterResponse && activeTab === 'overview' && isOnStake ? (
+          <div
+            data-poker-stake-notice
+            className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-center text-sm text-amber-100"
+          >
+            Waiting for {dealLeadBackerDisplayName(activeDeal, stableProfilesById)} to respond to
+            your counter-proposal.
+          </div>
+        ) : null}
+
+        {stakeScopeClosedUnarchived && activeTab === 'overview' && isOnStake ? (
+          <div
+            data-poker-stake-notice
+            className="mb-3 rounded-2xl border border-zinc-600/60 bg-zinc-900/80 px-4 py-3 text-sm text-zinc-200"
+          >
+            <p className="text-center">
+              This stake is closed
+              {isBackerInitiatedBackingDeal(activeDeal)
+                ? ` by ${dealLeadBackerDisplayName(activeDeal, stableProfilesById)}`
+                : ''}
+              . Archive it when you are done reviewing.
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                disabled={stableSaving}
+                onClick={() => void handleArchiveStakeeBankrollDeal(activeDeal.id)}
+                className="rounded-2xl bg-amber-600 px-4 py-2 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+              >
+                Archive stake
+              </button>
+              <button
+                type="button"
+                onClick={() => setTermsDealId(activeDeal.id)}
+                className="rounded-2xl bg-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 touch-manipulation"
+              >
+                Review
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {pendingBackerOffer && activeTab === 'overview' && !stakeOfferOnboardingOpen && !carouselCoachOpen ? (
           <div
             data-poker-stake-notice
@@ -2901,10 +3014,14 @@ export default function PokerBankrollTracker({
                                 ? 'pending'
                                 : hero.deal?.status === 'revoked'
                                   ? 'revoked'
-                                  : 'active'
+                                  : stakeeBankrollShowsClosedCarouselCard(hero.deal)
+                                    ? 'closed'
+                                    : 'active'
                             }
                             className={`shrink-0 rounded-md border border-transparent px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                              hero.deal?.status === 'pending' || hero.deal?.status === 'revoked'
+                              hero.deal?.status === 'pending' ||
+                              hero.deal?.status === 'revoked' ||
+                              stakeeBankrollShowsClosedCarouselCard(hero.deal)
                                 ? ''
                                 : theme.badge
                             }`}
@@ -2913,7 +3030,11 @@ export default function PokerBankrollTracker({
                               ? 'Pending'
                               : hero.deal?.status === 'revoked'
                                 ? 'Revoked'
-                                : 'On stake'}
+                                : hero.deal?.status === 'declined'
+                                  ? 'Declined'
+                                  : stakeeBankrollShowsClosedCarouselCard(hero.deal)
+                                    ? 'Closed'
+                                    : 'On stake'}
                           </span>
                         ) : null}
                       </div>
@@ -3773,13 +3894,18 @@ export default function PokerBankrollTracker({
         />
       ) : null}
 
-      {termsDealId && supabaseClient && userId ? (
+      {termsDealId && termsDealForSheet && stakeeBankrollShowsClosedCarouselCard(termsDealForSheet) ? (
+        <PokerStakeeClosedStakeSheet
+          deal={termsDealForSheet}
+          slices={slicesByDeal[termsDealId] || []}
+          profilesById={stableProfilesById}
+          saving={stableSaving}
+          onClose={() => setTermsDealId(null)}
+          onArchive={() => void handleArchiveStakeeBankrollDeal(termsDealId)}
+        />
+      ) : termsDealId && supabaseClient && userId ? (
         <PokerStableDealTermsSheet
-          deal={
-            stakeeDeals.find((d) => d.id === termsDealId) ??
-            stakeeDealsById[termsDealId] ??
-            null
-          }
+          deal={termsDealForSheet}
           slices={slicesByDeal[termsDealId] || []}
           proposedPayload={
             stakeeDeals.find((d) => d.id === termsDealId)?.pending_terms_json ?? null
@@ -3900,15 +4026,16 @@ export default function PokerBankrollTracker({
         />
       ) : null}
 
-      {ledgerDealId && supabaseClient && userId ? (
+      {ledgerDealId &&
+      ledgerDealForSheet &&
+      supabaseClient &&
+      userId &&
+      !stakeeBankrollShowsClosedCarouselCard(ledgerDealForSheet) &&
+      !stakeeSkipsBackerCommitSync(ledgerDealForSheet, userId) ? (
         <PokerStableDealDetailSheet
           supabaseClient={supabaseClient}
           userId={userId}
-          deal={
-            stakeeDeals.find((d) => d.id === ledgerDealId) ??
-            stakeeDealsById[ledgerDealId] ??
-            null
-          }
+          deal={ledgerDealForSheet}
           slices={slicesByDeal[ledgerDealId] || []}
           roll={dealProfiles[ledgerDealId] ?? null}
           profilesById={stableProfilesById}

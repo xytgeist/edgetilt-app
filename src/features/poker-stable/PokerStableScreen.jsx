@@ -55,6 +55,7 @@ import {
   archivedStakeOutcomeLabel,
   dealStakeeDisplayName,
   dealLeadBackerDisplayName,
+  stakeeSkipsBackerCommitSync,
 } from './pokerStableTerms.js'
 
 const STABLE_TABS = [
@@ -199,7 +200,12 @@ export default function PokerStableScreen({
       if (commitsRes.error && !isMissingStableTableError(commitsRes.error)) {
         console.warn('[poker-stable] pending commits', commitsRes.error.message)
       }
-      setPendingCommits(commitsRes.commits || [])
+      setPendingCommits(
+        (commitsRes.commits || []).filter((row) => {
+          const deal = rows.find((d) => d.id === row.deal_id)
+          return !stakeeSkipsBackerCommitSync(deal, userId)
+        }),
+      )
       if (sessionsRes.error) console.warn('[poker-stable] sessions', sessionsRes.error.message)
       setStableSessions(sessionsRes.sessions || [])
       if (adjRes.error && !isMissingStableTableError(adjRes.error)) {
@@ -271,6 +277,14 @@ export default function PokerStableScreen({
     setDetailDealId(openStableDealId)
     onOpenStableDealConsumed?.()
   }, [openStableDealId, loading, onOpenStableDealConsumed])
+
+  useEffect(() => {
+    if (!detailDealId || !userId) return
+    const deal = deals.find((d) => d.id === detailDealId)
+    if (deal && !isViewerBackingDeal(deal, userId, slicesByDeal)) {
+      setDetailDealId(null)
+    }
+  }, [detailDealId, deals, userId, slicesByDeal])
 
   const incoming = useMemo(
     () =>
@@ -1019,7 +1033,10 @@ export default function PokerStableScreen({
         />
       ) : null}
 
-      {detailDeal && supabaseClient && userId ? (
+      {detailDeal &&
+      supabaseClient &&
+      userId &&
+      isViewerBackingDeal(detailDeal, userId, slicesByDeal) ? (
         <PokerStableDealDetailSheet
           supabaseClient={supabaseClient}
           userId={userId}

@@ -46,7 +46,7 @@ export function normalizeHandleInput(raw) {
 }
 
 const DEAL_SELECT =
-  'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_phone, stakee_guest_email, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, staker_terms_ack_required, terms_revised_at, terms_revised_by'
+  'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_phone, stakee_guest_email, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, staker_terms_ack_required, terms_revised_at, terms_revised_by, stakee_bankroll_archived_at'
 
 const SLICE_SELECT =
   'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_phone, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at'
@@ -1072,6 +1072,20 @@ export async function stakeeDeclineBackerOffer(supabase, dealId) {
     .eq('id', dealId)
     .maybeSingle()
   return { deal: deal || data, error: loadErr }
+}
+
+/** Stakee moves a closed stake from Bankroll carousel into Archive. */
+export async function archiveStakeeBankrollDeal(supabase, dealId) {
+  const { data, error } = await supabase.rpc('poker_stable_stakee_archive_bankroll_deal', {
+    p_deal_id: dealId,
+  })
+  if (error) return { deal: null, error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal, error: loadErr, result: data }
 }
 
 /** Stakee counter-proposes terms on a backer-initiated pending deal. */

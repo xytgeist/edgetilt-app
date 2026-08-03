@@ -156,12 +156,25 @@ export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
   return !hasActiveEdgeSlice
 }
 
+/** Backer-initiated stakes: player never manually syncs backer close/settle commits. */
+export function stakeeSkipsBackerCommitSync(deal, userId) {
+  if (!deal || !userId || deal.stakee_user_id !== userId) return false
+  return Boolean(deal.staker_user_id)
+}
+
+/** Stakee Bankroll carousel keeps closed stakes until manually archived. */
+export function stakeeBankrollShowsClosedCarouselCard(deal) {
+  if (!deal?.id || deal.stakee_bankroll_archived_at) return false
+  return ['settled', 'closed', 'declined', 'revoked'].includes(deal.status)
+}
+
 /** Player may open deal ledger (top-up + settle) on active cash backing. */
 export function stakeeCanOpenLedger(deal, { userId, hasProposal = false } = {}) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false
   if (deal.status !== 'active') return false
   if (deal.deal_type !== 'cash_backing') return false
   if (hasProposal) return false
+  if (deal.staker_user_id) return false
   return true
 }
 

@@ -4,6 +4,7 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { loadDealCommit, syncDealCommit } from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
 import { stableCommitSyncHint } from './pokerStableBooksCopy.js'
+import { stakeeSkipsBackerCommitSync } from './pokerStableTerms.js'
 
 /**
  * Global sync modal for counterparty-recorded Stable commits (from Alerts / push).
@@ -68,8 +69,15 @@ export default function PokerStableCommitSyncModal({
 
   const alreadyMine = commit?.recorded_by_user_id === userId
   const isStakee = deal?.stakee_user_id === userId
+  const skipStakeeSync = stakeeSkipsBackerCommitSync(deal, userId)
   const isSettleCommit =
     commit?.event_kind === 'periodic_settle' || commit?.event_kind === 'close_settle'
+
+  useEffect(() => {
+    if (!loading && skipStakeeSync && isSettleCommit) {
+      onClose?.()
+    }
+  }, [loading, skipStakeeSync, isSettleCommit, onClose])
 
   async function onSync() {
     if (!commit || alreadyMine) return

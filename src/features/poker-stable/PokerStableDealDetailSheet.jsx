@@ -34,6 +34,7 @@ import {
   canProposeSettleStake,
   dealCanPeriodicSettle,
   dealHasMakeup,
+  stakeeSkipsBackerCommitSync,
   userCanRecordDealEvent,
 } from './pokerStableTerms.js'
 import { buildStakeDealHistoryEvents } from './pokerStableDealHistory.js'
@@ -68,6 +69,11 @@ export default function PokerStableDealDetailSheet({
   const [closeStakeOpen, setCloseStakeOpen] = useState(false)
 
   const isStakee = deal?.stakee_user_id === userId
+  const skipStakeeCommitSync = stakeeSkipsBackerCommitSync(deal, userId)
+  const visiblePendingCommits = useMemo(
+    () => (skipStakeeCommitSync ? [] : pendingCommits),
+    [pendingCommits, skipStakeeCommitSync],
+  )
   const canRecordEvents = userCanRecordDealEvent(deal, slices, userId)
   const canProposeSettle = canProposeSettleStake(deal, slices, { userId, hasProposal: false })
   const showPeriodicSettle = canProposeSettle && dealCanPeriodicSettle(deal, roll)
@@ -283,17 +289,17 @@ export default function PokerStableDealDetailSheet({
           </button>
         </div>
 
-        {pendingCommits.length ? (
+        {visiblePendingCommits.length ? (
           <div className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-950/25 p-3">
             <p className="text-sm font-semibold text-amber-100">
-              Out of sync with last commit ({pendingCommits.length})
+              Out of sync with last commit ({visiblePendingCommits.length})
             </p>
             <p className="mt-1 text-xs text-zinc-400">
               Another party recorded an update. Commit to sync your{' '}
               {stableCommitBooksPhrase(isStakee)}.
             </p>
             <div className="mt-3 space-y-2">
-              {pendingCommits.map((row) => (
+              {visiblePendingCommits.map((row) => (
                 <div
                   key={row.commit_id}
                   className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2"

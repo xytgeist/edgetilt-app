@@ -28,6 +28,7 @@ type ActivityEventRow = {
   poker_tournament_swap_id?: string | null
   poker_stable_deal_id?: string | null
   poker_stable_settlement_request_id?: string | null
+  poker_stable_commit_id?: string | null
   created_at: string
 }
 
@@ -209,6 +210,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'proposed a settlement for you to review'
     case 'poker_stable_settlement_resolved':
       return 'responded to your settlement proposal'
+    case 'poker_stable_commit_recorded':
+      return 'recorded a stake update — sync your books'
     default:
       return 'interacted with you'
   }
@@ -243,6 +246,7 @@ function buildTargetUrl(
     | 'guide_slug'
     | 'poker_stable_deal_id'
     | 'poker_stable_settlement_request_id'
+    | 'poker_stable_commit_id'
   >,
   actor: ActorProfile | null | undefined,
   markRead?: PushMarkReadIds,
@@ -298,11 +302,14 @@ function buildTargetUrl(
     event.event_type === 'poker_stable_slice_invite' ||
     event.event_type === 'poker_stable_session_complete' ||
     event.event_type === 'poker_stable_settlement_proposed' ||
-    event.event_type === 'poker_stable_settlement_resolved'
+    event.event_type === 'poker_stable_settlement_resolved' ||
+    event.event_type === 'poker_stable_commit_recorded'
   ) {
     params.set('tab', 'poker-stable')
     if (event.poker_stable_deal_id) params.set('stableDeal', event.poker_stable_deal_id)
-    if (event.poker_stable_settlement_request_id) {
+    if (event.poker_stable_commit_id) {
+      params.set('stableCommit', event.poker_stable_commit_id)
+    } else if (event.poker_stable_settlement_request_id) {
       params.set('stableSettlement', event.poker_stable_settlement_request_id)
     }
   } else if (event.event_type === 'repost' && !event.comment_id) {
@@ -401,7 +408,8 @@ function buildSingleNotification(
     event.event_type === 'poker_stable_slice_invite' ||
     event.event_type === 'poker_stable_session_complete' ||
     event.event_type === 'poker_stable_settlement_proposed' ||
-    event.event_type === 'poker_stable_settlement_resolved'
+    event.event_type === 'poker_stable_settlement_resolved' ||
+    event.event_type === 'poker_stable_commit_recorded'
   ) {
     const detail = String(event.detail_text || '').trim()
     const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
@@ -513,7 +521,7 @@ async function handleImmediatePush(
   const { data: eventRow, error: eventError } = await admin
     .from('activity_events')
     .select(
-      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, chat_call_id, starter_weekly_unlock_id, guide_slug, detail_text, poker_tournament_swap_id, poker_stable_deal_id, poker_stable_settlement_request_id, created_at',
+      'id, recipient_user_id, actor_user_id, event_type, post_id, comment_id, play_log_entry_id, chat_room_id, chat_call_id, starter_weekly_unlock_id, guide_slug, detail_text, poker_tournament_swap_id, poker_stable_deal_id, poker_stable_settlement_request_id, poker_stable_commit_id, created_at',
     )
     .eq('id', activityEventId)
     .maybeSingle()

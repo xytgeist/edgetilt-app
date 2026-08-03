@@ -68,6 +68,7 @@ export function loungeActivityNotificationBadgeKind(eventType) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED:
       return 'play_log'
     default:
       return null
@@ -271,6 +272,10 @@ export function loungeActivityActionPhrase(event) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED: {
       const detail = String(event?.detail_text || '').trim()
       return detail || 'responded to your settlement proposal'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail || 'recorded a stake update — sync your books'
     }
     default: {
       if (String(event?.guide_slug || '').trim()) {

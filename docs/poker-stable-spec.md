@@ -368,6 +368,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-03:** **Commit sync Alerts + push (Phase 0):** `poker_stable_commit_recorded` uses commit summary in Alerts (`loungeActivityApi.js`); push deep link `/?tab=poker-stable&stableDeal=&stableCommit=` + Poker Stable title/body in **`lounge-send-activity-push`** (redeploy Edge on test + prod). Alerts tap already opened sync modal via `stableCommit=`.
 - **2026-08-02:** **Backer TWR + At-risk ROI (test):** migration **`20260802270000`** ... manual adjust ledger + hero metrics; **`pokerStableBackerMath.js`**.
 - **2026-08-02:** **Stable Trend + Locations history (test):** migration **`20260802240000`** — backers read stake sessions on settled/revoked deals; fix session query columns (`start_at`, `venue_name`); Trend builds cumulative session-share lines for closed + active horses; Locations includes closed stakes in filters.
 - **2026-08-02:** **Backer settle backfill (test):** migration **`20260802260000`** ... idempotent repair for settles recorded before **`20260802230000`** backer routing (personal → Stable backer bankroll + Realized P/L).

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { fmtPoker$ } from './pokerBankrollMath.js'
-import { guestStakeeClaimLink, guestStakeeClaimPreview } from '../poker-stable/pokerStableApi.js'
+import { guestStakeeClaimByEmail, guestStakeeClaimLink, guestStakeeClaimPreview } from '../poker-stable/pokerStableApi.js'
+import { buildStakeOnboardingBankrollUrl } from './pokerStakeeOnboarding.js'
 
 /**
  * Guest stakee claim: /poker-stake-claim?token=…
@@ -66,7 +67,9 @@ export default function PokerStableStakeClaimPage({
     if (preview.already_linked && preview.claimed) {
       setLinked(true)
       onDoneRef.current?.(
-        preview.deal_id ? `/?tab=poker-bankroll&stableDeal=${preview.deal_id}` : undefined,
+        preview.deal_id
+          ? buildStakeOnboardingBankrollUrl(preview.deal_id)
+          : undefined,
       )
       return undefined
     }
@@ -75,8 +78,14 @@ export default function PokerStableStakeClaimPage({
     setClaiming(true)
     setError('')
     void guestStakeeClaimLink(supabaseClient, token)
-      .then(({ result, error: err }) => {
+      .then(async ({ result, error: err }) => {
         if (err) {
+          const byEmail = await guestStakeeClaimByEmail(supabaseClient)
+          if (!byEmail.error && Array.isArray(byEmail.result?.deal_ids) && byEmail.result.deal_ids.length) {
+            setLinked(true)
+            onDoneRef.current?.(byEmail.result?.redirect || undefined)
+            return
+          }
           setError(err.message || 'Could not link this stake.')
           return
         }

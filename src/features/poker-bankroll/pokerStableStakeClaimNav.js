@@ -1,3 +1,5 @@
+import { buildStakeOnboardingBankrollUrl, stashPokerStakeOnboardingDeal } from './pokerStakeeOnboarding.js'
+
 export const POKER_STAKE_CLAIM_RETURN_PATH = '/poker-stake-claim'
 const STAKE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stake_claim_return_token'
 
@@ -69,12 +71,20 @@ export function navigateToStakeClaimPage(token) {
 export function navigateAfterStakeClaim(redirect) {
   if (typeof window === 'undefined') return
   clearStashedPokerStakeClaimToken()
-  const dest = redirect || '/?tab=poker-bankroll'
+  let dest = redirect || '/?tab=poker-bankroll'
   try {
     const url = new URL(dest, window.location.origin)
-    window.location.assign(`${url.pathname}${url.search}`)
+    const stableDeal = String(url.searchParams.get('stableDeal') || '').trim()
+    if (stableDeal) {
+      stashPokerStakeOnboardingDeal(stableDeal)
+      if (url.searchParams.get('stakeOnboarding') !== '1') {
+        dest = buildStakeOnboardingBankrollUrl(stableDeal)
+      }
+    }
+    const finalUrl = new URL(dest, window.location.origin)
+    window.location.assign(`${finalUrl.pathname}${finalUrl.search}`)
   } catch {
-    window.location.assign('/?tab=poker-bankroll')
+    window.location.assign('/?tab=poker-bankroll&stakeOnboarding=1')
   }
 }
 

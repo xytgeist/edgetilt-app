@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, isEmailVerificationType, hasAuthSuccessTokens, replaceUrlPreservingQuery, hasOAuthProviderCallbackInLocation } from './features/auth/oauthCallback'
 import AuthModalPanel from './features/auth/AuthModalPanel'
+import AuthModalShell from './features/auth/AuthModalShell'
 import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
 import SubscribeModal from './features/billing/SubscribeModal.jsx'
@@ -55,6 +56,7 @@ import {
   stakeClaimSignupEmailRedirectUrl,
   stashPokerStakeClaimToken,
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
+import { tryAutoLinkGuestStakeeOffers } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
@@ -266,11 +268,9 @@ function App() {
           }
 
           replaceUrlPreservingQuery(pathname || '/')
-          setVerificationSuccess(true)
-          setAuthTab('signin')
-          setShowForgotPassword(false)
-          setLoginError('')
-          setAuthPanelOpen(true)
+          const linked = await tryAutoLinkGuestStakeeOffers(supabase)
+          if (linked) return
+          setCurrentView('app')
           return
         }
 
@@ -299,6 +299,24 @@ function App() {
       })()
     })
   }, [])
+
+  /** Link guest backing invites sent to this account's email, then open Bankroll. */
+  useEffect(() => {
+    if (!user?.id || isChecking || currentView !== 'app') return
+    try {
+      if (sessionStorage.getItem('poker_guest_stakee_autolink_done')) return
+    } catch {
+      // ignore
+    }
+    void tryAutoLinkGuestStakeeOffers(supabase).then((navigated) => {
+      if (!navigated) return
+      try {
+        sessionStorage.setItem('poker_guest_stakee_autolink_done', '1')
+      } catch {
+        // ignore
+      }
+    })
+  }, [user?.id, isChecking, currentView])
 
   useEffect(() => {
     let cancelled = false
@@ -1015,6 +1033,75 @@ function App() {
     }
   }, [authPanelOpen])
 
+  const authModalPanel = (
+    <AuthModalPanel
+      authTab={authTab}
+      onAuthTabChange={switchAuthTab}
+      showForgotPassword={showForgotPassword}
+      onOpenForgotPassword={() => {
+        setShowForgotPassword(true)
+        setForgotError('')
+        setForgotMessage('')
+        const addr = email.trim() || signupEmail.trim()
+        if (addr && !forgotEmail.trim()) setForgotEmail(addr)
+      }}
+      onCloseForgotPassword={() => {
+        setShowForgotPassword(false)
+        setForgotError('')
+        setForgotMessage('')
+        switchAuthTab('signin')
+      }}
+      verificationSuccess={verificationSuccess}
+      email={email}
+      onEmailChange={setEmail}
+      password={password}
+      onPasswordChange={setPassword}
+      loginError={loginError}
+      isLoggingIn={isLoggingIn}
+      onLoginSubmit={handleLogin}
+      signupEmail={signupEmail}
+      onSignupEmailChange={setSignupEmail}
+      signupPassword={signupPassword}
+      onSignupPasswordChange={setSignupPassword}
+      signupConfirmPassword={signupConfirmPassword}
+      onSignupConfirmPasswordChange={setSignupConfirmPassword}
+      signupError={signupError}
+      signupMessage={signupMessage}
+      isSigningUp={isSigningUp}
+      onSignUpSubmit={handleSignUp}
+      forgotEmail={forgotEmail}
+      onForgotEmailChange={setForgotEmail}
+      forgotError={forgotError}
+      forgotMessage={forgotMessage}
+      isSendingReset={isSendingReset}
+      onForgotSubmit={handleForgotPassword}
+      isOAuthLoading={isOAuthLoading}
+      acceptedLegal={acceptedLegal}
+      onAcceptedLegalChange={setAcceptedLegal}
+      onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
+      onGoogleSignIn={({ setErrorTarget }) => {
+        const setError =
+          setErrorTarget === 'forgot'
+            ? setForgotError
+            : setErrorTarget === 'join'
+              ? setSignupError
+              : setLoginError
+        setError('')
+        void handleOAuthSignIn('google', {
+          setError,
+          markLegalPending: authTab === 'join' && acceptedLegal,
+        })
+      }}
+    />
+  )
+
+  const renderAuthModal = (cancelLabel) =>
+    authPanelOpen ? (
+      <AuthModalShell onClose={closeAuthPanel} cancelLabel={cancelLabel}>
+        {authModalPanel}
+      </AuthModalShell>
+    ) : null
+
   if (isChecking && !shouldShowLoungeColdBootSplash({
     tab: 'home',
     pendingWork: readLoungeComposerDraftPendingWork(),
@@ -1083,105 +1170,7 @@ function App() {
             }}
           />
         </Suspense>
-        {authPanelOpen ? (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <button
-              type="button"
-              className="absolute inset-0 cursor-default bg-black/70 [-webkit-tap-highlight-color:transparent]"
-              aria-label="Close sign in"
-              onClick={closeAuthPanel}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="auth-modal-title-stake-claim"
-              className="relative z-10 w-full max-w-sm max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto overscroll-contain rounded-3xl border border-zinc-600/80 bg-gray-900 p-6 shadow-2xl sm:p-8"
-              data-auth-modal
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={closeAuthPanel}
-                className={`${linkBtn} mb-4 !min-h-11 w-full text-sm sm:text-base`}
-              >
-                ← Cancel
-              </button>
-              <svg
-                id="auth-modal-title-stake-claim"
-                viewBox="0 0 260 32"
-                width="100%"
-                className="mb-6 mx-auto block max-w-[300px]"
-                aria-label="Find Your Edge"
-                role="img"
-              >
-                <text x="26" y="24" textAnchor="start" fontFamily="'Montserrat', sans-serif" fontWeight="300" fontSize="24" fill="currentColor">
-                  Find Your
-                </text>
-                <image href="/edge-lounge-logo-transparent.png" x="150" y="6" width="77" height="19" className="edge-logo--dark" />
-                <image href="/edge-lounge-logo-light.png" x="150" y="6" width="77" height="19" className="edge-logo--light" />
-              </svg>
-              <AuthModalPanel
-                authTab={authTab}
-                onAuthTabChange={switchAuthTab}
-                showForgotPassword={showForgotPassword}
-                onOpenForgotPassword={() => {
-                  setShowForgotPassword(true)
-                  setForgotError('')
-                  setForgotMessage('')
-                  const addr = email.trim() || signupEmail.trim()
-                  if (addr && !forgotEmail.trim()) setForgotEmail(addr)
-                }}
-                onCloseForgotPassword={() => {
-                  setShowForgotPassword(false)
-                  setForgotError('')
-                  setForgotMessage('')
-                  switchAuthTab('signin')
-                }}
-                verificationSuccess={verificationSuccess}
-                email={email}
-                onEmailChange={setEmail}
-                password={password}
-                onPasswordChange={setPassword}
-                loginError={loginError}
-                isLoggingIn={isLoggingIn}
-                onLoginSubmit={handleLogin}
-                signupEmail={signupEmail}
-                onSignupEmailChange={setSignupEmail}
-                signupPassword={signupPassword}
-                onSignupPasswordChange={setSignupPassword}
-                signupConfirmPassword={signupConfirmPassword}
-                onSignupConfirmPasswordChange={setSignupConfirmPassword}
-                signupError={signupError}
-                signupMessage={signupMessage}
-                isSigningUp={isSigningUp}
-                onSignUpSubmit={handleSignUp}
-                forgotEmail={forgotEmail}
-                onForgotEmailChange={setForgotEmail}
-                forgotError={forgotError}
-                forgotMessage={forgotMessage}
-                isSendingReset={isSendingReset}
-                onForgotSubmit={handleForgotPassword}
-                isOAuthLoading={isOAuthLoading}
-                acceptedLegal={acceptedLegal}
-                onAcceptedLegalChange={setAcceptedLegal}
-                onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
-                onGoogleSignIn={({ setErrorTarget }) => {
-                  const setError =
-                    setErrorTarget === 'forgot'
-                      ? setForgotError
-                      : setErrorTarget === 'join'
-                        ? setSignupError
-                        : setLoginError
-                  setError('')
-                  void handleOAuthSignIn('google', {
-                    setError,
-                    markLegalPending: authTab === 'join' && acceptedLegal,
-                  })
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
+        {renderAuthModal('← Cancel')}
       </>
     )
   }
@@ -1206,105 +1195,7 @@ function App() {
             }}
           />
         </Suspense>
-        {authPanelOpen ? (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <button
-              type="button"
-              className="absolute inset-0 cursor-default bg-black/70 [-webkit-tap-highlight-color:transparent]"
-              aria-label="Close sign in"
-              onClick={closeAuthPanel}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="auth-modal-title-monitor"
-              className="relative z-10 w-full max-w-sm max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto overscroll-contain rounded-3xl border border-zinc-600/80 bg-gray-900 p-6 shadow-2xl sm:p-8"
-              data-auth-modal
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={closeAuthPanel}
-                className={`${linkBtn} mb-4 !min-h-11 w-full text-sm sm:text-base`}
-              >
-                ← Cancel
-              </button>
-              <svg
-                id="auth-modal-title-monitor"
-                viewBox="0 0 260 32"
-                width="100%"
-                className="mb-6 mx-auto block max-w-[300px]"
-                aria-label="Find Your Edge"
-                role="img"
-              >
-                <text x="26" y="24" textAnchor="start" fontFamily="'Montserrat', sans-serif" fontWeight="300" fontSize="24" fill="currentColor">
-                  Find Your
-                </text>
-                <image href="/edge-lounge-logo-transparent.png" x="150" y="6" width="77" height="19" className="edge-logo--dark" />
-                <image href="/edge-lounge-logo-light.png" x="150" y="6" width="77" height="19" className="edge-logo--light" />
-              </svg>
-              <AuthModalPanel
-                authTab={authTab}
-                onAuthTabChange={switchAuthTab}
-                showForgotPassword={showForgotPassword}
-                onOpenForgotPassword={() => {
-                  setShowForgotPassword(true)
-                  setForgotError('')
-                  setForgotMessage('')
-                  const addr = email.trim() || signupEmail.trim()
-                  if (addr && !forgotEmail.trim()) setForgotEmail(addr)
-                }}
-                onCloseForgotPassword={() => {
-                  setShowForgotPassword(false)
-                  setForgotError('')
-                  setForgotMessage('')
-                  switchAuthTab('signin')
-                }}
-                verificationSuccess={verificationSuccess}
-                email={email}
-                onEmailChange={setEmail}
-                password={password}
-                onPasswordChange={setPassword}
-                loginError={loginError}
-                isLoggingIn={isLoggingIn}
-                onLoginSubmit={handleLogin}
-                signupEmail={signupEmail}
-                onSignupEmailChange={setSignupEmail}
-                signupPassword={signupPassword}
-                onSignupPasswordChange={setSignupPassword}
-                signupConfirmPassword={signupConfirmPassword}
-                onSignupConfirmPasswordChange={setSignupConfirmPassword}
-                signupError={signupError}
-                signupMessage={signupMessage}
-                isSigningUp={isSigningUp}
-                onSignUpSubmit={handleSignUp}
-                forgotEmail={forgotEmail}
-                onForgotEmailChange={setForgotEmail}
-                forgotError={forgotError}
-                forgotMessage={forgotMessage}
-                isSendingReset={isSendingReset}
-                onForgotSubmit={handleForgotPassword}
-                isOAuthLoading={isOAuthLoading}
-                acceptedLegal={acceptedLegal}
-                onAcceptedLegalChange={setAcceptedLegal}
-                onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
-                onGoogleSignIn={({ setErrorTarget }) => {
-                  const setError =
-                    setErrorTarget === 'forgot'
-                      ? setForgotError
-                      : setErrorTarget === 'join'
-                        ? setSignupError
-                        : setLoginError
-                  setError('')
-                  void handleOAuthSignIn('google', {
-                    setError,
-                    markLegalPending: authTab === 'join' && acceptedLegal,
-                  })
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
+        {renderAuthModal('← Cancel')}
       </>
     )
   }
@@ -1443,106 +1334,7 @@ function App() {
             onOpenLegalDocument={openLegalDocument}
           />
         ) : null}
-        {authPanelOpen ? (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <button
-              type="button"
-              className="absolute inset-0 cursor-default bg-black/70 [-webkit-tap-highlight-color:transparent]"
-              aria-label="Close sign in"
-              onClick={closeAuthPanel}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="auth-modal-title"
-              className="relative z-10 w-full max-w-sm max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto overscroll-contain rounded-3xl border border-zinc-600/80 bg-gray-900 p-6 shadow-2xl sm:p-8"
-              data-auth-modal
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={closeAuthPanel}
-                className={`${linkBtn} mb-4 !min-h-11 w-full text-sm sm:text-base`}
-              >
-                ← Continue without signing in
-              </button>
-              <svg
-                id="auth-modal-title"
-                viewBox="0 0 260 32"
-                width="100%"
-                className="mb-6 mx-auto block max-w-[300px]"
-                aria-label="Find Your Edge"
-                role="img"
-              >
-                <text x="26" y="24" textAnchor="start" fontFamily="'Montserrat', sans-serif" fontWeight="300" fontSize="24" fill="currentColor">
-                  Find Your
-                </text>
-                <image href="/edge-lounge-logo-transparent.png" x="150" y="6" width="77" height="19" className="edge-logo--dark" />
-                <image href="/edge-lounge-logo-light.png"       x="150" y="6" width="77" height="19" className="edge-logo--light" />
-              </svg>
-
-              <AuthModalPanel
-                authTab={authTab}
-                onAuthTabChange={switchAuthTab}
-                showForgotPassword={showForgotPassword}
-                onOpenForgotPassword={() => {
-                  setShowForgotPassword(true)
-                  setForgotError('')
-                  setForgotMessage('')
-                  const addr = email.trim() || signupEmail.trim()
-                  if (addr && !forgotEmail.trim()) setForgotEmail(addr)
-                }}
-                onCloseForgotPassword={() => {
-                  setShowForgotPassword(false)
-                  setForgotError('')
-                  setForgotMessage('')
-                  switchAuthTab('signin')
-                }}
-                verificationSuccess={verificationSuccess}
-                email={email}
-                onEmailChange={setEmail}
-                password={password}
-                onPasswordChange={setPassword}
-                loginError={loginError}
-                isLoggingIn={isLoggingIn}
-                onLoginSubmit={handleLogin}
-                signupEmail={signupEmail}
-                onSignupEmailChange={setSignupEmail}
-                signupPassword={signupPassword}
-                onSignupPasswordChange={setSignupPassword}
-                signupConfirmPassword={signupConfirmPassword}
-                onSignupConfirmPasswordChange={setSignupConfirmPassword}
-                signupError={signupError}
-                signupMessage={signupMessage}
-                isSigningUp={isSigningUp}
-                onSignUpSubmit={handleSignUp}
-                forgotEmail={forgotEmail}
-                onForgotEmailChange={setForgotEmail}
-                forgotError={forgotError}
-                forgotMessage={forgotMessage}
-                isSendingReset={isSendingReset}
-                onForgotSubmit={handleForgotPassword}
-                isOAuthLoading={isOAuthLoading}
-                acceptedLegal={acceptedLegal}
-                onAcceptedLegalChange={setAcceptedLegal}
-                onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
-                onGoogleSignIn={({ setErrorTarget }) => {
-                  const setError =
-                    setErrorTarget === 'forgot'
-                      ? setForgotError
-                      : setErrorTarget === 'join'
-                        ? setSignupError
-                        : setLoginError
-                  setError('')
-                  void handleOAuthSignIn('google', {
-                    setError,
-                    markLegalPending: authTab === 'join' && acceptedLegal,
-                  })
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
+        {renderAuthModal('← Continue without signing in')}
       </>
     )
   }

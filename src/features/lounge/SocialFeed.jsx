@@ -129,6 +129,7 @@ import {
   readLoungeSlotsMenuHintAck,
   readLoungeFabHintAck,
 } from './loungeStorage'
+import { isPokerStakeOnboardingActive } from '../poker-bankroll/pokerStakeeOnboarding.js'
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
 import LoungeSlotsMenuHintOverlay from './LoungeSlotsMenuHintOverlay.jsx'
 import LoungeFabHintOverlay from './LoungeFabHintOverlay.jsx'
@@ -9404,6 +9405,7 @@ export default function SocialFeed({
     if (loungeFeedBrowseMode !== 'member' || !composerUserId) return
     if (!authSessionReady || !composerAuthResolved || !loungeOnboardingHydrated) return
     if (coldBootSplashVisible) return
+    if (isPokerStakeOnboardingActive()) return
     if (readLoungeWelcomeAck(composerUserId)) return
 
     const timer = window.setTimeout(() => {

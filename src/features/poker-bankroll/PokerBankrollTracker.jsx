@@ -26,6 +26,15 @@ import PokerFieldMenu from './PokerFieldMenu.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
 import PokerSessionDetailSheet from './PokerSessionDetailSheet.jsx'
 import PokerStakeArchiveDetailModal from './PokerStakeArchiveDetailModal.jsx'
+import { tryAutoLinkGuestStakeeOffers } from './pokerGuestStakeeAutoLink.js'
+import PokerStakeOfferOnboardingModal from './PokerStakeOfferOnboardingModal.jsx'
+import PokerBankrollCarouselCoachModal from './PokerBankrollCarouselCoachModal.jsx'
+import {
+  clearPokerStakeOnboardingDeal,
+  readPokerStakeCarouselCoachAck,
+  readPokerStakeOnboardingDeal,
+  writePokerStakeCarouselCoachAck,
+} from './pokerStakeeOnboarding.js'
 import {
   POKER_SHEET_PANEL_CLASS,
   POKER_SHEET_PANEL_TALL_CLASS,
@@ -285,6 +294,9 @@ export default function PokerBankrollTracker({
   /** Deep link: switch to On Stake for this deal (Stable → Bankroll). */
   openStableDealId = null,
   onOpenStableDealConsumed = null,
+  /** Guest stakee first-run onboarding from claim / email confirm. */
+  stakeOnboardingDealId = null,
+  onStakeOnboardingConsumed = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -328,6 +340,14 @@ export default function PokerBankrollTracker({
   /** Avoid persisting default personal scope before we restore from storage. */
   const scopeRestoredRef = useRef(false)
   const stakeNoticeTimerRef = useRef(0)
+  const [stakeOfferOnboardingOpen, setStakeOfferOnboardingOpen] = useState(false)
+  const [carouselCoachOpen, setCarouselCoachOpen] = useState(false)
+  const [carouselCoachMode, setCarouselCoachMode] = useState(
+    /** @type {'accepted' | 'declined' | 'counter' | null} */ (null),
+  )
+  const stakeOfferOnboardingOpenedRef = useRef(false)
+  const stakeOnboardingCounterPendingRef = useRef(false)
+  const [carouselCoachDealId, setCarouselCoachDealId] = useState(/** @type {string | null} */ (null))
   /** @type {object[]} */
   const [draftSwaps, setDraftSwaps] = useState([])
   /**
@@ -585,6 +605,52 @@ export default function PokerBankrollTracker({
     onOpenStableDealConsumed?.()
   }, [openStableDealId, stakeeDeals, onOpenStableDealConsumed])
 
+  const activeStakeOnboardingDealId = stakeOnboardingDealId || readPokerStakeOnboardingDeal()
+  const onboardingDeal = useMemo(() => {
+    if (!activeStakeOnboardingDealId) return null
+    return (
+      stakeeDeals.find((d) => d.id === activeStakeOnboardingDealId) ??
+      stakeeDealsById[activeStakeOnboardingDealId] ??
+      null
+    )
+  }, [activeStakeOnboardingDealId, stakeeDeals, stakeeDealsById])
+  const stakeOnboardingFlowActive = Boolean(activeStakeOnboardingDealId)
+  const hideFreemiumForStakeOnboarding =
+    stakeOnboardingFlowActive &&
+    (stakeOfferOnboardingOpen ||
+      carouselCoachOpen ||
+      (userId ? !readPokerStakeCarouselCoachAck(userId) : true))
+
+  useEffect(() => {
+    if (loading || !userId || openStableDealId || activeStakeOnboardingDealId) return
+    const pendingOffer = stakeeDeals.find(
+      (d) =>
+        d.status === 'pending' &&
+        isBackerInitiatedBackingDeal(d) &&
+        !d.staker_terms_ack_required &&
+        !d.stakee_terms_ack_required,
+    )
+    if (pendingOffer && bankrollScope === 'personal') {
+      scopeRestoredRef.current = true
+      setBankrollScope(pendingOffer.id)
+    }
+  }, [loading, userId, stakeeDeals, openStableDealId, bankrollScope, activeStakeOnboardingDealId])
+
+  useEffect(() => {
+    if (loading || !userId || !activeStakeOnboardingDealId || stakeOfferOnboardingOpenedRef.current) {
+      return
+    }
+    const deal =
+      stakeeDeals.find((d) => d.id === activeStakeOnboardingDealId) ??
+      stakeeDealsById[activeStakeOnboardingDealId]
+    if (!deal || deal.status !== 'pending' || !isBackerInitiatedBackingDeal(deal)) return
+    if (deal.staker_terms_ack_required || deal.stakee_terms_ack_required) return
+    stakeOfferOnboardingOpenedRef.current = true
+    scopeRestoredRef.current = true
+    setBankrollScope(activeStakeOnboardingDealId)
+    setStakeOfferOnboardingOpen(true)
+  }, [loading, userId, activeStakeOnboardingDealId, stakeeDeals, stakeeDealsById])
+
   useEffect(() => {
     if (!supabaseClient) return undefined
     let cancelled = false
@@ -617,6 +683,11 @@ export default function PokerBankrollTracker({
     if (!silent) setLoading(true)
     setError('')
     try {
+      if (!silent) {
+        const linked = await tryAutoLinkGuestStakeeOffers(supabaseClient)
+        if (linked) return
+      }
+
       const [sessRes, profRes, customRes, dealsRes] = await Promise.all([
         supabaseClient
           .from('poker_bankroll_sessions')
@@ -1325,6 +1396,79 @@ export default function PokerBankrollTracker({
     } finally {
       setStableSaving(false)
     }
+  }
+
+  function finishStakeOnboardingFlow(mode, dealId) {
+    setCarouselCoachDealId(dealId || null)
+    clearPokerStakeOnboardingDeal()
+    onStakeOnboardingConsumed?.()
+    if (userId && readPokerStakeCarouselCoachAck(userId)) {
+      if (mode === 'accepted' && dealId) setBankrollScope(dealId)
+      setCarouselCoachDealId(null)
+      return
+    }
+    setCarouselCoachMode(mode)
+    setCarouselCoachOpen(true)
+  }
+
+  function dismissStakeCarouselCoach() {
+    if (userId) writePokerStakeCarouselCoachAck(userId)
+    const mode = carouselCoachMode
+    const dealId = carouselCoachDealId
+    setCarouselCoachOpen(false)
+    setCarouselCoachMode(null)
+    setCarouselCoachDealId(null)
+    if (mode === 'accepted' && dealId) setBankrollScope(dealId)
+    else setBankrollScope('personal')
+  }
+
+  async function handleStakeOnboardingAccept(dealId) {
+    if (!supabaseClient || !dealId) return
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await stakeeAcceptBackerOffer(supabaseClient, dealId)
+      if (error) throw error
+      setStakeOfferOnboardingOpen(false)
+      triggerTapHapticLight()
+      await loadData()
+      finishStakeOnboardingFlow('accepted', dealId)
+    } catch (e) {
+      setError(e?.message || 'Could not accept stake.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
+  async function handleStakeOnboardingDecline(dealId) {
+    if (!supabaseClient || !dealId) return
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await stakeeDeclineBackerOffer(supabaseClient, dealId)
+      if (error) throw error
+      setStakeOfferOnboardingOpen(false)
+      if (bankrollScope === dealId) setBankrollScope('personal')
+      await loadData()
+      finishStakeOnboardingFlow('declined', dealId)
+    } catch (e) {
+      setError(e?.message || 'Could not decline stake.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
+  function handleStakeOnboardingOfferNewTerms(dealId) {
+    setStakeOfferOnboardingOpen(false)
+    stakeOnboardingCounterPendingRef.current = true
+    setEditTermsIntent('stakee_counter')
+    setEditTermsDealId(dealId)
+    triggerTapHapticLight()
+  }
+
+  function openStakeOnboardingFullTerms(dealId) {
+    setTermsDealId(dealId)
+    triggerTapHapticLight()
   }
 
   useEffect(
@@ -2573,12 +2717,14 @@ export default function PokerBankrollTracker({
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div data-poker-bankroll>
-        <FreemiumUsageCounter
-          remaining={pokerBankrollSessionsRemaining}
-          limit={FREE_POKER_BANKROLL_SESSION_LIMIT}
-          itemLabelPlural="poker sessions"
-          loading={freemiumUsageLoading}
-        />
+        {!hideFreemiumForStakeOnboarding ? (
+          <FreemiumUsageCounter
+            remaining={pokerBankrollSessionsRemaining}
+            limit={FREE_POKER_BANKROLL_SESSION_LIMIT}
+            itemLabelPlural="poker sessions"
+            loading={freemiumUsageLoading}
+          />
+        ) : null}
 
         {/* Pills: OVERVIEW · DETAILS · TREND · LOCATIONS · CHARTS */}
         <div className="mb-5 -mx-3 flex gap-1 overflow-x-auto px-3 no-scrollbar">
@@ -2634,7 +2780,7 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
-        {pendingBackerOffer && activeTab === 'overview' ? (
+        {pendingBackerOffer && activeTab === 'overview' && !stakeOfferOnboardingOpen && !carouselCoachOpen ? (
           <div
             data-poker-stake-notice
             className="mb-3 rounded-2xl border border-cyan-500/40 bg-cyan-950/50 px-4 py-3 text-sm text-cyan-100"
@@ -3585,6 +3731,39 @@ export default function PokerBankrollTracker({
         </div>
       </ScrollLinkedEdgeTitleBarShell>
 
+      {stakeOfferOnboardingOpen && onboardingDeal && !termsDealId ? (
+        <PokerStakeOfferOnboardingModal
+          deal={onboardingDeal}
+          slices={slicesByDeal[onboardingDeal.id] || []}
+          stableProfilesById={stableProfilesById}
+          saving={stableSaving}
+          onAccept={() => void handleStakeOnboardingAccept(onboardingDeal.id)}
+          onDecline={() => void handleStakeOnboardingDecline(onboardingDeal.id)}
+          onOfferNewTerms={() => handleStakeOnboardingOfferNewTerms(onboardingDeal.id)}
+          onViewFullTerms={() => openStakeOnboardingFullTerms(onboardingDeal.id)}
+        />
+      ) : null}
+
+      {carouselCoachOpen && carouselCoachMode ? (
+        <PokerBankrollCarouselCoachModal
+          mode={carouselCoachMode}
+          dealLabel={
+            stakeeDeals.find((d) => d.id === carouselCoachDealId)?.label?.trim() ||
+            stakeeDealsById[carouselCoachDealId]?.label?.trim() ||
+            'your stake'
+          }
+          backerName={
+            dealLeadBackerDisplayName(
+              stakeeDeals.find((d) => d.id === carouselCoachDealId) ??
+                stakeeDealsById[carouselCoachDealId] ??
+                null,
+              stableProfilesById,
+            ) || 'Your backer'
+          }
+          onDismiss={dismissStakeCarouselCoach}
+        />
+      ) : null}
+
       {archiveDetailDealId ? (
         <PokerStakeArchiveDetailModal
           deal={stakeeDealsById[archiveDetailDealId] ?? null}
@@ -3613,7 +3792,15 @@ export default function PokerBankrollTracker({
           userId={userId}
           supabaseClient={supabaseClient}
           saving={stableSaving}
-          onClose={() => setTermsDealId(null)}
+          onClose={() => {
+            const reopenOffer =
+              stakeOfferOnboardingOpenedRef.current &&
+              termsDealId &&
+              (stakeeDeals.find((d) => d.id === termsDealId)?.status === 'pending' ||
+                stakeeDealsById[termsDealId]?.status === 'pending')
+            setTermsDealId(null)
+            if (reopenOffer) setStakeOfferOnboardingOpen(true)
+          }}
           onError={setError}
           onEdit={() => {
             setTermsDealId(null)
@@ -3752,6 +3939,10 @@ export default function PokerBankrollTracker({
           editProfilesById={stableProfilesById}
           termsIntent={editTermsIntent}
           onClose={() => {
+            if (stakeOnboardingCounterPendingRef.current) {
+              stakeOnboardingCounterPendingRef.current = false
+              setStakeOfferOnboardingOpen(true)
+            }
             setEditTermsDealId(null)
             setEditTermsIntent('stakee_update')
           }}
@@ -3774,6 +3965,10 @@ export default function PokerBankrollTracker({
             )
             setEditTermsDealId(null)
             setEditTermsIntent('stakee_update')
+            if (stakeOnboardingCounterPendingRef.current && wasCounter) {
+              stakeOnboardingCounterPendingRef.current = false
+              finishStakeOnboardingFlow('counter', deal?.id || editTermsDealId)
+            }
             void loadData()
           }}
         />

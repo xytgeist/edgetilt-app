@@ -1040,6 +1040,12 @@ export async function guestStakeeClaimLink(supabase, token) {
   return { result: data, error }
 }
 
+/** Link guest stakes whose invitation email matches the signed-in account. */
+export async function guestStakeeClaimByEmail(supabase) {
+  const { data, error } = await supabase.rpc('poker_stable_guest_stakee_claim_by_email')
+  return { result: data, error }
+}
+
 /** Stakee accepts a backer-initiated offer (activates deal). */
 export async function stakeeAcceptBackerOffer(supabase, dealId) {
   const { data, error } = await supabase.rpc('poker_stable_stakee_accept_backer_offer', {

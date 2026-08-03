@@ -72,6 +72,11 @@ import { LOUNGE_COLD_BOOT_RESUME_EVENT } from '../../utils/loungeColdBootSplash.
 import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
 import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
+import {
+  consumeStakeOnboardingFromSearch,
+  readPokerStakeOnboardingDeal,
+} from '../poker-bankroll/pokerStakeeOnboarding.js'
+import { tryAutoLinkGuestStakeeOffers } from '../poker-bankroll/pokerGuestStakeeAutoLink.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
 import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
 import {
@@ -333,6 +338,10 @@ export default function AppShell({
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
+  const [stakeOnboardingDealId, setStakeOnboardingDealId] = useState(() => {
+    if (typeof window === 'undefined') return null
+    return readPokerStakeOnboardingDeal()
+  })
   const [pendingStableCommitId, setPendingStableCommitId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
   const [pendingChatPeerUserId, setPendingChatPeerUserId] = useState(null)
@@ -846,7 +855,11 @@ export default function AppShell({
       setCommunityFeedHasMore(hasMore)
       setCommunityFeedCursor(loungeFeedCursorFromPageLast(pageLast, sort, asOf))
     } catch (e) {
-      setCommunityFeedQueryErr(String(e?.message || 'Could not load feed.'))
+      const msg = String(e?.message || 'Could not load feed.')
+      if (e?.name === 'AbortError' || /lock was stolen/i.test(msg)) {
+        return
+      }
+      setCommunityFeedQueryErr(msg)
       setCommunityPosts([])
       setCommunityFeedHasMore(false)
       setCommunityFeedCursor(null)
@@ -1108,6 +1121,8 @@ export default function AppShell({
           if (pokerSession) setPendingPokerSessionId(pokerSession)
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const onboardingDealId = consumeStakeOnboardingFromSearch(window.location.search || '')
+          if (onboardingDealId) setStakeOnboardingDealId(onboardingDealId)
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
           if (stableCommit) setPendingStableCommitId(stableCommit)
         }
@@ -1153,6 +1168,20 @@ export default function AppShell({
         } else {
           setPendingOfferEventIds(targetEventIds)
         }
+      }
+      try {
+        const u = new URL(window.location.href)
+        if (u.searchParams.has('stakeOnboarding')) {
+          u.searchParams.delete('stakeOnboarding')
+          const qs = u.searchParams.toString()
+          window.history.replaceState(
+            {},
+            document.title,
+            `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash}`,
+          )
+        }
+      } catch {
+        /* ignore */
       }
     }
     applyFromUrl()
@@ -1219,6 +1248,8 @@ export default function AppShell({
             data.stableDealId || msgUrl.searchParams.get('stableDeal') || '',
           ).trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const onboardingDealId = consumeStakeOnboardingFromSearch(msgUrl.search || '')
+          if (onboardingDealId) setStakeOnboardingDealId(onboardingDealId)
           const stableCommit = String(
             data.stableCommitId ||
               msgUrl.searchParams.get('stableCommit') ||
@@ -2484,6 +2515,8 @@ export default function AppShell({
           onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
           openStableDealId={pendingPokerStableDealId}
           onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
+          stakeOnboardingDealId={stakeOnboardingDealId}
+          onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
         />
       )
     } else if (tab === 'poker-stable') {

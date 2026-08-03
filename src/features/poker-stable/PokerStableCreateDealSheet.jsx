@@ -152,9 +152,10 @@ function SliceEditor({
             <StablePlayerPicker
               supabaseClient={supabaseClient}
               userId={userId}
-              value={sl.handle}
+              value={sl.isGuest ? '' : sl.handle}
               onChange={(next) => {
                 if (sl.isGuest) {
+                  if (!String(next || '').trim()) return
                   onChange({
                     handle: next,
                     selectedProfile: null,
@@ -730,11 +731,11 @@ function PokerStableDealFormSheet({
               <StablePlayerPicker
                 supabaseClient={supabaseClient}
                 userId={userId}
-                value={playerHandle}
+                value={playerIsGuest ? '' : playerHandle}
                 onChange={(next) => {
                   setPlayerHandle(next)
                   if (selectedPlayerProfile) setSelectedPlayerProfile(null)
-                  if (playerIsGuest) {
+                  if (playerIsGuest && String(next || '').trim()) {
                     setPlayerIsGuest(false)
                     setPlayerGuestLabel('')
                     setPlayerGuestPhone('')

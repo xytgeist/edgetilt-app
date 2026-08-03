@@ -143,10 +143,9 @@ export default function StablePlayerPicker({
   const pickGuest = useCallback(() => {
     const draftLabel = String(value ?? '').trim()
     onSelectGuestMode?.(draftLabel)
-    onChange('')
     closeList()
     requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }))
-  }, [onSelectGuestMode, onChange, closeList, value])
+  }, [onSelectGuestMode, closeList, value])
 
   const pickProfile = useCallback(
     (profile) => {

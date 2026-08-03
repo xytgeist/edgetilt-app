@@ -1090,6 +1090,7 @@ export default function PokerBankrollTracker({
       topups: dealTopupsByDeal[bankrollScope] || [],
       reductions: dealReductionsByDeal[bankrollScope] || [],
       settlements: dealSettlementsByDeal[bankrollScope] || [],
+      viewerUserId: userId,
     })
   }, [
     isOnStake,
@@ -1100,6 +1101,7 @@ export default function PokerBankrollTracker({
     dealTopupsByDeal,
     dealReductionsByDeal,
     dealSettlementsByDeal,
+    userId,
   ])
 
   const personalSettlementEvents = useMemo(() => {
@@ -1463,11 +1465,6 @@ export default function PokerBankrollTracker({
     stakeOnboardingCounterPendingRef.current = true
     setEditTermsIntent('stakee_counter')
     setEditTermsDealId(dealId)
-    triggerTapHapticLight()
-  }
-
-  function openStakeOnboardingFullTerms(dealId) {
-    setTermsDealId(dealId)
     triggerTapHapticLight()
   }
 
@@ -3740,7 +3737,6 @@ export default function PokerBankrollTracker({
           onAccept={() => void handleStakeOnboardingAccept(onboardingDeal.id)}
           onDecline={() => void handleStakeOnboardingDecline(onboardingDeal.id)}
           onOfferNewTerms={() => handleStakeOnboardingOfferNewTerms(onboardingDeal.id)}
-          onViewFullTerms={() => openStakeOnboardingFullTerms(onboardingDeal.id)}
         />
       ) : null}
 

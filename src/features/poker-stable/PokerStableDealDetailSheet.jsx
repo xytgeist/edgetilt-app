@@ -36,6 +36,7 @@ import {
   dealHasMakeup,
   userCanRecordDealEvent,
 } from './pokerStableTerms.js'
+import { buildStakeDealHistoryEvents } from './pokerStableDealHistory.js'
 import { pokerStableCommitSummaryLine } from './pokerStableActivity.js'
 import { STABLE_BACKER_BANKROLL_PHRASE, stableCommitBooksPhrase } from './pokerStableBooksCopy.js'
 
@@ -128,6 +129,18 @@ export default function PokerStableDealDetailSheet({
   const myLedgerEntries = useMemo(
     () => ledgerEntries.filter((entry) => entry.user_id === userId),
     [ledgerEntries, userId],
+  )
+
+  const dealHistoryEvents = useMemo(
+    () =>
+      buildStakeDealHistoryEvents({
+        deal,
+        slices,
+        profilesById,
+        ledgerEntries,
+        viewerUserId: userId,
+      }).filter((event) => event.kind === 'offer' || event.kind === 'accept' || event.kind === 'decline'),
+    [deal, slices, profilesById, ledgerEntries, userId],
   )
 
   async function onTopup() {
@@ -377,6 +390,36 @@ export default function PokerStableDealDetailSheet({
             )
           })}
         </div>
+
+        {dealHistoryEvents.length ? (
+          <>
+            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Deal history
+            </h4>
+            <ul className="mb-4 space-y-2">
+              {dealHistoryEvents.map((event) => {
+                const eventDate = new Date(event.at).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+                return (
+                  <li key={event.id} className="py-1 text-center">
+                    <p
+                      data-poker-stake-history-line
+                      data-poker-stake-history-kind={event.kind}
+                      className="text-sm italic leading-snug text-emerald-300/90"
+                    >
+                      {event.text}
+                      <span className="not-italic opacity-70"> · {eventDate}</span>
+                    </p>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        ) : null}
 
         {myLedgerEntries.length ? (
           <>

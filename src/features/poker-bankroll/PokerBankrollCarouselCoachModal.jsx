@@ -1,5 +1,4 @@
 import { ArrowRight } from 'lucide-react'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 
 /**
  * After stake-offer onboarding: explain personal vs stake carousel cards.
@@ -22,13 +21,14 @@ export default function PokerBankrollCarouselCoachModal({
     mode === 'accepted' ? (
       <>
         <p>
-          The first card is your <span className="font-semibold text-white">personal bankroll</span>
-          ... your own session history and roll, always yours.
+          The first (left-most) card is your{' '}
+          <span className="font-semibold text-white">Personal Bankroll</span>... your own poker
+          session history and roll - always yours.
         </p>
         <p className="mt-3">
-          Swipe <span className="font-semibold text-white">right</span> to the stake card for{' '}
+          Swipe right to access your stake card for{' '}
           <span className="font-semibold text-white">{dealLabel}</span>. Log sessions there so your
-          backer sees roll, makeup, and settlements.
+          backer can track your progress.
         </p>
       </>
     ) : mode === 'counter' ? (
@@ -55,18 +55,16 @@ export default function PokerBankrollCarouselCoachModal({
 
   return (
     <div
-      className={`${APP_MODAL_OVERLAY_CLASS} z-[140] overflow-x-hidden bg-black/70 backdrop-blur-sm`}
+      className="fixed inset-0 z-[120] flex items-center justify-center overflow-x-hidden bg-black/70 backdrop-blur-sm p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="poker-bankroll-carousel-coach-title"
-      data-poker-bankroll-carousel-coach
     >
       <div
-        className={`relative z-10 max-h-[85dvh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
+        data-poker-bankroll-carousel-coach
+        className="relative z-10 w-full max-w-md max-h-[85dvh] overflow-y-auto overscroll-contain rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 py-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-zinc-600/70" aria-hidden />
-
         <h2 id="poker-bankroll-carousel-coach-title" className="text-center text-xl font-black text-white">
           {title}
         </h2>
@@ -74,7 +72,10 @@ export default function PokerBankrollCarouselCoachModal({
         <div className="mt-4 text-sm leading-relaxed text-zinc-300">{body}</div>
 
         {mode === 'accepted' ? (
-          <div className="mt-5 flex items-center justify-center gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-950/30 px-4 py-4 text-sm text-cyan-100">
+          <div
+            data-poker-carousel-coach-demo
+            className="mt-5 flex items-center justify-center gap-3 rounded-2xl border border-cyan-500/30 bg-cyan-950/30 px-4 py-4 text-sm text-cyan-100"
+          >
             <div className="rounded-xl border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs font-bold text-zinc-200">
               Personal
             </div>

@@ -1,12 +1,17 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { backerSliceSessionShare } from './pokerStableBackerMath.js'
+import { isBackerInitiatedBackingDeal } from './pokerStableApi.js'
 import {
   computeDealSettlement,
   computeSliceSettleShares,
   dealTypeLabel,
   roundMoney,
 } from './pokerStableMath.js'
-import { sliceCounterpartyDisplayName } from './pokerStableTerms.js'
+import {
+  dealLeadBackerDisplayName,
+  dealStakeeDisplayName,
+  sliceCounterpartyDisplayName,
+} from './pokerStableTerms.js'
 
 /**
  * Personal bankroll credit from one settle/close row (matches settle RPC: credit only when profit above baseline).
@@ -305,6 +310,7 @@ export function buildPersonalSettlementHistoryEvents({
  * @param {object[]} [args.settlements]
  * @param {object[]} [args.ledgerEntries]
  * @param {string} [args.playerUserId]
+ * @param {string} [args.viewerUserId]
  * @returns {{ id: string, kind: string, at: string, text: string }[]}
  */
 export function buildStakeDealHistoryEvents({
@@ -316,11 +322,16 @@ export function buildStakeDealHistoryEvents({
   settlements = [],
   ledgerEntries = [],
   playerUserId,
+  viewerUserId,
   playerLabel = 'You',
 }) {
   if (!deal?.id) return []
 
   const stakeeId = playerUserId || deal.stakee_user_id
+  const viewerId = viewerUserId || stakeeId
+  const backerInitiated = isBackerInitiatedBackingDeal(deal)
+  const viewerIsStakee = Boolean(viewerId && deal.stakee_user_id && viewerId === deal.stakee_user_id)
+  const viewerIsLeadBacker = Boolean(viewerId && deal.staker_user_id && viewerId === deal.staker_user_id)
   const ledgerBySettlement = {}
   for (const entry of ledgerEntries) {
     if (!entry?.settlement_id || entry.user_id !== stakeeId) continue
@@ -335,14 +346,56 @@ export function buildStakeDealHistoryEvents({
   const backerNames = orderedSlices
     .filter((s) => s.status !== 'declined')
     .map((s) => sliceCounterpartyDisplayName(s, profilesById))
+  const leadBackerName = dealLeadBackerDisplayName(deal, profilesById) || formatBackerList(backerNames)
+  const stakeeName = dealStakeeDisplayName(deal, profilesById)
 
   if (deal.created_at && backerNames.length) {
-    events.push({
-      id: `offer-${deal.id}`,
-      kind: 'offer',
-      at: deal.created_at,
-      text: `${playerLabel} offered stake to ${formatBackerList(backerNames)}`,
-    })
+    if (backerInitiated) {
+      if (viewerIsLeadBacker) {
+        events.push({
+          id: `offer-${deal.id}`,
+          kind: 'offer',
+          at: deal.created_at,
+          text: `You offered stake to ${stakeeName}`,
+        })
+      } else if (viewerIsStakee && deal.status === 'pending') {
+        events.push({
+          id: `offer-${deal.id}`,
+          kind: 'offer',
+          at: deal.created_at,
+          text: `${leadBackerName} offered you a backing stake`,
+        })
+      }
+    } else {
+      events.push({
+        id: `offer-${deal.id}`,
+        kind: 'offer',
+        at: deal.created_at,
+        text: `${playerLabel} offered stake to ${formatBackerList(backerNames)}`,
+      })
+    }
+  }
+
+  if (
+    backerInitiated &&
+    deal.responded_at &&
+    (deal.status === 'active' || deal.status === 'settled')
+  ) {
+    if (viewerIsStakee) {
+      events.push({
+        id: `stakee-accept-${deal.id}`,
+        kind: 'accept',
+        at: deal.responded_at,
+        text: `You accepted stake terms with ${leadBackerName}`,
+      })
+    } else if (viewerIsLeadBacker) {
+      events.push({
+        id: `stakee-accept-${deal.id}`,
+        kind: 'accept',
+        at: deal.responded_at,
+        text: `${stakeeName} accepted your stake terms`,
+      })
+    }
   }
 
   const dealCreatedMs = deal.created_at ? new Date(deal.created_at).getTime() : 0
@@ -353,6 +406,7 @@ export function buildStakeDealHistoryEvents({
     if (!at) continue
 
     if (slice.status === 'active' && slice.counterparty_kind === 'user') {
+      if (backerInitiated && slice.staker_user_id === deal.staker_user_id) continue
       const respondedMs = new Date(at).getTime()
       if (dealCreatedMs && respondedMs > dealCreatedMs + 1500) {
         events.push({
@@ -456,6 +510,7 @@ export function buildStakeDealHistoryEvents({
  * @param {object[]} [args.settlements]
  * @param {object[]} [args.sessions]
  * @param {string} [args.playerLabel]
+ * @param {string} [args.viewerUserId]
  * @returns {{ id: string, kind: string, at: string, text?: string, session?: object }[]}
  */
 export function buildFullStakeArchiveTimeline({
@@ -467,6 +522,7 @@ export function buildFullStakeArchiveTimeline({
   settlements = [],
   sessions = [],
   playerLabel = 'You',
+  viewerUserId,
 }) {
   const events = buildStakeDealHistoryEvents({
     deal,
@@ -476,6 +532,7 @@ export function buildFullStakeArchiveTimeline({
     reductions,
     settlements,
     playerLabel,
+    viewerUserId,
   })
   /** @type {{ id: string, kind: string, at: string, text?: string, session?: object }[]} */
   const items = events.map((event) => ({

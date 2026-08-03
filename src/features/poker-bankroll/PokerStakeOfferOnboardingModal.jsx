@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { fmtPoker$ } from './pokerBankrollMath.js'
 import { dealTypeLabel, sumSliceActionPct } from '../poker-stable/pokerStableMath.js'
@@ -20,9 +19,7 @@ export default function PokerStakeOfferOnboardingModal({
   onAccept,
   onDecline,
   onOfferNewTerms,
-  onViewFullTerms,
-}) {
-  const [declineConfirm, setDeclineConfirm] = useState(false)
+}) {  const [declineConfirm, setDeclineConfirm] = useState(false)
 
   if (!deal) return null
 
@@ -38,9 +35,9 @@ export default function PokerStakeOfferOnboardingModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="poker-stake-offer-onboarding-title"
-      data-poker-stake-offer-onboarding
     >
       <div
+        data-poker-stake-offer-onboarding
         className={`relative z-10 max-h-[92dvh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -115,18 +112,7 @@ export default function PokerStakeOfferOnboardingModal({
           ) : null}
         </div>
 
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => onViewFullTerms?.()}
-          className="mt-4 flex w-full items-center justify-center gap-1 rounded-2xl border border-zinc-600 bg-zinc-800/80 px-4 py-3 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
-        >
-          View full terms
-          <ChevronRight className="h-4 w-4 opacity-70" aria-hidden />
-        </button>
-
-        {declineConfirm ? (
-          <div className="mt-4 rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-sm text-rose-100">
+        {declineConfirm ? (          <div className="mt-4 rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-sm text-rose-100">
             <p className="text-center">
               Decline <span className="font-semibold text-white">{label}</span>? This kills the stake
               for everyone.

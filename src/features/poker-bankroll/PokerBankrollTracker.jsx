@@ -4,8 +4,6 @@ import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitl
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
-import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
-import { FREE_POKER_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import BankrollSparkline from '../../components/BankrollSparkline.jsx'
@@ -287,11 +285,6 @@ export default function PokerBankrollTracker({
   supabaseClient,
   titleBarNavSlot = null,
   titleBarToolCloseVisible = false,
-  canCreatePokerBankrollSession = true,
-  pokerBankrollSessionsRemaining = null,
-  freemiumUsageLoading = false,
-  onRequireSubscribeForPokerBankroll = null,
-  onPokerBankrollSessionCreated = null,
   /** Deep link: open session details sheet for this id (swap result notify). */
   openSessionId = null,
   onOpenSessionConsumed = null,
@@ -641,13 +634,6 @@ export default function PokerBankrollTracker({
       null
     )
   }, [activeStakeOnboardingDealId, stakeeDeals, stakeeDealsById])
-  const stakeOnboardingFlowActive = Boolean(activeStakeOnboardingDealId)
-  const hideFreemiumForStakeOnboarding =
-    stakeOnboardingFlowActive &&
-    (stakeOfferOnboardingOpen ||
-      carouselCoachOpen ||
-      (userId ? !readPokerStakeCarouselCoachAck(userId) : true))
-
   useEffect(() => {
     if (loading || !userId || openStableDealId || activeStakeOnboardingDealId) return
     const pendingOffer = stakeeDeals.find(
@@ -1690,10 +1676,6 @@ export default function PokerBankrollTracker({
   }
 
   function openStartSession() {
-    if (!canCreatePokerBankrollSession) {
-      onRequireSubscribeForPokerBankroll?.()
-      return
-    }
     if (isOnStake && stakeScopeSessionBlocked) {
       setError(
         stakeScopeRevoked
@@ -1724,10 +1706,6 @@ export default function PokerBankrollTracker({
 
   /** Start Session prefilled from an incoming soft-event swap (no matching session yet). */
   function openStartForIncomingSwap(swap) {
-    if (!canCreatePokerBankrollSession) {
-      onRequireSubscribeForPokerBankroll?.()
-      return
-    }
     if (activeSession) {
       setError('You already have a session in progress.')
       return
@@ -1770,10 +1748,6 @@ export default function PokerBankrollTracker({
   }
 
   function openLogPast() {
-    if (!canCreatePokerBankrollSession) {
-      onRequireSubscribeForPokerBankroll?.()
-      return
-    }
     if (isOnStake && stakeScopeSessionBlocked) {
       setError(
         stakeScopeRevoked
@@ -1998,10 +1972,6 @@ export default function PokerBankrollTracker({
       setError('You already have a session in progress.')
       return
     }
-    if (!canCreatePokerBankrollSession) {
-      onRequireSubscribeForPokerBankroll?.()
-      return
-    }
     const buyIn = parseMoneyInputNumber(form.buy_in)
     if (!Number.isFinite(buyIn) || buyIn < 0) {
       setError(
@@ -2124,7 +2094,6 @@ export default function PokerBankrollTracker({
         await attachDraftSwapsToSession(sessionRow, draftSwaps)
       }
       setIncomingAcceptSwap(null)
-      onPokerBankrollSessionCreated?.()
       setSheet(null)
       triggerTapHapticLight()
       await loadData()
@@ -2645,10 +2614,6 @@ export default function PokerBankrollTracker({
           }
         }
       } else {
-        if (!canCreatePokerBankrollSession) {
-          onRequireSubscribeForPokerBankroll?.()
-          return
-        }
         const { data: created, error: iErr } = await supabaseClient
           .from('poker_bankroll_sessions')
           .insert(payload)
@@ -2667,7 +2632,6 @@ export default function PokerBankrollTracker({
           await attachDraftSwapsToSession(sessionRow, draftSwaps)
         }
         void recordAppSessionRecorded(supabaseClient, 'poker-bankroll', payload.session_type)
-        onPokerBankrollSessionCreated?.()
       }
       setSheet(null)
       triggerTapHapticLight()
@@ -2785,14 +2749,6 @@ export default function PokerBankrollTracker({
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div data-poker-bankroll>
-        {!hideFreemiumForStakeOnboarding ? (
-          <FreemiumUsageCounter
-            remaining={pokerBankrollSessionsRemaining}
-            limit={FREE_POKER_BANKROLL_SESSION_LIMIT}
-            itemLabelPlural="poker sessions"
-            loading={freemiumUsageLoading}
-          />
-        ) : null}
 
         {/* Pills: OVERVIEW · DETAILS · TREND · LOCATIONS · CHARTS */}
         <div className="mb-5 -mx-3 flex gap-1 overflow-x-auto px-3 no-scrollbar">
@@ -3305,12 +3261,12 @@ export default function PokerBankrollTracker({
                     onClick={openStartSession}
                     data-start-session-btn
                     data-start-session-locked={
-                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
+                      (isOnStake && stakeScopeSessionBlocked)
                         ? 'true'
                         : undefined
                     }
                     className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
-                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
+                      (isOnStake && stakeScopeSessionBlocked)
                         ? 'cursor-not-allowed opacity-45'
                         : ''
                     }`}
@@ -3322,12 +3278,12 @@ export default function PokerBankrollTracker({
                     onClick={openLogPast}
                     data-log-past-session-btn
                     data-log-past-session-locked={
-                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
+                      (isOnStake && stakeScopeSessionBlocked)
                         ? 'true'
                         : undefined
                     }
                     className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
-                      !canCreatePokerBankrollSession || (isOnStake && stakeScopeSessionBlocked)
+                      (isOnStake && stakeScopeSessionBlocked)
                         ? 'cursor-not-allowed opacity-45'
                         : ''
                     }`}

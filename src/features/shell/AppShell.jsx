@@ -367,10 +367,8 @@ export default function AppShell({
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
   const {
     canCreateBankrollSession,
-    canCreatePokerBankrollSession,
     canCreatePlayLog,
     bankrollSessionsRemaining,
-    pokerBankrollSessionsRemaining,
     playLogsRemaining,
     freemiumUsageLoading,
     refreshFreemiumUsage,
@@ -1835,7 +1833,7 @@ export default function AppShell({
 
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return
-    if (!['bankroll', 'poker-bankroll', 'logbook', 'guides', 'calculators'].includes(tab)) return
+    if (!['bankroll', 'logbook', 'guides', 'calculators'].includes(tab)) return
     void refreshFreemiumUsage()
   }, [tab, isStaff, hasActiveSubscription, refreshFreemiumUsage])
 
@@ -2504,11 +2502,6 @@ export default function AppShell({
       visibleTab = (
         <PokerBankrollTracker
           supabaseClient={supabaseClient}
-          canCreatePokerBankrollSession={canCreatePokerBankrollSession}
-          pokerBankrollSessionsRemaining={pokerBankrollSessionsRemaining}
-          freemiumUsageLoading={freemiumUsageLoading}
-          onRequireSubscribeForPokerBankroll={() => onRequireSubscribe?.('slots-edge')}
-          onPokerBankrollSessionCreated={refreshFreemiumUsage}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
           openSessionId={pendingPokerSessionId}

@@ -12,7 +12,7 @@ export default function PokerBankrollCarouselCoachModal({
 }) {
   const title =
     mode === 'accepted'
-      ? 'Your stake is on Bankroll'
+      ? 'Poker Bankroll Manager'
       : mode === 'counter'
         ? 'Counter sent'
         : 'Poker Bankroll'
@@ -27,8 +27,9 @@ export default function PokerBankrollCarouselCoachModal({
         </p>
         <p className="mt-3">
           Swipe right to access your stake card for{' '}
-          <span className="font-semibold text-white">{dealLabel}</span>. Log sessions there so your
-          backer can track your progress.
+          <span className="font-semibold text-white">{dealLabel}</span>. Log sessions{' '}
+          <span className="font-semibold text-white">on stake</span> there so your backer can track
+          your progress.
         </p>
       </>
     ) : mode === 'counter' ? (

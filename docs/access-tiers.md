@@ -64,14 +64,15 @@ If the user attempts **any** of the following, show the **create account** popup
 **Navigation**
 
 - May open **all** other app areas from the **hamburger menu** (no blanket “create account” wall).
-- **Hamburger UI:** Top-level rows include **Slots** (hub), **Poker** (hub), and **Chat** (Lounge via dock home). **Slots** links to Calcs, Calendar, Bankroll, Logbook, and AP Guides. **Poker** links to Poker Bankroll (more poker tools later). Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar**, **Bankroll**, **Poker Bankroll**, and **Logbook** hub tiles stay **unlocked** for free users; bankroll/poker/logbook **create** actions cap at 10 free uses each — see §4 table; calendar **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
+- **Hamburger UI:** Top-level rows include **Slots** (hub), **Poker** (hub), and **Chat** (Lounge via dock home). **Slots** links to Calcs, Calendar, Bankroll, Logbook, and AP Guides. **Poker** links to **Poker Bankroll Manager** and **Stable Manager**. Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar**, **Bankroll**, **Poker Bankroll**, **Stable**, and **Logbook** hub tiles stay **unlocked** for free users; slots bankroll/logbook **create** actions cap at 10 free uses each — see §4 table; **Poker Bankroll** and **Stable** are unlimited for free users; calendar **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
 
 **Per-feature subscribe requirements**
 
 | Area | Free tier |
 | --- | --- |
 | **Bankroll manager** | **10 free sessions**; subscribe for unlimited. Hub tile unlocked; **Start Session** locks at limit. |
-| **Poker Bankroll** | **10 free poker sessions** (separate counter); subscribe for unlimited. Hub tile unlocked; **Log session** locks at limit. |
+| **Poker Bankroll Manager** | **Free** — unlimited poker sessions for verified users. Hub tile unlocked. |
+| **Stable Manager** | **Free** — unlimited for verified users. Hub tile unlocked. |
 | **Play Logbook** | **10 free play logs**; subscribe for unlimited. Hub tile unlocked; **+ Log Play** and **Log play in Logbook** lock at limit. |
 | **Calendar** | May use calendar **without** subscribe. **Subscribe** for **alerts** and for **image upload AI OCR** on offers. |
 | **Calculators** | **Buffalo Link** + **Must Hit By (MHB)** free; **Phoenix Link** + **Stack Up Pays** + all other premium calcs locked → subscribe (**`FREE_CALCULATOR_KEYS`**, **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`**). |
@@ -229,6 +230,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | 2026-05-18 | Hamburger **Offers** row renamed **Calendar** (tab id `offers` unchanged; deep links `?tab=offers` unchanged). |
 | 2026-05-10 | Hamburger: lock icons on **Calcs**, **AP Guides**, **Bankroll** for free non-subscribers; staff/subscribers see no locks; Calendar menu row unlocked (gates in-feature). |
 | 2026-05-10 | **Signup:** no client **`allowed_emails`** whitelist; free tier = signed-in user until billing flags ship. |
+| 2026-08-03 | **Poker Bankroll Manager + Stable Manager:** free for all verified users ... unlimited sessions, no freemium counter or subscribe gate. **`canCreatePokerBankrollSession`** always true in **`freemiumToolLimits.js`**. |
 | 2026-06-27 | **Bankroll + Logbook:** free users get **10 bankroll sessions** and **10 play logs**; hub tiles unlocked; create buttons lock at limit → subscribe. Constants in **`freemiumToolLimits.js`**. |
 | 2026-07-01 | **Free tier guide + calc list:** **`FREE_GUIDE_SLUGS`** (14 AP guides) and **`FREE_CALCULATOR_KEYS`** (Buffalo Link + MHB only). Starter pack remains release year ≤ 2019. |
 | 2026-07-01 | **Starter weekly drop rules locked:** per-user uniform random from **remaining** published **2020+** slugs (excludes free list + prior grants). Migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, pool helpers **`starterWeeklyDropPool.js`**, client **`useStarterWeeklyDropGuideSlugs`**. |

@@ -2,10 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   FREE_BANKROLL_SESSION_LIMIT,
   FREE_PLAY_LOG_LIMIT,
-  FREE_POKER_BANKROLL_SESSION_LIMIT,
   canCreateBankrollSession,
   canCreatePlayLog,
-  canCreatePokerBankrollSession,
   fetchFreemiumToolUsageCounts,
   freemiumUsageRemaining,
   hasUnlimitedToolAccess,
@@ -94,11 +92,7 @@ export function useFreemiumToolUsage({
         isStaff,
         hasSlotsEdge,
       }),
-      canCreatePokerBankrollSession: canCreatePokerBankrollSession({
-        count: counts.pokerBankrollSessionCount,
-        isStaff,
-        hasSlotsEdge,
-      }),
+      canCreatePokerBankrollSession: true,
       canCreatePlayLog: canCreatePlayLog({
         count: counts.playLogCount,
         isStaff,
@@ -109,11 +103,7 @@ export function useFreemiumToolUsage({
         counts.bankrollSessionCount,
         unlimited,
       ),
-      pokerBankrollSessionsRemaining: freemiumUsageRemaining(
-        FREE_POKER_BANKROLL_SESSION_LIMIT,
-        counts.pokerBankrollSessionCount,
-        unlimited,
-      ),
+      pokerBankrollSessionsRemaining: null,
       playLogsRemaining: freemiumUsageRemaining(FREE_PLAY_LOG_LIMIT, counts.playLogCount, unlimited),
       refreshFreemiumUsage,
     }),

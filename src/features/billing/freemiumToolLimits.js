@@ -13,14 +13,9 @@ export function canCreateBankrollSession({ count = 0, isStaff = false, hasSlotsE
   return count < FREE_BANKROLL_SESSION_LIMIT
 }
 
-/** @param {{ count?: number, isStaff?: boolean, hasSlotsEdge?: boolean }} opts */
-export function canCreatePokerBankrollSession({
-  count = 0,
-  isStaff = false,
-  hasSlotsEdge = false,
-} = {}) {
-  if (hasUnlimitedToolAccess({ isStaff, hasSlotsEdge })) return true
-  return count < FREE_POKER_BANKROLL_SESSION_LIMIT
+/** Poker Bankroll Manager + Stable Manager are free for all verified users (no session cap). */
+export function canCreatePokerBankrollSession(_opts = {}) {
+  return true
 }
 
 /** @param {{ count?: number, isStaff?: boolean, hasSlotsEdge?: boolean }} opts */

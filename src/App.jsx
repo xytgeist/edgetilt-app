@@ -46,7 +46,10 @@ import { clearAccountClientState } from './utils/clearAccountClientState.js'
 import { restoreSupabaseSession } from './utils/supabaseSessionRestore.js'
 import { parseMonitorPathname } from './features/ops/opsMonitorNavigation.js'
 import { parsePokerSwapClaimFromLocation } from './features/poker-bankroll/pokerTournamentSwapNav.js'
-import { parsePokerStakeClaimFromLocation } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
+import {
+  authRedirectBaseForCurrentLocation,
+  parsePokerStakeClaimFromLocation,
+} from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
@@ -230,18 +233,24 @@ function App() {
       const combinedForType = `${hash}${search}`
       const hashParams = new URLSearchParams(hash.replace('#', ''))
       // Email confirmation uses type=signup (or type=confirmation); Google OAuth includes provider_token in the hash.
+      const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
       const isEmailOnlyVerification =
         (combinedForType.includes('type=signup') || combinedForType.includes('type=confirmation')) &&
         !combinedForType.includes('provider_token')
       if (isEmailOnlyVerification) {
-        setVerificationSuccess(true)
-        setAuthTab('signin')
-        setShowForgotPassword(false)
-        setLoginError('')
-        setAuthPanelOpen(true)
+        if (!stakeClaimReturn) {
+          setVerificationSuccess(true)
+          setAuthTab('signin')
+          setShowForgotPassword(false)
+          setLoginError('')
+          setAuthPanelOpen(true)
+        }
         setTimeout(() => {
           if (window.location.hash) {
-            window.history.replaceState({}, document.title, window.location.pathname || '/')
+            const cleanUrl = stakeClaimReturn
+              ? `${pathname}${search}`
+              : pathname || '/'
+            window.history.replaceState({}, document.title, cleanUrl)
           }
         }, 0)
       }
@@ -659,7 +668,9 @@ function App() {
     setIsOAuthLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: authRedirectUrlWithAffiliateRef(`${window.location.origin}/`) },
+      options: {
+        redirectTo: authRedirectUrlWithAffiliateRef(authRedirectBaseForCurrentLocation()),
+      },
     })
     if (error) {
       setError(getFriendlyErrorMessage(error))
@@ -680,12 +691,19 @@ function App() {
     setIsSigningUp(true)
 
     const affiliateCode = getAffiliateCodeForCheckout()
+    const signupFromStakeClaim = Boolean(
+      parsePokerStakeClaimFromLocation(
+        window.location.pathname || '/',
+        window.location.search || '',
+      ),
+    )
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: {
         // Carry ?ref= into the confirm link so a normal-tab open still restamps attribution.
-        emailRedirectTo: authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
+        // Guest stake claim: confirm lands back on /poker-stake-claim?token=… to auto-link.
+        emailRedirectTo: authRedirectUrlWithAffiliateRef(authRedirectBaseForCurrentLocation()),
         data: affiliateCode ? { affiliate_code: affiliateCode } : undefined,
       },
     })
@@ -707,7 +725,11 @@ function App() {
       return
     }
 
-    setSignupMessage("✅ Account created! Please check your email for the confirmation link.")
+    setSignupMessage(
+      signupFromStakeClaim
+        ? '✅ Account created! Confirm your email ... that link will link this stake and open Bankroll.'
+        : '✅ Account created! Please check your email for the confirmation link.',
+    )
     setSignupEmail('')
     setSignupPassword('')
     setSignupConfirmPassword('')
@@ -1026,7 +1048,7 @@ function App() {
             supabaseClient={supabase}
             token={claim?.token || ''}
             userId={user?.id ?? null}
-            onOpenAuth={() => openAuthPanel('login')}
+            onOpenAuth={() => openAuthPanel('create')}
             onDone={(redirect) => {
               const dest = redirect || '/?tab=poker-bankroll'
               window.history.replaceState({}, document.title, dest)

@@ -126,8 +126,8 @@ export default function PokerStableStakeClaimPage({
             ) : !userId ? (
               <>
                 <p className="mt-4 text-sm text-zinc-300">
-                  Sign in with the email this invitation was sent to, then review the stake terms on
-                  Bankroll.
+                  Create an account or sign in with the email this invitation was sent to. After you
+                  confirm your email, this page will link the stake and send you to Bankroll.
                 </p>
                 {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
                 <button
@@ -135,7 +135,7 @@ export default function PokerStableStakeClaimPage({
                   onClick={() => onOpenAuth?.()}
                   className="mt-4 w-full rounded-2xl bg-cyan-600 py-3.5 text-base font-bold text-white touch-manipulation"
                 >
-                  Sign in to claim
+                  Create account or sign in
                 </button>
               </>
             ) : claiming ? (

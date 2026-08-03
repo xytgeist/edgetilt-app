@@ -21,7 +21,7 @@ Canonical spec for Stable staking: deal types, slices, makeup, settle, top-up, a
 - **Profit split:** `player_profit_pct` = player share of winnings on that slice (backer gets complement).
 - **Markup:** backer pays `action_pct × buy-in × markup_rate`; typically 100% of profit on sold action to backer.
 - **Guests (player-initiated):** player-entered terms authoritative; optional phone/email for notify (SMS/email via Edge **`poker-stable-notify`** on create, terms edit with before/after diff, and **session complete**); no guest ledger UI. Player may **delete** the stake until an Edge backer accepts; guest-only stakes remain deletable.
-- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets email/SMS with **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); player then **Accept / Decline / Offer new terms** on Bankroll. Decline kills the deal for everyone. Counter-proposal → lead backer **Accept counter / Decline** in Stable; stake stays pending until player accepts final terms. Migration **`20260803100000`**.
+- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets email/SMS with **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); signup from that page sends email confirm back to the same claim URL (auto-link after verify). Player then **Accept / Decline / Offer new terms** on Bankroll. Decline kills the deal for everyone. Counter-proposal → lead backer **Accept counter / Decline** in Stable; stake stays pending until player accepts final terms. Migration **`20260803100000`**.
 - **Edge stakers:** full slice UI + asymmetric ledger confirm/dispute.
 
 ### Cash backing extras

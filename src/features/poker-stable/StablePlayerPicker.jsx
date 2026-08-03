@@ -144,6 +144,7 @@ export default function StablePlayerPicker({
     const draftLabel = String(value ?? '').trim()
     onSelectGuestMode?.(draftLabel)
     closeList()
+    suppressOpenOnFocusRef.current = true
     requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }))
   }, [onSelectGuestMode, closeList, value])
 
@@ -154,6 +155,7 @@ export default function StablePlayerPicker({
       onChange(handle)
       onSelectProfile?.(profile)
       closeList()
+      suppressOpenOnFocusRef.current = true
       requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }))
     },
     [onChange, onSelectProfile, closeList, userId],
@@ -223,8 +225,9 @@ export default function StablePlayerPicker({
       if (containerRef.current?.contains(target)) return
       closeList()
     }
-    document.addEventListener('pointerdown', onDocPointerDown)
-    return () => document.removeEventListener('pointerdown', onDocPointerDown)
+    // Capture phase: sheet stopPropagation must not block outside-close within the modal.
+    document.addEventListener('pointerdown', onDocPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onDocPointerDown, true)
   }, [open, closeList])
 
   useEffect(() => {

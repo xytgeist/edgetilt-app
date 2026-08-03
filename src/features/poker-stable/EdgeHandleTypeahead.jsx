@@ -209,8 +209,9 @@ export default function EdgeHandleTypeahead({
       if (containerRef.current?.contains(target)) return
       closeList()
     }
-    document.addEventListener('pointerdown', onDocPointerDown)
-    return () => document.removeEventListener('pointerdown', onDocPointerDown)
+    // Capture phase: sheet stopPropagation must not block outside-close within the modal.
+    document.addEventListener('pointerdown', onDocPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onDocPointerDown, true)
   }, [open, closeList])
 
   const stopBubble = (e) => {

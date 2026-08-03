@@ -12,6 +12,18 @@ export function parsePokerStakeClaimFromLocation(pathname, search = '') {
   return { token }
 }
 
+/** After guest stakee claim links the account, hard-navigate so Bankroll deep link bootstraps cleanly. */
+export function navigateAfterStakeClaim(redirect) {
+  if (typeof window === 'undefined') return
+  const dest = redirect || '/?tab=poker-bankroll'
+  try {
+    const url = new URL(dest, window.location.origin)
+    window.location.assign(`${url.pathname}${url.search}`)
+  } catch {
+    window.location.assign('/?tab=poker-bankroll')
+  }
+}
+
 /** Supabase signup/OAuth redirect: preserve claim token on confirm; else home. */
 export function authRedirectBaseForCurrentLocation() {
   if (typeof window === 'undefined') return '/'

@@ -48,6 +48,7 @@ import { parseMonitorPathname } from './features/ops/opsMonitorNavigation.js'
 import { parsePokerSwapClaimFromLocation } from './features/poker-bankroll/pokerTournamentSwapNav.js'
 import {
   authRedirectBaseForCurrentLocation,
+  navigateAfterStakeClaim,
   parsePokerStakeClaimFromLocation,
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
@@ -1050,9 +1051,7 @@ function App() {
             userId={user?.id ?? null}
             onOpenAuth={() => openAuthPanel('create')}
             onDone={(redirect) => {
-              const dest = redirect || '/?tab=poker-bankroll'
-              window.history.replaceState({}, document.title, dest)
-              setCurrentView('app')
+              navigateAfterStakeClaim(redirect)
             }}
           />
         </Suspense>

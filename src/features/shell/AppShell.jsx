@@ -979,6 +979,26 @@ export default function AppShell({
     const applyFromUrl = () => {
       const params = new URLSearchParams(window.location.search || '')
       const targetTab = params.get('tab')
+      const memberDeepLinkTabs = new Set([
+        'offers',
+        'logbook',
+        'chat',
+        'monitor',
+        'bots',
+        'affiliates',
+        'stable-smoke',
+        'creator',
+        'poker-bankroll',
+        'poker-stable',
+      ])
+      if (
+        targetTab &&
+        memberDeepLinkTabs.has(targetTab) &&
+        browseMode === 'anonymous' &&
+        !authSessionReady
+      ) {
+        return
+      }
       const postShareId = (params.get('post') || '').trim()
       const profileHandle = (params.get('u') || '').trim().replace(/^@/, '').toLowerCase()
       const profileUserId = (params.get('profile') || '').trim()
@@ -1138,7 +1158,7 @@ export default function AppShell({
     applyFromUrl()
     window.addEventListener('popstate', applyFromUrl)
     return () => window.removeEventListener('popstate', applyFromUrl)
-  }, [browseMode, isAdmin])
+  }, [browseMode, isAdmin, authSessionReady])
 
   /** Only refire when entering Lounge - not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
   useEffect(() => {

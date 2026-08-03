@@ -575,7 +575,10 @@ export default function PokerBankrollTracker({
 
   useEffect(() => {
     if (!openStableDealId) return
-    const deal = stakeeDeals.find((d) => d.id === openStableDealId && d.status === 'active')
+    const deal = stakeeDeals.find(
+      (d) =>
+        d.id === openStableDealId && (d.status === 'active' || d.status === 'pending'),
+    )
     if (!deal) return
     scopeRestoredRef.current = true
     setBankrollScope(openStableDealId)

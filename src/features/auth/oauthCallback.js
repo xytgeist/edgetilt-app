@@ -60,6 +60,13 @@ export function getOAuthCallbackMessage(error, errorCode, errorDescription) {
   if (!error && !errorCode && !errorDescription) return ''
   const raw = `${error} ${errorCode} ${errorDescription}`.toLowerCase()
   if (
+    raw.includes('code verifier') ||
+    raw.includes('code_verifier') ||
+    raw.includes('both auth code and code verifier')
+  ) {
+    return 'Open the confirmation link in the same browser where you signed up, or sign in with your email and password if you already confirmed.'
+  }
+  if (
     raw.includes('redirect') &&
     (raw.includes('not allowed') ||
       raw.includes('invalid') ||

@@ -67,7 +67,14 @@ const PokerStableStakeClaimPage = lazyRoute(
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // Email confirm links often open in Gmail / in-app browsers, not the signup tab.
+    // PKCE needs the same browser; implicit hash tokens work cross-context.
+    flowType: 'implicit',
+    detectSessionInUrl: true,
+  },
+})
 
 function readBillingQueryParams() {
   if (typeof window === 'undefined') return null

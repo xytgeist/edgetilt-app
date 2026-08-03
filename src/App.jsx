@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
-import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, isEmailVerificationType, hasAuthSuccessTokens, replaceUrlPreservingQuery } from './features/auth/oauthCallback'
+import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, isEmailVerificationType, hasAuthSuccessTokens, replaceUrlPreservingQuery, hasOAuthProviderCallbackInLocation } from './features/auth/oauthCallback'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
@@ -50,7 +50,9 @@ import {
   authRedirectBaseForCurrentLocation,
   navigateAfterStakeClaim,
   parsePokerStakeClaimFromLocation,
-  stakeClaimEmailRedirectUrl,
+  readStashedPokerStakeClaimToken,
+  navigateToStakeClaimPage,
+  stakeClaimSignupEmailRedirectUrl,
   stashPokerStakeClaimToken,
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
@@ -227,8 +229,11 @@ function App() {
         const tokens = readAuthTokensFromLocation()
         const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
         const combinedForType = `${window.location.hash || ''}${search}`
+        const isLikelyEmailConfirm =
+          isEmailVerificationType(tokens.type) ||
+          (Boolean(tokens.code) && !hasOAuthProviderCallbackInLocation())
 
-        if (hasAuthSuccessTokens(tokens) && isEmailVerificationType(tokens.type)) {
+        if (hasAuthSuccessTokens(tokens) && isLikelyEmailConfirm) {
           try {
             if (tokens.code) {
               await supabase.auth.exchangeCodeForSession(tokens.code)
@@ -241,14 +246,24 @@ function App() {
           } catch {
             // Link may already be consumed; user can sign in manually.
           }
-          replaceUrlPreservingQuery(stakeClaimReturn ? `${pathname}${search}` : pathname || '/')
-          if (!stakeClaimReturn) {
-            setVerificationSuccess(true)
-            setAuthTab('signin')
-            setShowForgotPassword(false)
-            setLoginError('')
-            setAuthPanelOpen(true)
+
+          const stashedClaimToken = readStashedPokerStakeClaimToken()
+          if (stakeClaimReturn) {
+            replaceUrlPreservingQuery(`${pathname}${search}`)
+            return
           }
+          if (stashedClaimToken) {
+            replaceUrlPreservingQuery(pathname || '/')
+            navigateToStakeClaimPage(stashedClaimToken)
+            return
+          }
+
+          replaceUrlPreservingQuery(pathname || '/')
+          setVerificationSuccess(true)
+          setAuthTab('signin')
+          setShowForgotPassword(false)
+          setLoginError('')
+          setAuthPanelOpen(true)
           return
         }
 
@@ -706,10 +721,10 @@ function App() {
       email: signupEmail,
       password: signupPassword,
       options: {
-        // Stake claim: bare /poker-stake-claim redirect (exact allow-list match); token in sessionStorage.
+        // Stake claim: confirm via Site URL (always allow-listed); token in sessionStorage.
         // Other signups: carry ?ref= on redirect when stamped.
         emailRedirectTo: signupFromStakeClaim
-          ? stakeClaimEmailRedirectUrl()
+          ? stakeClaimSignupEmailRedirectUrl()
           : authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
         data: affiliateCode ? { affiliate_code: affiliateCode } : undefined,
       },

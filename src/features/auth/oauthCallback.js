@@ -49,6 +49,13 @@ export function replaceUrlPreservingQuery(pathAndSearch) {
   window.history.replaceState({}, document.title, pathAndSearch || '/')
 }
 
+/** True when the URL looks like a Google/OAuth callback (not email confirm). */
+export function hasOAuthProviderCallbackInLocation() {
+  if (typeof window === 'undefined') return false
+  const combined = `${window.location.hash || ''}${window.location.search || ''}`
+  return combined.includes('provider_token')
+}
+
 export function getOAuthCallbackMessage(error, errorCode, errorDescription) {
   if (!error && !errorCode && !errorDescription) return ''
   const raw = `${error} ${errorCode} ${errorDescription}`.toLowerCase()
@@ -62,7 +69,7 @@ export function getOAuthCallbackMessage(error, errorCode, errorDescription) {
     return 'That confirmation link could not finish. Please request a new confirmation email or try signing in again.'
   }
   if (error === 'access_denied' || raw.includes('access_denied')) {
-    if (raw.includes('redirect') || raw.includes('email confirm') || raw.includes('signup')) {
+    if (!hasOAuthProviderCallbackInLocation()) {
       return 'That confirmation link could not finish. Please request a new confirmation email or try signing in again.'
     }
     return 'Sign-in with Google was cancelled. You can try again or use your email and password.'

@@ -51,10 +51,18 @@ export function parsePokerStakeClaimFromLocation(pathname, search = '') {
   return null
 }
 
-/** Exact redirect URL for Supabase allow list (no query params). */
-export function stakeClaimEmailRedirectUrl() {
-  if (typeof window === 'undefined') return POKER_STAKE_CLAIM_RETURN_PATH
-  return `${window.location.origin}${POKER_STAKE_CLAIM_RETURN_PATH}`
+/** Site URL confirm redirect (always allow-listed); claim token stays in sessionStorage. */
+export function stakeClaimSignupEmailRedirectUrl() {
+  if (typeof window === 'undefined') return '/'
+  return `${window.location.origin}/`
+}
+
+export function navigateToStakeClaimPage(token) {
+  const t = String(token || '').trim()
+  if (!t || typeof window === 'undefined') return
+  window.location.assign(
+    `${POKER_STAKE_CLAIM_RETURN_PATH}?token=${encodeURIComponent(t)}`,
+  )
 }
 
 /** After guest stakee claim links the account, hard-navigate so Bankroll deep link bootstraps cleanly. */
@@ -80,7 +88,7 @@ export function authRedirectBaseForCurrentLocation() {
   )
   if (claim?.token) {
     stashPokerStakeClaimToken(claim.token)
-    return stakeClaimEmailRedirectUrl()
+    return stakeClaimSignupEmailRedirectUrl()
   }
   return `${origin}/`
 }

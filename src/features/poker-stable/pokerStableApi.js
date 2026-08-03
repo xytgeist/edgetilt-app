@@ -23,6 +23,11 @@ export function isPlayerInitiatedBackingDeal(deal) {
   return Boolean(deal?.stakee_user_id) && deal?.staker_user_id == null
 }
 
+/** Backer Create Stake or legacy staker → horse request (`staker_user_id` set). */
+export function isBackerInitiatedBackingDeal(deal) {
+  return Boolean(deal?.staker_user_id)
+}
+
 /** Viewer is a backer on this deal (lead staker or slice participant). */
 export function isViewerBackingDeal(deal, userId, slicesByDeal = {}) {
   if (!deal || !userId) return false
@@ -41,7 +46,7 @@ export function normalizeHandleInput(raw) {
 }
 
 const DEAL_SELECT =
-  'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_phone, stakee_guest_email, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, terms_revised_at, terms_revised_by'
+  'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_phone, stakee_guest_email, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, staker_terms_ack_required, terms_revised_at, terms_revised_by'
 
 const SLICE_SELECT =
   'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_phone, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at'
@@ -180,21 +185,22 @@ export async function loadDealCounterpartyProfiles(supabase, deals, selfUserId, 
   const ids = new Set()
   for (const d of deals || []) {
     if (d.stakee_user_id === selfUserId && d.staker_user_id) ids.add(d.staker_user_id)
-    if (d.staker_user_id === selfUserId) ids.add(d.stakee_user_id)
+    if (d.staker_user_id === selfUserId && d.stakee_user_id) ids.add(d.stakee_user_id)
     if (d.stakee_user_id === selfUserId) {
       for (const s of slicesByDeal[d.id] || []) {
         if (s.staker_user_id) ids.add(s.staker_user_id)
       }
     }
     for (const s of slicesByDeal[d.id] || []) {
-      if (s.staker_user_id === selfUserId) ids.add(d.stakee_user_id)
+      if (s.staker_user_id === selfUserId && d.stakee_user_id) ids.add(d.stakee_user_id)
     }
   }
-  if (ids.size === 0) return { byId: {}, error: null }
+  const profileIds = [...ids].filter(Boolean)
+  if (profileIds.length === 0) return { byId: {}, error: null }
   const { data, error } = await supabase
     .from('profiles')
     .select('user_id, handle, display_name, avatar_url')
-    .in('user_id', [...ids])
+    .in('user_id', profileIds)
   if (error) return { byId: {}, error }
   /** @type {Record<string, object>} */
   const byId = {}
@@ -794,8 +800,9 @@ export async function requestHorseDeal(supabase, args) {
     pricing_mode: 'profit_split',
     player_profit_pct: playerProfitPct,
     rakeback_mode: 'all_to_stake',
-    status: 'pending',
+    status: 'active',
     label: label?.trim() || null,
+    responded_at: new Date().toISOString(),
   })
   if (slErr) return { deal, error: slErr }
 
@@ -885,35 +892,77 @@ export async function requestBackingDeal(supabase, args) {
       .in('status', ['pending', 'active'])
     if (guestDeals?.length) {
       const existing = guestDeals[0]
-      const msg =
-        existing.status === 'pending'
-          ? 'You already have a pending request for this guest player.'
-          : 'You already have an active deal with this guest player.'
-      return { deal: null, error: new Error(msg) }
+      const { count: sliceCount, error: countErr } = await supabase
+        .from('poker_stable_deal_slices')
+        .select('id', { count: 'exact', head: true })
+        .eq('deal_id', existing.id)
+      if (countErr) return { deal: null, error: countErr }
+      if (!(sliceCount === 0 && existing.status === 'pending')) {
+        const msg =
+          existing.status === 'pending'
+            ? 'You already have a pending request for this guest player.'
+            : 'You already have an active deal with this guest player.'
+        return { deal: null, error: new Error(msg) }
+      }
     }
   }
 
   const baseline = roundMoney(baselineBankroll)
+  const dealFields = {
+    staker_user_id: stakerUserId,
+    stakee_user_id: stakeeUserId || null,
+    stakee_guest_label: guestLabel || null,
+    stakee_guest_phone: stakeeGuest?.phone?.trim() || null,
+    stakee_guest_email: stakeeGuest?.email?.trim()?.toLowerCase() || null,
+    deal_type: dealType,
+    venue_kind: venueKind,
+    status: 'pending',
+    label: label?.trim() || null,
+    notes: notes?.trim() || null,
+    baseline_bankroll: baseline,
+    starting_roll: 0,
+  }
 
-  const { data: deal, error: dErr } = await supabase
-    .from('poker_stable_deals')
-    .insert({
-      staker_user_id: stakerUserId,
-      stakee_user_id: stakeeUserId || null,
-      stakee_guest_label: guestLabel || null,
-      stakee_guest_phone: stakeeGuest?.phone?.trim() || null,
-      stakee_guest_email: stakeeGuest?.email?.trim()?.toLowerCase() || null,
-      deal_type: dealType,
-      venue_kind: venueKind,
-      status: 'pending',
-      label: label?.trim() || null,
-      notes: notes?.trim() || null,
-      baseline_bankroll: baseline,
-      starting_roll: 0,
-    })
-    .select(DEAL_SELECT)
-    .single()
-  if (dErr) return { deal: null, error: dErr }
+  /** @type {object | null} */
+  let deal = null
+  if (!stakeeUserId) {
+    const { data: orphanDeals } = await supabase
+      .from('poker_stable_deals')
+      .select('id, status')
+      .eq('staker_user_id', stakerUserId)
+      .is('stakee_user_id', null)
+      .ilike('stakee_guest_label', guestLabel)
+      .eq('status', 'pending')
+      .limit(1)
+    const orphan = orphanDeals?.[0]
+    if (orphan?.id) {
+      const { count: orphanSliceCount, error: orphanCountErr } = await supabase
+        .from('poker_stable_deal_slices')
+        .select('id', { count: 'exact', head: true })
+        .eq('deal_id', orphan.id)
+      if (orphanCountErr) return { deal: null, error: orphanCountErr }
+      if (orphanSliceCount === 0) {
+        const { data: reused, error: reuseErr } = await supabase
+          .from('poker_stable_deals')
+          .update(dealFields)
+          .eq('id', orphan.id)
+          .select(DEAL_SELECT)
+          .single()
+        if (reuseErr) return { deal: null, error: reuseErr }
+        deal = reused
+      }
+    }
+  }
+
+  if (!deal) {
+    const { data: inserted, error: dErr } = await supabase
+      .from('poker_stable_deals')
+      .insert(dealFields)
+      .select(DEAL_SELECT)
+      .single()
+    if (dErr) return { deal: null, error: dErr }
+    deal = inserted
+  }
 
   const sliceRows = slices.map((sl, idx) => ({
     deal_id: deal.id,
@@ -929,12 +978,16 @@ export async function requestBackingDeal(supabase, args) {
     markup_rate: sl.pricingMode === 'markup' ? sl.markupRate : null,
     rakeback_mode: sl.rakebackMode || 'disabled',
     rakeback_player_pct: sl.rakebackMode === 'custom' ? sl.rakebackPlayerPct : null,
-    status: 'pending',
+    status: sl.stakerUserId === stakerUserId ? 'active' : 'pending',
     label: sl.label?.trim() || null,
+    responded_at: sl.stakerUserId === stakerUserId ? new Date().toISOString() : null,
   }))
 
   const { error: slErr } = await supabase.from('poker_stable_deal_slices').insert(sliceRows)
-  if (slErr) return { deal, error: slErr }
+  if (slErr) {
+    await supabase.from('poker_stable_deals').delete().eq('id', deal.id)
+    return { deal: null, error: slErr }
+  }
 
   return { deal, error: null }
 }
@@ -971,6 +1024,93 @@ async function bootstrapDealBankrollProfile(supabase, dealId, startingRoll) {
   return { overallBankroll, error }
 }
 
+/** Guest stakee claim preview (anon + auth). */
+export async function guestStakeeClaimPreview(supabase, token) {
+  const { data, error } = await supabase.rpc('poker_stable_guest_stakee_claim_preview', {
+    p_token: token,
+  })
+  return { preview: data, error }
+}
+
+/** Link signed-in Edge account to a guest stakee deal via email claim token. */
+export async function guestStakeeClaimLink(supabase, token) {
+  const { data, error } = await supabase.rpc('poker_stable_guest_stakee_claim_link', {
+    p_token: token,
+  })
+  return { result: data, error }
+}
+
+/** Stakee accepts a backer-initiated offer (activates deal). */
+export async function stakeeAcceptBackerOffer(supabase, dealId) {
+  const { data, error } = await supabase.rpc('poker_stable_stakee_accept_backer_offer', {
+    p_deal_id: dealId,
+  })
+  if (error) return { deal: null, error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal: deal || data, error: loadErr }
+}
+
+/** Stakee declines a backer-initiated offer (kills deal for everyone). */
+export async function stakeeDeclineBackerOffer(supabase, dealId) {
+  const { data, error } = await supabase.rpc('poker_stable_stakee_decline_backer_offer', {
+    p_deal_id: dealId,
+  })
+  if (error) return { deal: null, error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal: deal || data, error: loadErr }
+}
+
+/** Stakee counter-proposes terms on a backer-initiated pending deal. */
+export async function stakeeProposeCounterTerms(supabase, dealId, termsPayload) {
+  const { error } = await supabase.rpc('poker_stable_stakee_propose_counter_terms', {
+    p_deal_id: dealId,
+    p_terms: termsPayload,
+  })
+  if (error) return { deal: null, error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal, error: loadErr }
+}
+
+/** Lead backer accepts stakee counter-proposal (deal stays pending for stakee accept). */
+export async function stakerAcceptCounterTerms(supabase, dealId) {
+  const { data, error } = await supabase.rpc('poker_stable_staker_accept_counter_terms', {
+    p_deal_id: dealId,
+  })
+  if (error) return { deal: null, error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal: deal || data, error: loadErr }
+}
+
+/** Lead backer declines stakee counter-proposal (kills deal). */
+export async function stakerDeclineCounterTerms(supabase, dealId) {
+  const { data, error } = await supabase.rpc('poker_stable_staker_decline_counter_terms', {
+    p_deal_id: dealId,
+  })
+  if (error) return { deal: null, error }
+  const { data: deal, error: loadErr } = await supabase
+    .from('poker_stable_deals')
+    .select(DEAL_SELECT)
+    .eq('id', dealId)
+    .maybeSingle()
+  return { deal: deal || data, error: loadErr }
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
@@ -978,6 +1118,16 @@ async function bootstrapDealBankrollProfile(supabase, dealId, startingRoll) {
  * @param {number} [startingRoll]
  */
 export async function acceptHorseDeal(supabase, dealId, stakeeUserId, startingRoll = 0) {
+  const { data: peek, error: peekErr } = await supabase
+    .from('poker_stable_deals')
+    .select('staker_user_id')
+    .eq('id', dealId)
+    .maybeSingle()
+  if (peekErr) return { deal: null, error: peekErr }
+  if (peek?.staker_user_id) {
+    return stakeeAcceptBackerOffer(supabase, dealId)
+  }
+
   const roll = roundMoney(startingRoll)
   const { data: deal, error: uErr } = await supabase
     .from('poker_stable_deals')
@@ -1065,6 +1215,16 @@ export async function acceptSliceAsStaker(supabase, sliceId, stakerUserId) {
  * @param {string} stakeeUserId
  */
 export async function declineHorseDeal(supabase, dealId, stakeeUserId) {
+  const { data: peek, error: peekErr } = await supabase
+    .from('poker_stable_deals')
+    .select('staker_user_id')
+    .eq('id', dealId)
+    .maybeSingle()
+  if (peekErr) return { deal: null, error: peekErr }
+  if (peek?.staker_user_id) {
+    return stakeeDeclineBackerOffer(supabase, dealId)
+  }
+
   const { data, error } = await supabase
     .from('poker_stable_deals')
     .update({
@@ -1514,6 +1674,41 @@ export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
 
   const { data, error, response } = await supabase.functions.invoke('poker-stable-notify', {
     body,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  if (error) {
+    const msg = await messageFromStableNotifyInvoke(error, response)
+    return { data: null, error: new Error(msg), notifiedCount: 0 }
+  }
+  const payload = parseStableNotifyPayload(data)
+  if (payload?.error) {
+    return { data: payload, error: new Error(payload.error), notifiedCount: 0 }
+  }
+  const notifiedCount = Number(payload?.notified_count) || 0
+  return { data: payload, error: null, notifiedCount }
+}
+
+/**
+ * Notify a guest player (not on Edge) when a backer creates a stake for them.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} dealId
+ */
+export async function notifyStableGuestStakee(supabase, dealId) {
+  let {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    return { data: null, error: new Error('Sign in again, then retry.'), notifiedCount: 0 }
+  }
+
+  const nowSecs = Math.floor(Date.now() / 1000)
+  if (!session.expires_at || session.expires_at - nowSecs < 60) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    if (refreshed?.session?.access_token) session = refreshed.session
+  }
+
+  const { data, error, response } = await supabase.functions.invoke('poker-stable-notify', {
+    body: { deal_id: dealId, kind: 'guest_stakee_offer' },
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
   if (error) {

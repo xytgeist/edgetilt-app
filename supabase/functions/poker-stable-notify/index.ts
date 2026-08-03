@@ -119,6 +119,36 @@ function formatExposureLine(input: GuestExposureInput): string {
   return `Your exposure: ${fmtMoney(computeGuestExposure(input))}`
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value)
+  const hash = await crypto.subtle.digest('SHA-256', data)
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function randomToken(): string {
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function createGuestStakeeClaimUrl(
+  admin: ReturnType<typeof createBillingAdmin>,
+  dealId: string,
+  guestEmail: string | null,
+): Promise<string> {
+  const raw = randomToken()
+  const tokenHash = await sha256Hex(raw)
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  const { error: tokErr } = await admin.from('poker_stable_guest_stakee_claim_tokens').insert({
+    deal_id: dealId,
+    token_hash: tokenHash,
+    guest_email: guestEmail,
+    expires_at: expiresAt,
+  })
+  if (tokErr) throw new Error(tokErr.message)
+  return `${resolvePublicAppOrigin()}/poker-stake-claim?token=${raw}`
+}
+
 function guestExposureFromSliceRow(slice: SliceRow, baselineBankroll: number): GuestExposureInput {
   return {
     baselineBankroll,
@@ -190,6 +220,49 @@ function formatStakeMessageCopy(args: {
     bodyHtml,
     appUrl: args.appUrl,
     cta: { label: 'Create free account', href: args.appUrl },
+    footerNoteHtml: footer.htmlNote,
+    ctaAfterFooterNote: true,
+    footerNoteMarginTop: '24px',
+  })
+  return { subject, text, html }
+}
+
+function formatGuestStakeeOfferCopy(args: {
+  actorLabel: string
+  guestName: string
+  dealLabel: string
+  baselineLabel: string
+  actionSoldPct: number
+  pricingLine: string
+  claimUrl: string
+}): { subject: string; text: string; html: string } {
+  const guestName = args.guestName.trim() || 'there'
+  const introPlain = `${args.actorLabel} invited you to a backing stake on Edgetilt.com as the player.`
+  const nameLine = `Name of stake: ${args.dealLabel || '—'}`
+  const stakeLine = `Total stake: ${args.baselineLabel}`
+  const actionLine = `Action sold: ${formatPct(args.actionSoldPct)}%`
+  const detailLines = [nameLine, stakeLine, actionLine, args.pricingLine]
+  const footer = formatEmailFooter()
+  const text = `Hi ${guestName},\n\n${introPlain}\n\n${detailLines.join('\n')}\n\nOpen your claim link to create a free Edge account and review the stake:\n${args.claimUrl}\n\n${footer.text}`
+
+  const safeActor = escapeHtml(args.actorLabel)
+  const safeGuest = escapeHtml(guestName)
+  const safeUrl = escapeHtml(args.claimUrl)
+  const introHtml = `${safeActor} invited you to a backing stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a> as the player.`
+  const detailsHtml = detailLines.map((line) => escapeHtml(line)).join('<br>')
+  const bodyHtml = [
+    transactionalEmailParagraph(`Hi ${safeGuest},`),
+    transactionalEmailParagraph(introHtml),
+    transactionalEmailParagraph(detailsHtml, { marginBottom: '0' }),
+  ].join('')
+
+  const subject = `${args.actorLabel} invited you to a stake: ${args.dealLabel || 'Untitled'}`
+  const html = wrapTransactionalEmailHtml({
+    title: subject,
+    headline: 'Backing stake invitation',
+    bodyHtml,
+    appUrl: args.claimUrl,
+    cta: { label: 'Claim stake', href: args.claimUrl },
     footerNoteHtml: footer.htmlNote,
     ctaAfterFooterNote: true,
     footerNoteMarginTop: '24px',
@@ -542,7 +615,11 @@ type SliceRow = {
 
 type DealRow = {
   id: string
-  stakee_user_id: string
+  staker_user_id: string | null
+  stakee_user_id: string | null
+  stakee_guest_label: string | null
+  stakee_guest_email: string | null
+  stakee_guest_phone: string | null
   status: string
   label: string | null
   baseline_bankroll: number
@@ -578,10 +655,12 @@ Deno.serve(async (req) => {
     if (!dealId) return jsonResponse({ error: 'deal_id is required.' }, 400)
 
     const kindRaw = String(body.kind || 'offer').trim().toLowerCase()
-    let kind: 'offer' | 'deleted' | 'terms_edited' | 'session_complete' = 'offer'
+    let kind: 'offer' | 'deleted' | 'terms_edited' | 'session_complete' | 'guest_stakee_offer' =
+      'offer'
     if (kindRaw === 'deleted') kind = 'deleted'
     else if (kindRaw === 'terms_edited') kind = 'terms_edited'
     else if (kindRaw === 'session_complete') kind = 'session_complete'
+    else if (kindRaw === 'guest_stakee_offer') kind = 'guest_stakee_offer'
 
     const sessionId = String(body.session_id || '').trim()
     if (kind === 'session_complete' && !sessionId) {
@@ -603,7 +682,9 @@ Deno.serve(async (req) => {
 
     const { data: dealRaw, error: dealErr } = await admin
       .from('poker_stable_deals')
-      .select('id, stakee_user_id, status, label, baseline_bankroll')
+      .select(
+        'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_email, stakee_guest_phone, status, label, baseline_bankroll',
+      )
       .eq('id', dealId)
       .maybeSingle()
     if (dealErr) throw new Error(dealErr.message)
@@ -615,7 +696,110 @@ Deno.serve(async (req) => {
     }
 
     const uid = auth.user.id
-    if (deal.stakee_user_id !== uid) {
+    const isStakee = deal.stakee_user_id === uid
+    const isLeadStaker = deal.staker_user_id === uid
+
+    if (kind === 'guest_stakee_offer') {
+      if (!isLeadStaker || deal.stakee_user_id) {
+        return jsonResponse(
+          { error: 'Only the proposing backer can notify a guest player on this stake.' },
+          403,
+        )
+      }
+
+      const { data: actorProfile } = await admin
+        .from('profiles')
+        .select('display_name, handle')
+        .eq('user_id', uid)
+        .maybeSingle()
+      const actorLabel = formatProfileLabel(actorProfile)
+
+      const email = String(deal.stakee_guest_email || '')
+        .trim()
+        .toLowerCase()
+      const phone = normalizePhone(String(deal.stakee_guest_phone || ''))
+      const hasEmail = Boolean(email && isValidEmail(email))
+      const hasPhone = Boolean(phone)
+
+      const { data: sliceRowsRaw, error: sliceLoadErr } = await admin
+        .from('poker_stable_deal_slices')
+        .select(
+          'action_pct, pricing_mode, player_profit_pct, markup_rate, slice_index, status',
+        )
+        .eq('deal_id', dealId)
+        .neq('status', 'declined')
+        .order('slice_index', { ascending: true })
+      if (sliceLoadErr) throw new Error(sliceLoadErr.message)
+      const sliceRows = sliceRowsRaw || []
+      const actionSoldPct = sliceRows.reduce(
+        (sum, row) => sum + Number(row.action_pct || 0),
+        0,
+      )
+      const leadSlice = (sliceRows[0] || null) as SliceRow | null
+      const pricingLine = leadSlice ? formatPricingLine(leadSlice) : 'Profit split'
+      const baselineLabel = fmtMoney(Number(deal.baseline_bankroll))
+      const dealLabel = String(deal.label || '').trim()
+      const guestName = String(deal.stakee_guest_label || '').trim()
+      let claimUrl = resolvePublicAppOrigin()
+      if (hasEmail) {
+        try {
+          claimUrl = await createGuestStakeeClaimUrl(admin, dealId, email)
+        } catch (e) {
+          console.warn('[poker-stable-notify] guest stakee claim token failed', e)
+        }
+      }
+
+      if (!hasEmail && !hasPhone) {
+        return jsonResponse({
+          ok: true,
+          kind,
+          deal_id: dealId,
+          notified_count: 0,
+          guest_stakee: {
+            notified: false,
+            email: { skipped: true, reason: 'no guest email' },
+            sms: { skipped: true, reason: 'no guest phone' },
+          },
+        })
+      }
+
+      const { subject, text, html } = formatGuestStakeeOfferCopy({
+        actorLabel,
+        guestName,
+        dealLabel,
+        baselineLabel,
+        actionSoldPct,
+        pricingLine,
+        claimUrl,
+      })
+      const smsText = `${text}\n\n${claimUrl}`
+
+      const channels: Record<string, unknown> = {}
+      if (hasEmail) {
+        channels.email = await sendResendEmail(email, subject, html, text)
+      } else {
+        channels.email = { skipped: true, reason: 'no guest email' }
+      }
+      if (hasPhone && phone) {
+        channels.sms = await sendTwilioSms(phone, smsText)
+      } else {
+        channels.sms = { skipped: true, reason: 'no guest phone' }
+      }
+
+      const sent =
+        (channels.email && !(channels.email as { skipped?: boolean }).skipped) ||
+        (channels.sms && !(channels.sms as { skipped?: boolean }).skipped)
+
+      return jsonResponse({
+        ok: true,
+        kind,
+        deal_id: dealId,
+        notified_count: sent ? 1 : 0,
+        guest_stakee: { ...channels, notified: sent },
+      })
+    }
+
+    if (!isStakee) {
       return jsonResponse({ error: 'Only the player can notify guest backers on this stake.' }, 403)
     }
 

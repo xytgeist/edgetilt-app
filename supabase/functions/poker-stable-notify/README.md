@@ -87,6 +87,6 @@ supabase functions deploy poker-stable-notify --project-ref kcosfvmreeiosdjdzycb
 }
 ```
 
-`kind`: `offer` (default), `terms_edited` (requires `terms_edit.before` + `terms_edit.after`), `deleted`, or `session_complete` (requires `session_id`; session must be `completed` and linked to `deal_id`). For **deleted**, call **before** the deal row is removed so guest slice contact info is still readable. **Edit terms** uses `terms_edited` only (not `offer`). **Session complete** is invoked from Bankroll after End Session or Log session on a stake deal.
+`kind`: `offer` (default), `terms_edited` (requires `terms_edit.before` + `terms_edit.after`), `deleted`, `session_complete` (requires `session_id`; session must be `completed` and linked to `deal_id`), or **`guest_stakee_offer`** (backer created stake for a guest player; notifies `stakee_guest_email` / phone). For **deleted**, call **before** the deal row is removed so guest slice contact info is still readable. **Edit terms** uses `terms_edited` only (not `offer`). **Session complete** is invoked from Bankroll after End Session or Log session on a stake deal.
 
-Caller must be the deal **stakee** (player who created the stake). JWT required.
+Caller must be the deal **stakee** for guest **backer** notify kinds, or the deal **lead staker** for **`guest_stakee_offer`**. JWT required.

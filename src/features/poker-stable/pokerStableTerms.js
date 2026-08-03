@@ -54,6 +54,13 @@ export function dealStakeeDisplayName(deal, profilesById = {}) {
   return edgeProfileDisplayName(profile) || 'Player'
 }
 
+/** Lead backer who proposed a horse deal (`deal.staker_user_id`). */
+export function dealLeadBackerDisplayName(deal, profilesById = {}) {
+  const stakerId = deal?.staker_user_id
+  if (!stakerId) return ''
+  return edgeProfileDisplayName(profilesById[stakerId]) || 'Backer'
+}
+
 /** Terms sheet: "Joey K (@smokewagon)" or guest name only. */
 export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
   if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {

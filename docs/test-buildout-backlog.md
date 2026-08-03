@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-03: **Poker Stable guest stakee claim (test):** SQL **`20260803100000`** applied **`kcosfvmreeiosdjdzycb`**; **`/poker-stake-claim`** + Bankroll accept/decline/counter banner + Stable counter-proposal cards; **`poker-stable-notify`** redeployed test (claim token email). Spec **`docs/poker-stable-spec.md`**. Ryan smoke: backer Create Stake → guest email → claim → accept on Bankroll.
 - 2026-07-31: **Edge Monitor Product analytics — prod sign-off track:** full chain **`20260731210000`**–**`20260731222500`** applied **`jtjgtucumuoswnbauxry`** + **`kcosfvmreeiosdjdzycb`**; client **`567070d6`** on **`main`**. Dual member tables (app + Lounge), expandable breakdown, exclusions, prod **`post_reposts`** guard. Canonical: **`docs/edge-monitor-roadmap.md`** Phase 8.
 - 2026-07-31: **Edge Monitor member per-section breakdown (test + prod):** migration **`20260731222300`** — top 25 rows include section tab visits, calculator opens, and session saves (24h + 7d); expandable rows in **`EdgeMonitorAppSectionMemberUsagePanel`**. Applied **`jtjgtucumuoswnbauxry`** + **`kcosfvmreeiosdjdzycb`**.
 - 2026-07-31: **Edge Monitor member activity panel (test):** migrations **`20260731222000`**–**`22100`** — top 25 active members (7d) + `@handle` lookup with section/calculator/session breakdown; **`EdgeMonitorAppSectionMemberUsagePanel`** on Product tab. **Promoted to prod** same day (see above).

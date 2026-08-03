@@ -5060,6 +5060,48 @@ html.light [data-poker-swap-claim] .text-rose-400 {
   color: #e11d48 !important;
 }
 
+/* ── Poker stake guest claim page (/poker-stake-claim) — light mode only ─── */
+html.light [data-poker-stake-claim] {
+  background-color: #fafafa !important;
+  color: #18181b;
+}
+html.light [data-poker-stake-claim] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stake-claim] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stake-claim] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stake-claim] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stake-claim] .bg-zinc-900\/80 {
+  background-color: #ffffff !important;
+}
+html.light [data-poker-stake-claim] .border-zinc-800 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-claim] .text-cyan-400\/90 {
+  color: #0891b2 !important;
+}
+html.light [data-poker-stake-claim] .bg-cyan-600,
+html.light [data-poker-stake-claim] .bg-cyan-600.text-white {
+  color: #ffffff !important;
+}
+html.light [data-poker-stake-claim] .border-rose-500\/40.bg-rose-950\/40 {
+  background-color: #fff1f2 !important;
+  border-color: #fda4af !important;
+}
+html.light [data-poker-stake-claim] .text-rose-200,
+html.light [data-poker-stake-claim] .text-rose-400 {
+  color: #e11d48 !important;
+}
+html.light [data-poker-stake-claim] .text-emerald-300 {
+  color: #059669 !important;
+}
+
 /* Poker Stable deal sheet — native focus scroll keeps fields above keyboard without lifting the panel. */
 [data-poker-stable-sheet] input,
 [data-poker-stable-sheet] select,

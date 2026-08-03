@@ -1,4 +1,4 @@
-import { useLayoutEffect, useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
@@ -6,7 +6,7 @@ import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import StablePlayerPicker from './StablePlayerPicker.jsx'
-import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests } from './pokerStableApi.js'
+import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests, notifyStableGuestStakee, stakeeProposeCounterTerms } from './pokerStableApi.js'
 import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
 import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
 import {
@@ -14,6 +14,8 @@ import {
   scrollPokerStableSliceIntoView,
   usePokerStableSheetKeyboardDismissScroll,
 } from './pokerStableSheetScroll.js'
+import { backerSliceAllocatedCapital } from './pokerStableBackerMath.js'
+import { roundMoney } from './pokerStableMath.js'
 import {
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
@@ -246,9 +248,7 @@ function SliceEditor({
             </>
           ) : null}
         </>
-      ) : (
-        <p className="mb-2 text-sm text-zinc-400">Your backing slice (you)</p>
-      )}
+      ) : null}
       <div className="grid grid-cols-2 gap-2">
         <InField label="Action %" focusRingClass={STABLE_INFIELD_FOCUS}>
           <input
@@ -352,8 +352,9 @@ function PokerStableDealFormSheet({
   const isBacker = mode === 'backer'
   const isEdit = Boolean(editDeal?.id)
   const isBackerPropose = termsIntent === 'backer_propose'
+  const isStakeeCounter = termsIntent === 'stakee_counter'
   const showHorsePicker = isBacker && !isEdit && !isBackerPropose
-  const showPlayerTermsForm = !isBacker || isBackerPropose
+  const showPlayerTermsForm = !isBacker || isBackerPropose || isStakeeCounter
   const [label, setLabel] = useState('')
   const [dealType, setDealType] = useState('cash_backing')
   const [venueKind, setVenueKind] = useState('live')
@@ -475,6 +476,28 @@ function PokerStableDealFormSheet({
     }
   }, [slices.length, friendSlices.length])
 
+  const backerAvailableBankrollDisplay = useMemo(() => {
+    const pool = Number(backingBankrollBalance) || 0
+    if (showPlayerTermsForm) return pool
+    const baselineAmount = parseMoneyInputNumber(baseline)
+    const actionPct = Number(mySlice.actionPct)
+    if (
+      !baseline.trim() ||
+      !Number.isFinite(baselineAmount) ||
+      baselineAmount <= 0 ||
+      !Number.isFinite(actionPct) ||
+      actionPct <= 0 ||
+      actionPct > 100
+    ) {
+      return pool
+    }
+    const committed = backerSliceAllocatedCapital(
+      { baseline_bankroll: baselineAmount },
+      { action_pct: actionPct },
+    )
+    return roundMoney(pool - committed)
+  }, [showPlayerTermsForm, backingBankrollBalance, baseline, mySlice.actionPct])
+
   function updateSlice(idx, patch) {
     setSlices((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))
   }
@@ -550,6 +573,18 @@ function PokerStableDealFormSheet({
             payload,
           )
           if (error) throw error
+        } else if (isStakeeCounter) {
+          const payload = buildTermsPayload({
+            label,
+            baseline: baselineAmount,
+            isMigration,
+            startingRoll: dealFields.startingRoll,
+            stakeWidePl: dealFields.stakeWideStartingPl,
+            lifetimePl: dealFields.lifetimePlDisplay,
+            slices: parsedSlices,
+          })
+          const { error } = await stakeeProposeCounterTerms(supabaseClient, editDeal.id, payload)
+          if (error) throw error
         } else {
           if (
             (editDeal.status === 'pending' || editDeal.status === 'revoked') &&
@@ -619,8 +654,9 @@ function PokerStableDealFormSheet({
           }
         }
 
-        const { error } = await requestBackingDeal(supabaseClient, requestArgs)
+        const { deal, error } = await requestBackingDeal(supabaseClient, requestArgs)
         if (error) throw error
+        createdDeal = deal
       } else {
         const baselineAmount = parseMoneyInputNumber(baseline)
         if (!baseline.trim() || !Number.isFinite(baselineAmount) || baselineAmount <= 0) {
@@ -650,7 +686,23 @@ function PokerStableDealFormSheet({
         createdDeal = deal
       }
       let guestNotifyWarning = null
-      if (!isBacker && !isBackerPropose && createdDeal?.id) {
+      if (isBacker && createdDeal?.id && playerIsGuest) {
+        const hadGuestContact =
+          String(playerGuestEmail || '').trim() || String(playerGuestPhone || '').trim()
+        if (hadGuestContact) {
+          const { error: notifyErr, notifiedCount } = await notifyStableGuestStakee(
+            supabaseClient,
+            createdDeal.id,
+          )
+          if (notifyErr) {
+            guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
+            console.warn('[poker-stable] guest stakee notify failed', guestNotifyWarning)
+          } else if (notifiedCount === 0) {
+            guestNotifyWarning =
+              'Guest notify did not send. Check email/phone on the guest player.'
+          }
+        }
+      } else if (!isBacker && !isBackerPropose && createdDeal?.id) {
         const hadGuestContact = formSlicesHadGuestContact()
         let notifyOpts = null
         if (beforeTermsEdit && afterTermsEdit) {
@@ -689,19 +741,23 @@ function PokerStableDealFormSheet({
     }
   }
 
-  const title = isBackerPropose
+  const title = isStakeeCounter
+    ? 'Offer new terms'
+    : isBackerPropose
     ? 'Propose stake terms'
     : isEdit
       ? 'Edit stake terms'
       : isBacker
         ? 'Create Stake'
         : 'New stake deal'
-  const submitLabel = isBackerPropose
+  const submitLabel = isStakeeCounter
+    ? 'Send counter-proposal'
+    : isBackerPropose
     ? 'Send proposal'
     : isEdit
       ? 'Save terms'
       : isBacker
-        ? 'Send request'
+        ? 'Create stake'
         : 'Create stake'
 
   return (
@@ -889,33 +945,35 @@ function PokerStableDealFormSheet({
           </>
         ) : (
           <>
-            <p
-              className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
-              data-poker-stable-backing-bankroll-available
-            >
-              Available bankroll:{' '}
-              <span className="font-bold tabular-nums text-zinc-300">
-                {fmtPoker$(backingBankrollBalance ?? 0)}
-              </span>
-            </p>
             <MoneyInputField
               label="Stake baseline"
               value={baseline}
               onChange={setBaseline}
               placeholder="100,000"
               inFieldFocusRingClass={STABLE_INFIELD_FOCUS}
-              className="mb-4"
+              className="mb-3"
             />
-            <p className="mb-4 text-[12px] leading-relaxed text-zinc-500">
-              They get an incoming request. After accept, their stake bankroll appears in Poker
-              Bankroll… you sync that roll here in Stable.
+            <p
+              className="mb-4 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
+              data-poker-stable-backing-bankroll-available
+            >
+              Available bankroll:{' '}
+              <span
+                className={`font-bold tabular-nums ${
+                  backerAvailableBankrollDisplay < 0 ? 'text-rose-400' : 'text-zinc-300'
+                }`}
+              >
+                {fmtPoker$(backerAvailableBankrollDisplay)}
+              </span>
             </p>
           </>
         )}
 
-        <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-          {showPlayerTermsForm ? 'Backer slices' : 'Your backing slice'}
-        </h4>
+        {showPlayerTermsForm ? (
+          <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+            Backer slices
+          </h4>
+        ) : null}
         <div className="mb-4 space-y-3">
           {showPlayerTermsForm ? (
             slices.map((sl, idx) => (

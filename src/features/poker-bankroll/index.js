@@ -1,4 +1,6 @@
 export { default } from './PokerBankrollTracker.jsx'
 export { default as PokerBankrollTracker } from './PokerBankrollTracker.jsx'
 export { default as PokerTournamentSwapClaimPage } from './PokerTournamentSwapClaimPage.jsx'
+export { default as PokerStableStakeClaimPage } from './PokerStableStakeClaimPage.jsx'
 export { parsePokerSwapClaimFromLocation } from './pokerTournamentSwapNav.js'
+export { parsePokerStakeClaimFromLocation } from './pokerStableStakeClaimNav.js'

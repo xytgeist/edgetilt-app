@@ -46,12 +46,15 @@ import {
   depositBackerBankroll,
   withdrawBackerBankroll,
   sliceDisplayName,
+  stakerAcceptCounterTerms,
+  stakerDeclineCounterTerms,
 } from './pokerStableApi.js'
 import { dealTypeLabel } from './pokerStableMath.js'
 import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
   dealStakeeDisplayName,
+  dealLeadBackerDisplayName,
 } from './pokerStableTerms.js'
 
 const STABLE_TABS = [
@@ -275,7 +278,18 @@ export default function PokerStableScreen({
         (d) =>
           d.stakee_user_id === userId &&
           d.status === 'pending' &&
-          d.staker_user_id != null,
+          d.staker_user_id != null &&
+          !d.staker_terms_ack_required,
+      ),
+    [deals, userId],
+  )
+  const counterProposals = useMemo(
+    () =>
+      deals.filter(
+        (d) =>
+          d.staker_user_id === userId &&
+          d.status === 'pending' &&
+          d.staker_terms_ack_required,
       ),
     [deals, userId],
   )
@@ -284,6 +298,8 @@ export default function PokerStableScreen({
     const rows = []
     for (const d of deals) {
       if (d.stakee_user_id === userId) continue
+      // Backer Create Stake: lead staker already committed their slice at create.
+      if (d.staker_user_id === userId) continue
       for (const s of slicesByDeal[d.id] || []) {
         if (s.staker_user_id === userId && s.status === 'pending') rows.push({ deal: d, slice: s })
       }
@@ -409,6 +425,42 @@ export default function PokerStableScreen({
       await load()
     } catch (e) {
       setError(e?.message || 'Could not decline.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onAcceptCounter(dealId) {
+    if (!supabaseClient) return
+    setSaving(true)
+    setError('')
+    try {
+      const { error: err } = await stakerAcceptCounterTerms(supabaseClient, dealId)
+      if (err) throw err
+      triggerTapHapticLight()
+      await load()
+    } catch (e) {
+      setError(e?.message || 'Could not accept counter-proposal.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onDeclineCounter(dealId) {
+    if (!supabaseClient) return
+    const deal = deals.find((d) => d.id === dealId)
+    const label = deal?.label?.trim() || 'this stake'
+    if (!window.confirm(`Decline the counter-proposal on ${label}? This kills the stake for everyone.`)) {
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const { error: err } = await stakerDeclineCounterTerms(supabaseClient, dealId)
+      if (err) throw err
+      await load()
+    } catch (e) {
+      setError(e?.message || 'Could not decline counter-proposal.')
     } finally {
       setSaving(false)
     }
@@ -581,7 +633,7 @@ export default function PokerStableScreen({
                   className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
                 >
                   <div className="font-bold text-white">
-                    {partyLabel(deal, 'stakee')} invited you · {slice.action_pct}% ·{' '}
+                    {dealStakeeDisplayName(deal, profilesById)} invited you · {slice.action_pct}% ·{' '}
                     {deal.label || dealTypeLabel(deal.deal_type)}
                   </div>
                   {deal.stakee_terms_ack_required ? (
@@ -632,6 +684,60 @@ export default function PokerStableScreen({
           </section>
         ) : null}
 
+        {counterProposals.length > 0 ? (
+          <section className="mb-6">
+            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Counter-proposals
+            </h2>
+            <div className="space-y-2">
+              {counterProposals.map((deal) => (
+                <div
+                  key={deal.id}
+                  data-poker-stable-invite-card
+                  data-elevated-card="surface"
+                  className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
+                >
+                  <div className="font-bold text-white">
+                    {dealStakeeDisplayName(deal, profilesById)} proposed new terms
+                    {deal.label ? ` · ${deal.label}` : ''}
+                  </div>
+                  <p className="mt-2 text-xs text-amber-200/90">
+                    Accept to apply their terms. The player still must accept before the stake goes
+                    live.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTermsDealId(deal.id)}
+                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+                    >
+                      Review terms
+                    </button>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void onAcceptCounter(deal.id)}
+                      className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+                    >
+                      Accept counter
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void onDeclineCounter(deal.id)}
+                      className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {incoming.length > 0 ? (
           <section className="mb-6">
             <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
@@ -648,7 +754,7 @@ export default function PokerStableScreen({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate font-bold text-white">
-                        {partyLabel(deal, 'stakee')}
+                        {dealLeadBackerDisplayName(deal, profilesById)}
                       </div>
                       <div className="mt-0.5 text-sm text-zinc-400">
                         wants to stake you

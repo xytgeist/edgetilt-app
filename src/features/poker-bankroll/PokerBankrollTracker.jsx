@@ -41,6 +41,7 @@ import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
 import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
+  dealLeadBackerDisplayName,
   sliceCounterpartyDisplayName,
 } from '../poker-stable/pokerStableTerms.js'
 import {
@@ -48,6 +49,7 @@ import {
   cancelStakeDeal,
   closeBackingDeal,
   declineProposedDealTerms,
+  isBackerInitiatedBackingDeal,
   isMissingStableTableError,
   loadDealBankrollProfiles,
   loadDealCounterpartyProfiles,
@@ -59,6 +61,8 @@ import {
   notifyStableSessionComplete,
   periodicSettleBackingDeal,
   reassignGuestSliceToUser,
+  stakeeAcceptBackerOffer,
+  stakeeDeclineBackerOffer,
 } from '../poker-stable/pokerStableApi.js'
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealDetailSheet from '../poker-stable/PokerStableDealDetailSheet.jsx'
@@ -297,6 +301,9 @@ export default function PokerBankrollTracker({
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
   const [ledgerDealId, setLedgerDealId] = useState(/** @type {string | null} */ (null))
   const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
+  const [editTermsIntent, setEditTermsIntent] = useState(
+    /** @type {'stakee_update' | 'stakee_counter'} */ ('stakee_update'),
+  )
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
   /** @type {Record<string, object[]>} */
@@ -372,6 +379,14 @@ export default function PokerBankrollTracker({
   const stakeScopePending = activeDeal?.status === 'pending'
   const stakeScopeRevoked = activeDeal?.status === 'revoked'
   const stakeScopeSessionBlocked = stakeScopePending || stakeScopeRevoked
+  const pendingBackerOffer =
+    isOnStake &&
+    activeDeal?.status === 'pending' &&
+    isBackerInitiatedBackingDeal(activeDeal) &&
+    !activeDeal?.staker_terms_ack_required &&
+    !activeDeal?.stakee_terms_ack_required
+  const waitingBackerCounterResponse =
+    isOnStake && activeDeal?.status === 'pending' && Boolean(activeDeal?.staker_terms_ack_required)
   const dealProfile = isOnStake ? dealProfiles[bankrollScope] ?? null : null
 
   const scopedSessions = useMemo(() => {
@@ -1218,6 +1233,43 @@ export default function PokerBankrollTracker({
       stakeNoticeTimerRef.current = 0
       setStakeNotice('')
     }, 6500)
+  }
+
+  async function onAcceptBackerOffer(dealId) {
+    if (!supabaseClient || !dealId) return
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await stakeeAcceptBackerOffer(supabaseClient, dealId)
+      if (error) throw error
+      showStakeNotice('Stake accepted ... your backing bankroll is live.')
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not accept stake.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
+  async function onDeclineBackerOffer(dealId) {
+    if (!supabaseClient || !dealId) return
+    const deal = stakeeDealsById[dealId]
+    const label = deal?.label?.trim() || 'this stake'
+    if (!window.confirm(`Decline ${label}? This kills the stake for everyone.`)) return
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await stakeeDeclineBackerOffer(supabaseClient, dealId)
+      if (error) throw error
+      if (bankrollScope === dealId) setBankrollScope('personal')
+      showStakeNotice('Stake declined.')
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not decline stake.')
+    } finally {
+      setStableSaving(false)
+    }
   }
 
   async function runPeriodicSettle(dealId, rakebackTotal, stakeReductionTotal = 0) {
@@ -2579,6 +2631,65 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
+        {pendingBackerOffer && activeTab === 'overview' ? (
+          <div
+            data-poker-stake-notice
+            className="mb-3 rounded-2xl border border-cyan-500/40 bg-cyan-950/50 px-4 py-3 text-sm text-cyan-100"
+          >
+            <p className="text-center">
+              {dealLeadBackerDisplayName(activeDeal, stableProfilesById)} invited you to this stake.
+              Accept their terms, decline, or offer new terms.
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                disabled={stableSaving}
+                onClick={() => void onAcceptBackerOffer(activeDeal.id)}
+                className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+              >
+                Accept
+              </button>
+              <button
+                type="button"
+                disabled={stableSaving}
+                onClick={() => void onDeclineBackerOffer(activeDeal.id)}
+                className="rounded-2xl bg-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                disabled={stableSaving}
+                onClick={() => {
+                  setEditTermsIntent('stakee_counter')
+                  setEditTermsDealId(activeDeal.id)
+                  triggerTapHapticLight()
+                }}
+                className="rounded-2xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+              >
+                Offer new terms
+              </button>
+              <button
+                type="button"
+                onClick={() => setTermsDealId(bankrollScope)}
+                className="rounded-2xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-200 touch-manipulation"
+              >
+                View terms
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {waitingBackerCounterResponse && activeTab === 'overview' ? (
+          <div
+            data-poker-stake-notice
+            className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-center text-sm text-amber-100"
+          >
+            Counter-proposal sent ... waiting for{' '}
+            {dealLeadBackerDisplayName(activeDeal, stableProfilesById)} to respond in Stable.
+          </div>
+        ) : null}
+
         {activeTab === 'details' ? (
           loading ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
@@ -3503,6 +3614,7 @@ export default function PokerBankrollTracker({
           onError={setError}
           onEdit={() => {
             setTermsDealId(null)
+            setEditTermsIntent('stakee_update')
             setEditTermsDealId(termsDealId)
           }}
           onReassignGuest={async ({ sliceId, stakerUserId }) => {
@@ -3635,21 +3747,30 @@ export default function PokerBankrollTracker({
           }
           editSlices={slicesByDeal[editTermsDealId] || []}
           editProfilesById={stableProfilesById}
-          termsIntent="stakee_update"
-          onClose={() => setEditTermsDealId(null)}
+          termsIntent={editTermsIntent}
+          onClose={() => {
+            setEditTermsDealId(null)
+            setEditTermsIntent('stakee_update')
+          }}
           onUpdated={(deal, meta) => {
             const warn = meta?.guestNotifyWarning
             const wasRevoked = stakeeDealsById[editTermsDealId]?.status === 'revoked'
+            const wasCounter = editTermsIntent === 'stakee_counter'
             showStakeNotice(
               warn
-                ? wasRevoked
-                  ? `Stake re-offered. ${warn}`
-                  : `Stake terms updated. ${warn}`
-                : wasRevoked
-                  ? 'Stake re-offered ... waiting on backers.'
-                  : 'Stake terms updated.',
+                ? wasCounter
+                  ? `Counter-proposal sent. ${warn}`
+                  : wasRevoked
+                    ? `Stake re-offered. ${warn}`
+                    : `Stake terms updated. ${warn}`
+                : wasCounter
+                  ? 'Counter-proposal sent ... waiting for the backer in Stable.'
+                  : wasRevoked
+                    ? 'Stake re-offered ... waiting on backers.'
+                    : 'Stake terms updated.',
             )
             setEditTermsDealId(null)
+            setEditTermsIntent('stakee_update')
             void loadData()
           }}
         />

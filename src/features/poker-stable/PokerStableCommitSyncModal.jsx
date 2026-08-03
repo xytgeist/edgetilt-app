@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { loadDealCommit, syncDealCommit } from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
@@ -98,12 +98,13 @@ export default function PokerStableCommitSyncModal({
 
   return (
     <div
-      className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+      className="fixed inset-0 flex items-center justify-center overflow-x-hidden bg-black/60 p-4 backdrop-blur-sm"
+      style={{ zIndex: Z_APP_MODAL }}
       onClick={onClose}
     >
       <div
         data-poker-stable-commit-sync-modal
-        className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
+        className="relative z-10 w-full max-w-lg max-h-[min(90dvh,calc(100dvh-env(safe-area-inset-top,0px)-2rem))] overflow-y-auto rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 py-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -125,7 +126,7 @@ export default function PokerStableCommitSyncModal({
           <>
             <p className="mb-3 text-sm text-zinc-300">
               <span className="font-semibold text-white">{actorLabel}</span> recorded{' '}
-              <span className="font-semibold text-cyan-200">
+              <span className="font-semibold text-cyan-400" data-poker-stable-commit-event-label>
                 {pokerStableCommitEventLabel(commit.event_kind)}
               </span>{' '}
               on{' '}

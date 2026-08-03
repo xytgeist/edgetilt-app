@@ -21,7 +21,7 @@ Canonical spec for Stable staking: deal types, slices, makeup, settle, top-up, a
 - **Profit split:** `player_profit_pct` = player share of winnings on that slice (backer gets complement).
 - **Markup:** backer pays `action_pct × buy-in × markup_rate`; typically 100% of profit on sold action to backer.
 - **Guests (player-initiated):** player-entered terms authoritative; optional phone/email for notify (SMS/email via Edge **`poker-stable-notify`** on create, terms edit with before/after diff, and **session complete**); no guest ledger UI. Player may **delete** the stake until an Edge backer accepts; guest-only stakes remain deletable.
-- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets email/SMS with **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); signup from that page sends email confirm back to the same claim URL (auto-link after verify). Player then **Accept / Decline / Offer new terms** on Bankroll. Decline kills the deal for everyone. Counter-proposal → lead backer **Accept counter / Decline** in Stable; stake stays pending until player accepts final terms. Migration **`20260803100000`**.
+- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets email/SMS with **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); signup from that page sends email confirm back to the same claim URL (auto-link after verify). Player then **Accept / Decline / Offer new terms** on Bankroll. Decline kills the deal for everyone. Counter-proposal → lead backer **Accept counter / Decline** in Stable; stake stays pending until player accepts final terms. Migration **`20260803100000`**. **Guest syndicate co-backers** on the same create flow are **not wired yet** ... see § Notifications → Phase 1b.
 - **Edge stakers:** full slice UI + asymmetric ledger confirm/dispute.
 
 ### Cash backing extras
@@ -214,7 +214,7 @@ Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`pok
 | **Player (stakee)** | Poker Bankroll **`+ Stake`** → full backing form (baseline, migrate, backer slices) | Stake carousel on Bankroll only (personal + pending/active deal cards). **Not Stable.** May log stake sessions while pending; backers see history in Stable after accept. On Stake session list also shows deal **history lines** (offer, accept, re-up, settle) as text rows mixed with sessions. **Terms → Open ledger** on active cash backing opens deal detail (top-up + propose settle). |
 | **Backer (staker)** | Stable **Create Stake** → player handle + your slice + optional syndicate slices | Stable portfolio hero, horse carousel, **Overview / Trend / Locations**, closed stakes history, **Needs attention** commit inbox, deal ledger |
 
-Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice invite (player accept activates lead backer slice only).
+Stable no longer exposes player **+ New deal**. Syndicate slices on a backer request stay **pending** until each friend accepts their slice in Stable. **Edge** co-backers get slice-invite Alerts today (actor copy wrong ... see § Notifications). **Guest** co-backers get **no** email/claim yet (Phase 1b).
 
 ### Backer Stable v1 (2026-08-02 test, in build)
 
@@ -242,7 +242,150 @@ Migration: **`20260802220000_poker_stable_backer_bankroll.sql`**. Math: **`poker
 | **v2 foundation (in build)** | Schema: types, slices, baseline, top-ups, settlements, payment claims; migrate entry; cash backing create/settle/ledger UI |
 | **v2a** | **Bankroll & session attribution** (this spec §): periodic settle + close transfers, session merge, dual-line cards, Option B metrics, swap overlay on player net only |
 | **v2b** | Tournament piece on session (swap integration); tournament package manifest |
-| **v2c** | Notifications (`activity_events`); staker personal bankroll credit on settle — **partial (2026-08-02 test):** Edge slice invite, session complete, **settlement proposed / resolved** via RPC → Alerts + push; **`PokerStableSettlementRequestActionModal`** confirm/deny on `stableSettlement=` deep link. Payment claims **removed** from product UX. |
+| **v2c** | Notifications (`activity_events` + guest email/SMS) — **Phase 0–1 shipped (2026-08-04):** commit sync, backer→player offer, terms lifecycle, player→guest backer claim. **Phase 1b planned:** backer Create Stake → guest syndicate co-backer claim + Edge co-backer invite copy fix. See § Notifications. |
+
+---
+
+## Notifications
+
+Two rails ... same pattern everywhere: **emit event → right recipients → right copy → right deep link**.
+
+| Rail | Who | Channels |
+| --- | --- | --- |
+| **A — Edge** | Edge account on the deal | `activity_events` → Alerts row + web push (`lounge-send-activity-push`) |
+| **B — Guest** | Email/phone only | Edge **`poker-stable-notify`** (Resend + Twilio) + claim URL where onboarding is needed |
+
+**Session start:** intentionally **off** (end/log only) unless product revisits.
+
+### Create-stake matrix (shipped vs gap)
+
+| Initiator | Recipient | Guest email/SMS + claim | Edge Alerts/push | Deep link |
+| --- | --- | --- | --- | --- |
+| **Backer A** | Guest **player** | ✅ **`guest_stakee_offer`** → `/poker-stake-claim` | N/A | Bankroll `stableDeal=` after claim |
+| **Backer A** | Edge **player** | N/A | ✅ **`poker_stable_backer_offer`** (Phase 1) | Bankroll `stableDeal=` |
+| **Backer A** | Edge **co-backer B** | N/A | ⚠️ **`poker_stable_slice_invite`** (trigger) ... actor = player, not Backer A | Stable `stableDeal=` |
+| **Backer A** | Guest **co-backer B** | ❌ **gap (Phase 1b)** | ❌ | Stable after claim (planned) |
+| **Player** | Guest **backer** | ✅ **`offer`** → `/poker-stable-claim` (Phase 1) | N/A | Stable `stableDeal=` after claim |
+| **Player** | Edge **backer** | N/A | ✅ **`poker_stable_slice_invite`** | Stable `stableDeal=` |
+
+### Terms lifecycle (Phase 1, shipped)
+
+Scoped recipients ... not broadcast-everything-to-everyone.
+
+| Event | Notify |
+| --- | --- |
+| Stakee **accept / decline** backer-initiated offer | Lead backer + other **pending/active Edge** slice stakers (not actor) |
+| Stakee **counter-propose** | **Lead backer only** |
+| Lead backer **accept / decline** counter | **Stakee** |
+| Edge backer **accept / decline** slice on player-created deal | **Stakee** |
+
+Activity types: `poker_stable_stakee_*`, `poker_stable_staker_counter_*`, `poker_stable_slice_accepted` / `_declined`. Migration **`20260804100000`**.
+
+Guest counterparts on terms events: **deferred** (Phase 2+ in notification roadmap) ... Edge path is enough for syndicate Edge backers today.
+
+### Phase 1b — Backer Create Stake → guest syndicate co-backer (planned)
+
+**Problem:** Backer A creates a stake with optional **friend slices**. Guest **player** gets claim email today. Guest **co-backer B** on a friend slice gets **nothing** ... no SMS/email, no `/poker-stable-claim`, and existing claim RPCs **reject** backer-initiated deals (`poker_stable_deal_is_player_initiated`).
+
+**Goal:** Mirror **player → guest backer** onboarding, but:
+
+- **Caller:** lead backer (Backer A), not the player
+- **Landing:** **Stable Manager** (accept/decline **their slice**, not the whole deal on Bankroll)
+- **Copy:** *"{Backer A} invited you to back {player label} on {stake name}"*
+
+#### Product rules (locked for spec)
+
+1. Deal stays **`pending`** until the **player** accepts (unchanged). Guest co-backer may **claim account + accept/decline slice** while pending; deal does not go **active** until player accepts.
+2. Lead backer's slice is **`active`** at create; syndicate slices stay **`pending`** (unchanged).
+3. Guest co-backer **decline** = slice **`declined`** only (partial syndicate exit) ... not whole-deal kill (unlike stakee decline on backer-initiated offer).
+4. **Recipient scoping:** notify **only** the guest slice(s) being invited on create ... not other backers, not the player (player has their own rail when Edge or guest stakee claim).
+5. Re-use **`/poker-stable-claim?token=`** and **`poker_stable_guest_backer_claim_tokens`** ... extend RPCs to allow **backer-initiated** deals when linking a **guest slice**, not only player-initiated deals.
+
+#### Rail B — Guest co-backer email/SMS
+
+**New notify kind:** `guest_syndicate_backer_offer` (distinct from player-path `offer` for auth + copy).
+
+| Field | Value |
+| --- | --- |
+| **HTTP** | `POST poker-stable-notify` `{ deal_id, kind: 'guest_syndicate_backer_offer', slice_ids?: uuid[] }` |
+| **Auth** | JWT; caller must be **`deal.staker_user_id`** (lead backer) |
+| **Targets** | Slices on deal where `counterparty_kind = 'guest'` and `status = 'pending'` (optional `slice_ids` filter) |
+| **Token** | Insert **`poker_stable_guest_backer_claim_tokens`** per slice (same table as Phase 1) |
+| **URL** | `{PUBLIC_APP_ORIGIN}/poker-stable-claim?token={raw}` |
+| **Email subject** | `{Backer A} invited you to back: {deal label}` |
+| **SMS** | Same body + claim URL (not homepage) |
+
+**Client hook:** after successful **`requestBackingDeal`** in **`PokerStableCreateDealSheet`**, if any **friend slice** has guest email/phone, invoke notify (parallel to existing **`notifyStableGuestStakee`** for guest player).
+
+**Terms edit on backer-initiated deal:** out of scope for 1b unless Ryan wants parity with player **`terms_edited`** guest notify ... note as Phase 2.
+
+#### Claim RPC changes (migration)
+
+Relax **`poker_stable_guest_backer_claim_preview`** / **`_link`** / **`_by_email`**:
+
+| Check | Player-initiated (today) | Backer-initiated syndicate (1b) |
+| --- | --- | --- |
+| Deal shape | `staker_user_id IS NULL` | `staker_user_id IS NOT NULL` |
+| Slice shape | guest slice on player deal | guest **friend** slice, not lead slice |
+| Player on deal | `stakee_user_id` set (creator) | `stakee_user_id` **or** guest stakee fields set |
+| After link | slice → user, **pending**, Stable | same |
+| Redirect | `/?tab=poker-stable&stableDeal=` | same |
+
+**Validation additions:**
+
+- Reject if slice is lead backer's slice (syndicate-only tokens ... e.g. `staker_user_id <> deal.staker_user_id` OR `slice_index > 0`).
+- Reject claim if deal **`cancelled`** / **`declined`**; allow **`pending`** (primary) and optionally **`active`** if player already accepted.
+- **`_by_email`:** also match guest slices on backer-initiated deals where invitation email matches.
+
+Suggested migration id: **`20260804110000_poker_stable_syndicate_guest_backer_claim.sql`**.
+
+#### Rail A — Edge co-backer on backer-initiated (copy fix, same phase)
+
+Today: insert on pending **user** slice fires **`poker_stable_slice_invite_activity`** with **`actor_user_id = stakee`**. On backer Create Stake that reads like the **player** invited the co-backer.
+
+**Fix (spec):** branch in trigger (or new event type **`poker_stable_syndicate_slice_invite`**):
+
+| Deal shape | Actor | Recipient | Alerts copy (summary) |
+| --- | --- | --- | --- |
+| Player-initiated | stakee | slice staker | `{player} invited you to back {stake}` |
+| Backer-initiated | lead staker (`deal.staker_user_id`) | slice staker | `{Backer A} invited you to back {player} on {stake}` |
+
+Push + Alerts deep link: **`/?tab=poker-stable&stableDeal=`** (unchanged).
+
+Optional: emit only when `new.staker_user_id IS DISTINCT FROM deal.staker_user_id` (skip lead slice self-invite).
+
+#### UI after guest co-backer claim
+
+Reuse **`PokerStableBackerClaimPage`** → redirect Stable with `stableDeal=`. Co-backer sees **pending slice invite** on horse card → Accept / Decline (existing Stable slice actions). **No** Bankroll onboarding modal (stakee-only).
+
+Optional Stable coach on first pending invite: *"You were invited to back {player} on {stake}. Accept your slice to join the syndicate."* ... polish, not blocking 1b.
+
+#### Smoke (Phase 1b)
+
+| Step | Actor | Expect |
+| --- | --- | --- |
+| 1 | Backer A | Stable **Create Stake** → Edge or guest player + **guest friend slice** with email |
+| 2 | Guest co-backer B | Email with **`/poker-stable-claim?token=`** → signup → Stable → pending slice |
+| 3 | Guest co-backer B | Accept slice → slice **active**; deal still **pending** if player has not accepted |
+| 4 | Edge co-backer C (if added) | Alerts: **Backer A** invited you ... not player |
+| 5 | Player | Accept offer on Bankroll → deal **active** when all required parties satisfied |
+
+#### Implementation checklist (for next build pass)
+
+- [ ] SQL: relax guest backer claim RPCs + optional syndicate trigger/copy fix
+- [ ] Edge: **`poker-stable-notify`** `guest_syndicate_backer_offer` + copy helper
+- [ ] Client: **`PokerStableCreateDealSheet`** post-create notify for guest friend slices
+- [ ] Client: **`loungeActivityApi.js`** + push if new activity type for syndicate invite
+- [ ] Deploy: migration test → prod; redeploy **`poker-stable-notify`**, **`lounge-send-activity-push`** if activity type added
+- [ ] Docs: mark Phase 1b shipped in Update log after Ryan sign-off
+
+#### Explicitly not in Phase 1b
+
+- Partial-funding negotiation UI ("awaiting Backer B", player re-offer unfunded %) ... separate product slice
+- Guest email on stakee accept/decline/counter ... Phase 2+
+- Session / settle / top-up guest notify expansions ... Phase 3
+
+---
 
 ### Test smoke (v2 cash backing, test)
 
@@ -368,7 +511,8 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
-- **2026-08-04:** **Deal lifecycle notifications (Phase 1, test):** migration **`20260804100000`** — activity types for backer offer, stakee accept/decline/counter, staker counter accept/decline, slice accept/decline; DB triggers + RPC emits; guest backer claim tokens + **`/poker-stable-claim`** page; **`poker-stable-notify`** mints backer claim URL on guest **`offer`** emails; Alerts + push deep links (`poker-bankroll` vs `poker-stable` by event). Redeploy **`poker-stable-notify`** + **`lounge-send-activity-push`** on test + prod after SQL.
+- **2026-08-04 (planned):** **Phase 1b spec** — § Notifications: backer Create Stake → **guest syndicate co-backer** claim (`guest_syndicate_backer_offer`, relax `/poker-stable-claim` RPCs, Create Stake client notify); Edge co-backer **slice invite actor copy** fix on backer-initiated deals. **Not implemented yet.**
+- **2026-08-04:** **Deal lifecycle notifications (Phase 1, test + prod):** migration **`20260804100000`** — activity types for backer offer, stakee accept/decline/counter, staker counter accept/decline, slice accept/decline; DB triggers + RPC emits; guest backer claim tokens + **`/poker-stable-claim`** page; **`poker-stable-notify`** mints backer claim URL on guest **`offer`** emails; Alerts + push deep links (`poker-bankroll` vs `poker-stable` by event). Redeploy **`poker-stable-notify`** + **`lounge-send-activity-push`** on test + prod after SQL.
 - **2026-08-03:** **Commit sync Alerts + push (Phase 0):** `poker_stable_commit_recorded` uses commit summary in Alerts (`loungeActivityApi.js`); push deep link `/?tab=poker-stable&stableDeal=&stableCommit=` + Poker Stable title/body in **`lounge-send-activity-push`** (redeploy Edge on test + prod). Alerts tap already opened sync modal via `stableCommit=`.
 - **2026-08-02:** **Backer TWR + At-risk ROI (test):** migration **`20260802270000`** ... manual adjust ledger + hero metrics; **`pokerStableBackerMath.js`**.
 - **2026-08-02:** **Stable Trend + Locations history (test):** migration **`20260802240000`** — backers read stake sessions on settled/revoked deals; fix session query columns (`start_at`, `venue_name`); Trend builds cumulative session-share lines for closed + active horses; Locations includes closed stakes in filters.

@@ -846,43 +846,7 @@ export async function requestBackingDeal(supabase, args) {
     return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
   }
 
-  if (stakeeUserId) {
-    const { data: legacyDeals } = await supabase
-      .from('poker_stable_deals')
-      .select('id, status')
-      .eq('staker_user_id', stakerUserId)
-      .eq('stakee_user_id', stakeeUserId)
-      .in('status', ['pending', 'active'])
-    if (legacyDeals?.length) {
-      const legacy = legacyDeals[0]
-      const msg =
-        legacy.status === 'pending'
-          ? 'You already have a pending request with this player.'
-          : 'You already have an active deal with this player.'
-      return { deal: null, error: new Error(msg) }
-    }
-
-    const { data: sliceDeals } = await supabase
-      .from('poker_stable_deal_slices')
-      .select('id, status, deal_id')
-      .eq('staker_user_id', stakerUserId)
-      .in('status', ['pending', 'active'])
-    if (sliceDeals?.length) {
-      const dealIds = sliceDeals.map((s) => s.deal_id)
-      const { data: matched } = await supabase
-        .from('poker_stable_deals')
-        .select('id')
-        .in('id', dealIds)
-        .eq('stakee_user_id', stakeeUserId)
-        .maybeSingle()
-      if (matched) {
-        return {
-          deal: null,
-          error: new Error('You already have a pending or active deal with this player.'),
-        }
-      }
-    }
-  } else {
+  if (!stakeeUserId) {
     const { data: guestDeals } = await supabase
       .from('poker_stable_deals')
       .select('id, status')

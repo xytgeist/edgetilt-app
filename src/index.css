@@ -5988,6 +5988,32 @@ html.light [data-poker-stable-attention-sheet] .bg-zinc-900\/60 {
   background-color: #fafafa !important;
 }
 
+html.light [data-poker-stable-commit-sync-modal] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable-commit-sync-modal] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-poker-stable-commit-sync-modal] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-commit-event-label] {
+  color: #0e7490 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] .border-zinc-700\/80 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] .bg-zinc-900\/50 {
+  background-color: #fafafa !important;
+}
+
 html.light [data-poker-bankroll] [data-poker-incoming-swaps] button.border-zinc-600\/80 {
   border-color: #d4d4d8 !important;
   color: #52525b !important;

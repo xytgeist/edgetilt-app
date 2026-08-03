@@ -8083,6 +8083,15 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
+    const onNavigate = () => {
+      setLoungeDockPanel(null)
+    }
+    window.addEventListener('lounge-activity-navigate', onNavigate)
+    return () => window.removeEventListener('lounge-activity-navigate', onNavigate)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
     const onPushOpened = (ev) => {
       void markLoungePushOpened(ev.detail || {})
     }

@@ -23,9 +23,7 @@ import {
   archivedStakeBackerSessionShareTotal,
 } from './pokerStableDealHistory.js'
 import {
-  acceptHorseDeal,
   acceptSliceAsStaker,
-  declineHorseDeal,
   declineProposedDealTerms,
   declineSliceAsStaker,
   isMissingStableTableError,
@@ -286,17 +284,6 @@ export default function PokerStableScreen({
     }
   }, [detailDealId, deals, userId, slicesByDeal])
 
-  const incoming = useMemo(
-    () =>
-      deals.filter(
-        (d) =>
-          d.stakee_user_id === userId &&
-          d.status === 'pending' &&
-          d.staker_user_id != null &&
-          !d.staker_terms_ack_required,
-      ),
-    [deals, userId],
-  )
   const counterProposals = useMemo(
     () =>
       deals.filter(
@@ -408,37 +395,6 @@ export default function PokerStableScreen({
       void load()
     } catch (e) {
       setError(e?.message || 'Could not adjust bankroll.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function onAccept(dealId) {
-    if (!supabaseClient || !userId) return
-    setSaving(true)
-    setError('')
-    try {
-      const { error: err } = await acceptHorseDeal(supabaseClient, dealId, userId)
-      if (err) throw err
-      triggerTapHapticLight()
-      await load()
-    } catch (e) {
-      setError(e?.message || 'Could not accept.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function onDecline(dealId) {
-    if (!supabaseClient || !userId) return
-    setSaving(true)
-    setError('')
-    try {
-      const { error: err } = await declineHorseDeal(supabaseClient, dealId, userId)
-      if (err) throw err
-      await load()
-    } catch (e) {
-      setError(e?.message || 'Could not decline.')
     } finally {
       setSaving(false)
     }
@@ -742,68 +698,6 @@ export default function PokerStableScreen({
                       disabled={saving}
                       onClick={() => void onDeclineCounter(deal.id)}
                       className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {incoming.length > 0 ? (
-          <section className="mb-6">
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Incoming requests
-            </h2>
-            <div className="space-y-2">
-              {incoming.map((deal) => (
-                <div
-                  key={deal.id}
-                  data-poker-stable-invite-card
-                  data-elevated-card="surface"
-                  className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate font-bold text-white">
-                        {dealLeadBackerDisplayName(deal, profilesById)}
-                      </div>
-                      <div className="mt-0.5 text-sm text-zinc-400">
-                        wants to stake you
-                        {deal.label ? ` · ${deal.label}` : ''}
-                      </div>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone(deal.status)}`}
-                    >
-                      {statusLabel(deal.status)}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTermsDealId(deal.id)}
-                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
-                    >
-                      Terms
-                    </button>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onAccept(deal.id)}
-                      className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onDecline(deal.id)}
-                      className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
                     >
                       Decline
                     </button>

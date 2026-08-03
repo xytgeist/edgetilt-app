@@ -337,6 +337,9 @@ function buildTargetUrl(
       event.event_type === 'poker_stable_slice_declined'
     params.set('tab', bankrollTab ? 'poker-bankroll' : 'poker-stable')
     if (event.poker_stable_deal_id) params.set('stableDeal', event.poker_stable_deal_id)
+    if (bankrollTab && event.event_type === 'poker_stable_backer_offer') {
+      params.set('stakeOnboarding', '1')
+    }
     if (event.poker_stable_commit_id) {
       params.set('stableCommit', event.poker_stable_commit_id)
     } else if (event.poker_stable_settlement_request_id) {

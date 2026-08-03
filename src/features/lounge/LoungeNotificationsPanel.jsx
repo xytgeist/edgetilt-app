@@ -36,6 +36,10 @@ import {
 } from '../../utils/loungeActivityApi.js'
 import { dispatchStarterWeeklyDropOpen, navigateToGuideSlug } from '../billing/starterWeeklyDropApi.js'
 import {
+  buildPokerStableActivityNavigateUrl,
+  dispatchLoungeActivityNavigate,
+} from '../../utils/loungeActivityInAppNavigate.js'
+import {
   hydrateLoungeActivityEventPreviews,
   loungeActivityShowsContextPreview,
 } from '../../utils/loungeActivityPreview.js'
@@ -485,25 +489,11 @@ export default function LoungeNotificationsPanel({
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED
       ) {
-        const params = new URLSearchParams()
-        const bankrollTab =
-          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER ||
-          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_ACCEPTED ||
-          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED ||
-          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED ||
-          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED
-        params.set('tab', bankrollTab ? 'poker-bankroll' : 'poker-stable')
-        if (event.poker_stable_deal_id) params.set('stableDeal', String(event.poker_stable_deal_id))
-        if (event.poker_stable_commit_id) {
-          params.set('stableCommit', String(event.poker_stable_commit_id))
-        } else if (event.poker_stable_settlement_request_id) {
-          params.set('stableSettlement', String(event.poker_stable_settlement_request_id))
-        }
-        const nextPath = `/?${params.toString()}`
-        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
-          window.history.pushState({}, '', nextPath)
-          window.dispatchEvent(new PopStateEvent('popstate'))
-        }
+        dispatchLoungeActivityNavigate({
+          url: buildPokerStableActivityNavigateUrl(event),
+          activityEventId: event.id,
+          markActivityRead: false,
+        })
         return
       }
 

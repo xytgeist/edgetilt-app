@@ -32,6 +32,7 @@ import {
   clearPokerStakeOnboardingDeal,
   readPokerStakeCarouselCoachAck,
   readPokerStakeOnboardingDeal,
+  stashPokerStakeOnboardingDeal,
   writePokerStakeCarouselCoachAck,
 } from './pokerStakeeOnboarding.js'
 import {
@@ -275,6 +276,22 @@ function defaultNewSessionForm(activeDeal, scopedSessions, completedSessions) {
     { ...base, venue_kind: venueKind },
     buildCashGamePresetsFromSessions(scopedSessions, venueKind),
   )
+}
+
+function stakeOfferStatusLabel(status) {
+  if (status === 'active') return 'Active'
+  if (status === 'pending') return 'Pending'
+  if (status === 'settled') return 'Settled'
+  if (status === 'declined') return 'Declined'
+  if (status === 'revoked') return 'Revoked'
+  return status || 'Unknown'
+}
+
+function stakeOfferStatusTone(status) {
+  if (status === 'active') return 'bg-amber-500/20 text-amber-300'
+  if (status === 'pending') return 'bg-amber-500/15 text-amber-200/90'
+  if (status === 'declined') return 'bg-zinc-700/60 text-zinc-400'
+  return 'bg-rose-500/20 text-rose-300'
 }
 
 /**
@@ -622,6 +639,16 @@ export default function PokerBankrollTracker({
     if (!deal) return
     scopeRestoredRef.current = true
     setBankrollScope(openStableDealId)
+    if (
+      deal.status === 'pending' &&
+      isBackerInitiatedBackingDeal(deal) &&
+      !deal.staker_terms_ack_required &&
+      !deal.stakee_terms_ack_required
+    ) {
+      stashPokerStakeOnboardingDeal(openStableDealId)
+      setStakeOfferOnboardingOpen(true)
+      stakeOfferOnboardingOpenedRef.current = true
+    }
     onOpenStableDealConsumed?.()
   }, [openStableDealId, stakeeDeals, onOpenStableDealConsumed])
 
@@ -1329,6 +1356,17 @@ export default function PokerBankrollTracker({
       stakeNoticeTimerRef.current = 0
       setStakeNotice('')
     }, 6500)
+  }
+
+  function openStakeOfferReview(dealId) {
+    const id = String(dealId || '').trim()
+    if (!id) return
+    scopeRestoredRef.current = true
+    setBankrollScope(id)
+    stashPokerStakeOnboardingDeal(id)
+    setStakeOfferOnboardingOpen(true)
+    stakeOfferOnboardingOpenedRef.current = true
+    triggerTapHapticLight()
   }
 
   async function onAcceptBackerOffer(dealId) {
@@ -2848,19 +2886,41 @@ export default function PokerBankrollTracker({
 
         {pendingBackerOffer && activeTab === 'overview' && !stakeOfferOnboardingOpen && !carouselCoachOpen ? (
           <div
-            data-poker-stake-notice
-            className="mb-3 rounded-2xl border border-cyan-500/40 bg-cyan-950/50 px-4 py-3 text-sm text-cyan-100"
+            data-poker-stable-invite-card
+            data-elevated-card="surface"
+            className="mb-3 rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
           >
-            <p className="text-center">
-              {dealLeadBackerDisplayName(activeDeal, stableProfilesById)} invited you to this stake.
-              Accept their terms, decline, or offer new terms.
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate font-bold text-white">
+                  {dealLeadBackerDisplayName(activeDeal, stableProfilesById)}
+                </div>
+                <div className="mt-0.5 text-sm text-zinc-400">
+                  wants to stake you
+                  {activeDeal.label ? ` · ${activeDeal.label}` : ''}
+                </div>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${stakeOfferStatusTone(activeDeal.status)}`}
+              >
+                {stakeOfferStatusLabel(activeDeal.status)}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => openStakeOfferReview(activeDeal.id)}
+                className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+              >
+                Terms
+              </button>
+            </div>
+            <div className="mt-3 flex gap-2">
               <button
                 type="button"
                 disabled={stableSaving}
                 onClick={() => void onAcceptBackerOffer(activeDeal.id)}
-                className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
               >
                 Accept
               </button>
@@ -2868,28 +2928,9 @@ export default function PokerBankrollTracker({
                 type="button"
                 disabled={stableSaving}
                 onClick={() => void onDeclineBackerOffer(activeDeal.id)}
-                className="rounded-2xl bg-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
               >
                 Decline
-              </button>
-              <button
-                type="button"
-                disabled={stableSaving}
-                onClick={() => {
-                  setEditTermsIntent('stakee_counter')
-                  setEditTermsDealId(activeDeal.id)
-                  triggerTapHapticLight()
-                }}
-                className="rounded-2xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
-              >
-                Offer new terms
-              </button>
-              <button
-                type="button"
-                onClick={() => setTermsDealId(bankrollScope)}
-                className="rounded-2xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-200 touch-manipulation"
-              >
-                View terms
               </button>
             </div>
           </div>

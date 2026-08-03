@@ -457,9 +457,8 @@ export default function AppShell({
     [browseMode],
   )
 
-  const openLoungeActivityInAppToast = useCallback(
-    (payload) => {
-      dismissLoungeActivityInAppToast()
+  const applyLoungeActivityNavigate = useCallback(
+    (payload, { markActivityRead = true } = {}) => {
       const {
         activityEventId,
         activityBatchId,
@@ -518,6 +517,13 @@ export default function AppShell({
           setTab('poker-bankroll')
           setMenuOpen(false)
           if (pokerSessionId) setPendingPokerSessionId(pokerSessionId)
+          try {
+            const msgUrl = new URL(payload?.url || '', window.location.origin)
+            const onboardingDealId = consumeStakeOnboardingFromSearch(msgUrl.search || '')
+            if (onboardingDealId) setStakeOnboardingDealId(onboardingDealId)
+          } catch {
+            // ignore malformed url
+          }
         }
       } else if (targetTab === 'offers') {
         if (browseMode === 'anonymous') {
@@ -553,7 +559,7 @@ export default function AppShell({
         setMenuOpen(false)
       }
 
-      if (activityEventId || activityBatchId) {
+      if (markActivityRead && (activityEventId || activityBatchId)) {
         queueLoungeActivityMarkRead({ activityEventId, activityBatchId })
         window.dispatchEvent(
           new CustomEvent('lounge-push-opened', {
@@ -562,8 +568,29 @@ export default function AppShell({
         )
       }
     },
-    [browseMode, dismissLoungeActivityInAppToast],
+    [browseMode],
   )
+
+  const openLoungeActivityInAppToast = useCallback(
+    (payload) => {
+      dismissLoungeActivityInAppToast()
+      applyLoungeActivityNavigate(payload)
+    },
+    [applyLoungeActivityNavigate, dismissLoungeActivityInAppToast],
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onNavigate = (ev) => {
+      const detail = ev?.detail
+      if (!detail?.url) return
+      applyLoungeActivityNavigate(detail, {
+        markActivityRead: detail.markActivityRead !== false,
+      })
+    }
+    window.addEventListener('lounge-activity-navigate', onNavigate)
+    return () => window.removeEventListener('lounge-activity-navigate', onNavigate)
+  }, [applyLoungeActivityNavigate])
 
   useEffect(() => {
     return () => {

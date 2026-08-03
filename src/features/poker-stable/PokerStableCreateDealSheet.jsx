@@ -182,12 +182,12 @@ function SliceEditor({
                   guestEmail: '',
                 })
               }}
-              onSelectGuestMode={() => {
+              onSelectGuestMode={(draftLabel) => {
                 onChange({
                   isGuest: true,
                   handle: '',
                   selectedProfile: null,
-                  guestLabel: '',
+                  guestLabel: draftLabel || '',
                   guestPhone: '',
                   guestEmail: '',
                 })
@@ -749,10 +749,10 @@ function PokerStableDealFormSheet({
                   setSelectedPlayerProfile(profile)
                   setPlayerHandle(String(profile.handle || '').replace(/^@+/, ''))
                 }}
-                onSelectGuestMode={() => {
+                onSelectGuestMode={(draftLabel) => {
                   setSelectedPlayerProfile(null)
                   setPlayerHandle('')
-                  setPlayerGuestLabel('')
+                  setPlayerGuestLabel(draftLabel || '')
                   setPlayerGuestPhone('')
                   setPlayerGuestEmail('')
                   setPlayerIsGuest(true)

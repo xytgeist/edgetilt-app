@@ -916,11 +916,24 @@ function App() {
       } = await supabase.auth.getSession()
       const userId = session?.user?.id ?? null
 
-      const { data, error } = await supabase.functions.invoke('delete-own-account', {
+      const { data, error, response } = await supabase.functions.invoke('delete-own-account', {
         method: 'POST',
         body: {},
       })
-      if (error) throw error
+      if (error) {
+        let detail = typeof error.message === 'string' ? error.message.trim() : ''
+        if (response) {
+          try {
+            const body = await response.clone().json()
+            if (body && typeof body === 'object' && body.error) {
+              detail = String(body.error).trim()
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        throw new Error(detail || 'Could not delete account.')
+      }
       if (data && typeof data === 'object' && data.error) {
         throw new Error(String(data.error))
       }

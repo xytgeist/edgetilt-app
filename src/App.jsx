@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
-import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, isEmailVerificationType, hasAuthSuccessTokens, replaceUrlPreservingQuery, hasOAuthProviderCallbackInLocation } from './features/auth/oauthCallback'
+import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, hasAuthSuccessTokens, replaceUrlPreservingQuery, isLikelyEmailConfirmLanding } from './features/auth/oauthCallback'
 import { routeAfterGuestClaimEmailConfirm, waitForSupabaseSession } from './features/auth/emailConfirmRouting.js'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AuthModalShell from './features/auth/AuthModalShell'
@@ -258,11 +258,8 @@ function App() {
 
         const tokens = readAuthTokensFromLocation()
         const combinedForType = `${window.location.hash || ''}${search}`
-        const isLikelyEmailConfirm =
-          isEmailVerificationType(tokens.type) ||
-          (Boolean(tokens.code) && !hasOAuthProviderCallbackInLocation())
 
-        if (hasAuthSuccessTokens(tokens) && isLikelyEmailConfirm) {
+        if (hasAuthSuccessTokens(tokens) && isLikelyEmailConfirmLanding(tokens)) {
           try {
             if (tokens.code) {
               await supabase.auth.exchangeCodeForSession(tokens.code)
@@ -347,6 +344,7 @@ function App() {
   /** Link guest backing invites sent to this account's email, then open Bankroll. */
   useEffect(() => {
     if (!user?.id || isChecking || currentView !== 'app') return
+    if (readStashedPokerStableClaimToken() || readStashedPokerStakeClaimToken()) return
     try {
       if (sessionStorage.getItem('poker_guest_stakee_autolink_done')) return
     } catch {
@@ -362,9 +360,24 @@ function App() {
     })
   }, [user?.id, isChecking, currentView])
 
+  /** After confirm/sign-in: stashed claim token → claim page (terms + link) before Lounge autolink. */
+  useEffect(() => {
+    if (!user?.id || isChecking || currentView !== 'app') return
+    const stableToken = readStashedPokerStableClaimToken()
+    if (stableToken) {
+      navigateToStableClaimPage(stableToken)
+      return
+    }
+    const stakeToken = readStashedPokerStakeClaimToken()
+    if (stakeToken) {
+      navigateToStakeClaimPage(stakeToken)
+    }
+  }, [user?.id, isChecking, currentView])
+
   /** Link guest backer slices invited to this account's email, then open Stable Manager. */
   useEffect(() => {
     if (!user?.id || isChecking || currentView !== 'app') return
+    if (readStashedPokerStableClaimToken() || readStashedPokerStakeClaimToken()) return
     try {
       if (sessionStorage.getItem('poker_guest_backer_autolink_done')) return
     } catch {

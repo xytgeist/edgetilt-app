@@ -44,6 +44,15 @@ export function hasAuthSuccessTokens(tokens) {
   return Boolean(tokens?.accessToken && tokens?.refreshToken) || Boolean(tokens?.code)
 }
 
+/** Email confirm / magic-link landing (not Google OAuth — no provider_token in URL). */
+export function isLikelyEmailConfirmLanding(tokens) {
+  if (hasOAuthProviderCallbackInLocation()) return false
+  if (isEmailVerificationType(tokens?.type)) return true
+  if (tokens?.code) return true
+  if (tokens?.accessToken && tokens?.refreshToken) return true
+  return false
+}
+
 export function replaceUrlPreservingQuery(pathAndSearch) {
   if (typeof window === 'undefined') return
   window.history.replaceState({}, document.title, pathAndSearch || '/')

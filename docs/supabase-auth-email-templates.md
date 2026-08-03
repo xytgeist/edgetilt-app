@@ -6,6 +6,8 @@
 
 **URLs:** Bodies use **`{{ .ConfirmationURL }}`**. Supabase builds that from **Authentication → URL Configuration** (`Site URL` + redirect allow list). Prod: **`https://edgetilt.com`**.
 
+**Guest stake claim signup:** allow list must include **`https://edgetilt.com/poker-stake-claim`** (exact path, no query). The app stores the claim token in **`sessionStorage`** and redirects confirm to the bare path so Supabase exact-match rules pass.
+
 **Variables (Go template):** `{{ .ConfirmationURL }}`, `{{ .Email }}`, `{{ .SiteURL }}`, `{{ .Token }}`, `{{ .TokenHash }}`. Prefer **`{{ .ConfirmationURL }}`** for all action links.
 
 **Logo in email:** use **one** full-width header JPG ... **no** dual `<img>`, **no** `@media` CSS (Gmail strips it and shows both logos).

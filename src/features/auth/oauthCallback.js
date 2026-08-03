@@ -15,14 +15,56 @@ export function readAuthCallbackParams() {
   return {
     error: get('error') || '',
     errorCode: get('error_code') || '',
-    errorDescription
+    errorDescription,
   }
+}
+
+/** Implicit (hash) or PKCE (code) tokens from Supabase auth landing URLs. */
+export function readAuthTokensFromLocation() {
+  if (typeof window === 'undefined') {
+    return { type: '', accessToken: '', refreshToken: '', code: '' }
+  }
+  const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''))
+  const searchParams = new URLSearchParams((window.location.search || '').replace(/^\?/, ''))
+  const get = (k) => hashParams.get(k) ?? searchParams.get(k)
+  return {
+    type: get('type') || '',
+    accessToken: get('access_token') || '',
+    refreshToken: get('refresh_token') || '',
+    code: get('code') || '',
+  }
+}
+
+export function isEmailVerificationType(type) {
+  const t = String(type || '').toLowerCase()
+  return t === 'signup' || t === 'email' || t === 'confirmation'
+}
+
+export function hasAuthSuccessTokens(tokens) {
+  return Boolean(tokens?.accessToken && tokens?.refreshToken) || Boolean(tokens?.code)
+}
+
+export function replaceUrlPreservingQuery(pathAndSearch) {
+  if (typeof window === 'undefined') return
+  window.history.replaceState({}, document.title, pathAndSearch || '/')
 }
 
 export function getOAuthCallbackMessage(error, errorCode, errorDescription) {
   if (!error && !errorCode && !errorDescription) return ''
   const raw = `${error} ${errorCode} ${errorDescription}`.toLowerCase()
+  if (
+    raw.includes('redirect') &&
+    (raw.includes('not allowed') ||
+      raw.includes('invalid') ||
+      raw.includes('mismatch') ||
+      raw.includes('url'))
+  ) {
+    return 'That confirmation link could not finish. Please request a new confirmation email or try signing in again.'
+  }
   if (error === 'access_denied' || raw.includes('access_denied')) {
+    if (raw.includes('redirect') || raw.includes('email confirm') || raw.includes('signup')) {
+      return 'That confirmation link could not finish. Please request a new confirmation email or try signing in again.'
+    }
     return 'Sign-in with Google was cancelled. You can try again or use your email and password.'
   }
   if (

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
-import { readAuthCallbackParams, getOAuthCallbackMessage } from './features/auth/oauthCallback'
+import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, isEmailVerificationType, hasAuthSuccessTokens, replaceUrlPreservingQuery } from './features/auth/oauthCallback'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
@@ -50,6 +50,8 @@ import {
   authRedirectBaseForCurrentLocation,
   navigateAfterStakeClaim,
   parsePokerStakeClaimFromLocation,
+  stakeClaimEmailRedirectUrl,
+  stashPokerStakeClaimToken,
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
@@ -208,69 +210,71 @@ function App() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      const pathname = window.location.pathname || '/'
-      const search = window.location.search || ''
-      const legalSlug = resolveLegalViewFromLocation(pathname, search)
-      if (parseLegalPathname(pathname) && !legalSlug) {
-        window.history.replaceState({}, document.title, '/')
-        setCurrentView('app')
-        return
-      }
-      if (legalSlug) {
-        setCurrentView(legalSlug)
-        return
-      }
-
-      const { error: oauthError, errorCode, errorDescription } = readAuthCallbackParams()
-      const oauthMsg = getOAuthCallbackMessage(oauthError, errorCode, errorDescription)
-      if (oauthMsg) {
-        setAuthTab('signin')
-        setLoginError(oauthMsg)
-        setAuthPanelOpen(true)
-        window.history.replaceState({}, document.title, window.location.pathname || '/')
-      }
-
-      const hash = window.location.hash || ''
-      const combinedForType = `${hash}${search}`
-      const hashParams = new URLSearchParams(hash.replace('#', ''))
-      // Email confirmation uses type=signup (or type=confirmation); Google OAuth includes provider_token in the hash.
-      const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
-      const isEmailOnlyVerification =
-        (combinedForType.includes('type=signup') || combinedForType.includes('type=confirmation')) &&
-        !combinedForType.includes('provider_token')
-      if (isEmailOnlyVerification) {
-        if (!stakeClaimReturn) {
-          setVerificationSuccess(true)
-          setAuthTab('signin')
-          setShowForgotPassword(false)
-          setLoginError('')
-          setAuthPanelOpen(true)
+      void (async () => {
+        const pathname = window.location.pathname || '/'
+        const search = window.location.search || ''
+        const legalSlug = resolveLegalViewFromLocation(pathname, search)
+        if (parseLegalPathname(pathname) && !legalSlug) {
+          window.history.replaceState({}, document.title, '/')
+          setCurrentView('app')
+          return
         }
-        setTimeout(() => {
-          if (window.location.hash) {
-            const cleanUrl = stakeClaimReturn
-              ? `${pathname}${search}`
-              : pathname || '/'
-            window.history.replaceState({}, document.title, cleanUrl)
+        if (legalSlug) {
+          setCurrentView(legalSlug)
+          return
+        }
+
+        const tokens = readAuthTokensFromLocation()
+        const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
+        const combinedForType = `${window.location.hash || ''}${search}`
+
+        if (hasAuthSuccessTokens(tokens) && isEmailVerificationType(tokens.type)) {
+          try {
+            if (tokens.code) {
+              await supabase.auth.exchangeCodeForSession(tokens.code)
+            } else {
+              await supabase.auth.setSession({
+                access_token: tokens.accessToken,
+                refresh_token: tokens.refreshToken,
+              })
+            }
+          } catch {
+            // Link may already be consumed; user can sign in manually.
           }
-        }, 0)
-      }
-
-      // Only trigger reset password for actual recovery links
-      if (combinedForType.includes('type=recovery')) {
-        setCurrentView('reset-password')
-        const accessToken = hashParams.get('access_token')
-        const refreshToken = hashParams.get('refresh_token')
-
-        if (accessToken && refreshToken) {
-          void supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          })
+          replaceUrlPreservingQuery(stakeClaimReturn ? `${pathname}${search}` : pathname || '/')
+          if (!stakeClaimReturn) {
+            setVerificationSuccess(true)
+            setAuthTab('signin')
+            setShowForgotPassword(false)
+            setLoginError('')
+            setAuthPanelOpen(true)
+          }
+          return
         }
 
-        window.history.replaceState({}, document.title, '/reset-password')
-      }
+        if (combinedForType.includes('type=recovery')) {
+          setCurrentView('reset-password')
+          if (tokens.accessToken && tokens.refreshToken) {
+            void supabase.auth.setSession({
+              access_token: tokens.accessToken,
+              refresh_token: tokens.refreshToken,
+            })
+          }
+          window.history.replaceState({}, document.title, '/reset-password')
+          return
+        }
+
+        if (!hasAuthSuccessTokens(tokens)) {
+          const { error: oauthError, errorCode, errorDescription } = readAuthCallbackParams()
+          const oauthMsg = getOAuthCallbackMessage(oauthError, errorCode, errorDescription)
+          if (oauthMsg) {
+            setAuthTab('signin')
+            setLoginError(oauthMsg)
+            setAuthPanelOpen(true)
+            replaceUrlPreservingQuery(`${pathname}${search}` || '/')
+          }
+        }
+      })()
     })
   }, [])
 
@@ -692,19 +696,21 @@ function App() {
     setIsSigningUp(true)
 
     const affiliateCode = getAffiliateCodeForCheckout()
-    const signupFromStakeClaim = Boolean(
-      parsePokerStakeClaimFromLocation(
-        window.location.pathname || '/',
-        window.location.search || '',
-      ),
+    const claimCtx = parsePokerStakeClaimFromLocation(
+      window.location.pathname || '/',
+      window.location.search || '',
     )
+    const signupFromStakeClaim = Boolean(claimCtx)
+    if (claimCtx?.token) stashPokerStakeClaimToken(claimCtx.token)
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: {
-        // Carry ?ref= into the confirm link so a normal-tab open still restamps attribution.
-        // Guest stake claim: confirm lands back on /poker-stake-claim?token=… to auto-link.
-        emailRedirectTo: authRedirectUrlWithAffiliateRef(authRedirectBaseForCurrentLocation()),
+        // Stake claim: bare /poker-stake-claim redirect (exact allow-list match); token in sessionStorage.
+        // Other signups: carry ?ref= on redirect when stamped.
+        emailRedirectTo: signupFromStakeClaim
+          ? stakeClaimEmailRedirectUrl()
+          : authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
         data: affiliateCode ? { affiliate_code: affiliateCode } : undefined,
       },
     })

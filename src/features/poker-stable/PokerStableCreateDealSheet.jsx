@@ -8,13 +8,17 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import StablePlayerPicker from './StablePlayerPicker.jsx'
 import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests, notifyStableGuestStakee, stakeeProposeCounterTerms } from './pokerStableApi.js'
 import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
+import {
+  backerSliceAllocatedCapital,
+  computeBackerAvailableBankroll,
+  computeBackerPendingHold,
+} from './pokerStableBackerMath.js'
 import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
   scrollPokerStableSliceIntoView,
   usePokerStableSheetKeyboardDismissScroll,
 } from './pokerStableSheetScroll.js'
-import { backerSliceAllocatedCapital } from './pokerStableBackerMath.js'
 import { roundMoney } from './pokerStableMath.js'
 import {
   pokerStableSliceCardClass,
@@ -348,6 +352,8 @@ function PokerStableDealFormSheet({
   editProfilesById = {},
   termsIntent = 'create',
   backingBankrollBalance = null,
+  stableDeals = [],
+  stableSlicesByDeal = {},
 }) {
   const isBacker = mode === 'backer'
   const isEdit = Boolean(editDeal?.id)
@@ -476,8 +482,19 @@ function PokerStableDealFormSheet({
     }
   }, [slices.length, friendSlices.length])
 
+  const backerPendingHold = useMemo(
+    () =>
+      isBacker && userId
+        ? computeBackerPendingHold({ deals: stableDeals, slicesByDeal: stableSlicesByDeal, userId })
+        : 0,
+    [isBacker, userId, stableDeals, stableSlicesByDeal],
+  )
+
   const backerAvailableBankrollDisplay = useMemo(() => {
-    const pool = Number(backingBankrollBalance) || 0
+    const pool = computeBackerAvailableBankroll(
+      Number(backingBankrollBalance) || 0,
+      backerPendingHold,
+    )
     if (showPlayerTermsForm) return pool
     const baselineAmount = parseMoneyInputNumber(baseline)
     const actionPct = Number(mySlice.actionPct)
@@ -496,7 +513,7 @@ function PokerStableDealFormSheet({
       { action_pct: actionPct },
     )
     return roundMoney(pool - committed)
-  }, [showPlayerTermsForm, backingBankrollBalance, baseline, mySlice.actionPct])
+  }, [showPlayerTermsForm, backingBankrollBalance, backerPendingHold, baseline, mySlice.actionPct])
 
   function updateSlice(idx, patch) {
     setSlices((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))

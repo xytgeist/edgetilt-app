@@ -51,6 +51,7 @@ export default function PokerStablePortfolioHero({
 
   const m = metrics || {}
   const currentBalance = roundMoney(m.liquidBankroll ?? 0)
+  const pendingHold = roundMoney(m.pendingHold ?? 0)
   const canRemove = Boolean(hasProfile) || currentBalance > 0
 
   function resetAdjustForm() {
@@ -184,8 +185,18 @@ export default function PokerStablePortfolioHero({
               </button>
             ) : null}
           </div>
-          <div className="mt-1 text-2xl font-black tabular-nums text-white">
-            {fmtPoker$(currentBalance)}
+          <div className="mt-1 flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5">
+            <span className="text-2xl font-black tabular-nums text-white">
+              {fmtPoker$(currentBalance)}
+            </span>
+            {pendingHold > 0 ? (
+              <span
+                className="text-xs font-semibold tabular-nums text-amber-200/90"
+                data-poker-stable-backing-pending-hold
+              >
+                ({fmtPoker$(-pendingHold)} pending)
+              </span>
+            ) : null}
           </div>
         </div>
         <div>
@@ -358,9 +369,10 @@ export default function PokerStablePortfolioHero({
 
               <HeroInfoSection title="Top numbers">
                 <p>
-                  <strong className="font-semibold text-zinc-300">Backing bankroll</strong> ... liquid cash in your
-                  backing pool. Use <strong className="font-semibold text-zinc-300">Edit</strong> to add, remove, or
-                  set a new balance.
+                  <strong className="font-semibold text-zinc-300">Backing bankroll</strong> ... manual
+                  deposits/withdrawals ± settle/close-out economics, minus capital deployed on{' '}
+                  <strong className="font-semibold text-zinc-300">accepted</strong> (active) stakes. Pending offers
+                  do not reduce this number ... they show as a hold until the player accepts (e.g. (−$50,000 pending)).
                 </p>
                 <p>
                   <strong className="font-semibold text-zinc-300">Portfolio value</strong> ... backing bankroll plus

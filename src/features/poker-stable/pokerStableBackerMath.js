@@ -13,6 +13,82 @@ export function backerSliceAllocatedCapital(deal, slice) {
 }
 
 /**
+ * Sum of manual Edit → Adjust bankroll rows (deposits +, withdrawals −).
+ * @param {object[]} adjustments
+ */
+export function computeBackerManualAdjustmentTotal(adjustments = []) {
+  let total = 0
+  for (const row of adjustments) {
+    total = roundMoney(total + (Number(row?.amount) || 0))
+  }
+  return total
+}
+
+/**
+ * Capital deployed on accepted (active) stakes only — baseline × action %.
+ * Pending offers do not reduce backing bankroll (they use pendingHold instead).
+ */
+export function computeBackerActiveAllocatedCapital({ deals = [], slicesByDeal = {}, userId }) {
+  if (!userId) return 0
+  let total = 0
+  for (const deal of deals) {
+    if (deal.status !== 'active') continue
+    const slices = (slicesByDeal[deal.id] || []).filter(
+      (s) => s.staker_user_id === userId && s.status !== 'declined',
+    )
+    for (const slice of slices) {
+      if (slice.status !== 'active' && slice.status !== 'pending') continue
+      total = roundMoney(total + backerSliceAllocatedCapital(deal, slice))
+    }
+  }
+  return total
+}
+
+/**
+ * Hero backing bankroll: manual deposits/withdrawals ± settlements − open active stakes.
+ * Pending stakes are excluded (shown as a separate pending-hold annotation).
+ */
+export function computeBackerBackingBankroll({
+  adjustments = [],
+  realizedBackingPl = 0,
+  activeAllocatedCapital = 0,
+  storedBankrollBalance = 0,
+}) {
+  const manual = computeBackerManualAdjustmentTotal(adjustments)
+  if (adjustments.length) {
+    return roundMoney(manual + roundMoney(realizedBackingPl) - roundMoney(activeAllocatedCapital))
+  }
+  return roundMoney(storedBankrollBalance)
+}
+
+/**
+ * Capital reserved on pending stakes (horse has not accepted yet).
+ * Sum of baseline × action % for the viewer's non-declined slices on pending deals.
+ */
+export function computeBackerPendingHold({ deals = [], slicesByDeal = {}, userId }) {
+  if (!userId) return 0
+  let pendingHold = 0
+  for (const deal of deals) {
+    if (deal.status !== 'pending') continue
+    const slices = (slicesByDeal[deal.id] || []).filter(
+      (s) => s.staker_user_id === userId && s.status !== 'declined',
+    )
+    for (const slice of slices) {
+      if (slice.status !== 'active' && slice.status !== 'pending') continue
+      pendingHold = roundMoney(pendingHold + backerSliceAllocatedCapital(deal, slice))
+    }
+  }
+  return pendingHold
+}
+
+/**
+ * Liquid backing bankroll minus pending stake holds (for new Create Stake capacity).
+ */
+export function computeBackerAvailableBankroll(liquidBankroll, pendingHold) {
+  return roundMoney(roundMoney(liquidBankroll) - roundMoney(pendingHold))
+}
+
+/**
  * Mark-to-market stake value for backer's slice (roll × action % share of deal).
  * @param {object} deal
  * @param {object} slice
@@ -199,16 +275,23 @@ export function computeBackerTwrPct({
   const events = [...sessionEvents, ...adjustEvents].sort((a, b) => a.t - b.t)
   if (!events.length) return null
 
+  const openingManualPool = roundMoney(
+    Math.max(0, roundMoney(liquidBankroll) - roundMoney(realizedBackingPl)),
+  )
+
   let manualPool = 0
   let periodSessionPl = 0
   let twrFactor = 1
   let sawAdjust = adjustEvents.length > 0
+  let closedThroughFirstAdjust = false
 
   function closePeriod() {
-    if (manualPool > 0 && periodSessionPl !== 0) {
-      twrFactor *= 1 + periodSessionPl / manualPool
-    } else if (manualPool > 0 && periodSessionPl === 0) {
-      // flat period ... no-op
+    let pool = manualPool
+    if (pool <= 0 && periodSessionPl !== 0 && !closedThroughFirstAdjust) {
+      pool = openingManualPool
+    }
+    if (pool > 0 && periodSessionPl !== 0) {
+      twrFactor *= 1 + periodSessionPl / pool
     }
     periodSessionPl = 0
   }
@@ -219,6 +302,7 @@ export function computeBackerTwrPct({
       continue
     }
     closePeriod()
+    closedThroughFirstAdjust = true
     manualPool = roundMoney(manualPool + ev.amount)
     if (manualPool < 0) manualPool = 0
   }
@@ -252,22 +336,34 @@ export function computeBackerTwrPct({
  * @param {Record<string, object[]>} args.slicesByDeal
  * @param {string} args.userId
  * @param {Record<string, object>} args.bankrollByDeal
- * @param {number} args.liquidBankroll
+ * @param {number} args.storedBankrollBalance
  * @param {number} [args.realizedPl]
+ * @param {object[]} [args.adjustments]
  */
 export function computeBackerPortfolioMetrics({
   deals,
   slicesByDeal,
   userId,
   bankrollByDeal,
+  storedBankrollBalance,
   liquidBankroll,
   realizedPl = 0,
+  adjustments = [],
 }) {
   let capitalAtRisk = 0
   let stakeValueMtm = 0
   let rollExposure = 0
   let activeHorseCount = 0
   let pendingCommitCount = 0
+
+  const pendingHold = computeBackerPendingHold({ deals, slicesByDeal, userId })
+  const activeAllocatedCapital = computeBackerActiveAllocatedCapital({ deals, slicesByDeal, userId })
+  const backingBankroll = computeBackerBackingBankroll({
+    adjustments,
+    realizedBackingPl: realizedPl,
+    activeAllocatedCapital,
+    storedBankrollBalance: storedBankrollBalance ?? liquidBankroll ?? 0,
+  })
 
   for (const deal of deals) {
     if (!['active', 'pending'].includes(deal.status)) continue
@@ -282,29 +378,33 @@ export function computeBackerPortfolioMetrics({
     for (const slice of slices) {
       if (slice.status !== 'active' && slice.status !== 'pending') continue
       const allocated = backerSliceAllocatedCapital(deal, slice)
-      capitalAtRisk = roundMoney(capitalAtRisk + allocated)
-      if (slice.status === 'pending') pendingCommitCount += 1
 
       if (deal.status === 'active') {
+        capitalAtRisk = roundMoney(capitalAtRisk + allocated)
         activeHorseCount += 1
         stakeValueMtm = roundMoney(stakeValueMtm + backerSliceStakeValue(deal, slice, roll))
         rollExposure = roundMoney(rollExposure + (Number(roll?.overall_bankroll) || 0))
       } else if (deal.status === 'pending' && slice.status === 'pending') {
         stakeValueMtm = roundMoney(stakeValueMtm + allocated)
       }
+
+      if (slice.status === 'pending') pendingCommitCount += 1
     }
   }
 
-  const portfolioValue = roundMoney(Number(liquidBankroll) + stakeValueMtm)
+  const portfolioValue = roundMoney(Number(backingBankroll) + stakeValueMtm)
 
   return {
-    liquidBankroll: roundMoney(liquidBankroll),
+    liquidBankroll: backingBankroll,
     portfolioValue,
     capitalAtRisk,
     stakeValueMtm,
     rollExposure,
     activeHorseCount,
     pendingCommitCount,
+    pendingHold,
+    activeAllocatedCapital,
+    availableBankroll: computeBackerAvailableBankroll(backingBankroll, pendingHold),
     realizedBackingPl: roundMoney(realizedPl),
   }
 }
@@ -317,6 +417,7 @@ export function computeBackerPortfolioPerformanceMetrics({
   slicesByDeal,
   userId,
   bankrollByDeal,
+  storedBankrollBalance,
   liquidBankroll,
   realizedPl = 0,
   horseDeals = [],
@@ -328,8 +429,9 @@ export function computeBackerPortfolioPerformanceMetrics({
     slicesByDeal,
     userId,
     bankrollByDeal,
-    liquidBankroll,
+    storedBankrollBalance: storedBankrollBalance ?? liquidBankroll ?? 0,
     realizedPl,
+    adjustments,
   })
 
   const sessionShareTotal = computeBackerSessionShareTotal({
@@ -349,7 +451,7 @@ export function computeBackerPortfolioPerformanceMetrics({
       slicesByDeal,
       userId,
       adjustments,
-      liquidBankroll,
+      liquidBankroll: base.liquidBankroll,
       realizedBackingPl: realizedPl,
     }),
   }

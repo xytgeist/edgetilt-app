@@ -328,7 +328,7 @@ export default function PokerStableScreen({
         slicesByDeal,
         userId,
         bankrollByDeal,
-        liquidBankroll: backerProfile?.bankroll_balance ?? 0,
+        storedBankrollBalance: backerProfile?.bankroll_balance ?? 0,
         realizedPl: backerProfile?.realized_backing_pl ?? 0,
         horseDeals,
         sessions: stableSessions,
@@ -949,7 +949,9 @@ export default function PokerStableScreen({
           userId={userId}
           saving={saving}
           onSavingChange={setSaving}
-          backingBankrollBalance={backerProfile?.bankroll_balance ?? 0}
+          backingBankrollBalance={portfolioMetrics.liquidBankroll ?? 0}
+          stableDeals={deals}
+          stableSlicesByDeal={slicesByDeal}
           onClose={() => setSheet(null)}
           onCreated={() => void load()}
         />

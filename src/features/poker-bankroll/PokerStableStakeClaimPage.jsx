@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fmtPoker$ } from './pokerBankrollMath.js'
 import { guestStakeeClaimLink, guestStakeeClaimPreview } from '../poker-stable/pokerStableApi.js'
 
@@ -26,6 +26,14 @@ export default function PokerStableStakeClaimPage({
   const [error, setError] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [linked, setLinked] = useState(false)
+  const [linkRetry, setLinkRetry] = useState(0)
+  const onDoneRef = useRef(onDone)
+  const linkAttemptedRef = useRef(false)
+  onDoneRef.current = onDone
+
+  useEffect(() => {
+    linkAttemptedRef.current = false
+  }, [token])
 
   useEffect(() => {
     if (!supabaseClient || !token) {
@@ -52,32 +60,42 @@ export default function PokerStableStakeClaimPage({
   }, [supabaseClient, token])
 
   useEffect(() => {
-    if (!supabaseClient || !token || !userId || !preview || linked || claiming) return undefined
-    if (preview.already_linked && preview.claimed) {
-      setLinked(true)
-      onDone?.(preview.deal_id ? `/?tab=poker-bankroll&stableDeal=${preview.deal_id}` : undefined)
+    if (!supabaseClient || !token || !userId || !preview || linked || linkAttemptedRef.current) {
       return undefined
     }
-    let cancelled = false
+    if (preview.already_linked && preview.claimed) {
+      setLinked(true)
+      onDoneRef.current?.(
+        preview.deal_id ? `/?tab=poker-bankroll&stableDeal=${preview.deal_id}` : undefined,
+      )
+      return undefined
+    }
+
+    linkAttemptedRef.current = true
     setClaiming(true)
     setError('')
     void guestStakeeClaimLink(supabaseClient, token)
       .then(({ result, error: err }) => {
-        if (cancelled) return
         if (err) {
           setError(err.message || 'Could not link this stake.')
           return
         }
         setLinked(true)
-        onDone?.(result?.redirect || undefined)
+        onDoneRef.current?.(result?.redirect || undefined)
       })
       .finally(() => {
-        if (!cancelled) setClaiming(false)
+        setClaiming(false)
       })
-    return () => {
-      cancelled = true
-    }
-  }, [supabaseClient, token, userId, preview, linked, claiming, onDone])
+  }, [
+    supabaseClient,
+    token,
+    userId,
+    linked,
+    preview?.deal_id,
+    preview?.already_linked,
+    preview?.claimed,
+    linkRetry,
+  ])
 
   return (
     <div
@@ -141,7 +159,20 @@ export default function PokerStableStakeClaimPage({
             ) : claiming ? (
               <p className="mt-4 text-center text-sm text-zinc-400">Linking stake…</p>
             ) : error ? (
-              <p className="mt-4 text-center text-sm text-rose-400">{error}</p>
+              <>
+                <p className="mt-4 text-center text-sm text-rose-400">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    linkAttemptedRef.current = false
+                    setError('')
+                    setLinkRetry((n) => n + 1)
+                  }}
+                  className="mt-4 w-full rounded-2xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 touch-manipulation"
+                >
+                  Try again
+                </button>
+              </>
             ) : null}
           </div>
         ) : null}

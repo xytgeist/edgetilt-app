@@ -1,6 +1,10 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { dealTypeLabel } from './pokerStableMath.js'
-import { dealLeadBackerDisplayName, sliceTermsSummary } from './pokerStableTerms.js'
+import {
+  dealLeadBackerDisplayName,
+  dealStakeeDisplayName,
+  sliceTermsSummary,
+} from './pokerStableTerms.js'
 import { venueKindLabel } from '../poker-bankroll/pokerStakeeOnboarding.js'
 
 function previewDealLabel(preview) {
@@ -58,6 +62,28 @@ export function guestBackerClaimOfferDetails(preview) {
     ],
     sliceSummaries: [sliceTermsSummary(slice)],
     notes: preview.notes,
+  }
+}
+
+/** Linked guest backer slice on Stable → offer details props (post-claim onboarding modal). */
+export function guestBackerSliceOfferDetails(deal, slice, profilesById = {}) {
+  if (!deal || !slice) return null
+  const label = deal.label?.trim() || dealTypeLabel(deal.deal_type) || 'Cash backing'
+  const playerName = dealStakeeDisplayName(deal, profilesById) || 'Player'
+  const baseline = Number(deal.baseline_bankroll) || 0
+  const actionPct = Number(slice.action_pct) || 0
+
+  return {
+    label,
+    rows: [
+      { label: 'Player', value: playerName },
+      { label: 'Deal type', value: dealTypeLabel(deal.deal_type) },
+      { label: 'Venue', value: venueKindLabel(deal.venue_kind) },
+      { label: 'Baseline bankroll', value: fmtPoker$(baseline) },
+      { label: 'Your action', value: `${actionPct}%` },
+    ],
+    sliceSummaries: [sliceTermsSummary(slice, profilesById)],
+    notes: deal.notes,
   }
 }
 

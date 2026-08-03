@@ -834,7 +834,9 @@ function App() {
     setSignupMessage(
       signupFromStakeClaim
         ? '✅ Account created! Confirm your email ... that link will link this stake and open Bankroll.'
-        : '✅ Account created! Please check your email for the confirmation link.',
+        : signupFromStableClaim
+          ? '✅ Account created! Confirm your email ... that link will link your backing slice and open Stable Manager with the full terms.'
+          : '✅ Account created! Please check your email for the confirmation link.',
     )
     setSignupEmail('')
     setSignupPassword('')
@@ -1278,8 +1280,11 @@ function App() {
             token={claim?.token || ''}
             userId={user?.id ?? null}
             onOpenAuth={() => openAuthPanel('create')}
-            onDone={(redirect) => {
-              navigateAfterStableClaim(redirect)
+            onDone={(payload) => {
+              navigateAfterStableClaim(payload?.redirect, {
+                dealId: payload?.dealId,
+                sliceId: payload?.sliceId,
+              })
             }}
           />
         </Suspense>

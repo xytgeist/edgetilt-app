@@ -1,3 +1,8 @@
+import {
+  buildStableBackerOnboardingUrl,
+  stashPokerStableBackerOnboarding,
+} from './pokerStableBackerOnboarding.js'
+
 const STABLE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stable_claim_return_token'
 
 export const POKER_STABLE_CLAIM_RETURN_PATH = '/poker-stable-claim'
@@ -65,16 +70,29 @@ export function navigateToStableClaimPage(token) {
   )
 }
 
-/** After guest backer claim links the account, hard-navigate so Stable deep link bootstraps cleanly. */
-export function navigateAfterStableClaim(redirect) {
+/**
+ * After guest backer claim links the account, hard-navigate so Stable opens with slice onboarding.
+ * @param {string} [redirect]
+ * @param {{ dealId?: string, sliceId?: string }} [opts]
+ */
+export function navigateAfterStableClaim(redirect, opts = {}) {
   if (typeof window === 'undefined') return
   clearStashedPokerStableClaimToken()
   let dest = redirect || '/?tab=poker-stable'
   try {
     const url = new URL(dest, window.location.origin)
-    window.location.assign(`${url.pathname}${url.search}`)
+    const dealId = String(opts.dealId || url.searchParams.get('stableDeal') || '').trim()
+    const sliceId = String(opts.sliceId || url.searchParams.get('stableSlice') || '').trim()
+    if (dealId) {
+      stashPokerStableBackerOnboarding(sliceId, dealId)
+      if (url.searchParams.get('backerSliceOnboarding') !== '1') {
+        dest = buildStableBackerOnboardingUrl(dealId, sliceId)
+      }
+    }
+    const finalUrl = new URL(dest, window.location.origin)
+    window.location.assign(`${finalUrl.pathname}${finalUrl.search}`)
   } catch {
-    window.location.assign('/?tab=poker-stable')
+    window.location.assign('/?tab=poker-stable&backerSliceOnboarding=1')
   }
 }
 

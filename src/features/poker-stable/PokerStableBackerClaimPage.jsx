@@ -16,7 +16,7 @@ import { guestBackerClaimOfferDetails } from './pokerStableGuestClaimOffer.js'
  *   token: string,
  *   userId?: string | null,
  *   onOpenAuth?: () => void,
- *   onDone?: (redirect?: string) => void,
+ *   onDone?: (payload?: { redirect?: string, dealId?: string, sliceId?: string }) => void,
  * }} props
  */
 export default function PokerStableBackerClaimPage({
@@ -70,9 +70,13 @@ export default function PokerStableBackerClaimPage({
     }
     if (preview.already_linked && preview.claimed) {
       setLinked(true)
-      onDoneRef.current?.(
-        preview.deal_id ? `/?tab=poker-stable&stableDeal=${preview.deal_id}` : undefined,
-      )
+      onDoneRef.current?.({
+        redirect: preview.deal_id
+          ? `/?tab=poker-stable&stableDeal=${preview.deal_id}`
+          : undefined,
+        dealId: preview.deal_id,
+        sliceId: preview.slice_id,
+      })
       return undefined
     }
 
@@ -85,14 +89,33 @@ export default function PokerStableBackerClaimPage({
           const byEmail = await guestBackerClaimByEmail(supabaseClient)
           if (!byEmail.error && Array.isArray(byEmail.result?.slice_ids) && byEmail.result.slice_ids.length) {
             setLinked(true)
-            onDoneRef.current?.(byEmail.result?.redirect || undefined)
+            let dealId = ''
+            try {
+              dealId = String(
+                new URL(
+                  byEmail.result?.redirect || '/?tab=poker-stable',
+                  window.location.origin,
+                ).searchParams.get('stableDeal') || '',
+              ).trim()
+            } catch {
+              // ignore
+            }
+            onDoneRef.current?.({
+              redirect: byEmail.result?.redirect || undefined,
+              dealId: dealId || preview?.deal_id,
+              sliceId: byEmail.result.slice_ids[0] || preview?.slice_id,
+            })
             return
           }
           setError(err.message || 'Could not link this backing slice.')
           return
         }
         setLinked(true)
-        onDoneRef.current?.(result?.redirect || undefined)
+        onDoneRef.current?.({
+          redirect: result?.redirect || undefined,
+          dealId: result?.deal_id || preview?.deal_id,
+          sliceId: result?.slice_id || preview?.slice_id,
+        })
       })
       .finally(() => {
         setClaiming(false)

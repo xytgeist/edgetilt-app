@@ -16,6 +16,12 @@ export async function tryAutoLinkGuestBackerOffers(supabase) {
     typeof result?.redirect === 'string' && result.redirect.trim()
       ? result.redirect.trim()
       : '/?tab=poker-stable'
-  navigateAfterStableClaim(redirect)
+  let dealId = ''
+  try {
+    dealId = String(new URL(redirect, window.location.origin).searchParams.get('stableDeal') || '').trim()
+  } catch {
+    // ignore
+  }
+  navigateAfterStableClaim(redirect, { dealId, sliceId: sliceIds[0] })
   return true
 }

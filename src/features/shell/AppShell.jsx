@@ -76,6 +76,11 @@ import {
   consumeStakeOnboardingFromSearch,
   readPokerStakeOnboardingDeal,
 } from '../poker-bankroll/pokerStakeeOnboarding.js'
+import {
+  consumeBackerSliceOnboardingFromSearch,
+  readPokerStableBackerOnboardingDealId,
+  readPokerStableBackerOnboardingSliceId,
+} from '../poker-stable/pokerStableBackerOnboarding.js'
 import { tryAutoLinkGuestStakeeOffers } from '../poker-bankroll/pokerGuestStakeeAutoLink.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
 import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
@@ -341,6 +346,14 @@ export default function AppShell({
   const [stakeOnboardingDealId, setStakeOnboardingDealId] = useState(() => {
     if (typeof window === 'undefined') return null
     return readPokerStakeOnboardingDeal()
+  })
+  const [backerSliceOnboardingDealId, setBackerSliceOnboardingDealId] = useState(() => {
+    if (typeof window === 'undefined') return null
+    return readPokerStableBackerOnboardingDealId()
+  })
+  const [backerSliceOnboardingSliceId, setBackerSliceOnboardingSliceId] = useState(() => {
+    if (typeof window === 'undefined') return null
+    return readPokerStableBackerOnboardingSliceId()
   })
   const [pendingStableCommitId, setPendingStableCommitId] = useState(null)
   const [guideOpenCardSlug, setGuideOpenCardSlug] = useState(null)
@@ -1162,6 +1175,9 @@ export default function AppShell({
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
           if (stableCommit) setPendingStableCommitId(stableCommit)
+          const backerOnboarding = consumeBackerSliceOnboardingFromSearch(window.location.search || '')
+          if (backerOnboarding.dealId) setBackerSliceOnboardingDealId(backerOnboarding.dealId)
+          if (backerOnboarding.sliceId) setBackerSliceOnboardingSliceId(backerOnboarding.sliceId)
         }
       }
       const guideFromQuery = (params.get('guide') || '').trim()
@@ -1198,6 +1214,16 @@ export default function AppShell({
         const u = new URL(window.location.href)
         if (u.searchParams.has('stakeOnboarding')) {
           u.searchParams.delete('stakeOnboarding')
+          const qs = u.searchParams.toString()
+          window.history.replaceState(
+            {},
+            document.title,
+            `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash}`,
+          )
+        }
+        if (u.searchParams.has('backerSliceOnboarding')) {
+          u.searchParams.delete('backerSliceOnboarding')
+          u.searchParams.delete('stableSlice')
           const qs = u.searchParams.toString()
           window.history.replaceState(
             {},
@@ -2547,6 +2573,12 @@ export default function AppShell({
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
           openStableDealId={pendingPokerStableDealId}
           onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
+          backerSliceOnboardingDealId={backerSliceOnboardingDealId}
+          backerSliceOnboardingSliceId={backerSliceOnboardingSliceId}
+          onBackerSliceOnboardingConsumed={() => {
+            setBackerSliceOnboardingDealId(null)
+            setBackerSliceOnboardingSliceId(null)
+          }}
           onOpenPokerBankroll={(dealId) => {
             setPendingPokerStableDealId(dealId)
             setTab('poker-bankroll')

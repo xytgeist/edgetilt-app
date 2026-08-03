@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Users } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
@@ -13,6 +13,12 @@ import PokerStableHorseCarousel from './PokerStableHorseCarousel.jsx'
 import PokerStableLocationsTab from './PokerStableLocationsTab.jsx'
 import PokerStablePortfolioHero from './PokerStablePortfolioHero.jsx'
 import PokerStableTrendTab from './PokerStableTrendTab.jsx'
+import PokerStableBackerSliceOfferOnboardingModal from './PokerStableBackerSliceOfferOnboardingModal.jsx'
+import {
+  clearPokerStableBackerOnboarding,
+  readPokerStableBackerOnboardingDealId,
+  readPokerStableBackerOnboardingSliceId,
+} from './pokerStableBackerOnboarding.js'
 import {
   computeBackerPortfolioPerformanceMetrics,
   computeBackerPortfolioTrendChart,
@@ -88,6 +94,9 @@ export default function PokerStableScreen({
   titleBarToolCloseVisible = false,
   openStableDealId = null,
   onOpenStableDealConsumed = null,
+  backerSliceOnboardingDealId = null,
+  backerSliceOnboardingSliceId = null,
+  onBackerSliceOnboardingConsumed = null,
   /** @type {(dealId: string) => void} */
   onOpenPokerBankroll = null,
 }) {
@@ -115,6 +124,8 @@ export default function PokerStableScreen({
   const [stableSessions, setStableSessions] = useState(/** @type {object[]} */ ([]))
   const [backerAdjustments, setBackerAdjustments] = useState(/** @type {object[]} */ ([]))
   const [attentionOpen, setAttentionOpen] = useState(false)
+  const [backerSliceOnboardingOpen, setBackerSliceOnboardingOpen] = useState(false)
+  const backerSliceOnboardingOpenedRef = useRef(false)
   const [locationsDealId, setLocationsDealId] = useState(/** @type {string | null} */ (null))
   const [dealSettlementsByDeal, setDealSettlementsByDeal] = useState(
     /** @type {Record<string, object[]>} */ ({}),
@@ -270,11 +281,72 @@ export default function PokerStableScreen({
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
 
+  const activeBackerOnboardingDealId =
+    backerSliceOnboardingDealId || readPokerStableBackerOnboardingDealId()
+  const activeBackerOnboardingSliceId =
+    backerSliceOnboardingSliceId || readPokerStableBackerOnboardingSliceId()
+
   useEffect(() => {
     if (!openStableDealId || loading) return
+    if (activeBackerOnboardingDealId && activeBackerOnboardingSliceId) {
+      onOpenStableDealConsumed?.()
+      return
+    }
     setDetailDealId(openStableDealId)
     onOpenStableDealConsumed?.()
-  }, [openStableDealId, loading, onOpenStableDealConsumed])
+  }, [
+    openStableDealId,
+    loading,
+    onOpenStableDealConsumed,
+    activeBackerOnboardingDealId,
+    activeBackerOnboardingSliceId,
+  ])
+
+  const backerOnboardingSliceRow = useMemo(() => {
+    if (!activeBackerOnboardingDealId || !activeBackerOnboardingSliceId || !userId) return null
+    const deal = deals.find((d) => d.id === activeBackerOnboardingDealId)
+    const slice = (slicesByDeal[activeBackerOnboardingDealId] || []).find(
+      (s) => s.id === activeBackerOnboardingSliceId,
+    )
+    if (!deal || !slice) return null
+    if (slice.staker_user_id !== userId || slice.status !== 'pending') return null
+    if (deal.stakee_terms_ack_required) return null
+    return { deal, slice }
+  }, [
+    activeBackerOnboardingDealId,
+    activeBackerOnboardingSliceId,
+    deals,
+    slicesByDeal,
+    userId,
+  ])
+
+  useEffect(() => {
+    if (loading || !userId || !backerOnboardingSliceRow || backerSliceOnboardingOpenedRef.current) {
+      return
+    }
+    backerSliceOnboardingOpenedRef.current = true
+    setBackerSliceOnboardingOpen(true)
+  }, [loading, userId, backerOnboardingSliceRow])
+
+  function closeBackerSliceOnboarding() {
+    setBackerSliceOnboardingOpen(false)
+    clearPokerStableBackerOnboarding()
+    onBackerSliceOnboardingConsumed?.()
+  }
+
+  async function onAcceptBackerSliceOnboarding() {
+    const sliceId = backerOnboardingSliceRow?.slice?.id
+    if (!sliceId) return
+    await onAcceptSlice(sliceId)
+    closeBackerSliceOnboarding()
+  }
+
+  async function onDeclineBackerSliceOnboarding() {
+    const sliceId = backerOnboardingSliceRow?.slice?.id
+    if (!sliceId) return
+    await onDeclineSlice(sliceId)
+    closeBackerSliceOnboarding()
+  }
 
   useEffect(() => {
     if (!detailDealId || !userId) return
@@ -957,6 +1029,17 @@ export default function PokerStableScreen({
           onSynced={load}
           onOpenDeal={openDealDetail}
           onError={setError}
+        />
+      ) : null}
+
+      {backerSliceOnboardingOpen && backerOnboardingSliceRow ? (
+        <PokerStableBackerSliceOfferOnboardingModal
+          deal={backerOnboardingSliceRow.deal}
+          slice={backerOnboardingSliceRow.slice}
+          profilesById={profilesById}
+          saving={saving}
+          onAccept={() => void onAcceptBackerSliceOnboarding()}
+          onDecline={() => void onDeclineBackerSliceOnboarding()}
         />
       ) : null}
     </>

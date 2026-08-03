@@ -76,7 +76,7 @@ export default function StablePlayerPicker({
   const lockedDisplayValue = isLockedEdge
     ? edgeProfileDisplayName(selectedProfile)
     : isLockedGuest
-      ? String(guestLabel || '').trim() || lockedGuestFallback
+      ? lockedGuestFallback
       : ''
   const inputValue = isLockedSelection ? lockedDisplayValue : (value ?? '')
 

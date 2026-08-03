@@ -6,7 +6,9 @@
 
 **URLs:** Bodies use **`{{ .ConfirmationURL }}`**. Supabase builds that from **Authentication → URL Configuration** (`Site URL` + redirect allow list). Prod: **`https://edgetilt.com`**.
 
-**Guest stake claim signup:** confirm email uses the **Site URL** (`https://edgetilt.com/`) as `emailRedirectTo` so Supabase allow-list always matches. The claim token is stored in **`sessionStorage`** before signup; after confirm the app sends the player to **`/poker-stake-claim`**. Optional allow-list entry: **`https://edgetilt.com/poker-stake-claim`** (not required for confirm).
+**Guest stake claim signup:** confirm email uses the **Site URL** (`https://edgetilt.com/`) as `emailRedirectTo` so Supabase allow-list always matches. The claim token is stored in **`sessionStorage`** + **`localStorage`** before signup; after confirm the app sends the player to **`/poker-stake-claim`**. Optional allow-list entry: **`https://edgetilt.com/poker-stake-claim`** (not required for confirm).
+
+**Guest backer claim signup (`/poker-stable-claim`):** same Site URL confirm redirect + token stash pattern; after confirm the app opens **`/poker-stable-claim`** (or auto-links by email) then Stable slice onboarding.
 
 **Variables (Go template):** `{{ .ConfirmationURL }}`, `{{ .Email }}`, `{{ .SiteURL }}`, `{{ .Token }}`, `{{ .TokenHash }}`. Prefer **`{{ .ConfirmationURL }}`** for all action links.
 

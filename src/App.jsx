@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, isEmailVerificationType, hasAuthSuccessTokens, replaceUrlPreservingQuery, hasOAuthProviderCallbackInLocation } from './features/auth/oauthCallback'
+import { routeAfterGuestClaimEmailConfirm, waitForSupabaseSession } from './features/auth/emailConfirmRouting.js'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AuthModalShell from './features/auth/AuthModalShell'
 import AppShell from './features/shell'
@@ -256,8 +257,6 @@ function App() {
         }
 
         const tokens = readAuthTokensFromLocation()
-        const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
-        const stableClaimReturn = parsePokerStableClaimFromLocation(pathname, search)
         const combinedForType = `${window.location.hash || ''}${search}`
         const isLikelyEmailConfirm =
           isEmailVerificationType(tokens.type) ||
@@ -267,43 +266,38 @@ function App() {
           try {
             if (tokens.code) {
               await supabase.auth.exchangeCodeForSession(tokens.code)
-            } else {
+            } else if (tokens.accessToken && tokens.refreshToken) {
               await supabase.auth.setSession({
                 access_token: tokens.accessToken,
                 refresh_token: tokens.refreshToken,
               })
             }
           } catch {
-            // Link may already be consumed; user can sign in manually.
+            // Link may already be consumed; detectSessionInUrl may still have established a session.
           }
 
-          const stashedClaimToken = readStashedPokerStakeClaimToken()
-          const stashedStableClaimToken = readStashedPokerStableClaimToken()
-          if (stakeClaimReturn) {
-            replaceUrlPreservingQuery(`${pathname}${search}`)
-            return
-          }
-          if (stableClaimReturn) {
-            replaceUrlPreservingQuery(`${pathname}${search}`)
-            return
-          }
-          if (stashedClaimToken) {
-            replaceUrlPreservingQuery(pathname || '/')
-            navigateToStakeClaimPage(stashedClaimToken)
-            return
-          }
-          if (stashedStableClaimToken) {
-            replaceUrlPreservingQuery(pathname || '/')
-            navigateToStableClaimPage(stashedStableClaimToken)
-            return
-          }
+          await waitForSupabaseSession(supabase)
+          const routed = await routeAfterGuestClaimEmailConfirm(supabase, {
+            pathname,
+            search,
+            parsePokerStakeClaimFromLocation,
+            parsePokerStableClaimFromLocation,
+            readStashedPokerStakeClaimToken,
+            readStashedPokerStableClaimToken,
+            navigateToStakeClaimPage,
+            navigateToStableClaimPage,
+            tryAutoLinkGuestStakeeOffers,
+            tryAutoLinkGuestBackerOffers,
+            replaceUrlPreservingQuery,
+          })
+          if (routed) return
 
           replaceUrlPreservingQuery(pathname || '/')
-          const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
-          if (linkedStakee) return
-          const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
-          if (linkedBacker) return
-          setCurrentView('app')
+          setVerificationSuccess(true)
+          setAuthTab('signin')
+          setShowForgotPassword(false)
+          setLoginError('')
+          setAuthPanelOpen(true)
           return
         }
 
@@ -323,6 +317,23 @@ function App() {
           const { error: oauthError, errorCode, errorDescription } = readAuthCallbackParams()
           const oauthMsg = getOAuthCallbackMessage(oauthError, errorCode, errorDescription)
           if (oauthMsg) {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.user) {
+              const routed = await routeAfterGuestClaimEmailConfirm(supabase, {
+                pathname,
+                search,
+                parsePokerStakeClaimFromLocation,
+                parsePokerStableClaimFromLocation,
+                readStashedPokerStakeClaimToken,
+                readStashedPokerStableClaimToken,
+                navigateToStakeClaimPage,
+                navigateToStableClaimPage,
+                tryAutoLinkGuestStakeeOffers,
+                tryAutoLinkGuestBackerOffers,
+                replaceUrlPreservingQuery,
+              })
+              if (routed) return
+            }
             setAuthTab('signin')
             setLoginError(oauthMsg)
             setAuthPanelOpen(true)

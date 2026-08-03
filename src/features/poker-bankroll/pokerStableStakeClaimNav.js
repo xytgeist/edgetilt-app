@@ -7,12 +7,14 @@ import {
 
 export const POKER_STAKE_CLAIM_RETURN_PATH = '/poker-stake-claim'
 const STAKE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stake_claim_return_token'
+const STAKE_CLAIM_TOKEN_LOCAL_KEY = 'poker_stake_claim_return_token_v1'
 
 export function stashPokerStakeClaimToken(token) {
   const t = String(token || '').trim()
   if (!t || typeof window === 'undefined') return
   try {
     sessionStorage.setItem(STAKE_CLAIM_TOKEN_STORAGE_KEY, t)
+    localStorage.setItem(STAKE_CLAIM_TOKEN_LOCAL_KEY, t)
   } catch {
     // ignore
   }
@@ -21,8 +23,10 @@ export function stashPokerStakeClaimToken(token) {
 export function readStashedPokerStakeClaimToken() {
   if (typeof window === 'undefined') return null
   try {
-    const t = sessionStorage.getItem(STAKE_CLAIM_TOKEN_STORAGE_KEY)
-    return t ? String(t).trim() : null
+    const fromSession = sessionStorage.getItem(STAKE_CLAIM_TOKEN_STORAGE_KEY)
+    if (fromSession) return String(fromSession).trim()
+    const fromLocal = localStorage.getItem(STAKE_CLAIM_TOKEN_LOCAL_KEY)
+    return fromLocal ? String(fromLocal).trim() : null
   } catch {
     return null
   }
@@ -32,6 +36,7 @@ export function clearStashedPokerStakeClaimToken() {
   if (typeof window === 'undefined') return
   try {
     sessionStorage.removeItem(STAKE_CLAIM_TOKEN_STORAGE_KEY)
+    localStorage.removeItem(STAKE_CLAIM_TOKEN_LOCAL_KEY)
   } catch {
     // ignore
   }

@@ -67,6 +67,14 @@ export function getOAuthCallbackMessage(error, errorCode, errorDescription) {
     return 'Open the confirmation link in the same browser where you signed up, or sign in with your email and password if you already confirmed.'
   }
   if (
+    raw.includes('otp_expired') ||
+    raw.includes('email link is invalid') ||
+    raw.includes('link is invalid or has expired') ||
+    (raw.includes('expired') && raw.includes('link'))
+  ) {
+    return 'That confirmation link expired or was already used. Sign in if you already confirmed, or create the account again for a fresh email.'
+  }
+  if (
     raw.includes('redirect') &&
     (raw.includes('not allowed') ||
       raw.includes('invalid') ||

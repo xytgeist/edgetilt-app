@@ -4,6 +4,7 @@ import {
 } from './pokerStableBackerOnboarding.js'
 
 const STABLE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stable_claim_return_token'
+const STABLE_CLAIM_TOKEN_LOCAL_KEY = 'poker_stable_claim_return_token_v1'
 
 export const POKER_STABLE_CLAIM_RETURN_PATH = '/poker-stable-claim'
 
@@ -12,6 +13,7 @@ export function stashPokerStableClaimToken(token) {
   if (!t || typeof window === 'undefined') return
   try {
     sessionStorage.setItem(STABLE_CLAIM_TOKEN_STORAGE_KEY, t)
+    localStorage.setItem(STABLE_CLAIM_TOKEN_LOCAL_KEY, t)
   } catch {
     // ignore
   }
@@ -20,8 +22,10 @@ export function stashPokerStableClaimToken(token) {
 export function readStashedPokerStableClaimToken() {
   if (typeof window === 'undefined') return null
   try {
-    const t = sessionStorage.getItem(STABLE_CLAIM_TOKEN_STORAGE_KEY)
-    return t ? String(t).trim() : null
+    const fromSession = sessionStorage.getItem(STABLE_CLAIM_TOKEN_STORAGE_KEY)
+    if (fromSession) return String(fromSession).trim()
+    const fromLocal = localStorage.getItem(STABLE_CLAIM_TOKEN_LOCAL_KEY)
+    return fromLocal ? String(fromLocal).trim() : null
   } catch {
     return null
   }
@@ -31,6 +35,7 @@ export function clearStashedPokerStableClaimToken() {
   if (typeof window === 'undefined') return
   try {
     sessionStorage.removeItem(STABLE_CLAIM_TOKEN_STORAGE_KEY)
+    localStorage.removeItem(STABLE_CLAIM_TOKEN_LOCAL_KEY)
   } catch {
     // ignore
   }

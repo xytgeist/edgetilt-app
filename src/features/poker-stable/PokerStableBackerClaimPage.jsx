@@ -107,10 +107,11 @@ export default function PokerStableBackerClaimPage({
     linkRetry,
   ])
 
-  const pricingLabel =
-    preview?.pricing_mode === 'markup'
+  const pricingLabel = preview
+    ? preview.pricing_mode === 'markup'
       ? `Markup ${Number(preview.markup_rate) || 0}x`
       : `Profit split · player keeps ${Number(preview.player_profit_pct) || 0}%`
+    : ''
 
   return (
     <div

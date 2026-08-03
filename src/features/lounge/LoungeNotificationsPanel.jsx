@@ -475,10 +475,24 @@ export default function LoungeNotificationsPanel({
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED ||
-        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_DECLINED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_COUNTER_PROPOSED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_ACCEPTED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED
       ) {
         const params = new URLSearchParams()
-        params.set('tab', 'poker-stable')
+        const bankrollTab =
+          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER ||
+          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_ACCEPTED ||
+          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED ||
+          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED ||
+          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED
+        params.set('tab', bankrollTab ? 'poker-bankroll' : 'poker-stable')
         if (event.poker_stable_deal_id) params.set('stableDeal', String(event.poker_stable_deal_id))
         if (event.poker_stable_commit_id) {
           params.set('stableCommit', String(event.poker_stable_commit_id))

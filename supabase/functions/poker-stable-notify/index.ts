@@ -149,6 +149,24 @@ async function createGuestStakeeClaimUrl(
   return `${resolvePublicAppOrigin()}/poker-stake-claim?token=${raw}`
 }
 
+async function createGuestBackerClaimUrl(
+  admin: ReturnType<typeof createBillingAdmin>,
+  sliceId: string,
+  guestEmail: string | null,
+): Promise<string> {
+  const raw = randomToken()
+  const tokenHash = await sha256Hex(raw)
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  const { error: tokErr } = await admin.from('poker_stable_guest_backer_claim_tokens').insert({
+    slice_id: sliceId,
+    token_hash: tokenHash,
+    guest_email: guestEmail,
+    expires_at: expiresAt,
+  })
+  if (tokErr) throw new Error(tokErr.message)
+  return `${resolvePublicAppOrigin()}/poker-stable-claim?token=${raw}`
+}
+
 function guestExposureFromSliceRow(slice: SliceRow, baselineBankroll: number): GuestExposureInput {
   return {
     baselineBankroll,
@@ -263,6 +281,49 @@ function formatGuestStakeeOfferCopy(args: {
     bodyHtml,
     appUrl: args.claimUrl,
     cta: { label: 'Claim stake', href: args.claimUrl },
+    footerNoteHtml: footer.htmlNote,
+    ctaAfterFooterNote: true,
+    footerNoteMarginTop: '24px',
+  })
+  return { subject, text, html }
+}
+
+function formatGuestBackerOfferCopy(args: {
+  actorLabel: string
+  guestName: string
+  dealLabel: string
+  baselineLabel: string
+  actionPct: number
+  pricingLine: string
+  exposureLine: string
+  claimUrl: string
+}): { subject: string; text: string; html: string } {
+  const guestName = args.guestName.trim() || 'there'
+  const introPlain = `${args.actorLabel} invited you to back a stake on Edgetilt.com.`
+  const nameLine = `Name of stake: ${args.dealLabel || '—'}`
+  const stakeLine = `Total stake: ${args.baselineLabel} (you own ${formatPct(args.actionPct)}%)`
+  const detailLines = [nameLine, stakeLine, args.pricingLine, args.exposureLine]
+  const footer = formatEmailFooter()
+  const text = `Hi ${guestName},\n\n${introPlain}\n\n${detailLines.join('\n')}\n\nOpen your claim link to create a free Edge account and review the backing offer:\n${args.claimUrl}\n\n${footer.text}`
+
+  const safeActor = escapeHtml(args.actorLabel)
+  const safeGuest = escapeHtml(guestName)
+  const safeUrl = escapeHtml(args.claimUrl)
+  const introHtml = `${safeActor} invited you to back a stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a>.`
+  const detailsHtml = detailLines.map((line) => escapeHtml(line)).join('<br>')
+  const bodyHtml = [
+    transactionalEmailParagraph(`Hi ${safeGuest},`),
+    transactionalEmailParagraph(introHtml),
+    transactionalEmailParagraph(detailsHtml, { marginBottom: '0' }),
+  ].join('')
+
+  const subject = `${args.actorLabel} invited you to back: ${args.dealLabel || 'Untitled'}`
+  const html = wrapTransactionalEmailHtml({
+    title: subject,
+    headline: 'Backing invitation',
+    bodyHtml,
+    appUrl: args.claimUrl,
+    cta: { label: 'Claim backing slice', href: args.claimUrl },
     footerNoteHtml: footer.htmlNote,
     ctaAfterFooterNote: true,
     footerNoteMarginTop: '24px',
@@ -983,6 +1044,7 @@ Deno.serve(async (req) => {
       let subject = ''
       let text = ''
       let html = ''
+      let claimUrl = appUrl
 
       if (kind === 'terms_edited') {
         const beforeSlice = findEditSlice(slice, termsEditBefore?.slices, guestOrdinal)
@@ -1010,19 +1072,42 @@ Deno.serve(async (req) => {
         const exposureLine = formatExposureLine(
           guestExposureFromSliceRow(slice, Number(deal.baseline_bankroll)),
         )
-        ;({ subject, text, html } = formatStakeMessageCopy({
-          kind,
-          actorLabel,
-          backerArticle,
-          dealLabel,
-          baselineLabel,
-          actionPct: Number(slice.action_pct),
-          pricingLine,
-          exposureLine,
-          appUrl,
-        }))
+        let sliceClaimUrl = appUrl
+        if (kind === 'offer' && hasEmail) {
+          try {
+            sliceClaimUrl = await createGuestBackerClaimUrl(admin, slice.id, email)
+          } catch (e) {
+            console.warn('[poker-stable-notify] guest backer claim token failed', e)
+          }
+        }
+        claimUrl = sliceClaimUrl
+        if (kind === 'offer' && sliceClaimUrl !== appUrl) {
+          ;({ subject, text, html } = formatGuestBackerOfferCopy({
+            actorLabel,
+            guestName: String(slice.guest_label || '').trim(),
+            dealLabel,
+            baselineLabel,
+            actionPct: Number(slice.action_pct),
+            pricingLine,
+            exposureLine,
+            claimUrl: sliceClaimUrl,
+          }))
+        } else {
+          ;({ subject, text, html } = formatStakeMessageCopy({
+            kind,
+            actorLabel,
+            backerArticle,
+            dealLabel,
+            baselineLabel,
+            actionPct: Number(slice.action_pct),
+            pricingLine,
+            exposureLine,
+            appUrl,
+          }))
+        }
       }
-      const smsText = `${text}\n\n${appUrl}`
+      const smsLink = kind === 'offer' && claimUrl !== appUrl ? claimUrl : appUrl
+      const smsText = `${text}\n\n${smsLink}`
 
       const channels: Record<string, unknown> = { slice_id: slice.id }
 

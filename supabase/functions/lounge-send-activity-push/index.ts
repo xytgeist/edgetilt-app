@@ -212,6 +212,22 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'responded to your settlement proposal'
     case 'poker_stable_commit_recorded':
       return 'recorded a stake update — sync your books'
+    case 'poker_stable_backer_offer':
+      return 'offered you a backing stake'
+    case 'poker_stable_stakee_accepted':
+      return 'accepted your backing offer'
+    case 'poker_stable_stakee_declined':
+      return 'declined your backing offer'
+    case 'poker_stable_stakee_counter_proposed':
+      return 'proposed new stake terms'
+    case 'poker_stable_staker_counter_accepted':
+      return 'accepted your counter-proposal'
+    case 'poker_stable_staker_counter_declined':
+      return 'declined your counter-proposal'
+    case 'poker_stable_slice_accepted':
+      return 'accepted your backing slice'
+    case 'poker_stable_slice_declined':
+      return 'declined your backing slice'
     default:
       return 'interacted with you'
   }
@@ -303,9 +319,23 @@ function buildTargetUrl(
     event.event_type === 'poker_stable_session_complete' ||
     event.event_type === 'poker_stable_settlement_proposed' ||
     event.event_type === 'poker_stable_settlement_resolved' ||
-    event.event_type === 'poker_stable_commit_recorded'
+    event.event_type === 'poker_stable_commit_recorded' ||
+    event.event_type === 'poker_stable_stakee_accepted' ||
+    event.event_type === 'poker_stable_stakee_declined' ||
+    event.event_type === 'poker_stable_stakee_counter_proposed' ||
+    event.event_type === 'poker_stable_backer_offer' ||
+    event.event_type === 'poker_stable_staker_counter_accepted' ||
+    event.event_type === 'poker_stable_staker_counter_declined' ||
+    event.event_type === 'poker_stable_slice_accepted' ||
+    event.event_type === 'poker_stable_slice_declined'
   ) {
-    params.set('tab', 'poker-stable')
+    const bankrollTab =
+      event.event_type === 'poker_stable_backer_offer' ||
+      event.event_type === 'poker_stable_staker_counter_accepted' ||
+      event.event_type === 'poker_stable_staker_counter_declined' ||
+      event.event_type === 'poker_stable_slice_accepted' ||
+      event.event_type === 'poker_stable_slice_declined'
+    params.set('tab', bankrollTab ? 'poker-bankroll' : 'poker-stable')
     if (event.poker_stable_deal_id) params.set('stableDeal', event.poker_stable_deal_id)
     if (event.poker_stable_commit_id) {
       params.set('stableCommit', event.poker_stable_commit_id)
@@ -409,7 +439,15 @@ function buildSingleNotification(
     event.event_type === 'poker_stable_session_complete' ||
     event.event_type === 'poker_stable_settlement_proposed' ||
     event.event_type === 'poker_stable_settlement_resolved' ||
-    event.event_type === 'poker_stable_commit_recorded'
+    event.event_type === 'poker_stable_commit_recorded' ||
+    event.event_type === 'poker_stable_stakee_accepted' ||
+    event.event_type === 'poker_stable_stakee_declined' ||
+    event.event_type === 'poker_stable_stakee_counter_proposed' ||
+    event.event_type === 'poker_stable_backer_offer' ||
+    event.event_type === 'poker_stable_staker_counter_accepted' ||
+    event.event_type === 'poker_stable_staker_counter_declined' ||
+    event.event_type === 'poker_stable_slice_accepted' ||
+    event.event_type === 'poker_stable_slice_declined'
   ) {
     const detail = String(event.detail_text || '').trim()
     const phrase = actionPhrase(event.event_type, event.comment_id, isReply)

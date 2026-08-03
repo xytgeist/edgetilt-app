@@ -57,6 +57,15 @@ import {
   stashPokerStakeClaimToken,
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { tryAutoLinkGuestStakeeOffers } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
+import {
+  navigateAfterStableClaim,
+  navigateToStableClaimPage,
+  parsePokerStableClaimFromLocation,
+  readStashedPokerStableClaimToken,
+  stableClaimSignupEmailRedirectUrl,
+  stashPokerStableClaimToken,
+} from './features/poker-stable/pokerStableBackerClaimNav.js'
+import { tryAutoLinkGuestBackerOffers } from './features/poker-stable/pokerGuestBackerAutoLink.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
@@ -65,6 +74,9 @@ const PokerTournamentSwapClaimPage = lazyRoute(
 )
 const PokerStableStakeClaimPage = lazyRoute(
   () => import('./features/poker-bankroll/PokerStableStakeClaimPage.jsx'),
+)
+const PokerStableBackerClaimPage = lazyRoute(
+  () => import('./features/poker-stable/PokerStableBackerClaimPage.jsx'),
 )
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -134,6 +146,14 @@ function App() {
       )
     ) {
       return 'poker-stake-claim'
+    }
+    if (
+      parsePokerStableClaimFromLocation(
+        window.location.pathname || '/',
+        window.location.search || '',
+      )
+    ) {
+      return 'poker-stable-claim'
     }
     return (
       resolveLegalViewFromLocation(
@@ -237,6 +257,7 @@ function App() {
 
         const tokens = readAuthTokensFromLocation()
         const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
+        const stableClaimReturn = parsePokerStableClaimFromLocation(pathname, search)
         const combinedForType = `${window.location.hash || ''}${search}`
         const isLikelyEmailConfirm =
           isEmailVerificationType(tokens.type) ||
@@ -257,7 +278,12 @@ function App() {
           }
 
           const stashedClaimToken = readStashedPokerStakeClaimToken()
+          const stashedStableClaimToken = readStashedPokerStableClaimToken()
           if (stakeClaimReturn) {
+            replaceUrlPreservingQuery(`${pathname}${search}`)
+            return
+          }
+          if (stableClaimReturn) {
             replaceUrlPreservingQuery(`${pathname}${search}`)
             return
           }
@@ -266,10 +292,17 @@ function App() {
             navigateToStakeClaimPage(stashedClaimToken)
             return
           }
+          if (stashedStableClaimToken) {
+            replaceUrlPreservingQuery(pathname || '/')
+            navigateToStableClaimPage(stashedStableClaimToken)
+            return
+          }
 
           replaceUrlPreservingQuery(pathname || '/')
-          const linked = await tryAutoLinkGuestStakeeOffers(supabase)
-          if (linked) return
+          const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
+          if (linkedStakee) return
+          const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
+          if (linkedBacker) return
           setCurrentView('app')
           return
         }
@@ -312,6 +345,24 @@ function App() {
       if (!navigated) return
       try {
         sessionStorage.setItem('poker_guest_stakee_autolink_done', '1')
+      } catch {
+        // ignore
+      }
+    })
+  }, [user?.id, isChecking, currentView])
+
+  /** Link guest backer slices invited to this account's email, then open Stable Manager. */
+  useEffect(() => {
+    if (!user?.id || isChecking || currentView !== 'app') return
+    try {
+      if (sessionStorage.getItem('poker_guest_backer_autolink_done')) return
+    } catch {
+      // ignore
+    }
+    void tryAutoLinkGuestBackerOffers(supabase).then((navigated) => {
+      if (!navigated) return
+      try {
+        sessionStorage.setItem('poker_guest_backer_autolink_done', '1')
       } catch {
         // ignore
       }
@@ -740,8 +791,14 @@ function App() {
       window.location.pathname || '/',
       window.location.search || '',
     )
+    const stableClaimCtx = parsePokerStableClaimFromLocation(
+      window.location.pathname || '/',
+      window.location.search || '',
+    )
     const signupFromStakeClaim = Boolean(claimCtx)
+    const signupFromStableClaim = Boolean(stableClaimCtx)
     if (claimCtx?.token) stashPokerStakeClaimToken(claimCtx.token)
+    if (stableClaimCtx?.token) stashPokerStableClaimToken(stableClaimCtx.token)
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
@@ -750,7 +807,9 @@ function App() {
         // Other signups: carry ?ref= on redirect when stamped.
         emailRedirectTo: signupFromStakeClaim
           ? stakeClaimSignupEmailRedirectUrl()
-          : authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
+          : signupFromStableClaim
+            ? stableClaimSignupEmailRedirectUrl()
+            : authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
         data: affiliateCode ? { affiliate_code: affiliateCode } : undefined,
       },
     })
@@ -1007,6 +1066,15 @@ function App() {
         setCurrentView('poker-stake-claim')
         return
       }
+      if (
+        parsePokerStableClaimFromLocation(
+          window.location.pathname || '/',
+          window.location.search || '',
+        )
+      ) {
+        setCurrentView('poker-stable-claim')
+        return
+      }
       setCurrentView('app')
       const ctx = readLegalReturnContext()
       if (ctx) finishLegalReturn(ctx)
@@ -1167,6 +1235,38 @@ function App() {
             onOpenAuth={() => openAuthPanel('create')}
             onDone={(redirect) => {
               navigateAfterStakeClaim(redirect)
+            }}
+          />
+        </Suspense>
+        {renderAuthModal('← Cancel')}
+      </>
+    )
+  }
+
+  if (currentView === 'poker-stable-claim') {
+    const claim =
+      typeof window !== 'undefined'
+        ? parsePokerStableClaimFromLocation(
+            window.location.pathname || '/',
+            window.location.search || '',
+          )
+        : null
+    return (
+      <>
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-zinc-950 text-zinc-400 flex items-center justify-center">
+              Loading…
+            </div>
+          }
+        >
+          <PokerStableBackerClaimPage
+            supabaseClient={supabase}
+            token={claim?.token || ''}
+            userId={user?.id ?? null}
+            onOpenAuth={() => openAuthPanel('create')}
+            onDone={(redirect) => {
+              navigateAfterStableClaim(redirect)
             }}
           />
         </Suspense>

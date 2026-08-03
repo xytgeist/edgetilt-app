@@ -1,4 +1,9 @@
 import { buildStakeOnboardingBankrollUrl, stashPokerStakeOnboardingDeal } from './pokerStakeeOnboarding.js'
+import {
+  parsePokerStableClaimFromLocation,
+  stableClaimSignupEmailRedirectUrl,
+  stashPokerStableClaimToken,
+} from '../poker-stable/pokerStableBackerClaimNav.js'
 
 export const POKER_STAKE_CLAIM_RETURN_PATH = '/poker-stake-claim'
 const STAKE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stake_claim_return_token'
@@ -99,6 +104,14 @@ export function authRedirectBaseForCurrentLocation() {
   if (claim?.token) {
     stashPokerStakeClaimToken(claim.token)
     return stakeClaimSignupEmailRedirectUrl()
+  }
+  const stableClaim = parsePokerStableClaimFromLocation(
+    window.location.pathname || '/',
+    window.location.search || '',
+  )
+  if (stableClaim?.token) {
+    stashPokerStableClaimToken(stableClaim.token)
+    return stableClaimSignupEmailRedirectUrl()
   }
   return `${origin}/`
 }

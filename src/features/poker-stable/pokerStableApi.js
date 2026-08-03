@@ -1046,6 +1046,28 @@ export async function guestStakeeClaimByEmail(supabase) {
   return { result: data, error }
 }
 
+/** Guest backer claim preview (anon + auth). */
+export async function guestBackerClaimPreview(supabase, token) {
+  const { data, error } = await supabase.rpc('poker_stable_guest_backer_claim_preview', {
+    p_token: token,
+  })
+  return { preview: data, error }
+}
+
+/** Link signed-in Edge account to a guest backer slice via email claim token. */
+export async function guestBackerClaimLink(supabase, token) {
+  const { data, error } = await supabase.rpc('poker_stable_guest_backer_claim_link', {
+    p_token: token,
+  })
+  return { result: data, error }
+}
+
+/** Link guest backer slices whose invitation email matches the signed-in account. */
+export async function guestBackerClaimByEmail(supabase) {
+  const { data, error } = await supabase.rpc('poker_stable_guest_backer_claim_by_email')
+  return { result: data, error }
+}
+
 /** Stakee accepts a backer-initiated offer (activates deal). */
 export async function stakeeAcceptBackerOffer(supabase, dealId) {
   const { data, error } = await supabase.rpc('poker_stable_stakee_accept_backer_offer', {

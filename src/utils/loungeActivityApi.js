@@ -27,6 +27,14 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   POKER_STABLE_SETTLEMENT_PROPOSED: 'poker_stable_settlement_proposed',
   POKER_STABLE_SETTLEMENT_RESOLVED: 'poker_stable_settlement_resolved',
   POKER_STABLE_COMMIT_RECORDED: 'poker_stable_commit_recorded',
+  POKER_STABLE_BACKER_OFFER: 'poker_stable_backer_offer',
+  POKER_STABLE_STAKEE_ACCEPTED: 'poker_stable_stakee_accepted',
+  POKER_STABLE_STAKEE_DECLINED: 'poker_stable_stakee_declined',
+  POKER_STABLE_STAKEE_COUNTER_PROPOSED: 'poker_stable_stakee_counter_proposed',
+  POKER_STABLE_STAKER_COUNTER_ACCEPTED: 'poker_stable_staker_counter_accepted',
+  POKER_STABLE_STAKER_COUNTER_DECLINED: 'poker_stable_staker_counter_declined',
+  POKER_STABLE_SLICE_ACCEPTED: 'poker_stable_slice_accepted',
+  POKER_STABLE_SLICE_DECLINED: 'poker_stable_slice_declined',
 }
 
 /** Maps `activity_events.event_type` → notification avatar badge kind (null = no badge). */
@@ -69,6 +77,14 @@ export function loungeActivityNotificationBadgeKind(eventType) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_DECLINED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_COUNTER_PROPOSED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_ACCEPTED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED:
       return 'play_log'
     default:
       return null
@@ -276,6 +292,38 @@ export function loungeActivityActionPhrase(event) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED: {
       const detail = String(event?.detail_text || '').trim()
       return detail || 'recorded a stake update — sync your books'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `offered you a backing stake · ${detail}` : 'offered you a backing stake'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `accepted your backing offer · ${detail}` : 'accepted your backing offer'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_DECLINED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `declined your backing offer · ${detail}` : 'declined your backing offer'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_COUNTER_PROPOSED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `proposed new stake terms · ${detail}` : 'proposed new stake terms'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_ACCEPTED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `accepted your counter-proposal · ${detail}` : 'accepted your counter-proposal'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `declined your counter-proposal · ${detail}` : 'declined your counter-proposal'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `accepted your backing slice · ${detail}` : 'accepted your backing slice'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `declined your backing slice · ${detail}` : 'declined your backing slice'
     }
     default: {
       if (String(event?.guide_slug || '').trim()) {

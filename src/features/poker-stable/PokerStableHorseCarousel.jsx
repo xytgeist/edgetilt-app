@@ -89,7 +89,7 @@ export default function PokerStableHorseCarousel({
           showBackerStats && !pendingSettleCommit && sparkSeries.length >= 2
         const cardClassName = `relative w-full overflow-hidden ${STABLE_SURFACE_CARD} p-5 text-left`
 
-        const statsSparkBackground = showSparkBackground ? (
+        const headerSparkBackground = showSparkBackground ? (
           <div
             className="pointer-events-none absolute inset-0"
             data-poker-stable-horse-sparkline-bg
@@ -102,25 +102,28 @@ export default function PokerStableHorseCarousel({
               upClass="text-cyan-400"
               downClass="text-rose-400/90"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/65 via-zinc-950/80 to-zinc-950/92" />
+            <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/45 via-zinc-950/65 to-zinc-950" />
           </div>
         ) : null
 
         const header = (
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="truncate text-xl font-black text-white">
-                {partyLabel?.(deal, 'staker')}
+          <div className="relative overflow-hidden">
+            {headerSparkBackground}
+            <div className="relative z-10 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate text-xl font-black text-white">
+                  {partyLabel?.(deal, 'staker')}
+                </div>
+                <div className="mt-0.5 truncate text-sm text-zinc-400">
+                  {deal.label || dealTypeLabel(deal.deal_type)}
+                </div>
               </div>
-              <div className="mt-0.5 truncate text-sm text-zinc-400">
-                {deal.label || dealTypeLabel(deal.deal_type)}
-              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone}`}
+              >
+                {statusLabel}
+              </span>
             </div>
-            <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone}`}
-            >
-              {statusLabel}
-            </span>
           </div>
         )
 
@@ -175,37 +178,34 @@ export default function PokerStableHorseCarousel({
                   </div>
                 ) : (
                   <div
-                    className={`relative mt-4 overflow-hidden border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-center`}
+                    className={`mt-4 grid grid-cols-2 gap-3 border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-center`}
                   >
-                    {statsSparkBackground}
-                    <div className="relative z-10 grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
-                        <div className="mt-0.5 text-lg font-black tabular-nums text-white">
-                          {roll
-                            ? fmtPoker$(roll.overall_bankroll)
-                            : fmtPoker$(deal.starting_roll ?? deal.baseline_bankroll ?? 0)}
-                        </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
+                      <div className="mt-0.5 text-lg font-black tabular-nums text-white">
+                        {roll
+                          ? fmtPoker$(roll.overall_bankroll)
+                          : fmtPoker$(deal.starting_roll ?? deal.baseline_bankroll ?? 0)}
                       </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-zinc-500">
-                          Your stake MTM
-                        </div>
-                        <div className={`mt-0.5 text-lg font-black tabular-nums ${STABLE_ACCENT_TEXT}`}>
-                          {fmtPoker$(stakeVal)}
-                        </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">
+                        Your stake MTM
                       </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-zinc-500">Est. share</div>
-                        <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
-                          {fmtPoker$(estShare)}
-                        </div>
+                      <div className={`mt-0.5 text-lg font-black tabular-nums ${STABLE_ACCENT_TEXT}`}>
+                        {fmtPoker$(stakeVal)}
                       </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
-                        <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
-                          {stats.sessions} · {fmtPoker$(stats.profit)}
-                        </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">Est. share</div>
+                      <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
+                        {fmtPoker$(estShare)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
+                      <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
+                        {stats.sessions} · {fmtPoker$(stats.profit)}
                       </div>
                     </div>
                   </div>

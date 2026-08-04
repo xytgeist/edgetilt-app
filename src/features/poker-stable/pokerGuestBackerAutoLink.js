@@ -94,7 +94,6 @@ export async function tryAutoLinkGuestBackerOffers(supabase) {
 export async function tryOpenPendingBackerSliceOnboarding(supabase, opts = {}) {
   const force = Boolean(opts.force)
   if (!force && !isPokerStableClaimFlowPending()) return false
-  clearPokerStableClaimFlowPending()
 
   const {
     data: { session },

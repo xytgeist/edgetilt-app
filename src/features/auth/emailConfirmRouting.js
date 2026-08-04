@@ -2,6 +2,8 @@
  * Helpers for Supabase email-confirm landing URLs (guest claim flows + generic verify).
  */
 
+import { isPokerStableClaimFlowPending } from '../poker-stable/pokerStableBackerClaimNav.js'
+
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
 export async function waitForSupabaseSession(supabase, maxMs = 3000) {
   const start = Date.now()
@@ -37,6 +39,7 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
   const stableClaimReturn = parsePokerStableClaimFromLocation(pathname, search)
   const stashedClaimToken = readStashedPokerStakeClaimToken()
   const stashedStableClaimToken = readStashedPokerStableClaimToken()
+  const stableClaimFlowPending = isPokerStableClaimFlowPending()
 
   if (stakeClaimReturn) {
     replaceUrlPreservingQuery(`${pathname}${search}`)
@@ -54,8 +57,6 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
     if (linkedStakee) return true
     const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
     if (linkedBacker) return true
-    const opened = await tryOpenPendingBackerSliceOnboarding(supabase, { force: true })
-    if (opened) return true
   }
 
   if (stashedClaimToken) {
@@ -67,6 +68,15 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
     replaceUrlPreservingQuery(pathname || '/')
     const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stashedStableClaimToken)
     if (resumed) return true
+  }
+
+  if (onHomeAfterConfirm) {
+    const opened = await tryOpenPendingBackerSliceOnboarding(supabase, { force: true })
+    if (opened) return true
+    if (stableClaimFlowPending || stashedStableClaimToken) {
+      const recovered = await recoverStaleStableBackerClaim(supabase)
+      if (recovered) return true
+    }
   }
 
   if (!onHomeAfterConfirm) {

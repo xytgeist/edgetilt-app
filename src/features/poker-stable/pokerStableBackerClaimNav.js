@@ -6,6 +6,7 @@ import {
 const STABLE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stable_claim_return_token'
 const STABLE_CLAIM_TOKEN_LOCAL_KEY = 'poker_stable_claim_return_token_v1'
 const STABLE_CLAIM_FLOW_PENDING_KEY = 'poker_stable_claim_flow_pending'
+const STABLE_CLAIM_FLOW_PENDING_LOCAL_KEY = 'poker_stable_claim_flow_pending_v1'
 
 export const POKER_STABLE_CLAIM_RETURN_PATH = '/poker-stable-claim'
 
@@ -95,6 +96,7 @@ export function markPokerStableClaimFlowPending() {
   if (typeof window === 'undefined') return
   try {
     sessionStorage.setItem(STABLE_CLAIM_FLOW_PENDING_KEY, '1')
+    localStorage.setItem(STABLE_CLAIM_FLOW_PENDING_LOCAL_KEY, '1')
   } catch {
     // ignore
   }
@@ -103,8 +105,10 @@ export function markPokerStableClaimFlowPending() {
 export function consumePokerStableClaimFlowPending() {
   if (typeof window === 'undefined') return false
   try {
-    const pending = sessionStorage.getItem(STABLE_CLAIM_FLOW_PENDING_KEY) === '1'
-    if (pending) sessionStorage.removeItem(STABLE_CLAIM_FLOW_PENDING_KEY)
+    const pending =
+      sessionStorage.getItem(STABLE_CLAIM_FLOW_PENDING_KEY) === '1' ||
+      localStorage.getItem(STABLE_CLAIM_FLOW_PENDING_LOCAL_KEY) === '1'
+    if (pending) clearPokerStableClaimFlowPending()
     return pending
   } catch {
     return false
@@ -115,6 +119,7 @@ export function clearPokerStableClaimFlowPending() {
   if (typeof window === 'undefined') return
   try {
     sessionStorage.removeItem(STABLE_CLAIM_FLOW_PENDING_KEY)
+    localStorage.removeItem(STABLE_CLAIM_FLOW_PENDING_LOCAL_KEY)
   } catch {
     // ignore
   }
@@ -123,7 +128,8 @@ export function clearPokerStableClaimFlowPending() {
 export function isPokerStableClaimFlowPending() {
   if (typeof window === 'undefined') return false
   try {
-    return sessionStorage.getItem(STABLE_CLAIM_FLOW_PENDING_KEY) === '1'
+    if (sessionStorage.getItem(STABLE_CLAIM_FLOW_PENDING_KEY) === '1') return true
+    return localStorage.getItem(STABLE_CLAIM_FLOW_PENDING_LOCAL_KEY) === '1'
   } catch {
     return false
   }

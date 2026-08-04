@@ -371,6 +371,8 @@ function App() {
           const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stableToken)
           if (resumed) return
         }
+        const recovered = await recoverStaleStableBackerClaim(supabase)
+        if (recovered) return
         const stakeToken = readStashedPokerStakeClaimToken()
         if (stakeToken) {
           navigateToStakeClaimPage(stakeToken)

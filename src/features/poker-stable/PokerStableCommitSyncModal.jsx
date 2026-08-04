@@ -7,7 +7,7 @@ import { stableCommitSyncHint } from './pokerStableBooksCopy.js'
 import { stakeeSkipsBackerCommitSync } from './pokerStableTerms.js'
 
 /**
- * Global sync modal for counterparty-recorded Stable commits (from Alerts / push).
+ * Global sync modal for counterparty-recorded Stable commits (from Alerts / push / stake card).
  */
 export default function PokerStableCommitSyncModal({
   supabaseClient,
@@ -35,7 +35,7 @@ export default function PokerStableCommitSyncModal({
       const [{ data: dealRow }, { data: actor }] = await Promise.all([
         supabaseClient
           .from('poker_stable_deals')
-          .select('id, label, deal_type, stakee_user_id, status, baseline_bankroll')
+          .select('id, label, deal_type, stakee_user_id, staker_user_id, status, baseline_bankroll')
           .eq('id', commitRow.deal_id)
           .maybeSingle(),
         supabaseClient
@@ -69,15 +69,15 @@ export default function PokerStableCommitSyncModal({
 
   const alreadyMine = commit?.recorded_by_user_id === userId
   const isStakee = deal?.stakee_user_id === userId
-  const skipStakeeSync = stakeeSkipsBackerCommitSync(deal, userId)
+  const skipStakeeSync = stakeeSkipsBackerCommitSync(deal, userId, commit)
   const isSettleCommit =
     commit?.event_kind === 'periodic_settle' || commit?.event_kind === 'close_settle'
 
   useEffect(() => {
-    if (!loading && skipStakeeSync && isSettleCommit) {
+    if (!loading && skipStakeeSync) {
       onClose?.()
     }
-  }, [loading, skipStakeeSync, isSettleCommit, onClose])
+  }, [loading, skipStakeeSync, onClose])
 
   async function onSync() {
     if (!commit || alreadyMine) return
@@ -96,6 +96,12 @@ export default function PokerStableCommitSyncModal({
     }
   }
 
+  const title = isSettleCommit ? 'Periodic settlement' : 'Sync stake update'
+  const intro =
+    isStakee && isSettleCommit
+      ? `${actorLabel} logged a periodic settlement on ${deal?.label?.trim() || 'this stake'}. Review the details, then commit to update your books.`
+      : `${actorLabel} recorded ${pokerStableCommitEventLabel(commit?.event_kind)} on ${deal?.label?.trim() || 'this stake'}.`
+
   return (
     <div
       className="fixed inset-0 flex items-center justify-center overflow-x-hidden bg-black/60 p-4 backdrop-blur-sm"
@@ -108,13 +114,13 @@ export default function PokerStableCommitSyncModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-bold text-white">Sync stake update</h3>
+          <h3 className="text-lg font-bold text-white">{title}</h3>
           <button
             type="button"
             onClick={onClose}
             className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
           >
-            Close
+            Cancel
           </button>
         </div>
 
@@ -124,35 +130,35 @@ export default function PokerStableCommitSyncModal({
           <p className="text-sm text-rose-300">Commit not found.</p>
         ) : (
           <>
-            <p className="mb-3 text-sm text-zinc-300">
-              <span className="font-semibold text-white">{actorLabel}</span> recorded{' '}
-              <span className="font-semibold text-cyan-400" data-poker-stable-commit-event-label>
-                {pokerStableCommitEventLabel(commit.event_kind)}
-              </span>{' '}
-              on{' '}
-              <span className="font-semibold text-white">
-                {deal?.label?.trim() || 'this stake'}
-              </span>
-              .
-            </p>
+            <p className="mb-3 text-sm leading-relaxed text-zinc-300">{intro}</p>
             <p className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-xs leading-relaxed text-zinc-400">
               {pokerStableCommitSummaryLine(commit)}
             </p>
             <p className="mb-4 text-xs leading-relaxed text-zinc-500">
-              {stableCommitSyncHint(isStakee, isSettleCommit)} If you skip it, your books stay out of
-              sync until you commit later from the stake card.
+              {stableCommitSyncHint(isStakee, isSettleCommit)} Until you commit, your stake card keeps
+              the pre-settlement numbers.
             </p>
             {alreadyMine ? (
               <p className="text-center text-sm text-emerald-400">You recorded this update.</p>
             ) : (
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void onSync()}
-                className="w-full rounded-2xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
-              >
-                {saving ? 'Syncing…' : 'Commit to my books'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={onClose}
+                  className="flex-1 rounded-2xl border border-zinc-600 bg-zinc-800 py-3 text-base font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void onSync()}
+                  className="flex-1 rounded-2xl bg-emerald-600 py-3 text-base font-bold text-white touch-manipulation disabled:opacity-50"
+                >
+                  {saving ? 'Committing…' : 'Commit'}
+                </button>
+              </div>
             )}
           </>
         )}

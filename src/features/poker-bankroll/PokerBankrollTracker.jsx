@@ -58,6 +58,8 @@ import {
   stakeHeroBadgeVariant,
   STAKE_GOES_LIVE_COPY,
   stakeeBankrollShowsClosedCarouselCard,
+  stakeeDisplayDealRoll,
+  stakeePendingSettleCommitForDeal,
   stakeeSkipsBackerCommitSync,
   sliceCounterpartyDisplayName,
 } from '../poker-stable/pokerStableTerms.js'
@@ -76,6 +78,7 @@ import {
   loadDealTopups,
   loadDealReductions,
   loadMyStableDeals,
+  loadPendingCommits,
   nudgeBackerSliceAcceptance,
   notifyStableSessionComplete,
   periodicSettleBackingDeal,
@@ -86,6 +89,7 @@ import {
 import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
 import PokerStableDealDetailSheet from '../poker-stable/PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
+import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
 import {
   archivedStakePersonalBankrollNet,
   buildPersonalSettlementHistoryEvents,
@@ -345,6 +349,9 @@ export default function PokerBankrollTracker({
   const [dealReductionsByDeal, setDealReductionsByDeal] = useState({})
   /** @type {Record<string, object[]>} */
   const [dealSettlementsByDeal, setDealSettlementsByDeal] = useState({})
+  /** Unsynced counterparty stake commits (settle review for backer-initiated stakes). */
+  const [pendingStakeCommits, setPendingStakeCommits] = useState(/** @type {object[]} */ ([]))
+  const [commitSyncId, setCommitSyncId] = useState(/** @type {string | null} */ (null))
   /** @type {'personal' | string} personal or deal id */
   const [bankrollScope, setBankrollScope] = useState('personal')
   const [loading, setLoading] = useState(true)
@@ -517,11 +524,25 @@ export default function PokerBankrollTracker({
     return profit
   }, [isOnStake, dealProfile, scopedSessions])
 
+  const activePendingSettleCommit = useMemo(
+    () =>
+      isOnStake && activeDeal
+        ? stakeePendingSettleCommitForDeal(pendingStakeCommits, activeDeal.id)
+        : null,
+    [isOnStake, activeDeal, pendingStakeCommits],
+  )
+
   const overallBankroll = isOnStake
-    ? dealProfile != null
-      ? Number(dealProfile.overall_bankroll) || 0
-      : (Number(activeDeal?.starting_roll ?? activeDeal?.baseline_bankroll) || 0) +
-        stakeScopeSessionProfit
+    ? stakeeDisplayDealRoll({
+        deal: activeDeal,
+        userId,
+        dealProfile: dealProfile ?? null,
+        pendingSettleCommit: activePendingSettleCommit,
+        settlements: dealSettlementsByDeal[activeDeal?.id] || [],
+        startingRollFallback:
+          (Number(activeDeal?.starting_roll ?? activeDeal?.baseline_bankroll) || 0) +
+          (dealProfile == null && !activePendingSettleCommit ? stakeScopeSessionProfit : 0),
+      })
     : profile != null
       ? Number(profile.overall_bankroll) || 0
       : 0
@@ -782,6 +803,7 @@ export default function PokerBankrollTracker({
         setStableProfilesById({})
         setDealTopupsByDeal({})
         setDealSettlementsByDeal({})
+        setPendingStakeCommits([])
       } else {
         const mine = (dealsRes.deals || []).filter((d) => d.stakee_user_id === userId)
         const carouselDeals = mine.filter((d) => {
@@ -865,6 +887,17 @@ export default function PokerBankrollTracker({
         setDealTopupsByDeal(topupsByDeal)
         setDealReductionsByDeal(reductionsByDeal)
         setDealSettlementsByDeal(settlementsByDeal)
+
+        const { commits: pendingCommits, error: pcErr } = await loadPendingCommits(supabaseClient)
+        if (pcErr && !isMissingStableTableError(pcErr)) {
+          console.warn('[poker-bankroll] pending commits load failed', pcErr.message)
+        }
+        setPendingStakeCommits(
+          (pendingCommits || []).filter((row) => {
+            const deal = dealsById[row.deal_id]
+            return deal && !stakeeSkipsBackerCommitSync(deal, userId, row)
+          }),
+        )
       }
 
       const swapsRes = await loadMyTournamentSwaps(supabaseClient, userId)
@@ -918,6 +951,14 @@ export default function PokerBankrollTracker({
 
   useEffect(() => {
     void loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    const onReload = () => {
+      void loadData({ silent: true })
+    }
+    window.addEventListener('lounge-push-opened', onReload)
+    return () => window.removeEventListener('lounge-push-opened', onReload)
   }, [loadData])
 
   /** Reload stake carousel when tab/window refocuses (backer accept while app backgrounded). */
@@ -1292,14 +1333,20 @@ export default function PokerBankrollTracker({
         count: counted,
       }
       const scopeDeal = onStake ? stakeeDeals.find((d) => d.id === scopeId) ?? null : null
+      const pendingSettle = stakeePendingSettleCommitForDeal(pendingStakeCommits, scopeId)
       let scopeRoll = onStake
-        ? dealProfiles[scopeId] != null
-          ? Number(dealProfiles[scopeId].overall_bankroll) || 0
-          : Number(scopeDeal?.starting_roll ?? scopeDeal?.baseline_bankroll) || 0
+        ? stakeeDisplayDealRoll({
+            deal: scopeDeal,
+            userId,
+            dealProfile: dealProfiles[scopeId] ?? null,
+            pendingSettleCommit: pendingSettle,
+            settlements: dealSettlementsByDeal[scopeId] || [],
+            startingRollFallback: Number(scopeDeal?.starting_roll ?? scopeDeal?.baseline_bankroll) || 0,
+          })
         : profile != null
           ? Number(profile.overall_bankroll) || 0
           : 0
-      if (onStake && dealProfiles[scopeId] == null) {
+      if (onStake && dealProfiles[scopeId] == null && !pendingSettle) {
         scopeRoll += scopeStats.profit
       }
       const ordered = [...scopeFiltered]
@@ -1334,6 +1381,7 @@ export default function PokerBankrollTracker({
         spark,
         overallBankroll: scopeRoll,
         deal: scopeDeal,
+        pendingSettleCommit: pendingSettle,
       }
     }
     /** @type {Record<string, ReturnType<typeof buildScopeHero>>} */
@@ -1345,6 +1393,8 @@ export default function PokerBankrollTracker({
     stakeeDeals,
     stakeeDealsById,
     dealProfiles,
+    dealSettlementsByDeal,
+    pendingStakeCommits,
     profile,
     typeFilter,
     venueFilter,
@@ -3227,6 +3277,29 @@ export default function PokerBankrollTracker({
                                 </ul>
                               )}
                             </div>
+                          ) : hero.pendingSettleCommit ? (
+                            <div
+                              data-poker-stake-needs-attn
+                              className="flex h-full min-h-10 flex-col justify-center gap-2 rounded-xl border border-amber-500/25 bg-amber-950/30 px-3 py-2 text-left"
+                            >
+                              <p className="text-xs leading-snug text-amber-100/95">
+                                <span className="font-bold uppercase tracking-wide text-amber-300/90">
+                                  Needs attn:
+                                </span>{' '}
+                                {dealLeadBackerDisplayName(hero.deal, stableProfilesById)}{' '}
+                                logged a periodic settlement. Click to review.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCommitSyncId(String(hero.pendingSettleCommit.commit_id))
+                                  triggerTapHapticLight()
+                                }}
+                                className="self-start rounded-lg bg-amber-500/20 px-3 py-1.5 text-[11px] font-bold text-amber-100 touch-manipulation active:bg-amber-500/30"
+                              >
+                                Review settlement
+                              </button>
+                            </div>
                           ) : hero.spark.length >= 2 ? (
                             <button
                               type="button"
@@ -3986,6 +4059,17 @@ export default function PokerBankrollTracker({
           onAccept={() => void handleStakeOnboardingAccept(onboardingDeal.id)}
           onDecline={() => void handleStakeOnboardingDecline(onboardingDeal.id)}
           onOfferNewTerms={() => handleStakeOnboardingOfferNewTerms(onboardingDeal.id)}
+        />
+      ) : null}
+
+      {commitSyncId && supabaseClient && userId ? (
+        <PokerStableCommitSyncModal
+          supabaseClient={supabaseClient}
+          userId={userId}
+          commitId={commitSyncId}
+          onClose={() => setCommitSyncId(null)}
+          onSynced={() => void loadData({ silent: true })}
+          onError={setError}
         />
       ) : null}
 

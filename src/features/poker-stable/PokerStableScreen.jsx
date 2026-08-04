@@ -216,7 +216,7 @@ export default function PokerStableScreen({
       setPendingCommits(
         (commitsRes.commits || []).filter((row) => {
           const deal = rows.find((d) => d.id === row.deal_id)
-          return !stakeeSkipsBackerCommitSync(deal, userId)
+          return !stakeeSkipsBackerCommitSync(deal, userId, row)
         }),
       )
       if (sessionsRes.error) console.warn('[poker-stable] sessions', sessionsRes.error.message)

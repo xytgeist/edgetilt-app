@@ -268,10 +268,50 @@ export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
   return !hasActiveEdgeSlice
 }
 
-/** Backer-initiated stakes: player never manually syncs backer close/settle commits. */
-export function stakeeSkipsBackerCommitSync(deal, userId) {
+/** Backer-initiated stakes: player skips top-up/reduce sync; periodic/close settle still requires review. */
+export function stakeeSkipsBackerCommitSync(deal, userId, commit = null) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false
-  return Boolean(deal.staker_user_id)
+  if (!deal.staker_user_id) return false
+  if (commit) {
+    const kind = commit.event_kind || commit.eventKind
+    return kind !== 'periodic_settle' && kind !== 'close_settle'
+  }
+  return true
+}
+
+/** Pending periodic/close settle commit for a stakee deal (unsynced counterparty record). */
+export function stakeePendingSettleCommitForDeal(commits, dealId) {
+  if (!dealId) return null
+  return (
+    (commits || []).find(
+      (row) =>
+        row.deal_id === dealId &&
+        (row.event_kind === 'periodic_settle' || row.event_kind === 'close_settle'),
+    ) || null
+  )
+}
+
+/**
+ * Stakee Bankroll hero roll: hold pre-settle roll until the player commits a counterparty settle.
+ * @param {object} args
+ */
+export function stakeeDisplayDealRoll({
+  deal,
+  userId,
+  dealProfile,
+  pendingSettleCommit = null,
+  settlements = [],
+  startingRollFallback = 0,
+}) {
+  const stored = dealProfile != null ? Number(dealProfile.overall_bankroll) || 0 : startingRollFallback
+  if (!deal || !userId || deal.stakee_user_id !== userId || !pendingSettleCommit) {
+    return stored
+  }
+  const settlement = (settlements || []).find((row) => row.id === pendingSettleCommit.ref_id)
+  if (settlement?.roll_at_settle != null) {
+    return Number(settlement.roll_at_settle) || 0
+  }
+  return stored
 }
 
 /** Stakee Bankroll carousel keeps closed stakes until manually archived. */

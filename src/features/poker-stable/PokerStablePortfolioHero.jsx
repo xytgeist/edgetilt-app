@@ -301,27 +301,27 @@ export default function PokerStablePortfolioHero({
           </div>
         </div>
         <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">At-risk ROI</div>
-          <div className={`mt-0.5 text-xs font-bold tabular-nums ${pctToneClass(m.atRiskReturnPct)}`}>
-            {fmtPct(m.atRiskReturnPct)}
-          </div>
-        </div>
-        <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">TWR</div>
-          <div className={`mt-0.5 text-xs font-bold tabular-nums ${pctToneClass(m.twrPct)}`}>
-            {fmtPct(m.twrPct)}
-          </div>
-        </div>
-        <div>
           <div className="text-[9px] font-bold uppercase text-zinc-500">Stakes MTM</div>
           <div className="mt-0.5 text-xs font-bold tabular-nums text-zinc-200">
             {fmtPoker$(m.stakeValueMtm ?? 0)}
           </div>
         </div>
         <div>
+          <div className="text-[9px] font-bold uppercase text-zinc-500">At-risk ROI</div>
+          <div className={`mt-0.5 text-xs font-bold tabular-nums ${pctToneClass(m.atRiskReturnPct)}`}>
+            {fmtPct(m.atRiskReturnPct)}
+          </div>
+        </div>
+        <div>
           <div className="text-[9px] font-bold uppercase text-zinc-500">Horses</div>
           <div className="mt-0.5 text-xs font-bold tabular-nums text-zinc-200">
             {m.activeHorseCount ?? 0}
+          </div>
+        </div>
+        <div>
+          <div className="text-[9px] font-bold uppercase text-zinc-500">TWR</div>
+          <div className={`mt-0.5 text-xs font-bold tabular-nums ${pctToneClass(m.twrPct)}`}>
+            {fmtPct(m.twrPct)}
           </div>
         </div>
         <div>

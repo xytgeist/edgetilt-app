@@ -419,7 +419,7 @@ export default function PokerBankrollTracker({
   const stakeScopeRevoked = activeDeal?.status === 'revoked'
   const stakeScopeClosedUnarchived =
     isOnStake && stakeeBankrollShowsClosedCarouselCard(activeDeal)
-  const stakeScopeSessionBlocked = stakeScopePending || stakeScopeClosedUnarchived
+  const stakeScopeSessionBlocked = stakeScopeRevoked || stakeScopeClosedUnarchived
   const pendingBackerOffer =
     isOnStake &&
     activeDeal?.status === 'pending' &&
@@ -1718,9 +1718,7 @@ export default function PokerBankrollTracker({
       setError(
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : stakeScopeClosedUnarchived
-            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
-            : 'Sessions unlock when backers accept this stake.',
+          : 'This stake is closed. Archive it from the banner above when you are done reviewing.',
       )
       return
     }
@@ -1790,9 +1788,7 @@ export default function PokerBankrollTracker({
       setError(
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : stakeScopeClosedUnarchived
-            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
-            : 'Sessions unlock when backers accept this stake.',
+          : 'This stake is closed. Archive it from the banner above when you are done reviewing.',
       )
       return
     }

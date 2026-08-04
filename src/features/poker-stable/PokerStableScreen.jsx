@@ -47,6 +47,7 @@ import {
   loadDealTopups,
   loadMyStableDeals,
   loadPendingCommits,
+  nudgeBackerSliceAcceptance,
   revokeHorseDeal,
   depositBackerBankroll,
   withdrawBackerBankroll,
@@ -111,6 +112,7 @@ export default function PokerStableScreen({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [nudgingSliceId, setNudgingSliceId] = useState(null)
   const [schemaMissing, setSchemaMissing] = useState(false)
   const [slicesByDeal, setSlicesByDeal] = useState(/** @type {Record<string, object[]>} */ ({}))
   const [sheet, setSheet] = useState(/** @type {null | 'request'} */ (null))
@@ -564,6 +566,21 @@ export default function PokerStableScreen({
     }
   }
 
+  async function onNudgePendingBacker(dealId, sliceId) {
+    if (!supabaseClient || !dealId || !sliceId || nudgingSliceId) return
+    setError('')
+    setNudgingSliceId(sliceId)
+    try {
+      const { error: nudgeErr } = await nudgeBackerSliceAcceptance(supabaseClient, dealId, sliceId)
+      if (nudgeErr) throw nudgeErr
+      triggerTapHapticLight()
+    } catch (e) {
+      setError(e?.message || 'Could not send reminder.')
+    } finally {
+      setNudgingSliceId(null)
+    }
+  }
+
   function partyLabel(deal, role) {
     if (role === 'staker') {
       return dealStakeeDisplayName(deal, profilesById)
@@ -818,6 +835,9 @@ export default function PokerStableScreen({
               partyLabel={partyLabel}
               onOpenDeal={openDealDetail}
               onRevoke={onRevoke}
+              onNudgePendingBacker={onNudgePendingBacker}
+              nudgingSliceId={nudgingSliceId}
+              nudgeDisabled={saving}
             />
           )}
         </section>

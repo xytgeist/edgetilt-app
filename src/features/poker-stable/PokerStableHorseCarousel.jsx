@@ -5,6 +5,10 @@ import {
   backerSliceStakeValue,
 } from './pokerStableBackerMath.js'
 import { dealTypeLabel } from './pokerStableMath.js'
+import {
+  pendingBackerNudgeTargetsForActiveBacker,
+  sliceCounterpartyDisplayName,
+} from './pokerStableTerms.js'
 
 function statusLabel(status) {
   if (status === 'active') return 'Active'
@@ -31,6 +35,9 @@ export default function PokerStableHorseCarousel({
   partyLabel,
   onOpenDeal,
   onRevoke,
+  onNudgePendingBacker,
+  nudgingSliceId = null,
+  nudgeDisabled = false,
 }) {
   if (!deals.length) return null
 
@@ -44,9 +51,10 @@ export default function PokerStableHorseCarousel({
       renderSlide={(slide) => {
         const deal = deals.find((d) => d.id === slide.id)
         if (!deal) return null
-        const slice = (slicesByDeal[deal.id] || []).find(
-          (s) => s.staker_user_id === userId && s.status === 'active',
-        ) || (slicesByDeal[deal.id] || []).find((s) => s.staker_user_id === userId)
+        const dealSlices = slicesByDeal[deal.id] || []
+        const slice =
+          dealSlices.find((s) => s.staker_user_id === userId && s.status === 'active') ||
+          dealSlices.find((s) => s.staker_user_id === userId)
         const roll = bankrollByDeal[deal.id]
         const stats = statsByDeal[deal.id] || { sessions: 0, profit: 0 }
         const stakeVal = slice ? backerSliceStakeValue(deal, slice, roll) : 0
@@ -55,6 +63,11 @@ export default function PokerStableHorseCarousel({
           stats.profit > 0 ? 'text-emerald-400' : stats.profit < 0 ? 'text-rose-400' : 'text-zinc-300'
         const sliceAccepted = slice?.status === 'active'
         const showBackerStats = deal.status === 'active' || sliceAccepted
+        const pendingNudgeSlices = pendingBackerNudgeTargetsForActiveBacker(
+          deal,
+          dealSlices,
+          userId,
+        )
 
         return (
           <button
@@ -81,32 +94,69 @@ export default function PokerStableHorseCarousel({
             </div>
 
             {showBackerStats ? (
-              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-amber-500/15 pt-3 text-center">
-                <div>
-                  <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
-                  <div className="mt-0.5 text-lg font-black tabular-nums text-white">
-                    {roll ? fmtPoker$(roll.overall_bankroll) : fmtPoker$(deal.starting_roll ?? deal.baseline_bankroll ?? 0)}
+              <>
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-amber-500/15 pt-3 text-center">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
+                    <div className="mt-0.5 text-lg font-black tabular-nums text-white">
+                      {roll
+                        ? fmtPoker$(roll.overall_bankroll)
+                        : fmtPoker$(deal.starting_roll ?? deal.baseline_bankroll ?? 0)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-zinc-500">Your stake MTM</div>
+                    <div className="mt-0.5 text-lg font-black tabular-nums text-amber-300">
+                      {fmtPoker$(stakeVal)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-zinc-500">Est. share</div>
+                    <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
+                      {fmtPoker$(estShare)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
+                    <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
+                      {stats.sessions} · {fmtPoker$(stats.profit)}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase text-zinc-500">Your stake MTM</div>
-                  <div className="mt-0.5 text-lg font-black tabular-nums text-amber-300">
-                    {fmtPoker$(stakeVal)}
+                {pendingNudgeSlices.length > 0 ? (
+                  <div
+                    data-poker-stake-pending-backers
+                    className="mt-3 space-y-1.5 border-t border-amber-500/15 pt-3 text-left"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {pendingNudgeSlices.map((pendingSlice) => {
+                      const backerName = sliceCounterpartyDisplayName(pendingSlice, profilesById)
+                      const nudging = nudgingSliceId === pendingSlice.id
+                      return (
+                        <div
+                          key={pendingSlice.id}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
+                        >
+                          <span className="min-w-0 text-xs leading-snug text-amber-100/90">
+                            Pending acceptance by {backerName}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={Boolean(nudgingSliceId) || nudgeDisabled}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void onNudgePendingBacker?.(deal.id, pendingSlice.id)
+                            }}
+                            className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
+                          >
+                            {nudging ? 'Sending…' : 'Nudge'}
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase text-zinc-500">Est. share</div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
-                    {fmtPoker$(estShare)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
-                  <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
-                    {stats.sessions} · {fmtPoker$(stats.profit)}
-                  </div>
-                </div>
-              </div>
+                ) : null}
+              </>
             ) : (
               <>
                 <p className="mt-3 text-xs text-amber-200/80">Pending acceptance</p>

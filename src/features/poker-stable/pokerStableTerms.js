@@ -74,6 +74,24 @@ export function pendingBackerAcceptanceSlices(deal, slices = []) {
   return slices.filter((s) => s.status === 'pending')
 }
 
+/** Player stake card: at least one backer slice accepted (switches hero copy to nudge rows). */
+export function dealHasAcceptedBackerSlice(_deal, slices = []) {
+  return (slices || []).some((s) => s.status === 'active')
+}
+
+/** Stable horse card: pending co-backer slices an active backer can nudge (excludes viewer). */
+export function pendingBackerNudgeTargetsForActiveBacker(deal, slices = [], viewerUserId) {
+  if (!deal || !viewerUserId) return []
+  if (!dealHasAcceptedBackerSlice(deal, slices)) return []
+  const viewerActive = (slices || []).some(
+    (s) => s.staker_user_id === viewerUserId && s.status === 'active',
+  )
+  if (!viewerActive) return []
+  return pendingBackerAcceptanceSlices(deal, slices).filter(
+    (s) => s.staker_user_id !== viewerUserId,
+  )
+}
+
 export const STAKE_GOES_LIVE_COPY =
   'Once you and at least one backer accept, this stake goes live.'
 

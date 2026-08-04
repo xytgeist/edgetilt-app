@@ -52,6 +52,7 @@ import {
   archivedStakeOutcomeLabel,
   dealLeadBackerDisplayName,
   pendingBackerAcceptanceSlices,
+  dealHasAcceptedBackerSlice,
   STAKE_GOES_LIVE_COPY,
   stakeeBankrollShowsClosedCarouselCard,
   stakeeSkipsBackerCommitSync,
@@ -2983,10 +2984,15 @@ export default function PokerBankrollTracker({
                 const theme = onStake
                   ? stakeHeroTheme(stakeHeroThemeIndexForDeal(scopeId, stakeeDeals))
                   : null
+                const dealSlices = slicesByDeal[scopeId] || []
                 const pendingBackerSlices =
                   onStake && hero.deal && !isBackerInitiatedBackingDeal(hero.deal)
-                    ? pendingBackerAcceptanceSlices(hero.deal, slicesByDeal[scopeId] || [])
+                    ? pendingBackerAcceptanceSlices(hero.deal, dealSlices)
                     : []
+                const hasAcceptedBackerSlice =
+                  onStake && hero.deal
+                    ? dealHasAcceptedBackerSlice(hero.deal, dealSlices)
+                    : false
                 const stakeHeroMessage =
                   onStake && hero.deal?.status === 'revoked'
                     ? 'revoked'
@@ -3146,40 +3152,41 @@ export default function PokerBankrollTracker({
                               data-poker-stake-pending-backers
                               className="space-y-2 text-left"
                             >
-                              {hero.deal?.status === 'pending' ? (
+                              {!hasAcceptedBackerSlice ? (
                                 <p className="text-xs leading-snug text-amber-200/85">
                                   {STAKE_GOES_LIVE_COPY}
                                 </p>
-                              ) : null}
-                              <ul className="space-y-1.5">
-                                {pendingBackerSlices.map((slice) => {
-                                  const backerName = sliceCounterpartyDisplayName(
-                                    slice,
-                                    stableProfilesById,
-                                  )
-                                  const nudging = nudgingSliceId === slice.id
-                                  return (
-                                    <li
-                                      key={slice.id}
-                                      className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
-                                    >
-                                      <span className="min-w-0 text-xs leading-snug text-amber-100/90">
-                                        Pending acceptance by {backerName}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        disabled={Boolean(nudgingSliceId) || saving}
-                                        onClick={() =>
-                                          void onNudgePendingBacker(scopeId, slice.id)
-                                        }
-                                        className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
+                              ) : (
+                                <ul className="space-y-1.5">
+                                  {pendingBackerSlices.map((slice) => {
+                                    const backerName = sliceCounterpartyDisplayName(
+                                      slice,
+                                      stableProfilesById,
+                                    )
+                                    const nudging = nudgingSliceId === slice.id
+                                    return (
+                                      <li
+                                        key={slice.id}
+                                        className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
                                       >
-                                        {nudging ? 'Sending…' : 'Nudge'}
-                                      </button>
-                                    </li>
-                                  )
-                                })}
-                              </ul>
+                                        <span className="min-w-0 text-xs leading-snug text-amber-100/90">
+                                          Pending acceptance by {backerName}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          disabled={Boolean(nudgingSliceId) || saving}
+                                          onClick={() =>
+                                            void onNudgePendingBacker(scopeId, slice.id)
+                                          }
+                                          className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
+                                        >
+                                          {nudging ? 'Sending…' : 'Nudge'}
+                                        </button>
+                                      </li>
+                                    )
+                                  })}
+                                </ul>
+                              )}
                             </div>
                           ) : hero.spark.length >= 2 ? (
                             <button

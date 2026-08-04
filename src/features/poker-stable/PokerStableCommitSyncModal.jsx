@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
-import { loadDealCommit, syncDealCommit } from './pokerStableApi.js'
+import {
+  loadDealCommit,
+  loadDealCounterpartyProfiles,
+  loadDealSlices,
+  loadSettlementBundle,
+  syncDealCommit,
+} from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
 import { stableCommitSyncHint } from './pokerStableBooksCopy.js'
 import { stakeeSkipsBackerCommitSync } from './pokerStableTerms.js'
+import PokerStableSettleCommitBreakdown from './PokerStableSettleCommitBreakdown.jsx'
 
 /**
  * Global sync modal for counterparty-recorded Stable commits (from Alerts / push / stake card).
@@ -22,6 +29,11 @@ export default function PokerStableCommitSyncModal({
   const [commit, setCommit] = useState(null)
   const [deal, setDeal] = useState(null)
   const [actorProfile, setActorProfile] = useState(null)
+  const [settlement, setSettlement] = useState(null)
+  const [settlementLines, setSettlementLines] = useState([])
+  const [settlementCalc, setSettlementCalc] = useState(null)
+  const [slices, setSlices] = useState([])
+  const [profilesById, setProfilesById] = useState({})
 
   const loadBundle = useCallback(async () => {
     if (!supabaseClient || !commitId || !userId) return
@@ -35,7 +47,9 @@ export default function PokerStableCommitSyncModal({
       const [{ data: dealRow }, { data: actor }] = await Promise.all([
         supabaseClient
           .from('poker_stable_deals')
-          .select('id, label, deal_type, stakee_user_id, staker_user_id, status, baseline_bankroll')
+          .select(
+            'id, label, deal_type, stakee_user_id, staker_user_id, status, baseline_bankroll, makeup_enabled',
+          )
           .eq('id', commitRow.deal_id)
           .maybeSingle(),
         supabaseClient
@@ -45,9 +59,47 @@ export default function PokerStableCommitSyncModal({
           .maybeSingle(),
       ])
 
+      const isSettleCommit =
+        commitRow.event_kind === 'periodic_settle' || commitRow.event_kind === 'close_settle'
+
+      let nextSettlement = null
+      let nextLines = []
+      let nextCalc = null
+      let nextSlices = []
+      let nextProfilesById = {}
+
+      if (isSettleCommit && commitRow.ref_id) {
+        const [{ settlement: st, lines, calc, error: stErr }, { byDeal, error: slErr }] =
+          await Promise.all([
+            loadSettlementBundle(supabaseClient, commitRow.ref_id),
+            loadDealSlices(supabaseClient, [commitRow.deal_id]),
+          ])
+        if (stErr) throw stErr
+        if (slErr) throw slErr
+        nextSettlement = st
+        nextLines = lines
+        nextCalc = calc
+        nextSlices = byDeal[commitRow.deal_id] || []
+        if (dealRow) {
+          const { byId, error: pErr } = await loadDealCounterpartyProfiles(
+            supabaseClient,
+            [dealRow],
+            userId,
+            { [dealRow.id]: nextSlices },
+          )
+          if (pErr) throw pErr
+          nextProfilesById = byId
+        }
+      }
+
       setCommit(commitRow)
       setDeal(dealRow || null)
       setActorProfile(actor || null)
+      setSettlement(nextSettlement)
+      setSettlementLines(nextLines)
+      setSettlementCalc(nextCalc)
+      setSlices(nextSlices)
+      setProfilesById(nextProfilesById)
     } catch (e) {
       onError?.(e?.message || 'Could not load stake commit.')
     } finally {
@@ -72,6 +124,7 @@ export default function PokerStableCommitSyncModal({
   const skipStakeeSync = stakeeSkipsBackerCommitSync(deal, userId, commit)
   const isSettleCommit =
     commit?.event_kind === 'periodic_settle' || commit?.event_kind === 'close_settle'
+  const isCloseSettle = commit?.event_kind === 'close_settle'
 
   useEffect(() => {
     if (!loading && skipStakeeSync) {
@@ -96,10 +149,14 @@ export default function PokerStableCommitSyncModal({
     }
   }
 
-  const title = isSettleCommit ? 'Periodic settlement' : 'Sync stake update'
+  const title = isCloseSettle
+    ? 'Close settlement'
+    : isSettleCommit
+      ? 'Periodic settlement'
+      : 'Sync stake update'
   const intro =
     isStakee && isSettleCommit
-      ? `${actorLabel} logged a periodic settlement on ${deal?.label?.trim() || 'this stake'}. Review the details, then commit to update your books.`
+      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}. Review the money breakdown, then commit to update your books.`
       : `${actorLabel} recorded ${pokerStableCommitEventLabel(commit?.event_kind)} on ${deal?.label?.trim() || 'this stake'}.`
 
   return (
@@ -131,12 +188,28 @@ export default function PokerStableCommitSyncModal({
         ) : (
           <>
             <p className="mb-3 text-sm leading-relaxed text-zinc-300">{intro}</p>
-            <p className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-xs leading-relaxed text-zinc-400">
-              {pokerStableCommitSummaryLine(commit)}
-            </p>
+            {isSettleCommit && settlement && settlementCalc ? (
+              <PokerStableSettleCommitBreakdown
+                deal={deal}
+                settlement={settlement}
+                lines={settlementLines}
+                calc={settlementCalc}
+                slices={slices}
+                profilesById={profilesById}
+                isStakee={isStakee}
+                isCloseSettle={isCloseSettle}
+                viewerUserId={userId}
+              />
+            ) : (
+              <p className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-xs leading-relaxed text-zinc-400">
+                {pokerStableCommitSummaryLine(commit)}
+              </p>
+            )}
             <p className="mb-4 text-xs leading-relaxed text-zinc-500">
-              {stableCommitSyncHint(isStakee, isSettleCommit)} Until you commit, your stake card keeps
-              the pre-settlement numbers.
+              {stableCommitSyncHint(isStakee, isSettleCommit)}
+              {isStakee && isSettleCommit
+                ? ' Until you commit, your stake card keeps the pre-settlement numbers.'
+                : ''}
             </p>
             {alreadyMine ? (
               <p className="text-center text-sm text-emerald-400">You recorded this update.</p>

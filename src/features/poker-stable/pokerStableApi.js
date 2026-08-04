@@ -1409,7 +1409,7 @@ export async function recordDealReduction(supabase, args) {
   return { reduction: reduction || null, error: loadErr }
 }
 
-async function loadSettlementBundle(supabase, settlementId) {
+export async function loadSettlementBundle(supabase, settlementId) {
   const { data: settlement, error: stErr } = await supabase
     .from('poker_stable_deal_settlements')
     .select('*')

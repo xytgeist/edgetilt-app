@@ -153,10 +153,30 @@ export function enrichBankrollByDealFromSessions(deals = [], bankrollByDeal = {}
   return out
 }
 
-export function backerSliceStakeValue(deal, slice, dealRoll, sessions = []) {
+function backerSliceBackerProfitPct(slice) {
+  const playerPct = Number(slice?.player_profit_pct) || 50
+  return slice?.pricing_mode === 'markup' ? 100 : 100 - playerPct
+}
+
+/**
+ * Backer's economic P/L on the stake vs baseline (signed), after action % and profit split.
+ */
+export function backerSliceEconomicPlShare(deal, slice, dealRoll, sessions = []) {
+  const baseline = Number(deal?.baseline_bankroll) || 0
   const roll = resolveDealOverallRoll(deal, dealRoll, sessions)
   const pct = Number(slice?.action_pct) || 0
-  return roundMoney(roll * (pct / 100))
+  const backerProfitPct = backerSliceBackerProfitPct(slice)
+  return roundMoney((roll - baseline) * (pct / 100) * (backerProfitPct / 100))
+}
+
+/**
+ * Mark-to-market value of backer's slice: deployed capital + economic P/L vs baseline.
+ */
+export function backerSliceStakeValue(deal, slice, dealRoll, sessions = []) {
+  return roundMoney(
+    backerSliceAllocatedCapital(deal, slice) +
+      backerSliceEconomicPlShare(deal, slice, dealRoll, sessions),
+  )
 }
 
 /**
@@ -176,14 +196,7 @@ export function backerSliceSessionShare(deal, slice, session) {
  * Backer's estimated share of profit above baseline on an active deal.
  */
 export function backerSliceEstimatedShare(deal, slice, dealRoll, sessions = []) {
-  const baseline = Number(deal?.baseline_bankroll) || 0
-  const roll = resolveDealOverallRoll(deal, dealRoll, sessions)
-  const profitAbove = roundMoney(Math.max(0, roll - baseline))
-  if (profitAbove <= 0) return 0
-  const pct = Number(slice?.action_pct) || 0
-  const playerPct = Number(slice?.player_profit_pct) || 50
-  const backerProfitPct = slice?.pricing_mode === 'markup' ? 100 : 100 - playerPct
-  return roundMoney(profitAbove * (pct / 100) * (backerProfitPct / 100))
+  return roundMoney(Math.max(0, backerSliceEconomicPlShare(deal, slice, dealRoll, sessions)))
 }
 
 export function viewerActiveBackingSlice(dealId, slicesByDeal, userId) {

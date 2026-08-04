@@ -184,15 +184,10 @@ export async function loadDealBankrollProfiles(supabase, dealIds) {
 export async function loadDealCounterpartyProfiles(supabase, deals, selfUserId, slicesByDeal = {}) {
   const ids = new Set()
   for (const d of deals || []) {
-    if (d.stakee_user_id === selfUserId && d.staker_user_id) ids.add(d.staker_user_id)
-    if (d.staker_user_id === selfUserId && d.stakee_user_id) ids.add(d.stakee_user_id)
-    if (d.stakee_user_id === selfUserId) {
-      for (const s of slicesByDeal[d.id] || []) {
-        if (s.staker_user_id) ids.add(s.staker_user_id)
-      }
-    }
+    if (d.stakee_user_id && d.stakee_user_id !== selfUserId) ids.add(d.stakee_user_id)
+    if (d.staker_user_id && d.staker_user_id !== selfUserId) ids.add(d.staker_user_id)
     for (const s of slicesByDeal[d.id] || []) {
-      if (s.staker_user_id === selfUserId && d.stakee_user_id) ids.add(d.stakee_user_id)
+      if (s.staker_user_id && s.staker_user_id !== selfUserId) ids.add(s.staker_user_id)
     }
   }
   const profileIds = [...ids].filter(Boolean)

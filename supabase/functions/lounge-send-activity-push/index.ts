@@ -109,11 +109,30 @@ async function waitForChatDmDebounce(
   return 'ready'
 }
 
-function actorDisplayName(profile: ActorProfile | null | undefined): string {
+function parsePokerStableActivityDetail(detail: string | null | undefined): {
+  backerName: string
+  dealLabel: string
+} {
+  const raw = String(detail || '').trim()
+  if (!raw) return { backerName: '', dealLabel: '' }
+  const sep = raw.indexOf(' · ')
+  if (sep === -1) return { backerName: '', dealLabel: raw }
+  return {
+    backerName: raw.slice(0, sep).trim(),
+    dealLabel: raw.slice(sep + 3).trim(),
+  }
+}
+
+function actorDisplayName(
+  profile: ActorProfile | null | undefined,
+  detailText?: string | null,
+): string {
   const name = String(profile?.display_name || '').trim()
   if (name) return name
   const handle = String(profile?.handle || '').trim()
   if (handle) return handle.startsWith('@') ? handle : `@${handle}`
+  const { backerName } = parsePokerStableActivityDetail(detailText)
+  if (backerName) return backerName
   return 'Member'
 }
 
@@ -416,7 +435,7 @@ function buildSingleNotification(
       activityEventId: event.id,
     }
   }
-  const who = actorDisplayName(actor)
+  const who = actorDisplayName(actor, event.detail_text)
   if (event.event_type === 'chat_call_missed') {
     return {
       title: pushTitleForEventType(event.event_type),
@@ -452,7 +471,9 @@ function buildSingleNotification(
     event.event_type === 'poker_stable_slice_accepted' ||
     event.event_type === 'poker_stable_slice_declined'
   ) {
-    const detail = String(event.detail_text || '').trim()
+    const detailRaw = String(event.detail_text || '').trim()
+    const { dealLabel } = parsePokerStableActivityDetail(event.detail_text)
+    const detail = dealLabel || detailRaw
     const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
     return {
       title: 'Poker Stable',

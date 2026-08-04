@@ -5401,8 +5401,8 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   --pss-reassign-btn-active: #f0fdf4;
   --pss-reassign-primary: #16a34a;
   --pss-reassign-primary-active: #15803d;
-  background: linear-gradient(145deg, #86efac 0%, #86efac 18%, #bbf7d0 58%, #d1fae5 82%, #f0fdf4 100%) !important;
-  border-color: rgba(22, 163, 74, 0.35) !important;
+  background: linear-gradient(145deg, #ecfdf5 0%, #f7fef9 45%, #ffffff 100%) !important;
+  border-color: #bbf7d0 !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='0'] .text-emerald-300 {
   color: #15803d !important;
@@ -5415,8 +5415,8 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   --pss-reassign-btn-active: #eff6ff;
   --pss-reassign-primary: #2563eb;
   --pss-reassign-primary-active: #1d4ed8;
-  background: linear-gradient(145deg, #93c5fd 0%, #93c5fd 18%, #bfdbfe 58%, #dbeafe 82%, #eff6ff 100%) !important;
-  border-color: rgba(37, 99, 235, 0.32) !important;
+  background: linear-gradient(145deg, #eff6ff 0%, #f8fbff 45%, #ffffff 100%) !important;
+  border-color: #bfdbfe !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='1'] .text-blue-300 {
   color: #1d4ed8 !important;
@@ -5429,8 +5429,8 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   --pss-reassign-btn-active: #fff1f2;
   --pss-reassign-primary: #e11d48;
   --pss-reassign-primary-active: #be123c;
-  background: linear-gradient(145deg, #fecdd3 0%, #fecdd3 18%, #ffe4e6 58%, #fff1f2 82%, #fff5f6 100%) !important;
-  border-color: rgba(190, 18, 60, 0.32) !important;
+  background: linear-gradient(145deg, #fff1f2 0%, #fff8f8 45%, #ffffff 100%) !important;
+  border-color: #fecdd3 !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='2'] .text-rose-300 {
   color: #be123c !important;
@@ -5443,8 +5443,8 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   --pss-reassign-btn-active: #f0fdf4;
   --pss-reassign-primary: #16a34a;
   --pss-reassign-primary-active: #15803d;
-  background: linear-gradient(145deg, #bbf7d0 0%, #bbf7d0 16%, #d1fae5 55%, #ecfdf5 84%, #f7fef9 100%) !important;
-  border-color: rgba(22, 163, 74, 0.32) !important;
+  background: linear-gradient(145deg, #f0fdf4 0%, #f8fefb 45%, #ffffff 100%) !important;
+  border-color: #bbf7d0 !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='3'] .text-emerald-300 {
   color: #15803d !important;
@@ -5457,8 +5457,8 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   --pss-reassign-btn-active: #eff6ff;
   --pss-reassign-primary: #2563eb;
   --pss-reassign-primary-active: #1d4ed8;
-  background: linear-gradient(145deg, #bfdbfe 0%, #bfdbfe 16%, #dbeafe 55%, #eff6ff 84%, #f8fbff 100%) !important;
-  border-color: rgba(37, 99, 235, 0.32) !important;
+  background: linear-gradient(145deg, #eff6ff 0%, #f8fbff 45%, #ffffff 100%) !important;
+  border-color: #bfdbfe !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='4'] .text-blue-300 {
   color: #1d4ed8 !important;
@@ -5471,8 +5471,8 @@ html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-
   --pss-reassign-btn-active: #f4f4f5;
   --pss-reassign-primary: #52525b;
   --pss-reassign-primary-active: #3f3f46;
-  background: linear-gradient(145deg, #e4e4e7 0%, #e4e4e7 16%, #f4f4f5 55%, #fafafa 84%, #ffffff 100%) !important;
-  border-color: rgba(113, 113, 122, 0.32) !important;
+  background: linear-gradient(145deg, #f4f4f5 0%, #fafafa 45%, #ffffff 100%) !important;
+  border-color: #e4e4e7 !important;
 }
 html.light [data-poker-stable-sheet] .poker-stable-slice-card[data-poker-stable-slice-tone='5'] .font-bold.text-zinc-300 {
   color: #52525b !important;
@@ -5607,17 +5607,57 @@ html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-cancel-bt
 
 /* ── Poker Stable sheet - light mode (dark unchanged) ──── */
 html.light [data-poker-stable-sheet] {
+  --poker-stable-chrome: #d97706;
+  --poker-stable-chrome-soft: #fffbeb;
+  --poker-stable-chrome-border: #fcd34d;
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
 }
 html.light [data-poker-stable-sheet] .text-white {
   color: #18181b !important;
 }
+html.light [data-poker-stable-sheet] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-sheet] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
 html.light [data-poker-stable-sheet] .text-zinc-400 {
   color: #52525b !important;
 }
 html.light [data-poker-stable-sheet] .text-zinc-500 {
   color: #71717a !important;
+}
+html.light [data-poker-stable-sheet] .text-amber-100 {
+  color: #92400e !important;
+}
+html.light [data-poker-stable-sheet] .text-rose-400,
+html.light [data-poker-stable-sheet] .text-rose-300 {
+  color: #be123c !important;
+}
+html.light [data-poker-stable-sheet] .text-emerald-300,
+html.light [data-poker-stable-sheet] .text-emerald-300\/90 {
+  color: #047857 !important;
+}
+html.light [data-poker-stable-sheet] .text-cyan-200,
+html.light [data-poker-stable-sheet] .text-cyan-200\/90 {
+  color: #0e7490 !important;
+}
+html.light [data-poker-stable-sheet] .border-amber-500\/20,
+html.light [data-poker-stable-sheet] .border-amber-500\/35 {
+  border-color: var(--poker-stable-chrome-border) !important;
+}
+html.light [data-poker-stable-sheet] .bg-amber-950\/20,
+html.light [data-poker-stable-sheet] .bg-amber-950\/25 {
+  background-color: var(--poker-stable-chrome-soft) !important;
+}
+html.light [data-poker-stable-sheet] .border-zinc-800,
+html.light [data-poker-stable-sheet] .border-zinc-700\/80 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-sheet] .bg-zinc-900\/40,
+html.light [data-poker-stable-sheet] .bg-zinc-900\/60 {
+  background-color: #fafafa !important;
 }
 html.light [data-poker-stable-sheet] input {
   background-color: #f4f4f5 !important;
@@ -5639,15 +5679,34 @@ html.light [data-poker-stable-sheet] textarea::placeholder {
 html.light [data-poker-stable-sheet] .bg-zinc-800 {
   background-color: #f4f4f5 !important;
 }
-html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn] {
-  background-color: #d97706 !important;
+html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn],
+html.light [data-poker-stable-sheet] .bg-amber-600,
+html.light [data-poker-stable-sheet] .bg-amber-600\/90 {
+  background-color: var(--poker-stable-chrome) !important;
   color: #ffffff !important;
 }
-html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:active {
+html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:active,
+html.light [data-poker-stable-sheet] .bg-amber-600:active,
+html.light [data-poker-stable-sheet] .bg-amber-600\/90:active {
   background-color: #b45309 !important;
+}
+html.light [data-poker-stable-sheet] .bg-emerald-600,
+html.light [data-poker-stable-sheet] .bg-emerald-600.text-white {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] .bg-emerald-600:active {
+  background-color: #047857 !important;
 }
 html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:disabled {
   color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-reduce-stake-block] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stake-history-line] .opacity-70 {
+  opacity: 0.55 !important;
 }
 html.light [data-poker-stable-sheet] [data-poker-stable-form-error] {
   background-color: #fff1f2 !important;

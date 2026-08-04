@@ -1,5 +1,7 @@
 /** Lounge in-app activity notifications (Phase H1). */
 
+import { parsePokerStableActivityDetail } from '../features/poker-stable/pokerStableActivityDetail.js'
+
 export const LOUNGE_ACTIVITY_PAGE_SIZE = 30
 
 export const LOUNGE_ACTIVITY_EVENT_TYPES = {
@@ -130,6 +132,8 @@ export function loungeActivityActorLabel(event) {
   if (name) return name
   const handle = String(event?.actor_handle || '').trim()
   if (handle) return `@${handle}`
+  const { backerName } = parsePokerStableActivityDetail(event?.detail_text)
+  if (backerName) return backerName
   return 'Someone'
 }
 
@@ -318,11 +322,13 @@ export function loungeActivityActionPhrase(event) {
       return detail ? `declined your counter-proposal · ${detail}` : 'declined your counter-proposal'
     }
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED: {
-      const detail = String(event?.detail_text || '').trim()
+      const { dealLabel } = parsePokerStableActivityDetail(event?.detail_text)
+      const detail = dealLabel || String(event?.detail_text || '').trim()
       return detail ? `accepted your backing slice · ${detail}` : 'accepted your backing slice'
     }
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED: {
-      const detail = String(event?.detail_text || '').trim()
+      const { dealLabel } = parsePokerStableActivityDetail(event?.detail_text)
+      const detail = dealLabel || String(event?.detail_text || '').trim()
       return detail ? `declined your backing slice · ${detail}` : 'declined your backing slice'
     }
     default: {

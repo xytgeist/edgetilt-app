@@ -14,6 +14,7 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
   saving = false,
   onAccept,
   onDecline,
+  onEditTerms,
 }) {
   const [declineConfirm, setDeclineConfirm] = useState(false)
 
@@ -48,7 +49,7 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
         </h2>
         <p className="mt-2 text-center text-sm leading-relaxed text-zinc-300">
           {playerName} invited you to back them on EdgeTilt Stable Manager. Review the terms below,
-          then accept or decline your slice.
+          then accept, decline, or propose changes.
         </p>
 
         {offerDetails ? (
@@ -99,6 +100,14 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
               className="min-w-[7.5rem] flex-1 rounded-2xl bg-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50 sm:flex-none"
             >
               Decline
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => onEditTerms?.()}
+              className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+            >
+              Edit terms
             </button>
           </div>
         )}

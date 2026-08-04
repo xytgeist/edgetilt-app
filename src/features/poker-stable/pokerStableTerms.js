@@ -31,7 +31,10 @@ function sliceBackerShortName(slice, profilesById = {}) {
     return first || displayName
   }
   const handle = profile?.handle ? String(profile.handle).replace(/^@+/, '') : ''
-  return handle ? `@${handle}` : 'Stake'
+  if (handle) return `@${handle}`
+  const inviteLabel = String(slice.guest_label || slice.guestLabel || '').trim()
+  if (inviteLabel) return inviteLabel.split(/\s+/)[0] || inviteLabel
+  return 'Stake'
 }
 
 /** Edge profile picker / locked typeahead: "Joey K (@smokewagon)". */
@@ -68,11 +71,10 @@ export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
   }
   const stakerId = slice.staker_user_id || slice.stakerUserId
   const profile = stakerId ? profilesById[stakerId] : null
-  const displayName = profile?.display_name?.trim()
-  const handle = profile?.handle ? String(profile.handle).replace(/^@+/, '') : ''
-  if (displayName && handle) return `${displayName} (@${handle})`
-  if (displayName) return displayName
-  if (handle) return `@${handle}`
+  const profileName = edgeProfileDisplayName(profile)
+  if (profileName) return profileName
+  const inviteLabel = String(slice.guest_label || slice.guestLabel || '').trim()
+  if (inviteLabel) return inviteLabel
   return 'Backer'
 }
 

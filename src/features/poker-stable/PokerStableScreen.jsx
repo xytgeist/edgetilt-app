@@ -348,6 +348,14 @@ export default function PokerStableScreen({
     closeBackerSliceOnboarding()
   }
 
+  function onEditTermsBackerSliceOnboarding() {
+    const dealId = backerOnboardingSliceRow?.deal?.id
+    if (!dealId) return
+    setBackerSliceOnboardingOpen(false)
+    setEditTermsDealId(dealId)
+    triggerTapHapticLight()
+  }
+
   useEffect(() => {
     if (!detailDealId || !userId) return
     const deal = deals.find((d) => d.id === detailDealId)
@@ -1040,6 +1048,7 @@ export default function PokerStableScreen({
           saving={saving}
           onAccept={() => void onAcceptBackerSliceOnboarding()}
           onDecline={() => void onDeclineBackerSliceOnboarding()}
+          onEditTerms={onEditTermsBackerSliceOnboarding}
         />
       ) : null}
     </>

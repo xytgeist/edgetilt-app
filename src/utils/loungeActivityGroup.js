@@ -1,4 +1,5 @@
 import { LOUNGE_ACTIVITY_EVENT_TYPES } from './loungeActivityApi.js'
+import { parsePokerStableActivityDetail } from '../features/poker-stable/pokerStableActivityDetail.js'
 
 const GROUPABLE_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.LIKE,
@@ -34,7 +35,7 @@ export function loungeActivityGroupKey(event) {
 }
 
 export function loungeActivityEventToActorProfile(event) {
-  return {
+  const profile = {
     user_id: event.actor_user_id,
     handle: event.actor_handle,
     display_name: event.actor_display_name,
@@ -42,6 +43,11 @@ export function loungeActivityEventToActorProfile(event) {
     role: event.actor_role,
     is_og: event.actor_is_og,
   }
+  if (!String(profile.display_name || '').trim() && !String(profile.handle || '').trim()) {
+    const { backerName } = parsePokerStableActivityDetail(event?.detail_text)
+    if (backerName) profile.display_name = backerName
+  }
+  return profile
 }
 
 export function loungeActivityActorDisplayName(actor) {

@@ -156,7 +156,7 @@ export default function PokerStableCommitSyncModal({
       : 'Sync stake update'
   const intro =
     isStakee && isSettleCommit
-      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}. Review the money breakdown, then commit to update your books.`
+      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}.`
       : `${actorLabel} recorded ${pokerStableCommitEventLabel(commit?.event_kind)} on ${deal?.label?.trim() || 'this stake'}.`
 
   return (

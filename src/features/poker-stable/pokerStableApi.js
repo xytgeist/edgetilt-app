@@ -1715,6 +1715,45 @@ export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
 }
 
 /**
+ * Notify guest syndicate co-backers when a lead backer creates a stake with friend slices.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} dealId
+ * @param {{ sliceIds?: string[] }} [opts]
+ */
+export async function notifyStableGuestSyndicateBackers(supabase, dealId, opts = {}) {
+  let {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    return { data: null, error: new Error('Sign in again, then retry.'), notifiedCount: 0 }
+  }
+
+  const nowSecs = Math.floor(Date.now() / 1000)
+  if (!session.expires_at || session.expires_at - nowSecs < 60) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    if (refreshed?.session?.access_token) session = refreshed.session
+  }
+
+  const body = { deal_id: dealId, kind: 'guest_syndicate_backer_offer' }
+  if (opts.sliceIds?.length) body.slice_ids = opts.sliceIds
+
+  const { data, error, response } = await supabase.functions.invoke('poker-stable-notify', {
+    body,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  if (error) {
+    const msg = await messageFromStableNotifyInvoke(error, response)
+    return { data: null, error: new Error(msg), notifiedCount: 0 }
+  }
+  const payload = parseStableNotifyPayload(data)
+  if (payload?.error) {
+    return { data: payload, error: new Error(payload.error), notifiedCount: 0 }
+  }
+  const notifiedCount = Number(payload?.notified_count) || 0
+  return { data: payload, error: null, notifiedCount }
+}
+
+/**
  * Notify a guest player (not on Edge) when a backer creates a stake for them.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId

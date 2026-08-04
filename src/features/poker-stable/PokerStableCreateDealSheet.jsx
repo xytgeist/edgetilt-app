@@ -6,7 +6,7 @@ import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import StablePlayerPicker from './StablePlayerPicker.jsx'
-import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests, notifyStableGuestStakee, stakeeProposeCounterTerms } from './pokerStableApi.js'
+import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests, notifyStableGuestStakee, notifyStableGuestSyndicateBackers, stakeeProposeCounterTerms } from './pokerStableApi.js'
 import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
 import {
   backerSliceAllocatedCapital,
@@ -553,6 +553,14 @@ function PokerStableDealFormSheet({
     )
   }
 
+  function friendSlicesHadGuestContact() {
+    return friendSlices.some(
+      (sl) =>
+        sl.isGuest &&
+        (String(sl.guestEmail || '').trim() || String(sl.guestPhone || '').trim()),
+    )
+  }
+
   async function submit() {
     if (!supabaseClient || !userId) return
     onSavingChange(true)
@@ -730,20 +738,37 @@ function PokerStableDealFormSheet({
         createdDeal = deal
       }
       let guestNotifyWarning = null
-      if (isBacker && createdDeal?.id && playerIsGuest) {
-        const hadGuestContact =
-          String(playerGuestEmail || '').trim() || String(playerGuestPhone || '').trim()
-        if (hadGuestContact) {
-          const { error: notifyErr, notifiedCount } = await notifyStableGuestStakee(
+      if (isBacker && createdDeal?.id) {
+        if (playerIsGuest) {
+          const hadGuestContact =
+            String(playerGuestEmail || '').trim() || String(playerGuestPhone || '').trim()
+          if (hadGuestContact) {
+            const { error: notifyErr, notifiedCount } = await notifyStableGuestStakee(
+              supabaseClient,
+              createdDeal.id,
+            )
+            if (notifyErr) {
+              guestNotifyWarning = notifyErr.message || 'Guest player notify failed.'
+              console.warn('[poker-stable] guest stakee notify failed', guestNotifyWarning)
+            } else if (notifiedCount === 0) {
+              guestNotifyWarning =
+                'Guest player notify did not send. Check email/phone on the guest player.'
+            }
+          }
+        }
+        if (friendSlicesHadGuestContact()) {
+          const { error: notifyErr, notifiedCount } = await notifyStableGuestSyndicateBackers(
             supabaseClient,
             createdDeal.id,
           )
           if (notifyErr) {
-            guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
-            console.warn('[poker-stable] guest stakee notify failed', guestNotifyWarning)
+            const msg = notifyErr.message || 'Guest syndicate backer notify failed.'
+            guestNotifyWarning = guestNotifyWarning ? `${guestNotifyWarning} ${msg}` : msg
+            console.warn('[poker-stable] guest syndicate backer notify failed', msg)
           } else if (notifiedCount === 0) {
-            guestNotifyWarning =
-              'Guest notify did not send. Check email/phone on the guest player.'
+            const msg =
+              'Guest syndicate backer notify did not send. Check email/phone on the guest slice.'
+            guestNotifyWarning = guestNotifyWarning ? `${guestNotifyWarning} ${msg}` : msg
           }
         }
       } else if (!isBacker && !isBackerPropose && createdDeal?.id) {

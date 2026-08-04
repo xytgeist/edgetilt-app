@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
+import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
-import {
-  loadDealCommit,
-  loadDealCounterpartyProfiles,
-  loadDealSlices,
-  loadSettlementBundle,
-  syncDealCommit,
-} from './pokerStableApi.js'
+import { loadDealCommit, loadSettlementBundle, syncDealCommit } from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
 import { stableCommitSyncHint } from './pokerStableBooksCopy.js'
+import { stableNum } from './pokerStableMath.js'
 import { stakeeSkipsBackerCommitSync } from './pokerStableTerms.js'
-import PokerStableSettleCommitBreakdown from './PokerStableSettleCommitBreakdown.jsx'
 
 /**
  * Global sync modal for counterparty-recorded Stable commits (from Alerts / push / stake card).
@@ -30,10 +25,7 @@ export default function PokerStableCommitSyncModal({
   const [deal, setDeal] = useState(null)
   const [actorProfile, setActorProfile] = useState(null)
   const [settlement, setSettlement] = useState(null)
-  const [settlementLines, setSettlementLines] = useState([])
-  const [settlementCalc, setSettlementCalc] = useState(null)
-  const [slices, setSlices] = useState([])
-  const [profilesById, setProfilesById] = useState({})
+  const [playerPersonalCredit, setPlayerPersonalCredit] = useState(null)
 
   const loadBundle = useCallback(async () => {
     if (!supabaseClient || !commitId || !userId) return
@@ -47,9 +39,7 @@ export default function PokerStableCommitSyncModal({
       const [{ data: dealRow }, { data: actor }] = await Promise.all([
         supabaseClient
           .from('poker_stable_deals')
-          .select(
-            'id, label, deal_type, stakee_user_id, staker_user_id, status, baseline_bankroll, makeup_enabled',
-          )
+          .select('id, label, deal_type, stakee_user_id, staker_user_id, status, baseline_bankroll')
           .eq('id', commitRow.deal_id)
           .maybeSingle(),
         supabaseClient
@@ -63,43 +53,23 @@ export default function PokerStableCommitSyncModal({
         commitRow.event_kind === 'periodic_settle' || commitRow.event_kind === 'close_settle'
 
       let nextSettlement = null
-      let nextLines = []
-      let nextCalc = null
-      let nextSlices = []
-      let nextProfilesById = {}
+      let nextPlayerCredit = null
 
       if (isSettleCommit && commitRow.ref_id) {
-        const [{ settlement: st, lines, calc, error: stErr }, { byDeal, error: slErr }] =
-          await Promise.all([
-            loadSettlementBundle(supabaseClient, commitRow.ref_id),
-            loadDealSlices(supabaseClient, [commitRow.deal_id]),
-          ])
+        const { settlement: st, calc, error: stErr } = await loadSettlementBundle(
+          supabaseClient,
+          commitRow.ref_id,
+        )
         if (stErr) throw stErr
-        if (slErr) throw slErr
         nextSettlement = st
-        nextLines = lines
-        nextCalc = calc
-        nextSlices = byDeal[commitRow.deal_id] || []
-        if (dealRow) {
-          const { byId, error: pErr } = await loadDealCounterpartyProfiles(
-            supabaseClient,
-            [dealRow],
-            userId,
-            { [dealRow.id]: nextSlices },
-          )
-          if (pErr) throw pErr
-          nextProfilesById = byId
-        }
+        nextPlayerCredit = calc ? stableNum(calc.player_net) : null
       }
 
       setCommit(commitRow)
       setDeal(dealRow || null)
       setActorProfile(actor || null)
       setSettlement(nextSettlement)
-      setSettlementLines(nextLines)
-      setSettlementCalc(nextCalc)
-      setSlices(nextSlices)
-      setProfilesById(nextProfilesById)
+      setPlayerPersonalCredit(nextPlayerCredit)
     } catch (e) {
       onError?.(e?.message || 'Could not load stake commit.')
     } finally {
@@ -125,6 +95,8 @@ export default function PokerStableCommitSyncModal({
   const isSettleCommit =
     commit?.event_kind === 'periodic_settle' || commit?.event_kind === 'close_settle'
   const isCloseSettle = commit?.event_kind === 'close_settle'
+  const showPlayerSettleCredit =
+    isStakee && isSettleCommit && settlement && playerPersonalCredit != null
 
   useEffect(() => {
     if (!loading && skipStakeeSync) {
@@ -156,7 +128,7 @@ export default function PokerStableCommitSyncModal({
       : 'Sync stake update'
   const intro =
     isStakee && isSettleCommit
-      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}.`
+      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}. Review the details, then commit to update your books.`
       : `${actorLabel} recorded ${pokerStableCommitEventLabel(commit?.event_kind)} on ${deal?.label?.trim() || 'this stake'}.`
 
   return (
@@ -188,23 +160,36 @@ export default function PokerStableCommitSyncModal({
         ) : (
           <>
             <p className="mb-3 text-sm leading-relaxed text-zinc-300">{intro}</p>
-            {isSettleCommit && settlement && settlementCalc ? (
-              <PokerStableSettleCommitBreakdown
-                deal={deal}
-                settlement={settlement}
-                lines={settlementLines}
-                calc={settlementCalc}
-                slices={slices}
-                profilesById={profilesById}
-                isStakee={isStakee}
-                isCloseSettle={isCloseSettle}
-                viewerUserId={userId}
-              />
+
+            {showPlayerSettleCredit ? (
+              <>
+                <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                  Roll {fmtPoker$(settlement.roll_at_settle)} · Baseline{' '}
+                  {fmtPoker$(settlement.baseline_at_settle)} at settlement
+                </p>
+                <div
+                  data-poker-stable-settle-player-credit
+                  className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-4 text-center"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/80">
+                    Personal bankroll on commit
+                  </div>
+                  <div
+                    className={`mt-1 text-3xl font-black tabular-nums ${
+                      playerPersonalCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                    }`}
+                  >
+                    {playerPersonalCredit >= 0 ? '+' : ''}
+                    {fmtPoker$(playerPersonalCredit)}
+                  </div>
+                </div>
+              </>
             ) : (
               <p className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-xs leading-relaxed text-zinc-400">
                 {pokerStableCommitSummaryLine(commit)}
               </p>
             )}
+
             <p className="mb-4 text-xs leading-relaxed text-zinc-500">
               {stableCommitSyncHint(isStakee, isSettleCommit)}
               {isStakee && isSettleCommit

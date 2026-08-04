@@ -1,33 +1,28 @@
-import { roundMoney } from './pokerStableMath.js'
+import { roundMoney, stakeDealIsLiveForStakee } from './pokerStableMath.js'
 import { pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
-
-/** Player + Stake on Bankroll (`deal.staker_user_id` null). */
-export function isPlayerInitiatedBackingDeal(deal) {
-  return Boolean(deal?.stakee_user_id) && deal?.staker_user_id == null
-}
 
 /**
  * Backer's slice capital is deployed (debited from backing bankroll), not pending hold.
+ * Same gate as player Bankroll: stake live = player accepted + at least one backer accepted.
  * @param {object} deal
  * @param {object} slice
+ * @param {object[]} [slices]
  */
-export function backerSliceCapitalIsDeployed(deal, slice) {
+export function backerSliceCapitalIsDeployed(deal, slice, slices = []) {
   if (!deal || !slice || slice.status !== 'active') return false
-  if (deal.status === 'active') return true
-  if (deal.status === 'pending' && isPlayerInitiatedBackingDeal(deal)) return true
-  return false
+  return stakeDealIsLiveForStakee(deal, slices)
 }
 
 /**
  * Backer's slice capital is reserved as a pending hold (not yet debited).
  * @param {object} deal
  * @param {object} slice
+ * @param {object[]} [slices]
  */
-export function backerSliceCapitalIsPendingHold(deal, slice) {
+export function backerSliceCapitalIsPendingHold(deal, slice, slices = []) {
   if (!deal || !slice || slice.status === 'declined' || slice.status === 'cancelled') return false
   if (slice.status === 'pending') return true
-  if (deal.status !== 'pending') return false
-  if (slice.status === 'active' && !isPlayerInitiatedBackingDeal(deal)) return true
+  if (slice.status === 'active' && !stakeDealIsLiveForStakee(deal, slices)) return true
   return false
 }
 
@@ -63,11 +58,12 @@ export function computeBackerActiveAllocatedCapital({ deals = [], slicesByDeal =
   let total = 0
   for (const deal of deals) {
     if (deal.status !== 'active' && deal.status !== 'pending') continue
-    const slices = (slicesByDeal[deal.id] || []).filter(
+    const dealSlices = slicesByDeal[deal.id] || []
+    const slices = dealSlices.filter(
       (s) => s.staker_user_id === userId && s.status !== 'declined',
     )
     for (const slice of slices) {
-      if (!backerSliceCapitalIsDeployed(deal, slice)) continue
+      if (!backerSliceCapitalIsDeployed(deal, slice, dealSlices)) continue
       total = roundMoney(total + backerSliceAllocatedCapital(deal, slice))
     }
   }
@@ -83,16 +79,25 @@ export function computeBackerBackingBankroll({
   realizedBackingPl = 0,
   activeAllocatedCapital = 0,
   storedBankrollBalance = 0,
+  pendingHold = 0,
 }) {
   const manual = computeBackerManualAdjustmentTotal(adjustments)
   if (adjustments.length) {
     return roundMoney(manual + roundMoney(realizedBackingPl) - roundMoney(activeAllocatedCapital))
   }
-  return roundMoney(storedBankrollBalance)
+  // Stored balance may still reflect legacy pending allocation debits; pending holds are
+  // annotated separately on the hero and must not reduce backing bankroll or portfolio.
+  const stored = roundMoney(storedBankrollBalance)
+  const hold = roundMoney(pendingHold)
+  if (hold > 0 && stored < hold) {
+    // Legacy rows may still store pending allocation as a bankroll debit.
+    return roundMoney(stored + hold)
+  }
+  return stored
 }
 
 /**
- * Capital reserved on pending stakes (horse has not accepted yet).
+ * Capital reserved until the stake is live (player + at least one backer accepted).
  * Sum of baseline × action % for the viewer's non-declined slices on pending deals.
  */
 export function computeBackerPendingHold({ deals = [], slicesByDeal = {}, userId }) {
@@ -100,11 +105,12 @@ export function computeBackerPendingHold({ deals = [], slicesByDeal = {}, userId
   let pendingHold = 0
   for (const deal of deals) {
     if (!['pending', 'active'].includes(deal.status)) continue
-    const slices = (slicesByDeal[deal.id] || []).filter(
+    const dealSlices = slicesByDeal[deal.id] || []
+    const slices = dealSlices.filter(
       (s) => s.staker_user_id === userId && s.status !== 'declined',
     )
     for (const slice of slices) {
-      if (!backerSliceCapitalIsPendingHold(deal, slice)) continue
+      if (!backerSliceCapitalIsPendingHold(deal, slice, dealSlices)) continue
       pendingHold = roundMoney(pendingHold + backerSliceAllocatedCapital(deal, slice))
     }
   }
@@ -446,12 +452,14 @@ export function computeBackerPortfolioMetrics({
     realizedBackingPl: realizedPl,
     activeAllocatedCapital,
     storedBankrollBalance: storedBankrollBalance ?? liquidBankroll ?? 0,
+    pendingHold,
   })
 
   for (const deal of deals) {
     if (!['active', 'pending'].includes(deal.status)) continue
 
-    const slices = (slicesByDeal[deal.id] || []).filter(
+    const dealSlices = slicesByDeal[deal.id] || []
+    const slices = dealSlices.filter(
       (s) => s.staker_user_id === userId && s.counterparty_kind === 'user',
     )
     if (!slices.length) continue
@@ -462,7 +470,7 @@ export function computeBackerPortfolioMetrics({
       if (slice.status !== 'active' && slice.status !== 'pending') continue
       const allocated = backerSliceAllocatedCapital(deal, slice)
 
-      if (backerSliceCapitalIsDeployed(deal, slice)) {
+      if (backerSliceCapitalIsDeployed(deal, slice, dealSlices)) {
         capitalAtRisk = roundMoney(capitalAtRisk + allocated)
         activeHorseCount += 1
         stakeValueMtm = roundMoney(

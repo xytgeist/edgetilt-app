@@ -3,7 +3,12 @@
  */
 import { pokerSessionWinLoss } from './pokerBankrollMath.js'
 import { sessionSwapSettlementDelta } from './pokerTournamentSwapMath.js'
-import { roundMoney, stableNum, sumSliceActionPct } from '../poker-stable/pokerStableMath.js'
+import {
+  roundMoney,
+  stableNum,
+  stakeDealIsLiveForStakee,
+  sumSliceActionPct,
+} from '../poker-stable/pokerStableMath.js'
 import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
 
 /**
@@ -20,11 +25,14 @@ export function isPersonalHistorySession(session, dealsById = {}) {
  * Personal metrics (Option B): own sessions + on-stake + merged stake sessions.
  * @param {object | null | undefined} session
  * @param {Record<string, object>} [dealsById]
+ * @param {Record<string, object[]>} [slicesByDeal]
  */
-export function isPersonalMetricSession(session, dealsById = {}) {
+export function isPersonalMetricSession(session, dealsById = {}, slicesByDeal = {}) {
   if (!session?.deal_id) return true
-  const status = dealsById[session.deal_id]?.status
-  return status === 'active' || status === 'pending' || status === 'settled'
+  const deal = dealsById[session.deal_id]
+  if (!deal) return false
+  if (deal.status === 'settled') return true
+  return stakeDealIsLiveForStakee(deal, slicesByDeal[session.deal_id] || [])
 }
 
 /**

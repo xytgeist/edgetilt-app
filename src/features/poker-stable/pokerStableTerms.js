@@ -1,6 +1,14 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue } from '../../utils/moneyInputFormat.js'
-import { computeDealMakeup, dealTypeLabel, isOngoingDealType } from './pokerStableMath.js'
+import {
+  computeDealMakeup,
+  dealHasAcceptedBackerSlice,
+  dealTypeLabel,
+  isOngoingDealType,
+  stakeDealIsLiveForStakee,
+} from './pokerStableMath.js'
+
+export { dealHasAcceptedBackerSlice, stakeDealIsLiveForStakee } from './pokerStableMath.js'
 
 export function pricingModeLabel(mode) {
   return mode === 'markup' ? 'Markup' : 'Profit split'
@@ -74,11 +82,6 @@ export function pendingBackerAcceptanceSlices(deal, slices = []) {
   return slices.filter((s) => s.status === 'pending')
 }
 
-/** Player stake card: at least one backer slice accepted (switches hero copy to nudge rows). */
-export function dealHasAcceptedBackerSlice(_deal, slices = []) {
-  return (slices || []).some((s) => s.status === 'active')
-}
-
 /** Stable horse card: pending co-backer slices an active backer can nudge (excludes viewer). */
 export function pendingBackerNudgeTargetsForActiveBacker(deal, slices = [], viewerUserId) {
   if (!deal || !viewerUserId) return []
@@ -92,17 +95,9 @@ export function pendingBackerNudgeTargetsForActiveBacker(deal, slices = [], view
   )
 }
 
-/**
- * Player + at least one backer accepted — stake is live for carousel badges
- * (deal row may still be `pending` while other backers are outstanding).
- */
+/** Player Bankroll hero badge: stake is live (see {@link stakeDealIsLiveForStakee}). */
 export function stakeDealShowsOnStakeBadge(deal, slices = []) {
-  if (!deal) return false
-  if (deal.status === 'revoked' || deal.status === 'declined') return false
-  if (deal.status === 'active') return true
-  if (deal.status !== 'pending') return false
-  if (!dealHasAcceptedBackerSlice(deal, slices)) return false
-  return Boolean(deal.stakee_user_id && deal.staker_user_id == null)
+  return stakeDealIsLiveForStakee(deal, slices)
 }
 
 /** Player Bankroll stake hero badge variant (`data-poker-stake-hero-badge`). */
@@ -111,9 +106,9 @@ export function stakeHeroBadgeVariant(deal, slices = []) {
   if (deal.status === 'revoked') return 'revoked'
   if (stakeeBankrollShowsClosedCarouselCard(deal)) return 'closed'
   if (deal.status === 'declined') return 'declined'
-  if (stakeDealShowsOnStakeBadge(deal, slices)) return 'active'
+  if (stakeDealIsLiveForStakee(deal, slices)) return 'active'
   if (deal.status === 'pending') return 'pending'
-  return 'active'
+  return null
 }
 
 export function stakeHeroBadgeLabel(deal, slices = []) {
@@ -133,14 +128,13 @@ export function stakeHeroBadgeLabel(deal, slices = []) {
 
 /** Stable horse carousel status pill when deal is live vs still pending. */
 export function stakeHorseCardStatusLabel(deal, slices = []) {
-  if (stakeDealShowsOnStakeBadge(deal, slices)) return 'Active'
+  if (stakeDealIsLiveForStakee(deal, slices)) return 'Active'
   if (deal?.status === 'pending') return 'Pending'
-  if (deal?.status === 'active') return 'Active'
   return deal?.status || 'Unknown'
 }
 
 export function stakeHorseCardStatusTone(deal, slices = []) {
-  if (stakeDealShowsOnStakeBadge(deal, slices) || deal?.status === 'active') {
+  if (stakeDealIsLiveForStakee(deal, slices)) {
     return 'bg-amber-500/20 text-amber-300'
   }
   if (deal?.status === 'pending') return 'bg-amber-500/15 text-amber-200/90'

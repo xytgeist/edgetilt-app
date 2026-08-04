@@ -90,7 +90,7 @@ import {
   buildPersonalSettlementHistoryEvents,
   buildStakeDealHistoryEvents,
 } from '../poker-stable/pokerStableDealHistory.js'
-import { playerSelfOwnedActionPct } from '../poker-stable/pokerStableMath.js'
+import { playerSelfOwnedActionPct, stakeDealIsLiveForStakee } from '../poker-stable/pokerStableMath.js'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -426,7 +426,11 @@ export default function PokerBankrollTracker({
   const stakeScopeRevoked = activeDeal?.status === 'revoked'
   const stakeScopeClosedUnarchived =
     isOnStake && stakeeBankrollShowsClosedCarouselCard(activeDeal)
-  const stakeScopeSessionBlocked = stakeScopeRevoked || stakeScopeClosedUnarchived
+  const activeDealSlices = slicesByDeal[bankrollScope] || []
+  const stakeScopeLive =
+    isOnStake && stakeDealIsLiveForStakee(activeDeal, activeDealSlices)
+  const stakeScopeSessionBlocked =
+    stakeScopeRevoked || stakeScopeClosedUnarchived || (isOnStake && activeDeal && !stakeScopeLive)
   const pendingBackerOffer =
     isOnStake &&
     activeDeal?.status === 'pending' &&
@@ -457,8 +461,8 @@ export default function PokerBankrollTracker({
   }, [sessions, isOnStake, bankrollScope, stakeeDealsById])
 
   const personalMetricSessions = useMemo(
-    () => sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById)),
-    [sessions, stakeeDealsById],
+    () => sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById, slicesByDeal)),
+    [sessions, stakeeDealsById, slicesByDeal],
   )
 
   const metricSessions = useMemo(
@@ -1254,7 +1258,7 @@ export default function PokerBankrollTracker({
       const onStake = scopeId !== 'personal'
       const scopeSessions = onStake
         ? sessions.filter((s) => s.deal_id === scopeId)
-        : sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById))
+        : sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById, slicesByDeal))
       const scopeCompleted = scopeSessions.filter((s) => s.status !== 'active')
       const scopeFiltered = scopeCompleted.filter((s) => {
         if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
@@ -1741,7 +1745,11 @@ export default function PokerBankrollTracker({
       setError(
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : 'This stake is closed. Archive it from the banner above when you are done reviewing.',
+          : stakeScopeClosedUnarchived
+            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
+            : pendingBackerOffer
+              ? 'Accept the backing offer before logging sessions on this stake.'
+              : STAKE_GOES_LIVE_COPY,
       )
       return
     }
@@ -1811,7 +1819,11 @@ export default function PokerBankrollTracker({
       setError(
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : 'This stake is closed. Archive it from the banner above when you are done reviewing.',
+          : stakeScopeClosedUnarchived
+            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
+            : pendingBackerOffer
+              ? 'Accept the backing offer before logging sessions on this stake.'
+              : STAKE_GOES_LIVE_COPY,
       )
       return
     }
@@ -2995,12 +3007,20 @@ export default function PokerBankrollTracker({
                   onStake && hero.deal
                     ? dealHasAcceptedBackerSlice(hero.deal, dealSlices)
                     : false
+                const heroDealSlices = slicesByDeal[scopeId] || []
+                const heroStakeLive = hero.deal
+                  ? stakeDealIsLiveForStakee(hero.deal, heroDealSlices)
+                  : false
                 const stakeHeroMessage =
                   onStake && hero.deal?.status === 'revoked'
                     ? 'revoked'
-                    : pendingBackerSlices.length > 0
-                      ? 'pendingBackers'
-                      : null
+                    : onStake && hero.deal && !heroStakeLive
+                      ? isBackerInitiatedBackingDeal(hero.deal)
+                        ? 'pendingBackerOffer'
+                        : 'pendingStake'
+                      : pendingBackerSlices.length > 0
+                        ? 'pendingBackers'
+                        : null
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -3133,6 +3153,20 @@ export default function PokerBankrollTracker({
                               >
                                 Manage stake
                               </button>
+                            </p>
+                          ) : stakeHeroMessage === 'pendingStake' ? (
+                            <p
+                              data-poker-stake-pending
+                              className="text-left text-xs leading-snug text-amber-200/85"
+                            >
+                              {STAKE_GOES_LIVE_COPY}
+                            </p>
+                          ) : stakeHeroMessage === 'pendingBackerOffer' ? (
+                            <p
+                              data-poker-stake-pending-offer
+                              className="text-left text-xs leading-snug text-amber-200/85"
+                            >
+                              Accept or decline this backing offer to go on stake.
                             </p>
                           ) : stakeHeroMessage === 'pendingBackers' ? (
                             <div

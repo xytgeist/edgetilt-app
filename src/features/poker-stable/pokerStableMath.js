@@ -203,6 +203,40 @@ export function sumSliceActionPct(slices) {
   return roundMoney((slices || []).reduce((s, sl) => s + stableNum(sl.action_pct), 0), 3)
 }
 
+/** At least one backer slice has accepted (`status === 'active'`). */
+export function dealHasAcceptedBackerSlice(_deal, slices = []) {
+  return (slices || []).some((s) => s.status === 'active')
+}
+
+/**
+ * Player has committed to stake terms.
+ * Player offer (`+ Stake`): creating the deal is acceptance.
+ * Backer offer (Create Stake): acceptance is `poker_stable_stakee_accept_backer_offer` → `deal.status === 'active'`.
+ *
+ * @param {object | null | undefined} deal
+ */
+export function stakeDealPlayerSideAccepted(deal) {
+  if (!deal) return false
+  if (deal.status === 'active') return true
+  return Boolean(deal.stakee_user_id) && !deal.staker_user_id
+}
+
+/**
+ * Stake is live for Bankroll, sessions, sold action, and backer portfolio math.
+ * Same rule every path: player accepted AND at least one backer accepted.
+ * Initiation direction only changes who accepts first (and guest email rails).
+ *
+ * @param {object | null | undefined} deal
+ * @param {object[]} [slices]
+ */
+export function stakeDealIsLiveForStakee(deal, slices = []) {
+  if (!deal) return false
+  if (deal.status === 'revoked' || deal.status === 'declined') return false
+  if (deal.status === 'active') return true
+  if (deal.status !== 'pending') return false
+  return stakeDealPlayerSideAccepted(deal) && dealHasAcceptedBackerSlice(deal, slices)
+}
+
 /**
  * Action % sold by the player (stakee) across stable deals.
  * @param {object[]} deals
@@ -214,7 +248,9 @@ export function sumStakeeSoldActionPct(deals, slicesByDeal, opts = {}) {
   let total = 0
   for (const deal of deals || []) {
     if (!dealStatuses.includes(deal.status)) continue
-    for (const sl of slicesByDeal[deal.id] || []) {
+    const slices = slicesByDeal[deal.id] || []
+    if (!stakeDealIsLiveForStakee(deal, slices)) continue
+    for (const sl of slices) {
       if (sl.status === 'cancelled' || sl.status === 'declined') continue
       total += stableNum(sl.action_pct)
     }

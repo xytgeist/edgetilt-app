@@ -469,8 +469,6 @@ export function computeBackerPortfolioMetrics({
           stakeValueMtm + backerSliceStakeValue(deal, slice, roll, sessions),
         )
         rollExposure = roundMoney(rollExposure + resolveDealOverallRoll(deal, roll, sessions))
-      } else if (backerSliceCapitalIsPendingHold(deal, slice) && deal.status === 'pending') {
-        stakeValueMtm = roundMoney(stakeValueMtm + allocated)
       }
 
       if (slice.status === 'pending') pendingCommitCount += 1

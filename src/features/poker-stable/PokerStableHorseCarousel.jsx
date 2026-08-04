@@ -58,11 +58,12 @@ export default function PokerStableHorseCarousel({
         const profitTone =
           stats.profit > 0 ? 'text-emerald-400' : stats.profit < 0 ? 'text-rose-400' : 'text-zinc-300'
         const sliceAccepted = slice?.status === 'active'
-        const showBackerStats = sliceAccepted
+        const dealLive = deal.status === 'active'
+        const showBackerStats = sliceAccepted && dealLive
         const isPendingSyndicateInvite =
           slice?.status === 'pending' && deal.staker_user_id !== userId
-        const isLeadBackerPending =
-          slice?.status === 'pending' && deal.staker_user_id === userId
+        const isLeadBackerOnPendingDeal =
+          deal.status === 'pending' && deal.staker_user_id === userId
         const statusLabel =
           slice?.status === 'pending' ? 'Pending' : stakeHorseCardStatusLabel(deal, dealSlices)
         const statusTone =
@@ -95,6 +96,41 @@ export default function PokerStableHorseCarousel({
           </div>
         )
 
+        const pendingNudgeBlock =
+          pendingNudgeSlices.length > 0 ? (
+            <div
+              data-poker-stake-pending-backers
+              className="mt-3 space-y-1.5 border-t border-amber-500/15 pt-3 text-left"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {pendingNudgeSlices.map((pendingSlice) => {
+                const backerName = sliceCounterpartyDisplayName(pendingSlice, profilesById)
+                const nudging = nudgingSliceId === pendingSlice.id
+                return (
+                  <div
+                    key={pendingSlice.id}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
+                  >
+                    <span className="min-w-0 text-xs leading-snug text-amber-100/90">
+                      Pending acceptance by {backerName}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={Boolean(nudgingSliceId) || nudgeDisabled}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void onNudgePendingBacker?.(deal.id, pendingSlice.id)
+                      }}
+                      className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
+                    >
+                      {nudging ? 'Sending…' : 'Nudge'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null
+
         const body = showBackerStats ? (
               <>
                 <div className="mt-4 grid grid-cols-2 gap-3 border-t border-amber-500/15 pt-3 text-center">
@@ -125,39 +161,7 @@ export default function PokerStableHorseCarousel({
                     </div>
                   </div>
                 </div>
-                {pendingNudgeSlices.length > 0 ? (
-                  <div
-                    data-poker-stake-pending-backers
-                    className="mt-3 space-y-1.5 border-t border-amber-500/15 pt-3 text-left"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {pendingNudgeSlices.map((pendingSlice) => {
-                      const backerName = sliceCounterpartyDisplayName(pendingSlice, profilesById)
-                      const nudging = nudgingSliceId === pendingSlice.id
-                      return (
-                        <div
-                          key={pendingSlice.id}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
-                        >
-                          <span className="min-w-0 text-xs leading-snug text-amber-100/90">
-                            Pending acceptance by {backerName}
-                          </span>
-                          <button
-                            type="button"
-                            disabled={Boolean(nudgingSliceId) || nudgeDisabled}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              void onNudgePendingBacker?.(deal.id, pendingSlice.id)
-                            }}
-                            className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
-                          >
-                            {nudging ? 'Sending…' : 'Nudge'}
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : null}
+                {pendingNudgeBlock}
               </>
             ) : isPendingSyndicateInvite ? (
               <div
@@ -203,9 +207,14 @@ export default function PokerStableHorseCarousel({
                   </button>
                 </div>
               </div>
-            ) : isLeadBackerPending ? (
+            ) : isLeadBackerOnPendingDeal ? (
               <>
-                <p className="mt-3 text-xs text-amber-200/80">Pending acceptance</p>
+                <p className="mt-3 text-xs text-amber-200/80">
+                  {slice?.status === 'pending'
+                    ? 'Pending acceptance'
+                    : 'Waiting for the player to accept this stake.'}
+                </p>
+                {pendingNudgeBlock}
                 <span
                   role="button"
                   tabIndex={0}

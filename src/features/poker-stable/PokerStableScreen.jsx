@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Users } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
@@ -65,6 +64,7 @@ import {
   dealLeadBackerDisplayName,
   stakeeSkipsBackerCommitSync,
 } from './pokerStableTerms.js'
+import { STABLE_PRIMARY_BTN, STABLE_TAB_ACTIVE } from './pokerStableUi.js'
 
 const STABLE_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -82,8 +82,8 @@ function statusLabel(status) {
 }
 
 function statusTone(status) {
-  if (status === 'active') return 'bg-amber-500/20 text-amber-300'
-  if (status === 'pending') return 'bg-amber-500/15 text-amber-200/90'
+  if (status === 'active') return 'bg-cyan-500/20 text-cyan-300'
+  if (status === 'pending') return 'bg-zinc-700/60 text-zinc-300'
   if (status === 'declined') return 'bg-zinc-700/60 text-zinc-400'
   return 'bg-rose-500/20 text-rose-300'
 }
@@ -398,6 +398,16 @@ export default function PokerStableScreen({
     [pendingCommits],
   )
 
+  const horseSparkByDeal = useMemo(() => {
+    const { horseSeries } = computeBackerPortfolioTrendChart({
+      horseDeals: activeDeals,
+      sessions: stableSessions,
+      slicesByDeal,
+      userId,
+    })
+    return horseSeries
+  }, [activeDeals, stableSessions, slicesByDeal, userId])
+
   const horseDeals = useMemo(
     () => [...activeDeals, ...historyDeals],
     [activeDeals, historyDeals],
@@ -612,15 +622,6 @@ export default function PokerStableScreen({
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div data-poker-stable>
-        <SlotsToolPageHeader
-          center={
-            <div className="text-center">
-              <div className="text-lg font-black tracking-tight text-white">Stable</div>
-              <div className="text-[11px] text-zinc-500">Back horses · sync stake rolls</div>
-            </div>
-          }
-        />
-
         {schemaMissing ? (
           <div className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
             Stable tables are not on this database yet. Apply{' '}
@@ -656,7 +657,7 @@ export default function PokerStableScreen({
                   setSheet('request')
                   triggerTapHapticLight()
                 }}
-                className="w-full rounded-3xl bg-amber-600 py-4 text-sm font-bold text-white touch-manipulation active:bg-amber-500"
+                className={`w-full rounded-3xl py-4 text-sm font-bold touch-manipulation ${STABLE_PRIMARY_BTN}`}
                 data-poker-stable-primary-btn
               >
                 Create Stake
@@ -677,7 +678,7 @@ export default function PokerStableScreen({
                   }}
                   className={`flex-1 rounded-xl py-2 text-xs font-bold uppercase tracking-wide touch-manipulation ${
                     activeTab === tab.id
-                      ? 'bg-amber-600 text-white'
+                      ? STABLE_TAB_ACTIVE
                       : 'text-zinc-400 active:text-zinc-200'
                   }`}
                 >
@@ -701,7 +702,7 @@ export default function PokerStableScreen({
                   key={deal.id}
                   data-poker-stable-invite-card
                   data-elevated-card="surface"
-                  className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
+                  className="rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-950/30 to-zinc-900/80 p-4"
                 >
                   <div className="font-bold text-white">
                     {dealStakeeDisplayName(deal, profilesById)} proposed new terms
@@ -781,6 +782,11 @@ export default function PokerStableScreen({
               nudgingSliceId={nudgingSliceId}
               nudgeDisabled={saving}
               pendingCommits={pendingCommits}
+              horseSparkByDeal={horseSparkByDeal}
+              onOpenTrend={() => {
+                setActiveTab('trend')
+                triggerTapHapticLight()
+              }}
               onReviewSettleCommit={(commitId) => {
                 setCommitSyncId(commitId)
                 triggerTapHapticLight()
@@ -986,6 +992,10 @@ export default function PokerStableScreen({
           slices={slicesByDeal[detailDeal.id] || []}
           roll={bankrollByDealWithSessions[detailDeal.id]}
           profilesById={profilesById}
+          sessions={stableSessions}
+          topups={dealTopupsByDeal[detailDeal.id] || []}
+          reductions={dealReductionsByDeal[detailDeal.id] || []}
+          settlements={dealSettlementsByDeal[detailDeal.id] || []}
           saving={saving}
           onSavingChange={setSaving}
           onClose={() => setDetailDealId(null)}

@@ -7,6 +7,13 @@ import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyI
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { roundMoney } from './pokerStableMath.js'
+import {
+  STABLE_ACCENT_TEXT,
+  STABLE_PRIMARY_BTN,
+  STABLE_SURFACE_CARD,
+  STABLE_SURFACE_DIVIDER,
+  STABLE_TAB_ACTIVE,
+} from './pokerStableUi.js'
 
 function fmtPct(n) {
   if (n == null || !Number.isFinite(n)) return '—'
@@ -22,7 +29,7 @@ function pctToneClass(n) {
 function HeroInfoSection({ title, children }) {
   return (
     <div className="border-t border-zinc-800 pt-3 first:border-t-0 first:pt-0">
-      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-amber-200/90">{title}</div>
+      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-cyan-200/90">{title}</div>
       <div className="space-y-2 text-sm leading-relaxed text-zinc-400">{children}</div>
     </div>
   )
@@ -140,7 +147,7 @@ export default function PokerStablePortfolioHero({
     <>
       <div
         data-poker-stable-portfolio-hero
-        className="relative mb-4 rounded-3xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-950/50 to-zinc-900/90 px-5 py-4"
+        className={`relative mb-4 ${STABLE_SURFACE_CARD} px-5 py-4`}
       >
         <button
           type="button"
@@ -191,7 +198,7 @@ export default function PokerStablePortfolioHero({
             </span>
             {pendingHold > 0 ? (
               <span
-                className="text-xs font-semibold tabular-nums text-amber-200/90"
+                className="text-xs font-semibold tabular-nums text-cyan-200/90"
                 data-poker-stable-backing-pending-hold
               >
                 ({fmtPoker$(-pendingHold)} pending)
@@ -203,7 +210,7 @@ export default function PokerStablePortfolioHero({
           <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
             Portfolio value
           </div>
-          <div className="mt-1 text-2xl font-black tabular-nums text-amber-300">
+          <div className={`mt-1 text-2xl font-black tabular-nums ${STABLE_ACCENT_TEXT}`}>
             {fmtPoker$(m.portfolioValue ?? 0)}
           </div>
         </div>
@@ -238,7 +245,7 @@ export default function PokerStablePortfolioHero({
               type="button"
               onClick={() => onDirectionChange('add')}
               className={`flex-1 rounded-lg py-1.5 text-xs font-bold touch-manipulation ${
-                adjustDirection === 'add' ? 'bg-amber-600 text-white' : 'text-zinc-400'
+                adjustDirection === 'add' ? STABLE_TAB_ACTIVE : 'text-zinc-400'
               }`}
             >
               Add
@@ -248,7 +255,7 @@ export default function PokerStablePortfolioHero({
               disabled={!canRemove}
               onClick={() => onDirectionChange('remove')}
               className={`flex-1 rounded-lg py-1.5 text-xs font-bold touch-manipulation disabled:opacity-40 ${
-                adjustDirection === 'remove' ? 'bg-amber-600 text-white' : 'text-zinc-400'
+                adjustDirection === 'remove' ? STABLE_TAB_ACTIVE : 'text-zinc-400'
               }`}
             >
               Remove
@@ -277,7 +284,7 @@ export default function PokerStablePortfolioHero({
               type="button"
               disabled={applyDisabled}
               onClick={() => void applyAdjust()}
-              className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50 ${STABLE_PRIMARY_BTN}`}
               data-poker-stable-primary-btn
             >
               Apply
@@ -293,7 +300,7 @@ export default function PokerStablePortfolioHero({
         </div>
       ) : null}
 
-      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-amber-500/15 pt-3 text-center sm:grid-cols-6">
+      <div className={`mt-3 grid grid-cols-3 gap-2 border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-center sm:grid-cols-6`}>
         <div>
           <div className="text-[9px] font-bold uppercase text-zinc-500">At risk</div>
           <div className="mt-0.5 text-xs font-bold tabular-nums text-zinc-200">

@@ -17,6 +17,7 @@ import {
 } from './pokerStableBackerMath.js'
 import { dealTypeLabel, roundMoney } from './pokerStableMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
+import { STABLE_CHART_PORTFOLIO, STABLE_TAB_ACTIVE } from './pokerStableUi.js'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler, Legend)
 
@@ -38,7 +39,7 @@ function pokerStableTrendChartChrome() {
   }
 }
 
-const HORSE_COLORS = ['#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#a78bfa', '#fb7185']
+const HORSE_COLORS = ['#34d399', '#60a5fa', '#f472b6', '#a78bfa', '#fb7185', '#fbbf24']
 
 /**
  * Portfolio + per-horse cumulative session share (active + closed stakes).
@@ -80,8 +81,8 @@ export default function PokerStableTrendTab({
       {
         label: 'Portfolio',
         data: chartBundle.portfolio,
-        borderColor: '#fbbf24',
-        backgroundColor: 'rgba(251, 191, 36, 0.08)',
+        borderColor: STABLE_CHART_PORTFOLIO,
+        backgroundColor: 'rgba(34, 211, 238, 0.08)',
         fill: true,
         tension: 0.25,
         borderWidth: 2.5,
@@ -113,15 +114,26 @@ export default function PokerStableTrendTab({
 
   return (
     <div data-poker-stable-trend className="pb-4">
-      <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
-        <input
-          type="checkbox"
-          checked={portfolioOnly}
-          onChange={(e) => setPortfolioOnly(e.target.checked)}
-          className="rounded border-zinc-600"
-        />
-        Portfolio only
-      </label>
+      <div className="mb-3 flex rounded-xl border border-zinc-800 bg-zinc-900/50 p-1">
+        <button
+          type="button"
+          onClick={() => setPortfolioOnly(false)}
+          className={`flex-1 rounded-lg py-2 text-xs font-bold touch-manipulation ${
+            !portfolioOnly ? STABLE_TAB_ACTIVE : 'text-zinc-400 active:text-zinc-200'
+          }`}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          onClick={() => setPortfolioOnly(true)}
+          className={`flex-1 rounded-lg py-2 text-xs font-bold touch-manipulation ${
+            portfolioOnly ? STABLE_TAB_ACTIVE : 'text-zinc-400 active:text-zinc-200'
+          }`}
+        >
+          Portfolio
+        </button>
+      </div>
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-3">
         {hasHistory ? (
           <Line

@@ -3,12 +3,19 @@ import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import PokerBankrollChartsTab from '../poker-bankroll/PokerBankrollChartsTab.jsx'
+import PokerBankrollOverview from '../poker-bankroll/PokerBankrollOverview.jsx'
+import PokerBankrollTrendTab from '../poker-bankroll/PokerBankrollTrendTab.jsx'
+import PokerLocationsTab from '../poker-bankroll/PokerLocationsTab.jsx'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   closeBackingDeal,
   loadLatestSettlement,
   loadLedgerEntries,
   loadPendingCommits,
+  loadDealTopups,
+  loadDealReductions,
+  loadDealSettlements,
   periodicSettleBackingDeal,
   recordDealTopup,
   recordDealReduction,
@@ -17,6 +24,7 @@ import {
 } from './pokerStableApi.js'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
 import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
+import PokerStableDealOverviewPanel from './PokerStableDealOverviewPanel.jsx'
 import {
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
@@ -37,12 +45,22 @@ import {
   stakeeSkipsBackerCommitSync,
   userCanRecordDealEvent,
 } from './pokerStableTerms.js'
-import { buildStakeDealHistoryEvents } from './pokerStableDealHistory.js'
 import { pokerStableCommitSummaryLine } from './pokerStableActivity.js'
 import { STABLE_BACKER_BANKROLL_PHRASE, stableCommitBooksPhrase } from './pokerStableBooksCopy.js'
 
+import { STABLE_TAB_ACTIVE } from './pokerStableUi.js'
+
+const DEAL_TABS = [
+  { id: 'overview', label: 'OVERVIEW' },
+  { id: 'details', label: 'DETAILS' },
+  { id: 'trend', label: 'TREND' },
+  { id: 'locations', label: 'LOCATIONS' },
+  { id: 'charts', label: 'CHARTS' },
+  { id: 'manage', label: 'MANAGE' },
+]
+
 /**
- * Deal detail: baseline, makeup, top-up, settle, sync commits, ledger history.
+ * Deal detail: overview/history/analytics tabs + manage (top-up, settle, ledger).
  */
 export default function PokerStableDealDetailSheet({
   supabaseClient,
@@ -51,6 +69,10 @@ export default function PokerStableDealDetailSheet({
   slices = [],
   roll,
   profilesById = {},
+  sessions = [],
+  topups: topupsProp = [],
+  reductions: reductionsProp = [],
+  settlements: settlementsProp = [],
   saving,
   onSavingChange,
   onClose,
@@ -58,6 +80,7 @@ export default function PokerStableDealDetailSheet({
   onError,
   onOpenPokerBankroll,
 }) {
+  const [activeTab, setActiveTab] = useState('overview')
   const [topupAmount, setTopupAmount] = useState('')
   const [reduceStake, setReduceStake] = useState(false)
   const [newBaselineInput, setNewBaselineInput] = useState('')
@@ -67,6 +90,44 @@ export default function PokerStableDealDetailSheet({
   const [pendingCommits, setPendingCommits] = useState([])
   const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
   const [closeStakeOpen, setCloseStakeOpen] = useState(false)
+  const [dealTopups, setDealTopups] = useState(topupsProp)
+  const [dealReductions, setDealReductions] = useState(reductionsProp)
+  const [dealSettlements, setDealSettlements] = useState(settlementsProp)
+
+  useEffect(() => {
+    setActiveTab('overview')
+  }, [deal?.id])
+
+  useEffect(() => {
+    setDealTopups(topupsProp)
+    setDealReductions(reductionsProp)
+    setDealSettlements(settlementsProp)
+  }, [deal?.id, topupsProp, reductionsProp, settlementsProp])
+
+  useEffect(() => {
+    if (!supabaseClient || !deal?.id) return
+    if (topupsProp.length || reductionsProp.length || settlementsProp.length) return
+    let cancelled = false
+    void (async () => {
+      const [{ topups }, { reductions }, { settlements }] = await Promise.all([
+        loadDealTopups(supabaseClient, deal.id),
+        loadDealReductions(supabaseClient, deal.id),
+        loadDealSettlements(supabaseClient, deal.id),
+      ])
+      if (cancelled) return
+      setDealTopups(topups || [])
+      setDealReductions(reductions || [])
+      setDealSettlements(settlements || [])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, deal?.id, topupsProp.length, reductionsProp.length, settlementsProp.length])
+
+  const completedSessions = useMemo(
+    () => sessions.filter((s) => s.deal_id === deal?.id && s.status !== 'active'),
+    [sessions, deal?.id],
+  )
 
   const isStakee = deal?.stakee_user_id === userId
   const skipStakeeCommitSync = stakeeSkipsBackerCommitSync(deal, userId)
@@ -135,18 +196,6 @@ export default function PokerStableDealDetailSheet({
   const myLedgerEntries = useMemo(
     () => ledgerEntries.filter((entry) => entry.user_id === userId),
     [ledgerEntries, userId],
-  )
-
-  const dealHistoryEvents = useMemo(
-    () =>
-      buildStakeDealHistoryEvents({
-        deal,
-        slices,
-        profilesById,
-        ledgerEntries,
-        viewerUserId: userId,
-      }).filter((event) => event.kind === 'offer' || event.kind === 'accept' || event.kind === 'decline'),
-    [deal, slices, profilesById, ledgerEntries, userId],
   )
 
   async function onTopup() {
@@ -275,20 +324,78 @@ export default function PokerStableDealDetailSheet({
         className={`relative z-10 w-full max-w-lg max-h-[92vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-white">{deal.label || 'Deal'}</h3>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className="truncate text-lg font-bold text-white">{deal.label || 'Deal'}</h3>
             <p className="text-xs text-zinc-500">{dealTypeLabel(deal.deal_type)}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+            className="shrink-0 rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
           >
             Close
           </button>
         </div>
 
+        <div className="mb-4 -mx-1 flex gap-1 overflow-x-auto px-1 no-scrollbar">
+          {DEAL_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab.id)
+                triggerTapHapticLight()
+              }}
+              className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-bold tracking-wide touch-manipulation sm:px-4 sm:text-xs ${
+                activeTab === tab.id ? STABLE_TAB_ACTIVE : 'bg-zinc-800 text-zinc-400 active:bg-zinc-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'overview' ? (
+          <PokerStableDealOverviewPanel
+            deal={deal}
+            slices={slices}
+            roll={roll}
+            profilesById={profilesById}
+            userId={userId}
+            sessions={sessions}
+            topups={dealTopups}
+            reductions={dealReductions}
+            settlements={dealSettlements}
+            ledgerEntries={ledgerEntries}
+            onOpenTrend={() => setActiveTab('trend')}
+          />
+        ) : null}
+
+        {activeTab === 'details' ? (
+          <PokerBankrollOverview sessions={completedSessions} />
+        ) : null}
+
+        {activeTab === 'trend' ? (
+          <PokerBankrollTrendTab
+            sessions={completedSessions}
+            initialBankroll={rollValue}
+            metricContext={{ stakeScope: true }}
+            tournamentSwaps={[]}
+            userId={userId}
+          />
+        ) : null}
+
+        {activeTab === 'locations' ? (
+          <PokerLocationsTab sessions={completedSessions} loading={false} />
+        ) : null}
+
+        {activeTab === 'charts' ? (
+          <PokerBankrollChartsTab sessions={completedSessions} />
+        ) : null}
+
+        {activeTab === 'manage' ? (
+          <>
         {visiblePendingCommits.length ? (
           <div className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-950/25 p-3">
             <p className="text-sm font-semibold text-amber-100">
@@ -319,47 +426,6 @@ export default function PokerStableDealDetailSheet({
               ))}
             </div>
           </div>
-        ) : null}
-
-        <div
-          className={`mb-4 grid gap-2 rounded-2xl border border-amber-500/20 bg-amber-950/20 p-3 text-center ${
-            showMakeup ? 'grid-cols-3' : 'grid-cols-2'
-          }`}
-        >
-          <div>
-            <div className="text-[10px] font-semibold uppercase text-zinc-500">Baseline</div>
-            <div className="mt-0.5 text-sm font-bold tabular-nums text-white">{fmtPoker$(baseline)}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-semibold uppercase text-zinc-500">Roll</div>
-            <div className="mt-0.5 text-sm font-bold tabular-nums text-white">{fmtPoker$(rollValue)}</div>
-          </div>
-          {showMakeup ? (
-            <div>
-              <div className="text-[10px] font-semibold uppercase text-zinc-500">Makeup</div>
-              <div className="mt-0.5 text-sm font-bold tabular-nums text-rose-400">{fmtPoker$(makeup)}</div>
-            </div>
-          ) : null}
-        </div>
-
-        {deal.lifetime_pl_display != null ? (
-          <p className="mb-3 text-xs text-zinc-500">
-            Lifetime P/L (display): {fmtPoker$(deal.lifetime_pl_display)}
-          </p>
-        ) : null}
-
-        {isStakee && deal.status === 'active' && typeof onOpenPokerBankroll === 'function' ? (
-          <button
-            type="button"
-            onClick={() => {
-              triggerTapHapticLight()
-              onOpenPokerBankroll(deal.id)
-            }}
-            className="mb-4 w-full rounded-2xl bg-amber-600/90 py-2.5 text-sm font-bold text-white touch-manipulation"
-            data-poker-stable-primary-btn
-          >
-            Open Poker Bankroll (On Stake)
-          </button>
         ) : null}
 
         <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">Slices</h4>
@@ -396,36 +462,6 @@ export default function PokerStableDealDetailSheet({
             )
           })}
         </div>
-
-        {dealHistoryEvents.length ? (
-          <>
-            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Deal history
-            </h4>
-            <ul className="mb-4 space-y-2">
-              {dealHistoryEvents.map((event) => {
-                const eventDate = new Date(event.at).toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-                return (
-                  <li key={event.id} className="py-1 text-center">
-                    <p
-                      data-poker-stake-history-line
-                      data-poker-stake-history-kind={event.kind}
-                      className="text-sm italic leading-snug text-emerald-300/90"
-                    >
-                      {event.text}
-                      <span className="not-italic opacity-70"> · {eventDate}</span>
-                    </p>
-                  </li>
-                )
-              })}
-            </ul>
-          </>
-        ) : null}
 
         {myLedgerEntries.length ? (
           <>
@@ -618,6 +654,8 @@ export default function PokerStableDealDetailSheet({
 
         {deal.status === 'settled' ? (
           <p className="text-center text-sm text-emerald-400">Deal settled · roll reset to baseline</p>
+        ) : null}
+          </>
         ) : null}
       </div>
 

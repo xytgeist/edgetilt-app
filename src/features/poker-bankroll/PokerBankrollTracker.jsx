@@ -4244,6 +4244,10 @@ export default function PokerBankrollTracker({
           slices={slicesByDeal[ledgerDealId] || []}
           roll={dealProfiles[ledgerDealId] ?? null}
           profilesById={stableProfilesById}
+          sessions={sessions.filter((s) => s.deal_id === ledgerDealId)}
+          topups={dealTopupsByDeal[ledgerDealId] || []}
+          reductions={dealReductionsByDeal[ledgerDealId] || []}
+          settlements={dealSettlementsByDeal[ledgerDealId] || []}
           saving={stableSaving}
           onSavingChange={setStableSaving}
           onClose={() => setLedgerDealId(null)}

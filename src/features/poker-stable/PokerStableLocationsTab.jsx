@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { fmtPoker$, pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
+import { STABLE_TAB_ACTIVE } from './pokerStableUi.js'
 
 /**
  * Stable-wide locations rollup from on-stake sessions (read-only v1).
@@ -40,7 +41,7 @@ export default function PokerStableLocationsTab({
           type="button"
           onClick={() => onSelectDealId?.(null)}
           className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            !selectedDealId ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300'
+            !selectedDealId ? STABLE_TAB_ACTIVE : 'bg-zinc-800 text-zinc-300'
           }`}
         >
           All horses
@@ -54,7 +55,7 @@ export default function PokerStableLocationsTab({
               type="button"
               onClick={() => onSelectDealId?.(deal.id)}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                selectedDealId === deal.id ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300'
+                selectedDealId === deal.id ? STABLE_TAB_ACTIVE : 'bg-zinc-800 text-zinc-300'
               }`}
             >
               {label}

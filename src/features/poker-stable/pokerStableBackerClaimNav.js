@@ -9,12 +9,34 @@ const STABLE_CLAIM_FLOW_PENDING_KEY = 'poker_stable_claim_flow_pending'
 
 export const POKER_STABLE_CLAIM_RETURN_PATH = '/poker-stable-claim'
 
+function parseStashedClaimTokenEntry(raw) {
+  const value = String(raw || '').trim()
+  if (!value) return null
+  if (value.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(value)
+      const token = String(parsed?.token || '').trim()
+      const savedAt = Number(parsed?.savedAt) || 0
+      if (!token) return null
+      return { token, savedAt }
+    } catch {
+      // fall through — legacy plain token string
+    }
+  }
+  return { token: value, savedAt: 0 }
+}
+
+function serializeStashedClaimTokenEntry(token) {
+  return JSON.stringify({ token, savedAt: Date.now() })
+}
+
 export function stashPokerStableClaimToken(token) {
   const t = String(token || '').trim()
   if (!t || typeof window === 'undefined') return
   try {
-    sessionStorage.setItem(STABLE_CLAIM_TOKEN_STORAGE_KEY, t)
-    localStorage.setItem(STABLE_CLAIM_TOKEN_LOCAL_KEY, t)
+    const payload = serializeStashedClaimTokenEntry(t)
+    sessionStorage.setItem(STABLE_CLAIM_TOKEN_STORAGE_KEY, payload)
+    localStorage.setItem(STABLE_CLAIM_TOKEN_LOCAL_KEY, payload)
   } catch {
     // ignore
   }
@@ -23,13 +45,15 @@ export function stashPokerStableClaimToken(token) {
 export function readStashedPokerStableClaimToken() {
   if (typeof window === 'undefined') return null
   try {
-    const fromLocal = localStorage.getItem(STABLE_CLAIM_TOKEN_LOCAL_KEY)
-    const fromSession = sessionStorage.getItem(STABLE_CLAIM_TOKEN_STORAGE_KEY)
-    const local = fromLocal ? String(fromLocal).trim() : ''
-    const session = fromSession ? String(fromSession).trim() : ''
-    // localStorage survives confirm-email tabs; prefer it when tabs disagree.
-    if (local && session && local !== session) return local
-    return session || local || null
+    const localEntry = parseStashedClaimTokenEntry(localStorage.getItem(STABLE_CLAIM_TOKEN_LOCAL_KEY))
+    const sessionEntry = parseStashedClaimTokenEntry(
+      sessionStorage.getItem(STABLE_CLAIM_TOKEN_STORAGE_KEY),
+    )
+    if (localEntry?.token && sessionEntry?.token && localEntry.token !== sessionEntry.token) {
+      // Prefer the most recently stashed token (new invite beats an old localStorage copy).
+      return (localEntry.savedAt >= sessionEntry.savedAt ? localEntry : sessionEntry).token
+    }
+    return sessionEntry?.token || localEntry?.token || null
   } catch {
     return null
   }

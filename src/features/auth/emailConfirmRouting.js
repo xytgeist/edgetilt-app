@@ -29,6 +29,8 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
   tryAutoLinkGuestStakeeOffers,
   tryAutoLinkGuestBackerOffers,
   tryOpenPendingBackerSliceOnboarding,
+  resumeStableBackerClaimAfterConfirm,
+  recoverStaleStableBackerClaim,
   replaceUrlPreservingQuery,
 }) {
   const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
@@ -63,8 +65,8 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
   }
   if (stashedStableClaimToken) {
     replaceUrlPreservingQuery(pathname || '/')
-    navigateToStableClaimPage(stashedStableClaimToken)
-    return true
+    const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stashedStableClaimToken)
+    if (resumed) return true
   }
 
   if (!onHomeAfterConfirm) {

@@ -71,6 +71,8 @@ import {
 import {
   tryAutoLinkGuestBackerOffers,
   tryOpenPendingBackerSliceOnboarding,
+  resumeStableBackerClaimAfterConfirm,
+  recoverStaleStableBackerClaim,
 } from './features/poker-stable/pokerGuestBackerAutoLink.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
@@ -291,6 +293,8 @@ function App() {
             tryAutoLinkGuestStakeeOffers,
             tryAutoLinkGuestBackerOffers,
             tryOpenPendingBackerSliceOnboarding,
+            resumeStableBackerClaimAfterConfirm,
+            recoverStaleStableBackerClaim,
             replaceUrlPreservingQuery,
           })
           if (routed) return
@@ -334,6 +338,8 @@ function App() {
                 tryAutoLinkGuestStakeeOffers,
                 tryAutoLinkGuestBackerOffers,
                 tryOpenPendingBackerSliceOnboarding,
+                resumeStableBackerClaimAfterConfirm,
+                recoverStaleStableBackerClaim,
                 replaceUrlPreservingQuery,
               })
               if (routed) return
@@ -357,17 +363,18 @@ function App() {
       const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
       if (linkedStakee) return
       const claimFlowPending = isPokerStableClaimFlowPending()
-      const opened = await tryOpenPendingBackerSliceOnboarding(supabase)
+      const opened = await tryOpenPendingBackerSliceOnboarding(supabase, { force: claimFlowPending })
       if (opened) return
-      if (!claimFlowPending) return
-      const stableToken = readStashedPokerStableClaimToken()
-      if (stableToken) {
-        navigateToStableClaimPage(stableToken)
-        return
-      }
-      const stakeToken = readStashedPokerStakeClaimToken()
-      if (stakeToken) {
-        navigateToStakeClaimPage(stakeToken)
+      if (claimFlowPending) {
+        const stableToken = readStashedPokerStableClaimToken()
+        if (stableToken) {
+          const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stableToken)
+          if (resumed) return
+        }
+        const stakeToken = readStashedPokerStakeClaimToken()
+        if (stakeToken) {
+          navigateToStakeClaimPage(stakeToken)
+        }
       }
     })()
   }, [user?.id, isChecking, currentView])

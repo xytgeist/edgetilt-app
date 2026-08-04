@@ -1,9 +1,64 @@
-import { guestBackerClaimByEmail } from './pokerStableApi.js'
+import { guestBackerClaimByEmail, guestBackerClaimPreview } from './pokerStableApi.js'
 import {
   clearPokerStableClaimFlowPending,
+  clearStashedPokerStableClaimToken,
   isPokerStableClaimFlowPending,
   navigateAfterStableClaim,
+  navigateToStableClaimPage,
 } from './pokerStableBackerClaimNav.js'
+
+function stableClaimRedirectPayload(result, fallbackDealId = '', fallbackSliceId = '') {
+  let dealId = fallbackDealId
+  try {
+    dealId =
+      String(
+        new URL(result?.redirect || '/?tab=poker-stable', window.location.origin).searchParams.get(
+          'stableDeal',
+        ) || '',
+      ).trim() || dealId
+  } catch {
+    // ignore
+  }
+  return {
+    redirect: result?.redirect || undefined,
+    dealId: dealId || undefined,
+    sliceId: result?.slice_ids?.[0] || fallbackSliceId || undefined,
+  }
+}
+
+/**
+ * Stale stored claim token or consumed invite → autolink by email or open pending slice onboarding.
+ * @returns {Promise<boolean>}
+ */
+export async function recoverStaleStableBackerClaim(supabase) {
+  clearStashedPokerStableClaimToken()
+
+  const { result, error } = await guestBackerClaimByEmail(supabase)
+  if (!error && Array.isArray(result?.slice_ids) && result.slice_ids.length) {
+    const payload = stableClaimRedirectPayload(result)
+    navigateAfterStableClaim(payload.redirect, { dealId: payload.dealId, sliceId: payload.sliceId })
+    return true
+  }
+
+  return tryOpenPendingBackerSliceOnboarding(supabase, { force: true })
+}
+
+/**
+ * After email confirm, only return to the claim page when the stashed token still previews.
+ * @returns {Promise<boolean>}
+ */
+export async function resumeStableBackerClaimAfterConfirm(supabase, stashedToken) {
+  const token = String(stashedToken || '').trim()
+  if (!token) return false
+
+  const { error } = await guestBackerClaimPreview(supabase, token)
+  if (!error) {
+    navigateToStableClaimPage(token)
+    return true
+  }
+
+  return recoverStaleStableBackerClaim(supabase)
+}
 
 /**
  * After sign-in / email confirm, link guest backer slices invited to this account's email

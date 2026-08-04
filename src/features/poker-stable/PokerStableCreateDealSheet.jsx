@@ -21,6 +21,11 @@ import {
 } from './pokerStableSheetScroll.js'
 import { roundMoney } from './pokerStableMath.js'
 import {
+  guestNotifyContactFieldErrors,
+  guestNotifyContactFieldsValid,
+  parseGuestNotifyContact,
+} from '../../utils/guestNotifyContact.js'
+import {
   pokerStableSliceCardClass,
   pokerStableSliceTitleClass,
   pokerStableBackerSliceLabel,
@@ -88,12 +93,17 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
   }
   if (sl.isGuest) {
     if (!sl.guestLabel.trim()) throw new Error('Guest slices need a name.')
+    const { email: guestEmail, phone: guestPhone } = parseGuestNotifyContact({
+      email: sl.guestEmail,
+      phone: sl.guestPhone,
+      label: 'Guest backer',
+    })
     return {
       ...(sl.sliceId ? { sliceId: sl.sliceId } : {}),
       counterpartyKind: 'guest',
       guestLabel: sl.guestLabel.trim(),
-      guestPhone: String(sl.guestPhone || '').trim() || undefined,
-      guestEmail: String(sl.guestEmail || '').trim().toLowerCase() || undefined,
+      guestPhone,
+      guestEmail,
       actionPct,
       pricingMode: sl.pricingMode,
       playerProfitPct: sl.pricingMode === 'profit_split' ? Number(sl.playerProfitPct) : undefined,
@@ -136,6 +146,10 @@ function SliceEditor({
   lockUserId = null,
   showRakeback = false,
 }) {
+  const guestContactErrors = sl.isGuest
+    ? guestNotifyContactFieldErrors({ email: sl.guestEmail, phone: sl.guestPhone })
+    : { email: '', phone: '' }
+
   return (
     <div
       data-poker-stable-slice={sliceIndex}
@@ -234,8 +248,12 @@ function SliceEditor({
                   inputMode="tel"
                   autoComplete="tel"
                   className={INFIELD_CONTROL}
+                  aria-invalid={guestContactErrors.phone ? 'true' : undefined}
                 />
               </InField>
+              {guestContactErrors.phone ? (
+                <p className="mb-2 text-[11px] text-rose-400">{guestContactErrors.phone}</p>
+              ) : null}
               <InField label="Email (optional)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
                 <input
                   value={sl.guestEmail}
@@ -244,8 +262,12 @@ function SliceEditor({
                   inputMode="email"
                   autoComplete="email"
                   className={INFIELD_CONTROL}
+                  aria-invalid={guestContactErrors.email ? 'true' : undefined}
                 />
               </InField>
+              {guestContactErrors.email ? (
+                <p className="mb-2 text-[11px] text-rose-400">{guestContactErrors.email}</p>
+              ) : null}
               <p className="mb-2 text-[11px] leading-snug text-zinc-500">
                 Phone/email optional ... only used to notify them about this stake.
               </p>
@@ -650,12 +672,17 @@ function PokerStableDealFormSheet({
 
         if (playerIsGuest) {
           if (!playerGuestLabel.trim()) throw new Error('Guest players need a name.')
+          const { email: guestPlayerEmail, phone: guestPlayerPhone } = parseGuestNotifyContact({
+            email: playerGuestEmail,
+            phone: playerGuestPhone,
+            label: 'Guest player',
+          })
           requestArgs = {
             ...requestArgs,
             stakeeGuest: {
               label: playerGuestLabel.trim(),
-              phone: String(playerGuestPhone || '').trim() || undefined,
-              email: String(playerGuestEmail || '').trim().toLowerCase() || undefined,
+              phone: guestPlayerPhone,
+              email: guestPlayerEmail,
             },
           }
         } else {
@@ -777,6 +804,25 @@ function PokerStableDealFormSheet({
         ? 'Create stake'
         : 'Create stake'
 
+  const playerGuestContactErrors = playerIsGuest
+    ? guestNotifyContactFieldErrors({
+        email: playerGuestEmail,
+        phone: playerGuestPhone,
+      })
+    : { email: '', phone: '' }
+
+  const guestContactFormValid =
+    (!playerIsGuest ||
+      guestNotifyContactFieldsValid({
+        email: playerGuestEmail,
+        phone: playerGuestPhone,
+      })) &&
+    [...slices, ...friendSlices].every(
+      (sl) =>
+        !sl.isGuest ||
+        guestNotifyContactFieldsValid({ email: sl.guestEmail, phone: sl.guestPhone }),
+    )
+
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
       <div
@@ -855,8 +901,12 @@ function PokerStableDealFormSheet({
                     inputMode="tel"
                     autoComplete="tel"
                     className={INFIELD_CONTROL}
+                    aria-invalid={playerGuestContactErrors.phone ? 'true' : undefined}
                   />
                 </InField>
+                {playerGuestContactErrors.phone ? (
+                  <p className="mb-2 text-[11px] text-rose-400">{playerGuestContactErrors.phone}</p>
+                ) : null}
                 <InField label="Email (optional)" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
                   <input
                     value={playerGuestEmail}
@@ -865,8 +915,12 @@ function PokerStableDealFormSheet({
                     inputMode="email"
                     autoComplete="email"
                     className={INFIELD_CONTROL}
+                    aria-invalid={playerGuestContactErrors.email ? 'true' : undefined}
                   />
                 </InField>
+                {playerGuestContactErrors.email ? (
+                  <p className="mb-3 text-[11px] text-rose-400">{playerGuestContactErrors.email}</p>
+                ) : null}
                 <p className="mb-3 text-[11px] leading-snug text-zinc-500">
                   Phone/email optional ... only used to notify them about this stake.
                 </p>
@@ -1071,7 +1125,7 @@ function PokerStableDealFormSheet({
 
         <button
           type="button"
-          disabled={saving}
+          disabled={saving || !guestContactFormValid}
           onClick={() => void submit()}
           data-poker-stable-primary-btn
           className="w-full rounded-3xl bg-amber-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"

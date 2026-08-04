@@ -5,6 +5,7 @@ import {
 } from './pokerTournamentEventKeys.js'
 import { localYmd, pokerSessionTotalCost } from './pokerBankrollMath.js'
 import { parseSwapPct } from './pokerTournamentSwapMath.js'
+import { parseGuestNotifyContact } from '../../utils/guestNotifyContact.js'
 
 export function isMissingTournamentSwapTableError(err) {
   const msg = String(err?.message || err?.details || '')
@@ -171,16 +172,24 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
   }
   const label = String(draft.counterparty_guest_label || '').trim()
   if (!label) return { error: 'Enter a guest name for the swap.' }
-  // Phone/email optional ... only used to notify the guest of the offer.
-  const phone = String(draft.counterparty_guest_phone || '').trim() || null
-  const email = String(draft.counterparty_guest_email || '').trim().toLowerCase() || null
+  let phone = null
+  let email = null
+  try {
+    ;({ phone, email } = parseGuestNotifyContact({
+      email: draft.counterparty_guest_email,
+      phone: draft.counterparty_guest_phone,
+      label: 'Guest swap',
+    }))
+  } catch (err) {
+    return { error: err?.message || 'Enter valid guest contact info.' }
+  }
   return {
     row: {
       creator_user_id: creatorUserId,
       counterparty_kind: 'guest',
       counterparty_guest_label: label,
-      counterparty_guest_phone: phone,
-      counterparty_guest_email: email,
+      counterparty_guest_phone: phone || null,
+      counterparty_guest_email: email || null,
       pct_creator_gives: pctYou,
       pct_counterparty_gives: pctThem,
     },

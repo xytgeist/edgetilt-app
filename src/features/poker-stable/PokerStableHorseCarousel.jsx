@@ -165,18 +165,20 @@ export default function PokerStableHorseCarousel({
                 className="mt-4 border-t border-amber-500/15 pt-3 text-left"
                 onClick={(e) => e.stopPropagation()}
               >
-                <p className="text-sm font-semibold leading-snug text-white">
-                  {backerSliceInviteSummaryLine(deal, slice, profilesById)}{' '}
+                <div className="flex items-stretch gap-2">
+                  <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-white">
+                    {backerSliceInviteSummaryLine(deal, slice, profilesById)}
+                  </p>
                   <button
                     type="button"
                     onClick={() => onOpenTerms?.(deal.id)}
-                    className="inline-flex h-[1.35rem] w-[1.35rem] translate-y-[0.1rem] items-center justify-center rounded-md text-zinc-400 touch-manipulation align-middle active:opacity-80"
+                    className="flex w-9 shrink-0 items-center justify-center self-stretch rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
                     aria-label="Stake terms"
                     data-poker-stable-terms-icon
                   >
                     <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
                   </button>
-                </p>
+                </div>
                 {deal.stakee_terms_ack_required ? (
                   <p className="mt-2 text-xs text-amber-200/90">
                     Waiting for the player to accept revised terms before you can accept your slice.
@@ -185,19 +187,19 @@ export default function PokerStableHorseCarousel({
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
-                    disabled={saving || deal.stakee_terms_ack_required}
-                    onClick={() => void onAcceptSlice?.(slice.id)}
-                    className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
                     disabled={saving}
                     onClick={() => void onDeclineSlice?.(slice.id)}
                     className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
                   >
                     Decline
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving || deal.stakee_terms_ack_required}
+                    onClick={() => void onAcceptSlice?.(slice.id)}
+                    className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+                  >
+                    Accept
                   </button>
                 </div>
               </div>

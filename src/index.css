@@ -6049,6 +6049,10 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] {
   background: linear-gradient(to bottom right, #fffbeb, #ffffff) !important;
   border-color: var(--poker-stable-chrome-border) !important;
 }
+[data-poker-stable-horse-card] [data-poker-stable-terms-icon]:active {
+  background-color: rgba(39, 39, 42, 0.45);
+  color: rgb(212 212 216);
+}
 html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-terms-icon] {
   color: #52525b !important;
 }

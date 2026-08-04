@@ -1,6 +1,9 @@
 /** Lounge in-app activity notifications (Phase H1). */
 
-import { parsePokerStableActivityDetail } from '../features/poker-stable/pokerStableActivityDetail.js'
+import {
+  parsePokerStableActivityDetail,
+  pokerStableSessionCompleteNotificationEmoji,
+} from '../features/poker-stable/pokerStableActivityDetail.js'
 
 export const LOUNGE_ACTIVITY_PAGE_SIZE = 30
 
@@ -380,7 +383,13 @@ export function loungeActivitySummary(event) {
     return loungeActivityActionPhrase(event)
   }
   const who = loungeActivityActorLabel(event)
-  return `${who} ${loungeActivityActionPhrase(event)}`
+  const phrase = loungeActivityActionPhrase(event)
+  if (event?.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE) {
+    const emoji = pokerStableSessionCompleteNotificationEmoji(event)
+    const prefix = emoji ? `${emoji} ` : ''
+    return `${prefix}${who} ${phrase}`
+  }
+  return `${who} ${phrase}`
 }
 
 /**

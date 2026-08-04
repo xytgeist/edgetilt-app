@@ -123,6 +123,20 @@ function parsePokerStableActivityDetail(detail: string | null | undefined): {
   }
 }
 
+const POKER_STABLE_SESSION_LOSS_EMOJI = '🐡'
+const POKER_STABLE_SESSION_WIN_EMOJI = '🦈'
+const SESSION_COMPLETE_TABLE_MARKER = ' · table '
+
+function pokerStableSessionCompleteEmojiPrefix(detailText?: string | null): string {
+  const raw = String(detailText || '').trim()
+  const tableIdx = raw.indexOf(SESSION_COMPLETE_TABLE_MARKER)
+  if (tableIdx === -1) return ''
+  const amountRaw = raw.slice(tableIdx + SESSION_COMPLETE_TABLE_MARKER.length).trim()
+  const grossPl = Number(amountRaw.replace(/,/g, ''))
+  if (!Number.isFinite(grossPl) || grossPl === 0) return ''
+  return grossPl < 0 ? `${POKER_STABLE_SESSION_LOSS_EMOJI} ` : `${POKER_STABLE_SESSION_WIN_EMOJI} `
+}
+
 function actorDisplayName(
   profile: ActorProfile | null | undefined,
   detailText?: string | null,
@@ -481,9 +495,13 @@ function buildSingleNotification(
     event.event_type === 'poker_stable_slice_declined'
   ) {
     const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
+    const fishPrefix =
+      event.event_type === 'poker_stable_session_complete'
+        ? pokerStableSessionCompleteEmojiPrefix(event.detail_text)
+        : ''
     return {
       title: 'Poker Stable',
-      body: `${who} ${phrase}`,
+      body: `${fishPrefix}${who} ${phrase}`,
       url: buildTargetUrl(event, actor, { activityEventId: event.id }),
       activityEventId: event.id,
       eventType: event.event_type,

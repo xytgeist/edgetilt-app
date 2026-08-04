@@ -3292,7 +3292,7 @@ export default function PokerBankrollTracker({
                                   Needs attn:
                                 </span>{' '}
                                 {dealLeadBackerDisplayName(hero.deal, stableProfilesById)}{' '}
-                                logged a periodic settlement.
+                                logged a periodic settlement. Click to review and commit.
                               </p>
                               <button
                                 type="button"

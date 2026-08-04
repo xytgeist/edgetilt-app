@@ -102,7 +102,6 @@ export default function PokerStableHorseCarousel({
               upClass="text-cyan-400"
               downClass="text-rose-400/90"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/45 via-zinc-950/65 to-zinc-950" />
           </div>
         ) : null
 

@@ -159,9 +159,11 @@ export default function PokerStableBackerClaimPage({
   return (
     <div
       data-poker-stable-claim
-      className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-50"
+      data-edge-scroll-shell
+      className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-50"
     >
-      <div className="mx-auto w-full max-w-md">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+        <div className="mx-auto w-full max-w-md px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
         <div className="mb-6 text-center">
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400/90">
             EdgeTilt
@@ -232,6 +234,7 @@ export default function PokerStableBackerClaimPage({
             ) : null}
           </>
         ) : null}
+        </div>
       </div>
     </div>
   )

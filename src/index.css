@@ -198,6 +198,24 @@ html:has([data-slot-guide-form]) .slot-guide-form-scroll {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Guest claim pages: body scroll is disabled globally — bounded viewport + inner scroll */
+html:has([data-poker-stable-claim]),
+html:has([data-poker-stake-claim]),
+html:has([data-poker-swap-claim]) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+html:has([data-poker-stable-claim]) #root,
+html:has([data-poker-stake-claim]) #root,
+html:has([data-poker-swap-claim]) #root {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 html.light #root {
   background-color: var(--color-zinc-950, #fafafa);
 }

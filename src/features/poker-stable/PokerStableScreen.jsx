@@ -378,19 +378,6 @@ export default function PokerStableScreen({
       ),
     [deals, userId],
   )
-  const incomingSlices = useMemo(() => {
-    /** @type {Array<{ deal: object, slice: object }>} */
-    const rows = []
-    for (const d of deals) {
-      if (d.stakee_user_id === userId) continue
-      // Backer Create Stake: lead staker already committed their slice at create.
-      if (d.staker_user_id === userId) continue
-      for (const s of slicesByDeal[d.id] || []) {
-        if (s.staker_user_id === userId && s.status === 'pending') rows.push({ deal: d, slice: s })
-      }
-    }
-    return rows
-  }, [deals, userId, slicesByDeal])
   const detailDeal = useMemo(
     () => deals.find((d) => d.id === detailDealId) || null,
     [deals, detailDealId],
@@ -693,71 +680,6 @@ export default function PokerStableScreen({
 
         {activeTab === 'overview' ? (
           <>
-        {incomingSlices.length > 0 ? (
-          <section className="mb-6">
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Backing invites
-            </h2>
-            <div className="space-y-2">
-              {incomingSlices.map(({ deal, slice }) => (
-                <div
-                  key={slice.id}
-                  data-poker-stable-invite-card
-                  data-elevated-card="surface"
-                  className="rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
-                >
-                  <div className="font-bold text-white">
-                    {dealStakeeDisplayName(deal, profilesById)} invited you · {slice.action_pct}% ·{' '}
-                    {deal.label || dealTypeLabel(deal.deal_type)}
-                  </div>
-                  {deal.stakee_terms_ack_required ? (
-                    <p className="mt-2 text-xs text-amber-200/90">
-                      Waiting for the player to accept revised terms before you can accept your slice.
-                    </p>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTermsDealId(deal.id)}
-                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
-                    >
-                      Terms
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTermsDealId(null)
-                        setEditTermsDealId(deal.id)
-                      }}
-                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
-                    >
-                      Edit terms
-                    </button>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      disabled={saving || deal.stakee_terms_ack_required}
-                      onClick={() => void onAcceptSlice(slice.id)}
-                      className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
-                    >
-                      Accept slice
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onDeclineSlice(slice.id)}
-                      className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
         {counterProposals.length > 0 ? (
           <section className="mb-6">
             <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
@@ -841,6 +763,10 @@ export default function PokerStableScreen({
               partyLabel={partyLabel}
               onOpenDeal={openDealDetail}
               onRevoke={onRevoke}
+              onAcceptSlice={onAcceptSlice}
+              onDeclineSlice={onDeclineSlice}
+              onOpenTerms={setTermsDealId}
+              saving={saving}
               onNudgePendingBacker={onNudgePendingBacker}
               nudgingSliceId={nudgingSliceId}
               nudgeDisabled={saving}

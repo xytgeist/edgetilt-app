@@ -91,7 +91,7 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
               onClick={() => onAccept?.()}
               className="min-w-[7.5rem] flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50 sm:flex-none"
             >
-              Accept slice
+              Accept
             </button>
             <button
               type="button"

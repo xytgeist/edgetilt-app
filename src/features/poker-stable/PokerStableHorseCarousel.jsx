@@ -6,6 +6,7 @@ import {
 } from './pokerStableBackerMath.js'
 import { dealTypeLabel } from './pokerStableMath.js'
 import {
+  dealStakeeDisplayName,
   pendingBackerNudgeTargetsForActiveBacker,
   sliceCounterpartyDisplayName,
   stakeHorseCardStatusLabel,
@@ -25,9 +26,13 @@ export default function PokerStableHorseCarousel({
   partyLabel,
   onOpenDeal,
   onRevoke,
+  onAcceptSlice,
+  onDeclineSlice,
+  onOpenTerms,
   onNudgePendingBacker,
   nudgingSliceId = null,
   nudgeDisabled = false,
+  saving = false,
 }) {
   if (!deals.length) return null
 
@@ -52,38 +57,44 @@ export default function PokerStableHorseCarousel({
         const profitTone =
           stats.profit > 0 ? 'text-emerald-400' : stats.profit < 0 ? 'text-rose-400' : 'text-zinc-300'
         const sliceAccepted = slice?.status === 'active'
-        const showBackerStats = deal.status === 'active' || sliceAccepted
+        const showBackerStats = sliceAccepted
+        const isPendingSyndicateInvite =
+          slice?.status === 'pending' && deal.staker_user_id !== userId
+        const isLeadBackerPending =
+          slice?.status === 'pending' && deal.staker_user_id === userId
+        const statusLabel =
+          slice?.status === 'pending' ? 'Pending' : stakeHorseCardStatusLabel(deal, dealSlices)
+        const statusTone =
+          slice?.status === 'pending'
+            ? 'bg-amber-500/15 text-amber-200/90'
+            : stakeHorseCardStatusTone(deal, dealSlices)
         const pendingNudgeSlices = pendingBackerNudgeTargetsForActiveBacker(
           deal,
           dealSlices,
           userId,
         )
+        const cardClassName =
+          'w-full rounded-3xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-950/50 to-zinc-900/90 p-5 text-left'
 
-        return (
-          <button
-            type="button"
-            onClick={() => onOpenDeal?.(deal.id)}
-            data-poker-stable-horse-card
-            data-elevated-card="surface"
-            className="w-full rounded-3xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-950/50 to-zinc-900/90 p-5 text-left touch-manipulation"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate text-xl font-black text-white">
-                  {partyLabel?.(deal, 'staker')}
-                </div>
-                <div className="mt-0.5 truncate text-sm text-zinc-400">
-                  {deal.label || dealTypeLabel(deal.deal_type)}
-                </div>
+        const header = (
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate text-xl font-black text-white">
+                {partyLabel?.(deal, 'staker')}
               </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${stakeHorseCardStatusTone(deal, dealSlices)}`}
-              >
-                {stakeHorseCardStatusLabel(deal, dealSlices)}
-              </span>
+              <div className="mt-0.5 truncate text-sm text-zinc-400">
+                {deal.label || dealTypeLabel(deal.deal_type)}
+              </div>
             </div>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone}`}
+            >
+              {statusLabel}
+            </span>
+          </div>
+        )
 
-            {showBackerStats ? (
+        const body = showBackerStats ? (
               <>
                 <div className="mt-4 grid grid-cols-2 gap-3 border-t border-amber-500/15 pt-3 text-center">
                   <div>
@@ -147,7 +158,50 @@ export default function PokerStableHorseCarousel({
                   </div>
                 ) : null}
               </>
-            ) : (
+            ) : isPendingSyndicateInvite ? (
+              <div
+                data-poker-stable-horse-invite
+                className="mt-4 border-t border-amber-500/15 pt-3 text-left"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="text-sm font-semibold leading-snug text-white">
+                  {dealStakeeDisplayName(deal, profilesById)} invited you · {slice.action_pct}% ·{' '}
+                  {deal.label || dealTypeLabel(deal.deal_type)}
+                </p>
+                {deal.stakee_terms_ack_required ? (
+                  <p className="mt-2 text-xs text-amber-200/90">
+                    Waiting for the player to accept revised terms before you can accept your slice.
+                  </p>
+                ) : null}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onOpenTerms?.(deal.id)}
+                    className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+                  >
+                    Terms
+                  </button>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={saving || deal.stakee_terms_ack_required}
+                    onClick={() => void onAcceptSlice?.(slice.id)}
+                    className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => void onDeclineSlice?.(slice.id)}
+                    className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ) : isLeadBackerPending ? (
               <>
                 <p className="mt-3 text-xs text-amber-200/80">Pending acceptance</p>
                 <span
@@ -168,7 +222,31 @@ export default function PokerStableHorseCarousel({
                   Revoke deal
                 </span>
               </>
-            )}
+            ) : null
+
+        if (isPendingSyndicateInvite) {
+          return (
+            <div
+              data-poker-stable-horse-card
+              data-elevated-card="surface"
+              className={cardClassName}
+            >
+              {header}
+              {body}
+            </div>
+          )
+        }
+
+        return (
+          <button
+            type="button"
+            onClick={() => onOpenDeal?.(deal.id)}
+            data-poker-stable-horse-card
+            data-elevated-card="surface"
+            className={`${cardClassName} touch-manipulation`}
+          >
+            {header}
+            {body}
           </button>
         )
       }}

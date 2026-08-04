@@ -213,10 +213,19 @@ export default function PokerStableDealTermsSheet({
       status: 'proposed',
     })) || []
 
-  const canEdit =
-    isStakee &&
-    stakeeCanEditDealTerms(deal, slices, { hasProposal }) &&
+  const viewerPendingSlice = slices.find(
+    (s) => s.staker_user_id === userId && s.status === 'pending',
+  )
+  const canEditAsBacker =
+    !isStakee &&
+    viewerPendingSlice &&
+    !deal.stakee_terms_ack_required &&
     typeof onEdit === 'function'
+  const canEdit =
+    (isStakee &&
+      stakeeCanEditDealTerms(deal, slices, { hasProposal }) &&
+      typeof onEdit === 'function') ||
+    canEditAsBacker
   const canCancel =
     isStakee &&
     stakeDealCanBeCancelled(deal, slices, { userId }) &&

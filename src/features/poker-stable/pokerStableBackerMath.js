@@ -1,6 +1,36 @@
 import { roundMoney } from './pokerStableMath.js'
 import { pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
 
+/** Player + Stake on Bankroll (`deal.staker_user_id` null). */
+export function isPlayerInitiatedBackingDeal(deal) {
+  return Boolean(deal?.stakee_user_id) && deal?.staker_user_id == null
+}
+
+/**
+ * Backer's slice capital is deployed (debited from backing bankroll), not pending hold.
+ * @param {object} deal
+ * @param {object} slice
+ */
+export function backerSliceCapitalIsDeployed(deal, slice) {
+  if (!deal || !slice || slice.status !== 'active') return false
+  if (deal.status === 'active') return true
+  if (deal.status === 'pending' && isPlayerInitiatedBackingDeal(deal)) return true
+  return false
+}
+
+/**
+ * Backer's slice capital is reserved as a pending hold (not yet debited).
+ * @param {object} deal
+ * @param {object} slice
+ */
+export function backerSliceCapitalIsPendingHold(deal, slice) {
+  if (!deal || !slice || deal.status !== 'pending') return false
+  if (slice.status === 'declined' || slice.status === 'cancelled') return false
+  if (slice.status === 'pending') return true
+  if (slice.status === 'active' && !isPlayerInitiatedBackingDeal(deal)) return true
+  return false
+}
+
 /**
  * Backer's allocated capital for one slice (baseline × action %).
  * @param {object} deal
@@ -32,12 +62,12 @@ export function computeBackerActiveAllocatedCapital({ deals = [], slicesByDeal =
   if (!userId) return 0
   let total = 0
   for (const deal of deals) {
-    if (deal.status !== 'active') continue
+    if (deal.status !== 'active' && deal.status !== 'pending') continue
     const slices = (slicesByDeal[deal.id] || []).filter(
       (s) => s.staker_user_id === userId && s.status !== 'declined',
     )
     for (const slice of slices) {
-      if (slice.status !== 'active' && slice.status !== 'pending') continue
+      if (!backerSliceCapitalIsDeployed(deal, slice)) continue
       total = roundMoney(total + backerSliceAllocatedCapital(deal, slice))
     }
   }
@@ -74,7 +104,7 @@ export function computeBackerPendingHold({ deals = [], slicesByDeal = {}, userId
       (s) => s.staker_user_id === userId && s.status !== 'declined',
     )
     for (const slice of slices) {
-      if (slice.status !== 'active' && slice.status !== 'pending') continue
+      if (!backerSliceCapitalIsPendingHold(deal, slice)) continue
       pendingHold = roundMoney(pendingHold + backerSliceAllocatedCapital(deal, slice))
     }
   }
@@ -379,12 +409,12 @@ export function computeBackerPortfolioMetrics({
       if (slice.status !== 'active' && slice.status !== 'pending') continue
       const allocated = backerSliceAllocatedCapital(deal, slice)
 
-      if (deal.status === 'active') {
+      if (backerSliceCapitalIsDeployed(deal, slice)) {
         capitalAtRisk = roundMoney(capitalAtRisk + allocated)
         activeHorseCount += 1
         stakeValueMtm = roundMoney(stakeValueMtm + backerSliceStakeValue(deal, slice, roll))
         rollExposure = roundMoney(rollExposure + (Number(roll?.overall_bankroll) || 0))
-      } else if (deal.status === 'pending' && slice.status === 'pending') {
+      } else if (backerSliceCapitalIsPendingHold(deal, slice)) {
         stakeValueMtm = roundMoney(stakeValueMtm + allocated)
       }
 

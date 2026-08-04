@@ -1,6 +1,6 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue } from '../../utils/moneyInputFormat.js'
-import { computeDealMakeup, isOngoingDealType } from './pokerStableMath.js'
+import { computeDealMakeup, dealTypeLabel, isOngoingDealType } from './pokerStableMath.js'
 
 export function pricingModeLabel(mode) {
   return mode === 'markup' ? 'Markup' : 'Profit split'
@@ -204,26 +204,35 @@ export function sliceTermsSummary(slice, profilesById = {}) {
   return { name, lines }
 }
 
+function dealInviteStakeKindPhrase(dealType) {
+  if (dealType === 'cash_backing' || dealType === 'cash_piece') return 'cash game stake'
+  if (dealType === 'tournament_package') return 'tournament package stake'
+  if (dealType === 'tournament_piece') return 'tournament piece stake'
+  const label = dealTypeLabel(dealType)
+  return label ? `${label.toLowerCase()} stake` : 'stake'
+}
+
 /** One-line invite copy for pending backer horse cards (action, baseline, pricing). */
 export function backerSliceInviteSummaryLine(deal, slice, profilesById = {}) {
   const playerName = dealStakeeDisplayName(deal, profilesById)
   const actionPct = formatTermsPct(slice?.action_pct ?? slice?.actionPct)
   const baseline = fmtPoker$(Number(deal?.baseline_bankroll) || 0)
+  const stakeKind = dealInviteStakeKindPhrase(deal?.deal_type)
   const pricingMode = slice?.pricing_mode || slice?.pricingMode || 'profit_split'
 
-  let pricingPhrase = 'profit split'
+  let pricingPhrase = 'a profit split'
   if (pricingMode === 'markup') {
     const rate = formatTermsPct(slice?.markup_rate ?? slice?.markupRate)
-    pricingPhrase = `${rate}x markup`
+    pricingPhrase = `a ${rate}x markup`
   } else {
     const playerPct = Number(slice?.player_profit_pct ?? slice?.playerProfitPct)
     const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : null
     if (Number.isFinite(backerPct) && Number.isFinite(playerPct)) {
-      pricingPhrase = `player ${formatTermsPct(playerPct)}% | backer ${formatTermsPct(backerPct)}%`
+      pricingPhrase = `a ${formatTermsPct(playerPct)}/${formatTermsPct(backerPct)} player/backer split`
     }
   }
 
-  return `${playerName} invited you to back ${actionPct}% of ${baseline} at ${pricingPhrase}`
+  return `${playerName} has invited you to back ${actionPct}% of a ${baseline} ${stakeKind} @ ${pricingPhrase}`
 }
 
 export function dealHasEdgeStakerSlices(slices = []) {

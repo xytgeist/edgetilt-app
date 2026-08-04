@@ -70,13 +70,13 @@ export default function BankrollSparkline({
       ) : null}
       <path
         fill="none"
-        stroke="currentColor"
-        strokeWidth={showFill ? '1.75' : '2.25'}
+        stroke={strokeClassName ? undefined : 'currentColor'}
+        strokeWidth={showFill ? '1' : '2.25'}
         strokeLinecap="round"
         strokeLinejoin="round"
         d={linePath}
         vectorEffect="non-scaling-stroke"
-        className={strokeClassName || (showFill ? 'opacity-35' : undefined)}
+        className={strokeClassName || (showFill ? 'opacity-20' : undefined)}
       />
     </svg>
   )

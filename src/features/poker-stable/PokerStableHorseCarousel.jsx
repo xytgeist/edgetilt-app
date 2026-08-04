@@ -107,7 +107,7 @@ export default function PokerStableHorseCarousel({
               fillClassName={
                 sparkUp ? 'fill-emerald-400/[0.08]' : 'fill-rose-400/[0.08]'
               }
-              strokeClassName={sparkUp ? 'stroke-emerald-400/35' : 'stroke-rose-400/35'}
+              strokeClassName={sparkUp ? 'stroke-emerald-300/15' : 'stroke-rose-300/15'}
             />
           </div>
         ) : null

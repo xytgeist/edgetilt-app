@@ -1,4 +1,5 @@
 import PokerBankrollHeroCarousel from '../poker-bankroll/PokerBankrollHeroCarousel.jsx'
+import { FileText } from 'lucide-react'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   backerSliceEstimatedShare,
@@ -6,7 +7,7 @@ import {
 } from './pokerStableBackerMath.js'
 import { dealTypeLabel } from './pokerStableMath.js'
 import {
-  dealStakeeDisplayName,
+  backerSliceInviteSummaryLine,
   pendingBackerNudgeTargetsForActiveBacker,
   sliceCounterpartyDisplayName,
   stakeHorseCardStatusLabel,
@@ -165,23 +166,22 @@ export default function PokerStableHorseCarousel({
                 onClick={(e) => e.stopPropagation()}
               >
                 <p className="text-sm font-semibold leading-snug text-white">
-                  {dealStakeeDisplayName(deal, profilesById)} invited you · {slice.action_pct}% ·{' '}
-                  {deal.label || dealTypeLabel(deal.deal_type)}
+                  {backerSliceInviteSummaryLine(deal, slice, profilesById)}{' '}
+                  <button
+                    type="button"
+                    onClick={() => onOpenTerms?.(deal.id)}
+                    className="inline-flex h-[1.35rem] w-[1.35rem] translate-y-[0.1rem] items-center justify-center rounded-md text-zinc-400 touch-manipulation align-middle active:opacity-80"
+                    aria-label="Stake terms"
+                    data-poker-stable-terms-icon
+                  >
+                    <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
+                  </button>
                 </p>
                 {deal.stakee_terms_ack_required ? (
                   <p className="mt-2 text-xs text-amber-200/90">
                     Waiting for the player to accept revised terms before you can accept your slice.
                   </p>
                 ) : null}
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onOpenTerms?.(deal.id)}
-                    className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
-                  >
-                    Terms
-                  </button>
-                </div>
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"

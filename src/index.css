@@ -6049,6 +6049,13 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] {
   background: linear-gradient(to bottom right, #fffbeb, #ffffff) !important;
   border-color: var(--poker-stable-chrome-border) !important;
 }
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-terms-icon] {
+  color: #52525b !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-terms-icon]:active {
+  background-color: #f4f4f5 !important;
+  color: #27272a !important;
+}
 html.light [data-poker-stable] [data-poker-stake-archive-card] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;

@@ -204,6 +204,28 @@ export function sliceTermsSummary(slice, profilesById = {}) {
   return { name, lines }
 }
 
+/** One-line invite copy for pending backer horse cards (action, baseline, pricing). */
+export function backerSliceInviteSummaryLine(deal, slice, profilesById = {}) {
+  const playerName = dealStakeeDisplayName(deal, profilesById)
+  const actionPct = formatTermsPct(slice?.action_pct ?? slice?.actionPct)
+  const baseline = fmtPoker$(Number(deal?.baseline_bankroll) || 0)
+  const pricingMode = slice?.pricing_mode || slice?.pricingMode || 'profit_split'
+
+  let pricingPhrase = 'profit split'
+  if (pricingMode === 'markup') {
+    const rate = formatTermsPct(slice?.markup_rate ?? slice?.markupRate)
+    pricingPhrase = `${rate}x markup`
+  } else {
+    const playerPct = Number(slice?.player_profit_pct ?? slice?.playerProfitPct)
+    const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : null
+    if (Number.isFinite(backerPct) && Number.isFinite(playerPct)) {
+      pricingPhrase = `player ${formatTermsPct(playerPct)}% | backer ${formatTermsPct(backerPct)}%`
+    }
+  }
+
+  return `${playerName} invited you to back ${actionPct}% of ${baseline} at ${pricingPhrase}`
+}
+
 export function dealHasEdgeStakerSlices(slices = []) {
   return slices.some(
     (slice) =>

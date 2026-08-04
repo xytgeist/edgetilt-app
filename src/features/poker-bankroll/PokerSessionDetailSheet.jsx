@@ -107,6 +107,7 @@ export default function PokerSessionDetailSheet({
   swapProfilesById = {},
   maxSwapGivePct = 100,
   sessionCardSwapBusyId = null,
+  stakeSessions = [],
   onClose,
   onEdit,
   onSavedSwapsMutated,
@@ -125,6 +126,7 @@ export default function PokerSessionDetailSheet({
     slices,
     stableProfilesById,
     swapDelta,
+    stakeSessions,
   )
   const grossWl = attribution.gross
   const playerNet = attribution.playerNetValue

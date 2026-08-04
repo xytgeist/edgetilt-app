@@ -128,7 +128,7 @@ export default function PokerStableStakeClaimPage({
           <h1 className="mt-2 text-xl font-black tracking-tight text-white">Review your stake</h1>
           <p className="mt-2 text-sm leading-relaxed text-zinc-300">
             {preview
-              ? `${backerName} invited you to a backing stake on EdgeTilt Poker Bankroll. Review the terms below, then create an account or sign in to link the stake.`
+              ? `${backerName} invited you to play on a stake on EdgeTilt's Poker Bankroll Manager. Review the terms below, then create an account or sign in to link the stake.`
               : "Link your Edge account, then accept or counter the backer's terms on Bankroll."}
           </p>
         </div>

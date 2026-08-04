@@ -164,15 +164,51 @@ function backerSliceBackerProfitPct(slice) {
   return slice?.pricing_mode === 'markup' ? 100 : 100 - playerPct
 }
 
+function backerSliceActionFraction(slice) {
+  return (Number(slice?.action_pct) || 0) / 100
+}
+
+/**
+ * Deal roll after completed sessions through `throughSessionId` (inclusive), chronological.
+ * @param {object} deal
+ * @param {object[]} sessions
+ * @param {string} [throughSessionId]
+ */
+function resolveDealRollThroughSession(deal, sessions = [], throughSessionId = null) {
+  const base = Number(deal?.starting_roll) || Number(deal?.baseline_bankroll) || 0
+  const completed = (sessions || [])
+    .filter((s) => s.deal_id === deal?.id && s.status !== 'active')
+    .sort(
+      (a, b) =>
+        new Date(a.end_at || a.updated_at || a.start_at || 0).getTime() -
+        new Date(b.end_at || b.updated_at || b.start_at || 0).getTime(),
+    )
+  let roll = base
+  for (const session of completed) {
+    const wl = pokerSessionWinLoss(session)
+    if (wl != null) roll = roundMoney(roll + wl)
+    if (throughSessionId && session.id === throughSessionId) break
+  }
+  return roll
+}
+
 /**
  * Backer's economic P/L on the stake vs baseline (signed), after action % and profit split.
+ * Underwater (roll ≤ baseline): backers bear the full action-weighted drawdown; player is in makeup.
+ * Above baseline: profit split applies to profit above baseline only.
  */
 export function backerSliceEconomicPlShare(deal, slice, dealRoll, sessions = []) {
   const baseline = Number(deal?.baseline_bankroll) || 0
   const roll = resolveDealOverallRoll(deal, dealRoll, sessions)
-  const pct = Number(slice?.action_pct) || 0
+  const actionFraction = backerSliceActionFraction(slice)
+  const delta = roundMoney(roll - baseline)
+
+  if (delta <= 0) {
+    return roundMoney(delta * actionFraction)
+  }
+
   const backerProfitPct = backerSliceBackerProfitPct(slice)
-  return roundMoney((roll - baseline) * (pct / 100) * (backerProfitPct / 100))
+  return roundMoney(delta * actionFraction * (backerProfitPct / 100))
 }
 
 /**
@@ -199,14 +235,22 @@ export function backerSliceSessionShare(deal, slice, session) {
 }
 
 /**
- * Backer's economic share of one completed stake session (session W/L × action % × profit split).
+ * Backer's economic share of one completed stake session.
+ * While roll is at or below baseline, backers take the full action-weighted session W/L (makeup).
  */
-export function backerSliceSessionEconomicShare(deal, slice, session) {
+export function backerSliceSessionEconomicShare(deal, slice, session, sessions = []) {
   const wl = pokerSessionWinLoss(session)
   if (wl == null) return 0
-  const pct = Number(slice?.action_pct) || 0
+  const actionFraction = backerSliceActionFraction(slice)
+  const baseline = Number(deal?.baseline_bankroll) || 0
+  const rollAfter = resolveDealRollThroughSession(deal, sessions, session?.id)
+
+  if (rollAfter <= baseline) {
+    return roundMoney(wl * actionFraction)
+  }
+
   const backerProfitPct = backerSliceBackerProfitPct(slice)
-  return roundMoney(wl * (pct / 100) * (backerProfitPct / 100))
+  return roundMoney(wl * actionFraction * (backerProfitPct / 100))
 }
 
 /**
@@ -274,7 +318,7 @@ export function computeBackerPortfolioTrendChart({
   const portfolio = [0]
 
   for (const ev of events) {
-    const share = backerSliceSessionEconomicShare(ev.deal, ev.slice, ev.session)
+    const share = backerSliceSessionEconomicShare(ev.deal, ev.slice, ev.session, sessions)
     perfByDeal[ev.deal.id] = roundMoney(perfByDeal[ev.deal.id] + share)
     let port = 0
     for (const deal of deals) {
@@ -345,7 +389,7 @@ export function computeBackerTwrPct({
       sessionEvents.push({
         t,
         kind: 'session',
-        share: backerSliceSessionEconomicShare(deal, slice, session),
+        share: backerSliceSessionEconomicShare(deal, slice, session, sessions),
       })
     }
   }

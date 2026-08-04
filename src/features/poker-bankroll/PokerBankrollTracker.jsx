@@ -46,10 +46,11 @@ import {
   currencyFromNearbyCasinoName,
   currencyFromOnlineSiteId,
 } from './pokerCurrencies.js'
-import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
+import { computeDealMakeup, dealTypeLabel } from '../poker-stable/pokerStableMath.js'
 import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
+  dealIsInMakeup,
   dealLeadBackerDisplayName,
   pendingBackerAcceptanceSlices,
   dealHasAcceptedBackerSlice,
@@ -145,6 +146,7 @@ import {
   isPersonalMetricSession,
   playerStakeSessionValue,
   resolveSessionMetricWinLoss,
+  sessionPlayerShareInMakeup,
 } from './pokerSessionAttribution.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import {
@@ -3126,11 +3128,27 @@ export default function PokerBankrollTracker({
                     ) : (
                       <>
                         <div
-                          className={`flex min-h-12 items-end text-5xl font-black leading-none tracking-tight ${
+                          className={`flex min-h-12 flex-wrap items-end gap-x-3 gap-y-1 text-5xl font-black leading-none tracking-tight ${
                             onStake ? theme.amount : 'text-white'
                           }`}
                         >
-                          {fmtPoker$(hero.overallBankroll)}
+                          <span>{fmtPoker$(hero.overallBankroll)}</span>
+                          {onStake &&
+                          hero.deal &&
+                          dealIsInMakeup(hero.deal, dealProfiles[scopeId] ?? null) ? (
+                            <span
+                              data-poker-stake-makeup
+                              className="pb-1 text-sm font-semibold tabular-nums text-rose-400/95"
+                            >
+                              Make-up:{' '}
+                              {fmtPoker$(
+                                computeDealMakeup({
+                                  baseline_bankroll: hero.deal.baseline_bankroll,
+                                  roll: hero.overallBankroll,
+                                }),
+                              )}
+                            </span>
+                          ) : null}
                         </div>
                         <div
                           className={`mt-3 w-full ${stakeHeroMessage ? '' : 'h-10'}`}
@@ -3584,12 +3602,24 @@ export default function PokerBankrollTracker({
                     : null
                   const isMergedStakeSession =
                     !isOnStake && sessionDeal?.status === 'settled'
+                  const sessionDealSlices = session.deal_id
+                    ? slicesByDeal[session.deal_id] || []
+                    : []
+                  const sessionDealSessions = session.deal_id
+                    ? scopedSessions.filter((s) => s.deal_id === session.deal_id)
+                    : []
+                  const playerShareInMakeup =
+                    sessionDeal &&
+                    sessionPlayerShareInMakeup(sessionDeal, session, sessionDealSessions)
                   const playerShare =
-                    (isOnStake || isMergedStakeSession) && sessionDeal
+                    (isOnStake || isMergedStakeSession) &&
+                    sessionDeal &&
+                    !playerShareInMakeup
                       ? playerStakeSessionValue(
                           session,
                           sessionDeal,
-                          slicesByDeal[session.deal_id] || [],
+                          sessionDealSlices,
+                          sessionDealSessions,
                         )
                       : null
                   const wl = resolveSessionMetricWinLoss(
@@ -4301,6 +4331,11 @@ export default function PokerBankrollTracker({
           swapProfilesById={swapProfilesById}
           maxSwapGivePct={swapSelfOwnedPct}
           sessionCardSwapBusyId={sessionCardSwapBusyId}
+          stakeSessions={
+            detailDeal?.id
+              ? scopedSessions.filter((s) => s.deal_id === detailDeal.id)
+              : []
+          }
           onClose={dismissSheet}
           onEdit={() => {
             openEdit(detailSession)

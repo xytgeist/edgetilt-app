@@ -9,7 +9,58 @@ import {
   stakeDealIsLiveForStakee,
   sumSliceActionPct,
 } from '../poker-stable/pokerStableMath.js'
-import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
+import { dealHasMakeup, sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
+
+/**
+ * Deal roll after completed sessions through `throughSessionId` (inclusive), chronological.
+ * @param {object} deal
+ * @param {object[]} [sessions]
+ * @param {string | null | undefined} [throughSessionId]
+ */
+function resolveDealRollThroughSession(deal, sessions = [], throughSessionId = null) {
+  const base = Number(deal?.starting_roll) || Number(deal?.baseline_bankroll) || 0
+  const completed = (sessions || [])
+    .filter((s) => s.deal_id === deal?.id && s.status !== 'active')
+    .sort(
+      (a, b) =>
+        new Date(a.end_at || a.updated_at || a.start_at || 0).getTime() -
+        new Date(b.end_at || b.updated_at || b.start_at || 0).getTime(),
+    )
+  let roll = base
+  for (const session of completed) {
+    const wl = pokerSessionWinLoss(session)
+    if (wl != null) roll = roundMoney(roll + wl)
+    if (throughSessionId && session.id === throughSessionId) break
+  }
+  return roll
+}
+
+/** True when stake roll after this session is still at or below baseline (player in makeup). */
+export function sessionPlayerShareInMakeup(deal, session, sessions = []) {
+  if (!deal || !session?.deal_id || !dealHasMakeup(deal)) return false
+  const baseline = stableNum(deal.baseline_bankroll)
+  const rollAfter = resolveDealRollThroughSession(deal, sessions, session?.id)
+  return rollAfter <= baseline + 0.005
+}
+
+function computePlayerSliceStakeValue(gross, activeSlices, unsoldPct) {
+  let playerTotal = 0
+  if (unsoldPct > 0) {
+    playerTotal += gross * (unsoldPct / 100)
+  }
+
+  for (const slice of activeSlices) {
+    const actionPct = stableNum(slice.action_pct) / 100
+    const grossOnSlice = gross * actionPct
+    if (slice.pricing_mode === 'markup') {
+      continue
+    }
+    const playerPct = stableNum(slice.player_profit_pct) / 100
+    playerTotal += grossOnSlice * playerPct
+  }
+
+  return roundMoney(playerTotal)
+}
 
 /**
  * Personal play history: own sessions + merged stake sessions after close.
@@ -82,7 +133,7 @@ export function resolveSessionMetricWinLoss(session, swaps, userId, opts) {
  * @param {object | null | undefined} deal
  * @param {object[]} [slices]
  */
-export function playerStakeSessionValue(session, deal, slices = []) {
+export function playerStakeSessionValue(session, deal, slices = [], sessions = []) {
   const gross = pokerSessionWinLoss(session)
   if (gross == null) return null
   if (!session?.deal_id || !deal) return roundMoney(gross)
@@ -91,22 +142,11 @@ export function playerStakeSessionValue(session, deal, slices = []) {
   const soldPct = sumSliceActionPct(activeSlices)
   const unsoldPct = Math.max(0, 100 - soldPct)
 
-  let playerTotal = 0
-  if (unsoldPct > 0) {
-    playerTotal += gross * (unsoldPct / 100)
+  if (sessionPlayerShareInMakeup(deal, session, sessions)) {
+    return roundMoney(0)
   }
 
-  for (const slice of activeSlices) {
-    const actionPct = stableNum(slice.action_pct) / 100
-    const grossOnSlice = gross * actionPct
-    if (slice.pricing_mode === 'markup') {
-      continue
-    }
-    const playerPct = stableNum(slice.player_profit_pct) / 100
-    playerTotal += grossOnSlice * playerPct
-  }
-
-  return roundMoney(playerTotal)
+  return computePlayerSliceStakeValue(gross, activeSlices, unsoldPct)
 }
 
 /**
@@ -142,7 +182,14 @@ export function playerNetSessionValue(session, deal, slices = [], swapDelta = 0)
  *   parties: SessionAttributionParty[],
  * }}
  */
-export function computeSessionAttribution(session, deal, slices = [], profilesById = {}, swapDelta = 0) {
+export function computeSessionAttribution(
+  session,
+  deal,
+  slices = [],
+  profilesById = {},
+  swapDelta = 0,
+  sessions = [],
+) {
   const gross = pokerSessionWinLoss(session)
   const onStake = Boolean(session?.deal_id && deal)
 
@@ -172,6 +219,7 @@ export function computeSessionAttribution(session, deal, slices = [], profilesBy
   const activeSlices = (slices || []).filter((s) => s.status === 'active')
   const soldPct = sumSliceActionPct(activeSlices)
   const unsoldPct = Math.max(0, 100 - soldPct)
+  const inMakeup = sessionPlayerShareInMakeup(deal, session, sessions)
 
   /** @type {SessionAttributionParty[]} */
   const parties = [
@@ -185,7 +233,7 @@ export function computeSessionAttribution(session, deal, slices = [], profilesBy
   ]
 
   let playerTotal = 0
-  if (unsoldPct > 0.005) {
+  if (!inMakeup && unsoldPct > 0.005) {
     const amt = roundMoney(gross * (unsoldPct / 100))
     playerTotal += amt
   }
@@ -197,7 +245,10 @@ export function computeSessionAttribution(session, deal, slices = [], profilesBy
     let playerFromSlice = 0
     let backerFromSlice = grossOnSlice
 
-    if (slice.pricing_mode === 'markup') {
+    if (inMakeup) {
+      playerFromSlice = 0
+      backerFromSlice = grossOnSlice
+    } else if (slice.pricing_mode === 'markup') {
       playerFromSlice = 0
       backerFromSlice = grossOnSlice
     } else {
@@ -212,7 +263,9 @@ export function computeSessionAttribution(session, deal, slices = [], profilesBy
       const detail =
         slice.pricing_mode === 'markup'
           ? `${actionPct}%`
-          : `${actionPct}% · ${slice.player_profit_pct ?? '?'}% player split`
+          : inMakeup
+            ? `${actionPct}% · makeup`
+            : `${actionPct}% · ${slice.player_profit_pct ?? '?'}% player split`
       parties.push({
         key: slice.id || name,
         role: 'backer',
@@ -225,18 +278,20 @@ export function computeSessionAttribution(session, deal, slices = [], profilesBy
   }
 
   playerTotal = roundMoney(playerTotal)
-  parties.splice(1, 0, {
-    key: 'player',
-    role: 'player',
-    label: 'Your share',
-    detail:
-      unsoldPct > 0.005 && soldPct > 0.005
-        ? `${roundMoney(unsoldPct, 1)}% unsold + slice terms`
-        : unsoldPct > 0.005
-          ? `${roundMoney(unsoldPct, 1)}% unsold action`
-          : 'Per backer slice terms',
-    amount: playerTotal,
-  })
+  if (!inMakeup && (Math.abs(playerTotal) >= 0.005 || unsoldPct > 0.005)) {
+    parties.splice(1, 0, {
+      key: 'player',
+      role: 'player',
+      label: 'Your share',
+      detail:
+        unsoldPct > 0.005 && soldPct > 0.005
+          ? `${roundMoney(unsoldPct, 1)}% unsold + slice terms`
+          : unsoldPct > 0.005
+            ? `${roundMoney(unsoldPct, 1)}% unsold action`
+            : 'Per backer slice terms',
+      amount: playerTotal,
+    })
+  }
 
   return {
     gross,

@@ -8,13 +8,24 @@ const POKER_STABLE_BANKROLL_EVENT_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED,
 ])
 
+/** Stable tab only — open manager, not deal detail sheet. */
+const POKER_STABLE_TAB_ONLY_EVENT_TYPES = new Set([
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED,
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE,
+])
+
 /** Build app URL for poker stable activity Alerts / push rows. */
 export function buildPokerStableActivityNavigateUrl(event) {
   if (!event?.event_type) return '/?tab=home'
   const params = new URLSearchParams()
   const bankrollTab = POKER_STABLE_BANKROLL_EVENT_TYPES.has(event.event_type)
   params.set('tab', bankrollTab ? 'poker-bankroll' : 'poker-stable')
-  if (event.poker_stable_deal_id) params.set('stableDeal', String(event.poker_stable_deal_id))
+  if (
+    event.poker_stable_deal_id &&
+    !POKER_STABLE_TAB_ONLY_EVENT_TYPES.has(event.event_type)
+  ) {
+    params.set('stableDeal', String(event.poker_stable_deal_id))
+  }
   if (
     bankrollTab &&
     event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER

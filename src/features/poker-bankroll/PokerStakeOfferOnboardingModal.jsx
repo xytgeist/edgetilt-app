@@ -47,7 +47,7 @@ export default function PokerStakeOfferOnboardingModal({
           Review your stake
         </h2>
         <p className="mt-2 text-center text-sm leading-relaxed text-zinc-300">
-          {backerName} invited you to a backing stake on EdgeTilt Poker Bankroll. Review the terms
+          {backerName} invited you to play on a stake on EdgeTilt&apos;s Poker Bankroll Manager. Review the terms
           below, then accept, decline, or propose changes.
         </p>
 

@@ -65,6 +65,18 @@ export function dealLeadBackerDisplayName(deal, profilesById = {}) {
 }
 
 /** Terms sheet: "Joey K (@smokewagon)" or guest name only. */
+/** Slices still waiting on backer accept/decline (player stake card). */
+export function pendingBackerAcceptanceSlices(deal, slices = []) {
+  if (!deal) return []
+  if (deal.status === 'revoked' || deal.status === 'declined' || deal.status === 'settled') {
+    return []
+  }
+  return slices.filter((s) => s.status === 'pending')
+}
+
+export const STAKE_GOES_LIVE_COPY =
+  'Once you and at least one backer accept, this stake goes live.'
+
 export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
   if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {
     return slice.guest_label || slice.guestLabel || 'Guest'

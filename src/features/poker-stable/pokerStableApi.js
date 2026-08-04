@@ -37,6 +37,31 @@ export function isViewerBackingDeal(deal, userId, slicesByDeal = {}) {
   )
 }
 
+/** Viewer has accepted their backing slice (active row). */
+export function viewerHasAcceptedBackingSlice(deal, slicesByDeal, userId) {
+  if (!deal || !userId) return false
+  return (slicesByDeal[deal.id] || []).some(
+    (s) => s.staker_user_id === userId && s.status === 'active',
+  )
+}
+
+/** Deal ids where an accepted backer should see roll, stats, and session history. */
+export function dealIdsForAcceptedBackerVisibility(deals, slicesByDeal, userId) {
+  if (!userId) return []
+  const ids = []
+  for (const deal of deals) {
+    if (!isViewerBackingDeal(deal, userId, slicesByDeal)) continue
+    if (deal.status === 'active') {
+      ids.push(deal.id)
+      continue
+    }
+    if (deal.status === 'pending' && viewerHasAcceptedBackingSlice(deal, slicesByDeal, userId)) {
+      ids.push(deal.id)
+    }
+  }
+  return ids
+}
+
 /** @param {string} raw */
 export function normalizeHandleInput(raw) {
   return String(raw || '')
@@ -1185,9 +1210,8 @@ export async function acceptSliceAsStaker(supabase, sliceId, stakerUserId) {
     .from('poker_stable_deal_slices')
     .select('status')
     .eq('deal_id', data.deal_id)
-  const allActive = (slices || []).every((s) => s.status === 'active' || s.status === 'declined')
   const anyActive = (slices || []).some((s) => s.status === 'active')
-  if (allActive && anyActive) {
+  if (anyActive) {
     const { data: dealRow } = await supabase
       .from('poker_stable_deals')
       .select('starting_roll, baseline_bankroll, status')
@@ -1649,7 +1673,7 @@ function parseStableNotifyPayload(data) {
  * Notify guest backers (Twilio SMS + Resend email) via Edge Function.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
- * @param {{ sliceIds?: string[]; kind?: 'offer' | 'deleted' | 'terms_edited'; termsEdit?: { before: object; after: object } }} [opts]
+ * @param {{ sliceIds?: string[]; kind?: 'offer' | 'deleted' | 'terms_edited' | 'slice_nudge'; termsEdit?: { before: object; after: object } }} [opts]
  */
 export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
   let {
@@ -1671,7 +1695,8 @@ export async function notifyStableStakeGuests(supabase, dealId, opts = {}) {
   else if (opts.kind === 'terms_edited') {
     body.kind = 'terms_edited'
     body.terms_edit = opts.termsEdit
-  } else if (opts.kind === 'offer') body.kind = 'offer'
+  }   else if (opts.kind === 'offer') body.kind = 'offer'
+  else if (opts.kind === 'slice_nudge') body.kind = 'slice_nudge'
 
   const { data, error, response } = await supabase.functions.invoke('poker-stable-notify', {
     body,
@@ -1762,4 +1787,27 @@ export async function notifyStableSessionComplete(supabase, dealId, sessionId) {
   }
   const notifiedCount = Number(payload?.notified_count) || 0
   return { data: payload, error: null, notifiedCount }
+}
+
+/**
+ * Remind a pending backer to accept their slice (Edge activity + guest email/SMS).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} dealId
+ * @param {string} sliceId
+ */
+export async function nudgeBackerSliceAcceptance(supabase, dealId, sliceId) {
+  const { data, error } = await supabase.rpc('poker_stable_nudge_backer_slice', {
+    p_slice_id: sliceId,
+  })
+  if (error) return { error }
+
+  if (data?.counterparty_kind === 'guest') {
+    const { error: notifyErr } = await notifyStableStakeGuests(supabase, dealId, {
+      sliceIds: [sliceId],
+      kind: 'slice_nudge',
+    })
+    if (notifyErr) return { error: notifyErr }
+  }
+
+  return { error: null }
 }

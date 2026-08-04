@@ -476,6 +476,7 @@ export default function LoungeNotificationsPanel({
 
       if (
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED ||

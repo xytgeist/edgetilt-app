@@ -53,6 +53,8 @@ export default function PokerStableHorseCarousel({
         const estShare = slice ? backerSliceEstimatedShare(deal, slice, roll) : 0
         const profitTone =
           stats.profit > 0 ? 'text-emerald-400' : stats.profit < 0 ? 'text-rose-400' : 'text-zinc-300'
+        const sliceAccepted = slice?.status === 'active'
+        const showBackerStats = deal.status === 'active' || sliceAccepted
 
         return (
           <button
@@ -78,12 +80,12 @@ export default function PokerStableHorseCarousel({
               </span>
             </div>
 
-            {deal.status === 'active' ? (
+            {showBackerStats ? (
               <div className="mt-4 grid grid-cols-2 gap-3 border-t border-amber-500/15 pt-3 text-center">
                 <div>
                   <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
                   <div className="mt-0.5 text-lg font-black tabular-nums text-white">
-                    {roll ? fmtPoker$(roll.overall_bankroll) : '...'}
+                    {roll ? fmtPoker$(roll.overall_bankroll) : fmtPoker$(deal.starting_roll ?? deal.baseline_bankroll ?? 0)}
                   </div>
                 </div>
                 <div>

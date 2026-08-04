@@ -223,6 +223,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'finished a tournament swap with you'
     case 'poker_stable_slice_invite':
       return 'invited you to back a stake'
+    case 'poker_stable_slice_nudge':
+      return 'reminded you to accept your backing slice'
     case 'poker_stable_session_complete':
       return 'completed a stake session'
     case 'poker_stable_settlement_proposed':
@@ -335,6 +337,7 @@ function buildTargetUrl(
     params.set('tab', 'poker-bankroll')
   } else if (
     event.event_type === 'poker_stable_slice_invite' ||
+    event.event_type === 'poker_stable_slice_nudge' ||
     event.event_type === 'poker_stable_session_complete' ||
     event.event_type === 'poker_stable_settlement_proposed' ||
     event.event_type === 'poker_stable_settlement_resolved' ||
@@ -458,6 +461,7 @@ function buildSingleNotification(
   }
   if (
     event.event_type === 'poker_stable_slice_invite' ||
+    event.event_type === 'poker_stable_slice_nudge' ||
     event.event_type === 'poker_stable_session_complete' ||
     event.event_type === 'poker_stable_settlement_proposed' ||
     event.event_type === 'poker_stable_settlement_resolved' ||

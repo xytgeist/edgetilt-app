@@ -51,6 +51,8 @@ import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
   dealLeadBackerDisplayName,
+  pendingBackerAcceptanceSlices,
+  STAKE_GOES_LIVE_COPY,
   stakeeBankrollShowsClosedCarouselCard,
   stakeeSkipsBackerCommitSync,
   sliceCounterpartyDisplayName,
@@ -70,6 +72,7 @@ import {
   loadDealTopups,
   loadDealReductions,
   loadMyStableDeals,
+  nudgeBackerSliceAcceptance,
   notifyStableSessionComplete,
   periodicSettleBackingDeal,
   reassignGuestSliceToUser,
@@ -344,6 +347,7 @@ export default function PokerBankrollTracker({
   const [error, setError] = useState('')
   /** Brief success copy after + Stake create (pending or active). */
   const [stakeNotice, setStakeNotice] = useState('')
+  const [nudgingSliceId, setNudgingSliceId] = useState(/** @type {string | null} */ (null))
   /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
   /** Read-only session detail before edit. */
@@ -1356,6 +1360,22 @@ export default function PokerBankrollTracker({
       stakeNoticeTimerRef.current = 0
       setStakeNotice('')
     }, 6500)
+  }
+
+  async function onNudgePendingBacker(dealId, sliceId) {
+    if (!supabaseClient || !dealId || !sliceId || nudgingSliceId) return
+    setError('')
+    setNudgingSliceId(sliceId)
+    try {
+      const { error: nudgeErr } = await nudgeBackerSliceAcceptance(supabaseClient, dealId, sliceId)
+      if (nudgeErr) throw nudgeErr
+      triggerTapHapticLight()
+      showStakeNotice('Reminder sent.')
+    } catch (e) {
+      setError(e?.message || 'Could not send reminder.')
+    } finally {
+      setNudgingSliceId(null)
+    }
   }
 
   function openStakeOfferReview(dealId) {
@@ -3089,6 +3109,48 @@ export default function PokerBankrollTracker({
                         </button>
                       </p>
                     ) : null}
+                    {onStake &&
+                    !isBackerInitiatedBackingDeal(hero.deal) &&
+                    pendingBackerAcceptanceSlices(hero.deal, slicesByDeal[scopeId] || []).length >
+                      0 ? (
+                      <div
+                        data-poker-stake-pending-backers
+                        className="-mt-1 mb-2 space-y-2 text-left"
+                      >
+                        {hero.deal?.status === 'pending' ? (
+                          <p className="text-xs leading-snug text-amber-200/85">{STAKE_GOES_LIVE_COPY}</p>
+                        ) : null}
+                        <ul className="space-y-1.5">
+                          {pendingBackerAcceptanceSlices(hero.deal, slicesByDeal[scopeId] || []).map(
+                            (slice) => {
+                              const backerName = sliceCounterpartyDisplayName(
+                                slice,
+                                stableProfilesById,
+                              )
+                              const nudging = nudgingSliceId === slice.id
+                              return (
+                                <li
+                                  key={slice.id}
+                                  className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
+                                >
+                                  <span className="min-w-0 text-xs leading-snug text-amber-100/90">
+                                    Pending acceptance by {backerName}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={Boolean(nudgingSliceId) || saving}
+                                    onClick={() => void onNudgePendingBacker(scopeId, slice.id)}
+                                    className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
+                                  >
+                                    {nudging ? 'Sending…' : 'Nudge'}
+                                  </button>
+                                </li>
+                              )
+                            },
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
                     {loading ? (
                       <>
                         <div className="min-h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
@@ -3443,7 +3505,7 @@ export default function PokerBankrollTracker({
                     ? stakeScopeRevoked
                       ? 'This stake was revoked. Manage it from stake terms.'
                       : stakeScopePending
-                        ? 'Start or log stake sessions now ... backers see them in Stable once they accept.'
+                        ? 'Start or log stake sessions now ... accepted backers see them in Stable right away.'
                         : 'Start or log a stake session for this deal.'
                     : 'Start a live session, or log one from earlier.'}
                 </p>

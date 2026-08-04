@@ -32,6 +32,7 @@ import {
   acceptSliceAsStaker,
   declineProposedDealTerms,
   declineSliceAsStaker,
+  dealIdsForAcceptedBackerVisibility,
   isMissingStableTableError,
   isViewerBackingDeal,
   loadBackerBankroll,
@@ -187,14 +188,14 @@ export default function PokerStableScreen({
       if (pErr) console.warn('[poker-stable] profiles', pErr.message)
       setProfilesById(byId)
 
-      const activeIds = rows.filter((d) => d.status === 'active').map((d) => d.id)
+      const statsDealIds = dealIdsForAcceptedBackerVisibility(rows, sliceMap || {}, userId)
       const backingIds = rows
         .filter((d) => isViewerBackingDeal(d, userId, sliceMap || {}))
         .map((d) => d.id)
       const [{ byDeal: rolls }, { byDeal: stats }, backerRes, commitsRes, sessionsRes, adjRes] =
         await Promise.all([
-          loadDealBankrollProfiles(supabaseClient, activeIds),
-          loadDealSessionStats(supabaseClient, activeIds),
+          loadDealBankrollProfiles(supabaseClient, statsDealIds),
+          loadDealSessionStats(supabaseClient, statsDealIds),
           loadBackerBankroll(supabaseClient),
           loadPendingCommits(supabaseClient),
           loadDealSessionsForStable(supabaseClient, backingIds),

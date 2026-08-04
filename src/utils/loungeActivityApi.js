@@ -25,6 +25,7 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   POKER_TOURNAMENT_SWAP: 'poker_tournament_swap',
   POKER_TOURNAMENT_SWAP_RESULT: 'poker_tournament_swap_result',
   POKER_STABLE_SLICE_INVITE: 'poker_stable_slice_invite',
+  POKER_STABLE_SLICE_NUDGE: 'poker_stable_slice_nudge',
   POKER_STABLE_SESSION_COMPLETE: 'poker_stable_session_complete',
   POKER_STABLE_SETTLEMENT_PROPOSED: 'poker_stable_settlement_proposed',
   POKER_STABLE_SETTLEMENT_RESOLVED: 'poker_stable_settlement_resolved',
@@ -75,6 +76,7 @@ export function loungeActivityNotificationBadgeKind(eventType) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_TOURNAMENT_SWAP_RESULT:
       return 'play_log'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED:
@@ -280,6 +282,12 @@ export function loungeActivityActionPhrase(event) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE: {
       const detail = String(event?.detail_text || '').trim()
       return detail ? `invited you to back ${detail}` : 'invited you to back a stake'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail
+        ? `reminded you to accept your backing slice · ${detail}`
+        : 'reminded you to accept your backing slice'
     }
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE: {
       const detail = String(event?.detail_text || '').trim()

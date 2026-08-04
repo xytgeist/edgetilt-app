@@ -6,6 +6,7 @@
  *   - terms_edited: player edited stake terms (requires terms_edit.before / terms_edit.after)
  *   - deleted: player deleted the stake (call before DB delete)
  *   - session_complete: player completed a stake session (requires session_id)
+ *   - slice_nudge: player reminds a pending guest backer to accept (optional slice_ids)
  *
  * Player-created deals: stakee invokes when guest slices have contact info.
  *
@@ -324,6 +325,49 @@ function formatGuestBackerOfferCopy(args: {
     bodyHtml,
     appUrl: args.claimUrl,
     cta: { label: 'Claim backing slice', href: args.claimUrl },
+    footerNoteHtml: footer.htmlNote,
+    ctaAfterFooterNote: true,
+    footerNoteMarginTop: '24px',
+  })
+  return { subject, text, html }
+}
+
+function formatGuestBackerNudgeCopy(args: {
+  actorLabel: string
+  guestName: string
+  dealLabel: string
+  baselineLabel: string
+  actionPct: number
+  pricingLine: string
+  exposureLine: string
+  claimUrl: string
+}): { subject: string; text: string; html: string } {
+  const guestName = args.guestName.trim() || 'there'
+  const introPlain = `${args.actorLabel} is waiting for you to accept a backing stake on Edgetilt.com.`
+  const nameLine = `Name of stake: ${args.dealLabel || '—'}`
+  const stakeLine = `Total stake: ${args.baselineLabel} (you own ${formatPct(args.actionPct)}%)`
+  const detailLines = [nameLine, stakeLine, args.pricingLine, args.exposureLine]
+  const footer = formatEmailFooter()
+  const text = `Hi ${guestName},\n\n${introPlain}\n\n${detailLines.join('\n')}\n\nOpen your claim link to review and accept:\n${args.claimUrl}\n\n${footer.text}`
+
+  const safeActor = escapeHtml(args.actorLabel)
+  const safeGuest = escapeHtml(guestName)
+  const safeUrl = escapeHtml(args.claimUrl)
+  const introHtml = `${safeActor} is waiting for you to accept a backing stake on <a href="${safeUrl}" style="color:#0891b2;">Edgetilt.com</a>.`
+  const detailsHtml = detailLines.map((line) => escapeHtml(line)).join('<br>')
+  const bodyHtml = [
+    transactionalEmailParagraph(`Hi ${safeGuest},`),
+    transactionalEmailParagraph(introHtml),
+    transactionalEmailParagraph(detailsHtml, { marginBottom: '0' }),
+  ].join('')
+
+  const subject = `Reminder: accept ${args.dealLabel || 'your backing stake'} from ${args.actorLabel}`
+  const html = wrapTransactionalEmailHtml({
+    title: subject,
+    headline: 'Backing reminder',
+    bodyHtml,
+    appUrl: args.claimUrl,
+    cta: { label: 'Review backing offer', href: args.claimUrl },
     footerNoteHtml: footer.htmlNote,
     ctaAfterFooterNote: true,
     footerNoteMarginTop: '24px',
@@ -716,12 +760,13 @@ Deno.serve(async (req) => {
     if (!dealId) return jsonResponse({ error: 'deal_id is required.' }, 400)
 
     const kindRaw = String(body.kind || 'offer').trim().toLowerCase()
-    let kind: 'offer' | 'deleted' | 'terms_edited' | 'session_complete' | 'guest_stakee_offer' =
+    let kind: 'offer' | 'deleted' | 'terms_edited' | 'session_complete' | 'guest_stakee_offer' | 'slice_nudge' =
       'offer'
     if (kindRaw === 'deleted') kind = 'deleted'
     else if (kindRaw === 'terms_edited') kind = 'terms_edited'
     else if (kindRaw === 'session_complete') kind = 'session_complete'
     else if (kindRaw === 'guest_stakee_offer') kind = 'guest_stakee_offer'
+    else if (kindRaw === 'slice_nudge') kind = 'slice_nudge'
 
     const sessionId = String(body.session_id || '').trim()
     if (kind === 'session_complete' && !sessionId) {
@@ -986,6 +1031,128 @@ Deno.serve(async (req) => {
         kind,
         deal_id: dealId,
         session_id: sessionId,
+        notified_count: notifiedCount,
+        slices: results,
+      })
+    }
+
+    if (kind === 'slice_nudge') {
+      const { data: actorProfile } = await admin
+        .from('profiles')
+        .select('display_name, handle')
+        .eq('user_id', uid)
+        .maybeSingle()
+      const actorLabel = formatProfileLabel(actorProfile)
+
+      let sliceQuery = admin
+        .from('poker_stable_deal_slices')
+        .select(
+          'id, slice_index, counterparty_kind, guest_email, guest_phone, guest_label, action_pct, pricing_mode, player_profit_pct, markup_rate, status',
+        )
+        .eq('deal_id', dealId)
+        .eq('counterparty_kind', 'guest')
+        .eq('status', 'pending')
+        .order('slice_index', { ascending: true })
+
+      if (sliceIdFilter.length) {
+        sliceQuery = sliceQuery.in('id', sliceIdFilter)
+      }
+
+      const { data: slicesRaw, error: sliceErr } = await sliceQuery
+      if (sliceErr) throw new Error(sliceErr.message)
+      const slices = (slicesRaw || []) as SliceRow[]
+
+      const baselineLabel = fmtMoney(Number(deal.baseline_bankroll))
+      const dealLabel = String(deal.label || '').trim()
+      const appUrl = resolvePublicAppOrigin()
+
+      const results: Record<string, unknown>[] = []
+      let notifiedCount = 0
+
+      for (const slice of slices) {
+        const email = String(slice.guest_email || '')
+          .trim()
+          .toLowerCase()
+        const phone = normalizePhone(String(slice.guest_phone || ''))
+        const hasEmail = Boolean(email && isValidEmail(email))
+        const hasPhone = Boolean(phone)
+
+        if (!hasEmail && !hasPhone) {
+          results.push({
+            slice_id: slice.id,
+            notified: false,
+            email: { skipped: true, reason: 'no guest email' },
+            sms: { skipped: true, reason: 'no guest phone' },
+          })
+          continue
+        }
+
+        const pricingLine = formatPricingLine(slice)
+        const exposureLine = formatExposureLine(
+          guestExposureFromSliceRow(slice, Number(deal.baseline_bankroll)),
+        )
+        let claimUrl = appUrl
+        if (hasEmail) {
+          try {
+            claimUrl = await createGuestBackerClaimUrl(admin, slice.id, email)
+          } catch (e) {
+            console.warn('[poker-stable-notify] guest backer nudge claim token failed', e)
+          }
+        }
+
+        const { subject, text, html } =
+          claimUrl !== appUrl
+            ? formatGuestBackerNudgeCopy({
+                actorLabel,
+                guestName: String(slice.guest_label || '').trim(),
+                dealLabel,
+                baselineLabel,
+                actionPct: Number(slice.action_pct),
+                pricingLine,
+                exposureLine,
+                claimUrl,
+              })
+            : formatStakeMessageCopy({
+                kind: 'offer',
+                actorLabel,
+                backerArticle: 'a',
+                dealLabel,
+                baselineLabel,
+                actionPct: Number(slice.action_pct),
+                pricingLine,
+                exposureLine,
+                appUrl,
+              })
+
+        const smsLink = claimUrl !== appUrl ? claimUrl : appUrl
+        const smsText = `${text}\n\n${smsLink}`
+
+        const channels: Record<string, unknown> = { slice_id: slice.id }
+
+        if (hasEmail) {
+          channels.email = await sendResendEmail(email, subject, html, text)
+        } else {
+          channels.email = { skipped: true, reason: 'no guest email' }
+        }
+
+        if (hasPhone && phone) {
+          channels.sms = await sendTwilioSms(phone, smsText)
+        } else {
+          channels.sms = { skipped: true, reason: 'no guest phone' }
+        }
+
+        const sent =
+          (channels.email && !(channels.email as { skipped?: boolean }).skipped) ||
+          (channels.sms && !(channels.sms as { skipped?: boolean }).skipped)
+        if (sent) notifiedCount += 1
+        channels.notified = sent
+        results.push(channels)
+      }
+
+      return jsonResponse({
+        ok: true,
+        kind,
+        deal_id: dealId,
         notified_count: notifiedCount,
         slices: results,
       })

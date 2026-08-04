@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Info } from 'lucide-react'
-import BankrollSparkline from '../../components/BankrollSparkline.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
@@ -46,8 +45,6 @@ export default function PokerStablePortfolioHero({
   onWithdraw,
   onNeedsAttention,
   pendingCommitCount = 0,
-  sparkSeries = [],
-  onOpenTrend,
 }) {
   const [editing, setEditing] = useState(false)
   /** @type {'add' | 'remove'} */
@@ -216,23 +213,6 @@ export default function PokerStablePortfolioHero({
         </div>
       </div>
 
-      {sparkSeries.length >= 2 ? (
-        <div className="mt-3 h-9 w-full" data-poker-stable-hero-sparkline>
-          {onOpenTrend ? (
-            <button
-              type="button"
-              onClick={onOpenTrend}
-              className="block h-full w-full touch-manipulation active:opacity-80"
-              aria-label="Open Trend chart"
-            >
-              <BankrollSparkline series={sparkSeries} className="h-full w-full" />
-            </button>
-          ) : (
-            <BankrollSparkline series={sparkSeries} className="h-full w-full" />
-          )}
-        </div>
-      ) : null}
-
       {editing ? (
         <div className="mt-3 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 p-3" data-poker-stable-adjust-bankroll>
           <div className="mb-2 text-sm font-bold text-white">Adjust bankroll</div>
@@ -400,14 +380,6 @@ export default function PokerStablePortfolioHero({
                 </p>
               </HeroInfoSection>
 
-              <HeroInfoSection title="Sparkline">
-                <p>
-                  Cumulative <strong className="font-semibold text-zinc-300">horse performance</strong> ... your
-                  action % of gross table results across horses (active and closed). Green if net up, red if net down.
-                </p>
-                <p>Tap the sparkline to open the full Trend tab. Bankroll edits and settle events do not move this line.</p>
-              </HeroInfoSection>
-
               <HeroInfoSection title="Metrics">
                 <p>
                   <strong className="font-semibold text-zinc-300">At risk</strong> ... your share of committed baseline
@@ -437,7 +409,7 @@ export default function PokerStablePortfolioHero({
 
               <HeroInfoSection title="What moves what">
                 <p>
-                  <strong className="font-semibold text-zinc-300">Moves on sessions:</strong> sparkline, Trend, At-risk
+                  <strong className="font-semibold text-zinc-300">Moves on sessions:</strong> Trend, At-risk
                   ROI numerator, TWR numerator.
                 </p>
                 <p>

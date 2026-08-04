@@ -443,17 +443,6 @@ export default function PokerStableScreen({
     ],
   )
 
-  const portfolioSpark = useMemo(
-    () =>
-      computeBackerPortfolioTrendChart({
-        horseDeals,
-        sessions: stableSessions,
-        slicesByDeal,
-        userId,
-      }).portfolio,
-    [horseDeals, stableSessions, slicesByDeal, userId],
-  )
-
   async function onDepositBackerBankroll(amount) {
     if (!supabaseClient) return
     setSaving(true)
@@ -642,11 +631,6 @@ export default function PokerStableScreen({
               onWithdraw={onWithdrawBackerBankroll}
               pendingCommitCount={pendingPortfolioCommits.length}
               onNeedsAttention={() => setAttentionOpen(true)}
-              sparkSeries={portfolioSpark}
-              onOpenTrend={() => {
-                setActiveTab('trend')
-                triggerTapHapticLight()
-              }}
             />
 
             <div className="mb-4">

@@ -180,7 +180,7 @@ export function backerSliceStakeValue(deal, slice, dealRoll, sessions = []) {
 }
 
 /**
- * Backer's share of one completed stake session (gross session W/L × action %).
+ * Backer's gross share of one completed stake session (session W/L × action % only).
  * @param {object} deal
  * @param {object} slice
  * @param {object} session
@@ -190,6 +190,17 @@ export function backerSliceSessionShare(deal, slice, session) {
   if (wl == null) return 0
   const pct = Number(slice?.action_pct) || 0
   return roundMoney(wl * (pct / 100))
+}
+
+/**
+ * Backer's economic share of one completed stake session (session W/L × action % × profit split).
+ */
+export function backerSliceSessionEconomicShare(deal, slice, session) {
+  const wl = pokerSessionWinLoss(session)
+  if (wl == null) return 0
+  const pct = Number(slice?.action_pct) || 0
+  const backerProfitPct = backerSliceBackerProfitPct(slice)
+  return roundMoney(wl * (pct / 100) * (backerProfitPct / 100))
 }
 
 /**
@@ -257,7 +268,7 @@ export function computeBackerPortfolioTrendChart({
   const portfolio = [0]
 
   for (const ev of events) {
-    const share = backerSliceSessionShare(ev.deal, ev.slice, ev.session)
+    const share = backerSliceSessionEconomicShare(ev.deal, ev.slice, ev.session)
     perfByDeal[ev.deal.id] = roundMoney(perfByDeal[ev.deal.id] + share)
     let port = 0
     for (const deal of deals) {
@@ -274,7 +285,7 @@ export function computeBackerPortfolioTrendChart({
 }
 
 /**
- * Total cumulative session share (last point on portfolio trend).
+ * Total cumulative economic session share (last point on portfolio trend).
  */
 export function computeBackerSessionShareTotal({
   horseDeals = [],
@@ -293,7 +304,7 @@ export function computeBackerSessionShareTotal({
 }
 
 /**
- * Session share P/L ÷ current capital at risk.
+ * Economic session share P/L ÷ current capital at risk.
  * @returns {number | null} percent, or null when at risk is zero
  */
 export function computeBackerAtRiskReturnPct(sessionShareTotal, capitalAtRisk) {
@@ -328,7 +339,7 @@ export function computeBackerTwrPct({
       sessionEvents.push({
         t,
         kind: 'session',
-        share: backerSliceSessionShare(deal, slice, session),
+        share: backerSliceSessionEconomicShare(deal, slice, session),
       })
     }
   }

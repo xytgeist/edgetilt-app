@@ -1,5 +1,5 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { backerSliceSessionShare } from './pokerStableBackerMath.js'
+import { backerSliceSessionEconomicShare } from './pokerStableBackerMath.js'
 import { isBackerInitiatedBackingDeal } from './pokerStableApi.js'
 import {
   computeDealSettlement,
@@ -164,7 +164,7 @@ export function archivedStakeBackerSessionShareTotal({ deal, slices = [], sessio
   return roundMoney(
     (sessions || [])
       .filter((s) => s.deal_id === deal.id && s.status !== 'active')
-      .reduce((sum, session) => sum + backerSliceSessionShare(deal, slice, session), 0),
+      .reduce((sum, session) => sum + backerSliceSessionEconomicShare(deal, slice, session), 0),
   )
 }
 

@@ -5,6 +5,7 @@ import {
 
 const STABLE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stable_claim_return_token'
 const STABLE_CLAIM_TOKEN_LOCAL_KEY = 'poker_stable_claim_return_token_v1'
+const STABLE_CLAIM_FLOW_PENDING_KEY = 'poker_stable_claim_flow_pending'
 
 export const POKER_STABLE_CLAIM_RETURN_PATH = '/poker-stable-claim'
 
@@ -22,10 +23,13 @@ export function stashPokerStableClaimToken(token) {
 export function readStashedPokerStableClaimToken() {
   if (typeof window === 'undefined') return null
   try {
-    const fromSession = sessionStorage.getItem(STABLE_CLAIM_TOKEN_STORAGE_KEY)
-    if (fromSession) return String(fromSession).trim()
     const fromLocal = localStorage.getItem(STABLE_CLAIM_TOKEN_LOCAL_KEY)
-    return fromLocal ? String(fromLocal).trim() : null
+    const fromSession = sessionStorage.getItem(STABLE_CLAIM_TOKEN_STORAGE_KEY)
+    const local = fromLocal ? String(fromLocal).trim() : ''
+    const session = fromSession ? String(fromSession).trim() : ''
+    // localStorage survives confirm-email tabs; prefer it when tabs disagree.
+    if (local && session && local !== session) return local
+    return session || local || null
   } catch {
     return null
   }
@@ -55,11 +59,50 @@ export function parsePokerStableClaimFromLocation(pathname, search = '') {
   const urlToken = String(params.get('token') || '').trim()
   if (urlToken) {
     stashPokerStableClaimToken(urlToken)
+    markPokerStableClaimFlowPending()
     return { token: urlToken }
   }
   const stashed = readStashedPokerStableClaimToken()
   if (stashed) return { token: stashed }
   return null
+}
+
+export function markPokerStableClaimFlowPending() {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(STABLE_CLAIM_FLOW_PENDING_KEY, '1')
+  } catch {
+    // ignore
+  }
+}
+
+export function consumePokerStableClaimFlowPending() {
+  if (typeof window === 'undefined') return false
+  try {
+    const pending = sessionStorage.getItem(STABLE_CLAIM_FLOW_PENDING_KEY) === '1'
+    if (pending) sessionStorage.removeItem(STABLE_CLAIM_FLOW_PENDING_KEY)
+    return pending
+  } catch {
+    return false
+  }
+}
+
+export function clearPokerStableClaimFlowPending() {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.removeItem(STABLE_CLAIM_FLOW_PENDING_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+export function isPokerStableClaimFlowPending() {
+  if (typeof window === 'undefined') return false
+  try {
+    return sessionStorage.getItem(STABLE_CLAIM_FLOW_PENDING_KEY) === '1'
+  } catch {
+    return false
+  }
 }
 
 export function stableClaimSignupEmailRedirectUrl() {
@@ -83,6 +126,7 @@ export function navigateToStableClaimPage(token) {
 export function navigateAfterStableClaim(redirect, opts = {}) {
   if (typeof window === 'undefined') return
   clearStashedPokerStableClaimToken()
+  clearPokerStableClaimFlowPending()
   let dest = redirect || '/?tab=poker-stable'
   try {
     const url = new URL(dest, window.location.origin)

@@ -28,6 +28,7 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
   navigateToStableClaimPage,
   tryAutoLinkGuestStakeeOffers,
   tryAutoLinkGuestBackerOffers,
+  tryOpenPendingBackerSliceOnboarding,
   replaceUrlPreservingQuery,
 }) {
   const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
@@ -43,6 +44,18 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
     replaceUrlPreservingQuery(`${pathname}${search}`)
     return true
   }
+
+  const onHomeAfterConfirm = pathname === '/' || pathname === ''
+  if (onHomeAfterConfirm) {
+    await waitForSupabaseSession(supabase)
+    const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
+    if (linkedStakee) return true
+    const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
+    if (linkedBacker) return true
+    const opened = await tryOpenPendingBackerSliceOnboarding(supabase, { force: true })
+    if (opened) return true
+  }
+
   if (stashedClaimToken) {
     replaceUrlPreservingQuery(pathname || '/')
     navigateToStakeClaimPage(stashedClaimToken)
@@ -54,11 +67,15 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
     return true
   }
 
-  await waitForSupabaseSession(supabase)
-  const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
-  if (linkedStakee) return true
-  const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
-  if (linkedBacker) return true
+  if (!onHomeAfterConfirm) {
+    await waitForSupabaseSession(supabase)
+    const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
+    if (linkedStakee) return true
+    const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
+    if (linkedBacker) return true
+    const opened = await tryOpenPendingBackerSliceOnboarding(supabase)
+    if (opened) return true
+  }
 
   return false
 }

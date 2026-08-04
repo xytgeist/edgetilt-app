@@ -23,10 +23,12 @@ export function stashPokerStakeClaimToken(token) {
 export function readStashedPokerStakeClaimToken() {
   if (typeof window === 'undefined') return null
   try {
-    const fromSession = sessionStorage.getItem(STAKE_CLAIM_TOKEN_STORAGE_KEY)
-    if (fromSession) return String(fromSession).trim()
     const fromLocal = localStorage.getItem(STAKE_CLAIM_TOKEN_LOCAL_KEY)
-    return fromLocal ? String(fromLocal).trim() : null
+    const fromSession = sessionStorage.getItem(STAKE_CLAIM_TOKEN_STORAGE_KEY)
+    const local = fromLocal ? String(fromLocal).trim() : ''
+    const session = fromSession ? String(fromSession).trim() : ''
+    if (local && session && local !== session) return local
+    return session || local || null
   } catch {
     return null
   }

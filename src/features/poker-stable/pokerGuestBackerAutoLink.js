@@ -1,5 +1,9 @@
-import { guestBackerClaimByEmail } from '../poker-stable/pokerStableApi.js'
-import { navigateAfterStableClaim } from '../poker-stable/pokerStableBackerClaimNav.js'
+import { guestBackerClaimByEmail } from './pokerStableApi.js'
+import {
+  clearPokerStableClaimFlowPending,
+  isPokerStableClaimFlowPending,
+  navigateAfterStableClaim,
+} from './pokerStableBackerClaimNav.js'
 
 /**
  * After sign-in / email confirm, link guest backer slices invited to this account's email
@@ -24,4 +28,53 @@ export async function tryAutoLinkGuestBackerOffers(supabase) {
   }
   navigateAfterStableClaim(redirect, { dealId, sliceId: sliceIds[0] })
   return true
+}
+
+/**
+ * Slice already linked to this account but still pending accept → Stable onboarding modal.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ force?: boolean }} [opts] pass force after email confirm on Site URL
+ * @returns {Promise<boolean>}
+ */
+export async function tryOpenPendingBackerSliceOnboarding(supabase, opts = {}) {
+  const force = Boolean(opts.force)
+  if (!force && !isPokerStableClaimFlowPending()) return false
+  clearPokerStableClaimFlowPending()
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const userId = session?.user?.id
+  if (!userId) return false
+
+  const { data: slices, error: sliceErr } = await supabase
+    .from('poker_stable_deal_slices')
+    .select('id, deal_id, status')
+    .eq('staker_user_id', userId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+    .limit(8)
+  if (sliceErr || !slices?.length) return false
+
+  const dealIds = [...new Set(slices.map((s) => s.deal_id).filter(Boolean))]
+  const { data: deals, error: dealErr } = await supabase
+    .from('poker_stable_deals')
+    .select('id, status, stakee_user_id, stakee_terms_ack_required')
+    .in('id', dealIds)
+  if (dealErr || !deals?.length) return false
+
+  const dealById = Object.fromEntries(deals.map((d) => [d.id, d]))
+  for (const slice of slices) {
+    const deal = dealById[slice.deal_id]
+    if (!deal) continue
+    if (deal.stakee_user_id === userId) continue
+    if (!['pending', 'active', 'draft'].includes(deal.status)) continue
+    if (deal.stakee_terms_ack_required) continue
+    navigateAfterStableClaim(`/?tab=poker-stable&stableDeal=${slice.deal_id}`, {
+      dealId: slice.deal_id,
+      sliceId: slice.id,
+    })
+    return true
+  }
+  return false
 }

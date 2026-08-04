@@ -4,6 +4,10 @@ import {
   guestBackerClaimLink,
   guestBackerClaimPreview,
 } from './pokerStableApi.js'
+import {
+  clearStashedPokerStableClaimToken,
+} from './pokerStableBackerClaimNav.js'
+import { tryOpenPendingBackerSliceOnboarding } from './pokerGuestBackerAutoLink.js'
 import { PokerStableGuestClaimOfferDetails } from './PokerStableGuestClaimOfferDetails.jsx'
 import { guestBackerClaimOfferDetails } from './pokerStableGuestClaimOffer.js'
 
@@ -49,10 +53,47 @@ export default function PokerStableBackerClaimPage({
     let cancelled = false
     setLoading(true)
     setError('')
-    void guestBackerClaimPreview(supabaseClient, token).then(({ preview: data, error: err }) => {
+    void guestBackerClaimPreview(supabaseClient, token).then(async ({ preview: data, error: err }) => {
       if (cancelled) return
       if (err) {
-        setError(err.message || 'Invalid or expired claim link.')
+        const msg = String(err.message || '').toLowerCase()
+        if (
+          (msg.includes('invalid or expired claim link') || msg.includes('invalid token')) &&
+          userId
+        ) {
+          clearStashedPokerStableClaimToken()
+          const byEmail = await guestBackerClaimByEmail(supabaseClient)
+          if (
+            !byEmail.error &&
+            Array.isArray(byEmail.result?.slice_ids) &&
+            byEmail.result.slice_ids.length
+          ) {
+            let dealId = ''
+            try {
+              dealId = String(
+                new URL(
+                  byEmail.result?.redirect || '/?tab=poker-stable',
+                  window.location.origin,
+                ).searchParams.get('stableDeal') || '',
+              ).trim()
+            } catch {
+              // ignore
+            }
+            onDoneRef.current?.({
+              redirect: byEmail.result?.redirect || undefined,
+              dealId: dealId || undefined,
+              sliceId: byEmail.result.slice_ids[0],
+            })
+            return
+          }
+          const opened = await tryOpenPendingBackerSliceOnboarding(supabaseClient, { force: true })
+          if (opened) return
+        }
+        setError(
+          err.message?.toLowerCase().includes('invalid or expired claim link')
+            ? 'This invitation link is outdated. Open the link from your latest backing email, or sign in and open Stable Manager to accept your slice.'
+            : err.message || 'Invalid or expired claim link.',
+        )
         setPreview(null)
       } else {
         setPreview(data)
@@ -62,7 +103,7 @@ export default function PokerStableBackerClaimPage({
     return () => {
       cancelled = true
     }
-  }, [supabaseClient, token])
+  }, [supabaseClient, token, userId])
 
   useEffect(() => {
     if (!supabaseClient || !token || !userId || !preview || linked || linkAttemptedRef.current) {

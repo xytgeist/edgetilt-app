@@ -59,14 +59,19 @@ import {
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { tryAutoLinkGuestStakeeOffers } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
 import {
+  markPokerStableClaimFlowPending,
   navigateAfterStableClaim,
   navigateToStableClaimPage,
   parsePokerStableClaimFromLocation,
   readStashedPokerStableClaimToken,
+  isPokerStableClaimFlowPending,
   stableClaimSignupEmailRedirectUrl,
   stashPokerStableClaimToken,
 } from './features/poker-stable/pokerStableBackerClaimNav.js'
-import { tryAutoLinkGuestBackerOffers } from './features/poker-stable/pokerGuestBackerAutoLink.js'
+import {
+  tryAutoLinkGuestBackerOffers,
+  tryOpenPendingBackerSliceOnboarding,
+} from './features/poker-stable/pokerGuestBackerAutoLink.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
@@ -285,6 +290,7 @@ function App() {
             navigateToStableClaimPage,
             tryAutoLinkGuestStakeeOffers,
             tryAutoLinkGuestBackerOffers,
+            tryOpenPendingBackerSliceOnboarding,
             replaceUrlPreservingQuery,
           })
           if (routed) return
@@ -327,6 +333,7 @@ function App() {
                 navigateToStableClaimPage,
                 tryAutoLinkGuestStakeeOffers,
                 tryAutoLinkGuestBackerOffers,
+                tryOpenPendingBackerSliceOnboarding,
                 replaceUrlPreservingQuery,
               })
               if (routed) return
@@ -341,56 +348,28 @@ function App() {
     })
   }, [])
 
-  /** Link guest backing invites sent to this account's email, then open Bankroll. */
+  /** Guest claim flows after sign-in on home (autolink before stale stored tokens). */
   useEffect(() => {
     if (!user?.id || isChecking || currentView !== 'app') return
-    if (readStashedPokerStableClaimToken() || readStashedPokerStakeClaimToken()) return
-    try {
-      if (sessionStorage.getItem('poker_guest_stakee_autolink_done')) return
-    } catch {
-      // ignore
-    }
-    void tryAutoLinkGuestStakeeOffers(supabase).then((navigated) => {
-      if (!navigated) return
-      try {
-        sessionStorage.setItem('poker_guest_stakee_autolink_done', '1')
-      } catch {
-        // ignore
+    void (async () => {
+      const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
+      if (linkedBacker) return
+      const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
+      if (linkedStakee) return
+      const claimFlowPending = isPokerStableClaimFlowPending()
+      const opened = await tryOpenPendingBackerSliceOnboarding(supabase)
+      if (opened) return
+      if (!claimFlowPending) return
+      const stableToken = readStashedPokerStableClaimToken()
+      if (stableToken) {
+        navigateToStableClaimPage(stableToken)
+        return
       }
-    })
-  }, [user?.id, isChecking, currentView])
-
-  /** After confirm/sign-in: stashed claim token → claim page (terms + link) before Lounge autolink. */
-  useEffect(() => {
-    if (!user?.id || isChecking || currentView !== 'app') return
-    const stableToken = readStashedPokerStableClaimToken()
-    if (stableToken) {
-      navigateToStableClaimPage(stableToken)
-      return
-    }
-    const stakeToken = readStashedPokerStakeClaimToken()
-    if (stakeToken) {
-      navigateToStakeClaimPage(stakeToken)
-    }
-  }, [user?.id, isChecking, currentView])
-
-  /** Link guest backer slices invited to this account's email, then open Stable Manager. */
-  useEffect(() => {
-    if (!user?.id || isChecking || currentView !== 'app') return
-    if (readStashedPokerStableClaimToken() || readStashedPokerStakeClaimToken()) return
-    try {
-      if (sessionStorage.getItem('poker_guest_backer_autolink_done')) return
-    } catch {
-      // ignore
-    }
-    void tryAutoLinkGuestBackerOffers(supabase).then((navigated) => {
-      if (!navigated) return
-      try {
-        sessionStorage.setItem('poker_guest_backer_autolink_done', '1')
-      } catch {
-        // ignore
+      const stakeToken = readStashedPokerStakeClaimToken()
+      if (stakeToken) {
+        navigateToStakeClaimPage(stakeToken)
       }
-    })
+    })()
   }, [user?.id, isChecking, currentView])
 
   useEffect(() => {
@@ -822,7 +801,10 @@ function App() {
     const signupFromStakeClaim = Boolean(claimCtx)
     const signupFromStableClaim = Boolean(stableClaimCtx)
     if (claimCtx?.token) stashPokerStakeClaimToken(claimCtx.token)
-    if (stableClaimCtx?.token) stashPokerStableClaimToken(stableClaimCtx.token)
+    if (stableClaimCtx?.token) {
+      stashPokerStableClaimToken(stableClaimCtx.token)
+      markPokerStableClaimFlowPending()
+    }
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,

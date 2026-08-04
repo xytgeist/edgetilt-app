@@ -41,7 +41,6 @@ export default function PokerStableHorseCarousel({
   saving = false,
   pendingCommits = [],
   horseSparkByDeal = {},
-  onOpenTrend,
   onReviewSettleCommit,
 }) {
   if (!deals.length) return null
@@ -86,7 +85,26 @@ export default function PokerStableHorseCarousel({
         )
         const pendingSettleCommit = pendingSettleCommitForDeal(pendingCommits, deal.id)
         const sparkSeries = horseSparkByDeal[deal.id] || []
-        const cardClassName = `w-full ${STABLE_SURFACE_CARD} p-5 text-left`
+        const showSparkBackground =
+          showBackerStats && !pendingSettleCommit && sparkSeries.length >= 2
+        const cardClassName = `relative w-full overflow-hidden ${STABLE_SURFACE_CARD} p-5 text-left`
+
+        const sparkBackground = showSparkBackground ? (
+          <div
+            className="pointer-events-none absolute inset-0"
+            data-poker-stable-horse-sparkline-bg
+            aria-hidden
+          >
+            <BankrollSparkline
+              series={sparkSeries}
+              showFill
+              className="h-full w-full"
+              upClass="text-cyan-400"
+              downClass="text-rose-400/90"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/55 via-zinc-950/75 to-zinc-950/92" />
+          </div>
+        ) : null
 
         const header = (
           <div className="flex items-start justify-between gap-2">
@@ -141,31 +159,6 @@ export default function PokerStableHorseCarousel({
             </div>
           ) : null
 
-        const sparklineBlock =
-          showBackerStats && !pendingSettleCommit && sparkSeries.length >= 2 ? (
-            <div
-              className={`mt-3 h-9 w-full border-t ${STABLE_SURFACE_DIVIDER} pt-3`}
-              data-poker-stable-horse-sparkline
-              onClick={(e) => e.stopPropagation()}
-            >
-              {onOpenTrend ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onOpenTrend()
-                  }}
-                  className="block h-full w-full touch-manipulation active:opacity-80"
-                  aria-label="Open Trend chart"
-                >
-                  <BankrollSparkline series={sparkSeries} className="h-full w-full" />
-                </button>
-              ) : (
-                <BankrollSparkline series={sparkSeries} className="h-full w-full" />
-              )}
-            </div>
-          ) : null
-
         const body = showBackerStats ? (
               <>
                 {pendingSettleCommit ? (
@@ -181,13 +174,9 @@ export default function PokerStableHorseCarousel({
                     />
                   </div>
                 ) : (
-                  <>
-                    {sparklineBlock}
-                    <div
-                      className={`${sparklineBlock ? 'mt-3' : 'mt-4 border-t'} grid grid-cols-2 gap-3 ${
-                        sparklineBlock ? '' : `${STABLE_SURFACE_DIVIDER} pt-3`
-                      } text-center`}
-                    >
+                  <div
+                    className={`mt-4 grid grid-cols-2 gap-3 border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-center`}
+                  >
                     <div>
                       <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
                       <div className="mt-0.5 text-lg font-black tabular-nums text-white">
@@ -216,8 +205,7 @@ export default function PokerStableHorseCarousel({
                         {stats.sessions} · {fmtPoker$(stats.profit)}
                       </div>
                     </div>
-                    </div>
-                  </>
+                  </div>
                 )}
                 {pendingNudgeBlock}
               </>
@@ -293,6 +281,16 @@ export default function PokerStableHorseCarousel({
               </>
             ) : null
 
+        const cardInner = (
+          <>
+            {sparkBackground}
+            <div className="relative z-10">
+              {header}
+              {body}
+            </div>
+          </>
+        )
+
         if (isPendingSyndicateInvite) {
           return (
             <div
@@ -300,8 +298,7 @@ export default function PokerStableHorseCarousel({
               data-elevated-card="surface"
               className={cardClassName}
             >
-              {header}
-              {body}
+              {cardInner}
             </div>
           )
         }
@@ -314,8 +311,7 @@ export default function PokerStableHorseCarousel({
             data-elevated-card="surface"
             className={`${cardClassName} touch-manipulation`}
           >
-            {header}
-            {body}
+            {cardInner}
           </button>
         )
       }}

@@ -783,10 +783,6 @@ export default function PokerStableScreen({
               nudgeDisabled={saving}
               pendingCommits={pendingCommits}
               horseSparkByDeal={horseSparkByDeal}
-              onOpenTrend={() => {
-                setActiveTab('trend')
-                triggerTapHapticLight()
-              }}
               onReviewSettleCommit={(commitId) => {
                 setCommitSyncId(commitId)
                 triggerTapHapticLight()

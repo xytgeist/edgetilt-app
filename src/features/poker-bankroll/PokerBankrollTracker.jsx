@@ -3073,6 +3073,8 @@ export default function PokerBankrollTracker({
                       : pendingBackerSlices.length > 0
                         ? 'pendingBackers'
                         : null
+                const stakeHeroSlotExpands =
+                  Boolean(stakeHeroMessage) || Boolean(hero.pendingSettleCommit)
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -3201,8 +3203,11 @@ export default function PokerBankrollTracker({
                           ) : null}
                         </div>
                         <div
-                          className={`mt-3 w-full ${stakeHeroMessage ? '' : 'h-10'}`}
-                          data-poker-stake-hero-message-slot={stakeHeroMessage || undefined}
+                          className={`mt-3 w-full ${stakeHeroSlotExpands ? '' : 'h-10'}`}
+                          data-poker-stake-hero-message-slot={
+                            stakeHeroMessage ||
+                            (hero.pendingSettleCommit ? 'pendingSettle' : undefined)
+                          }
                         >
                           {stakeHeroMessage === 'revoked' ? (
                             <p
@@ -3280,14 +3285,14 @@ export default function PokerBankrollTracker({
                           ) : hero.pendingSettleCommit ? (
                             <div
                               data-poker-stake-needs-attn
-                              className="flex h-full min-h-10 flex-col justify-center gap-2 rounded-xl border border-amber-500/25 bg-amber-950/30 px-3 py-2 text-left"
+                              className="rounded-xl border border-amber-500/25 bg-amber-950/30 px-3 py-2.5 text-left"
                             >
                               <p className="text-xs leading-snug text-amber-100/95">
                                 <span className="font-bold uppercase tracking-wide text-amber-300/90">
                                   Needs attn:
                                 </span>{' '}
                                 {dealLeadBackerDisplayName(hero.deal, stableProfilesById)}{' '}
-                                logged a periodic settlement. Click to review.
+                                logged a periodic settlement.
                               </p>
                               <button
                                 type="button"
@@ -3295,7 +3300,7 @@ export default function PokerBankrollTracker({
                                   setCommitSyncId(String(hero.pendingSettleCommit.commit_id))
                                   triggerTapHapticLight()
                                 }}
-                                className="self-start rounded-lg bg-amber-500/20 px-3 py-1.5 text-[11px] font-bold text-amber-100 touch-manipulation active:bg-amber-500/30"
+                                className="mt-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-[11px] font-bold text-amber-100 touch-manipulation active:bg-amber-500/30"
                               >
                                 Review settlement
                               </button>

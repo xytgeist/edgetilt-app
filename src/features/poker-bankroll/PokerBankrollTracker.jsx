@@ -2983,6 +2983,16 @@ export default function PokerBankrollTracker({
                 const theme = onStake
                   ? stakeHeroTheme(stakeHeroThemeIndexForDeal(scopeId, stakeeDeals))
                   : null
+                const pendingBackerSlices =
+                  onStake && hero.deal && !isBackerInitiatedBackingDeal(hero.deal)
+                    ? pendingBackerAcceptanceSlices(hero.deal, slicesByDeal[scopeId] || [])
+                    : []
+                const stakeHeroMessage =
+                  onStake && hero.deal?.status === 'revoked'
+                    ? 'revoked'
+                    : pendingBackerSlices.length > 0
+                      ? 'pendingBackers'
+                      : null
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -3090,71 +3100,15 @@ export default function PokerBankrollTracker({
                         </div>
                       )}
                     </div>
-                    {onStake && hero.deal?.status === 'revoked' ? (
-                      <p
-                        data-poker-stake-revoked-notice
-                        className="-mt-1 mb-2 text-left text-xs leading-snug text-rose-200/90"
-                      >
-                        A backer revoked this stake. Re-offer backers or close it from terms.{' '}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setError('')
-                            setTermsDealId(scopeId)
-                            triggerTapHapticLight()
-                          }}
-                          className="font-semibold text-rose-100 underline touch-manipulation"
-                        >
-                          Manage stake
-                        </button>
-                      </p>
-                    ) : null}
-                    {onStake &&
-                    !isBackerInitiatedBackingDeal(hero.deal) &&
-                    pendingBackerAcceptanceSlices(hero.deal, slicesByDeal[scopeId] || []).length >
-                      0 ? (
-                      <div
-                        data-poker-stake-pending-backers
-                        className="-mt-1 mb-2 space-y-2 text-left"
-                      >
-                        {hero.deal?.status === 'pending' ? (
-                          <p className="text-xs leading-snug text-amber-200/85">{STAKE_GOES_LIVE_COPY}</p>
-                        ) : null}
-                        <ul className="space-y-1.5">
-                          {pendingBackerAcceptanceSlices(hero.deal, slicesByDeal[scopeId] || []).map(
-                            (slice) => {
-                              const backerName = sliceCounterpartyDisplayName(
-                                slice,
-                                stableProfilesById,
-                              )
-                              const nudging = nudgingSliceId === slice.id
-                              return (
-                                <li
-                                  key={slice.id}
-                                  className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
-                                >
-                                  <span className="min-w-0 text-xs leading-snug text-amber-100/90">
-                                    Pending acceptance by {backerName}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    disabled={Boolean(nudgingSliceId) || saving}
-                                    onClick={() => void onNudgePendingBacker(scopeId, slice.id)}
-                                    className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
-                                  >
-                                    {nudging ? 'Sending…' : 'Nudge'}
-                                  </button>
-                                </li>
-                              )
-                            },
-                          )}
-                        </ul>
-                      </div>
-                    ) : null}
                     {loading ? (
                       <>
                         <div className="min-h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
-                        <div className="mt-3 h-10 w-full" aria-hidden />
+                        <div
+                          className={`mt-3 w-full ${stakeHeroMessage ? 'min-h-10' : 'h-10'}`}
+                          aria-hidden
+                        >
+                          <div className="h-full min-h-10 animate-pulse rounded-xl bg-zinc-700/25" />
+                        </div>
                       </>
                     ) : (
                       <>
@@ -3165,8 +3119,69 @@ export default function PokerBankrollTracker({
                         >
                           {fmtPoker$(hero.overallBankroll)}
                         </div>
-                        <div className="mt-3 h-10 w-full">
-                          {hero.spark.length >= 2 ? (
+                        <div
+                          className={`mt-3 w-full ${stakeHeroMessage ? '' : 'h-10'}`}
+                          data-poker-stake-hero-message-slot={stakeHeroMessage || undefined}
+                        >
+                          {stakeHeroMessage === 'revoked' ? (
+                            <p
+                              data-poker-stake-revoked-notice
+                              className="text-left text-xs leading-snug text-rose-200/90"
+                            >
+                              A backer revoked this stake. Re-offer backers or close it from terms.{' '}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setError('')
+                                  setTermsDealId(scopeId)
+                                  triggerTapHapticLight()
+                                }}
+                                className="font-semibold text-rose-100 underline touch-manipulation"
+                              >
+                                Manage stake
+                              </button>
+                            </p>
+                          ) : stakeHeroMessage === 'pendingBackers' ? (
+                            <div
+                              data-poker-stake-pending-backers
+                              className="space-y-2 text-left"
+                            >
+                              {hero.deal?.status === 'pending' ? (
+                                <p className="text-xs leading-snug text-amber-200/85">
+                                  {STAKE_GOES_LIVE_COPY}
+                                </p>
+                              ) : null}
+                              <ul className="space-y-1.5">
+                                {pendingBackerSlices.map((slice) => {
+                                  const backerName = sliceCounterpartyDisplayName(
+                                    slice,
+                                    stableProfilesById,
+                                  )
+                                  const nudging = nudgingSliceId === slice.id
+                                  return (
+                                    <li
+                                      key={slice.id}
+                                      className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/15 bg-amber-950/20 px-2.5 py-2"
+                                    >
+                                      <span className="min-w-0 text-xs leading-snug text-amber-100/90">
+                                        Pending acceptance by {backerName}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        disabled={Boolean(nudgingSliceId) || saving}
+                                        onClick={() =>
+                                          void onNudgePendingBacker(scopeId, slice.id)
+                                        }
+                                        className="shrink-0 rounded-lg bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 touch-manipulation active:bg-amber-500/30 disabled:opacity-50"
+                                      >
+                                        {nudging ? 'Sending…' : 'Nudge'}
+                                      </button>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            </div>
+                          ) : hero.spark.length >= 2 ? (
                             <button
                               type="button"
                               onClick={() => {

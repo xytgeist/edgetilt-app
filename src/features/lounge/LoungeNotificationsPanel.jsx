@@ -23,6 +23,7 @@ import {
 import {
   formatLoungeActivityWhen,
   isLoungeActivitySchemaMissingError,
+  isPokerStableLoungeActivityEvent,
   loungeActivityActionPhrase,
   loungeActivityEventsPage,
   loungeActivityMarkAllRead,
@@ -759,6 +760,7 @@ export default function LoungeNotificationsPanel({
     const when = formatLoungeActivityWhen(event.created_at)
     const actionPhrase = loungeActivityActionPhrase(event)
     const summary = loungeActivitySummary(event)
+    const actionLine = isPokerStableLoungeActivityEvent(event.event_type) ? summary : actionPhrase
     const isGuideRelease =
       event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED ||
       Boolean(String(event.guide_slug || '').trim())
@@ -858,7 +860,7 @@ export default function LoungeNotificationsPanel({
                     </div>
                     <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[15px] leading-snug text-zinc-400">
                       <LoungeNotificationActionBadge eventType={event.event_type} slot="inline" />
-                      <span className="min-w-0">{actionPhrase}</span>
+                      <span className="min-w-0">{actionLine}</span>
                     </span>
                   </>
                 )}

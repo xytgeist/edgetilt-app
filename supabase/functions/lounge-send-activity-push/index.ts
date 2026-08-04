@@ -475,13 +475,10 @@ function buildSingleNotification(
     event.event_type === 'poker_stable_slice_accepted' ||
     event.event_type === 'poker_stable_slice_declined'
   ) {
-    const detailRaw = String(event.detail_text || '').trim()
-    const { dealLabel } = parsePokerStableActivityDetail(event.detail_text)
-    const detail = dealLabel || detailRaw
     const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
     return {
       title: 'Poker Stable',
-      body: detail ? `${who} · ${detail}` : `${who} ${phrase}`,
+      body: `${who} ${phrase}`,
       url: buildTargetUrl(event, actor, { activityEventId: event.id }),
       activityEventId: event.id,
       eventType: event.event_type,

@@ -87,11 +87,14 @@ export default function PokerStableHorseCarousel({
         const sparkSeries = horseSparkByDeal[deal.id] || []
         const showSparkBackground =
           showBackerStats && !pendingSettleCommit && sparkSeries.length >= 2
-        const cardClassName = `relative w-full overflow-hidden ${STABLE_SURFACE_CARD} p-5 text-left`
+        const sparkUp =
+          sparkSeries.length >= 2 &&
+          sparkSeries[sparkSeries.length - 1] >= sparkSeries[0]
+        const cardClassName = `relative flex w-full flex-col overflow-hidden ${STABLE_SURFACE_CARD} p-5 text-left`
 
         const statsSparkBackground = showSparkBackground ? (
           <div
-            className="pointer-events-none absolute -inset-x-5 top-0 z-0 h-40"
+            className="pointer-events-none absolute -bottom-5 -left-5 -right-5 top-0 z-0"
             data-poker-stable-horse-sparkline-bg
             aria-hidden
           >
@@ -99,8 +102,12 @@ export default function PokerStableHorseCarousel({
               series={sparkSeries}
               showFill
               className="h-full w-full"
-              upClass="text-cyan-400"
-              downClass="text-rose-400/90"
+              upClass="text-emerald-400"
+              downClass="text-rose-400"
+              fillClassName={
+                sparkUp ? 'fill-emerald-400/[0.08]' : 'fill-rose-400/[0.08]'
+              }
+              strokeClassName={sparkUp ? 'stroke-emerald-400/35' : 'stroke-rose-400/35'}
             />
           </div>
         ) : null
@@ -161,20 +168,23 @@ export default function PokerStableHorseCarousel({
         const body = showBackerStats ? (
               <>
                 {pendingSettleCommit ? (
-                  <div
-                    className={`mt-4 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <PokerStableSettleNeedsAttnBanner
-                      counterpartyName={dealStakeeDisplayName(deal, profilesById)}
-                      onReview={() =>
-                        onReviewSettleCommit?.(String(pendingSettleCommit.commit_id))
-                      }
-                    />
-                  </div>
+                  <>
+                    <div
+                      className={`mt-4 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <PokerStableSettleNeedsAttnBanner
+                        counterpartyName={dealStakeeDisplayName(deal, profilesById)}
+                        onReview={() =>
+                          onReviewSettleCommit?.(String(pendingSettleCommit.commit_id))
+                        }
+                      />
+                    </div>
+                    {pendingNudgeBlock}
+                  </>
                 ) : (
                   <div
-                    className={`relative mt-4 min-h-[9rem] overflow-visible border-t ${STABLE_SURFACE_DIVIDER} pt-3 pb-2 text-center`}
+                    className={`relative mt-4 flex min-h-[9rem] flex-1 flex-col overflow-visible border-t ${STABLE_SURFACE_DIVIDER} pt-3 pb-2 text-center`}
                   >
                     {statsSparkBackground}
                     <div className="relative z-10 grid grid-cols-2 gap-3">
@@ -207,9 +217,9 @@ export default function PokerStableHorseCarousel({
                         </div>
                       </div>
                     </div>
+                    {pendingNudgeBlock}
                   </div>
                 )}
-                {pendingNudgeBlock}
               </>
             ) : isPendingSyndicateInvite ? (
               <div
@@ -286,7 +296,7 @@ export default function PokerStableHorseCarousel({
         const cardInner = (
           <>
             {header}
-            {body}
+            <div className="flex flex-1 flex-col">{body}</div>
           </>
         )
 

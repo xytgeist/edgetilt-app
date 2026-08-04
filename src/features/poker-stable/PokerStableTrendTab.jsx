@@ -13,6 +13,7 @@ import { Line } from 'react-chartjs-2'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   computeBackerPortfolioTrendChart,
+  viewerActiveBackingSlice,
 } from './pokerStableBackerMath.js'
 import { dealTypeLabel, roundMoney } from './pokerStableMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
@@ -38,12 +39,6 @@ function pokerStableTrendChartChrome() {
 }
 
 const HORSE_COLORS = ['#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#a78bfa', '#fb7185']
-
-function viewerBackingSlice(dealId, slicesByDeal, userId) {
-  return (slicesByDeal[dealId] || []).find(
-    (s) => s.staker_user_id === userId && s.status !== 'declined',
-  )
-}
 
 /**
  * Portfolio + per-horse cumulative session share (active + closed stakes).
@@ -96,7 +91,7 @@ export default function PokerStableTrendTab({
       chartBundle.deals.forEach((deal, idx) => {
         const series = chartBundle.horseSeries[deal.id]
         if (!series?.length) return
-        const slice = viewerBackingSlice(deal.id, slicesByDeal, userId)
+        const slice = viewerActiveBackingSlice(deal.id, slicesByDeal, userId)
         rows.push({
           label:
             deal.label?.trim() ||

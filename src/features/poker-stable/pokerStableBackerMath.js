@@ -24,9 +24,9 @@ export function backerSliceCapitalIsDeployed(deal, slice) {
  * @param {object} slice
  */
 export function backerSliceCapitalIsPendingHold(deal, slice) {
-  if (!deal || !slice || deal.status !== 'pending') return false
-  if (slice.status === 'declined' || slice.status === 'cancelled') return false
+  if (!deal || !slice || slice.status === 'declined' || slice.status === 'cancelled') return false
   if (slice.status === 'pending') return true
+  if (deal.status !== 'pending') return false
   if (slice.status === 'active' && !isPlayerInitiatedBackingDeal(deal)) return true
   return false
 }
@@ -99,7 +99,7 @@ export function computeBackerPendingHold({ deals = [], slicesByDeal = {}, userId
   if (!userId) return 0
   let pendingHold = 0
   for (const deal of deals) {
-    if (deal.status !== 'pending') continue
+    if (!['pending', 'active'].includes(deal.status)) continue
     const slices = (slicesByDeal[deal.id] || []).filter(
       (s) => s.staker_user_id === userId && s.status !== 'declined',
     )
@@ -186,10 +186,14 @@ export function backerSliceEstimatedShare(deal, slice, dealRoll, sessions = []) 
   return roundMoney(profitAbove * (pct / 100) * (backerProfitPct / 100))
 }
 
-function viewerBackingSlice(dealId, slicesByDeal, userId) {
+export function viewerActiveBackingSlice(dealId, slicesByDeal, userId) {
   return (slicesByDeal[dealId] || []).find(
-    (s) => s.staker_user_id === userId && s.status !== 'declined',
+    (s) => s.staker_user_id === userId && s.status === 'active',
   )
+}
+
+function viewerBackingSlice(dealId, slicesByDeal, userId) {
+  return viewerActiveBackingSlice(dealId, slicesByDeal, userId)
 }
 
 function formatTrendLabel(iso) {
@@ -202,6 +206,7 @@ function formatTrendLabel(iso) {
 /**
  * Portfolio + per-horse cumulative session share (active + closed stakes).
  * Session performance only ... bankroll adjustments do not affect this series.
+ * Only the viewer's active slices count (pending invites excluded).
  */
 export function computeBackerPortfolioTrendChart({
   horseDeals = [],
@@ -440,7 +445,7 @@ export function computeBackerPortfolioMetrics({
           stakeValueMtm + backerSliceStakeValue(deal, slice, roll, sessions),
         )
         rollExposure = roundMoney(rollExposure + resolveDealOverallRoll(deal, roll, sessions))
-      } else if (backerSliceCapitalIsPendingHold(deal, slice)) {
+      } else if (backerSliceCapitalIsPendingHold(deal, slice) && deal.status === 'pending') {
         stakeValueMtm = roundMoney(stakeValueMtm + allocated)
       }
 

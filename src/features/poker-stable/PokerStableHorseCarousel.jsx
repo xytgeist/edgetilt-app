@@ -8,19 +8,9 @@ import { dealTypeLabel } from './pokerStableMath.js'
 import {
   pendingBackerNudgeTargetsForActiveBacker,
   sliceCounterpartyDisplayName,
+  stakeHorseCardStatusLabel,
+  stakeHorseCardStatusTone,
 } from './pokerStableTerms.js'
-
-function statusLabel(status) {
-  if (status === 'active') return 'Active'
-  if (status === 'pending') return 'Pending'
-  return status || 'Unknown'
-}
-
-function statusTone(status) {
-  if (status === 'active') return 'bg-amber-500/20 text-amber-300'
-  if (status === 'pending') return 'bg-amber-500/15 text-amber-200/90'
-  return 'bg-zinc-700/60 text-zinc-400'
-}
 
 /**
  * Peek carousel of active horse stake cards (backer view).
@@ -87,9 +77,9 @@ export default function PokerStableHorseCarousel({
                 </div>
               </div>
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone(deal.status)}`}
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${stakeHorseCardStatusTone(deal, dealSlices)}`}
               >
-                {statusLabel(deal.status)}
+                {stakeHorseCardStatusLabel(deal, dealSlices)}
               </span>
             </div>
 

@@ -92,6 +92,61 @@ export function pendingBackerNudgeTargetsForActiveBacker(deal, slices = [], view
   )
 }
 
+/**
+ * Player + at least one backer accepted — stake is live for carousel badges
+ * (deal row may still be `pending` while other backers are outstanding).
+ */
+export function stakeDealShowsOnStakeBadge(deal, slices = []) {
+  if (!deal) return false
+  if (deal.status === 'revoked' || deal.status === 'declined') return false
+  if (deal.status === 'active') return true
+  if (deal.status !== 'pending') return false
+  if (!dealHasAcceptedBackerSlice(deal, slices)) return false
+  return Boolean(deal.stakee_user_id && deal.staker_user_id == null)
+}
+
+/** Player Bankroll stake hero badge variant (`data-poker-stake-hero-badge`). */
+export function stakeHeroBadgeVariant(deal, slices = []) {
+  if (!deal) return null
+  if (deal.status === 'revoked') return 'revoked'
+  if (stakeeBankrollShowsClosedCarouselCard(deal)) return 'closed'
+  if (deal.status === 'declined') return 'declined'
+  if (stakeDealShowsOnStakeBadge(deal, slices)) return 'active'
+  if (deal.status === 'pending') return 'pending'
+  return 'active'
+}
+
+export function stakeHeroBadgeLabel(deal, slices = []) {
+  switch (stakeHeroBadgeVariant(deal, slices)) {
+    case 'revoked':
+      return 'Revoked'
+    case 'closed':
+      return 'Closed'
+    case 'declined':
+      return 'Declined'
+    case 'pending':
+      return 'Pending'
+    default:
+      return 'On stake'
+  }
+}
+
+/** Stable horse carousel status pill when deal is live vs still pending. */
+export function stakeHorseCardStatusLabel(deal, slices = []) {
+  if (stakeDealShowsOnStakeBadge(deal, slices)) return 'Active'
+  if (deal?.status === 'pending') return 'Pending'
+  if (deal?.status === 'active') return 'Active'
+  return deal?.status || 'Unknown'
+}
+
+export function stakeHorseCardStatusTone(deal, slices = []) {
+  if (stakeDealShowsOnStakeBadge(deal, slices) || deal?.status === 'active') {
+    return 'bg-amber-500/20 text-amber-300'
+  }
+  if (deal?.status === 'pending') return 'bg-amber-500/15 text-amber-200/90'
+  return 'bg-zinc-700/60 text-zinc-400'
+}
+
 export const STAKE_GOES_LIVE_COPY =
   'Once you and at least one backer accept, this stake goes live.'
 

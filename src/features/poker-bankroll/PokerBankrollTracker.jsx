@@ -53,6 +53,8 @@ import {
   dealLeadBackerDisplayName,
   pendingBackerAcceptanceSlices,
   dealHasAcceptedBackerSlice,
+  stakeHeroBadgeLabel,
+  stakeHeroBadgeVariant,
   STAKE_GOES_LIVE_COPY,
   stakeeBankrollShowsClosedCarouselCard,
   stakeeSkipsBackerCommitSync,
@@ -3038,32 +3040,17 @@ export default function PokerBankrollTracker({
                         ) : null}
                         {onStake ? (
                           <span
-                            data-poker-stake-hero-badge={
-                              hero.deal?.status === 'pending'
-                                ? 'pending'
-                                : hero.deal?.status === 'revoked'
-                                  ? 'revoked'
-                                  : stakeeBankrollShowsClosedCarouselCard(hero.deal)
-                                    ? 'closed'
-                                    : 'active'
-                            }
+                            data-poker-stake-hero-badge={stakeHeroBadgeVariant(
+                              hero.deal,
+                              dealSlices,
+                            )}
                             className={`shrink-0 rounded-md border border-transparent px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                              hero.deal?.status === 'pending' ||
-                              hero.deal?.status === 'revoked' ||
-                              stakeeBankrollShowsClosedCarouselCard(hero.deal)
-                                ? ''
-                                : theme.badge
+                              stakeHeroBadgeVariant(hero.deal, dealSlices) === 'active'
+                                ? theme.badge
+                                : ''
                             }`}
                           >
-                            {hero.deal?.status === 'pending'
-                              ? 'Pending'
-                              : hero.deal?.status === 'revoked'
-                                ? 'Revoked'
-                                : hero.deal?.status === 'declined'
-                                  ? 'Declined'
-                                  : stakeeBankrollShowsClosedCarouselCard(hero.deal)
-                                    ? 'Closed'
-                                    : 'On stake'}
+                            {stakeHeroBadgeLabel(hero.deal, dealSlices)}
                           </span>
                         ) : null}
                       </div>

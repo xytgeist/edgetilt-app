@@ -22,6 +22,7 @@ import {
 import {
   computeBackerPortfolioPerformanceMetrics,
   computeBackerPortfolioTrendChart,
+  enrichBankrollByDealFromSessions,
   partitionBackerDeals,
 } from './pokerStableBackerMath.js'
 import {
@@ -405,13 +406,18 @@ export default function PokerStableScreen({
     [activeDeals, historyDeals],
   )
 
+  const bankrollByDealWithSessions = useMemo(
+    () => enrichBankrollByDealFromSessions(deals, bankrollByDeal, stableSessions),
+    [deals, bankrollByDeal, stableSessions],
+  )
+
   const portfolioMetrics = useMemo(
     () =>
       computeBackerPortfolioPerformanceMetrics({
         deals,
         slicesByDeal,
         userId,
-        bankrollByDeal,
+        bankrollByDeal: bankrollByDealWithSessions,
         storedBankrollBalance: backerProfile?.bankroll_balance ?? 0,
         realizedPl: backerProfile?.realized_backing_pl ?? 0,
         horseDeals,
@@ -422,7 +428,7 @@ export default function PokerStableScreen({
       deals,
       slicesByDeal,
       userId,
-      bankrollByDeal,
+      bankrollByDealWithSessions,
       backerProfile,
       horseDeals,
       stableSessions,
@@ -828,7 +834,7 @@ export default function PokerStableScreen({
             <PokerStableHorseCarousel
               deals={activeDeals}
               slicesByDeal={slicesByDeal}
-              bankrollByDeal={bankrollByDeal}
+              bankrollByDeal={bankrollByDealWithSessions}
               statsByDeal={statsByDeal}
               profilesById={profilesById}
               userId={userId}
@@ -1037,7 +1043,7 @@ export default function PokerStableScreen({
           userId={userId}
           deal={detailDeal}
           slices={slicesByDeal[detailDeal.id] || []}
-          roll={bankrollByDeal[detailDeal.id]}
+          roll={bankrollByDealWithSessions[detailDeal.id]}
           profilesById={profilesById}
           saving={saving}
           onSavingChange={setSaving}

@@ -123,13 +123,38 @@ export function computeBackerAvailableBankroll(liquidBankroll, pendingHold) {
  * @param {object} deal
  * @param {object} slice
  * @param {object | null | undefined} dealRoll profile row
+ * @param {object[]} [sessions]
  */
-export function backerSliceStakeValue(deal, slice, dealRoll) {
-  const roll =
-    Number(dealRoll?.overall_bankroll) ||
-    Number(deal?.starting_roll) ||
-    Number(deal?.baseline_bankroll) ||
-    0
+export function resolveDealOverallRoll(deal, dealRoll, sessions = []) {
+  if (dealRoll != null && Number.isFinite(Number(dealRoll.overall_bankroll))) {
+    return Number(dealRoll.overall_bankroll)
+  }
+  const base = Number(deal?.starting_roll) || Number(deal?.baseline_bankroll) || 0
+  let sessionPl = 0
+  for (const session of sessions) {
+    if (session.deal_id !== deal?.id) continue
+    if (session.status === 'active') continue
+    const wl = pokerSessionWinLoss(session)
+    if (wl != null) sessionPl = roundMoney(sessionPl + wl)
+  }
+  return roundMoney(base + sessionPl)
+}
+
+export function enrichBankrollByDealFromSessions(deals = [], bankrollByDeal = {}, sessions = []) {
+  const out = { ...(bankrollByDeal || {}) }
+  for (const deal of deals) {
+    const existing = out[deal.id]
+    if (existing != null && Number.isFinite(Number(existing.overall_bankroll))) continue
+    out[deal.id] = {
+      deal_id: deal.id,
+      overall_bankroll: resolveDealOverallRoll(deal, null, sessions),
+    }
+  }
+  return out
+}
+
+export function backerSliceStakeValue(deal, slice, dealRoll, sessions = []) {
+  const roll = resolveDealOverallRoll(deal, dealRoll, sessions)
   const pct = Number(slice?.action_pct) || 0
   return roundMoney(roll * (pct / 100))
 }
@@ -150,12 +175,9 @@ export function backerSliceSessionShare(deal, slice, session) {
 /**
  * Backer's estimated share of profit above baseline on an active deal.
  */
-export function backerSliceEstimatedShare(deal, slice, dealRoll) {
+export function backerSliceEstimatedShare(deal, slice, dealRoll, sessions = []) {
   const baseline = Number(deal?.baseline_bankroll) || 0
-  const roll =
-    Number(dealRoll?.overall_bankroll) ||
-    Number(deal?.starting_roll) ||
-    baseline
+  const roll = resolveDealOverallRoll(deal, dealRoll, sessions)
   const profitAbove = roundMoney(Math.max(0, roll - baseline))
   if (profitAbove <= 0) return 0
   const pct = Number(slice?.action_pct) || 0
@@ -369,6 +391,7 @@ export function computeBackerTwrPct({
  * @param {number} args.storedBankrollBalance
  * @param {number} [args.realizedPl]
  * @param {object[]} [args.adjustments]
+ * @param {object[]} [args.sessions]
  */
 export function computeBackerPortfolioMetrics({
   deals,
@@ -379,6 +402,7 @@ export function computeBackerPortfolioMetrics({
   liquidBankroll,
   realizedPl = 0,
   adjustments = [],
+  sessions = [],
 }) {
   let capitalAtRisk = 0
   let stakeValueMtm = 0
@@ -412,8 +436,10 @@ export function computeBackerPortfolioMetrics({
       if (backerSliceCapitalIsDeployed(deal, slice)) {
         capitalAtRisk = roundMoney(capitalAtRisk + allocated)
         activeHorseCount += 1
-        stakeValueMtm = roundMoney(stakeValueMtm + backerSliceStakeValue(deal, slice, roll))
-        rollExposure = roundMoney(rollExposure + (Number(roll?.overall_bankroll) || 0))
+        stakeValueMtm = roundMoney(
+          stakeValueMtm + backerSliceStakeValue(deal, slice, roll, sessions),
+        )
+        rollExposure = roundMoney(rollExposure + resolveDealOverallRoll(deal, roll, sessions))
       } else if (backerSliceCapitalIsPendingHold(deal, slice)) {
         stakeValueMtm = roundMoney(stakeValueMtm + allocated)
       }
@@ -462,6 +488,7 @@ export function computeBackerPortfolioPerformanceMetrics({
     storedBankrollBalance: storedBankrollBalance ?? liquidBankroll ?? 0,
     realizedPl,
     adjustments,
+    sessions,
   })
 
   const sessionShareTotal = computeBackerSessionShareTotal({

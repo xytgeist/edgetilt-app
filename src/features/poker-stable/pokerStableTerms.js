@@ -279,8 +279,8 @@ export function stakeeSkipsBackerCommitSync(deal, userId, commit = null) {
   return true
 }
 
-/** Pending periodic/close settle commit for a stakee deal (unsynced counterparty record). */
-export function stakeePendingSettleCommitForDeal(commits, dealId) {
+/** Pending periodic/close settle commit on a deal (stakee or backer sync inbox). */
+export function pendingSettleCommitForDeal(commits, dealId) {
   if (!dealId) return null
   return (
     (commits || []).find(
@@ -289,6 +289,11 @@ export function stakeePendingSettleCommitForDeal(commits, dealId) {
         (row.event_kind === 'periodic_settle' || row.event_kind === 'close_settle'),
     ) || null
   )
+}
+
+/** @deprecated Use pendingSettleCommitForDeal */
+export function stakeePendingSettleCommitForDeal(commits, dealId) {
+  return pendingSettleCommitForDeal(commits, dealId)
 }
 
 /**

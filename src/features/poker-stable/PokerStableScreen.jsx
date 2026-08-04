@@ -7,6 +7,7 @@ import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
 import { PokerStableBackerDealSheet, PokerStablePlayerDealSheet } from './PokerStableCreateDealSheet.jsx'
 import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
+import PokerStableCommitSyncModal from './PokerStableCommitSyncModal.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from './PokerStableDealTermsSheet.jsx'
 import PokerStableHorseCarousel from './PokerStableHorseCarousel.jsx'
@@ -128,6 +129,7 @@ export default function PokerStableScreen({
   const [stableSessions, setStableSessions] = useState(/** @type {object[]} */ ([]))
   const [backerAdjustments, setBackerAdjustments] = useState(/** @type {object[]} */ ([]))
   const [attentionOpen, setAttentionOpen] = useState(false)
+  const [commitSyncId, setCommitSyncId] = useState(/** @type {string | null} */ (null))
   const [backerSliceOnboardingOpen, setBackerSliceOnboardingOpen] = useState(false)
   const backerSliceOnboardingOpenedRef = useRef(false)
   const [locationsDealId, setLocationsDealId] = useState(/** @type {string | null} */ (null))
@@ -388,6 +390,14 @@ export default function PokerStableScreen({
     [deals, slicesByDeal, userId],
   )
 
+  const pendingPortfolioCommits = useMemo(
+    () =>
+      pendingCommits.filter(
+        (row) => row.event_kind !== 'periodic_settle' && row.event_kind !== 'close_settle',
+      ),
+    [pendingCommits],
+  )
+
   const horseDeals = useMemo(
     () => [...activeDeals, ...historyDeals],
     [activeDeals, historyDeals],
@@ -629,7 +639,7 @@ export default function PokerStableScreen({
               saving={saving}
               onDeposit={onDepositBackerBankroll}
               onWithdraw={onWithdrawBackerBankroll}
-              pendingCommitCount={pendingCommits.length}
+              pendingCommitCount={pendingPortfolioCommits.length}
               onNeedsAttention={() => setAttentionOpen(true)}
               sparkSeries={portfolioSpark}
               onOpenTrend={() => {
@@ -770,6 +780,11 @@ export default function PokerStableScreen({
               onNudgePendingBacker={onNudgePendingBacker}
               nudgingSliceId={nudgingSliceId}
               nudgeDisabled={saving}
+              pendingCommits={pendingCommits}
+              onReviewSettleCommit={(commitId) => {
+                setCommitSyncId(commitId)
+                triggerTapHapticLight()
+              }}
             />
           )}
         </section>
@@ -983,12 +998,23 @@ export default function PokerStableScreen({
       {attentionOpen && supabaseClient ? (
         <PokerStableAttentionSheet
           supabaseClient={supabaseClient}
-          commits={pendingCommits}
+          commits={pendingPortfolioCommits}
           saving={saving}
           onSavingChange={setSaving}
           onClose={() => setAttentionOpen(false)}
           onSynced={load}
           onOpenDeal={openDealDetail}
+          onError={setError}
+        />
+      ) : null}
+
+      {commitSyncId && supabaseClient && userId ? (
+        <PokerStableCommitSyncModal
+          supabaseClient={supabaseClient}
+          userId={userId}
+          commitId={commitSyncId}
+          onClose={() => setCommitSyncId(null)}
+          onSynced={() => void load()}
           onError={setError}
         />
       ) : null}

@@ -6,9 +6,12 @@ import {
   backerSliceStakeValue,
 } from './pokerStableBackerMath.js'
 import { dealTypeLabel } from './pokerStableMath.js'
+import PokerStableSettleNeedsAttnBanner from './PokerStableSettleNeedsAttnBanner.jsx'
 import {
   backerSliceInviteSummaryLine,
+  dealStakeeDisplayName,
   pendingBackerNudgeTargetsForActiveBacker,
+  pendingSettleCommitForDeal,
   sliceCounterpartyDisplayName,
   stakeHorseCardStatusLabel,
   stakeHorseCardStatusTone,
@@ -34,6 +37,8 @@ export default function PokerStableHorseCarousel({
   nudgingSliceId = null,
   nudgeDisabled = false,
   saving = false,
+  pendingCommits = [],
+  onReviewSettleCommit,
 }) {
   if (!deals.length) return null
 
@@ -75,6 +80,7 @@ export default function PokerStableHorseCarousel({
           dealSlices,
           userId,
         )
+        const pendingSettleCommit = pendingSettleCommitForDeal(pendingCommits, deal.id)
         const cardClassName =
           'w-full rounded-3xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-950/50 to-zinc-900/90 p-5 text-left'
 
@@ -133,34 +139,50 @@ export default function PokerStableHorseCarousel({
 
         const body = showBackerStats ? (
               <>
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-amber-500/15 pt-3 text-center">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
-                    <div className="mt-0.5 text-lg font-black tabular-nums text-white">
-                      {roll
-                        ? fmtPoker$(roll.overall_bankroll)
-                        : fmtPoker$(deal.starting_roll ?? deal.baseline_bankroll ?? 0)}
+                {pendingSettleCommit ? (
+                  <div
+                    className="mt-4 border-t border-amber-500/15 pt-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PokerStableSettleNeedsAttnBanner
+                      counterpartyName={dealStakeeDisplayName(deal, profilesById)}
+                      onReview={() =>
+                        onReviewSettleCommit?.(String(pendingSettleCommit.commit_id))
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-amber-500/15 pt-3 text-center">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">Horse roll</div>
+                      <div className="mt-0.5 text-lg font-black tabular-nums text-white">
+                        {roll
+                          ? fmtPoker$(roll.overall_bankroll)
+                          : fmtPoker$(deal.starting_roll ?? deal.baseline_bankroll ?? 0)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">
+                        Your stake MTM
+                      </div>
+                      <div className="mt-0.5 text-lg font-black tabular-nums text-amber-300">
+                        {fmtPoker$(stakeVal)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">Est. share</div>
+                      <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
+                        {fmtPoker$(estShare)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
+                      <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
+                        {stats.sessions} · {fmtPoker$(stats.profit)}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase text-zinc-500">Your stake MTM</div>
-                    <div className="mt-0.5 text-lg font-black tabular-nums text-amber-300">
-                      {fmtPoker$(stakeVal)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase text-zinc-500">Est. share</div>
-                    <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
-                      {fmtPoker$(estShare)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
-                    <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
-                      {stats.sessions} · {fmtPoker$(stats.profit)}
-                    </div>
-                  </div>
-                </div>
+                )}
                 {pendingNudgeBlock}
               </>
             ) : isPendingSyndicateInvite ? (

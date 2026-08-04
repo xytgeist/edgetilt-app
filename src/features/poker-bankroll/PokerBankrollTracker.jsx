@@ -90,6 +90,7 @@ import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDea
 import PokerStableDealDetailSheet from '../poker-stable/PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
 import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
+import PokerStableSettleNeedsAttnBanner from '../poker-stable/PokerStableSettleNeedsAttnBanner.jsx'
 import {
   archivedStakePersonalBankrollNet,
   buildPersonalSettlementHistoryEvents,
@@ -3283,28 +3284,15 @@ export default function PokerBankrollTracker({
                               )}
                             </div>
                           ) : hero.pendingSettleCommit ? (
-                            <div
-                              data-poker-stake-needs-attn
-                              className="rounded-xl border border-amber-500/25 bg-amber-950/30 px-3 py-2.5 text-left"
-                            >
-                              <p className="text-xs leading-snug text-amber-100/95">
-                                <span className="font-bold uppercase tracking-wide text-amber-300/90">
-                                  Needs attn:
-                                </span>{' '}
-                                {dealLeadBackerDisplayName(hero.deal, stableProfilesById)}{' '}
-                                logged a periodic settlement. Click to review and commit.
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCommitSyncId(String(hero.pendingSettleCommit.commit_id))
-                                  triggerTapHapticLight()
-                                }}
-                                className="mt-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-[11px] font-bold text-amber-100 touch-manipulation active:bg-amber-500/30"
-                              >
-                                Review settlement
-                              </button>
-                            </div>
+                            <PokerStableSettleNeedsAttnBanner
+                              counterpartyName={dealLeadBackerDisplayName(
+                                hero.deal,
+                                stableProfilesById,
+                              )}
+                              onReview={() =>
+                                setCommitSyncId(String(hero.pendingSettleCommit.commit_id))
+                              }
+                            />
                           ) : hero.spark.length >= 2 ? (
                             <button
                               type="button"

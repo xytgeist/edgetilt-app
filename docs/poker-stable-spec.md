@@ -511,6 +511,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-04:** **Backer settle commit review (client):** counterparty periodic/close review modal shows roll/baseline + **Stable backing bankroll on commit** (slice settle credit, same as Realized P/L). **`PokerStableCommitSyncModal.jsx`**.
 - **2026-08-04:** **Backer horse card settle review (client):** pending player periodic/close settle shows **Needs attn** on the **horse stake card** (same banner as player stake card), not the portfolio backing bankroll hero; portfolio **Needs your attention** only for non-settle commits. **`PokerStableHorseCarousel.jsx`**, **`PokerStableSettleNeedsAttnBanner.jsx`**, **`PokerStableScreen.jsx`**.
 - **2026-08-04:** **Stakee periodic settle review (client):** backer-initiated stakes require player **Commit** on counterparty periodic/close settle before stake card numbers update; hero holds **roll_at_settle** until sync; sparkline replaced by **Needs attn** + review modal (**Cancel** / **Commit**). **`stakeeSkipsBackerCommitSync`** narrowed to non-settle commits only. **`PokerBankrollTracker.jsx`**, **`PokerStableCommitSyncModal.jsx`**, **`pokerStableTerms.js`**.
 - **2026-08-04:** **Player makeup UX (client):** when horse roll ≤ baseline, stake card shows **Make-up: $X**; session list hides **Your share**; session attribution assigns full session W/L to backers (player economic share $0 until above baseline). **`pokerSessionAttribution.js`**, **`PokerBankrollTracker.jsx`**.

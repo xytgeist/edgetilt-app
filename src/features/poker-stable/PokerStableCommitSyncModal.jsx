@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
-import { loadDealCommit, loadSettlementBundle, syncDealCommit } from './pokerStableApi.js'
+import { loadDealCommit, loadDealSlices, loadSettlementBundle, syncDealCommit } from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
-import { stableCommitSyncHint } from './pokerStableBooksCopy.js'
+import { STABLE_BACKER_BANKROLL_PHRASE, stableCommitSyncHint } from './pokerStableBooksCopy.js'
+import {
+  settlementBackerCredit,
+  viewerBackingSlice,
+} from './pokerStableDealHistory.js'
 import { stableNum } from './pokerStableMath.js'
 import { stakeeSkipsBackerCommitSync } from './pokerStableTerms.js'
 
@@ -26,6 +30,7 @@ export default function PokerStableCommitSyncModal({
   const [actorProfile, setActorProfile] = useState(null)
   const [settlement, setSettlement] = useState(null)
   const [playerPersonalCredit, setPlayerPersonalCredit] = useState(null)
+  const [backerBackingCredit, setBackerBackingCredit] = useState(null)
 
   const loadBundle = useCallback(async () => {
     if (!supabaseClient || !commitId || !userId) return
@@ -54,15 +59,26 @@ export default function PokerStableCommitSyncModal({
 
       let nextSettlement = null
       let nextPlayerCredit = null
+      let nextBackerCredit = null
 
       if (isSettleCommit && commitRow.ref_id) {
-        const { settlement: st, calc, error: stErr } = await loadSettlementBundle(
-          supabaseClient,
-          commitRow.ref_id,
-        )
+        const [{ settlement: st, lines, calc, error: stErr }, { byDeal, error: slErr }] =
+          await Promise.all([
+            loadSettlementBundle(supabaseClient, commitRow.ref_id),
+            loadDealSlices(supabaseClient, [commitRow.deal_id]),
+          ])
         if (stErr) throw stErr
+        if (slErr) throw slErr
         nextSettlement = st
         nextPlayerCredit = calc ? stableNum(calc.player_net) : null
+        const dealSlices = byDeal[commitRow.deal_id] || []
+        if (dealRow && dealRow.stakee_user_id !== userId) {
+          const slice = viewerBackingSlice(dealSlices, userId)
+          const line = slice ? (lines || []).find((row) => row.slice_id === slice.id) || null : null
+          if (slice) {
+            nextBackerCredit = settlementBackerCredit(st, dealRow, slice, line)
+          }
+        }
       }
 
       setCommit(commitRow)
@@ -70,6 +86,7 @@ export default function PokerStableCommitSyncModal({
       setActorProfile(actor || null)
       setSettlement(nextSettlement)
       setPlayerPersonalCredit(nextPlayerCredit)
+      setBackerBackingCredit(nextBackerCredit)
     } catch (e) {
       onError?.(e?.message || 'Could not load stake commit.')
     } finally {
@@ -97,6 +114,9 @@ export default function PokerStableCommitSyncModal({
   const isCloseSettle = commit?.event_kind === 'close_settle'
   const showPlayerSettleCredit =
     isStakee && isSettleCommit && settlement && playerPersonalCredit != null
+  const showBackerSettleCredit =
+    !isStakee && isSettleCommit && settlement && backerBackingCredit != null
+  const showSettleCredit = showPlayerSettleCredit || showBackerSettleCredit
 
   useEffect(() => {
     if (!loading && skipStakeeSync) {
@@ -127,7 +147,7 @@ export default function PokerStableCommitSyncModal({
       ? 'Periodic settlement'
       : 'Sync stake update'
   const intro =
-    isStakee && isSettleCommit
+    isSettleCommit && !alreadyMine
       ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}. Review the details, then commit to update your books.`
       : `${actorLabel} recorded ${pokerStableCommitEventLabel(commit?.event_kind)} on ${deal?.label?.trim() || 'this stake'}.`
 
@@ -161,28 +181,51 @@ export default function PokerStableCommitSyncModal({
           <>
             <p className="mb-3 text-sm leading-relaxed text-zinc-300">{intro}</p>
 
-            {showPlayerSettleCredit ? (
+            {showSettleCredit ? (
               <>
                 <p className="mb-3 text-xs leading-relaxed text-zinc-500">
                   Roll {fmtPoker$(settlement.roll_at_settle)} · Baseline{' '}
                   {fmtPoker$(settlement.baseline_at_settle)} at settlement
                 </p>
-                <div
-                  data-poker-stable-settle-player-credit
-                  className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-4 text-center"
-                >
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/80">
-                    Personal bankroll on commit
-                  </div>
+                {showPlayerSettleCredit ? (
                   <div
-                    className={`mt-1 text-3xl font-black tabular-nums ${
-                      playerPersonalCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'
-                    }`}
+                    data-poker-stable-settle-player-credit
+                    className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-4 text-center"
                   >
-                    {playerPersonalCredit >= 0 ? '+' : ''}
-                    {fmtPoker$(playerPersonalCredit)}
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/80">
+                      Personal bankroll on commit
+                    </div>
+                    <div
+                      className={`mt-1 text-3xl font-black tabular-nums ${
+                        playerPersonalCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                      }`}
+                    >
+                      {playerPersonalCredit >= 0 ? '+' : ''}
+                      {fmtPoker$(playerPersonalCredit)}
+                    </div>
                   </div>
-                </div>
+                ) : null}
+                {showBackerSettleCredit ? (
+                  <div
+                    data-poker-stable-settle-backer-credit
+                    className="mb-4 rounded-2xl border border-cyan-500/25 bg-cyan-950/30 p-4 text-center"
+                  >
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-cyan-300/80">
+                      {STABLE_BACKER_BANKROLL_PHRASE} on commit
+                    </div>
+                    <div
+                      className={`mt-1 text-3xl font-black tabular-nums ${
+                        backerBackingCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                      }`}
+                    >
+                      {backerBackingCredit >= 0 ? '+' : ''}
+                      {fmtPoker$(backerBackingCredit)}
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                      Same amount posts to Realized P/L.
+                    </p>
+                  </div>
+                ) : null}
               </>
             ) : (
               <p className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 px-3 py-2 text-xs leading-relaxed text-zinc-400">

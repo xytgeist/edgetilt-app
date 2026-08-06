@@ -33,7 +33,6 @@ import {
   clearPokerStakeOnboardingDeal,
   readPokerStakeCarouselCoachAck,
   readPokerStakeOnboardingDeal,
-  stashPokerStakeOnboardingDeal,
   writePokerStakeCarouselCoachAck,
 } from './pokerStakeeOnboarding.js'
 import {
@@ -758,19 +757,11 @@ export default function PokerBankrollTracker({
         d.id === openStableDealId && (d.status === 'active' || d.status === 'pending'),
     )
     if (!deal) return
+    // Focus the stake card only. Backing invitation modal is for guest/claim
+    // (stakeOnboarding=1 → activeStakeOnboardingDealId), not Edge Alert/push.
     pendingRestoreScopeRef.current = openStableDealId
     setScopeHydrated(true)
     setBankrollScope(openStableDealId)
-    if (
-      deal.status === 'pending' &&
-      isBackerInitiatedBackingDeal(deal) &&
-      !deal.staker_terms_ack_required &&
-      !deal.stakee_terms_ack_required
-    ) {
-      stashPokerStakeOnboardingDeal(openStableDealId)
-      setStakeOfferOnboardingOpen(true)
-      stakeOfferOnboardingOpenedRef.current = true
-    }
     onOpenStableDealConsumed?.()
   }, [openStableDealId, stakeeDeals, onOpenStableDealConsumed])
 

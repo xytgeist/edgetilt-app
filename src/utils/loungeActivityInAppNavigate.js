@@ -74,12 +74,7 @@ export function buildPokerStableActivityNavigateUrl(event, opts = {}) {
   ) {
     params.set('stableDeal', String(event.poker_stable_deal_id))
   }
-  if (
-    tab === 'poker-bankroll' &&
-    event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER
-  ) {
-    params.set('stakeOnboarding', '1')
-  }
+  // Edge Alert/push: Bankroll stake card only. Guest claim still uses stakeOnboarding=1.
   if (event.poker_stable_commit_id) {
     params.set('stableCommit', String(event.poker_stable_commit_id))
   } else if (event.poker_stable_settlement_request_id) {

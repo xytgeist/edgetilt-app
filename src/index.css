@@ -6544,14 +6544,22 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 
 /* Revoked / pending stake — light (after generic badge remaps above) */
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='pending'] {
-  background-color: #fffbeb !important;
-  border-color: #fcd34d !important;
-  color: #b45309 !important;
+  /* Neutral chip ... amber-on-pastel read as muddy on blue/emerald/rose heroes */
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  border-color: #a1a1aa !important;
+  color: #3f3f46 !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='revoked'] {
   background-color: #fff1f2 !important;
   border-color: #fca5a5 !important;
   color: #dc2626 !important;
+}
+/* Pending helper copy uses text-amber-200/85 (not in global light amber remap) */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending],
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer],
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-200\/85,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-100\/90 {
+  color: #3f3f46 !important;
 }
 [data-poker-bankroll-hero-card] [data-poker-hero-terms-icon] {
   color: rgb(161 161 170);

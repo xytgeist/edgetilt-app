@@ -3,6 +3,31 @@ import { useCallback, useMemo, useRef } from 'react'
 /** Movement beyond this counts as scroll/drag, not a row tap. */
 export const POKER_STABLE_PICKER_TAP_SLOP_PX = 12
 
+/** Swallow the synthetic click that fires after list unmount (touch click-through). */
+const POKER_STABLE_PICKER_GHOST_CLICK_MS = 450
+
+const GHOST_CLICK_EVENT_TYPES = ['click', 'mouseup', 'pointerup', 'touchend', 'auxclick']
+
+/**
+ * After a picker row selects and the list unmounts, the browser can retarget the
+ * trailing click onto form controls that were under the dropdown. Block that briefly.
+ */
+function armPickerGhostClickGuard(durationMs = POKER_STABLE_PICKER_GHOST_CLICK_MS) {
+  const block = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation()
+  }
+  for (const type of GHOST_CLICK_EVENT_TYPES) {
+    document.addEventListener(type, block, true)
+  }
+  window.setTimeout(() => {
+    for (const type of GHOST_CLICK_EVENT_TYPES) {
+      document.removeEventListener(type, block, true)
+    }
+  }, durationMs)
+}
+
 /**
  * Tap-to-select for scrollable Stable picker lists.
  * Select on pointerup when the gesture did not scroll or move past slop.
@@ -65,6 +90,8 @@ export function usePickerListTapSelect(listRef) {
         gestureRef.current = null
         if (wasTap) {
           e.preventDefault()
+          e.stopPropagation()
+          armPickerGhostClickGuard()
           select()
         }
       },

@@ -6614,12 +6614,13 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn-btn],
 html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-needs-attn-btn] {
-  background-color: #fef3c7 !important;
-  color: #92400e !important;
+  background-color: #b45309 !important;
+  color: #fffbeb !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn-btn]:active,
 html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-needs-attn-btn]:active {
-  background-color: #fde68a !important;
+  background-color: #92400e !important;
+  color: #fffbeb !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-backing-split] {
   color: #52525b !important;

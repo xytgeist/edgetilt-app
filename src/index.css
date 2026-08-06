@@ -6230,6 +6230,19 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] {
 html.light [data-poker-stable] [data-poker-stable-horse-card] .border-cyan-500\/15 {
   border-color: rgba(37, 99, 235, 0.18) !important;
 }
+/* Background sparkline … a bit darker/more visible on light cards (dark unchanged). */
+html.light [data-poker-stable] [data-poker-stable-horse-sparkline-bg] path[class*='fill-emerald'] {
+  fill: rgba(5, 150, 105, 0.2) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-sparkline-bg] path[class*='stroke-emerald'] {
+  stroke: rgba(4, 120, 87, 0.42) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-sparkline-bg] path[class*='fill-rose'] {
+  fill: rgba(225, 29, 72, 0.16) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-sparkline-bg] path[class*='stroke-rose'] {
+  stroke: rgba(190, 18, 60, 0.4) !important;
+}
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero] {
   box-shadow: var(--edge-light-card-shadow) !important;
 }

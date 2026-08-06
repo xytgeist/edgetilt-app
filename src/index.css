@@ -6328,8 +6328,9 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-amber-500\/20 {
   background-color: #fffbeb !important;
 }
-/* Money P/L … keep distinct from green/red horse identity chips */
-html.light [data-poker-stable] [data-poker-stable-horse-card] .text-emerald-400 {
+/* Money P/L readable on white (identity chips use per-tone rules above) */
+html.light [data-poker-stable] [data-poker-stable-horse-card] .text-emerald-400,
+html.light [data-poker-stable] [data-poker-stable-horse-card]:not([data-poker-stable-horse-tone='1']) .text-emerald-300 {
   color: #047857 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card] .text-rose-400,

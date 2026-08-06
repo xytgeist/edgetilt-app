@@ -6280,16 +6280,20 @@ html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-playe
   color: #be123c !important;
 }
 
-/* Backer settle credit (Stable backing bankroll on commit) */
+/* Backer settle credit (Stable backing bankroll on commit) ... hero amount */
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] {
-  background-color: #ecfeff !important;
-  border-color: #67e8f9 !important;
+  background-color: #ecfdf5 !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.18), 0 8px 24px rgba(16, 185, 129, 0.12) !important;
 }
-html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-cyan-300\/80 {
-  color: #0e7490 !important;
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/90 {
+  color: #047857 !important;
 }
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-300 {
   color: #047857 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-100\/70 {
+  color: #065f46 !important;
 }
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-rose-300 {
   color: #be123c !important;

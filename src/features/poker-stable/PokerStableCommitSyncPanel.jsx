@@ -227,20 +227,20 @@ export default function PokerStableCommitSyncPanel({
           {showBackerSettleCredit ? (
             <div
               data-poker-stable-settle-backer-credit
-              className="mb-4 rounded-2xl border border-cyan-500/25 bg-cyan-950/30 p-4 text-center"
+              className="mb-4 rounded-2xl border-2 border-emerald-400/50 bg-emerald-950/45 px-4 py-5 text-center shadow-[0_0_0_1px_rgba(52,211,153,0.12)]"
             >
-              <div className="text-[10px] font-bold uppercase tracking-wide text-cyan-300/80">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-200/90">
                 {STABLE_BACKER_BANKROLL_PHRASE} on commit
               </div>
               <div
-                className={`mt-1 text-3xl font-black tabular-nums ${
+                className={`mt-2 text-4xl font-black tabular-nums tracking-tight sm:text-5xl ${
                   backerBackingCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'
                 }`}
               >
                 {backerBackingCredit >= 0 ? '+' : ''}
                 {fmtPoker$(backerBackingCredit)}
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+              <p className="mt-2.5 text-xs font-medium leading-relaxed text-emerald-100/70">
                 Same amount posts to Realized P/L.
               </p>
             </div>

@@ -126,7 +126,7 @@ export default function LoungeCashtagDropdown({
       {hasList ? (
         <div
           ref={listRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {suggestions.map((row, i) => {
             const isActive = i === activeIndex

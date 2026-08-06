@@ -4091,15 +4091,6 @@ html.light [data-calc="mhb"] .bg-red-900 .text-red-300 {
 html.light .mhb-check-badge { display: inline-flex; }
 html.light .mhb-check-emoji { display: none; }
 
-/* Info modal scrollbars */
-html.light .mhb-info-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(59, 130, 246, 0.35) !important;
-  border-radius: 9999px;
-}
-html.light .mhb-info-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(59, 130, 246, 0.55) !important;
-}
-
 /* Info modal - cards and text */
 html.light [data-calc="mhb"] .bg-gray-800\/60 {
   background-color: #ebebed;
@@ -6948,6 +6939,63 @@ html.light [data-freemium-usage-counter][data-freemium-usage-remaining="0"] {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Stable + Poker bankroll managers — no visible thin scrollbars (Windows/Chrome) */
+[data-poker-stable],
+[data-poker-stable] *,
+[data-poker-stable-sheet],
+[data-poker-stable-sheet] *,
+[data-poker-stable-periodic-settle-sheet],
+[data-poker-stable-periodic-settle-sheet] *,
+[data-poker-stable-close-stake-sheet],
+[data-poker-stable-close-stake-sheet] *,
+[data-poker-stable-attention-sheet],
+[data-poker-stable-attention-sheet] *,
+[data-poker-stable-closed-horse-sheet],
+[data-poker-stable-closed-horse-sheet] *,
+[data-poker-stable-commit-sync-modal],
+[data-poker-stable-commit-sync-modal] *,
+[data-poker-stable-portfolio-info-modal],
+[data-poker-stable-portfolio-info-modal] *,
+[data-poker-stable-claim],
+[data-poker-stable-claim] *,
+[data-poker-bankroll],
+[data-poker-bankroll] *,
+[data-slots-bankroll],
+[data-slots-bankroll] *,
+[data-bankroll-sheet],
+[data-bankroll-sheet] * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[data-poker-stable]::-webkit-scrollbar,
+[data-poker-stable] *::-webkit-scrollbar,
+[data-poker-stable-sheet]::-webkit-scrollbar,
+[data-poker-stable-sheet] *::-webkit-scrollbar,
+[data-poker-stable-periodic-settle-sheet]::-webkit-scrollbar,
+[data-poker-stable-periodic-settle-sheet] *::-webkit-scrollbar,
+[data-poker-stable-close-stake-sheet]::-webkit-scrollbar,
+[data-poker-stable-close-stake-sheet] *::-webkit-scrollbar,
+[data-poker-stable-attention-sheet]::-webkit-scrollbar,
+[data-poker-stable-attention-sheet] *::-webkit-scrollbar,
+[data-poker-stable-closed-horse-sheet]::-webkit-scrollbar,
+[data-poker-stable-closed-horse-sheet] *::-webkit-scrollbar,
+[data-poker-stable-commit-sync-modal]::-webkit-scrollbar,
+[data-poker-stable-commit-sync-modal] *::-webkit-scrollbar,
+[data-poker-stable-portfolio-info-modal]::-webkit-scrollbar,
+[data-poker-stable-portfolio-info-modal] *::-webkit-scrollbar,
+[data-poker-stable-claim]::-webkit-scrollbar,
+[data-poker-stable-claim] *::-webkit-scrollbar,
+[data-poker-bankroll]::-webkit-scrollbar,
+[data-poker-bankroll] *::-webkit-scrollbar,
+[data-slots-bankroll]::-webkit-scrollbar,
+[data-slots-bankroll] *::-webkit-scrollbar,
+[data-bankroll-sheet]::-webkit-scrollbar,
+[data-bankroll-sheet] *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* Tournament swaps cards + running total - light mode only (dark unchanged) */

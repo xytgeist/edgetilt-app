@@ -263,12 +263,6 @@ function formatUsd(amount) {
 
 function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null, logPlayLocked = false, onRequireSubscribe = null, playLogsRemaining = null, freemiumUsageLoading = false }) {
   const isLight = document.documentElement.classList.contains('light')
-  const scrollThumb = isLight
-    ? '[&::-webkit-scrollbar-thumb]:bg-blue-400/40 hover:[&::-webkit-scrollbar-thumb]:bg-blue-400/60 [scrollbar-color:rgba(96,165,250,0.45)_transparent]'
-    : '[&::-webkit-scrollbar-thumb]:bg-cyan-300/20 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-300/35 [scrollbar-color:rgba(34,211,238,0.25)_transparent]'
-  const scrollThumbSm = isLight
-    ? '[&::-webkit-scrollbar-thumb]:bg-blue-400/40 hover:[&::-webkit-scrollbar-thumb]:bg-blue-400/60 [scrollbar-color:rgba(96,165,250,0.45)_transparent]'
-    : '[&::-webkit-scrollbar-thumb]:bg-cyan-300/15 hover:[&::-webkit-scrollbar-thumb]:bg-cyan-300/30 [scrollbar-color:rgba(34,211,238,0.2)_transparent]'
 
   const [manufacturer, setManufacturer] = useState('ainsworth')
   const [igtTier, setIgtTier] = useState('mini')
@@ -1131,7 +1125,7 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null, lo
 
         {showCalcInfo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-            <div className={`mhb-info-scroll max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border border-cyan-500/30 bg-gray-900 p-5 text-white shadow-xl [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${scrollThumb}`}>
+            <div className="mhb-info-scroll max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border border-cyan-500/30 bg-gray-900 p-5 text-white shadow-xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <h3 className="border-b border-cyan-500/25 pb-2 text-center text-lg font-semibold tracking-[0.08em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
                 Analytical Methodology
               </h3>
@@ -1139,7 +1133,7 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null, lo
                 <summary className="cursor-pointer select-none text-sm font-semibold tracking-[0.03em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
                   Non-techie version
                 </summary>
-                <div className={`mhb-info-scroll mt-2 max-h-40 space-y-2 overflow-y-auto pr-1 text-sm leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${scrollThumbSm}`}>
+                <div className="mhb-info-scroll mt-2 max-h-40 space-y-2 overflow-y-auto pr-1 text-sm leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   <p>
                     The calculator estimates whether a jackpot is worth playing right now, based on where the meter currently is and how fast it grows.
                   </p>
@@ -1161,7 +1155,7 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null, lo
                 <summary className="cursor-pointer select-none text-sm font-semibold tracking-[0.03em] text-cyan-200 [font-family:Georgia,'Times_New_Roman',serif]">
                   Dweeb-speak
                 </summary>
-                <div className={`mhb-info-scroll mt-2 max-h-52 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full ${scrollThumbSm}`}>
+                <div className="mhb-info-scroll mt-2 max-h-52 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                   <p className="text-sm italic leading-relaxed text-gray-300 [font-family:Georgia,'Times_New_Roman',serif]">
                     This analyzer is a quantitative framework for progressive-jackpot valuation, breakeven threshold detection, and stressed-loss envelope estimation.
                   </p>

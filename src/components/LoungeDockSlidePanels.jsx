@@ -1173,7 +1173,7 @@ export default function LoungeDockSlidePanels({
                 </h3>
                 <div
                   data-lounge-panel-horizontal-scroll
-                  className="-mx-3 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-3 pb-0.5 [scrollbar-width:thin] [-webkit-overflow-scrolling:touch] touch-pan-x"
+                  className="-mx-3 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-3 pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] touch-pan-x"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   {searchRecent.map((term) => (

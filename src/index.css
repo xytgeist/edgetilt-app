@@ -6561,6 +6561,29 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-sta
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-100\/90 {
   color: #3f3f46 !important;
 }
+/* Settle Needs Attn banner — light only (dark amber-950 panel + pale amber text on pastel heroes) */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn],
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-needs-attn] {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn] .text-amber-100\/95,
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-needs-attn] .text-amber-100\/95 {
+  color: #78350f !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn] .text-amber-300\/90,
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-needs-attn] .text-amber-300\/90 {
+  color: #b45309 !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn-btn],
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-needs-attn-btn] {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn-btn]:active,
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-needs-attn-btn]:active {
+  background-color: #fde68a !important;
+}
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-backing-split] {
   color: #52525b !important;
 }

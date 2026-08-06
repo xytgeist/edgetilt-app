@@ -19,6 +19,7 @@ export default function PokerStableSettleNeedsAttnBanner({
       </p>
       <button
         type="button"
+        data-poker-stake-needs-attn-btn
         onClick={() => {
           triggerTapHapticLight()
           onReview?.()

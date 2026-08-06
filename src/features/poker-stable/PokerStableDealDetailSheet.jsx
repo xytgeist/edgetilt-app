@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
@@ -64,8 +63,12 @@ const DEAL_TABS = [
  * Docked to the bottom (overlay items-end); square bottom + tight safe-area padding so the
  * panel paints flush to the screen edge without growing the sheet taller.
  */
-const DEAL_DETAIL_SHEET_HEIGHT =
-  'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
+const DEAL_DETAIL_SHEET_HEIGHT_FIXED =
+  'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden !overflow-y-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
+
+/** Player Bankroll Terms (manageOnly): height follows content, capped so tall ledgers still scroll. */
+const DEAL_DETAIL_SHEET_HEIGHT_HUG =
+  'h-auto max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-y-auto overscroll-contain rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
 
 /**
  * Deal detail: overview/history/analytics tabs + manage (top-up, settle, ledger).
@@ -97,8 +100,6 @@ export default function PokerStableDealDetailSheet({
   const [topupAmount, setTopupAmount] = useState('')
   const [reduceStake, setReduceStake] = useState(false)
   const [newBaselineInput, setNewBaselineInput] = useState('')
-  /** Player Manage sheet: top-up / reduce collapsed until expanded. */
-  const [topupReduceOpen, setTopupReduceOpen] = useState(false)
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [ledgerEntries, setLedgerEntries] = useState([])
@@ -111,7 +112,6 @@ export default function PokerStableDealDetailSheet({
 
   useEffect(() => {
     setActiveTab(manageOnly ? 'manage' : 'overview')
-    setTopupReduceOpen(false)
   }, [deal?.id, manageOnly])
 
   useEffect(() => {
@@ -321,7 +321,10 @@ export default function PokerStableDealDetailSheet({
       <div
         data-poker-stable-sheet
         data-poker-stable-deal-detail
-        className={`relative z-10 flex w-full max-w-lg flex-col overflow-hidden !overflow-y-hidden ${DEAL_DETAIL_SHEET_HEIGHT} ${APP_MODAL_SHEET_PANEL_CLASS}`}
+        data-poker-stable-deal-detail-variant={manageOnly ? 'manageOnly' : 'full'}
+        className={`relative z-10 flex w-full max-w-lg flex-col ${
+          manageOnly ? DEAL_DETAIL_SHEET_HEIGHT_HUG : DEAL_DETAIL_SHEET_HEIGHT_FIXED
+        } ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex shrink-0 items-center justify-between gap-2">
@@ -360,7 +363,13 @@ export default function PokerStableDealDetailSheet({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+        <div
+          className={
+            manageOnly
+              ? 'min-h-0'
+              : 'min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]'
+          }
+        >
         {activeTab === 'overview' ? (
           <>
             {visiblePendingCommits.length && supabaseClient ? (
@@ -482,37 +491,12 @@ export default function PokerStableDealDetailSheet({
           </>
         ) : null}
 
-        {canRecordEvents ? (
+        {/* Player Terms (manageOnly): no top-up/reduce ... settle + slices only. */}
+        {canRecordEvents && !manageOnly ? (
           <>
-            {manageOnly ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setTopupReduceOpen((open) => !open)
-                  triggerTapHapticLight()
-                }}
-                aria-expanded={topupReduceOpen}
-                data-poker-stable-topup-reduce-toggle
-                className="mb-2 flex w-full items-center justify-between gap-2 rounded-xl px-0.5 py-1 text-left touch-manipulation active:opacity-80"
-              >
-                <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                  Top-up / Reduce stake
-                </span>
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${
-                    topupReduceOpen ? 'rotate-180' : ''
-                  }`}
-                  strokeWidth={2.25}
-                  aria-hidden
-                />
-              </button>
-            ) : (
-              <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-                Top-up stake
-              </h4>
-            )}
-            {!manageOnly || topupReduceOpen ? (
-              <>
+            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Top-up stake
+            </h4>
             <p className="mb-2 text-xs text-zinc-500">
               Increases baseline and roll. Edge backers debit their action % share when they sync
               (yours updates when you record if you are a backer).
@@ -640,8 +624,6 @@ export default function PokerStableDealDetailSheet({
                 </button>
               ) : null}
             </div>
-              </>
-            ) : null}
           </>
         ) : null}
 

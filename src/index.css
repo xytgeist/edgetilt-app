@@ -6224,14 +6224,69 @@ html.light [data-poker-stable] [data-poker-stable-tabs] {
   background-color: #fafafa !important;
   border-color: #e4e4e7 !important;
 }
-/* Horse cards … light blue chrome wash + border (mirrors dark cyan horse surface). */
+/* Horse cards … per-deal highlight tones (light). Dark uses Tailwind classes on data-poker-stable-horse-tone. */
 html.light [data-poker-stable] [data-poker-stable-horse-card] {
-  background: linear-gradient(to bottom right, #eff6ff, #ffffff) !important;
-  border-color: rgba(37, 99, 235, 0.35) !important;
   box-shadow: var(--edge-light-card-shadow) !important;
 }
-html.light [data-poker-stable] [data-poker-stable-horse-card] .border-cyan-500\/15 {
-  border-color: rgba(37, 99, 235, 0.18) !important;
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] {
+  background: linear-gradient(to bottom right, #ecfeff, #ffffff) !important;
+  border-color: rgba(8, 145, 178, 0.4) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] {
+  background: linear-gradient(to bottom right, #ecfdf5, #ffffff) !important;
+  border-color: rgba(5, 150, 105, 0.4) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] {
+  background: linear-gradient(to bottom right, #f0f9ff, #ffffff) !important;
+  border-color: rgba(2, 132, 199, 0.4) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] {
+  background: linear-gradient(to bottom right, #f5f3ff, #ffffff) !important;
+  border-color: rgba(124, 58, 237, 0.4) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] {
+  background: linear-gradient(to bottom right, #fdf4ff, #ffffff) !important;
+  border-color: rgba(192, 38, 211, 0.4) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] {
+  background: linear-gradient(to bottom right, #fff1f2, #ffffff) !important;
+  border-color: rgba(225, 29, 72, 0.4) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .border-cyan-500\/15 {
+  border-color: rgba(8, 145, 178, 0.2) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .border-emerald-500\/15 {
+  border-color: rgba(5, 150, 105, 0.2) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .border-sky-500\/15 {
+  border-color: rgba(2, 132, 199, 0.2) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .border-violet-500\/15 {
+  border-color: rgba(124, 58, 237, 0.2) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .border-fuchsia-500\/15 {
+  border-color: rgba(192, 38, 211, 0.2) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .border-rose-500\/15 {
+  border-color: rgba(225, 29, 72, 0.2) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .text-cyan-300 {
+  color: #0e7490 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .text-sky-300 {
+  color: #0369a1 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .text-violet-300 {
+  color: #6d28d9 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .text-fuchsia-300 {
+  color: #a21caf !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .text-rose-300 {
+  color: #be123c !important;
 }
 /* Background sparkline … a bit darker/more visible on light cards (dark unchanged). */
 html.light [data-poker-stable] [data-poker-stable-horse-sparkline-bg] path[class*='fill-emerald'] {

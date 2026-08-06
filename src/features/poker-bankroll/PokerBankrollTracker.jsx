@@ -4299,13 +4299,10 @@ export default function PokerBankrollTracker({
           userId={userId}
           commitId={commitSyncId}
           onClose={() => setCommitSyncId(null)}
-          onSynced={({ dealId, isStakee }) => {
+          onSynced={() => {
             void (async () => {
               await loadData({ silent: true })
               setCommitSyncId(null)
-              if (isStakee && dealId) {
-                setTermsDealId(dealId)
-              }
             })()
           }}
           onError={setError}

@@ -391,7 +391,7 @@ export default function PokerStableDealDetailSheet({
           className={
             manageOnly
               ? 'min-h-0'
-              : 'min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]'
+              : 'min-h-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar [-webkit-overflow-scrolling:touch]'
           }
         >
         {activeTab === 'overview' ? (

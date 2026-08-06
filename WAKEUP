@@ -7,7 +7,7 @@
 ## What you do (quick)
 
 1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — finish Twilio From number + smoke guest SMS on prod.*).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — smoke backer close settle commit on edgetilt.com.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -30,7 +30,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`3fe17c72`** (2026-07-31)
+**Branch:** `main` / `test` aligned at **`4fb513ab`** (2026-08-05)
 
 **Supabase (do not swap these):**
 
@@ -39,15 +39,97 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Edge Monitor Product analytics shipped to prod (app section visits, dual member top-25, Lounge contributor ranking, exclusions). Next session: pick next backlog item — or smoke Monitor Product on edgetilt.com if not signed off yet._
+**Goal:** _Poker Stable backer closed-horse + settle commit UX shipped to prod. Next: Ryan smoke on **edgetilt.com** (close settle inline Commit on horse Overview, archive revoked/closed carousel cards, no duplicate deal rows after revoke + Create Stake). Clean up Edge Lord test ghost deals if still in carousel._
 
-**Start by reading:** `AGENTS.md`, then **`docs/edge-monitor-roadmap.md`** Phase 8, **`docs/test-buildout-backlog.md`** Update log (**2026-07-31**), **`docs/production-rollout-checklist.md`** (Phase 8 rows @ **`567070d6`** client + **`2858dd36`** docs).
+**Start by reading:** `AGENTS.md`, then **`docs/poker-stable-spec.md`** (Update log **2026-08-04**–**2026-08-05**), **`docs/test-buildout-backlog.md`** Update log (**2026-08-05**), **`docs/production-rollout-checklist.md`** (Poker Stable backer carousel row @ **`4fb513ab`**).
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. set PUBLIC_APP_URL on prod; smoke guest email claim on edgetilt.com]_
+- Session focus: _[e.g. archive ghost `$25/50 Test 3` carousel card on prod; smoke inline Commit after Lvslotgod close settle]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see WAKEUP Pick up here Jul 30 + backlog Update log"]_
+- Context: _[e.g. "see WAKEUP Pick up here Aug 5 + poker-stable-spec Update log"]_
+
+---
+
+## Pick up here (Aug 2026 ... session 2026-08-05)
+
+### Latest commits (`main` / `test` @ **`4fb513ab`**)
+
+| Commit | What |
+| --- | --- |
+| **`4fb513ab`** | Inline backer settle **Commit** on horse deal **Overview** (`PokerStableCommitSyncPanel`); carousel **Review stake** opens deal detail, not stacked modal |
+| **`d85883de`** | Backer **Create Stake after revoke** reopens same deal row (no duplicate); label disambiguation (`· Aug 3`); optimistic archive patch |
+| **`1b4b953e`** | Backer archive on **revoked** stakes (declined slices); **`PokerStableClosedHorseSheet`** Review + **Delete** |
+| **`db01df4b`** | TDZ hotfix: `closedUnarchived` before use in horse carousel |
+| **`b652f3b2`** | Backer closed-horse carousel, at-risk ROI, stakee commit-before-archive |
+| **`e7314b94`** | Stakee settle/commit deep links → Bankroll; closed stake hero polish |
+
+Promote tip for this Stable bundle: **`4fb513ab`**. Client + SQL on **main** / **test**; Vercel **`edgetilt.com`** after deploy.
+
+### Shipped this session: Poker Stable backer closed horse + settle commit (test + **prod**)
+
+| Area | Detail |
+| --- | --- |
+| **SQL (test + prod)** | **`20260805120000`** slice **`stable_archived_at`** + archive RPC; **`20260805130000`** archive includes **declined** slices on terminal deals (revoke path); **`20260805140000`** backer may delete slices on **revoked** deals for re-offer |
+| **Duplicate deal bug (root cause)** | NOT UI double-render. **Create Stake after revoke** did a fresh **INSERT** (only blocked pending/active). Fix: **`requestBackingDeal`** reopens matching **revoked** deal (same label + guest/player), wipes slices, **`pending`**. Old ghost rows remain in DB until archived |
+| **Closed horse carousel** | Revoked/closed/settled stakes stay in **Active horses** until backer **Archive stake** (slice-level **`stable_archived_at`**, parity with stakee Bankroll ARCHIVE) |
+| **Review flows** | Carousel **Review** on revoked/declined → **`PokerStableClosedHorseSheet`** (Archive + Delete). Closed horse with player close settle → **Review stake** opens **`PokerStableDealDetailSheet`** Overview with inline **Commit** block |
+| **Settle commit UX** | **`PokerStableCommitSyncPanel`** on deal **Overview** tab (roll, baseline, Stable backing bankroll on commit, **Commit**). Global **`PokerStableCommitSyncModal`** kept for Alerts/push deep links only (**`AppShell`**) |
+| **Label disambiguation** | Duplicate stake labels show created date (**`$25/50 Test 3 · Aug 3`**) in carousel + Closed stakes list |
+| **Canonical docs** | **`docs/poker-stable-spec.md`** Update log; backlog Update log **2026-08-05**; prod checklist row added |
+
+### Prod data cleanup (Edge Lord test stakes ... Ryan manual)
+
+Ryan was smoke-testing guest-player Create Stake deals on **edgetilt.com**. Before the revoke re-offer fix, duplicate rows existed for same label (e.g. two **`$25/50 Test 3`**):
+
+| Deal | State |
+| --- | --- |
+| First Test 3 | Revoked + **archived** → **Closed stakes** |
+| Second Test 3 (`c6219bf2-…`) | Revoked, **not archived** → still in carousel until **Review → Archive/Delete** |
+
+Same pattern possible for Test 6 (case mismatch labels). After **`d85883de`**, revoke + Create Stake with same label should **reuse** one row going forward.
+
+### On deck (ordered)
+
+1. **Prod smoke (edgetilt.com):** Backer **Create Stake** → player accepts → session → player **close settle** → backer carousel **Needs attn** → **Review stake** → Overview shows inline **Close settlement** + **Commit** (no second modal) → **Archive stake** moves card to Closed stakes.
+2. **Prod smoke:** Revoke stake → **Create Stake** same label → confirm **one** deal row (no ghost duplicate).
+3. **Prod smoke:** Archive **revoked** stake (was failing **"Stake cannot be archived yet"** before **`20260805130000`**).
+4. **Ryan cleanup:** Archive remaining unarchived revoked test carousel cards (especially second Test 3) or one-time SQL if Ryan asks.
+5. **Poker Stable smoke checklist** (`/?tab=stable-smoke`) still open for full E2E sign-off.
+6. **Phase 1b (not built):** guest syndicate co-backer claim on backer Create Stake — spec only.
+
+### Key files (grep anchors)
+
+| Topic | Files |
+| --- | --- |
+| Inline settle commit | **`PokerStableCommitSyncPanel.jsx`**, **`PokerStableDealDetailSheet.jsx`**, **`PokerStableCommitSyncModal.jsx`** (Alerts only) |
+| Closed horse carousel | **`PokerStableHorseCarousel.jsx`**, **`PokerStableClosedHorseHeroBanner.jsx`**, **`PokerStableClosedHorseSheet.jsx`**, **`pokerStableBackerMath.js`** (`partitionBackerDeals`, `backerStableShowsClosedCarouselCard`) |
+| Revoke re-offer | **`pokerStableApi.js`** (`requestBackingDeal`), migration **`20260805140000`** |
+| Archive RPC | migration **`20260805130000`**, **`20260805120000`** |
+| Stable screen | **`PokerStableScreen.jsx`** |
+| Spec | **`docs/poker-stable-spec.md`** |
+
+### Architecture reminders (backer vs stakee)
+
+- **Player stake** = Poker Bankroll carousel; **Stable** = backer backing bankroll manager.
+- Backer archive is **slice-level** (`stable_archived_at`), not deal-level like stakee (`stakee_bankroll_archived_at`).
+- Stakee re-offer on revoked uses SQL **`poker_stable_apply_stakee_terms`**; backer re-offer now mirrors via client **`requestBackingDeal`** + slice delete RLS.
+- **`partitionBackerDeals`**: each deal ID is either carousel **or** Closed stakes history, never both ... duplicate labels were **two deal rows**, not a partition bug.
+
+### AP guides (ongoing workflow)
+
+**Source of truth:** Supabase **`guides.content_markdown`** + R2 heroes. **Editor:** **`/slot-guide-form`** on **`edgetilt.com`**.
+
+**Prod = prod for agents:** Never ingest/batch-run to **`jtjgtucumuoswnbauxry`** unless Ryan names the slug/batch.
+
+### Parked (still true)
+
+- Thread compose iOS keyboard / options bar overlap after media pick
+- Feed UI +EV badge (caption prefix only today)
+- Stream + still images in one carousel (upload order) ... **not scheduled**
+- Reuters wire (needs LSEG/API license)
+- Poker Online soft-event catalog (MTTDB or similar)
+- Twilio **From number** for guest SMS on prod (email works via Resend)
 
 ---
 
@@ -66,27 +148,17 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 | Product copy, UX wording, creative exploration | **Fable** |
 | Structured analysis, tables, careful review | **Terra** |
 
-### When to switch (one-liners)
-
-- **Stay on Grok** when you want: find it → fix it → commit/push/deploy → update `WAKEUP` / backlog. Fast agent loops.
-- **Switch to Composer 2.5** when the job is mostly mechanical repo surgery and you don’t need much product chat.
-- **Switch to Opus** when you’re stuck after 1–2 attempts, the blast radius is scary, or the bug is “impossible” / cross-system.
-- **Switch to Sonnet** when you want a steady middle ground: solid code + clear reasoning without Opus weight.
-- **Switch to Fable** for voice, landing copy, bot persona wording, marketing-ish text.
-- **Switch to Terra** for audits, checklists, migration inventories, “compare A vs B carefully.”
-
 ### EdgeTilt cheat sheet
 
 | Task | Model |
 | --- | --- |
 | Bot portal UI, Lounge CSS, small Edge Function tweak | Grok / Composer |
+| Poker Stable settle / RLS / commit sync | Grok first; **Opus** if RPC/RLS cursed |
 | Scott odds / live poll / cron / SQL chain | Grok first; **Opus** if cron/RLS/Edge auth is cursed |
-| X ingest / bearer / oEmbed weirdness | Grok |
 | Freemium / RLS / entitlements design | **Opus** or Sonnet |
 | AP guide copy / voice prompts | Fable or Grok |
 | “Update all continuity docs” | Grok |
 | Security / production cutover review | **Opus** (or Security Review subagent) |
-| PR babysit / CI loop | Composer or Grok |
 
 ### Rule of thumb
 
@@ -94,85 +166,3 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 2. If you’re spinning or the design has real tradeoffs → **Opus**.
 3. If you need pretty words → **Fable**.
 4. Don’t model-hop mid-tiny-fix unless you’re stuck.
-
----
-
-## Pick up here (Jul 2026 ... session 2026-07-30)
-
-### Latest commits (`main` / `test` @ **`e56189ba`**)
-
-| Commit | What |
-| --- | --- |
-| **`e56189ba`** | WAKEUP tip SHA sync |
-| **`0903822a`** | Handoff docs (WAKEUP / backlog / checklist / architecture) |
-| **`5bde2e48`** | Empty soft-event picker: “No nearby logged tournaments yet … Enter manually” |
-| **`dc0f3e4d`** | Docs: poker tournament swaps production promote recorded |
-| **`44ba6b13`** | Settled amounts: explicit `+` in parens for gains (`(+$131)` / `(-$131)`) |
-| **`586f425b`** | Hide **Mark settled** when settlement is even (nothing owed) |
-| **`8dad97a2`** | Settled session-card lines use same cyan as Even |
-| **`d459c9a3`** | Manual entry = **their** result only (your side syncs on session end) |
-| **`1fac8310`** | Guest phone/email optional; offer notify copy + claim only if contact present |
-| **`dcce316a`** | **Send swap** on draft cards when session already exists |
-| **`47221138`** | Incoming Accept → bind matching session or Start Session prefilled |
-| **`39cf33fc`** / **`1a94cfad`** | Soft-event Tournament proximity picker (Live; today + 36h activity) |
-
-Promote tip for swaps feature set: **`44ba6b13`**. Client + handoff docs: **`e56189ba`** on **main** / **test**.
-
-### Shipped: poker tournament swaps (test + **prod**)
-
-| Area | Detail |
-| --- | --- |
-| **SQL** | **`20260730140000`–`180000`** on **test** + **prod** (`poker_tournament_events`, swaps, claim tokens/RPCs, activity types, Realtime, `last_activity_at`) |
-| **Edge** | **`poker-tournament-swap-notify`** + **`lounge-send-activity-push`** redeployed **test + prod** |
-| **Frontend** | **`test` → `main`** through **`e56189ba`** → Vercel **`edgetilt.com`** |
-| **Soft events** | Live Tournament dropdown: calendar **today** + `last_activity_at` within **36h**. Online/Club = manual name (MTTDB later) |
-| **Offers** | Edge user or guest; guest phone/email **optional** (notify-only). Draft on live session → **Send swap** |
-| **Accept** | Matching session → bind; else Start Session prefilled + **Start & accept swap** |
-| **Results** | Your side syncs on **End session**; manual = **their** buy-in/prize only. Even → no Mark settled. Settled card: cyan line + `(+$x)` / `(-$x)` |
-| **Guest notify copy** | `{Display Name} swapping x% - y% with you in event: {Tournament} from EdgeTilt.com` (+ claim link when contact present) |
-| **Canonical docs** | Checklist §2 poker swaps row; backlog Update log **2026-07-30**; architecture **`poker-bankroll/`** row |
-
-### On deck (ordered)
-
-1. **Prod secrets / guest SMS:** confirm **`PUBLIC_APP_URL=https://edgetilt.com`** on prod Edge. Guest **email** via Resend should work. Guest **SMS** blocked until Twilio **From number** + secrets (`TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID` / `TWILIO_API_KEY_SECRET`, `TWILIO_FROM_NUMBER`). API key code already deployed; Ryan had key SIDs in prior chat ... rotate if leaked.
-2. **Prod smoke (edgetilt.com):** Start tourney → Edge/guest swap → Send swap on live session → Incoming Accept / claim → end session → Settled / Even on session card (**Swaps** heading).
-3. **Poker Stable smoke** (open): request → accept → On Stake log → staker sync (`20260730000000` already on test/prod from bankroll promote).
-4. **MTTDB / Online soft events** (deferred): Online/Club tournament picker when catalog exists.
-5. Unrelated WIP may exist locally (`scripts/tmp-debug-egress.mjs` untracked historically) ... ignore unless Ryan asks.
-
-### Key files (grep anchors)
-
-| Topic | Files |
-| --- | --- |
-| Swaps UI | **`PokerTournamentSwapsSection.jsx`**, **`PokerBankrollTracker.jsx`** |
-| Swap API / math | **`pokerTournamentSwapApi.js`**, **`pokerTournamentSwapMath.js`** |
-| Soft events | **`pokerTournamentNearbyEvents.js`**, **`pokerTournamentEventKeys.js`** |
-| Guest claim | **`PokerTournamentSwapClaimPage.jsx`**, route in **`App.jsx`** |
-| Notify Edge | **`supabase/functions/poker-tournament-swap-notify/`** |
-| Activity / push | **`lounge-send-activity-push`**, **`LoungeNotificationsPanel.jsx`** (poker deep link) |
-| Light mode | **`index.css`** `data-poker-tournament-swaps`, `data-poker-session-swap-*` |
-
-### Twilio / notify secrets (names only)
-
-| Secret | Notes |
-| --- | --- |
-| `PUBLIC_APP_URL` | Prod = `https://edgetilt.com`; test = test host |
-| `RESEND_API_KEY` / `RESEND_FROM` | Guest email (already used elsewhere) |
-| `TWILIO_ACCOUNT_SID` | Messages API path |
-| `TWILIO_API_KEY_SID` + `TWILIO_API_KEY_SECRET` | Preferred auth |
-| `TWILIO_FROM_NUMBER` | E.164; blocked on compliance until Ryan buys number |
-| `TWILIO_AUTH_TOKEN` | Legacy fallback only |
-
-### AP guides (ongoing workflow)
-
-**Source of truth:** Supabase **`guides.content_markdown`** + R2 heroes. **Editor:** **`/slot-guide-form`** on **`edgetilt.com`**.
-
-**Prod = prod for agents:** Never ingest/batch-run to **`jtjgtucumuoswnbauxry`** unless Ryan names the slug/batch.
-
-### Parked (still true)
-
-- Thread compose iOS keyboard / options bar overlap after media pick
-- Feed UI +EV badge (caption prefix only today)
-- Stream + still images in one carousel (upload order) ... **not scheduled**
-- Reuters wire (needs LSEG/API license)
-- Poker Online soft-event catalog (MTTDB or similar)

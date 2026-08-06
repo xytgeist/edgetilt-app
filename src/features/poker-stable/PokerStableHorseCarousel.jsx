@@ -107,8 +107,13 @@ export default function PokerStableHorseCarousel({
             ? 'bg-zinc-700/60 text-zinc-300'
             : stakeHorseCardStatusTone(deal, dealSlices)
         const sparkSeries = horseSparkByDeal[deal.id] || []
+        // Trend helper pads every horse series on any session event ... require this deal's sessions.
         const showSparkBackground =
-          showBackerStats && !pendingSettleCommit && !closedUnarchived && sparkSeries.length >= 2
+          showBackerStats &&
+          !pendingSettleCommit &&
+          !closedUnarchived &&
+          (stats.sessions || 0) >= 1 &&
+          sparkSeries.length >= 2
         const sparkUp =
           sparkSeries.length >= 2 &&
           sparkSeries[sparkSeries.length - 1] >= sparkSeries[0]

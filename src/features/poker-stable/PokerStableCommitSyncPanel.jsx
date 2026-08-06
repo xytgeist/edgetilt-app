@@ -158,7 +158,7 @@ export default function PokerStableCommitSyncPanel({
         data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined}
         className={
           variant === 'inline'
-            ? 'rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4'
+            ? 'rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4 shadow-none'
             : ''
         }
       >
@@ -189,7 +189,7 @@ export default function PokerStableCommitSyncPanel({
 
   const inlineShell =
     variant === 'inline'
-      ? 'mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4'
+      ? 'mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4 shadow-none'
       : ''
 
   return (
@@ -227,7 +227,7 @@ export default function PokerStableCommitSyncPanel({
           {showBackerSettleCredit ? (
             <div
               data-poker-stable-settle-backer-credit
-              className="mb-4 rounded-2xl border-2 border-emerald-400/50 bg-emerald-950/45 px-4 py-5 text-center shadow-[0_0_0_1px_rgba(52,211,153,0.12)]"
+              className="mb-4 rounded-2xl border-2 border-emerald-400/50 bg-emerald-950/45 px-4 py-5 text-center shadow-none"
             >
               <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-200/90">
                 {STABLE_BACKER_BANKROLL_PHRASE} on commit

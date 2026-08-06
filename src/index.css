@@ -6261,6 +6261,12 @@ html.light [data-poker-stable-attention-sheet] .bg-zinc-900\/60 {
 }
 
 /* Settle Commit queue ... cool cyan/zinc (match Stable chrome; no amber wash) */
+html.light [data-poker-stable-settle-commit-queue-header],
+html.light [data-poker-stable-commit-sync-modal] {
+  /* Match Slots/Poker bankroll elevation (neutral drop shadow, not cyan glow) */
+  box-shadow: var(--edge-light-card-shadow) !important;
+  filter: none !important;
+}
 html.light [data-poker-stable-settle-commit-queue-header] {
   background-color: #ecfeff !important;
   border-color: #67e8f9 !important;
@@ -6328,7 +6334,8 @@ html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-playe
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] {
   background-color: #ecfdf5 !important;
   border-color: #34d399 !important;
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.18), 0 8px 24px rgba(16, 185, 129, 0.12) !important;
+  /* Same neutral drop shadow as bankroll cards … no emerald outer glow */
+  box-shadow: var(--edge-light-card-shadow) !important;
 }
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/90 {
   color: #047857 !important;

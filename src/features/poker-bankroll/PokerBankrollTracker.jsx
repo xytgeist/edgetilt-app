@@ -58,6 +58,7 @@ import {
   stakeHeroBadgeLabel,
   stakeHeroBadgeVariant,
   stakeGoesLivePendingCopy,
+  stakeeBackerOfferHeroCopy,
   stakeBackingCapitalSplit,
   stakeeBankrollShowsClosedCarouselCard,
   stakeeBankrollTermsOpensManageSheet,
@@ -3232,6 +3233,9 @@ export default function PokerBankrollTracker({
                   Boolean(stakeHeroMessage) ||
                   Boolean(hero.pendingSettleCommit) ||
                   heroClosedUnarchived
+                const heroDisplayBankroll = heroAwaitingPlayerAccept
+                  ? Number(hero.deal?.baseline_bankroll) || 0
+                  : hero.overallBankroll
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -3337,9 +3341,10 @@ export default function PokerBankrollTracker({
                             onStake ? theme.amount : 'text-white'
                           }`}
                         >
-                          <span>{fmtPoker$(hero.overallBankroll)}</span>
+                          <span>{fmtPoker$(heroDisplayBankroll)}</span>
                           {onStake &&
                           hero.deal &&
+                          !heroAwaitingPlayerAccept &&
                           dealIsInMakeup(hero.deal, dealProfiles[scopeId] ?? null) ? (
                             <span
                               data-poker-stake-makeup
@@ -3355,7 +3360,7 @@ export default function PokerBankrollTracker({
                             </span>
                           ) : null}
                         </div>
-                        {onStake && hero.deal && !heroStakeLive
+                        {!heroAwaitingPlayerAccept && onStake && hero.deal && !heroStakeLive
                           ? (() => {
                               const split = stakeBackingCapitalSplit(hero.deal, dealSlices)
                               if (split.total <= 0) return null
@@ -3379,7 +3384,7 @@ export default function PokerBankrollTracker({
                                 </p>
                               )
                             })()
-                          : onStake && hero.deal && heroStakeLive
+                          : !heroAwaitingPlayerAccept && onStake && hero.deal && heroStakeLive
                             ? (() => {
                                 const split = stakeBackingCapitalSplit(hero.deal, dealSlices)
                                 if (split.pending <= 0) return null
@@ -3447,31 +3452,13 @@ export default function PokerBankrollTracker({
                               onClick={(e) => e.stopPropagation()}
                             >
                               <p className="text-xs leading-snug text-amber-200/85">
-                                {dealLeadBackerDisplayName(hero.deal, stableProfilesById)} wants to
-                                stake you. {stakeGoesLivePendingCopy(
+                                {stakeeBackerOfferHeroCopy(
                                   hero.deal,
                                   dealSlices,
                                   stableProfilesById,
                                 )}
                               </p>
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => openStakeOfferReview(scopeId)}
-                                  className="rounded-xl bg-zinc-800 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-700"
-                                >
-                                  Terms
-                                </button>
-                              </div>
                               <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={stableSaving}
-                                  onClick={() => void onAcceptBackerOffer(scopeId)}
-                                  className="flex-1 rounded-xl bg-emerald-600 py-2 text-[11px] font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
-                                >
-                                  Accept
-                                </button>
                                 <button
                                   type="button"
                                   disabled={stableSaving}
@@ -3479,6 +3466,14 @@ export default function PokerBankrollTracker({
                                   className="flex-1 rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
                                 >
                                   Decline
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={stableSaving}
+                                  onClick={() => void onAcceptBackerOffer(scopeId)}
+                                  className="flex-1 rounded-xl bg-emerald-600 py-2 text-[11px] font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+                                >
+                                  Accept
                                 </button>
                               </div>
                             </div>

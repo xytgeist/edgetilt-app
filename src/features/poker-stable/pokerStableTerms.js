@@ -283,6 +283,37 @@ export function backerSliceInviteSummaryLine(deal, slice, profilesById = {}) {
   return `${playerName} has invited you to back ${actionPct}% of a ${baseline} ${stakeKind} @ ${pricingPhrase}`
 }
 
+/**
+ * Player Bankroll hero copy for a pending backer Create Stake offer.
+ * Example: "Edge Lord (@edgelord) wants to stake you $74,000 @ 50/50 player/backer split. Once you accept…"
+ */
+export function stakeeBackerOfferHeroCopy(deal, slices = [], profilesById = {}) {
+  const backerName = dealLeadBackerDisplayName(deal, profilesById) || 'A backer'
+  const amount = fmtPoker$(Number(deal?.baseline_bankroll) || 0)
+  const leadId = deal?.staker_user_id
+  const slice =
+    (leadId
+      ? (slices || []).find((s) => String(s.staker_user_id || s.stakerUserId || '') === String(leadId))
+      : null) ||
+    (slices || []).find((s) => s.status !== 'declined') ||
+    null
+  const pricingMode = slice?.pricing_mode || slice?.pricingMode || 'profit_split'
+
+  let termsPhrase = 'a profit split'
+  if (pricingMode === 'markup') {
+    const rate = formatTermsPct(slice?.markup_rate ?? slice?.markupRate)
+    termsPhrase = `${rate}x markup`
+  } else {
+    const playerPct = Number(slice?.player_profit_pct ?? slice?.playerProfitPct)
+    const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : null
+    if (Number.isFinite(playerPct) && Number.isFinite(backerPct)) {
+      termsPhrase = `${formatTermsPct(playerPct)}/${formatTermsPct(backerPct)} player/backer split`
+    }
+  }
+
+  return `${backerName} wants to stake you ${amount} @ ${termsPhrase}. Once you accept, this stake goes live.`
+}
+
 export function dealHasEdgeStakerSlices(slices = []) {
   return slices.some(
     (slice) =>

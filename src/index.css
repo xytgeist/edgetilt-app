@@ -6221,10 +6221,14 @@ html.light [data-poker-stable] [data-poker-stable-tabs] {
   background-color: #fafafa !important;
   border-color: #e4e4e7 !important;
 }
+/* Horse cards … light blue chrome wash + border (mirrors dark cyan horse surface). */
 html.light [data-poker-stable] [data-poker-stable-horse-card] {
-  background: linear-gradient(to bottom right, #fafafa, #ffffff) !important;
-  border-color: var(--poker-stable-chrome-border) !important;
+  background: linear-gradient(to bottom right, #eff6ff, #ffffff) !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
   box-shadow: var(--edge-light-card-shadow) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] .border-cyan-500\/15 {
+  border-color: rgba(37, 99, 235, 0.18) !important;
 }
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero] {
   box-shadow: var(--edge-light-card-shadow) !important;

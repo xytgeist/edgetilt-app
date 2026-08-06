@@ -118,6 +118,11 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
         id: 'D5',
         label: 'Optional: Skip sync — counterparty stays out of sync until they commit later.',
       },
+      {
+        id: 'D6',
+        label:
+          'Counterparty with pending settle Commit: Periodic settlement / Close stake disabled with “Awaiting settlement · Commit the current settlement first.”',
+      },
     ],
   },
   {

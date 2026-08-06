@@ -42,6 +42,8 @@ import {
   canProposeSettleStake,
   dealCanPeriodicSettle,
   dealHasMakeup,
+  SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE,
+  settleBlockedByPendingCommit,
   stakeeSkipsBackerCommitSync,
   userCanRecordDealEvent,
 } from './pokerStableTerms.js'
@@ -152,8 +154,11 @@ export default function PokerStableDealDetailSheet({
     [pendingCommits, skipStakeeCommitSync],
   )
   const canRecordEvents = userCanRecordDealEvent(deal, slices, userId)
-  const canProposeSettle = canProposeSettleStake(deal, slices, { userId, hasProposal: false })
-  const showPeriodicSettle = canProposeSettle && dealCanPeriodicSettle(deal, roll)
+  const canProposeSettleBase = canProposeSettleStake(deal, slices, { userId, hasProposal: false })
+  const settleBlockedPending = settleBlockedByPendingCommit(pendingCommits, deal?.id)
+  const canProposeSettle = canProposeSettleBase && !settleBlockedPending
+  const showSettleSection = canProposeSettleBase
+  const showPeriodicSettle = canProposeSettleBase && dealCanPeriodicSettle(deal, roll)
   const showMakeup = dealHasMakeup(deal)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
@@ -404,12 +409,20 @@ export default function PokerStableDealDetailSheet({
               settlements={dealSettlements}
               ledgerEntries={ledgerEntries}
               onOpenTrend={() => setActiveTab('trend')}
-              canProposeSettle={canProposeSettle}
+              canProposeSettle={showSettleSection}
               showPeriodicSettle={showPeriodicSettle}
+              settleBlockedPending={settleBlockedPending}
+              settleBlockedMessage={SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE}
               saving={saving}
               profitUp={profitUp}
-              onOpenPeriodicSettle={() => setPeriodicSettleOpen(true)}
-              onOpenCloseStake={() => setCloseStakeOpen(true)}
+              onOpenPeriodicSettle={() => {
+                if (settleBlockedPending) return
+                setPeriodicSettleOpen(true)
+              }}
+              onOpenCloseStake={() => {
+                if (settleBlockedPending) return
+                setCloseStakeOpen(true)
+              }}
             />
           </>
         ) : null}
@@ -627,21 +640,30 @@ export default function PokerStableDealDetailSheet({
           </>
         ) : null}
 
-        {canProposeSettle ? (
+        {showSettleSection ? (
           <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Settle stake
             </h4>
-            <p className="mb-2 text-xs text-zinc-500">
-              Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
-              {showPeriodicSettle
-                ? ' Recording periodic settle updates your books immediately; others sync when ready.'
-                : ' Recording close ends the stake; others sync when ready.'}
-            </p>
+            {settleBlockedPending ? (
+              <p
+                data-poker-stable-settle-blocked
+                className="mb-2 border-l-2 border-amber-500/70 pl-3 text-xs leading-relaxed text-amber-100"
+              >
+                {SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE}
+              </p>
+            ) : (
+              <p className="mb-2 text-xs text-zinc-500">
+                Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
+                {showPeriodicSettle
+                  ? ' Recording periodic settle updates your books immediately; others sync when ready.'
+                  : ' Recording close ends the stake; others sync when ready.'}
+              </p>
+            )}
             {showPeriodicSettle ? (
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || settleBlockedPending}
                 onClick={() => setPeriodicSettleOpen(true)}
                 className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white disabled:opacity-50"
               >
@@ -650,7 +672,7 @@ export default function PokerStableDealDetailSheet({
             ) : null}
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || settleBlockedPending}
               onClick={() => setCloseStakeOpen(true)}
               className={`mb-2 w-full rounded-3xl py-3 text-base font-bold disabled:opacity-50 ${
                 showPeriodicSettle

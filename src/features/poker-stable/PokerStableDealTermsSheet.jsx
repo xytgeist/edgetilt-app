@@ -9,6 +9,8 @@ import {
   canReassignGuestSlice,
   dealCanPeriodicSettle,
   dealTermsMeta,
+  SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE,
+  settleBlockedByPendingCommit,
   sliceTermsSummary,
   stakeDealCanBeCancelled,
   stakeeCanEditDealTerms,
@@ -182,6 +184,7 @@ export default function PokerStableDealTermsSheet({
   onCloseStake,
   onOpenLedger,
   dealRoll = null,
+  pendingCommits = [],
   onError,
 }) {
   const [reassignSliceId, setReassignSliceId] = useState(null)
@@ -192,6 +195,7 @@ export default function PokerStableDealTermsSheet({
 
   const isStakee = deal.stakee_user_id === userId
   const hasProposal = Boolean(deal.stakee_terms_ack_required && proposedPayload)
+  const settleBlockedPending = settleBlockedByPendingCommit(pendingCommits, deal.id)
   const proposedState = proposedPayload
     ? termsPayloadToFormState(proposedPayload, profilesById)
     : null
@@ -232,10 +236,11 @@ export default function PokerStableDealTermsSheet({
     typeof onCancelStake === 'function'
   const canOpenLedger =
     stakeeCanOpenLedger(deal, { userId, hasProposal }) && typeof onOpenLedger === 'function'
-  const canSettle =
+  const canSettleBase =
     stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
-  const showPeriodicSettle = canSettle && dealCanPeriodicSettle(deal, dealRoll)
+  const canSettle = canSettleBase
+  const showPeriodicSettle = canSettleBase && dealCanPeriodicSettle(deal, dealRoll)
   const rollValue =
     dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0
   const profitUp = computeProfitAboveBaseline({
@@ -447,16 +452,25 @@ export default function PokerStableDealTermsSheet({
               <h4 className="pt-1 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
                 Settle stake
               </h4>
-              <p className="text-xs text-zinc-500">
-                Profit above baseline: {fmtPoker$(profitUp)}
-                {showPeriodicSettle
-                  ? ' · periodic keeps the stake open; close merges sessions into personal history.'
-                  : ' · close settles the package and merges sessions into personal history.'}
-              </p>
+              {settleBlockedPending ? (
+                <p
+                  data-poker-stable-settle-blocked
+                  className="border-l-2 border-amber-500/70 pl-3 text-xs leading-relaxed text-amber-100"
+                >
+                  {SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE}
+                </p>
+              ) : (
+                <p className="text-xs text-zinc-500">
+                  Profit above baseline: {fmtPoker$(profitUp)}
+                  {showPeriodicSettle
+                    ? ' · periodic keeps the stake open; close merges sessions into personal history.'
+                    : ' · close settles the package and merges sessions into personal history.'}
+                </p>
+              )}
               {showPeriodicSettle && typeof onPeriodicSettle === 'function' ? (
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={saving || settleBlockedPending}
                   onClick={() => setPeriodicSettleOpen(true)}
                   className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
                 >
@@ -466,7 +480,7 @@ export default function PokerStableDealTermsSheet({
               {typeof onCloseStake === 'function' ? (
                 <button
                   type="button"
-                  disabled={saving}
+                  disabled={saving || settleBlockedPending}
                   onClick={() => setCloseStakeOpen(true)}
                   className={`w-full rounded-xl py-3 text-sm font-semibold touch-manipulation disabled:opacity-50 ${
                     showPeriodicSettle

@@ -345,6 +345,15 @@ export function pendingSettleCommitForDeal(commits, dealId) {
   )
 }
 
+/** Shown when Periodic settlement / Close stake are blocked pending Commit. */
+export const SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE =
+  'Awaiting settlement · Commit the current settlement first.'
+
+/** True when this viewer still owes a settle Commit on the deal. */
+export function settleBlockedByPendingCommit(commits, dealId) {
+  return Boolean(pendingSettleCommitForDeal(commits, dealId))
+}
+
 /** @deprecated Use pendingSettleCommitForDeal */
 export function stakeePendingSettleCommitForDeal(commits, dealId) {
   return pendingSettleCommitForDeal(commits, dealId)

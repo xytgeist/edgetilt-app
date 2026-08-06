@@ -56,6 +56,8 @@ export default function PokerStableDealOverviewPanel({
   onOpenSession,
   canProposeSettle = false,
   showPeriodicSettle = false,
+  settleBlockedPending = false,
+  settleBlockedMessage = '',
   saving = false,
   profitUp = 0,
   onOpenPeriodicSettle,
@@ -217,16 +219,25 @@ export default function PokerStableDealOverviewPanel({
 
         {canProposeSettle ? (
           <div className={`mt-3 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}>
-            <p className="mb-2 text-xs leading-relaxed text-zinc-500">
-              Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
-              {showPeriodicSettle
-                ? ' Recording periodic settle updates your books immediately; others sync when ready.'
-                : ' Recording close ends the stake; others sync when ready.'}
-            </p>
+            {settleBlockedPending ? (
+              <p
+                data-poker-stable-settle-blocked
+                className="mb-2 border-l-2 border-amber-500/70 pl-3 text-xs leading-relaxed text-amber-100"
+              >
+                {settleBlockedMessage}
+              </p>
+            ) : (
+              <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+                Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
+                {showPeriodicSettle
+                  ? ' Recording periodic settle updates your books immediately; others sync when ready.'
+                  : ' Recording close ends the stake; others sync when ready.'}
+              </p>
+            )}
             {showPeriodicSettle ? (
               <button
                 type="button"
-                disabled={saving}
+                disabled={saving || settleBlockedPending}
                 onClick={onOpenPeriodicSettle}
                 className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white touch-manipulation disabled:opacity-50"
               >
@@ -235,7 +246,7 @@ export default function PokerStableDealOverviewPanel({
             ) : null}
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || settleBlockedPending}
               onClick={onOpenCloseStake}
               className={`w-full rounded-3xl py-3 text-base font-bold touch-manipulation disabled:opacity-50 ${
                 showPeriodicSettle ? 'bg-zinc-800 text-zinc-100' : 'bg-emerald-600 text-white'

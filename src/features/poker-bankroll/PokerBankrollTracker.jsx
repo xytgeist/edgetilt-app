@@ -4434,6 +4434,7 @@ export default function PokerBankrollTracker({
             }
           }}
           dealRoll={dealProfiles[termsDealId] ?? null}
+          pendingCommits={pendingStakeCommits}
           onPeriodicSettle={(rakebackTotal, stakeReductionTotal) =>
             runPeriodicSettle(termsDealId, rakebackTotal, stakeReductionTotal)
           }

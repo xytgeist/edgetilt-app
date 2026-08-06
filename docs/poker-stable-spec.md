@@ -223,7 +223,7 @@ Stable no longer exposes player **+ New deal**. Syndicate slices on a backer req
 | Surface | Behavior |
 | --- | --- |
 | **Portfolio hero** | Liquid backing bankroll + **portfolio value** (liquid + stake MTM). **Edit → Adjust bankroll** (add/remove or new balance). Session **sparkline**. Metrics: capital at risk, **At-risk ROI** (session share ÷ at risk), **TWR** (session share across manual-adjust periods), stake MTM, active horses, realized backing P/L. |
-| **Horse carousel** | Active/pending horses with roll, your stake MTM, est. share, sessions/P/L. |
+| **Horse carousel** | Active/pending horses with roll, your stake MTM, unsettled (upside profit share), sessions/P/L. |
 | **Overview tab** | Invites + carousel + **Closed stakes** history (not a separate ARCHIVE tab). |
 | **Trend tab** | Session performance only (action % of gross W/L); bankroll adjustments do not move the chart. |
 | **Locations tab** | Stable-wide venue rollup from on-stake sessions (active + closed); filter per horse. |

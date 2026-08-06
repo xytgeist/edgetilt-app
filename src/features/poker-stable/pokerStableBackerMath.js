@@ -254,7 +254,7 @@ export function backerSliceSessionEconomicShare(deal, slice, session, sessions =
 }
 
 /**
- * Backer's estimated share of profit above baseline on an active deal.
+ * Backer's unsettled upside share of profit above baseline on an active deal (floored at 0).
  */
 export function backerSliceEstimatedShare(deal, slice, dealRoll, sessions = []) {
   return roundMoney(Math.max(0, backerSliceEconomicPlShare(deal, slice, dealRoll, sessions)))

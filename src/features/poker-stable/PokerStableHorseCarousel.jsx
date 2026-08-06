@@ -214,7 +214,7 @@ export default function PokerStableHorseCarousel({
                         </div>
                       </div>
                       <div>
-                        <div className="text-[10px] font-bold uppercase text-zinc-500">Est. share</div>
+                        <div className="text-[10px] font-bold uppercase text-zinc-500">Unsettled</div>
                         <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
                           {fmtPoker$(estShare)}
                         </div>

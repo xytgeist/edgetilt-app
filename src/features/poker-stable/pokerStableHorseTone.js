@@ -57,23 +57,22 @@ export const STABLE_HORSE_TONES = [
   },
 ]
 
-/** Stable tone for a deal id (same horse keeps the same color across sessions). */
-export function stableHorseCardToneIndex(dealId) {
-  const s = String(dealId || '')
-  let h = 2166136261
-  for (let i = 0; i < s.length; i += 1) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  return (h >>> 0) % STABLE_HORSE_TONE_COUNT
+/**
+ * Tone from carousel order so neighboring horses never share a color (hash collided for Edge Lord).
+ * @param {number} dealIndex index in the active horse list
+ */
+export function stableHorseCardToneIndex(dealIndex) {
+  const idx = Number(dealIndex)
+  if (!Number.isFinite(idx) || idx < 0) return 0
+  return idx % STABLE_HORSE_TONE_COUNT
 }
 
-/** @param {string | null | undefined} dealId */
-export function stableHorseCardTone(dealId) {
-  return STABLE_HORSE_TONES[stableHorseCardToneIndex(dealId)]
+/** @param {number} dealIndex */
+export function stableHorseCardTone(dealIndex) {
+  return STABLE_HORSE_TONES[stableHorseCardToneIndex(dealIndex)]
 }
 
-/** @param {string | null | undefined} dealId */
-export function stableHorseCardToneAttr(dealId) {
-  return String(stableHorseCardToneIndex(dealId))
+/** @param {number} dealIndex */
+export function stableHorseCardToneAttr(dealIndex) {
+  return String(stableHorseCardToneIndex(dealIndex))
 }

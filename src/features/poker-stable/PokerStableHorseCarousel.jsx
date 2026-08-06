@@ -57,8 +57,9 @@ export default function PokerStableHorseCarousel({
       slides={slides}
       activeId={slides[0]?.id}
       onActiveIdChange={() => {}}
-      renderSlide={(slide) => {
-        const deal = deals.find((d) => d.id === slide.id)
+      renderSlide={(slide, slideIndex) => {
+        const dealIndex = deals.findIndex((d) => d.id === slide.id)
+        const deal = dealIndex >= 0 ? deals[dealIndex] : null
         if (!deal) return null
         const dealSlices = slicesByDeal[deal.id] || []
         const slice =
@@ -97,8 +98,9 @@ export default function PokerStableHorseCarousel({
           : slice?.status === 'pending'
             ? 'Pending'
             : stakeHorseCardStatusLabel(deal, dealSlices)
-        const horseTone = stableHorseCardTone(deal.id)
-        const horseToneAttr = stableHorseCardToneAttr(deal.id)
+        const toneIndex = dealIndex >= 0 ? dealIndex : Number(slideIndex) || 0
+        const horseTone = stableHorseCardTone(toneIndex)
+        const horseToneAttr = stableHorseCardToneAttr(toneIndex)
         const statusTone = closedUnarchived
           ? 'bg-zinc-700/60 text-zinc-300'
           : slice?.status === 'pending'

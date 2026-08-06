@@ -56,7 +56,7 @@ import {
   dealHasAcceptedBackerSlice,
   stakeHeroBadgeLabel,
   stakeHeroBadgeVariant,
-  STAKE_GOES_LIVE_COPY,
+  stakeGoesLivePendingCopy,
   stakeeBankrollShowsClosedCarouselCard,
   stakeeDisplayDealRoll,
   stakeePendingSettleCommitForDeal,
@@ -1833,7 +1833,11 @@ export default function PokerBankrollTracker({
             ? 'This stake is closed. Archive it from your stake card when you are done reviewing.'
             : pendingBackerOffer
               ? 'Accept the backing offer before logging sessions on this stake.'
-              : STAKE_GOES_LIVE_COPY,
+              : stakeGoesLivePendingCopy(
+                  activeDeal,
+                  slicesByDeal[activeDeal?.id] || [],
+                  stableProfilesById,
+                ),
       )
       return
     }
@@ -1907,7 +1911,11 @@ export default function PokerBankrollTracker({
             ? 'This stake is closed. Archive it from your stake card when you are done reviewing.'
             : pendingBackerOffer
               ? 'Accept the backing offer before logging sessions on this stake.'
-              : STAKE_GOES_LIVE_COPY,
+              : stakeGoesLivePendingCopy(
+                  activeDeal,
+                  slicesByDeal[activeDeal?.id] || [],
+                  stableProfilesById,
+                ),
       )
       return
     }
@@ -3242,14 +3250,22 @@ export default function PokerBankrollTracker({
                               data-poker-stake-pending
                               className="text-left text-xs leading-snug text-amber-200/85"
                             >
-                              {STAKE_GOES_LIVE_COPY}
+                              {stakeGoesLivePendingCopy(
+                                hero.deal,
+                                dealSlices,
+                                stableProfilesById,
+                              )}
                             </p>
                           ) : stakeHeroMessage === 'pendingBackerOffer' ? (
                             <p
                               data-poker-stake-pending-offer
                               className="text-left text-xs leading-snug text-amber-200/85"
                             >
-                              Accept or decline this backing offer to go on stake.
+                              {stakeGoesLivePendingCopy(
+                                hero.deal,
+                                dealSlices,
+                                stableProfilesById,
+                              )}
                             </p>
                           ) : stakeHeroMessage === 'pendingBackers' ? (
                             <div
@@ -3258,7 +3274,11 @@ export default function PokerBankrollTracker({
                             >
                               {!hasAcceptedBackerSlice ? (
                                 <p className="text-xs leading-snug text-amber-200/85">
-                                  {STAKE_GOES_LIVE_COPY}
+                                  {stakeGoesLivePendingCopy(
+                                    hero.deal,
+                                    dealSlices,
+                                    stableProfilesById,
+                                  )}
                                 </p>
                               ) : (
                                 <ul className="space-y-1.5">

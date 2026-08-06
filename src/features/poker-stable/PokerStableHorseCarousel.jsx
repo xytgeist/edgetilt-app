@@ -300,7 +300,7 @@ export default function PokerStableHorseCarousel({
                 <p className="mt-3 text-xs text-zinc-400">
                   {slice?.status === 'pending'
                     ? 'Pending acceptance'
-                    : 'Waiting for the player to accept this stake.'}
+                    : `Waiting for ${dealStakeeDisplayName(deal, profilesById)} to accept this stake.`}
                 </p>
                 {pendingNudgeBlock}
                 <span

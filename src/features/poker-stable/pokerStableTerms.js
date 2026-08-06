@@ -141,9 +141,6 @@ export function stakeHorseCardStatusTone(deal, slices = []) {
   return 'bg-zinc-700/60 text-zinc-400'
 }
 
-export const STAKE_GOES_LIVE_COPY =
-  'Once you and at least one backer accept, this stake goes live.'
-
 export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
   if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {
     return slice.guest_label || slice.guestLabel || 'Guest'
@@ -156,6 +153,41 @@ export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
   if (inviteLabel) return inviteLabel
   return 'Backer'
 }
+
+/**
+ * Stakee Bankroll pending helper: initiator acceptance is implicit.
+ * Player-initiated names a sole backer; multi-backer / backer-offer copy differs.
+ */
+export function stakeGoesLivePendingCopy(deal, slices = [], profilesById = {}) {
+  if (!deal) return 'Once a backer accepts, this stake goes live.'
+
+  // Backer Create Stake: lead backer already in; player must accept.
+  if (deal.staker_user_id) {
+    const pendingCoBackers = (slices || []).filter(
+      (s) =>
+        s.status === 'pending' &&
+        String(s.staker_user_id || s.stakerUserId || '') !== String(deal.staker_user_id),
+    )
+    if (pendingCoBackers.length > 0) {
+      return 'Once you accept, this stake goes live. Other invited backers can still join their slices.'
+    }
+    return 'Once you accept, this stake goes live.'
+  }
+
+  // Player + Stake: waiting on backer(s). Offer size = non-declined slices.
+  const offerBackers = (slices || []).filter((s) => s.status !== 'declined')
+  if (offerBackers.length === 1) {
+    const name = sliceCounterpartyDisplayName(offerBackers[0], profilesById)
+    return `Once ${name} accepts, this stake goes live.`
+  }
+  if (offerBackers.length > 1) {
+    return 'Once at least one backer accepts the stake terms, the stake will go live with their % of the backing bankroll available.'
+  }
+  return 'Invite a backer to accept terms before this stake can go live.'
+}
+
+/** @deprecated Prefer {@link stakeGoesLivePendingCopy} with deal + slices. */
+export const STAKE_GOES_LIVE_COPY = 'Once a backer accepts, this stake goes live.'
 
 export function sliceTermsSummary(slice, profilesById = {}) {
   const name = sliceCounterpartyDisplayName(slice, profilesById)

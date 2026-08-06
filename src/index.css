@@ -5656,9 +5656,9 @@ html.light [data-poker-stable-sheet] [data-poker-stable-guest-reassign-cancel-bt
 
 /* ── Poker Stable sheet - light mode (dark unchanged) ──── */
 html.light [data-poker-stable-sheet] {
-  --poker-stable-chrome: #d97706;
-  --poker-stable-chrome-soft: #fffbeb;
-  --poker-stable-chrome-border: #fcd34d;
+  --poker-stable-chrome: #0891b2;
+  --poker-stable-chrome-soft: #ecfeff;
+  --poker-stable-chrome-border: #a5f3fc;
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
 }
@@ -5729,15 +5729,25 @@ html.light [data-poker-stable-sheet] .bg-zinc-800 {
   background-color: #f4f4f5 !important;
 }
 html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn],
+html.light [data-poker-stable-sheet] .bg-cyan-600,
+html.light [data-poker-stable-sheet] .bg-cyan-600\/90 {
+  background-color: var(--poker-stable-chrome) !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:active,
+html.light [data-poker-stable-sheet] .bg-cyan-600:active,
+html.light [data-poker-stable-sheet] .active\:bg-cyan-500:active {
+  background-color: #0e7490 !important;
+}
+/* Legacy amber CTAs on sheets (if any remain) → same cyan chrome */
 html.light [data-poker-stable-sheet] .bg-amber-600,
 html.light [data-poker-stable-sheet] .bg-amber-600\/90 {
   background-color: var(--poker-stable-chrome) !important;
   color: #ffffff !important;
 }
-html.light [data-poker-stable-sheet] [data-poker-stable-primary-btn]:active,
 html.light [data-poker-stable-sheet] .bg-amber-600:active,
 html.light [data-poker-stable-sheet] .bg-amber-600\/90:active {
-  background-color: #b45309 !important;
+  background-color: #0e7490 !important;
 }
 html.light [data-poker-stable-sheet] .bg-emerald-600,
 html.light [data-poker-stable-sheet] .bg-emerald-600.text-white {
@@ -5913,11 +5923,12 @@ html.light [data-edge-handle-typeahead-list] .text-zinc-200 {
   color: #3f3f46 !important;
 }
 
-/* ── Poker Stable page - light mode (dark unchanged) ──── */
+/* ── Poker Stable page - light mode (dark unchanged) ────
+   Match dark cyan accent; kill legacy amber/honey chrome wash. */
 html.light [data-poker-stable] {
-  --poker-stable-chrome: #d97706;
-  --poker-stable-chrome-soft: #fffbeb;
-  --poker-stable-chrome-border: #fcd34d;
+  --poker-stable-chrome: #0891b2;
+  --poker-stable-chrome-soft: #ecfeff;
+  --poker-stable-chrome-border: #67e8f9;
 }
 html.light [data-poker-stable] .text-white {
   color: #18181b !important;
@@ -5934,6 +5945,7 @@ html.light [data-poker-stable] .text-zinc-500 {
 html.light [data-poker-stable] .text-zinc-600 {
   color: #a1a1aa !important;
 }
+/* Warning amber only (not chrome) */
 html.light [data-poker-stable] .text-amber-100 {
   color: #92400e !important;
 }
@@ -5942,6 +5954,10 @@ html.light [data-poker-stable] .text-rose-400 {
 }
 html.light [data-poker-stable] .text-emerald-400 {
   color: #059669 !important;
+}
+html.light [data-poker-stable] .text-cyan-300,
+html.light [data-poker-stable] .text-cyan-300\/90 {
+  color: #0e7490 !important;
 }
 html.light [data-poker-stable] .border-zinc-700,
 html.light [data-poker-stable] .border-dashed.border-zinc-700 {
@@ -5957,24 +5973,39 @@ html.light [data-poker-stable] .bg-zinc-700 {
 html.light [data-poker-stable] .text-zinc-200 {
   color: #3f3f46 !important;
 }
-html.light [data-poker-stable] .from-amber-950\/40 {
-  --tw-gradient-from: #fffbeb !important;
+/* Surface cards use cyan/zinc in JSX — remap cool, not amber cream */
+html.light [data-poker-stable] .from-cyan-950\/35,
+html.light [data-poker-stable] .from-cyan-950\/30 {
+  --tw-gradient-from: #ecfeff !important;
 }
-html.light [data-poker-stable] .to-zinc-900 {
+html.light [data-poker-stable] .via-zinc-900\/95 {
+  --tw-gradient-via: #ffffff !important;
+}
+html.light [data-poker-stable] .to-zinc-950,
+html.light [data-poker-stable] .to-zinc-900,
+html.light [data-poker-stable] .to-zinc-900\/80,
+html.light [data-poker-stable] .to-zinc-900\/90 {
   --tw-gradient-to: #ffffff !important;
 }
+html.light [data-poker-stable] .border-cyan-500\/30,
+html.light [data-poker-stable] .border-cyan-500\/25,
+html.light [data-poker-stable] .border-cyan-500\/15 {
+  border-color: rgba(8, 145, 178, 0.35) !important;
+}
+html.light [data-poker-stable] .bg-cyan-950\/20,
+html.light [data-poker-stable] .bg-cyan-950\/30 {
+  background-color: #ecfeff !important;
+}
+/* Warning amber surfaces stay amber; do not paint chrome surfaces honey */
 html.light [data-poker-stable] .border-amber-500\/15,
 html.light [data-poker-stable] .border-amber-500\/20,
 html.light [data-poker-stable] .border-amber-500\/25,
 html.light [data-poker-stable] .border-amber-500\/30 {
-  border-color: var(--poker-stable-chrome-border) !important;
+  border-color: #fcd34d !important;
 }
 html.light [data-poker-stable] .bg-amber-950\/30,
 html.light [data-poker-stable] .bg-amber-950\/40 {
-  background-color: var(--poker-stable-chrome-soft) !important;
-}
-html.light [data-poker-stable] .border-cyan-500\/25 {
-  border-color: #67e8f9 !important;
+  background-color: #fffbeb !important;
 }
 html.light [data-poker-stable] .bg-amber-500\/20.text-amber-300 {
   background-color: #fef3c7 !important;
@@ -5989,8 +6020,8 @@ html.light [data-poker-stable] .bg-cyan-500\/20.text-cyan-300 {
   color: #0e7490 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-invite-card] {
-  background: linear-gradient(to bottom right, #fffbeb, #ffffff) !important;
-  border-color: var(--poker-stable-chrome-border) !important;
+  background: linear-gradient(to bottom right, #ecfeff, #ffffff) !important;
+  border-color: rgba(8, 145, 178, 0.35) !important;
 }
 html.light [data-poker-stable] [data-poker-stable-invite-card] .text-white {
   color: #18181b !important;
@@ -6004,14 +6035,22 @@ html.light [data-poker-stable] .bg-rose-500\/20.text-rose-300 {
   color: #be123c !important;
 }
 html.light [data-poker-stable] [data-poker-stable-primary-btn],
+html.light [data-poker-stable] .bg-cyan-600,
+html.light [data-poker-stable] .bg-cyan-600\/90 {
+  background-color: var(--poker-stable-chrome) !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable] [data-poker-stable-primary-btn]:active,
+html.light [data-poker-stable] .active\:bg-cyan-500:active {
+  background-color: #0e7490 !important;
+}
 html.light [data-poker-stable] .bg-amber-600,
 html.light [data-poker-stable] .bg-amber-600\/90 {
   background-color: var(--poker-stable-chrome) !important;
   color: #ffffff !important;
 }
-html.light [data-poker-stable] [data-poker-stable-primary-btn]:active,
 html.light [data-poker-stable] .active\:bg-amber-500:active {
-  background-color: #b45309 !important;
+  background-color: #0e7490 !important;
 }
 html.light [data-poker-stable] .bg-emerald-600 {
   background-color: #059669 !important;
@@ -6035,12 +6074,9 @@ html.light [data-poker-stable] .text-amber-200\/80,
 html.light [data-poker-stable] .text-amber-200\/90 {
   color: #92400e !important;
 }
+html.light [data-poker-stable] .from-amber-950\/40,
 html.light [data-poker-stable] .from-amber-950\/50 {
   --tw-gradient-from: #fffbeb !important;
-}
-html.light [data-poker-stable] .to-zinc-900\/80,
-html.light [data-poker-stable] .to-zinc-900\/90 {
-  --tw-gradient-to: #ffffff !important;
 }
 html.light [data-poker-stable] .bg-zinc-900\/50,
 html.light [data-poker-stable] .bg-zinc-900\/60,
@@ -6065,14 +6101,15 @@ html.light [data-poker-stable] .active\:bg-zinc-800\/80:active {
   background-color: #e4e4e7 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero] {
-  background: linear-gradient(to bottom right, #fffbeb, #ffffff) !important;
-  border-color: var(--poker-stable-chrome-border) !important;
+  background: linear-gradient(to bottom right, #ecfeff, #ffffff) !important;
+  border-color: rgba(8, 145, 178, 0.35) !important;
 }
-html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .border-amber-400\/40 {
-  border-color: #fcd34d !important;
+html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .border-amber-400\/40,
+html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .border-cyan-400\/40 {
+  border-color: rgba(8, 145, 178, 0.4) !important;
 }
 html.light [data-poker-stable] [data-poker-stable-backing-pending-hold] {
-  color: #b45309 !important;
+  color: #0e7490 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-edit-btn] {
   background-color: #ffffff !important;
@@ -6095,8 +6132,8 @@ html.light [data-poker-stable] [data-poker-stable-tabs] {
   border-color: #e4e4e7 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card] {
-  background: linear-gradient(to bottom right, #fffbeb, #ffffff) !important;
-  border-color: var(--poker-stable-chrome-border) !important;
+  background: linear-gradient(to bottom right, #ecfeff, #ffffff) !important;
+  border-color: rgba(8, 145, 178, 0.35) !important;
 }
 [data-poker-stable-horse-card] [data-poker-stable-terms-icon]:active {
   background-color: rgba(39, 39, 42, 0.45);
@@ -6126,7 +6163,7 @@ html.light [data-poker-stable] [data-poker-stable-trend] .rounded-2xl.border-zin
 }
 html.light [data-poker-stable] [data-poker-stable-trend] input[type='checkbox'] {
   border-color: #a1a1aa !important;
-  accent-color: #d97706 !important;
+  accent-color: #0891b2 !important;
 }
 
 /* Portaled Stable sheets — light mode only */

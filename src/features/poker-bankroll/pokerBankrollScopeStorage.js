@@ -7,7 +7,8 @@ function storageKey(userId) {
 }
 
 /**
- * Last hero carousel card: `personal` or an active/pending/revoked stake deal id.
+ * Last hero carousel card: `personal` or a stake deal id.
+ * Written when the player selects a card (and on session start as fallback).
  * @param {string | null | undefined} userId
  * @returns {'personal' | string}
  */
@@ -37,4 +38,32 @@ export function writeStoredPokerBankrollScope(userId, scopeId) {
   } catch {
     /* ignore quota / private mode */
   }
+}
+
+/**
+ * Prefer stored hero scope when it is still on the carousel; else last session's deal
+ * (or personal). Sessions should be newest-first.
+ * @param {string | null | undefined} userId
+ * @param {Array<{ id: string }>} carouselDeals
+ * @param {Array<{ deal_id?: string | null }> | null | undefined} sessionsNewestFirst
+ * @returns {'personal' | string}
+ */
+export function resolvePokerBankrollScopeToRestore(
+  userId,
+  carouselDeals = [],
+  sessionsNewestFirst = [],
+) {
+  const dealIds = new Set(
+    (carouselDeals || []).map((d) => d?.id).filter(Boolean).map(String),
+  )
+  const stored = readStoredPokerBankrollScope(userId)
+  if (stored === 'personal') return 'personal'
+  if (dealIds.has(stored)) return stored
+
+  for (const s of sessionsNewestFirst || []) {
+    const dealId = s?.deal_id == null ? 'personal' : String(s.deal_id).trim()
+    if (!dealId || dealId === 'personal') return 'personal'
+    if (dealIds.has(dealId)) return dealId
+  }
+  return 'personal'
 }

@@ -121,6 +121,7 @@ import {
 } from './pokerBankrollMath.js'
 import {
   readStoredPokerBankrollScope,
+  resolvePokerBankrollScopeToRestore,
   writeStoredPokerBankrollScope,
 } from './pokerBankrollScopeStorage.js'
 import {
@@ -378,8 +379,10 @@ export default function PokerBankrollTracker({
   const [stableSaving, setStableSaving] = useState(false)
   /** After + Stake, scroll carousel to this deal id once reload completes. */
   const pendingCarouselDealIdRef = useRef(null)
-  /** Avoid persisting default personal scope before we restore from storage. */
-  const scopeRestoredRef = useRef(false)
+  /** True after first localStorage hero restore for this mount/user (gates persist + carousel sync). */
+  const [scopeHydrated, setScopeHydrated] = useState(false)
+  /** While set, skip writing until React applies this restored scope (avoids clobbering with default personal). */
+  const pendingRestoreScopeRef = useRef(/** @type {string | null} */ (null))
   const stakeNoticeTimerRef = useRef(0)
   const [stakeOfferOnboardingOpen, setStakeOfferOnboardingOpen] = useState(false)
   const [carouselCoachOpen, setCarouselCoachOpen] = useState(false)
@@ -651,33 +654,58 @@ export default function PokerBankrollTracker({
   )
 
   useEffect(() => {
-    scopeRestoredRef.current = false
+    setScopeHydrated(false)
+    pendingRestoreScopeRef.current = null
+    setBankrollScope('personal')
   }, [userId])
 
   useEffect(() => {
-    if (bankrollScope !== 'personal' && !stakeeDeals.some((d) => d.id === bankrollScope)) {
+    if (!scopeHydrated) return
+    if (bankrollScope === 'personal') return
+    const onCarousel = stakeeDeals.some((d) => d.id === bankrollScope)
+    const knownDeal = Boolean(stakeeDealsById[bankrollScope])
+    // Only drop to personal when the deal is truly gone (not a transient empty carousel).
+    if (!onCarousel && !knownDeal) {
       setBankrollScope('personal')
     }
-  }, [bankrollScope, stakeeDeals])
+  }, [bankrollScope, stakeeDeals, stakeeDealsById, scopeHydrated])
 
   useEffect(() => {
-    if (scopeRestoredRef.current) return
-    if (!userId || loading) return
-    if (openStableDealId || pendingCarouselDealIdRef.current) {
-      scopeRestoredRef.current = true
+    if (scopeHydrated || !userId || loading) return
+    if (openStableDealId) {
+      if (!stakeeDeals.some((d) => d.id === openStableDealId)) return
+      pendingRestoreScopeRef.current = openStableDealId
+      setBankrollScope(openStableDealId)
+      setScopeHydrated(true)
       return
     }
-    scopeRestoredRef.current = true
-    const stored = readStoredPokerBankrollScope(userId)
-    if (stored !== 'personal' && stakeeDeals.some((d) => d.id === stored)) {
-      setBankrollScope(stored)
+    const pendingCarouselId = pendingCarouselDealIdRef.current
+    if (pendingCarouselId) {
+      if (!stakeeDeals.some((d) => d.id === pendingCarouselId)) return
+      pendingRestoreScopeRef.current = pendingCarouselId
+      setBankrollScope(pendingCarouselId)
+      pendingCarouselDealIdRef.current = null
+      setScopeHydrated(true)
+      return
     }
-  }, [userId, loading, stakeeDeals, openStableDealId])
+    const next = resolvePokerBankrollScopeToRestore(userId, stakeeDeals, sessions)
+    if (next !== bankrollScope) {
+      pendingRestoreScopeRef.current = next
+      setBankrollScope(next)
+    } else {
+      pendingRestoreScopeRef.current = null
+    }
+    setScopeHydrated(true)
+  }, [userId, loading, stakeeDeals, sessions, openStableDealId, scopeHydrated, bankrollScope])
 
   useEffect(() => {
-    if (!userId || loading || !scopeRestoredRef.current) return
+    if (!userId || !scopeHydrated) return
+    if (pendingRestoreScopeRef.current) {
+      if (bankrollScope !== pendingRestoreScopeRef.current) return
+      pendingRestoreScopeRef.current = null
+    }
     writeStoredPokerBankrollScope(userId, bankrollScope)
-  }, [userId, loading, bankrollScope])
+  }, [userId, bankrollScope, scopeHydrated])
 
   useEffect(() => {
     if (!openStableDealId) return
@@ -686,7 +714,8 @@ export default function PokerBankrollTracker({
         d.id === openStableDealId && (d.status === 'active' || d.status === 'pending'),
     )
     if (!deal) return
-    scopeRestoredRef.current = true
+    pendingRestoreScopeRef.current = openStableDealId
+    setScopeHydrated(true)
     setBankrollScope(openStableDealId)
     if (
       deal.status === 'pending' &&
@@ -711,7 +740,11 @@ export default function PokerBankrollTracker({
     )
   }, [activeStakeOnboardingDealId, stakeeDeals, stakeeDealsById])
   useEffect(() => {
-    if (loading || !userId || openStableDealId || activeStakeOnboardingDealId) return
+    if (!scopeHydrated || loading || !userId || openStableDealId || activeStakeOnboardingDealId) {
+      return
+    }
+    // Respect last-selected card; only auto-jump when nothing was remembered.
+    if (readStoredPokerBankrollScope(userId) !== 'personal') return
     const pendingOffer = stakeeDeals.find(
       (d) =>
         d.status === 'pending' &&
@@ -720,10 +753,17 @@ export default function PokerBankrollTracker({
         !d.stakee_terms_ack_required,
     )
     if (pendingOffer && bankrollScope === 'personal') {
-      scopeRestoredRef.current = true
       setBankrollScope(pendingOffer.id)
     }
-  }, [loading, userId, stakeeDeals, openStableDealId, bankrollScope, activeStakeOnboardingDealId])
+  }, [
+    scopeHydrated,
+    loading,
+    userId,
+    stakeeDeals,
+    openStableDealId,
+    bankrollScope,
+    activeStakeOnboardingDealId,
+  ])
 
   useEffect(() => {
     if (loading || !userId || !activeStakeOnboardingDealId || stakeOfferOnboardingOpenedRef.current) {
@@ -735,7 +775,8 @@ export default function PokerBankrollTracker({
     if (!deal || deal.status !== 'pending' || !isBackerInitiatedBackingDeal(deal)) return
     if (deal.staker_terms_ack_required || deal.stakee_terms_ack_required) return
     stakeOfferOnboardingOpenedRef.current = true
-    scopeRestoredRef.current = true
+    pendingRestoreScopeRef.current = activeStakeOnboardingDealId
+    setScopeHydrated(true)
     setBankrollScope(activeStakeOnboardingDealId)
     setStakeOfferOnboardingOpen(true)
   }, [loading, userId, activeStakeOnboardingDealId, stakeeDeals, stakeeDealsById])
@@ -1431,15 +1472,28 @@ export default function PokerBankrollTracker({
     userId,
   ])
 
+  function selectBankrollScope(scopeId) {
+    const next = scopeId === 'personal' ? 'personal' : String(scopeId || '').trim()
+    if (!next) return
+    if (next !== bankrollScope) {
+      pendingRestoreScopeRef.current = next
+      setBankrollScope(next)
+    } else {
+      pendingRestoreScopeRef.current = null
+    }
+    if (userId && scopeHydrated) writeStoredPokerBankrollScope(userId, next)
+  }
+
+  /** After + Stake create while already mounted, jump carousel once the deal lands. */
   useEffect(() => {
     const pendingId = pendingCarouselDealIdRef.current
-    if (!pendingId) return
-    if (stakeeDeals.some((d) => d.id === pendingId)) {
-      scopeRestoredRef.current = true
-      setBankrollScope(pendingId)
-      pendingCarouselDealIdRef.current = null
-    }
-  }, [stakeeDeals])
+    if (!pendingId || !scopeHydrated) return
+    if (!stakeeDeals.some((d) => d.id === pendingId)) return
+    pendingCarouselDealIdRef.current = null
+    selectBankrollScope(pendingId)
+    // selectBankrollScope closes over bankrollScope/userId; stakeeDeals is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: apply pending id once when deals update
+  }, [stakeeDeals, scopeHydrated])
 
   function showStakeNotice(message) {
     setStakeNotice(message)
@@ -1469,8 +1523,8 @@ export default function PokerBankrollTracker({
   function openStakeOfferReview(dealId) {
     const id = String(dealId || '').trim()
     if (!id) return
-    scopeRestoredRef.current = true
-    setBankrollScope(id)
+    selectBankrollScope(id)
+    setScopeHydrated(true)
     stashPokerStakeOnboardingDeal(id)
     setStakeOfferOnboardingOpen(true)
     stakeOfferOnboardingOpenedRef.current = true
@@ -1706,7 +1760,7 @@ export default function PokerBankrollTracker({
 
   function openSetBankroll(scopeId = bankrollScope) {
     const onStake = scopeId !== 'personal'
-    if (scopeId !== bankrollScope) setBankrollScope(scopeId)
+    if (scopeId !== bankrollScope) selectBankrollScope(scopeId)
     if (onStake) {
       const deal = stakeeDeals.find((d) => d.id === scopeId)
       if (deal?.status === 'pending') {
@@ -1872,6 +1926,7 @@ export default function PokerBankrollTracker({
       setError('You already have a session in progress.')
       return
     }
+    if (userId) writeStoredPokerBankrollScope(userId, bankrollScope)
     setNearbyCasinos([])
     setDraftSwaps([])
     setIncomingAcceptSwap(null)
@@ -2280,6 +2335,12 @@ export default function PokerBankrollTracker({
       }
       if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
         await attachDraftSwapsToSession(sessionRow, draftSwaps)
+      }
+      if (userId) {
+        writeStoredPokerBankrollScope(
+          userId,
+          payload.deal_id ? String(payload.deal_id) : 'personal',
+        )
       }
       setIncomingAcceptSwap(null)
       setSheet(null)
@@ -3085,7 +3146,8 @@ export default function PokerBankrollTracker({
             <PokerBankrollHeroCarousel
               slides={bankrollSlides}
               activeId={bankrollScope}
-              onActiveIdChange={setBankrollScope}
+              onActiveIdChange={selectBankrollScope}
+              activeSyncEnabled={scopeHydrated}
               renderSlide={(slide, slideIndex) => {
                 const scopeId = slide.id
                 const onStake = scopeId !== 'personal'
@@ -3414,7 +3476,7 @@ export default function PokerBankrollTracker({
                             <button
                               type="button"
                               onClick={() => {
-                                if (scopeId !== bankrollScope) setBankrollScope(scopeId)
+                                if (scopeId !== bankrollScope) selectBankrollScope(scopeId)
                                 setActiveTab('trend')
                               }}
                               className="block h-full w-full touch-manipulation active:opacity-80"

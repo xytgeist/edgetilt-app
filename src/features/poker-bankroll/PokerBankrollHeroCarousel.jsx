@@ -9,13 +9,15 @@ export const POKER_BANKROLL_HERO_SHELL =
 
 /**
  * Horizontal peek carousel for Personal + stake bankroll hero cards.
- * @param {{ slides: Array<{ id: string }>, activeId: string, onActiveIdChange: (id: string) => void, renderSlide: (slide: { id: string }, index: number) => import('react').ReactNode }} props
+ * @param {{ slides: Array<{ id: string }>, activeId: string, onActiveIdChange: (id: string) => void, renderSlide: (slide: { id: string }, index: number) => import('react').ReactNode, activeSyncEnabled?: boolean }} props
  */
 export default function PokerBankrollHeroCarousel({
   slides,
   activeId,
   onActiveIdChange,
   renderSlide,
+  /** When false, ignore scroll→selection (e.g. while Bankroll restores last card). */
+  activeSyncEnabled = true,
 }) {
   const scrollerRef = useRef(null)
   const slideRefs = useRef(/** @type {(HTMLElement | null)[]} */ ([]))
@@ -46,7 +48,7 @@ export default function PokerBankrollHeroCarousel({
 
   useEffect(() => {
     const scroller = scrollerRef.current
-    if (!scroller || slides.length <= 1) return undefined
+    if (!scroller || slides.length <= 1 || !activeSyncEnabled) return undefined
 
     let t = 0
     const onScroll = () => {
@@ -73,7 +75,7 @@ export default function PokerBankrollHeroCarousel({
       window.clearTimeout(t)
       scroller.removeEventListener('scroll', onScroll)
     }
-  }, [slides, activeId, onActiveIdChange])
+  }, [slides, activeId, onActiveIdChange, activeSyncEnabled])
 
   if (slides.length <= 1) {
     return <div className="mb-4">{renderSlide(slides[0], 0)}</div>

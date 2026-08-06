@@ -6225,19 +6225,33 @@ html.light [data-poker-stable] [data-poker-stable-tabs] {
   border-color: #e4e4e7 !important;
 }
 /*
- * Horse cards … light-only identity via bold border + ink accents (no pastel wash).
- * Surface matches bankroll white; dark keeps neon Tailwind on data-poker-stable-horse-tone.
+ * Horse cards … light-only identity via left accent bar (white surface + zinc border).
+ * Dark keeps neon Tailwind on data-poker-stable-horse-tone.
  */
 html.light [data-poker-stable] [data-poker-stable-horse-card] {
+  --horse-tone-accent: #2563eb;
+  position: relative;
   background: #ffffff !important;
+  border-color: #e4e4e7 !important;
   box-shadow: var(--edge-light-card-shadow) !important;
+  padding-left: 1.35rem !important; /* room for 4px bar inside rounded card */
 }
-/* 0 cyan */
+html.light [data-poker-stable] [data-poker-stable-horse-card]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: var(--horse-tone-accent);
+  border-radius: 1.5rem 0 0 1.5rem;
+  pointer-events: none;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] .border-t {
+  border-color: #e4e4e7 !important;
+}
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] {
-  border-color: #0891b2 !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .border-cyan-500\/15 {
-  border-color: #a5f3fc !important;
+  --horse-tone-accent: #0891b2;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .text-cyan-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-cyan-500\/20.text-cyan-300 {
@@ -6246,12 +6260,8 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-cyan-500\/20 {
   background-color: #ecfeff !important;
 }
-/* 1 emerald */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] {
-  border-color: #059669 !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .border-emerald-500\/15 {
-  border-color: #6ee7b7 !important;
+  --horse-tone-accent: #059669;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .text-emerald-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-emerald-500\/20.text-emerald-300 {
@@ -6260,12 +6270,8 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-emerald-500\/20 {
   background-color: #ecfdf5 !important;
 }
-/* 2 sky */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] {
-  border-color: #0284c7 !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .border-sky-500\/15 {
-  border-color: #7dd3fc !important;
+  --horse-tone-accent: #0284c7;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .text-sky-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-sky-500\/20.text-sky-300 {
@@ -6274,12 +6280,8 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-sky-500\/20 {
   background-color: #f0f9ff !important;
 }
-/* 3 violet */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] {
-  border-color: #7c3aed !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .border-violet-500\/15 {
-  border-color: #c4b5fd !important;
+  --horse-tone-accent: #7c3aed;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .text-violet-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-violet-500\/20.text-violet-300 {
@@ -6288,12 +6290,8 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-violet-500\/20 {
   background-color: #f5f3ff !important;
 }
-/* 4 fuchsia */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] {
-  border-color: #c026d3 !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .border-fuchsia-500\/15 {
-  border-color: #e879f9 !important;
+  --horse-tone-accent: #c026d3;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .text-fuchsia-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-fuchsia-500\/20.text-fuchsia-300 {
@@ -6302,12 +6300,8 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-fuchsia-500\/20 {
   background-color: #fdf4ff !important;
 }
-/* 5 rose */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] {
-  border-color: #e11d48 !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .border-rose-500\/15 {
-  border-color: #fb7185 !important;
+  --horse-tone-accent: #e11d48;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .text-rose-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-rose-500\/20.text-rose-300 {

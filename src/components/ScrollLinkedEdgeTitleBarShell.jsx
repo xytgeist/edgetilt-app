@@ -156,7 +156,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
       >
         <PwaInstallTitleBarRow
           rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
-          logo={<EdgeLogoWithEasterEgg className={logoClassName} />}
+          logo={<EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />}
           navSlot={
             <>
               <TitleBarStatusLine />

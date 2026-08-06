@@ -236,7 +236,7 @@ export default function ChatPrivateSubsTab({
                         <img src={String(avatar)} alt="" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-zinc-950 px-1">
-                          <EdgeLogoWithEasterEgg className="h-5 w-auto max-w-full" />
+                          <EdgeLogoWithEasterEgg behavior="static" className="h-5 w-auto max-w-full" />
                         </div>
                       )
                     ) : avatar ? (

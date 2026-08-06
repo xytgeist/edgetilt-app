@@ -65,7 +65,7 @@ export default function ChatIosPrototype({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <EdgeLogoWithEasterEgg className={logoClassName} />
+          <EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />
           <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-2">
             <TitleBarStatusLine />
             {titleBarNavSlot}

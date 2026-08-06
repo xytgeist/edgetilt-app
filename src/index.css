@@ -6215,6 +6215,38 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] {
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero] {
   box-shadow: var(--edge-light-card-shadow) !important;
 }
+/* Sheets/modals — tighter list elevation (stacked cards; not main-page heroes) */
+html.light [data-poker-stable-sheet] [data-elevated-card],
+html.light [data-poker-stable-sheet] .rounded-3xl.border,
+html.light [data-poker-stable-sheet] .rounded-2xl.border,
+html.light [data-poker-stable-sheet] .poker-stable-slice-card,
+html.light [data-poker-stable-sheet] [data-poker-stable-settle-commit-queue-header],
+html.light [data-poker-stable-sheet] [data-poker-stable-commit-sync-modal],
+html.light [data-poker-stable-sheet] [data-poker-stable-settle-commit-queue] > ul,
+html.light [data-poker-stable-periodic-settle-sheet] [data-poker-stable-periodic-settle-summary],
+html.light [data-poker-stable-periodic-settle-sheet] .rounded-2xl.border,
+html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-summary],
+html.light [data-poker-stable-close-stake-sheet] .rounded-2xl.border,
+html.light [data-poker-stable-attention-sheet] .rounded-2xl.border,
+html.light [data-poker-stable-attention-sheet] .rounded-3xl.border,
+html.light [data-poker-stable-closed-horse-sheet] .rounded-2xl.border,
+html.light [data-poker-stable-closed-horse-sheet] .rounded-3xl.border,
+html.light [data-poker-stable-commit-sync-modal],
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit],
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit],
+html.light [data-poker-stable-settle-commit-queue-header],
+html.light [data-poker-stable-portfolio-info-modal],
+html.light [data-poker-session-detail] .rounded-2xl.border,
+html.light [data-poker-session-detail] .rounded-3xl.border,
+html.light [data-poker-stake-archive-modal] [data-elevated-card],
+html.light [data-poker-stake-archive-modal] .rounded-2xl.border,
+html.light [data-poker-stake-offer-onboarding] .rounded-2xl.border,
+html.light [data-poker-stake-offer-onboarding] .rounded-3xl.border,
+html.light [data-bankroll-sheet] .rounded-2xl.border,
+html.light [data-bankroll-sheet] .rounded-3xl.border,
+html.light [data-bankroll-sheet] [data-elevated-card] {
+  box-shadow: var(--edge-light-list-card-shadow) !important;
+}
 [data-poker-stable-horse-card] [data-poker-stable-terms-icon]:active {
   background-color: rgba(39, 39, 42, 0.45);
   color: rgb(212 212 216);
@@ -6299,7 +6331,7 @@ html.light [data-poker-stable-attention-sheet] .bg-zinc-900\/60 {
 /* Settle Commit queue ... zinc bankroll cards (light); dark keeps cyan JSX */
 html.light [data-poker-stable-settle-commit-queue-header],
 html.light [data-poker-stable-commit-sync-modal] {
-  box-shadow: var(--edge-light-card-shadow) !important;
+  box-shadow: var(--edge-light-list-card-shadow) !important;
   filter: none !important;
 }
 html.light [data-poker-stable-settle-commit-queue-header] {
@@ -6369,8 +6401,7 @@ html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-playe
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] {
   background-color: #ecfdf5 !important;
   border-color: #34d399 !important;
-  /* Same neutral drop shadow as bankroll cards … no emerald outer glow */
-  box-shadow: var(--edge-light-card-shadow) !important;
+  box-shadow: var(--edge-light-list-card-shadow) !important;
 }
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/90 {
   color: #047857 !important;
@@ -6842,9 +6873,8 @@ html.light [data-session-card] [data-poker-session-end-btn].text-white {
 /* MoneyKeypad uses inline styles - no Tailwind overrides needed */
 
 /*
- * Hero / primary surfaces — larger soft elevation (Slots bankroll hero).
- * Dense list cards keep --edge-light-list-card-shadow via [data-elevated-card] /
- * [data-session-row] so stacked session rows don’t cast into the next card.
+ * Main-page hero / primary surfaces — larger soft elevation (Slots bankroll hero).
+ * Sheets/modals use --edge-light-list-card-shadow (see block under portfolio-hero).
  */
 html.light [data-bankroll-card],
 html.light [data-session-card],
@@ -6853,15 +6883,7 @@ html.light [data-poker-stable] [data-poker-stable-horse-card],
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero],
 html.light [data-poker-stable] [data-poker-stake-archive-card],
 html.light [data-poker-stable] [data-poker-stable-invite-card],
-html.light [data-poker-stable] .rounded-3xl.border,
-html.light [data-poker-stable-sheet] [data-poker-stable-settle-commit-queue-header],
-html.light [data-poker-stable-sheet] [data-poker-stable-commit-sync-modal],
-html.light [data-poker-stable-sheet] [data-poker-stable-settle-commit-queue] > ul,
-html.light [data-poker-stable-sheet] .rounded-3xl.border,
-html.light [data-poker-stable-sheet] .poker-stable-slice-card,
-html.light [data-poker-stable-periodic-settle-sheet] [data-poker-stable-periodic-settle-summary],
-html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-summary],
-html.light [data-poker-stable-commit-sync-modal] {
+html.light [data-poker-stable] .rounded-3xl.border {
   box-shadow: var(--edge-light-card-shadow) !important;
 }
 /* Stake deal history lines — kind accent (Bankroll on-stake session list) */

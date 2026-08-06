@@ -488,8 +488,14 @@ export default function AppShell({
       } = navigateFromLoungeActivityPayload(payload)
 
       const commitId = stableCommitId || stableSettlementRequestId
-      if (commitId) setPendingStableCommitId(commitId)
       if (stableDealId) setPendingPokerStableDealId(stableDealId)
+      // Backer Stable: horse deal Overview already has inline Commit. Skip stacked sync modal
+      // when the deep link includes the deal (periodic/close settle Alerts/push).
+      if (commitId && !(targetTab === 'poker-stable' && stableDealId)) {
+        setPendingStableCommitId(commitId)
+      } else if (targetTab === 'poker-stable' && stableDealId) {
+        setPendingStableCommitId(null)
+      }
 
       if (targetTab === 'chat') {
         if (browseMode === 'anonymous') {
@@ -1174,7 +1180,9 @@ export default function AppShell({
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
-          if (stableCommit) setPendingStableCommitId(stableCommit)
+          // Deal Overview hosts Commit inline; only open sync modal when deal id is missing.
+          if (stableCommit && !stableDeal) setPendingStableCommitId(stableCommit)
+          else if (stableDeal) setPendingStableCommitId(null)
           const backerOnboarding = consumeBackerSliceOnboardingFromSearch(window.location.search || '')
           if (backerOnboarding.dealId) setBackerSliceOnboardingDealId(backerOnboarding.dealId)
           if (backerOnboarding.sliceId) setBackerSliceOnboardingSliceId(backerOnboarding.sliceId)

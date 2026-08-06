@@ -180,8 +180,12 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       { id: 'G1', label: 'Slice invite → backer alert/push.' },
       { id: 'G2', label: 'Session complete on stake → backer alert (if enabled).' },
       { id: 'G3', label: 'Stake commit recorded → counterparty alert/push.' },
-      { id: 'G4', label: 'Tap push → stableCommit= deep link opens Sync modal.' },
-      { id: 'G5', label: 'Deal detail shows Out of sync with last commit when pending.' },
+      {
+        id: 'G4',
+        label:
+          'Backer: tap settle Alert/push → opens horse deal Overview with inline Commit (no stacked Settlement modal). Stakee Bankroll still uses Commit sync modal.',
+      },
+      { id: 'G5', label: 'Deal detail Overview shows pending Commit panel when settle is unsynced.' },
     ],
   },
   {

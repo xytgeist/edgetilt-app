@@ -66,7 +66,7 @@ import {
   dealLeadBackerDisplayName,
   stakeeSkipsBackerCommitSync,
 } from './pokerStableTerms.js'
-import { STABLE_PRIMARY_BTN, STABLE_TAB_ACTIVE } from './pokerStableUi.js'
+import { STABLE_TAB_ACTIVE } from './pokerStableUi.js'
 
 const STABLE_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -675,22 +675,11 @@ export default function PokerStableScreen({
               metrics={portfolioMetrics}
               pendingCommitCount={pendingPortfolioCommits.length}
               onNeedsAttention={() => setAttentionOpen(true)}
+              onCreateStake={() => {
+                setError('')
+                setSheet('request')
+              }}
             />
-
-            <div className="mb-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setError('')
-                  setSheet('request')
-                  triggerTapHapticLight()
-                }}
-                className={`w-full rounded-3xl py-4 text-sm font-bold touch-manipulation ${STABLE_PRIMARY_BTN}`}
-                data-poker-stable-primary-btn
-              >
-                Create Stake
-              </button>
-            </div>
 
             <div
               data-poker-stable-tabs

@@ -4,7 +4,11 @@ import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { roundMoney } from './pokerStableMath.js'
-import { STABLE_SURFACE_CARD, STABLE_SURFACE_DIVIDER } from './pokerStableUi.js'
+import {
+  STABLE_PRIMARY_BTN,
+  STABLE_SURFACE_CARD,
+  STABLE_SURFACE_DIVIDER,
+} from './pokerStableUi.js'
 
 function fmtPct(n) {
   if (n == null || !Number.isFinite(n)) return '—'
@@ -33,6 +37,7 @@ function HeroInfoSection({ title, children }) {
 export default function PokerStablePortfolioHero({
   metrics,
   onNeedsAttention,
+  onCreateStake,
   pendingCommitCount = 0,
 }) {
   const [infoOpen, setInfoOpen] = useState(false)
@@ -145,6 +150,23 @@ export default function PokerStablePortfolioHero({
             </div>
           </div>
         </div>
+
+        {onCreateStake ? (
+          <div className={`mt-4 border-t ${STABLE_SURFACE_DIVIDER} pt-4`}>
+            <button
+              type="button"
+              onClick={() => {
+                triggerTapHapticLight()
+                onCreateStake()
+              }}
+              className={`w-full rounded-2xl py-3.5 text-sm font-bold touch-manipulation ${STABLE_PRIMARY_BTN}`}
+              data-poker-stable-primary-btn
+              data-poker-stable-create-stake-btn
+            >
+              Create Stake
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {infoOpen ? (

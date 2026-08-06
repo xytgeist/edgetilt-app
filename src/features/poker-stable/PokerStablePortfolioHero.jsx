@@ -7,7 +7,6 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { roundMoney } from './pokerStableMath.js'
 import {
-  STABLE_ACCENT_TEXT,
   STABLE_PRIMARY_BTN,
   STABLE_SURFACE_CARD,
   STABLE_SURFACE_DIVIDER,
@@ -174,10 +173,13 @@ export default function PokerStablePortfolioHero({
 
       <div className="grid grid-cols-2 gap-3 text-center">
         <div>
-          <div className="flex items-center justify-center gap-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-              Backing bankroll
-            </div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+            Backing bankroll
+          </div>
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5">
+            <span className="text-3xl font-black tabular-nums text-white">
+              {fmtPoker$(currentBalance)}
+            </span>
             {!editing ? (
               <button
                 type="button"
@@ -188,14 +190,9 @@ export default function PokerStablePortfolioHero({
                 Edit
               </button>
             ) : null}
-          </div>
-          <div className="mt-1 flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5">
-            <span className="text-2xl font-black tabular-nums text-white">
-              {fmtPoker$(currentBalance)}
-            </span>
             {pendingHold > 0 ? (
               <span
-                className="text-xs font-semibold tabular-nums text-zinc-400"
+                className="w-full text-xs font-semibold tabular-nums text-zinc-400"
                 data-poker-stable-backing-pending-hold
               >
                 ({fmtPoker$(-pendingHold)} pending)
@@ -207,7 +204,10 @@ export default function PokerStablePortfolioHero({
           <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
             Portfolio value
           </div>
-          <div className={`mt-1 text-2xl font-black tabular-nums ${STABLE_ACCENT_TEXT}`}>
+          <div
+            className="mt-1 text-3xl font-black tabular-nums text-cyan-300"
+            data-poker-stable-portfolio-value
+          >
             {fmtPoker$(m.portfolioValue ?? 0)}
           </div>
         </div>
@@ -282,38 +282,38 @@ export default function PokerStablePortfolioHero({
 
       <div className={`mt-3 grid grid-cols-3 gap-2 border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-center sm:grid-cols-6`}>
         <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">At risk</div>
-          <div className="mt-0.5 text-xs font-bold tabular-nums text-zinc-200">
+          <div className="text-[10px] font-bold uppercase text-zinc-500">At risk</div>
+          <div className="mt-0.5 text-sm font-bold tabular-nums text-zinc-200">
             {fmtPoker$(m.capitalAtRisk ?? 0)}
           </div>
         </div>
         <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">Stakes MTM</div>
-          <div className="mt-0.5 text-xs font-bold tabular-nums text-zinc-200">
+          <div className="text-[10px] font-bold uppercase text-zinc-500">Stakes MTM</div>
+          <div className="mt-0.5 text-sm font-bold tabular-nums text-zinc-200">
             {fmtPoker$(m.stakeValueMtm ?? 0)}
           </div>
         </div>
         <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">At-risk ROI</div>
-          <div className={`mt-0.5 text-xs font-bold tabular-nums ${pctToneClass(m.atRiskReturnPct)}`}>
+          <div className="text-[10px] font-bold uppercase text-zinc-500">At-risk ROI</div>
+          <div className={`mt-0.5 text-sm font-bold tabular-nums ${pctToneClass(m.atRiskReturnPct)}`}>
             {fmtPct(m.atRiskReturnPct)}
           </div>
         </div>
         <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">Horses</div>
-          <div className="mt-0.5 text-xs font-bold tabular-nums text-zinc-200">
+          <div className="text-[10px] font-bold uppercase text-zinc-500">Horses</div>
+          <div className="mt-0.5 text-sm font-bold tabular-nums text-zinc-200">
             {m.activeHorseCount ?? 0}
           </div>
         </div>
         <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">TWR</div>
-          <div className={`mt-0.5 text-xs font-bold tabular-nums ${pctToneClass(m.twrPct)}`}>
+          <div className="text-[10px] font-bold uppercase text-zinc-500">TWR</div>
+          <div className={`mt-0.5 text-sm font-bold tabular-nums ${pctToneClass(m.twrPct)}`}>
             {fmtPct(m.twrPct)}
           </div>
         </div>
         <div>
-          <div className="text-[9px] font-bold uppercase text-zinc-500">Realized P/L</div>
-          <div className="mt-0.5 text-xs font-bold tabular-nums text-emerald-300">
+          <div className="text-[10px] font-bold uppercase text-zinc-500">Realized P/L</div>
+          <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
             {fmtPoker$(m.realizedBackingPl ?? 0)}
           </div>
         </div>

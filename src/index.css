@@ -6194,6 +6194,9 @@ html.light [data-poker-stable-sheet] [data-poker-stable-surface-card] {
   background: linear-gradient(to bottom right, #fafafa, #ffffff) !important;
   border-color: var(--poker-stable-chrome-border) !important;
 }
+html.light [data-poker-stable] [data-poker-stable-portfolio-value] {
+  color: var(--poker-stable-accent-text) !important;
+}
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .border-amber-400\/40,
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .border-cyan-400\/40 {
   border-color: #d4d4d8 !important;

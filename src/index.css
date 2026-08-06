@@ -6226,8 +6226,8 @@ html.light [data-poker-stable] [data-poker-stable-tabs] {
 }
 /*
  * Horse cards … light-only: white surface + zinc border + left accent bar.
- * Accents stay in Create Stake cool neighbors (teal → cyan → sky → blue → indigo → violet).
- * Dark keeps Tailwind washes on data-poker-stable-horse-tone (unchanged).
+ * Regular hues: blue / green / orange / red / violet / amber (no teal/cyan).
+ * Dark keeps Tailwind washes on data-poker-stable-horse-tone.
  */
 html.light [data-poker-stable] [data-poker-stable-horse-card] {
   --horse-tone-accent: #2563eb;
@@ -6262,74 +6262,74 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] .text-zinc-400,
 html.light [data-poker-stable] [data-poker-stable-horse-card] .text-zinc-500 {
   color: #52525b !important;
 }
-/* 0 teal */
+/* 0 blue */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] {
-  --horse-tone-accent: #0d9488;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .text-teal-300,
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-teal-500\/20.text-teal-300 {
-  color: #0f766e !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-teal-500\/20 {
-  background-color: #f0fdfa !important;
-}
-/* 1 cyan */
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] {
-  --horse-tone-accent: #0891b2;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .text-cyan-300,
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-cyan-500\/20.text-cyan-300 {
-  color: #0e7490 !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-cyan-500\/20 {
-  background-color: #ecfeff !important;
-}
-/* 2 sky */
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] {
-  --horse-tone-accent: #0284c7;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .text-sky-300,
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-sky-500\/20.text-sky-300 {
-  color: #0369a1 !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-sky-500\/20 {
-  background-color: #f0f9ff !important;
-}
-/* 3 blue (Create Stake light) */
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] {
   --horse-tone-accent: #2563eb;
 }
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .text-blue-300,
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-blue-500\/20.text-blue-300 {
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .text-blue-300,
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-blue-500\/20.text-blue-300 {
   color: #1d4ed8 !important;
 }
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-blue-500\/20 {
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-blue-500\/20 {
   background-color: #eff6ff !important;
 }
-/* 4 indigo */
+/* 1 green */
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] {
+  --horse-tone-accent: #059669;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .text-emerald-300,
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-emerald-500\/20.text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-emerald-500\/20 {
+  background-color: #ecfdf5 !important;
+}
+/* 2 orange */
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] {
+  --horse-tone-accent: #ea580c;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .text-orange-300,
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-orange-500\/20.text-orange-300 {
+  color: #c2410c !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-orange-500\/20 {
+  background-color: #fff7ed !important;
+}
+/* 3 red */
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] {
+  --horse-tone-accent: #dc2626;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .text-red-300,
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-red-500\/20.text-red-300 {
+  color: #b91c1c !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-red-500\/20 {
+  background-color: #fef2f2 !important;
+}
+/* 4 violet */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] {
-  --horse-tone-accent: #4f46e5;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .text-indigo-300,
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-indigo-500\/20.text-indigo-300 {
-  color: #4338ca !important;
-}
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-indigo-500\/20 {
-  background-color: #eef2ff !important;
-}
-/* 5 violet */
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] {
   --horse-tone-accent: #7c3aed;
 }
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .text-violet-300,
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-violet-500\/20.text-violet-300 {
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .text-violet-300,
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-violet-500\/20.text-violet-300 {
   color: #6d28d9 !important;
 }
-html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-violet-500\/20 {
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-violet-500\/20 {
   background-color: #f5f3ff !important;
 }
-html.light [data-poker-stable] [data-poker-stable-horse-card] .text-emerald-400,
-html.light [data-poker-stable] [data-poker-stable-horse-card] .text-emerald-300 {
+/* 5 amber */
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] {
+  --horse-tone-accent: #d97706;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .text-amber-300,
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-amber-500\/20.text-amber-300 {
+  color: #b45309 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-amber-500\/20 {
+  background-color: #fffbeb !important;
+}
+/* Money P/L … keep distinct from green/red horse identity chips */
+html.light [data-poker-stable] [data-poker-stable-horse-card] .text-emerald-400 {
   color: #047857 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card] .text-rose-400,

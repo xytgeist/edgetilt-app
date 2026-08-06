@@ -847,67 +847,55 @@ export default function PokerStableScreen({
                 const outcomeLabel = archivedStakeOutcomeLabel(deal, slices)
                 const settleRows = dealSettlementsByDeal[deal.id] || []
                 return (
-                  <div
+                  <button
                     key={deal.id}
+                    type="button"
+                    onClick={() => {
+                      setArchiveDetailDealId(deal.id)
+                      triggerTapHapticLight()
+                    }}
                     data-poker-stake-archive-card
                     data-elevated-card="surface"
-                    className="rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-4"
+                    className="flex w-full flex-col gap-1 rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-4 text-left touch-manipulation active:bg-zinc-800/80"
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setArchiveDetailDealId(deal.id)
-                        triggerTapHapticLight()
-                      }}
-                      className="flex w-full flex-col gap-1 text-left touch-manipulation active:opacity-90"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="min-w-0 truncate font-semibold text-white">{playerName}</span>
-                        <span
-                          data-poker-stake-archive-outcome={outcomeLabel.toLowerCase()}
-                          className={archivedStakeOutcomeBadgeClass(outcomeLabel)}
-                        >
-                          {outcomeLabel}
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-500">
-                        {label !== playerName ? `${label} · ` : ''}
-                        {dealTypeLabel(deal.deal_type)}
-                        {closedAt
-                          ? ` · ${new Date(closedAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}`
-                          : null}
-                      </p>
-                      <p className="text-[11px] text-zinc-500">
-                        {sessionCount} session{sessionCount === 1 ? '' : 's'} · baseline{' '}
-                        {fmtPoker$(deal.baseline_bankroll)}
-                      </p>
-                      <p
-                        data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
-                        className="text-[11px] font-semibold tabular-nums"
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="min-w-0 truncate font-semibold text-white">{playerName}</span>
+                      <span
+                        data-poker-stake-archive-outcome={outcomeLabel.toLowerCase()}
+                        className={archivedStakeOutcomeBadgeClass(outcomeLabel)}
                       >
-                        {playerName} performance {fmtPoker$(sessionShareTotal)}
-                      </p>
-                      <p
-                        data-poker-pl-tone={pokerPlTone(realizedBackingNet)}
-                        className="text-[11px] font-semibold tabular-nums"
-                      >
-                        Realized backing {fmtPoker$(realizedBackingNet)}
-                        {settleRows.length <= 1 ? null : ` · ${settleRows.length} settles`}
-                      </p>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onDeleteClosedHorse(deal.id)}
-                      className="mt-3 w-full rounded-xl py-2 text-xs font-semibold text-rose-400 touch-manipulation active:bg-zinc-800/80 disabled:opacity-50"
+                        {outcomeLabel}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      {label !== playerName ? `${label} · ` : ''}
+                      {dealTypeLabel(deal.deal_type)}
+                      {closedAt
+                        ? ` · ${new Date(closedAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}`
+                        : null}
+                    </p>
+                    <p className="text-[11px] text-zinc-500">
+                      {sessionCount} session{sessionCount === 1 ? '' : 's'} · baseline{' '}
+                      {fmtPoker$(deal.baseline_bankroll)}
+                    </p>
+                    <p
+                      data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
+                      className="text-[11px] font-semibold tabular-nums"
                     >
-                      Delete
-                    </button>
-                  </div>
+                      {playerName} performance {fmtPoker$(sessionShareTotal)}
+                    </p>
+                    <p
+                      data-poker-pl-tone={pokerPlTone(realizedBackingNet)}
+                      className="text-[11px] font-semibold tabular-nums"
+                    >
+                      Realized backing {fmtPoker$(realizedBackingNet)}
+                      {settleRows.length <= 1 ? null : ` · ${settleRows.length} settles`}
+                    </p>
+                  </button>
                 )
               })}
             </div>

@@ -65,9 +65,9 @@ export default function PokerStableSettleCommitQueue({
     <div data-poker-stable-settle-commit-queue className="mb-4 space-y-3 px-1.5 py-1">
       <div
         data-poker-stable-settle-commit-queue-header
-        className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 px-3 py-2.5 shadow-none"
+        className="rounded-2xl border border-zinc-700/40 bg-zinc-900/70 px-3 py-2.5 shadow-none"
       >
-        <p className="text-xs font-bold uppercase tracking-wide text-cyan-300/90">
+        <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
           {total === 1 ? '1 settlement to commit' : `${total} settlements to commit`}
         </p>
         {dateRange ? (

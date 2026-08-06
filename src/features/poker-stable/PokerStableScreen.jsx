@@ -85,7 +85,7 @@ function statusLabel(status) {
 }
 
 function statusTone(status) {
-  if (status === 'active') return 'bg-cyan-500/20 text-cyan-300'
+  if (status === 'active') return 'bg-emerald-500/15 text-emerald-300'
   if (status === 'pending') return 'bg-zinc-700/60 text-zinc-300'
   if (status === 'declined') return 'bg-zinc-700/60 text-zinc-400'
   return 'bg-rose-500/20 text-rose-300'
@@ -746,7 +746,7 @@ export default function PokerStableScreen({
                   key={deal.id}
                   data-poker-stable-invite-card
                   data-elevated-card="surface"
-                  className="rounded-2xl border border-cyan-500/25 bg-gradient-to-br from-cyan-950/30 to-zinc-900/80 p-4"
+                  className="rounded-2xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-4"
                 >
                   <div className="font-bold text-white">
                     {dealStakeeDisplayName(deal, profilesById)} proposed new terms

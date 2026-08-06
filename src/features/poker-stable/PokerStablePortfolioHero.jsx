@@ -28,7 +28,7 @@ function pctToneClass(n) {
 function HeroInfoSection({ title, children }) {
   return (
     <div className="border-t border-zinc-800 pt-3 first:border-t-0 first:pt-0">
-      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-cyan-200/90">{title}</div>
+      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-zinc-400">{title}</div>
       <div className="space-y-2 text-sm leading-relaxed text-zinc-400">{children}</div>
     </div>
   )
@@ -195,7 +195,7 @@ export default function PokerStablePortfolioHero({
             </span>
             {pendingHold > 0 ? (
               <span
-                className="text-xs font-semibold tabular-nums text-cyan-200/90"
+                className="text-xs font-semibold tabular-nums text-zinc-400"
                 data-poker-stable-backing-pending-hold
               >
                 ({fmtPoker$(-pendingHold)} pending)

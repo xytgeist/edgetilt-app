@@ -158,7 +158,7 @@ export default function PokerStableCommitSyncPanel({
         data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined}
         className={
           variant === 'inline'
-            ? 'rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4 shadow-none'
+            ? 'rounded-2xl border border-zinc-700/40 bg-zinc-900/70 p-4 shadow-none'
             : ''
         }
       >
@@ -189,13 +189,13 @@ export default function PokerStableCommitSyncPanel({
 
   const inlineShell =
     variant === 'inline'
-      ? 'mb-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-4 shadow-none'
+      ? 'mb-4 rounded-2xl border border-zinc-700/40 bg-zinc-900/70 p-4 shadow-none'
       : ''
 
   return (
     <div data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined} className={inlineShell}>
       {variant === 'inline' ? (
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-cyan-300/90">{titleLine}</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-zinc-400">{titleLine}</p>
       ) : null}
 
       <p className="mb-3 text-sm leading-relaxed text-zinc-300">{intro}</p>

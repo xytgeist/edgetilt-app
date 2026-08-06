@@ -136,7 +136,7 @@ export function stakeHorseCardStatusLabel(deal, slices = []) {
 
 export function stakeHorseCardStatusTone(deal, slices = []) {
   if (stakeDealIsLiveForStakee(deal, slices)) {
-    return 'bg-cyan-500/20 text-cyan-300'
+    return 'bg-emerald-500/15 text-emerald-300'
   }
   if (deal?.status === 'pending') return 'bg-zinc-700/60 text-zinc-300'
   return 'bg-zinc-700/60 text-zinc-400'

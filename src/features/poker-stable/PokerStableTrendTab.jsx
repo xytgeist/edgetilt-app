@@ -80,7 +80,7 @@ export default function PokerStableTrendTab({
     const isLight =
       typeof document !== 'undefined' && document.documentElement.classList.contains('light')
     const portfolioStroke = isLight ? '#2563eb' : STABLE_CHART_PORTFOLIO
-    const portfolioFill = isLight ? 'rgba(37, 99, 235, 0.08)' : 'rgba(34, 211, 238, 0.08)'
+    const portfolioFill = isLight ? 'rgba(37, 99, 235, 0.08)' : 'rgba(56, 189, 248, 0.08)'
     const rows = [
       {
         label: 'Portfolio',

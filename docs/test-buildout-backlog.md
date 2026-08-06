@@ -953,7 +953,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-06: **Stable light mode → Slots/Poker bankroll palette:** zinc card surfaces (`#fafafa`/`#ffffff`/`#e4e4e7`), blue chrome (`#2563eb` / `#1d4ed8`) for tabs/CTAs/accents, emerald money unchanged. Removed teal wash (`#ecfeff` / `#0891b2`) from page, sheets, settle Commit queue, claim, stake-offer onboarding. Dark mode cyan JSX unchanged.
+- 2026-08-06: **Stable dark mode → Slots bankroll palette:** zinc card surfaces (`from-zinc-900`/`to-zinc-800`, `border-zinc-700/40`), white amounts + zinc labels; cyan kept for primary CTAs/tabs (`pokerStableUi.js`). Light palette unchanged (zinc + blue chrome).
+- 2026-08-06: **Stable light mode → Slots/Poker bankroll palette:** zinc card surfaces (`#fafafa`/`#ffffff`/`#e4e4e7`), blue chrome (`#2563eb` / `#1d4ed8`) for tabs/CTAs/accents, emerald money unchanged. Removed teal wash (`#ecfeff` / `#0891b2`) from page, sheets, settle Commit queue, claim, stake-offer onboarding.
 - 2026-08-06: **Light mode money green:** global + Poker/Stable remaps for `text-emerald-300/400` (+ opacity variants) → `#047857` so $ amounts are readable on white (were neon mint).
 - 2026-08-06: **Settle Commit queue:** multiple pending settles ... dated queue oldest-first, Commit all, Needs attn count + date range (player + backer).
 - 2026-08-06: **Periodic Settle confirm:** button label **Settle**; success closes settle + Manage/Terms sheets (stay on Bankroll).

@@ -5740,6 +5740,7 @@ html.light [data-poker-stable-sheet] .bg-amber-950\/20,
 html.light [data-poker-stable-sheet] .bg-amber-950\/25 {
   background-color: var(--poker-stable-chrome-soft) !important;
 }
+html.light [data-poker-stable-sheet] .border-zinc-700\/40,
 html.light [data-poker-stable-sheet] .border-cyan-500\/30,
 html.light [data-poker-stable-sheet] .border-cyan-500\/25,
 html.light [data-poker-stable-sheet] .border-cyan-500\/15 {
@@ -5748,6 +5749,12 @@ html.light [data-poker-stable-sheet] .border-cyan-500\/15 {
 html.light [data-poker-stable-sheet] .bg-cyan-950\/20,
 html.light [data-poker-stable-sheet] .bg-cyan-950\/30 {
   background-color: #ffffff !important;
+}
+html.light [data-poker-stable-sheet] .from-zinc-900 {
+  --tw-gradient-from: #fafafa !important;
+}
+html.light [data-poker-stable-sheet] .to-zinc-800 {
+  --tw-gradient-to: #ffffff !important;
 }
 html.light [data-poker-stable-sheet] .border-zinc-800,
 html.light [data-poker-stable-sheet] .border-zinc-700\/80 {
@@ -5862,6 +5869,9 @@ html.light [data-poker-stable-periodic-settle-sheet] .text-cyan-200\/90,
 html.light [data-poker-stable-periodic-settle-sheet] .text-cyan-300,
 html.light [data-poker-stable-periodic-settle-sheet] .text-cyan-300\/90 {
   color: #1d4ed8 !important;
+}
+html.light [data-poker-stable-periodic-settle-sheet] [data-poker-stable-reduce-stake-block] .text-white {
+  color: #18181b !important;
 }
 html.light [data-poker-stable-periodic-settle-sheet] .text-emerald-400 {
   color: #047857 !important;
@@ -5986,7 +5996,7 @@ html.light [data-edge-handle-typeahead-list] .text-zinc-200 {
 
 /* ── Poker Stable page - light mode (dark unchanged) ────
    Mirror Slots/Poker bankroll: zinc surfaces + blue chrome + emerald money.
-   Dark keeps cyan accent classes in JSX. */
+   Dark JSX matches Slots bankroll (zinc cards + cyan CTAs). */
 html.light [data-poker-stable] {
   --poker-stable-chrome: #2563eb;
   --poker-stable-chrome-soft: #fafafa;
@@ -6046,7 +6056,8 @@ html.light [data-poker-stable] .bg-zinc-700 {
 html.light [data-poker-stable] .text-zinc-200 {
   color: #3f3f46 !important;
 }
-/* Surface cards (JSX cyan gradient) → zinc bankroll hero surfaces */
+/* Surface cards (Slots-matched zinc gradient) → light bankroll hero surfaces */
+html.light [data-poker-stable] .from-zinc-900,
 html.light [data-poker-stable] .from-cyan-950\/35,
 html.light [data-poker-stable] .from-cyan-950\/30 {
   --tw-gradient-from: #fafafa !important;
@@ -6054,12 +6065,14 @@ html.light [data-poker-stable] .from-cyan-950\/30 {
 html.light [data-poker-stable] .via-zinc-900\/95 {
   --tw-gradient-via: #ffffff !important;
 }
+html.light [data-poker-stable] .to-zinc-800,
 html.light [data-poker-stable] .to-zinc-950,
 html.light [data-poker-stable] .to-zinc-900,
 html.light [data-poker-stable] .to-zinc-900\/80,
 html.light [data-poker-stable] .to-zinc-900\/90 {
   --tw-gradient-to: #ffffff !important;
 }
+html.light [data-poker-stable] .border-zinc-700\/40,
 html.light [data-poker-stable] .border-cyan-500\/30,
 html.light [data-poker-stable] .border-cyan-500\/25,
 html.light [data-poker-stable] .border-cyan-500\/15 {
@@ -6068,6 +6081,10 @@ html.light [data-poker-stable] .border-cyan-500\/15 {
 html.light [data-poker-stable] .bg-cyan-950\/20,
 html.light [data-poker-stable] .bg-cyan-950\/30 {
   background-color: #f4f4f5 !important;
+}
+html.light [data-poker-stable] .bg-emerald-500\/15.text-emerald-300 {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
 }
 /* Warning amber surfaces stay amber; do not paint chrome surfaces honey */
 html.light [data-poker-stable] .border-amber-500\/15,
@@ -6176,7 +6193,8 @@ html.light [data-poker-stable] .bg-zinc-800\/80 {
 html.light [data-poker-stable] .active\:bg-zinc-800\/80:active {
   background-color: #e4e4e7 !important;
 }
-html.light [data-poker-stable] [data-poker-stable-portfolio-hero] {
+html.light [data-poker-stable] [data-poker-stable-portfolio-hero],
+html.light [data-poker-stable-sheet] [data-poker-stable-surface-card] {
   background: linear-gradient(to bottom right, #fafafa, #ffffff) !important;
   border-color: var(--poker-stable-chrome-border) !important;
 }
@@ -6333,7 +6351,7 @@ html.light [data-poker-stable-attention-sheet] .bg-zinc-900\/60 {
   background-color: #fafafa !important;
 }
 
-/* Settle Commit queue ... zinc bankroll cards (light); dark keeps cyan JSX */
+/* Settle Commit queue ... zinc bankroll cards (light + dark JSX aligned) */
 html.light [data-poker-stable-settle-commit-queue-header],
 html.light [data-poker-stable-commit-sync-modal] {
   box-shadow: var(--edge-light-list-card-shadow) !important;
@@ -6358,6 +6376,7 @@ html.light [data-poker-stable-commit-sync-modal] {
   border-color: #e4e4e7 !important;
 }
 html.light [data-poker-stable-commit-sync-modal].border-cyan-500\/30,
+html.light [data-poker-stable-commit-sync-modal].border-zinc-700\/40,
 html.light [data-poker-stable-sheet] [data-poker-stable-commit-sync-modal] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;

@@ -607,9 +607,9 @@ export default function PokerStableDealDetailSheet({
               </label>
 
               {reduceStake && reductionAmount > 0.005 ? (
-                <p className="mt-2 text-xs leading-relaxed text-cyan-200/90">
+                <p className="mt-2 text-xs leading-relaxed text-zinc-300">
                   Backers&apos; Stable backing bankrolls will be credited{' '}
-                  <span className="font-semibold tabular-nums">{fmtPoker$(reductionAmount)}</span>{' '}
+                  <span className="font-semibold tabular-nums text-white">{fmtPoker$(reductionAmount)}</span>{' '}
                   total, split by action % (see below).
                 </p>
               ) : reduceStake ? (
@@ -637,7 +637,7 @@ export default function PokerStableDealDetailSheet({
                       <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
                         Reduction
                       </div>
-                      <div className="mt-0.5 text-base font-bold tabular-nums text-cyan-200">
+                      <div className="mt-0.5 text-base font-bold tabular-nums text-white">
                         {fmtPoker$(reductionAmount)}
                       </div>
                     </div>
@@ -665,7 +665,7 @@ export default function PokerStableDealDetailSheet({
                           profilesById,
                         )}
                       </span>
-                      <span className="font-semibold tabular-nums text-cyan-200">
+                      <span className="font-semibold tabular-nums text-white">
                         +{fmtPoker$(row.share)}
                       </span>
                     </div>

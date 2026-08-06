@@ -161,9 +161,9 @@ export default function PokerStableHorseCarousel({
                 return (
                   <div
                     key={pendingSlice.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-cyan-500/15 bg-cyan-950/20 px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-zinc-700/40 bg-zinc-900/60 px-2.5 py-2"
                   >
-                    <span className="min-w-0 text-xs leading-snug text-cyan-100/90">
+                    <span className="min-w-0 text-xs leading-snug text-zinc-300">
                       Pending acceptance by {backerName}
                     </span>
                     <button
@@ -173,7 +173,7 @@ export default function PokerStableHorseCarousel({
                         e.stopPropagation()
                         void onNudgePendingBacker?.(deal.id, pendingSlice.id)
                       }}
-                      className="shrink-0 rounded-lg bg-cyan-500/20 px-2.5 py-1 text-[11px] font-semibold text-cyan-200 touch-manipulation active:bg-cyan-500/30 disabled:opacity-50"
+                      className="shrink-0 rounded-lg bg-zinc-700/60 px-2.5 py-1 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
                     >
                       {nudging ? 'Sending…' : 'Nudge'}
                     </button>

@@ -122,7 +122,7 @@ export default function PokerStableDealOverviewPanel({
 
   return (
     <div data-poker-stable-deal-overview className="pb-2">
-      <div className={`mb-4 ${STABLE_SURFACE_CARD} px-5 py-4`}>
+      <div data-poker-stable-surface-card className={`mb-4 ${STABLE_SURFACE_CARD} px-5 py-4`}>
         <div className="mb-2 min-w-0">
           <div className="truncate text-lg font-black text-white">
             {dealStakeeDisplayName(deal, profilesById)}

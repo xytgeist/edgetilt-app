@@ -1,7 +1,7 @@
 /**
  * Horse stake card highlights … analogous hues around Create Stake blue/cyan
  * on the color wheel (teal → cyan → sky → blue → indigo → violet).
- * Not a monochrome intensity ladder, and not far-wheel greens/pinks.
+ * Dark: tinted border/wash. Light: white card + left accent bar (index.css).
  */
 
 export const STABLE_HORSE_TONE_COUNT = 6

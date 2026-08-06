@@ -39,6 +39,7 @@ import { dispatchStarterWeeklyDropOpen, navigateToGuideSlug } from '../billing/s
 import {
   buildPokerStableActivityNavigateUrl,
   dispatchLoungeActivityNavigate,
+  pokerStableActivityNeedsStakeeLookup,
 } from '../../utils/loungeActivityInAppNavigate.js'
 import {
   hydrateLoungeActivityEventPreviews,
@@ -491,11 +492,33 @@ export default function LoungeNotificationsPanel({
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED
       ) {
-        dispatchLoungeActivityNavigate({
-          url: buildPokerStableActivityNavigateUrl(event),
-          activityEventId: event.id,
-          markActivityRead: false,
-        })
+        void (async () => {
+          let dealStakeeUserId = null
+          if (
+            pokerStableActivityNeedsStakeeLookup(event) &&
+            supabaseClient &&
+            event.poker_stable_deal_id
+          ) {
+            try {
+              const { data: dealRow } = await supabaseClient
+                .from('poker_stable_deals')
+                .select('stakee_user_id')
+                .eq('id', event.poker_stable_deal_id)
+                .maybeSingle()
+              dealStakeeUserId = dealRow?.stakee_user_id || null
+            } catch {
+              // fall back to Stable tab routing
+            }
+          }
+          dispatchLoungeActivityNavigate({
+            url: buildPokerStableActivityNavigateUrl(event, {
+              viewerUserId,
+              dealStakeeUserId,
+            }),
+            activityEventId: event.id,
+            markActivityRead: false,
+          })
+        })()
         return
       }
 

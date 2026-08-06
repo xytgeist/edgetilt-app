@@ -2745,7 +2745,21 @@ export default function AppShell({
           userId={chatCallViewerUserId}
           commitId={pendingStableCommitId}
           onClose={() => setPendingStableCommitId(null)}
-          onSynced={() => {
+          onSynced={({ isStakee }) => {
+            if (isStakee) {
+              setTab('poker-bankroll')
+              setMenuOpen(false)
+              try {
+                const params = new URLSearchParams(window.location.search)
+                params.set('tab', 'poker-bankroll')
+                const nextPath = `/?${params.toString()}`
+                if (window.location.pathname + window.location.search !== nextPath) {
+                  window.history.replaceState({}, '', nextPath)
+                }
+              } catch {
+                // ignore malformed url
+              }
+            }
             window.dispatchEvent(new CustomEvent('lounge-push-opened'))
           }}
         />

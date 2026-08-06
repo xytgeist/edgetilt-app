@@ -273,6 +273,11 @@ type PushMarkReadIds = {
   activityBatchId?: string
 }
 
+type PushRoutingContext = {
+  recipientUserId?: string | null
+  dealStakeeUserId?: string | null
+}
+
 type PushNotificationPayload = {
   title: string
   body: string
@@ -282,6 +287,40 @@ type PushNotificationPayload = {
   /** Lets the service worker treat call rings differently from Lounge toasts. */
   eventType?: string
   chatCallId?: string
+}
+
+function pokerStableTabForRecipient(
+  event: Pick<
+    ActivityEventRow,
+    'event_type' | 'poker_stable_commit_id' | 'poker_stable_settlement_request_id'
+  >,
+  recipientUserId: string | null | undefined,
+  dealStakeeUserId: string | null | undefined,
+): 'poker-bankroll' | 'poker-stable' {
+  const bankrollTab =
+    event.event_type === 'poker_stable_backer_offer' ||
+    event.event_type === 'poker_stable_staker_counter_accepted' ||
+    event.event_type === 'poker_stable_staker_counter_declined' ||
+    event.event_type === 'poker_stable_slice_accepted' ||
+    event.event_type === 'poker_stable_slice_declined'
+  if (bankrollTab) return 'poker-bankroll'
+
+  const roleRouted =
+    event.event_type === 'poker_stable_commit_recorded' ||
+    event.event_type === 'poker_stable_settlement_proposed' ||
+    event.event_type === 'poker_stable_settlement_resolved' ||
+    Boolean(event.poker_stable_commit_id) ||
+    Boolean(event.poker_stable_settlement_request_id)
+
+  if (
+    roleRouted &&
+    recipientUserId &&
+    dealStakeeUserId &&
+    recipientUserId === dealStakeeUserId
+  ) {
+    return 'poker-bankroll'
+  }
+  return 'poker-stable'
 }
 
 function buildTargetUrl(
@@ -301,6 +340,7 @@ function buildTargetUrl(
   >,
   actor: ActorProfile | null | undefined,
   markRead?: PushMarkReadIds,
+  routing?: PushRoutingContext,
 ): string {
   const params = new URLSearchParams()
   params.set('tab', 'home')
@@ -365,20 +405,19 @@ function buildTargetUrl(
     event.event_type === 'poker_stable_slice_accepted' ||
     event.event_type === 'poker_stable_slice_declined'
   ) {
-    const bankrollTab =
-      event.event_type === 'poker_stable_backer_offer' ||
-      event.event_type === 'poker_stable_staker_counter_accepted' ||
-      event.event_type === 'poker_stable_staker_counter_declined' ||
-      event.event_type === 'poker_stable_slice_accepted' ||
-      event.event_type === 'poker_stable_slice_declined'
-    params.set('tab', bankrollTab ? 'poker-bankroll' : 'poker-stable')
+    const tab = pokerStableTabForRecipient(
+      event,
+      routing?.recipientUserId,
+      routing?.dealStakeeUserId,
+    )
+    params.set('tab', tab)
     const stableTabOnly =
       event.event_type === 'poker_stable_stakee_accepted' ||
       event.event_type === 'poker_stable_session_complete'
     if (event.poker_stable_deal_id && !stableTabOnly) {
       params.set('stableDeal', event.poker_stable_deal_id)
     }
-    if (bankrollTab && event.event_type === 'poker_stable_backer_offer') {
+    if (tab === 'poker-bankroll' && event.event_type === 'poker_stable_backer_offer') {
       params.set('stakeOnboarding', '1')
     }
     if (event.poker_stable_commit_id) {
@@ -439,12 +478,13 @@ function buildSingleNotification(
   event: ActivityEventRow,
   actor: ActorProfile | null | undefined,
   isReply = false,
+  routing?: PushRoutingContext,
 ): PushNotificationPayload {
   if (event.event_type === 'starter_weekly_guide_drop') {
     return {
       title: 'Edge',
       body: 'Weekly guide drop ready — scratch to reveal',
-      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }, routing),
       activityEventId: event.id,
     }
   }
@@ -453,7 +493,7 @@ function buildSingleNotification(
     return {
       title: 'AP Guides',
       body: `New AP Slot Guide released: ${guideTitle}`,
-      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }, routing),
       activityEventId: event.id,
     }
   }
@@ -462,7 +502,7 @@ function buildSingleNotification(
     return {
       title: pushTitleForEventType(event.event_type),
       body: `Missed call from ${who}`,
-      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }, routing),
       activityEventId: event.id,
       eventType: event.event_type,
       ...(event.chat_call_id ? { chatCallId: event.chat_call_id } : {}),
@@ -473,7 +513,7 @@ function buildSingleNotification(
     return {
       title: pushTitleForEventType(event.event_type),
       body: `${who} tagged you in ${roomName}`,
-      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }, routing),
       activityEventId: event.id,
       eventType: event.event_type,
     }
@@ -502,7 +542,7 @@ function buildSingleNotification(
     return {
       title: 'Poker Stable',
       body: `${fishPrefix}${who} ${phrase}`,
-      url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+      url: buildTargetUrl(event, actor, { activityEventId: event.id }, routing),
       activityEventId: event.id,
       eventType: event.event_type,
     }
@@ -511,7 +551,7 @@ function buildSingleNotification(
   return {
     title: pushTitleForEventType(event.event_type),
     body: `${who} ${phrase}`,
-    url: buildTargetUrl(event, actor, { activityEventId: event.id }),
+    url: buildTargetUrl(event, actor, { activityEventId: event.id }, routing),
     activityEventId: event.id,
     eventType: event.event_type,
     ...((event.event_type === 'chat_call_invite' || event.event_type === 'chat_call_missed') &&
@@ -648,10 +688,32 @@ async function handleImmediatePush(
     isReply = Boolean(commentRow?.parent_id)
   }
 
+  let dealStakeeUserId: string | null = null
+  if (event.poker_stable_deal_id) {
+    const roleRouted =
+      event.event_type === 'poker_stable_commit_recorded' ||
+      event.event_type === 'poker_stable_settlement_proposed' ||
+      event.event_type === 'poker_stable_settlement_resolved' ||
+      Boolean(event.poker_stable_commit_id) ||
+      Boolean(event.poker_stable_settlement_request_id)
+    if (roleRouted) {
+      const { data: dealRow } = await admin
+        .from('poker_stable_deals')
+        .select('stakee_user_id')
+        .eq('id', event.poker_stable_deal_id)
+        .maybeSingle()
+      dealStakeeUserId = dealRow?.stakee_user_id ? String(dealRow.stakee_user_id) : null
+    }
+  }
+
   let notification = buildSingleNotification(
     event,
     (actorProfile as ActorProfile | null) || null,
     isReply,
+    {
+      recipientUserId: event.recipient_user_id,
+      dealStakeeUserId,
+    },
   )
 
   if (event.event_type === 'poker_tournament_swap_result') {

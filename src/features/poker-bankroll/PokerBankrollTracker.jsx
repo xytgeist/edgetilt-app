@@ -91,6 +91,7 @@ import PokerStableDealDetailSheet from '../poker-stable/PokerStableDealDetailShe
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
 import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
 import PokerStableSettleNeedsAttnBanner from '../poker-stable/PokerStableSettleNeedsAttnBanner.jsx'
+import PokerStakeeClosedStakeHeroBanner from './PokerStakeeClosedStakeHeroBanner.jsx'
 import {
   archivedStakePersonalBankrollNet,
   buildPersonalSettlementHistoryEvents,
@@ -1799,7 +1800,7 @@ export default function PokerBankrollTracker({
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
           : stakeScopeClosedUnarchived
-            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
+            ? 'This stake is closed. Archive it from your stake card when you are done reviewing.'
             : pendingBackerOffer
               ? 'Accept the backing offer before logging sessions on this stake.'
               : STAKE_GOES_LIVE_COPY,
@@ -1873,7 +1874,7 @@ export default function PokerBankrollTracker({
         stakeScopeRevoked
           ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
           : stakeScopeClosedUnarchived
-            ? 'This stake is closed. Archive it from the banner above when you are done reviewing.'
+            ? 'This stake is closed. Archive it from your stake card when you are done reviewing.'
             : pendingBackerOffer
               ? 'Accept the backing offer before logging sessions on this stake.'
               : STAKE_GOES_LIVE_COPY,
@@ -2936,38 +2937,6 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
-        {stakeScopeClosedUnarchived && activeTab === 'overview' && isOnStake ? (
-          <div
-            data-poker-stake-notice
-            className="mb-3 rounded-2xl border border-zinc-600/60 bg-zinc-900/80 px-4 py-3 text-sm text-zinc-200"
-          >
-            <p className="text-center">
-              This stake is closed
-              {isBackerInitiatedBackingDeal(activeDeal)
-                ? ` by ${dealLeadBackerDisplayName(activeDeal, stableProfilesById)}`
-                : ''}
-              . Archive it when you are done reviewing.
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                disabled={stableSaving}
-                onClick={() => void handleArchiveStakeeBankrollDeal(activeDeal.id)}
-                className="rounded-2xl bg-amber-600 px-4 py-2 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
-              >
-                Archive stake
-              </button>
-              <button
-                type="button"
-                onClick={() => setTermsDealId(activeDeal.id)}
-                className="rounded-2xl bg-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 touch-manipulation"
-              >
-                Review
-              </button>
-            </div>
-          </div>
-        ) : null}
-
         {pendingBackerOffer && activeTab === 'overview' && !stakeOfferOnboardingOpen && !carouselCoachOpen ? (
           <div
             data-poker-stable-invite-card
@@ -3064,18 +3033,24 @@ export default function PokerBankrollTracker({
                 const heroStakeLive = hero.deal
                   ? stakeDealIsLiveForStakee(hero.deal, heroDealSlices)
                   : false
+                const heroClosedUnarchived =
+                  onStake && hero.deal && stakeeBankrollShowsClosedCarouselCard(hero.deal)
                 const stakeHeroMessage =
-                  onStake && hero.deal?.status === 'revoked'
-                    ? 'revoked'
-                    : onStake && hero.deal && !heroStakeLive
-                      ? isBackerInitiatedBackingDeal(hero.deal)
-                        ? 'pendingBackerOffer'
-                        : 'pendingStake'
-                      : pendingBackerSlices.length > 0
-                        ? 'pendingBackers'
-                        : null
+                  heroClosedUnarchived
+                    ? null
+                    : onStake && hero.deal?.status === 'revoked'
+                      ? 'revoked'
+                      : onStake && hero.deal && !heroStakeLive
+                        ? isBackerInitiatedBackingDeal(hero.deal)
+                          ? 'pendingBackerOffer'
+                          : 'pendingStake'
+                        : pendingBackerSlices.length > 0
+                          ? 'pendingBackers'
+                          : null
                 const stakeHeroSlotExpands =
-                  Boolean(stakeHeroMessage) || Boolean(hero.pendingSettleCommit)
+                  Boolean(stakeHeroMessage) ||
+                  Boolean(hero.pendingSettleCommit) ||
+                  heroClosedUnarchived
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -3207,7 +3182,11 @@ export default function PokerBankrollTracker({
                           className={`mt-3 w-full ${stakeHeroSlotExpands ? '' : 'h-10'}`}
                           data-poker-stake-hero-message-slot={
                             stakeHeroMessage ||
-                            (hero.pendingSettleCommit ? 'pendingSettle' : undefined)
+                            (hero.pendingSettleCommit
+                              ? 'pendingSettle'
+                              : heroClosedUnarchived
+                                ? 'closedUnarchived'
+                                : undefined)
                           }
                         >
                           {stakeHeroMessage === 'revoked' ? (
@@ -3292,6 +3271,14 @@ export default function PokerBankrollTracker({
                               onReview={() =>
                                 setCommitSyncId(String(hero.pendingSettleCommit.commit_id))
                               }
+                            />
+                          ) : heroClosedUnarchived ? (
+                            <PokerStakeeClosedStakeHeroBanner
+                              deal={hero.deal}
+                              profilesById={stableProfilesById}
+                              saving={stableSaving}
+                              onArchive={() => void handleArchiveStakeeBankrollDeal(hero.deal.id)}
+                              onReview={() => setTermsDealId(scopeId)}
                             />
                           ) : hero.spark.length >= 2 ? (
                             <button

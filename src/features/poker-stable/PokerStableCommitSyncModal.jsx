@@ -132,7 +132,7 @@ export default function PokerStableCommitSyncModal({
       const { error, status } = await syncDealCommit(supabaseClient, commit.id)
       if (error) throw error
       triggerTapHapticLight()
-      onSynced?.({ status, dealId: commit.deal_id })
+      onSynced?.({ status, dealId: commit.deal_id, isStakee })
       onClose?.()
     } catch (e) {
       onError?.(e?.message || 'Could not sync commit.')

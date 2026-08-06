@@ -14,12 +14,51 @@ const POKER_STABLE_TAB_ONLY_EVENT_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE,
 ])
 
-/** Build app URL for poker stable activity Alerts / push rows. */
-export function buildPokerStableActivityNavigateUrl(event) {
+/** Settle / commit sync: stakee → Bankroll hero; backers → Stable manager. */
+const POKER_STABLE_STAKE_ROLE_ROUTED_EVENT_TYPES = new Set([
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED,
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED,
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED,
+])
+
+/** @param {object | null | undefined} event */
+export function pokerStableActivityNeedsStakeeLookup(event) {
+  if (!event?.poker_stable_deal_id) return false
+  if (POKER_STABLE_STAKE_ROLE_ROUTED_EVENT_TYPES.has(event.event_type)) return true
+  return Boolean(event.poker_stable_commit_id || event.poker_stable_settlement_request_id)
+}
+
+/**
+ * @param {object | null | undefined} event
+ * @param {string | null | undefined} viewerUserId
+ * @param {string | null | undefined} dealStakeeUserId
+ */
+export function pokerStableActivityTabForViewer(event, viewerUserId, dealStakeeUserId) {
+  if (!event?.event_type) return 'poker-stable'
+  if (POKER_STABLE_BANKROLL_EVENT_TYPES.has(event.event_type)) return 'poker-bankroll'
+  if (POKER_STABLE_TAB_ONLY_EVENT_TYPES.has(event.event_type)) return 'poker-stable'
+  if (
+    pokerStableActivityNeedsStakeeLookup(event) &&
+    viewerUserId &&
+    dealStakeeUserId &&
+    viewerUserId === dealStakeeUserId
+  ) {
+    return 'poker-bankroll'
+  }
+  return 'poker-stable'
+}
+
+/**
+ * Build app URL for poker stable activity Alerts / push rows.
+ * @param {object | null | undefined} event
+ * @param {{ viewerUserId?: string | null, dealStakeeUserId?: string | null }} [opts]
+ */
+export function buildPokerStableActivityNavigateUrl(event, opts = {}) {
   if (!event?.event_type) return '/?tab=home'
+  const { viewerUserId = null, dealStakeeUserId = null } = opts
   const params = new URLSearchParams()
-  const bankrollTab = POKER_STABLE_BANKROLL_EVENT_TYPES.has(event.event_type)
-  params.set('tab', bankrollTab ? 'poker-bankroll' : 'poker-stable')
+  const tab = pokerStableActivityTabForViewer(event, viewerUserId, dealStakeeUserId)
+  params.set('tab', tab)
   if (
     event.poker_stable_deal_id &&
     !POKER_STABLE_TAB_ONLY_EVENT_TYPES.has(event.event_type)
@@ -27,7 +66,7 @@ export function buildPokerStableActivityNavigateUrl(event) {
     params.set('stableDeal', String(event.poker_stable_deal_id))
   }
   if (
-    bankrollTab &&
+    tab === 'poker-bankroll' &&
     event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER
   ) {
     params.set('stakeOnboarding', '1')

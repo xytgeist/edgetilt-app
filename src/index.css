@@ -6561,6 +6561,15 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-sta
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-100\/90 {
   color: #3f3f46 !important;
 }
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-backing-split] {
+  color: #52525b !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-backing-split] .text-emerald-400\/90 {
+  color: #15803d !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-backing-split] .text-amber-200\/80 {
+  color: #a16207 !important;
+}
 [data-poker-bankroll-hero-card] [data-poker-hero-terms-icon] {
   color: rgb(161 161 170);
 }

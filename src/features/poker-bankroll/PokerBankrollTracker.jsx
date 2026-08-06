@@ -57,6 +57,7 @@ import {
   stakeHeroBadgeLabel,
   stakeHeroBadgeVariant,
   stakeGoesLivePendingCopy,
+  stakeBackingCapitalSplit,
   stakeeBankrollShowsClosedCarouselCard,
   stakeeDisplayDealRoll,
   stakeePendingSettleCommitForDeal,
@@ -69,7 +70,9 @@ import {
   cancelStakeDeal,
   closeBackingDeal,
   declineProposedDealTerms,
+  deleteStakeSessionWithAudit,
   isBackerInitiatedBackingDeal,
+  loadLedgerEntries,
   isMissingStableTableError,
   loadDealBankrollProfiles,
   loadDealCounterpartyProfiles,
@@ -97,7 +100,11 @@ import {
   buildPersonalSettlementHistoryEvents,
   buildStakeDealHistoryEvents,
 } from '../poker-stable/pokerStableDealHistory.js'
-import { playerSelfOwnedActionPct, stakeDealIsLiveForStakee } from '../poker-stable/pokerStableMath.js'
+import {
+  playerSelfOwnedActionPct,
+  stakeDealIsLiveForStakee,
+  stakeDealPlayerSideAccepted,
+} from '../poker-stable/pokerStableMath.js'
 import {
   fmtPoker$,
   fmtPokerDuration,
@@ -351,6 +358,8 @@ export default function PokerBankrollTracker({
   const [dealReductionsByDeal, setDealReductionsByDeal] = useState({})
   /** @type {Record<string, object[]>} */
   const [dealSettlementsByDeal, setDealSettlementsByDeal] = useState({})
+  /** @type {Record<string, object[]>} */
+  const [dealLedgerByDeal, setDealLedgerByDeal] = useState({})
   /** Unsynced counterparty stake commits (settle review for backer-initiated stakes). */
   const [pendingStakeCommits, setPendingStakeCommits] = useState(/** @type {object[]} */ ([]))
   const [commitSyncId, setCommitSyncId] = useState(/** @type {string | null} */ (null))
@@ -440,8 +449,6 @@ export default function PokerBankrollTracker({
   const activeDealSlices = slicesByDeal[bankrollScope] || []
   const stakeScopeLive =
     isOnStake && stakeDealIsLiveForStakee(activeDeal, activeDealSlices)
-  const stakeScopeSessionBlocked =
-    stakeScopeRevoked || stakeScopeClosedUnarchived || (isOnStake && activeDeal && !stakeScopeLive)
   const pendingBackerOffer =
     isOnStake &&
     activeDeal?.status === 'pending' &&
@@ -450,6 +457,12 @@ export default function PokerBankrollTracker({
     !activeDeal?.stakee_terms_ack_required
   const waitingBackerCounterResponse =
     isOnStake && activeDeal?.status === 'pending' && Boolean(activeDeal?.staker_terms_ack_required)
+  /** Pending-play: log on stake after player accepted terms; still block backer-offer until player accepts. */
+  const stakeScopeSessionBlocked =
+    stakeScopeRevoked ||
+    stakeScopeClosedUnarchived ||
+    waitingBackerCounterResponse ||
+    (isOnStake && activeDeal && !stakeDealPlayerSideAccepted(activeDeal))
   const termsDealForSheet = useMemo(() => {
     if (!termsDealId) return null
     return (
@@ -805,6 +818,7 @@ export default function PokerBankrollTracker({
         setStableProfilesById({})
         setDealTopupsByDeal({})
         setDealSettlementsByDeal({})
+        setDealLedgerByDeal({})
         setPendingStakeCommits([])
       } else {
         const mine = (dealsRes.deals || []).filter((d) => d.stakee_user_id === userId)
@@ -848,10 +862,13 @@ export default function PokerBankrollTracker({
           setStableProfilesById({})
           setDealTopupsByDeal({})
           setDealSettlementsByDeal({})
+          setDealLedgerByDeal({})
         }
         const { byDeal, error: rollErr } = await loadDealBankrollProfiles(
           supabaseClient,
-          carouselDeals.filter((d) => d.status === 'active').map((d) => d.id),
+          carouselDeals
+            .filter((d) => d.status === 'active' || d.status === 'pending')
+            .map((d) => d.id),
         )
         if (rollErr && !isMissingStableTableError(rollErr)) {
           console.warn('[poker-bankroll] deal rolls load failed', rollErr.message)
@@ -861,16 +878,19 @@ export default function PokerBankrollTracker({
         const topupsByDeal = {}
         const reductionsByDeal = {}
         const settlementsByDeal = {}
+        const ledgerByDeal = {}
         await Promise.all(
           dealIds.map(async (dealId) => {
             const [
               { topups, error: topErr },
               { reductions, error: redErr },
               { settlements, error: stErr },
+              { entries, error: ledErr },
             ] = await Promise.all([
               loadDealTopups(supabaseClient, dealId),
               loadDealReductions(supabaseClient, dealId),
               loadDealSettlements(supabaseClient, dealId),
+              loadLedgerEntries(supabaseClient, dealId),
             ])
             if (topErr && !isMissingStableTableError(topErr)) {
               console.warn('[poker-bankroll] deal topups load failed', topErr.message)
@@ -881,14 +901,19 @@ export default function PokerBankrollTracker({
             if (stErr && !isMissingStableTableError(stErr)) {
               console.warn('[poker-bankroll] deal settlements load failed', stErr.message)
             }
+            if (ledErr && !isMissingStableTableError(ledErr)) {
+              console.warn('[poker-bankroll] deal ledger load failed', ledErr.message)
+            }
             topupsByDeal[dealId] = topups || []
             reductionsByDeal[dealId] = reductions || []
             settlementsByDeal[dealId] = settlements || []
+            ledgerByDeal[dealId] = entries || []
           }),
         )
         setDealTopupsByDeal(topupsByDeal)
         setDealReductionsByDeal(reductionsByDeal)
         setDealSettlementsByDeal(settlementsByDeal)
+        setDealLedgerByDeal(ledgerByDeal)
 
         const { commits: pendingCommits, error: pcErr } = await loadPendingCommits(supabaseClient)
         if (pcErr && !isMissingStableTableError(pcErr)) {
@@ -1193,6 +1218,7 @@ export default function PokerBankrollTracker({
       topups: dealTopupsByDeal[bankrollScope] || [],
       reductions: dealReductionsByDeal[bankrollScope] || [],
       settlements: dealSettlementsByDeal[bankrollScope] || [],
+      ledgerEntries: dealLedgerByDeal[bankrollScope] || [],
       viewerUserId: userId,
     })
   }, [
@@ -1204,6 +1230,7 @@ export default function PokerBankrollTracker({
     dealTopupsByDeal,
     dealReductionsByDeal,
     dealSettlementsByDeal,
+    dealLedgerByDeal,
     userId,
   ])
 
@@ -2809,13 +2836,21 @@ export default function PokerBankrollTracker({
     if (!window.confirm('Delete this poker session?')) return
     setSaving(true)
     try {
-      const { error: dErr } = await supabaseClient
-        .from('poker_bankroll_sessions')
-        .delete()
-        .eq('id', editingId)
-        .eq('user_id', userId)
-      if (dErr) throw dErr
-      await applyBankrollDelta(-editingPrevWl)
+      const editingRow = sessions.find((s) => s.id === editingId)
+      const stakeDealId = editingRow?.deal_id || (isOnStake ? bankrollScope : null)
+      if (stakeDealId) {
+        // RPC writes audit + refreshes deal roll from remaining sessions.
+        const { error: dErr } = await deleteStakeSessionWithAudit(supabaseClient, editingId)
+        if (dErr) throw dErr
+      } else {
+        const { error: dErr } = await supabaseClient
+          .from('poker_bankroll_sessions')
+          .delete()
+          .eq('id', editingId)
+          .eq('user_id', userId)
+        if (dErr) throw dErr
+        await applyBankrollDelta(-editingPrevWl)
+      }
       setSheet(null)
       await loadData()
     } catch (e) {
@@ -3216,6 +3251,51 @@ export default function PokerBankrollTracker({
                             </span>
                           ) : null}
                         </div>
+                        {onStake && hero.deal && !heroStakeLive
+                          ? (() => {
+                              const split = stakeBackingCapitalSplit(hero.deal, dealSlices)
+                              if (split.total <= 0) return null
+                              return (
+                                <p
+                                  data-poker-stake-backing-split
+                                  className="mt-1.5 text-left text-[11px] font-semibold tabular-nums text-zinc-400"
+                                >
+                                  Backing{' '}
+                                  <span className="text-emerald-400/90">
+                                    {fmtPoker$(split.accepted)} accepted
+                                  </span>
+                                  {split.pending > 0 ? (
+                                    <>
+                                      {' · '}
+                                      <span className="text-amber-200/80">
+                                        {fmtPoker$(split.pending)} pending
+                                      </span>
+                                    </>
+                                  ) : null}
+                                </p>
+                              )
+                            })()
+                          : onStake && hero.deal && heroStakeLive
+                            ? (() => {
+                                const split = stakeBackingCapitalSplit(hero.deal, dealSlices)
+                                if (split.pending <= 0) return null
+                                return (
+                                  <p
+                                    data-poker-stake-backing-split
+                                    className="mt-1.5 text-left text-[11px] font-semibold tabular-nums text-zinc-400"
+                                  >
+                                    Backing{' '}
+                                    <span className="text-emerald-400/90">
+                                      {fmtPoker$(split.accepted)} accepted
+                                    </span>
+                                    {' · '}
+                                    <span className="text-amber-200/80">
+                                      {fmtPoker$(split.pending)} pending
+                                    </span>
+                                  </p>
+                                )
+                              })()
+                            : null}
                         <div
                           className={`mt-3 w-full ${stakeHeroSlotExpands ? '' : 'h-10'}`}
                           data-poker-stake-hero-message-slot={

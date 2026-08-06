@@ -45,17 +45,16 @@ export function viewerHasAcceptedBackingSlice(deal, slicesByDeal, userId) {
   )
 }
 
-/** Deal ids where an accepted backer should see roll, stats, and session history. */
+/**
+ * Deal ids where THIS backer accepted their slice — roll, stats, and session history.
+ * Pending co-backers on an otherwise-active deal stay blind until they accept.
+ */
 export function dealIdsForAcceptedBackerVisibility(deals, slicesByDeal, userId) {
   if (!userId) return []
   const ids = []
   for (const deal of deals) {
-    if (!isViewerBackingDeal(deal, userId, slicesByDeal)) continue
-    if (deal.status === 'active') {
-      ids.push(deal.id)
-      continue
-    }
-    if (deal.status === 'pending' && viewerHasAcceptedBackingSlice(deal, slicesByDeal, userId)) {
+    if (!viewerHasAcceptedBackingSlice(deal, slicesByDeal, userId)) continue
+    if (['pending', 'active', 'settled', 'closed', 'revoked', 'declined'].includes(deal.status)) {
       ids.push(deal.id)
     }
   }
@@ -1326,7 +1325,14 @@ export async function declineHorseDeal(supabase, dealId, stakeeUserId) {
 }
 
 export async function declineSliceAsStaker(supabase, sliceId, stakerUserId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabase.rpc('poker_stable_decline_backer_slice', {
+    p_slice_id: sliceId,
+  })
+  if (!error) {
+    return { slice: { id: sliceId, status: 'declined', staker_user_id: stakerUserId }, error: null, result: data }
+  }
+  // Fallback when RPC not applied yet (local/dev lag).
+  const { data: slice, error: updErr } = await supabase
     .from('poker_stable_deal_slices')
     .update({ status: 'declined', responded_at: new Date().toISOString() })
     .eq('id', sliceId)
@@ -1334,7 +1340,7 @@ export async function declineSliceAsStaker(supabase, sliceId, stakerUserId) {
     .eq('status', 'pending')
     .select('*')
     .single()
-  return { slice: data || null, error }
+  return { slice: slice || null, error: updErr || error }
 }
 
 /**
@@ -1380,14 +1386,14 @@ export async function revokeHorseDeal(supabase, dealId, stakerUserId) {
     .in('status', ['pending', 'active'])
   if (sliceErr) return { deal: null, error: sliceErr }
 
-  const { data: remainingActive, error: remainErr } = await supabase
+  const { data: remainingOpen, error: remainErr } = await supabase
     .from('poker_stable_deal_slices')
-    .select('id')
+    .select('id, status')
     .eq('deal_id', dealId)
-    .eq('status', 'active')
+    .in('status', ['pending', 'active'])
   if (remainErr) return { deal: null, error: remainErr }
 
-  if ((remainingActive || []).length > 0) {
+  if ((remainingOpen || []).length > 0) {
     const { data: partialDeal, error: partialErr } = await supabase
       .from('poker_stable_deals')
       .select(DEAL_SELECT)
@@ -1412,6 +1418,12 @@ export async function revokeHorseDeal(supabase, dealId, stakerUserId) {
       }
     }
     return { deal: null, error }
+  }
+  // Detach pending-play sessions to personal (trigger also runs when RPC applied).
+  try {
+    await supabase.rpc('poker_stable_detach_stake_sessions_to_personal', { p_deal_id: dealId })
+  } catch {
+    // ignore if migration not applied yet
   }
   return { deal: data, error: null }
 }
@@ -1617,6 +1629,14 @@ export async function loadLedgerEntries(supabase, dealId) {
     .eq('deal_id', dealId)
     .order('created_at', { ascending: false })
   return { entries: data || [], error }
+}
+
+/** Stakee deletes a stake-scoped session; durable P/L audit line is written server-side. */
+export async function deleteStakeSessionWithAudit(supabase, sessionId) {
+  const { data, error } = await supabase.rpc('poker_stable_delete_stake_session', {
+    p_session_id: sessionId,
+  })
+  return { result: data || null, error }
 }
 
 /** @deprecated Use loadDealCommit. */

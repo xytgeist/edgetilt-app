@@ -199,16 +199,14 @@ export default function PokerStableScreen({
       setProfilesById(byId)
 
       const statsDealIds = dealIdsForAcceptedBackerVisibility(rows, sliceMap || {}, userId)
-      const backingIds = rows
-        .filter((d) => isViewerBackingDeal(d, userId, sliceMap || {}))
-        .map((d) => d.id)
       const [{ byDeal: rolls }, { byDeal: stats }, backerRes, commitsRes, sessionsRes, adjRes] =
         await Promise.all([
           loadDealBankrollProfiles(supabaseClient, statsDealIds),
           loadDealSessionStats(supabaseClient, statsDealIds),
           loadBackerBankroll(supabaseClient),
           loadPendingCommits(supabaseClient),
-          loadDealSessionsForStable(supabaseClient, backingIds),
+          // Sessions only after THIS backer accepts (not all syndicate invitees).
+          loadDealSessionsForStable(supabaseClient, statsDealIds),
           loadBackerBankrollAdjustments(supabaseClient),
         ])
       setBankrollByDeal(rolls)

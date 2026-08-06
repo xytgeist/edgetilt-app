@@ -72,7 +72,8 @@ export default function PokerStableHorseCarousel({
           stats.profit > 0 ? 'text-emerald-400' : stats.profit < 0 ? 'text-rose-400' : 'text-zinc-300'
         const sliceAccepted = slice?.status === 'active'
         const dealLive = deal.status === 'active'
-        const showBackerStats = sliceAccepted && dealLive
+        // Accepted backer sees roll/sessions even if co-backers still pending (deal may be pending briefly).
+        const showBackerStats = sliceAccepted && (dealLive || deal.status === 'pending')
         const isPendingSyndicateInvite =
           slice?.status === 'pending' && deal.staker_user_id !== userId
         const isLeadBackerOnPendingDeal =

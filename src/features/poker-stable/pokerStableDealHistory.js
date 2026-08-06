@@ -341,6 +341,17 @@ export function buildStakeDealHistoryEvents({
 
   /** @type {{ id: string, kind: string, at: string, text: string }[]} */
   const events = []
+  for (const entry of ledgerEntries) {
+    if (!entry?.created_at || !entry?.message) continue
+    if (entry.entry_kind === 'session_deleted' || entry.entry_kind === 'sessions_detached') {
+      events.push({
+        id: `ledger-${entry.id}`,
+        kind: entry.entry_kind,
+        at: entry.created_at,
+        text: entry.message,
+      })
+    }
+  }
   const orderedSlices = [...slices].sort(
     (a, b) => Number(a.slice_index ?? 0) - Number(b.slice_index ?? 0),
   )

@@ -5,6 +5,7 @@ import {
   dealHasAcceptedBackerSlice,
   dealTypeLabel,
   isOngoingDealType,
+  roundMoney,
   stakeDealIsLiveForStakee,
 } from './pokerStableMath.js'
 
@@ -154,14 +155,18 @@ export function sliceCounterpartyDisplayName(slice, profilesById = {}) {
   return 'Backer'
 }
 
+const PENDING_PLAY_FOOTER =
+  'Until then, you can record sessions (won\'t be visible to backers until they accept). If they do not accept, sessions will be rolled into your personal bankroll and history.'
+
 /**
  * Stakee Bankroll pending helper: initiator acceptance is implicit.
  * Player-initiated names a sole backer; multi-backer / backer-offer copy differs.
+ * Pending-play: sessions allowed on player-accepted stakes waiting on backers.
  */
 export function stakeGoesLivePendingCopy(deal, slices = [], profilesById = {}) {
   if (!deal) return 'Once a backer accepts, this stake goes live.'
 
-  // Backer Create Stake: lead backer already in; player must accept.
+  // Backer Create Stake: lead backer already in; player must accept before logging.
   if (deal.staker_user_id) {
     const pendingCoBackers = (slices || []).filter(
       (s) =>
@@ -178,12 +183,29 @@ export function stakeGoesLivePendingCopy(deal, slices = [], profilesById = {}) {
   const offerBackers = (slices || []).filter((s) => s.status !== 'declined')
   if (offerBackers.length === 1) {
     const name = sliceCounterpartyDisplayName(offerBackers[0], profilesById)
-    return `Once ${name} accepts, this stake goes live.`
+    return `Once ${name} accepts, this stake goes live. ${PENDING_PLAY_FOOTER}`
   }
   if (offerBackers.length > 1) {
-    return 'Once at least one backer accepts the stake terms, the stake will go live with their % of the backing bankroll available.'
+    return `Once at least one backer accepts the stake terms, the stake will go live with their % of the backing bankroll available. ${PENDING_PLAY_FOOTER}`
   }
   return 'Invite a backer to accept terms before this stake can go live.'
+}
+
+/**
+ * Player stake card: accepted vs pending backing capital (baseline × action %).
+ * @returns {{ accepted: number, pending: number, total: number }}
+ */
+export function stakeBackingCapitalSplit(deal, slices = []) {
+  const baseline = Number(deal?.baseline_bankroll) || 0
+  let accepted = 0
+  let pending = 0
+  for (const slice of slices || []) {
+    if (slice.status === 'declined') continue
+    const capital = roundMoney(baseline * ((Number(slice.action_pct) || 0) / 100))
+    if (slice.status === 'active') accepted = roundMoney(accepted + capital)
+    else if (slice.status === 'pending') pending = roundMoney(pending + capital)
+  }
+  return { accepted, pending, total: roundMoney(accepted + pending) }
 }
 
 /** @deprecated Prefer {@link stakeGoesLivePendingCopy} with deal + slices. */

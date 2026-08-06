@@ -1631,7 +1631,10 @@ export default function PokerBankrollTracker({
             : 'Periodic settle complete ... roll reset to baseline.'
           : 'Settlement proposed ... waiting for backer confirmation.',
       )
-      if (immediate) setTermsDealId(null)
+      if (immediate) {
+        setTermsDealId(null)
+        setLedgerDealId(null)
+      }
       await loadData()
     } catch (e) {
       setError(e?.message || 'Settle failed.')
@@ -1656,6 +1659,7 @@ export default function PokerBankrollTracker({
       )
       if (immediate) {
         setTermsDealId(null)
+        setLedgerDealId(null)
         if (bankrollScope === dealId) setBankrollScope('personal')
       }
       await loadData()

@@ -290,7 +290,7 @@ export default function PokerStableDealDetailSheet({
       triggerTapHapticLight()
       setPeriodicSettleOpen(false)
       await onRefresh()
-      await loadLedger()
+      onClose()
     } catch (e) {
       onError(e?.message || 'Settle failed.')
     } finally {
@@ -311,7 +311,7 @@ export default function PokerStableDealDetailSheet({
       triggerTapHapticLight()
       setCloseStakeOpen(false)
       await onRefresh()
-      await loadLedger()
+      onClose()
     } catch (e) {
       onError(e?.message || 'Close failed.')
     } finally {

@@ -286,7 +286,7 @@ export default function PokerStablePeriodicSettleSheet({
           data-poker-stable-periodic-settle-confirm-btn
           className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
         >
-          {saving ? 'Recording…' : 'Periodic settlement'}
+          {saving ? 'Recording…' : 'Settle'}
         </button>
       </div>
     </div>

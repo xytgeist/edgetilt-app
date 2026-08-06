@@ -1,7 +1,7 @@
 /** Shared Stable screen accent (cyan ... replaces legacy amber chrome). */
 
 export const STABLE_SURFACE_CARD =
-  'rounded-3xl border-2 border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-zinc-900/95 to-zinc-950'
+  'rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-zinc-900/95 to-zinc-950'
 
 export const STABLE_SURFACE_DIVIDER = 'border-cyan-500/15'
 

@@ -390,6 +390,8 @@ export default function PokerBankrollTracker({
   const [scopeCarouselSyncReady, setScopeCarouselSyncReady] = useState(false)
   /** While set, skip writing until React applies this restored scope (avoids clobbering with default personal). */
   const pendingRestoreScopeRef = useRef(/** @type {string | null} */ (null))
+  /** Pending backer-offer deal id we already auto-focused (do not yank user back from Personal). */
+  const autoFocusedPendingOfferIdRef = useRef(/** @type {string | null} */ (null))
   const stakeNoticeTimerRef = useRef(0)
   const [stakeOfferOnboardingOpen, setStakeOfferOnboardingOpen] = useState(false)
   const [carouselCoachOpen, setCarouselCoachOpen] = useState(false)
@@ -665,6 +667,7 @@ export default function PokerBankrollTracker({
     setScopeCarouselSyncReady(false)
     setInitialBankrollLoadDone(false)
     pendingRestoreScopeRef.current = null
+    autoFocusedPendingOfferIdRef.current = null
     setBankrollScope('personal')
   }, [userId])
 
@@ -783,8 +786,6 @@ export default function PokerBankrollTracker({
     if (!scopeHydrated || loading || !userId || openStableDealId || activeStakeOnboardingDealId) {
       return
     }
-    // Respect last-selected card; only auto-jump when nothing was remembered.
-    if (readStoredPokerBankrollScope(userId) !== 'personal') return
     const pendingOffer = stakeeDeals.find(
       (d) =>
         d.status === 'pending' &&
@@ -792,9 +793,18 @@ export default function PokerBankrollTracker({
         !d.staker_terms_ack_required &&
         !d.stakee_terms_ack_required,
     )
-    if (pendingOffer && bankrollScope === 'personal') {
-      setBankrollScope(pendingOffer.id)
+    if (!pendingOffer) return
+    // Already focused this offer (or user is viewing a stake) ... never re-yank from Personal.
+    if (autoFocusedPendingOfferIdRef.current === pendingOffer.id) return
+    if (bankrollScope !== 'personal') {
+      autoFocusedPendingOfferIdRef.current = pendingOffer.id
+      return
     }
+    // First landing on Personal with a fresh pending offer and no remembered stake card.
+    if (readStoredPokerBankrollScope(userId) !== 'personal') return
+    autoFocusedPendingOfferIdRef.current = pendingOffer.id
+    pendingRestoreScopeRef.current = pendingOffer.id
+    setBankrollScope(pendingOffer.id)
   }, [
     scopeHydrated,
     loading,

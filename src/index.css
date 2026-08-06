@@ -5024,6 +5024,31 @@ html.light [data-poker-stakee-closed-sheet] .border-zinc-800 {
   border-color: #e4e4e7 !important;
 }
 
+html.light [data-poker-stable-closed-horse-sheet] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-closed-horse-sheet] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stable-closed-horse-sheet] .text-zinc-100,
+html.light [data-poker-stable-closed-horse-sheet] .text-zinc-200,
+html.light [data-poker-stable-closed-horse-sheet] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-closed-horse-sheet] .text-zinc-400,
+html.light [data-poker-stable-closed-horse-sheet] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stable-closed-horse-sheet] .bg-zinc-950\/70,
+html.light [data-poker-stable-closed-horse-sheet] .bg-zinc-900\/50 {
+  background-color: #fafafa !important;
+}
+html.light [data-poker-stable-closed-horse-sheet] .border-zinc-700\/70,
+html.light [data-poker-stable-closed-horse-sheet] .border-zinc-800 {
+  border-color: #e4e4e7 !important;
+}
+
 /* Carousel coach after stake onboarding — light mode only */
 html.light [data-poker-bankroll-carousel-coach] {
   background-color: #ffffff !important;

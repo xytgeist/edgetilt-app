@@ -45,6 +45,7 @@ export default function PokerStableHorseCarousel({
   horseSparkByDeal = {},
   onReviewSettleCommit,
   onArchiveHorse,
+  onOpenClosedHorseReview,
 }) {
   if (!deals.length) return null
 
@@ -247,7 +248,9 @@ export default function PokerStableHorseCarousel({
                     profilesById={profilesById}
                     saving={saving}
                     onArchive={() => void onArchiveHorse?.(deal.id)}
-                    onReview={() => onOpenDeal?.(deal.id)}
+                    onReview={() =>
+                      onOpenClosedHorseReview?.(deal.id) ?? onOpenDeal?.(deal.id)
+                    }
                   />
                 )}
               </div>

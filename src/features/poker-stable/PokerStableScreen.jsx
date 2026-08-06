@@ -7,6 +7,7 @@ import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDet
 import { PokerStableBackerDealSheet, PokerStablePlayerDealSheet } from './PokerStableCreateDealSheet.jsx'
 import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
 import PokerStableCommitSyncModal from './PokerStableCommitSyncModal.jsx'
+import PokerStableClosedHorseSheet from './PokerStableClosedHorseSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from './PokerStableDealTermsSheet.jsx'
 import PokerStableHorseCarousel from './PokerStableHorseCarousel.jsx'
@@ -20,6 +21,7 @@ import {
   readPokerStableBackerOnboardingSliceId,
 } from './pokerStableBackerOnboarding.js'
 import {
+  backerStableShowsClosedCarouselCard,
   computeBackerPortfolioPerformanceMetrics,
   computeBackerPortfolioTrendChart,
   enrichBankrollByDealFromSessions,
@@ -142,6 +144,9 @@ export default function PokerStableScreen({
     /** @type {Record<string, object[]>} */ ({}),
   )
   const [archiveDetailDealId, setArchiveDetailDealId] = useState(/** @type {string | null} */ (null))
+  const [closedHorseReviewDealId, setClosedHorseReviewDealId] = useState(
+    /** @type {string | null} */ (null),
+  )
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -569,6 +574,18 @@ export default function PokerStableScreen({
     }
   }
 
+  function openClosedHorseReview(dealId) {
+    if (!dealId) return
+    const deal = deals.find((d) => d.id === dealId)
+    if (!deal || !backerStableShowsClosedCarouselCard(deal, slicesByDeal[dealId] || [], userId)) {
+      openDealDetail(dealId)
+      return
+    }
+    setDetailDealId(null)
+    setClosedHorseReviewDealId(dealId)
+    triggerTapHapticLight()
+  }
+
   async function onArchiveHorse(dealId) {
     if (!supabaseClient) return
     setSaving(true)
@@ -577,6 +594,7 @@ export default function PokerStableScreen({
       const { error: err } = await archiveBackerStableDeal(supabaseClient, dealId)
       if (err) throw err
       if (detailDealId === dealId) setDetailDealId(null)
+      if (closedHorseReviewDealId === dealId) setClosedHorseReviewDealId(null)
       triggerTapHapticLight()
       await load()
     } catch (e) {
@@ -584,6 +602,20 @@ export default function PokerStableScreen({
     } finally {
       setSaving(false)
     }
+  }
+
+  async function onDeleteClosedHorse(dealId) {
+    if (!dealId) return
+    const deal = deals.find((d) => d.id === dealId)
+    const label = deal?.label?.trim() || 'this stake'
+    if (
+      !window.confirm(
+        `Delete ${label}? This removes it from your carousel and moves it to Closed stakes.`,
+      )
+    ) {
+      return
+    }
+    await onArchiveHorse(dealId)
   }
 
   async function onNudgePendingBacker(dealId, sliceId) {
@@ -790,6 +822,7 @@ export default function PokerStableScreen({
                 triggerTapHapticLight()
               }}
               onArchiveHorse={onArchiveHorse}
+              onOpenClosedHorseReview={openClosedHorseReview}
             />
           )}
         </section>
@@ -962,6 +995,17 @@ export default function PokerStableScreen({
             setEditTermsDealId(null)
             void load()
           }}
+        />
+      ) : null}
+
+      {closedHorseReviewDealId ? (
+        <PokerStableClosedHorseSheet
+          deal={deals.find((d) => d.id === closedHorseReviewDealId) ?? null}
+          profilesById={profilesById}
+          saving={saving}
+          onClose={() => setClosedHorseReviewDealId(null)}
+          onArchive={() => void onArchiveHorse(closedHorseReviewDealId)}
+          onDelete={() => void onDeleteClosedHorse(closedHorseReviewDealId)}
         />
       ) : null}
 

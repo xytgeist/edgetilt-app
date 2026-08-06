@@ -603,11 +603,22 @@ export function backerViewerSlices(deal, slices = [], userId) {
   return (slices || []).filter((s) => s.staker_user_id === userId && s.status !== 'declined')
 }
 
+/** Viewer slice rows that count for closed-deal archive state (includes declined on terminal deals). */
+export function backerStableArchiveSlices(deal, slices = [], userId) {
+  if (!userId) return []
+  const terminal = ['settled', 'closed', 'declined', 'revoked'].includes(deal?.status)
+  return (slices || []).filter((s) => {
+    if (s.staker_user_id !== userId) return false
+    if (terminal) return true
+    return s.status !== 'declined'
+  })
+}
+
 /** Backer Stable carousel keeps closed stakes until manually archived (slice-level). */
 export function backerStableShowsClosedCarouselCard(deal, slices = [], userId) {
   if (!deal?.id || !userId) return false
   if (!['settled', 'closed', 'declined', 'revoked'].includes(deal.status)) return false
-  const mine = backerViewerSlices(deal, slices, userId)
+  const mine = backerStableArchiveSlices(deal, slices, userId)
   if (!mine.length && deal.staker_user_id !== userId) return false
   if (!mine.length) return true
   return mine.some((s) => !s.stable_archived_at)

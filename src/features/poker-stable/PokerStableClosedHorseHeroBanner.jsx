@@ -15,6 +15,8 @@ export default function PokerStableClosedHorseHeroBanner({
   if (!deal) return null
 
   const playerName = dealStakeeDisplayName(deal, profilesById) || 'The player'
+  const isRevoked = deal.status === 'revoked'
+  const isDeclined = deal.status === 'declined'
 
   return (
     <div
@@ -23,7 +25,11 @@ export default function PokerStableClosedHorseHeroBanner({
       className={`rounded-xl border border-zinc-600/60 bg-zinc-900/80 px-3 py-2.5 text-left ${className}`}
     >
       <p className="text-xs leading-snug text-zinc-200">
-        This stake was closed by {playerName}. Archive it when you are done reviewing.
+        {isDeclined
+          ? 'This stake was declined. Archive it when you are done reviewing.'
+          : isRevoked
+            ? 'This stake was revoked. Archive it when you are done reviewing.'
+            : `This stake was closed by ${playerName}. Archive it when you are done reviewing.`}
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button

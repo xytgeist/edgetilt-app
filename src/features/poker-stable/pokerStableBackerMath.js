@@ -354,13 +354,13 @@ export function computeBackerSessionShareTotal({
 }
 
 /**
- * Economic session share P/L ÷ current capital at risk.
+ * Unrealized horse performance P/L ÷ current capital at risk.
  * @returns {number | null} percent, or null when at risk is zero
  */
-export function computeBackerAtRiskReturnPct(sessionShareTotal, capitalAtRisk) {
+export function computeBackerAtRiskReturnPct(unrealizedPerformancePl, capitalAtRisk) {
   const atRisk = roundMoney(capitalAtRisk)
   if (atRisk <= 0) return null
-  return roundMoney((roundMoney(sessionShareTotal) / atRisk) * 100)
+  return roundMoney((roundMoney(unrealizedPerformancePl) / atRisk) * 100)
 }
 
 /**
@@ -580,7 +580,10 @@ export function computeBackerPortfolioPerformanceMetrics({
   return {
     ...base,
     sessionShareTotal,
-    atRiskReturnPct: computeBackerAtRiskReturnPct(sessionShareTotal, base.capitalAtRisk),
+    atRiskReturnPct: computeBackerAtRiskReturnPct(
+      roundMoney(base.stakeValueMtm - base.capitalAtRisk),
+      base.capitalAtRisk,
+    ),
     twrPct: computeBackerTwrPct({
       horseDeals,
       sessions,
@@ -594,8 +597,22 @@ export function computeBackerPortfolioPerformanceMetrics({
 }
 
 /**
- * Active + pending deals for horse carousel; settled for history.
+ * Active + pending deals for horse carousel; closed until backer archives, then history.
  */
+export function backerViewerSlices(deal, slices = [], userId) {
+  return (slices || []).filter((s) => s.staker_user_id === userId && s.status !== 'declined')
+}
+
+/** Backer Stable carousel keeps closed stakes until manually archived (slice-level). */
+export function backerStableShowsClosedCarouselCard(deal, slices = [], userId) {
+  if (!deal?.id || !userId) return false
+  if (!['settled', 'closed', 'declined', 'revoked'].includes(deal.status)) return false
+  const mine = backerViewerSlices(deal, slices, userId)
+  if (!mine.length && deal.staker_user_id !== userId) return false
+  if (!mine.length) return true
+  return mine.some((s) => !s.stable_archived_at)
+}
+
 export function partitionBackerDeals(deals, slicesByDeal, userId) {
   /** @type {object[]} */
   const active = []
@@ -603,16 +620,22 @@ export function partitionBackerDeals(deals, slicesByDeal, userId) {
   const history = []
 
   for (const deal of deals) {
-    const mySlices = (slicesByDeal[deal.id] || []).filter(
-      (s) => s.staker_user_id === userId && s.status !== 'declined',
-    )
+    const dealSlices = slicesByDeal[deal.id] || []
+    const mySlices = backerViewerSlices(deal, dealSlices, userId)
     if (!mySlices.length && deal.staker_user_id !== userId) continue
 
-    if (deal.status === 'settled' || deal.status === 'declined' || deal.status === 'revoked') {
-      if (deal.status === 'settled' || deal.status === 'revoked') history.push(deal)
+    if (['active', 'pending'].includes(deal.status)) {
+      active.push(deal)
       continue
     }
-    if (['active', 'pending'].includes(deal.status)) active.push(deal)
+
+    if (['settled', 'closed', 'declined', 'revoked'].includes(deal.status)) {
+      if (backerStableShowsClosedCarouselCard(deal, dealSlices, userId)) {
+        active.push(deal)
+      } else {
+        history.push(deal)
+      }
+    }
   }
 
   active.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))

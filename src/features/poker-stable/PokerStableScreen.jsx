@@ -31,6 +31,7 @@ import {
 } from './pokerStableDealHistory.js'
 import {
   acceptSliceAsStaker,
+  archiveBackerStableDeal,
   declineProposedDealTerms,
   declineSliceAsStaker,
   dealIdsForAcceptedBackerVisibility,
@@ -232,7 +233,7 @@ export default function PokerStableScreen({
         .filter(
           (d) =>
             isViewerBackingDeal(d, userId, sliceMap || {}) &&
-            (d.status === 'settled' || d.status === 'revoked'),
+            ['settled', 'closed', 'revoked', 'declined'].includes(d.status),
         )
         .map((d) => d.id)
       const topupsByDeal = {}
@@ -568,6 +569,23 @@ export default function PokerStableScreen({
     }
   }
 
+  async function onArchiveHorse(dealId) {
+    if (!supabaseClient) return
+    setSaving(true)
+    setError('')
+    try {
+      const { error: err } = await archiveBackerStableDeal(supabaseClient, dealId)
+      if (err) throw err
+      if (detailDealId === dealId) setDetailDealId(null)
+      triggerTapHapticLight()
+      await load()
+    } catch (e) {
+      setError(e?.message || 'Could not archive stake.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function onNudgePendingBacker(dealId, sliceId) {
     if (!supabaseClient || !dealId || !sliceId || nudgingSliceId) return
     setError('')
@@ -771,6 +789,7 @@ export default function PokerStableScreen({
                 setCommitSyncId(commitId)
                 triggerTapHapticLight()
               }}
+              onArchiveHorse={onArchiveHorse}
             />
           )}
         </section>

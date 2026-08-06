@@ -386,8 +386,8 @@ export default function PokerStablePortfolioHero({
                   on open horses (baseline × action %).
                 </p>
                 <p>
-                  <strong className="font-semibold text-zinc-300">At-risk ROI</strong> ... horse performance P/L ÷ current
-                  At risk. Shows — when nothing is deployed.
+                  <strong className="font-semibold text-zinc-300">At-risk ROI</strong> ... unrealized horse
+                  performance (Stakes MTM minus At risk) ÷ current At risk. Shows — when nothing is deployed.
                 </p>
                 <p>
                   <strong className="font-semibold text-zinc-300">TWR</strong> ... time-weighted return on your manual
@@ -409,8 +409,11 @@ export default function PokerStablePortfolioHero({
 
               <HeroInfoSection title="What moves what">
                 <p>
-                  <strong className="font-semibold text-zinc-300">Moves on sessions:</strong> Trend, At-risk
-                  ROI numerator, TWR numerator.
+                  <strong className="font-semibold text-zinc-300">Moves on sessions:</strong> Trend, TWR numerator.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Moves on open-horse MTM:</strong> At-risk ROI
+                  (Stakes MTM − At risk).
                 </p>
                 <p>
                   <strong className="font-semibold text-zinc-300">Moves on settle sync:</strong> Realized P/L, backing

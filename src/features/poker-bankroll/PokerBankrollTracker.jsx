@@ -1607,8 +1607,29 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
+  function openClosedStakeReview(dealId) {
+    if (!dealId) return
+    const pending = stakeePendingSettleCommitForDeal(pendingStakeCommits, dealId)
+    if (pending) {
+      setTermsDealId(null)
+      setCommitSyncId(String(pending.commit_id))
+      triggerTapHapticLight()
+      return
+    }
+    setCommitSyncId(null)
+    setTermsDealId(dealId)
+    triggerTapHapticLight()
+  }
+
   async function handleArchiveStakeeBankrollDeal(dealId) {
     if (!supabaseClient || !dealId) return
+    const pending = stakeePendingSettleCommitForDeal(pendingStakeCommits, dealId)
+    if (pending) {
+      setTermsDealId(null)
+      setCommitSyncId(String(pending.commit_id))
+      setError('Commit the close settlement to your personal bankroll before archiving.')
+      return
+    }
     setStableSaving(true)
     setError('')
     try {
@@ -1625,6 +1646,15 @@ export default function PokerBankrollTracker({
       setStableSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (!termsDealId || !termsDealForSheet) return
+    if (!stakeeBankrollShowsClosedCarouselCard(termsDealForSheet)) return
+    const pending = stakeePendingSettleCommitForDeal(pendingStakeCommits, termsDealId)
+    if (!pending) return
+    setTermsDealId(null)
+    setCommitSyncId(String(pending.commit_id))
+  }, [termsDealId, termsDealForSheet, pendingStakeCommits])
 
   useEffect(() => {
     if (!ledgerDealId) return
@@ -3278,7 +3308,7 @@ export default function PokerBankrollTracker({
                               profilesById={stableProfilesById}
                               saving={stableSaving}
                               onArchive={() => void handleArchiveStakeeBankrollDeal(hero.deal.id)}
-                              onReview={() => setTermsDealId(scopeId)}
+                              onReview={() => openClosedStakeReview(scopeId)}
                             />
                           ) : hero.spark.length >= 2 ? (
                             <button
@@ -4048,7 +4078,15 @@ export default function PokerBankrollTracker({
           userId={userId}
           commitId={commitSyncId}
           onClose={() => setCommitSyncId(null)}
-          onSynced={() => void loadData({ silent: true })}
+          onSynced={({ dealId, isStakee }) => {
+            void (async () => {
+              await loadData({ silent: true })
+              setCommitSyncId(null)
+              if (isStakee && dealId) {
+                setTermsDealId(dealId)
+              }
+            })()
+          }}
           onError={setError}
         />
       ) : null}
@@ -4086,7 +4124,10 @@ export default function PokerBankrollTracker({
         />
       ) : null}
 
-      {termsDealId && termsDealForSheet && stakeeBankrollShowsClosedCarouselCard(termsDealForSheet) ? (
+      {termsDealId &&
+      termsDealForSheet &&
+      stakeeBankrollShowsClosedCarouselCard(termsDealForSheet) &&
+      !stakeePendingSettleCommitForDeal(pendingStakeCommits, termsDealId) ? (
         <PokerStakeeClosedStakeSheet
           deal={termsDealForSheet}
           slices={slicesByDeal[termsDealId] || []}

@@ -8,6 +8,8 @@ import {
 } from './pokerStableBackerMath.js'
 import { dealTypeLabel } from './pokerStableMath.js'
 import PokerStableSettleNeedsAttnBanner from './PokerStableSettleNeedsAttnBanner.jsx'
+import PokerStableClosedHorseHeroBanner from './PokerStableClosedHorseHeroBanner.jsx'
+import { backerStableShowsClosedCarouselCard } from './pokerStableBackerMath.js'
 import {
   backerSliceInviteSummaryLine,
   dealStakeeDisplayName,
@@ -42,6 +44,7 @@ export default function PokerStableHorseCarousel({
   pendingCommits = [],
   horseSparkByDeal = {},
   onReviewSettleCommit,
+  onArchiveHorse,
 }) {
   if (!deals.length) return null
 
@@ -72,10 +75,14 @@ export default function PokerStableHorseCarousel({
           slice?.status === 'pending' && deal.staker_user_id !== userId
         const isLeadBackerOnPendingDeal =
           deal.status === 'pending' && deal.staker_user_id === userId
-        const statusLabel =
-          slice?.status === 'pending' ? 'Pending' : stakeHorseCardStatusLabel(deal, dealSlices)
-        const statusTone =
-          slice?.status === 'pending'
+        const statusLabel = closedUnarchived
+          ? 'Closed'
+          : slice?.status === 'pending'
+            ? 'Pending'
+            : stakeHorseCardStatusLabel(deal, dealSlices)
+        const statusTone = closedUnarchived
+          ? 'bg-zinc-700/60 text-zinc-300'
+          : slice?.status === 'pending'
             ? 'bg-zinc-700/60 text-zinc-300'
             : stakeHorseCardStatusTone(deal, dealSlices)
         const pendingNudgeSlices = pendingBackerNudgeTargetsForActiveBacker(
@@ -84,9 +91,10 @@ export default function PokerStableHorseCarousel({
           userId,
         )
         const pendingSettleCommit = pendingSettleCommitForDeal(pendingCommits, deal.id)
+        const closedUnarchived = backerStableShowsClosedCarouselCard(deal, dealSlices, userId)
         const sparkSeries = horseSparkByDeal[deal.id] || []
         const showSparkBackground =
-          showBackerStats && !pendingSettleCommit && sparkSeries.length >= 2
+          showBackerStats && !pendingSettleCommit && !closedUnarchived && sparkSeries.length >= 2
         const sparkUp =
           sparkSeries.length >= 2 &&
           sparkSeries[sparkSeries.length - 1] >= sparkSeries[0]
@@ -221,6 +229,28 @@ export default function PokerStableHorseCarousel({
                   </div>
                 )}
               </>
+            ) : closedUnarchived ? (
+              <div
+                className={`mt-4 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {pendingSettleCommit ? (
+                  <PokerStableSettleNeedsAttnBanner
+                    counterpartyName={dealStakeeDisplayName(deal, profilesById)}
+                    onReview={() =>
+                      onReviewSettleCommit?.(String(pendingSettleCommit.commit_id))
+                    }
+                  />
+                ) : (
+                  <PokerStableClosedHorseHeroBanner
+                    deal={deal}
+                    profilesById={profilesById}
+                    saving={saving}
+                    onArchive={() => void onArchiveHorse?.(deal.id)}
+                    onReview={() => onOpenDeal?.(deal.id)}
+                  />
+                )}
+              </div>
             ) : isPendingSyndicateInvite ? (
               <div
                 data-poker-stable-horse-invite

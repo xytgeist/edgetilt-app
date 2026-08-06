@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { DollarSign, FileText, Info, Trophy } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -1632,8 +1633,10 @@ export default function PokerBankrollTracker({
           : 'Settlement proposed ... waiting for backer confirmation.',
       )
       if (immediate) {
-        setTermsDealId(null)
-        setLedgerDealId(null)
+        flushSync(() => {
+          setTermsDealId(null)
+          setLedgerDealId(null)
+        })
       }
       await loadData()
     } catch (e) {
@@ -1658,9 +1661,11 @@ export default function PokerBankrollTracker({
           : 'Close settlement proposed ... waiting for confirmation.',
       )
       if (immediate) {
-        setTermsDealId(null)
-        setLedgerDealId(null)
-        if (bankrollScope === dealId) setBankrollScope('personal')
+        flushSync(() => {
+          setTermsDealId(null)
+          setLedgerDealId(null)
+          if (bankrollScope === dealId) setBankrollScope('personal')
+        })
       }
       await loadData()
     } catch (e) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { flushSync } from 'react-dom'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
@@ -288,9 +289,11 @@ export default function PokerStableDealDetailSheet({
       })
       if (error) throw error
       triggerTapHapticLight()
-      setPeriodicSettleOpen(false)
+      // Unmount Manage/Terms + settle overlay together before refresh (avoids a one-frame flash).
+      flushSync(() => {
+        onClose()
+      })
       await onRefresh()
-      onClose()
     } catch (e) {
       onError(e?.message || 'Settle failed.')
     } finally {
@@ -309,9 +312,10 @@ export default function PokerStableDealDetailSheet({
       })
       if (error) throw error
       triggerTapHapticLight()
-      setCloseStakeOpen(false)
+      flushSync(() => {
+        onClose()
+      })
       await onRefresh()
-      onClose()
     } catch (e) {
       onError(e?.message || 'Close failed.')
     } finally {

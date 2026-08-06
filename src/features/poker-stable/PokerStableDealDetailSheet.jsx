@@ -58,6 +58,10 @@ const DEAL_TABS = [
   { id: 'manage', label: 'MANAGE' },
 ]
 
+/** Fixed sheet height so Overview / Details / Trend / etc. do not resize the modal. */
+const DEAL_DETAIL_SHEET_HEIGHT =
+  'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))]'
+
 /**
  * Deal detail: overview/history/analytics tabs + manage (top-up, settle, ledger).
  */
@@ -303,10 +307,11 @@ export default function PokerStableDealDetailSheet({
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
       <div
         data-poker-stable-sheet
-        className={`relative z-10 w-full max-w-lg max-h-[92vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
+        data-poker-stable-deal-detail
+        className={`relative z-10 flex w-full max-w-lg flex-col overflow-hidden !overflow-y-hidden ${DEAL_DETAIL_SHEET_HEIGHT} ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="mb-4 flex shrink-0 items-center justify-between gap-2">
           <div className="min-w-0">
             <h3 className="truncate text-lg font-bold text-white">{deal.label || 'Deal'}</h3>
             <p className="text-xs text-zinc-500">{dealTypeLabel(deal.deal_type)}</p>
@@ -320,7 +325,7 @@ export default function PokerStableDealDetailSheet({
           </button>
         </div>
 
-        <div className="mb-4 -mx-1 flex gap-1 overflow-x-auto px-1 no-scrollbar">
+        <div className="mb-4 -mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 no-scrollbar">
           {DEAL_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -338,6 +343,7 @@ export default function PokerStableDealDetailSheet({
           ))}
         </div>
 
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
         {activeTab === 'overview' ? (
           <>
             {visiblePendingCommits.length && supabaseClient ? (
@@ -635,6 +641,7 @@ export default function PokerStableDealDetailSheet({
         ) : null}
           </>
         ) : null}
+        </div>
       </div>
 
       {periodicSettleOpen ? (

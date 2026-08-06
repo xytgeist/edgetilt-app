@@ -100,8 +100,12 @@ export default function PokerStableClosedHorseSheet({
           onClick={() => onDelete?.()}
           className="mt-6 w-full py-2 text-sm font-semibold text-rose-400 touch-manipulation disabled:opacity-50"
         >
-          {saving ? 'Deleting…' : 'Delete'}
+          {saving ? 'Deleting…' : 'Delete from Stable'}
         </button>
+        <p className="mt-1 text-center text-xs text-zinc-500">
+          Removes this stake from your carousel and Closed stakes. Does not erase the player&apos;s
+          history.
+        </p>
       </div>
     </div>
   )

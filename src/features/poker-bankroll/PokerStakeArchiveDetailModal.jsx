@@ -63,6 +63,9 @@ export default function PokerStakeArchiveDetailModal({
   perspective = 'player',
   viewerUserId = null,
   onClose,
+  /** Backer Closed stakes: soft-delete from Stable history */
+  onDelete = null,
+  deleteBusy = false,
 }) {
   if (!deal) return null
 
@@ -337,6 +340,22 @@ export default function PokerStakeArchiveDetailModal({
             })}
           </ul>
         )}
+
+        {isBackerView && onDelete ? (
+          <div className="mt-6 border-t border-zinc-800 pt-4">
+            <button
+              type="button"
+              disabled={deleteBusy}
+              onClick={() => onDelete()}
+              className="w-full rounded-2xl py-3 text-sm font-semibold text-rose-400 touch-manipulation active:bg-zinc-800/80 disabled:opacity-50"
+            >
+              {deleteBusy ? 'Deleting…' : 'Delete from Stable'}
+            </button>
+            <p className="mt-2 text-center text-xs text-zinc-500">
+              Removes this stake from your Closed stakes. Does not erase the player&apos;s history.
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   )

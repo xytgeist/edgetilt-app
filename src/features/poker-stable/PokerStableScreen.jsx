@@ -34,6 +34,7 @@ import {
 import {
   acceptSliceAsStaker,
   archiveBackerStableDeal,
+  hideBackerStableDeal,
   declineProposedDealTerms,
   declineSliceAsStaker,
   dealIdsForAcceptedBackerVisibility,
@@ -571,17 +572,48 @@ export default function PokerStableScreen({
   }
 
   async function onDeleteClosedHorse(dealId) {
-    if (!dealId) return
+    if (!supabaseClient || !userId || !dealId) return
     const deal = deals.find((d) => d.id === dealId)
     const label = deal?.label?.trim() || 'this stake'
     if (
       !window.confirm(
-        `Delete ${label}? This removes it from your carousel and moves it to Closed stakes.`,
+        `Delete ${label}? This removes it from your Stable Closed stakes. Your books and the player's history stay intact.`,
       )
     ) {
       return
     }
-    await onArchiveHorse(dealId)
+    setSaving(true)
+    setError('')
+    const hiddenAt = new Date().toISOString()
+    try {
+      const { error: err } = await hideBackerStableDeal(supabaseClient, dealId)
+      if (err) throw err
+      setSlicesByDeal((prev) => {
+        const rows = prev[dealId] || []
+        if (!rows.length) return prev
+        return {
+          ...prev,
+          [dealId]: rows.map((slice) =>
+            slice.staker_user_id === userId
+              ? {
+                  ...slice,
+                  stable_archived_at: slice.stable_archived_at || hiddenAt,
+                  stable_hidden_at: hiddenAt,
+                }
+              : slice,
+          ),
+        }
+      })
+      if (detailDealId === dealId) setDetailDealId(null)
+      if (closedHorseReviewDealId === dealId) setClosedHorseReviewDealId(null)
+      if (archiveDetailDealId === dealId) setArchiveDetailDealId(null)
+      triggerTapHapticLight()
+      await load()
+    } catch (e) {
+      setError(e?.message || 'Could not delete stake.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function onNudgePendingBacker(dealId, sliceId) {
@@ -815,55 +847,67 @@ export default function PokerStableScreen({
                 const outcomeLabel = archivedStakeOutcomeLabel(deal, slices)
                 const settleRows = dealSettlementsByDeal[deal.id] || []
                 return (
-                  <button
+                  <div
                     key={deal.id}
-                    type="button"
-                    onClick={() => {
-                      setArchiveDetailDealId(deal.id)
-                      triggerTapHapticLight()
-                    }}
                     data-poker-stake-archive-card
                     data-elevated-card="surface"
-                    className="flex w-full flex-col gap-1 rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-4 text-left touch-manipulation active:bg-zinc-800/80"
+                    className="rounded-3xl border border-zinc-800/80 bg-zinc-900/70 px-4 py-4"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="min-w-0 truncate font-semibold text-white">{playerName}</span>
-                      <span
-                        data-poker-stake-archive-outcome={outcomeLabel.toLowerCase()}
-                        className={archivedStakeOutcomeBadgeClass(outcomeLabel)}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setArchiveDetailDealId(deal.id)
+                        triggerTapHapticLight()
+                      }}
+                      className="flex w-full flex-col gap-1 text-left touch-manipulation active:opacity-90"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="min-w-0 truncate font-semibold text-white">{playerName}</span>
+                        <span
+                          data-poker-stake-archive-outcome={outcomeLabel.toLowerCase()}
+                          className={archivedStakeOutcomeBadgeClass(outcomeLabel)}
+                        >
+                          {outcomeLabel}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500">
+                        {label !== playerName ? `${label} · ` : ''}
+                        {dealTypeLabel(deal.deal_type)}
+                        {closedAt
+                          ? ` · ${new Date(closedAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}`
+                          : null}
+                      </p>
+                      <p className="text-[11px] text-zinc-500">
+                        {sessionCount} session{sessionCount === 1 ? '' : 's'} · baseline{' '}
+                        {fmtPoker$(deal.baseline_bankroll)}
+                      </p>
+                      <p
+                        data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
+                        className="text-[11px] font-semibold tabular-nums"
                       >
-                        {outcomeLabel}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-500">
-                      {label !== playerName ? `${label} · ` : ''}
-                      {dealTypeLabel(deal.deal_type)}
-                      {closedAt
-                        ? ` · ${new Date(closedAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}`
-                        : null}
-                    </p>
-                    <p className="text-[11px] text-zinc-500">
-                      {sessionCount} session{sessionCount === 1 ? '' : 's'} · baseline{' '}
-                      {fmtPoker$(deal.baseline_bankroll)}
-                    </p>
-                    <p
-                      data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
-                      className="text-[11px] font-semibold tabular-nums"
+                        {playerName} performance {fmtPoker$(sessionShareTotal)}
+                      </p>
+                      <p
+                        data-poker-pl-tone={pokerPlTone(realizedBackingNet)}
+                        className="text-[11px] font-semibold tabular-nums"
+                      >
+                        Realized backing {fmtPoker$(realizedBackingNet)}
+                        {settleRows.length <= 1 ? null : ` · ${settleRows.length} settles`}
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void onDeleteClosedHorse(deal.id)}
+                      className="mt-3 w-full rounded-xl py-2 text-xs font-semibold text-rose-400 touch-manipulation active:bg-zinc-800/80 disabled:opacity-50"
                     >
-                      {playerName} performance {fmtPoker$(sessionShareTotal)}
-                    </p>
-                    <p
-                      data-poker-pl-tone={pokerPlTone(realizedBackingNet)}
-                      className="text-[11px] font-semibold tabular-nums"
-                    >
-                      Realized backing {fmtPoker$(realizedBackingNet)}
-                      {settleRows.length <= 1 ? null : ` · ${settleRows.length} settles`}
-                    </p>
-                  </button>
+                      Delete
+                    </button>
+                  </div>
                 )
               })}
             </div>
@@ -980,6 +1024,8 @@ export default function PokerStableScreen({
           perspective="backer"
           viewerUserId={userId}
           onClose={() => setArchiveDetailDealId(null)}
+          onDelete={() => void onDeleteClosedHorse(archiveDetailDealId)}
+          deleteBusy={saving}
         />
       ) : null}
 

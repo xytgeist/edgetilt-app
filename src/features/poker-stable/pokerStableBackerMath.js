@@ -614,10 +614,19 @@ export function backerStableArchiveSlices(deal, slices = [], userId) {
   })
 }
 
+/** True when the backer soft-deleted this closed stake from Stable history. */
+export function backerStableDealIsHidden(deal, slices = [], userId) {
+  if (!deal?.id || !userId) return false
+  const mine = backerStableArchiveSlices(deal, slices, userId)
+  if (!mine.length) return false
+  return mine.every((s) => Boolean(s.stable_hidden_at))
+}
+
 /** Backer Stable carousel keeps closed stakes until manually archived (slice-level). */
 export function backerStableShowsClosedCarouselCard(deal, slices = [], userId) {
   if (!deal?.id || !userId) return false
   if (!['settled', 'closed', 'declined', 'revoked'].includes(deal.status)) return false
+  if (backerStableDealIsHidden(deal, slices, userId)) return false
   const mine = backerStableArchiveSlices(deal, slices, userId)
   if (!mine.length && deal.staker_user_id !== userId) return false
   if (!mine.length) return deal.staker_user_id === userId
@@ -659,6 +668,7 @@ export function partitionBackerDeals(deals, slicesByDeal, userId) {
     }
 
     if (['settled', 'closed', 'declined', 'revoked'].includes(deal.status)) {
+      if (backerStableDealIsHidden(deal, dealSlices, userId)) continue
       if (backerStableShowsClosedCarouselCard(deal, dealSlices, userId)) {
         active.push(deal)
       } else {

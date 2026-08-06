@@ -100,7 +100,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
     items: [
       {
         id: 'D1',
-        label: 'Either side: Record periodic settle (no reduction first).',
+        label: 'Either side: Periodic settlement (no reduction first).',
       },
       {
         id: 'D2',
@@ -130,7 +130,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
       },
       {
         id: 'E2',
-        label: 'UI: Same reduction preview as standalone; Record periodic settle button.',
+        label: 'UI: Same reduction preview as standalone; Periodic settlement button.',
       },
       {
         id: 'E3',
@@ -152,7 +152,7 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
     items: [
       {
         id: 'F1',
-        label: 'Either side: Record close stake.',
+        label: 'Either side: Close stake.',
       },
       {
         id: 'F2',

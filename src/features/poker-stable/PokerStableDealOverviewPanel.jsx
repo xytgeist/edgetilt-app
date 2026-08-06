@@ -230,7 +230,7 @@ export default function PokerStableDealOverviewPanel({
                 onClick={onOpenPeriodicSettle}
                 className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white touch-manipulation disabled:opacity-50"
               >
-                Record periodic settle
+                Periodic settlement
               </button>
             ) : null}
             <button
@@ -241,7 +241,7 @@ export default function PokerStableDealOverviewPanel({
                 showPeriodicSettle ? 'bg-zinc-800 text-zinc-100' : 'bg-emerald-600 text-white'
               }`}
             >
-              Record close stake
+              Close stake
             </button>
           </div>
         ) : null}

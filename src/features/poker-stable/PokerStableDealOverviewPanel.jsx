@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import BankrollSparkline from '../../components/BankrollSparkline.jsx'
+import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   backerSliceEstimatedShare,
@@ -62,6 +63,8 @@ export default function PokerStableDealOverviewPanel({
   profitUp = 0,
   onOpenPeriodicSettle,
   onOpenCloseStake,
+  showArchive = false,
+  onArchive = null,
 }) {
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? deal?.baseline_bankroll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
@@ -253,6 +256,23 @@ export default function PokerStableDealOverviewPanel({
               }`}
             >
               Close stake
+            </button>
+          </div>
+        ) : null}
+
+        {showArchive ? (
+          <div className={`mt-3 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}>
+            <button
+              type="button"
+              disabled={saving}
+              data-poker-stable-archive-btn
+              onClick={() => {
+                triggerTapHapticLight()
+                onArchive?.()
+              }}
+              className="w-full rounded-3xl bg-amber-600 py-3 text-base font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"
+            >
+              Archive stake
             </button>
           </div>
         ) : null}

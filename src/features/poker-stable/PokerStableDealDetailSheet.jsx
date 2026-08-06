@@ -371,21 +371,6 @@ export default function PokerStableDealDetailSheet({
           </button>
         </div>
 
-        {showArchive ? (
-          <button
-            type="button"
-            disabled={saving}
-            data-poker-stable-archive-btn
-            onClick={() => {
-              triggerTapHapticLight()
-              onArchive?.()
-            }}
-            className="mb-4 w-full shrink-0 rounded-2xl bg-amber-600 py-3 text-sm font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"
-          >
-            Archive stake
-          </button>
-        ) : null}
-
         {manageOnly ? null : (
           <div className="mb-4 -mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 no-scrollbar">
             {DEAL_TABS.map((tab) => (
@@ -477,6 +462,8 @@ export default function PokerStableDealDetailSheet({
                 if (settleBlockedPending) return
                 setCloseStakeOpen(true)
               }}
+              showArchive={showArchive}
+              onArchive={onArchive}
             />
           </>
         ) : null}

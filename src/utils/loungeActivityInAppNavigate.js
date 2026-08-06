@@ -14,6 +14,15 @@ const POKER_STABLE_TAB_ONLY_EVENT_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE,
 ])
 
+/**
+ * Stable deep links that keep `stableDeal` for carousel focus but must not open Overview.
+ * PokerStableScreen focuses the pending horse invite card instead.
+ */
+export const POKER_STABLE_CAROUSEL_FOCUS_EVENT_TYPES = new Set([
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE,
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE,
+])
+
 /** Settle / commit sync: stakee → Bankroll hero; backers → Stable manager. */
 const POKER_STABLE_STAKE_ROLE_ROUTED_EVENT_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED,

@@ -145,6 +145,8 @@ export default function PokerStableScreen({
   const [closedHorseReviewDealId, setClosedHorseReviewDealId] = useState(
     /** @type {string | null} */ (null),
   )
+  /** Deep-link focus for pending slice invite / nudge (carousel, not Overview sheet). */
+  const [focusHorseDealId, setFocusHorseDealId] = useState(/** @type {string | null} */ (null))
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -295,8 +297,20 @@ export default function PokerStableScreen({
     backerSliceOnboardingSliceId || readPokerStableBackerOnboardingSliceId()
 
   useEffect(() => {
-    if (!openStableDealId || loading) return
+    if (!openStableDealId || loading || !userId) return
     if (activeBackerOnboardingDealId && activeBackerOnboardingSliceId) {
+      onOpenStableDealConsumed?.()
+      return
+    }
+    const dealSlices = slicesByDeal[openStableDealId] || []
+    const myPendingInvite = dealSlices.some(
+      (s) => s.staker_user_id === userId && s.status === 'pending',
+    )
+    // Slice invite / nudge: land on Stable with the horse offer card focused.
+    if (myPendingInvite) {
+      setDetailDealId(null)
+      setFocusHorseDealId(openStableDealId)
+      setActiveTab('overview')
       onOpenStableDealConsumed?.()
       return
     }
@@ -305,6 +319,8 @@ export default function PokerStableScreen({
   }, [
     openStableDealId,
     loading,
+    userId,
+    slicesByDeal,
     onOpenStableDealConsumed,
     activeBackerOnboardingDealId,
     activeBackerOnboardingSliceId,
@@ -790,6 +806,8 @@ export default function PokerStableScreen({
               profilesById={profilesById}
               userId={userId}
               partyLabel={partyLabel}
+              focusDealId={focusHorseDealId}
+              onFocusDealIdChange={setFocusHorseDealId}
               onOpenDeal={openDealDetail}
               onRevoke={onRevoke}
               onAcceptSlice={onAcceptSlice}

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import PokerBankrollHeroCarousel from '../poker-bankroll/PokerBankrollHeroCarousel.jsx'
 import BankrollSparkline from '../../components/BankrollSparkline.jsx'
 import { FileText } from 'lucide-react'
@@ -33,6 +34,8 @@ export default function PokerStableHorseCarousel({
   profilesById = {},
   userId,
   partyLabel,
+  focusDealId = null,
+  onFocusDealIdChange = null,
   onOpenDeal,
   onRevoke,
   onAcceptSlice,
@@ -47,16 +50,34 @@ export default function PokerStableHorseCarousel({
   onArchiveHorse,
   onOpenClosedHorseReview,
 }) {
+  const slides = deals.map((d) => ({ id: d.id }))
+  const slideIdsKey = slides.map((s) => s.id).join('|')
+  const [activeId, setActiveId] = useState(() => focusDealId || slides[0]?.id || null)
+
+  useEffect(() => {
+    if (!focusDealId || !slideIdsKey) return
+    const ids = slideIdsKey.split('|')
+    if (ids.includes(focusDealId)) setActiveId(focusDealId)
+  }, [focusDealId, slideIdsKey])
+
+  useEffect(() => {
+    if (!slideIdsKey) return
+    const ids = slideIdsKey.split('|')
+    if (!activeId || !ids.includes(activeId)) setActiveId(ids[0])
+  }, [slideIdsKey, activeId])
+
   if (!deals.length) return null
 
   const labelScope = labelDeals.length ? labelDeals : deals
-  const slides = deals.map((d) => ({ id: d.id }))
 
   return (
     <PokerBankrollHeroCarousel
       slides={slides}
-      activeId={slides[0]?.id}
-      onActiveIdChange={() => {}}
+      activeId={activeId || slides[0]?.id}
+      onActiveIdChange={(id) => {
+        setActiveId(id)
+        onFocusDealIdChange?.(id)
+      }}
       renderSlide={(slide, slideIndex) => {
         const dealIndex = deals.findIndex((d) => d.id === slide.id)
         const deal = dealIndex >= 0 ? deals[dealIndex] : null

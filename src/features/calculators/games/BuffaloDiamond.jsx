@@ -37,6 +37,9 @@ import {
   AVG_PAY_PER_BANKED_SPIN,
   DEFAULT_OVERALL_RTP,
   REFERENCE_OVERALL_RTP,
+  tiersForVariant,
+  resolveTierForVariant,
+  tierDisplayForVariant,
 } from './buffaloDiamondCalc.js'
 
 export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLogbook = null, logPlayLocked = false, onRequireSubscribe = null, playLogsRemaining = null, freemiumUsageLoading = false }) {
@@ -127,8 +130,8 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
 
   const playTargetKey = useMemo(() => resolveTargetTier(meterValues, profile), [meterValues, profile])
   const playTargetTier = useMemo(
-    () => BUFFALO_DIAMOND_TIERS.find((tier) => tier.key === playTargetKey) ?? BUFFALO_DIAMOND_TIERS[0],
-    [playTargetKey],
+    () => resolveTierForVariant(playTargetKey, variantKey),
+    [playTargetKey, variantKey],
   )
   const pathRtpPct = useMemo(() => playPathRtpPct(meterValues, profile), [meterValues, profile])
   const isCombinedPlay = useMemo(
@@ -141,14 +144,12 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
   )
   const comboEffectiveTier = useMemo(() => {
     if (!comboCascade) return playTargetTier
-    return (
-      BUFFALO_DIAMOND_TIERS.find((tier) => tier.key === comboCascade.effectiveTargetKey) ?? playTargetTier
-    )
-  }, [comboCascade, playTargetTier])
+    return resolveTierForVariant(comboCascade.effectiveTargetKey, variantKey)
+  }, [comboCascade, playTargetTier, variantKey])
   const comboLowestTier = useMemo(() => {
     if (!comboCascade) return null
-    return BUFFALO_DIAMOND_TIERS.find((tier) => tier.key === comboCascade.lowestKey) ?? null
-  }, [comboCascade])
+    return resolveTierForVariant(comboCascade.lowestKey, variantKey)
+  }, [comboCascade, variantKey])
   const isIndeterminateCombo = useMemo(
     () => isIndeterminateComboEv(meterValues, profile),
     [meterValues, profile],
@@ -186,14 +187,16 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
   )
   const isAlreadyPositive = verdict === 'plus-ev'
 
+  const displayTiers = useMemo(() => tiersForVariant(variantKey), [variantKey])
+
   const tierAnalysis = useMemo(
     () =>
-      BUFFALO_DIAMOND_TIERS.map((tier) => ({
+      displayTiers.map((tier) => ({
         tier,
         current: meterValues[tier.key],
         playLine: breakevenMap[tier.key],
       })),
-    [meterValues, breakevenMap],
+    [displayTiers, meterValues, breakevenMap],
   )
 
   const calculate = useCallback(() => {
@@ -352,7 +355,7 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
                 Unless you know what these indicate and have 100s of thousands of spins tabulated, don&apos;t change
                 these settings.
               </p>
-              {BUFFALO_DIAMOND_TIERS.map((tier) => (
+              {displayTiers.map((tier) => (
                 <div key={tier.key} className="rounded-xl bg-gray-800 p-3">
                   <label className={`mb-1 block text-[10px] uppercase tracking-wide ${tier.text}`}>
                     {tier.shortLabel} multiplier
@@ -501,9 +504,11 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
               Avg bonus timing (@ {betLevelLabel})
             </div>
             <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-              {tierTiming.map(({ tier, spinsToBonusCold, spinsPerFgIncrement }) => (
+              {tierTiming.map(({ tier, spinsToBonusCold, spinsPerFgIncrement }) => {
+                const displayTier = tierDisplayForVariant(tier, variantKey)
+                return (
                 <div key={tier.key}>
-                  <div className={`font-semibold ${tier.text}`}>{tier.shortLabel}</div>
+                  <div className={`font-semibold ${displayTier.text}`}>{displayTier.shortLabel}</div>
                   <div className="mt-1 tabular-nums text-gray-300">
                     {spinsToBonusCold.toLocaleString()} spins to hit
                   </div>
@@ -511,7 +516,8 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
                     {spinsPerFgIncrement.toFixed(1)} spins/+1 FG
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -546,7 +552,9 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
             buffaloDiamondMeters: {
               Green: meterValues.green,
               Blue: meterValues.blue,
-              Gold: meterValues.gold,
+              ...(variantKey === 'extreme'
+                ? { Purple: meterValues.gold }
+                : { Gold: meterValues.gold }),
             },
           }}
           accentClass="text-violet-400"

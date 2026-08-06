@@ -120,7 +120,7 @@ function NeedHelpModal({ playLabel, maxExpectedLoss, riskBudget, playDetails, ex
       }
       if (playDetails.stackUpTarget) lines.push(`Max exposure target: ${playDetails.stackUpTarget}`)
       if (playDetails.buffaloDiamondMeters) {
-        for (const label of ['Green', 'Blue', 'Gold']) {
+        for (const label of Object.keys(playDetails.buffaloDiamondMeters)) {
           const v = playDetails.buffaloDiamondMeters[label]
           if (v != null) lines.push(`${label} FG: ${Number(v).toLocaleString()}`)
         }
@@ -211,7 +211,7 @@ function NeedHelpModal({ playLabel, maxExpectedLoss, riskBudget, playDetails, ex
                 </div>
               )}
               {playDetails.buffaloDiamondMeters &&
-                ['Green', 'Blue', 'Gold'].map((label) => {
+                Object.keys(playDetails.buffaloDiamondMeters).map((label) => {
                   const v = playDetails.buffaloDiamondMeters[label]
                   if (v == null) return null
                   return (

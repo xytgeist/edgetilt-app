@@ -4280,6 +4280,12 @@ html.light [data-calc="buffalo-diamond"] .text-sky-400 {
 html.light [data-calc="buffalo-diamond"] .text-amber-400 {
   color: #d97706;
 }
+html.light [data-calc="buffalo-diamond"] .text-purple-400 {
+  color: #9333ea;
+}
+html.light [data-calc="buffalo-diamond"] .accent-purple-500 {
+  accent-color: #9333ea;
+}
 
 html.light [data-calc="buffalo-diamond"] .text-red-400 {
   color: #dc2626;

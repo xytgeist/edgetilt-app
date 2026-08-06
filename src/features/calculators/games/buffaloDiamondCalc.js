@@ -105,6 +105,39 @@ export const BUFFALO_DIAMOND_TIERS = [
   },
 ]
 
+/**
+ * Extreme cabinet uses Purple 4× labels/colors instead of Gold 4× (internal tier key stays `gold`).
+ * @param {BuffaloDiamondTier} tier
+ * @param {BuffaloDiamondVariantKey} [variantKey='diamond']
+ */
+export function tierDisplayForVariant(tier, variantKey = 'diamond') {
+  if (tier.key === 'gold' && variantKey === 'extreme') {
+    return {
+      ...tier,
+      label: 'Purple 4×',
+      shortLabel: '4× Purple',
+      accent: 'purple',
+      text: 'text-purple-400',
+      sliderAccent: 'accent-purple-500',
+    }
+  }
+  return tier
+}
+
+/** @param {BuffaloDiamondVariantKey} [variantKey='diamond'] */
+export function tiersForVariant(variantKey = 'diamond') {
+  return BUFFALO_DIAMOND_TIERS.map((tier) => tierDisplayForVariant(tier, variantKey))
+}
+
+/**
+ * @param {TierKey} tierKey
+ * @param {BuffaloDiamondVariantKey} [variantKey='diamond']
+ */
+export function resolveTierForVariant(tierKey, variantKey = 'diamond') {
+  const tier = BUFFALO_DIAMOND_TIERS.find((t) => t.key === tierKey) ?? BUFFALO_DIAMOND_TIERS[0]
+  return tierDisplayForVariant(tier, variantKey)
+}
+
 export const METER_RESET = 7
 
 /** Profile base-game values and tier decimals are calibrated at this overall paytable RTP. */

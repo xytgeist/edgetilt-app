@@ -123,6 +123,11 @@ export const POKER_STABLE_SMOKE_SECTIONS = [
         label:
           'Counterparty with pending settle Commit: Periodic settlement / Close stake disabled with “Awaiting settlement · Commit the current settlement first.”',
       },
+      {
+        id: 'D7',
+        label:
+          'Initiator settles twice before Commit: counterparty Needs attn shows “2 settlements” + date range; Overview queue oldest-first with Commit all.',
+      },
     ],
   },
   {

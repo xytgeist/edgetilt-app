@@ -333,16 +333,38 @@ export function stakeeSkipsBackerCommitSync(deal, userId, commit = null) {
   return true
 }
 
-/** Pending periodic/close settle commit on a deal (stakee or backer sync inbox). */
+/** @param {string | null | undefined} kind */
+export function isSettleCommitKind(kind) {
+  return kind === 'periodic_settle' || kind === 'close_settle'
+}
+
+/** Short date for settle queue / Needs attn (e.g. Aug 5, 2026). */
+export function formatPokerStableCommitDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/**
+ * Pending periodic/close settle commits on a deal, oldest first (commit queue order).
+ * @returns {object[]}
+ */
+export function pendingSettleCommitsForDeal(commits, dealId) {
+  if (!dealId) return []
+  return (commits || [])
+    .filter((row) => row.deal_id === dealId && isSettleCommitKind(row.event_kind))
+    .slice()
+    .sort((a, b) => {
+      const ta = new Date(a.created_at || 0).getTime()
+      const tb = new Date(b.created_at || 0).getTime()
+      return ta - tb
+    })
+}
+
+/** Head of the settle Commit queue (oldest unsynced settle), or null. */
 export function pendingSettleCommitForDeal(commits, dealId) {
-  if (!dealId) return null
-  return (
-    (commits || []).find(
-      (row) =>
-        row.deal_id === dealId &&
-        (row.event_kind === 'periodic_settle' || row.event_kind === 'close_settle'),
-    ) || null
-  )
+  return pendingSettleCommitsForDeal(commits, dealId)[0] || null
 }
 
 /** Shown when Periodic settlement / Close stake are blocked pending Commit. */
@@ -351,7 +373,7 @@ export const SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE =
 
 /** True when this viewer still owes a settle Commit on the deal. */
 export function settleBlockedByPendingCommit(commits, dealId) {
-  return Boolean(pendingSettleCommitForDeal(commits, dealId))
+  return pendingSettleCommitsForDeal(commits, dealId).length > 0
 }
 
 /** @deprecated Use pendingSettleCommitForDeal */

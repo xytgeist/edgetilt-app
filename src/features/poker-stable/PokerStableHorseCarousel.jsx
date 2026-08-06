@@ -14,7 +14,7 @@ import {
   backerSliceInviteSummaryLine,
   dealStakeeDisplayName,
   pendingBackerNudgeTargetsForActiveBacker,
-  pendingSettleCommitForDeal,
+  pendingSettleCommitsForDeal,
   sliceCounterpartyDisplayName,
   stakeHorseCardStatusLabel,
   stakeHorseCardStatusTone,
@@ -83,7 +83,14 @@ export default function PokerStableHorseCarousel({
           dealSlices,
           userId,
         )
-        const pendingSettleCommit = pendingSettleCommitForDeal(pendingCommits, deal.id)
+        const pendingSettleQueue = pendingSettleCommitsForDeal(pendingCommits, deal.id)
+        const pendingSettleCommit = pendingSettleQueue[0] || null
+        const pendingSettleCount = pendingSettleQueue.length
+        const oldestSettleAt = pendingSettleQueue[0]?.created_at || null
+        const newestSettleAt =
+          pendingSettleCount > 1
+            ? pendingSettleQueue[pendingSettleCount - 1]?.created_at || null
+            : null
         const closedUnarchived = backerStableShowsClosedCarouselCard(deal, dealSlices, userId)
         const statusLabel = closedUnarchived
           ? 'Closed'
@@ -186,6 +193,9 @@ export default function PokerStableHorseCarousel({
                     >
                       <PokerStableSettleNeedsAttnBanner
                         counterpartyName={dealStakeeDisplayName(deal, profilesById)}
+                        settleCount={pendingSettleCount}
+                        oldestSettleAt={oldestSettleAt}
+                        newestSettleAt={newestSettleAt}
                         onReview={() => onOpenDeal?.(deal.id)}
                       />
                     </div>
@@ -238,6 +248,9 @@ export default function PokerStableHorseCarousel({
                 {pendingSettleCommit ? (
                   <PokerStableSettleNeedsAttnBanner
                     counterpartyName={dealStakeeDisplayName(deal, profilesById)}
+                    settleCount={pendingSettleCount}
+                    oldestSettleAt={oldestSettleAt}
+                    newestSettleAt={newestSettleAt}
                     onReview={() => onOpenDeal?.(deal.id)}
                   />
                 ) : (

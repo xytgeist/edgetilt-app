@@ -62,6 +62,7 @@ import {
   stakeeBankrollShowsClosedCarouselCard,
   stakeeBankrollTermsOpensManageSheet,
   stakeeDisplayDealRoll,
+  pendingSettleCommitsForDeal,
   stakeePendingSettleCommitForDeal,
   stakeeSkipsBackerCommitSync,
   sliceCounterpartyDisplayName,
@@ -1450,7 +1451,8 @@ export default function PokerBankrollTracker({
         count: counted,
       }
       const scopeDeal = onStake ? stakeeDeals.find((d) => d.id === scopeId) ?? null : null
-      const pendingSettle = stakeePendingSettleCommitForDeal(pendingStakeCommits, scopeId)
+      const pendingSettleQueue = pendingSettleCommitsForDeal(pendingStakeCommits, scopeId)
+      const pendingSettle = pendingSettleQueue[0] || null
       let scopeRoll = onStake
         ? stakeeDisplayDealRoll({
             deal: scopeDeal,
@@ -1499,6 +1501,12 @@ export default function PokerBankrollTracker({
         overallBankroll: scopeRoll,
         deal: scopeDeal,
         pendingSettleCommit: pendingSettle,
+        pendingSettleCount: pendingSettleQueue.length,
+        pendingSettleOldestAt: pendingSettleQueue[0]?.created_at || null,
+        pendingSettleNewestAt:
+          pendingSettleQueue.length > 1
+            ? pendingSettleQueue[pendingSettleQueue.length - 1]?.created_at || null
+            : null,
       }
     }
     /** @type {Record<string, ReturnType<typeof buildScopeHero>>} */
@@ -3528,6 +3536,9 @@ export default function PokerBankrollTracker({
                                 hero.deal,
                                 stableProfilesById,
                               )}
+                              settleCount={hero.pendingSettleCount || 1}
+                              oldestSettleAt={hero.pendingSettleOldestAt}
+                              newestSettleAt={hero.pendingSettleNewestAt}
                               onReview={() =>
                                 setCommitSyncId(String(hero.pendingSettleCommit.commit_id))
                               }
@@ -4308,10 +4319,19 @@ export default function PokerBankrollTracker({
           userId={userId}
           commitId={commitSyncId}
           onClose={() => setCommitSyncId(null)}
-          onSynced={() => {
+          onSynced={({ dealId }) => {
             void (async () => {
               await loadData({ silent: true })
-              setCommitSyncId(null)
+              const { commits } = await loadPendingCommits(supabaseClient)
+              const next = pendingSettleCommitsForDeal(
+                (commits || []).filter((row) => {
+                  const d = stakeeDealsById[row.deal_id] || stakeeDeals.find((x) => x.id === row.deal_id)
+                  return d && !stakeeSkipsBackerCommitSync(d, userId, row)
+                }),
+                dealId,
+              )[0]
+              if (next?.commit_id) setCommitSyncId(String(next.commit_id))
+              else setCommitSyncId(null)
             })()
           }}
           onError={setError}

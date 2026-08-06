@@ -1,13 +1,30 @@
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import { formatPokerStableCommitDate } from './pokerStableTerms.js'
 
 /**
  * Pending periodic/close settle review banner (player stake card + backer horse card).
  */
 export default function PokerStableSettleNeedsAttnBanner({
   counterpartyName = 'Counterparty',
+  settleCount = 1,
+  /** Oldest pending settle created_at (ISO) */
+  oldestSettleAt = null,
+  /** Newest pending settle created_at (ISO) when count > 1 */
+  newestSettleAt = null,
   onReview,
   className = '',
 }) {
+  const count = Math.max(1, Number(settleCount) || 1)
+  const oldestLabel = formatPokerStableCommitDate(oldestSettleAt)
+  const newestLabel = formatPokerStableCommitDate(newestSettleAt)
+  const dateBit =
+    count > 1 && oldestLabel && newestLabel
+      ? `${oldestLabel} – ${newestLabel}`
+      : oldestLabel || newestLabel || ''
+  const settlePhrase =
+    count === 1 ? 'a settlement' : `${count} settlements`
+  const datePhrase = dateBit ? ` (${dateBit})` : ''
+
   return (
     <div
       data-poker-stake-needs-attn
@@ -15,7 +32,8 @@ export default function PokerStableSettleNeedsAttnBanner({
     >
       <p className="text-xs leading-snug text-amber-100/95">
         <span className="font-bold uppercase tracking-wide text-amber-300/90">Needs attn:</span>{' '}
-        {counterpartyName} logged a settlement. Open the stake to review and commit.
+        {counterpartyName} logged {settlePhrase}
+        {datePhrase}. Open the stake to review and commit.
       </p>
       <button
         type="button"

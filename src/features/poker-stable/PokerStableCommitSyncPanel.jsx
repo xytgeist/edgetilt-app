@@ -9,7 +9,7 @@ import {
   viewerBackingSlice,
 } from './pokerStableDealHistory.js'
 import { stableNum } from './pokerStableMath.js'
-import { stakeeSkipsBackerCommitSync } from './pokerStableTerms.js'
+import { formatPokerStableCommitDate, stakeeSkipsBackerCommitSync } from './pokerStableTerms.js'
 
 /**
  * Commit sync body (settle credit + Commit). Used inline on deal Overview and inside the global modal.
@@ -20,6 +20,10 @@ export default function PokerStableCommitSyncPanel({
   userId,
   commitId,
   variant = 'inline',
+  /** 1-based index when shown in a settle Commit queue */
+  queueIndex = null,
+  queueTotal = null,
+  settleDateLabel = '',
   saving: savingProp = false,
   onSavingChange,
   onClose,
@@ -170,9 +174,17 @@ export default function PokerStableCommitSyncPanel({
     : isSettleCommit
       ? 'Periodic settlement'
       : 'Sync stake update'
+  const queueLabel =
+    queueIndex != null && queueTotal != null && queueTotal > 1
+      ? `${queueIndex} of ${queueTotal}`
+      : ''
+  const dateBit = settleDateLabel || formatPokerStableCommitDate(commit?.created_at)
+  const titleLine = [queueLabel, title, dateBit].filter(Boolean).join(' · ')
   const intro =
     isSettleCommit && !alreadyMine
-      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}. Review the details, then commit to update your books.`
+      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}${
+          dateBit ? ` (${dateBit})` : ''
+        }. Review the details, then commit to update your books.`
       : `${actorLabel} recorded ${pokerStableCommitEventLabel(commit?.event_kind)} on ${deal?.label?.trim() || 'this stake'}.`
 
   const inlineShell =
@@ -183,7 +195,7 @@ export default function PokerStableCommitSyncPanel({
   return (
     <div data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined} className={inlineShell}>
       {variant === 'inline' ? (
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-amber-300/90">{title}</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-amber-300/90">{titleLine}</p>
       ) : null}
 
       <p className="mb-3 text-sm leading-relaxed text-zinc-300">{intro}</p>

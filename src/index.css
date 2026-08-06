@@ -6216,6 +6216,20 @@ html.light [data-poker-stable-attention-sheet] .bg-zinc-900\/60 {
   background-color: #fafafa !important;
 }
 
+html.light [data-poker-stable-settle-commit-queue-header] {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+}
+html.light [data-poker-stable-settle-commit-queue-header] .text-amber-300\/90 {
+  color: #b45309 !important;
+}
+html.light [data-poker-stable-settle-commit-queue-header] .text-amber-100\/80 {
+  color: #92400e !important;
+}
+html.light [data-poker-stable-settle-commit-queue-header] .text-zinc-500 {
+  color: #71717a !important;
+}
+
 html.light [data-poker-stable-commit-sync-modal] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;

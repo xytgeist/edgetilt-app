@@ -23,6 +23,7 @@ import {
   sliceDisplayName,
 } from './pokerStableApi.js'
 import PokerStableCommitSyncPanel from './PokerStableCommitSyncPanel.jsx'
+import PokerStableSettleCommitQueue from './PokerStableSettleCommitQueue.jsx'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
 import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
 import PokerStableDealOverviewPanel from './PokerStableDealOverviewPanel.jsx'
@@ -43,6 +44,8 @@ import {
   canProposeSettleStake,
   dealCanPeriodicSettle,
   dealHasMakeup,
+  isSettleCommitKind,
+  pendingSettleCommitsForDeal,
   SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE,
   settleBlockedByPendingCommit,
   stakeeSkipsBackerCommitSync,
@@ -153,6 +156,18 @@ export default function PokerStableDealDetailSheet({
   const visiblePendingCommits = useMemo(
     () => (skipStakeeCommitSync ? [] : pendingCommits),
     [pendingCommits, skipStakeeCommitSync],
+  )
+  // Settle commits always need player Commit, even on backer-initiated stakes (skip only top-up/reduce).
+  const settleCommitQueue = useMemo(
+    () => pendingSettleCommitsForDeal(pendingCommits, deal?.id),
+    [pendingCommits, deal?.id],
+  )
+  const nonSettlePendingCommits = useMemo(
+    () =>
+      visiblePendingCommits.filter(
+        (row) => row.deal_id === deal?.id && !isSettleCommitKind(row.event_kind),
+      ),
+    [visiblePendingCommits, deal?.id],
   )
   const canRecordEvents = userCanRecordDealEvent(deal, slices, userId)
   const canProposeSettleBase = canProposeSettleStake(deal, slices, { userId, hasProposal: false })
@@ -381,9 +396,23 @@ export default function PokerStableDealDetailSheet({
         >
         {activeTab === 'overview' ? (
           <>
-            {visiblePendingCommits.length && supabaseClient ? (
+            {settleCommitQueue.length && supabaseClient ? (
+              <PokerStableSettleCommitQueue
+                supabaseClient={supabaseClient}
+                userId={userId}
+                settleCommits={settleCommitQueue}
+                saving={saving}
+                onSavingChange={onSavingChange}
+                onSynced={async () => {
+                  await onRefresh()
+                  await loadLedger()
+                }}
+                onError={onError}
+              />
+            ) : null}
+            {nonSettlePendingCommits.length && supabaseClient ? (
               <div className="space-y-3">
-                {visiblePendingCommits.map((row) => (
+                {nonSettlePendingCommits.map((row) => (
                   <PokerStableCommitSyncPanel
                     key={row.commit_id}
                     variant="inline"
@@ -455,6 +484,20 @@ export default function PokerStableDealDetailSheet({
 
         {activeTab === 'manage' ? (
           <>
+        {manageOnly && settleCommitQueue.length && supabaseClient ? (
+          <PokerStableSettleCommitQueue
+            supabaseClient={supabaseClient}
+            userId={userId}
+            settleCommits={settleCommitQueue}
+            saving={saving}
+            onSavingChange={onSavingChange}
+            onSynced={async () => {
+              await onRefresh()
+              await loadLedger()
+            }}
+            onError={onError}
+          />
+        ) : null}
         <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">Slices</h4>
         <div className="mb-4 space-y-2">
           {slices.map((slice) => {

@@ -21,6 +21,7 @@ import {
   readPokerStableBackerOnboardingSliceId,
 } from './pokerStableBackerOnboarding.js'
 import {
+  backerStableDealDisplayLabel,
   backerStableShowsClosedCarouselCard,
   computeBackerPortfolioPerformanceMetrics,
   computeBackerPortfolioTrendChart,
@@ -587,12 +588,25 @@ export default function PokerStableScreen({
   }
 
   async function onArchiveHorse(dealId) {
-    if (!supabaseClient) return
+    if (!supabaseClient || !userId) return
     setSaving(true)
     setError('')
+    const archivedAt = new Date().toISOString()
     try {
       const { error: err } = await archiveBackerStableDeal(supabaseClient, dealId)
       if (err) throw err
+      setSlicesByDeal((prev) => {
+        const rows = prev[dealId] || []
+        if (!rows.length) return prev
+        return {
+          ...prev,
+          [dealId]: rows.map((slice) =>
+            slice.staker_user_id === userId
+              ? { ...slice, stable_archived_at: archivedAt }
+              : slice,
+          ),
+        }
+      })
       if (detailDealId === dealId) setDetailDealId(null)
       if (closedHorseReviewDealId === dealId) setClosedHorseReviewDealId(null)
       triggerTapHapticLight()
@@ -800,6 +814,7 @@ export default function PokerStableScreen({
           ) : (
             <PokerStableHorseCarousel
               deals={activeDeals}
+              labelDeals={horseDeals}
               slicesByDeal={slicesByDeal}
               bankrollByDeal={bankrollByDealWithSessions}
               statsByDeal={statsByDeal}
@@ -839,7 +854,7 @@ export default function PokerStableScreen({
                   (s) => s.deal_id === deal.id && s.status !== 'active',
                 ).length
                 const closedAt = deal.settled_at || deal.updated_at || deal.created_at
-                const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+                const label = backerStableDealDisplayLabel(deal, horseDeals)
                 const playerName = partyLabel(deal, 'staker')
                 const { total: realizedBackingNet } = archivedStakeBackerEconomicsBreakdown({
                   deal,

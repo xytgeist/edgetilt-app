@@ -1,4 +1,4 @@
-import { roundMoney, stakeDealIsLiveForStakee } from './pokerStableMath.js'
+import { dealTypeLabel, roundMoney, stakeDealIsLiveForStakee } from './pokerStableMath.js'
 import { pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
 
 /**
@@ -620,8 +620,26 @@ export function backerStableShowsClosedCarouselCard(deal, slices = [], userId) {
   if (!['settled', 'closed', 'declined', 'revoked'].includes(deal.status)) return false
   const mine = backerStableArchiveSlices(deal, slices, userId)
   if (!mine.length && deal.staker_user_id !== userId) return false
-  if (!mine.length) return true
+  if (!mine.length) return deal.staker_user_id === userId
   return mine.some((s) => !s.stable_archived_at)
+}
+
+/** Disambiguate duplicate stake labels (e.g. repeated test deals) with created date. */
+export function backerStableDealDisplayLabel(deal, deals = []) {
+  const base = deal?.label?.trim() || dealTypeLabel(deal?.deal_type) || 'Cash backing'
+  const normalized = base.toLowerCase()
+  const dupes = (deals || []).filter((row) => {
+    const other = row?.label?.trim() || dealTypeLabel(row?.deal_type) || 'Cash backing'
+    return other.toLowerCase() === normalized
+  })
+  if (dupes.length <= 1) return base
+  const createdAt = deal?.created_at
+  if (!createdAt) return base
+  const stamp = new Date(createdAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+  return `${base} · ${stamp}`
 }
 
 export function partitionBackerDeals(deals, slicesByDeal, userId) {

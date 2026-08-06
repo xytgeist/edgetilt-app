@@ -939,6 +939,47 @@ export async function requestBackingDeal(supabase, args) {
   }
 
   if (!deal) {
+    let revokedQuery = supabase
+      .from('poker_stable_deals')
+      .select('id')
+      .eq('staker_user_id', stakerUserId)
+      .eq('status', 'revoked')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+    if (stakeeUserId) {
+      revokedQuery = revokedQuery.eq('stakee_user_id', stakeeUserId)
+    } else {
+      revokedQuery = revokedQuery.is('stakee_user_id', null).ilike('stakee_guest_label', guestLabel)
+    }
+    const trimmedLabel = label?.trim() || ''
+    if (trimmedLabel) {
+      revokedQuery = revokedQuery.ilike('label', trimmedLabel)
+    }
+    const { data: revokedRows, error: revokedFindErr } = await revokedQuery
+    if (revokedFindErr) return { deal: null, error: revokedFindErr }
+    const revokedId = revokedRows?.[0]?.id
+    if (revokedId) {
+      const { data: reused, error: reuseErr } = await supabase
+        .from('poker_stable_deals')
+        .update({
+          ...dealFields,
+          status: 'pending',
+          responded_at: null,
+        })
+        .eq('id', revokedId)
+        .select(DEAL_SELECT)
+        .single()
+      if (reuseErr) return { deal: null, error: reuseErr }
+      const { error: delErr } = await supabase
+        .from('poker_stable_deal_slices')
+        .delete()
+        .eq('deal_id', revokedId)
+      if (delErr) return { deal: null, error: delErr }
+      deal = reused
+    }
+  }
+
+  if (!deal) {
     const { data: inserted, error: dErr } = await supabase
       .from('poker_stable_deals')
       .insert(dealFields)

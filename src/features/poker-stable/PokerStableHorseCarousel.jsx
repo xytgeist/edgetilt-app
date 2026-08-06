@@ -9,7 +9,7 @@ import {
 import { dealTypeLabel } from './pokerStableMath.js'
 import PokerStableSettleNeedsAttnBanner from './PokerStableSettleNeedsAttnBanner.jsx'
 import PokerStableClosedHorseHeroBanner from './PokerStableClosedHorseHeroBanner.jsx'
-import { backerStableShowsClosedCarouselCard } from './pokerStableBackerMath.js'
+import { backerStableDealDisplayLabel, backerStableShowsClosedCarouselCard } from './pokerStableBackerMath.js'
 import {
   backerSliceInviteSummaryLine,
   dealStakeeDisplayName,
@@ -26,6 +26,7 @@ import { STABLE_ACCENT_TEXT, STABLE_SURFACE_CARD, STABLE_SURFACE_DIVIDER } from 
  */
 export default function PokerStableHorseCarousel({
   deals = [],
+  labelDeals = [],
   slicesByDeal = {},
   bankrollByDeal = {},
   statsByDeal = {},
@@ -49,6 +50,7 @@ export default function PokerStableHorseCarousel({
 }) {
   if (!deals.length) return null
 
+  const labelScope = labelDeals.length ? labelDeals : deals
   const slides = deals.map((d) => ({ id: d.id }))
 
   return (
@@ -128,7 +130,7 @@ export default function PokerStableHorseCarousel({
                 {partyLabel?.(deal, 'staker')}
               </div>
               <div className="mt-0.5 truncate text-sm text-zinc-400">
-                {deal.label || dealTypeLabel(deal.deal_type)}
+                {backerStableDealDisplayLabel(deal, labelScope)}
               </div>
             </div>
             <span

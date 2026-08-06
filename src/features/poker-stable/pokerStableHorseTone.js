@@ -1,6 +1,7 @@
 /**
- * Horse stake card highlights … same palette as Create Stake (cyan CTA / light blue chrome).
- * Six intensity steps so neighboring cards stay distinct without leaving the brand family.
+ * Horse stake card highlights … analogous hues around Create Stake blue/cyan
+ * on the color wheel (teal → cyan → sky → blue → indigo → violet).
+ * Not a monochrome intensity ladder, and not far-wheel greens/pinks.
  */
 
 export const STABLE_HORSE_TONE_COUNT = 6
@@ -14,55 +15,55 @@ export const STABLE_HORSE_TONE_COUNT = 6
  * }} StableHorseTone
  */
 
-/** Dark: cyan CTA family. Light remaps to blue chrome under html.light. */
+/** Dark: cool neighbors of cyan CTA. Light remaps under html.light. */
 /** @type {StableHorseTone[]} */
 export const STABLE_HORSE_TONES = [
   {
     surface:
-      'rounded-3xl border border-cyan-500/45 bg-gradient-to-br from-cyan-950/50 via-zinc-900/95 to-zinc-950',
-    divider: 'border-cyan-500/45',
-    accent: 'text-cyan-200',
-    statusActive: 'bg-cyan-500/25 text-cyan-200',
+      'rounded-3xl border border-teal-500/30 bg-gradient-to-br from-teal-950/35 via-zinc-900/95 to-zinc-950',
+    divider: 'border-teal-500/30',
+    accent: 'text-teal-300',
+    statusActive: 'bg-teal-500/20 text-teal-300',
   },
   {
     surface:
-      'rounded-3xl border border-cyan-500/38 bg-gradient-to-br from-cyan-950/42 via-zinc-900/95 to-zinc-950',
-    divider: 'border-cyan-500/38',
-    accent: 'text-cyan-300',
-    statusActive: 'bg-cyan-500/22 text-cyan-300',
-  },
-  {
-    surface:
-      'rounded-3xl border border-cyan-500/32 bg-gradient-to-br from-cyan-950/35 via-zinc-900/95 to-zinc-950',
-    divider: 'border-cyan-500/32',
+      'rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-zinc-900/95 to-zinc-950',
+    divider: 'border-cyan-500/30',
     accent: 'text-cyan-300',
     statusActive: 'bg-cyan-500/20 text-cyan-300',
   },
   {
     surface:
-      'rounded-3xl border border-cyan-400/30 bg-gradient-to-br from-cyan-950/28 via-zinc-900/95 to-zinc-950',
-    divider: 'border-cyan-400/30',
-    accent: 'text-cyan-300',
-    statusActive: 'bg-cyan-500/18 text-cyan-300',
+      'rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-950/35 via-zinc-900/95 to-zinc-950',
+    divider: 'border-sky-500/30',
+    accent: 'text-sky-300',
+    statusActive: 'bg-sky-500/20 text-sky-300',
   },
   {
     surface:
-      'rounded-3xl border border-cyan-600/35 bg-gradient-to-br from-cyan-950/40 via-zinc-900/90 to-zinc-950',
-    divider: 'border-cyan-600/35',
-    accent: 'text-cyan-200',
-    statusActive: 'bg-cyan-600/25 text-cyan-200',
+      'rounded-3xl border border-blue-500/30 bg-gradient-to-br from-blue-950/35 via-zinc-900/95 to-zinc-950',
+    divider: 'border-blue-500/30',
+    accent: 'text-blue-300',
+    statusActive: 'bg-blue-500/20 text-blue-300',
   },
   {
     surface:
-      'rounded-3xl border border-cyan-500/28 bg-gradient-to-br from-cyan-900/30 via-zinc-900/95 to-zinc-950',
-    divider: 'border-cyan-500/28',
-    accent: 'text-cyan-400',
-    statusActive: 'bg-cyan-500/15 text-cyan-400',
+      'rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/35 via-zinc-900/95 to-zinc-950',
+    divider: 'border-indigo-500/30',
+    accent: 'text-indigo-300',
+    statusActive: 'bg-indigo-500/20 text-indigo-300',
+  },
+  {
+    surface:
+      'rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-950/35 via-zinc-900/95 to-zinc-950',
+    divider: 'border-violet-500/30',
+    accent: 'text-violet-300',
+    statusActive: 'bg-violet-500/20 text-violet-300',
   },
 ]
 
 /**
- * Tone from carousel order so neighboring horses never share a step.
+ * Tone from carousel order so neighboring horses never share a hue.
  * @param {number} dealIndex index in the active horse list
  */
 export function stableHorseCardToneIndex(dealIndex) {

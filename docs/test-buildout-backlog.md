@@ -953,7 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-06: **Block settle while pending Commit (test):** UI + **`20260806030000`** applied on **`kcosfvmreeiosdjdzycb`** ... gates Periodic settlement / Close stake when viewer has unsynced settle commit (“Awaiting settlement · Commit the current settlement first.”). Initiator unchanged. Prod SQL open on rollout checklist.
+- 2026-08-06: **Block settle while pending Commit (test + prod):** UI + **`20260806030000`** applied on **`kcosfvmreeiosdjdzycb`** + **`jtjgtucumuoswnbauxry`** ... gates Periodic settlement / Close stake when viewer has unsynced settle commit (“Awaiting settlement · Commit the current settlement first.”). Initiator unchanged. Frontend **`test` → `main`**.
 - 2026-08-06: **Stable light mode chrome → cyan/zinc:** light Stable was still forcing legacy amber/honey (`#fffbeb` / `#d97706`) on hero, horses, invites, CTAs while dark is cyan. Rewrote `html.light [data-poker-stable]` + sheet chrome to cool cyan accent; amber kept for real warnings only.
 - 2026-08-06: **Player Bankroll Terms → Manage sheet:** active stake Terms icon opens `PokerStableDealDetailSheet` `variant="manageOnly"` (no Overview/Details/Trend tabs). Pending/proposal/revoked still use Stake terms sheet. Backer Stable horse detail unchanged (`variant` default `full`).
 - 2026-08-06: **Stable deal detail sheet bottom flush:** keep **92dvh** fixed height; square bottom + tight safe-area pad so panel docks to screen edge (not full-viewport tall). **Ryan smoke OK**.

@@ -1,4 +1,4 @@
-/** Shared Stable screen chrome … match Slots bankroll (zinc cards + cyan CTAs). */
+/** Shared Stable screen chrome … portfolio/top card matches Slots bankroll (zinc + cyan CTAs). */
 
 export const STABLE_SURFACE_CARD =
   'rounded-3xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800'
@@ -11,6 +11,14 @@ export const STABLE_PRIMARY_BTN =
 export const STABLE_TAB_ACTIVE = 'bg-cyan-600 text-white'
 
 export const STABLE_ACCENT_TEXT = 'text-white'
+
+/** Horse stake cards keep pre–Slots-bankroll cyan chrome (dark). Light overrides via data-poker-stable-horse-card. */
+export const STABLE_HORSE_SURFACE_CARD =
+  'rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-zinc-900/95 to-zinc-950'
+
+export const STABLE_HORSE_SURFACE_DIVIDER = 'border-cyan-500/15'
+
+export const STABLE_HORSE_ACCENT_TEXT = 'text-cyan-300'
 
 /** Portfolio trend stroke (dark). Light mode overrides in PokerStableTrendTab. */
 export const STABLE_CHART_PORTFOLIO = '#38bdf8'

@@ -19,7 +19,11 @@ import {
   stakeHorseCardStatusLabel,
   stakeHorseCardStatusTone,
 } from './pokerStableTerms.js'
-import { STABLE_ACCENT_TEXT, STABLE_SURFACE_CARD, STABLE_SURFACE_DIVIDER } from './pokerStableUi.js'
+import {
+  STABLE_HORSE_ACCENT_TEXT,
+  STABLE_HORSE_SURFACE_CARD,
+  STABLE_HORSE_SURFACE_DIVIDER,
+} from './pokerStableUi.js'
 
 /**
  * Peek carousel of active horse stake cards (backer view).
@@ -108,7 +112,7 @@ export default function PokerStableHorseCarousel({
         const sparkUp =
           sparkSeries.length >= 2 &&
           sparkSeries[sparkSeries.length - 1] >= sparkSeries[0]
-        const cardClassName = `relative flex w-full flex-col overflow-hidden ${STABLE_SURFACE_CARD} p-5 text-left`
+        const cardClassName = `relative flex w-full flex-col overflow-hidden ${STABLE_HORSE_SURFACE_CARD} p-5 text-left`
 
         const statsSparkBackground = showSparkBackground ? (
           <div
@@ -152,7 +156,7 @@ export default function PokerStableHorseCarousel({
           pendingNudgeSlices.length > 0 ? (
             <div
               data-poker-stake-pending-backers
-              className={`mt-3 space-y-1.5 border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-left`}
+              className={`mt-3 space-y-1.5 border-t ${STABLE_HORSE_SURFACE_DIVIDER} pt-3 text-left`}
               onClick={(e) => e.stopPropagation()}
             >
               {pendingNudgeSlices.map((pendingSlice) => {
@@ -161,9 +165,9 @@ export default function PokerStableHorseCarousel({
                 return (
                   <div
                     key={pendingSlice.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-zinc-700/40 bg-zinc-900/60 px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-cyan-500/15 bg-cyan-950/20 px-2.5 py-2"
                   >
-                    <span className="min-w-0 text-xs leading-snug text-zinc-300">
+                    <span className="min-w-0 text-xs leading-snug text-cyan-100/90">
                       Pending acceptance by {backerName}
                     </span>
                     <button
@@ -173,7 +177,7 @@ export default function PokerStableHorseCarousel({
                         e.stopPropagation()
                         void onNudgePendingBacker?.(deal.id, pendingSlice.id)
                       }}
-                      className="shrink-0 rounded-lg bg-zinc-700/60 px-2.5 py-1 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
+                      className="shrink-0 rounded-lg bg-cyan-500/20 px-2.5 py-1 text-[11px] font-semibold text-cyan-200 touch-manipulation active:bg-cyan-500/30 disabled:opacity-50"
                     >
                       {nudging ? 'Sending…' : 'Nudge'}
                     </button>
@@ -188,7 +192,7 @@ export default function PokerStableHorseCarousel({
                 {pendingSettleCommit ? (
                   <>
                     <div
-                      className={`mt-4 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}
+                      className={`mt-4 border-t ${STABLE_HORSE_SURFACE_DIVIDER} pt-3`}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <PokerStableSettleNeedsAttnBanner
@@ -203,7 +207,7 @@ export default function PokerStableHorseCarousel({
                   </>
                 ) : (
                   <div
-                    className={`relative mt-4 flex min-h-[9rem] flex-1 flex-col overflow-visible border-t ${STABLE_SURFACE_DIVIDER} pt-3 pb-2 text-center`}
+                    className={`relative mt-4 flex min-h-[9rem] flex-1 flex-col overflow-visible border-t ${STABLE_HORSE_SURFACE_DIVIDER} pt-3 pb-2 text-center`}
                   >
                     {statsSparkBackground}
                     <div className="relative z-10 grid grid-cols-2 gap-3">
@@ -219,7 +223,7 @@ export default function PokerStableHorseCarousel({
                         <div className="text-[10px] font-bold uppercase text-zinc-500">
                           Your stake MTM
                         </div>
-                        <div className={`mt-0.5 text-lg font-black tabular-nums ${STABLE_ACCENT_TEXT}`}>
+                        <div className={`mt-0.5 text-lg font-black tabular-nums ${STABLE_HORSE_ACCENT_TEXT}`}>
                           {fmtPoker$(stakeVal)}
                         </div>
                       </div>
@@ -242,7 +246,7 @@ export default function PokerStableHorseCarousel({
               </>
             ) : closedUnarchived ? (
               <div
-                className={`mt-4 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}
+                className={`mt-4 border-t ${STABLE_HORSE_SURFACE_DIVIDER} pt-3`}
                 onClick={(e) => e.stopPropagation()}
               >
                 {pendingSettleCommit ? (
@@ -268,7 +272,7 @@ export default function PokerStableHorseCarousel({
             ) : isPendingSyndicateInvite ? (
               <div
                 data-poker-stable-horse-invite
-                className={`mt-4 border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-left`}
+                className={`mt-4 border-t ${STABLE_HORSE_SURFACE_DIVIDER} pt-3 text-left`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-stretch gap-2">

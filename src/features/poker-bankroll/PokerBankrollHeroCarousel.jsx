@@ -37,9 +37,10 @@ export default function PokerBankrollHeroCarousel({
       left: el.offsetLeft - PEEK_PX,
       behavior: smooth ? 'smooth' : 'auto',
     })
+    // Keep ignore armed long enough for WebKit async scroll events after behavior:auto.
     window.setTimeout(() => {
       ignoreScrollRef.current = false
-    }, smooth ? 320 : 0)
+    }, smooth ? 320 : 250)
   }, [])
 
   useEffect(() => {

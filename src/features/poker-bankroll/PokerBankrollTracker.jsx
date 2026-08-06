@@ -381,6 +381,10 @@ export default function PokerBankrollTracker({
   const pendingCarouselDealIdRef = useRef(null)
   /** True after first localStorage hero restore for this mount/user (gates persist + carousel sync). */
   const [scopeHydrated, setScopeHydrated] = useState(false)
+  /** True after the first authenticated loadData finishes (deals/sessions ready for restore). */
+  const [initialBankrollLoadDone, setInitialBankrollLoadDone] = useState(false)
+  /** Delay carousel scroll→scope sync until after restore scroll settles. */
+  const [scopeCarouselSyncReady, setScopeCarouselSyncReady] = useState(false)
   /** While set, skip writing until React applies this restored scope (avoids clobbering with default personal). */
   const pendingRestoreScopeRef = useRef(/** @type {string | null} */ (null))
   const stakeNoticeTimerRef = useRef(0)
@@ -655,6 +659,8 @@ export default function PokerBankrollTracker({
 
   useEffect(() => {
     setScopeHydrated(false)
+    setScopeCarouselSyncReady(false)
+    setInitialBankrollLoadDone(false)
     pendingRestoreScopeRef.current = null
     setBankrollScope('personal')
   }, [userId])
@@ -662,16 +668,18 @@ export default function PokerBankrollTracker({
   useEffect(() => {
     if (!scopeHydrated) return
     if (bankrollScope === 'personal') return
+    if (!initialBankrollLoadDone) return
     const onCarousel = stakeeDeals.some((d) => d.id === bankrollScope)
     const knownDeal = Boolean(stakeeDealsById[bankrollScope])
     // Only drop to personal when the deal is truly gone (not a transient empty carousel).
     if (!onCarousel && !knownDeal) {
       setBankrollScope('personal')
     }
-  }, [bankrollScope, stakeeDeals, stakeeDealsById, scopeHydrated])
+  }, [bankrollScope, stakeeDeals, stakeeDealsById, scopeHydrated, initialBankrollLoadDone])
 
   useEffect(() => {
-    if (scopeHydrated || !userId || loading) return
+    // Wait for authenticated loadData ... !loading alone is true too early when userId is still null.
+    if (scopeHydrated || !userId || !initialBankrollLoadDone) return
     if (openStableDealId) {
       if (!stakeeDeals.some((d) => d.id === openStableDealId)) return
       pendingRestoreScopeRef.current = openStableDealId
@@ -696,7 +704,15 @@ export default function PokerBankrollTracker({
       pendingRestoreScopeRef.current = null
     }
     setScopeHydrated(true)
-  }, [userId, loading, stakeeDeals, sessions, openStableDealId, scopeHydrated, bankrollScope])
+  }, [
+    userId,
+    initialBankrollLoadDone,
+    stakeeDeals,
+    sessions,
+    openStableDealId,
+    scopeHydrated,
+    bankrollScope,
+  ])
 
   useEffect(() => {
     if (!userId || !scopeHydrated) return
@@ -706,6 +722,27 @@ export default function PokerBankrollTracker({
     }
     writeStoredPokerBankrollScope(userId, bankrollScope)
   }, [userId, bankrollScope, scopeHydrated])
+
+  /** Flush last card on unmount so leaving the tool cannot lose an in-memory selection. */
+  useEffect(() => {
+    return () => {
+      if (!userId || !scopeHydrated) return
+      const scope =
+        pendingRestoreScopeRef.current && pendingRestoreScopeRef.current !== bankrollScope
+          ? pendingRestoreScopeRef.current
+          : bankrollScope
+      writeStoredPokerBankrollScope(userId, scope)
+    }
+  }, [userId, scopeHydrated, bankrollScope])
+
+  useEffect(() => {
+    if (!scopeHydrated) {
+      setScopeCarouselSyncReady(false)
+      return undefined
+    }
+    const t = window.setTimeout(() => setScopeCarouselSyncReady(true), 300)
+    return () => window.clearTimeout(t)
+  }, [scopeHydrated, bankrollScope])
 
   useEffect(() => {
     if (!openStableDealId) return
@@ -807,15 +844,22 @@ export default function PokerBankrollTracker({
       setStakeeDealsById({})
       setDealProfiles({})
       setCustomVenues([])
+      setInitialBankrollLoadDone(false)
       setLoading(false)
       return
     }
     if (!silent) setLoading(true)
     setError('')
+    let markRestoreReady = true
     try {
       if (!silent) {
         const linked = await tryAutoLinkGuestStakeeOffers(supabaseClient)
-        if (linked) return
+        if (linked) {
+          // Link path returns before deals load; another loadData will follow. Do not
+          // hydrate/restore against an empty carousel (that rewrote stake → personal).
+          markRestoreReady = false
+          return
+        }
       }
 
       const [sessRes, profRes, customRes, dealsRes] = await Promise.all([
@@ -1013,6 +1057,7 @@ export default function PokerBankrollTracker({
       setError(e?.message || 'Could not load poker bankroll.')
       setSessions([])
     } finally {
+      if (markRestoreReady) setInitialBankrollLoadDone(true)
       if (!silent) setLoading(false)
     }
   }, [supabaseClient, userId])
@@ -3147,7 +3192,7 @@ export default function PokerBankrollTracker({
               slides={bankrollSlides}
               activeId={bankrollScope}
               onActiveIdChange={selectBankrollScope}
-              activeSyncEnabled={scopeHydrated}
+              activeSyncEnabled={scopeHydrated && scopeCarouselSyncReady}
               renderSlide={(slide, slideIndex) => {
                 const scopeId = slide.id
                 const onStake = scopeId !== 'personal'

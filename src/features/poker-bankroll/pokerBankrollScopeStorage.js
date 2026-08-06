@@ -1,5 +1,8 @@
 const STORAGE_PREFIX = 'poker-bankroll-hero-scope:'
 
+/** Same-tab memory so remount restore does not depend on a raced localStorage write. */
+const memoryScopeByUser = Object.create(null)
+
 /** @param {string | null | undefined} userId */
 function storageKey(userId) {
   const id = String(userId || '').trim()
@@ -13,12 +16,19 @@ function storageKey(userId) {
  * @returns {'personal' | string}
  */
 export function readStoredPokerBankrollScope(userId) {
-  const key = storageKey(userId)
+  const id = String(userId || '').trim()
+  if (!id) return 'personal'
+  if (memoryScopeByUser[id]) return memoryScopeByUser[id]
+  const key = storageKey(id)
   if (!key || typeof window === 'undefined') return 'personal'
   try {
     const raw = window.localStorage.getItem(key)
     const scope = String(raw || '').trim()
-    return scope || 'personal'
+    if (scope) {
+      memoryScopeByUser[id] = scope
+      return scope
+    }
+    return 'personal'
   } catch {
     return 'personal'
   }
@@ -29,20 +39,27 @@ export function readStoredPokerBankrollScope(userId) {
  * @param {'personal' | string} scopeId
  */
 export function writeStoredPokerBankrollScope(userId, scopeId) {
-  const key = storageKey(userId)
-  if (!key || typeof window === 'undefined') return
+  const id = String(userId || '').trim()
+  if (!id) return
   const next = scopeId === 'personal' ? 'personal' : String(scopeId || '').trim()
   if (!next) return
+  memoryScopeByUser[id] = next
+  const key = storageKey(id)
+  if (!key || typeof window === 'undefined') return
   try {
     window.localStorage.setItem(key, next)
   } catch {
-    /* ignore quota / private mode */
+    /* ignore quota / private mode — memory cache still holds for this tab */
   }
 }
 
 /**
  * Prefer stored hero scope when it is still on the carousel; else last session's deal
  * (or personal). Sessions should be newest-first.
+ *
+ * Important: if the carousel list is still empty, keep a non-personal stored id so an
+ * early restore cannot clobber a valid stake card before deals finish loading.
+ *
  * @param {string | null | undefined} userId
  * @param {Array<{ id: string }>} carouselDeals
  * @param {Array<{ deal_id?: string | null }> | null | undefined} sessionsNewestFirst
@@ -59,6 +76,8 @@ export function resolvePokerBankrollScopeToRestore(
   const stored = readStoredPokerBankrollScope(userId)
   if (stored === 'personal') return 'personal'
   if (dealIds.has(stored)) return stored
+  // Deals not loaded yet ... keep stored stake id (caller should wait for load).
+  if (dealIds.size === 0) return stored
 
   for (const s of sessionsNewestFirst || []) {
     const dealId = s?.deal_id == null ? 'personal' : String(s.deal_id).trim()

@@ -68,6 +68,9 @@ const DEAL_DETAIL_SHEET_HEIGHT =
 
 /**
  * Deal detail: overview/history/analytics tabs + manage (top-up, settle, ledger).
+ * @param {'full' | 'manageOnly'} [variant='full']
+ *   `manageOnly` — player Bankroll Terms entry: Manage content only (no analytics tabs).
+ *   Backer Stable horse detail must keep `full`.
  */
 export default function PokerStableDealDetailSheet({
   supabaseClient,
@@ -86,8 +89,10 @@ export default function PokerStableDealDetailSheet({
   onRefresh,
   onError,
   onOpenPokerBankroll,
+  variant = 'full',
 }) {
-  const [activeTab, setActiveTab] = useState('overview')
+  const manageOnly = variant === 'manageOnly'
+  const [activeTab, setActiveTab] = useState(manageOnly ? 'manage' : 'overview')
   const [topupAmount, setTopupAmount] = useState('')
   const [reduceStake, setReduceStake] = useState(false)
   const [newBaselineInput, setNewBaselineInput] = useState('')
@@ -102,8 +107,8 @@ export default function PokerStableDealDetailSheet({
   const [dealSettlements, setDealSettlements] = useState(settlementsProp)
 
   useEffect(() => {
-    setActiveTab('overview')
-  }, [deal?.id])
+    setActiveTab(manageOnly ? 'manage' : 'overview')
+  }, [deal?.id, manageOnly])
 
   useEffect(() => {
     setDealTopups(topupsProp)
@@ -329,23 +334,27 @@ export default function PokerStableDealDetailSheet({
           </button>
         </div>
 
-        <div className="mb-4 -mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 no-scrollbar">
-          {DEAL_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab.id)
-                triggerTapHapticLight()
-              }}
-              className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-bold tracking-wide touch-manipulation sm:px-4 sm:text-xs ${
-                activeTab === tab.id ? STABLE_TAB_ACTIVE : 'bg-zinc-800 text-zinc-400 active:bg-zinc-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {manageOnly ? null : (
+          <div className="mb-4 -mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 no-scrollbar">
+            {DEAL_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id)
+                  triggerTapHapticLight()
+                }}
+                className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-bold tracking-wide touch-manipulation sm:px-4 sm:text-xs ${
+                  activeTab === tab.id
+                    ? STABLE_TAB_ACTIVE
+                    : 'bg-zinc-800 text-zinc-400 active:bg-zinc-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
         {activeTab === 'overview' ? (

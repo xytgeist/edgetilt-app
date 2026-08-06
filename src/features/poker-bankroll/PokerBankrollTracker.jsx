@@ -59,6 +59,7 @@ import {
   stakeGoesLivePendingCopy,
   stakeBackingCapitalSplit,
   stakeeBankrollShowsClosedCarouselCard,
+  stakeeBankrollTermsOpensManageSheet,
   stakeeDisplayDealRoll,
   stakeePendingSettleCommitForDeal,
   stakeeSkipsBackerCommitSync,
@@ -1747,6 +1748,23 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
+  /** Active stakes → Manage sheet; pending/proposal/closed → Stake terms sheet. */
+  function openStakeTermsFromHero(dealId) {
+    const id = String(dealId || '').trim()
+    if (!id) return
+    setError('')
+    const deal = stakeeDeals.find((d) => d.id === id) ?? stakeeDealsById[id] ?? null
+    const hasProposal = Boolean(deal?.stakee_terms_ack_required && deal?.pending_terms_json)
+    if (stakeeBankrollTermsOpensManageSheet(deal, { userId, hasProposal })) {
+      setTermsDealId(null)
+      setLedgerDealId(id)
+    } else {
+      setLedgerDealId(null)
+      setTermsDealId(id)
+    }
+    triggerTapHapticLight()
+  }
+
   async function handleArchiveStakeeBankrollDeal(dealId) {
     if (!supabaseClient || !dealId) return
     const pending = stakeePendingSettleCommitForDeal(pendingStakeCommits, dealId)
@@ -3284,16 +3302,12 @@ export default function PokerBankrollTracker({
                           </span>
                         ) : null}
                       </div>
-                      {onStake ? (
+                        {onStake ? (
                         <button
                           type="button"
-                          onClick={() => {
-                            setError('')
-                            setTermsDealId(scopeId)
-                            triggerTapHapticLight()
-                          }}
+                          onClick={() => openStakeTermsFromHero(scopeId)}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
-                          aria-label="Stake terms"
+                          aria-label="Manage stake"
                           data-poker-hero-terms-icon
                         >
                           <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
@@ -4427,7 +4441,7 @@ export default function PokerBankrollTracker({
           onOpenLedger={() => {
             const dealId = termsDealId
             setTermsDealId(null)
-            setLedgerDealId(dealId)
+            if (dealId) setLedgerDealId(dealId)
           }}
           onAcceptProposal={async () => {
             setStableSaving(true)
@@ -4470,9 +4484,9 @@ export default function PokerBankrollTracker({
       ledgerDealForSheet &&
       supabaseClient &&
       userId &&
-      !stakeeBankrollShowsClosedCarouselCard(ledgerDealForSheet) &&
-      !stakeeSkipsBackerCommitSync(ledgerDealForSheet, userId) ? (
+      !stakeeBankrollShowsClosedCarouselCard(ledgerDealForSheet) ? (
         <PokerStableDealDetailSheet
+          variant="manageOnly"
           supabaseClient={supabaseClient}
           userId={userId}
           deal={ledgerDealForSheet}

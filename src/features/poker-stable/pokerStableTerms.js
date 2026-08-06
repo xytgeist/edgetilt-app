@@ -389,6 +389,17 @@ export function stakeeCanOpenLedger(deal, { userId, hasProposal = false } = {}) 
   return true
 }
 
+/**
+ * Player Bankroll Terms icon → Manage sheet (full deal detail tabs are redundant on Bankroll).
+ * Pending / proposal / revoked flows still use the Stake terms sheet.
+ */
+export function stakeeBankrollTermsOpensManageSheet(deal, { userId, hasProposal = false } = {}) {
+  if (!deal || !userId || deal.stakee_user_id !== userId) return false
+  if (hasProposal) return false
+  if (stakeeBankrollShowsClosedCarouselCard(deal)) return false
+  return deal.status === 'active'
+}
+
 /** Player may periodic-settle or close an active/revoked ongoing stake (Bankroll end-stake flow). */
 export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal = false } = {}) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false

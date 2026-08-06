@@ -6251,8 +6251,15 @@ html.light [data-poker-stable] [data-poker-stable-horse-card]::before {
 html.light [data-poker-stable] [data-poker-stable-horse-card] .border-t {
   border-color: #e4e4e7 !important;
 }
-html.light [data-poker-stable] [data-poker-stable-horse-card] .text-white {
+/* Body copy only … keep CTA buttons (bg-* + text-white) white on chrome blue */
+html.light [data-poker-stable] [data-poker-stable-horse-card] .text-white:not([class*='bg-']) {
   color: #18181b !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] .bg-amber-600.text-white,
+html.light [data-poker-stable] [data-poker-stable-horse-card] .bg-cyan-600.text-white,
+html.light [data-poker-stable] [data-poker-stable-horse-card] button.bg-amber-600,
+html.light [data-poker-stable] [data-poker-stable-horse-card] button.bg-cyan-600 {
+  color: #ffffff !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card] .text-zinc-200,
 html.light [data-poker-stable] [data-poker-stable-horse-card] .text-zinc-300 {

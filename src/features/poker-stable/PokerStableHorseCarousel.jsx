@@ -268,6 +268,7 @@ export default function PokerStableHorseCarousel({
                   <PokerStableClosedHorseHeroBanner
                     deal={deal}
                     profilesById={profilesById}
+                    userId={userId}
                     saving={saving}
                     onArchive={() => void onArchiveHorse?.(deal.id)}
                     onReview={() =>

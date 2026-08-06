@@ -1,5 +1,6 @@
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
-import { dealStakeeDisplayName } from './pokerStableTerms.js'
+import { isBackerInitiatedBackingDeal } from './pokerStableApi.js'
+import { dealLeadBackerDisplayName, dealStakeeDisplayName } from './pokerStableTerms.js'
 
 /**
  * Closed horse stake archive prompt in the backer carousel (sparkline / stats slot).
@@ -7,6 +8,7 @@ import { dealStakeeDisplayName } from './pokerStableTerms.js'
 export default function PokerStableClosedHorseHeroBanner({
   deal,
   profilesById = {},
+  userId = null,
   saving = false,
   onArchive,
   onReview,
@@ -15,8 +17,19 @@ export default function PokerStableClosedHorseHeroBanner({
   if (!deal) return null
 
   const playerName = dealStakeeDisplayName(deal, profilesById) || 'The player'
+  const leadBackerName = dealLeadBackerDisplayName(deal, profilesById) || 'a backer'
   const isRevoked = deal.status === 'revoked'
   const isDeclined = deal.status === 'declined'
+  const backerInitiated = isBackerInitiatedBackingDeal(deal)
+  const viewerIsLeadBacker =
+    Boolean(userId) && Boolean(deal.staker_user_id) && deal.staker_user_id === userId
+
+  let closedCopy = `This stake was closed by ${playerName}. Archive it when you are done reviewing.`
+  if (backerInitiated) {
+    closedCopy = viewerIsLeadBacker
+      ? 'You closed this stake. Archive it when you are done reviewing.'
+      : `This stake was closed by ${leadBackerName}. Archive it when you are done reviewing.`
+  }
 
   return (
     <div
@@ -29,7 +42,7 @@ export default function PokerStableClosedHorseHeroBanner({
           ? 'This stake was declined. Archive it when you are done reviewing.'
           : isRevoked
             ? 'This stake was revoked. Archive it when you are done reviewing.'
-            : `This stake was closed by ${playerName}. Archive it when you are done reviewing.`}
+            : closedCopy}
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <button

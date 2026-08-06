@@ -6892,10 +6892,20 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-sta
 }
 /* Pending helper copy uses text-amber-200/85 (not in global light amber remap) */
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending],
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer],
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer] .text-amber-200\/85,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-200\/85,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-100\/90 {
   color: #3f3f46 !important;
+}
+/* In-card Accept/Decline … keep CTA ink on remapped chrome */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer] .bg-emerald-600 {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer] .bg-zinc-700,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer] .bg-zinc-800 {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
 }
 /* Settle Needs Attn banner — light only (dark amber-950 panel + pale amber text on pastel heroes) */
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-needs-attn],

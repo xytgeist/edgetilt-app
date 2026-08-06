@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-06: **Player Bankroll stake offers in-card:** removed separate Accept/Decline invite card above the carousel; Terms + Accept/Decline live in the stake hero message slot (same place as goes-live copy).
 - 2026-08-06: **Backer delete Closed stakes (test + prod):** migration **`20260806120000`** — `stable_hidden_at` + **`poker_stable_backer_hide_stable_deal`**. Soft-hide from Closed stakes / carousel; counterparty history intact. Delete on Closed stakes cards, archive detail modal, closed-horse sheet.
 - 2026-08-06: **Stable portfolio hero:** larger backing bankroll (`text-4xl`); Edit / manual adjust UI removed pending better credit-debit entry; settle/close credits still update pool. Info sheet copy updated.
 - 2026-08-06: **Stable horse cards keep cyan chrome:** portfolio/top card stays Slots zinc; horse cards restored to pre-theme cyan surface (`STABLE_HORSE_*` in `pokerStableUi.js`, cyan Active pill). Light horse cards still force zinc via `data-poker-stable-horse-card`.

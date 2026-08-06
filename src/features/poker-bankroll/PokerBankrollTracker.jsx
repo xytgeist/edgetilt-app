@@ -3151,58 +3151,6 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
-        {pendingBackerOffer && activeTab === 'overview' && !stakeOfferOnboardingOpen && !carouselCoachOpen ? (
-          <div
-            data-poker-stable-invite-card
-            data-elevated-card="surface"
-            className="mb-3 rounded-2xl border border-amber-500/25 bg-gradient-to-br from-amber-950/40 to-zinc-900/80 p-4"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate font-bold text-white">
-                  {dealLeadBackerDisplayName(activeDeal, stableProfilesById)}
-                </div>
-                <div className="mt-0.5 text-sm text-zinc-400">
-                  wants to stake you
-                  {activeDeal.label ? ` · ${activeDeal.label}` : ''}
-                </div>
-              </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${stakeOfferStatusTone(activeDeal.status)}`}
-              >
-                {stakeOfferStatusLabel(activeDeal.status)}
-              </span>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => openStakeOfferReview(activeDeal.id)}
-                className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
-              >
-                Terms
-              </button>
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                disabled={stableSaving}
-                onClick={() => void onAcceptBackerOffer(activeDeal.id)}
-                className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
-              >
-                Accept
-              </button>
-              <button
-                type="button"
-                disabled={stableSaving}
-                onClick={() => void onDeclineBackerOffer(activeDeal.id)}
-                className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
-              >
-                Decline
-              </button>
-            </div>
-          </div>
-        ) : null}
-
         {waitingBackerCounterResponse && activeTab === 'overview' ? (
           <div
             data-poker-stake-notice
@@ -3250,18 +3198,26 @@ export default function PokerBankrollTracker({
                   : false
                 const heroClosedUnarchived =
                   onStake && hero.deal && stakeeBankrollShowsClosedCarouselCard(hero.deal)
+                const heroAwaitingPlayerAccept =
+                  onStake &&
+                  hero.deal &&
+                  !heroStakeLive &&
+                  isBackerInitiatedBackingDeal(hero.deal) &&
+                  !stakeDealPlayerSideAccepted(hero.deal)
                 const stakeHeroMessage =
                   heroClosedUnarchived
                     ? null
                     : onStake && hero.deal?.status === 'revoked'
                       ? 'revoked'
-                      : onStake && hero.deal && !heroStakeLive
-                        ? isBackerInitiatedBackingDeal(hero.deal)
-                          ? 'pendingBackerOffer'
-                          : 'pendingStake'
-                        : pendingBackerSlices.length > 0
-                          ? 'pendingBackers'
-                          : null
+                      : heroAwaitingPlayerAccept
+                        ? 'pendingBackerOffer'
+                        : onStake && hero.deal && !heroStakeLive
+                          ? pendingBackerSlices.length > 0
+                            ? 'pendingBackers'
+                            : 'pendingStake'
+                          : pendingBackerSlices.length > 0
+                            ? 'pendingBackers'
+                            : null
                 const stakeHeroSlotExpands =
                   Boolean(stakeHeroMessage) ||
                   Boolean(hero.pendingSettleCommit) ||
@@ -3475,16 +3431,47 @@ export default function PokerBankrollTracker({
                               )}
                             </p>
                           ) : stakeHeroMessage === 'pendingBackerOffer' ? (
-                            <p
+                            <div
                               data-poker-stake-pending-offer
-                              className="text-left text-xs leading-snug text-amber-200/85"
+                              className="space-y-2 text-left"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              {stakeGoesLivePendingCopy(
-                                hero.deal,
-                                dealSlices,
-                                stableProfilesById,
-                              )}
-                            </p>
+                              <p className="text-xs leading-snug text-amber-200/85">
+                                {dealLeadBackerDisplayName(hero.deal, stableProfilesById)} wants to
+                                stake you. {stakeGoesLivePendingCopy(
+                                  hero.deal,
+                                  dealSlices,
+                                  stableProfilesById,
+                                )}
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openStakeOfferReview(scopeId)}
+                                  className="rounded-xl bg-zinc-800 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-700"
+                                >
+                                  Terms
+                                </button>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={stableSaving}
+                                  onClick={() => void onAcceptBackerOffer(scopeId)}
+                                  className="flex-1 rounded-xl bg-emerald-600 py-2 text-[11px] font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={stableSaving}
+                                  onClick={() => void onDeclineBackerOffer(scopeId)}
+                                  className="flex-1 rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
+                                >
+                                  Decline
+                                </button>
+                              </div>
+                            </div>
                           ) : stakeHeroMessage === 'pendingBackers' ? (
                             <div
                               data-poker-stake-pending-backers

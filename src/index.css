@@ -56,6 +56,8 @@ html.light {
   --color-zinc-200: #27272a;
   --color-zinc-100: #18181b;
   --color-zinc-50:  #09090b;
+  /* Soft elevation used by Slots Bankroll cards … reuse across Poker/Stable light cards */
+  --edge-light-card-shadow: 0 10px 20px -4px rgba(0, 0, 0, 0.15), 0 4px 8px -4px rgba(0, 0, 0, 0.1);
   color-scheme: light;
 }
 
@@ -6172,6 +6174,10 @@ html.light [data-poker-stable] [data-poker-stable-tabs] {
 html.light [data-poker-stable] [data-poker-stable-horse-card] {
   background: linear-gradient(to bottom right, #ecfeff, #ffffff) !important;
   border-color: rgba(8, 145, 178, 0.35) !important;
+  box-shadow: var(--edge-light-card-shadow) !important;
+}
+html.light [data-poker-stable] [data-poker-stable-portfolio-hero] {
+  box-shadow: var(--edge-light-card-shadow) !important;
 }
 [data-poker-stable-horse-card] [data-poker-stable-terms-icon]:active {
   background-color: rgba(39, 39, 42, 0.45);
@@ -6578,9 +6584,9 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-elevated-c
   background-color: #d4d4d8 !important;
 }
 
-/* Stake hero cards — light: tone gradient + neutral elevation (no inset/3D depth) */
+/* Stake hero cards — light: tone gradient + Slots-style soft elevation */
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] {
-  box-shadow: 0 4px 10px -3px rgba(0, 0, 0, 0.12) !important;
+  box-shadow: var(--edge-light-card-shadow) !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='emerald'] {
   background: linear-gradient(145deg, #86efac 0%, #86efac 18%, #bbf7d0 58%, #d1fae5 82%, #f0fdf4 100%) !important;
@@ -6793,12 +6799,31 @@ html.light [data-session-card] [data-poker-session-end-btn].text-white {
 
 /* MoneyKeypad uses inline styles - no Tailwind overrides needed */
 
-/* Bankroll cards + button - shadows in light mode only */
-html.light [data-bankroll-card] {
-  box-shadow: 0 10px 20px -4px rgba(0,0,0,0.15), 0 4px 8px -4px rgba(0,0,0,0.1);
-}
-html.light [data-session-card] {
-  box-shadow: 0 10px 20px -4px rgba(0,0,0,0.15), 0 4px 8px -4px rgba(0,0,0,0.1);
+/* Bankroll cards + Poker/Stable elevated cards — same soft shadow in light mode only */
+html.light [data-bankroll-card],
+html.light [data-session-card],
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card],
+html.light [data-poker-bankroll] [data-elevated-card='surface'],
+html.light [data-poker-stable] [data-elevated-card='surface'],
+html.light [data-poker-stable] [data-poker-stable-horse-card],
+html.light [data-poker-stable] [data-poker-stable-portfolio-hero],
+html.light [data-poker-stable] [data-poker-stake-archive-card],
+html.light [data-poker-stable] [data-poker-stable-invite-card],
+html.light [data-poker-stable] .rounded-3xl.border-2,
+html.light [data-poker-stable] [data-poker-stable-locations] .rounded-2xl.border,
+html.light [data-poker-stable] [data-poker-stable-trend] .rounded-2xl.border,
+html.light [data-poker-stable-sheet] [data-elevated-card='surface'],
+html.light [data-poker-stable-sheet] [data-poker-stable-settle-commit-queue-header],
+html.light [data-poker-stable-sheet] [data-poker-stable-commit-sync-modal],
+html.light [data-poker-stable-sheet] [data-poker-stable-settle-commit-queue] > ul,
+html.light [data-poker-stable-sheet] .rounded-3xl.border-2,
+html.light [data-poker-stable-sheet] .poker-stable-slice-card,
+html.light [data-poker-stable-periodic-settle-sheet] [data-poker-stable-periodic-settle-summary],
+html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-summary],
+html.light [data-poker-session-detail] .rounded-2xl.border,
+html.light [data-poker-stake-archive-modal] [data-elevated-card='surface'],
+html.light [data-poker-stable-commit-sync-modal] {
+  box-shadow: var(--edge-light-card-shadow) !important;
 }
 /* Stake deal history lines — kind accent (Bankroll on-stake session list) */
 [data-poker-stake-history-line][data-poker-stake-history-kind='offer'] {

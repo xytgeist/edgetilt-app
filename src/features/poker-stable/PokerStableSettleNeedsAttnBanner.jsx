@@ -15,7 +15,7 @@ export default function PokerStableSettleNeedsAttnBanner({
     >
       <p className="text-xs leading-snug text-amber-100/95">
         <span className="font-bold uppercase tracking-wide text-amber-300/90">Needs attn:</span>{' '}
-        {counterpartyName} logged a periodic settlement. Click to review and commit.
+        {counterpartyName} logged a settlement. Open the stake to review and commit.
       </p>
       <button
         type="button"
@@ -25,7 +25,7 @@ export default function PokerStableSettleNeedsAttnBanner({
         }}
         className="mt-2 rounded-lg bg-amber-500/20 px-3 py-1.5 text-[11px] font-bold text-amber-100 touch-manipulation active:bg-amber-500/30"
       >
-        Review settlement
+        Review stake
       </button>
     </div>
   )

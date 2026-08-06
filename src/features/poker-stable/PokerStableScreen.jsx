@@ -6,7 +6,6 @@ import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
 import { PokerStableBackerDealSheet, PokerStablePlayerDealSheet } from './PokerStableCreateDealSheet.jsx'
 import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
-import PokerStableCommitSyncModal from './PokerStableCommitSyncModal.jsx'
 import PokerStableClosedHorseSheet from './PokerStableClosedHorseSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from './PokerStableDealTermsSheet.jsx'
@@ -133,7 +132,6 @@ export default function PokerStableScreen({
   const [stableSessions, setStableSessions] = useState(/** @type {object[]} */ ([]))
   const [backerAdjustments, setBackerAdjustments] = useState(/** @type {object[]} */ ([]))
   const [attentionOpen, setAttentionOpen] = useState(false)
-  const [commitSyncId, setCommitSyncId] = useState(/** @type {string | null} */ (null))
   const [backerSliceOnboardingOpen, setBackerSliceOnboardingOpen] = useState(false)
   const backerSliceOnboardingOpenedRef = useRef(false)
   const [locationsDealId, setLocationsDealId] = useState(/** @type {string | null} */ (null))
@@ -832,10 +830,6 @@ export default function PokerStableScreen({
               nudgeDisabled={saving}
               pendingCommits={pendingCommits}
               horseSparkByDeal={horseSparkByDeal}
-              onReviewSettleCommit={(commitId) => {
-                setCommitSyncId(commitId)
-                triggerTapHapticLight()
-              }}
               onArchiveHorse={onArchiveHorse}
               onOpenClosedHorseReview={openClosedHorseReview}
             />
@@ -1072,17 +1066,6 @@ export default function PokerStableScreen({
           onClose={() => setAttentionOpen(false)}
           onSynced={load}
           onOpenDeal={openDealDetail}
-          onError={setError}
-        />
-      ) : null}
-
-      {commitSyncId && supabaseClient && userId ? (
-        <PokerStableCommitSyncModal
-          supabaseClient={supabaseClient}
-          userId={userId}
-          commitId={commitSyncId}
-          onClose={() => setCommitSyncId(null)}
-          onSynced={() => void load()}
           onError={setError}
         />
       ) : null}

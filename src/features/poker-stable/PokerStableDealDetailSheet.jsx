@@ -20,8 +20,8 @@ import {
   recordDealTopup,
   recordDealReduction,
   sliceDisplayName,
-  syncDealCommit,
 } from './pokerStableApi.js'
+import PokerStableCommitSyncPanel from './PokerStableCommitSyncPanel.jsx'
 import PokerStablePeriodicSettleSheet from './PokerStablePeriodicSettleSheet.jsx'
 import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
 import PokerStableDealOverviewPanel from './PokerStableDealOverviewPanel.jsx'
@@ -45,8 +45,7 @@ import {
   stakeeSkipsBackerCommitSync,
   userCanRecordDealEvent,
 } from './pokerStableTerms.js'
-import { pokerStableCommitSummaryLine } from './pokerStableActivity.js'
-import { STABLE_BACKER_BANKROLL_PHRASE, stableCommitBooksPhrase } from './pokerStableBooksCopy.js'
+import { STABLE_BACKER_BANKROLL_PHRASE } from './pokerStableBooksCopy.js'
 
 import { STABLE_TAB_ACTIVE } from './pokerStableUi.js'
 
@@ -298,23 +297,6 @@ export default function PokerStableDealDetailSheet({
     }
   }
 
-  async function onSyncCommit(commitId) {
-    if (!commitId) return
-    onSavingChange(true)
-    onError('')
-    try {
-      const { error } = await syncDealCommit(supabaseClient, commitId)
-      if (error) throw error
-      triggerTapHapticLight()
-      await onRefresh()
-      await loadLedger()
-    } catch (e) {
-      onError(e?.message || 'Could not sync commit.')
-    } finally {
-      onSavingChange(false)
-    }
-  }
-
   if (!deal) return null
 
   return (
@@ -357,25 +339,47 @@ export default function PokerStableDealDetailSheet({
         </div>
 
         {activeTab === 'overview' ? (
-          <PokerStableDealOverviewPanel
-            deal={deal}
-            slices={slices}
-            roll={roll}
-            profilesById={profilesById}
-            userId={userId}
-            sessions={sessions}
-            topups={dealTopups}
-            reductions={dealReductions}
-            settlements={dealSettlements}
-            ledgerEntries={ledgerEntries}
-            onOpenTrend={() => setActiveTab('trend')}
-            canProposeSettle={canProposeSettle}
-            showPeriodicSettle={showPeriodicSettle}
-            saving={saving}
-            profitUp={profitUp}
-            onOpenPeriodicSettle={() => setPeriodicSettleOpen(true)}
-            onOpenCloseStake={() => setCloseStakeOpen(true)}
-          />
+          <>
+            {visiblePendingCommits.length && supabaseClient ? (
+              <div className="space-y-3">
+                {visiblePendingCommits.map((row) => (
+                  <PokerStableCommitSyncPanel
+                    key={row.commit_id}
+                    variant="inline"
+                    supabaseClient={supabaseClient}
+                    userId={userId}
+                    commitId={String(row.commit_id)}
+                    saving={saving}
+                    onSavingChange={onSavingChange}
+                    onSynced={async () => {
+                      await onRefresh()
+                      await loadLedger()
+                    }}
+                    onError={onError}
+                  />
+                ))}
+              </div>
+            ) : null}
+            <PokerStableDealOverviewPanel
+              deal={deal}
+              slices={slices}
+              roll={roll}
+              profilesById={profilesById}
+              userId={userId}
+              sessions={sessions}
+              topups={dealTopups}
+              reductions={dealReductions}
+              settlements={dealSettlements}
+              ledgerEntries={ledgerEntries}
+              onOpenTrend={() => setActiveTab('trend')}
+              canProposeSettle={canProposeSettle}
+              showPeriodicSettle={showPeriodicSettle}
+              saving={saving}
+              profitUp={profitUp}
+              onOpenPeriodicSettle={() => setPeriodicSettleOpen(true)}
+              onOpenCloseStake={() => setCloseStakeOpen(true)}
+            />
+          </>
         ) : null}
 
         {activeTab === 'details' ? (
@@ -402,38 +406,6 @@ export default function PokerStableDealDetailSheet({
 
         {activeTab === 'manage' ? (
           <>
-        {visiblePendingCommits.length ? (
-          <div className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-950/25 p-3">
-            <p className="text-sm font-semibold text-amber-100">
-              Out of sync with last commit ({visiblePendingCommits.length})
-            </p>
-            <p className="mt-1 text-xs text-zinc-400">
-              Another party recorded an update. Commit to sync your{' '}
-              {stableCommitBooksPhrase(isStakee)}.
-            </p>
-            <div className="mt-3 space-y-2">
-              {visiblePendingCommits.map((row) => (
-                <div
-                  key={row.commit_id}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2"
-                >
-                  <p className="text-xs leading-relaxed text-zinc-300">
-                    {pokerStableCommitSummaryLine(row)}
-                  </p>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void onSyncCommit(row.commit_id)}
-                    className="mt-2 w-full rounded-xl bg-emerald-600 py-2 text-sm font-bold text-white disabled:opacity-50"
-                  >
-                    Commit to my books
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
         <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">Slices</h4>
         <div className="mb-4 space-y-2">
           {slices.map((slice) => {

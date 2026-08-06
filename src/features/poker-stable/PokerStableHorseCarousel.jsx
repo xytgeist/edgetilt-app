@@ -44,7 +44,6 @@ export default function PokerStableHorseCarousel({
   saving = false,
   pendingCommits = [],
   horseSparkByDeal = {},
-  onReviewSettleCommit,
   onArchiveHorse,
   onOpenClosedHorseReview,
 }) {
@@ -186,9 +185,7 @@ export default function PokerStableHorseCarousel({
                     >
                       <PokerStableSettleNeedsAttnBanner
                         counterpartyName={dealStakeeDisplayName(deal, profilesById)}
-                        onReview={() =>
-                          onReviewSettleCommit?.(String(pendingSettleCommit.commit_id))
-                        }
+                        onReview={() => onOpenDeal?.(deal.id)}
                       />
                     </div>
                     {pendingNudgeBlock}
@@ -240,9 +237,7 @@ export default function PokerStableHorseCarousel({
                 {pendingSettleCommit ? (
                   <PokerStableSettleNeedsAttnBanner
                     counterpartyName={dealStakeeDisplayName(deal, profilesById)}
-                    onReview={() =>
-                      onReviewSettleCommit?.(String(pendingSettleCommit.commit_id))
-                    }
+                    onReview={() => onOpenDeal?.(deal.id)}
                   />
                 ) : (
                   <PokerStableClosedHorseHeroBanner

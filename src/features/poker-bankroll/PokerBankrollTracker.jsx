@@ -1586,17 +1586,6 @@ export default function PokerBankrollTracker({
     }
   }
 
-  function openStakeOfferReview(dealId) {
-    const id = String(dealId || '').trim()
-    if (!id) return
-    selectBankrollScope(id)
-    setScopeHydrated(true)
-    stashPokerStakeOnboardingDeal(id)
-    setStakeOfferOnboardingOpen(true)
-    stakeOfferOnboardingOpenedRef.current = true
-    triggerTapHapticLight()
-  }
-
   async function onAcceptBackerOffer(dealId) {
     if (!supabaseClient || !dealId) return
     setStableSaving(true)

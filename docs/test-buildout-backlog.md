@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-06: **Stable deal detail sheet bottom flush:** keep **92dvh** fixed height; square bottom + tight safe-area pad so panel docks to screen edge (not full-viewport tall). **Ryan smoke OK**.
 - 2026-08-06: **Poker Bankroll last hero card restore (follow-up):** gate restore on authenticated `loadData` done (early `userId=null` load was finishing with empty deals and rewriting stored stake → `personal`); in-memory scope cache; delay carousel scroll-sync after restore; unmount flush. **Ryan smoke OK** on edgetilt.
 - 2026-08-06: **Poker Bankroll last hero card restore:** fix hydration race that rewrote `localStorage` to `personal` before restore applied; carousel scroll sync gated until hydrated; session-start also stamps last scope (fallback when stored deal is gone).
 - 2026-08-06: **Poker Stable pending-play sessions (test + prod):** migration **60806020000** applied **test + prod** — delete-session audit RPC, decline-slice + detach-to-personal when no open slices, revoke detach trigger. Client: pending stake Start/Log unblocked after player-side accept; backer session load only after their accept; accepted/pending backing split on player hero; dynamic pending copy.

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
@@ -96,6 +97,8 @@ export default function PokerStableDealDetailSheet({
   const [topupAmount, setTopupAmount] = useState('')
   const [reduceStake, setReduceStake] = useState(false)
   const [newBaselineInput, setNewBaselineInput] = useState('')
+  /** Player Manage sheet: top-up / reduce collapsed until expanded. */
+  const [topupReduceOpen, setTopupReduceOpen] = useState(false)
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [ledgerEntries, setLedgerEntries] = useState([])
@@ -108,6 +111,7 @@ export default function PokerStableDealDetailSheet({
 
   useEffect(() => {
     setActiveTab(manageOnly ? 'manage' : 'overview')
+    setTopupReduceOpen(false)
   }, [deal?.id, manageOnly])
 
   useEffect(() => {
@@ -480,9 +484,35 @@ export default function PokerStableDealDetailSheet({
 
         {canRecordEvents ? (
           <>
-            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Top-up stake
-            </h4>
+            {manageOnly ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setTopupReduceOpen((open) => !open)
+                  triggerTapHapticLight()
+                }}
+                aria-expanded={topupReduceOpen}
+                data-poker-stable-topup-reduce-toggle
+                className="mb-2 flex w-full items-center justify-between gap-2 rounded-xl px-0.5 py-1 text-left touch-manipulation active:opacity-80"
+              >
+                <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                  Top-up / Reduce stake
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${
+                    topupReduceOpen ? 'rotate-180' : ''
+                  }`}
+                  strokeWidth={2.25}
+                  aria-hidden
+                />
+              </button>
+            ) : (
+              <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                Top-up stake
+              </h4>
+            )}
+            {!manageOnly || topupReduceOpen ? (
+              <>
             <p className="mb-2 text-xs text-zinc-500">
               Increases baseline and roll. Edge backers debit their action % share when they sync
               (yours updates when you record if you are a backer).
@@ -610,6 +640,8 @@ export default function PokerStableDealDetailSheet({
                 </button>
               ) : null}
             </div>
+              </>
+            ) : null}
           </>
         ) : null}
 

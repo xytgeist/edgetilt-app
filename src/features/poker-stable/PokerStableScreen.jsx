@@ -530,14 +530,17 @@ export default function PokerStableScreen({
 
   function openClosedHorseReview(dealId) {
     if (!dealId) return
-    const deal = deals.find((d) => d.id === dealId)
-    if (!deal || !backerStableShowsClosedCarouselCard(deal, slicesByDeal[dealId] || [], userId)) {
-      openDealDetail(dealId)
-      return
-    }
+    // Review opens the full deal sheet (overview / history). Archive lives there.
+    setClosedHorseReviewDealId(null)
+    openDealDetail(dealId)
+  }
+
+  function dismissStableDealModals() {
     setDetailDealId(null)
-    setClosedHorseReviewDealId(dealId)
-    triggerTapHapticLight()
+    setClosedHorseReviewDealId(null)
+    setArchiveDetailDealId(null)
+    setTermsDealId(null)
+    setEditTermsDealId(null)
   }
 
   async function onArchiveHorse(dealId) {
@@ -560,8 +563,7 @@ export default function PokerStableScreen({
           ),
         }
       })
-      if (detailDealId === dealId) setDetailDealId(null)
-      if (closedHorseReviewDealId === dealId) setClosedHorseReviewDealId(null)
+      dismissStableDealModals()
       triggerTapHapticLight()
       await load()
     } catch (e) {
@@ -604,9 +606,7 @@ export default function PokerStableScreen({
           ),
         }
       })
-      if (detailDealId === dealId) setDetailDealId(null)
-      if (closedHorseReviewDealId === dealId) setClosedHorseReviewDealId(null)
-      if (archiveDetailDealId === dealId) setArchiveDetailDealId(null)
+      dismissStableDealModals()
       triggerTapHapticLight()
       await load()
     } catch (e) {
@@ -1027,6 +1027,15 @@ export default function PokerStableScreen({
           onRefresh={load}
           onError={setError}
           onOpenPokerBankroll={onOpenPokerBankroll}
+          onArchive={
+            backerStableShowsClosedCarouselCard(
+              detailDeal,
+              slicesByDeal[detailDeal.id] || [],
+              userId,
+            )
+              ? () => void onArchiveHorse(detailDeal.id)
+              : null
+          }
         />
       ) : null}
 

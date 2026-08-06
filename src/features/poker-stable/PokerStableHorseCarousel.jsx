@@ -271,9 +271,7 @@ export default function PokerStableHorseCarousel({
                     userId={userId}
                     saving={saving}
                     onArchive={() => void onArchiveHorse?.(deal.id)}
-                    onReview={() =>
-                      onOpenClosedHorseReview?.(deal.id) ?? onOpenDeal?.(deal.id)
-                    }
+                    onReview={() => onOpenClosedHorseReview?.(deal.id)}
                   />
                 )}
               </div>

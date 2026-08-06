@@ -52,6 +52,7 @@ import {
   userCanRecordDealEvent,
 } from './pokerStableTerms.js'
 import { STABLE_BACKER_BANKROLL_PHRASE } from './pokerStableBooksCopy.js'
+import { backerStableShowsClosedCarouselCard } from './pokerStableBackerMath.js'
 
 import { STABLE_TAB_ACTIVE } from './pokerStableUi.js'
 
@@ -99,9 +100,14 @@ export default function PokerStableDealDetailSheet({
   onRefresh,
   onError,
   onOpenPokerBankroll,
+  onArchive = null,
   variant = 'full',
 }) {
   const manageOnly = variant === 'manageOnly'
+  const showArchive =
+    !manageOnly &&
+    typeof onArchive === 'function' &&
+    backerStableShowsClosedCarouselCard(deal, slices, userId)
   const [activeTab, setActiveTab] = useState(manageOnly ? 'manage' : 'overview')
   const [topupAmount, setTopupAmount] = useState('')
   const [reduceStake, setReduceStake] = useState(false)
@@ -364,6 +370,21 @@ export default function PokerStableDealDetailSheet({
             Close
           </button>
         </div>
+
+        {showArchive ? (
+          <button
+            type="button"
+            disabled={saving}
+            data-poker-stable-archive-btn
+            onClick={() => {
+              triggerTapHapticLight()
+              onArchive?.()
+            }}
+            className="mb-4 w-full shrink-0 rounded-2xl bg-amber-600 py-3 text-sm font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"
+          >
+            Archive stake
+          </button>
+        ) : null}
 
         {manageOnly ? null : (
           <div className="mb-4 -mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 no-scrollbar">

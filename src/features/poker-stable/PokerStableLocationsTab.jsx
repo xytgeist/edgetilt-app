@@ -71,6 +71,7 @@ export default function PokerStableLocationsTab({
           {byVenue.map((row) => (
             <div
               key={row.name}
+              data-elevated-card="surface"
               className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-3"
             >
               <div className="font-semibold text-white">{row.name}</div>

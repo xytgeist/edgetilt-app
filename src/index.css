@@ -6244,7 +6244,12 @@ html.light [data-poker-stake-offer-onboarding] .rounded-2xl.border,
 html.light [data-poker-stake-offer-onboarding] .rounded-3xl.border,
 html.light [data-bankroll-sheet] .rounded-2xl.border,
 html.light [data-bankroll-sheet] .rounded-3xl.border,
-html.light [data-bankroll-sheet] [data-elevated-card] {
+html.light [data-bankroll-sheet] [data-elevated-card],
+html.light [data-poker-bankroll-sheet] [data-elevated-card],
+html.light [data-poker-bankroll-sheet] .rounded-2xl.border,
+html.light [data-poker-bankroll-sheet] .rounded-3xl.border,
+html.light [data-poker-stable-locations] .rounded-2xl.border,
+html.light [data-poker-stable] [data-poker-stable-locations] .rounded-2xl.border {
   box-shadow: var(--edge-light-list-card-shadow) !important;
 }
 [data-poker-stable-horse-card] [data-poker-stable-terms-icon]:active {
@@ -6992,6 +6997,8 @@ html.light [data-freemium-usage-counter][data-freemium-usage-remaining="0"] {
 [data-poker-stable-claim] *,
 [data-poker-stake-offer-onboarding],
 [data-poker-stake-offer-onboarding] *,
+[data-poker-bankroll-sheet],
+[data-poker-bankroll-sheet] *,
 [data-edge-handle-typeahead-list],
 [data-edge-handle-typeahead-list] * {
   scrollbar-width: none !important;
@@ -7025,6 +7032,8 @@ html.light [data-freemium-usage-counter][data-freemium-usage-remaining="0"] {
 [data-poker-stable-claim] *::-webkit-scrollbar,
 [data-poker-stake-offer-onboarding]::-webkit-scrollbar,
 [data-poker-stake-offer-onboarding] *::-webkit-scrollbar,
+[data-poker-bankroll-sheet]::-webkit-scrollbar,
+[data-poker-bankroll-sheet] *::-webkit-scrollbar,
 [data-edge-handle-typeahead-list]::-webkit-scrollbar,
 [data-edge-handle-typeahead-list] *::-webkit-scrollbar {
   display: none !important;

@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-06: **Light mode money green:** global + Poker/Stable remaps for `text-emerald-300/400` (+ opacity variants) → `#047857` so $ amounts are readable on white (were neon mint).
 - 2026-08-06: **Settle Commit queue:** multiple pending settles ... dated queue oldest-first, Commit all, Needs attn count + date range (player + backer).
 - 2026-08-06: **Periodic Settle confirm:** button label **Settle**; success closes settle + Manage/Terms sheets (stay on Bankroll).
 - 2026-08-06: **Backer settle notification:** Alert/push with `stableDeal` opens horse deal Overview (inline Commit), not stacked Settlement modal. Stakee Bankroll modal unchanged.

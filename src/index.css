@@ -887,10 +887,36 @@ html.light .text-lime-100  { color: var(--color-lime-700); }
 html.light .text-lime-200  { color: var(--color-lime-700); }
 html.light .text-lime-300  { color: var(--color-lime-700); }
 
-html.light .text-emerald-50  { color: var(--color-emerald-700); }
-html.light .text-emerald-100 { color: var(--color-emerald-700); }
-html.light .text-emerald-200 { color: var(--color-emerald-600); }
-html.light .text-emerald-300 { color: var(--color-emerald-600); }
+/*
+ * Money / positive P/L greens on white: dark UI uses emerald-300/400 (mint on black).
+ * Remap those text utilities to a readable forest green. Prefer #047857 (emerald-700)
+ * for amounts; keep #059669 for places that already opt into --poker-money / buttons.
+ */
+html.light .text-emerald-50,
+html.light .text-emerald-100 {
+  color: #065f46;
+}
+html.light .text-emerald-200,
+html.light .text-emerald-200\/90,
+html.light .text-emerald-200\/80,
+html.light .text-emerald-300,
+html.light .text-emerald-300\/95,
+html.light .text-emerald-300\/90,
+html.light .text-emerald-300\/80,
+html.light .text-emerald-400,
+html.light .text-emerald-400\/90,
+html.light .text-emerald-400\/85,
+html.light .text-emerald-400\/70,
+html.light .text-emerald-500 {
+  color: #047857;
+}
+html.light .text-green-200,
+html.light .text-green-300,
+html.light .text-green-400,
+html.light .text-green-400\/90,
+html.light .text-green-500 {
+  color: #047857;
+}
 
 html.light .text-red-50  { color: var(--color-red-700); }
 html.light .text-red-100 { color: var(--color-red-600); }
@@ -4717,8 +4743,11 @@ html.light [data-poker-bankroll-sheet] .bg-emerald-600 .text-white,
 html.light [data-poker-bankroll-sheet] .bg-emerald-600.text-white {
   color: #ffffff !important;
 }
+html.light [data-poker-bankroll-sheet] .text-emerald-200,
 html.light [data-poker-bankroll-sheet] .text-emerald-300,
+html.light [data-poker-bankroll-sheet] .text-emerald-300\/90,
 html.light [data-poker-bankroll-sheet] .text-emerald-400,
+html.light [data-poker-bankroll-sheet] .text-emerald-400\/90,
 html.light [data-poker-bankroll-sheet] .text-emerald-400\/85 {
   color: #047857 !important;
 }
@@ -4817,9 +4846,11 @@ html.light [data-poker-session-detail] [data-poker-session-stake-badge] {
 html.light [data-poker-session-detail] [data-poker-session-section-heading] {
   color: #0e7490 !important;
 }
+html.light [data-poker-session-detail] .text-emerald-300,
 html.light [data-poker-session-detail] .text-emerald-400,
-html.light [data-poker-session-detail] .text-emerald-400\/85 {
-  color: var(--poker-money) !important;
+html.light [data-poker-session-detail] .text-emerald-400\/85,
+html.light [data-poker-session-detail] .text-emerald-400\/90 {
+  color: var(--poker-money-press, #047857) !important;
 }
 html.light [data-poker-session-detail] .text-rose-400,
 html.light [data-poker-session-detail] .text-rose-400\/85 {
@@ -5684,8 +5715,13 @@ html.light [data-poker-stable-sheet] .text-rose-400,
 html.light [data-poker-stable-sheet] .text-rose-300 {
   color: #be123c !important;
 }
+html.light [data-poker-stable-sheet] .text-emerald-200,
 html.light [data-poker-stable-sheet] .text-emerald-300,
-html.light [data-poker-stable-sheet] .text-emerald-300\/90 {
+html.light [data-poker-stable-sheet] .text-emerald-300\/90,
+html.light [data-poker-stable-sheet] .text-emerald-300\/80,
+html.light [data-poker-stable-sheet] .text-emerald-400,
+html.light [data-poker-stable-sheet] .text-emerald-400\/85,
+html.light [data-poker-stable-sheet] .text-emerald-400\/90 {
   color: #047857 !important;
 }
 html.light [data-poker-stable-sheet] .text-cyan-200,
@@ -5809,7 +5845,7 @@ html.light [data-poker-stable-periodic-settle-sheet] [data-poker-stable-periodic
   color: #71717a !important;
 }
 html.light [data-poker-stable-periodic-settle-sheet] .text-emerald-400 {
-  color: #059669 !important;
+  color: #047857 !important;
 }
 html.light [data-poker-stable-periodic-settle-sheet] .text-amber-300\/90 {
   color: #b45309 !important;
@@ -5869,7 +5905,7 @@ html.light [data-poker-stable-close-stake-sheet] [data-poker-stable-close-stake-
   color: #71717a !important;
 }
 html.light [data-poker-stable-close-stake-sheet] .text-emerald-400 {
-  color: #059669 !important;
+  color: #047857 !important;
 }
 html.light [data-poker-stable-close-stake-sheet] .text-amber-300\/90 {
   color: #b45309 !important;
@@ -5952,8 +5988,13 @@ html.light [data-poker-stable] .text-amber-100 {
 html.light [data-poker-stable] .text-rose-400 {
   color: #be123c !important;
 }
-html.light [data-poker-stable] .text-emerald-400 {
-  color: #059669 !important;
+html.light [data-poker-stable] .text-emerald-200,
+html.light [data-poker-stable] .text-emerald-300,
+html.light [data-poker-stable] .text-emerald-300\/90,
+html.light [data-poker-stable] .text-emerald-400,
+html.light [data-poker-stable] .text-emerald-400\/85,
+html.light [data-poker-stable] .text-emerald-400\/90 {
+  color: #047857 !important;
 }
 html.light [data-poker-stable] .text-cyan-300,
 html.light [data-poker-stable] .text-cyan-300\/90 {
@@ -6063,9 +6104,6 @@ html.light [data-poker-stable] .active\:bg-emerald-500:active {
 /* Stable portfolio hero, tabs, horses, closed stakes, locations — light mode only */
 html.light [data-poker-stable] .text-amber-300 {
   color: #b45309 !important;
-}
-html.light [data-poker-stable] .text-emerald-300 {
-  color: #059669 !important;
 }
 html.light [data-poker-stable] .text-rose-300 {
   color: #be123c !important;
@@ -6299,8 +6337,10 @@ html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backe
   color: #be123c !important;
 }
 
-html.light [data-poker-stable-commit-sync-modal] .text-emerald-400 {
-  color: #059669 !important;
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-400,
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-400\/85,
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-300 {
+  color: #047857 !important;
 }
 html.light [data-poker-stable-commit-sync-modal] .text-rose-300 {
   color: #be123c !important;
@@ -6341,10 +6381,12 @@ html.light [data-poker-bankroll] {
 }
 
 html.light [data-poker-bankroll] .text-emerald-400,
+html.light [data-poker-bankroll] .text-emerald-400\/90,
 html.light [data-poker-bankroll] .text-emerald-400\/85,
 html.light [data-poker-bankroll] .text-emerald-300,
+html.light [data-poker-bankroll] .text-emerald-300\/90,
 html.light [data-poker-bankroll] .text-emerald-200 {
-  color: var(--poker-money) !important;
+  color: var(--poker-money-press, #047857) !important;
 }
 
 /* Completed-session swap lines + heading: same cyan on white; amounts use data-poker-session-swap-amt */

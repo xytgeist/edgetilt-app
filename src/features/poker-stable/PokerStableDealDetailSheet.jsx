@@ -369,6 +369,12 @@ export default function PokerStableDealDetailSheet({
             settlements={dealSettlements}
             ledgerEntries={ledgerEntries}
             onOpenTrend={() => setActiveTab('trend')}
+            canProposeSettle={canProposeSettle}
+            showPeriodicSettle={showPeriodicSettle}
+            saving={saving}
+            profitUp={profitUp}
+            onOpenPeriodicSettle={() => setPeriodicSettleOpen(true)}
+            onOpenCloseStake={() => setCloseStakeOpen(true)}
           />
         ) : null}
 

@@ -54,6 +54,12 @@ export default function PokerStableDealOverviewPanel({
   ledgerEntries = [],
   onOpenTrend,
   onOpenSession,
+  canProposeSettle = false,
+  showPeriodicSettle = false,
+  saving = false,
+  profitUp = 0,
+  onOpenPeriodicSettle,
+  onOpenCloseStake,
 }) {
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? deal?.baseline_bankroll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
@@ -208,6 +214,37 @@ export default function PokerStableDealOverviewPanel({
             value={heroStats.winRate == null ? '-' : `${heroStats.winRate}%`}
           />
         </div>
+
+        {canProposeSettle ? (
+          <div className={`mt-3 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}>
+            <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+              Profit above baseline: {fmtPoker$(profitUp)} · all slices settle together.
+              {showPeriodicSettle
+                ? ' Recording periodic settle updates your books immediately; others sync when ready.'
+                : ' Recording close ends the stake; others sync when ready.'}
+            </p>
+            {showPeriodicSettle ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={onOpenPeriodicSettle}
+                className="mb-2 w-full rounded-3xl bg-emerald-600 py-3 text-base font-bold text-white touch-manipulation disabled:opacity-50"
+              >
+                Record periodic settle
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onOpenCloseStake}
+              className={`w-full rounded-3xl py-3 text-base font-bold touch-manipulation disabled:opacity-50 ${
+                showPeriodicSettle ? 'bg-zinc-800 text-zinc-100' : 'bg-emerald-600 text-white'
+              }`}
+            >
+              Record close stake
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="mb-3 flex items-center gap-3">

@@ -65,13 +65,13 @@ export default function PokerStableSettleCommitQueue({
     <div data-poker-stable-settle-commit-queue className="mb-4 space-y-3">
       <div
         data-poker-stable-settle-commit-queue-header
-        className="rounded-2xl border border-amber-500/35 bg-amber-950/25 px-3 py-2.5"
+        className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 px-3 py-2.5"
       >
-        <p className="text-xs font-bold uppercase tracking-wide text-amber-300/90">
+        <p className="text-xs font-bold uppercase tracking-wide text-cyan-300/90">
           {total === 1 ? '1 settlement to commit' : `${total} settlements to commit`}
         </p>
         {dateRange ? (
-          <p className="mt-0.5 text-xs leading-relaxed text-amber-100/80">{dateRange}</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{dateRange}</p>
         ) : null}
         <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
           Commit oldest first so each period hits your books in order.

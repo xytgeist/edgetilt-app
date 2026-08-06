@@ -6216,23 +6216,32 @@ html.light [data-poker-stable-attention-sheet] .bg-zinc-900\/60 {
   background-color: #fafafa !important;
 }
 
+/* Settle Commit queue ... cool cyan/zinc (match Stable chrome; no amber wash) */
 html.light [data-poker-stable-settle-commit-queue-header] {
-  background-color: #fffbeb !important;
-  border-color: #fcd34d !important;
+  background-color: #ecfeff !important;
+  border-color: #67e8f9 !important;
 }
-html.light [data-poker-stable-settle-commit-queue-header] .text-amber-300\/90 {
-  color: #b45309 !important;
+html.light [data-poker-stable-settle-commit-queue-header] .text-cyan-300\/90 {
+  color: #0e7490 !important;
 }
-html.light [data-poker-stable-settle-commit-queue-header] .text-amber-100\/80 {
-  color: #92400e !important;
+html.light [data-poker-stable-settle-commit-queue-header] .text-zinc-400 {
+  color: #52525b !important;
 }
 html.light [data-poker-stable-settle-commit-queue-header] .text-zinc-500 {
   color: #71717a !important;
 }
 
 html.light [data-poker-stable-commit-sync-modal] {
-  background-color: #ffffff !important;
-  border-color: #e4e4e7 !important;
+  background-color: #f8fafc !important;
+  border-color: #a5f3fc !important;
+}
+html.light [data-poker-stable-commit-sync-modal].border-cyan-500\/30,
+html.light [data-poker-stable-sheet] [data-poker-stable-commit-sync-modal] {
+  background-color: #ecfeff !important;
+  border-color: #67e8f9 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] .text-cyan-300\/90 {
+  color: #0e7490 !important;
 }
 html.light [data-poker-stable-commit-sync-modal] .text-white {
   color: #18181b !important;

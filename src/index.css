@@ -6225,101 +6225,96 @@ html.light [data-poker-stable] [data-poker-stable-tabs] {
   border-color: #e4e4e7 !important;
 }
 /*
- * Horse cards … light-only pastel tones (dark keeps neon Tailwind on data-poker-stable-horse-tone).
- * Soft wash + readable ink accents ... same family as slice-card light tones.
+ * Horse cards … light-only identity via bold border + ink accents (no pastel wash).
+ * Surface matches bankroll white; dark keeps neon Tailwind on data-poker-stable-horse-tone.
  */
 html.light [data-poker-stable] [data-poker-stable-horse-card] {
+  background: #ffffff !important;
   box-shadow: var(--edge-light-card-shadow) !important;
 }
-/* 0 cyan → soft teal */
+/* 0 cyan */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] {
-  background: linear-gradient(145deg, #ecfeff 0%, #f7fdff 45%, #ffffff 100%) !important;
-  border-color: #a5f3fc !important;
+  border-color: #0891b2 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .border-cyan-500\/15 {
-  border-color: #cffafe !important;
+  border-color: #a5f3fc !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .text-cyan-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-cyan-500\/20.text-cyan-300 {
   color: #0e7490 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] .bg-cyan-500\/20 {
-  background-color: #cffafe !important;
+  background-color: #ecfeff !important;
 }
-/* 1 emerald → soft mint */
+/* 1 emerald */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] {
-  background: linear-gradient(145deg, #ecfdf5 0%, #f7fef9 45%, #ffffff 100%) !important;
-  border-color: #bbf7d0 !important;
+  border-color: #059669 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .border-emerald-500\/15 {
-  border-color: #d1fae5 !important;
+  border-color: #6ee7b7 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .text-emerald-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-emerald-500\/20.text-emerald-300 {
   color: #047857 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-emerald-500\/20 {
-  background-color: #d1fae5 !important;
+  background-color: #ecfdf5 !important;
 }
-/* 2 sky → soft blue */
+/* 2 sky */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] {
-  background: linear-gradient(145deg, #f0f9ff 0%, #f8fbff 45%, #ffffff 100%) !important;
-  border-color: #bae6fd !important;
+  border-color: #0284c7 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .border-sky-500\/15 {
-  border-color: #e0f2fe !important;
+  border-color: #7dd3fc !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .text-sky-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-sky-500\/20.text-sky-300 {
   color: #0369a1 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] .bg-sky-500\/20 {
-  background-color: #e0f2fe !important;
+  background-color: #f0f9ff !important;
 }
-/* 3 violet → soft lavender */
+/* 3 violet */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] {
-  background: linear-gradient(145deg, #f5f3ff 0%, #faf8ff 45%, #ffffff 100%) !important;
-  border-color: #ddd6fe !important;
+  border-color: #7c3aed !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .border-violet-500\/15 {
-  border-color: #ede9fe !important;
+  border-color: #c4b5fd !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .text-violet-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-violet-500\/20.text-violet-300 {
   color: #6d28d9 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='3'] .bg-violet-500\/20 {
-  background-color: #ede9fe !important;
+  background-color: #f5f3ff !important;
 }
-/* 4 fuchsia → soft orchid */
+/* 4 fuchsia */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] {
-  background: linear-gradient(145deg, #fdf4ff 0%, #fef8ff 45%, #ffffff 100%) !important;
-  border-color: #f5d0fe !important;
+  border-color: #c026d3 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .border-fuchsia-500\/15 {
-  border-color: #fae8ff !important;
+  border-color: #e879f9 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .text-fuchsia-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-fuchsia-500\/20.text-fuchsia-300 {
   color: #a21caf !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='4'] .bg-fuchsia-500\/20 {
-  background-color: #fae8ff !important;
+  background-color: #fdf4ff !important;
 }
-/* 5 rose → soft blush */
+/* 5 rose */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] {
-  background: linear-gradient(145deg, #fff1f2 0%, #fff8f8 45%, #ffffff 100%) !important;
-  border-color: #fecdd3 !important;
+  border-color: #e11d48 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .border-rose-500\/15 {
-  border-color: #ffe4e6 !important;
+  border-color: #fb7185 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .text-rose-300,
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-rose-500\/20.text-rose-300 {
   color: #be123c !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='5'] .bg-rose-500\/20 {
-  background-color: #ffe4e6 !important;
+  background-color: #fff1f2 !important;
 }
 /* Background sparkline … a bit darker/more visible on light cards (dark unchanged). */
 html.light [data-poker-stable] [data-poker-stable-horse-sparkline-bg] path[class*='fill-emerald'] {

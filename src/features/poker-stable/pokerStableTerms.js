@@ -135,9 +135,8 @@ export function stakeHorseCardStatusLabel(deal, slices = []) {
 }
 
 export function stakeHorseCardStatusTone(deal, slices = []) {
-  if (stakeDealIsLiveForStakee(deal, slices)) {
-    return 'bg-emerald-500/15 text-emerald-300'
-  }
+  // Zinc pill … match portfolio hero chrome (no cyan/emerald wash on horse cards).
+  if (stakeDealIsLiveForStakee(deal, slices)) return 'bg-zinc-700/60 text-zinc-300'
   if (deal?.status === 'pending') return 'bg-zinc-700/60 text-zinc-300'
   return 'bg-zinc-700/60 text-zinc-400'
 }

@@ -6082,10 +6082,6 @@ html.light [data-poker-stable] .bg-cyan-950\/20,
 html.light [data-poker-stable] .bg-cyan-950\/30 {
   background-color: #f4f4f5 !important;
 }
-html.light [data-poker-stable] .bg-emerald-500\/15.text-emerald-300 {
-  background-color: #ecfdf5 !important;
-  color: #047857 !important;
-}
 /* Warning amber surfaces stay amber; do not paint chrome surfaces honey */
 html.light [data-poker-stable] .border-amber-500\/15,
 html.light [data-poker-stable] .border-amber-500\/20,

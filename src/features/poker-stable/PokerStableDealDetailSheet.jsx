@@ -58,9 +58,12 @@ const DEAL_TABS = [
   { id: 'manage', label: 'MANAGE' },
 ]
 
-/** Fixed sheet height so Overview / Details / Trend / etc. do not resize the modal. */
+/**
+ * Fixed full-viewport sheet height so Overview / Details / Trend / etc. do not resize
+ * the modal, and the panel reaches the bottom edge (safe-area stays in panel padding).
+ */
 const DEAL_DETAIL_SHEET_HEIGHT =
-  'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))]'
+  'h-[100dvh] !max-h-[100dvh] rounded-b-none'
 
 /**
  * Deal detail: overview/history/analytics tabs + manage (top-up, settle, ledger).
@@ -311,7 +314,7 @@ export default function PokerStableDealDetailSheet({
         className={`relative z-10 flex w-full max-w-lg flex-col overflow-hidden !overflow-y-hidden ${DEAL_DETAIL_SHEET_HEIGHT} ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex shrink-0 items-center justify-between gap-2">
+        <div className="mb-4 mt-[env(safe-area-inset-top,0px)] flex shrink-0 items-center justify-between gap-2">
           <div className="min-w-0">
             <h3 className="truncate text-lg font-bold text-white">{deal.label || 'Deal'}</h3>
             <p className="text-xs text-zinc-500">{dealTypeLabel(deal.deal_type)}</p>

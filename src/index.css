@@ -6592,10 +6592,15 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-revoked-notice] button.text-rose-100 {
   color: #b91c1c !important;
 }
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-emerald-400\/25,
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-blue-400\/25,
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone] .border-rose-400\/25 {
-  border-color: #e4e4e7 !important;
+/* Stat-row hairline under sparkline / pending copy — keep visible on pastel heroes */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='emerald'] .border-emerald-400\/25 {
+  border-color: #4ade80 !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='blue'] .border-blue-400\/25 {
+  border-color: #60a5fa !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='rose'] .border-rose-400\/25 {
+  border-color: #fb7185 !important;
 }
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='emerald'] .text-emerald-400 {
   color: #16a34a !important;

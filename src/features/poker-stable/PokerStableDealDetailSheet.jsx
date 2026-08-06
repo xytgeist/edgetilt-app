@@ -68,7 +68,7 @@ const DEAL_TABS = [
 const DEAL_DETAIL_SHEET_HEIGHT_FIXED =
   'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden !overflow-y-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
 
-/** Player Bankroll Terms (manageOnly): height follows content, capped so tall ledgers still scroll. */
+/** Player Bankroll Terms (manageOnly): height follows content, capped so tall manage content still scrolls. */
 const DEAL_DETAIL_SHEET_HEIGHT_HUG =
   'h-auto max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-y-auto overscroll-contain rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
 
@@ -486,7 +486,8 @@ export default function PokerStableDealDetailSheet({
           })}
         </div>
 
-        {myLedgerEntries.length ? (
+        {/* Player Terms manage sheet: history already covers settle/top-up lines on the stake card. */}
+        {!manageOnly && myLedgerEntries.length ? (
           <>
             <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Your ledger

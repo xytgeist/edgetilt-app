@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-06: **Player Manage sheet:** drop **Your ledger** block (history on stake card already). Backer Manage ledger unchanged.
 - 2026-08-06: **Player settle Commit:** sync modal closes without opening Stake terms afterward.
 - 2026-08-06: **Block settle while pending Commit (test + prod):** UI + **`20260806030000`** applied on **`kcosfvmreeiosdjdzycb`** + **`jtjgtucumuoswnbauxry`** ... gates Periodic settlement / Close stake when viewer has unsynced settle commit (“Awaiting settlement · Commit the current settlement first.”). Initiator unchanged. Frontend **`test` → `main`**.
 - 2026-08-06: **Stable light mode chrome → cyan/zinc:** light Stable was still forcing legacy amber/honey (`#fffbeb` / `#d97706`) on hero, horses, invites, CTAs while dark is cyan. Rewrote `html.light [data-poker-stable]` + sheet chrome to cool cyan accent; amber kept for real warnings only.

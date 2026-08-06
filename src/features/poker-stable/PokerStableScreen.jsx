@@ -53,8 +53,6 @@ import {
   loadPendingCommits,
   nudgeBackerSliceAcceptance,
   revokeHorseDeal,
-  depositBackerBankroll,
-  withdrawBackerBankroll,
   sliceDisplayName,
   stakerAcceptCounterTerms,
   stakerDeclineCounterTerms,
@@ -446,48 +444,6 @@ export default function PokerStableScreen({
     ],
   )
 
-  async function onDepositBackerBankroll(amount) {
-    if (!supabaseClient) return
-    setSaving(true)
-    setError('')
-    try {
-      const { profile, error: err } = await depositBackerBankroll(supabaseClient, amount)
-      if (err) throw err
-      setBackerProfile((prev) => ({
-        bankroll_balance: profile?.bankroll_balance ?? amount,
-        realized_backing_pl: prev?.realized_backing_pl ?? 0,
-        has_profile: true,
-      }))
-      triggerTapHapticLight()
-      void load()
-    } catch (e) {
-      setError(e?.message || 'Could not adjust bankroll.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function onWithdrawBackerBankroll(amount) {
-    if (!supabaseClient) return
-    setSaving(true)
-    setError('')
-    try {
-      const { profile, error: err } = await withdrawBackerBankroll(supabaseClient, amount)
-      if (err) throw err
-      setBackerProfile((prev) => ({
-        bankroll_balance: profile?.bankroll_balance ?? 0,
-        realized_backing_pl: prev?.realized_backing_pl ?? 0,
-        has_profile: true,
-      }))
-      triggerTapHapticLight()
-      void load()
-    } catch (e) {
-      setError(e?.message || 'Could not adjust bankroll.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   async function onAcceptCounter(dealId) {
     if (!supabaseClient) return
     setSaving(true)
@@ -685,10 +641,6 @@ export default function PokerStableScreen({
           <>
             <PokerStablePortfolioHero
               metrics={portfolioMetrics}
-              hasProfile={Boolean(backerProfile?.has_profile)}
-              saving={saving}
-              onDeposit={onDepositBackerBankroll}
-              onWithdraw={onWithdrawBackerBankroll}
               pendingCommitCount={pendingPortfolioCommits.length}
               onNeedsAttention={() => setAttentionOpen(true)}
             />

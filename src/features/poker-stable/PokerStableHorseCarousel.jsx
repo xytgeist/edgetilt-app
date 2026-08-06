@@ -75,6 +75,13 @@ export default function PokerStableHorseCarousel({
           slice?.status === 'pending' && deal.staker_user_id !== userId
         const isLeadBackerOnPendingDeal =
           deal.status === 'pending' && deal.staker_user_id === userId
+        const pendingNudgeSlices = pendingBackerNudgeTargetsForActiveBacker(
+          deal,
+          dealSlices,
+          userId,
+        )
+        const pendingSettleCommit = pendingSettleCommitForDeal(pendingCommits, deal.id)
+        const closedUnarchived = backerStableShowsClosedCarouselCard(deal, dealSlices, userId)
         const statusLabel = closedUnarchived
           ? 'Closed'
           : slice?.status === 'pending'
@@ -85,13 +92,6 @@ export default function PokerStableHorseCarousel({
           : slice?.status === 'pending'
             ? 'bg-zinc-700/60 text-zinc-300'
             : stakeHorseCardStatusTone(deal, dealSlices)
-        const pendingNudgeSlices = pendingBackerNudgeTargetsForActiveBacker(
-          deal,
-          dealSlices,
-          userId,
-        )
-        const pendingSettleCommit = pendingSettleCommitForDeal(pendingCommits, deal.id)
-        const closedUnarchived = backerStableShowsClosedCarouselCard(deal, dealSlices, userId)
         const sparkSeries = horseSparkByDeal[deal.id] || []
         const showSparkBackground =
           showBackerStats && !pendingSettleCommit && !closedUnarchived && sparkSeries.length >= 2

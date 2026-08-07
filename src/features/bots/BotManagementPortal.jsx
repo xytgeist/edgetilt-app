@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import BotComposeImagePicker from './BotComposeImagePicker.jsx'
+import ChatEmojiPicker from '../chat/ChatEmojiPicker.jsx'
 import BotCreateWizard from './BotCreateWizard.jsx'
 import BotEditorialInbox from './BotEditorialInbox.jsx'
 import BotPostRepliesPanel from './BotPostRepliesPanel.jsx'
@@ -425,7 +427,10 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   const [composePills, setComposePills] = useState([])
   const [composeMarketSymbols, setComposeMarketSymbols] = useState([])
   const [marketPickerOpen, setMarketPickerOpen] = useState(false)
+  const [composeEmojiOpen, setComposeEmojiOpen] = useState(false)
   const [composePublishError, setComposePublishError] = useState('')
+  const composeCaptionRef = useRef(/** @type {HTMLTextAreaElement | null} */ (null))
+  const composeCaretRef = useRef(/** @type {{ start: number, end: number } | null} */ (null))
 
   useEffect(() => {
     if (bot?.pipeline !== 'odds_api') {
@@ -491,6 +496,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       setComposeCaption('')
       setComposePills([])
       setComposeMarketSymbols([])
+      setComposeEmojiOpen(false)
       setComposePublishError('')
       setComposeImageItems((prev) => {
         revokeBotComposeImagePreviews(prev)
@@ -529,6 +535,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     setComposeCaption('')
     setComposePills(defaultPills)
     setComposeMarketSymbols([])
+    setComposeEmojiOpen(false)
     setComposePublishError('')
     setComposeImageItems((prev) => {
       revokeBotComposeImagePreviews(prev)
@@ -930,6 +937,53 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       if (cur.includes(slug)) return cur.filter((s) => s !== slug)
       if (cur.length >= 3) return cur
       return [...cur, slug]
+    })
+  }
+
+  const rememberComposeCaret = () => {
+    const el = composeCaptionRef.current
+    if (!el) return
+    composeCaretRef.current = {
+      start: el.selectionStart ?? el.value.length,
+      end: el.selectionEnd ?? el.value.length,
+    }
+  }
+
+  const insertComposeEmoji = (emoji) => {
+    const glyph = String(emoji || '')
+    if (!glyph) return
+    const max = LOUNGE_CAPTION_SUBSCRIBER_MAX
+    setComposeCaption((prev) => {
+      const text = String(prev || '')
+      const el = composeCaptionRef.current
+      const caret = composeCaretRef.current
+      const start =
+        caret && Number.isFinite(caret.start)
+          ? Math.min(Math.max(0, caret.start), text.length)
+          : el && typeof el.selectionStart === 'number'
+            ? el.selectionStart
+            : text.length
+      const end =
+        caret && Number.isFinite(caret.end)
+          ? Math.min(Math.max(start, caret.end), text.length)
+          : el && typeof el.selectionEnd === 'number'
+            ? Math.max(start, el.selectionEnd)
+            : start
+      const next = `${text.slice(0, start)}${glyph}${text.slice(end)}`
+      if (next.length > max) return text
+      const pos = start + glyph.length
+      composeCaretRef.current = { start: pos, end: pos }
+      window.requestAnimationFrame(() => {
+        const field = composeCaptionRef.current
+        if (!field) return
+        try {
+          field.focus()
+          field.setSelectionRange(pos, pos)
+        } catch {
+          /* ignore */
+        }
+      })
+      return next
     })
   }
 
@@ -1761,10 +1815,15 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           Manual feed post from the bot account. Automated odds posts still run separately.
         </div>
         <textarea
+          ref={composeCaptionRef}
           value={composeCaption}
           maxLength={LOUNGE_CAPTION_SUBSCRIBER_MAX}
           rows={5}
           onChange={(e) => setComposeCaption(e.target.value)}
+          onSelect={rememberComposeCaret}
+          onKeyUp={rememberComposeCaret}
+          onClick={rememberComposeCaret}
+          onBlur={rememberComposeCaret}
           placeholder="Write a caption…"
           className="w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm leading-relaxed resize-y focus:border-cyan-500/50 focus:outline-none"
         />
@@ -1772,6 +1831,21 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           {composeCaption.length}/{LOUNGE_CAPTION_SUBSCRIBER_MAX}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={busy === 'compose-post'}
+            onClick={() => {
+              rememberComposeCaret()
+              setComposeEmojiOpen(true)
+            }}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 text-zinc-200 text-xs font-semibold touch-manipulation hover:bg-zinc-800/70 disabled:opacity-50"
+            title="Add emoji"
+          >
+            <span aria-hidden className="text-base leading-none">
+              😊
+            </span>
+            Emoji
+          </button>
           <button
             type="button"
             disabled={busy === 'compose-post'}
@@ -1861,6 +1935,19 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           }}
           supabaseClient={supabaseClient}
         />
+        {composeEmojiOpen && typeof document !== 'undefined'
+          ? createPortal(
+              <ChatEmojiPicker
+                zIndex={230}
+                onSelect={insertComposeEmoji}
+                onClose={() => {
+                  setComposeEmojiOpen(false)
+                  restoreBotPortalViewportAfterOverlay()
+                }}
+              />,
+              document.body,
+            )
+          : null}
       </div>
 
       <BotReplyOnPostPanel

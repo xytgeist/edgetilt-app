@@ -22,15 +22,15 @@ import {
 
 /**
  * Feed / composer market mini ... Apple-style blend:
- * logo · ticker+arrow / name · sparkline · price / change
+ * logo ? ticker+arrow / name ? sparkline ? price / change
  *
  * Compact (default): flex row with tall spark `flex-1` (full leftover width).
  * Wide name: when the name would truncate at 38% width, spark shrinks onto the
  * ticker row and the name runs under ticker + spark (same vertical band;
  * truncates before price).
  *
- * Historical (non-today) windows: tiny date absolutely in the top padding
- * above logo/ticker ... does not affect layout of anything else.
+ * Historical (non-today) windows: normal centered date label under the
+ * main row (in flow ... no overlay games).
  *
  * Sparkline: dashed open (tint vs prior close); BaselineSeries green above /
  * red below open with fill toward the open line.
@@ -49,10 +49,11 @@ const MINI_SPARKLINE_HEIGHT_PX = 40
 /** Wide-name mode: spark shares the ticker row only so the name band stays put. */
 const MINI_SPARKLINE_HEIGHT_WIDE_PX = 22
 const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
+const MINI_CARD_CLASS_WITH_RANGE = 'min-h-[4.25rem] h-auto'
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
-/** Historical only ... painted in top padding, out of flow. */
-const MINI_RANGE_OVERLAY_CLASS =
-  'pointer-events-none absolute left-3 right-3 top-0.5 z-[1] truncate text-center text-[8px] font-medium leading-none tracking-wide text-zinc-500'
+/** Historical only ... normal centered label under the main row. */
+const MINI_RANGE_LABEL_CLASS =
+  'w-full min-w-0 truncate text-center text-[10px] font-medium leading-tight text-zinc-500'
 /** Off-screen probe sized in px to the compact name budget (38% of card). */
 const MINI_COMPACT_NAME_PROBE_CLASS =
   'pointer-events-none absolute -left-[9999px] top-0 overflow-hidden whitespace-nowrap text-[13px] font-medium'
@@ -122,7 +123,7 @@ export default function LoungeMarketChartMini({
       const cs = getComputedStyle(card)
       const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
       // max-w-[38%] is % of the content box; clientWidth includes padding and was too generous
-      // (medium-long names like "UWM Holdings Corp" looked like they fit → stuck compact).
+      // (medium-long names like "UWM Holdings Corp" looked like they fit ? stuck compact).
       return Math.max(0, card.clientWidth - padX)
     }
 
@@ -264,7 +265,7 @@ export default function LoungeMarketChartMini({
   const priceLabel = formatMarketPrice(quote?.price)
   const changeLabel = formatMiniChangeLabel(quote?.change, changePct)
   const changeTone = dayUp ? 'text-lv-green lounge-cashtag-positive' : 'text-lv-red'
-  const arrow = dayUp ? '▲' : '▼'
+  const arrow = dayUp ? '?' : '?'
 
   if (!embed?.display_symbol) return null
 
@@ -328,6 +329,8 @@ export default function LoungeMarketChartMini({
     </div>
   )
 
+  const cardHeightClass = showRange ? MINI_CARD_CLASS_WITH_RANGE : MINI_CARD_CLASS
+
   return (
     <div
       ref={cardRef}
@@ -342,7 +345,7 @@ export default function LoungeMarketChartMini({
         e.stopPropagation()
         onOpen?.()
       }}
-      className={`relative flex ${MINI_CARD_CLASS} min-w-0 shrink-0 snap-start items-center gap-2.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
+      className={`relative flex ${cardHeightClass} min-w-0 shrink-0 snap-start flex-col justify-center gap-0.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1.5 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
       data-lounge-market-chart-mini
       data-asset-class={assetClass}
       data-wide-name={wideName ? '1' : '0'}
@@ -353,49 +356,51 @@ export default function LoungeMarketChartMini({
         {displayName}
       </span>
 
-      {showRange ? <div className={MINI_RANGE_OVERLAY_CLASS}>{rangeLabel}</div> : null}
+      <div className="flex min-h-0 min-w-0 w-full flex-1 items-center gap-2.5">
+        {logo}
 
-      {logo}
-
-      {wideName ? (
-        <>
-          {/* Middle column grows; spark flex-1 on ticker row; name underneath at compact Y. */}
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden">
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="min-w-0 shrink-0">{tickerRow}</div>
+        {wideName ? (
+          <>
+            {/* Middle column grows; spark flex-1 on ticker row; name underneath at compact Y. */}
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 shrink-0">{tickerRow}</div>
+                <div
+                  ref={hostRef}
+                  className="pointer-events-none min-w-12 flex-1"
+                  style={{ height: sparkHeightPx }}
+                  aria-hidden
+                />
+              </div>
+              <div className={`min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}>
+                {displayName}
+              </div>
+            </div>
+            {priceStack}
+          </>
+        ) : (
+          <>
+            <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-0.5 overflow-hidden">
+              {tickerRow}
               <div
-                ref={hostRef}
-                className="pointer-events-none min-w-12 flex-1"
-                style={{ height: sparkHeightPx }}
-                aria-hidden
-              />
+                ref={compactNameRef}
+                className={`w-full min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}
+              >
+                {displayName}
+              </div>
             </div>
-            <div className={`min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}>
-              {displayName}
-            </div>
-          </div>
-          {priceStack}
-        </>
-      ) : (
-        <>
-          <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-0.5 overflow-hidden">
-            {tickerRow}
             <div
-              ref={compactNameRef}
-              className={`w-full min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}
-            >
-              {displayName}
-            </div>
-          </div>
-          <div
-            ref={hostRef}
-            className="pointer-events-none min-w-12 flex-1 self-center"
-            style={{ height: sparkHeightPx }}
-            aria-hidden
-          />
-          {priceStack}
-        </>
-      )}
+              ref={hostRef}
+              className="pointer-events-none min-w-12 flex-1 self-center"
+              style={{ height: sparkHeightPx }}
+              aria-hidden
+            />
+            {priceStack}
+          </>
+        )}
+      </div>
+
+      {showRange ? <div className={MINI_RANGE_LABEL_CLASS}>{rangeLabel}</div> : null}
     </div>
   )
 }

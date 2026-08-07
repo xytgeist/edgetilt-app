@@ -25,6 +25,13 @@ const PORTFOLIO_TABS = [
   { id: 'locations', label: 'Locations' },
 ]
 
+/**
+ * Fixed sheet height so Overview / Trend / Locations do not resize the modal.
+ * Matches deal-detail tabbed sheets (docked bottom, content scrolls inside).
+ */
+const PORTFOLIO_DETAIL_SHEET_HEIGHT_FIXED =
+  'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden !overflow-y-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
+
 function fmtPct(n) {
   if (n == null || !Number.isFinite(n)) return '—'
   const sign = n > 0 ? '+' : ''
@@ -159,7 +166,7 @@ export default function PokerStablePortfolioDetailSheet({
       <div
         data-poker-stable-portfolio-detail
         data-poker-stable-sheet
-        className="relative z-10 flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-3rem))] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900 px-5 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
+        className={`relative z-10 flex w-full max-w-lg flex-col rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900 px-5 pt-5 ${PORTFOLIO_DETAIL_SHEET_HEIGHT_FIXED}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-zinc-600/70" aria-hidden />
@@ -219,7 +226,7 @@ export default function PokerStablePortfolioDetailSheet({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar [-webkit-overflow-scrolling:touch]">
           {tab === 'overview' ? (
             <div className="space-y-4 pb-2">
               <div className="grid grid-cols-2 gap-3 text-center">

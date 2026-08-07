@@ -344,7 +344,8 @@ export default function PokerStableCommitSyncPanel({
             ) : null}
             {showBackerSettleCredit ? (
               <p className="mt-2.5 text-xs font-medium leading-relaxed text-emerald-100/70">
-                Same amount posts to Realized P/L.
+                Profit (or loss) posts to Realized P/L. Stake reduction and profit (or loss) credited
+                to personal backing bankroll.
               </p>
             ) : null}
           </div>

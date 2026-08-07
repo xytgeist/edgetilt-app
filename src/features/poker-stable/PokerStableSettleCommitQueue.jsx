@@ -63,20 +63,20 @@ export default function PokerStableSettleCommitQueue({
 
   return (
     <div data-poker-stable-settle-commit-queue className="mb-4 space-y-3 px-1.5 py-1">
-      <div
-        data-poker-stable-settle-commit-queue-header
-        className="rounded-2xl border border-zinc-700/40 bg-zinc-900/70 px-3 py-2.5 shadow-none"
-      >
-        <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
-          {total === 1 ? '1 settlement to commit' : `${total} settlements to commit`}
-        </p>
-        {dateRange ? (
-          <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{dateRange}</p>
-        ) : null}
-        <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-          Commit oldest first so each period hits your books in order.
-        </p>
-        {total > 1 ? (
+      {total > 1 ? (
+        <div
+          data-poker-stable-settle-commit-queue-header
+          className="rounded-2xl border border-zinc-700/40 bg-zinc-900/70 px-3 py-2.5 shadow-none"
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
+            {total} settlements to commit
+          </p>
+          {dateRange ? (
+            <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{dateRange}</p>
+          ) : null}
+          <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+            Commit oldest first so each period hits your books in order.
+          </p>
           <button
             type="button"
             disabled={busy}
@@ -85,16 +85,16 @@ export default function PokerStableSettleCommitQueue({
           >
             {committingAll ? 'Committing…' : 'Commit all'}
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <PokerStableCommitSyncPanel
         variant="inline"
         supabaseClient={supabaseClient}
         userId={userId}
         commitId={String(head.commit_id)}
-        queueIndex={1}
-        queueTotal={total}
+        queueIndex={total > 1 ? 1 : null}
+        queueTotal={total > 1 ? total : null}
         settleDateLabel={headDate}
         saving={busy}
         onSavingChange={onSavingChange}

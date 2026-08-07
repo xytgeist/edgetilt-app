@@ -26,6 +26,11 @@ import {
 import { fetchEdgarCurrentFilings, secEdgarUserAgent } from '../_shared/loungeBotEdgarFetch.ts'
 import { fetchAllowlistedFeed, type NormalizedNewsItem } from '../_shared/loungeBotRssFetch.ts'
 import { publishLoungeBotPost } from '../_shared/loungeBotPublish.ts'
+import {
+  loadRecentPublishedWireHeadlines,
+  newsTextNearDuplicateOfAny,
+  NEWS_NEAR_DUPE_LOOKBACK,
+} from '../_shared/loungeBotNewsDedupe.ts'
 
 type BotAccount = {
   user_id: string
@@ -429,15 +434,17 @@ Deno.serve(async (req) => {
 
     candidates.sort((a, b) => b.score - a.score)
 
+    const recentHeadlines = await loadRecentPublishedWireHeadlines(
+      admin,
+      account.user_id,
+      NEWS_NEAR_DUPE_LOOKBACK,
+    )
+    const acceptedHeadlines = [...recentHeadlines]
+    let skippedNearDupe = 0
+
     if (!dryRun && publishBudget > 0) {
-      for (const cand of candidates.slice(0, publishBudget)) {
-        const post = await buildFinancialWirePostAsync(cand.item, { newsProfile })
-        const caption = post.caption
-        const pills = account.category_pills_default?.length
-          ? account.category_pills_default
-          : newsProfile === 'crypto'
-            ? ['crypto', 'trading']
-            : ['stocks', 'trading']
+      for (const cand of candidates) {
+        if (published >= publishBudget) break
 
         const { data: rawMatch } = await admin
           .from('lounge_news_raw_items')
@@ -445,6 +452,29 @@ Deno.serve(async (req) => {
           .eq('source_id', cand.sourceId)
           .eq('external_id', cand.item.externalId)
           .maybeSingle()
+
+        // Cross-source story lookback (CoinDesk vs Cointelegraph rewrites).
+        if (newsTextNearDuplicateOfAny(cand.item.title, acceptedHeadlines)) {
+          skippedNearDupe += 1
+          skipped += 1
+          await admin.from('lounge_bot_publish_log').insert({
+            bot_user_id: account.user_id,
+            raw_item_id: rawMatch?.id || null,
+            caption: buildFinancialWireCaption(cand.item),
+            score: cand.score,
+            status: 'skipped',
+            error_message: `Near-duplicate of a recent wire post (last ${NEWS_NEAR_DUPE_LOOKBACK}).`,
+          })
+          continue
+        }
+
+        const post = await buildFinancialWirePostAsync(cand.item, { newsProfile })
+        const caption = post.caption
+        const pills = account.category_pills_default?.length
+          ? account.category_pills_default
+          : newsProfile === 'crypto'
+            ? ['crypto', 'trading']
+            : ['stocks', 'trading']
 
         const result = await publishLoungeBotPost(admin, {
           botUserId: account.user_id,
@@ -455,6 +485,7 @@ Deno.serve(async (req) => {
 
         if (result.postId) {
           published += 1
+          acceptedHeadlines.unshift(cand.item.title)
           await admin.from('lounge_bot_publish_log').insert({
             bot_user_id: account.user_id,
             raw_item_id: rawMatch?.id || null,
@@ -473,6 +504,14 @@ Deno.serve(async (req) => {
             error_message: result.error?.slice(0, 400) || 'Publish failed',
           })
         }
+      }
+    } else if (dryRun) {
+      for (const cand of candidates.slice(0, 12)) {
+        if (newsTextNearDuplicateOfAny(cand.item.title, acceptedHeadlines)) {
+          skippedNearDupe += 1
+          continue
+        }
+        acceptedHeadlines.unshift(cand.item.title)
       }
     }
 
@@ -493,6 +532,8 @@ Deno.serve(async (req) => {
       ingested,
       published,
       skipped,
+      skippedNearDupe,
+      nearDupeLookback: NEWS_NEAR_DUPE_LOOKBACK,
       publishBudget: Number.isFinite(publishBudget) ? publishBudget : null,
       publishedHour,
       publishedDay,

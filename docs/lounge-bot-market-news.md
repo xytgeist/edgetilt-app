@@ -14,6 +14,8 @@
 Allowlist poll (cron)  →  dedupe + score  →  caption template  →  auto-publish  →  feed
 ```
 
+**Cross-source near-dupe (Aug 2026):** before publish, compare the candidate title to the last **10** published wire headlines (`loungeBotNewsDedupe.ts` token overlap). Skips CoinDesk vs Cointelegraph rewrites of the same story; also blocks duplicates within the same poll batch (highest score wins).
+
 **`review_mode`:** `automatic` on `lounge_bot_accounts`. Volume target: **~3–12 posts/day** driven by scoring thresholds, not Ryan's morning pass.
 
 **Audit:** admin **Bot ops** panel (last posts, source health, kill switch). Optional low-score rows logged but not published.

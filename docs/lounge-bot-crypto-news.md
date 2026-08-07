@@ -22,7 +22,7 @@ Cron **`invoke_lounge_news_poll()`** already loops **every** running `market_new
 
 **Voice brief:** `docs/crypto-edge-voice-brief.md` (Watcher.Guru speed + dry degen humor when ironic; Ryan sign-off 2026-07-06).
 
-Migration **`20260705050000`**. Headline + **OpenAI compose** (0-2 sentence synopsis when needed; feed excerpt fallback) + **source link on every publish** when RSS provides a URL; rich preview only when og:image loads. Synopsis must be standalone (never a comma continuation of the headline). **`$BTC`/`$ETH` lead** on major-asset headlines. Sentence split masks bare domains (**Crypto.com**) so the brand dot is not treated as end-of-sentence.
+Migration **`20260705050000`**. Headline + **OpenAI compose** (0-2 sentence synopsis when needed; feed excerpt fallback) + **source link on every publish** when RSS provides a URL; rich preview only when og:image loads. Synopsis must be standalone (never a comma continuation of the headline). **`$BTC`/`$ETH` lead** on major-asset headlines. Sentence split masks bare domains (**Crypto.com**) so the brand dot is not treated as end-of-sentence. Same **`lounge-news-poll`** near-dupe lookback (last 10 published) as Market Edge.
 
 ### Tier 1
 

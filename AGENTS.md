@@ -51,19 +51,19 @@ Good: `composerFocused && IS_IOS ? { paddingTop: X } : undefined`
 
 ---
 
-## CRITICAL — GIT: COMMIT AND PUSH TO `test` (Ryan pre-approved)
+## CRITICAL — GIT: COMMIT AND PUSH TO `test` + `main` (Ryan pre-approved)
 
-> **Ryan has standing permission to commit and push to the `test` branch without asking each time.** After finishing implementation work, commit and `git push origin test` — then tell him the hash and summary. **Do not** wait for "commit and push" every session.
+> **Ryan has standing permission to commit and push to `test` and `main` without asking each time** (until he revokes `main`). After finishing implementation work, commit, `git push origin test`, fast-forward/push `main` to match, then tell him the hash and summary. **Do not** wait for "commit and push" every session.
 
 **Still ask / wait for explicit instruction before:**
 
-- Pushing to **`main`**, opening prod PRs, or production deploy steps
-- **Production** Supabase ingest, migrations, or destructive batch ops
+- **Production** Supabase ingest, migrations, Edge deploys, or other prod DB/ops (git `main` ≠ prod Supabase)
+- Force-push, amend-after-push, git config changes
 - Commits when Ryan asked a **question only** or there is **no meaningful diff**
 
-Follow normal git safety (no secrets, no force-push to main, no git config changes). Cursor rule: **`.cursor/rules/commit-push-test-autonomous.mdc`**.
+Follow normal git safety (no secrets, no force-push). Cursor rule: **`.cursor/rules/commit-push-test-autonomous.mdc`**.
 
-`AGENT_RULE_COMMIT_PUSH_TEST` — searchability token.
+`AGENT_RULE_COMMIT_PUSH_TEST` / `AGENT_RULE_COMMIT_PUSH_MAIN` — searchability tokens.
 
 ---
 

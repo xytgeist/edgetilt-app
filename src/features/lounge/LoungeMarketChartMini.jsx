@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { AreaSeries, createChart } from 'lightweight-charts'
 import {
   formatMarketChangePct,
@@ -15,6 +15,9 @@ import {
 import { marketChartLocalizationBase } from './loungeMarketChartLocale.js'
 
 /**
+ * Feed / composer market mini … Apple-style blend:
+ * logo · ticker+arrow / name · sparkline · price / change
+ *
  * @param {{
  *   embed: object,
  *   rollingLive?: object | null,
@@ -24,13 +27,24 @@ import { marketChartLocalizationBase } from './loungeMarketChartLocale.js'
  * }} props
  */
 const MINI_CHART_TAP_MOVE_PX = 12
-const MINI_SPARKLINE_MIN_PX = 36
-const MINI_SPARKLINE_MAX_PX = 88
+const MINI_SPARKLINE_MIN_PX = 40
 const MINI_SPARKLINE_HEIGHT_PX = 32
 const MINI_CARD_CLASS = 'h-[3.5rem] min-h-[3.5rem]'
-const MINI_SPARKLINE_HOST_CLASS = 'h-[32px] min-w-9 max-w-[5.5rem] flex-1 shrink basis-10'
+const MINI_SPARKLINE_HOST_CLASS = 'h-[32px] min-w-10 flex-1'
 
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
+
+/** Absolute $ change when available; else pct. */
+function formatMiniChangeLabel(change, changePct) {
+  const ch = Number(change)
+  if (Number.isFinite(ch)) {
+    const abs = formatMarketPrice(Math.abs(ch))
+    if (ch > 0) return `+${abs}`
+    if (ch < 0) return `-${abs}`
+    return abs
+  }
+  return formatMarketChangePct(changePct)
+}
 
 export default function LoungeMarketChartMini({
   embed,
@@ -41,8 +55,6 @@ export default function LoungeMarketChartMini({
 }) {
   const hostRef = useRef(null)
   const chartRef = useRef(null)
-  const metaMeasureRef = useRef(null)
-  const textColRef = useRef(null)
   const tapRef = useRef(/** @type {{ x: number, y: number, pointerId: number } | null} */ (null))
 
   const isRolling = embed?.kind === 'rolling'
@@ -50,7 +62,12 @@ export default function LoungeMarketChartMini({
   const quote = isRolling ? rollingPayload?.quote : embed?.quote
   const bars = isRolling ? rollingPayload?.bars : embed?.bars
   const changePct = Number(quote?.change_pct)
-  const up = Number.isFinite(changePct) ? changePct >= 0 : true
+  const changeAbs = Number(quote?.change)
+  const up = Number.isFinite(changePct)
+    ? changePct >= 0
+    : Number.isFinite(changeAbs)
+      ? changeAbs >= 0
+      : true
   const isLight = loungeMarketChartIsLight()
   const theme = loungeMarketChartTheme(isLight)
   const displaySymbol = String(embed?.display_symbol || '').trim().toUpperCase()
@@ -118,26 +135,9 @@ export default function LoungeMarketChartMini({
   }, [embed?.symbol, embed?.kind, seriesBars, up, isLight, theme])
 
   const priceLabel = formatMarketPrice(quote?.price)
-  const changeLabel = formatMarketChangePct(changePct)
-
-  useLayoutEffect(() => {
-    const measure = metaMeasureRef.current
-    const col = textColRef.current
-    if (!measure || !col) return undefined
-
-    const syncTextColWidth = () => {
-      const w = Math.ceil(measure.scrollWidth)
-      if (w > 0) {
-        col.style.width = `${w}px`
-        col.style.maxWidth = `${w}px`
-      }
-    }
-
-    syncTextColWidth()
-    const ro = new ResizeObserver(syncTextColWidth)
-    ro.observe(measure)
-    return () => ro.disconnect()
-  }, [priceLabel, changeLabel, displaySymbol, compareMode])
+  const changeLabel = formatMiniChangeLabel(quote?.change, changePct)
+  const changeTone = up ? 'text-lv-green lounge-cashtag-positive' : 'text-lv-red'
+  const arrow = up ? '▲' : '▼'
 
   if (!embed?.display_symbol) return null
 
@@ -161,21 +161,6 @@ export default function LoungeMarketChartMini({
   const onCardPointerCancel = (e) => {
     if (tapRef.current?.pointerId === e.pointerId) tapRef.current = null
   }
-
-  const metaRowClass =
-    'flex w-max items-baseline gap-x-1 whitespace-nowrap text-[12px] font-semibold leading-snug'
-
-  const metaRow = (
-    <>
-      <span className={`shrink-0 tracking-wide ${theme.mutedText}`}>{displaySymbol}</span>
-      <span className={`shrink-0 tabular-nums ${theme.priceText}`}>{priceLabel}</span>
-      <span
-        className={`shrink-0 tabular-nums ${up ? 'text-lv-green lounge-cashtag-positive' : 'text-lv-red'}`}
-      >
-        {changeLabel}
-      </span>
-    </>
-  )
 
   return (
     <div
@@ -209,28 +194,35 @@ export default function LoungeMarketChartMini({
           {displaySymbol.slice(0, 2)}
         </div>
       )}
-      <div
-        ref={textColRef}
-        className="flex min-w-0 shrink flex-col items-start justify-center gap-px overflow-hidden"
-      >
-        <div
-          className={`w-full min-w-0 truncate text-[14px] font-bold leading-snug ${theme.priceText}`}
-        >
+
+      <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-px overflow-hidden">
+        <div className="flex min-w-0 max-w-full items-center gap-1">
+          <span className={`shrink-0 text-[10px] leading-none ${changeTone}`} aria-hidden>
+            {arrow}
+          </span>
+          <span
+            className={`min-w-0 truncate text-[13px] font-bold leading-snug tracking-wide ${theme.priceText}`}
+          >
+            {displaySymbol}
+          </span>
+        </div>
+        <div className={`w-full min-w-0 truncate text-[11px] font-medium leading-snug ${theme.mutedText}`}>
           {displayName}
         </div>
-        <div className={metaRowClass}>{metaRow}</div>
       </div>
+
       <div
         ref={hostRef}
         className={`pointer-events-none ${MINI_SPARKLINE_HOST_CLASS} self-center`}
         aria-hidden
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-0 top-0 -z-10 h-0 overflow-hidden opacity-0"
-      >
-        <div ref={metaMeasureRef} className={metaRowClass}>
-          {metaRow}
+
+      <div className="flex shrink-0 flex-col items-end justify-center gap-px pl-0.5 text-right">
+        <div className={`whitespace-nowrap text-[13px] font-bold tabular-nums leading-snug ${theme.priceText}`}>
+          {priceLabel}
+        </div>
+        <div className={`whitespace-nowrap text-[11px] font-semibold tabular-nums leading-snug ${changeTone}`}>
+          {changeLabel}
         </div>
       </div>
     </div>

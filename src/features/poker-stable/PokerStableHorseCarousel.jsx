@@ -135,16 +135,15 @@ export default function PokerStableHorseCarousel({
               ? horseTone.statusActive
               : 'bg-zinc-700/60 text-zinc-400'
         const sparkSeries = horseSparkByDeal[deal.id] || []
-        // Trend helper pads every horse series on any session event ... require this deal's sessions.
+        // Require this deal's sessions (not portfolio-padded points from other horses).
         const showSparkBackground =
           showBackerStats &&
           !pendingSettleCommit &&
           !closedUnarchived &&
           (stats.sessions || 0) >= 1 &&
           sparkSeries.length >= 2
-        const sparkUp =
-          sparkSeries.length >= 2 &&
-          sparkSeries[sparkSeries.length - 1] >= sparkSeries[0]
+        // Match Sessions / Unsettled tone … not padded trend first/last (can disagree after settles).
+        const sparkUp = (stats.profit ?? 0) >= 0
         const cardClassName = `relative flex w-full flex-col overflow-hidden ${horseTone.surface} p-5 text-left`
 
         const statsSparkBackground = showSparkBackground ? (

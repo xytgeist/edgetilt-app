@@ -22,10 +22,10 @@ import {
   backerStableDealDisplayLabel,
   backerStableShowsClosedCarouselCard,
   computeBackerPortfolioPerformanceMetrics,
-  computeBackerPortfolioTrendChart,
   enrichBankrollByDealFromSessions,
   partitionBackerDeals,
 } from './pokerStableBackerMath.js'
+import { computeDealRollSparkSeries } from './pokerStableDealSessionStats.js'
 import { stableHorseToneScopeDeals } from './pokerStableHorseTone.js'
 import {
   archivedStakeBackerEconomicsBreakdown,
@@ -410,16 +410,6 @@ export default function PokerStableScreen({
     [pendingCommits],
   )
 
-  const horseSparkByDeal = useMemo(() => {
-    const { horseSeries } = computeBackerPortfolioTrendChart({
-      horseDeals: activeDeals,
-      sessions: stableSessions,
-      slicesByDeal,
-      userId,
-    })
-    return horseSeries
-  }, [activeDeals, stableSessions, slicesByDeal, userId])
-
   const horseDeals = useMemo(
     () => [...activeDeals, ...historyDeals],
     [activeDeals, historyDeals],
@@ -435,6 +425,20 @@ export default function PokerStableScreen({
     () => enrichBankrollByDealFromSessions(deals, bankrollByDeal, stableSessions),
     [deals, bankrollByDeal, stableSessions],
   )
+
+  /** Per-horse roll path (this deal's sessions only) … not portfolio-padded trend series. */
+  const horseSparkByDeal = useMemo(() => {
+    const out = {}
+    for (const deal of activeDeals) {
+      const dealSessions = stableSessions.filter((s) => s.deal_id === deal.id)
+      const roll = bankrollByDealWithSessions[deal.id]?.overall_bankroll
+      out[deal.id] = computeDealRollSparkSeries(
+        dealSessions,
+        roll != null && Number.isFinite(Number(roll)) ? Number(roll) : null,
+      )
+    }
+    return out
+  }, [activeDeals, stableSessions, bankrollByDealWithSessions])
 
   const portfolioMetrics = useMemo(
     () =>

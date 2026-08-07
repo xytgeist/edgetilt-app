@@ -142,6 +142,19 @@ export default function LoungeMarketSymbolPickerSheet({
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = prev
+      try {
+        const active = document.activeElement
+        if (active && typeof active.blur === 'function') active.blur()
+      } catch {
+        /* ignore */
+      }
+      window.requestAnimationFrame(() => {
+        try {
+          window.dispatchEvent(new Event('resize'))
+        } catch {
+          /* ignore */
+        }
+      })
     }
   }, [open])
 

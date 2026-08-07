@@ -67,6 +67,91 @@ import {
 const X_BOT_VOICE_PLACEHOLDER =
   'Explain each tweet in plain English for a layperson. Keep it accurate, vivid, and on-brand for this bot.'
 
+const COMPOSE_MARKET_EMBED_FETCH_MS = 10000
+
+/** Fallback chart payload when live rolling fetch hangs or fails. */
+function minimalComposerMarketEmbed(row) {
+  const symbol = String(row?.symbol || '').trim()
+  if (!symbol) return null
+  const asset_class = String(row?.asset_class || 'stock').trim() === 'crypto' ? 'crypto' : 'stock'
+  const preview = row?.preview && typeof row.preview === 'object' ? row.preview : null
+  const display = String(row?.display_symbol || preview?.display_symbol || symbol).trim().toUpperCase()
+  return {
+    symbol,
+    display_symbol: display || symbol,
+    asset_class,
+    name: String(row?.name || preview?.name || display || symbol).trim(),
+    exchange: row?.exchange || preview?.exchange || '',
+    logo_url: String(row?.logo_url || preview?.logo_url || '').trim(),
+    market_cap: row?.market_cap ?? preview?.market_cap ?? null,
+    currency: 'USD',
+    kind: 'rolling',
+    window_key: '24h',
+    window_label: '24h',
+    quote: {
+      price: preview?.price,
+      change_pct: preview?.change_pct,
+      change: preview?.change,
+      as_of: new Date().toISOString(),
+    },
+    bars: [],
+    ...(row?.coin_id ? { coin_id: String(row.coin_id).trim() } : {}),
+  }
+}
+
+function sanitizeMarketEmbedForPublish(embed) {
+  if (!embed || typeof embed !== 'object') return null
+  const symbol = String(embed.symbol || '').trim()
+  if (!symbol) return null
+  const asset_class = String(embed.asset_class || 'stock').trim() === 'crypto' ? 'crypto' : 'stock'
+  return {
+    symbol,
+    display_symbol: String(embed.display_symbol || symbol).trim().toUpperCase() || symbol,
+    asset_class,
+    name: String(embed.name || symbol).trim(),
+    exchange: embed.exchange || '',
+    logo_url: String(embed.logo_url || '').trim(),
+    market_cap: embed.market_cap ?? null,
+    currency: embed.currency || 'USD',
+    kind: embed.kind || 'rolling',
+    window_key: embed.window_key || '24h',
+    window_label: embed.window_label || '24h',
+    quote: embed.quote && typeof embed.quote === 'object' ? embed.quote : {},
+    bars: Array.isArray(embed.bars) ? embed.bars.slice(0, 200) : [],
+    ...(embed.coin_id ? { coin_id: String(embed.coin_id).trim() } : {}),
+  }
+}
+
+async function fetchComposerMarketEmbedBounded(supabaseClient, row, timeoutMs = COMPOSE_MARKET_EMBED_FETCH_MS) {
+  try {
+    return await Promise.race([
+      fetchComposerMarketEmbed(supabaseClient, row),
+      new Promise((resolve) => {
+        window.setTimeout(() => resolve(null), timeoutMs)
+      }),
+    ])
+  } catch {
+    return null
+  }
+}
+
+function restoreBotPortalViewportAfterOverlay() {
+  try {
+    const active = document.activeElement
+    if (active && typeof active.blur === 'function') active.blur()
+  } catch {
+    /* ignore */
+  }
+  // Kick layout after market-picker search autofocus / body scroll-lock (can leave a short visualViewport).
+  window.requestAnimationFrame(() => {
+    try {
+      window.dispatchEvent(new Event('resize'))
+    } catch {
+      /* ignore */
+    }
+  })
+}
+
 const SCOTT_ASYNC_TOAST =
   'Still running in the background (up to ~3 min). Refresh this panel for Last poll and new Lounge posts.'
 
@@ -339,6 +424,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   const [composePills, setComposePills] = useState([])
   const [composeMarketSymbols, setComposeMarketSymbols] = useState([])
   const [marketPickerOpen, setMarketPickerOpen] = useState(false)
+  const [composePublishError, setComposePublishError] = useState('')
 
   useEffect(() => {
     if (bot?.pipeline !== 'odds_api') {
@@ -401,18 +487,19 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   useEffect(() => {
     if (!bot) {
       setDraft(null)
-    setComposeCaption('')
-    setComposePills([])
-    setComposeMarketSymbols([])
-    setComposeImageItems((prev) => {
-      revokeBotComposeImagePreviews(prev)
-      return []
-    })
-    setIngestTweetUrl('')
-    setIngestTweetText('')
-    setNewXHandle('')
-    return
-  }
+      setComposeCaption('')
+      setComposePills([])
+      setComposeMarketSymbols([])
+      setComposePublishError('')
+      setComposeImageItems((prev) => {
+        revokeBotComposeImagePreviews(prev)
+        return []
+      })
+      setIngestTweetUrl('')
+      setIngestTweetText('')
+      setNewXHandle('')
+      return
+    }
     const watchlist = Array.isArray(bot.config?.watchlist_tickers)
       ? bot.config.watchlist_tickers.join(', ')
       : ''
@@ -441,6 +528,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     setComposeCaption('')
     setComposePills(defaultPills)
     setComposeMarketSymbols([])
+    setComposePublishError('')
     setComposeImageItems((prev) => {
       revokeBotComposeImagePreviews(prev)
       return []
@@ -847,68 +935,96 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   const handlePublishPost = async () => {
     const caption = composeCaption.trim()
     if (!caption && composeImageItems.length === 0 && composeMarketSymbols.length === 0) return
+    setComposePublishError('')
     setBusy('compose-post')
-    const imageUrls = []
-    for (const item of composeImageItems) {
-      const { file: prepared, error: prepErr } = await prepareLoungeFeedImageForUpload(item.file)
-      if (prepErr || !prepared) {
-        setBusy('')
-        setToast(prepErr?.message || 'Could not prepare image.')
+    restoreBotPortalViewportAfterOverlay()
+    const fail = (message) => {
+      const msg = String(message || 'Could not publish post.').trim() || 'Could not publish post.'
+      setComposePublishError(msg)
+      setToast(msg)
+    }
+    try {
+      const imageUrls = []
+      for (const item of composeImageItems) {
+        const { file: prepared, error: prepErr } = await prepareLoungeFeedImageForUpload(item.file)
+        if (prepErr || !prepared) {
+          fail(prepErr?.message || 'Could not prepare image.')
+          return
+        }
+        let upUrl = null
+        let upErr = null
+        try {
+          const uploaded = await uploadLoungeFeedPostImage({
+            supabaseClient,
+            user: { id: bot.user_id },
+            file: prepared,
+          })
+          upUrl = uploaded?.data || null
+          upErr = uploaded?.error || null
+        } catch (e) {
+          upErr = e instanceof Error ? e : new Error(String(e || 'Could not upload image.'))
+        }
+        if (upErr || !upUrl) {
+          fail(upErr?.message || 'Could not upload image.')
+          return
+        }
+        imageUrls.push(upUrl)
+      }
+
+      /** @type {object[]} */
+      const marketEmbeds = []
+      for (const row of composeMarketSymbols.slice(0, LOUNGE_MARKET_EMBED_MAX)) {
+        const cached = sanitizeMarketEmbedForPublish(composerMarketRowEmbed(row))
+        if (cached) {
+          marketEmbeds.push(cached)
+          continue
+        }
+        const fetched = sanitizeMarketEmbedForPublish(
+          await fetchComposerMarketEmbedBounded(supabaseClient, row),
+        )
+        if (fetched) {
+          marketEmbeds.push(fetched)
+          continue
+        }
+        const minimal = sanitizeMarketEmbedForPublish(minimalComposerMarketEmbed(row))
+        if (minimal) marketEmbeds.push(minimal)
+      }
+      if (
+        composeMarketSymbols.length > 0 &&
+        marketEmbeds.length === 0 &&
+        !caption &&
+        imageUrls.length === 0
+      ) {
+        fail('Could not load ticker chart data. Try again.')
         return
       }
-      const { data: upUrl, error: upErr } = await uploadLoungeFeedPostImage({
-        supabaseClient,
-        user: { id: bot.user_id },
-        file: prepared,
+
+      const { error } = await publishBotPost(supabaseClient, {
+        botUserId: bot.user_id,
+        caption,
+        categoryPills: composePills,
+        imageUrls,
+        marketEmbeds,
       })
-      if (upErr || !upUrl) {
-        setBusy('')
-        setToast(upErr?.message || 'Could not upload image.')
+      if (error) {
+        fail(error.message || 'Could not publish post.')
         return
       }
-      imageUrls.push(upUrl)
-    }
-    /** @type {object[]} */
-    const marketEmbeds = []
-    for (const row of composeMarketSymbols.slice(0, LOUNGE_MARKET_EMBED_MAX)) {
-      const cached = composerMarketRowEmbed(row)
-      if (cached) {
-        marketEmbeds.push(cached)
-        continue
-      }
-      const embed = await fetchComposerMarketEmbed(supabaseClient, row)
-      if (embed) marketEmbeds.push(embed)
-    }
-    if (
-      composeMarketSymbols.length > 0 &&
-      marketEmbeds.length === 0 &&
-      !caption &&
-      imageUrls.length === 0
-    ) {
+      setComposeCaption('')
+      setComposeMarketSymbols([])
+      setComposePublishError('')
+      setComposeImageItems((prev) => {
+        revokeBotComposeImagePreviews(prev)
+        return []
+      })
+      setToast(`Posted as @${bot.handle || bot.slug}.`)
+      void onReload()
+    } catch (e) {
+      fail(e instanceof Error ? e.message : 'Could not publish post.')
+    } finally {
       setBusy('')
-      setToast('Could not load ticker chart data. Try again.')
-      return
+      restoreBotPortalViewportAfterOverlay()
     }
-    const { error } = await publishBotPost(supabaseClient, {
-      botUserId: bot.user_id,
-      caption,
-      categoryPills: composePills,
-      imageUrls,
-      marketEmbeds,
-    })
-    setBusy('')
-    if (error) {
-      setToast(error.message || 'Could not publish post.')
-      return
-    }
-    setComposeCaption('')
-    setComposeMarketSymbols([])
-    setComposeImageItems((prev) => {
-      revokeBotComposeImagePreviews(prev)
-      return []
-    })
-    setToast(`Posted as @${bot.handle || bot.slug}.`)
-    void onReload()
   }
 
   const handleSavePost = async (caption) => {
@@ -1698,6 +1814,14 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
             })}
           </div>
         </div>
+        {composePublishError ? (
+          <div
+            role="alert"
+            className="mt-3 rounded-xl border border-red-500/35 bg-red-950/40 px-3 py-2 text-red-100 text-xs leading-relaxed"
+          >
+            {composePublishError}
+          </div>
+        ) : null}
         <button
           type="button"
           disabled={
@@ -1713,7 +1837,10 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         </button>
         <LoungeMarketSymbolPickerSheet
           open={marketPickerOpen}
-          onClose={() => setMarketPickerOpen(false)}
+          onClose={() => {
+            setMarketPickerOpen(false)
+            restoreBotPortalViewportAfterOverlay()
+          }}
           caption={composeCaption}
           selected={composeMarketSymbols}
           onChange={(next) => {

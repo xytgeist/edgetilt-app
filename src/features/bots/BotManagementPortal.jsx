@@ -385,15 +385,29 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     })
   }, [bot?.pipeline, supabaseClient])
 
+  // Hydrate local draft + compose only when switching bots. Snapshot poll (~45s) returns
+  // new object refs for config / pills and must not wipe an in-progress caption or settings edit.
   useEffect(() => {
     if (!bot) {
       setDraft(null)
+      setComposeCaption('')
+      setComposePills([])
+      setComposeImageItems((prev) => {
+        revokeBotComposeImagePreviews(prev)
+        return []
+      })
+      setIngestTweetUrl('')
+      setIngestTweetText('')
+      setNewXHandle('')
       return
     }
     const watchlist = Array.isArray(bot.config?.watchlist_tickers)
       ? bot.config.watchlist_tickers.join(', ')
       : ''
     const defaultVoice = String(bot.config?.voice_prompt || '').trim()
+    const defaultPills = Array.isArray(bot.category_pills_default)
+      ? [...bot.category_pills_default]
+      : []
     setDraft({
       maxPostsDay: bot.max_posts_per_day ?? 12,
       maxPostsHour: bot.max_posts_per_hour ?? 4,
@@ -408,27 +422,21 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         ]),
       ),
       displayName: bot.display_name || '',
-      categoryPills: Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [],
+      categoryPills: defaultPills,
       watchlistText: watchlist,
       voicePrompt: defaultVoice,
     })
     setComposeCaption('')
-    setComposePills(Array.isArray(bot.category_pills_default) ? [...bot.category_pills_default] : [])
+    setComposePills(defaultPills)
     setComposeImageItems((prev) => {
       revokeBotComposeImagePreviews(prev)
       return []
     })
-  }, [
-    bot?.user_id,
-    bot?.max_posts_per_day,
-    bot?.max_posts_per_hour,
-    bot?.publish_score_threshold,
-    bot?.odds_config?.min_edge_pct,
-    bot?.odds_config?.alert_audience,
-    bot?.display_name,
-    bot?.category_pills_default,
-    bot?.config,
-  ])
+    setIngestTweetUrl('')
+    setIngestTweetText('')
+    setNewXHandle('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only reset on bot switch
+  }, [bot?.user_id])
 
   if (!bot || !draft) {
     return (

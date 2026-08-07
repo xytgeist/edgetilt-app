@@ -56,7 +56,10 @@ import {
   composerMarketRowEmbed,
 } from '../lounge/loungeComposerMarketEmbed.js'
 import { LoungeComposerMediaChartIcon } from '../lounge/LoungeComposerMediaToolbar.jsx'
-import { LOUNGE_MARKET_EMBED_MAX } from '../../utils/loungeMarketCaptionParse.js'
+import {
+  LOUNGE_MARKET_EMBED_MAX,
+  appendMissingMarketCashtagsToCaption,
+} from '../../utils/loungeMarketCaptionParse.js'
 import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost'
 import { LOUNGE_CAPTION_MAX, LOUNGE_CAPTION_SUBSCRIBER_MAX } from '../../utils/loungeCommentLimits.js'
 import {
@@ -933,7 +936,13 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   }
 
   const handlePublishPost = async () => {
-    const caption = composeCaption.trim()
+    const captionSynced = appendMissingMarketCashtagsToCaption(
+      composeCaption,
+      composeMarketSymbols,
+      { maxLen: LOUNGE_CAPTION_SUBSCRIBER_MAX },
+    )
+    if (captionSynced !== composeCaption) setComposeCaption(captionSynced)
+    const caption = captionSynced.trim()
     if (!caption && composeImageItems.length === 0 && composeMarketSymbols.length === 0) return
     setComposePublishError('')
     setBusy('compose-post')
@@ -1776,7 +1785,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
             Add ticker
           </button>
           <span className="text-zinc-600 text-[10px]">
-            Up to {LOUNGE_MARKET_EMBED_MAX} charts · same picker as Lounge compose
+            Up to {LOUNGE_MARKET_EMBED_MAX} charts · picks append missing $TICKER to caption
           </span>
         </div>
         <LoungeComposerMarketSymbolPills
@@ -1846,6 +1855,11 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           onChange={(next) => {
             setComposeMarketSymbols(next)
             hydrateComposerMarketSymbolEmbeds(supabaseClient, setComposeMarketSymbols, next)
+            setComposeCaption((prev) =>
+              appendMissingMarketCashtagsToCaption(prev, next, {
+                maxLen: LOUNGE_CAPTION_SUBSCRIBER_MAX,
+              }),
+            )
           }}
           supabaseClient={supabaseClient}
         />

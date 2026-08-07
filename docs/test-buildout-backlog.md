@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Market picker → caption cashtags:** picking tickers (Bot Portal Post as + Lounge compose/edit) appends missing `$TICKER` to caption; Publish/Save also syncs. Helper **`appendMissingMarketCashtagsToCaption`**. Does not strip cashtags when charts are removed.
 - 2026-08-07: **Bot portal Post as publish harden:** try/finally so **Publishing…** cannot stick; catch R2 upload throws; ticker embed fetch soft-fails (10s) to minimal payload; inline error under compose; market picker close blurs + resize kick (short visualViewport / half-height after autofocus). Prod RPC **`20260807160000`** already applied.
 - 2026-08-07: **Bot portal Post as ticker picker:** same Lounge market symbol sheet on **Post as**; RPC **`admin_lounge_bot_publish_post`** accepts **`p_market_embeds`** (**`20260807160000`**). Applied **test + prod**.
 - 2026-08-07: **Bot portal Post as invisible in Lounge:** `admin_lounge_bot_publish_post` omitted `feed_visible_at` after staged-video migration (NULL = author-only). Migration **`20260807150000`** sets it on insert + backfills non-Stream NULLs. Applied **test + prod**.

@@ -248,7 +248,11 @@ import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
 import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
 import { bodyTextWithLinkPreview } from '../../utils/linkifyText.jsx'
-import { normalizeMarketEmbeds, LOUNGE_MARKET_EMBED_MAX } from '../../utils/loungeMarketCaptionParse.js'
+import {
+  normalizeMarketEmbeds,
+  LOUNGE_MARKET_EMBED_MAX,
+  appendMissingMarketCashtagsToCaption,
+} from '../../utils/loungeMarketCaptionParse.js'
 import LoungeFeedPendingStatusRow from './LoungeFeedPendingStatusRow.jsx'
 import LoungeFanOnlyPostRowTint from './LoungeFanOnlyPostRowTint.jsx'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
@@ -8882,7 +8886,13 @@ export default function SocialFeed({
 
   const saveLoungeDetailCaption = useCallback(async () => {
     if (!loungePostDetail?.id || !composerUserId) return
-    const cap = normalizeFeedCaption(loungeDetailDraftCaption, loungeComposerCaptionMax)
+    const captionSynced = appendMissingMarketCashtagsToCaption(
+      loungeDetailDraftCaption,
+      loungeDetailEditMarketSymbols,
+      { maxLen: loungeComposerCaptionMax },
+    )
+    if (captionSynced !== loungeDetailDraftCaption) setLoungeDetailDraftCaption(captionSynced)
+    const cap = normalizeFeedCaption(captionSynced, loungeComposerCaptionMax)
     setLoungeDetailEditErr('')
     const gifCheck = validateAtMostOneGifUrl(loungeDetailEditMediaUrl)
     if (!gifCheck.ok) {
@@ -13440,7 +13450,11 @@ export default function SocialFeed({
   ])
 
   const submitLoungePostWithAudience = useCallback(async (creatorFanOnly) => {
-    const caption = normalizeFeedCaption(postText, loungeComposerCaptionMax)
+    const captionSynced = appendMissingMarketCashtagsToCaption(postText, composerMarketSymbols, {
+      maxLen: loungeComposerCaptionMax,
+    })
+    if (captionSynced !== postText) setPostText(captionSynced)
+    const caption = normalizeFeedCaption(captionSynced, loungeComposerCaptionMax)
     setPostErr('')
     const gifCheck = validateAtMostOneGifUrl(composerMediaUrl)
     if (!gifCheck.ok) {
@@ -18371,9 +18385,19 @@ export default function SocialFeed({
           if (marketPickerTarget === 'detailEdit') {
             setLoungeDetailEditMarketSymbols(next)
             hydrateComposerMarketSymbolEmbeds(supabaseClient, setLoungeDetailEditMarketSymbols, next)
+            setLoungeDetailDraftCaption((prev) =>
+              appendMissingMarketCashtagsToCaption(prev, next, {
+                maxLen: loungeComposerCaptionMax,
+              }),
+            )
           } else {
             setComposerMarketSymbols(next)
             hydrateComposerMarketSymbolEmbeds(supabaseClient, setComposerMarketSymbols, next)
+            setPostText((prev) =>
+              appendMissingMarketCashtagsToCaption(prev, next, {
+                maxLen: loungeComposerCaptionMax,
+              }),
+            )
           }
         }}
         supabaseClient={supabaseClient}

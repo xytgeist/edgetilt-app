@@ -219,6 +219,47 @@ export function normalizeCashtagsInCaption(caption) {
   })
 }
 
+/**
+ * Append `$TICKER` for picker-selected market rows that are missing from the caption.
+ * Does not remove cashtags when charts are removed from the picker.
+ *
+ * @param {string} caption
+ * @param {Array<{ display_symbol?: string, symbol?: string, asset_class?: string } | null | undefined>} marketSymbols
+ * @param {{ maxLen?: number }} [opts]
+ * @returns {string}
+ */
+export function appendMissingMarketCashtagsToCaption(caption, marketSymbols, opts = {}) {
+  const base = String(caption ?? '')
+  const list = Array.isArray(marketSymbols) ? marketSymbols : []
+  if (!list.length) return base
+
+  const present = new Set(extractCashtagsFromCaption(base))
+  /** @type {string[]} */
+  const missing = []
+  const seenMissing = new Set()
+  for (const row of list) {
+    if (!row) continue
+    const tag = marketEmbedSearchCashtag(row)
+    if (!tag || !MARKET_CASHTAG_RPC_RE.test(tag)) continue
+    if (present.has(tag) || seenMissing.has(tag)) continue
+    seenMissing.add(tag)
+    missing.push(tag)
+  }
+  if (!missing.length) return base
+
+  const trimmed = base.replace(/\s+$/u, '')
+  const maxLen = Number(opts.maxLen)
+  const hasMax = Number.isFinite(maxLen) && maxLen > 0
+
+  let out = trimmed
+  for (const tag of missing) {
+    const piece = out ? ` $${tag}` : `$${tag}`
+    if (hasMax && out.length + piece.length > maxLen) break
+    out += piece
+  }
+  return out
+}
+
 /** Mirror server `windowRange` for client date labels. @param {string} windowKey */
 export function marketWindowRangeSec(windowKey) {
   const now = Math.floor(Date.now() / 1000)

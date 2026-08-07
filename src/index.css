@@ -2617,6 +2617,10 @@ html.light [data-lounge-market-chart-mini] .text-zinc-300 {
   color: #52525b !important;
 }
 
+html.light [data-lounge-market-chart-mini] .text-zinc-500 {
+  color: #71717a !important;
+}
+
 html.light [data-lounge-market-chart-compare] {
   color: var(--color-zinc-600) !important;
 }

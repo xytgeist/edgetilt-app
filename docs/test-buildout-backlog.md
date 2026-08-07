@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Market mini range under name:** tiny window/date line (`formatMarketEmbedWindowLabel` … `24h` or `May 7 – Aug 7`) under company name on feed/composer minis so contextual historical capture is visible again.
 - 2026-08-07: **Market mini baseline sparkline:** LWC **`BaselineSeries`** … green above open / red below (can split mid-day); fill toward open dashed line (dash tint = open vs prior close). Fallback AreaSeries if open missing.
 - 2026-08-07: **Market mini long-name layout:** compact by default; if company name would truncate at 38% width, spark shrinks to the ticker row (~22px) and name spans under ticker+spark on the same vertical band (still truncates before price).
 - 2026-08-07: **Market mini Apple sparkline:** dashed open line (color = open vs prior close); area color = last vs open; session-padded x-axis so the line only fills elapsed RTH/24h. Helpers in **`loungeMarketMiniSparkline.js`**.

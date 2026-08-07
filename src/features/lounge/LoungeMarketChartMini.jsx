@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AreaSeries, BaselineSeries, LineStyle, createChart } from 'lightweight-charts'
 import {
   formatMarketChangePct,
+  formatMarketEmbedWindowLabel,
   formatMarketPrice,
   marketEmbedCacheKey,
   pickRollingMarketPayload,
@@ -21,12 +22,13 @@ import {
 
 /**
  * Feed / composer market mini … Apple-style blend:
- * logo · ticker+arrow / name · sparkline · price / change
+ * logo · ticker+arrow / name + tiny range · sparkline · price / change
  *
  * Compact (default): flex row with tall spark `flex-1` (full leftover width).
  * Wide name: when the name would truncate at 38% width, spark shrinks onto the
  * ticker row and the name runs under ticker + spark (same vertical band;
- * truncates before price).
+ * truncates before price). Tiny range/date under the name so contextual
+ * historical windows stay readable.
  *
  * Sparkline: dashed open (tint vs prior close); BaselineSeries green above /
  * red below open with fill toward the open line.
@@ -44,8 +46,10 @@ const MINI_SPARKLINE_MIN_PX = 48
 const MINI_SPARKLINE_HEIGHT_PX = 40
 /** Wide-name mode: spark shares the ticker row only so the name band stays put. */
 const MINI_SPARKLINE_HEIGHT_WIDE_PX = 22
-const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
+/** Extra line for tiny range under the name. */
+const MINI_CARD_CLASS = 'h-[4.75rem] min-h-[4.75rem]'
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
+const MINI_RANGE_CLASS = 'w-full min-w-0 truncate text-[10px] font-medium leading-tight text-zinc-500'
 /** Off-screen probe sized in px to the compact name budget (38% of card). */
 const MINI_COMPACT_NAME_PROBE_CLASS =
   'pointer-events-none absolute -left-[9999px] top-0 overflow-hidden whitespace-nowrap text-[13px] font-medium'
@@ -93,6 +97,7 @@ export default function LoungeMarketChartMini({
   const theme = loungeMarketChartTheme(isLight)
   const displaySymbol = String(embed?.display_symbol || '').trim().toUpperCase()
   const displayName = String(embed?.name || displaySymbol).trim() || displaySymbol
+  const rangeLabel = formatMarketEmbedWindowLabel(embed, isRolling ? rollingLive : null)
   const assetClass = embed?.asset_class === 'crypto' ? 'crypto' : 'stock'
   const seriesBars = compareMode
     ? loungeMarketBarsToPercentSeries(bars || [])
@@ -357,6 +362,7 @@ export default function LoungeMarketChartMini({
             <div className={`min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}>
               {displayName}
             </div>
+            {rangeLabel ? <div className={MINI_RANGE_CLASS}>{rangeLabel}</div> : null}
           </div>
           {priceStack}
         </>
@@ -370,6 +376,7 @@ export default function LoungeMarketChartMini({
             >
               {displayName}
             </div>
+            {rangeLabel ? <div className={MINI_RANGE_CLASS}>{rangeLabel}</div> : null}
           </div>
           <div
             ref={hostRef}

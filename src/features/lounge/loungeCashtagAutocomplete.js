@@ -63,6 +63,20 @@ function localCashtagMatches(universe, query, searchIndex = null) {
   return searchLoungeMarketSymbolUniverse(pool, query, MAX_RESULTS)
 }
 
+function localHasExactCashtagMatch(rows, query) {
+  const q = String(query || '')
+    .trim()
+    .toUpperCase()
+    .replace(/^\$/, '')
+  if (!q) return false
+  return (rows || []).some((row) => {
+    const display = String(row?.display_symbol || row?.symbol || '')
+      .trim()
+      .toUpperCase()
+    return display === q
+  })
+}
+
 async function enrichCashtagSuggestionRows(supabaseClient, rows) {
   if (!supabaseClient || !rows?.length) return rows
   try {
@@ -233,26 +247,38 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
       }
 
       const localRows = localCashtagMatches(universeRef.current, query, searchIndexRef.current)
+      const hasExactLocal = localHasExactCashtagMatch(localRows, query)
 
       if (localRows.length > 0) {
         finishSuggestionsWithQuotes(localRows)
-        return
-      }
-
-      setSuggestions([])
-
-      if (!supabaseClient) {
-        setLoading(false)
-        return
+        // Prefix junk (GLDG…) used to short-circuit resolve_symbol, so exact
+        // tickers missing from the seed (e.g. GLD) never appeared. Enrich when
+        // local has hits but no exact display_symbol match.
+        if (hasExactLocal || !supabaseClient) return
+      } else {
+        setSuggestions([])
+        if (!supabaseClient) {
+          setLoading(false)
+          return
+        }
       }
 
       const cachedMiss = missFallbackCache.get(cacheKey)
       if (cachedMiss !== undefined) {
-        finishSuggestionsWithQuotes(Array.isArray(cachedMiss) ? cachedMiss : [])
+        if (localRows.length > 0) {
+          const payload = mergeLoungeMarketSymbolUniverseRows(cachedMiss)
+          const installed = installUniverseRows(payload.rows, fullUniverseRef)
+          universeRef.current = installed.rows
+          searchIndexRef.current = installed.index
+          const merged = localCashtagMatches(universeRef.current, query, searchIndexRef.current)
+          finishSuggestionsWithQuotes(merged.length ? merged : localRows)
+        } else {
+          finishSuggestionsWithQuotes(Array.isArray(cachedMiss) ? cachedMiss : [])
+        }
         return
       }
 
-      setLoading(true)
+      if (!localRows.length) setLoading(true)
 
       fallbackTimerRef.current = setTimeout(() => {
         void loungeMarketResolveSymbol(supabaseClient, query)
@@ -274,7 +300,12 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
               searchIndexRef.current = installed.index
             }
 
-            finishSuggestionsWithQuotes(rows)
+            if (localRows.length > 0) {
+              const merged = localCashtagMatches(universeRef.current, query, searchIndexRef.current)
+              finishSuggestionsWithQuotes(merged.length ? merged : localRows)
+            } else {
+              finishSuggestionsWithQuotes(rows)
+            }
           })
           .catch((err) => {
             if (gen !== loadGenRef.current) return

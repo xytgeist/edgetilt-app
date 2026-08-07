@@ -101,6 +101,18 @@ const STOCK_SEED = [
   ['RIVN', 'Rivian Automotive Inc'],
   ['F', 'Ford Motor Co'],
   ['GM', 'General Motors Co'],
+  // Liquid ETFs people cashtag constantly (typeahead is seed-first).
+  ['SPY', 'SPDR S&P 500 ETF Trust'],
+  ['QQQ', 'Invesco QQQ Trust'],
+  ['IWM', 'iShares Russell 2000 ETF'],
+  ['DIA', 'SPDR Dow Jones Industrial Average ETF'],
+  ['GLD', 'SPDR Gold Shares'],
+  ['SLV', 'iShares Silver Trust'],
+  ['IAU', 'iShares Gold Trust'],
+  ['TLT', 'iShares 20+ Year Treasury Bond ETF'],
+  ['HYG', 'iShares iBoxx $ High Yield Corporate Bond ETF'],
+  ['XLF', 'Financial Select Sector SPDR Fund'],
+  ['XLE', 'Energy Select Sector SPDR Fund'],
 ]
 
 /** @returns {object[]} */

@@ -97,7 +97,10 @@ export default function PokerStablePortfolioHero({
             </div>
             <div className="mt-1 min-w-0">
               <div
-                className={`whitespace-nowrap font-black tabular-nums tracking-tight leading-none text-white ${amountSizeClass}`}
+                data-poker-stable-backing-bankroll={currentBalance < 0 ? 'negative' : undefined}
+                className={`whitespace-nowrap font-black tabular-nums tracking-tight leading-none ${
+                  currentBalance < 0 ? 'text-rose-400' : 'text-white'
+                } ${amountSizeClass}`}
               >
                 {backingAmountLabel}
               </div>

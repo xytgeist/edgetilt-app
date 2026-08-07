@@ -46,9 +46,9 @@ const MINI_SPARKLINE_HEIGHT_PX = 40
 const MINI_SPARKLINE_HEIGHT_WIDE_PX = 22
 const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
-/** Compact left column = max-w-[38%]; probe uses the same budget. */
+/** Off-screen probe sized in px to the compact name budget (38% of card). */
 const MINI_COMPACT_NAME_PROBE_CLASS =
-  'pointer-events-none absolute left-0 top-0 w-[38%] overflow-hidden whitespace-nowrap text-[13px] font-medium opacity-0'
+  'pointer-events-none absolute -left-[9999px] top-0 overflow-hidden whitespace-nowrap text-[13px] font-medium'
 
 /** Absolute $ change when available; else pct. */
 function formatMiniChangeLabel(change, changePct) {
@@ -105,6 +105,15 @@ export default function LoungeMarketChartMini({
     if (!card || !probe) return undefined
 
     const check = () => {
+      const cardWidth = card.clientWidth
+      // % width on an absolute probe can read as 0 before layout … that falsely
+      // forced every mini onto the tiny wide-name spark (e.g. TSLA / Tesla Inc).
+      if (cardWidth < 32) {
+        setWideName(false)
+        return
+      }
+      const budget = Math.floor(cardWidth * 0.38)
+      probe.style.width = `${budget}px`
       const overflows = probe.scrollWidth > probe.clientWidth + 1
       setWideName((prev) => (prev === overflows ? prev : overflows))
     }

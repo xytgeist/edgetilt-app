@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Info } from 'lucide-react'
+import { Info, Pencil } from 'lucide-react'
+import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
+import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { roundMoney } from './pokerStableMath.js'
@@ -8,6 +10,7 @@ import {
   STABLE_PRIMARY_BTN,
   STABLE_SURFACE_CARD,
   STABLE_SURFACE_DIVIDER,
+  STABLE_TAB_ACTIVE,
 } from './pokerStableUi.js'
 
 function fmtPct(n) {
@@ -41,14 +44,23 @@ function HeroInfoSection({ title, children }) {
 
 /**
  * Backer Stable portfolio hero: liquid bankroll + portfolio value + metrics.
- * Manual credit/debit UI removed pending a better entry point (RPC helpers remain on Stable screen history).
+ * Pencil beside Backing bankroll opens Add/Remove adjust (liquid pool only).
  */
 export default function PokerStablePortfolioHero({
   metrics,
+  hasProfile = false,
+  saving = false,
+  onDeposit,
+  onWithdraw,
   onNeedsAttention,
   onCreateStake,
   pendingCommitCount = 0,
 }) {
+  const [editing, setEditing] = useState(false)
+  /** @type {'add' | 'remove'} */
+  const [adjustDirection, setAdjustDirection] = useState('add')
+  const [amountInput, setAmountInput] = useState('')
+  const [newBalanceInput, setNewBalanceInput] = useState('')
   const [infoOpen, setInfoOpen] = useState(false)
 
   const m = metrics || {}
@@ -57,6 +69,90 @@ export default function PokerStablePortfolioHero({
   const backingAmountLabel = fmtPoker$(currentBalance)
   const portfolioAmountLabel = fmtPoker$(m.portfolioValue ?? 0)
   const amountSizeClass = portfolioHeroAmountSizeClass(backingAmountLabel, portfolioAmountLabel)
+  const canRemove = Boolean(hasProfile) || currentBalance > 0
+
+  function resetAdjustForm() {
+    setAmountInput('')
+    setNewBalanceInput(formatMoneyInputValue(String(currentBalance)))
+    setAdjustDirection('add')
+  }
+
+  function openAdjustForm() {
+    setEditing(true)
+    resetAdjustForm()
+    triggerTapHapticLight()
+  }
+
+  function closeAdjustForm() {
+    setEditing(false)
+    setAmountInput('')
+    setNewBalanceInput('')
+    setAdjustDirection('add')
+  }
+
+  function syncNewBalanceFromAmount(nextAmount, direction = adjustDirection) {
+    const amt = parseMoneyInputNumber(nextAmount)
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setNewBalanceInput(formatMoneyInputValue(String(currentBalance)))
+      return
+    }
+    const signed = direction === 'add' ? amt : -amt
+    setNewBalanceInput(formatMoneyInputValue(String(roundMoney(currentBalance + signed))))
+  }
+
+  function onAmountChange(next) {
+    setAmountInput(next)
+    syncNewBalanceFromAmount(next)
+  }
+
+  function onNewBalanceChange(next) {
+    setNewBalanceInput(next)
+    const target = parseMoneyInputNumber(next)
+    if (!Number.isFinite(target)) {
+      if (next === '') setAmountInput('')
+      return
+    }
+    const delta = roundMoney(target - currentBalance)
+    if (delta === 0) {
+      setAmountInput('')
+      setAdjustDirection('add')
+      return
+    }
+    if (delta > 0) {
+      setAdjustDirection('add')
+      setAmountInput(formatMoneyInputValue(String(delta)))
+      return
+    }
+    setAdjustDirection('remove')
+    setAmountInput(formatMoneyInputValue(String(Math.abs(delta))))
+  }
+
+  function onDirectionChange(direction) {
+    setAdjustDirection(direction)
+    syncNewBalanceFromAmount(amountInput, direction)
+  }
+
+  async function applyAdjust() {
+    const target = parseMoneyInputNumber(newBalanceInput)
+    if (!Number.isFinite(target) || target < 0) return
+    const delta = roundMoney(target - currentBalance)
+    if (delta === 0) {
+      closeAdjustForm()
+      return
+    }
+    if (delta > 0) {
+      await onDeposit?.(delta)
+    } else {
+      await onWithdraw?.(Math.abs(delta))
+    }
+    closeAdjustForm()
+  }
+
+  const applyDisabled =
+    saving ||
+    !Number.isFinite(parseMoneyInputNumber(newBalanceInput)) ||
+    parseMoneyInputNumber(newBalanceInput) < 0 ||
+    roundMoney(parseMoneyInputNumber(newBalanceInput) - currentBalance) === 0
 
   return (
     <>
@@ -92,8 +188,21 @@ export default function PokerStablePortfolioHero({
 
         <div className="grid grid-cols-2 gap-3 text-center">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-              Backing bankroll
+            <div className="flex items-center justify-center gap-1">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                Backing bankroll
+              </div>
+              {!editing ? (
+                <button
+                  type="button"
+                  onClick={openAdjustForm}
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-zinc-500 touch-manipulation active:bg-zinc-800/80 active:text-zinc-300"
+                  aria-label="Adjust backing bankroll"
+                  data-poker-stable-edit-btn
+                >
+                  <Pencil className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                </button>
+              ) : null}
             </div>
             <div className="mt-1 min-w-0">
               <div
@@ -126,6 +235,76 @@ export default function PokerStablePortfolioHero({
             </div>
           </div>
         </div>
+
+        {editing ? (
+          <div
+            className="mt-3 rounded-2xl border border-zinc-700/80 bg-zinc-900/50 p-3 text-left"
+            data-poker-stable-adjust-bankroll
+          >
+            <div className="mb-2 text-sm font-bold text-white">Adjust bankroll</div>
+            <p className="mb-3 text-xs text-zinc-400">
+              Updates your backing bankroll balance only. Does not change stake performance metrics
+              or Trend.
+            </p>
+            <div className="mb-3 flex gap-1 rounded-xl bg-zinc-800/80 p-1">
+              <button
+                type="button"
+                onClick={() => onDirectionChange('add')}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-bold touch-manipulation ${
+                  adjustDirection === 'add' ? STABLE_TAB_ACTIVE : 'text-zinc-400'
+                }`}
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                disabled={!canRemove}
+                onClick={() => onDirectionChange('remove')}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-bold touch-manipulation disabled:opacity-40 ${
+                  adjustDirection === 'remove' ? STABLE_TAB_ACTIVE : 'text-zinc-400'
+                }`}
+              >
+                Remove
+              </button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <MoneyInputField
+                label="Add or remove"
+                value={amountInput}
+                onChange={onAmountChange}
+                placeholder="Amount"
+                compact
+                className="min-w-0"
+              />
+              <MoneyInputField
+                label="New balance"
+                value={newBalanceInput}
+                onChange={onNewBalanceChange}
+                placeholder={formatMoneyInputValue(String(currentBalance))}
+                compact
+                className="min-w-0"
+              />
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                disabled={applyDisabled}
+                onClick={() => void applyAdjust()}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50 ${STABLE_PRIMARY_BTN}`}
+                data-poker-stable-primary-btn
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                onClick={closeAdjustForm}
+                className="rounded-xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-300 touch-manipulation active:bg-zinc-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div
           className={`mt-3 grid grid-cols-3 gap-2 border-t ${STABLE_SURFACE_DIVIDER} pt-3 text-center sm:grid-cols-6`}
@@ -235,8 +414,9 @@ export default function PokerStablePortfolioHero({
 
               <HeroInfoSection title="Manual credit / debit">
                 <p>
-                  In-app Add/Remove for backing bankroll is paused while we design a better entry point. Settle and
-                  close-out credits still update this pool automatically.
+                  Tap the pencil next to <strong className="font-semibold text-zinc-300">Backing bankroll</strong> to
+                  Add or Remove funds. Liquid pool only ... does not change Realized P/L, At risk, Stakes MTM, or
+                  Trend. Settle and close-out credits still update this pool automatically.
                 </p>
               </HeroInfoSection>
 
@@ -281,6 +461,10 @@ export default function PokerStablePortfolioHero({
                 <p>
                   <strong className="font-semibold text-zinc-300">Moves on horse top-up / reduce:</strong> deal baseline,
                   At risk, Stakes MTM.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Moves on pencil Add/Remove:</strong> backing bankroll
+                  liquid balance only.
                 </p>
               </HeroInfoSection>
             </div>

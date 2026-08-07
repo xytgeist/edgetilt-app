@@ -41,8 +41,10 @@ import {
   dealIdsForAcceptedBackerVisibility,
   isMissingStableTableError,
   isViewerBackingDeal,
+  depositBackerBankroll,
   loadBackerBankroll,
   loadBackerBankrollAdjustments,
+  withdrawBackerBankroll,
   loadDealBankrollProfiles,
   loadDealCounterpartyProfiles,
   loadDealReductions,
@@ -674,6 +676,54 @@ export default function PokerStableScreen({
     triggerTapHapticLight()
   }
 
+  async function onDepositBackerBankroll(amount) {
+    if (!supabaseClient) return
+    setSaving(true)
+    setError('')
+    try {
+      const { profile, error: depErr } = await depositBackerBankroll(supabaseClient, amount)
+      if (depErr) throw depErr
+      if (profile) {
+        setBackerProfile((prev) => ({
+          bankroll_balance: profile.bankroll_balance,
+          realized_backing_pl: prev?.realized_backing_pl ?? 0,
+          has_profile: true,
+        }))
+      }
+      const { adjustments, error: adjErr } = await loadBackerBankrollAdjustments(supabaseClient)
+      if (!adjErr) setBackerAdjustments(adjustments || [])
+      triggerTapHapticLight()
+    } catch (e) {
+      setError(e?.message || 'Could not add to backing bankroll.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onWithdrawBackerBankroll(amount) {
+    if (!supabaseClient) return
+    setSaving(true)
+    setError('')
+    try {
+      const { profile, error: wErr } = await withdrawBackerBankroll(supabaseClient, amount)
+      if (wErr) throw wErr
+      if (profile) {
+        setBackerProfile((prev) => ({
+          bankroll_balance: profile.bankroll_balance,
+          realized_backing_pl: prev?.realized_backing_pl ?? 0,
+          has_profile: true,
+        }))
+      }
+      const { adjustments, error: adjErr } = await loadBackerBankrollAdjustments(supabaseClient)
+      if (!adjErr) setBackerAdjustments(adjustments || [])
+      triggerTapHapticLight()
+    } catch (e) {
+      setError(e?.message || 'Could not remove from backing bankroll.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell
@@ -696,6 +746,10 @@ export default function PokerStableScreen({
           <>
             <PokerStablePortfolioHero
               metrics={portfolioMetrics}
+              hasProfile={Boolean(backerProfile?.has_profile)}
+              saving={saving}
+              onDeposit={onDepositBackerBankroll}
+              onWithdraw={onWithdrawBackerBankroll}
               pendingCommitCount={pendingPortfolioCommits.length}
               onNeedsAttention={() => setAttentionOpen(true)}
               onCreateStake={() => {

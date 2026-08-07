@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Stable backing bankroll pencil adjust:** restore Add/Remove on portfolio hero via pencil next to **Backing bankroll** label (liquid pool only; deposit/withdraw RPCs). Info copy updated.
 - 2026-08-07: **Stable horse card highlight permanence:** tone from deal **created_at** order among the backer's deals (incl. archived/hidden), not carousel/`updated_at` index ... creating a new horse no longer recolors existing cards.
 - 2026-08-07: **Bankroll stake session scope leak fix:** archived/closed-stake sessions (still `deal_id` on settled deal, merged into personal history) could appear under a new stake card when carousel scope desynced / kept a non-carousel deal id. On Stake history now requires the deal on the carousel + matching `deal_id`; off-carousel scope snaps to personal; hero no longer falls back to personal stats on stake slides; merged badge **Closed stake**. **Ryan smoke OK** (DegenMFER new stake empty; closed sessions stay on personal).
 - 2026-08-07: **Ryan sign-off — player → backer stake offer (test):** Edge backer **Create Stake** → player Bankroll in-card Accept/Decline + Alert/push deep link to stake card (no Backing invitation modal) ... **PASSED**. Guest claim modal path unchanged.

@@ -98,6 +98,34 @@ export default function PokerStablePeriodicSettleSheet({
     [slices, reductionAmount],
   )
 
+  /**
+   * Player: per-backer names. Backer: "Owed to you" + aggregated "Other backers".
+   * @returns {{ key: string, label: string, share: number }[]}
+   */
+  const reductionShareRows = useMemo(() => {
+    if (!reductionShares.length) return []
+    const isViewerStakee = Boolean(userId) && deal?.stakee_user_id === userId
+    if (isViewerStakee) {
+      return reductionShares.map((row) => ({
+        key: row.sliceId,
+        label: sliceDisplayName(slices.find((s) => s.id === row.sliceId) || {}, profilesById),
+        share: row.share,
+      }))
+    }
+    const mine = reductionShares.filter((row) => row.stakerUserId === userId)
+    const others = reductionShares.filter((row) => row.stakerUserId !== userId)
+    const rows = []
+    const myShare = roundMoney(mine.reduce((sum, row) => sum + row.share, 0))
+    if (myShare > 0.005 || mine.length) {
+      rows.push({ key: 'owed-to-you', label: 'Owed to you', share: myShare })
+    }
+    const otherShare = roundMoney(others.reduce((sum, row) => sum + row.share, 0))
+    if (others.length && otherShare > 0.005) {
+      rows.push({ key: 'other-backers', label: 'Other backers', share: otherShare })
+    }
+    return rows
+  }, [reductionShares, userId, deal?.stakee_user_id, slices, profilesById])
+
   if (!deal) return null
 
   const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
@@ -296,16 +324,14 @@ export default function PokerStablePeriodicSettleSheet({
               Reduction cannot exceed {fmtPoker$(maxReduction)}.
             </p>
           ) : null}
-          {reduceStake && reductionAmount > 0.005 && reductionShares.length ? (
-            <div className="mt-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-400">
-              {reductionShares.map((row) => (
-                <div key={row.sliceId} className="flex justify-between gap-2 py-0.5">
-                  <span>
-                    {sliceDisplayName(
-                      slices.find((s) => s.id === row.sliceId) || {},
-                      profilesById,
-                    )}
-                  </span>
+          {reduceStake && reductionAmount > 0.005 && reductionShareRows.length ? (
+            <div
+              className="mt-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-400"
+              data-poker-stable-periodic-settle-reduction-shares
+            >
+              {reductionShareRows.map((row) => (
+                <div key={row.key} className="flex justify-between gap-2 py-0.5">
+                  <span>{row.label}</span>
                   <span className="font-semibold tabular-nums text-white">
                     +{fmtPoker$(row.share)}
                   </span>

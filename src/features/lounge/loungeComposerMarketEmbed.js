@@ -33,11 +33,23 @@ export async function fetchComposerMarketEmbed(supabase, row) {
   if (!preview && !rolling) return null
 
   const finnhubSym = String(preview?.symbol || symbol).trim()
+  const previewName = String(preview?.name || '').trim()
+  const rowName = String(row?.name || '').trim()
+  const nameLooksLikeTicker = (n) => {
+    const u = String(n || '').trim().toUpperCase()
+    return !u || u === display_symbol || u === finnhubSym.toUpperCase()
+  }
+  // Prefer a real company/ETF name over Finnhub echoing the ticker (common for GLD et al.).
+  const name = !nameLooksLikeTicker(previewName)
+    ? previewName
+    : !nameLooksLikeTicker(rowName)
+      ? rowName
+      : previewName || rowName || display_symbol || finnhubSym
   return {
     symbol: finnhubSym,
     display_symbol: display_symbol || String(preview?.display_symbol || '').trim().toUpperCase() || finnhubSym,
     asset_class,
-    name: String(preview?.name || row?.name || display_symbol || finnhubSym).trim(),
+    name,
     exchange: preview?.exchange || row?.exchange,
     logo_url: String(preview?.logo_url || row?.logo_url || '').trim(),
     market_cap: preview?.market_cap ?? row?.market_cap ?? null,

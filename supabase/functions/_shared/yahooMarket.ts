@@ -292,6 +292,8 @@ export function yahooIntervalForWindow(windowKey: string): string {
       return '15m'
     case '1m':
       return '1h'
+    case '2m':
+      return '1d'
     case '3m':
       return '1d'
     case 'all':

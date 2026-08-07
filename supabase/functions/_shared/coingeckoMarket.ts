@@ -253,6 +253,8 @@ export function coingeckoOhlcDaysForWindow(windowKey: string): '1' | '7' | '14' 
       return '7'
     case '1m':
       return '30'
+    case '2m':
+      return '90'
     case '3m':
       return '90'
     case '6m':

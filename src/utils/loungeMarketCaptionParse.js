@@ -278,6 +278,8 @@ export function marketWindowRangeSec(windowKey) {
       return { fromSec: now - 7 * day, toSec: now }
     case '1m':
       return { fromSec: now - 30 * day, toSec: now }
+    case '2m':
+      return { fromSec: now - 60 * day, toSec: now }
     case '3m':
       return { fromSec: now - 90 * day, toSec: now }
     case '6m':
@@ -384,19 +386,71 @@ export function formatMarketEmbedWindowLabel(embed, rollingLive = null) {
   return embed.window_label || ''
 }
 
+const CAPTION_MONTH_WORDS = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+}
+
+const CAPTION_MONTH_TOKEN = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)'
+
+function parseCaptionMonthCountToken(raw) {
+  const t = String(raw || '').trim().toLowerCase()
+  if (!t) return null
+  if (/^\d+$/.test(t)) return Math.max(1, parseInt(t, 10) || 1)
+  return CAPTION_MONTH_WORDS[t] ?? null
+}
+
+function monthCountToWindowKey(n) {
+  if (n >= 6) return '6m'
+  if (n >= 3) return '3m'
+  if (n >= 2) return '2m'
+  return '1m'
+}
+
 /** Mirror server parse for composer preview labels. @param {string} caption */
 export function parseCaptionMarketWindowClient(caption) {
   const text = String(caption || '').toLowerCase()
   if (!text.trim()) return { kind: 'rolling', windowKey: '24h', windowLabel: '24h' }
 
-  const monthMatch = text.match(/\b(?:last|past|over the last|in the last)\s+(\d+)\s*months?\b/)
+  const firstTimeMonth = text.match(
+    new RegExp(`\\b(?:for\\s+the\\s+)?first\\s+time\\s+in\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`),
+  )
+  if (firstTimeMonth) {
+    const n = parseCaptionMonthCountToken(firstTimeMonth[1])
+    if (n != null) {
+      const windowKey = monthCountToWindowKey(n)
+      return {
+        kind: 'historical',
+        windowKey,
+        windowLabel: formatMarketWindowDateLabel(windowKey, []),
+      }
+    }
+  }
+
+  const monthMatch = text.match(
+    new RegExp(
+      `\\b(?:last|past|over the last|in the last|in the past)\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`,
+    ),
+  )
   if (monthMatch) {
-    const n = Math.max(1, parseInt(monthMatch[1], 10) || 1)
-    const windowKey = n >= 6 ? '6m' : n >= 3 ? '3m' : '1m'
-    return {
-      kind: 'historical',
-      windowKey,
-      windowLabel: formatMarketWindowDateLabel(windowKey, []),
+    const n = parseCaptionMonthCountToken(monthMatch[1])
+    if (n != null) {
+      const windowKey = monthCountToWindowKey(n)
+      return {
+        kind: 'historical',
+        windowKey,
+        windowLabel: formatMarketWindowDateLabel(windowKey, []),
+      }
     }
   }
   const dayMatch = text.match(/\b(?:last|past|over the last|in the last)\s+(\d+)\s*days?\b/)
@@ -414,6 +468,9 @@ export function parseCaptionMarketWindowClient(caption) {
   }
   if (/\b(?:last|past)\s+3\s+months?\b/.test(text)) {
     return { kind: 'historical', windowKey: '3m', windowLabel: formatMarketWindowDateLabel('3m', []) }
+  }
+  if (/\b(?:last|past)\s+two\s+months?\b/.test(text)) {
+    return { kind: 'historical', windowKey: '2m', windowLabel: formatMarketWindowDateLabel('2m', []) }
   }
   if (/\b(?:last|past)\s+month\b/.test(text)) {
     return { kind: 'historical', windowKey: '1m', windowLabel: formatMarketWindowDateLabel('1m', []) }

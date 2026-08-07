@@ -41,7 +41,18 @@ export type MarketProfile = {
 export type MarketBar = MarketBarOhlc
 export type MarketAssetClass = 'stock' | 'crypto'
 export type MarketEmbedKind = 'rolling' | 'historical'
-export type MarketWindowKey = '1h' | '24h' | '3d' | '1w' | '1m' | '3m' | '6m' | '1y' | 'ytd' | 'all'
+export type MarketWindowKey =
+  | '1h'
+  | '24h'
+  | '3d'
+  | '1w'
+  | '1m'
+  | '2m'
+  | '3m'
+  | '6m'
+  | '1y'
+  | 'ytd'
+  | 'all'
 
 export type MarketEmbed = {
   symbol: string
@@ -204,6 +215,37 @@ export async function resolveMarketSymbolsForAttach(
 }
 
 /** Parse caption for a historical window; null → rolling 24h default. */
+const CAPTION_MONTH_WORDS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+}
+
+const CAPTION_MONTH_TOKEN = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)'
+
+function parseCaptionMonthCountToken(raw: string): number | null {
+  const t = String(raw || '').trim().toLowerCase()
+  if (!t) return null
+  if (/^\d+$/.test(t)) return Math.max(1, parseInt(t, 10) || 1)
+  return CAPTION_MONTH_WORDS[t] ?? null
+}
+
+function monthCountToWindowKey(n: number): MarketWindowKey {
+  if (n >= 6) return '6m'
+  if (n >= 3) return '3m'
+  if (n >= 2) return '2m'
+  return '1m'
+}
+
 export function parseCaptionMarketWindow(caption: string): {
   kind: MarketEmbedKind
   windowKey: MarketWindowKey
@@ -214,12 +256,29 @@ export function parseCaptionMarketWindow(caption: string): {
     return { kind: 'rolling', windowKey: '24h', windowLabel: '24h' }
   }
 
-  const monthMatch = text.match(/\b(?:last|past|over the last|in the last)\s+(\d+)\s*months?\b/)
+  // "for the first time in two months" / "first time in 2 months"
+  const firstTimeMonth = text.match(
+    new RegExp(`\\b(?:for\\s+the\\s+)?first\\s+time\\s+in\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`),
+  )
+  if (firstTimeMonth) {
+    const n = parseCaptionMonthCountToken(firstTimeMonth[1])
+    if (n != null) {
+      const windowKey = monthCountToWindowKey(n)
+      return { kind: 'historical', windowKey, windowLabel: `${n}M` }
+    }
+  }
+
+  const monthMatch = text.match(
+    new RegExp(
+      `\\b(?:last|past|over the last|in the last|in the past)\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`,
+    ),
+  )
   if (monthMatch) {
-    const n = Math.max(1, parseInt(monthMatch[1], 10) || 1)
-    if (n >= 6) return { kind: 'historical', windowKey: '6m', windowLabel: `${n}M` }
-    if (n >= 3) return { kind: 'historical', windowKey: '3m', windowLabel: `${n}M` }
-    return { kind: 'historical', windowKey: '1m', windowLabel: `${n}M` }
+    const n = parseCaptionMonthCountToken(monthMatch[1])
+    if (n != null) {
+      const windowKey = monthCountToWindowKey(n)
+      return { kind: 'historical', windowKey, windowLabel: `${n}M` }
+    }
   }
 
   const dayMatch = text.match(/\b(?:last|past|over the last|in the last)\s+(\d+)\s*days?\b/)
@@ -236,6 +295,9 @@ export function parseCaptionMarketWindow(caption: string): {
   }
   if (/\b(?:last|past)\s+3\s+months?\b|\b(?:last|past)\s+quarter\b/.test(text)) {
     return { kind: 'historical', windowKey: '3m', windowLabel: '3M' }
+  }
+  if (/\b(?:last|past)\s+two\s+months?\b/.test(text)) {
+    return { kind: 'historical', windowKey: '2m', windowLabel: '2M' }
   }
   if (/\b(?:last|past)\s+month\b|\bthis\s+month\b/.test(text)) {
     return { kind: 'historical', windowKey: '1m', windowLabel: '1M' }
@@ -290,6 +352,8 @@ export function windowRange(windowKey: MarketWindowKey): {
       return { fromSec: now - 7 * day, toSec: now, resolution: '15' }
     case '1m':
       return { fromSec: now - 30 * day, toSec: now, resolution: '60' }
+    case '2m':
+      return { fromSec: now - 60 * day, toSec: now, resolution: 'D' }
     case '3m':
       return { fromSec: now - 90 * day, toSec: now, resolution: 'D' }
     case '6m':
@@ -383,6 +447,7 @@ const RESOLUTION_FALLBACKS: Record<MarketWindowKey, string[]> = {
   '3d': ['15', '30', '60', 'D'],
   '1w': ['15', '30', '60'],
   '1m': ['60', '30'],
+  '2m': ['D', '60'],
   '3m': ['D'],
   '6m': ['D'],
   '1y': ['D'],
@@ -1405,20 +1470,43 @@ export async function finnhubProfile(symbol: string, assetClass: MarketAssetClas
   }
   try {
     const data = await finnhubFetch('/stock/profile2', { symbol: finnhubSym })
+    const display = normalizeDisplaySymbol(finnhubSym, 'stock')
+    let name = String(data?.name || '').trim()
+    let logo = String(data?.logo || '').trim()
+    if (isGuessedFinnhubStockLogoUrl(logo)) logo = ''
+    let exchange = String(data?.exchange || '').trim()
+    let currency = String(data?.currency || 'USD').trim() || 'USD'
     let marketCapitalization =
       data?.marketCapitalization != null ? Number(data.marketCapitalization) * 1_000_000 : null
-    if (marketCapitalization == null || !Number.isFinite(marketCapitalization) || marketCapitalization <= 0) {
-      const yahoo = await yahooStockProfile(symbol)
-      if (yahoo?.marketCapitalization != null && yahoo.marketCapitalization > 0) {
-        marketCapitalization = yahoo.marketCapitalization
+
+    const nameWeak =
+      !name ||
+      name.toUpperCase() === display.toUpperCase() ||
+      name.toUpperCase() === String(finnhubSym).toUpperCase()
+    const mcapWeak =
+      marketCapitalization == null || !Number.isFinite(marketCapitalization) || marketCapitalization <= 0
+
+    // Finnhub often returns empty/weak ETF profiles (GLD → name=GLD, no logo).
+    // Yahoo chart meta usually has longName + logoUrl — fill gaps without requiring a throw.
+    if (nameWeak || !logo || mcapWeak || !exchange) {
+      const yahoo = await yahooStockProfile(symbol).catch(() => null)
+      if (yahoo) {
+        if (nameWeak && yahoo.name) name = String(yahoo.name).trim()
+        if (!logo && yahoo.logo) logo = String(yahoo.logo).trim()
+        if (!exchange && yahoo.exchange) exchange = String(yahoo.exchange).trim()
+        if (mcapWeak && yahoo.marketCapitalization != null && yahoo.marketCapitalization > 0) {
+          marketCapitalization = yahoo.marketCapitalization
+        }
+        if (yahoo.currency) currency = String(yahoo.currency).trim() || currency
       }
     }
+
     return {
-      name: String(data?.name || finnhubSym),
-      exchange: String(data?.exchange || ''),
-      logo: String(data?.logo || ''),
+      name: name || display || finnhubSym,
+      exchange,
+      logo,
       marketCapitalization,
-      currency: String(data?.currency || 'USD'),
+      currency,
     }
   } catch {
     const yahoo = await yahooStockProfile(symbol)

@@ -8094,6 +8094,17 @@ html.light.platform-android .chat-sheet-glass {
   background: rgba(232, 235, 252, 0.92);
 }
 
+/* emoji-mart custom element inside ChatEmojiPicker sheet */
+[data-emoji-mart-host] {
+  width: 100%;
+}
+[data-emoji-mart-host] > * {
+  width: 100% !important;
+  max-width: 100%;
+  height: 100%;
+  border: none !important;
+}
+
 /* Legal document pages (/terms, /privacy, /guidelines) */
 [data-legal-document] .legal-prose {
   font-size: 0.9375rem;

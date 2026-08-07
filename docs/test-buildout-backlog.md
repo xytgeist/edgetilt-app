@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Full emoji library:** **`ChatEmojiPicker`** now loads **emoji-mart** + **`@emoji-mart/data`** (Unicode set, search by name). Lazy-imported; same sheet API for chat reactions + Bot Portal Post as. No `@emoji-mart/react` (React 19 peer conflict … vanilla `Picker` mount).
 - 2026-08-07: **Bot Portal Post as emoji picker:** reuses chat **`ChatEmojiPicker`** sheet; inserts at caption caret (keeps open for multi-pick).
 - 2026-08-07: **Bot Portal half-height after Publish:** Chrome/Windows native file picker / autofocus can shrink `dvh`/`visualViewport`. Bot shell uses **`stableLayoutViewport`** (`100vh` + `innerHeight` lock via **`stableLayoutViewport.js`**); compose image input portaled to `body`. Re-locks on Publish and market-picker close.
 - 2026-08-07: **Market picker → caption cashtags:** picking tickers (Bot Portal Post as + Lounge compose/edit) appends missing `$TICKER` to caption; Publish/Save also syncs. Helper **`appendMissingMarketCashtagsToCaption`**. Does not strip cashtags when charts are removed.

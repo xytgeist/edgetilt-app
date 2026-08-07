@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { AreaSeries, createChart } from 'lightweight-charts'
+import { AreaSeries, LineStyle, createChart } from 'lightweight-charts'
 import {
   formatMarketChangePct,
   formatMarketPrice,
@@ -13,10 +13,16 @@ import {
   loungeMarketChartTheme,
 } from './loungeMarketChartTheme.js'
 import { marketChartLocalizationBase } from './loungeMarketChartLocale.js'
+import {
+  miniSparklineColor,
+  resolveMiniSparklineStyle,
+} from './loungeMarketMiniSparkline.js'
 
 /**
  * Feed / composer market mini … Apple-style blend:
  * logo · ticker+arrow / name · sparkline · price / change
+ *
+ * Sparkline: dashed open line (color vs prior close); area color vs open.
  *
  * @param {{
  *   embed: object,
@@ -63,7 +69,8 @@ export default function LoungeMarketChartMini({
   const bars = isRolling ? rollingPayload?.bars : embed?.bars
   const changePct = Number(quote?.change_pct)
   const changeAbs = Number(quote?.change)
-  const up = Number.isFinite(changePct)
+  /** Day change vs prior close (labels / ▲▼). */
+  const dayUp = Number.isFinite(changePct)
     ? changePct >= 0
     : Number.isFinite(changeAbs)
       ? changeAbs >= 0
@@ -76,6 +83,7 @@ export default function LoungeMarketChartMini({
   const seriesBars = compareMode
     ? loungeMarketBarsToPercentSeries(bars || [])
     : loungeMarketBarsToSeries(bars || [])
+  const sparkStyle = resolveMiniSparklineStyle(bars, quote, { compareMode, assetClass })
 
   useEffect(() => {
     const el = hostRef.current
@@ -88,26 +96,16 @@ export default function LoungeMarketChartMini({
       localization: marketChartLocalizationBase(),
       rightPriceScale: { visible: false },
       leftPriceScale: { visible: false },
-      timeScale: { visible: false },
+      timeScale: { visible: false, rightOffset: 0, fixLeftEdge: true, fixRightEdge: true },
       crosshair: { vertLine: { visible: false }, horzLine: { visible: false } },
       handleScroll: false,
       handleScale: false,
     })
-    const lineColor = up ? theme.upColor : theme.downColor
-    const topColor = up
-      ? isLight
-        ? 'rgba(22, 163, 74, 0.22)'
-        : 'rgba(34, 197, 94, 0.28)'
-      : isLight
-        ? 'rgba(220, 38, 38, 0.22)'
-        : 'rgba(239, 68, 68, 0.28)'
-    const bottomColor = up
-      ? isLight
-        ? 'rgba(22, 163, 74, 0)'
-        : 'rgba(34, 197, 94, 0)'
-      : isLight
-        ? 'rgba(220, 38, 38, 0)'
-        : 'rgba(239, 68, 68, 0)'
+
+    const sparkUp = sparkStyle.sparkUp
+    const lineColor = miniSparklineColor(sparkUp, isLight, 'line')
+    const topColor = miniSparklineColor(sparkUp, isLight, 'top')
+    const bottomColor = miniSparklineColor(sparkUp, isLight, 'bottom')
 
     const series = chart.addSeries(AreaSeries, {
       lineColor,
@@ -116,15 +114,48 @@ export default function LoungeMarketChartMini({
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
+      crosshairMarkerVisible: false,
     })
     series.setData(seriesBars)
-    chart.timeScale().fitContent()
+
+    if (sparkStyle.openLinePrice != null && Number.isFinite(sparkStyle.openLinePrice)) {
+      series.createPriceLine({
+        price: sparkStyle.openLinePrice,
+        color: miniSparklineColor(sparkStyle.openUp, isLight, 'dash'),
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        lineVisible: true,
+        axisLabelVisible: false,
+        title: '',
+      })
+    }
+
+    const applyVisibleRange = () => {
+      if (
+        sparkStyle.fromSec != null &&
+        sparkStyle.toSec != null &&
+        sparkStyle.toSec > sparkStyle.fromSec &&
+        seriesBars.length >= 2
+      ) {
+        try {
+          chart.timeScale().setVisibleRange({
+            from: sparkStyle.fromSec,
+            to: sparkStyle.toSec,
+          })
+          return
+        } catch {
+          /* fall through */
+        }
+      }
+      chart.timeScale().fitContent()
+    }
+    applyVisibleRange()
     chartRef.current = chart
 
     const ro = new ResizeObserver(() => {
       if (!hostRef.current || !chartRef.current) return
       chartRef.current.applyOptions({ width: hostRef.current.clientWidth })
-      chartRef.current.timeScale().fitContent()
+      applyVisibleRange()
     })
     ro.observe(el)
     return () => {
@@ -132,12 +163,23 @@ export default function LoungeMarketChartMini({
       chart.remove()
       chartRef.current = null
     }
-  }, [embed?.symbol, embed?.kind, seriesBars, up, isLight, theme])
+  }, [
+    embed?.symbol,
+    embed?.kind,
+    seriesBars,
+    sparkStyle.sparkUp,
+    sparkStyle.openUp,
+    sparkStyle.openLinePrice,
+    sparkStyle.fromSec,
+    sparkStyle.toSec,
+    isLight,
+    theme,
+  ])
 
   const priceLabel = formatMarketPrice(quote?.price)
   const changeLabel = formatMiniChangeLabel(quote?.change, changePct)
-  const changeTone = up ? 'text-lv-green lounge-cashtag-positive' : 'text-lv-red'
-  const arrow = up ? '▲' : '▼'
+  const changeTone = dayUp ? 'text-lv-green lounge-cashtag-positive' : 'text-lv-red'
+  const arrow = dayUp ? '▲' : '▼'
 
   if (!embed?.display_symbol) return null
 

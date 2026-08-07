@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Market mini Apple sparkline:** dashed open line (color = open vs prior close); area color = last vs open; session-padded x-axis so the line only fills elapsed RTH/24h. Helpers in **`loungeMarketMiniSparkline.js`**.
 - 2026-08-07: **Market mini Apple-blend layout:** logo · ▲/▼ ticker / name · sparkline · price / $ change (feed + composer strips via **`LoungeMarketChartMini`**).
 - 2026-08-07: **Blank stock minis / 1D sparklines:** during RTH, Edge `resolveStockIntradayBars` accepted calendar-24h Yahoo/Finnhub bars (~24h span); client `isUsableStockIntradayBars` (≤8h) wiped them to `[]`. Fix: Edge fetches RTH session bounds + only returns usable bars; client **`clipStockBarsToUsableIntraday`**. Redeployed **`lounge-market-data`** on **test + prod**.
 - 2026-08-07: **Full emoji library:** **`ChatEmojiPicker`** now loads **emoji-mart** + **`@emoji-mart/data`** (Unicode set, search by name). Lazy-imported; same sheet API for chat reactions + Bot Portal Post as. No `@emoji-mart/react` (React 19 peer conflict … vanilla `Picker` mount).

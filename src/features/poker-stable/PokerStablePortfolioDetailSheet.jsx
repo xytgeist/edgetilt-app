@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
@@ -25,12 +25,9 @@ const PORTFOLIO_TABS = [
   { id: 'locations', label: 'Locations' },
 ]
 
-/**
- * Fixed sheet height so Overview / Trend / Locations do not resize the modal.
- * Matches deal-detail tabbed sheets (docked bottom, content scrolls inside).
- */
-const PORTFOLIO_DETAIL_SHEET_HEIGHT_FIXED =
-  'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden !overflow-y-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
+/** Cap only … Overview hugs content; Trend/Locations reuse measured Overview height. */
+const PORTFOLIO_DETAIL_SHEET_MAX_H =
+  'max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
 
 function fmtPct(n) {
   if (n == null || !Number.isFinite(n)) return '—'
@@ -68,6 +65,9 @@ export default function PokerStablePortfolioDetailSheet({
   const [adjustDirection, setAdjustDirection] = useState('add')
   const [amountInput, setAmountInput] = useState('')
   const [newBalanceInput, setNewBalanceInput] = useState('')
+  /** Overview natural height … locked onto Trend/Locations so the sheet does not resize. */
+  const [overviewSheetHeightPx, setOverviewSheetHeightPx] = useState(/** @type {number | null} */ (null))
+  const sheetRef = useRef(/** @type {HTMLDivElement | null} */ (null))
 
   const m = metrics || {}
   const currentBalance = roundMoney(m.liquidBankroll ?? 0)
@@ -81,12 +81,32 @@ export default function PokerStablePortfolioDetailSheet({
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setOverviewSheetHeightPx(null)
+      return
+    }
     setTab('overview')
     setInfoOpen(false)
+    setOverviewSheetHeightPx(null)
     resetAdjustForm(roundMoney(metrics?.liquidBankroll ?? 0))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed form once when sheet opens
   }, [open])
+
+  useLayoutEffect(() => {
+    if (!open || tab !== 'overview') return
+    const el = sheetRef.current
+    if (!el) return
+
+    const capture = () => {
+      const h = Math.round(el.getBoundingClientRect().height)
+      if (h > 0) setOverviewSheetHeightPx(h)
+    }
+    capture()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(capture)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [open, tab, pendingHold, currentBalance])
 
   if (!open) return null
 
@@ -164,9 +184,15 @@ export default function PokerStablePortfolioDetailSheet({
       onClick={() => onClose?.()}
     >
       <div
+        ref={sheetRef}
         data-poker-stable-portfolio-detail
         data-poker-stable-sheet
-        className={`relative z-10 flex w-full max-w-lg flex-col rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900 px-5 pt-5 ${PORTFOLIO_DETAIL_SHEET_HEIGHT_FIXED}`}
+        className={`relative z-10 flex w-full max-w-lg flex-col rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900 px-5 pt-5 ${PORTFOLIO_DETAIL_SHEET_MAX_H}`}
+        style={
+          tab !== 'overview' && overviewSheetHeightPx
+            ? { height: overviewSheetHeightPx }
+            : undefined
+        }
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-zinc-600/70" aria-hidden />

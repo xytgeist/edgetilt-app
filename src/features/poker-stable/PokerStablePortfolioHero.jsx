@@ -1,4 +1,4 @@
-import { ChevronRight, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { roundMoney } from './pokerStableMath.js'
@@ -66,11 +66,21 @@ export default function PokerStablePortfolioHero({
       className={`relative mb-4 ${STABLE_SURFACE_CARD} px-5 py-4 text-left touch-manipulation active:opacity-[0.98]`}
       aria-label="Open backing portfolio details"
     >
-      <ChevronRight
-        className="pointer-events-none absolute right-3 top-1/2 h-6 w-6 -translate-y-1/2 text-zinc-500"
-        strokeWidth={2.25}
+      {/* Same width as before, taller mouth so the chevron reads as a bigger tap affordance. */}
+      <svg
+        viewBox="0 0 24 40"
+        className="pointer-events-none absolute right-3 top-1/2 h-10 w-6 -translate-y-1/2 text-zinc-500"
+        fill="none"
         aria-hidden
-      />
+      >
+        <path
+          d="M7 4 L17 20 L7 36"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
 
       {pendingCommitCount > 0 ? (
         <button

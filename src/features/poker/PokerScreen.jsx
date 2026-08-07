@@ -4,17 +4,17 @@ import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitl
 const POKER_TOOLS = [
   {
     id: 'poker-bankroll',
-    label: 'Poker Bankroll',
+    label: 'Bankroll Manager',
     Icon: Spade,
     color: '#6ee7b7',
-    description: 'Cash & tourneys · live & online',
+    description: 'Cash & tourneys sessions tracker',
   },
   {
     id: 'poker-stable',
-    label: 'Stable',
+    label: 'Stable Manager',
     Icon: Users,
     color: '#22d3ee',
-    description: 'Track horses · per-deal On Stake sync',
+    description: 'Track horses · live updates',
   },
 ]
 

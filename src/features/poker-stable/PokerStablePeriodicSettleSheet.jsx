@@ -147,7 +147,7 @@ export default function PokerStablePeriodicSettleSheet({
     reduceStake && reductionAmount > 0
       ? `, then reduces to ${fmtPoker$(baselineAfterReduction)}`
       : ''
-  } and the stake remains open`
+  } and remains open`
 
   return (
     <div

@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Market mini baseline sparkline:** LWC **`BaselineSeries`** … green above open / red below (can split mid-day); fill toward open dashed line (dash tint = open vs prior close). Fallback AreaSeries if open missing.
 - 2026-08-07: **Market mini long-name layout:** compact by default; if company name would truncate in the left column, spark moves up and name spans under ticker+spark (still truncates before price). Probe = 38% card width.
 - 2026-08-07: **Market mini Apple sparkline:** dashed open line (color = open vs prior close); area color = last vs open; session-padded x-axis so the line only fills elapsed RTH/24h. Helpers in **`loungeMarketMiniSparkline.js`**.
 - 2026-08-07: **Market mini Apple-blend layout:** logo · ▲/▼ ticker / name · sparkline · price / $ change (feed + composer strips via **`LoungeMarketChartMini`**).

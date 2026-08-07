@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AreaSeries, LineStyle, createChart } from 'lightweight-charts'
+import { AreaSeries, BaselineSeries, LineStyle, createChart } from 'lightweight-charts'
 import {
   formatMarketChangePct,
   formatMarketPrice,
@@ -14,6 +14,7 @@ import {
 } from './loungeMarketChartTheme.js'
 import { marketChartLocalizationBase } from './loungeMarketChartLocale.js'
 import {
+  miniBaselineSeriesOptions,
   miniSparklineColor,
   resolveMiniSparklineStyle,
 } from './loungeMarketMiniSparkline.js'
@@ -26,7 +27,8 @@ import {
  * Wide name: when that name would truncate, sparkline moves up and the name
  * spans under ticker + spark (still truncates before the price column).
  *
- * Sparkline: dashed open line (color vs prior close); area color vs open.
+ * Sparkline: dashed open (tint vs prior close); BaselineSeries green above /
+ * red below open with fill toward the open line.
  *
  * @param {{
  *   embed: object,
@@ -126,25 +128,28 @@ export default function LoungeMarketChartMini({
       handleScale: false,
     })
 
-    const sparkUp = sparkStyle.sparkUp
-    const lineColor = miniSparklineColor(sparkUp, isLight, 'line')
-    const topColor = miniSparklineColor(sparkUp, isLight, 'top')
-    const bottomColor = miniSparklineColor(sparkUp, isLight, 'bottom')
+    const openBase =
+      sparkStyle.openLinePrice != null && Number.isFinite(sparkStyle.openLinePrice)
+        ? sparkStyle.openLinePrice
+        : null
 
-    const series = chart.addSeries(AreaSeries, {
-      lineColor,
-      topColor,
-      bottomColor,
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false,
-    })
+    const series =
+      openBase != null
+        ? chart.addSeries(BaselineSeries, miniBaselineSeriesOptions(isLight, openBase))
+        : chart.addSeries(AreaSeries, {
+            lineColor: miniSparklineColor(sparkStyle.sparkUp, isLight, 'line'),
+            topColor: miniSparklineColor(sparkStyle.sparkUp, isLight, 'top'),
+            bottomColor: miniSparklineColor(sparkStyle.sparkUp, isLight, 'bottom'),
+            lineWidth: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          })
     series.setData(seriesBars)
 
-    if (sparkStyle.openLinePrice != null && Number.isFinite(sparkStyle.openLinePrice)) {
+    if (openBase != null) {
       series.createPriceLine({
-        price: sparkStyle.openLinePrice,
+        price: openBase,
         color: miniSparklineColor(sparkStyle.openUp, isLight, 'dash'),
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,

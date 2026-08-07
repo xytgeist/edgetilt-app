@@ -1,8 +1,7 @@
 /**
  * Apple Stocks-style mini sparkline helpers:
- * - dashed line at session/window open
- * - dashed color = open vs previous close
- * - sparkline color = last vs open
+ * - dashed line at session/window open (tint = open vs previous close)
+ * - BaselineSeries: green above open / red below, fill toward open
  */
 
 /** @param {Array<{ t: number, c: number, o?: number }> | null | undefined} bars */
@@ -89,4 +88,27 @@ export function miniSparklineColor(up, isLight, part) {
   }
   if (up) return isLight ? 'rgba(22, 163, 74, 0)' : 'rgba(34, 197, 94, 0)'
   return isLight ? 'rgba(220, 38, 38, 0)' : 'rgba(239, 68, 68, 0)'
+}
+
+/**
+ * BaselineSeries options: green above `basePrice`, red below; fills toward the open.
+ * @param {boolean} isLight
+ * @param {number} basePrice
+ */
+export function miniBaselineSeriesOptions(isLight, basePrice) {
+  const green = isLight ? '#16a34a' : '#22c55e'
+  const red = isLight ? '#dc2626' : '#ef4444'
+  return {
+    baseValue: { type: 'price', price: basePrice },
+    topLineColor: green,
+    topFillColor1: isLight ? 'rgba(22, 163, 74, 0.30)' : 'rgba(34, 197, 94, 0.34)',
+    topFillColor2: isLight ? 'rgba(22, 163, 74, 0.02)' : 'rgba(34, 197, 94, 0.02)',
+    bottomLineColor: red,
+    bottomFillColor1: isLight ? 'rgba(220, 38, 38, 0.02)' : 'rgba(239, 68, 68, 0.02)',
+    bottomFillColor2: isLight ? 'rgba(220, 38, 38, 0.30)' : 'rgba(239, 68, 68, 0.34)',
+    lineWidth: 2,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+  }
 }

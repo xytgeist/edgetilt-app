@@ -29,8 +29,9 @@ import {
  * ticker row and the name runs under ticker + spark (same vertical band;
  * truncates before price).
  *
- * Historical (non-today) windows: normal centered date label under the
- * main row (in flow ... no overlay games).
+ * Historical (non-today) windows: full-bleed footer bar with centered date
+ * (light mode: black bar + light text; dark: zinc-100 bar + dark text).
+ * Footer uses -mx on the padded card so the main row / spark layout stays put.
  *
  * Sparkline: dashed open (tint vs prior close); BaselineSeries green above /
  * red below open with fill toward the open line.
@@ -51,9 +52,9 @@ const MINI_SPARKLINE_HEIGHT_WIDE_PX = 22
 const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
 const MINI_CARD_CLASS_WITH_RANGE = 'min-h-[4.25rem] h-auto'
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
-/** Historical only ... normal centered label under the main row. */
-const MINI_RANGE_LABEL_CLASS =
-  'w-full min-w-0 truncate text-center text-[10px] font-medium leading-tight text-zinc-500'
+/** Historical only ... full-bleed footer via -mx; light remaps in CSS. */
+const MINI_RANGE_BAR_CLASS =
+  '-mx-3 min-w-0 shrink-0 truncate bg-zinc-100 px-3 py-1 text-center text-[10px] font-semibold leading-tight tracking-wide text-zinc-900'
 /** Off-screen probe sized in px to the compact name budget (38% of card). */
 const MINI_COMPACT_NAME_PROBE_CLASS =
   'pointer-events-none absolute -left-[9999px] top-0 overflow-hidden whitespace-nowrap text-[13px] font-medium'
@@ -265,7 +266,7 @@ export default function LoungeMarketChartMini({
   const priceLabel = formatMarketPrice(quote?.price)
   const changeLabel = formatMiniChangeLabel(quote?.change, changePct)
   const changeTone = dayUp ? 'text-lv-green lounge-cashtag-positive' : 'text-lv-red'
-  const arrow = dayUp ? '?' : '?'
+  const arrow = dayUp ? '\u25B2' : '\u25BC'
 
   if (!embed?.display_symbol) return null
 
@@ -345,7 +346,7 @@ export default function LoungeMarketChartMini({
         e.stopPropagation()
         onOpen?.()
       }}
-      className={`relative flex ${cardHeightClass} min-w-0 shrink-0 snap-start flex-col justify-center gap-0.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1.5 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
+      className={`relative flex ${cardHeightClass} min-w-0 shrink-0 snap-start flex-col justify-center gap-0.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 ${showRange ? 'pb-0 pt-1.5' : 'py-1.5'} text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
       data-lounge-market-chart-mini
       data-asset-class={assetClass}
       data-wide-name={wideName ? '1' : '0'}
@@ -400,7 +401,11 @@ export default function LoungeMarketChartMini({
         )}
       </div>
 
-      {showRange ? <div className={MINI_RANGE_LABEL_CLASS}>{rangeLabel}</div> : null}
+      {showRange ? (
+        <div data-mini-range-bar className={MINI_RANGE_BAR_CLASS}>
+          {rangeLabel}
+        </div>
+      ) : null}
     </div>
   )
 }

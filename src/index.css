@@ -2621,6 +2621,12 @@ html.light [data-lounge-market-chart-mini] .text-zinc-500 {
   color: #71717a !important;
 }
 
+/* Historical mini date footer … black bar + light type (dark uses zinc-100 / zinc-900 in JSX). */
+html.light [data-lounge-market-chart-mini] [data-mini-range-bar] {
+  background-color: #0a0a0a !important;
+  color: #fafafa !important;
+}
+
 html.light [data-lounge-market-chart-compare] {
   color: var(--color-zinc-600) !important;
 }

@@ -6594,38 +6594,69 @@ html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-playe
   background-color: #ecfdf5 !important;
   border-color: #6ee7b7 !important;
 }
-html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-300\/80 {
-  color: #047857 !important;
-}
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-300\/80,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-200\/90,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-200\/80,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-200\/75,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-100\/70,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-100,
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-emerald-300 {
   color: #047857 !important;
 }
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-rose-300 {
   color: #be123c !important;
 }
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .text-zinc-400 {
+  color: #3f3f46 !important;
+}
 
-/* Backer settle credit (Stable backing bankroll on commit) ... hero amount */
+/* Backer settle credit (personal backing bankroll on commit) ... hero amount */
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] {
   background-color: #ecfdf5 !important;
   border-color: #34d399 !important;
   box-shadow: var(--edge-light-list-card-shadow) !important;
 }
-html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/90 {
-  color: #047857 !important;
-}
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/90,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/80,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/75,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-100\/70,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-100,
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-300 {
   color: #047857 !important;
-}
-html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-100\/70 {
-  color: #065f46 !important;
 }
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-rose-300 {
   color: #be123c !important;
 }
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-zinc-400 {
+  color: #3f3f46 !important;
+}
+
+/* Pay bullets + stake-reduction nest inside settle credit cards */
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-commit-pay-line] {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-commit-reduction-shares] {
+  background-color: #ffffff !important;
+  border-color: #a7f3d0 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-commit-reduction-shares] .text-emerald-200\/80,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-commit-reduction-shares] .text-emerald-100,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-commit-reduction-shares] .text-emerald-100\/70 {
+  color: #047857 !important;
+}
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-player-credit] .bg-zinc-950\/30,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .bg-zinc-950\/30 {
+  background-color: #ffffff !important;
+}
 
 html.light [data-poker-stable-commit-sync-modal] .text-emerald-400,
 html.light [data-poker-stable-commit-sync-modal] .text-emerald-400\/85,
-html.light [data-poker-stable-commit-sync-modal] .text-emerald-300 {
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-300,
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-200\/75,
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-200\/80,
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-100\/70,
+html.light [data-poker-stable-commit-sync-modal] .text-emerald-100 {
   color: #047857 !important;
 }
 html.light [data-poker-stable-commit-sync-modal] .text-rose-300 {
@@ -6638,7 +6669,8 @@ html.light [data-poker-stable-commit-sync-modal] .border-zinc-600.bg-zinc-800 {
 html.light [data-poker-stable-commit-sync-modal] .border-zinc-600.bg-zinc-800.text-zinc-200 {
   color: #3f3f46 !important;
 }
-html.light [data-poker-stable-commit-sync-modal] .bg-emerald-600.text-white {
+html.light [data-poker-stable-commit-sync-modal] .bg-emerald-600.text-white,
+html.light [data-poker-stable-commit-sync-modal] button.bg-emerald-600 {
   background-color: #059669 !important;
   color: #ffffff !important;
 }

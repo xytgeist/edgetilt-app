@@ -3,6 +3,7 @@ import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
+import { STABLE_BACKER_BANKROLL_PHRASE } from './pokerStableBooksCopy.js'
 import {
   computeDealMakeup,
   computeDealSettlement,
@@ -12,17 +13,47 @@ import {
   roundMoney,
   dealTypeLabel,
 } from './pokerStableMath.js'
-import { dealHasMakeup, dealHasRakebackEnabled } from './pokerStableTerms.js'
+import { dealHasMakeup, dealHasRakebackEnabled, dealStakeeDisplayName } from './pokerStableTerms.js'
 import { sliceDisplayName } from './pokerStableApi.js'
 
 /**
- * Periodic settle review screen before the stakee confirms.
+ * Viewer-facing settle payment phrases (before the roll-reset clause).
+ * @param {{ isStakee: boolean, lines: object[], userId?: string | null, playerName: string, profilesById: object }} params
+ */
+function settlePayPhrases({ isStakee, lines, userId, playerName, profilesById }) {
+  const phrases = []
+  for (const line of lines || []) {
+    const amount = roundMoney(line.total_owed)
+    if (amount < 0.005) continue
+    const slice = line.slice || {}
+    if (isStakee) {
+      const backerName = sliceDisplayName(slice, profilesById)
+      phrases.push(
+        line.direction === 'player_to_staker'
+          ? `You pay ${backerName} ${fmtPoker$(amount)}`
+          : `${backerName} pays you ${fmtPoker$(amount)}`,
+      )
+      continue
+    }
+    if (!userId || slice.staker_user_id !== userId) continue
+    phrases.push(
+      line.direction === 'player_to_staker'
+        ? `${playerName} pays you ${fmtPoker$(amount)}`
+        : `You pay ${playerName} ${fmtPoker$(amount)}`,
+    )
+  }
+  return phrases
+}
+
+/**
+ * Periodic settle review screen before the initiator confirms.
  */
 export default function PokerStablePeriodicSettleSheet({
   deal,
   slices = [],
   dealRoll = null,
   profilesById = {},
+  userId = null,
   saving = false,
   onClose,
   onConfirm,
@@ -38,17 +69,9 @@ export default function PokerStablePeriodicSettleSheet({
     setNewBaselineInput('')
   }, [deal?.id])
 
-  if (!deal) return null
-
-  const rollValue = dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0
-  const baseline = Number(deal.baseline_bankroll) || 0
-  const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
-  const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
-  const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
-  const showMakeup = dealHasMakeup(deal)
-  const showRakeback = dealHasRakebackEnabled(slices, deal)
+  const rollValue = dealRoll?.overall_bankroll ?? deal?.starting_roll ?? deal?.baseline_bankroll ?? 0
+  const baseline = Number(deal?.baseline_bankroll) || 0
   const rakebackAmount = parseMoneyInputNumber(rakebackTotal) || 0
-  const maxReduction = maxStakeReductionAmount(baseline, rollValue)
 
   const newBaselineValue = parseMoneyInputNumber(newBaselineInput)
   const hasNewBaselineInput = String(newBaselineInput || '').trim().length > 0
@@ -58,32 +81,75 @@ export default function PokerStablePeriodicSettleSheet({
     reduceStake && newBaselineValid
       ? roundMoney(Math.max(0, baseline - newBaselineValue))
       : 0
+
+  const settlement = useMemo(
+    () =>
+      deal
+        ? computeDealSettlement(
+            { ...deal, baseline_bankroll: baseline, roll: rollValue },
+            slices,
+            rakebackAmount,
+          )
+        : { lines: [], player_net: 0 },
+    [deal, slices, baseline, rollValue, rakebackAmount],
+  )
+
+  const reductionShares = useMemo(
+    () => (reductionAmount > 0.005 ? computeProRataBackerShares(slices, reductionAmount) : []),
+    [slices, reductionAmount],
+  )
+
+  if (!deal) return null
+
+  const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
+  const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
+  const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+  const showMakeup = dealHasMakeup(deal)
+  const showRakeback = dealHasRakebackEnabled(slices, deal)
+  const maxReduction = maxStakeReductionAmount(baseline, rollValue)
+  const isStakee = Boolean(userId) && deal.stakee_user_id === userId
+  const playerName = dealStakeeDisplayName(deal, profilesById) || 'Player'
+
   const newBaselineTooHigh =
     reduceStake && newBaselineValid && newBaselineValue >= baseline - 0.005
   const reductionTooLarge = reductionAmount > maxReduction + 0.005
   const reduceInputIncomplete = reduceStake && !newBaselineValid
   const reduceInvalid = reduceStake && (newBaselineTooHigh || reductionTooLarge || reduceInputIncomplete)
 
-  const settlement = useMemo(
-    () =>
-      computeDealSettlement(
-        { ...deal, baseline_bankroll: baseline, roll: rollValue },
-        slices,
-        rakebackAmount,
-      ),
-    [deal, slices, baseline, rollValue, rakebackAmount],
-  )
-
-  const backerReductionShares = useMemo(
-    () => computeProRataBackerShares(slices, reductionAmount),
-    [slices, reductionAmount],
-  )
-
   const baselineAfterReduction =
     reduceStake && newBaselineValid && !newBaselineTooHigh
       ? roundMoney(newBaselineValue)
       : baseline
+
   const playerCredit = settlement.player_net
+  const backerCredit = roundMoney(
+    (settlement.lines || [])
+      .filter((line) => line.slice?.staker_user_id === userId)
+      .reduce(
+        (sum, line) =>
+          sum + (line.direction === 'player_to_staker' ? line.total_owed : -line.total_owed),
+        0,
+      ),
+  )
+  const heroCredit = isStakee ? playerCredit : backerCredit
+  const heroLabel = isStakee
+    ? 'Credit to personal bankroll'
+    : `Credit to ${STABLE_BACKER_BANKROLL_PHRASE}`
+
+  const payPhrases = settlePayPhrases({
+    isStakee,
+    lines: settlement.lines,
+    userId,
+    playerName,
+    profilesById,
+  })
+  const resetClause = `Stake roll resets to ${fmtPoker$(baseline)}${
+    reduceStake && reductionAmount > 0
+      ? `, then reduces to ${fmtPoker$(baselineAfterReduction)}`
+      : ''
+  } and the stake stays open for more sessions.`
+  const settleDetailLine =
+    payPhrases.length > 0 ? `${payPhrases.join('. ')}. ${resetClause}` : resetClause
 
   return (
     <div
@@ -142,22 +208,21 @@ export default function PokerStablePeriodicSettleSheet({
 
         <div className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-3">
           <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/80">
-            Credit to personal bankroll
+            {heroLabel}
           </div>
           <div
             className={`mt-1 text-xl font-black tabular-nums ${
-              playerCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'
+              heroCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'
             }`}
           >
-            {playerCredit >= 0 ? '+' : ''}
-            {fmtPoker$(playerCredit)}
+            {heroCredit >= 0 ? '+' : ''}
+            {fmtPoker$(heroCredit)}
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-            Stake roll resets to {fmtPoker$(baseline)}
-            {reduceStake && reductionAmount > 0
-              ? `, then reduces to ${fmtPoker$(baselineAfterReduction)}`
-              : ''}{' '}
-            and the stake stays open for more sessions.
+          <p
+            className="mt-2 text-xs leading-relaxed text-zinc-500"
+            data-poker-stable-periodic-settle-pay-line
+          >
+            {settleDetailLine}
           </p>
         </div>
 
@@ -231,9 +296,9 @@ export default function PokerStablePeriodicSettleSheet({
               Reduction cannot exceed {fmtPoker$(maxReduction)}.
             </p>
           ) : null}
-          {reduceStake && reductionAmount > 0.005 && backerReductionShares.length ? (
+          {reduceStake && reductionAmount > 0.005 && reductionShares.length ? (
             <div className="mt-2 rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-400">
-              {backerReductionShares.map((row) => (
+              {reductionShares.map((row) => (
                 <div key={row.sliceId} className="flex justify-between gap-2 py-0.5">
                   <span>
                     {sliceDisplayName(

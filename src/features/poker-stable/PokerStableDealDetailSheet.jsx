@@ -755,6 +755,7 @@ export default function PokerStableDealDetailSheet({
           slices={slices}
           dealRoll={roll}
           profilesById={profilesById}
+          userId={userId}
           saving={saving}
           onClose={() => setPeriodicSettleOpen(false)}
           onError={onError}

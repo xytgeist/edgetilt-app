@@ -953,7 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-07: **Bankroll stake session scope leak fix:** archived/closed-stake sessions (still `deal_id` on settled deal, merged into personal history) could appear under a new stake card when carousel scope desynced / kept a non-carousel deal id. On Stake history now requires the deal on the carousel + matching `deal_id`; off-carousel scope snaps to personal; hero no longer falls back to personal stats on stake slides; merged badge **Closed stake**.
+- 2026-08-07: **Bankroll stake session scope leak fix:** archived/closed-stake sessions (still `deal_id` on settled deal, merged into personal history) could appear under a new stake card when carousel scope desynced / kept a non-carousel deal id. On Stake history now requires the deal on the carousel + matching `deal_id`; off-carousel scope snaps to personal; hero no longer falls back to personal stats on stake slides; merged badge **Closed stake**. **Ryan smoke OK** (DegenMFER new stake empty; closed sessions stay on personal).
 - 2026-08-07: **Ryan sign-off — player → backer stake offer (test):** Edge backer **Create Stake** → player Bankroll in-card Accept/Decline + Alert/push deep link to stake card (no Backing invitation modal) ... **PASSED**. Guest claim modal path unchanged.
 - 2026-08-07: **Bot Portal remove X handle:** migration **`20260807000000`** (`admin_lounge_bot_remove_x_source`) + Remove control on X bot handle list. Applied **test + prod**.
 - 2026-08-06: **Player backer-offer Alert/push:** opens Poker Bankroll stake card only (no Backing invitation modal). Modal kept for guest/non-Edge claim (`stakeOnboarding=1`). Redeployed **`lounge-send-activity-push`** on **test + prod**.

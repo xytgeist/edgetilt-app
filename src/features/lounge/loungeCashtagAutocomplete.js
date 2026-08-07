@@ -350,14 +350,17 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
     (row, setValue, editorEl) => {
       if (!row?.symbol || !cashtag) return
       const normalized = marketSymbolFromSearchRow(row)
-      const tag = String(cashtag.query || normalized.display_symbol || normalized.symbol || '')
+      // Complete the caption with the picked ticker ($TS → $TSLA), and keep
+      // embed display_symbol in sync with that completed cashtag for matching.
+      const selectedTag = String(normalized.display_symbol || normalized.symbol || '')
         .trim()
         .toUpperCase()
-      if (tag) normalized.display_symbol = tag
+      if (!selectedTag) return
+      normalized.display_symbol = selectedTag
       const result = applyCashtagSuggestion(
         liveValueRef.current,
         cashtag,
-        normalized.display_symbol || normalized.symbol,
+        selectedTag,
       )
       pendingCursorRef.current = result.cursorPos
       if (isRichComposerElement(editorEl)) {

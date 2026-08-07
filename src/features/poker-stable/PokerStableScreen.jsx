@@ -159,13 +159,13 @@ export default function PokerStableScreen({
     }
   }, [supabaseClient])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false } = {}) => {
     if (!supabaseClient || !userId) {
       setDeals([])
       setLoading(false)
       return
     }
-    setLoading(true)
+    if (!silent) setLoading(true)
     setError('')
     try {
       const { deals: rows, error: dErr } = await loadMyStableDeals(supabaseClient, userId)
@@ -268,7 +268,7 @@ export default function PokerStableScreen({
       setError(e?.message || 'Could not load Stable.')
       setDeals([])
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [supabaseClient, userId])
 
@@ -276,10 +276,24 @@ export default function PokerStableScreen({
     void load()
   }, [load])
 
+  /** Notification / Alerts tap while already on Stable … refresh horse cards without full-screen reload. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onReload = () => {
+      void load({ silent: true })
+    }
+    window.addEventListener('lounge-push-opened', onReload)
+    window.addEventListener('lounge-activity-navigate', onReload)
+    return () => {
+      window.removeEventListener('lounge-push-opened', onReload)
+      window.removeEventListener('lounge-activity-navigate', onReload)
+    }
+  }, [load])
+
   useEffect(() => {
     if (typeof document === 'undefined') return undefined
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void load()
+      if (document.visibilityState === 'visible') void load({ silent: true })
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
@@ -300,15 +314,27 @@ export default function PokerStableScreen({
     const myPendingInvite = dealSlices.some(
       (s) => s.staker_user_id === userId && s.status === 'pending',
     )
-    // Slice invite / nudge: land on Stable with the horse offer card focused.
-    if (myPendingInvite) {
+    let hasCommitDeepLink = false
+    try {
+      const params = new URLSearchParams(window.location.search || '')
+      hasCommitDeepLink = Boolean(
+        (params.get('stableCommit') || params.get('stableSettlement') || '').trim(),
+      )
+    } catch {
+      hasCommitDeepLink = false
+    }
+    // Slice invite / session complete / horse accepted: focus card + refresh (no detail sheet).
+    // Settle/commit deep links keep opening deal Overview for inline Commit.
+    if (myPendingInvite || !hasCommitDeepLink) {
       setDetailDealId(null)
       setFocusHorseDealId(openStableDealId)
       setActiveTab('overview')
+      void load({ silent: true })
       onOpenStableDealConsumed?.()
       return
     }
     setDetailDealId(openStableDealId)
+    void load({ silent: true })
     onOpenStableDealConsumed?.()
   }, [
     openStableDealId,
@@ -318,6 +344,7 @@ export default function PokerStableScreen({
     onOpenStableDealConsumed,
     activeBackerOnboardingDealId,
     activeBackerOnboardingSliceId,
+    load,
   ])
 
   const backerOnboardingSliceRow = useMemo(() => {

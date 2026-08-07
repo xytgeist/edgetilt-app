@@ -8,19 +8,21 @@ const POKER_STABLE_BANKROLL_EVENT_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED,
 ])
 
-/** Stable tab only — open manager, not deal detail sheet. */
+/** Stable tab — open manager (not Bankroll). */
 const POKER_STABLE_TAB_ONLY_EVENT_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED,
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE,
 ])
 
 /**
- * Stable deep links that keep `stableDeal` for carousel focus but must not open Overview.
- * PokerStableScreen focuses the pending horse invite card instead.
+ * Stable deep links that keep `stableDeal` for carousel focus but must not open Overview
+ * unless `stableCommit` / `stableSettlement` is also present.
  */
 export const POKER_STABLE_CAROUSEL_FOCUS_EVENT_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE,
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE,
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED,
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE,
 ])
 
 /** Settle / commit sync: stakee → Bankroll hero; backers → Stable manager. */
@@ -68,10 +70,9 @@ export function buildPokerStableActivityNavigateUrl(event, opts = {}) {
   const params = new URLSearchParams()
   const tab = pokerStableActivityTabForViewer(event, viewerUserId, dealStakeeUserId)
   params.set('tab', tab)
-  if (
-    event.poker_stable_deal_id &&
-    !POKER_STABLE_TAB_ONLY_EVENT_TYPES.has(event.event_type)
-  ) {
+  // Include deal id for focus/refresh (session complete, invites) and settle Commit deep links.
+  // PokerStableScreen opens Overview only when stableCommit/stableSettlement is present.
+  if (event.poker_stable_deal_id) {
     params.set('stableDeal', String(event.poker_stable_deal_id))
   }
   // Edge Alert/push: Bankroll stake card only. Guest claim still uses stakeOnboarding=1.

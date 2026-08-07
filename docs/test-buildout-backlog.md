@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Stable session-complete while already open:** backer on Stable Manager tapping session-logged Alert/push silent-reloads horse cards; URLs include `stableDeal` for focus (no auto Overview). Redeploy **`lounge-send-activity-push`** on test/prod when promoting.
 - 2026-08-07: **Stable portfolio card → detail sheet:** page Overview/Trend/Locations tabs removed; horses stay on main Stable. Tap portfolio hero opens sheet with pill tabs (Overview = metrics + Add/Remove bankroll, Trend, Locations). Pencil removed.
 - 2026-08-07: **Stable horse card highlight permanence:** tone from deal **created_at** order among the backer's deals (incl. archived/hidden), not carousel/`updated_at` index ... creating a new horse no longer recolors existing cards.
 - 2026-08-07: **Bankroll stake session scope leak fix:** archived/closed-stake sessions (still `deal_id` on settled deal, merged into personal history) could appear under a new stake card when carousel scope desynced / kept a non-carousel deal id. On Stake history now requires the deal on the carousel + matching `deal_id`; off-carousel scope snaps to personal; hero no longer falls back to personal stats on stake slides; merged badge **Closed stake**. **Ryan smoke OK** (DegenMFER new stake empty; closed sessions stay on personal).

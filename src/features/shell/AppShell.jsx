@@ -1348,7 +1348,9 @@ export default function AppShell({
               msgUrl.searchParams.get('stableSettlement') ||
               '',
           ).trim()
-          if (stableCommit) setPendingStableCommitId(stableCommit)
+          // Deal Overview hosts Commit inline; only open sync modal when deal id is missing.
+          if (stableCommit && !stableDeal) setPendingStableCommitId(stableCommit)
+          else if (stableDeal) setPendingStableCommitId(null)
         } catch {
           // ignore malformed url
         }

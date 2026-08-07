@@ -411,10 +411,9 @@ function buildTargetUrl(
       routing?.dealStakeeUserId,
     )
     params.set('tab', tab)
-    const stableTabOnly =
-      event.event_type === 'poker_stable_stakee_accepted' ||
-      event.event_type === 'poker_stable_session_complete'
-    if (event.poker_stable_deal_id && !stableTabOnly) {
+    // Session complete / horse accepted: include stableDeal so Stable can focus + refresh the card
+    // (client does not auto-open deal detail unless stableCommit/stableSettlement is present).
+    if (event.poker_stable_deal_id) {
       params.set('stableDeal', event.poker_stable_deal_id)
     }
     // Edge push: Bankroll + stableDeal focuses the stake card. Guest claim URLs still pass stakeOnboarding=1.

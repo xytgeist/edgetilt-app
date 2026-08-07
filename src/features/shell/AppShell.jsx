@@ -2754,21 +2754,28 @@ export default function AppShell({
           commitId={pendingStableCommitId}
           onClose={() => setPendingStableCommitId(null)}
           onSynced={({ isStakee }) => {
-            if (isStakee) {
-              setTab('poker-bankroll')
-              setMenuOpen(false)
-              try {
-                const params = new URLSearchParams(window.location.search)
+            setPendingStableCommitId(null)
+            try {
+              const params = new URLSearchParams(window.location.search)
+              params.delete('stableCommit')
+              params.delete('stableSettlement')
+              if (isStakee) {
                 params.set('tab', 'poker-bankroll')
-                const nextPath = `/?${params.toString()}`
-                if (window.location.pathname + window.location.search !== nextPath) {
-                  window.history.replaceState({}, '', nextPath)
-                }
-              } catch {
-                // ignore malformed url
+                setTab('poker-bankroll')
+                setMenuOpen(false)
+              }
+              const qs = params.toString()
+              const nextPath = qs ? `/?${qs}` : '/'
+              if (window.location.pathname + window.location.search !== nextPath) {
+                window.history.replaceState({}, '', nextPath)
+              }
+            } catch {
+              if (isStakee) {
+                setTab('poker-bankroll')
+                setMenuOpen(false)
               }
             }
-            window.dispatchEvent(new CustomEvent('lounge-push-opened'))
+            // Do not re-dispatch lounge-push-opened … that reloads Bankroll and can flash/reopen.
           }}
         />
       ) : null}

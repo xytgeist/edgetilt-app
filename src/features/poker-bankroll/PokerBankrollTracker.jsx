@@ -4313,20 +4313,12 @@ export default function PokerBankrollTracker({
           userId={userId}
           commitId={commitSyncId}
           onClose={() => setCommitSyncId(null)}
-          onSynced={({ dealId }) => {
-            void (async () => {
-              await loadData({ silent: true })
-              const { commits } = await loadPendingCommits(supabaseClient)
-              const next = pendingSettleCommitsForDeal(
-                (commits || []).filter((row) => {
-                  const d = stakeeDealsById[row.deal_id] || stakeeDeals.find((x) => x.id === row.deal_id)
-                  return d && !stakeeSkipsBackerCommitSync(d, userId, row)
-                }),
-                dealId,
-              )[0]
-              if (next?.commit_id) setCommitSyncId(String(next.commit_id))
-              else setCommitSyncId(null)
-            })()
+          onSynced={() => {
+            // Stay on Bankroll main … no next-commit modal, no Manage/terms sheet.
+            setCommitSyncId(null)
+            setTermsDealId(null)
+            setLedgerDealId(null)
+            void loadData({ silent: true })
           }}
           onError={setError}
         />

@@ -409,8 +409,12 @@ export default function PokerStableDealDetailSheet({
                 settleCommits={settleCommitQueue}
                 saving={saving}
                 onSavingChange={onSavingChange}
-                onSynced={async () => {
-                  await onRefresh()
+                onSynced={async (result) => {
+                  await onRefresh?.()
+                  if (result?.isSettleCommit) {
+                    onClose?.()
+                    return
+                  }
                   await loadLedger()
                 }}
                 onError={onError}
@@ -499,8 +503,12 @@ export default function PokerStableDealDetailSheet({
             settleCommits={settleCommitQueue}
             saving={saving}
             onSavingChange={onSavingChange}
-            onSynced={async () => {
-              await onRefresh()
+            onSynced={async (result) => {
+              await onRefresh?.()
+              if (result?.isSettleCommit) {
+                onClose?.()
+                return
+              }
               await loadLedger()
             }}
             onError={onError}

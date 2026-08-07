@@ -42,6 +42,8 @@ export default function PokerStableCommitSyncPanel({
 }) {
   const [loading, setLoading] = useState(true)
   const [savingLocal, setSavingLocal] = useState(false)
+  /** After Commit … hide immediately so parent refresh cannot flash a reload of this panel. */
+  const [dismissed, setDismissed] = useState(false)
   const [commit, setCommit] = useState(null)
   const [deal, setDeal] = useState(null)
   const [actorProfile, setActorProfile] = useState(null)
@@ -220,15 +222,23 @@ export default function PokerStableCommitSyncPanel({
       const { error, status } = await syncDealCommit(supabaseClient, commit.id)
       if (error) throw error
       triggerTapHapticLight()
-      onSynced?.({ status, dealId: commit.deal_id, isStakee })
+      setDismissed(true)
+      onSynced?.({
+        status,
+        dealId: commit.deal_id,
+        isStakee,
+        isSettleCommit,
+      })
       if (variant === 'modal') onClose?.()
-      else await loadBundle()
+      // Skip loadBundle after Commit … parent refresh removes the panel; reloading here flashes.
     } catch (e) {
       onError?.(e?.message || 'Could not sync commit.')
     } finally {
       setSaving(false)
     }
   }
+
+  if (dismissed) return null
 
   if (loading) {
     return (

@@ -3,7 +3,6 @@ import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { STABLE_BACKER_BANKROLL_PHRASE } from './pokerStableBooksCopy.js'
 import {
   computeDealMakeup,
   computeDealSettlement,
@@ -134,7 +133,7 @@ export default function PokerStablePeriodicSettleSheet({
   const heroCredit = isStakee ? playerCredit : backerCredit
   const heroLabel = isStakee
     ? 'Credit to personal bankroll'
-    : `Credit to ${STABLE_BACKER_BANKROLL_PHRASE}`
+    : 'Credit to personal backing bankroll'
 
   const payPhrases = settlePayPhrases({
     isStakee,

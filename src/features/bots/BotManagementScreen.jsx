@@ -8,6 +8,7 @@ export default function BotManagementScreen({ supabaseClient, titleBarNavSlot, o
   return (
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
+      fullWidth
       contentClassName="px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] max-w-6xl mx-auto"
     >
       <BotManagementPortal

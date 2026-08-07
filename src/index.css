@@ -6221,6 +6221,14 @@ html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .border-cyan-4
 html.light [data-poker-stable] [data-poker-stable-backing-pending-hold] {
   color: var(--poker-stable-accent-text) !important;
 }
+html.light [data-poker-stable] [data-poker-stable-edit-btn] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #71717a !important;
+}
+html.light [data-poker-stable] [data-poker-stable-edit-btn]:active {
+  color: #3f3f46 !important;
+}
 html.light [data-poker-stable] [data-poker-stable-adjust-bankroll] {
   background-color: #fafafa !important;
   border-color: #d4d4d8 !important;

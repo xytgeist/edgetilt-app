@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Pencil } from 'lucide-react'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { roundMoney } from './pokerStableMath.js'
@@ -90,8 +90,23 @@ export default function PokerStablePortfolioHero({
 
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-            Backing bankroll
+          {/* Same caption row geometry as Portfolio value (spacer mirrors pencil) so $ sizes match. */}
+          <div className="flex h-4 items-center justify-center gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+              Backing bankroll
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                openDetail()
+              }}
+              className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-zinc-500 touch-manipulation active:text-zinc-300"
+              aria-label="Adjust backing bankroll"
+              data-poker-stable-edit-btn
+            >
+              <Pencil className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+            </button>
           </div>
           <div className="mt-1 min-w-0">
             <div
@@ -113,8 +128,11 @@ export default function PokerStablePortfolioHero({
           </div>
         </div>
         <div className="min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-            Portfolio value
+          <div className="flex h-4 items-center justify-center gap-1">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+              Portfolio value
+            </span>
+            <span className="inline-block h-4 w-4 shrink-0" aria-hidden />
           </div>
           <div
             className={`mt-1 whitespace-nowrap font-black tabular-nums tracking-tight leading-none text-cyan-300 ${amountSizeClass}`}

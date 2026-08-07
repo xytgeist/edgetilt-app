@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Info } from 'lucide-react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
@@ -8,6 +9,15 @@ import PokerStableLocationsTab from './PokerStableLocationsTab.jsx'
 import PokerStableTrendTab from './PokerStableTrendTab.jsx'
 import { roundMoney } from './pokerStableMath.js'
 import { STABLE_PRIMARY_BTN, STABLE_TAB_ACTIVE } from './pokerStableUi.js'
+
+function HeroInfoSection({ title, children }) {
+  return (
+    <div className="border-t border-zinc-800 pt-3 first:border-t-0 first:pt-0">
+      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-zinc-400">{title}</div>
+      <div className="space-y-2 text-sm leading-relaxed text-zinc-400">{children}</div>
+    </div>
+  )
+}
 
 const PORTFOLIO_TABS = [
   { id: 'overview', label: 'Overview' },
@@ -46,6 +56,7 @@ export default function PokerStablePortfolioDetailSheet({
   onSelectLocationsDealId,
 }) {
   const [tab, setTab] = useState('overview')
+  const [infoOpen, setInfoOpen] = useState(false)
   /** @type {'add' | 'remove'} */
   const [adjustDirection, setAdjustDirection] = useState('add')
   const [amountInput, setAmountInput] = useState('')
@@ -65,6 +76,7 @@ export default function PokerStablePortfolioDetailSheet({
   useEffect(() => {
     if (!open) return
     setTab('overview')
+    setInfoOpen(false)
     resetAdjustForm(roundMoney(metrics?.liquidBankroll ?? 0))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed form once when sheet opens
   }, [open])
@@ -153,12 +165,26 @@ export default function PokerStablePortfolioDetailSheet({
         <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-zinc-600/70" aria-hidden />
         <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2
-              id="poker-stable-portfolio-detail-title"
-              className="text-lg font-black tracking-tight text-white"
-            >
-              Backing portfolio
-            </h2>
+            <div className="flex items-center gap-1.5">
+              <h2
+                id="poker-stable-portfolio-detail-title"
+                className="text-lg font-black tracking-tight text-white"
+              >
+                Backing portfolio
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setInfoOpen(true)
+                  triggerTapHapticLight()
+                }}
+                className="shrink-0 text-zinc-500 touch-manipulation active:text-zinc-300"
+                aria-label="About portfolio metrics"
+                data-poker-stable-portfolio-info-btn
+              >
+                <Info className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              </button>
+            </div>
             <p className="mt-0.5 text-xs text-zinc-500">Liquid bankroll, performance, and venues</p>
           </div>
           <button
@@ -356,6 +382,103 @@ export default function PokerStablePortfolioDetailSheet({
           ) : null}
         </div>
       </div>
+
+      {infoOpen ? (
+        <div
+          className="fixed inset-0 z-[150] flex items-end justify-center bg-black/75 px-4 pb-6 pt-10 backdrop-blur-sm sm:items-center sm:p-4"
+          onClick={() => setInfoOpen(false)}
+        >
+          <div
+            data-poker-stable-portfolio-info-modal
+            className="flex max-h-[min(85vh,640px)] w-full max-w-md flex-col rounded-3xl border border-zinc-700/50 bg-zinc-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
+              <div>
+                <h3 className="text-base font-bold leading-tight text-white">Portfolio card</h3>
+                <p className="mt-1 text-xs text-zinc-500">Stable backing economics</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInfoOpen(false)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400 touch-manipulation active:bg-zinc-700"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-4 overflow-y-auto px-5 py-4">
+              <HeroInfoSection title="Overview">
+                <p>
+                  This card tracks your{' '}
+                  <strong className="font-semibold text-zinc-300">Stable backing bankroll</strong>
+                  ... separate from your personal Poker bankroll. Player settle credits still go to
+                  personal; backer economics stay here.
+                </p>
+              </HeroInfoSection>
+              <HeroInfoSection title="Top numbers">
+                <p>
+                  <strong className="font-semibold text-zinc-300">Backing bankroll</strong> ...
+                  settle/close-out economics and stake deployments, minus capital on{' '}
+                  <strong className="font-semibold text-zinc-300">accepted</strong> (active) stakes.
+                  Pending offers show as a hold until the player accepts.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Portfolio value</strong> ...
+                  backing bankroll plus mark-to-market value of your active horse stakes.
+                </p>
+              </HeroInfoSection>
+              <HeroInfoSection title="Manual credit / debit">
+                <p>
+                  Use <strong className="font-semibold text-zinc-300">Adjust bankroll</strong> on
+                  Overview to Add or Remove funds. Liquid pool only ... does not change Realized
+                  P/L, At risk, Stakes MTM, or Trend.
+                </p>
+              </HeroInfoSection>
+              <HeroInfoSection title="Metrics">
+                <p>
+                  <strong className="font-semibold text-zinc-300">At risk</strong> ... your share of
+                  committed baseline on open horses (baseline × action %).
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">At-risk ROI</strong> ...
+                  unrealized horse performance (Stakes MTM minus At risk) ÷ current At risk.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">TWR</strong> ... time-weighted
+                  return on your backing pool.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Stakes MTM</strong> ... your action
+                  % of current horse rolls.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Realized P/L</strong> ...
+                  crystallized backing profit from settle events.
+                </p>
+              </HeroInfoSection>
+              <HeroInfoSection title="What moves what">
+                <p>
+                  <strong className="font-semibold text-zinc-300">Sessions:</strong> Trend, TWR
+                  numerator.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Open-horse MTM:</strong> At-risk
+                  ROI.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Settle sync:</strong> Realized P/L,
+                  backing bankroll.
+                </p>
+                <p>
+                  <strong className="font-semibold text-zinc-300">Add/Remove:</strong> liquid backing
+                  bankroll only.
+                </p>
+              </HeroInfoSection>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -23,10 +23,8 @@ export default function PokerBankrollHeroCarousel({
   const slideRefs = useRef(/** @type {(HTMLElement | null)[]} */ ([]))
   const ignoreScrollRef = useRef(false)
 
-  const activeIndex = Math.max(
-    0,
-    slides.findIndex((s) => s.id === activeId),
-  )
+  const foundIndex = slides.findIndex((s) => s.id === activeId)
+  const activeIndex = Math.max(0, foundIndex)
 
   const scrollToIndex = useCallback((index, smooth = true) => {
     const el = slideRefs.current[index]
@@ -42,6 +40,15 @@ export default function PokerBankrollHeroCarousel({
       ignoreScrollRef.current = false
     }, smooth ? 320 : 250)
   }, [])
+
+  // Archived / removed deal ids must not silently clamp to slide 0 (Personal) while
+  // parent scope still filters sessions for the missing stake.
+  useEffect(() => {
+    if (!slides.length) return
+    if (foundIndex >= 0) return
+    const fallback = slides.some((s) => s.id === 'personal') ? 'personal' : slides[0]?.id
+    if (fallback && fallback !== activeId) onActiveIdChange(fallback)
+  }, [slides, foundIndex, activeId, onActiveIdChange])
 
   useEffect(() => {
     scrollToIndex(activeIndex, false)

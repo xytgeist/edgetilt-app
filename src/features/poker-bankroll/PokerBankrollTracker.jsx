@@ -447,12 +447,8 @@ export default function PokerBankrollTracker({
   const isOnStake = bankrollScope !== 'personal'
   const activeDeal = useMemo(
     () =>
-      isOnStake
-        ? stakeeDeals.find((d) => d.id === bankrollScope) ??
-          stakeeDealsById[bankrollScope] ??
-          null
-        : null,
-    [isOnStake, stakeeDeals, stakeeDealsById, bankrollScope],
+      isOnStake ? stakeeDeals.find((d) => d.id === bankrollScope) ?? null : null,
+    [isOnStake, stakeeDeals, bankrollScope],
   )
   const stakeScopePending = activeDeal?.status === 'pending'
   const stakeScopeRevoked = activeDeal?.status === 'revoked'
@@ -493,8 +489,10 @@ export default function PokerBankrollTracker({
     if (!isOnStake) {
       return sessions.filter((s) => isPersonalHistorySession(s, stakeeDealsById))
     }
+    // Archived / off-carousel deals must not feed On Stake history (stale scope leak).
+    if (!stakeeDeals.some((d) => d.id === bankrollScope)) return []
     return sessions.filter((s) => s.deal_id === bankrollScope)
-  }, [sessions, isOnStake, bankrollScope, stakeeDealsById])
+  }, [sessions, isOnStake, bankrollScope, stakeeDeals, stakeeDealsById])
 
   const personalMetricSessions = useMemo(
     () => sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById, slicesByDeal)),
@@ -675,10 +673,12 @@ export default function PokerBankrollTracker({
     if (!scopeHydrated) return
     if (bankrollScope === 'personal') return
     if (!initialBankrollLoadDone) return
-    const onCarousel = stakeeDeals.some((d) => d.id === bankrollScope)
-    const knownDeal = Boolean(stakeeDealsById[bankrollScope])
-    // Only drop to personal when the deal is truly gone (not a transient empty carousel).
-    if (!onCarousel && !knownDeal) {
+    // After deals have loaded: any scope not on the carousel (archived settled, etc.)
+    // must snap to personal. Keeping archived ids alive made old stake sessions appear
+    // under a different visible card after + Stake.
+    if (stakeeDeals.length === 0 && Object.keys(stakeeDealsById).length === 0) return
+    if (!stakeeDeals.some((d) => d.id === bankrollScope)) {
+      pendingRestoreScopeRef.current = 'personal'
       setBankrollScope('personal')
     }
   }, [bankrollScope, stakeeDeals, stakeeDealsById, scopeHydrated, initialBankrollLoadDone])
@@ -1420,7 +1420,9 @@ export default function PokerBankrollTracker({
     function buildScopeHero(scopeId) {
       const onStake = scopeId !== 'personal'
       const scopeSessions = onStake
-        ? sessions.filter((s) => s.deal_id === scopeId)
+        ? stakeeDeals.some((d) => d.id === scopeId)
+          ? sessions.filter((s) => s.deal_id === scopeId)
+          : []
         : sessions.filter((s) => isPersonalMetricSession(s, stakeeDealsById, slicesByDeal))
       const scopeCompleted = scopeSessions.filter((s) => s.status !== 'active')
       const scopeFiltered = scopeCompleted.filter((s) => {
@@ -1530,8 +1532,11 @@ export default function PokerBankrollTracker({
   ])
 
   function selectBankrollScope(scopeId) {
-    const next = scopeId === 'personal' ? 'personal' : String(scopeId || '').trim()
+    let next = scopeId === 'personal' ? 'personal' : String(scopeId || '').trim()
     if (!next) return
+    if (next !== 'personal' && !stakeeDeals.some((d) => d.id === next)) {
+      next = 'personal'
+    }
     if (next !== bankrollScope) {
       pendingRestoreScopeRef.current = next
       setBankrollScope(next)
@@ -3170,7 +3175,23 @@ export default function PokerBankrollTracker({
               renderSlide={(slide, slideIndex) => {
                 const scopeId = slide.id
                 const onStake = scopeId !== 'personal'
-                const hero = heroByScope[scopeId] || heroByScope.personal
+                // Never fall back to personal hero for a stake slide ... that painted
+                // merged closed-stake stats/sessions onto a brand-new empty stake card.
+                const hero =
+                  heroByScope[scopeId] ||
+                  (onStake
+                    ? {
+                        stats: { profit: 0, hours: 0, hourly: null, winRate: null, count: 0 },
+                        spark: [],
+                        overallBankroll:
+                          Number(slide.deal?.starting_roll ?? slide.deal?.baseline_bankroll) || 0,
+                        deal: slide.deal,
+                        pendingSettleCommit: null,
+                        pendingSettleCount: 0,
+                        pendingSettleOldestAt: null,
+                        pendingSettleNewestAt: null,
+                      }
+                    : heroByScope.personal)
                 const theme = onStake
                   ? stakeHeroTheme(stakeHeroThemeIndexForDeal(scopeId, stakeeDeals))
                   : null
@@ -4123,7 +4144,7 @@ export default function PokerBankrollTracker({
                                 data-poker-session-stake-badge
                                 className="inline-flex rounded-md bg-zinc-700/70 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-300"
                               >
-                                On stake
+                                Closed stake
                               </span>
                             </div>
                           ) : null}

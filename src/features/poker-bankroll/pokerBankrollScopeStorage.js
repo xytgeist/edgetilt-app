@@ -79,6 +79,8 @@ export function resolvePokerBankrollScopeToRestore(
   // Deals not loaded yet ... keep stored stake id (caller should wait for load).
   if (dealIds.size === 0) return stored
 
+  // Stored id left the carousel (archived). Only follow a session's deal_id when that
+  // deal is still a carousel card ... skip archived deal_ids and keep scanning.
   for (const s of sessionsNewestFirst || []) {
     const dealId = s?.deal_id == null ? 'personal' : String(s.deal_id).trim()
     if (!dealId || dealId === 'personal') return 'personal'

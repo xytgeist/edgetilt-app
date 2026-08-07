@@ -143,7 +143,7 @@ export default function PokerStablePeriodicSettleSheet({
     playerName,
     profilesById,
   })
-  const resetBullet = `Stake roll resets to ${fmtPoker$(baseline)}${
+  const resetBullet = `Stake resets to ${fmtPoker$(baseline)}${
     reduceStake && reductionAmount > 0
       ? `, then reduces to ${fmtPoker$(baselineAfterReduction)}`
       : ''

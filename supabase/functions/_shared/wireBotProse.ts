@@ -8,6 +8,7 @@ const PROSE_BREAK = ' ... '
 /** Private-use placeholders — mask dots that are not sentence terminators. */
 const WIRE_DECIMAL_DOT = '\uE000'
 const WIRE_DOMAIN_DOT = '\uE001'
+const WIRE_ABBREV_DOT = '\uE002'
 
 /** Common public suffixes for brand / publisher domains in wire copy. */
 const WIRE_BARE_DOMAIN_TLD =
@@ -18,6 +19,10 @@ const WIRE_BARE_DOMAIN_RE = new RegExp(
   'gi',
 )
 
+/** Inc. / Ltd. / Mr. … — trailing period is not end-of-sentence in wire copy. */
+const WIRE_WORD_ABBREV_RE =
+  /\b(Inc|Ltd|Corp|Co|Jr|Sr|Mr|Mrs|Ms|Dr|Prof|vs|etc|approx|Dept|Gov|Gen|Rep|Sen|No|St|Ave|Blvd)\./gi
+
 function maskDecimalPoints(text: string): string {
   return String(text || '').replace(/(\d)\.(\d)/g, `$1${WIRE_DECIMAL_DOT}$2`)
 }
@@ -27,18 +32,32 @@ function maskBareDomainDots(text: string): string {
   return String(text || '').replace(WIRE_BARE_DOMAIN_RE, (match) => match.replace(/\./g, WIRE_DOMAIN_DOT))
 }
 
+/**
+ * Keep U.S. / U.K. / E.U. / D.C. / A.I. (and Inc./Ltd./…) intact.
+ * Without this, "U.S. Treasury…" splits to orphan "S. Treasury…".
+ */
+function maskAbbreviationDots(text: string): string {
+  let s = String(text || '')
+  // Multi single-letter: U.S. U.S.A. E.U. D.C. N.Y. A.I.
+  // Each letter must keep its own trailing dot (do not eat the next word's capital).
+  s = s.replace(/\b(?:[A-Za-z]\.){2,}(?:[A-Za-z]\.)?/g, (match) => match.replace(/\./g, WIRE_ABBREV_DOT))
+  s = s.replace(WIRE_WORD_ABBREV_RE, (match) => match.replace(/\./g, WIRE_ABBREV_DOT))
+  return s
+}
+
 function unmaskSentenceSplitDots(text: string): string {
   return String(text || '')
     .replaceAll(WIRE_DECIMAL_DOT, '.')
     .replaceAll(WIRE_DOMAIN_DOT, '.')
+    .replaceAll(WIRE_ABBREV_DOT, '.')
 }
 
-/** Split wire prose into sentences without breaking decimals or bare domains. */
+/** Split wire prose into sentences without breaking decimals, domains, or abbreviations. */
 export function splitWireSentences(text: string): string[] {
   const raw = String(text || '').trim()
   if (!raw) return []
 
-  const masked = maskBareDomainDots(maskDecimalPoints(raw))
+  const masked = maskAbbreviationDots(maskBareDomainDots(maskDecimalPoints(raw)))
   const parts = masked.match(/[^.!?]+[.!?]+(?:\s|$)/g)
   if (!parts?.length) return [unmaskSentenceSplitDots(raw)]
 

@@ -48,6 +48,8 @@ function normalizeSynopsisLead(synopsis: string): string {
     /^\.?(com|org|net|io|co|uk|edu|gov|info|xyz|app|ai|gg|fm|tv|me|so|dev|news|media|finance)\b[,;:]?\s*/i,
     '',
   )
+  // Orphan mid-abbreviation after a bad split (U.S. Treasury → "S. Treasury…").
+  s = s.replace(/^[A-Za-z]\.\s+(?=[A-Z])/u, '')
   if (!s) return ''
   if (/^[a-z]/.test(s)) {
     s = s.charAt(0).toUpperCase() + s.slice(1)

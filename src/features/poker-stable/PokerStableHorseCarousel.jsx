@@ -205,6 +205,7 @@ export default function PokerStableHorseCarousel({
                     </span>
                     <button
                       type="button"
+                      data-poker-stake-nudge-btn
                       disabled={Boolean(nudgingSliceId) || nudgeDisabled}
                       onClick={(e) => {
                         e.stopPropagation()

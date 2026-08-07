@@ -3509,6 +3509,7 @@ export default function PokerBankrollTracker({
                                         </span>
                                         <button
                                           type="button"
+                                          data-poker-stake-nudge-btn
                                           disabled={Boolean(nudgingSliceId) || saving}
                                           onClick={() =>
                                             void onNudgePendingBacker(scopeId, slice.id)

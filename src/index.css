@@ -6901,6 +6901,23 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-sta
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-100\/90 {
   color: #3f3f46 !important;
 }
+/* Nudge CTA … light only (dark keeps amber/cyan wash). Solid fill so it reads on pale pending rows. */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-nudge-btn] {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-nudge-btn]:active {
+  background-color: #b45309 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-nudge-btn] {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stake-nudge-btn]:active {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
 /* In-card Accept/Decline … keep CTA ink on remapped chrome */
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer] .bg-emerald-600 {
   background-color: #059669 !important;

@@ -1,7 +1,10 @@
 /** @typedef {'stock'|'crypto'} MarketAssetClass */
 /** @typedef {'rolling'|'historical'} MarketEmbedKind */
 
-import { isUsableStockIntradayBars, isUsEquityRegularSessionOpen } from './usEquityMarketSession.js'
+import {
+  clipStockBarsToUsableIntraday,
+  isUsEquityRegularSessionOpen,
+} from './usEquityMarketSession.js'
 
 /**
  * @typedef {Object} MarketBar
@@ -563,17 +566,19 @@ export function pickRollingMarketPayload(embed, rollingLive) {
   }
 
   if (embed.asset_class === 'stock') {
-    if (isUsableStockIntradayBars(rollingLive?.bars)) {
+    const liveBars = clipStockBarsToUsableIntraday(rollingLive?.bars)
+    if (liveBars.length) {
       return {
         quote: rollingLive.quote,
-        bars: rollingLive.bars,
+        bars: liveBars,
         window_label: rollingLive.window_label,
       }
     }
-    if (isUsableStockIntradayBars(embed?.bars)) {
+    const embedBars = clipStockBarsToUsableIntraday(embed?.bars)
+    if (embedBars.length) {
       return {
         quote: embed.quote,
-        bars: embed.bars,
+        bars: embedBars,
         window_label: embed.window_label,
       }
     }

@@ -147,6 +147,25 @@ export function isUsableStockIntradayBars(
   return span > 0 && span <= 8 * 3600
 }
 
+/** Trailing ≤8h slice when Yahoo returns prior-session + today (calendar 24h). */
+export function clipStockBarsToUsableIntraday<T extends { t: number; c: number }>(
+  bars: T[] | null | undefined,
+): T[] {
+  if (isUsableStockIntradayBars(bars)) return Array.isArray(bars) ? bars : []
+  if (!Array.isArray(bars) || bars.length < 10) return []
+  const sorted = bars
+    .filter((b) => Number.isFinite(b?.t) && Number.isFinite(b?.c))
+    .map((b) => {
+      const t = Math.floor(b.t > 1e12 ? b.t / 1000 : b.t)
+      return { ...b, t }
+    })
+    .sort((a, b) => a.t - b.t)
+  if (sorted.length < 10) return []
+  const end = sorted[sorted.length - 1].t
+  const clipped = sorted.filter((b) => b.t >= end - 8 * 3600)
+  return isUsableStockIntradayBars(clipped) ? clipped : []
+}
+
 /** Last N regular sessions (newest first) for Yahoo fallback when the latest day has no intraday. */
 export function* regularSessionDaysBack(start = new Date(), maxDays = 5) {
   let { year, month, day } = lastRegularSessionBounds(start)

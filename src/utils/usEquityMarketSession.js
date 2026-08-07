@@ -54,3 +54,24 @@ export function isUsableStockIntradayBars(bars) {
   const span = sorted[sorted.length - 1].t - sorted[0].t
   return span > 0 && span <= 8 * 3600
 }
+
+/**
+ * If bars span more than one session (~24h Yahoo period1/period2), keep the trailing
+ * ≤8h slice so feed minis / 1D can still paint until Edge returns RTH-only series.
+ * @param {Array<{ t: number, c: number, [key: string]: unknown }> | null | undefined} bars
+ */
+export function clipStockBarsToUsableIntraday(bars) {
+  if (isUsableStockIntradayBars(bars)) return Array.isArray(bars) ? bars : []
+  if (!Array.isArray(bars) || bars.length < 10) return []
+  const sorted = bars
+    .filter((b) => Number.isFinite(b?.t) && Number.isFinite(b?.c))
+    .map((b) => {
+      const t = Math.floor(b.t > 1e12 ? b.t / 1000 : b.t)
+      return { ...b, t }
+    })
+    .sort((a, b) => a.t - b.t)
+  if (sorted.length < 10) return []
+  const end = sorted[sorted.length - 1].t
+  const clipped = sorted.filter((b) => b.t >= end - 8 * 3600)
+  return isUsableStockIntradayBars(clipped) ? clipped : []
+}

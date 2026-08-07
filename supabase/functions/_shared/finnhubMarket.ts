@@ -472,12 +472,24 @@ async function resolveStockIntradayBars(
 ): Promise<MarketBar[]> {
   const interval = yahooIntervalForWindow(windowKey)
 
+  // Open session: fetch RTH window only. Calendar `windowRange('24h')` returns ~24h of
+  // bars (prior close + today) which the client rejects via `isUsableStockIntradayBars`
+  // (span must be ≤ 8h) … leaving blank sparklines / 1D charts.
   if (isUsEquityRegularSessionOpen()) {
-    const { fromSec, toSec } = windowRange(windowKey)
-    let bars = await finnhubCandles(symbol, 'stock', windowKey)
-    if (bars.length >= 2) return normalizeMarketBars(bars)
-    bars = await yahooStockCandles(symbol, fromSec, toSec, interval)
-    if (bars.length >= 2) return normalizeMarketBars(bars)
+    const session = lastRegularSessionBounds()
+    const { fromSec: winFrom, toSec: winTo } = windowRange(windowKey)
+    let fromSec = Math.max(session.fromSec, winFrom)
+    let toSec = Math.min(session.toSec + 60, Math.max(winTo, session.toSec + 60))
+    if (toSec <= fromSec) {
+      fromSec = session.fromSec
+      toSec = session.toSec + 60
+    }
+
+    let bars = normalizeMarketBars(await finnhubCandles(symbol, 'stock', windowKey))
+    if (isUsableStockIntradayBars(bars)) return bars
+
+    bars = normalizeMarketBars(await yahooStockCandles(symbol, fromSec, toSec, interval))
+    if (isUsableStockIntradayBars(bars)) return bars
   }
 
   const intervals = windowKey === '1h' ? ['1m', '5m'] : ['5m', '1m']

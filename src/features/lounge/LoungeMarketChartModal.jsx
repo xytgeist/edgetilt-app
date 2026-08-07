@@ -28,7 +28,10 @@ import {
 } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeMarketModalNews, loungeMarketModalSeries, loungeMarketModalSeriesBefore, filterMarketBarsStrictlyBefore, mergeMarketBarsOlder } from '../../utils/loungeMarketApi.js'
 import { marketBarRowFields } from '../../utils/marketBarOhlc.js'
-import { isUsableStockIntradayBars, isUsEquityRegularSessionOpen } from '../../utils/usEquityMarketSession.js'
+import {
+  clipStockBarsToUsableIntraday,
+  isUsEquityRegularSessionOpen,
+} from '../../utils/usEquityMarketSession.js'
 import { formatLoungeSearchError, loungeSearchCashtagPosts, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
 import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
 import {
@@ -1613,18 +1616,21 @@ export default function LoungeMarketChartModal({
     const live = pickRollingMarketPayload(active, rollingLive)
 
     if (active?.asset_class === 'stock') {
-      if (isUsableStockIntradayBars(live?.bars)) return live
-      if (isUsableStockIntradayBars(fetchedSeries?.bars)) return fetchedSeries
-      if (isUsableStockIntradayBars(active?.bars)) {
+      const liveBars = clipStockBarsToUsableIntraday(live?.bars)
+      if (liveBars.length) return { ...live, bars: liveBars }
+      const fetchedBars = clipStockBarsToUsableIntraday(fetchedSeries?.bars)
+      if (fetchedBars.length) return { ...fetchedSeries, bars: fetchedBars }
+      const activeBars = clipStockBarsToUsableIntraday(active?.bars)
+      if (activeBars.length) {
         return {
           quote: active.quote,
-          bars: active.bars,
+          bars: activeBars,
           window_label: active.window_label,
         }
       }
       return {
         quote: live?.quote || active?.quote,
-        bars: live?.bars || [],
+        bars: [],
         window_label: live?.window_label || active?.window_label,
       }
     }

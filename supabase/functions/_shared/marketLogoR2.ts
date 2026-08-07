@@ -3,6 +3,7 @@
  */
 import { coingeckoCryptoLogo } from './coingeckoMarket.ts'
 import { finnhubStockLogoUrl } from './finnhubMarket.ts'
+import { fmpStockLogoUrl } from './fmpMarket.ts'
 import {
   loungeCfR2AllowedPublicOrigins,
   loungeCfR2PublicUrl,
@@ -21,6 +22,7 @@ const SOURCE_LOGO_HOST_SUFFIXES = [
   'yimg.com',
   'clearbit.com',
   'googleusercontent.com',
+  'financialmodelingprep.com',
 ]
 
 function sanitizeMarketLogoFilePart(raw: string): string {
@@ -132,6 +134,9 @@ export async function ensureMarketInstrumentLogoOnR2(
   if (!source && row.asset_class === 'stock' && !opts.skipFinnhub) {
     source = String(await finnhubStockLogoUrl(row.symbol).catch(() => '')).trim()
   }
+  if (!source && row.asset_class === 'stock') {
+    source = String(await fmpStockLogoUrl(row.symbol).catch(() => '')).trim()
+  }
   if (!source && row.asset_class === 'crypto' && !opts.skipCoingecko) {
     source = String(await coingeckoCryptoLogo(row.symbol).catch(() => '')).trim()
   }
@@ -165,6 +170,7 @@ export async function mirrorInstrumentRowsToR2(
         if (!source && row.asset_class === 'stock') {
           source = String(await finnhubStockLogoUrl(row.symbol).catch(() => '')).trim()
           if (source) finnhubFetches += 1
+          if (!source) source = String(await fmpStockLogoUrl(row.symbol).catch(() => '')).trim()
         }
         if (!source && row.asset_class === 'crypto') {
           source = String(await coingeckoCryptoLogo(row.symbol).catch(() => '')).trim()

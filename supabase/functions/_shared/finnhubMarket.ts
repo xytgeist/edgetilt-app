@@ -26,6 +26,7 @@ import {
   regularSessionDaysBack,
 } from './usEquityMarketSession.ts'
 import { yahooFxRateToUsd, yahooIntervalForWindow, yahooLatestNews, yahooResolveUsEquityCashtag, yahooStockAllTimeCandles, yahooStockCandles, yahooStockPickerRow, yahooStockProfile, yahooStockQuote, yahooStockMonthlyTwoHourCandles, yahooStockQuarterlyDailyCandles, yahooStockWeeklyIntradayCandles } from './yahooMarket.ts'
+import { fmpStockLogoUrl } from './fmpMarket.ts'
 import { coingeckoCoinIdForTicker } from './marketCashtagCrypto.ts'
 import { coingeckoLogoUrlForCoinId, isGuessedFinnhubStockLogoUrl, withCashtagRowLogo } from './marketCashtagLogos.ts'
 
@@ -1317,6 +1318,9 @@ export async function enrichSearchResultsLogosOnly<
         const yahoo = await yahooStockPickerRow(row.symbol).catch(() => null)
         logo_url = String(yahoo?.logo || '').trim()
       }
+      if (!logo_url) {
+        logo_url = String(await fmpStockLogoUrl(row.symbol).catch(() => '')).trim()
+      }
       return { ...row, logo_url: logo_url || '' }
     }),
   )
@@ -1487,7 +1491,7 @@ export async function finnhubProfile(symbol: string, assetClass: MarketAssetClas
       marketCapitalization == null || !Number.isFinite(marketCapitalization) || marketCapitalization <= 0
 
     // Finnhub often returns empty/weak ETF profiles (GLD → name=GLD, no logo).
-    // Yahoo chart meta usually has longName + logoUrl — fill gaps without requiring a throw.
+    // Yahoo fills longName/mcap; logos are often missing for SPDR ETFs — FMP has them.
     if (nameWeak || !logo || mcapWeak || !exchange) {
       const yahoo = await yahooStockProfile(symbol).catch(() => null)
       if (yahoo) {
@@ -1500,6 +1504,9 @@ export async function finnhubProfile(symbol: string, assetClass: MarketAssetClas
         if (yahoo.currency) currency = String(yahoo.currency).trim() || currency
       }
     }
+    if (!logo) {
+      logo = String(await fmpStockLogoUrl(display || finnhubSym).catch(() => '')).trim()
+    }
 
     return {
       name: name || display || finnhubSym,
@@ -1509,8 +1516,14 @@ export async function finnhubProfile(symbol: string, assetClass: MarketAssetClas
       currency,
     }
   } catch {
-    const yahoo = await yahooStockProfile(symbol)
-    if (yahoo) return yahoo
+    const yahoo = await yahooStockProfile(symbol).catch(() => null)
+    if (yahoo) {
+      let logo = String(yahoo.logo || '').trim()
+      if (!logo) {
+        logo = String(await fmpStockLogoUrl(symbol).catch(() => '')).trim()
+      }
+      return { ...yahoo, logo }
+    }
     throw new Error(`Profile unavailable for ${finnhubSym}`)
   }
 }

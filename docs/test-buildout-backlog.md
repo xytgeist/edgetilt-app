@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **GLD / ETF logos via FMP:** Yahoo chart meta has no logo for **GLD** (same gap X papers over with a generic SPDR mark). Edge now falls back to **Financial Modeling Prep** `image-stock/{TICKER}.png` after Finnhub + Yahoo, allowlists that host for R2 mirror, and skips 7d registry metadata cache when `logo_url` is empty. Client seed maps liquid ETFs (GLD/SPY/…) to the same FMP URLs. Redeploy **`lounge-market-data`** test + prod.
 - 2026-08-07: **GLD / ETF mini quality + “two months” windows:** Finnhub stock profile now Yahoo-fills weak **name/logo** (ETF gap: name=`GLD`, empty logo). Caption parse accepts **“first time in two months”** / word numbers and real **`2m`** window (~60d). Client parse + composer name preference mirrored. Redeploy **`lounge-market-data`** test + prod.
 - 2026-08-07: **Cashtag exact ticker when seed has prefixes only:** typing `$GLD` used to list only `GLDG`/`GLDY`/… because any local prefix hit skipped **`resolve_symbol`**. Now enrich via API when local has no exact `display_symbol` match; seed also adds liquid ETFs (**`GLD`**, **`SLV`**, **`SPY`**, **`QQQ`**, etc.).
 - 2026-08-07: **Cold-boot Lottie restart (~0.5s):** AppShell used to return bare `shellTree` until auth set `chatCallViewerUserId`, then wrap in **`ChatCallProvider`** … that tree-shape flip remounted **`LoungeAppSplash`** mid-play (black stayed up, animation jumped to start before the D). Fix: always wrap; provider no-ops with empty `viewerUserId`.

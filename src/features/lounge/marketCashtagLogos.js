@@ -92,6 +92,32 @@ export function coingeckoLogoUrlForCoinId(coinId) {
   return id ? String(COINGECKO_LOGO_BY_COIN_ID[id] || '').trim() : ''
 }
 
+/**
+ * Seed ETF / liquid-ticker logos when Finnhub + Yahoo omit them (e.g. SPDR GLD).
+ * Same host Edge mirrors via `fmpMarket.ts` → R2.
+ */
+export const FMP_STOCK_LOGO_BY_TICKER = {
+  SPY: 'https://financialmodelingprep.com/image-stock/SPY.png',
+  QQQ: 'https://financialmodelingprep.com/image-stock/QQQ.png',
+  IWM: 'https://financialmodelingprep.com/image-stock/IWM.png',
+  DIA: 'https://financialmodelingprep.com/image-stock/DIA.png',
+  GLD: 'https://financialmodelingprep.com/image-stock/GLD.png',
+  SLV: 'https://financialmodelingprep.com/image-stock/SLV.png',
+  IAU: 'https://financialmodelingprep.com/image-stock/IAU.png',
+  TLT: 'https://financialmodelingprep.com/image-stock/TLT.png',
+  HYG: 'https://financialmodelingprep.com/image-stock/HYG.png',
+  XLF: 'https://financialmodelingprep.com/image-stock/XLF.png',
+  XLE: 'https://financialmodelingprep.com/image-stock/XLE.png',
+}
+
+export function fmpStockLogoUrlForTicker(ticker) {
+  const key = String(ticker || '')
+    .trim()
+    .toUpperCase()
+    .split(/[.:]/)[0]
+  return key ? String(FMP_STOCK_LOGO_BY_TICKER[key] || '').trim() : ''
+}
+
 /** Broken guess URL — static Finnhub path 404s; treat as missing logo. */
 export function isGuessedFinnhubStockLogoUrl(url) {
   return /static2\.finnhub\.io\/file\/publicdatany\/finnhubimage\/stock_logo\//i.test(String(url || ''))
@@ -106,10 +132,17 @@ export function withCashtagRowLogo(row) {
   }
   if (existing) return row
 
+  if (row.asset_class !== 'crypto') {
+    const display = String(row.display_symbol || row.symbol || '').trim().toUpperCase()
+    const fmpLogo = fmpStockLogoUrlForTicker(display)
+    // Prefer known FMP seed over speculative R2 keys that 404 until mirrored.
+    if (fmpLogo) return { ...row, logo_url: fmpLogo }
+    const r2Logo = marketLogoR2UrlForRow(row)
+    return r2Logo ? { ...row, logo_url: r2Logo } : row
+  }
+
   const r2Logo = marketLogoR2UrlForRow(row)
   if (r2Logo) return { ...row, logo_url: r2Logo }
-
-  if (row.asset_class !== 'crypto') return row
 
   let logo_url = coingeckoLogoUrlForCoinId(String(row.coin_id || ''))
   if (!logo_url) {

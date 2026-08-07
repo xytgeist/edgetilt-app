@@ -153,12 +153,14 @@ async function loadMarketProfileContext(
   const row = await readMarketInstrument(admin, marketInstrumentCacheKey(symbol, assetClass))
   if (row?.name && row.metadata_updated_at) {
     const age = Date.now() - new Date(String(row.metadata_updated_at)).getTime()
-    if (age <= MARKET_INSTRUMENT_METADATA_TTL_MS) {
+    const cachedLogo = String(row.logo_url || '').trim()
+    // Empty logo is not a complete metadata hit — re-resolve (ETF logos often arrive via FMP).
+    if (age <= MARKET_INSTRUMENT_METADATA_TTL_MS && cachedLogo) {
       return {
         profile: {
           name: row.name,
           exchange: row.exchange,
-          logo: row.logo_url,
+          logo: cachedLogo,
           marketCapitalization: null,
           currency: row.listing_currency || 'USD',
           coinId: row.coin_id || coinId || undefined,

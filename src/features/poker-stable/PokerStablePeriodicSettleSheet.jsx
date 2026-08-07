@@ -6,43 +6,17 @@ import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   computeDealMakeup,
   computeDealSettlement,
-  computeProRataBackerShares,
   computeProfitAboveBaseline,
   maxStakeReductionAmount,
   roundMoney,
   dealTypeLabel,
 } from './pokerStableMath.js'
+import {
+  settlePayPhrases,
+  settleReductionShareRows,
+  settleResetBullet,
+} from './pokerStableSettleReviewCopy.js'
 import { dealHasMakeup, dealHasRakebackEnabled, dealStakeeDisplayName } from './pokerStableTerms.js'
-import { sliceDisplayName } from './pokerStableApi.js'
-
-/**
- * Viewer-facing settle payment phrases (before the roll-reset clause).
- * @param {{ isStakee: boolean, lines: object[], userId?: string | null, playerName: string, profilesById: object }} params
- */
-function settlePayPhrases({ isStakee, lines, userId, playerName, profilesById }) {
-  const phrases = []
-  for (const line of lines || []) {
-    const amount = roundMoney(line.total_owed)
-    if (amount < 0.005) continue
-    const slice = line.slice || {}
-    if (isStakee) {
-      const backerName = sliceDisplayName(slice, profilesById)
-      phrases.push(
-        line.direction === 'player_to_staker'
-          ? `You pay ${backerName} ${fmtPoker$(amount)}`
-          : `${backerName} pays you ${fmtPoker$(amount)}`,
-      )
-      continue
-    }
-    if (!userId || slice.staker_user_id !== userId) continue
-    phrases.push(
-      line.direction === 'player_to_staker'
-        ? `${playerName} pays you ${fmtPoker$(amount)}`
-        : `You pay ${playerName} ${fmtPoker$(amount)}`,
-    )
-  }
-  return phrases
-}
 
 /**
  * Periodic settle review screen before the initiator confirms.
@@ -93,39 +67,6 @@ export default function PokerStablePeriodicSettleSheet({
     [deal, slices, baseline, rollValue, rakebackAmount],
   )
 
-  const reductionShares = useMemo(
-    () => (reductionAmount > 0.005 ? computeProRataBackerShares(slices, reductionAmount) : []),
-    [slices, reductionAmount],
-  )
-
-  /**
-   * Player: per-backer names. Backer: "Owed to you" + aggregated "Other backers".
-   * @returns {{ key: string, label: string, share: number }[]}
-   */
-  const reductionShareRows = useMemo(() => {
-    if (!reductionShares.length) return []
-    const isViewerStakee = Boolean(userId) && deal?.stakee_user_id === userId
-    if (isViewerStakee) {
-      return reductionShares.map((row) => ({
-        key: row.sliceId,
-        label: sliceDisplayName(slices.find((s) => s.id === row.sliceId) || {}, profilesById),
-        share: row.share,
-      }))
-    }
-    const mine = reductionShares.filter((row) => row.stakerUserId === userId)
-    const others = reductionShares.filter((row) => row.stakerUserId !== userId)
-    const rows = []
-    const myShare = roundMoney(mine.reduce((sum, row) => sum + row.share, 0))
-    if (myShare > 0.005 || mine.length) {
-      rows.push({ key: 'owed-to-you', label: 'Owed to you', share: myShare })
-    }
-    const otherShare = roundMoney(others.reduce((sum, row) => sum + row.share, 0))
-    if (others.length && otherShare > 0.005) {
-      rows.push({ key: 'other-backers', label: 'Other backers', share: otherShare })
-    }
-    return rows
-  }, [reductionShares, userId, deal?.stakee_user_id, slices, profilesById])
-
   if (!deal) return null
 
   const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
@@ -143,10 +84,15 @@ export default function PokerStablePeriodicSettleSheet({
   const reduceInputIncomplete = reduceStake && !newBaselineValid
   const reduceInvalid = reduceStake && (newBaselineTooHigh || reductionTooLarge || reduceInputIncomplete)
 
-  const baselineAfterReduction =
-    reduceStake && newBaselineValid && !newBaselineTooHigh
-      ? roundMoney(newBaselineValue)
-      : baseline
+  const effectiveReduction =
+    reduceStake && newBaselineValid && !newBaselineTooHigh ? reductionAmount : 0
+  const reductionShareRows = settleReductionShareRows({
+    isStakee,
+    slices,
+    reductionAmount: effectiveReduction,
+    userId,
+    profilesById,
+  })
 
   const playerCredit = settlement.player_net
   const backerCredit = roundMoney(
@@ -170,11 +116,11 @@ export default function PokerStablePeriodicSettleSheet({
     playerName,
     profilesById,
   })
-  const resetBullet = `Stake resets to ${fmtPoker$(baseline)}${
-    reduceStake && reductionAmount > 0
-      ? `, then reduces to ${fmtPoker$(baselineAfterReduction)}`
-      : ''
-  } and remains open`
+  const resetBullet = settleResetBullet({
+    baseline,
+    reductionAmount: effectiveReduction,
+    isClose: false,
+  })
 
   return (
     <div

@@ -93,28 +93,66 @@ export function coingeckoLogoUrlForCoinId(coinId) {
 }
 
 /**
- * Seed ETF / liquid-ticker logos when Finnhub + Yahoo omit them (e.g. SPDR GLD).
- * Same host Edge mirrors via `fmpMarket.ts` → R2.
+ * Seed ETF / liquid-ticker logos when Finnhub + Yahoo omit them.
+ * SPDR-family tickers use {@link spdrIssuerLogoUrl} instead (FMP marks are poor).
  */
 export const FMP_STOCK_LOGO_BY_TICKER = {
-  SPY: 'https://financialmodelingprep.com/image-stock/SPY.png',
   QQQ: 'https://financialmodelingprep.com/image-stock/QQQ.png',
   IWM: 'https://financialmodelingprep.com/image-stock/IWM.png',
-  DIA: 'https://financialmodelingprep.com/image-stock/DIA.png',
-  GLD: 'https://financialmodelingprep.com/image-stock/GLD.png',
   SLV: 'https://financialmodelingprep.com/image-stock/SLV.png',
   IAU: 'https://financialmodelingprep.com/image-stock/IAU.png',
   TLT: 'https://financialmodelingprep.com/image-stock/TLT.png',
   HYG: 'https://financialmodelingprep.com/image-stock/HYG.png',
-  XLF: 'https://financialmodelingprep.com/image-stock/XLF.png',
-  XLE: 'https://financialmodelingprep.com/image-stock/XLE.png',
+}
+
+/** Common SPDR / State Street ETFs — share one issuer mark (X-style). */
+export const SPDR_ISSUER_TICKERS = new Set([
+  'SPY',
+  'SPYG',
+  'SPYV',
+  'DIA',
+  'MDY',
+  'GLD',
+  'GLDM',
+  'XLF',
+  'XLE',
+  'XLK',
+  'XLV',
+  'XLI',
+  'XLP',
+  'XLY',
+  'XLB',
+  'XLU',
+  'XLRE',
+  'XLC',
+  'FEZ',
+])
+
+export function marketInstrumentRootTicker(rowOrTicker) {
+  const raw =
+    typeof rowOrTicker === 'string'
+      ? rowOrTicker
+      : String(rowOrTicker?.display_symbol || rowOrTicker?.symbol || '')
+  return raw.trim().toUpperCase().split(/[.:]/)[0] || ''
+}
+
+export function isSpdrMarketInstrument(row) {
+  if (!row || row.asset_class === 'crypto') return false
+  const name = String(row.name || row.description || '')
+  if (/\bSPDR\b/i.test(name)) return true
+  return SPDR_ISSUER_TICKERS.has(marketInstrumentRootTicker(row))
+}
+
+/** Same-origin public asset (`public/market-logos/spdr.png`). */
+export function spdrIssuerLogoUrl() {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/market-logos/spdr.png`
+  }
+  return '/market-logos/spdr.png'
 }
 
 export function fmpStockLogoUrlForTicker(ticker) {
-  const key = String(ticker || '')
-    .trim()
-    .toUpperCase()
-    .split(/[.:]/)[0]
+  const key = marketInstrumentRootTicker(ticker)
   return key ? String(FMP_STOCK_LOGO_BY_TICKER[key] || '').trim() : ''
 }
 
@@ -123,9 +161,22 @@ export function isGuessedFinnhubStockLogoUrl(url) {
   return /static2\.finnhub\.io\/file\/publicdatany\/finnhubimage\/stock_logo\//i.test(String(url || ''))
 }
 
+/** Prefer SPDR issuer mark / seed logos over upstream junk. */
+export function resolveMarketInstrumentLogoUrl(row) {
+  if (!row) return ''
+  if (isSpdrMarketInstrument(row)) return spdrIssuerLogoUrl()
+  const existing = String(row.logo_url || row.logo || '').trim()
+  if (existing && isGuessedFinnhubStockLogoUrl(existing)) return ''
+  return existing
+}
+
 /** Seed / cached rows — prefer mirrored R2 logo URLs (no upstream logo fetch). */
 export function withCashtagRowLogo(row) {
   if (!row) return row
+  if (isSpdrMarketInstrument(row)) {
+    return { ...row, logo_url: spdrIssuerLogoUrl() }
+  }
+
   let existing = String(row.logo_url || row.logo || '').trim()
   if (existing && isGuessedFinnhubStockLogoUrl(existing)) {
     existing = ''
@@ -133,7 +184,7 @@ export function withCashtagRowLogo(row) {
   if (existing) return row
 
   if (row.asset_class !== 'crypto') {
-    const display = String(row.display_symbol || row.symbol || '').trim().toUpperCase()
+    const display = marketInstrumentRootTicker(row)
     const fmpLogo = fmpStockLogoUrlForTicker(display)
     // Prefer known FMP seed over speculative R2 keys that 404 until mirrored.
     if (fmpLogo) return { ...row, logo_url: fmpLogo }
@@ -146,7 +197,7 @@ export function withCashtagRowLogo(row) {
 
   let logo_url = coingeckoLogoUrlForCoinId(String(row.coin_id || ''))
   if (!logo_url) {
-    const display = String(row.display_symbol || row.symbol || '').trim().toUpperCase()
+    const display = marketInstrumentRootTicker(row)
     logo_url = coingeckoLogoUrlForCoinId(coingeckoCoinIdForTicker(display))
   }
 

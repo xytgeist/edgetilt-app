@@ -40,6 +40,7 @@ import {
   useLoungeMarketPollOnResume,
 } from './loungeMarketPollActivity.js'
 import { loungeMarketBarsToSeries, loungeMarketChartCrosshairOptions, loungeMarketChartIsLight, loungeMarketChartTheme } from './loungeMarketChartTheme.js'
+import { resolveMarketInstrumentLogoUrl } from './marketCashtagLogos.js'
 import {
   attachMarketChartIndicators,
   MARKET_CHART_INDICATOR_CATEGORIES,
@@ -884,7 +885,7 @@ function formatPostAge(createdAt) {
 
 /** Company logo for market embed headers - no crossOrigin (breaks most Finnhub/Yahoo hosts in UI). */
 function MarketEmbedLogo({ embed, imgClass, fallbackClass }) {
-  const logo = String(embed?.logo_url || embed?.logo || '').trim()
+  const logo = resolveMarketInstrumentLogoUrl(embed)
   const initial = (embed?.display_symbol || embed?.symbol || '?').slice(0, 1)
   const [imgOk, setImgOk] = useState(Boolean(logo))
 

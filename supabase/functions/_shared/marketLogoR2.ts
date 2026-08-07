@@ -23,6 +23,9 @@ const SOURCE_LOGO_HOST_SUFFIXES = [
   'clearbit.com',
   'googleusercontent.com',
   'financialmodelingprep.com',
+  // App-hosted issuer marks (`public/market-logos/spdr.png`)
+  'edgetilt.com',
+  'lvslotpro.com',
 ]
 
 function sanitizeMarketLogoFilePart(raw: string): string {

@@ -4,6 +4,7 @@ import {
   formatMarketChangePct,
   formatMarketPrice,
 } from '../../utils/loungeMarketCaptionParse.js'
+import { resolveMarketInstrumentLogoUrl } from './marketCashtagLogos.js'
 
 function marketSearchMetaLine(row) {
   const ticker = row?.display_symbol || row?.symbol || ''
@@ -15,7 +16,7 @@ function marketSearchMetaLine(row) {
 
 function MarketSearchAvatar({ row, size = 'md' }) {
   const dim = size === 'sm' ? 'h-8 w-8 text-[11px]' : 'h-9 w-9 text-xs'
-  const logo = row?.logo_url || row?.logo
+  const logo = resolveMarketInstrumentLogoUrl(row)
   const initials = (row?.display_symbol || row?.symbol || '?').slice(0, 2)
   const [imgOk, setImgOk] = useState(Boolean(logo))
 

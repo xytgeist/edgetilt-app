@@ -19,6 +19,7 @@ import {
   miniSparklineColor,
   resolveMiniSparklineStyle,
 } from './loungeMarketMiniSparkline.js'
+import { resolveMarketInstrumentLogoUrl } from './marketCashtagLogos.js'
 
 /**
  * Feed / composer market mini ... Apple-style blend:
@@ -291,9 +292,10 @@ export default function LoungeMarketChartMini({
     if (tapRef.current?.pointerId === e.pointerId) tapRef.current = null
   }
 
-  const logo = embed.logo_url ? (
+  const logoUrl = resolveMarketInstrumentLogoUrl(embed)
+  const logo = logoUrl ? (
     <img
-      src={embed.logo_url}
+      src={logoUrl}
       alt=""
       className="h-9 w-9 shrink-0 rounded-full border border-zinc-700/50 object-cover"
     />

@@ -28,7 +28,13 @@ import {
 import { yahooFxRateToUsd, yahooIntervalForWindow, yahooLatestNews, yahooResolveUsEquityCashtag, yahooStockAllTimeCandles, yahooStockCandles, yahooStockPickerRow, yahooStockProfile, yahooStockQuote, yahooStockMonthlyTwoHourCandles, yahooStockQuarterlyDailyCandles, yahooStockWeeklyIntradayCandles } from './yahooMarket.ts'
 import { fmpStockLogoUrl } from './fmpMarket.ts'
 import { coingeckoCoinIdForTicker } from './marketCashtagCrypto.ts'
-import { coingeckoLogoUrlForCoinId, isGuessedFinnhubStockLogoUrl, withCashtagRowLogo } from './marketCashtagLogos.ts'
+import {
+  coingeckoLogoUrlForCoinId,
+  isGuessedFinnhubStockLogoUrl,
+  isSpdrMarketInstrument,
+  spdrIssuerLogoUrl,
+  withCashtagRowLogo,
+} from './marketCashtagLogos.ts'
 
 export type MarketProfile = {
   name: string
@@ -1313,6 +1319,16 @@ export async function enrichSearchResultsLogosOnly<
         return { ...row, logo_url: logo_url || '' }
       }
 
+      if (
+        isSpdrMarketInstrument({
+          asset_class: 'stock',
+          name: String(row.description || row.display_symbol || row.symbol || ''),
+          display_symbol: row.display_symbol,
+          symbol: row.symbol,
+        })
+      ) {
+        return { ...row, logo_url: spdrIssuerLogoUrl() }
+      }
       logo_url = await finnhubStockLogoUrl(row.symbol)
       if (!logo_url) {
         const yahoo = await yahooStockPickerRow(row.symbol).catch(() => null)
@@ -1507,9 +1523,20 @@ export async function finnhubProfile(symbol: string, assetClass: MarketAssetClas
     if (!logo) {
       logo = String(await fmpStockLogoUrl(display || finnhubSym).catch(() => '')).trim()
     }
+    const resolvedName = name || display || finnhubSym
+    if (
+      isSpdrMarketInstrument({
+        asset_class: 'stock',
+        name: resolvedName,
+        display_symbol: display,
+        symbol: finnhubSym,
+      })
+    ) {
+      logo = spdrIssuerLogoUrl()
+    }
 
     return {
-      name: name || display || finnhubSym,
+      name: resolvedName,
       exchange,
       logo,
       marketCapitalization,
@@ -1522,7 +1549,18 @@ export async function finnhubProfile(symbol: string, assetClass: MarketAssetClas
       if (!logo) {
         logo = String(await fmpStockLogoUrl(symbol).catch(() => '')).trim()
       }
-      return { ...yahoo, logo }
+      const resolvedName = String(yahoo.name || symbol).trim()
+      if (
+        isSpdrMarketInstrument({
+          asset_class: 'stock',
+          name: resolvedName,
+          display_symbol: normalizeDisplaySymbol(finnhubSym, 'stock'),
+          symbol: finnhubSym,
+        })
+      ) {
+        logo = spdrIssuerLogoUrl()
+      }
+      return { ...yahoo, name: resolvedName || yahoo.name, logo }
     }
     throw new Error(`Profile unavailable for ${finnhubSym}`)
   }

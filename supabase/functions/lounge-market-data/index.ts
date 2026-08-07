@@ -25,6 +25,7 @@ import {
   type MarketProfile,
   type MarketWindowKey,
 } from '../_shared/finnhubMarket.ts'
+import { isSpdrMarketInstrument, spdrIssuerLogoUrl } from '../_shared/marketCashtagLogos.ts'
 import { isAllowedMarketLogoUrlForFetch, readMarketLogoR2Config } from '../_shared/marketLogoR2.ts'
 import { resolveMarketSymbolLookup } from '../_shared/marketSymbolLookup.ts'
 import {
@@ -153,9 +154,19 @@ async function loadMarketProfileContext(
   const row = await readMarketInstrument(admin, marketInstrumentCacheKey(symbol, assetClass))
   if (row?.name && row.metadata_updated_at) {
     const age = Date.now() - new Date(String(row.metadata_updated_at)).getTime()
-    const cachedLogo = String(row.logo_url || '').trim()
+    let cachedLogo = String(row.logo_url || '').trim()
     // Empty logo is not a complete metadata hit — re-resolve (ETF logos often arrive via FMP).
     if (age <= MARKET_INSTRUMENT_METADATA_TTL_MS && cachedLogo) {
+      if (
+        isSpdrMarketInstrument({
+          asset_class: assetClass,
+          name: row.name,
+          display_symbol: row.display_symbol,
+          symbol: row.symbol,
+        })
+      ) {
+        cachedLogo = spdrIssuerLogoUrl()
+      }
       return {
         profile: {
           name: row.name,

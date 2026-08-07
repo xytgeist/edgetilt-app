@@ -274,6 +274,11 @@ export default function PokerStableCommitSyncPanel({
   const heroLabel = showPlayerSettleCredit
     ? 'Credit to personal bankroll'
     : 'Credit to personal backing bankroll'
+  const backerPlWord = heroCredit >= 0 ? 'Profit' : 'Loss'
+  const backerPlWordLower = heroCredit >= 0 ? 'profit' : 'loss'
+  const backerSettleFootnote = settleDetail.reductionRows.length
+    ? `${backerPlWord} posts to Realized P/L. Stake reduction and ${backerPlWordLower} credited to personal backing bankroll.`
+    : `${backerPlWord} posts to Realized P/L and is credited to personal backing bankroll.`
 
   return (
     <div data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined} className={inlineShell}>
@@ -344,8 +349,7 @@ export default function PokerStableCommitSyncPanel({
             ) : null}
             {showBackerSettleCredit ? (
               <p className="mt-2.5 text-xs font-medium leading-relaxed text-emerald-100/70">
-                Profit (or loss) posts to Realized P/L. Stake reduction and profit (or loss) credited
-                to personal backing bankroll.
+                {backerSettleFootnote}
               </p>
             ) : null}
           </div>

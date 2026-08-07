@@ -2855,26 +2855,26 @@ export default function AppShell({
     </div>
   )
 
-  if (browseMode === 'member' && supabaseClient && chatCallViewerUserId) {
-    return (
-      <ChatCallProvider
-        supabaseClient={supabaseClient}
-        viewerUserId={chatCallViewerUserId}
-        initialCallId={pendingChatCallId}
-        initialCallIntent={pendingChatCallIntent}
-        onInitialCallConsumed={() => {
-          setPendingChatCallId(null)
-          setPendingChatCallIntent('ring')
-        }}
-        onOpenRoom={(roomId) => {
-          if (!roomId) return
-          openChatRoomDirect(roomId, { skipReloadIfSame: true })
-        }}
-      >
-        {shellTree}
-      </ChatCallProvider>
-    )
-  }
-
-  return shellTree
+  // Always wrap in ChatCallProvider so the shell fiber tree shape never flips when
+  // auth resolves (anonymous → member + viewerUserId). Swapping bare shellTree for
+  // Provider>shellTree remounted LoungeAppSplash mid-Lottie (~0.5s), so the splash
+  // restarted before the D fly-through. Provider no-ops when viewerUserId is empty.
+  return (
+    <ChatCallProvider
+      supabaseClient={supabaseClient}
+      viewerUserId={browseMode === 'member' ? chatCallViewerUserId : ''}
+      initialCallId={pendingChatCallId}
+      initialCallIntent={pendingChatCallIntent}
+      onInitialCallConsumed={() => {
+        setPendingChatCallId(null)
+        setPendingChatCallIntent('ring')
+      }}
+      onOpenRoom={(roomId) => {
+        if (!roomId) return
+        openChatRoomDirect(roomId, { skipReloadIfSame: true })
+      }}
+    >
+      {shellTree}
+    </ChatCallProvider>
+  )
 }

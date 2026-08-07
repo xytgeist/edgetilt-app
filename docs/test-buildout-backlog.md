@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Cold-boot Lottie restart (~0.5s):** AppShell used to return bare `shellTree` until auth set `chatCallViewerUserId`, then wrap in **`ChatCallProvider`** … that tree-shape flip remounted **`LoungeAppSplash`** mid-play (black stayed up, animation jumped to start before the D). Fix: always wrap; provider no-ops with empty `viewerUserId`.
 - 2026-08-07: **Cashtag autocomplete completes ticker:** picking `$TSLA` after typing `$TS` now replaces the partial cashtag in the caption (was leaving `$TS` while still attaching the mini). Fix in **`loungeCashtagAutocomplete` `commitSelection`**.
 - 2026-08-07: **Market mini historical date footer (safe reintro):** full-bleed bottom bar via `-mx` on the padded card (does **not** move `px/py` onto the main row like the iOS-crashing `e3e61fb3` layout). Light = black bar + light text; dark = zinc-100 + dark text. Hidden for today / rolling.
 - 2026-08-07: **Market mini historical date label:** normal centered `10px` date under the main row for **historical** embeds only (`May 7 – Aug 7`); hidden for default today / rolling. No overlay placement.

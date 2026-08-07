@@ -33,10 +33,10 @@ import {
  * }} props
  */
 const MINI_CHART_TAP_MOVE_PX = 12
-const MINI_SPARKLINE_MIN_PX = 40
-const MINI_SPARKLINE_HEIGHT_PX = 32
-const MINI_CARD_CLASS = 'h-[3.5rem] min-h-[3.5rem]'
-const MINI_SPARKLINE_HOST_CLASS = 'h-[32px] min-w-10 flex-1'
+const MINI_SPARKLINE_MIN_PX = 48
+const MINI_SPARKLINE_HEIGHT_PX = 40
+const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
+const MINI_SPARKLINE_HOST_CLASS = 'h-[40px] min-w-12 flex-1'
 
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
 
@@ -217,7 +217,7 @@ export default function LoungeMarketChartMini({
         e.stopPropagation()
         onOpen?.()
       }}
-      className={`relative flex ${MINI_CARD_CLASS} min-w-0 shrink-0 snap-start items-center gap-2 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-2.5 py-0.5 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
+      className={`relative flex ${MINI_CARD_CLASS} min-w-0 shrink-0 snap-start items-center gap-2.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
       data-lounge-market-chart-mini
       data-asset-class={assetClass}
       aria-label={`Open ${displaySymbol} chart`}
@@ -226,29 +226,29 @@ export default function LoungeMarketChartMini({
         <img
           src={embed.logo_url}
           alt=""
-          className="h-7 w-7 shrink-0 rounded-full border border-zinc-700/50 object-cover"
+          className="h-9 w-9 shrink-0 rounded-full border border-zinc-700/50 object-cover"
         />
       ) : (
         <div
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-700/50 bg-zinc-800/90 text-[9px] font-bold text-zinc-300"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700/50 bg-zinc-800/90 text-[11px] font-bold text-zinc-300"
           aria-hidden
         >
           {displaySymbol.slice(0, 2)}
         </div>
       )}
 
-      <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-px overflow-hidden">
+      <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-0.5 overflow-hidden">
         <div className="flex min-w-0 max-w-full items-center gap-1">
-          <span className={`shrink-0 text-[10px] leading-none ${changeTone}`} aria-hidden>
+          <span className={`shrink-0 text-[12px] leading-none ${changeTone}`} aria-hidden>
             {arrow}
           </span>
           <span
-            className={`min-w-0 truncate text-[13px] font-bold leading-snug tracking-wide ${theme.priceText}`}
+            className={`min-w-0 truncate text-[15px] font-bold leading-snug tracking-wide ${theme.priceText}`}
           >
             {displaySymbol}
           </span>
         </div>
-        <div className={`w-full min-w-0 truncate text-[11px] font-medium leading-snug ${theme.mutedText}`}>
+        <div className={`w-full min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}>
           {displayName}
         </div>
       </div>
@@ -259,11 +259,11 @@ export default function LoungeMarketChartMini({
         aria-hidden
       />
 
-      <div className="flex shrink-0 flex-col items-end justify-center gap-px pl-0.5 text-right">
-        <div className={`whitespace-nowrap text-[13px] font-bold tabular-nums leading-snug ${theme.priceText}`}>
+      <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 pl-0.5 text-right">
+        <div className={`whitespace-nowrap text-[15px] font-bold tabular-nums leading-snug ${theme.priceText}`}>
           {priceLabel}
         </div>
-        <div className={`whitespace-nowrap text-[11px] font-semibold tabular-nums leading-snug ${changeTone}`}>
+        <div className={`whitespace-nowrap text-[13px] font-semibold tabular-nums leading-snug ${changeTone}`}>
           {changeLabel}
         </div>
       </div>

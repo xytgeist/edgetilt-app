@@ -60,6 +60,7 @@ import {
   LOUNGE_MARKET_EMBED_MAX,
   appendMissingMarketCashtagsToCaption,
 } from '../../utils/loungeMarketCaptionParse.js'
+import { lockStableLayoutViewportHeight } from '../../utils/stableLayoutViewport.js'
 import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost'
 import { LOUNGE_CAPTION_MAX, LOUNGE_CAPTION_SUBSCRIBER_MAX } from '../../utils/loungeCommentLimits.js'
 import {
@@ -138,6 +139,7 @@ async function fetchComposerMarketEmbedBounded(supabaseClient, row, timeoutMs = 
   }
 }
 
+/** Chrome/Windows: re-pin Bot Portal shell to layout viewport after overlays / publish. */
 function restoreBotPortalViewportAfterOverlay() {
   try {
     const active = document.activeElement
@@ -145,13 +147,9 @@ function restoreBotPortalViewportAfterOverlay() {
   } catch {
     /* ignore */
   }
-  // Kick layout after market-picker search autofocus / body scroll-lock (can leave a short visualViewport).
+  lockStableLayoutViewportHeight()
   window.requestAnimationFrame(() => {
-    try {
-      window.dispatchEvent(new Event('resize'))
-    } catch {
-      /* ignore */
-    }
+    lockStableLayoutViewportHeight()
   })
 }
 

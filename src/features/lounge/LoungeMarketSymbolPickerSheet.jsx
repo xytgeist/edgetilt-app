@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LOUNGE_MARKET_EMBED_MAX, parseCaptionMarketWindowClient } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeMarketPreview, loungeMarketSearch } from '../../utils/loungeMarketApi.js'
+import { lockStableLayoutViewportHeight } from '../../utils/stableLayoutViewport.js'
 import LoungeMarketSearchResultRow from './LoungeMarketSearchResultRow.jsx'
 
 /**
@@ -148,13 +149,11 @@ export default function LoungeMarketSymbolPickerSheet({
       } catch {
         /* ignore */
       }
-      window.requestAnimationFrame(() => {
-        try {
-          window.dispatchEvent(new Event('resize'))
-        } catch {
-          /* ignore */
-        }
-      })
+      // Bot Portal / other stable-layout shells: Chrome can leave a short visualViewport after autofocus.
+      if (document.querySelector('[data-stable-layout-viewport]')) {
+        lockStableLayoutViewportHeight()
+        window.requestAnimationFrame(() => lockStableLayoutViewportHeight())
+      }
     }
   }, [open])
 

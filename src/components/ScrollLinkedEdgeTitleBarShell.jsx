@@ -6,6 +6,10 @@ import { LOUNGE_FEED_TITLE_BAR_ROW_CLASS } from '../features/lounge/loungeFeedAv
 import { useQuickLinkIds } from '../features/shell/quickLinksStore.js'
 import { edgeLogoTitleBarClassName } from '../features/shell/titleBarLayout.js'
 import { setEdgeTitleBarReveal } from '../features/shell/edgeTitleBarRevealStore.js'
+import {
+  lockStableLayoutViewportHeight,
+  unlockStableLayoutViewportHeight,
+} from '../utils/stableLayoutViewport.js'
 
 /**
  * Fixed EDGE title bar + scroll-linked hide/show - same chrome and tuning as
@@ -17,6 +21,8 @@ import { setEdgeTitleBarReveal } from '../features/shell/edgeTitleBarRevealStore
  * @param {boolean} [fullWidth=false] - use full viewport width for column + fixed bar (e.g. Offers week landscape).
  * @param {boolean} [fillViewport=false] - pin title bar + fill remaining height; outer body does not scroll.
  *   Put your own `overflow-y-auto` region inside children (e.g. chat inbox list under sticky tabs).
+ * @param {boolean} [stableLayoutViewport=false] - pin height to layout `100vh` / `innerHeight` instead of `dvh`.
+ *   Use on admin surfaces with native file pickers (Chrome/Windows can shrink `dvh` to ~half).
  */
 const defaultShellContentClassName = 'px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'
 
@@ -32,8 +38,10 @@ export default function ScrollLinkedEdgeTitleBarShell({
   contentClassName = defaultShellContentClassName,
   fullWidth = false,
   fillViewport = false,
+  stableLayoutViewport = false,
 }) {
   const colMax = fullWidth ? 'max-w-none' : 'max-w-2xl'
+  const heightClass = stableLayoutViewport ? 'h-[100vh] max-h-[100vh]' : 'h-dvh max-h-dvh'
   const internalScrollRef = useRef(null)
   const feedScrollRef = scrollRootRef ?? internalScrollRef
   const titleBarRef = useRef(null)
@@ -47,6 +55,21 @@ export default function ScrollLinkedEdgeTitleBarShell({
   const logoClassName = edgeLogoTitleBarClassName(quickLinkIds.length, {
     toolCloseVisible: titleBarToolCloseVisible,
   })
+
+  useLayoutEffect(() => {
+    if (!stableLayoutViewport) return undefined
+    const apply = () => lockStableLayoutViewportHeight()
+    apply()
+    window.addEventListener('resize', apply)
+    window.addEventListener('focus', apply)
+    window.visualViewport?.addEventListener('resize', apply)
+    return () => {
+      window.removeEventListener('resize', apply)
+      window.removeEventListener('focus', apply)
+      window.visualViewport?.removeEventListener('resize', apply)
+      unlockStableLayoutViewportHeight()
+    }
+  }, [stableLayoutViewport])
 
   useLayoutEffect(() => {
     const bar = titleBarRef.current
@@ -142,7 +165,8 @@ export default function ScrollLinkedEdgeTitleBarShell({
   return (
     <div
       data-edge-scroll-shell
-      className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))]`}
+      {...(stableLayoutViewport ? { 'data-stable-layout-viewport': '' } : {})}
+      className={`mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))]`}
     >
       <div
         ref={titleBarRef}

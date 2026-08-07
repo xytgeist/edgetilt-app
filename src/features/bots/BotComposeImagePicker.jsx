@@ -1,15 +1,49 @@
-import { useId, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { BOT_COMPOSE_MAX_IMAGES, mergeBotComposeImageItems } from './botComposeImages.js'
+import { lockStableLayoutViewportHeight } from '../../utils/stableLayoutViewport.js'
 
 /**
  * Image picker for bot portal **Post as** compose (preview strip + add/remove).
+ * File input is portaled to `document.body` so Chrome/Windows native picker cannot
+ * collapse the Bot Portal `dvh` / visualViewport shell (same pattern as slot-guide form).
  */
 export default function BotComposeImagePicker({ items, onChange, disabled, onLimitMessage }) {
   const inputId = useId()
   const inputRef = useRef(null)
+  const pickingRef = useRef(false)
+
+  useEffect(() => {
+    const restoreAfterPicker = () => {
+      if (!pickingRef.current) return
+      pickingRef.current = false
+      lockStableLayoutViewportHeight()
+    }
+    window.addEventListener('focus', restoreAfterPicker)
+    window.visualViewport?.addEventListener('resize', lockStableLayoutViewportHeight)
+    return () => {
+      window.removeEventListener('focus', restoreAfterPicker)
+      window.visualViewport?.removeEventListener('resize', lockStableLayoutViewportHeight)
+    }
+  }, [])
+
+  const openPicker = () => {
+    if (disabled || items.length >= BOT_COMPOSE_MAX_IMAGES) return
+    pickingRef.current = true
+    lockStableLayoutViewportHeight()
+    const input = inputRef.current
+    if (!input) {
+      pickingRef.current = false
+      return
+    }
+    input.value = ''
+    input.click()
+  }
 
   const handlePick = (e) => {
     const files = Array.from(e.target.files || [])
+    pickingRef.current = false
+    lockStableLayoutViewportHeight()
     if (!files.length) return
     const { next, limitDialog } = mergeBotComposeImageItems(items, files)
     onChange(next)
@@ -38,8 +72,10 @@ export default function BotComposeImagePicker({ items, onChange, disabled, onLim
   return (
     <div className="mt-3">
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        <label
-          htmlFor={inputId}
+        <button
+          type="button"
+          disabled={disabled || atCap}
+          onClick={openPicker}
           className={`inline-flex min-h-8 items-center rounded-xl px-3 text-[11px] font-bold ring-1 ${
             disabled || atCap
               ? 'cursor-not-allowed bg-zinc-900/40 text-zinc-600 ring-zinc-800'
@@ -47,21 +83,27 @@ export default function BotComposeImagePicker({ items, onChange, disabled, onLim
           }`}
         >
           Add images
-        </label>
+        </button>
         <span className="text-zinc-600 text-[10px] tabular-nums">
           {items.length}/{BOT_COMPOSE_MAX_IMAGES}
         </span>
       </div>
-      <input
-        ref={inputRef}
-        id={inputId}
-        type="file"
-        accept="image/*"
-        multiple
-        disabled={disabled || atCap}
-        className="sr-only"
-        onChange={handlePick}
-      />
+      {typeof document !== 'undefined'
+        ? createPortal(
+            <input
+              ref={inputRef}
+              id={inputId}
+              type="file"
+              accept="image/*"
+              multiple
+              tabIndex={-1}
+              aria-hidden
+              className="sr-only"
+              onChange={handlePick}
+            />,
+            document.body,
+          )
+        : null}
       {items.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {items.map((item) => (

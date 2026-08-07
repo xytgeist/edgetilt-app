@@ -274,11 +274,16 @@ export default function PokerStableCommitSyncPanel({
   const heroLabel = showPlayerSettleCredit
     ? 'Credit to personal bankroll'
     : 'Credit to personal backing bankroll'
-  const backerPlWord = heroCredit >= 0 ? 'Profit' : 'Loss'
-  const backerPlWordLower = heroCredit >= 0 ? 'profit' : 'loss'
-  const backerSettleFootnote = settleDetail.reductionRows.length
-    ? `${backerPlWord} posts to Realized P/L. Stake reduction and ${backerPlWordLower} credited to personal backing bankroll.`
-    : `${backerPlWord} posts to Realized P/L and is credited to personal backing bankroll.`
+  const plWord = heroCredit >= 0 ? 'Profit' : 'Loss'
+  const plWordLower = heroCredit >= 0 ? 'profit' : 'loss'
+  const hasReduction = settleDetail.reductionRows.length > 0
+  const settleFootnote = showPlayerSettleCredit
+    ? hasReduction
+      ? `${plWord} credited to personal bankroll. Stake reduction returns capital to backers.`
+      : `${plWord} credited to personal bankroll.`
+    : hasReduction
+      ? `${plWord} posts to Realized P/L. Stake reduction and ${plWordLower} credited to personal backing bankroll.`
+      : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
 
   return (
     <div data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined} className={inlineShell}>
@@ -347,9 +352,13 @@ export default function PokerStableCommitSyncPanel({
                 ))}
               </div>
             ) : null}
-            {showBackerSettleCredit ? (
-              <p className="mt-2.5 text-xs font-medium leading-relaxed text-emerald-100/70">
-                {backerSettleFootnote}
+            {showSettleCredit ? (
+              <p
+                className={`mt-2.5 text-xs font-medium leading-relaxed ${
+                  showBackerSettleCredit ? 'text-emerald-100/70' : 'text-emerald-200/75'
+                }`}
+              >
+                {settleFootnote}
               </p>
             ) : null}
           </div>

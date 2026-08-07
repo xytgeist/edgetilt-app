@@ -269,7 +269,7 @@ export default function PokerStableHorseCarousel({
                       <div>
                         <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
                         <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
-                          {stats.sessions} · {fmtPoker$(stats.profit)}
+                          {stats.sessions} | {fmtPoker$(stats.profit)}
                         </div>
                       </div>
                     </div>

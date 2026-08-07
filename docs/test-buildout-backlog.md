@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-07: **Closed stakes Realized backing:** underwater makeup × action % included so losers show negative (not $0 / profit-settle-only).
 - 2026-08-07: **Stable session-complete while already open:** backer on Stable Manager tapping session-logged Alert/push silent-reloads horse cards; URLs include `stableDeal` for focus (no auto Overview). Redeploy **`lounge-send-activity-push`** on test/prod when promoting.
 - 2026-08-07: **Stable portfolio card → detail sheet:** page Overview/Trend/Locations tabs removed; horses stay on main Stable. Tap portfolio hero opens sheet with pill tabs (Overview = metrics + Add/Remove bankroll, Trend, Locations). Pencil removed.
 - 2026-08-07: **Stable horse card highlight permanence:** tone from deal **created_at** order among the backer's deals (incl. archived/hidden), not carousel/`updated_at` index ... creating a new horse no longer recolors existing cards.

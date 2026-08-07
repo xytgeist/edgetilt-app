@@ -92,6 +92,7 @@ export function viewerBackingSlice(slices = [], viewerUserId) {
 
 /**
  * Backer backing-bankroll credit from one settlement row (matches settle RPC slice loop).
+ * Cash settle only ... does not include underwater makeup (floored profit → $0 credit).
  * @param {object} st
  * @param {object} deal
  * @param {object} slice
@@ -115,7 +116,25 @@ export function settlementBackerCredit(st, deal, slice, line = null) {
 }
 
 /**
- * Per-settlement backing credits for one backer's slice + running total (oldest first).
+ * Archive / closed-stakes Realized backing for one settle: cash credit plus action-weighted
+ * makeup loss so overall losers display negative (not $0 / prior profit-only).
+ * @param {object} st
+ * @param {object} deal
+ * @param {object} slice
+ * @param {object} [line]
+ */
+export function settlementBackerArchiveResult(st, deal, slice, line = null) {
+  const cash = settlementBackerCredit(st, deal, slice, line)
+  if (!st || !slice) return cash
+  const makeup = Number(st.makeup_at_settle) || 0
+  if (makeup <= 0.005) return cash
+  const actionFraction = (Number(slice.action_pct) || 0) / 100
+  return roundMoney(cash - makeup * actionFraction)
+}
+
+/**
+ * Per-settlement backing result for one backer's slice + running total (oldest first).
+ * Includes underwater makeup on each settle for closed-stakes Realized backing display.
  * @param {object} args
  * @param {object} args.deal
  * @param {object[]} [args.slices]
@@ -142,7 +161,7 @@ export function archivedStakeBackerEconomicsBreakdown({
   for (const st of ordered) {
     const lines = settlementLinesBySettlement[st.id] || []
     const line = lines.find((row) => row.slice_id === slice.id) || null
-    const credit = settlementBackerCredit(st, deal, slice, line)
+    const credit = settlementBackerArchiveResult(st, deal, slice, line)
     const isClose = isCloseSettlement(st, deal, settlements)
     items.push({
       id: st.id,

@@ -191,8 +191,8 @@ export default function PokerStakeArchiveDetailModal({
                 {backerSettleCount === 0
                   ? 'No settle events recorded for this stake.'
                   : realizedBackingNeutral
-                    ? `${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} · no net credit to your backing bankroll.`
-                    : `Sum of ${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} credited to Stable backing bankroll.`}
+                    ? `${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} · no net result for your slice.`
+                    : `Sum of ${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} (profit credits minus your share of underwater makeup).`}
               </p>
               {backerSettleCount > 0 ? (
                 <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">

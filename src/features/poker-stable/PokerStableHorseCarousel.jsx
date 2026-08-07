@@ -20,7 +20,10 @@ import {
   stakeDealIsLiveForStakee,
   stakeHorseCardStatusLabel,
 } from './pokerStableTerms.js'
-import { stableHorseCardTone, stableHorseCardToneAttr } from './pokerStableHorseTone.js'
+import {
+  stableHorseCardToneAttrForDeal,
+  stableHorseCardToneForDeal,
+} from './pokerStableHorseTone.js'
 
 /**
  * Peek carousel of active horse stake cards (backer view).
@@ -28,6 +31,8 @@ import { stableHorseCardTone, stableHorseCardToneAttr } from './pokerStableHorse
 export default function PokerStableHorseCarousel({
   deals = [],
   labelDeals = [],
+  /** All backer deals (incl. archived/hidden) for lifetime highlight color. */
+  toneDeals = [],
   slicesByDeal = {},
   bankrollByDeal = {},
   statsByDeal = {},
@@ -69,6 +74,7 @@ export default function PokerStableHorseCarousel({
   if (!deals.length) return null
 
   const labelScope = labelDeals.length ? labelDeals : deals
+  const toneScope = toneDeals.length ? toneDeals : labelScope
 
   return (
     <PokerBankrollHeroCarousel
@@ -78,7 +84,7 @@ export default function PokerStableHorseCarousel({
         setActiveId(id)
         onFocusDealIdChange?.(id)
       }}
-      renderSlide={(slide, slideIndex) => {
+      renderSlide={(slide) => {
         const dealIndex = deals.findIndex((d) => d.id === slide.id)
         const deal = dealIndex >= 0 ? deals[dealIndex] : null
         if (!deal) return null
@@ -119,9 +125,8 @@ export default function PokerStableHorseCarousel({
           : slice?.status === 'pending'
             ? 'Pending'
             : stakeHorseCardStatusLabel(deal, dealSlices)
-        const toneIndex = dealIndex >= 0 ? dealIndex : Number(slideIndex) || 0
-        const horseTone = stableHorseCardTone(toneIndex)
-        const horseToneAttr = stableHorseCardToneAttr(toneIndex)
+        const horseTone = stableHorseCardToneForDeal(deal.id, toneScope)
+        const horseToneAttr = stableHorseCardToneAttrForDeal(deal.id, toneScope)
         const statusTone = closedUnarchived
           ? 'bg-zinc-700/60 text-zinc-300'
           : slice?.status === 'pending'

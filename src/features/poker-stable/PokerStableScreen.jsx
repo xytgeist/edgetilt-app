@@ -27,6 +27,7 @@ import {
   enrichBankrollByDealFromSessions,
   partitionBackerDeals,
 } from './pokerStableBackerMath.js'
+import { stableHorseToneScopeDeals } from './pokerStableHorseTone.js'
 import {
   archivedStakeBackerEconomicsBreakdown,
   archivedStakeBackerSessionShareTotal,
@@ -431,6 +432,12 @@ export default function PokerStableScreen({
     [activeDeals, historyDeals],
   )
 
+  /** Include archived/hidden so horse highlight colors never reshuffle. */
+  const horseToneDeals = useMemo(
+    () => stableHorseToneScopeDeals(deals, slicesByDeal, userId),
+    [deals, slicesByDeal, userId],
+  )
+
   const bankrollByDealWithSessions = useMemo(
     () => enrichBankrollByDealFromSessions(deals, bankrollByDeal, stableSessions),
     [deals, bankrollByDeal, stableSessions],
@@ -800,6 +807,7 @@ export default function PokerStableScreen({
             <PokerStableHorseCarousel
               deals={activeDeals}
               labelDeals={horseDeals}
+              toneDeals={horseToneDeals}
               slicesByDeal={slicesByDeal}
               bankrollByDeal={bankrollByDealWithSessions}
               statsByDeal={statsByDeal}

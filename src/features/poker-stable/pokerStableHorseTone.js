@@ -1,6 +1,10 @@
 /**
  * Horse stake card highlights … regular distinct hues (blue / green / orange / red / violet / amber).
  * Dark: tinted border/wash. Light: white card + left accent bar (index.css).
+ *
+ * Tone is pinned for the life of a deal: index = creation order among the backer's deals
+ * (including archived/hidden), not carousel display order. Creating or reordering horses
+ * must not recolor existing cards.
  */
 
 export const STABLE_HORSE_TONE_COUNT = 6
@@ -61,8 +65,7 @@ export const STABLE_HORSE_TONES = [
 ]
 
 /**
- * Tone from carousel order so neighboring horses never share a hue.
- * @param {number} dealIndex index in the active horse list
+ * @param {number} dealIndex
  */
 export function stableHorseCardToneIndex(dealIndex) {
   const idx = Number(dealIndex)
@@ -70,12 +73,57 @@ export function stableHorseCardToneIndex(dealIndex) {
   return idx % STABLE_HORSE_TONE_COUNT
 }
 
+/**
+ * Lifetime tone index for a deal: oldest backer deal = 0, next created = 1, …
+ * @param {string | null | undefined} dealId
+ * @param {Array<{ id?: string, created_at?: string | null }>} toneDeals all deals that should reserve a hue slot (include archived/hidden)
+ */
+export function stableHorseCardToneIndexForDeal(dealId, toneDeals = []) {
+  const id = String(dealId || '').trim()
+  if (!id) return 0
+  const sorted = [...(toneDeals || [])].sort((a, b) => {
+    const ta = new Date(a?.created_at || 0).getTime()
+    const tb = new Date(b?.created_at || 0).getTime()
+    if (ta !== tb) return ta - tb
+    return String(a?.id || '').localeCompare(String(b?.id || ''))
+  })
+  const idx = sorted.findIndex((d) => d?.id === id)
+  return stableHorseCardToneIndex(idx >= 0 ? idx : 0)
+}
+
 /** @param {number} dealIndex */
 export function stableHorseCardTone(dealIndex) {
   return STABLE_HORSE_TONES[stableHorseCardToneIndex(dealIndex)]
 }
 
+/** @param {string | null | undefined} dealId @param {Array<{ id?: string, created_at?: string | null }>} toneDeals */
+export function stableHorseCardToneForDeal(dealId, toneDeals = []) {
+  return STABLE_HORSE_TONES[stableHorseCardToneIndexForDeal(dealId, toneDeals)]
+}
+
 /** @param {number} dealIndex */
 export function stableHorseCardToneAttr(dealIndex) {
   return String(stableHorseCardToneIndex(dealIndex))
+}
+
+/** @param {string | null | undefined} dealId @param {Array<{ id?: string, created_at?: string | null }>} toneDeals */
+export function stableHorseCardToneAttrForDeal(dealId, toneDeals = []) {
+  return String(stableHorseCardToneIndexForDeal(dealId, toneDeals))
+}
+
+/**
+ * Deals that reserve a horse highlight slot for this backer (includes archived/hidden).
+ * @param {object[]} deals
+ * @param {Record<string, object[]>} slicesByDeal
+ * @param {string | null | undefined} userId
+ */
+export function stableHorseToneScopeDeals(deals = [], slicesByDeal = {}, userId) {
+  const uid = String(userId || '').trim()
+  if (!uid) return []
+  return (deals || []).filter((deal) => {
+    if (!deal?.id) return false
+    if (deal.staker_user_id === uid) return true
+    const slices = slicesByDeal[deal.id] || []
+    return slices.some((s) => s?.staker_user_id === uid)
+  })
 }

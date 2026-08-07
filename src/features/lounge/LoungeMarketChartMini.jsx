@@ -71,6 +71,7 @@ export default function LoungeMarketChartMini({
 }) {
   const cardRef = useRef(null)
   const nameProbeRef = useRef(null)
+  const compactNameRef = useRef(null)
   const hostRef = useRef(null)
   const chartRef = useRef(null)
   const tapRef = useRef(/** @type {{ x: number, y: number, pointerId: number } | null} */ (null))
@@ -104,22 +105,46 @@ export default function LoungeMarketChartMini({
     const probe = nameProbeRef.current
     if (!card || !probe) return undefined
 
+    const contentBoxWidth = () => {
+      const cs = getComputedStyle(card)
+      const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+      // max-w-[38%] is % of the content box; clientWidth includes padding and was too generous
+      // (medium-long names like "UWM Holdings Corp" looked like they fit → stuck compact).
+      return Math.max(0, card.clientWidth - padX)
+    }
+
     const check = () => {
-      const cardWidth = card.clientWidth
-      if (cardWidth < 32) {
+      const innerW = contentBoxWidth()
+      if (innerW < 32) {
         setWideName(false)
         return
       }
-      const budget = Math.floor(cardWidth * 0.38)
+      const budget = Math.floor(innerW * 0.38)
       probe.style.width = `${budget}px`
-      const overflows = probe.scrollWidth > probe.clientWidth + 1
+      let overflows = probe.scrollWidth > probe.clientWidth + 1
+      // Ground truth while compact: if the real name node is ellipsizing, go wide.
+      const compactName = compactNameRef.current
+      if (compactName && compactName.scrollWidth > compactName.clientWidth + 1) {
+        overflows = true
+      }
       setWideName((prev) => (prev === overflows ? prev : overflows))
     }
     check()
     const ro = new ResizeObserver(check)
     ro.observe(card)
-    return () => ro.disconnect()
-  }, [displayName])
+    let cancelled = false
+    const fontsReady =
+      typeof document !== 'undefined' && document.fonts?.ready
+        ? document.fonts.ready.then(() => {
+            if (!cancelled) check()
+          })
+        : null
+    return () => {
+      cancelled = true
+      ro.disconnect()
+      void fontsReady
+    }
+  }, [displayName, wideName])
 
   useEffect(() => {
     const el = hostRef.current
@@ -339,7 +364,10 @@ export default function LoungeMarketChartMini({
         <>
           <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-0.5 overflow-hidden">
             {tickerRow}
-            <div className={`w-full min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}>
+            <div
+              ref={compactNameRef}
+              className={`w-full min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}
+            >
               {displayName}
             </div>
           </div>

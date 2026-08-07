@@ -198,6 +198,17 @@ export async function addBotXSource(supabaseClient, botUserId, handle) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} sourceId
+ */
+export async function removeBotXSource(supabaseClient, sourceId) {
+  const { data, error } = await supabaseClient.rpc('admin_lounge_bot_remove_x_source', {
+    p_source_id: sourceId,
+  })
+  return { data, error }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {Record<string, unknown>} payload
  */
 export async function createBotAccount(supabaseClient, payload) {

@@ -10,9 +10,8 @@ import PokerStableClosedHorseSheet from './PokerStableClosedHorseSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from './PokerStableDealTermsSheet.jsx'
 import PokerStableHorseCarousel from './PokerStableHorseCarousel.jsx'
-import PokerStableLocationsTab from './PokerStableLocationsTab.jsx'
+import PokerStablePortfolioDetailSheet from './PokerStablePortfolioDetailSheet.jsx'
 import PokerStablePortfolioHero from './PokerStablePortfolioHero.jsx'
-import PokerStableTrendTab from './PokerStableTrendTab.jsx'
 import PokerStableBackerSliceOfferOnboardingModal from './PokerStableBackerSliceOfferOnboardingModal.jsx'
 import {
   clearPokerStableBackerOnboarding,
@@ -69,14 +68,6 @@ import {
   dealLeadBackerDisplayName,
   stakeeSkipsBackerCommitSync,
 } from './pokerStableTerms.js'
-import { STABLE_TAB_ACTIVE } from './pokerStableUi.js'
-
-const STABLE_TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'trend', label: 'Trend' },
-  { id: 'locations', label: 'Locations' },
-]
-
 function statusLabel(status) {
   if (status === 'active') return 'Active'
   if (status === 'pending') return 'Pending'
@@ -126,7 +117,7 @@ export default function PokerStableScreen({
   const [detailDealId, setDetailDealId] = useState(/** @type {string | null} */ (null))
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
   const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
-  const [activeTab, setActiveTab] = useState('overview')
+  const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false)
   const [backerProfile, setBackerProfile] = useState(
     /** @type {{ bankroll_balance: number, realized_backing_pl: number, has_profile: boolean } | null} */ (null),
   )
@@ -746,44 +737,18 @@ export default function PokerStableScreen({
           <>
             <PokerStablePortfolioHero
               metrics={portfolioMetrics}
-              hasProfile={Boolean(backerProfile?.has_profile)}
-              saving={saving}
-              onDeposit={onDepositBackerBankroll}
-              onWithdraw={onWithdrawBackerBankroll}
               pendingCommitCount={pendingPortfolioCommits.length}
+              onOpenDetail={() => setPortfolioDetailOpen(true)}
               onNeedsAttention={() => setAttentionOpen(true)}
               onCreateStake={() => {
                 setError('')
                 setSheet('request')
               }}
             />
-
-            <div
-              data-poker-stable-tabs
-              className="mb-4 flex gap-1 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-1"
-            >
-              {STABLE_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(tab.id)
-                    triggerTapHapticLight()
-                  }}
-                  className={`flex-1 rounded-xl py-2 text-xs font-bold uppercase tracking-wide touch-manipulation ${
-                    activeTab === tab.id
-                      ? STABLE_TAB_ACTIVE
-                      : 'text-zinc-400 active:text-zinc-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
           </>
         ) : null}
 
-        {activeTab === 'overview' ? (
+        {!schemaMissing && userId ? (
           <>
         {counterProposals.length > 0 ? (
           <section className="mb-6">
@@ -972,30 +937,27 @@ export default function PokerStableScreen({
         ) : null}
           </>
         ) : null}
-
-        {activeTab === 'trend' && userId ? (
-          <PokerStableTrendTab
-            horseDeals={horseDeals}
-            sessions={stableSessions}
-            slicesByDeal={slicesByDeal}
-            profilesById={profilesById}
-            userId={userId}
-          />
-        ) : null}
-
-        {activeTab === 'locations' && userId ? (
-          <PokerStableLocationsTab
-            sessions={stableSessions}
-            horseDeals={horseDeals}
-            slicesByDeal={slicesByDeal}
-            profilesById={profilesById}
-            userId={userId}
-            selectedDealId={locationsDealId}
-            onSelectDealId={setLocationsDealId}
-          />
-        ) : null}
         </div>
       </ScrollLinkedEdgeTitleBarShell>
+
+      {portfolioDetailOpen ? (
+        <PokerStablePortfolioDetailSheet
+          open={portfolioDetailOpen}
+          onClose={() => setPortfolioDetailOpen(false)}
+          metrics={portfolioMetrics}
+          hasProfile={Boolean(backerProfile?.has_profile)}
+          saving={saving}
+          onDeposit={onDepositBackerBankroll}
+          onWithdraw={onWithdrawBackerBankroll}
+          horseDeals={horseDeals}
+          sessions={stableSessions}
+          slicesByDeal={slicesByDeal}
+          profilesById={profilesById}
+          userId={userId}
+          locationsDealId={locationsDealId}
+          onSelectLocationsDealId={setLocationsDealId}
+        />
+      ) : null}
 
       {sheet === 'request' && supabaseClient && userId ? (
         <PokerStableBackerDealSheet

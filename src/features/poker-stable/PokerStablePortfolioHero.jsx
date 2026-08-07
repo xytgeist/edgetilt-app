@@ -67,7 +67,7 @@ export default function PokerStablePortfolioHero({
       aria-label="Open backing portfolio details"
     >
       <ChevronRight
-        className="pointer-events-none absolute right-4 top-4 h-4 w-4 text-zinc-600"
+        className="pointer-events-none absolute right-3 top-1/2 h-6 w-6 -translate-y-1/2 text-zinc-500"
         strokeWidth={2.25}
         aria-hidden
       />

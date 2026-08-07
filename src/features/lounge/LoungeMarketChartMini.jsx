@@ -46,12 +46,15 @@ const MINI_SPARKLINE_MIN_PX = 48
 const MINI_SPARKLINE_HEIGHT_PX = 40
 /** Wide-name mode: spark shares the ticker row only so the name band stays put. */
 const MINI_SPARKLINE_HEIGHT_WIDE_PX = 22
+/** Historical date under spark … shorter chart so date fits inside the column. */
+const MINI_SPARKLINE_HEIGHT_WITH_RANGE_PX = 28
 const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
-const MINI_CARD_CLASS_WITH_RANGE = 'h-[4.75rem] min-h-[4.75rem]'
+/** Slightly taller bounds when the date line is present (still denser padding). */
+const MINI_CARD_CLASS_WITH_RANGE = 'h-[5rem] min-h-[5rem]'
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
 /** Historical only … centered under the spark (hidden for default today / rolling). */
 const MINI_RANGE_CLASS =
-  'w-full min-w-0 truncate text-center text-[10px] font-medium leading-tight text-zinc-500'
+  'w-full min-w-0 truncate text-center text-[8px] font-medium leading-none tracking-wide text-zinc-500'
 /** Off-screen probe sized in px to the compact name budget (38% of card). */
 const MINI_COMPACT_NAME_PROBE_CLASS =
   'pointer-events-none absolute -left-[9999px] top-0 overflow-hidden whitespace-nowrap text-[13px] font-medium'
@@ -105,12 +108,18 @@ export default function LoungeMarketChartMini({
       ? formatMarketEmbedWindowLabel(embed, null)
       : ''
   const showRange = Boolean(rangeLabel)
+  /** Date under spark needs the middle column … keep name truncated in the left stack. */
+  const layoutWide = wideName && !showRange
   const assetClass = embed?.asset_class === 'crypto' ? 'crypto' : 'stock'
   const seriesBars = compareMode
     ? loungeMarketBarsToPercentSeries(bars || [])
     : loungeMarketBarsToSeries(bars || [])
   const sparkStyle = resolveMiniSparklineStyle(bars, quote, { compareMode, assetClass })
-  const sparkHeightPx = wideName ? MINI_SPARKLINE_HEIGHT_WIDE_PX : MINI_SPARKLINE_HEIGHT_PX
+  const sparkHeightPx = showRange
+    ? MINI_SPARKLINE_HEIGHT_WITH_RANGE_PX
+    : layoutWide
+      ? MINI_SPARKLINE_HEIGHT_WIDE_PX
+      : MINI_SPARKLINE_HEIGHT_PX
 
   useLayoutEffect(() => {
     const card = cardRef.current
@@ -257,7 +266,7 @@ export default function LoungeMarketChartMini({
     isLight,
     theme,
     sparkHeightPx,
-    wideName,
+    layoutWide,
   ])
 
   const priceLabel = formatMarketPrice(quote?.price)
@@ -328,7 +337,7 @@ export default function LoungeMarketChartMini({
   )
 
   const sparkColumn = (
-    <div className="flex min-w-12 flex-1 flex-col items-stretch justify-center gap-0.5 self-center">
+    <div className="flex min-w-12 flex-1 flex-col items-stretch justify-center gap-px self-center">
       <div
         ref={hostRef}
         className="pointer-events-none w-full"
@@ -355,10 +364,10 @@ export default function LoungeMarketChartMini({
         e.stopPropagation()
         onOpen?.()
       }}
-      className={`relative flex ${cardHeightClass} min-w-0 shrink-0 snap-start items-center gap-2.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
+      className={`relative flex ${cardHeightClass} min-w-0 shrink-0 snap-start items-center gap-2 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-2 py-0.5 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
       data-lounge-market-chart-mini
       data-asset-class={assetClass}
-      data-wide-name={wideName ? '1' : '0'}
+      data-wide-name={layoutWide ? '1' : '0'}
       data-mini-range={showRange ? '1' : '0'}
       aria-label={`Open ${displaySymbol} chart`}
     >
@@ -368,7 +377,7 @@ export default function LoungeMarketChartMini({
 
       {logo}
 
-      {wideName ? (
+      {layoutWide ? (
         <>
           {/* Middle column grows; spark flex-1 on ticker row; name underneath at compact Y. */}
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden">
@@ -384,7 +393,7 @@ export default function LoungeMarketChartMini({
         </>
       ) : (
         <>
-          <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-0.5 overflow-hidden">
+          <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-px overflow-hidden">
             {tickerRow}
             <div
               ref={compactNameRef}

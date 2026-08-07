@@ -48,6 +48,15 @@ import {
 import { revokeBotComposeImagePreviews } from './botComposeImages.js'
 import { SCOTT_EXAMPLE_POST_COUNT } from './scottExamplePosts.js'
 import { prepareLoungeFeedImageForUpload } from '../../utils/compressImageForUpload'
+import LoungeMarketSymbolPickerSheet from '../lounge/LoungeMarketSymbolPickerSheet.jsx'
+import LoungeComposerMarketSymbolPills from '../lounge/LoungeComposerMarketSymbolPills.jsx'
+import {
+  fetchComposerMarketEmbed,
+  hydrateComposerMarketSymbolEmbeds,
+  composerMarketRowEmbed,
+} from '../lounge/loungeComposerMarketEmbed.js'
+import { LoungeComposerMediaChartIcon } from '../lounge/LoungeComposerMediaToolbar.jsx'
+import { LOUNGE_MARKET_EMBED_MAX } from '../../utils/loungeMarketCaptionParse.js'
 import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost'
 import { LOUNGE_CAPTION_MAX, LOUNGE_CAPTION_SUBSCRIBER_MAX } from '../../utils/loungeCommentLimits.js'
 import {
@@ -328,6 +337,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   const [composeCaption, setComposeCaption] = useState('')
   const [composeImageItems, setComposeImageItems] = useState([])
   const [composePills, setComposePills] = useState([])
+  const [composeMarketSymbols, setComposeMarketSymbols] = useState([])
+  const [marketPickerOpen, setMarketPickerOpen] = useState(false)
 
   useEffect(() => {
     if (bot?.pipeline !== 'odds_api') {
@@ -390,17 +401,18 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
   useEffect(() => {
     if (!bot) {
       setDraft(null)
-      setComposeCaption('')
-      setComposePills([])
-      setComposeImageItems((prev) => {
-        revokeBotComposeImagePreviews(prev)
-        return []
-      })
-      setIngestTweetUrl('')
-      setIngestTweetText('')
-      setNewXHandle('')
-      return
-    }
+    setComposeCaption('')
+    setComposePills([])
+    setComposeMarketSymbols([])
+    setComposeImageItems((prev) => {
+      revokeBotComposeImagePreviews(prev)
+      return []
+    })
+    setIngestTweetUrl('')
+    setIngestTweetText('')
+    setNewXHandle('')
+    return
+  }
     const watchlist = Array.isArray(bot.config?.watchlist_tickers)
       ? bot.config.watchlist_tickers.join(', ')
       : ''
@@ -428,6 +440,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
     })
     setComposeCaption('')
     setComposePills(defaultPills)
+    setComposeMarketSymbols([])
     setComposeImageItems((prev) => {
       revokeBotComposeImagePreviews(prev)
       return []
@@ -833,7 +846,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
 
   const handlePublishPost = async () => {
     const caption = composeCaption.trim()
-    if (!caption && composeImageItems.length === 0) return
+    if (!caption && composeImageItems.length === 0 && composeMarketSymbols.length === 0) return
     setBusy('compose-post')
     const imageUrls = []
     for (const item of composeImageItems) {
@@ -855,11 +868,33 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       }
       imageUrls.push(upUrl)
     }
+    /** @type {object[]} */
+    const marketEmbeds = []
+    for (const row of composeMarketSymbols.slice(0, LOUNGE_MARKET_EMBED_MAX)) {
+      const cached = composerMarketRowEmbed(row)
+      if (cached) {
+        marketEmbeds.push(cached)
+        continue
+      }
+      const embed = await fetchComposerMarketEmbed(supabaseClient, row)
+      if (embed) marketEmbeds.push(embed)
+    }
+    if (
+      composeMarketSymbols.length > 0 &&
+      marketEmbeds.length === 0 &&
+      !caption &&
+      imageUrls.length === 0
+    ) {
+      setBusy('')
+      setToast('Could not load ticker chart data. Try again.')
+      return
+    }
     const { error } = await publishBotPost(supabaseClient, {
       botUserId: bot.user_id,
       caption,
       categoryPills: composePills,
       imageUrls,
+      marketEmbeds,
     })
     setBusy('')
     if (error) {
@@ -867,6 +902,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
       return
     }
     setComposeCaption('')
+    setComposeMarketSymbols([])
     setComposeImageItems((prev) => {
       revokeBotComposeImagePreviews(prev)
       return []
@@ -1612,6 +1648,26 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         <div className="text-zinc-500 text-[10px] mt-1 tabular-nums">
           {composeCaption.length}/{LOUNGE_CAPTION_SUBSCRIBER_MAX}
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={busy === 'compose-post'}
+            onClick={() => setMarketPickerOpen(true)}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 text-sky-400 text-xs font-semibold touch-manipulation hover:bg-zinc-800/70 disabled:opacity-50"
+            title="Add market chart"
+          >
+            <LoungeComposerMediaChartIcon className="h-5 w-5" filled />
+            Add ticker
+          </button>
+          <span className="text-zinc-600 text-[10px]">
+            Up to {LOUNGE_MARKET_EMBED_MAX} charts · same picker as Lounge compose
+          </span>
+        </div>
+        <LoungeComposerMarketSymbolPills
+          symbols={composeMarketSymbols}
+          onChange={setComposeMarketSymbols}
+          className="mt-2"
+        />
         <BotComposeImagePicker
           items={composeImageItems}
           disabled={busy === 'compose-post'}
@@ -1645,13 +1701,27 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         <button
           type="button"
           disabled={
-            busy === 'compose-post' || (!composeCaption.trim() && composeImageItems.length === 0)
+            busy === 'compose-post' ||
+            (!composeCaption.trim() &&
+              composeImageItems.length === 0 &&
+              composeMarketSymbols.length === 0)
           }
           onClick={() => void handlePublishPost()}
           className="mt-4 min-h-10 rounded-xl bg-cyan-700 px-5 text-white text-sm font-bold hover:bg-cyan-600 disabled:opacity-50"
         >
           {busy === 'compose-post' ? 'Publishing…' : 'Publish post'}
         </button>
+        <LoungeMarketSymbolPickerSheet
+          open={marketPickerOpen}
+          onClose={() => setMarketPickerOpen(false)}
+          caption={composeCaption}
+          selected={composeMarketSymbols}
+          onChange={(next) => {
+            setComposeMarketSymbols(next)
+            hydrateComposerMarketSymbolEmbeds(supabaseClient, setComposeMarketSymbols, next)
+          }}
+          supabaseClient={supabaseClient}
+        />
       </div>
 
       <BotReplyOnPostPanel

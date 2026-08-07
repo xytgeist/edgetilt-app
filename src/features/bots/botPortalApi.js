@@ -505,17 +505,27 @@ export async function invokeLoungeBotPublishDue(supabaseClient, opts = {}) {
  */
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ botUserId: string, caption: string, categoryPills?: string[], imageUrls?: string[] }} opts
+ * @param {{
+ *   botUserId: string,
+ *   caption: string,
+ *   categoryPills?: string[],
+ *   imageUrls?: string[],
+ *   marketEmbeds?: object[],
+ * }} opts
  */
 export async function publishBotPost(supabaseClient, opts) {
   const imageUrls = Array.isArray(opts.imageUrls)
     ? opts.imageUrls.map((u) => String(u || '').trim()).filter(Boolean).slice(0, 6)
+    : []
+  const marketEmbeds = Array.isArray(opts.marketEmbeds)
+    ? opts.marketEmbeds.filter((row) => row && typeof row === 'object' && String(row.symbol || '').trim()).slice(0, 12)
     : []
   const { data, error } = await supabaseClient.rpc('admin_lounge_bot_publish_post', {
     p_bot_user_id: opts.botUserId,
     p_caption: String(opts.caption || '').trim(),
     p_category_pills: opts.categoryPills?.length ? opts.categoryPills : null,
     p_image_urls: imageUrls.length ? imageUrls : [],
+    p_market_embeds: marketEmbeds.length ? marketEmbeds : [],
   })
   if (error) return { data: null, error }
   return { data, error: null }

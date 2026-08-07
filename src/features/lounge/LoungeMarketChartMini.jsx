@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AreaSeries, LineStyle, createChart } from 'lightweight-charts'
 import {
   formatMarketChangePct,
@@ -22,6 +22,10 @@ import {
  * Feed / composer market mini … Apple-style blend:
  * logo · ticker+arrow / name · sparkline · price / change
  *
+ * Compact (default): name under ticker in the left column.
+ * Wide name: when that name would truncate, sparkline moves up and the name
+ * spans under ticker + spark (still truncates before the price column).
+ *
  * Sparkline: dashed open line (color vs prior close); area color vs open.
  *
  * @param {{
@@ -36,9 +40,11 @@ const MINI_CHART_TAP_MOVE_PX = 12
 const MINI_SPARKLINE_MIN_PX = 48
 const MINI_SPARKLINE_HEIGHT_PX = 40
 const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
-const MINI_SPARKLINE_HOST_CLASS = 'h-[40px] min-w-12 flex-1'
-
+const MINI_SPARKLINE_HOST_CLASS = 'h-[40px] min-w-12'
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
+/** Compact left column = max-w-[38%]; probe uses the same budget. */
+const MINI_COMPACT_NAME_PROBE_CLASS =
+  'pointer-events-none absolute left-0 top-0 w-[38%] overflow-hidden whitespace-nowrap text-[13px] font-medium opacity-0'
 
 /** Absolute $ change when available; else pct. */
 function formatMiniChangeLabel(change, changePct) {
@@ -59,9 +65,12 @@ export default function LoungeMarketChartMini({
   onOpen,
   className = '',
 }) {
+  const cardRef = useRef(null)
+  const nameProbeRef = useRef(null)
   const hostRef = useRef(null)
   const chartRef = useRef(null)
   const tapRef = useRef(/** @type {{ x: number, y: number, pointerId: number } | null} */ (null))
+  const [wideName, setWideName] = useState(false)
 
   const isRolling = embed?.kind === 'rolling'
   const rollingPayload = isRolling ? pickRollingMarketPayload(embed, rollingLive) : null
@@ -84,6 +93,21 @@ export default function LoungeMarketChartMini({
     ? loungeMarketBarsToPercentSeries(bars || [])
     : loungeMarketBarsToSeries(bars || [])
   const sparkStyle = resolveMiniSparklineStyle(bars, quote, { compareMode, assetClass })
+
+  useLayoutEffect(() => {
+    const card = cardRef.current
+    const probe = nameProbeRef.current
+    if (!card || !probe) return undefined
+
+    const check = () => {
+      const overflows = probe.scrollWidth > probe.clientWidth + 1
+      setWideName((prev) => (prev === overflows ? prev : overflows))
+    }
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(card)
+    return () => ro.disconnect()
+  }, [displayName])
 
   useEffect(() => {
     const el = hostRef.current
@@ -174,6 +198,7 @@ export default function LoungeMarketChartMini({
     sparkStyle.toSec,
     isLight,
     theme,
+    wideName,
   ])
 
   const priceLabel = formatMarketPrice(quote?.price)
@@ -204,8 +229,41 @@ export default function LoungeMarketChartMini({
     if (tapRef.current?.pointerId === e.pointerId) tapRef.current = null
   }
 
+  const logo = embed.logo_url ? (
+    <img
+      src={embed.logo_url}
+      alt=""
+      className="h-9 w-9 shrink-0 rounded-full border border-zinc-700/50 object-cover"
+    />
+  ) : (
+    <div
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700/50 bg-zinc-800/90 text-[11px] font-bold text-zinc-300"
+      aria-hidden
+    >
+      {displaySymbol.slice(0, 2)}
+    </div>
+  )
+
+  const tickerRow = (
+    <div className="flex min-w-0 max-w-full items-center gap-1">
+      <span className={`shrink-0 text-[12px] leading-none ${changeTone}`} aria-hidden>
+        {arrow}
+      </span>
+      <span
+        className={`min-w-0 truncate text-[15px] font-bold leading-snug tracking-wide ${theme.priceText}`}
+      >
+        {displaySymbol}
+      </span>
+    </div>
+  )
+
+  const shellClass = wideName
+    ? `relative grid ${MINI_CARD_CLASS} min-w-0 shrink-0 snap-start grid-cols-[auto_minmax(0,max-content)_minmax(3rem,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-2.5 gap-y-0.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent]`
+    : `relative flex ${MINI_CARD_CLASS} min-w-0 shrink-0 snap-start items-center gap-2.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent]`
+
   return (
     <div
+      ref={cardRef}
       role="button"
       tabIndex={0}
       onPointerDown={onCardPointerDown}
@@ -217,56 +275,68 @@ export default function LoungeMarketChartMini({
         e.stopPropagation()
         onOpen?.()
       }}
-      className={`relative flex ${MINI_CARD_CLASS} min-w-0 shrink-0 snap-start items-center gap-2.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 py-1 text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
+      className={`${shellClass} ${MINI_CARD_BORDER_CLASS} ${className}`}
       data-lounge-market-chart-mini
       data-asset-class={assetClass}
+      data-wide-name={wideName ? '1' : '0'}
       aria-label={`Open ${displaySymbol} chart`}
     >
-      {embed.logo_url ? (
-        <img
-          src={embed.logo_url}
-          alt=""
-          className="h-9 w-9 shrink-0 rounded-full border border-zinc-700/50 object-cover"
-        />
-      ) : (
-        <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700/50 bg-zinc-800/90 text-[11px] font-bold text-zinc-300"
-          aria-hidden
-        >
-          {displaySymbol.slice(0, 2)}
-        </div>
-      )}
+      {/* Compact-column probe: wide layout only when this name would truncate at 38%. */}
+      <span ref={nameProbeRef} className={MINI_COMPACT_NAME_PROBE_CLASS} aria-hidden>
+        {displayName}
+      </span>
 
-      <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-0.5 overflow-hidden">
-        <div className="flex min-w-0 max-w-full items-center gap-1">
-          <span className={`shrink-0 text-[12px] leading-none ${changeTone}`} aria-hidden>
-            {arrow}
-          </span>
-          <span
-            className={`min-w-0 truncate text-[15px] font-bold leading-snug tracking-wide ${theme.priceText}`}
+      {wideName ? (
+        <>
+          <div className="col-start-1 row-span-2 self-center">{logo}</div>
+          <div className="col-start-2 row-start-1 min-w-0 self-center">{tickerRow}</div>
+          <div
+            ref={hostRef}
+            key="spark-wide"
+            className={`pointer-events-none col-start-3 row-start-1 ${MINI_SPARKLINE_HOST_CLASS} w-full min-w-0 self-center`}
+            aria-hidden
+          />
+          <div
+            className={`col-start-4 row-start-1 self-center whitespace-nowrap pl-0.5 text-right text-[15px] font-bold tabular-nums leading-snug ${theme.priceText}`}
           >
-            {displaySymbol}
-          </span>
-        </div>
-        <div className={`w-full min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}>
-          {displayName}
-        </div>
-      </div>
-
-      <div
-        ref={hostRef}
-        className={`pointer-events-none ${MINI_SPARKLINE_HOST_CLASS} self-center`}
-        aria-hidden
-      />
-
-      <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 pl-0.5 text-right">
-        <div className={`whitespace-nowrap text-[15px] font-bold tabular-nums leading-snug ${theme.priceText}`}>
-          {priceLabel}
-        </div>
-        <div className={`whitespace-nowrap text-[13px] font-semibold tabular-nums leading-snug ${changeTone}`}>
-          {changeLabel}
-        </div>
-      </div>
+            {priceLabel}
+          </div>
+          <div
+            className={`col-start-2 col-span-2 row-start-2 min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}
+          >
+            {displayName}
+          </div>
+          <div
+            className={`col-start-4 row-start-2 self-center whitespace-nowrap pl-0.5 text-right text-[13px] font-semibold tabular-nums leading-snug ${changeTone}`}
+          >
+            {changeLabel}
+          </div>
+        </>
+      ) : (
+        <>
+          {logo}
+          <div className="flex min-w-0 max-w-[38%] shrink-0 flex-col items-start justify-center gap-0.5 overflow-hidden">
+            {tickerRow}
+            <div className={`w-full min-w-0 truncate text-[13px] font-medium leading-snug ${theme.mutedText}`}>
+              {displayName}
+            </div>
+          </div>
+          <div
+            ref={hostRef}
+            key="spark-compact"
+            className={`pointer-events-none ${MINI_SPARKLINE_HOST_CLASS} flex-1 self-center`}
+            aria-hidden
+          />
+          <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 pl-0.5 text-right">
+            <div className={`whitespace-nowrap text-[15px] font-bold tabular-nums leading-snug ${theme.priceText}`}>
+              {priceLabel}
+            </div>
+            <div className={`whitespace-nowrap text-[13px] font-semibold tabular-nums leading-snug ${changeTone}`}>
+              {changeLabel}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

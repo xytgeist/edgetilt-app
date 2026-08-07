@@ -5013,17 +5013,30 @@ html.light [data-poker-stake-offer-onboarding] .bg-zinc-800\/80 {
   background-color: #f4f4f5 !important;
   border-color: #d4d4d8 !important;
 }
-html.light [data-poker-stake-offer-onboarding] .bg-zinc-800.text-cyan-200 {
-  background-color: #eff6ff !important;
-  border: 1px solid #93c5fd !important;
-  color: #1d4ed8 !important;
-}
 html.light [data-poker-stake-offer-onboarding] .bg-zinc-700 {
   background-color: #e4e4e7 !important;
   color: #27272a !important;
 }
 html.light [data-poker-stake-offer-onboarding] .border-zinc-600 {
   border-color: #d4d4d8 !important;
+}
+/* CTA row … keep Accept ink light; bottom counter/terms = black + light font */
+html.light [data-poker-stake-offer-onboarding] [data-poker-stake-offer-accept] {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stake-offer-onboarding] [data-poker-stake-offer-accept]:active {
+  background-color: #047857 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stake-offer-onboarding] [data-poker-stake-offer-counter] {
+  background-color: #18181b !important;
+  border-color: #18181b !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stake-offer-onboarding] [data-poker-stake-offer-counter]:active {
+  background-color: #27272a !important;
+  color: #ffffff !important;
 }
 
 html.light [data-poker-stakee-closed-sheet] {

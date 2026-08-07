@@ -52,7 +52,7 @@ const MINI_CARD_CLASS = 'h-[4.25rem] min-h-[4.25rem]'
 const MINI_CARD_BORDER_CLASS = 'border-zinc-700/55'
 /** Historical only ... painted in top padding, out of flow. */
 const MINI_RANGE_OVERLAY_CLASS =
-  'pointer-events-none absolute left-3 right-3 top-0.5 z-[1] truncate text-left text-[8px] font-medium leading-none tracking-wide text-zinc-500'
+  'pointer-events-none absolute left-3 right-3 top-0.5 z-[1] truncate text-center text-[8px] font-medium leading-none tracking-wide text-zinc-500'
 /** Off-screen probe sized in px to the compact name budget (38% of card). */
 const MINI_COMPACT_NAME_PROBE_CLASS =
   'pointer-events-none absolute -left-[9999px] top-0 overflow-hidden whitespace-nowrap text-[13px] font-medium'

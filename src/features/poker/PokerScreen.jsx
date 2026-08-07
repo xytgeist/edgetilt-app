@@ -7,7 +7,7 @@ const POKER_TOOLS = [
     label: 'Bankroll Manager',
     Icon: Spade,
     color: '#6ee7b7',
-    description: 'Cash & tourneys sessions tracker',
+    description: 'Cash & tourneys · swaps and stakes',
   },
   {
     id: 'poker-stable',

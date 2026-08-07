@@ -43,8 +43,11 @@ function normalizeSynopsisLead(synopsis: string): string {
   if (!s) return ''
   // Orphan continuation after headline overlap (model/RSS often returns ", restricting …").
   s = s.replace(/^[,;:\-–—]\s+/, '')
-  // Orphan TLD tail when a domain was stripped from the excerpt (cointelegraph.com → com).
-  s = s.replace(/^(com|org|net|io|co|uk|edu|gov|info|xyz|app)\b\s+/i, '')
+  // Orphan TLD tail when a domain was split/stripped (Crypto.com → "com," / ".com …").
+  s = s.replace(
+    /^\.?(com|org|net|io|co|uk|edu|gov|info|xyz|app|ai|gg|fm|tv|me|so|dev|news|media|finance)\b[,;:]?\s*/i,
+    '',
+  )
   if (!s) return ''
   if (/^[a-z]/.test(s)) {
     s = s.charAt(0).toUpperCase() + s.slice(1)

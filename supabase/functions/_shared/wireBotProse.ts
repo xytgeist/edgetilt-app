@@ -5,27 +5,44 @@
 
 const PROSE_BREAK = ' ... '
 
-/** Private-use placeholder — mask decimal points before sentence splitting on `.` */
+/** Private-use placeholders — mask dots that are not sentence terminators. */
 const WIRE_DECIMAL_DOT = '\uE000'
+const WIRE_DOMAIN_DOT = '\uE001'
+
+/** Common public suffixes for brand / publisher domains in wire copy. */
+const WIRE_BARE_DOMAIN_TLD =
+  'com|org|net|io|co|uk|edu|gov|info|xyz|app|ai|gg|fm|tv|me|so|dev|news|media|finance'
+
+const WIRE_BARE_DOMAIN_RE = new RegExp(
+  `\\b[a-z0-9][a-z0-9-]*(?:\\.[a-z0-9-]+)*\\.(?:${WIRE_BARE_DOMAIN_TLD})\\b`,
+  'gi',
+)
 
 function maskDecimalPoints(text: string): string {
   return String(text || '').replace(/(\d)\.(\d)/g, `$1${WIRE_DECIMAL_DOT}$2`)
 }
 
-function unmaskDecimalPoints(text: string): string {
-  return String(text || '').replaceAll(WIRE_DECIMAL_DOT, '.')
+/** Keep Crypto.com / cointelegraph.com intact when splitting on `.` */
+function maskBareDomainDots(text: string): string {
+  return String(text || '').replace(WIRE_BARE_DOMAIN_RE, (match) => match.replace(/\./g, WIRE_DOMAIN_DOT))
 }
 
-/** Split wire prose into sentences without breaking decimals (49.8, 52.2 vs 50.5). */
+function unmaskSentenceSplitDots(text: string): string {
+  return String(text || '')
+    .replaceAll(WIRE_DECIMAL_DOT, '.')
+    .replaceAll(WIRE_DOMAIN_DOT, '.')
+}
+
+/** Split wire prose into sentences without breaking decimals or bare domains. */
 export function splitWireSentences(text: string): string[] {
   const raw = String(text || '').trim()
   if (!raw) return []
 
-  const masked = maskDecimalPoints(raw)
+  const masked = maskBareDomainDots(maskDecimalPoints(raw))
   const parts = masked.match(/[^.!?]+[.!?]+(?:\s|$)/g)
-  if (!parts?.length) return [unmaskDecimalPoints(raw)]
+  if (!parts?.length) return [unmaskSentenceSplitDots(raw)]
 
-  return parts.map((part) => unmaskDecimalPoints(part).trim()).filter(Boolean)
+  return parts.map((part) => unmaskSentenceSplitDots(part).trim()).filter(Boolean)
 }
 
 function sanitizeWireProseLine(text: string): string {

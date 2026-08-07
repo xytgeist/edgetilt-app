@@ -143,13 +143,11 @@ export default function PokerStablePeriodicSettleSheet({
     playerName,
     profilesById,
   })
-  const resetClause = `Stake roll resets to ${fmtPoker$(baseline)}${
+  const resetBullet = `Stake roll resets to ${fmtPoker$(baseline)}${
     reduceStake && reductionAmount > 0
       ? `, then reduces to ${fmtPoker$(baselineAfterReduction)}`
       : ''
-  } and the stake stays open for more sessions.`
-  const settleDetailLine =
-    payPhrases.length > 0 ? `${payPhrases.join('. ')}. ${resetClause}` : resetClause
+  } and the stake remains open`
 
   return (
     <div
@@ -218,12 +216,15 @@ export default function PokerStablePeriodicSettleSheet({
             {heroCredit >= 0 ? '+' : ''}
             {fmtPoker$(heroCredit)}
           </div>
-          <p
-            className="mt-2 text-xs leading-relaxed text-zinc-500"
+          <ul
+            className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-zinc-500"
             data-poker-stable-periodic-settle-pay-line
           >
-            {settleDetailLine}
-          </p>
+            {payPhrases.map((phrase) => (
+              <li key={phrase}>{phrase}</li>
+            ))}
+            <li>{resetBullet}</li>
+          </ul>
         </div>
 
         <div className="mb-4 rounded-2xl border border-zinc-700/80 bg-zinc-900/40 p-3">

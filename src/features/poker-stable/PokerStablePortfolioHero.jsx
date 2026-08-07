@@ -76,7 +76,7 @@ export default function PokerStablePortfolioHero({
         <path
           d="M7 4 L17 20 L7 36"
           stroke="currentColor"
-          strokeWidth="2.25"
+          strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

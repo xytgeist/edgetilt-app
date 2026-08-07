@@ -268,8 +268,14 @@ export default function PokerStableHorseCarousel({
                       </div>
                       <div>
                         <div className="text-[10px] font-bold uppercase text-zinc-500">Sessions</div>
-                        <div className={`mt-0.5 text-sm font-bold tabular-nums ${profitTone}`}>
-                          {stats.sessions} | {fmtPoker$(stats.profit)}
+                        <div className="mt-0.5 flex items-center text-sm font-bold tabular-nums">
+                          <span className={profitTone}>{stats.sessions}</span>
+                          <span
+                            data-poker-stable-sessions-sep
+                            className="mx-1.5 h-3 w-px shrink-0 self-center bg-zinc-600"
+                            aria-hidden
+                          />
+                          <span className={profitTone}>{fmtPoker$(stats.profit)}</span>
                         </div>
                       </div>
                     </div>

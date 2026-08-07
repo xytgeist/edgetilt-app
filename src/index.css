@@ -6325,6 +6325,9 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] .text-zinc-400,
 html.light [data-poker-stable] [data-poker-stable-horse-card] .text-zinc-500 {
   color: #52525b !important;
 }
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-sessions-sep] {
+  background-color: #d4d4d8 !important;
+}
 /* 0 blue */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='0'] {
   --horse-tone-accent: #2563eb;

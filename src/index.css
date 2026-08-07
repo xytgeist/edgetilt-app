@@ -6245,6 +6245,22 @@ html.light [data-poker-stable-portfolio-detail] {
 html.light [data-poker-stable-portfolio-detail] .text-white {
   color: #18181b !important;
 }
+/* Cyan pills / Apply keep light text … beats the .text-white → black remap above. */
+html.light [data-poker-stable-portfolio-detail] .bg-cyan-600,
+html.light [data-poker-stable-portfolio-detail] .bg-cyan-600\/90,
+html.light [data-poker-stable-portfolio-detail] [data-poker-stable-primary-btn] {
+  background-color: var(--poker-stable-chrome) !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-portfolio-detail] .bg-cyan-600:active,
+html.light [data-poker-stable-portfolio-detail] [data-poker-stable-primary-btn]:active,
+html.light [data-poker-stable-portfolio-detail] .active\:bg-cyan-500:active {
+  background-color: var(--poker-stable-chrome-press) !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stable-portfolio-detail] [data-poker-stable-primary-btn]:disabled {
+  color: #ffffff !important;
+}
 html.light [data-poker-stable-portfolio-detail-tabs] {
   background-color: #fafafa !important;
   border-color: #e4e4e7 !important;

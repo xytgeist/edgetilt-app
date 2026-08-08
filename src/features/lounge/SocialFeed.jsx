@@ -788,9 +788,12 @@ export default function SocialFeed({
   const [klipyPickerOpen, setKlipyPickerOpen] = useState(false)
   const [klipyPickerTarget, setKlipyPickerTarget] = useState('composer')
   const [marketPickerOpen, setMarketPickerOpen] = useState(false)
-  const [marketPickerTarget, setMarketPickerTarget] = useState(/** @type {'composer' | 'detailEdit'} */ ('composer'))
+  const [marketPickerTarget, setMarketPickerTarget] = useState(
+    /** @type {'composer' | 'detailEdit' | 'quote'} */ ('composer'),
+  )
   const [composerMarketSymbols, setComposerMarketSymbols] = useState([])
   const [loungeDetailEditMarketSymbols, setLoungeDetailEditMarketSymbols] = useState([])
+  const [quoteRepostMarketSymbols, setQuoteRepostMarketSymbols] = useState([])
   const [marketChartModal, setMarketChartModal] = useState({
     open: false,
     embeds: [],
@@ -1637,6 +1640,24 @@ export default function SocialFeed({
     [supabaseClient],
   )
 
+  const appendQuoteRepostMarketSymbol = useCallback(
+    (row) => {
+      const tag = String(row?.display_symbol || row?.symbol || '').trim().toUpperCase()
+      if (!tag || !row?.symbol) return
+      const key = marketSymbolDedupeKey(row)
+      setQuoteRepostMarketSymbols((prev) =>
+        mergeComposerMarketSymbolForCashtag(prev, tag, row, LOUNGE_MARKET_EMBED_MAX),
+      )
+      void fetchComposerMarketEmbed(supabaseClient, row).then((embed) => {
+        if (!embed) return
+        setQuoteRepostMarketSymbols((prev) =>
+          prev.map((s) => (marketSymbolDedupeKey(s) === key ? { ...s, composerEmbed: embed } : s)),
+        )
+      })
+    },
+    [supabaseClient],
+  )
+
   const mentionComposer = useMentionState(postText, supabaseClient, !loungeReadOnly)
   const mentionDetailComment = useMentionState(loungeDetailCommentDraft, supabaseClient, !loungeReadOnly)
   const mentionQuoteRepost = useMentionState(quoteRepostDraft, supabaseClient, !loungeReadOnly)
@@ -1653,6 +1674,12 @@ export default function SocialFeed({
     Boolean(loungeDetailEditing && !loungeReadOnly),
     appendDetailEditMarketSymbol,
   )
+  const cashtagQuoteRepost = useCashtagState(
+    quoteRepostDraft,
+    supabaseClient,
+    Boolean(quoteRepostModal?.mode === 'compose' && !loungeReadOnly),
+    appendQuoteRepostMarketSymbol,
+  )
 
   const composerCashtagStyleContext = useComposerCashtagStyleContext(
     supabaseClient,
@@ -1665,6 +1692,12 @@ export default function SocialFeed({
     loungeDetailDraftCaption,
     loungeDetailEditMarketSymbols,
     Boolean(loungeDetailEditing && !loungeReadOnly),
+  )
+  const quoteRepostCashtagStyleContext = useComposerCashtagStyleContext(
+    supabaseClient,
+    quoteRepostDraft,
+    quoteRepostMarketSymbols,
+    Boolean(quoteRepostModal?.mode === 'compose' && !loungeReadOnly),
   )
 
   const chatDockIsStaff = Boolean(isStaff || loungeViewerIsStaff)
@@ -6063,6 +6096,7 @@ export default function SocialFeed({
       }
       clearQuoteRepostMedia()
       setQuoteRepostDraft('')
+      setQuoteRepostMarketSymbols([])
       setQuoteRepostErr('')
       setQuoteRepostCategoryPills(resolveQuoteRepostInitialCategoryPills(post))
       setQuoteRepostModal({ mode: 'compose', original: post, originalKind: 'post' })
@@ -6085,6 +6119,7 @@ export default function SocialFeed({
       }
       clearQuoteRepostMedia()
       setQuoteRepostDraft('')
+      setQuoteRepostMarketSymbols([])
       setQuoteRepostErr('')
       setQuoteRepostCategoryPills(feedPostCategoryPills(loungePostDetail))
       setQuoteRepostModal({ mode: 'compose', original: comment, originalKind: 'comment' })
@@ -6307,7 +6342,13 @@ export default function SocialFeed({
     if (!modal || modal.mode !== 'compose' || !modal.original?.id) return
     const quoteComment = modal.originalKind === 'comment'
     const originalId = modal.original.id
-    const cap = normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax)
+    const captionSynced = appendMissingMarketCashtagsToCaption(
+      quoteRepostDraft,
+      quoteRepostMarketSymbols,
+      { maxLen: loungeComposerCaptionMax },
+    )
+    if (captionSynced !== quoteRepostDraft) setQuoteRepostDraft(captionSynced)
+    const cap = normalizeFeedCaption(captionSynced, loungeComposerCaptionMax)
     setQuoteRepostErr('')
     const quoteGifCheck = validateAtMostOneGifUrl(quoteRepostMediaUrl)
     if (!quoteGifCheck.ok) {
@@ -6326,9 +6367,12 @@ export default function SocialFeed({
       return
     }
     const hasQuoteMedia =
-      quoteRepostImageItems.length > 0 || String(gifOnlyUrl || '').trim().length > 0 || hasVideo
+      quoteRepostImageItems.length > 0 ||
+      String(gifOnlyUrl || '').trim().length > 0 ||
+      hasVideo ||
+      quoteRepostMarketSymbols.length > 0
     if (!cap && !hasQuoteMedia) {
-      setQuoteRepostErr('Add a comment, image, GIF, or video to repost.')
+      setQuoteRepostErr('Add a comment, chart, image, GIF, or video to repost.')
       return
     }
     if (loungeQuoteRepostVideoPostBlocked) return
@@ -6365,6 +6409,7 @@ export default function SocialFeed({
         setProfileGateErr('')
         setQuoteRepostModal(null)
         setQuoteRepostDraft('')
+        setQuoteRepostMarketSymbols([])
         setQuoteRepostErr('')
         clearQuoteRepostMedia()
         setProfileGateOpen(true)
@@ -6404,6 +6449,7 @@ export default function SocialFeed({
         quoteRepostOfPostId: quoteComment ? null : originalId,
         quoteRepostOfCommentId: quoteComment ? originalId : null,
         categoryPills: quoteRepostCategoryPills,
+        marketSymbols: quoteRepostMarketSymbols,
         // Capture prep handoff by reference so queued jobs don't race on the shared ref
         _capturedPrepHandoff: handoffNow ?? null,
       }
@@ -6470,6 +6516,7 @@ export default function SocialFeed({
     quoteRepostModal,
     quoteRepostDraft,
     quoteRepostCategoryPills,
+    quoteRepostMarketSymbols,
     supabaseClient,
   ])
 
@@ -10914,6 +10961,7 @@ export default function SocialFeed({
     }
     setQuoteRepostModal(null)
     setQuoteRepostDraft('')
+    setQuoteRepostMarketSymbols([])
     setQuoteRepostErr('')
     setQuoteRepostCategoryPills([])
     setQuoteRepostImageItems((prev) => {
@@ -18118,6 +18166,7 @@ export default function SocialFeed({
               if (quoteRepostBusy) return
               setQuoteRepostModal(null)
               setQuoteRepostDraft('')
+              setQuoteRepostMarketSymbols([])
               setQuoteRepostErr('')
               clearQuoteRepostMedia()
             }}
@@ -18138,6 +18187,7 @@ export default function SocialFeed({
                       if (quoteRepostBusy) return
                       setQuoteRepostModal(null)
                       setQuoteRepostDraft('')
+                      setQuoteRepostMarketSymbols([])
                       setQuoteRepostErr('')
                       clearQuoteRepostMedia()
                     }}
@@ -18221,19 +18271,64 @@ export default function SocialFeed({
                               maxLength={loungeComposerCaptionMax}
                               placeholder="Add a comment"
                               ariaLabel="Quote for repost"
+                              cashtagStyleContext={quoteRepostCashtagStyleContext}
                               onPasteImageFiles={enqueueQuoteRepostPastedImages}
-                              onKeyDown={(e) =>
+                              onKeyDown={(e) => {
+                                if (
+                                  cashtagQuoteRepost.onCashtagKeyDown(
+                                    e,
+                                    setQuoteRepostDraft,
+                                    quoteRepostFieldRef.current,
+                                  )
+                                ) {
+                                  return
+                                }
                                 mentionQuoteRepost.onMentionKeyDown(
                                   e,
                                   setQuoteRepostDraft,
                                   quoteRepostFieldRef.current,
                                 )
+                              }}
+                              onKeyUp={(e) => {
+                                cashtagQuoteRepost.onCursorMove(e)
+                                mentionQuoteRepost.onCursorMove(e)
+                              }}
+                              onMouseUp={(e) => {
+                                cashtagQuoteRepost.onCursorMove(e)
+                                mentionQuoteRepost.onCursorMove(e)
+                              }}
+                              onInput={(e) => {
+                                cashtagQuoteRepost.onCursorMove(e)
+                                mentionQuoteRepost.onCursorMove(e)
+                              }}
+                              onBlur={() =>
+                                window.setTimeout(() => {
+                                  if (shouldKeepCashtagAutocompleteAfterBlur(quoteRepostFieldRef.current)) {
+                                    return
+                                  }
+                                  cashtagQuoteRepost.clearCashtag()
+                                  mentionQuoteRepost.clearMention()
+                                }, 150)
                               }
-                              onKeyUp={mentionQuoteRepost.onCursorMove}
-                              onMouseUp={mentionQuoteRepost.onCursorMove}
-                              onInput={mentionQuoteRepost.onCursorMove}
-                              onBlur={() => window.setTimeout(() => mentionQuoteRepost.clearMention(), 150)}
                             />
+                            {cashtagQuoteRepost.isOpen ? (
+                              <LoungeCashtagDropdown
+                                open
+                                query={cashtagQuoteRepost.cashtag?.query ?? ''}
+                                suggestions={cashtagQuoteRepost.suggestions}
+                                activeIndex={cashtagQuoteRepost.activeIndex}
+                                loading={cashtagQuoteRepost.loading}
+                                onSelect={(row) =>
+                                  cashtagQuoteRepost.onCashtagSelect(
+                                    row,
+                                    setQuoteRepostDraft,
+                                    quoteRepostFieldRef.current,
+                                  )
+                                }
+                                anchorRef={mentionQuoteRepostAnchorRef}
+                                caretFieldRef={quoteRepostFieldRef}
+                              />
+                            ) : null}
                             <LoungeMentionDropdown
                               suggestions={mentionQuoteRepost.suggestions}
                               activeIndex={mentionQuoteRepost.activeIndex}
@@ -18241,6 +18336,12 @@ export default function SocialFeed({
                               onSelect={(p) => mentionQuoteRepost.onMentionSelect(p, setQuoteRepostDraft, quoteRepostFieldRef.current)}
                               anchorRef={mentionQuoteRepostAnchorRef}
                               caretFieldRef={quoteRepostFieldRef}
+                            />
+                            <LoungeComposerMarketChartStrip
+                              symbols={quoteRepostMarketSymbols}
+                              onChange={setQuoteRepostMarketSymbols}
+                              onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
+                              className="mt-1.5"
                             />
                             </div>
                             <LoungePostCategoryPillPicker
@@ -18346,6 +18447,7 @@ export default function SocialFeed({
                               videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
                               disabled={quoteRepostBusy}
                               gifDisabled={quoteRepostBusy}
+                              marketDisabled={quoteRepostBusy}
                               onImagePointerDown={() => {
                                 if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
                               }}
@@ -18354,6 +18456,9 @@ export default function SocialFeed({
                               }}
                               onOpenGifPicker={() => {
                                 if (!quoteRepostBusy) openKlipyPicker('quote')
+                              }}
+                              onOpenMarketPicker={() => {
+                                if (!quoteRepostBusy) openMarketPicker('quote')
                               }}
                             />
                           </div>
@@ -18369,7 +18474,8 @@ export default function SocialFeed({
                               (!normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) &&
                                 quoteRepostImageItems.length === 0 &&
                                 !String(quoteRepostMediaUrl || '').trim() &&
-                                !quoteRepostVideoSlot)
+                                !quoteRepostVideoSlot &&
+                                quoteRepostMarketSymbols.length === 0)
                             }
                             aria-label={quoteRepostBusy ? 'Posting' : 'Post quote repost'}
                             aria-busy={quoteRepostBusy}
@@ -18381,7 +18487,8 @@ export default function SocialFeed({
                               (normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) ||
                                 quoteRepostImageItems.length > 0 ||
                                 !!String(quoteRepostMediaUrl || '').trim() ||
-                                quoteRepostVideoSlot) &&
+                                quoteRepostVideoSlot ||
+                                quoteRepostMarketSymbols.length > 0) &&
                               !quoteRepostBusy &&
                               !loungeQuoteRepostVideoPostBlocked &&
                               !loungePostUploadFailedOpen &&
@@ -18480,13 +18587,33 @@ export default function SocialFeed({
       <LoungeMarketSymbolPickerSheet
         open={marketPickerOpen}
         onClose={() => setMarketPickerOpen(false)}
-        caption={marketPickerTarget === 'detailEdit' ? loungeDetailDraftCaption : postText}
-        selected={marketPickerTarget === 'detailEdit' ? loungeDetailEditMarketSymbols : composerMarketSymbols}
+        caption={
+          marketPickerTarget === 'detailEdit'
+            ? loungeDetailDraftCaption
+            : marketPickerTarget === 'quote'
+              ? quoteRepostDraft
+              : postText
+        }
+        selected={
+          marketPickerTarget === 'detailEdit'
+            ? loungeDetailEditMarketSymbols
+            : marketPickerTarget === 'quote'
+              ? quoteRepostMarketSymbols
+              : composerMarketSymbols
+        }
         onChange={(next) => {
           if (marketPickerTarget === 'detailEdit') {
             setLoungeDetailEditMarketSymbols(next)
             hydrateComposerMarketSymbolEmbeds(supabaseClient, setLoungeDetailEditMarketSymbols, next)
             setLoungeDetailDraftCaption((prev) =>
+              appendMissingMarketCashtagsToCaption(prev, next, {
+                maxLen: loungeComposerCaptionMax,
+              }),
+            )
+          } else if (marketPickerTarget === 'quote') {
+            setQuoteRepostMarketSymbols(next)
+            hydrateComposerMarketSymbolEmbeds(supabaseClient, setQuoteRepostMarketSymbols, next)
+            setQuoteRepostDraft((prev) =>
               appendMissingMarketCashtagsToCaption(prev, next, {
                 maxLen: loungeComposerCaptionMax,
               }),

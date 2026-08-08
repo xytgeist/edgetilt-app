@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-08: **Quote repost cashtag / charts:** quote composer had mentions only. Wired **`useCashtagState`**, dropdown, mini chart strip, market picker toolbar target **`quote`**, and **`marketSymbols`** on quote submit (same path as feed/detail edit).
 - 2026-08-08: **Cashtag dropdown caret:** completing `$TS` → `$TSLA` left the caret at `$TS|LA` because idle-deferred `postText` re-synced the rich field with the old offset. Feed cashtag/mention commit now uses **`setFeedComposerCaptionImmediate`**; rich field refuses stale React value when DOM is ahead; parent expansion with caret at prior end follows new end.
 - 2026-08-08: **Settlement Alert after Commit:** deep links with `stableCommit` / `stableSettlement` no longer reopen the Settlement Commit modal once the viewer has a `poker_stable_commit_syncs` row. AppShell gates via **`viewerNeedsDealCommitSync`**; Commit panel self-dismisses; Stable Overview opens only while still pending (else horse-card focus). Strip stale URL params.
 - 2026-08-08: **Lounge pull-to-refresh axis lock:** `useLoungePullToRefresh` no longer engages on any downward `dy` at `scrollTop === 0`. Waits for clear vertical intent (stricter when touch starts on image/GIF carousel or mini chart strip); horizontal wins abandon the gesture so carousels stop fighting PTR. Tuning in **`loungePullRefresh.js`**. Same hook → notifications panel.

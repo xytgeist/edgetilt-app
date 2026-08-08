@@ -263,12 +263,19 @@ export function parseCaptionMarketWindow(caption: string): {
     return { kind: 'rolling', windowKey: '24h', windowLabel: '24h' }
   }
 
-  // "for the first time in two months" / "first time in 2 months"
-  const firstTimeMonth = text.match(
-    new RegExp(`\\b(?:for\\s+the\\s+)?first\\s+time\\s+in\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`),
+  // Lookback headlines: "first time in two months", "first signs of life in two months",
+  // "first green day in 3 months". Avoid bare "first product in two months" (often future).
+  const firstInMonth = text.match(
+    new RegExp(
+      `\\b(?:for\\s+the\\s+)?first\\s+(?:` +
+        `time|` +
+        `signs?(?:\\s+of\\s+[a-z]+){1,3}|` +
+        `(?:[a-z0-9%.'-]+\\s+){0,3}(?:day|week|close|print|candle|session|bounce|rally|breakout|high|low)` +
+        `)\\s+in\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`,
+    ),
   )
-  if (firstTimeMonth) {
-    const n = parseCaptionMonthCountToken(firstTimeMonth[1])
+  if (firstInMonth) {
+    const n = parseCaptionMonthCountToken(firstInMonth[1])
     if (n != null) {
       const windowKey = monthCountToWindowKey(n)
       return { kind: 'historical', windowKey, windowLabel: `${n}M` }

@@ -90,9 +90,11 @@ import {
   IN_APP_TOAST_ACCESS_WIDTH,
 } from '../../constants/inAppToastLayout.js'
 import {
+  clearStableCommitDeepLinkParams,
   loungeActivityInAppPayloadFromMessage,
   navigateFromLoungeActivityPayload,
 } from '../../utils/loungeActivityInAppNavigate.js'
+import { viewerNeedsDealCommitSync } from '../poker-stable/pokerStableApi.js'
 import { queueLoungeActivityMarkRead } from '../../utils/loungeActivityMarkReadQueue.js'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import TitleBarQuickLinks from '../../components/TitleBarQuickLinks.jsx'
@@ -470,6 +472,50 @@ export default function AppShell({
     [browseMode],
   )
 
+  /**
+   * Open global Settlement Commit modal only when the viewer still needs to sync.
+   * Already-committed deep links keep deal focus and strip stale URL params.
+   */
+  const openStableCommitDeepLinkIfPending = useCallback(
+    (commitId) => {
+      const id = String(commitId || '').trim()
+      if (!id) return
+      const uid = String(chatCallViewerUserId || '').trim()
+      if (!supabaseClient || !uid) {
+        setPendingStableCommitId(id)
+        return
+      }
+      void (async () => {
+        const { needsSync, error } = await viewerNeedsDealCommitSync(supabaseClient, id, uid)
+        if (error || needsSync) {
+          setPendingStableCommitId(id)
+          return
+        }
+        setPendingStableCommitId(null)
+        clearStableCommitDeepLinkParams()
+      })()
+    },
+    [supabaseClient, chatCallViewerUserId],
+  )
+
+  useEffect(() => {
+    if (!pendingStableCommitId || !supabaseClient || !chatCallViewerUserId) return undefined
+    let cancelled = false
+    void (async () => {
+      const { needsSync, error } = await viewerNeedsDealCommitSync(
+        supabaseClient,
+        pendingStableCommitId,
+        chatCallViewerUserId,
+      )
+      if (cancelled || error || needsSync) return
+      setPendingStableCommitId(null)
+      clearStableCommitDeepLinkParams()
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pendingStableCommitId, supabaseClient, chatCallViewerUserId])
+
   const applyLoungeActivityNavigate = useCallback(
     (payload, { markActivityRead = true } = {}) => {
       const {
@@ -492,7 +538,7 @@ export default function AppShell({
       // Backer Stable: horse deal Overview already has inline Commit. Skip stacked sync modal
       // when the deep link includes the deal (periodic/close settle Alerts/push).
       if (commitId && !(targetTab === 'poker-stable' && stableDealId)) {
-        setPendingStableCommitId(commitId)
+        openStableCommitDeepLinkIfPending(commitId)
       } else if (targetTab === 'poker-stable' && stableDealId) {
         setPendingStableCommitId(null)
       }
@@ -587,7 +633,7 @@ export default function AppShell({
         )
       }
     },
-    [browseMode],
+    [browseMode, openStableCommitDeepLinkIfPending],
   )
 
   const openLoungeActivityInAppToast = useCallback(
@@ -1168,7 +1214,7 @@ export default function AppShell({
           const onboardingDealId = consumeStakeOnboardingFromSearch(window.location.search || '')
           if (onboardingDealId) setStakeOnboardingDealId(onboardingDealId)
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
-          if (stableCommit) setPendingStableCommitId(stableCommit)
+          if (stableCommit) openStableCommitDeepLinkIfPending(stableCommit)
         }
       }
       if (targetTab === 'poker-stable') {
@@ -1181,7 +1227,7 @@ export default function AppShell({
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
           // Deal Overview hosts Commit inline; only open sync modal when deal id is missing.
-          if (stableCommit && !stableDeal) setPendingStableCommitId(stableCommit)
+          if (stableCommit && !stableDeal) openStableCommitDeepLinkIfPending(stableCommit)
           else if (stableDeal) setPendingStableCommitId(null)
           const backerOnboarding = consumeBackerSliceOnboardingFromSearch(window.location.search || '')
           if (backerOnboarding.dealId) setBackerSliceOnboardingDealId(backerOnboarding.dealId)
@@ -1246,7 +1292,7 @@ export default function AppShell({
     applyFromUrl()
     window.addEventListener('popstate', applyFromUrl)
     return () => window.removeEventListener('popstate', applyFromUrl)
-  }, [browseMode, isAdmin, authSessionReady])
+  }, [browseMode, isAdmin, authSessionReady, openStableCommitDeepLinkIfPending])
 
   /** Only refire when entering Lounge - not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
   useEffect(() => {
@@ -1316,7 +1362,7 @@ export default function AppShell({
               msgUrl.searchParams.get('stableSettlement') ||
               '',
           ).trim()
-          if (stableCommit) setPendingStableCommitId(stableCommit)
+          if (stableCommit) openStableCommitDeepLinkIfPending(stableCommit)
         } catch {
           // ignore malformed url
         }
@@ -1349,7 +1395,7 @@ export default function AppShell({
               '',
           ).trim()
           // Deal Overview hosts Commit inline; only open sync modal when deal id is missing.
-          if (stableCommit && !stableDeal) setPendingStableCommitId(stableCommit)
+          if (stableCommit && !stableDeal) openStableCommitDeepLinkIfPending(stableCommit)
           else if (stableDeal) setPendingStableCommitId(null)
         } catch {
           // ignore malformed url
@@ -1506,7 +1552,7 @@ export default function AppShell({
       document.removeEventListener('visibilitychange', onResume)
       window.removeEventListener('pageshow', onResume)
     }
-  }, [browseMode, showLoungeActivityInAppToast])
+  }, [browseMode, showLoungeActivityInAppToast, openStableCommitDeepLinkIfPending])
 
   // After sign-in / provider mount, drain any SW stash left from a notification tap.
   useEffect(() => {

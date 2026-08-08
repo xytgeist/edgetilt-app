@@ -113,6 +113,24 @@ export function dispatchLoungeActivityNavigate({
   )
 }
 
+/** Strip stale `stableCommit` / `stableSettlement` params after the viewer already committed. */
+export function clearStableCommitDeepLinkParams() {
+  if (typeof window === 'undefined') return
+  try {
+    const params = new URLSearchParams(window.location.search || '')
+    if (!params.has('stableCommit') && !params.has('stableSettlement')) return
+    params.delete('stableCommit')
+    params.delete('stableSettlement')
+    const qs = params.toString()
+    const nextPath = qs ? `/?${qs}` : '/'
+    if (window.location.pathname + window.location.search !== nextPath) {
+      window.history.replaceState({}, '', nextPath)
+    }
+  } catch {
+    // ignore
+  }
+}
+
 /** Navigate from a Lounge activity push / in-app toast payload (relative app URL). */
 export function navigateFromLoungeActivityPayload(payload) {
   const empty = {

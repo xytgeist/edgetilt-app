@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
-import { loadDealCommit, loadDealSlices, loadSettlementBundle, syncDealCommit } from './pokerStableApi.js'
+import {
+  loadDealSlices,
+  loadSettlementBundle,
+  syncDealCommit,
+  viewerNeedsDealCommitSync,
+} from './pokerStableApi.js'
 import { pokerStableCommitEventLabel, pokerStableCommitSummaryLine } from './pokerStableActivity.js'
 import { stableCommitSyncHint } from './pokerStableBooksCopy.js'
 import {
@@ -62,8 +67,21 @@ export default function PokerStableCommitSyncPanel({
     setLoading(true)
     onError?.('')
     try {
-      const { commit: commitRow, error: cErr } = await loadDealCommit(supabaseClient, commitId)
-      if (cErr) throw cErr
+      const {
+        needsSync,
+        commit: pendingCommit,
+        error: pendingErr,
+      } = await viewerNeedsDealCommitSync(supabaseClient, commitId, userId)
+      if (pendingErr) throw pendingErr
+      if (!needsSync) {
+        // Already committed (or viewer recorded it) … dismiss Commit UI; keep deal focus.
+        setDismissed(true)
+        onSynced?.({ status: 'already_synced', dealId: pendingCommit?.deal_id || null })
+        if (variant === 'modal') onClose?.()
+        return
+      }
+
+      const commitRow = pendingCommit
       if (!commitRow) throw new Error('Stake commit not found.')
 
       const [{ data: dealRow }, { data: actor }] = await Promise.all([
@@ -142,7 +160,9 @@ export default function PokerStableCommitSyncPanel({
     } finally {
       setLoading(false)
     }
-  }, [supabaseClient, commitId, userId, onError])
+    // onSynced/onClose are parent dismiss callbacks; omit from deps to avoid reload loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [supabaseClient, commitId, userId, onError, variant])
 
   useEffect(() => {
     void loadBundle()

@@ -1618,6 +1618,35 @@ export async function loadDealCommit(supabase, commitId) {
   return { commit: data || null, error }
 }
 
+/**
+ * Whether the viewer still needs to Commit this deal commit (Alerts / push deep links).
+ * Already synced, own recording, or missing → needsSync false (do not open Commit UI).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} commitId
+ * @param {string} userId
+ */
+export async function viewerNeedsDealCommitSync(supabase, commitId, userId) {
+  const id = String(commitId || '').trim()
+  const uid = String(userId || '').trim()
+  if (!supabase || !id || !uid) {
+    return { needsSync: false, commit: null, error: null }
+  }
+  const { commit, error } = await loadDealCommit(supabase, id)
+  if (error) return { needsSync: true, commit: null, error }
+  if (!commit) return { needsSync: false, commit: null, error: null }
+  if (commit.recorded_by_user_id === uid) {
+    return { needsSync: false, commit, error: null }
+  }
+  const { data: syncRow, error: syncErr } = await supabase
+    .from('poker_stable_commit_syncs')
+    .select('commit_id')
+    .eq('commit_id', id)
+    .eq('user_id', uid)
+    .maybeSingle()
+  if (syncErr) return { needsSync: true, commit, error: syncErr }
+  return { needsSync: !syncRow, commit, error: null }
+}
+
 /** @deprecated Settlement votes retired — use loadPendingCommits + syncDealCommit. */
 export async function loadPendingSettlementRequest(supabase, dealId) {
   const { commits, error } = await loadPendingCommits(supabase, dealId)

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Users } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import { clearStableCommitDeepLinkParams } from '../../utils/loungeActivityInAppNavigate.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
@@ -314,18 +315,29 @@ export default function PokerStableScreen({
     const myPendingInvite = dealSlices.some(
       (s) => s.staker_user_id === userId && s.status === 'pending',
     )
-    let hasCommitDeepLink = false
+    let commitDeepLinkId = ''
     try {
       const params = new URLSearchParams(window.location.search || '')
-      hasCommitDeepLink = Boolean(
-        (params.get('stableCommit') || params.get('stableSettlement') || '').trim(),
-      )
+      commitDeepLinkId = (
+        params.get('stableCommit') ||
+        params.get('stableSettlement') ||
+        ''
+      ).trim()
     } catch {
-      hasCommitDeepLink = false
+      commitDeepLinkId = ''
     }
+    const commitStillPending = Boolean(
+      commitDeepLinkId &&
+        pendingCommits.some(
+          (row) =>
+            String(row.commit_id || row.id || '') === commitDeepLinkId &&
+            String(row.deal_id || '') === String(openStableDealId),
+        ),
+    )
     // Slice invite / session complete / horse accepted: focus card + refresh (no detail sheet).
-    // Settle/commit deep links keep opening deal Overview for inline Commit.
-    if (myPendingInvite || !hasCommitDeepLink) {
+    // Settle/commit deep links open Overview only while Commit is still pending for the viewer.
+    if (myPendingInvite || !commitDeepLinkId || !commitStillPending) {
+      if (commitDeepLinkId && !commitStillPending) clearStableCommitDeepLinkParams()
       setDetailDealId(null)
       setFocusHorseDealId(openStableDealId)
       setActiveTab('overview')
@@ -341,6 +353,7 @@ export default function PokerStableScreen({
     loading,
     userId,
     slicesByDeal,
+    pendingCommits,
     onOpenStableDealConsumed,
     activeBackerOnboardingDealId,
     activeBackerOnboardingSliceId,

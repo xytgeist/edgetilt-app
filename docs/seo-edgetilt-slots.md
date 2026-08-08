@@ -1,6 +1,6 @@
 # SEO — EdgeTilt brand landings (slots + poker)
 
-**Goals:** rank for **edge tilt slots**, **edge tilt poker**, and related tool queries (poker bankroll / stable manager).
+**Goals:** rank for **edge tilt slots**, **edge tilt poker**, and related tool queries (bankroll, calculators, logbook, calendar, stable).
 
 ---
 
@@ -9,11 +9,15 @@
 | URL | Role |
 | --- | --- |
 | `https://edgetilt.com/` | Homepage title/description: **EdgeTilt** + **slots** + **poker** |
-| `https://edgetilt.com/slots` | Slots landing (`public/slots.html`) |
-| `https://edgetilt.com/guides` | Public AP guides **full title catalog** (titles + in-app deep links… no paywalled markdown). Regenerate: `npm run seo:guides-index` |
+| `https://edgetilt.com/slots` | Slots hub (cards linking to each tool) |
+| `https://edgetilt.com/guides` | Full AP guide **title catalog** (no paywalled markdown). Regenerate: `npm run seo:guides-index` |
+| `https://edgetilt.com/slots/bankroll` | Slots Bankroll Manager |
+| `https://edgetilt.com/slots/calculators` | Slot EV calculators |
+| `https://edgetilt.com/slots/calendar` | Offers / mailers calendar (`?tab=offers`) |
+| `https://edgetilt.com/slots/logbook` | Play Logbook |
 | `https://edgetilt.com/poker` | Poker tools hub |
-| `https://edgetilt.com/poker/bankroll` | Poker Bankroll Manager landing |
-| `https://edgetilt.com/poker/stable` | Poker Stable Manager landing |
+| `https://edgetilt.com/poker/bankroll` | Poker Bankroll Manager |
+| `https://edgetilt.com/poker/stable` | Poker Stable Manager |
 | `https://edgetilt.com/sitemap.xml` | Lists the URLs above |
 | `https://edgetilt.com/robots.txt` | Allows crawl; points at sitemap |
 | `public/googleae022787114e4d27.html` | Google Search Console HTML-file verification |
@@ -21,12 +25,20 @@
 Vercel rewrites (before SPA catch-all):
 
 - `/slots` → `slots.html`
+- `/slots/bankroll` → `slots-bankroll.html`
+- `/slots/calculators` → `slots-calculators.html`
+- `/slots/calendar` → `slots-calendar.html`
+- `/slots/logbook` → `slots-logbook.html`
 - `/guides` → `guides.html`
 - `/poker` → `poker.html`
 - `/poker/bankroll` → `poker-bankroll.html`
 - `/poker/stable` → `poker-stable.html`
 
-App deep links from CTAs: `/?tab=slots`, `/?tab=guides`, `/?tab=poker`, `/?tab=poker-bankroll`, `/?tab=poker-stable`.
+App deep links from CTAs: `/?tab=slots`, `/?tab=guides`, `/?tab=bankroll`, `/?tab=calculators`, `/?tab=offers`, `/?tab=logbook`, `/?tab=poker`, `/?tab=poker-bankroll`, `/?tab=poker-stable`.
+
+Hub pages cross-link the cluster (slots ↔ guides ↔ each tool ↔ poker).
+
+**Skipped for SEO landings:** Slots Pro Lounge (private subscriber chat).
 
 ---
 
@@ -51,10 +63,11 @@ Keep **`content_markdown`** behind entitlements (`docs/security-anti-scrape-road
 1. [Search Console](https://search.google.com/search-console) → **edgetilt.com** (verified via HTML file).
 2. **Sitemaps** → `https://edgetilt.com/sitemap.xml` (already submitted is fine; Google re-fetches).
 3. **URL inspection** → live test + **Request indexing** for new URLs:
-   - `/poker`
-   - `/poker/bankroll`
-   - `/poker/stable`
-   - (already done for `/`, `/slots`, `/guides` if you finished that pass)
+   - `/slots/bankroll`
+   - `/slots/calculators`
+   - `/slots/calendar`
+   - `/slots/logbook`
+   - (poker + hub URLs if not already requested)
 
 ---
 

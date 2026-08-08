@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-08: **Android Lounge composer typing (Ryan confirmed):** root cause was `clearMention` / `clearCashtag` calling `setState` on every keystroke even when idle, re-rendering giant `SocialFeed`. Fix **`66e85772`**: no-op idle clears, skip redundant active mention/cashtag updates, drop duplicate feed-composer `onKeyUp` cursor moves. Earlier rich-HTML / idle-`postText` work still useful; this was the fix that made typing usable again.
 - 2026-08-08: **SEO `/advantage-play-slots` intent page:** dedicated Article landing for the head query (what AP slots are, EdgeTilt positioning, sample titles → app, links to catalog + tool cluster). Sitemap priority high. Ryan: Request indexing after deploy.
 - 2026-08-08: **SEO slots tool landings:** crawlable **`/slots/bankroll`**, **`/slots/calculators`**, **`/slots/calendar`**, **`/slots/logbook`** + hub cards on **`/slots`**; cross-links across the cluster; sitemap + Vercel rewrites. Skipped Slots Pro Lounge (private). Ryan: Request indexing for the four new URLs after deploy.
 - 2026-08-08: **SEO `/guides` full title catalog:** `public/guides.html` lists all published AP guide titles (prod snapshot) with in-app deep links (`/?tab=guides&guide=:slug`); regenerate via **`npm run seo:guides-index`**. No markdown exposed. Still no per-slug teaser pages.

@@ -256,6 +256,13 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       }
       return
     }
+    // Autocomplete / idle-caption race: DOM already has the completed ticker while React
+    // `value` is still the pre-commit string. Do not clobber DOM back to the stale value.
+    if (value === lastValueRef.current && domText !== lastValueRef.current) {
+      lastValueRef.current = domText
+      setDomHasText(domText.length > 0)
+      return
+    }
     if (domText === lastValueRef.current && value === lastValueRef.current) {
       return
     }
@@ -263,10 +270,15 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       // Parent-driven update (draft restore, clear, paste) while DOM still matches last emit.
       if (domText.length === 0 || value.length > domText.length) {
         lastValueRef.current = value
-        const caret =
-          document.activeElement === el
-            ? Math.min(getCaretTextOffset(el), value.length)
-            : value.length
+        let caret
+        if (document.activeElement === el || el.contains(document.activeElement)) {
+          const current = getCaretTextOffset(el)
+          // Cashtag/mention commit: caret was at the end of the partial token … follow the
+          // expanded parent value instead of leaving `$TS|LA`.
+          caret = current >= domText.length ? value.length : Math.min(current, value.length)
+        } else {
+          caret = value.length
+        }
         caretRef.current = caret
         if (richSyncTimerRef.current) {
           window.clearTimeout(richSyncTimerRef.current)

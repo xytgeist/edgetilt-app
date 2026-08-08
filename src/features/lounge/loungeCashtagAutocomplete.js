@@ -418,9 +418,16 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
       setValue(result.value)
       onAddSymbol?.(normalized)
       clearCashtag()
+      // Focus + caret after React layout (style-context / value sync) so `$TSLA|` sticks.
+      const caretPos = result.cursorPos
       requestAnimationFrame(() => {
-        applyCursor(editorEl)
         editorEl?.focus?.()
+        pendingCursorRef.current = caretPos
+        applyCursor(editorEl)
+        requestAnimationFrame(() => {
+          pendingCursorRef.current = caretPos
+          applyCursor(editorEl)
+        })
       })
     },
     [applyCursor, cashtag, clearCashtag, onAddSymbol],

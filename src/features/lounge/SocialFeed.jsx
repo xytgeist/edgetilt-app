@@ -15646,14 +15646,16 @@ export default function SocialFeed({
                         if (
                           cashtagComposer.onCashtagKeyDown(
                             e,
-                            handleFeedComposerCaptionChange,
+                            // Immediate flush … idle-deferred postText was leaving the caret at
+                            // `$TS|LA` after dropdown/Enter completion.
+                            setFeedComposerCaptionImmediate,
                             composerFieldRef.current,
                           )
                         )
                           return
                         mentionComposer.onMentionKeyDown(
                           e,
-                          handleFeedComposerCaptionChange,
+                          setFeedComposerCaptionImmediate,
                           composerFieldRef.current,
                         )
                       }}
@@ -15685,7 +15687,7 @@ export default function SocialFeed({
                         onSelect={(row) =>
                           cashtagComposer.onCashtagSelect(
                             row,
-                            handleFeedComposerCaptionChange,
+                            setFeedComposerCaptionImmediate,
                             composerFieldRef.current,
                           )
                         }
@@ -15700,7 +15702,7 @@ export default function SocialFeed({
                       onSelect={(p) =>
                         mentionComposer.onMentionSelect(
                           p,
-                          handleFeedComposerCaptionChange,
+                          setFeedComposerCaptionImmediate,
                           composerFieldRef.current,
                         )
                       }

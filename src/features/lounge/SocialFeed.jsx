@@ -18423,68 +18423,66 @@ export default function SocialFeed({
                           </div>
                         </div>
                       </div>
-                        <div className="lounge-media-toolbar mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-zinc-700/70 py-0.5">
-                          <div className="flex shrink-0 items-center justify-center">
-                            <LoungeComposerMediaToolbar
-                              variant="feed"
-                              imageInputId={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
-                              videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
-                              disabled={quoteRepostBusy}
-                              gifDisabled={quoteRepostBusy}
-                              marketDisabled={quoteRepostBusy}
-                              onImagePointerDown={() => {
-                                if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
-                              }}
-                              onVideoPointerDown={() => {
-                                if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
-                              }}
-                              onOpenGifPicker={() => {
-                                if (!quoteRepostBusy) openKlipyPicker('quote')
-                              }}
-                              onOpenMarketPicker={() => {
-                                if (!quoteRepostBusy) openMarketPicker('quote')
-                              }}
-                            />
+                        <div className="lounge-media-toolbar mt-0.5 flex w-full items-center border-t border-zinc-700/70 py-0.5">
+                          <LoungeComposerMediaToolbar
+                            variant="feed"
+                            imageInputId={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
+                            videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
+                            disabled={quoteRepostBusy}
+                            gifDisabled={quoteRepostBusy}
+                            marketDisabled={quoteRepostBusy}
+                            onImagePointerDown={() => {
+                              if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
+                            }}
+                            onVideoPointerDown={() => {
+                              if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
+                            }}
+                            onOpenGifPicker={() => {
+                              if (!quoteRepostBusy) openKlipyPicker('quote')
+                            }}
+                            onOpenMarketPicker={() => {
+                              if (!quoteRepostBusy) openMarketPicker('quote')
+                            }}
+                          />
+                          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+                            <LoungeComposerCharRing len={quoteRepostDraft.length} max={loungeComposerCaptionMax} />
+                            <button
+                              type="button"
+                              disabled={
+                                quoteRepostBusy ||
+                                loungeQuoteRepostVideoPostBlocked ||
+                                loungePostUploadFailedOpen ||
+                                loungeVideoCrop != null ||
+                                (!normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) &&
+                                  quoteRepostImageItems.length === 0 &&
+                                  !String(quoteRepostMediaUrl || '').trim() &&
+                                  !quoteRepostVideoSlot &&
+                                  quoteRepostMarketSymbols.length === 0)
+                              }
+                              aria-label={quoteRepostBusy ? 'Posting' : 'Post quote repost'}
+                              aria-busy={quoteRepostBusy}
+                              title={quoteRepostBusy ? 'Posting…' : undefined}
+                              onClick={() => void submitQuoteRepost()}
+                              className={`min-h-7 shrink-0 touch-manipulation rounded-md border px-2 py-0.5 text-center text-[12px] font-semibold leading-tight transition-colors disabled:opacity-45 [-webkit-tap-highlight-color:transparent] ${
+                                quoteRepostBusy ? 'min-w-[5.5rem]' : ''
+                              } ${
+                                (normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) ||
+                                  quoteRepostImageItems.length > 0 ||
+                                  !!String(quoteRepostMediaUrl || '').trim() ||
+                                  quoteRepostVideoSlot ||
+                                  quoteRepostMarketSymbols.length > 0) &&
+                                !quoteRepostBusy &&
+                                !loungeQuoteRepostVideoPostBlocked &&
+                                !loungePostUploadFailedOpen &&
+                                loungeVideoCrop == null
+                                  ? 'border-emerald-400/70 bg-emerald-500 text-white hover:bg-emerald-400'
+                                  : 'border-zinc-600 bg-zinc-800/90 text-zinc-500'
+                              }`}
+                            >
+                              {quoteRepostBusy ? 'Posting…' : 'Post'}
+                            </button>
                           </div>
-                        <div className="flex min-w-0 grow basis-[min(100%,14rem)] flex-wrap items-center justify-end gap-2">
-                          <LoungeComposerCharRing len={quoteRepostDraft.length} max={loungeComposerCaptionMax} />
-                          <button
-                            type="button"
-                            disabled={
-                              quoteRepostBusy ||
-                              loungeQuoteRepostVideoPostBlocked ||
-                              loungePostUploadFailedOpen ||
-                              loungeVideoCrop != null ||
-                              (!normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) &&
-                                quoteRepostImageItems.length === 0 &&
-                                !String(quoteRepostMediaUrl || '').trim() &&
-                                !quoteRepostVideoSlot &&
-                                quoteRepostMarketSymbols.length === 0)
-                            }
-                            aria-label={quoteRepostBusy ? 'Posting' : 'Post quote repost'}
-                            aria-busy={quoteRepostBusy}
-                            title={quoteRepostBusy ? 'Posting…' : undefined}
-                            onClick={() => void submitQuoteRepost()}
-                            className={`shrink-0 touch-manipulation rounded-lg border px-2.5 text-center text-[12px] font-semibold leading-tight transition-colors disabled:opacity-45 [-webkit-tap-highlight-color:transparent] ${
-                              quoteRepostBusy ? 'min-h-10 min-w-[6.5rem] py-2' : 'min-h-8 py-1'
-                            } ${
-                              (normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) ||
-                                quoteRepostImageItems.length > 0 ||
-                                !!String(quoteRepostMediaUrl || '').trim() ||
-                                quoteRepostVideoSlot ||
-                                quoteRepostMarketSymbols.length > 0) &&
-                              !quoteRepostBusy &&
-                              !loungeQuoteRepostVideoPostBlocked &&
-                              !loungePostUploadFailedOpen &&
-                              loungeVideoCrop == null
-                                ? 'border-emerald-400/70 bg-emerald-500 text-white hover:bg-emerald-400'
-                                : 'border-zinc-600 bg-zinc-800/90 text-zinc-500'
-                            }`}
-                          >
-                            {quoteRepostBusy ? 'Posting…' : 'Post'}
-                          </button>
                         </div>
-                      </div>
                       <div className="mt-2 flex items-start gap-3">
                         <div className={`${LOUNGE_FEED_AVATAR_CLASS} invisible pointer-events-none`} aria-hidden />
                         <div className="min-w-0 flex-1">

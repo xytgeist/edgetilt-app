@@ -253,6 +253,108 @@ function monthCountToWindowKey(n: number): MarketWindowKey {
   return '1m'
 }
 
+const CAPTION_MONTH_NAME_RE =
+  'january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept?|october|oct|november|nov|december|dec'
+
+const CAPTION_MONTH_NAME_INDEX: Record<string, number> = {
+  january: 0,
+  jan: 0,
+  february: 1,
+  feb: 1,
+  march: 2,
+  mar: 2,
+  april: 3,
+  apr: 3,
+  may: 4,
+  june: 5,
+  jun: 5,
+  july: 6,
+  jul: 6,
+  august: 7,
+  aug: 7,
+  september: 8,
+  sept: 8,
+  sep: 8,
+  october: 9,
+  oct: 9,
+  november: 10,
+  nov: 10,
+  december: 11,
+  dec: 11,
+}
+
+function lookbackDaysToWindowKey(days: number): MarketWindowKey {
+  const d = Math.max(1, Math.ceil(days))
+  if (d <= 1) return '24h'
+  if (d <= 3) return '3d'
+  if (d <= 7) return '1w'
+  if (d <= 30) return '1m'
+  if (d <= 60) return '2m'
+  if (d <= 90) return '3m'
+  if (d <= 183) return '6m'
+  if (d <= 366) return '1y'
+  return 'all'
+}
+
+/**
+ * "since January" / "since mid-April" / "since April 15, 2025" → UTC fromSec.
+ * Future calendar dates roll back one year (e.g. "since December" in August).
+ */
+function parseCaptionSinceMonthAnchor(text: string): { fromSec: number; monthIndex: number; day: number; year: number } | null {
+  const m = text.match(
+    new RegExp(
+      `\\bsince\\s+(?:(early|mid|late)[\\s-]*)?(${CAPTION_MONTH_NAME_RE})(?:\\s+(\\d{1,2}))?(?:,?\\s*((?:19|20)\\d{2}))?\\b`,
+    ),
+  )
+  if (!m) return null
+  const phase = String(m[1] || '').trim()
+  const monthIndex = CAPTION_MONTH_NAME_INDEX[String(m[2] || '').trim()]
+  if (monthIndex == null) return null
+  let day = 1
+  if (m[3]) {
+    day = Math.max(1, Math.min(31, parseInt(m[3], 10) || 1))
+  } else if (phase === 'mid') {
+    day = 15
+  } else if (phase === 'late') {
+    day = 21
+  } else {
+    day = 1 // early / bare month
+  }
+  const now = new Date()
+  const currentYear = now.getUTCFullYear()
+  let year = m[4] ? parseInt(m[4], 10) : currentYear
+  if (!Number.isFinite(year) || year < 1990 || year > currentYear + 1) year = currentYear
+
+  let fromMs = Date.UTC(year, monthIndex, day)
+  const nowMs = Date.now()
+  if (fromMs > nowMs) {
+    year -= 1
+    fromMs = Date.UTC(year, monthIndex, day)
+  }
+  if (fromMs > nowMs) return null
+  return { fromSec: Math.floor(fromMs / 1000), monthIndex, day, year }
+}
+
+function windowFromSinceAnchor(anchor: {
+  fromSec: number
+  monthIndex: number
+  day: number
+  year: number
+}): { kind: MarketEmbedKind; windowKey: MarketWindowKey; windowLabel: string } {
+  const nowSec = Math.floor(Date.now() / 1000)
+  const currentYear = new Date().getUTCFullYear()
+  // Bare / early January this year ≈ YTD (common "drought since January" phrasing).
+  const useYtd = anchor.year === currentYear && anchor.monthIndex === 0 && anchor.day <= 7
+  const windowKey = useYtd
+    ? 'ytd'
+    : lookbackDaysToWindowKey((nowSec - anchor.fromSec) / 86400)
+  return {
+    kind: 'historical',
+    windowKey,
+    windowLabel: formatUtcDateRange(anchor.fromSec, nowSec) || windowKey.toUpperCase(),
+  }
+}
+
 export function parseCaptionMarketWindow(caption: string): {
   kind: MarketEmbedKind
   windowKey: MarketWindowKey
@@ -280,6 +382,11 @@ export function parseCaptionMarketWindow(caption: string): {
       const windowKey = monthCountToWindowKey(n)
       return { kind: 'historical', windowKey, windowLabel: `${n}M` }
     }
+  }
+
+  const sinceAnchor = parseCaptionSinceMonthAnchor(text)
+  if (sinceAnchor) {
+    return windowFromSinceAnchor(sinceAnchor)
   }
 
   const monthMatch = text.match(

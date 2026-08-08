@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-08: **Caption window “since January / mid-April”:** temporal parser maps **`since (early|mid|late)? <month> [day] [, year]`** to historical windows (Jan this year → **ytd**; else nearest covering key + date-range label). Client + **`finnhubMarket.ts`**. Redeploy **`lounge-market-data`**.
 - 2026-08-08: **Caption window “first signs of life in N months”:** temporal parser now treats lookback headlines like **first signs of life / first green day / first time in N months** as historical windows (client + **`finnhubMarket.ts`**). Skips bare “first product in two months” (often future). Redeploy **`lounge-market-data`** for new attaches.
 - 2026-08-08: **Quote repost cashtag / charts:** quote composer had mentions only. Wired **`useCashtagState`**, dropdown, mini chart strip, market picker toolbar target **`quote`**, and **`marketSymbols`** on quote submit (same path as feed/detail edit).
 - 2026-08-08: **Cashtag dropdown caret:** completing `$TS` → `$TSLA` left the caret at `$TS|LA` because idle-deferred `postText` re-synced the rich field with the old offset. Feed cashtag/mention commit now uses **`setFeedComposerCaptionImmediate`**; rich field refuses stale React value when DOM is ahead; parent expansion with caret at prior end follows new end.

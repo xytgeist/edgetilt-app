@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+
+    <title>Advantage Play Slots | EdgeTilt AP Guides &amp; Tools</title>
+    <meta
+      name="description"
+      content="Advantage play slots explained... persistent-state machines, +EV take points, and the full EdgeTilt AP guide library. Phoenix Link, LuckyMon, Buffalo Link, Must Hit By, and 300+ more titles evaluated from millions of spins."
+    />
+    <link rel="canonical" href="https://edgetilt.com/advantage-play-slots" />
+
+    <meta property="og:site_name" content="EdgeTilt" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://edgetilt.com/advantage-play-slots" />
+    <meta property="og:title" content="Advantage Play Slots | EdgeTilt" />
+    <meta
+      property="og:description"
+      content="The definitive EdgeTilt guide to advantage play slots... what they are, which machines matter, and how to hunt +EV with AP guides, calcs, and bankroll tools."
+    />
+    <meta property="og:image" content="https://edgetilt.com/apple-touch-icon.png" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Advantage Play Slots | EdgeTilt" />
+    <meta
+      name="twitter:description"
+      content="Advantage play slots on EdgeTilt... take points, AP guides, and tools built from millions of spins."
+    />
+    <meta name="twitter:image" content="https://edgetilt.com/apple-touch-icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Advantage Play Slots",
+        "name": "Advantage Play Slots | EdgeTilt",
+        "url": "https://edgetilt.com/advantage-play-slots",
+        "description": "What advantage play slots are, which machines matter, and how EdgeTilt helps players hunt +EV with AP guides and tools.",
+        "author": {
+          "@type": "Organization",
+          "name": "EdgeTilt",
+          "url": "https://edgetilt.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "EdgeTilt",
+          "url": "https://edgetilt.com/"
+        },
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "EdgeTilt",
+          "url": "https://edgetilt.com/"
+        }
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #09090b;
+        --fg: #fafafa;
+        --muted: #a1a1aa;
+        --line: #27272a;
+        --orange: #fb923c;
+        --cyan: #22d3ee;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(1100px 560px at 25% -8%, rgba(251, 146, 60, 0.14), transparent 52%),
+          var(--bg);
+        color: var(--fg);
+        font-family: Montserrat, system-ui, sans-serif;
+      }
+      a { color: inherit; }
+      .wrap {
+        width: min(760px, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 2.5rem 0 4rem;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        text-decoration: none;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        font-size: 0.95rem;
+      }
+      .brand img { width: 36px; height: 36px; border-radius: 10px; }
+      h1 {
+        margin: 1.75rem 0 0.75rem;
+        font-size: clamp(1.9rem, 5.5vw, 2.65rem);
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        font-weight: 800;
+      }
+      .lead {
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.55;
+        max-width: 42rem;
+      }
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin: 1.75rem 0 2.25rem;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.75rem;
+        padding: 0 1.1rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 0.92rem;
+        text-decoration: none;
+        border: 1px solid transparent;
+      }
+      .btn-primary { background: var(--orange); color: #431407; }
+      .btn-ghost {
+        border-color: var(--line);
+        background: rgba(24, 24, 27, 0.8);
+      }
+      section {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--line);
+      }
+      section h2 {
+        margin: 0 0 0.65rem;
+        font-size: 1.15rem;
+        font-weight: 700;
+      }
+      section p, section li {
+        color: var(--muted);
+        line-height: 1.55;
+        font-size: 0.98rem;
+      }
+      section p { margin: 0 0 0.85rem; }
+      section p:last-child { margin-bottom: 0; }
+      ul { margin: 0.35rem 0 0; padding-left: 1.15rem; }
+      li + li { margin-top: 0.4rem; }
+      .machine-list a {
+        color: #e4e4e7;
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+      }
+      .machine-list a:hover {
+        color: var(--cyan);
+        border-bottom-color: rgba(34, 211, 238, 0.45);
+      }
+      .cards {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 0.85rem;
+      }
+      .card {
+        display: block;
+        border: 1px solid var(--line);
+        border-radius: 1.15rem;
+        background: rgba(24, 24, 27, 0.85);
+        padding: 1rem 1.1rem;
+        text-decoration: none;
+      }
+      .card h3 {
+        margin: 0 0 0.3rem;
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.45;
+      }
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      footer a { color: #e4e4e7; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <a class="brand" href="https://edgetilt.com/">
+        <img src="/apple-touch-icon.png" alt="" width="36" height="36" />
+        <span>EDGETILT</span>
+      </a>
+
+      <h1>Advantage play slots</h1>
+      <p class="lead">
+        Advantage play slots are machines where the math can swing in the player&apos;s favor... often
+        through persistent state, progressive windows, or other floor conditions that create a real
+        +EV edge. EdgeTilt is built for that hunt: the most comprehensive AP source for slots, with
+        guides and tools backed by millions of spins across thousands of titles.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn btn-primary" href="/guides">Browse the AP guide catalog</a>
+        <a class="btn btn-ghost" href="/?tab=guides">Open guides in EdgeTilt</a>
+        <a class="btn btn-ghost" href="/slots">Slots tools</a>
+      </div>
+
+      <section>
+        <h2>What makes a slot &quot;advantage play&quot;?</h2>
+        <p>
+          Most slots are negative expectancy if you just mash spin. Advantage play slots are different:
+          the game state, jackpot level, or promotion window can change the EV enough that the correct
+          decision is to play... or to walk. Players who track those conditions are hunting edge, not
+          chasing random hits.
+        </p>
+        <p>
+          Common AP families include persistent-state titles, Must Hit By progressives, linked bank
+          games, and other machines where take points and floor reads matter more than luck folklore.
+        </p>
+      </section>
+
+      <section>
+        <h2>Why EdgeTilt for advantage play slots</h2>
+        <p>
+          EdgeTilt has catalogued and evaluated millions of spins across thousands of slot titles to
+          bring you the most accurate take points across the library of games you can play to beat the
+          casino. That is the product... not a teaser list with the real answers locked in a forum
+          thread.
+        </p>
+        <ul>
+          <li><strong style="color:#f4f4f5">AP Guides</strong> ... machine cards for 300+ published titles</li>
+          <li><strong style="color:#f4f4f5">Calculators</strong> ... EV math before you sit</li>
+          <li><strong style="color:#f4f4f5">Bankroll Manager</strong> ... sessions, trips, and growth</li>
+          <li><strong style="color:#f4f4f5">Logbook</strong> ... log AP plays and review what worked</li>
+          <li><strong style="color:#f4f4f5">Offers calendar</strong> ... mailers and trip timing</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Popular advantage play slot titles</h2>
+        <p>
+          A sample of machines players search for when they mean advantage play slots. Open any title
+          in EdgeTilt, or see the
+          <a href="/guides" style="color:#e4e4e7;text-decoration:underline;text-underline-offset:2px">full catalog</a>.
+        </p>
+        <ul class="machine-list">
+          <li><a href="/?tab=guides&amp;guide=phoenix-link">Phoenix Link</a></li>
+          <li><a href="/?tab=guides&amp;guide=luckymon-evolutions">Luckymon Evolutions</a></li>
+          <li><a href="/?tab=guides&amp;guide=buffalo-link">Buffalo Link</a></li>
+          <li><a href="/?tab=guides&amp;guide=buffalo-cash">Buffalo Cash</a></li>
+          <li><a href="/?tab=guides&amp;guide=lightning-buffalo-link">Lightning Buffalo Link</a></li>
+          <li><a href="/?tab=guides&amp;guide=88-fortunes-emperors-coins">88 Fortunes Emperor&apos;s Coins</a></li>
+          <li><a href="/?tab=guides&amp;guide=5-coin-frenzy-jackpots">5 Coin Frenzy Jackpots</a></li>
+          <li><a href="/?tab=guides&amp;guide=igt-must-hit-by">IGT Must Hit By</a></li>
+          <li><a href="/?tab=guides&amp;guide=ainsworth-must-hit-by">Ainsworth Must Hit By</a></li>
+          <li><a href="/?tab=guides&amp;guide=ags-must-hit-by">AGS Must Hit By</a></li>
+          <li><a href="/?tab=guides&amp;guide=dancing-phoenix-soaring-dragon">Dancing Phoenix Soaring Dragon</a></li>
+          <li><a href="/?tab=guides&amp;guide=golden-egypt">Golden Egypt</a></li>
+          <li><a href="/?tab=guides&amp;guide=cashman-bingo">Cashman Bingo</a></li>
+          <li><a href="/?tab=guides&amp;guide=crush-conquest">Crush Conquest</a></li>
+          <li><a href="/?tab=guides&amp;guide=crush-dynasty">Crush Dynasty</a></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Tools that support the hunt</h2>
+        <div class="cards">
+          <a class="card" href="/guides">
+            <h3>AP guide catalog</h3>
+            <p>Every published EdgeTilt title in one place... tap into the app card when you are ready.</p>
+          </a>
+          <a class="card" href="/slots/calculators">
+            <h3>Slot EV calculators</h3>
+            <p>Run the numbers on take points and windows before you commit the bankroll.</p>
+          </a>
+          <a class="card" href="/slots/bankroll">
+            <h3>Bankroll Manager</h3>
+            <p>Track sessions and trips so you know what the edge actually produced.</p>
+          </a>
+          <a class="card" href="/slots/logbook">
+            <h3>Play Logbook</h3>
+            <p>Log AP plays and tighten the next trip from real floor data.</p>
+          </a>
+          <a class="card" href="/slots/calendar">
+            <h3>Offers calendar</h3>
+            <p>Line up mailers and travel with the days worth showing up.</p>
+          </a>
+        </div>
+      </section>
+
+      <section>
+        <h2>Advantage play slots vs. normal slot play</h2>
+        <p>
+          Random recreational play assumes the house edge always wins over time. Advantage play slots
+          flip the script when conditions are right: you are selecting situations, not hoping a cold
+          machine &quot;feels due.&quot; EdgeTilt exists so that selection is informed... guides for the
+          machine, calculators for the math, bankroll and logbook for the results.
+        </p>
+      </section>
+
+      <footer>
+        <a href="https://edgetilt.com/">edgetilt.com</a>
+        ·
+        <a href="/slots">Slots</a>
+        ·
+        <a href="/guides">Guides</a>
+        ·
+        <a href="/slots/bankroll">Bankroll</a>
+        ·
+        <a href="/slots/calculators">Calcs</a>
+        ·
+        <a href="/slots/calendar">Calendar</a>
+        ·
+        <a href="/slots/logbook">Logbook</a>
+        ·
+        <a href="/?tab=guides">Open app</a>
+      </footer>
+    </main>
+  </body>
+</html>

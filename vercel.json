@@ -35,6 +35,7 @@
       "destination": "/api/lounge-profile-og?handle=:handle"
     },
     { "source": "/slot-guide-form", "destination": "/slot-guide-form.html" },
+    { "source": "/advantage-play-slots", "destination": "/advantage-play-slots.html" },
     { "source": "/slots", "destination": "/slots.html" },
     { "source": "/slots/bankroll", "destination": "/slots-bankroll.html" },
     { "source": "/slots/calculators", "destination": "/slots-calculators.html" },

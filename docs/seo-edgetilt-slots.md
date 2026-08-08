@@ -9,6 +9,7 @@
 | URL | Role |
 | --- | --- |
 | `https://edgetilt.com/` | Homepage title/description: **EdgeTilt** + **slots** + **poker** |
+| `https://edgetilt.com/advantage-play-slots` | Intent page for **advantage play slots** (competes with listicle SERPs; links catalog + tools) |
 | `https://edgetilt.com/slots` | Slots hub (cards linking to each tool) |
 | `https://edgetilt.com/guides` | Full AP guide **title catalog** (no paywalled markdown). Regenerate: `npm run seo:guides-index` |
 | `https://edgetilt.com/slots/bankroll` | Slots Bankroll Manager |
@@ -24,6 +25,7 @@
 
 Vercel rewrites (before SPA catch-all):
 
+- `/advantage-play-slots` → `advantage-play-slots.html`
 - `/slots` → `slots.html`
 - `/slots/bankroll` → `slots-bankroll.html`
 - `/slots/calculators` → `slots-calculators.html`
@@ -63,6 +65,7 @@ Keep **`content_markdown`** behind entitlements (`docs/security-anti-scrape-road
 1. [Search Console](https://search.google.com/search-console) → **edgetilt.com** (verified via HTML file).
 2. **Sitemaps** → `https://edgetilt.com/sitemap.xml` (already submitted is fine; Google re-fetches).
 3. **URL inspection** → live test + **Request indexing** for new URLs:
+   - `/advantage-play-slots` (priority for the Machine Pro-style SERP)
    - `/slots/bankroll`
    - `/slots/calculators`
    - `/slots/calendar`

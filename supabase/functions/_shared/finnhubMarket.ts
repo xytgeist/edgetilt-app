@@ -366,14 +366,15 @@ export function parseCaptionMarketWindow(caption: string): {
   }
 
   // Lookback headlines: "first time in two months", "first signs of life in two months",
-  // "first green day in 3 months". Avoid bare "first product in two months" (often future).
+  // "first signs of life (get it) in two months", "first green day in 3 months".
+  // Optional (...) asides between the phrase and "in N months".
   const firstInMonth = text.match(
     new RegExp(
       `\\b(?:for\\s+the\\s+)?first\\s+(?:` +
         `time|` +
         `signs?(?:\\s+of\\s+[a-z]+){1,3}|` +
         `(?:[a-z0-9%.'-]+\\s+){0,3}(?:day|week|close|print|candle|session|bounce|rally|breakout|high|low)` +
-        `)\\s+in\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`,
+        `)(?:\\s*\\([^)]{0,40}\\))*\\s+in\\s+${CAPTION_MONTH_TOKEN}\\s*months?\\b`,
     ),
   )
   if (firstInMonth) {

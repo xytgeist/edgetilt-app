@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-08: **Caption window parenthetical asides:** “first signs of life **(get it)** in two months” failed because `(...)` sat between the phrase and `in N months`. Allow short parentheticals; redeploy bot/market Edges test + prod.
 - 2026-08-08: **Prod Edge redeploy (caption temporal parser for bots):** same four functions on **`jtjgtucumuoswnbauxry`** (`edgetilt.com`).
 - 2026-08-08: **Test Edge redeploy (caption temporal parser for bots):** **`lounge-news-poll`**, **`lounge-bot-publish-due`**, **`lounge-market-data`**, **`lounge-odds-poll`** on **`kcosfvmreeiosdjdzycb`** (bundles **`finnhubMarket.ts`** attach path). New bot posts with `$TICKER` + since/first-signs phrasing get historical minis; old embeds stay frozen.
 - 2026-08-08: **Caption window “since January / mid-April”:** temporal parser maps **`since (early|mid|late)? <month> [day] [, year]`** to historical windows (Jan this year → **ytd**; else nearest covering key + date-range label). Client + **`finnhubMarket.ts`**. Redeploy **`lounge-market-data`**.

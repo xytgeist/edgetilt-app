@@ -4,11 +4,16 @@ import {
   insertComposerLineBreakViaExecCommand,
   insertComposerNewlineByPlainSync,
   insertPlainTextAtSelection,
+  LOUNGE_ANDROID,
   LOUNGE_IOS,
   plainTextFromComposerRoot,
   syncComposerFieldAutoHeight,
   syncComposerHtml,
 } from './loungeRichComposerDom.js'
+
+/** Debounce rich HTML rewrite while typing … Android Chrome is especially sensitive to innerHTML+caret. */
+const RICH_SYNC_DEBOUNCE_MS = LOUNGE_ANDROID ? 180 : 90
+const SELECTION_NOTIFY_THROTTLE_MS = LOUNGE_ANDROID ? 120 : 0
 import { LOUNGE_CAPTION_MAX } from '../../utils/loungeCommentLimits.js'
 import { normalizeCashtagsInCaption } from '../../utils/loungeMarketCaptionParse.js'
 import { detectCashtagAtCursor } from './loungeCashtagAutocomplete.js'
@@ -60,6 +65,11 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const enterHandledRef = useRef(false)
   /** Skip one readAndEmit rich HTML rebuild right after Enter (DOM rewrite races mobile caret). */
   const skipRichSyncRef = useRef(false)
+  const richSyncTimerRef = useRef(0)
+  const lastStyleCtxRef = useRef(cashtagStyleContext)
+  const lastSelectionNotifyAtRef = useRef(0)
+  const cashtagStyleContextRef = useRef(cashtagStyleContext)
+  cashtagStyleContextRef.current = cashtagStyleContext
   const onInputRef = useRef(onInput)
   onInputRef.current = onInput
   const onPasteImageFilesRef = useRef(onPasteImageFiles)
@@ -88,11 +98,48 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const notifyComposerInput = useCallback((el, text, caret, { sync = false } = {}) => {
     caretRef.current = caret
     const payload = { target: el, text, caret }
-    if (sync) onInputRef.current?.(payload)
+    if (sync) {
+      onInputRef.current?.(payload)
+      // Android: sync path is enough … a second rAF refresh doubles cashtag/mention work per key.
+      if (LOUNGE_ANDROID) return
+    }
     requestAnimationFrame(() => {
       onInputRef.current?.(payload)
     })
   }, [])
+
+  const flushRichComposerSync = useCallback(() => {
+    if (richSyncTimerRef.current) {
+      window.clearTimeout(richSyncTimerRef.current)
+      richSyncTimerRef.current = 0
+    }
+    const el = rootRef.current
+    if (!el || composingRef.current || iosNativeTextarea) return
+    const caret = getCaretTextOffset(el)
+    let text = plainTextFromComposerRoot(el)
+    text = normalizeCashtagsInCaption(text)
+    const capped =
+      maxLength != null && text.length > maxLength ? text.slice(0, maxLength) : text
+    const nextCaret = maxLength != null ? Math.min(caret, capped.length) : caret
+    if (detectCashtagAtCursor(capped, nextCaret)?.query) return
+    syncComposerHtml(el, capped, nextCaret, cashtagStyleContextRef.current)
+    lastStyleCtxRef.current = cashtagStyleContextRef.current
+  }, [iosNativeTextarea, maxLength])
+
+  const scheduleRichComposerSync = useCallback(() => {
+    if (richSyncTimerRef.current) window.clearTimeout(richSyncTimerRef.current)
+    richSyncTimerRef.current = window.setTimeout(() => {
+      richSyncTimerRef.current = 0
+      flushRichComposerSync()
+    }, RICH_SYNC_DEBOUNCE_MS)
+  }, [flushRichComposerSync])
+
+  useEffect(
+    () => () => {
+      if (richSyncTimerRef.current) window.clearTimeout(richSyncTimerRef.current)
+    },
+    [],
+  )
 
   const readAndEmit = useCallback(() => {
     const el = rootRef.current
@@ -110,13 +157,18 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     const skipRichForCashtag = detectCashtagAtCursor(capped, nextCaret)?.query
     if (skipRichSyncRef.current || skipRichForCashtag) {
       if (skipRichSyncRef.current) skipRichSyncRef.current = false
+      if (richSyncTimerRef.current) {
+        window.clearTimeout(richSyncTimerRef.current)
+        richSyncTimerRef.current = 0
+      }
     } else {
-      syncComposerHtml(el, capped, nextCaret, cashtagStyleContext)
+      // Debounce innerHTML rewrite … immediate sync + parent re-render used to do it twice/key.
+      scheduleRichComposerSync()
     }
     if (capped !== value) onChange?.(capped)
     setDomHasText(capped.length > 0)
     requestAnimationFrame(() => syncComposerFieldAutoHeight(el))
-  }, [cashtagStyleContext, maxLength, notifyComposerInput, onChange, value])
+  }, [maxLength, notifyComposerInput, onChange, scheduleRichComposerSync, value])
 
   const insertEnterNewline = useCallback(() => {
     if (enterHandledRef.current) return true
@@ -184,12 +236,23 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     if (domText === value) {
       lastValueRef.current = value
       setDomHasText(value.length > 0)
-      const caret =
-        document.activeElement === el
-          ? Math.min(getCaretTextOffset(el), value.length)
-          : value.length
-      if (!detectCashtagAtCursor(value, caret)?.query) {
-        syncComposerHtml(el, value, caret, cashtagStyleContext)
+      const styleChanged = lastStyleCtxRef.current !== cashtagStyleContext
+      // DOM already matches React value (normal typing path). Do NOT rewrite HTML every
+      // setPostText re-render … that was the Android typing stall (innerHTML + caret ×2/key).
+      // Only restyle when quote/color context changes (debounced if focused).
+      if (styleChanged) {
+        lastStyleCtxRef.current = cashtagStyleContext
+        const caret =
+          document.activeElement === el
+            ? Math.min(getCaretTextOffset(el), value.length)
+            : value.length
+        if (!detectCashtagAtCursor(value, caret)?.query) {
+          if (document.activeElement === el || el.contains(document.activeElement)) {
+            scheduleRichComposerSync()
+          } else {
+            syncComposerHtml(el, value, caret, cashtagStyleContext)
+          }
+        }
       }
       return
     }
@@ -205,7 +268,12 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
             ? Math.min(getCaretTextOffset(el), value.length)
             : value.length
         caretRef.current = caret
+        if (richSyncTimerRef.current) {
+          window.clearTimeout(richSyncTimerRef.current)
+          richSyncTimerRef.current = 0
+        }
         syncComposerHtml(el, value, caret, cashtagStyleContext)
+        lastStyleCtxRef.current = cashtagStyleContext
         setDomHasText(value.length > 0)
       }
       return
@@ -216,9 +284,14 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
         ? Math.min(getCaretTextOffset(el), value.length)
         : value.length
     caretRef.current = caret
+    if (richSyncTimerRef.current) {
+      window.clearTimeout(richSyncTimerRef.current)
+      richSyncTimerRef.current = 0
+    }
     syncComposerHtml(el, value, caret, cashtagStyleContext)
+    lastStyleCtxRef.current = cashtagStyleContext
     setDomHasText(value.length > 0)
-  }, [cashtagStyleContext, value, iosNativeTextarea])
+  }, [cashtagStyleContext, iosNativeTextarea, scheduleRichComposerSync, value])
 
   useLayoutEffect(() => {
     if (!manageFieldHeight) return
@@ -241,6 +314,11 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       if (!root) return
       const active = document.activeElement
       if (active !== root && !root.contains(active)) return
+      if (SELECTION_NOTIFY_THROTTLE_MS > 0) {
+        const now = Date.now()
+        if (now - lastSelectionNotifyAtRef.current < SELECTION_NOTIFY_THROTTLE_MS) return
+        lastSelectionNotifyAtRef.current = now
+      }
       const caret = getCaretTextOffset(root)
       caretRef.current = caret
       notifyComposerInput(root, plainTextFromComposerRoot(root), caret)
@@ -430,7 +508,10 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
         onKeyDown={handleKeyDown}
         onKeyUp={onKeyUp}
         onMouseUp={onMouseUp}
-        onBlur={onBlur}
+        onBlur={(e) => {
+          flushRichComposerSync()
+          onBlur?.(e)
+        }}
         onFocus={onFocus}
         onCompositionStart={() => {
           composingRef.current = true
@@ -441,6 +522,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
           composingRef.current = false
           setIsComposing(false)
           readAndEmit()
+          flushRichComposerSync()
         }}
         className={`w-full touch-manipulation whitespace-pre-wrap break-words px-0 text-left text-zinc-100 outline-none selection:bg-cyan-500/25 [-webkit-tap-highlight-color:transparent] ${preset.fieldClass} ${manageFieldHeight ? 'overflow-hidden' : 'overflow-y-auto'} ${className}`}
       />

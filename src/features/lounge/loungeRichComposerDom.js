@@ -101,6 +101,10 @@ export function buildRichComposerHtml(text, styleCtx = null) {
 export const LOUNGE_IOS =
   typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
 
+/** Positive Android UA check (never `!LOUNGE_IOS` … that includes desktop). */
+export const LOUNGE_ANDROID =
+  typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+
 const IOS_CARET_ANCHOR_CLASS = 'ios-caret-anchor'
 
 function isIosCaretAnchorBr(node) {

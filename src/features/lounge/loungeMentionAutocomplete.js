@@ -61,6 +61,8 @@ export function useMentionState(value, supabaseClient, enabled = true) {
   const fetchGenRef = useRef(0)
   const lastQueryRef = useRef(null)
   const suggestionsRef = useRef([])
+  const mentionRef = useRef(null)
+  const loadingRef = useRef(false)
 
   useEffect(() => {
     suggestionsRef.current = suggestions
@@ -70,10 +72,22 @@ export function useMentionState(value, supabaseClient, enabled = true) {
     liveValueRef.current = value
   }, [value])
 
+  useEffect(() => {
+    mentionRef.current = mention
+  }, [mention])
+
+  useEffect(() => {
+    loadingRef.current = loading
+  }, [loading])
+
   const clearMention = useCallback(() => {
+    const alreadyIdle =
+      mentionRef.current == null && suggestionsRef.current.length === 0 && !loadingRef.current
     fetchGenRef.current += 1
     clearTimeout(debounceRef.current)
     lastQueryRef.current = null
+    // Avoid setState on every keystroke when there is no active @mention (was re-rendering SocialFeed).
+    if (alreadyIdle) return
     setMention(null)
     setSuggestions([])
     setLoading(false)
@@ -98,11 +112,19 @@ export function useMentionState(value, supabaseClient, enabled = true) {
         return
       }
 
-      setMention(active)
-      setActiveIndex(0)
+      const prev = mentionRef.current
+      const same =
+        prev &&
+        prev.query === active.query &&
+        prev.start === active.start &&
+        prev.end === active.end
+      if (!same) {
+        setMention(active)
+        setActiveIndex(0)
+      }
 
       if (active.query === lastQueryRef.current && suggestionsRef.current.length > 0) {
-        setLoading(false)
+        if (loadingRef.current) setLoading(false)
         return
       }
 

@@ -15657,15 +15657,12 @@ export default function SocialFeed({
                           composerFieldRef.current,
                         )
                       }}
-                      onKeyUp={(e) => {
-                        cashtagComposer.onCursorMove(e)
-                        mentionComposer.onCursorMove(e)
-                      }}
                       onMouseUp={(e) => {
                         cashtagComposer.onCursorMove(e)
                         mentionComposer.onCursorMove(e)
                       }}
                       onInput={(e) => {
+                        // onInput only … onKeyUp duplicated this and re-rendered SocialFeed twice/key.
                         cashtagComposer.onCursorMove(e)
                         mentionComposer.onCursorMove(e)
                       }}

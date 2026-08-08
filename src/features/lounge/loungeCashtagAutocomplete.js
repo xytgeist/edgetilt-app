@@ -185,6 +185,7 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
   const loadGenRef = useRef(0)
   const fallbackTimerRef = useRef(null)
   const loadingRef = useRef(false)
+  const cashtagRef = useRef(null)
 
   useEffect(() => {
     return () => {
@@ -204,10 +205,18 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
     loadingRef.current = loading
   }, [loading])
 
+  useEffect(() => {
+    cashtagRef.current = cashtag
+  }, [cashtag])
+
   const clearCashtag = useCallback(() => {
+    const alreadyIdle =
+      cashtagRef.current == null && suggestionsRef.current.length === 0 && !loadingRef.current
     loadGenRef.current += 1
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     lastQueryRef.current = null
+    // Avoid setState on every keystroke when there is no active $cashtag (was re-rendering SocialFeed).
+    if (alreadyIdle) return
     setCashtag(null)
     setSuggestions([])
     setLoading(false)
@@ -351,8 +360,16 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
         return
       }
 
-      setCashtag(active)
-      setActiveIndex(0)
+      const prev = cashtagRef.current
+      const same =
+        prev &&
+        prev.query === active.query &&
+        prev.start === active.start &&
+        prev.end === active.end
+      if (!same) {
+        setCashtag(active)
+        setActiveIndex(0)
+      }
 
       if (
         active.query === lastQueryRef.current &&

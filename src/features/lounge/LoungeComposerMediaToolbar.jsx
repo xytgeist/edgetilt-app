@@ -105,9 +105,11 @@ export function LoungeComposerMediaGifIcon({ className = 'h-8 w-8', filled = tru
 
 /**
  * @param {'feed' | 'thread' | 'compact'} variant
+ * @param {'md' | 'lg'} [size] Larger hit targets for keyboard-docked toolbars (e.g. quote).
  */
 export default function LoungeComposerMediaToolbar({
   variant = 'feed',
+  size = 'md',
   imageInputId,
   videoInputId,
   disabled = false,
@@ -122,19 +124,29 @@ export default function LoungeComposerMediaToolbar({
   className = '',
 }) {
   const isThread = variant === 'thread'
-  const iconClass = isThread ? 'h-[26px] w-[26px]' : 'h-7 w-7'
+  const isLg = size === 'lg'
+  const iconClass = isThread
+    ? isLg
+      ? 'h-8 w-8'
+      : 'h-[26px] w-[26px]'
+    : isLg
+      ? 'h-8 w-8'
+      : 'h-7 w-7'
   const filled = !isThread
+  const padClass = isThread ? (isLg ? 'p-2.5' : 'p-2') : isLg ? 'p-1.5' : 'p-0.5'
   const labelClass = isThread
-    ? `flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-full p-2 text-cyan-600 hover:text-cyan-500 active:text-cyan-400 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]${disabled ? ' pointer-events-none opacity-45' : ''}`
-    : `flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md p-0.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]${disabled ? ' pointer-events-none opacity-45' : ''}`
+    ? `flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-full ${padClass} text-cyan-600 hover:text-cyan-500 active:text-cyan-400 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]${disabled ? ' pointer-events-none opacity-45' : ''}`
+    : `flex shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md ${padClass} text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]${disabled ? ' pointer-events-none opacity-45' : ''}`
   const gifBtnClass = isThread
-    ? 'flex shrink-0 touch-manipulation items-center justify-center rounded-full p-2 text-cyan-600 hover:text-cyan-500 active:text-cyan-400 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]'
-    : 'flex shrink-0 touch-manipulation items-center justify-center rounded-md p-0.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]'
+    ? `flex shrink-0 touch-manipulation items-center justify-center rounded-full ${padClass} text-cyan-600 hover:text-cyan-500 active:text-cyan-400 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]`
+    : `flex shrink-0 touch-manipulation items-center justify-center rounded-md ${padClass} text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]`
 
   const preventFocusSteal = (e) => e.preventDefault()
 
   return (
-    <div className={`inline-flex shrink-0 items-center gap-0.5${className ? ` ${className}` : ''}`}>
+    <div
+      className={`inline-flex shrink-0 items-center ${isLg ? 'gap-1' : 'gap-0.5'}${className ? ` ${className}` : ''}`}
+    >
       <label
         htmlFor={imageInputId}
         onPointerDown={onImagePointerDown}

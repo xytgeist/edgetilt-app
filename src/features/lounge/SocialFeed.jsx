@@ -18505,9 +18505,10 @@ export default function SocialFeed({
               {...loungeFileInputMediaPickerHandlers('quote')}
               onChange={(e) => handleQuoteRepostMediaInputChange(e, 'video')}
             />
-            <div className="lounge-media-toolbar flex w-full items-center py-1">
+            <div className="lounge-media-toolbar flex w-full items-center py-1.5">
               <LoungeComposerMediaToolbar
                 variant="feed"
+                size="lg"
                 imageInputId={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
                 videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
                 disabled={quoteRepostBusy}
@@ -18523,8 +18524,12 @@ export default function SocialFeed({
                   if (!quoteRepostBusy) openKlipyPicker('quote')
                 }}
               />
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 pr-1">
-                <LoungeComposerCharRing len={quoteRepostDraft.length} max={loungeComposerCaptionMax} />
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2 pr-1.5">
+                <LoungeComposerCharRing
+                  len={quoteRepostDraft.length}
+                  max={loungeComposerCaptionMax}
+                  size="lg"
+                />
               </div>
             </div>
           </footer>

@@ -19,6 +19,7 @@
 | `https://edgetilt.com/poker` | Poker tools hub |
 | `https://edgetilt.com/poker/bankroll` | Poker Bankroll Manager |
 | `https://edgetilt.com/poker/stable` | Poker Stable Manager |
+| `https://edgetilt.com/patches` | EDGE merch wall … **3.5&quot; rectangular** embroidered patch designs (`EDGE` + `edgetilt.com`) |
 | `https://edgetilt.com/sitemap.xml` | Lists the URLs above |
 | `https://edgetilt.com/robots.txt` | Allows crawl; points at sitemap |
 | `public/googleae022787114e4d27.html` | Google Search Console HTML-file verification |
@@ -35,6 +36,7 @@ Vercel rewrites (before SPA catch-all):
 - `/poker` → `poker.html`
 - `/poker/bankroll` → `poker-bankroll.html`
 - `/poker/stable` → `poker-stable.html`
+- `/patches` → `patches.html`
 
 App deep links from CTAs: `/?tab=slots`, `/?tab=guides`, `/?tab=bankroll`, `/?tab=calculators`, `/?tab=offers`, `/?tab=logbook`, `/?tab=poker`, `/?tab=poker-bankroll`, `/?tab=poker-stable`.
 

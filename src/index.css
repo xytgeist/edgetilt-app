@@ -1908,21 +1908,62 @@ html.light [data-lounge-profile-fan-sub-btn][data-fan-sub-subscribed='true'] .pr
 
 /*
  * Compose / edit / profile picker - selected = tribe fill; deselected = neutral chip.
+ * Idle chips stay mostly opaque so they don't muddy translucent sheets.
  */
 html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled),
 html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled):hover {
-  background-color: color-mix(in srgb, var(--color-zinc-900) 50%, transparent) !important;
-  border-color: color-mix(in srgb, var(--color-zinc-600) 70%, transparent) !important;
-  color: var(--color-zinc-400) !important;
+  background-color: #e4e4e7 !important;
+  border-color: #d4d4d8 !important;
+  color: #52525b !important;
   box-shadow: none !important;
 }
 
 html:not(.light) .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled),
 html:not(.light) .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:not(:disabled):hover {
-  background-color: color-mix(in srgb, #18181b 50%, transparent) !important;
-  border-color: color-mix(in srgb, #52525b 70%, transparent) !important;
+  background-color: #27272a !important;
+  border-color: #52525b !important;
   color: #a1a1aa !important;
   box-shadow: none !important;
+}
+
+/* At-max / disabled unselected chips … opaque mute, no opacity stack. */
+html.light .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:disabled {
+  background-color: #e4e4e7 !important;
+  border-color: #d4d4d8 !important;
+  color: #a1a1aa !important;
+  opacity: 1 !important;
+}
+html:not(.light) .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="false"]:disabled {
+  background-color: #27272a !important;
+  border-color: #3f3f46 !important;
+  color: #71717a !important;
+  opacity: 1 !important;
+}
+
+/* Collapsed tribe row fade matches parent surface (quote sheet overrides below). */
+[data-lounge-composer-category] {
+  --lounge-category-fade-from: #18181b;
+}
+html.light [data-lounge-composer-category] {
+  --lounge-category-fade-from: #f4f4f5;
+}
+.lounge-category-pill-fade {
+  background: linear-gradient(to left, var(--lounge-category-fade-from) 35%, transparent);
+}
+.lounge-category-pill-expand {
+  background-color: var(--lounge-category-fade-from);
+}
+html.light .lounge-category-pill-expand {
+  color: #71717a;
+}
+html.light .lounge-category-pill-expand:hover {
+  color: #3f3f46;
+}
+[data-lounge-quote-repost-sheet] [data-lounge-composer-category] {
+  --lounge-category-fade-from: #181b22;
+}
+html.light [data-lounge-quote-repost-sheet] [data-lounge-composer-category] {
+  --lounge-category-fade-from: #f2f2f7;
 }
 
 .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="ap_slots"] {
@@ -2547,24 +2588,8 @@ html.light [data-lounge-quote-repost-sheet] button[aria-label='Cancel']:active {
   color: #18181b !important;
 }
 
-html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-header-fade {
-  background-color: rgba(242, 242, 247, 0.92) !important;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    rgba(242, 242, 247, 1) 0%,
-    rgba(242, 242, 247, 0.95) 18%,
-    rgba(242, 242, 247, 0.82) 42%,
-    rgba(242, 242, 247, 0.5) 62%,
-    rgba(242, 242, 247, 0) 78%
-  ) !important;
-  mask-image: linear-gradient(
-    to bottom,
-    rgba(242, 242, 247, 1) 0%,
-    rgba(242, 242, 247, 0.95) 18%,
-    rgba(242, 242, 247, 0.82) 42%,
-    rgba(242, 242, 247, 0.5) 62%,
-    rgba(242, 242, 247, 0) 78%
-  ) !important;
+html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-header {
+  background-color: #f2f2f7 !important;
 }
 
 html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-scroll {

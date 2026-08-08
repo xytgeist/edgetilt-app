@@ -97,6 +97,38 @@ export default function LoungePostCategoryPillPicker({
 
   const showExpandToggle = collapsibleSingleRow && (hasHiddenRows || expanded)
   const collapsedSingleRow = collapsibleSingleRow && !expanded
+  const caretSize = rowHeightPx ?? 24
+
+  const expandToggleButton = showExpandToggle ? (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-expanded={expanded}
+      aria-label={expanded ? 'Show fewer tribes' : 'Show all tribes'}
+      title={expanded ? 'Show fewer tribes' : 'Show all tribes'}
+      onClick={() => setExpanded((v) => !v)}
+      className="lounge-category-pill-expand pointer-events-auto flex shrink-0 touch-manipulation items-center justify-center rounded-md text-zinc-400 hover:text-zinc-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+      style={{
+        width: caretSize,
+        height: caretSize,
+      }}
+    >
+      <svg
+        className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+        viewBox="0 0 20 20"
+        fill="none"
+        aria-hidden
+      >
+        <path
+          d="M5 8l5 5 5-5"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  ) : null
 
   return (
     <div className={`mt-2 ${className}`.trim()} data-lounge-composer-category="">
@@ -121,7 +153,7 @@ export default function LoungePostCategoryPillPicker({
             ref={rowRef}
             className={`lounge-pill-row flex gap-1.5 ${
               collapsedSingleRow ? 'w-max min-w-full flex-nowrap' : 'flex-wrap'
-            } ${showExpandToggle ? 'pr-8' : ''}`}
+            } ${collapsedSingleRow && showExpandToggle ? 'pr-8' : ''}`}
             data-lounge-category-picker=""
           >
             {sortedOptions.map(({ slug, label }) => {
@@ -139,7 +171,7 @@ export default function LoungePostCategoryPillPicker({
                     on
                       ? loungePostCategoryPillChipClass(slug, 'selected')
                       : chipDisabled
-                        ? 'cursor-not-allowed border-zinc-700/60 bg-zinc-900/40 text-zinc-600 opacity-60'
+                        ? 'cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500'
                         : loungePostCategoryPillChipClass(slug, 'idle')
                   }`}
                 >
@@ -147,39 +179,23 @@ export default function LoungePostCategoryPillPicker({
                 </button>
               )
             })}
+            {/* Expanded: caret sits in-flow so no full-height side shade. */}
+            {!collapsedSingleRow && expandToggleButton ? (
+              <span className="inline-flex shrink-0 self-center">{expandToggleButton}</span>
+            ) : null}
           </div>
         </div>
-        {showExpandToggle ? (
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pl-5">
-            <div className="h-full w-5 bg-gradient-to-l from-zinc-700/95 to-transparent" />
-            <button
-              type="button"
-              disabled={disabled}
-              aria-expanded={expanded}
-              aria-label={expanded ? 'Show fewer tribes' : 'Show all tribes'}
-              title={expanded ? 'Show fewer tribes' : 'Show all tribes'}
-              onClick={() => setExpanded((v) => !v)}
-              className="pointer-events-auto flex touch-manipulation items-center justify-center rounded-md bg-zinc-700/95 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
-              style={{
-                width: rowHeightPx ?? 24,
-                height: rowHeightPx ?? 24,
-              }}
-            >
-              <svg
-                className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                viewBox="0 0 20 20"
-                fill="none"
-                aria-hidden
-              >
-                <path
-                  d="M5 8l5 5 5-5"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+        {/* Collapsed: single-row fade + caret only (never stretches over wrap). */}
+        {collapsedSingleRow && showExpandToggle ? (
+          <div
+            className="pointer-events-none absolute top-0 right-0 z-10 flex items-center"
+            style={{ height: caretSize }}
+          >
+            <div
+              className="lounge-category-pill-fade h-full w-6"
+              aria-hidden
+            />
+            {expandToggleButton}
           </div>
         ) : null}
       </div>

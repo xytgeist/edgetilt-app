@@ -45,6 +45,8 @@
     "ap-guide:restore": "node scripts/ap-guide-restore-test-guides.mjs --latest",
     "db:query:test": "node scripts/supabase-db-query.mjs --target=test",
     "db:query:production": "node scripts/supabase-db-query.mjs --target=production",
+    "seo:guides-index": "node scripts/generate-seo-guides-index.mjs --target=production",
+    "seo:guides-index:test": "node scripts/generate-seo-guides-index.mjs --target=test",
     "creator-fan:sync-from-stripe": "node scripts/sync-creator-fan-sub-from-stripe.mjs",
     "ap-guide:voice-audit": "node scripts/ap-guide-voice-audit-payloads.mjs",
     "ap-guide:voice-audit:strict": "node scripts/ap-guide-voice-audit-payloads.mjs --strict",

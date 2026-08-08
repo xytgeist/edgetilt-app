@@ -10,7 +10,7 @@
 | --- | --- |
 | `https://edgetilt.com/` | Homepage title/description: **EdgeTilt** + **slots** + **poker** |
 | `https://edgetilt.com/slots` | Slots landing (`public/slots.html`) |
-| `https://edgetilt.com/guides` | Public AP guides **index** (titles only… no paywalled markdown) |
+| `https://edgetilt.com/guides` | Public AP guides **full title catalog** (titles + in-app deep links… no paywalled markdown). Regenerate: `npm run seo:guides-index` |
 | `https://edgetilt.com/poker` | Poker tools hub |
 | `https://edgetilt.com/poker/bankroll` | Poker Bankroll Manager landing |
 | `https://edgetilt.com/poker/stable` | Poker Stable Manager landing |
@@ -36,7 +36,8 @@ App deep links from CTAs: `/?tab=slots`, `/?tab=guides`, `/?tab=poker`, `/?tab=p
 
 | Approach | Notes |
 | --- | --- |
-| **Public teaser pages** (titles, blurbs) | What `/guides` does. Safe. |
+| **Public title catalog** on `/guides` | All published titles + links into `/?tab=guides&guide=:slug`. Safe. Refresh with **`npm run seo:guides-index`** after big catalog changes. |
+| **Public teaser pages** (per-slug blurbs / JSON-LD) | Next step for ranking individual machine queries harder. |
 | **JSON-LD paywalled content** | Future per-guide teasers with `isAccessibleForFree: false`. |
 | **Googlebot-only full text** | **Don’t** (cloaking). |
 | **Full markdown in public HTML** | Defeats anti-scrape / paywall. |

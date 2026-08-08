@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { feedPostDisplayCaption, isQuoteRepostPost, quoteRepostOriginalUnavailable } from '../../utils/communityFeedPost'
 import { isLoungeFanOnlyPostLocked } from '../../utils/loungeFanOnlyPost.js'
 import { displayPostCategoryPills } from '../../utils/loungePostCategoryPills.js'
@@ -38,8 +38,9 @@ import {
 
 /**
  * Single Lounge feed post (avatar row, caption, stats). Used on main feed and profile post list.
+ * memo: parent SocialFeed is huge; skip row work when props are unchanged (composer typing).
  */
-export default function LoungePostArticle({
+function LoungePostArticle({
   post,
   /** Main feed: show unobtrusive row spinner while a media edit save finishes. */
   feedEditSavePending = false,
@@ -823,5 +824,6 @@ export default function LoungePostArticle({
   )
 }
 
+export default memo(LoungePostArticle)
 
 

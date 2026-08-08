@@ -1,4 +1,13 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useSyncExternalStore,
+  startTransition,
+} from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import {
   checkProfileHandleAvailability,
@@ -232,6 +241,11 @@ import {
 } from '../../utils/formatCompactStatCount.js'
 import { composerStableInitialsFromUid, formatLoungePostDetailWhen } from './loungeFormat'
 import LoungeRichComposerField from './LoungeRichComposerField.jsx'
+import LoungeFeedComposerPostChrome from './LoungeFeedComposerPostChrome.jsx'
+import {
+  LOUNGE_ANDROID,
+  plainTextFromComposerRoot,
+} from './loungeRichComposerDom.js'
 import { renderRichCaption } from './loungeCaption'
 import LoungeExpandableRichCaption from './LoungeExpandableRichCaption.jsx'
 import {
@@ -730,6 +744,12 @@ export default function SocialFeed({
     const d = readLoungeComposerDraft()
     return d?.postText ?? ''
   })
+  /** Latest caption for Post/draft (contenteditable can lead deferred React state). */
+  const postTextLiveRef = useRef(postText)
+  /** Idle timer so rapid Android keystrokes do not re-render SocialFeed at all. */
+  const postTextIdleTimerRef = useRef(0)
+  /** Char ring / Post enable without setState on SocialFeed. */
+  const feedComposerPostChromeApiRef = useRef(null)
   /** Full-screen thread composer (multi-post with per-section media). */
   const [threadComposeOpen, setThreadComposeOpen] = useState(false)
   const [threadComposeSessionKey, setThreadComposeSessionKey] = useState(0)
@@ -1247,6 +1267,66 @@ export default function SocialFeed({
   const composerImageInputRef = useRef(null)
   const composerVideoInputRef = useRef(null)
   const composerFieldRef = useRef(null)
+  const readLiveFeedComposerCaption = useCallback(() => {
+    const el = composerFieldRef.current
+    if (el) {
+      try {
+        if (typeof el.value === 'string' && el.getAttribute?.('contenteditable') == null) {
+          return el.value
+        }
+        return plainTextFromComposerRoot(el)
+      } catch {
+        // fall through
+      }
+    }
+    return postTextLiveRef.current
+  }, [])
+  const cancelFeedComposerCaptionIdle = useCallback(() => {
+    if (postTextIdleTimerRef.current) {
+      window.clearTimeout(postTextIdleTimerRef.current)
+      postTextIdleTimerRef.current = 0
+    }
+  }, [])
+  const setFeedComposerCaptionImmediate = useCallback(
+    (next) => {
+      cancelFeedComposerCaptionIdle()
+      const text = String(next ?? '')
+      postTextLiveRef.current = text
+      feedComposerPostChromeApiRef.current?.setCaptionMeta(text.length, text.trim().length > 0)
+      setPostText(text)
+    },
+    [cancelFeedComposerCaptionIdle],
+  )
+  const flushFeedComposerCaptionToState = useCallback(() => {
+    cancelFeedComposerCaptionIdle()
+    const text = postTextLiveRef.current
+    startTransition(() => {
+      setPostText((prev) => (prev === text ? prev : text))
+    })
+  }, [cancelFeedComposerCaptionIdle])
+  const handleFeedComposerCaptionChange = useCallback(
+    (next) => {
+      const text = String(next ?? '')
+      postTextLiveRef.current = text
+      feedComposerPostChromeApiRef.current?.setCaptionMeta(text.length, text.trim().length > 0)
+      // Do not setState on every key … SocialFeed re-renders the whole feed (unusable on Android).
+      cancelFeedComposerCaptionIdle()
+      postTextIdleTimerRef.current = window.setTimeout(
+        () => {
+          postTextIdleTimerRef.current = 0
+          flushFeedComposerCaptionToState()
+        },
+        LOUNGE_ANDROID ? 350 : 200,
+      )
+    },
+    [cancelFeedComposerCaptionIdle, flushFeedComposerCaptionToState],
+  )
+  useEffect(
+    () => () => {
+      cancelFeedComposerCaptionIdle()
+    },
+    [cancelFeedComposerCaptionIdle],
+  )
   const mentionComposerAnchorRef = useRef(null)
   const mentionDetailCommentAnchorRef = useRef(null)
   const mentionQuoteRepostAnchorRef = useRef(null)
@@ -1722,12 +1802,16 @@ export default function SocialFeed({
   }, [])
 
   useEffect(() => {
-    persistLoungeComposerDraft(
-      postText,
-      composerExpanded,
-      composerImageItems.length > 0 || composerVideoSlot != null,
-      composerMediaUrl
-    )
+    const delayMs = LOUNGE_ANDROID ? 450 : 250
+    const timer = window.setTimeout(() => {
+      persistLoungeComposerDraft(
+        postTextLiveRef.current,
+        composerExpanded,
+        composerImageItems.length > 0 || composerVideoSlot != null,
+        composerMediaUrl,
+      )
+    }, delayMs)
+    return () => window.clearTimeout(timer)
   }, [postText, composerExpanded, composerImageItems, composerVideoSlot, composerMediaUrl])
 
   useEffect(() => {
@@ -3287,7 +3371,7 @@ export default function SocialFeed({
       blurAllThreadComposeFields()
       blurLoungeComposerCaption(() => composerFieldRef.current)
       setComposerVideoSlot(null)
-      setPostText('')
+      setFeedComposerCaptionImmediate('')
       setPostErr('')
       setThreadComposeErr('')
       loungePostSnapshotRef.current = null
@@ -3330,7 +3414,7 @@ export default function SocialFeed({
       setThreadComposeErr('')
       cancelComposerMediaPrep()
       setComposerVideoSlot(loungePostDraftComposerVideoSlot(draft))
-      setPostText(String(draft.caption || ''))
+      setFeedComposerCaptionImmediate(String(draft.caption || ''))
       setComposerMediaUrl(String(draft.gif_url || '').trim())
       setComposerCategoryPills(Array.isArray(draft.category_pills) ? draft.category_pills : [])
       setComposerImageItems(composerImageItemsFromDraftUrls(draft.image_urls))
@@ -4035,7 +4119,7 @@ export default function SocialFeed({
 
   const clearComposerAfterDraftSaveQueued = useCallback(
     (skipRevokeUrls) => {
-      setPostText('')
+      setFeedComposerCaptionImmediate('')
       setComposerImageItems((prev) => {
         for (const it of prev) {
           const p = String(it?.preview || '').trim()
@@ -4072,7 +4156,8 @@ export default function SocialFeed({
         setPostErr(videoErr)
         return null
       }
-      const caption = String(postText || '')
+      const caption = String(readLiveFeedComposerCaption() || '')
+      postTextLiveRef.current = caption
       const gifUrl = String(composerMediaUrl || '').trim()
       const existingImageUrls = composerImageItems
         .map((it) => String(it.remoteUrl || '').trim())
@@ -4151,7 +4236,7 @@ export default function SocialFeed({
       composerVideoSlot,
       loungeReadOnly,
       openProfileGateIfNeeded,
-      postText,
+      readLiveFeedComposerCaption,
       refreshLoungeDraftCount,
       requireLoungeAuth,
       runBackgroundLoungeDraftSave,
@@ -10415,7 +10500,7 @@ export default function SocialFeed({
         composerVideoPrepHandoffRef.current = null
       }
     }
-    setPostText('')
+    setFeedComposerCaptionImmediate('')
     setComposerImageItems((prev) => {
       for (const it of prev) {
         try {
@@ -10540,7 +10625,7 @@ export default function SocialFeed({
         setComposerMediaUrl('')
         setThreadComposeOpen(true)
         setThreadComposeErr('')
-        setPostText('')
+        setFeedComposerCaptionImmediate('')
         setThreadComposeActivePartIndex(0)
         window.setTimeout(() => setThreadComposeFocusPartIndex(fromPartIndex > 0 ? 0 : 1), 120)
         if (snapThreadParts) {
@@ -10564,7 +10649,7 @@ export default function SocialFeed({
         }
       } else if (fromPartIndex > 0 && snapThreadParts?.[0]) {
         const only = snapThreadParts[0]
-        setPostText(String(only.body ?? ''))
+        setFeedComposerCaptionImmediate(String(only.body ?? ''))
         setComposerMediaUrl(String(only.gifUrl ?? '').trim())
         setComposerImageItems(threadPartImageItemsFromSnapshot(only).map((it) => ({
           ...it,
@@ -10610,7 +10695,7 @@ export default function SocialFeed({
           })
         }
       } else {
-        setPostText(snap.caption)
+        setFeedComposerCaptionImmediate(snap.caption)
         setComposerMediaUrl(String(snap.gifOnlyUrl || '').trim())
         setComposerImageItems(
           threadPartImageItemsFromSnapshot({
@@ -13042,7 +13127,7 @@ export default function SocialFeed({
     if (!opts.skipRestoreFeedText) {
       setThreadComposeCaptions((prev) => {
         const root = String(prev[0] || '')
-        if (root) setPostText(root)
+        if (root) setFeedComposerCaptionImmediate(root)
         return ['']
       })
     } else {
@@ -13094,7 +13179,7 @@ export default function SocialFeed({
       setComposerImageItems([])
       setComposerMediaUrl('')
       setThreadComposeActivePartIndex(initialFocusPartIndex)
-      setPostText('')
+      setFeedComposerCaptionImmediate('')
       composerFoldedFromFeedScrollRef.current = false
       composerFoldRevealRef.current = 0
       setComposerFoldReveal(0)
@@ -13144,7 +13229,7 @@ export default function SocialFeed({
 
   const discardThreadCompose = useCallback(() => {
     closeThreadComposeImmediate({ skipRestoreFeedText: true })
-    setPostText('')
+    setFeedComposerCaptionImmediate('')
     setPostErr('')
     clearLoungeComposerDraft()
     composerFoldedFromFeedScrollRef.current = false
@@ -13450,10 +13535,15 @@ export default function SocialFeed({
   ])
 
   const submitLoungePostWithAudience = useCallback(async (creatorFanOnly) => {
-    const captionSynced = appendMissingMarketCashtagsToCaption(postText, composerMarketSymbols, {
+    const liveCaption = readLiveFeedComposerCaption()
+    postTextLiveRef.current = liveCaption
+    const captionSynced = appendMissingMarketCashtagsToCaption(liveCaption, composerMarketSymbols, {
       maxLen: loungeComposerCaptionMax,
     })
-    if (captionSynced !== postText) setPostText(captionSynced)
+    if (captionSynced !== liveCaption) {
+      postTextLiveRef.current = captionSynced
+      setFeedComposerCaptionImmediate(captionSynced)
+    }
     const caption = normalizeFeedCaption(captionSynced, loungeComposerCaptionMax)
     setPostErr('')
     const gifCheck = validateAtMostOneGifUrl(composerMediaUrl)
@@ -13599,12 +13689,14 @@ export default function SocialFeed({
     composerUserProfile,
     prependAuthorPendingVideoPost,
     onRequireAuth,
-    postText,
+    readLiveFeedComposerCaption,
     supabaseClient,
   ])
 
   const submitLoungePost = useCallback(async () => {
-    const caption = normalizeFeedCaption(postText, loungeComposerCaptionMax)
+    const liveCaption = readLiveFeedComposerCaption()
+    postTextLiveRef.current = liveCaption
+    const caption = normalizeFeedCaption(liveCaption, loungeComposerCaptionMax)
     setPostErr('')
     const gifCheck = validateAtMostOneGifUrl(composerMediaUrl)
     if (!gifCheck.ok) {
@@ -13638,7 +13730,7 @@ export default function SocialFeed({
     composerVideoSlot,
     loungeComposerCaptionMax,
     loungeComposerVideoPostBlocked,
-    postText,
+    readLiveFeedComposerCaption,
     submitLoungePostWithAudience,
   ])
 
@@ -15422,7 +15514,7 @@ export default function SocialFeed({
               type="button"
               onClick={() => {
                 const hasContent =
-                  postText.trim().length > 0 ||
+                  String(postTextLiveRef.current || '').trim().length > 0 ||
                   composerImageItems.length > 0 ||
                   composerVideoSlot != null ||
                   String(composerMediaUrl || '').trim().length > 0
@@ -15430,7 +15522,8 @@ export default function SocialFeed({
                   setComposerDiscardPromptOpen(true)
                   return
                 }
-                setPostText('')
+                postTextLiveRef.current = ''
+                setFeedComposerCaptionImmediate('')
                 setComposerImageItems((prev) => {
                   for (const it of prev) {
                     try {
@@ -15543,15 +15636,26 @@ export default function SocialFeed({
                       ref={composerFieldRef}
                       variant="feed"
                       value={postText}
-                      onChange={setPostText}
+                      onChange={handleFeedComposerCaptionChange}
                       maxLength={loungeComposerCaptionMax}
                       placeholder="Are ya winning, son?"
                       ariaLabel="Lounge post caption"
                       cashtagStyleContext={composerCashtagStyleContext}
                       onPasteImageFiles={enqueueComposerPastedImages}
                       onKeyDown={(e) => {
-                        if (cashtagComposer.onCashtagKeyDown(e, setPostText, composerFieldRef.current)) return
-                        mentionComposer.onMentionKeyDown(e, setPostText, composerFieldRef.current)
+                        if (
+                          cashtagComposer.onCashtagKeyDown(
+                            e,
+                            handleFeedComposerCaptionChange,
+                            composerFieldRef.current,
+                          )
+                        )
+                          return
+                        mentionComposer.onMentionKeyDown(
+                          e,
+                          handleFeedComposerCaptionChange,
+                          composerFieldRef.current,
+                        )
                       }}
                       onKeyUp={(e) => {
                         cashtagComposer.onCursorMove(e)
@@ -15565,13 +15669,14 @@ export default function SocialFeed({
                         cashtagComposer.onCursorMove(e)
                         mentionComposer.onCursorMove(e)
                       }}
-                      onBlur={() =>
+                      onBlur={() => {
+                        flushFeedComposerCaptionToState()
                         window.setTimeout(() => {
                           if (shouldKeepCashtagAutocompleteAfterBlur(composerFieldRef.current)) return
                           cashtagComposer.clearCashtag()
                           mentionComposer.clearMention()
                         }, 150)
-                      }
+                      }}
                     />
                     {cashtagComposer.isOpen ? (
                       <LoungeCashtagDropdown
@@ -15581,7 +15686,11 @@ export default function SocialFeed({
                         activeIndex={cashtagComposer.activeIndex}
                         loading={cashtagComposer.loading}
                         onSelect={(row) =>
-                          cashtagComposer.onCashtagSelect(row, setPostText, composerFieldRef.current)
+                          cashtagComposer.onCashtagSelect(
+                            row,
+                            handleFeedComposerCaptionChange,
+                            composerFieldRef.current,
+                          )
                         }
                         anchorRef={mentionComposerAnchorRef}
                         caretFieldRef={composerFieldRef}
@@ -15591,7 +15700,13 @@ export default function SocialFeed({
                       suggestions={mentionComposer.suggestions}
                       activeIndex={mentionComposer.activeIndex}
                       loading={mentionComposer.loading}
-                      onSelect={(p) => mentionComposer.onMentionSelect(p, setPostText, composerFieldRef.current)}
+                      onSelect={(p) =>
+                        mentionComposer.onMentionSelect(
+                          p,
+                          handleFeedComposerCaptionChange,
+                          composerFieldRef.current,
+                        )
+                      }
                       anchorRef={mentionComposerAnchorRef}
                       caretFieldRef={composerFieldRef}
                     />
@@ -15791,38 +15906,25 @@ export default function SocialFeed({
                 </button>
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
-                <div className="inline-flex shrink-0 items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={openLoungeDraftsSheet}
-                    className="shrink-0 touch-manipulation rounded-md px-1 py-0.5 text-[12px] font-semibold text-zinc-400 hover:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
-                  >
-                    Drafts{loungeDraftCount > 0 ? ` (${loungeDraftCount})` : ''}
-                  </button>
-                  <LoungeComposerCharRing
-                    len={postText.length}
-                    max={loungeComposerCaptionMax}
-                    aria-live="polite"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void submitLoungePost()}
-                    disabled={
-                      postBusy ||
-                      loungeComposerVideoPostBlocked ||
-                      loungePostUploadFailedOpen ||
-                      loungeVideoCrop != null ||
-                      (!postText.trim() &&
-                        !String(composerMediaUrl || '').trim() &&
-                        composerImageItems.length === 0 &&
-                        !composerVideoSlot &&
-                        composerMarketSymbols.length === 0)
-                    }
-                    className="lounge-composer-post-btn min-h-7 shrink-0 touch-manipulation rounded-md px-2 py-0.5 text-[13px] font-bold leading-tight disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {postBusy ? 'Posting…' : 'Post'}
-                  </button>
-                </div>
+                <LoungeFeedComposerPostChrome
+                  apiRef={feedComposerPostChromeApiRef}
+                  maxLen={loungeComposerCaptionMax}
+                  draftCount={loungeDraftCount}
+                  onOpenDrafts={openLoungeDraftsSheet}
+                  onPost={() => void submitLoungePost()}
+                  postBusy={postBusy}
+                  postBlocked={
+                    loungeComposerVideoPostBlocked ||
+                    loungePostUploadFailedOpen ||
+                    loungeVideoCrop != null
+                  }
+                  hasNonCaptionContent={
+                    Boolean(String(composerMediaUrl || '').trim()) ||
+                    composerImageItems.length > 0 ||
+                    Boolean(composerVideoSlot) ||
+                    composerMarketSymbols.length > 0
+                  }
+                />
               </div>
             </div>
           </div>
@@ -15866,7 +15968,7 @@ export default function SocialFeed({
                   className="order-2 min-h-11 rounded-xl border border-zinc-600 px-4 text-[15px] font-semibold text-zinc-200 hover:bg-zinc-800 touch-manipulation sm:order-2"
                   onClick={() => {
                     setComposerDiscardPromptOpen(false)
-                    setPostText('')
+                    setFeedComposerCaptionImmediate('')
                     setComposerImageItems((prev) => {
                       for (const it of prev) {
                         try {
@@ -18393,8 +18495,8 @@ export default function SocialFeed({
           } else {
             setComposerMarketSymbols(next)
             hydrateComposerMarketSymbolEmbeds(supabaseClient, setComposerMarketSymbols, next)
-            setPostText((prev) =>
-              appendMissingMarketCashtagsToCaption(prev, next, {
+            setFeedComposerCaptionImmediate(
+              appendMissingMarketCashtagsToCaption(postTextLiveRef.current, next, {
                 maxLen: loungeComposerCaptionMax,
               }),
             )

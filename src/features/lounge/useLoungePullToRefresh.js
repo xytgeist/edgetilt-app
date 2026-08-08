@@ -1,17 +1,26 @@
 import { useEffect, useRef } from 'react'
 import {
+  LOUNGE_PULL_AXIS_LOCK_PX,
   LOUNGE_PULL_FINGER_GAIN,
+  LOUNGE_PULL_HORIZONTAL_SURFACE_VERTICAL_RATIO,
+  LOUNGE_PULL_HORIZONTAL_VS_VERTICAL,
   LOUNGE_PULL_INDICATOR_BASE_PX,
   LOUNGE_PULL_INDICATOR_MAX_PX,
   LOUNGE_PULL_MAX_VISUAL_PX,
   LOUNGE_PULL_REFRESH_THRESHOLD_PX,
   LOUNGE_PULL_SNAP_MS,
+  LOUNGE_PULL_VERTICAL_MIN_PX,
+  LOUNGE_PULL_VERTICAL_VS_HORIZONTAL,
+  loungePullIsHorizontalGestureSurface,
   loungePullVisualOffsetPx,
 } from '../../utils/loungePullRefresh.js'
 
 /**
  * Touch pull-to-refresh for a scroll root + posts zone below a header row.
  * Updates indicator DOM via refs (no per-frame React re-renders).
+ *
+ * Axis-locks before engaging: horizontal carousel / chart swipes win until
+ * the gesture is clearly vertical, so PTR stays intentional at scrollTop 0.
  */
 export function useLoungePullToRefresh({
   scrollRootRef,
@@ -28,6 +37,10 @@ export function useLoungePullToRefresh({
   setPullRefreshing,
 }) {
   const pullStartYRef = useRef(null)
+  const pullStartXRef = useRef(null)
+  /** @type {import('react').MutableRefObject<null | 'y' | 'abort'>} */
+  const pullAxisRef = useRef(null)
+  const pullFromHorizontalSurfaceRef = useRef(false)
   const pullDistanceRef = useRef(0)
   const pullTriggeredRef = useRef(false)
   const pullVisualRafRef = useRef(0)
@@ -109,26 +122,86 @@ export function useLoungePullToRefresh({
       })
     }
 
+    const resetPullTracking = () => {
+      pullStartYRef.current = null
+      pullStartXRef.current = null
+      pullAxisRef.current = null
+      pullFromHorizontalSurfaceRef.current = false
+      pullDistanceRef.current = 0
+    }
+
+    const abortPullGesture = () => {
+      resetPullTracking()
+      pullAxisRef.current = 'abort'
+      if (pullVisualRafRef.current) {
+        window.cancelAnimationFrame(pullVisualRafRef.current)
+        pullVisualRafRef.current = 0
+      }
+      applyPullVisual(0, { animate: true })
+      setPullIndicator(0, false)
+    }
+
     const onTouchStart = (e) => {
       if (zone.scrollTop > 0) {
-        pullStartYRef.current = null
+        resetPullTracking()
         return
       }
       const touch = e.touches?.[0]
       if (!touch) {
-        pullStartYRef.current = null
+        resetPullTracking()
         return
       }
       pullStartYRef.current = touch.clientY
+      pullStartXRef.current = touch.clientX
+      pullAxisRef.current = null
+      pullDistanceRef.current = 0
       pullTriggeredRef.current = false
+      pullFromHorizontalSurfaceRef.current = loungePullIsHorizontalGestureSurface(e.target)
     }
 
     const onTouchMove = (e) => {
       if (pullRefreshing) return
+      if (pullAxisRef.current === 'abort') return
       const startY = pullStartYRef.current
-      if (startY == null) return
-      const currentY = e.touches?.[0]?.clientY ?? startY
-      const dy = currentY - startY
+      const startX = pullStartXRef.current
+      if (startY == null || startX == null) return
+      if (zone.scrollTop > 0) {
+        abortPullGesture()
+        return
+      }
+
+      const touch = e.touches?.[0]
+      if (!touch) return
+      const dx = touch.clientX - startX
+      const dy = touch.clientY - startY
+      const absDx = Math.abs(dx)
+      const absDy = Math.abs(dy)
+
+      if (pullAxisRef.current == null) {
+        if (absDx < LOUNGE_PULL_AXIS_LOCK_PX && absDy < LOUNGE_PULL_AXIS_LOCK_PX) return
+
+        // Horizontal wins first → leave the gesture to carousels / chart strips.
+        if (absDx >= LOUNGE_PULL_AXIS_LOCK_PX && absDx >= absDy * LOUNGE_PULL_HORIZONTAL_VS_VERTICAL) {
+          abortPullGesture()
+          return
+        }
+
+        const verticalRatio = pullFromHorizontalSurfaceRef.current
+          ? LOUNGE_PULL_HORIZONTAL_SURFACE_VERTICAL_RATIO
+          : LOUNGE_PULL_VERTICAL_VS_HORIZONTAL
+        if (dy > 0 && absDy >= LOUNGE_PULL_VERTICAL_MIN_PX && absDy >= absDx * verticalRatio) {
+          pullAxisRef.current = 'y'
+        } else if (dy <= 0 && absDy >= LOUNGE_PULL_VERTICAL_MIN_PX) {
+          // Scrolling the feed down from top — not a pull.
+          abortPullGesture()
+          return
+        } else {
+          return
+        }
+      }
+
+      if (pullAxisRef.current !== 'y') return
+
       if (dy <= 0) {
         schedulePullVisual(0)
         return
@@ -140,9 +213,9 @@ export function useLoungePullToRefresh({
 
     const onTouchEnd = async () => {
       const distance = pullDistanceRef.current
-      pullStartYRef.current = null
-      pullDistanceRef.current = 0
-      const shouldRefresh = distance >= thresholdPx && !pullTriggeredRef.current
+      const axis = pullAxisRef.current
+      resetPullTracking()
+      const shouldRefresh = axis === 'y' && distance >= thresholdPx && !pullTriggeredRef.current
       if (!shouldRefresh) {
         applyPullVisual(0, { animate: true })
         setPullIndicator(0, false)

@@ -18512,7 +18512,7 @@ export default function SocialFeed({
                 videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
                 disabled={quoteRepostBusy}
                 gifDisabled={quoteRepostBusy}
-                marketDisabled={quoteRepostBusy}
+                showMarket={false}
                 onImagePointerDown={() => {
                   if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
                 }}
@@ -18521,9 +18521,6 @@ export default function SocialFeed({
                 }}
                 onOpenGifPicker={() => {
                   if (!quoteRepostBusy) openKlipyPicker('quote')
-                }}
-                onOpenMarketPicker={() => {
-                  if (!quoteRepostBusy) openMarketPicker('quote')
                 }}
               />
               <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 pr-1">

@@ -95,11 +95,9 @@ function renderCatalog(rows) {
 
   const generatedAt = new Date().toISOString().slice(0, 10);
   return `${START}
-      <h2>Full AP guide catalog (${rows.length} titles)</h2>
+      <h2>AP guides (${rows.length})</h2>
       <p class="catalog-note">
-        Public index of every published EdgeTilt AP guide title… useful if you searched for a specific
-        machine (Phoenix Link, LuckyMon, Buffalo Link, Must Hit By, and more). Tap a title to open that
-        card in the app. Full guide markdown stays behind access tiers.
+        Looking for a specific machine? Tap a title to open that guide card in EdgeTilt.
       </p>
       <!-- generated ${generatedAt} · titles + slugs only -->
       <ul class="guide-catalog">

@@ -62,12 +62,16 @@ const REPOSITION_POINTER_GUARD_MS = 1000
 const FAB_REPOSITION_LONG_PRESS_MS = 450
 /** Backdrop: past this movement = pan/scroll (close menu, release capture); below = tap (close only, block click-through). */
 const BACKDROP_PAN_THRESHOLD_PX = 12
-/** Scroll-hide: below this `reveal` the FAB is treated as gone (no idle dim). */
+/** Scroll-hide: below this `reveal` the FAB is treated as gone. */
 const FAB_REVEAL_VISIBLE = 0.12
 /** After this idle window the FAB shrinks to {@link FAB_COMPACT_VISUAL_PX} and snaps to the bottom corner on its side. */
 const FAB_COMPACT_PIP_MS = 5_000
 const FAB_COMPACT_VISUAL_PX = 30
-/** Visible FAB dims to half opacity after this long without interaction. */
+/**
+ * Idle half-opacity dim. Off now that compact pip shrinks/moves the FAB out of the way;
+ * scroll-linked `reveal` opacity still dims while scrolling.
+ */
+const FAB_IDLE_DIM_ENABLED = false
 const FAB_IDLE_DIM_MS = 10_000
 const FAB_IDLE_DIM_OPACITY = 0.5
 const FAB_LONG_PRESS_RING_COUNT = 4
@@ -261,7 +265,7 @@ export default function LoungeDockArcCarouselPrototype({
   /** Unread in-app notifications - FAB badge clears on menu expand; Alerts item clears on panel visit. */
   notificationsUnreadCount = 0,
   /**
-   * When false (Lounge home feed tab only), FAB stays full-size with scroll-reveal + idle dim only.
+   * When false (Lounge home feed tab only), FAB stays full-size with scroll-reveal only (no compact pip).
    * When true (other tabs, away from feed, or search/notifications/settings panels), idle compact pip may apply.
    */
   enableFabCompactPip = true,
@@ -911,6 +915,10 @@ export default function LoungeDockArcCarouselPrototype({
 
   const armFabIdleTimer = useCallback(() => {
     clearFabIdleTimer()
+    if (!FAB_IDLE_DIM_ENABLED) {
+      setFabIdleDimmed(false)
+      return
+    }
     fabIdleTimerRef.current = window.setTimeout(() => {
       fabIdleTimerRef.current = 0
       setFabIdleDimmed(true)
@@ -998,9 +1006,11 @@ export default function LoungeDockArcCarouselPrototype({
   /** Scroll-linked title bar: FAB + home chip fade with `reveal` (feed, panels, away-from-feed). */
   const fabEffectivelyVisible = fabVisible
   const fabScrollOpacity = clamp(reveal, 0, 1)
-  const fabDisplayOpacity =
-    fabScrollOpacity *
-    (fabIdleDimmed && fabVisible && !open && !repositioning ? FAB_IDLE_DIM_OPACITY : 1)
+  const fabIdleOpacityMul =
+    FAB_IDLE_DIM_ENABLED && fabIdleDimmed && fabVisible && !open && !repositioning
+      ? FAB_IDLE_DIM_OPACITY
+      : 1
+  const fabDisplayOpacity = fabScrollOpacity * fabIdleOpacityMul
 
   useEffect(() => {
     fabIdleDimmedRef.current = fabIdleDimmed
@@ -1960,7 +1970,7 @@ export default function LoungeDockArcCarouselPrototype({
         } ${
           fabCompactActive && !open && !fabExpandFromPip
             ? ''
-            : fabIdleDimmed && fabVisible && !open
+            : FAB_IDLE_DIM_ENABLED && fabIdleDimmed && fabVisible && !open
               ? 'scale-[0.97]'
               : ''
         } ${fabWakePop && !fabCompactActive && !fabExpandFromPip ? 'scale-100' : ''}`}
@@ -2014,7 +2024,7 @@ export default function LoungeDockArcCarouselPrototype({
                 ? 'scale-[1.06]'
                 : fabWakePop
                   ? 'scale-[1.05]'
-                  : fabIdleDimmed && fabVisible && !open
+                  : FAB_IDLE_DIM_ENABLED && fabIdleDimmed && fabVisible && !open
                     ? 'scale-[0.97]'
                     : ''
           }`}

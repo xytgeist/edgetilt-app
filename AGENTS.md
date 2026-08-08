@@ -138,6 +138,7 @@ Future sessions have **no memory** of this chat. Treat the repo as the **source 
 | 4 | `docs/test-buildout-backlog.md` | Test-first work, phase checkboxes, **smoke list**, sign-offs, SQL/RLS notes tied to test |
 | 5 | `docs/production-rollout-checklist.md` | Promoting test work to production (SQL, functions, smoke) |
 | 6 | `docs/edgetilt-production-cutover.md` | **One-time** prod/test Supabase + domain cutover (`edgetilt.com` / `lvslotpro.com`) |
+| 6b | `docs/seo-edgetilt-slots.md` | Brand SEO for **edge tilt slots** … `/slots`, `/guides` public index, sitemap, Search Console |
 | 6 | `docs/access-tiers.md` | **Freemium spec (shipped):** no account vs free vs **Slots Edge** / staff — per-surface read/write matrix |
 | 7 | `docs/entitlements-matrix.md` | **Multi-product paywalls (planned + partial):** Edge Pro, creator fan subs, add-ons, stacking, **`get_my_entitlements()`** target, rollout phases |
 | 8 | `docs/affiliates.md` | **Creator affiliates:** in-house v1 (packages, `?ref=` + promo, ledger, admin/creator portals, Connect) |

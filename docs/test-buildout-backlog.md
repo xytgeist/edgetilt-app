@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-08: **Quote repost full-screen (X-style):** replace gray bottom sheet with **`fixed inset-0` black** composer … Cancel + Post in header, quoted card in scroll body, media toolbar + char ring docked above keyboard (`visualViewport` pad). Light mode stays `#f2f2f7` under **`html.light [data-lounge-quote-repost-sheet]`**.
 - 2026-08-08: **Quote repost toolbar row:** char ring + Post were wrapping under the divider because the quote toolbar used **`flex-wrap`** + **`basis-[min(100%,14rem)]`**. Match feed/detail composers … single `items-center` row, `flex-1` end cluster.
 - 2026-08-08: **Quote repost sheet chrome:** solid sheet (no `/92` + backdrop blur); drop scroll/header mask fades; tribe expand caret no longer paints a full-height zinc fade when expanded (in-flow when open; single-row surface-matched fade when collapsed). Idle/at-max tribe chips stay opaque. Shared **`LoungePostCategoryPillPicker`** (compose/quote/profile/etc.).
 - 2026-08-08: **Bot Portal Post as temporal charts:** manual publish inserted client rolling-24h embeds (Edge attach cannot run … post author is the bot). Publish now rebuilds embeds via **`fetchComposerMarketEmbed(..., { caption })`** + **`parseCaptionMarketWindowClient`** / **`modal_series`** so “first signs of life (get it) in two months” lands as **historical 2m** with date-range footer. Auto news/odds bots already used Edge attach.

@@ -1960,10 +1960,17 @@ html.light .lounge-category-pill-expand:hover {
   color: #3f3f46;
 }
 [data-lounge-quote-repost-sheet] [data-lounge-composer-category] {
-  --lounge-category-fade-from: #181b22;
+  --lounge-category-fade-from: #000000;
 }
 html.light [data-lounge-quote-repost-sheet] [data-lounge-composer-category] {
   --lounge-category-fade-from: #f2f2f7;
+}
+
+/* Quote full-screen compose: slight card fill so the embed reads on pure black. */
+html:not(.light) [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'],
+html:not(.light) [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted comment preview'] {
+  background-color: #16181c !important;
+  border-color: #2f3336 !important;
 }
 
 .lounge-pill-row[data-lounge-category-picker] button[aria-pressed="true"][data-lounge-category-slug="ap_slots"] {
@@ -2530,10 +2537,10 @@ html.light [data-offer-form] .hover\:bg-emerald-400:hover {
 /* Discard confirm dialog */
 html.light [data-offer-form] .bg-zinc-700\/95 { background-color: #e5e7eb !important; }
 
-/* ── Lounge quote repost sheet – light mode ─────────────────────────────── */
+/* ── Lounge quote repost full-screen – light mode ───────────────────────── */
 html.light [data-lounge-quote-repost-sheet] {
   background-color: #f2f2f7 !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
+  border-color: transparent !important;
 }
 
 html.light [data-lounge-quote-repost-sheet] #quote-repost-sheet-title,
@@ -2588,8 +2595,10 @@ html.light [data-lounge-quote-repost-sheet] button[aria-label='Cancel']:active {
   color: #18181b !important;
 }
 
-html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-header {
+html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-header,
+html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-footer {
   background-color: #f2f2f7 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-scroll {
@@ -2599,7 +2608,7 @@ html.light [data-lounge-quote-repost-sheet] .lounge-quote-repost-scroll {
 
 html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted post preview'],
 html.light [data-lounge-quote-repost-sheet] [role='figure'][aria-label='Quoted comment preview'] {
-  background-color: transparent !important;
+  background-color: #ffffff !important;
   border-color: rgba(0, 0, 0, 0.1) !important;
   box-shadow: none;
 }

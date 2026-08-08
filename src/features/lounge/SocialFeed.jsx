@@ -1603,6 +1603,20 @@ export default function SocialFeed({
     ? `${Math.round(loungeDetailCommentKbFooterLiftPx)}px`
     : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)
 
+  const quoteRepostComposeOpen = Boolean(quoteRepostModal && quoteRepostModal.mode !== 'remove')
+  const {
+    overlapPx: quoteRepostKbOverlapPx,
+    targetPx: quoteRepostKbOverlapTargetPx,
+  } = useLoungeKeyboardOverlapPx(quoteRepostComposeOpen, {
+    smooth: LOUNGE_IOS,
+    smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+  })
+  const quoteRepostKbFooterLiftPx = Math.max(quoteRepostKbOverlapPx, quoteRepostKbOverlapTargetPx)
+  const quoteRepostKeyboardUp = quoteRepostKbFooterLiftPx > loungeDetailCommentIosSafeBottomPx + 0.5
+  const quoteRepostFooterPadBottom = quoteRepostKeyboardUp
+    ? `${Math.round(quoteRepostKbFooterLiftPx)}px`
+    : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)
+
   // ── @mention / $cashtag autocomplete - one instance per composer ───────────
   const appendComposerMarketSymbol = useCallback(
     (row) => {
@@ -18115,7 +18129,7 @@ export default function SocialFeed({
           <div className="pointer-events-none relative z-10 mx-auto w-full max-w-md pb-[max(1.25rem,env(safe-area-inset-bottom)+28px)]">
             <div
               data-lounge-quote-repost-sheet=""
-              className="pointer-events-auto rounded-t-2xl border border-zinc-600/80 bg-[#181b22] px-4 pb-6 pt-5 shadow-2xl"
+              className="pointer-events-auto rounded-t-2xl border border-zinc-700/80 bg-black px-4 pb-6 pt-5 shadow-2xl"
             >
               <p id="quote-remove-confirm-title" className="text-[16px] font-semibold leading-snug text-white">
                 Are you sure you want to delete your quote of this post?
@@ -18151,412 +18165,375 @@ export default function SocialFeed({
           </div>
         </div>
       ) : quoteRepostModal ? (
+        (() => {
+          const quoteCanPost =
+            !quoteRepostBusy &&
+            !loungeQuoteRepostVideoPostBlocked &&
+            !loungePostUploadFailedOpen &&
+            loungeVideoCrop == null &&
+            (Boolean(normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax)) ||
+              quoteRepostImageItems.length > 0 ||
+              Boolean(String(quoteRepostMediaUrl || '').trim()) ||
+              Boolean(quoteRepostVideoSlot) ||
+              quoteRepostMarketSymbols.length > 0)
+          const closeQuoteCompose = () => {
+            if (quoteRepostBusy) return
+            setQuoteRepostModal(null)
+            setQuoteRepostDraft('')
+            setQuoteRepostMarketSymbols([])
+            setQuoteRepostErr('')
+            clearQuoteRepostMedia()
+          }
+          return (
         <div
-          className={`fixed inset-0 ${loungeQuoteRepostShellZClass} flex bg-black/45 px-3 pt-[calc(env(safe-area-inset-top)+12px)] backdrop-blur-[3px]`}
+          className={`fixed inset-0 ${loungeQuoteRepostShellZClass} flex h-dvh max-h-dvh flex-col overflow-hidden bg-black`}
+          data-lounge-quote-repost-sheet=""
           role="dialog"
           aria-modal="true"
           aria-labelledby="quote-repost-sheet-title"
         >
-          <button
-            type="button"
-            className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
-            aria-label="Close"
-            disabled={quoteRepostBusy}
-            onClick={() => {
-              if (quoteRepostBusy) return
-              setQuoteRepostModal(null)
-              setQuoteRepostDraft('')
-              setQuoteRepostMarketSymbols([])
-              setQuoteRepostErr('')
-              clearQuoteRepostMedia()
-            }}
-          />
-          <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 items-end pointer-events-none">
-            <div
-              data-lounge-quote-repost-sheet=""
-              className="pointer-events-auto relative w-full overflow-hidden rounded-t-[36px] border border-zinc-700/40 bg-[#181b22] shadow-[0_6px_16px_rgba(0,0,0,0.12)]"
-              style={{ height: 'calc(100dvh - (env(safe-area-inset-top) + 12px))' }}
+          <header className="lounge-quote-repost-header relative z-[1] flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
+            <button
+              type="button"
+              disabled={quoteRepostBusy}
+              aria-label="Cancel"
+              onClick={closeQuoteCompose}
+              className="min-h-10 shrink-0 touch-manipulation rounded-full px-3 py-2 text-[15px] font-normal text-zinc-300 hover:bg-zinc-900 hover:text-white disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
             >
-              <div className="lounge-quote-repost-header pointer-events-none absolute inset-x-0 top-0 z-30 bg-[#181b22] px-4 pb-5 pt-4">
-                <div className="relative flex shrink-0 items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    disabled={quoteRepostBusy}
-                    aria-label="Cancel"
-                    onClick={() => {
-                      if (quoteRepostBusy) return
-                      setQuoteRepostModal(null)
-                      setQuoteRepostDraft('')
-                      setQuoteRepostMarketSymbols([])
-                      setQuoteRepostErr('')
-                      clearQuoteRepostMedia()
-                    }}
-                    className="pointer-events-auto min-h-12 min-w-[4.75rem] shrink-0 touch-manipulation rounded-full px-3 py-2 text-left text-[15px] font-semibold leading-tight text-zinc-300 hover:bg-zinc-800/90 hover:text-white active:text-white disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
-                  >
-                    Cancel
-                  </button>
-                  <div
-                    id="quote-repost-sheet-title"
-                    className="pointer-events-none absolute left-0 right-0 text-center text-[16px] font-semibold text-white"
-                  >
-                    Repost
-                  </div>
-                  <div className="pointer-events-none min-h-12 min-w-[4.75rem] shrink-0" aria-hidden />
-                </div>
-              </div>
+              Cancel
+            </button>
+            <h2 id="quote-repost-sheet-title" className="sr-only">
+              Quote repost
+            </h2>
+            <div className="min-w-0 flex-1" aria-hidden />
+            <button
+              type="button"
+              disabled={!quoteCanPost}
+              aria-label={quoteRepostBusy ? 'Posting' : 'Post quote repost'}
+              aria-busy={quoteRepostBusy}
+              title={quoteRepostBusy ? 'Posting…' : undefined}
+              onClick={() => void submitQuoteRepost()}
+              className="lounge-composer-post-btn min-h-8 shrink-0 touch-manipulation rounded-full px-4 py-1.5 text-[14px] font-bold leading-tight disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent]"
+            >
+              {quoteRepostBusy ? 'Posting…' : 'Post'}
+            </button>
+          </header>
 
-              <div
-                ref={quoteRepostScrollRef}
-                className="lounge-quote-repost-scroll relative h-full overscroll-contain overflow-y-auto touch-pan-y"
-                style={{ WebkitOverflowScrolling: 'touch' }}
-              >
-                <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-[86px]">
-                  <>
-                      <div className="flex items-start gap-3">
-                        <div className={`${LOUNGE_FEED_AVATAR_CLASS}`}>
-                          {composerUserProfile?.avatar_url ? (
-                            <img
-                              src={composerUserProfile.avatar_url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : !composerAuthResolved ? (
-                            <span className="block h-full w-full rounded-full bg-zinc-700/55 animate-pulse" aria-hidden />
-                          ) : (
-                            <span
-                              className={`flex h-full w-full items-center justify-center text-[14px] font-bold text-white ${avatarToneClass(
-                                composerUserProfile?.user_id || composerUserId || 'me'
-                              )}`}
-                            >
-                              {(() => {
-                                if (composerUserProfile?.display_name?.trim() || composerUserProfile?.handle?.trim()) {
-                                  return avatarText({ author_profile: composerUserProfile })
-                                }
-                                if (composerAuthUser) {
-                                  const seed = profileSeedFromUser(composerAuthUser)
-                                  return profileAvatarInitials(seed.displayName, seed.baseHandle)
-                                }
-                                if (composerUserId) return composerStableInitialsFromUid(composerUserId)
-                                return avatarText({ author_profile: { display_name: 'Me', handle: '' } })
-                              })()}
-                            </span>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="mt-0.5 flex min-h-[6.5rem] flex-col">
-                            <div ref={mentionQuoteRepostAnchorRef}>
-                            <LoungeRichComposerField
-                              ref={quoteRepostFieldRef}
-                              variant="quote"
-                              value={quoteRepostDraft}
-                              onChange={setQuoteRepostDraft}
-                              maxLength={loungeComposerCaptionMax}
-                              placeholder="Add a comment"
-                              ariaLabel="Quote for repost"
-                              cashtagStyleContext={quoteRepostCashtagStyleContext}
-                              onPasteImageFiles={enqueueQuoteRepostPastedImages}
-                              onKeyDown={(e) => {
-                                if (
-                                  cashtagQuoteRepost.onCashtagKeyDown(
-                                    e,
-                                    setQuoteRepostDraft,
-                                    quoteRepostFieldRef.current,
-                                  )
-                                ) {
-                                  return
-                                }
-                                mentionQuoteRepost.onMentionKeyDown(
-                                  e,
-                                  setQuoteRepostDraft,
-                                  quoteRepostFieldRef.current,
-                                )
-                              }}
-                              onKeyUp={(e) => {
-                                cashtagQuoteRepost.onCursorMove(e)
-                                mentionQuoteRepost.onCursorMove(e)
-                              }}
-                              onMouseUp={(e) => {
-                                cashtagQuoteRepost.onCursorMove(e)
-                                mentionQuoteRepost.onCursorMove(e)
-                              }}
-                              onInput={(e) => {
-                                cashtagQuoteRepost.onCursorMove(e)
-                                mentionQuoteRepost.onCursorMove(e)
-                              }}
-                              onBlur={() =>
-                                window.setTimeout(() => {
-                                  if (shouldKeepCashtagAutocompleteAfterBlur(quoteRepostFieldRef.current)) {
-                                    return
-                                  }
-                                  cashtagQuoteRepost.clearCashtag()
-                                  mentionQuoteRepost.clearMention()
-                                }, 150)
-                              }
-                            />
-                            {cashtagQuoteRepost.isOpen ? (
-                              <LoungeCashtagDropdown
-                                open
-                                query={cashtagQuoteRepost.cashtag?.query ?? ''}
-                                suggestions={cashtagQuoteRepost.suggestions}
-                                activeIndex={cashtagQuoteRepost.activeIndex}
-                                loading={cashtagQuoteRepost.loading}
-                                onSelect={(row) =>
-                                  cashtagQuoteRepost.onCashtagSelect(
-                                    row,
-                                    setQuoteRepostDraft,
-                                    quoteRepostFieldRef.current,
-                                  )
-                                }
-                                anchorRef={mentionQuoteRepostAnchorRef}
-                                caretFieldRef={quoteRepostFieldRef}
-                              />
-                            ) : null}
-                            <LoungeMentionDropdown
-                              suggestions={mentionQuoteRepost.suggestions}
-                              activeIndex={mentionQuoteRepost.activeIndex}
-                              loading={mentionQuoteRepost.loading}
-                              onSelect={(p) => mentionQuoteRepost.onMentionSelect(p, setQuoteRepostDraft, quoteRepostFieldRef.current)}
-                              anchorRef={mentionQuoteRepostAnchorRef}
-                              caretFieldRef={quoteRepostFieldRef}
-                            />
-                            <LoungeComposerMarketChartStrip
-                              symbols={quoteRepostMarketSymbols}
-                              onChange={setQuoteRepostMarketSymbols}
-                              onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
-                              className="mt-1.5"
-                            />
-                            </div>
-                            <LoungePostCategoryPillPicker
-                              value={quoteRepostCategoryPills}
-                              onChange={setQuoteRepostCategoryPills}
-                              disabled={quoteRepostBusy}
-                              hint=""
-                            />
-                            <input
-                              id={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
-                              ref={quoteRepostImageInputRef}
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              className="hidden"
-                              {...loungeFileInputMediaPickerHandlers('quote')}
-                              onChange={(e) => handleQuoteRepostMediaInputChange(e, 'image')}
-                            />
-                            <input
-                              id={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
-                              ref={quoteRepostVideoInputRef}
-                              type="file"
-                              accept="video/*"
-                              className="hidden"
-                              {...loungeFileInputMediaPickerHandlers('quote')}
-                              onChange={(e) => handleQuoteRepostMediaInputChange(e, 'video')}
-                            />
-                            {(() => {
-                              const gifUrl = String(quoteRepostMediaUrl || '').trim()
-                              const imageUrls = quoteRepostImageItems.map((x) => x.preview)
-                              const carouselUrls = gifUrl ? [...imageUrls, gifUrl] : imageUrls
-                              if (carouselUrls.length === 0) return null
-                              const nImg = quoteRepostImageItems.length
-                              return (
-                                <LoungeImageCarousel
-                                  urls={carouselUrls}
-                                  variant="composer"
-                                  firstMarginTopClass="mt-1.5"
-                                  regionAriaLabel={gifUrl ? 'Quote images and GIF' : 'Quote images'}
-                                  removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
-                                  onRemoveIndex={(i) => {
-                                    if (i < nImg) {
-                                      setQuoteRepostImageItems((prev) => {
-                                        const row = prev[i]
-                                        if (row?.preview) {
-                                          try {
-                                            URL.revokeObjectURL(row.preview)
-                                          } catch {
-                                            // ignore
-                                          }
-                                        }
-                                        return prev.filter((_, j) => j !== i)
-                                      })
-                                    } else {
-                                      setQuoteRepostMediaUrl('')
-                                    }
-                                  }}
-                                />
-                              )
-                            })()}
-                            {quoteRepostVideoSlot ? (
-                              <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                                {!quoteRepostVideoSlot.file && quoteRepostVideoSlot.preview ? (
-                                  <img
-                                    src={quoteRepostVideoSlot.preview}
-                                    alt=""
-                                    className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
-                                  />
-                                ) : quoteRepostVideoSlot.preview ? (
-                                  <video
-                                    src={quoteRepostVideoSlot.preview}
-                                    poster={quoteRepostVideoSlot.posterUrl || undefined}
-                                    className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
-                                    controls
-                                    playsInline
-                                    preload="metadata"
-                                    aria-label="Video preview"
-                                  />
-                                ) : null}
-                                <button
-                                  type="button"
-                                  disabled={quoteRepostBusy}
-                                  onClick={() => {
-                                    cancelQuoteRepostMediaPrep()
-                                  }}
-                                  className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/25 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/45 active:bg-black/55 disabled:opacity-45"
-                                  aria-label="Remove video"
-                                  title="Remove video"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ) : null}
-                            <div className="min-h-0 flex-1" aria-hidden />
-                          </div>
-                        </div>
-                      </div>
-                        <div className="lounge-media-toolbar mt-0.5 flex w-full items-center border-t border-zinc-700/70 py-0.5">
-                          <LoungeComposerMediaToolbar
-                            variant="feed"
-                            imageInputId={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
-                            videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
-                            disabled={quoteRepostBusy}
-                            gifDisabled={quoteRepostBusy}
-                            marketDisabled={quoteRepostBusy}
-                            onImagePointerDown={() => {
-                              if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
-                            }}
-                            onVideoPointerDown={() => {
-                              if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
-                            }}
-                            onOpenGifPicker={() => {
-                              if (!quoteRepostBusy) openKlipyPicker('quote')
-                            }}
-                            onOpenMarketPicker={() => {
-                              if (!quoteRepostBusy) openMarketPicker('quote')
-                            }}
-                          />
-                          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
-                            <LoungeComposerCharRing len={quoteRepostDraft.length} max={loungeComposerCaptionMax} />
-                            <button
-                              type="button"
-                              disabled={
-                                quoteRepostBusy ||
-                                loungeQuoteRepostVideoPostBlocked ||
-                                loungePostUploadFailedOpen ||
-                                loungeVideoCrop != null ||
-                                (!normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) &&
-                                  quoteRepostImageItems.length === 0 &&
-                                  !String(quoteRepostMediaUrl || '').trim() &&
-                                  !quoteRepostVideoSlot &&
-                                  quoteRepostMarketSymbols.length === 0)
-                              }
-                              aria-label={quoteRepostBusy ? 'Posting' : 'Post quote repost'}
-                              aria-busy={quoteRepostBusy}
-                              title={quoteRepostBusy ? 'Posting…' : undefined}
-                              onClick={() => void submitQuoteRepost()}
-                              className={`min-h-7 shrink-0 touch-manipulation rounded-md border px-2 py-0.5 text-center text-[12px] font-semibold leading-tight transition-colors disabled:opacity-45 [-webkit-tap-highlight-color:transparent] ${
-                                quoteRepostBusy ? 'min-w-[5.5rem]' : ''
-                              } ${
-                                (normalizeFeedCaption(quoteRepostDraft, loungeComposerCaptionMax) ||
-                                  quoteRepostImageItems.length > 0 ||
-                                  !!String(quoteRepostMediaUrl || '').trim() ||
-                                  quoteRepostVideoSlot ||
-                                  quoteRepostMarketSymbols.length > 0) &&
-                                !quoteRepostBusy &&
-                                !loungeQuoteRepostVideoPostBlocked &&
-                                !loungePostUploadFailedOpen &&
-                                loungeVideoCrop == null
-                                  ? 'border-emerald-400/70 bg-emerald-500 text-white hover:bg-emerald-400'
-                                  : 'border-zinc-600 bg-zinc-800/90 text-zinc-500'
-                              }`}
-                            >
-                              {quoteRepostBusy ? 'Posting…' : 'Post'}
-                            </button>
-                          </div>
-                        </div>
-                      <div className="mt-2 flex items-start gap-3">
-                        <div className={`${LOUNGE_FEED_AVATAR_CLASS} invisible pointer-events-none`} aria-hidden />
-                        <div className="min-w-0 flex-1">
-                          {(() => {
-                            const orig = quoteRepostModal.original
-                            if (!orig?.id) return null
-                            const quoteComment = quoteRepostModal.originalKind === 'comment'
-                            const embedCaption = bodyTextWithLinkPreview(
-                              quoteComment ? String(orig.body || '').trim() : feedPostDisplayCaption(orig),
-                              orig.link_preview,
-                            )
-                            if (quoteComment) {
-                              return (
-                                <div
-                                  role="figure"
-                                  aria-label="Quoted comment preview"
-                                  className={LOUNGE_QUOTE_EMBED_SHELL_PREVIEW}
-                                >
-                                  <LoungeQuoteRepostEmbedAuthorMeta
-                                    post={orig}
-                                    displayNameFor={displayNameFor}
-                                    handleFor={handleFor}
-                                    postAgeLabel={postAgeLabel}
-                                  />
-                                  {embedCaption ? (
-                                    <div className={`mt-1 text-left ${LOUNGE_QUOTE_EMBED_CAPTION_CLASS}`}>
-                                      <LoungeExpandableRichCaption
-                                        text={embedCaption}
-                                        captionOpts={loungePostDetailRichCaptionOpts}
-                                      />
-                                    </div>
-                                  ) : null}
-                                </div>
-                              )
-                            }
-                            return (
-                              <LoungeQuoteRepostEmbeddedOriginal
-                                variant="preview"
-                                previewAriaLabel="Quoted post preview"
-                                hostPost={null}
-                                repostedPost={orig}
-                                fanLockCtx={loungeFanLockCtx}
-                                captionText={embedCaption}
-                                captionOpts={loungePostDetailRichCaptionOpts}
-                                showCaption={Boolean(embedCaption)}
-                                displayNameFor={displayNameFor}
-                                handleFor={handleFor}
-                                postAgeLabel={postAgeLabel}
-                                mediaLightboxProps={{
-                                  lightboxPortalClass: 'z-[110]',
-                                  visibilityResetRootRef: quoteRepostScrollRef,
-                                  streamLightboxHost: orig,
-                                  streamLightboxSurface: quoteRepostStreamLightboxSurface,
-                                }}
-                                fanSubscribeBusy={feedFanSubscribeBusy}
-                                onSubscribeToCreatorFan={
-                                  loungeReadOnly ? undefined : openFeedFanSubscribe
-                                }
-                              />
-                            )
-                          })()}
-                        </div>
-                      </div>
-                      {quoteRepostErr ? (
-                        <div className="mt-2 rounded-2xl border border-rose-500/40 bg-rose-950/20 px-3 py-2 text-[14px] leading-relaxed text-rose-200 break-words whitespace-pre-wrap">
-                          {quoteRepostErr}
-                        </div>
-                      ) : null}
-                    </>
+          <div
+            ref={quoteRepostScrollRef}
+            className="lounge-quote-repost-scroll min-h-0 flex-1 overscroll-contain overflow-y-auto touch-pan-y px-4"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            <div className="flex items-start gap-3 pb-3 pt-1">
+              <div className={`${LOUNGE_FEED_AVATAR_CLASS}`}>
+                {composerUserProfile?.avatar_url ? (
+                  <img
+                    src={composerUserProfile.avatar_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : !composerAuthResolved ? (
+                  <span className="block h-full w-full rounded-full bg-zinc-700/55 animate-pulse" aria-hidden />
+                ) : (
+                  <span
+                    className={`flex h-full w-full items-center justify-center text-[14px] font-bold text-white ${avatarToneClass(
+                      composerUserProfile?.user_id || composerUserId || 'me'
+                    )}`}
+                  >
+                    {(() => {
+                      if (composerUserProfile?.display_name?.trim() || composerUserProfile?.handle?.trim()) {
+                        return avatarText({ author_profile: composerUserProfile })
+                      }
+                      if (composerAuthUser) {
+                        const seed = profileSeedFromUser(composerAuthUser)
+                        return profileAvatarInitials(seed.displayName, seed.baseHandle)
+                      }
+                      if (composerUserId) return composerStableInitialsFromUid(composerUserId)
+                      return avatarText({ author_profile: { display_name: 'Me', handle: '' } })
+                    })()}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div ref={mentionQuoteRepostAnchorRef}>
+                  <LoungeRichComposerField
+                    ref={quoteRepostFieldRef}
+                    variant="quote"
+                    value={quoteRepostDraft}
+                    onChange={setQuoteRepostDraft}
+                    maxLength={loungeComposerCaptionMax}
+                    placeholder="Add a comment"
+                    ariaLabel="Quote for repost"
+                    cashtagStyleContext={quoteRepostCashtagStyleContext}
+                    onPasteImageFiles={enqueueQuoteRepostPastedImages}
+                    onKeyDown={(e) => {
+                      if (
+                        cashtagQuoteRepost.onCashtagKeyDown(
+                          e,
+                          setQuoteRepostDraft,
+                          quoteRepostFieldRef.current,
+                        )
+                      ) {
+                        return
+                      }
+                      mentionQuoteRepost.onMentionKeyDown(
+                        e,
+                        setQuoteRepostDraft,
+                        quoteRepostFieldRef.current,
+                      )
+                    }}
+                    onKeyUp={(e) => {
+                      cashtagQuoteRepost.onCursorMove(e)
+                      mentionQuoteRepost.onCursorMove(e)
+                    }}
+                    onMouseUp={(e) => {
+                      cashtagQuoteRepost.onCursorMove(e)
+                      mentionQuoteRepost.onCursorMove(e)
+                    }}
+                    onInput={(e) => {
+                      cashtagQuoteRepost.onCursorMove(e)
+                      mentionQuoteRepost.onCursorMove(e)
+                    }}
+                    onBlur={() =>
+                      window.setTimeout(() => {
+                        if (shouldKeepCashtagAutocompleteAfterBlur(quoteRepostFieldRef.current)) {
+                          return
+                        }
+                        cashtagQuoteRepost.clearCashtag()
+                        mentionQuoteRepost.clearMention()
+                      }, 150)
+                    }
+                  />
+                  {cashtagQuoteRepost.isOpen ? (
+                    <LoungeCashtagDropdown
+                      open
+                      query={cashtagQuoteRepost.cashtag?.query ?? ''}
+                      suggestions={cashtagQuoteRepost.suggestions}
+                      activeIndex={cashtagQuoteRepost.activeIndex}
+                      loading={cashtagQuoteRepost.loading}
+                      onSelect={(row) =>
+                        cashtagQuoteRepost.onCashtagSelect(
+                          row,
+                          setQuoteRepostDraft,
+                          quoteRepostFieldRef.current,
+                        )
+                      }
+                      anchorRef={mentionQuoteRepostAnchorRef}
+                      caretFieldRef={quoteRepostFieldRef}
+                    />
+                  ) : null}
+                  <LoungeMentionDropdown
+                    suggestions={mentionQuoteRepost.suggestions}
+                    activeIndex={mentionQuoteRepost.activeIndex}
+                    loading={mentionQuoteRepost.loading}
+                    onSelect={(p) =>
+                      mentionQuoteRepost.onMentionSelect(p, setQuoteRepostDraft, quoteRepostFieldRef.current)
+                    }
+                    anchorRef={mentionQuoteRepostAnchorRef}
+                    caretFieldRef={quoteRepostFieldRef}
+                  />
+                  <LoungeComposerMarketChartStrip
+                    symbols={quoteRepostMarketSymbols}
+                    onChange={setQuoteRepostMarketSymbols}
+                    onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
+                    className="mt-1.5"
+                  />
                 </div>
+                <LoungePostCategoryPillPicker
+                  value={quoteRepostCategoryPills}
+                  onChange={setQuoteRepostCategoryPills}
+                  disabled={quoteRepostBusy}
+                  hint=""
+                />
+                {(() => {
+                  const gifUrl = String(quoteRepostMediaUrl || '').trim()
+                  const imageUrls = quoteRepostImageItems.map((x) => x.preview)
+                  const carouselUrls = gifUrl ? [...imageUrls, gifUrl] : imageUrls
+                  if (carouselUrls.length === 0) return null
+                  const nImg = quoteRepostImageItems.length
+                  return (
+                    <LoungeImageCarousel
+                      urls={carouselUrls}
+                      variant="composer"
+                      firstMarginTopClass="mt-1.5"
+                      regionAriaLabel={gifUrl ? 'Quote images and GIF' : 'Quote images'}
+                      removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
+                      onRemoveIndex={(i) => {
+                        if (i < nImg) {
+                          setQuoteRepostImageItems((prev) => {
+                            const row = prev[i]
+                            if (row?.preview) {
+                              try {
+                                URL.revokeObjectURL(row.preview)
+                              } catch {
+                                // ignore
+                              }
+                            }
+                            return prev.filter((_, j) => j !== i)
+                          })
+                        } else {
+                          setQuoteRepostMediaUrl('')
+                        }
+                      }}
+                    />
+                  )
+                })()}
+                {quoteRepostVideoSlot ? (
+                  <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                    {!quoteRepostVideoSlot.file && quoteRepostVideoSlot.preview ? (
+                      <img
+                        src={quoteRepostVideoSlot.preview}
+                        alt=""
+                        className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
+                      />
+                    ) : quoteRepostVideoSlot.preview ? (
+                      <video
+                        src={quoteRepostVideoSlot.preview}
+                        poster={quoteRepostVideoSlot.posterUrl || undefined}
+                        className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
+                        controls
+                        playsInline
+                        preload="metadata"
+                        aria-label="Video preview"
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={quoteRepostBusy}
+                      onClick={() => {
+                        cancelQuoteRepostMediaPrep()
+                      }}
+                      className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/25 text-base leading-none text-zinc-100 shadow-sm backdrop-blur-[2px] touch-manipulation hover:bg-black/45 active:bg-black/55 disabled:opacity-45"
+                      aria-label="Remove video"
+                      title="Remove video"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+                <div className="mt-3">
+                  {(() => {
+                    const orig = quoteRepostModal.original
+                    if (!orig?.id) return null
+                    const quoteComment = quoteRepostModal.originalKind === 'comment'
+                    const embedCaption = bodyTextWithLinkPreview(
+                      quoteComment ? String(orig.body || '').trim() : feedPostDisplayCaption(orig),
+                      orig.link_preview,
+                    )
+                    if (quoteComment) {
+                      return (
+                        <div
+                          role="figure"
+                          aria-label="Quoted comment preview"
+                          className={LOUNGE_QUOTE_EMBED_SHELL_PREVIEW}
+                        >
+                          <LoungeQuoteRepostEmbedAuthorMeta
+                            post={orig}
+                            displayNameFor={displayNameFor}
+                            handleFor={handleFor}
+                            postAgeLabel={postAgeLabel}
+                          />
+                          {embedCaption ? (
+                            <div className={`mt-1 text-left ${LOUNGE_QUOTE_EMBED_CAPTION_CLASS}`}>
+                              <LoungeExpandableRichCaption
+                                text={embedCaption}
+                                captionOpts={loungePostDetailRichCaptionOpts}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    }
+                    return (
+                      <LoungeQuoteRepostEmbeddedOriginal
+                        variant="preview"
+                        previewAriaLabel="Quoted post preview"
+                        hostPost={null}
+                        repostedPost={orig}
+                        fanLockCtx={loungeFanLockCtx}
+                        captionText={embedCaption}
+                        captionOpts={loungePostDetailRichCaptionOpts}
+                        showCaption={Boolean(embedCaption)}
+                        displayNameFor={displayNameFor}
+                        handleFor={handleFor}
+                        postAgeLabel={postAgeLabel}
+                        mediaLightboxProps={{
+                          lightboxPortalClass: 'z-[110]',
+                          visibilityResetRootRef: quoteRepostScrollRef,
+                          streamLightboxHost: orig,
+                          streamLightboxSurface: quoteRepostStreamLightboxSurface,
+                        }}
+                        fanSubscribeBusy={feedFanSubscribeBusy}
+                        onSubscribeToCreatorFan={
+                          loungeReadOnly ? undefined : openFeedFanSubscribe
+                        }
+                      />
+                    )
+                  })()}
+                </div>
+                {quoteRepostErr ? (
+                  <div className="mt-2 rounded-2xl border border-rose-500/40 bg-rose-950/20 px-3 py-2 text-[14px] leading-relaxed text-rose-200 break-words whitespace-pre-wrap">
+                    {quoteRepostErr}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
+
+          <footer
+            className="lounge-quote-repost-footer relative z-[1] shrink-0 border-t border-zinc-800 px-2 pt-1"
+            style={{ paddingBottom: quoteRepostFooterPadBottom }}
+          >
+            <input
+              id={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
+              ref={quoteRepostImageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              {...loungeFileInputMediaPickerHandlers('quote')}
+              onChange={(e) => handleQuoteRepostMediaInputChange(e, 'image')}
+            />
+            <input
+              id={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
+              ref={quoteRepostVideoInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              {...loungeFileInputMediaPickerHandlers('quote')}
+              onChange={(e) => handleQuoteRepostMediaInputChange(e, 'video')}
+            />
+            <div className="lounge-media-toolbar flex w-full items-center py-1">
+              <LoungeComposerMediaToolbar
+                variant="feed"
+                imageInputId={LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID}
+                videoInputId={LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID}
+                disabled={quoteRepostBusy}
+                gifDisabled={quoteRepostBusy}
+                marketDisabled={quoteRepostBusy}
+                onImagePointerDown={() => {
+                  if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
+                }}
+                onVideoPointerDown={() => {
+                  if (!quoteRepostBusy) beginLoungeComposerMediaPicker('quote')
+                }}
+                onOpenGifPicker={() => {
+                  if (!quoteRepostBusy) openKlipyPicker('quote')
+                }}
+                onOpenMarketPicker={() => {
+                  if (!quoteRepostBusy) openMarketPicker('quote')
+                }}
+              />
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 pr-1">
+                <LoungeComposerCharRing len={quoteRepostDraft.length} max={loungeComposerCaptionMax} />
+              </div>
+            </div>
+          </footer>
         </div>
+          )
+        })()
       ) : null}
 
       <KlipyGifPicker

@@ -1,6 +1,6 @@
-# SEO — ranking for “edge tilt slots”
+# SEO — EdgeTilt brand landings (slots + poker)
 
-**Goal:** `edgetilt.com` ranks when someone searches **edge tilt slots** (and related brand queries).
+**Goals:** rank for **edge tilt slots**, **edge tilt poker**, and related tool queries (poker bankroll / stable manager).
 
 ---
 
@@ -8,49 +8,55 @@
 
 | URL | Role |
 | --- | --- |
-| `https://edgetilt.com/` | Homepage title/description include **EdgeTilt** + **slots** |
-| `https://edgetilt.com/slots` | Dedicated landing for the query (static `public/slots.html`) |
-| `https://edgetilt.com/guides` | Public AP guides **index** (titles/blurbs only… no paywalled markdown) |
+| `https://edgetilt.com/` | Homepage title/description: **EdgeTilt** + **slots** + **poker** |
+| `https://edgetilt.com/slots` | Slots landing (`public/slots.html`) |
+| `https://edgetilt.com/guides` | Public AP guides **index** (titles only… no paywalled markdown) |
+| `https://edgetilt.com/poker` | Poker tools hub |
+| `https://edgetilt.com/poker/bankroll` | Poker Bankroll Manager landing |
+| `https://edgetilt.com/poker/stable` | Poker Stable Manager landing |
 | `https://edgetilt.com/sitemap.xml` | Lists the URLs above |
 | `https://edgetilt.com/robots.txt` | Allows crawl; points at sitemap |
 | `public/googleae022787114e4d27.html` | Google Search Console HTML-file verification |
 
-Vercel rewrites `/slots` → `slots.html` and `/guides` → `guides.html` **before** the SPA catch-all.
+Vercel rewrites (before SPA catch-all):
+
+- `/slots` → `slots.html`
+- `/guides` → `guides.html`
+- `/poker` → `poker.html`
+- `/poker/bankroll` → `poker-bankroll.html`
+- `/poker/stable` → `poker-stable.html`
+
+App deep links from CTAs: `/?tab=slots`, `/?tab=guides`, `/?tab=poker`, `/?tab=poker-bankroll`, `/?tab=poker-stable`.
 
 ---
 
 ## Paywalled guide text… crawlable without exposing it?
 
-**Short answer:** You can make Google understand the *topic* without publishing full guide bodies. You cannot safely let Googlebot read the **full** paywalled markdown without that text being fetchable by someone who spoofs or scripts access.
+**Short answer:** Teasers yes. Full bodies no (not safely).
 
-| Approach | What Google sees | What public/scrapers see | Notes |
-| --- | --- | --- | --- |
-| **Public teaser pages** (titles, one-line blurbs, cards) | Indexable titles + intent | Same teasers | What `/guides` does today. Safe. |
-| **JSON-LD paywalled content** (`isAccessibleForFree: false` + free `cssSelector`) | Teaser + structured “rest is paid” | Same teaser | Good for future per-guide public pages. |
-| **Googlebot-only full text** (cloaking) | Full article | Paywall for users | **Don’t.** Against Google guidelines; brittle. |
-| **Full markdown in HTML for everyone** | Full article | Full article | Defeats anti-scrape / paywall. |
+| Approach | Notes |
+| --- | --- |
+| **Public teaser pages** (titles, blurbs) | What `/guides` does. Safe. |
+| **JSON-LD paywalled content** | Future per-guide teasers with `isAccessibleForFree: false`. |
+| **Googlebot-only full text** | **Don’t** (cloaking). |
+| **Full markdown in public HTML** | Defeats anti-scrape / paywall. |
 
-Keep **`content_markdown`** behind `get_guide_content` / entitlements (see `docs/security-anti-scrape-roadmap.md`). SEO pages stay teaser-only.
+Keep **`content_markdown`** behind entitlements (`docs/security-anti-scrape-roadmap.md`).
 
 ---
 
 ## Google Search Console (Ryan)
 
-1. Open [Google Search Console](https://search.google.com/search-console) for **`edgetilt.com`** (HTML file `googleae022787114e4d27.html` is already in `public/`).
-2. Confirm the property is **Verified**.
-3. **Sitemaps** → submit `https://edgetilt.com/sitemap.xml`.
-4. **URL inspection** → `https://edgetilt.com/slots` → **Request indexing** (also homepage + `/guides` after deploy).
-5. Watch Performance for query **`edge tilt slots`** over the next days/weeks.
+1. [Search Console](https://search.google.com/search-console) → **edgetilt.com** (verified via HTML file).
+2. **Sitemaps** → `https://edgetilt.com/sitemap.xml` (already submitted is fine; Google re-fetches).
+3. **URL inspection** → live test + **Request indexing** for new URLs:
+   - `/poker`
+   - `/poker/bankroll`
+   - `/poker/stable`
+   - (already done for `/`, `/slots`, `/guides` if you finished that pass)
 
 ---
 
 ## Brand mentions (ongoing)
 
-Say **EdgeTilt** and **slots** in the same breath on X/Discord/Lounge bios and posts. Brand search + exact-match landing pages is how a new domain climbs a low-competition phrase.
-
----
-
-## Later (not required for this query)
-
-- Per-guide public teaser URLs with JSON-LD paywall schema
-- Expanding `/guides` list from a build-time free-slug export (still no markdown)
+Say **EdgeTilt** with **slots** and/or **poker** in bios and posts when natural.

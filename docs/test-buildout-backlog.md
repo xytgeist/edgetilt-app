@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-08: **SEO “edge tilt poker”:** crawlable **`/poker`**, **`/poker/bankroll`**, **`/poker/stable`** (`public/poker*.html`); Vercel rewrites; sitemap; homepage meta mentions poker; cross-links from slots/guides. Playbook **`docs/seo-edgetilt-slots.md`**. Ryan: Request indexing for the three poker URLs after deploy.
 - 2026-08-07: **SEO “edge tilt slots”:** homepage title/description now include EdgeTilt + slots; static crawlable **`/slots`** + public **`/guides`** index (titles only, no paywalled markdown); sitemap expanded; Vercel rewrites before SPA catch-all. Playbook **`docs/seo-edgetilt-slots.md`**. Ryan: Search Console verify + submit sitemap after deploy.
 - 2026-08-07: **Wire bot cross-source near-dupe:** `lounge-news-poll` looks back over the last **10** published captions and skips candidates whose title is a near-dupe (token overlap), so CoinDesk + Cointelegraph rewrites of the same Iran/OFAC story don’t both post. Same-batch winners also block later candidates. Redeploy **`lounge-news-poll`** test + prod.
 - 2026-08-07: **Market Edge “S. Treasury” synopsis bug:** same splitter ate **U.S.** → orphan **“S. Treasury Department…”**. Fix: mask dotted abbreviations (**U.S.** / **U.K.** / **E.U.** / Inc./Ltd./…) before split; scrub leading single-letter `X.` orphans. Redeploy **`lounge-news-poll`** test + prod.

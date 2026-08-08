@@ -7,29 +7,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#09090b" />
 
-    <title>EdgeTilt | Edge tilt for slots</title>
+    <title>EdgeTilt | Edge tilt for poker</title>
     <meta
       name="description"
-      content="EdgeTilt is edge tilt for slots... AP guides, bankroll tracking, EV calculators, offer calendar, and a Lounge for people who hunt slot edge. Open edgetilt.com and find your edge."
+      content="EdgeTilt poker tools... Bankroll Manager for cash, tournaments, swaps and stakes, plus Stable Manager for backing horses with live updates. Edge tilt for poker on edgetilt.com."
     />
-    <link rel="canonical" href="https://edgetilt.com/slots" />
+    <link rel="canonical" href="https://edgetilt.com/poker" />
 
     <meta property="og:site_name" content="EdgeTilt" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://edgetilt.com/slots" />
-    <meta property="og:title" content="EdgeTilt | Edge tilt for slots" />
+    <meta property="og:url" content="https://edgetilt.com/poker" />
+    <meta property="og:title" content="EdgeTilt | Edge tilt for poker" />
     <meta
       property="og:description"
-      content="Edge tilt for slots on EdgeTilt... AP guides, bankroll, calculators, offers, and community. Hunt the edge."
+      content="Poker Bankroll Manager and Stable Manager on EdgeTilt... track sessions, stakes, swaps, and horses."
     />
     <meta property="og:image" content="https://edgetilt.com/apple-touch-icon.png" />
     <meta property="og:image:alt" content="EdgeTilt" />
 
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="EdgeTilt | Edge tilt for slots" />
+    <meta name="twitter:title" content="EdgeTilt | Edge tilt for poker" />
     <meta
       name="twitter:description"
-      content="Edge tilt for slots on EdgeTilt... AP guides, bankroll, calculators, and Lounge."
+      content="Edge tilt for poker on EdgeTilt... bankroll, stakes, swaps, and stable tracking."
     />
     <meta name="twitter:image" content="https://edgetilt.com/apple-touch-icon.png" />
 
@@ -43,17 +43,13 @@
       {
         "@context": "https://schema.org",
         "@type": "WebPage",
-        "name": "EdgeTilt | Edge tilt for slots",
-        "url": "https://edgetilt.com/slots",
-        "description": "EdgeTilt is edge tilt for slots... AP guides, bankroll tracking, EV calculators, offer calendar, and a Lounge for people who hunt slot edge.",
+        "name": "EdgeTilt | Edge tilt for poker",
+        "url": "https://edgetilt.com/poker",
+        "description": "EdgeTilt poker tools... Bankroll Manager and Stable Manager for cash, tournaments, stakes, swaps, and horses.",
         "isPartOf": {
           "@type": "WebSite",
           "name": "EdgeTilt",
           "url": "https://edgetilt.com/"
-        },
-        "about": {
-          "@type": "Thing",
-          "name": "Slot machine advantage play and edge hunting"
         }
       }
     </script>
@@ -64,20 +60,20 @@
         --fg: #fafafa;
         --muted: #a1a1aa;
         --line: #27272a;
+        --mint: #6ee7b7;
         --cyan: #22d3ee;
-        --card: #18181b;
       }
       * { box-sizing: border-box; }
       html, body {
         margin: 0;
         min-height: 100%;
         background:
-          radial-gradient(1200px 600px at 50% -10%, rgba(34, 211, 238, 0.12), transparent 55%),
+          radial-gradient(1100px 560px at 70% -8%, rgba(110, 231, 183, 0.12), transparent 55%),
           var(--bg);
         color: var(--fg);
         font-family: Montserrat, system-ui, sans-serif;
       }
-      a { color: inherit; }
+      a { color: inherit; text-decoration: none; }
       .wrap {
         width: min(720px, calc(100% - 2rem));
         margin: 0 auto;
@@ -87,7 +83,6 @@
         display: inline-flex;
         align-items: center;
         gap: 0.65rem;
-        text-decoration: none;
         font-weight: 800;
         letter-spacing: 0.04em;
         font-size: 0.95rem;
@@ -105,13 +100,13 @@
         color: var(--muted);
         font-size: 1.05rem;
         line-height: 1.55;
-        max-width: 38rem;
+        max-width: 40rem;
       }
       .cta-row {
         display: flex;
         flex-wrap: wrap;
         gap: 0.75rem;
-        margin: 1.75rem 0 2.5rem;
+        margin: 1.75rem 0 2.25rem;
       }
       .btn {
         display: inline-flex;
@@ -122,38 +117,42 @@
         border-radius: 999px;
         font-weight: 700;
         font-size: 0.92rem;
-        text-decoration: none;
         border: 1px solid transparent;
       }
-      .btn-primary {
-        background: var(--cyan);
-        color: #083344;
-      }
+      .btn-primary { background: var(--mint); color: #064e3b; }
       .btn-ghost {
         border-color: var(--line);
         background: rgba(24, 24, 27, 0.8);
-        color: var(--fg);
       }
+      .cards { display: grid; gap: 0.75rem; }
+      .card {
+        display: block;
+        border: 1px solid var(--line);
+        border-radius: 1.25rem;
+        background: rgba(24, 24, 27, 0.85);
+        padding: 1.1rem 1.15rem;
+      }
+      .card h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }
+      .card .tone { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.35rem; }
+      .tone-mint { color: var(--mint); }
+      .tone-cyan { color: var(--cyan); }
       section {
         margin-top: 2rem;
         padding-top: 1.5rem;
         border-top: 1px solid var(--line);
       }
-      section h2 {
-        margin: 0 0 0.65rem;
-        font-size: 1.1rem;
-        font-weight: 700;
-      }
-      section p, section li {
-        color: var(--muted);
-        line-height: 1.55;
-        font-size: 0.95rem;
-      }
-      ul {
-        margin: 0.5rem 0 0;
-        padding-left: 1.15rem;
-      }
-      li + li { margin-top: 0.35rem; }
+      section h2 { margin: 0 0 0.65rem; font-size: 1.1rem; font-weight: 700; }
+      section p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 0.95rem; }
       footer {
         margin-top: 3rem;
         padding-top: 1.25rem;
@@ -171,47 +170,47 @@
         <span>EDGETILT</span>
       </a>
 
-      <h1>Edge tilt for slots</h1>
+      <h1>Edge tilt for poker</h1>
       <p class="lead">
-        EdgeTilt is where slot players hunt edge... AP guides, bankroll tools, EV calculators,
-        offer tracking, and a Lounge for people who take the floor seriously. If you searched
-        <strong style="color:#f4f4f5;font-weight:600">edge tilt slots</strong>, you are in the right place.
+        EdgeTilt poker tools for cash games and tournaments... track your own book, run stakes and
+        swaps, and manage a stable of horses with live updates. If you searched
+        <strong style="color:#f4f4f5;font-weight:600">edge tilt poker</strong>, you are in the right place.
       </p>
 
       <div class="cta-row">
-        <a class="btn btn-primary" href="/?tab=slots">Open slots on EdgeTilt</a>
-        <a class="btn btn-ghost" href="/guides">AP slot guides</a>
-        <a class="btn btn-ghost" href="/poker">Poker tools</a>
+        <a class="btn btn-primary" href="/?tab=poker">Open poker on EdgeTilt</a>
+        <a class="btn btn-ghost" href="/slots">Slots tools</a>
+      </div>
+
+      <div class="cards">
+        <a class="card" href="/poker/bankroll">
+          <div class="tone tone-mint">Bankroll Manager</div>
+          <h2>Cash, tourneys, swaps &amp; stakes</h2>
+          <p>Session tracking, charts, locations, tournament swaps, and stake deals in one poker bankroll home.</p>
+        </a>
+        <a class="card" href="/poker/stable">
+          <div class="tone tone-cyan">Stable Manager</div>
+          <h2>Track horses · live updates</h2>
+          <p>Back players, manage slice deals, settle up, and follow horse performance without spreadsheet chaos.</p>
+        </a>
       </div>
 
       <section>
-        <h2>What you get for slots</h2>
-        <ul>
-          <li><strong style="color:#f4f4f5">AP Guides</strong> ... machine cards and play notes for real floor titles</li>
-          <li><strong style="color:#f4f4f5">Bankroll Manager</strong> ... sessions, trends, and trip tracking</li>
-          <li><strong style="color:#f4f4f5">Calculators</strong> ... EV math for the games that matter</li>
-          <li><strong style="color:#f4f4f5">Offers calendar</strong> ... mailers and trip planning</li>
-          <li><strong style="color:#f4f4f5">Lounge</strong> ... community for edge hunters across slots and beyond</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Slots is one tribe</h2>
+        <h2>Poker is one tribe</h2>
         <p>
-          EdgeTilt is a community of tribes for niches where edge actually exists. Slots is a
-          core tribe on the map... not the whole product. Start in Slots, then explore Lounge,
-          poker tools, markets, and more when you are ready.
+          EdgeTilt is a community of tribes for niches where edge exists. Poker sits beside slots,
+          Lounge, markets, and more... same product, tools built for how you actually play and back.
         </p>
       </section>
 
       <footer>
         <a href="https://edgetilt.com/">edgetilt.com</a>
         ·
-        <a href="/guides">Guides</a>
+        <a href="/poker/bankroll">Bankroll</a>
         ·
-        <a href="/poker">Poker</a>
+        <a href="/poker/stable">Stable</a>
         ·
-        <a href="/?tab=slots">Open app</a>
+        <a href="/?tab=poker">Open app</a>
       </footer>
     </main>
   </body>

@@ -37,6 +37,9 @@
     { "source": "/slot-guide-form", "destination": "/slot-guide-form.html" },
     { "source": "/slots", "destination": "/slots.html" },
     { "source": "/guides", "destination": "/guides.html" },
+    { "source": "/poker", "destination": "/poker.html" },
+    { "source": "/poker/bankroll", "destination": "/poker-bankroll.html" },
+    { "source": "/poker/stable", "destination": "/poker-stable.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

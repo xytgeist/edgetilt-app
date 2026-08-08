@@ -55,12 +55,13 @@ import LoungeComposerMarketSymbolPills from '../lounge/LoungeComposerMarketSymbo
 import {
   fetchComposerMarketEmbed,
   hydrateComposerMarketSymbolEmbeds,
-  composerMarketRowEmbed,
 } from '../lounge/loungeComposerMarketEmbed.js'
 import { LoungeComposerMediaChartIcon } from '../lounge/LoungeComposerMediaToolbar.jsx'
 import {
   LOUNGE_MARKET_EMBED_MAX,
   appendMissingMarketCashtagsToCaption,
+  formatMarketWindowDateLabel,
+  parseCaptionMarketWindowClient,
 } from '../../utils/loungeMarketCaptionParse.js'
 import { lockStableLayoutViewportHeight } from '../../utils/stableLayoutViewport.js'
 import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost'
@@ -76,12 +77,13 @@ const X_BOT_VOICE_PLACEHOLDER =
 const COMPOSE_MARKET_EMBED_FETCH_MS = 10000
 
 /** Fallback chart payload when live rolling fetch hangs or fails. */
-function minimalComposerMarketEmbed(row) {
+function minimalComposerMarketEmbed(row, caption = '') {
   const symbol = String(row?.symbol || '').trim()
   if (!symbol) return null
   const asset_class = String(row?.asset_class || 'stock').trim() === 'crypto' ? 'crypto' : 'stock'
   const preview = row?.preview && typeof row.preview === 'object' ? row.preview : null
   const display = String(row?.display_symbol || preview?.display_symbol || symbol).trim().toUpperCase()
+  const windowInfo = parseCaptionMarketWindowClient(caption)
   return {
     symbol,
     display_symbol: display || symbol,
@@ -91,9 +93,12 @@ function minimalComposerMarketEmbed(row) {
     logo_url: String(row?.logo_url || preview?.logo_url || '').trim(),
     market_cap: row?.market_cap ?? preview?.market_cap ?? null,
     currency: 'USD',
-    kind: 'rolling',
-    window_key: '24h',
-    window_label: '24h',
+    kind: windowInfo.kind,
+    window_key: windowInfo.windowKey,
+    window_label:
+      windowInfo.kind === 'historical'
+        ? formatMarketWindowDateLabel(windowInfo.windowKey, []) || windowInfo.windowLabel
+        : '24h',
     quote: {
       price: preview?.price,
       change_pct: preview?.change_pct,
@@ -128,10 +133,15 @@ function sanitizeMarketEmbedForPublish(embed) {
   }
 }
 
-async function fetchComposerMarketEmbedBounded(supabaseClient, row, timeoutMs = COMPOSE_MARKET_EMBED_FETCH_MS) {
+async function fetchComposerMarketEmbedBounded(
+  supabaseClient,
+  row,
+  caption = '',
+  timeoutMs = COMPOSE_MARKET_EMBED_FETCH_MS,
+) {
   try {
     return await Promise.race([
-      fetchComposerMarketEmbed(supabaseClient, row),
+      fetchComposerMarketEmbed(supabaseClient, row, { caption }),
       new Promise((resolve) => {
         window.setTimeout(() => resolve(null), timeoutMs)
       }),
@@ -1032,22 +1042,21 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
         imageUrls.push(upUrl)
       }
 
-      /** @type {object[]} */
+      /**
+       * Always rebuild from caption at publish. Composer cache is rolling-24h preview
+       * and Edge attach cannot run for bot posts (author ≠ admin session).
+       * @type {object[]}
+       */
       const marketEmbeds = []
       for (const row of composeMarketSymbols.slice(0, LOUNGE_MARKET_EMBED_MAX)) {
-        const cached = sanitizeMarketEmbedForPublish(composerMarketRowEmbed(row))
-        if (cached) {
-          marketEmbeds.push(cached)
-          continue
-        }
         const fetched = sanitizeMarketEmbedForPublish(
-          await fetchComposerMarketEmbedBounded(supabaseClient, row),
+          await fetchComposerMarketEmbedBounded(supabaseClient, row, caption),
         )
         if (fetched) {
           marketEmbeds.push(fetched)
           continue
         }
-        const minimal = sanitizeMarketEmbedForPublish(minimalComposerMarketEmbed(row))
+        const minimal = sanitizeMarketEmbedForPublish(minimalComposerMarketEmbed(row, caption))
         if (minimal) marketEmbeds.push(minimal)
       }
       if (
@@ -1926,11 +1935,15 @@ function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
           selected={composeMarketSymbols}
           onChange={(next) => {
             setComposeMarketSymbols(next)
-            hydrateComposerMarketSymbolEmbeds(supabaseClient, setComposeMarketSymbols, next)
-            setComposeCaption((prev) =>
-              appendMissingMarketCashtagsToCaption(prev, next, {
-                maxLen: LOUNGE_CAPTION_SUBSCRIBER_MAX,
-              }),
+            const nextCaption = appendMissingMarketCashtagsToCaption(composeCaption, next, {
+              maxLen: LOUNGE_CAPTION_SUBSCRIBER_MAX,
+            })
+            setComposeCaption(nextCaption)
+            hydrateComposerMarketSymbolEmbeds(
+              supabaseClient,
+              setComposeMarketSymbols,
+              next,
+              nextCaption,
             )
           }}
           supabaseClient={supabaseClient}

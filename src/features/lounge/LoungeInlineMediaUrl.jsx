@@ -336,18 +336,18 @@ export function LoungeImageLightbox({
             <div
               ref={carouselScrollRef}
               data-lounge-lightbox-carousel
-              className="flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto scroll-smooth [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto scroll-smooth [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
               {list.map((slideUrl, i) => (
                 <div
                   key={`${slideUrl}-${i}`}
-                  className="flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
+                  className="relative z-[1] flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
                 >
                   <img
                     ref={i === idx ? mediaImageRef : undefined}
                     src={loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')}
                     alt=""
-                    className="max-h-full max-w-full select-none object-contain"
+                    className="relative z-[1] max-h-full max-w-full select-none object-contain"
                     loading={i === idx ? 'eager' : 'lazy'}
                     decoding="async"
                     draggable={false}
@@ -362,7 +362,7 @@ export function LoungeImageLightbox({
                 key={current}
                 src={currentDisplaySrc}
                 alt=""
-                className="max-h-full max-w-full select-none object-contain"
+                className="relative z-[1] max-h-full max-w-full select-none object-contain"
                 loading="eager"
                 decoding="async"
                 draggable={false}

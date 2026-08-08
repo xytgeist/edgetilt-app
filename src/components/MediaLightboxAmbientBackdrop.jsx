@@ -5,7 +5,10 @@
 export default function MediaLightboxAmbientBackdrop({ src }) {
   if (!src) return null
   return (
-    <div className="media-lightbox-ambient-bg pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <div
+      className="media-lightbox-ambient-bg pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden
+    >
       <img src={src} alt="" className="media-lightbox-ambient-bg__img" draggable={false} decoding="async" />
     </div>
   )

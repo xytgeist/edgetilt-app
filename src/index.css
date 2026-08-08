@@ -1354,6 +1354,12 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg {
   display: block;
   z-index: 0;
 }
+/* Sharp lightbox image must sit above ambient blur (Android was painting ambient over carousel slides). */
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel],
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] img {
+  position: relative;
+  z-index: 1;
+}
 html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg__img {
   position: absolute;
   left: 50%;

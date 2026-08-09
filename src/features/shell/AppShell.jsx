@@ -409,11 +409,31 @@ export default function AppShell({
     bankrollAttention: pokerBankrollAttention,
     stableAttention: pokerStableAttention,
     pokerAttention: pokerMenuAttention,
+    hamburgerAttention: pokerHamburgerAttention,
+    pulseBankrollOffer,
+    pulseStableOffer,
+    acknowledgeHamburger: acknowledgePokerOfferHamburger,
+    acknowledgePoker: acknowledgePokerOfferMenu,
+    acknowledgeBankrollTool: acknowledgePokerBankrollAttention,
+    acknowledgeStableTool: acknowledgePokerStableAttention,
+    clearBankrollOfferPulse,
+    clearStableOfferPulse,
   } = usePokerPendingOfferAttention({
     supabaseClient,
     userId: chatCallViewerUserId,
     enabled: browseMode === 'member' && Boolean(chatCallViewerUserId),
   })
+
+  useEffect(() => {
+    if (tab === 'poker') acknowledgePokerOfferMenu()
+    if (tab === 'poker-bankroll') acknowledgePokerBankrollAttention()
+    if (tab === 'poker-stable') acknowledgePokerStableAttention()
+  }, [
+    tab,
+    acknowledgePokerOfferMenu,
+    acknowledgePokerBankrollAttention,
+    acknowledgePokerStableAttention,
+  ])
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo-link' | 'stackup' | 'mhb' | null
   const [communityPosts, setCommunityPosts] = useState([])
   const [communityFeedLoading, setCommunityFeedLoading] = useState(false)
@@ -1705,10 +1725,15 @@ export default function AppShell({
     setTab(toolId)
   }, [openSlotsProLounge])
 
-  const openPokerTool = useCallback((toolId) => {
-    setActiveCalculator(null)
-    setTab(toolId)
-  }, [])
+  const openPokerTool = useCallback(
+    (toolId) => {
+      if (toolId === 'poker-bankroll') acknowledgePokerBankrollAttention()
+      if (toolId === 'poker-stable') acknowledgePokerStableAttention()
+      setActiveCalculator(null)
+      setTab(toolId)
+    },
+    [acknowledgePokerBankrollAttention, acknowledgePokerStableAttention],
+  )
 
   const openLogbook = useCallback(() => {
     setActiveCalculator(null)
@@ -1851,6 +1876,7 @@ export default function AppShell({
               setTab('slots')
               triggerTapHapticLight()
             } else if (item.id === 'poker') {
+              acknowledgePokerOfferMenu()
               setActiveCalculator(null)
               setTab('poker')
               triggerTapHapticLight()
@@ -1903,11 +1929,17 @@ export default function AppShell({
       <button
         type="button"
         data-title-bar-menu-btn
-        onClick={() => setMenuOpen((v) => !v)}
+        onClick={() => {
+          setMenuOpen((v) => {
+            const next = !v
+            if (next) acknowledgePokerOfferHamburger()
+            return next
+          })
+        }}
         aria-label={
           menuOpen
             ? 'Close navigation menu'
-            : pokerMenuAttention
+            : pokerHamburgerAttention
               ? 'Open navigation menu · pending poker offer'
               : 'Open navigation menu'
         }
@@ -1918,7 +1950,7 @@ export default function AppShell({
         <span aria-hidden className="block leading-none text-xl -translate-y-px">
           {menuOpen ? '×' : '☰'}
         </span>
-        {pokerMenuAttention && !menuOpen ? (
+        {pokerHamburgerAttention && !menuOpen ? (
           <AttentionDot className="-right-0.5 -top-0.5 ring-zinc-800" />
         ) : null}
       </button>
@@ -2649,6 +2681,8 @@ export default function AppShell({
           onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
           stakeOnboardingDealId={stakeOnboardingDealId}
           onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
+          highlightPendingOffer={pulseBankrollOffer}
+          onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
         />
       )
     } else if (tab === 'poker-stable') {
@@ -2669,6 +2703,8 @@ export default function AppShell({
             setPendingPokerStableDealId(dealId)
             setTab('poker-bankroll')
           }}
+          highlightPendingOffer={pulseStableOffer}
+          onHighlightPendingOfferConsumed={clearStableOfferPulse}
         />
       )
     } else if (tab === 'logbook') {

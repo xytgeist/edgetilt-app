@@ -54,6 +54,8 @@ export default function PokerStableHorseCarousel({
   horseSparkByDeal = {},
   onArchiveHorse,
   onOpenClosedHorseReview,
+  /** Pulse pending Accept/Decline invite cards (breadcrumb first arrival). */
+  highlightPendingInvite = false,
 }) {
   const slides = deals.map((d) => ({ id: d.id }))
   const slideIdsKey = slides.map((s) => s.id).join('|')
@@ -391,6 +393,7 @@ export default function PokerStableHorseCarousel({
             <div
               data-poker-stable-horse-card
               data-poker-stable-horse-tone={horseToneAttr}
+              data-poker-offer-attention-pulse={highlightPendingInvite ? '1' : undefined}
               data-elevated-card="surface"
               className={cardClassName}
             >

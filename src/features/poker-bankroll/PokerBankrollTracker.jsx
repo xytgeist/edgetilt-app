@@ -337,6 +337,9 @@ export default function PokerBankrollTracker({
   /** Guest stakee first-run onboarding from claim / email confirm. */
   stakeOnboardingDealId = null,
   onStakeOnboardingConsumed = null,
+  /** First breadcrumb arrival: pulse pending Accept/Decline offer. */
+  highlightPendingOffer = false,
+  onHighlightPendingOfferConsumed = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -807,6 +810,22 @@ export default function PokerBankrollTracker({
     bankrollScope,
     activeStakeOnboardingDealId,
   ])
+
+  useEffect(() => {
+    if (!highlightPendingOffer || loading || !userId) return undefined
+    const pendingOffer = stakeeDeals.find(
+      (d) =>
+        d.status === 'pending' &&
+        isBackerInitiatedBackingDeal(d) &&
+        !d.staker_terms_ack_required &&
+        !d.stakee_terms_ack_required,
+    )
+    if (pendingOffer?.id) setBankrollScope(pendingOffer.id)
+    const clearTimer = window.setTimeout(() => {
+      onHighlightPendingOfferConsumed?.()
+    }, 4200)
+    return () => window.clearTimeout(clearTimer)
+  }, [highlightPendingOffer, loading, userId, stakeeDeals, onHighlightPendingOfferConsumed])
 
   useEffect(() => {
     if (loading || !userId || !activeStakeOnboardingDealId || stakeOfferOnboardingOpenedRef.current) {
@@ -3454,6 +3473,7 @@ export default function PokerBankrollTracker({
                           ) : stakeHeroMessage === 'pendingBackerOffer' ? (
                             <div
                               data-poker-stake-pending-offer
+                              data-poker-offer-attention-pulse={highlightPendingOffer ? '1' : undefined}
                               className="space-y-2 text-left"
                               onClick={(e) => e.stopPropagation()}
                             >

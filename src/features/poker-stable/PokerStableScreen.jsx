@@ -101,6 +101,9 @@ export default function PokerStableScreen({
   onBackerSliceOnboardingConsumed = null,
   /** @type {(dealId: string) => void} */
   onOpenPokerBankroll = null,
+  /** First breadcrumb arrival: pulse pending Accept/Decline offer cards. */
+  highlightPendingOffer = false,
+  onHighlightPendingOfferConsumed = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [deals, setDeals] = useState([])
@@ -442,6 +445,28 @@ export default function PokerStableScreen({
     () => partitionBackerDeals(deals, slicesByDeal, userId),
     [deals, slicesByDeal, userId],
   )
+
+  useEffect(() => {
+    if (!highlightPendingOffer || loading || !userId) return undefined
+    const inviteDeal = activeDeals.find((deal) => {
+      const slices = slicesByDeal[deal.id] || []
+      return slices.some(
+        (s) => s.status === 'pending' && s.staker_user_id === userId && deal.staker_user_id !== userId,
+      )
+    })
+    if (inviteDeal?.id) setFocusHorseDealId(inviteDeal.id)
+    const clearTimer = window.setTimeout(() => {
+      onHighlightPendingOfferConsumed?.()
+    }, 4200)
+    return () => window.clearTimeout(clearTimer)
+  }, [
+    highlightPendingOffer,
+    loading,
+    userId,
+    activeDeals,
+    slicesByDeal,
+    onHighlightPendingOfferConsumed,
+  ])
 
   const pendingPortfolioCommits = useMemo(
     () =>
@@ -809,6 +834,7 @@ export default function PokerStableScreen({
                 <div
                   key={deal.id}
                   data-poker-stable-invite-card
+                  data-poker-offer-attention-pulse={highlightPendingOffer ? '1' : undefined}
                   data-elevated-card="surface"
                   className="rounded-2xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-4"
                 >
@@ -897,6 +923,7 @@ export default function PokerStableScreen({
               horseSparkByDeal={horseSparkByDeal}
               onArchiveHorse={onArchiveHorse}
               onOpenClosedHorseReview={openClosedHorseReview}
+              highlightPendingInvite={highlightPendingOffer}
             />
           )}
         </section>

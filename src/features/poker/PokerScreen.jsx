@@ -75,7 +75,7 @@ export default function PokerScreen({
               </span>
               {tool.shortcutDestinationId ? (
                 <div
-                  className="absolute bottom-2.5 right-3 z-[2]"
+                  className="z-[2] shrink-0"
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}

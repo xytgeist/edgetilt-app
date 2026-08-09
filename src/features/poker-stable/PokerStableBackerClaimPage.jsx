@@ -155,6 +155,8 @@ export default function PokerStableBackerClaimPage({
 
   const offerDetails = guestBackerClaimOfferDetails(preview)
   const playerName = preview?.player_label || 'the player'
+  const showGuestAuthDock = Boolean(preview && offerDetails && !linked && !userId)
+  const showSignedInRetryDock = Boolean(preview && offerDetails && !linked && userId && !claiming && error)
 
   return (
     <div
@@ -163,79 +165,97 @@ export default function PokerStableBackerClaimPage({
       className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-50"
     >
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
-        <div className="mx-auto w-full max-w-md px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
-        <div className="mb-6 text-center">
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400/90">
-            EdgeTilt
+        <div
+          className={`mx-auto w-full max-w-md px-4 pt-8 ${
+            showGuestAuthDock || showSignedInRetryDock ? 'pb-4' : 'pb-[max(2.5rem,env(safe-area-inset-bottom))]'
+          }`}
+        >
+          <div className="mb-5 text-center">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-400/90">
+              EdgeTilt
+            </div>
+            <p className="mt-3 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300/90">
+              Backing invitation
+            </p>
+            <h1 className="mt-2 text-xl font-black tracking-tight text-white">Review your backing slice</h1>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+              {preview
+                ? `${playerName} invited you to back them on EdgeTilt Stable Manager. Review the terms below, then create an account or sign in to link your slice.`
+                : 'Link your Edge account, then accept or decline your slice in Stable Manager.'}
+            </p>
           </div>
-          <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300/90">
-            Backing invitation
-          </p>
-          <h1 className="mt-2 text-xl font-black tracking-tight text-white">Review your backing slice</h1>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-            {preview
-              ? `${playerName} invited you to back them on EdgeTilt Stable Manager. Review the terms below, then create an account or sign in to link your slice.`
-              : 'Link your Edge account, then accept or decline your slice in Stable Manager.'}
-          </p>
-        </div>
 
-        {loading ? (
-          <p className="text-center text-zinc-400">Loading…</p>
-        ) : error && !preview ? (
-          <p className="rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-center text-sm text-rose-200">
-            {error}
-          </p>
-        ) : preview && offerDetails ? (
-          <>
-            <PokerStableGuestClaimOfferDetails {...offerDetails} />
+          {loading ? (
+            <p className="text-center text-zinc-400">Loading…</p>
+          ) : error && !preview ? (
+            <p className="rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-center text-sm text-rose-200">
+              {error}
+            </p>
+          ) : preview && offerDetails ? (
+            <>
+              <PokerStableGuestClaimOfferDetails {...offerDetails} />
 
-            {preview.guest_email ? (
-              <p className="mt-3 text-center text-xs text-zinc-500">
-                Invitation sent to {preview.guest_email}
-              </p>
-            ) : null}
-
-            {linked ? (
-              <p className="mt-4 text-center text-sm text-emerald-300">
-                Slice linked. Opening Stable Manager…
-              </p>
-            ) : !userId ? (
-              <>
-                <p className="mt-4 text-sm text-zinc-300">
-                  Create an account or sign in with the email this invitation was sent to. After you
-                  confirm your email, this page will link your slice and send you to Stable Manager.
+              {preview.guest_email ? (
+                <p className="mt-3 text-center text-xs text-zinc-500">
+                  Invitation sent to {preview.guest_email}
                 </p>
-                {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
-                <button
-                  type="button"
-                  onClick={() => onOpenAuth?.()}
-                  className="mt-4 w-full rounded-2xl bg-cyan-600 py-3.5 text-base font-bold text-white touch-manipulation"
-                >
-                  Create account or sign in
-                </button>
-              </>
-            ) : claiming ? (
-              <p className="mt-4 text-center text-sm text-zinc-400">Linking slice…</p>
-            ) : error ? (
-              <>
-                <p className="mt-4 text-center text-sm text-rose-400">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    linkAttemptedRef.current = false
-                    setError('')
-                    setLinkRetry((n) => n + 1)
-                  }}
-                  className="mt-4 w-full rounded-2xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 touch-manipulation"
-                >
-                  Try again
-                </button>
-              </>
-            ) : null}
-          </>
-        ) : null}
+              ) : null}
+
+              {linked ? (
+                <p className="mt-4 text-center text-sm text-emerald-300">
+                  Slice linked. Opening Stable Manager…
+                </p>
+              ) : userId && claiming ? (
+                <p className="mt-4 text-center text-sm text-zinc-400">Linking slice…</p>
+              ) : null}
+            </>
+          ) : null}
         </div>
       </div>
+
+      {showGuestAuthDock ? (
+        <div
+          data-poker-stable-claim-cta
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        >
+          <div className="mx-auto w-full max-w-md">
+            <p className="text-sm leading-snug text-zinc-300">
+              Use the email this invitation was sent to. After you confirm, we link your slice and open
+              Stable Manager.
+            </p>
+            {error ? <p className="mt-2 text-center text-sm text-rose-400">{error}</p> : null}
+            <button
+              type="button"
+              onClick={() => onOpenAuth?.()}
+              className="mt-3 w-full rounded-2xl bg-cyan-600 py-3.5 text-base font-bold text-white touch-manipulation"
+            >
+              Create account or sign in
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {showSignedInRetryDock ? (
+        <div
+          data-poker-stable-claim-cta
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        >
+          <div className="mx-auto w-full max-w-md">
+            <p className="text-center text-sm text-rose-400">{error}</p>
+            <button
+              type="button"
+              onClick={() => {
+                linkAttemptedRef.current = false
+                setError('')
+                setLinkRetry((n) => n + 1)
+              }}
+              className="mt-3 w-full rounded-2xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 touch-manipulation"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

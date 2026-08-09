@@ -5418,6 +5418,10 @@ html.light [data-poker-stable-claim] .text-emerald-300 {
 html.light [data-poker-stable-claim] .border-zinc-600 {
   border-color: #d4d4d8 !important;
 }
+html.light [data-poker-stable-claim] [data-poker-stable-claim-cta] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
 
 html.light [data-poker-stake-claim] [data-poker-guest-claim-offer],
 html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] {

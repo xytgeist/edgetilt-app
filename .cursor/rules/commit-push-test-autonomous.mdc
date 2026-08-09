@@ -1,13 +1,13 @@
 ---
-description: Ryan pre-authorized agents to commit and push to test and main without asking each time
+description: Ryan pre-authorized agents to commit and push to test without asking each time; main only when Ryan asks
 alwaysApply: true
 ---
 
-# Commit and push to test + main — Ryan pre-approved
+# Commit and push to test — Ryan pre-approved
 
-**Ryan has standing permission for agents to commit and push to `test` and `main` without asking him first and without him saying "commit and push" every time.**
+**Ryan has standing permission for agents to commit and push to `test` without asking him first and without him saying "commit and push" every time.**
 
-(Standing `main` push until Ryan says otherwise … Aug 2026.)
+**Do not push `main` unless Ryan explicitly asks** (saves Vercel credits … dual test+main deploys were burning quota). Revoked standing `main` push Aug 9, 2026.
 
 ## When to do it
 
@@ -16,9 +16,13 @@ After you **finish an implementation task** (code/docs/migrations intended for t
 1. Run `git status` / `git diff` — confirm only intended files changed.
 2. Commit with a concise message (why, not just what).
 3. Push to **`origin test`** (`git push origin test`).
-4. Fast-forward **`main`** to match and push (`git checkout main` → pull → merge `test` / FF → `git push origin main` → back to `test`).
+4. Stay on **`test`**. Do **not** fast-forward or push `main` unless Ryan said to promote.
 
 Tell Ryan what you committed (hash + one-line summary). **Do not** ask "want me to commit?" for routine work.
+
+## When Ryan asks to push prod / main
+
+Then: `git checkout main` → pull → merge `test` / FF → `git push origin main` → back to `test`. Only on that explicit ask.
 
 ## When NOT to do it
 
@@ -30,7 +34,7 @@ Tell Ryan what you committed (hash + one-line summary). **Do not** ask "want me 
 
 ## Scope
 
-**Git branches `test` + `main`.** This does **not** authorize prod ingest, prod SQL, or prod Edge deploys.
+**Git branch `test` by default.** `main` only when Ryan asks. This does **not** authorize prod ingest, prod SQL, or prod Edge deploys.
 
 `AGENT_RULE_COMMIT_PUSH_TEST` — searchability token.
-`AGENT_RULE_COMMIT_PUSH_MAIN` — searchability token (temporary until Ryan revokes).
+`AGENT_RULE_COMMIT_PUSH_MAIN_ON_ASK` — searchability token (main only on explicit ask).

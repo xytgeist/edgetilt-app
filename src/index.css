@@ -7576,9 +7576,16 @@ html.light [data-quick-link-toggle] .text-zinc-500 {
 html.light [data-quick-link-toggle] .bg-zinc-700 {
   background-color: #d4d4d8 !important;
 }
-html.light [data-quick-link-toggle='bare'] {
+html.light [data-quick-link-toggle='bare'],
+html.light [data-quick-link-toggle='pin'] {
   background-color: transparent !important;
   border-color: transparent !important;
+}
+html.light [data-quick-link-toggle='pin'] button:not([data-quick-link-pin='on']) {
+  color: #a1a1aa !important;
+}
+html.light [data-hub-tool-card] [data-quick-link-toggle='pin'] button[data-quick-link-pin='on'] {
+  color: #b4533c !important;
 }
 html.light [data-quick-link-modal] {
   background-color: #ffffff !important;

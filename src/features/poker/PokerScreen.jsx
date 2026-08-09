@@ -82,7 +82,8 @@ export default function PokerScreen({
                 >
                   <QuickLinkPageToggle
                     destinationId={tool.shortcutDestinationId}
-                    variant="bare"
+                    variant="pin"
+                    pinActiveClassName="text-[#b4533c]"
                   />
                 </div>
               ) : !comingSoon ? (

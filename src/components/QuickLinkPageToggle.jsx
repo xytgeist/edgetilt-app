@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Pin } from 'lucide-react'
 import { QUICK_LINK_BY_ID } from '../features/shell/quickLinkDestinations.js'
 import {
   setQuickLinkEnabled,
@@ -11,13 +12,15 @@ import QuickLinkAtCapModal from './QuickLinkAtCapModal.jsx'
  * @param {{
  *   destinationId: import('../features/shell/quickLinkDestinations.js').QuickLinkId,
  *   className?: string,
- *   variant?: 'pill' | 'bare',
+ *   variant?: 'pill' | 'bare' | 'pin',
+ *   pinActiveClassName?: string,
  * }} props
  */
 export default function QuickLinkPageToggle({
   destinationId,
   className = '',
   variant = 'pill',
+  pinActiveClassName = 'text-cyan-400',
 }) {
   const enabled = useQuickLinkEnabled(destinationId)
   const activeIds = useQuickLinkIds()
@@ -37,6 +40,8 @@ export default function QuickLinkPageToggle({
   }
 
   const bare = variant === 'bare'
+  const pin = variant === 'pin'
+
   const switchBtn = (
     <button
       type="button"
@@ -68,9 +73,37 @@ export default function QuickLinkPageToggle({
     </button>
   )
 
+  const pinBtn = (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={enabled ? `Unpin ${dest.label} shortcut` : `Pin ${dest.label} shortcut`}
+      onClick={onToggle}
+      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg touch-manipulation transition-colors [-webkit-tap-highlight-color:transparent] ${
+        enabled
+          ? pinActiveClassName
+          : 'text-zinc-500 hover:text-zinc-300 active:text-zinc-200'
+      }`}
+      data-quick-link-pin={enabled ? 'on' : 'off'}
+    >
+      <Pin
+        size={16}
+        strokeWidth={2}
+        fill={enabled ? 'currentColor' : 'none'}
+        aria-hidden
+        className={enabled ? 'rotate-0' : 'rotate-45 opacity-80'}
+      />
+    </button>
+  )
+
   return (
     <>
-      {bare ? (
+      {pin ? (
+        <div className={className} data-quick-link-toggle="pin">
+          {pinBtn}
+        </div>
+      ) : bare ? (
         <div className={className} data-quick-link-toggle="bare">
           {switchBtn}
         </div>

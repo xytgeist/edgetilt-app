@@ -5,6 +5,7 @@ import {
   BookOpen,
   ClipboardList,
   MessageCircle,
+  Club,
 } from 'lucide-react'
 import BarnIcon from './BarnIcon.jsx'
 import NavLockGlyph from './NavLockGlyph.jsx'
@@ -21,11 +22,13 @@ const ICONS = {
   guides: BookOpen,
   chat: MessageCircle,
   'poker-stable': BarnIcon,
+  'poker-bankroll': Club,
 }
 
-/** Default title-bar tint; Stable barn uses brick red to match the Poker hub tile. */
+/** Title-bar tint overrides; Poker tools match hub tile colors. */
 const ICON_CLASS = {
   'poker-stable': 'text-[#b4533c]',
+  'poker-bankroll': 'text-[#6ee7b7]',
 }
 
 /**

@@ -401,10 +401,11 @@ Each maps to an `AppShell` tab (and subscribe/auth gates unchanged):
 - **AP Guides** (`guides`)
 - **Chat** (`chat`)
 - **Stable Manager** (`poker-stable`)
+- **Poker Bankroll** (`poker-bankroll`) … hub pin on Poker tools card (same pin UX as Stable)
 
-**Not quick-linkable:** Lounge home, Team, Slots hub, individual calculator games, **Local Intel** (hidden from Slots hub; Lounge covers field intel for now), Poker Bankroll Manager (separate from Stable).
+**Not quick-linkable:** Lounge home, Team, Slots hub, individual calculator games, **Local Intel** (hidden from Slots hub; Lounge covers field intel for now).
 
-Ryan (2026-05-29): Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel. Later: Chat + Stable Manager.
+Ryan (2026-05-29): Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel. Later: Chat + Stable Manager + Poker Bankroll.
 
 ### Implementation sketch (when picked up)
 
@@ -955,6 +956,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Poker Bankroll shortcut:** same hub pin as Stable (`poker-bankroll` quick-link … Club icon, mint tint). Pins to title bar from Poker tools card.
 - 2026-08-09: **Stable header declutter:** drop page title/shortcut row. **Stable Manager** is a tiny portfolio-hero eyebrow; **Shortcut** toggle lives on the Poker hub Stable card (replaces →). Barn icon stays brick red.
 - 2026-08-09: **Stable Manager Shortcut:** page header title + **Shortcut** toggle (renamed from Quick link) pins Stable to the title bar (`poker-stable` quick-link destination). Toggle label + at-cap modal copy updated globally.
 - 2026-08-09: **How to Install (non-Safari iOS):** `isSafariBrowser` now excludes DuckDuckGo (`Ddg`/`DuckDuckGo`) and other WebKit browsers that still ship `Safari` in the UA. Non-Safari install chip steps: Open Safari → go to host → Share → Add to Home Screen → Add.

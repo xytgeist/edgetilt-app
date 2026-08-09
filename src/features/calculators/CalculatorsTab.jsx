@@ -1,6 +1,5 @@
 import { Suspense, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import SlotsEdgeUpgradePill from '../../components/SlotsEdgeUpgradePill.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
@@ -188,7 +187,6 @@ export default function CalculatorsTab({
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
-        <SlotsToolPageHeader quickLinkDestinationId="calculators" />
         <CalculatorsHome
           onSelectCalculator={setActiveCalculator}
           browseMode={browseMode}

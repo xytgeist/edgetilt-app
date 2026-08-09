@@ -1,7 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -970,10 +969,7 @@ export default function PlayLogbook({
     >
       <div data-play-logbook>
         <div className="mb-5">
-          <div className="flex items-center justify-between gap-2">
-            <h1 className="min-w-0 text-white text-2xl font-black tracking-tight">Play Logbook</h1>
-            <QuickLinkPageToggle destinationId="logbook" className="mb-0 shrink-0" />
-          </div>
+          <h1 className="min-w-0 text-white text-2xl font-black tracking-tight">Play Logbook</h1>
           <p className="text-zinc-400 text-sm mt-0.5">Capture AP slot data · analyze later</p>
           <FreemiumUsageCounter
             remaining={playLogsRemaining}

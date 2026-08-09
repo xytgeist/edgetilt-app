@@ -1,4 +1,5 @@
 import { Calculator, CalendarDays, Wallet, BookOpen, ClipboardList, MessageCircle } from 'lucide-react'
+import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import { calculatorsTabFullyGated } from '../calculators/calculatorAccess.js'
@@ -12,6 +13,8 @@ const SLOTS_TOOLS = [
     color: '#fb923c',
     description: 'Guide cards and community Q&A',
     subscriberGated: (gatesMap) => guidesTabFullyGated(gatesMap),
+    shortcutDestinationId: 'guides',
+    pinActiveClassName: 'text-[#fb923c]',
   },
   {
     id: 'bankroll',
@@ -20,6 +23,8 @@ const SLOTS_TOOLS = [
     color: '#34d399',
     description: 'Track sessions and bankroll growth',
     subscriberGated: () => false,
+    shortcutDestinationId: 'bankroll',
+    pinActiveClassName: 'text-[#34d399]',
   },
   {
     id: 'calculators',
@@ -29,6 +34,8 @@ const SLOTS_TOOLS = [
     description: 'EV calculators for slot games',
     subscriberGated: (gatesMap, starterUnlockedCalculatorKeys) =>
       calculatorsTabFullyGated(gatesMap, starterUnlockedCalculatorKeys),
+    shortcutDestinationId: 'calculators',
+    pinActiveClassName: 'text-[#22d3ee]',
   },
   {
     id: 'offers',
@@ -37,6 +44,8 @@ const SLOTS_TOOLS = [
     color: '#a78bfa',
     description: 'Offers, mailers, and trip planning',
     subscriberGated: () => false,
+    shortcutDestinationId: 'offers',
+    pinActiveClassName: 'text-[#a78bfa]',
   },
   {
     id: 'logbook',
@@ -45,6 +54,8 @@ const SLOTS_TOOLS = [
     color: '#f472b6',
     description: 'Log AP plays and analyze your data',
     subscriberGated: () => false,
+    shortcutDestinationId: 'logbook',
+    pinActiveClassName: 'text-[#f472b6]',
   },
   {
     id: 'slots-pro-lounge',
@@ -94,20 +105,15 @@ export default function SlotsScreen({
         <div className="text-zinc-400 text-sm mt-0.5">Tools for advantage slot play</div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3" data-slots-hub>
         {SLOTS_TOOLS.map((tool) => {
           const locked =
-      showSubscriberLocks && tool.subscriberGated(gatesMap, starterUnlockedCalculatorKeys)
+            showSubscriberLocks && tool.subscriberGated(gatesMap, starterUnlockedCalculatorKeys)
           const { Icon, color } = tool
-          return (
-            <button
-              key={tool.id}
-              type="button"
-              data-hub-tool-card
-              title={locked ? 'Subscribe to unlock Slots Edge' : undefined}
-              onClick={() => handleOpen(tool)}
-              className="flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-4 text-left touch-manipulation active:scale-[0.99] transition-transform"
-            >
+          const cardClass =
+            'relative flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-4 text-left'
+          const body = (
+            <>
               <span
                 aria-hidden
                 className="slots-icon-tile grid h-12 w-12 shrink-0 place-items-center rounded-2xl backdrop-blur-md"
@@ -122,10 +128,45 @@ export default function SlotsScreen({
                 </span>
                 <span className="mt-0.5 block text-sm leading-snug text-zinc-500">{tool.description}</span>
               </span>
-              <span aria-hidden className="shrink-0 text-zinc-600 text-lg">
-                →
-              </span>
-            </button>
+              {tool.shortcutDestinationId ? (
+                <div
+                  className="z-[2] shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <QuickLinkPageToggle
+                    destinationId={tool.shortcutDestinationId}
+                    variant="pin"
+                    pinActiveClassName={tool.pinActiveClassName || 'text-cyan-400'}
+                  />
+                </div>
+              ) : (
+                <span aria-hidden className="shrink-0 text-zinc-600 text-lg">
+                  →
+                </span>
+              )}
+            </>
+          )
+          // Div + role=button so pin control can live in the card without nested <button>.
+          return (
+            <div
+              key={tool.id}
+              role="button"
+              tabIndex={0}
+              data-hub-tool-card
+              title={locked ? 'Subscribe to unlock Slots Edge' : undefined}
+              onClick={() => handleOpen(tool)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleOpen(tool)
+                }
+              }}
+              className={`${cardClass} cursor-pointer touch-manipulation active:scale-[0.99] transition-transform`}
+            >
+              {body}
+            </div>
           )
         })}
       </div>

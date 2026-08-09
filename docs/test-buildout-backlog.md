@@ -386,7 +386,7 @@ Zinc **`bg-*`** remaps under **`html.light`**; **`text-white`** on inputs **does
 | **Default** | **Empty** until the user turns on quick links themselves (no pre-fill for subscribers). |
 | **Calcs shortcut** | Opens **Calculators tab home** (picker) — **not** a specific game or last-opened calc. |
 | **Anonymous** | Non-issue — anon is Lounge read-only; quick links only on member tool surfaces. |
-| **Configuration UX** | **Per-screen toggle** on the tool page itself (not Profile / hamburger settings). Unobtrusive **“Shortcut”** switch at the **top** of each eligible screen. ON → adds that destination to the title bar. |
+| **Configuration UX** | **Hub pin** on Slots / Poker tool cards (not Profile / settings, not inside tool screens). Pin ON → adds that destination to the title bar. |
 | **Max slots** | **2** shortcuts globally. Attempting a **3rd** → modal: explains limit, lists the **two active** links with their switches so user can turn one (or both) off, then enable the new one. |
 | **Title bar placement** | Up to **2 icon buttons** in the fixed title bar row, **left of hamburger** (same cluster as `titleBarNavSlot` in `ScrollLinkedEdgeTitleBarShell` / Lounge feed bar). On **Lounge dock panels** (search, notifications, settings, chat), the hamburger cluster **slides left** to make room for the panel **×** close button — logo max-width reserves extra space via `titleBarLayout.js` (`panelCloseVisible`). |
 
@@ -420,8 +420,8 @@ Ryan (2026-05-29): Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel. L
 
 - [x] Registry + localStorage store (`quickLinkDestinations.js`, `quickLinksStore.js`)
 - [x] Title bar icon buttons (`TitleBarQuickLinks.jsx` in `AppShell` `renderTitleBarNavSlot`; Lounge feed + dock panels via `titleBarNavSlot` + dynamic logo width)
-- [x] Per-page **Shortcut** toggle + at-cap modal (`QuickLinkPageToggle.jsx`, `QuickLinkAtCapModal.jsx`)
-- [x] Wire toggles on: CalculatorsTab (home only), BankrollTracker, PlayLogbook, OffersCalendar, GuidesScreen, Chat, PokerStableScreen
+- [x] Hub **pin** + at-cap modal (`QuickLinkPageToggle` pin variant, `QuickLinkAtCapModal.jsx`)
+- [x] Pins on Slots hub (Guides, Bankroll, Calcs, Calendar, Logbook) + Poker hub (Bankroll, Stable); Chat still has in-screen Shortcut pill
 - [x] Light-mode scoped overrides (`data-quick-link-*` in `index.css`)
 
 **Shipped v1.** Optional later: persist to profile column instead of `localStorage` only.
@@ -956,6 +956,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Slots hub pins:** same pin UX as Poker on Guides / Bankroll / Calcs / Calendar / Logbook hub cards; removed per-tool-screen Shortcut switches (Chat pill kept). Title-bar icons tint to hub colors.
 - 2026-08-09: **Poker Bankroll shortcut:** same hub pin as Stable (`poker-bankroll` quick-link … Club icon, mint tint). Pins to title bar from Poker tools card.
 - 2026-08-09: **Stable header declutter:** drop page title/shortcut row. **Stable Manager** is a tiny portfolio-hero eyebrow; **Shortcut** toggle lives on the Poker hub Stable card (replaces →). Barn icon stays brick red.
 - 2026-08-09: **Stable Manager Shortcut:** page header title + **Shortcut** toggle (renamed from Quick link) pins Stable to the title bar (`poker-stable` quick-link destination). Toggle label + at-cap modal copy updated globally.

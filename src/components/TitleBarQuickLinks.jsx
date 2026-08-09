@@ -25,8 +25,13 @@ const ICONS = {
   'poker-bankroll': Club,
 }
 
-/** Title-bar tint overrides; Poker tools match hub tile colors. */
+/** Title-bar tint overrides; match Slots / Poker hub tile colors. */
 const ICON_CLASS = {
+  guides: 'text-[#fb923c]',
+  bankroll: 'text-[#34d399]',
+  calculators: 'text-[#22d3ee]',
+  offers: 'text-[#a78bfa]',
+  logbook: 'text-[#f472b6]',
   'poker-stable': 'text-[#b4533c]',
   'poker-bankroll': 'text-[#6ee7b7]',
 }

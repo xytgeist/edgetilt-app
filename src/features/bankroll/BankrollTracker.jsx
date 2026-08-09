@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
@@ -659,8 +658,6 @@ export default function BankrollTracker({
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
-
-        <SlotsToolPageHeader quickLinkDestinationId="bankroll" />
 
         <div data-slots-bankroll>
         <FreemiumUsageCounter

@@ -63,7 +63,6 @@ import {
   profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
 import {
@@ -1869,7 +1868,6 @@ export default function GuidesScreen({
         scrollRootRef={guidesScrollRootRef}
         contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
-        <SlotsToolPageHeader quickLinkDestinationId="guides" />
         <h1 className="sr-only">AP Guides</h1>
         {isAdmin && !gatesDbReady ? (
           <p className="mb-4 text-xs text-fuchsia-300/90">

@@ -399,7 +399,6 @@ Each maps to an `AppShell` tab (and subscribe/auth gates unchanged):
 - **Bankroll** (`bankroll` — Slots Edge)
 - **Logbook** (`logbook` — Slots Edge)
 - **AP Guides** (`guides`)
-- **Chat** (`chat`)
 - **Stable Manager** (`poker-stable`)
 - **Poker Bankroll** (`poker-bankroll`) … hub pin on Poker tools card (same pin UX as Stable)
 
@@ -956,7 +955,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-09: **Slots hub pins:** same pin UX as Poker on Guides / Bankroll / Calcs / Calendar / Logbook hub cards; removed per-tool-screen Shortcut switches (Chat pill kept). Title-bar icons tint to hub colors.
+- 2026-08-09: **Hamburger → Slots/Poker ghost-click fix:** after menu nav away from Lounge, arm document pointer capture (~650ms) so a synthesized tap cannot hit the portaled dock Home and bounce back to Lounge (`shellNavGhostClickGuard.js`).
+- 2026-08-09: **Chat shortcut removed:** no title-bar pin / in-screen Shortcut for Chat (dock + other entry points are enough).
+- 2026-08-09: **Slots hub pins:** same pin UX as Poker on Guides / Bankroll / Calcs / Calendar / Logbook hub cards; removed per-tool-screen Shortcut switches. Title-bar icons tint to hub colors.
 - 2026-08-09: **Poker Bankroll shortcut:** same hub pin as Stable (`poker-bankroll` quick-link … Club icon, mint tint). Pins to title bar from Poker tools card.
 - 2026-08-09: **Stable header declutter:** drop page title/shortcut row. **Stable Manager** is a tiny portfolio-hero eyebrow; **Shortcut** toggle lives on the Poker hub Stable card (replaces →). Barn icon stays brick red.
 - 2026-08-09: **Stable Manager Shortcut:** page header title + **Shortcut** toggle (renamed from Quick link) pins Stable to the title bar (`poker-stable` quick-link destination). Toggle label + at-cap modal copy updated globally.

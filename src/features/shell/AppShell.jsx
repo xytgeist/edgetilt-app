@@ -108,6 +108,7 @@ import {
 import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAccess.js'
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
 import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
+import { armShellNavGhostClickGuard } from '../../utils/shellNavGhostClickGuard.js'
 import {
   TAB_ERROR_COUNT_KEY,
   TabErrorSimulator,
@@ -1870,6 +1871,10 @@ export default function AppShell({
               onRequireSubscribe?.('slots-edge')
               setMenuOpen(false)
               return
+            }
+            // Leaving Lounge: dock portals to body; ghost click after menu close hits Home.
+            if (item.id !== 'home') {
+              armShellNavGhostClickGuard()
             }
             if (item.id === 'slots') {
               setActiveCalculator(null)

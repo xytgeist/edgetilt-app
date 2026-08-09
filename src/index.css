@@ -1060,35 +1060,41 @@ html.light [data-lounge-composer-audience-menu] .text-sky-400 {
   color: rgb(37 99 235);
 }
 
-/* Lounge posting / upload progress bar (compact + full). */
-html.light [data-lounge-posting-progress] {
+/* Lounge posting progress: thin header seam (compact) + full bottom upload bar. */
+html.light [data-lounge-posting-progress='header'] {
+  background-color: rgb(228 228 231 / 0.9);
+}
+html.light [data-lounge-posting-progress='header'] .bg-cyan-400 {
+  background-color: rgb(37 99 235);
+}
+html.light [data-lounge-posting-progress='full'] {
   border-color: rgb(212 212 216 / 0.95);
   background-color: rgb(255 255 255 / 0.96);
   box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.08);
 }
-html.light [data-lounge-posting-progress] .text-zinc-200 {
+html.light [data-lounge-posting-progress='full'] .text-zinc-200 {
   color: rgb(39 39 42);
 }
-html.light [data-lounge-posting-progress] .text-cyan-200\/90,
-html.light [data-lounge-posting-progress] .text-cyan-300\/95 {
+html.light [data-lounge-posting-progress='full'] .text-cyan-200\/90,
+html.light [data-lounge-posting-progress='full'] .text-cyan-300\/95 {
   color: rgb(37 99 235 / 0.9);
 }
-html.light [data-lounge-posting-progress] .text-zinc-400 {
+html.light [data-lounge-posting-progress='full'] .text-zinc-400 {
   color: rgb(82 82 91);
 }
-html.light [data-lounge-posting-progress] .text-amber-200\/90 {
+html.light [data-lounge-posting-progress='full'] .text-amber-200\/90 {
   color: rgb(180 83 9);
 }
-html.light [data-lounge-posting-progress] .bg-zinc-800 {
+html.light [data-lounge-posting-progress='full'] .bg-zinc-800 {
   background-color: rgb(228 228 231);
 }
-html.light [data-lounge-posting-progress] .bg-cyan-500 {
+html.light [data-lounge-posting-progress='full'] .bg-cyan-500 {
   background-color: rgb(37 99 235);
 }
-html.light [data-lounge-posting-progress] button.text-cyan-400 {
+html.light [data-lounge-posting-progress='full'] button.text-cyan-400 {
   color: rgb(37 99 235);
 }
-html.light [data-lounge-posting-progress] button.text-cyan-400:hover {
+html.light [data-lounge-posting-progress='full'] button.text-cyan-400:hover {
   color: rgb(29 78 216);
 }
 

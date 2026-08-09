@@ -15325,7 +15325,8 @@ export default function SocialFeed({
     getLoungeDockSuppressed,
     () => false,
   )
-  const loungeDockFabBottomObstaclePx = loungePostUploadBar ? loungeUploadBarHeightPx + 10 : 0
+  const loungeDockFabBottomObstaclePx =
+    loungePostUploadBar && !loungePostUploadBar.compact ? loungeUploadBarHeightPx + 10 : 0
   const toolScrollTitleReveal = useEdgeTitleBarReveal()
 
   const showLoungeViewportDock = !loungeStreamLightboxOpen && !loungeDockSuppressed
@@ -15586,6 +15587,22 @@ export default function SocialFeed({
               </>
             }
           />
+          {loungePostUploadBar?.compact ? (
+            <div
+              data-lounge-posting-progress="header"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] overflow-hidden bg-zinc-800/55"
+              role="progressbar"
+              aria-label="Posting"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
+            >
+              <div
+                className="h-full bg-cyan-400 transition-[width] duration-300 ease-out"
+                style={{ width: `${Math.max(4, Math.round((loungePostUploadBar.progress || 0) * 100))}%` }}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -18913,94 +18930,61 @@ export default function SocialFeed({
         }}
       />
 
-      {loungePostUploadBar ? (
+      {loungePostUploadBar && !loungePostUploadBar.compact ? (
         <div
           ref={loungeUploadBarRef}
-          data-lounge-posting-progress={loungePostUploadBar.compact ? 'compact' : 'full'}
-          className={`pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)] ${
-            loungePostUploadBar.compact
-              ? 'px-3 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]'
-              : 'px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]'
-          }`}
+          data-lounge-posting-progress="full"
+          className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
         >
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
-              {loungePostUploadBar.compact ? (
-                <>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div className="text-[12px] font-medium text-zinc-200">
-                      {loungePostUploadBar.draftSave
-                        ? 'Saving draft…'
-                        : loungePostUploadBar.editSave
-                          ? 'Saving edit…'
-                          : 'Posting…'}
-                    </div>
-                    <div className="min-w-0 truncate text-[11px] leading-snug text-cyan-200/90">
-                      {loungePostUploadBar.status || 'Working…'}
-                    </div>
-                  </div>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
-                      style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
-                      role="progressbar"
-                      aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-[13px] font-medium text-zinc-200">
-                    {loungeSubmitQueueDisplay.total > 1
-                      ? `Post ${loungeSubmitQueueDisplay.index} of ${loungeSubmitQueueDisplay.total}`
-                      : loungePostUploadBar.draftSave
-                        ? 'Saving draft…'
-                        : loungePostUploadBar.editSave
-                          ? 'Saving edit…'
-                          : loungePostUploadBar.mode === 'mediaPrep'
-                            ? LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
-                            : loungePostUploadBar.threadPartTotal > 1
-                              ? 'Posting thread…'
-                              : 'Uploading post…'}
-                  </div>
-                  <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">
-                    <span className="font-semibold text-cyan-300/95">Now:</span>{' '}
-                    {loungePostUploadBar.status ||
-                      (loungePostUploadBar.threadPartTotal > 1 && loungePostUploadBar.threadPartPublished > 0
-                        ? `Part ${loungePostUploadBar.threadPartPublished} of ${loungePostUploadBar.threadPartTotal} posted`
-                        : '-')}
-                  </div>
-                  {loungePostUploadBar.detail ? (
-                    <div
-                      className={`mt-0.5 text-[11px] leading-snug break-words ${
-                        loungePostUploadBar.mode === 'mediaPrep' &&
-                        (String(loungePostUploadBar.status || '').toLowerCase() === 'retrying' ||
-                          String(loungePostUploadBar.status || '')
-                            .toLowerCase()
-                            .includes('waiting until you are back') ||
-                          String(loungePostUploadBar.detail || '').toLowerCase().includes('retry') ||
-                          String(loungePostUploadBar.detail || '').includes('goblins'))
-                          ? 'text-amber-200/90'
-                          : 'text-zinc-400'
-                      }`}
-                    >
-                      {loungePostUploadBar.detail}
-                    </div>
-                  ) : null}
-                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
-                      style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
-                      role="progressbar"
-                      aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    />
-                  </div>
-                </>
-              )}
+              <div className="text-[13px] font-medium text-zinc-200">
+                {loungeSubmitQueueDisplay.total > 1
+                  ? `Post ${loungeSubmitQueueDisplay.index} of ${loungeSubmitQueueDisplay.total}`
+                  : loungePostUploadBar.draftSave
+                    ? 'Saving draft…'
+                    : loungePostUploadBar.editSave
+                      ? 'Saving edit…'
+                      : loungePostUploadBar.mode === 'mediaPrep'
+                        ? LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
+                        : loungePostUploadBar.threadPartTotal > 1
+                          ? 'Posting thread…'
+                          : 'Uploading post…'}
+              </div>
+              <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">
+                <span className="font-semibold text-cyan-300/95">Now:</span>{' '}
+                {loungePostUploadBar.status ||
+                  (loungePostUploadBar.threadPartTotal > 1 && loungePostUploadBar.threadPartPublished > 0
+                    ? `Part ${loungePostUploadBar.threadPartPublished} of ${loungePostUploadBar.threadPartTotal} posted`
+                    : '-')}
+              </div>
+              {loungePostUploadBar.detail ? (
+                <div
+                  className={`mt-0.5 text-[11px] leading-snug break-words ${
+                    loungePostUploadBar.mode === 'mediaPrep' &&
+                    (String(loungePostUploadBar.status || '').toLowerCase() === 'retrying' ||
+                      String(loungePostUploadBar.status || '')
+                        .toLowerCase()
+                        .includes('waiting until you are back') ||
+                      String(loungePostUploadBar.detail || '').toLowerCase().includes('retry') ||
+                      String(loungePostUploadBar.detail || '').includes('goblins'))
+                      ? 'text-amber-200/90'
+                      : 'text-zinc-400'
+                  }`}
+                >
+                  {loungePostUploadBar.detail}
+                </div>
+              ) : null}
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
+                  style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
+                  role="progressbar"
+                  aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
             </div>
             <button
               type="button"

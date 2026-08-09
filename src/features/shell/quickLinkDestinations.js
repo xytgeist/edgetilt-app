@@ -1,4 +1,4 @@
-/** @typedef {'calculators' | 'offers' | 'bankroll' | 'logbook' | 'guides' | 'chat' | 'poker-stable' | 'poker-bankroll'} QuickLinkId */
+/** @typedef {'calculators' | 'offers' | 'bankroll' | 'logbook' | 'guides' | 'poker-stable' | 'poker-bankroll'} QuickLinkId */
 
 /** @typedef {QuickLinkId} QuickLinkDestinationId */
 
@@ -39,11 +39,6 @@ export const QUICK_LINK_DESTINATIONS = [
     id: 'logbook',
     label: 'Logbook',
     tab: 'logbook',
-  },
-  {
-    id: 'chat',
-    label: 'Chat',
-    tab: 'chat',
   },
   {
     id: 'poker-stable',

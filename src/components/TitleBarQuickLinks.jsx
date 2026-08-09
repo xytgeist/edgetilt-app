@@ -4,7 +4,6 @@ import {
   Wallet,
   BookOpen,
   ClipboardList,
-  MessageCircle,
   Club,
 } from 'lucide-react'
 import BarnIcon from './BarnIcon.jsx'
@@ -20,7 +19,6 @@ const ICONS = {
   bankroll: Wallet,
   logbook: ClipboardList,
   guides: BookOpen,
-  chat: MessageCircle,
   'poker-stable': BarnIcon,
   'poker-bankroll': Club,
 }

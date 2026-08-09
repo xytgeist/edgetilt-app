@@ -421,7 +421,7 @@ Ryan (2026-05-29): Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel. L
 - [x] Registry + localStorage store (`quickLinkDestinations.js`, `quickLinksStore.js`)
 - [x] Title bar icon buttons (`TitleBarQuickLinks.jsx` in `AppShell` `renderTitleBarNavSlot`; Lounge feed + dock panels via `titleBarNavSlot` + dynamic logo width)
 - [x] Hub **pin** + at-cap modal (`QuickLinkPageToggle` pin variant, `QuickLinkAtCapModal.jsx`)
-- [x] Pins on Slots hub (Guides, Bankroll, Calcs, Calendar, Logbook) + Poker hub (Bankroll, Stable); Chat still has in-screen Shortcut pill
+- [x] Pins on Slots hub (Guides, Bankroll, Calcs, Calendar, Logbook) + Poker hub (Bankroll, Stable); Chat is not shortcut-pinnable
 - [x] Light-mode scoped overrides (`data-quick-link-*` in `index.css`)
 
 **Shipped v1.** Optional later: persist to profile column instead of `localStorage` only.

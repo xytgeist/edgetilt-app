@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ChatConversation from './ChatConversation.jsx'
 import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
 import ChatPrivateSubsTab from './ChatPrivateSubsTab.jsx'
@@ -907,13 +906,9 @@ export default function ChatTab({
     >
       {/* Pinned chrome: title, search, tabs — list scrolls underneath */}
       <div className="shrink-0">
-      {/* Quick link toggle */}
-      <div className="px-3 pt-4 pb-2 flex items-center justify-between">
-        <div>
-          <div className="text-2xl font-black tracking-tight text-zinc-100">Chat</div>
-          <div className="text-sm text-zinc-500 mt-0.5">Messages &amp; topic rooms</div>
-        </div>
-        <QuickLinkPageToggle destinationId="chat" />
+      <div className="px-3 pt-4 pb-2">
+        <div className="text-2xl font-black tracking-tight text-zinc-100">Chat</div>
+        <div className="text-sm text-zinc-500 mt-0.5">Messages &amp; topic rooms</div>
       </div>
 
       {/* New message search + New group button */}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Users } from 'lucide-react'
+import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { clearStableCommitDeepLinkParams } from '../../utils/loungeActivityInAppNavigate.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
@@ -797,6 +798,13 @@ export default function PokerStableScreen({
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div data-poker-stable>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h1 className="min-w-0 text-[15px] font-bold tracking-tight text-white">
+            Stable Manager
+          </h1>
+          <QuickLinkPageToggle destinationId="poker-stable" className="mb-0 shrink-0" />
+        </div>
+
         {schemaMissing ? (
           <div className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
             Stable tables are not on this database yet. Apply{' '}

@@ -1,4 +1,4 @@
-/** @typedef {'calculators' | 'offers' | 'bankroll' | 'logbook' | 'guides' | 'chat'} QuickLinkId */
+/** @typedef {'calculators' | 'offers' | 'bankroll' | 'logbook' | 'guides' | 'chat' | 'poker-stable'} QuickLinkId */
 
 /** @typedef {QuickLinkId} QuickLinkDestinationId */
 
@@ -44,6 +44,11 @@ export const QUICK_LINK_DESTINATIONS = [
     id: 'chat',
     label: 'Chat',
     tab: 'chat',
+  },
+  {
+    id: 'poker-stable',
+    label: 'Stable Manager',
+    tab: 'poker-stable',
   },
 ]
 

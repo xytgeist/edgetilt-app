@@ -45,7 +45,7 @@ export default function QuickLinkAtCapModal({
         aria-labelledby="quick-link-cap-title"
       >
         <h2 id="quick-link-cap-title" className="text-white font-bold text-lg mb-2">
-          Quick link limit
+          Shortcut limit
         </h2>
         <p className="text-zinc-400 text-sm leading-relaxed mb-4">
           You can pin up to {QUICK_LINK_MAX} tools to the title bar. Turn one off below to add{' '}

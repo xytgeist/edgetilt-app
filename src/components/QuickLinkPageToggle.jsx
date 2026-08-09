@@ -34,12 +34,12 @@ export default function QuickLinkPageToggle({ destinationId, className = '' }) {
         className={`inline-flex max-w-full items-center justify-between gap-2 rounded-2xl border border-zinc-800/70 bg-zinc-900/50 px-2.5 py-1.5 ${className}`}
         data-quick-link-toggle
       >
-        <span className="text-zinc-300 text-xs font-semibold whitespace-nowrap">Quick link</span>
+        <span className="text-zinc-300 text-xs font-semibold whitespace-nowrap">Shortcut</span>
         <button
           type="button"
           role="switch"
           aria-checked={enabled}
-          aria-label={`Quick link for ${dest.label}`}
+          aria-label={`Shortcut for ${dest.label}`}
           onClick={onToggle}
           className={`relative h-5 w-9 shrink-0 rounded-full touch-manipulation transition-colors ${
             enabled ? 'bg-cyan-600' : 'bg-zinc-700'

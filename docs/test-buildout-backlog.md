@@ -386,8 +386,8 @@ Zinc **`bg-*`** remaps under **`html.light`**; **`text-white`** on inputs **does
 | **Default** | **Empty** until the user turns on quick links themselves (no pre-fill for subscribers). |
 | **Calcs shortcut** | Opens **Calculators tab home** (picker) — **not** a specific game or last-opened calc. |
 | **Anonymous** | Non-issue — anon is Lounge read-only; quick links only on member tool surfaces. |
-| **Configuration UX** | **Per-screen toggle** on the tool page itself (not Profile / hamburger settings). Unobtrusive **“Quick link”** switch at the **top** of each eligible screen. ON → adds that destination to the title bar. |
-| **Max slots** | **2** quick links globally. Attempting a **3rd** → modal: explains limit, lists the **two active** links with their switches so user can turn one (or both) off, then enable the new one. |
+| **Configuration UX** | **Per-screen toggle** on the tool page itself (not Profile / hamburger settings). Unobtrusive **“Shortcut”** switch at the **top** of each eligible screen. ON → adds that destination to the title bar. |
+| **Max slots** | **2** shortcuts globally. Attempting a **3rd** → modal: explains limit, lists the **two active** links with their switches so user can turn one (or both) off, then enable the new one. |
 | **Title bar placement** | Up to **2 icon buttons** in the fixed title bar row, **left of hamburger** (same cluster as `titleBarNavSlot` in `ScrollLinkedEdgeTitleBarShell` / Lounge feed bar). On **Lounge dock panels** (search, notifications, settings, chat), the hamburger cluster **slides left** to make room for the panel **×** close button — logo max-width reserves extra space via `titleBarLayout.js` (`panelCloseVisible`). |
 
 ### Eligible destinations (v1 allowlist)
@@ -399,10 +399,12 @@ Each maps to an `AppShell` tab (and subscribe/auth gates unchanged):
 - **Bankroll** (`bankroll` — Slots Edge)
 - **Logbook** (`logbook` — Slots Edge)
 - **AP Guides** (`guides`)
+- **Chat** (`chat`)
+- **Stable Manager** (`poker-stable`)
 
-**Not quick-linkable:** Lounge home, Team, Slots hub, individual calculator games, **Local Intel** (hidden from Slots hub; Lounge covers field intel for now).
+**Not quick-linkable:** Lounge home, Team, Slots hub, individual calculator games, **Local Intel** (hidden from Slots hub; Lounge covers field intel for now), Poker Bankroll Manager (separate from Stable).
 
-Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel.
+Ryan (2026-05-29): Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel. Later: Chat + Stable Manager.
 
 ### Implementation sketch (when picked up)
 
@@ -417,8 +419,8 @@ Ryan (2026-05-29): **Only** Calcs, Calendar, Bankroll, Logbook, AP Guides — no
 
 - [x] Registry + localStorage store (`quickLinkDestinations.js`, `quickLinksStore.js`)
 - [x] Title bar icon buttons (`TitleBarQuickLinks.jsx` in `AppShell` `renderTitleBarNavSlot`; Lounge feed + dock panels via `titleBarNavSlot` + dynamic logo width)
-- [x] Per-page “Quick link” toggle + at-cap modal (`QuickLinkPageToggle.jsx`, `QuickLinkAtCapModal.jsx`)
-- [x] Wire toggles on: CalculatorsTab (home only), BankrollTracker, PlayLogbook, OffersCalendar, GuidesScreen
+- [x] Per-page **Shortcut** toggle + at-cap modal (`QuickLinkPageToggle.jsx`, `QuickLinkAtCapModal.jsx`)
+- [x] Wire toggles on: CalculatorsTab (home only), BankrollTracker, PlayLogbook, OffersCalendar, GuidesScreen, Chat, PokerStableScreen
 - [x] Light-mode scoped overrides (`data-quick-link-*` in `index.css`)
 
 **Shipped v1.** Optional later: persist to profile column instead of `localStorage` only.
@@ -953,6 +955,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Stable Manager Shortcut:** page header title + **Shortcut** toggle (renamed from Quick link) pins Stable to the title bar (`poker-stable` quick-link destination). Toggle label + at-cap modal copy updated globally.
 - 2026-08-09: **How to Install (non-Safari iOS):** `isSafariBrowser` now excludes DuckDuckGo (`Ddg`/`DuckDuckGo`) and other WebKit browsers that still ship `Safari` in the UA. Non-Safari install chip steps: Open Safari → go to host → Share → Add to Home Screen → Add.
 - 2026-08-09: **First-time backer bankroll seed (test):** migration **`20260809130000`** on test ... empty / $0 backing bankroll with no other open stakes auto-seeds slice capital before hold/debit (Accept + Create Stake). Hero lands ~$0 liquid + stake MTM in portfolio, not −slice. Repair for prior negative rows with no Adjust history. Prod not applied yet.
 - 2026-08-09: **Backer Edit terms = own slice only:** from Review your backing slice → Edit terms, Propose stake terms shows only that backer’s slice (not co-backers). Submit merges other slices unchanged into `pending_terms_json`.

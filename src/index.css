@@ -5115,6 +5115,10 @@ html.light [data-poker-stake-offer-onboarding] [data-poker-stake-offer-counter]:
   background-color: #27272a !important;
   color: #ffffff !important;
 }
+html.light [data-poker-stake-offer-onboarding] [data-poker-stake-offer-cta] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
 
 html.light [data-poker-stakee-closed-sheet] {
   background-color: #ffffff !important;

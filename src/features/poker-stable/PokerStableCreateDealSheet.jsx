@@ -69,6 +69,40 @@ function applyDealTypePricingDefaults(slice, dealType) {
   }
 }
 
+/** DB slice row → terms payload slice (preserve co-backers when a backer edits only their slice). */
+function dbSliceRowToTermsSlice(sl) {
+  return {
+    ...(sl?.id ? { sliceId: sl.id } : {}),
+    counterpartyKind: sl.counterparty_kind || sl.counterpartyKind || 'user',
+    stakerUserId: sl.staker_user_id || sl.stakerUserId || null,
+    guestLabel: sl.guest_label || sl.guestLabel || null,
+    guestPhone: sl.guest_phone || sl.guestPhone || null,
+    guestEmail: sl.guest_email || sl.guestEmail || null,
+    actionPct: Number(sl.action_pct ?? sl.actionPct),
+    pricingMode: sl.pricing_mode || sl.pricingMode || 'profit_split',
+    playerProfitPct:
+      sl.player_profit_pct != null
+        ? Number(sl.player_profit_pct)
+        : sl.playerProfitPct != null
+          ? Number(sl.playerProfitPct)
+          : null,
+    markupRate:
+      sl.markup_rate != null
+        ? Number(sl.markup_rate)
+        : sl.markupRate != null
+          ? Number(sl.markupRate)
+          : null,
+    rakebackMode: sl.rakeback_mode || sl.rakebackMode || 'disabled',
+    rakebackPlayerPct:
+      sl.rakeback_player_pct != null
+        ? Number(sl.rakeback_player_pct)
+        : sl.rakebackPlayerPct != null
+          ? Number(sl.rakebackPlayerPct)
+          : null,
+    label: sl.label || null,
+  }
+}
+
 async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false } = {}) {
   const actionPct = Number(sl.actionPct)
   if (!Number.isFinite(actionPct) || actionPct <= 0 || actionPct > 100) {
@@ -404,6 +438,8 @@ function PokerStableDealFormSheet({
   const sheetRef = useRef(null)
   const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
+  /** Full non-declined slices when backer proposes … form may show only the viewer’s slice. */
+  const allEditSlicesRef = useRef(/** @type {object[]} */ ([]))
   usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef)
 
   function clearPlayerSelection() {
@@ -467,13 +503,18 @@ function PokerStableDealFormSheet({
       editDeal.status === 'revoked'
         ? []
         : (editSlices || []).filter((sl) => sl.status !== 'declined')
+    allEditSlicesRef.current = rows
+    const formRows =
+      isBackerPropose && userId
+        ? rows.filter((sl) => sl.staker_user_id === userId || sl.stakerUserId === userId)
+        : rows
     setSlices(
-      rows.length
-        ? rows.map((sl) => sliceRowToFormSlice(sl, editProfilesById))
+      formRows.length
+        ? formRows.map((sl) => sliceRowToFormSlice(sl, editProfilesById))
         : [newEmptySlice(editDeal.deal_type || 'cash_backing')],
     )
     setFormError('')
-  }, [editDeal, editSlices, editProfilesById])
+  }, [editDeal, editSlices, editProfilesById, isBackerPropose, userId])
 
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
@@ -579,17 +620,19 @@ function PokerStableDealFormSheet({
         }
         const parsedSlices = []
         const reassignments = []
-        for (const sl of slices) {
-          const parsed = await resolveUserSlice(supabaseClient, sl, userId)
-          if (
-            editDeal.status === 'active' &&
-            sl.sliceId &&
-            sl.wasGuest &&
-            !sl.isGuest
-          ) {
-            reassignments.push({ sliceId: sl.sliceId, stakerUserId: parsed.stakerUserId })
-          } else {
-            parsedSlices.push(parsed)
+        if (!isBackerPropose) {
+          for (const sl of slices) {
+            const parsed = await resolveUserSlice(supabaseClient, sl, userId)
+            if (
+              editDeal.status === 'active' &&
+              sl.sliceId &&
+              sl.wasGuest &&
+              !sl.isGuest
+            ) {
+              reassignments.push({ sliceId: sl.sliceId, stakerUserId: parsed.stakerUserId })
+            } else {
+              parsedSlices.push(parsed)
+            }
           }
         }
         const dealFields = {
@@ -604,6 +647,30 @@ function PokerStableDealFormSheet({
           lifetimePlDisplay: lifetimePl.trim() ? parseMoneyInputNumber(lifetimePl) : null,
         }
         if (isBackerPropose) {
+          const viewerParsed = []
+          for (const sl of slices) {
+            viewerParsed.push(
+              await resolveUserSlice(supabaseClient, sl, userId, { allowSelf: true }),
+            )
+          }
+          const bySliceId = new Map(
+            viewerParsed.filter((p) => p.sliceId).map((p) => [p.sliceId, p]),
+          )
+          const byStaker = new Map(
+            viewerParsed.filter((p) => p.stakerUserId).map((p) => [p.stakerUserId, p]),
+          )
+          const mergedSlices = (allEditSlicesRef.current.length
+            ? allEditSlicesRef.current
+            : editSlices || []
+          )
+            .filter((sl) => sl.status !== 'declined')
+            .map((row) => {
+              const fromForm =
+                (row.id && bySliceId.get(row.id)) ||
+                (row.staker_user_id && byStaker.get(row.staker_user_id)) ||
+                null
+              return fromForm || dbSliceRowToTermsSlice(row)
+            })
           const payload = buildTermsPayload({
             label,
             baseline: baselineAmount,
@@ -611,7 +678,7 @@ function PokerStableDealFormSheet({
             startingRoll: dealFields.startingRoll,
             stakeWidePl: dealFields.stakeWideStartingPl,
             lifetimePl: dealFields.lifetimePlDisplay,
-            slices: parsedSlices,
+            slices: mergedSlices,
           })
           const { error } = await proposePendingDealTerms(
             supabaseClient,
@@ -1067,7 +1134,7 @@ function PokerStableDealFormSheet({
 
         {showPlayerTermsForm ? (
           <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-            Backer slices
+            {isBackerPropose ? 'Your slice' : 'Backer slices'}
           </h4>
         ) : null}
         <div className="mb-4 space-y-3">
@@ -1080,8 +1147,13 @@ function PokerStableDealFormSheet({
                 sliceIndex={idx}
                 userId={userId}
                 supabaseClient={supabaseClient}
-                title={pokerStableBackerSliceLabel(slices.length, idx)}
-                canRemove={slices.length > 1}
+                lockUserId={isBackerPropose ? userId : undefined}
+                title={
+                  isBackerPropose
+                    ? 'Your slice'
+                    : pokerStableBackerSliceLabel(slices.length, idx)
+                }
+                canRemove={!isBackerPropose && slices.length > 1}
                 showRakeback={venueKind === 'online'}
                 onChange={(patch) => updateSlice(idx, patch)}
                 onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}
@@ -1130,7 +1202,7 @@ function PokerStableDealFormSheet({
             {formError}
           </p>
         ) : null}
-        {showPlayerTermsForm ? (
+        {showPlayerTermsForm && !isBackerPropose ? (
         <button
           type="button"
           onClick={addBackerSlice}
@@ -1138,7 +1210,7 @@ function PokerStableDealFormSheet({
         >
           + Add backer slice
         </button>
-        ) : (
+        ) : !showPlayerTermsForm ? (
         <button
           type="button"
           onClick={addBackerSlice}
@@ -1146,7 +1218,7 @@ function PokerStableDealFormSheet({
         >
           + Add syndicate backer
         </button>
-        )}
+        ) : null}
 
         <button
           type="button"

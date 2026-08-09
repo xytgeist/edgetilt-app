@@ -91,16 +91,7 @@ export default function PokerStakeOfferOnboardingModal({
             </div>
           ) : (
             <>
-              <button
-                type="button"
-                data-poker-stake-offer-counter
-                disabled={saving}
-                onClick={() => onOfferNewTerms?.()}
-                className="w-full rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
-              >
-                Offer new terms
-              </button>
-              <div className="mt-2 flex gap-2">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   data-poker-stake-offer-decline
@@ -120,6 +111,15 @@ export default function PokerStakeOfferOnboardingModal({
                   Accept
                 </button>
               </div>
+              <button
+                type="button"
+                data-poker-stake-offer-counter
+                disabled={saving}
+                onClick={() => onOfferNewTerms?.()}
+                className="mt-2 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+              >
+                Offer new terms
+              </button>
             </>
           )}
         </div>

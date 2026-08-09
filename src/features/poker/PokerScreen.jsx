@@ -1,6 +1,7 @@
 import { Club } from 'lucide-react'
 import AttentionDot from '../../components/AttentionDot.jsx'
 import BarnIcon from '../../components/BarnIcon.jsx'
+import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 
 const POKER_TOOLS = [
@@ -17,6 +18,7 @@ const POKER_TOOLS = [
     Icon: BarnIcon,
     color: '#b4533c',
     description: 'Track horses · live updates',
+    shortcutDestinationId: 'poker-stable',
   },
 ]
 
@@ -49,7 +51,7 @@ export default function PokerScreen({
         <div className="text-zinc-400 text-sm mt-0.5">Tools for cash games and tournaments</div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3" data-poker-hub>
         {POKER_TOOLS.map((tool) => {
           const { Icon, color } = tool
           const comingSoon = Boolean(tool.comingSoon)
@@ -58,6 +60,23 @@ export default function PokerScreen({
             (tool.id === 'poker-stable' && showStableAttentionDot)
           const cardClass =
             'relative flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-4 text-left'
+          const trailing = tool.shortcutDestinationId ? (
+            <div
+              className="shrink-0"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <QuickLinkPageToggle
+                destinationId={tool.shortcutDestinationId}
+                className="mb-0 shrink-0"
+              />
+            </div>
+          ) : !comingSoon ? (
+            <span aria-hidden className="shrink-0 text-zinc-600 text-lg">
+              →
+            </span>
+          ) : null
           const body = (
             <>
               <span
@@ -71,11 +90,7 @@ export default function PokerScreen({
                 <span className="block truncate text-lg font-bold text-white">{tool.label}</span>
                 <span className="mt-0.5 block text-sm leading-snug text-zinc-500">{tool.description}</span>
               </span>
-              {!comingSoon ? (
-                <span aria-hidden className="shrink-0 text-zinc-600 text-lg">
-                  →
-                </span>
-              ) : null}
+              {trailing}
               {comingSoon ? (
                 <span
                   className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center rounded-3xl bg-zinc-950/55 backdrop-blur-[1px]"
@@ -104,17 +119,25 @@ export default function PokerScreen({
               </div>
             )
           }
+          // Div + role=button so Shortcut switch can live in the card without nested <button>.
           return (
-            <button
+            <div
               key={tool.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               data-hub-tool-card
               title={showAttention ? `${tool.label} · pending offer needs attention` : undefined}
               onClick={() => handleOpen(tool)}
-              className={`${cardClass} touch-manipulation active:scale-[0.99] transition-transform`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleOpen(tool)
+                }
+              }}
+              className={`${cardClass} cursor-pointer touch-manipulation active:scale-[0.99] transition-transform`}
             >
               {body}
-            </button>
+            </div>
           )
         })}
       </div>

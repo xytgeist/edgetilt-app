@@ -98,6 +98,10 @@ export default function PokerStablePortfolioHero({
         </button>
       ) : null}
 
+      <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+        Stable Manager
+      </div>
+
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="min-w-0">
           <div className="relative mx-auto w-fit">

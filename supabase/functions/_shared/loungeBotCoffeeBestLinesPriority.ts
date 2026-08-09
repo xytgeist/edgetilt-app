@@ -60,6 +60,7 @@ export const COFFEE_SOCCER_THREAD_HEADER = '⚽ Soccer'
 /** Fan-facing label for the tier-2 soccer lump (not "secondary"). */
 export const COFFEE_MORE_SOCCER_THREAD_LABEL = 'More Soccer Today'
 export const COFFEE_SECONDARY_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_MORE_SOCCER_THREAD_LABEL}`
+/** Use only when a prior soccer Best Lines thread part already exists; otherwise label the block "Soccer". */
 export const COFFEE_OTHER_SOCCER_THREAD_LABEL = 'Other Soccer'
 export const COFFEE_OTHER_SOCCER_THREAD_HEADER = `⚽ ${COFFEE_OTHER_SOCCER_THREAD_LABEL}`
 

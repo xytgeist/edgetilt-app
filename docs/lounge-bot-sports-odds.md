@@ -146,7 +146,7 @@ Shared logic: **`supabase/functions/_shared/loungeBotOddsCaption.ts`**, **`loung
 | **Radar spots** | Up to **3** next-best +EV plays (excludes featured). |
 | **Dog of the Day** | Single slate-wide biggest **plus-money ML underdog** (not +EV gated). |
 | **Thread teaser** | `Full board breakdown by sport below 👇` (thin board: `Full lines by sport below 👇`). |
-| **Best lines thread** | One **thread part** per calendar sport (header: sport emoji + label, e.g. `🎾 Wimbledon`). **Unchanged.** |
+| **Best lines thread** | One **thread part** per calendar sport (header: sport emoji + label, e.g. `🎾 Wimbledon`). Soccer lumps: **Top Soccer Leagues** → **More Soccer Today** / **Soccer** (core secondary) → lower-tier **Other Soccer** only when a prior soccer part exists, else **Soccer**. |
 
 **On Tap Tomorrow** removed from the parent post (Jul 2026).
 

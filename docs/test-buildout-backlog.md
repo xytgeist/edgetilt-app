@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Coffee & Covers “Other Soccer” label:** lower-tier soccer thread uses **Other Soccer** only when a prior soccer Best Lines part already exists (Top / More Soccer / Soccer); alone it labels **Soccer**. Redeploy **`lounge-odds-poll`** (bundles shared Coffee helpers).
 - 2026-08-09: **Lounge non-video posting progress:** thin **2px** bar at top of feed composer while caption/image/GIF posts publish (cyan dark / blue light). Hard-gated with **`loungeSubmissionSnapshotIncludesVideo`** ... video prep/inline progress untouched. State: **`loungeComposerPostProgress`**.
 - 2026-08-08: **`/patches` merch wall:** crawlable **`edgetilt.com/patches`** … 3.5&quot; rectangular EDGE patch design hangs (`public/patches/*.webp`), Vercel rewrite + sitemap. Brand mark **EDGE** + domain **edgetilt.com**.
 - 2026-08-08: **Quote repost full-screen (X-style):** replace gray bottom sheet with **`fixed inset-0` black** composer … Cancel + Post in header, quoted card in scroll body, media toolbar + char ring docked above keyboard (`visualViewport` pad). Light mode stays `#f2f2f7` under **`html.light [data-lounge-quote-repost-sheet]`**.

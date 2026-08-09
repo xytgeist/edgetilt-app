@@ -29,6 +29,7 @@ import {
 import {
   COFFEE_MORE_SOCCER_THREAD_LABEL,
   COFFEE_OTHER_SOCCER_THREAD_HEADER,
+  COFFEE_OTHER_SOCCER_THREAD_LABEL,
   COFFEE_SOCCER_THREAD_HEADER,
   COFFEE_SECONDARY_SOCCER_THREAD_HEADER,
   COFFEE_TOP_SOCCER_THREAD_HEADER,
@@ -1300,6 +1301,9 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
     if (dog) biggestDogs.push(dog)
   }
 
+  /** True once a soccer Best Lines thread part is actually queued (for "Other Soccer" vs "Soccer"). */
+  let hasSoccerThreadPart = false
+
   if (topTierSoccerSlices.length) {
     const body = buildCombinedSoccerThreadBody(
       topTierSoccerSlices,
@@ -1307,6 +1311,7 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
       coffeeTopTierSoccerSortOrder,
     )
     if (body) {
+      hasSoccerThreadPart = true
       threadPartCandidates.push({
         part: { categoryLabel: 'Top Soccer Leagues', body },
         meta: buildCoffeeBestLinesThreadCandidateMeta(
@@ -1318,10 +1323,10 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
   }
 
   if (coreSecondarySoccerSlices.length) {
-    const soccerHeader = topTierSoccerSlices.length
+    const soccerHeader = hasSoccerThreadPart
       ? COFFEE_SECONDARY_SOCCER_THREAD_HEADER
       : COFFEE_SOCCER_THREAD_HEADER
-    const soccerLabel = topTierSoccerSlices.length
+    const soccerLabel = hasSoccerThreadPart
       ? COFFEE_MORE_SOCCER_THREAD_LABEL
       : 'Soccer'
     const body = buildCombinedSoccerThreadBody(
@@ -1330,6 +1335,7 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
       coffeeCoreSecondarySoccerSortOrder,
     )
     if (body) {
+      hasSoccerThreadPart = true
       threadPartCandidates.push({
         part: { categoryLabel: soccerLabel, body },
         meta: buildCoffeeBestLinesThreadCandidateMeta(
@@ -1341,15 +1347,21 @@ export function generateCombinedCoffeeAndCovers(inputs: CoffeeAndCoversOptions[]
   }
 
   if (otherSoccerSlices.length) {
+    // "Other Soccer" only when a prior soccer thread part exists; alone it is just "Soccer".
+    const otherHeader = hasSoccerThreadPart
+      ? COFFEE_OTHER_SOCCER_THREAD_HEADER
+      : COFFEE_SOCCER_THREAD_HEADER
+    const otherLabel = hasSoccerThreadPart ? COFFEE_OTHER_SOCCER_THREAD_LABEL : 'Soccer'
+    const otherOmitted = hasSoccerThreadPart ? 'other soccer' : 'soccer'
     const body = buildCombinedSoccerThreadBody(
       otherSoccerSlices,
-      COFFEE_OTHER_SOCCER_THREAD_HEADER,
+      otherHeader,
       coffeeOtherSoccerSortOrder,
-      'other soccer',
+      otherOmitted,
     )
     if (body) {
       threadPartCandidates.push({
-        part: { categoryLabel: 'Other Soccer', body },
+        part: { categoryLabel: otherLabel, body },
         meta: buildCoffeeBestLinesThreadCandidateMeta(
           'soccer_other_leagues',
           aggregateCoffeeBestLinesSliceStats(otherSoccerSlices),

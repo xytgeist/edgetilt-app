@@ -27,7 +27,13 @@ import {
   OFFERS_IOS_ALERT_SETUP_SEEN_STORAGE_KEY_PREFIX,
   OFFERS_IOS_ALERT_REMINDER_SUPPRESS_STORAGE_KEY_PREFIX,
 } from './offerStorageKeys'
-import { consumePwaNotifEnablePending } from '../../utils/pwaNotificationPrompt'
+import {
+  consumePwaNotifEnablePending,
+  isIosDevice as detectIosDevice,
+  isSafariBrowser as detectSafariBrowser,
+  isStandalonePwa,
+  iosPwaInstallSiteHost,
+} from '../../utils/pwaNotificationPrompt'
 
 export default function OffersCalendar({
   supabaseClient,
@@ -242,19 +248,9 @@ export default function OffersCalendar({
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const ua = window.navigator.userAgent || ''
-    const isIos = /iPhone|iPad|iPod/i.test(ua)
-    const isSafari =
-      /Safari/i.test(ua) &&
-      !/CriOS/i.test(ua) &&
-      !/FxiOS/i.test(ua) &&
-      !/EdgiOS/i.test(ua) &&
-      !/OPiOS/i.test(ua)
-    const standaloneViaMedia = window.matchMedia?.('(display-mode: standalone)')?.matches === true
-    const standaloneViaNavigator = window.navigator.standalone === true
-    setIsIosDevice(isIos)
-    setIsSafariBrowser(isIos && isSafari)
-    setIsStandaloneMode(standaloneViaMedia || standaloneViaNavigator)
+    setIsIosDevice(detectIosDevice())
+    setIsSafariBrowser(detectSafariBrowser())
+    setIsStandaloneMode(isStandalonePwa())
   }, [])
 
   const sendTestPush = useCallback(async () => {
@@ -462,7 +458,7 @@ export default function OffersCalendar({
             title: 'Enable Notifications on iPhone',
             message: isSafariBrowser
               ? "On iPhone, alert notifications only work from the Home Screen app. Don't blame me, blame Apple. 🤷‍♂️\n\nTo enable alerts:\n1) Tap Share -> Add to Home Screen\n2) Open app from Home Screen icon\n3) Allow Notifications"
-              : "On iPhone, alert notifications only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Edge in SAFARI (blame Apple 🤷‍♂️)\n2) Tap Share -> Add to Home Screen\n3) Open app from Home Screen icon\n4) Allow Notifications",
+              : `On iPhone, alert notifications only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Safari (blame Apple 🤷‍♂️)\n2) Go to ${iosPwaInstallSiteHost()}\n3) Tap Share -> Add to Home Screen\n4) Open app from Home Screen icon\n5) Allow Notifications`,
             images: [{ src: '/onboarding/ios-setup.png', alt: 'iPhone Home Screen setup steps', caption: '' }],
             confirmLabel: 'Got it'
           })

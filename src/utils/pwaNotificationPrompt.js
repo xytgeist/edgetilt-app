@@ -13,18 +13,20 @@ export function isAndroidDevice() {
   return /Android/i.test(window.navigator.userAgent || '')
 }
 
+/** iOS browsers that still include "Safari" in the WebKit UA. */
+const IOS_NON_SAFARI_UA_RE =
+  /CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|Ddg\/|Brave|YaBrowser|SamsungBrowser|GSA\//i
+
 export function isSafariBrowser() {
   if (typeof window === 'undefined') return false
   const ua = window.navigator.userAgent || ''
-  const isIos = isIosDevice()
-  return (
-    isIos &&
-    /Safari/i.test(ua) &&
-    !/CriOS/i.test(ua) &&
-    !/FxiOS/i.test(ua) &&
-    !/EdgiOS/i.test(ua) &&
-    !/OPiOS/i.test(ua)
-  )
+  return isIosDevice() && /Safari/i.test(ua) && !IOS_NON_SAFARI_UA_RE.test(ua)
+}
+
+/** Hostname for “open in Safari” install copy (prod vs test sandbox). */
+export function iosPwaInstallSiteHost() {
+  if (typeof window === 'undefined') return 'edgetilt.com'
+  return String(window.location.host || 'edgetilt.com').replace(/^www\./i, '') || 'edgetilt.com'
 }
 
 export function isStandalonePwa() {
@@ -113,10 +115,11 @@ export function markLoungeIosPwaSetupSeen() {
 }
 
 /** Copy for the ios-setup.png helper (Safari vs other iOS browsers). */
-export function iosPwaInstallHelpMessage(isSafariBrowser) {
-  return isSafariBrowser
+export function iosPwaInstallHelpMessage(isSafariBrowserFlag) {
+  const host = iosPwaInstallSiteHost()
+  return isSafariBrowserFlag
     ? "On iPhone, push alerts only work from the Home Screen app. Don't blame me, blame Apple. 🤷‍♂️\n\nTo enable alerts:\n1) Tap Share → Add to Home Screen\n2) Open Edge from the Home Screen icon\n3) Turn on Push notifications in Settings"
-    : "On iPhone, push alerts only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Edge in Safari (blame Apple 🤷‍♂️)\n2) Tap Share → Add to Home Screen\n3) Open Edge from the Home Screen icon\n4) Turn on Push notifications in Settings"
+    : `On iPhone, push alerts only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Safari (blame Apple 🤷‍♂️)\n2) Go to ${host}\n3) Tap Share → Add to Home Screen\n4) Open Edge from the Home Screen icon\n5) Turn on Push notifications in Settings`
 }
 
 export function iosPwaInstallRequired() {
@@ -144,16 +147,18 @@ export function dismissPwaInstallBanner() {
 }
 
 /** Short inline steps for the install chip modal (Safari vs other iOS browsers). */
-export function iosPwaInstallBannerSteps(isSafariBrowser) {
-  if (isSafariBrowser) {
+export function iosPwaInstallBannerSteps(isSafariBrowserFlag) {
+  if (isSafariBrowserFlag) {
     return [
       { id: 'share', lead: 'Tap the', emphasis: 'Share', tail: 'button in Safari', showShareIcon: true },
       { id: 'add', lead: 'Select', emphasis: 'Add to Home Screen', tail: null, showShareIcon: false },
       { id: 'confirm', lead: 'Tap', emphasis: 'Add', tail: null, showShareIcon: false },
     ]
   }
+  const host = iosPwaInstallSiteHost()
   return [
-    { id: 'safari', lead: 'Open this page in', emphasis: 'Safari', tail: null, showShareIcon: false },
+    { id: 'safari', lead: 'Open', emphasis: 'Safari', tail: null, showShareIcon: false },
+    { id: 'nav', lead: 'Go to', emphasis: host, tail: null, showShareIcon: false },
     { id: 'share', lead: 'Tap the', emphasis: 'Share', tail: 'button', showShareIcon: true },
     { id: 'add', lead: 'Select', emphasis: 'Add to Home Screen', tail: null, showShareIcon: false },
     { id: 'confirm', lead: 'Tap', emphasis: 'Add', tail: null, showShareIcon: false },

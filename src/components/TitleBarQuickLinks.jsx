@@ -5,7 +5,7 @@ import {
   BookOpen,
   ClipboardList,
   MessageCircle,
-  ChessKnight,
+  Warehouse,
 } from 'lucide-react'
 import NavLockGlyph from './NavLockGlyph.jsx'
 import { QUICK_LINK_BY_ID } from '../features/shell/quickLinkDestinations.js'
@@ -20,7 +20,7 @@ const ICONS = {
   logbook: ClipboardList,
   guides: BookOpen,
   chat: MessageCircle,
-  'poker-stable': ChessKnight,
+  'poker-stable': Warehouse,
 }
 
 /**

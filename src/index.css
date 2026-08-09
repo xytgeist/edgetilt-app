@@ -1060,6 +1060,14 @@ html.light [data-lounge-composer-audience-menu] .text-sky-400 {
   color: rgb(37 99 235);
 }
 
+/* Lounge feed composer: thin non-video posting progress seam. */
+html.light [data-lounge-composer-post-progress] {
+  background-color: rgb(228 228 231 / 0.85);
+}
+html.light [data-lounge-composer-post-progress] .bg-cyan-400 {
+  background-color: rgb(37 99 235);
+}
+
 /* Lounge post/comment upload failure dialog (Retry / Save as draft). */
 html.light [data-lounge-upload-failed-panel] {
   border-color: rgb(212 212 216 / 0.95);

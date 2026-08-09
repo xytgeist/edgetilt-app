@@ -840,6 +840,10 @@ export default function SocialFeed({
   const [postErr, setPostErr] = useState('')
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
   const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
+  /** Thin composer-top seam for non-video feed posts only (caption / images / GIF). Never used for video. */
+  const [loungeComposerPostProgress, setLoungeComposerPostProgress] = useState(
+    /** @type {{ progress: number } | null} */ (null),
+  )
   const loungeUploadBarRef = useRef(null)
   const [loungeUploadBarHeightPx, setLoungeUploadBarHeightPx] = useState(0)
   /** Last step label when a background submission throws (paired with `loungePostUploadFailureDetails`). */
@@ -12562,6 +12566,10 @@ export default function SocialFeed({
           }
         } else {
           const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
+          // Composer seam: caption/image/GIF only. Video never enters this lane with Stream media,
+          // but guard anyway so we never paint over video prep / inline tile progress.
+          const showComposerPostProgress =
+            !loungeSubmissionSnapshotIncludesVideo(snapshot) && threadTotal <= 1
           if (threadTotal > 1) {
             loungePostSnapshotRef.current = snapshot
             loungePostJobRunningRef.current = true
@@ -12576,6 +12584,8 @@ export default function SocialFeed({
               status: 'Starting thread…',
               detail: '',
             })
+          } else if (showComposerPostProgress) {
+            setLoungeComposerPostProgress({ progress: 0.04 })
           }
           await executeLoungeCommunityPostSubmission({
             supabaseClient,
@@ -12589,7 +12599,14 @@ export default function SocialFeed({
                       mode: 'mediaPrep',
                       postSubmission: true,
                     })
-                : undefined,
+                : showComposerPostProgress
+                  ? (info) => {
+                      const p = typeof info?.progress === 'number' ? info.progress : 0
+                      setLoungeComposerPostProgress({
+                        progress: Math.max(0.04, Math.min(1, p)),
+                      })
+                    }
+                  : undefined,
           })
           persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
           const publishedDraftId = String(
@@ -12651,6 +12668,9 @@ export default function SocialFeed({
           deferOrShowFastLaneFailure(failKind, snapshot, 'Publishing', msg)
         }
       } finally {
+        if (type === 'post' || type === 'quote') {
+          setLoungeComposerPostProgress(null)
+        }
         if (type === 'postEdit') {
           loungeDetailEditAbortRef.current = null
           loungeDetailEditJobRunningRef.current = false
@@ -15570,6 +15590,24 @@ export default function SocialFeed({
           }`}
           data-lounge-feed-composer=""
         >
+        {loungeComposerPostProgress ? (
+          <div
+            data-lounge-composer-post-progress
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[2px] overflow-hidden bg-zinc-800/40"
+            role="progressbar"
+            aria-label="Posting"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round((loungeComposerPostProgress.progress || 0) * 100)}
+          >
+            <div
+              className="h-full bg-cyan-400 transition-[width] duration-300 ease-out"
+              style={{
+                width: `${Math.max(4, Math.round((loungeComposerPostProgress.progress || 0) * 100))}%`,
+              }}
+            />
+          </div>
+        ) : null}
         {composerExpanded && composerFoldReveal > 0.14 ? (
           <div className="absolute right-3 top-3 z-10">
             <button

@@ -7563,7 +7563,7 @@ html.light [data-play-logbook] [data-play-logbook-analyze-period] .text-zinc-400
 }
 
 /* Quick links - page toggle + at-cap modal (light mode) */
-html.light [data-quick-link-toggle] {
+html.light [data-quick-link-toggle]:not([data-quick-link-toggle='bare']) {
   background-color: #fafafa !important;
   border-color: #e4e4e7 !important;
 }
@@ -7575,6 +7575,10 @@ html.light [data-quick-link-toggle] .text-zinc-500 {
 }
 html.light [data-quick-link-toggle] .bg-zinc-700 {
   background-color: #d4d4d8 !important;
+}
+html.light [data-quick-link-toggle='bare'] {
+  background-color: transparent !important;
+  border-color: transparent !important;
 }
 html.light [data-quick-link-modal] {
   background-color: #ffffff !important;

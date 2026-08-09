@@ -60,23 +60,6 @@ export default function PokerScreen({
             (tool.id === 'poker-stable' && showStableAttentionDot)
           const cardClass =
             'relative flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-4 text-left'
-          const trailing = tool.shortcutDestinationId ? (
-            <div
-              className="shrink-0"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              <QuickLinkPageToggle
-                destinationId={tool.shortcutDestinationId}
-                className="mb-0 shrink-0"
-              />
-            </div>
-          ) : !comingSoon ? (
-            <span aria-hidden className="shrink-0 text-zinc-600 text-lg">
-              →
-            </span>
-          ) : null
           const body = (
             <>
               <span
@@ -90,7 +73,23 @@ export default function PokerScreen({
                 <span className="block truncate text-lg font-bold text-white">{tool.label}</span>
                 <span className="mt-0.5 block text-sm leading-snug text-zinc-500">{tool.description}</span>
               </span>
-              {trailing}
+              {tool.shortcutDestinationId ? (
+                <div
+                  className="absolute bottom-2.5 right-3 z-[2]"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <QuickLinkPageToggle
+                    destinationId={tool.shortcutDestinationId}
+                    variant="bare"
+                  />
+                </div>
+              ) : !comingSoon ? (
+                <span aria-hidden className="shrink-0 text-zinc-600 text-lg">
+                  →
+                </span>
+              ) : null}
               {comingSoon ? (
                 <span
                   className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center rounded-3xl bg-zinc-950/55 backdrop-blur-[1px]"

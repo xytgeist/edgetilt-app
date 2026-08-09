@@ -1,5 +1,6 @@
-import { Spade, Users } from 'lucide-react'
+import { Spade } from 'lucide-react'
 import AttentionDot from '../../components/AttentionDot.jsx'
+import HorseHeadIcon from '../../components/HorseHeadIcon.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 
 const POKER_TOOLS = [
@@ -13,7 +14,7 @@ const POKER_TOOLS = [
   {
     id: 'poker-stable',
     label: 'Stable Manager',
-    Icon: Users,
+    Icon: HorseHeadIcon,
     color: '#22d3ee',
     description: 'Track horses · live updates',
   },

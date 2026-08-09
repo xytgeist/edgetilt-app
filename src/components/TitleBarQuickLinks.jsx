@@ -5,8 +5,8 @@ import {
   BookOpen,
   ClipboardList,
   MessageCircle,
+  ChessKnight,
 } from 'lucide-react'
-import HorseHeadIcon from './HorseHeadIcon.jsx'
 import NavLockGlyph from './NavLockGlyph.jsx'
 import { QUICK_LINK_BY_ID } from '../features/shell/quickLinkDestinations.js'
 import { useQuickLinkIds } from '../features/shell/quickLinksStore.js'
@@ -20,7 +20,7 @@ const ICONS = {
   logbook: ClipboardList,
   guides: BookOpen,
   chat: MessageCircle,
-  'poker-stable': HorseHeadIcon,
+  'poker-stable': ChessKnight,
 }
 
 /**

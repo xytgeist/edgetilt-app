@@ -23,6 +23,11 @@ const ICONS = {
   'poker-stable': BarnIcon,
 }
 
+/** Default title-bar tint; Stable barn uses brick red to match the Poker hub tile. */
+const ICON_CLASS = {
+  'poker-stable': 'text-[#b4533c]',
+}
+
 /**
  * @param {{
  *   browseMode?: string,
@@ -72,7 +77,12 @@ export default function TitleBarQuickLinks({
             onClick={() => onNavigate(id)}
             className="lounge-title-nav-btn relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
           >
-            <Icon size={18} strokeWidth={1.75} aria-hidden className="text-cyan-300/95" />
+            <Icon
+              size={18}
+              strokeWidth={1.75}
+              aria-hidden
+              className={ICON_CLASS[id] || 'text-cyan-300/95'}
+            />
             {locked ? (
               <NavLockGlyph className="pointer-events-none absolute -bottom-0.5 -right-0.5 h-3 w-3 text-amber-400/95" />
             ) : null}

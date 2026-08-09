@@ -15,7 +15,7 @@ const POKER_TOOLS = [
     id: 'poker-stable',
     label: 'Stable Manager',
     Icon: BarnIcon,
-    color: '#22d3ee',
+    color: '#b4533c',
     description: 'Track horses · live updates',
   },
 ]

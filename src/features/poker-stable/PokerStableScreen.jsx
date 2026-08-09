@@ -898,7 +898,7 @@ export default function PokerStableScreen({
               data-elevated-card="surface"
               className="rounded-3xl border border-dashed border-zinc-700 bg-zinc-900/40 px-5 py-10 text-center"
             >
-              <BarnIcon className="mx-auto mb-3 text-zinc-600" size={28} strokeWidth={1.5} />
+              <BarnIcon className="mx-auto mb-3 text-[#b4533c]" size={28} strokeWidth={1.5} />
               <p className="text-sm font-semibold text-zinc-300">No horses yet</p>
               <p className="mt-1 text-sm leading-relaxed text-zinc-500">
                 Request an Edge player by handle with your slice terms. When they accept, their

@@ -1,4 +1,4 @@
-import { Spade } from 'lucide-react'
+import { Club } from 'lucide-react'
 import AttentionDot from '../../components/AttentionDot.jsx'
 import BarnIcon from '../../components/BarnIcon.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
@@ -7,7 +7,7 @@ const POKER_TOOLS = [
   {
     id: 'poker-bankroll',
     label: 'Bankroll Manager',
-    Icon: Spade,
+    Icon: Club,
     color: '#6ee7b7',
     description: 'Cash & tourneys · swaps and stakes',
   },

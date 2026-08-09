@@ -799,7 +799,7 @@ export default function PokerStableScreen({
       >
         <div data-poker-stable>
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h1 className="min-w-0 text-[32px] font-bold leading-none tracking-tight text-white">
+          <h1 className="min-w-0 text-[22px] font-bold leading-none tracking-tight text-white">
             Stable Manager
           </h1>
           <QuickLinkPageToggle destinationId="poker-stable" className="mb-0 shrink-0" />

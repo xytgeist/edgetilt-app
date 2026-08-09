@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Lounge composer posting progress bar:** fast-lane text/image/GIF posts (and replies/edits without Stream video) now show a compact bottom **Posting…** progress bar with live status + Cancel (FAB lifts). Multi-part threads keep the fuller bar; video still uses inline tile progress. Hook: **`loungeSubmissionShouldUseBottomUploadBar`** + **`runFastLaneLoungeSubmit`**. Light: **`html.light [data-lounge-posting-progress]`**.
 - 2026-08-08: **`/patches` merch wall:** crawlable **`edgetilt.com/patches`** … 3.5&quot; rectangular EDGE patch design hangs (`public/patches/*.webp`), Vercel rewrite + sitemap. Brand mark **EDGE** + domain **edgetilt.com**.
 - 2026-08-08: **Quote repost full-screen (X-style):** replace gray bottom sheet with **`fixed inset-0` black** composer … Cancel + Post in header, quoted card in scroll body, media toolbar + char ring docked above keyboard (`visualViewport` pad). Light mode stays `#f2f2f7` under **`html.light [data-lounge-quote-repost-sheet]`**.
 - 2026-08-08: **Quote repost toolbar row:** char ring + Post were wrapping under the divider because the quote toolbar used **`flex-wrap`** + **`basis-[min(100%,14rem)]`**. Match feed/detail composers … single `items-center` row, `flex-1` end cluster.

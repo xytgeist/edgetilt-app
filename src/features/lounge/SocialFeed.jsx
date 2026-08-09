@@ -2710,7 +2710,8 @@ export default function SocialFeed({
       loungePostJobRunningRef.current ||
       loungeDetailCommentJobRunningRef.current ||
       loungeDetailEditJobRunningRef.current ||
-      loungeDetailCommentEditJobRunningRef.current
+      loungeDetailCommentEditJobRunningRef.current ||
+      loungeFastLaneInFlightRef.current > 0
     ) {
       return
     }
@@ -3743,10 +3744,17 @@ export default function SocialFeed({
           : typeof prev?.threadPartTotal === 'number' && prev.threadPartTotal > 1
             ? prev.threadPartTotal
             : threadTotal
+      const compact =
+        typeof barBase.compact === 'boolean'
+          ? barBase.compact
+          : typeof prev?.compact === 'boolean'
+            ? prev.compact
+            : threadPartTotal <= 1
       return {
         ...(prev || {}),
         ...barBase,
         postSubmission: true,
+        compact,
         threadPartTotal: threadPartTotal > 1 ? threadPartTotal : 0,
         threadPartPublished,
         progress: typeof info?.progress === 'number' ? info.progress : prev?.progress ?? 0,
@@ -11038,12 +11046,19 @@ export default function SocialFeed({
     } catch {
       // ignore
     }
+    try {
+      loungeDetailCommentEditAbortRef.current?.abort()
+    } catch {
+      // ignore
+    }
     loungePostAbortRef.current = null
     loungeDetailCommentAbortRef.current = null
     loungeDetailEditAbortRef.current = null
+    loungeDetailCommentEditAbortRef.current = null
     loungePostJobRunningRef.current = false
     loungeDetailCommentJobRunningRef.current = false
     loungeDetailEditJobRunningRef.current = false
+    loungeDetailCommentEditJobRunningRef.current = false
     loungePostUploadLastPhaseRef.current = ''
     setLoungeFeedPostEditPendingPostId(null)
     setLoungeDetailCommentEditPendingCommentId(null)
@@ -12477,29 +12492,75 @@ export default function SocialFeed({
       loungeFastLaneInFlightRef.current += 1
       bumpLoungeSubmitInFlight(1)
       const ac = new AbortController()
+      const useBottomUploadBar = loungeSubmissionShouldUseBottomUploadBar(snapshot)
+      const postingBarBase = {
+        mode: 'post',
+        postSubmission: true,
+        compact: true,
+        progress: 0,
+        status: 'Starting…',
+        detail: '',
+      }
+      if (type === 'post' || type === 'quote') {
+        loungePostSnapshotRef.current = snapshot
+        loungePostAbortRef.current = ac
+      } else if (type === 'comment') {
+        loungeDetailCommentSnapshotRef.current = snapshot
+        loungeDetailCommentAbortRef.current = ac
+      } else if (type === 'postEdit') {
+        loungeDetailEditAbortRef.current = ac
+      } else if (type === 'commentEdit') {
+        loungeDetailCommentEditAbortRef.current = ac
+      }
       try {
         if (type === 'commentEdit') {
+          if (useBottomUploadBar) {
+            setLoungePostUploadBar({ ...postingBarBase, editSave: true, status: 'Saving edit…' })
+          }
           const data = await executeLoungeCommentUpdate({
             supabaseClient,
             snapshot,
             signal: ac.signal,
+            onProgress: useBottomUploadBar
+              ? (info) =>
+                  applyLoungePostSubmitUploadProgress(info, snapshot, {
+                    mode: 'post',
+                    postSubmission: true,
+                    compact: true,
+                    editSave: true,
+                  })
+              : undefined,
           })
           loungeDetailCommentEditSnapshotRef.current = null
           patchLoungeCommentEditResult(data)
         } else if (type === 'postEdit') {
           loungeDetailEditJobRunningRef.current = true
-          loungeDetailEditAbortRef.current = ac
+          if (useBottomUploadBar) {
+            setLoungePostUploadBar({ ...postingBarBase, editSave: true, status: 'Saving edit…' })
+          }
           const data = await executeLoungeCommunityPostUpdate({
             supabaseClient,
             snapshot,
             signal: ac.signal,
             rateLimitMessage,
+            onProgress: useBottomUploadBar
+              ? (info) =>
+                  applyLoungePostSubmitUploadProgress(info, snapshot, {
+                    mode: 'post',
+                    postSubmission: true,
+                    compact: true,
+                    editSave: true,
+                  })
+              : undefined,
           })
           loungeDetailEditSnapshotRef.current = null
           patchLoungePostEditResult(data)
           persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
         } else if (type === 'comment') {
           const snap = snapshot
+          if (useBottomUploadBar) {
+            setLoungePostUploadBar({ ...postingBarBase, status: 'Sending reply…' })
+          }
           const data = await executeLoungeCommentSubmission({
             supabaseClient,
             snapshot: {
@@ -12514,6 +12575,14 @@ export default function SocialFeed({
               userId: snap.userId,
             },
             signal: ac.signal,
+            onProgress: useBottomUploadBar
+              ? (info) =>
+                  applyLoungePostSubmitUploadProgress(info, snap, {
+                    mode: 'post',
+                    postSubmission: true,
+                    compact: true,
+                  })
+              : undefined,
           })
           const pr = await supabaseClient
             .from('profiles')
@@ -12562,18 +12631,18 @@ export default function SocialFeed({
           }
         } else {
           const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
-          if (threadTotal > 1) {
-            loungePostSnapshotRef.current = snapshot
-            loungePostJobRunningRef.current = true
-            loungePostUploadLastPhaseRef.current = ''
+          loungePostJobRunningRef.current = true
+          loungePostUploadLastPhaseRef.current = ''
+          if (useBottomUploadBar || threadTotal > 1) {
             setLoungePostUploadBar({
-              mode: 'mediaPrep',
+              mode: 'post',
               postSubmission: true,
-              threadPartTotal: threadTotal,
+              compact: threadTotal <= 1,
+              threadPartTotal: threadTotal > 1 ? threadTotal : 0,
               threadPartPublished: 0,
-              threadPartActive: 1,
+              threadPartActive: threadTotal > 1 ? 1 : 0,
               progress: 0,
-              status: 'Starting thread…',
+              status: threadTotal > 1 ? 'Starting thread…' : 'Starting…',
               detail: '',
             })
           }
@@ -12583,11 +12652,12 @@ export default function SocialFeed({
             signal: ac.signal,
             rateLimitMessage,
             onProgress:
-              threadTotal > 1
+              useBottomUploadBar || threadTotal > 1
                 ? (info) =>
                     applyLoungePostSubmitUploadProgress(info, snapshot, {
-                      mode: 'mediaPrep',
+                      mode: 'post',
                       postSubmission: true,
+                      compact: threadTotal <= 1,
                     })
                 : undefined,
           })
@@ -12601,10 +12671,8 @@ export default function SocialFeed({
             await refreshLoungeDraftCount()
           }
           await loadCommunityFeed({ silent: true })
-          if (threadTotal > 1) {
-            loungePostSnapshotRef.current = null
-            loungePostJobRunningRef.current = false
-          }
+          loungePostSnapshotRef.current = null
+          loungePostJobRunningRef.current = false
           const quoteOrigPostId = String(snapshot.quoteRepostOfPostId || '').trim()
           const quoteOrigCommentId = String(snapshot.quoteRepostOfCommentId || '').trim()
           if (quoteOrigPostId) {
@@ -12651,12 +12719,26 @@ export default function SocialFeed({
           deferOrShowFastLaneFailure(failKind, snapshot, 'Publishing', msg)
         }
       } finally {
+        if (type === 'post' || type === 'quote') {
+          if (loungePostAbortRef.current === ac) loungePostAbortRef.current = null
+          loungePostJobRunningRef.current = false
+          if (loungePostSnapshotRef.current === snapshot) loungePostSnapshotRef.current = null
+        }
+        if (type === 'comment') {
+          if (loungeDetailCommentAbortRef.current === ac) loungeDetailCommentAbortRef.current = null
+          if (loungeDetailCommentSnapshotRef.current === snapshot) {
+            loungeDetailCommentSnapshotRef.current = null
+          }
+        }
         if (type === 'postEdit') {
-          loungeDetailEditAbortRef.current = null
+          if (loungeDetailEditAbortRef.current === ac) loungeDetailEditAbortRef.current = null
           loungeDetailEditJobRunningRef.current = false
           setLoungeFeedPostEditPendingPostId(null)
         }
         if (type === 'commentEdit') {
+          if (loungeDetailCommentEditAbortRef.current === ac) {
+            loungeDetailCommentEditAbortRef.current = null
+          }
           setLoungeDetailCommentEditPendingCommentId(null)
         }
         loungeFastLaneInFlightRef.current = Math.max(0, loungeFastLaneInFlightRef.current - 1)
@@ -18834,55 +18916,91 @@ export default function SocialFeed({
       {loungePostUploadBar ? (
         <div
           ref={loungeUploadBarRef}
-          className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
+          data-lounge-posting-progress={loungePostUploadBar.compact ? 'compact' : 'full'}
+          className={`pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)] ${
+            loungePostUploadBar.compact
+              ? 'px-3 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]'
+              : 'px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]'
+          }`}
         >
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium text-zinc-200">
-                {loungeSubmitQueueDisplay.total > 1
-                  ? `Post ${loungeSubmitQueueDisplay.index} of ${loungeSubmitQueueDisplay.total}`
-                  : loungePostUploadBar.draftSave
-                    ? 'Saving draft…'
-                    : loungePostUploadBar.editSave
-                      ? 'Saving edit…'
-                      : loungePostUploadBar.mode === 'mediaPrep'
-                        ? LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
-                        : 'Uploading post…'}
-              </div>
-              <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">
-                <span className="font-semibold text-cyan-300/95">Now:</span>{' '}
-                {loungePostUploadBar.status ||
-                  (loungePostUploadBar.threadPartTotal > 1 && loungePostUploadBar.threadPartPublished > 0
-                    ? `Part ${loungePostUploadBar.threadPartPublished} of ${loungePostUploadBar.threadPartTotal} posted`
-                    : '-')}
-              </div>
-              {loungePostUploadBar.detail ? (
-                <div
-                  className={`mt-0.5 text-[11px] leading-snug break-words ${
-                    loungePostUploadBar.mode === 'mediaPrep' &&
-                    (String(loungePostUploadBar.status || '').toLowerCase() === 'retrying' ||
-                      String(loungePostUploadBar.status || '')
-                        .toLowerCase()
-                        .includes('waiting until you are back') ||
-                      String(loungePostUploadBar.detail || '').toLowerCase().includes('retry') ||
-                      String(loungePostUploadBar.detail || '').includes('goblins'))
-                      ? 'text-amber-200/90'
-                      : 'text-zinc-400'
-                  }`}
-                >
-                  {loungePostUploadBar.detail}
-                </div>
-              ) : null}
-              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div
-                  className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
-                  style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
-                  role="progressbar"
-                  aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                />
-              </div>
+              {loungePostUploadBar.compact ? (
+                <>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="text-[12px] font-medium text-zinc-200">
+                      {loungePostUploadBar.draftSave
+                        ? 'Saving draft…'
+                        : loungePostUploadBar.editSave
+                          ? 'Saving edit…'
+                          : 'Posting…'}
+                    </div>
+                    <div className="min-w-0 truncate text-[11px] leading-snug text-cyan-200/90">
+                      {loungePostUploadBar.status || 'Working…'}
+                    </div>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
+                      style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
+                      role="progressbar"
+                      aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-[13px] font-medium text-zinc-200">
+                    {loungeSubmitQueueDisplay.total > 1
+                      ? `Post ${loungeSubmitQueueDisplay.index} of ${loungeSubmitQueueDisplay.total}`
+                      : loungePostUploadBar.draftSave
+                        ? 'Saving draft…'
+                        : loungePostUploadBar.editSave
+                          ? 'Saving edit…'
+                          : loungePostUploadBar.mode === 'mediaPrep'
+                            ? LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
+                            : loungePostUploadBar.threadPartTotal > 1
+                              ? 'Posting thread…'
+                              : 'Uploading post…'}
+                  </div>
+                  <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">
+                    <span className="font-semibold text-cyan-300/95">Now:</span>{' '}
+                    {loungePostUploadBar.status ||
+                      (loungePostUploadBar.threadPartTotal > 1 && loungePostUploadBar.threadPartPublished > 0
+                        ? `Part ${loungePostUploadBar.threadPartPublished} of ${loungePostUploadBar.threadPartTotal} posted`
+                        : '-')}
+                  </div>
+                  {loungePostUploadBar.detail ? (
+                    <div
+                      className={`mt-0.5 text-[11px] leading-snug break-words ${
+                        loungePostUploadBar.mode === 'mediaPrep' &&
+                        (String(loungePostUploadBar.status || '').toLowerCase() === 'retrying' ||
+                          String(loungePostUploadBar.status || '')
+                            .toLowerCase()
+                            .includes('waiting until you are back') ||
+                          String(loungePostUploadBar.detail || '').toLowerCase().includes('retry') ||
+                          String(loungePostUploadBar.detail || '').includes('goblins'))
+                          ? 'text-amber-200/90'
+                          : 'text-zinc-400'
+                      }`}
+                    >
+                      {loungePostUploadBar.detail}
+                    </div>
+                  ) : null}
+                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
+                      style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
+                      role="progressbar"
+                      aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    />
+                  </div>
+                </>
+              )}
             </div>
             <button
               type="button"
@@ -18890,7 +19008,9 @@ export default function SocialFeed({
                 const backgroundUploadActive =
                   loungePostJobRunningRef.current ||
                   loungeDetailCommentJobRunningRef.current ||
-                  loungeDetailEditJobRunningRef.current
+                  loungeDetailEditJobRunningRef.current ||
+                  loungeDetailCommentEditJobRunningRef.current ||
+                  loungeFastLaneInFlightRef.current > 0
                 if (
                   backgroundUploadActive ||
                   loungePostUploadBar.postSubmission ||

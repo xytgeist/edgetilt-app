@@ -702,10 +702,15 @@ export function loungeEditSnapshotHasIncomingVideoUpload(snapshot) {
   return false
 }
 
-/** Bottom upload bar: text-only multi-part threads (no video anywhere in the snapshot). */
+/**
+ * Bottom upload / posting progress bar for non-video submits (text, image, GIF, multi-part threads).
+ * Video posts use inline tile progress instead.
+ */
 export function loungeSubmissionShouldUseBottomUploadBar(snapshot) {
+  if (!snapshot) return false
+  if (loungeSnapshotUsesInlineTileVideoProgress(snapshot)) return false
   if (loungeSubmissionSnapshotIncludesVideo(snapshot)) return false
-  return loungeSubmissionSnapshotThreadPartCount(snapshot) > 1
+  return true
 }
 
 /** @param {string} [prefix] */

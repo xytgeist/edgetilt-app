@@ -2341,14 +2341,15 @@ export default function SocialFeed({
     }
   }, [])
 
-  /** Header seam for compact text/image posts; full bottom HUD for non-video uploads. Video uses inline / in-composer HUD only. */
+  /**
+   * Header seam: text/image fast-lane only (never video... conflicts with prep / inline tile).
+   * Bottom HUD: video mediaPrep + non-compact uploads (threads, etc.).
+   */
   const showLoungeHeaderPostingProgress = Boolean(
     loungePostUploadBar?.compact && loungePostUploadBar.mode !== 'mediaPrep',
   )
   const showLoungeBottomUploadBar = Boolean(
-    loungePostUploadBar &&
-      !loungePostUploadBar.compact &&
-      loungePostUploadBar.mode !== 'mediaPrep',
+    loungePostUploadBar && !loungePostUploadBar.compact,
   )
 
   /** Stable bottom inset for the dock FAB while the upload bar is visible (avoids collision feedback loops). */

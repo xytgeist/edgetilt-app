@@ -16719,7 +16719,6 @@ export default function SocialFeed({
                           return
                         }
                       }}
-                      onKeyUp={cashtagDetailEdit.onCursorMove}
                       onMouseUp={cashtagDetailEdit.onCursorMove}
                       onInput={cashtagDetailEdit.onCursorMove}
                       onBlur={() =>
@@ -17826,8 +17825,8 @@ export default function SocialFeed({
                               loungeDetailCommentFieldRef.current,
                             )
                           }
-                          onKeyUp={mentionDetailComment.onCursorMove}
                           onMouseUp={mentionDetailComment.onCursorMove}
+                          // onInput only … onKeyUp duplicated mention refresh and stalled Android typing.
                           onInput={mentionDetailComment.onCursorMove}
                           onFocus={() => {
                             loungeDetailCommentFieldFocusedRef.current = true
@@ -18352,15 +18351,12 @@ export default function SocialFeed({
                         quoteRepostFieldRef.current,
                       )
                     }}
-                    onKeyUp={(e) => {
-                      cashtagQuoteRepost.onCursorMove(e)
-                      mentionQuoteRepost.onCursorMove(e)
-                    }}
                     onMouseUp={(e) => {
                       cashtagQuoteRepost.onCursorMove(e)
                       mentionQuoteRepost.onCursorMove(e)
                     }}
                     onInput={(e) => {
+                      // onInput only … onKeyUp duplicated this (same Android stall as feed composer).
                       cashtagQuoteRepost.onCursorMove(e)
                       mentionQuoteRepost.onCursorMove(e)
                     }}

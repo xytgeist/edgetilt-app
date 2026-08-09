@@ -628,7 +628,6 @@ export default function LoungeThreadComposeSheet({
                             getPartRef?.(0),
                           )
                         }
-                        onKeyUp={mentionComposer?.onCursorMove}
                         onMouseUp={mentionComposer?.onCursorMove}
                         onInput={(payload) => tailFollowOnComposerInput(0, payload)}
                         onBlur={() => {

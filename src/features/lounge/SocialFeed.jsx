@@ -5606,6 +5606,27 @@ export default function SocialFeed({
     setProfileModalPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...partial } : p)))
   }, [setCommunityPosts])
 
+  /** Patch denormalized view_count on feed rows + nested plain-repost originals (admin UI). */
+  const patchPostViewCount = useCallback(
+    (postId, viewCount) => {
+      const id = String(postId || '').trim()
+      if (!id || typeof viewCount !== 'number' || !Number.isFinite(viewCount)) return
+      const next = Math.max(0, Math.trunc(viewCount))
+      const mapRow = (p) => {
+        if (!p) return p
+        if (p.id === id) return { ...p, view_count: next }
+        if (p.reposted_post?.id === id) {
+          return { ...p, reposted_post: { ...p.reposted_post, view_count: next } }
+        }
+        return p
+      }
+      setCommunityPosts((prev) => prev.map(mapRow))
+      setLoungePostDetail((d) => (d ? mapRow(d) : d))
+      setProfileModalPosts((prev) => prev.map(mapRow))
+    },
+    [setCommunityPosts],
+  )
+
   const markPostPendingVideoPublish = useCallback(
     (postId, snapshot, pendingKey) => {
       const key = String(pendingKey || '').trim()
@@ -15038,6 +15059,9 @@ export default function SocialFeed({
       onSharePost: handleShareLoungePost,
       onAvatarClick: openAuthorProfile,
       loungeViewerIsStaff,
+      loungeViewerIsAdmin,
+      supabaseClient,
+      onPostViewCounted: patchPostViewCount,
       setLoungePostPinned,
       loungePinBusy,
       setLoungeProfilePostPinned,
@@ -15124,6 +15148,9 @@ export default function SocialFeed({
       openProfileModal,
       handleShareLoungePost,
       loungeViewerIsStaff,
+      loungeViewerIsAdmin,
+      supabaseClient,
+      patchPostViewCount,
       setLoungePostPinned,
       loungePinBusy,
       setLoungeProfilePostPinned,
@@ -16264,6 +16291,9 @@ export default function SocialFeed({
                   openProfileGateIfNeeded={openProfileGateIfNeeded}
                   onAvatarClick={openAuthorProfile}
                   loungeViewerIsStaff={loungeViewerIsStaff}
+                  loungeViewerIsAdmin={loungeViewerIsAdmin}
+                  supabaseClient={supabaseClient}
+                  onPostViewCounted={patchPostViewCount}
                   setLoungePostPinned={setLoungePostPinned}
                   loungePinBusy={loungePinBusy}
                   setLoungeProfilePostPinned={setLoungeProfilePostPinned}

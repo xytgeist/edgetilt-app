@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Lounge admin Views count:** unique signed-in impressions (`lounge_feed_post_views` + `community_feed_posts.view_count`, RPC **`lounge_record_feed_post_view`**). Client dwell/IO tracking for all signed-in viewers; tiny **Views N** left of bookmark for **`profiles.role = admin`** only. Migration **`20260809120000_lounge_feed_post_views.sql`** (test applied with this ship; prod when Ryan asks).
 - 2026-08-09: **Coffee & Covers “Other Soccer” label:** lower-tier soccer thread uses **Other Soccer** only when a prior soccer Best Lines part already exists (Top / More Soccer / Soccer); alone it labels **Soccer**. Redeploy **`lounge-odds-poll`** (bundles shared Coffee helpers).
 - 2026-08-09: **Lounge non-video posting progress:** thin **2px** bar at top of feed composer while caption/image/GIF posts publish (cyan dark / blue light). Hard-gated with **`loungeSubmissionSnapshotIncludesVideo`** ... video prep/inline progress untouched. State: **`loungeComposerPostProgress`**.
 - 2026-08-08: **`/patches` merch wall:** crawlable **`edgetilt.com/patches`** … 3.5&quot; rectangular EDGE patch design hangs (`public/patches/*.webp`), Vercel rewrite + sitemap. Brand mark **EDGE** + domain **edgetilt.com**.

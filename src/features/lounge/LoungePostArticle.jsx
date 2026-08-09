@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { feedPostDisplayCaption, isQuoteRepostPost, quoteRepostOriginalUnavailable } from '../../utils/communityFeedPost'
 import { isLoungeFanOnlyPostLocked } from '../../utils/loungeFanOnlyPost.js'
 import { displayPostCategoryPills } from '../../utils/loungePostCategoryPills.js'
@@ -18,6 +18,7 @@ import LoungeFanOnlySubscribeCta from './LoungeFanOnlySubscribeCta.jsx'
 import LoungeFanOnlyLockedPostInset from './LoungeFanOnlyLockedPostInset.jsx'
 import LoungeQuoteRepostEmbeddedOriginal from './LoungeQuoteRepostEmbeddedOriginal.jsx'
 import { loungePostIsThreadRoot, loungePostThreadPartCount } from '../../utils/loungePostThreadApi.js'
+import { useLoungeFeedPostViewTracking } from './useLoungeFeedPostViewTracking.js'
 import {
   LOUNGE_FEED_META_HANDLE_TIME_CLASS,
   LOUNGE_FEED_AVATAR_CLASS,
@@ -65,6 +66,10 @@ function LoungePostArticle({
   openProfileGateIfNeeded,
   onAvatarClick,
   loungeViewerIsStaff,
+  /** Admin-only Views count beside bookmark. */
+  loungeViewerIsAdmin = false,
+  supabaseClient = null,
+  onPostViewCounted,
   setLoungePostPinned,
   loungePinBusy,
   setLoungeProfilePostPinned,
@@ -179,6 +184,20 @@ function LoungePostArticle({
   // The "display" entity (what we show as the card's main content / author)
   const displayPost = isPlainPostRepost ? post.reposted_post : post
   const rc = isCommentRepost ? post.reposted_comment : null
+
+  const articleRootRef = useRef(null)
+  const viewTrackedPostId = isCommentRepost ? null : displayPost?.id
+  const viewTrackedAuthorId = isCommentRepost ? null : displayPost?.user_id
+  useLoungeFeedPostViewTracking({
+    enabled: Boolean(viewerUserId && supabaseClient && viewTrackedPostId && !loungeReadOnly),
+    postId: viewTrackedPostId,
+    authorUserId: viewTrackedAuthorId,
+    viewerUserId,
+    supabaseClient,
+    targetRef: articleRootRef,
+    scrollRootRef: repostMenuScrollRootRef,
+    onViewCounted: onPostViewCounted,
+  })
 
   const renderFanSubscribeCta = (entity, { className } = {}) => {
     if (!entity || !isLoungeFanOnlyPostLocked(entity, fanLockCtx)) return null
@@ -398,7 +417,10 @@ function LoungePostArticle({
   )
 
   return (
-    <div className={`flex items-start gap-3 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
+    <div
+      ref={articleRootRef}
+      className={`flex items-start gap-3 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}
+    >
       {/* Avatar - always the *display* entity's author (original author / comment author) */}
       <button
         type="button"
@@ -817,6 +839,7 @@ function LoungePostArticle({
             requireLoungeAuth={requireLoungeAuth}
             openProfileGateIfNeeded={openProfileGateIfNeeded}
             repostMenuScrollRootRef={repostMenuScrollRootRef}
+            showAdminViewCount={loungeViewerIsAdmin}
           />
         )}
       </div>

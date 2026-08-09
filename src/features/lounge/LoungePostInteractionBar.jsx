@@ -7,6 +7,7 @@ import {
   LOUNGE_COMMENT_BUBBLE_D,
   LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS,
 } from './loungeCommentGlyph.js'
+import { formatCompactStatCount, fullStatCountTitle } from '../../utils/formatCompactStatCount.js'
 
 /**
  * Comment / repost / like / bookmark row - same behavior as the feed post row or post-detail sheet.
@@ -51,6 +52,8 @@ export default function LoungePostInteractionBar({
   /** Extra classes on the outer grid wrapper (e.g. `w-full` in lightbox). */
   rootClassName = '',
   onShare,
+  /** Admin-only: tiny Views count immediately left of bookmark (feed posts). */
+  showAdminViewCount = false,
 }) {
   const idleUi = {
     liked: false,
@@ -77,9 +80,11 @@ export default function LoungePostInteractionBar({
   const baseComments = typeof post.comment_count === 'number' ? post.comment_count : 0
   const baseLikes = typeof post.like_count === 'number' ? post.like_count : 0
   const baseReposts = typeof post.repost_count === 'number' ? post.repost_count : 0
+  const baseViews = typeof post.view_count === 'number' ? post.view_count : 0
   const commentCount = baseComments
   const likeCount = baseLikes
   const repostCount = baseReposts
+  const viewCount = Math.max(0, Math.trunc(baseViews))
   const ro = loungeReadOnly
   const overlayIdle = pillOverlay && !ro
   const commentClass = ro
@@ -124,6 +129,7 @@ export default function LoungePostInteractionBar({
 
   const isFeed = variant === 'feed'
   const isComment = variant === 'comment'
+  const showViews = Boolean(showAdminViewCount) && isFeed
   /** Feed + comment-thread rows: tighter stat padding; sheet = post detail / lightbox. */
   const statsCompact = isFeed || isComment
   /** `justify-between` flex basis = glyph width only (px), so inter-icon gaps match (L − Σw) / 3. */
@@ -654,19 +660,31 @@ export default function LoungePostInteractionBar({
       />
 
       <div
-        className="relative flex shrink-0 flex-none items-center justify-center self-center overflow-visible"
+        className="relative flex shrink-0 flex-none items-center justify-end self-center overflow-visible gap-1"
         style={
           pillOverlay
             ? { minHeight: railMinH }
-            : { width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }
+            : showViews
+              ? { minHeight: railMinH }
+              : { width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }
         }
       >
+        {showViews ? (
+          <span
+            className="whitespace-nowrap text-[10px] font-medium leading-none tracking-wide text-zinc-500"
+            title={fullStatCountTitle(viewCount) || `${viewCount.toLocaleString()} views`}
+            data-lounge-admin-view-count=""
+          >
+            Views {formatCompactStatCount(viewCount)}
+          </span>
+        ) : null}
         {ro ? (
           <button
             type="button"
             onClick={requireLoungeAuth}
             className={`${statBookmarkCls} box-border flex shrink-0 items-center justify-center text-zinc-600`}
             title="Sign in to save posts"
+            style={{ width: slotBookmark, minWidth: slotBookmark }}
           >
             <svg className={`block shrink-0 ${iconSzBookmark} ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
               {bookmarkGlyphFilled ? (
@@ -693,6 +711,7 @@ export default function LoungePostInteractionBar({
             }}
             className={`${statBookmarkCls} box-border flex shrink-0 items-center justify-center`}
             title={isBookmarked ? 'Remove bookmark' : 'Save post'}
+            style={{ width: slotBookmark, minWidth: slotBookmark }}
           >
             <svg className={`block shrink-0 ${iconSzBookmark} ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
               {bookmarkGlyphFilled ? (

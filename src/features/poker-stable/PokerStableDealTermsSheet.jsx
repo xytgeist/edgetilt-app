@@ -217,6 +217,14 @@ export default function PokerStableDealTermsSheet({
       status: 'proposed',
     })) || []
 
+  // Backers only see their own slice(s). Player (stakee) still sees the full syndicate.
+  const visibleSlices = isStakee
+    ? slices
+    : (slices || []).filter((s) => s.staker_user_id === userId)
+  const visibleProposedSlices = isStakee
+    ? proposedSlices
+    : proposedSlices.filter((s) => (s.staker_user_id || s.stakerUserId) === userId)
+
   const viewerPendingSlice = slices.find(
     (s) => s.staker_user_id === userId && s.status === 'pending',
   )
@@ -322,11 +330,11 @@ export default function PokerStableDealTermsSheet({
               Current terms
             </h4>
             <div className="mb-4 space-y-2">
-              {slices.map((slice, idx) => (
+              {visibleSlices.map((slice, idx) => (
                 <TermsSliceCard
                   key={slice.id || `cur-${idx}`}
                   slice={slice}
-                  idx={idx}
+                  idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
                   profilesById={profilesById}
                 />
               ))}
@@ -352,11 +360,11 @@ export default function PokerStableDealTermsSheet({
               </>
             ) : null}
             <div className="mb-4 space-y-2">
-              {proposedSlices.map((slice, idx) => (
+              {visibleProposedSlices.map((slice, idx) => (
                 <TermsSliceCard
                   key={`prop-${idx}`}
                   slice={slice}
-                  idx={idx}
+                  idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
                   profilesById={profilesById}
                   proposed
                 />
@@ -365,11 +373,11 @@ export default function PokerStableDealTermsSheet({
           </>
         ) : (
           <div className="mb-4 space-y-2">
-            {slices.map((slice, idx) => (
+            {visibleSlices.map((slice, idx) => (
               <TermsSliceCard
                 key={slice.id || idx}
                 slice={slice}
-                idx={idx}
+                idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
                 profilesById={profilesById}
                 showReassign={
                   canReassignGuestSlice({ deal, slice, userId, hasProposal }) &&

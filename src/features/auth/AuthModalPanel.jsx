@@ -56,6 +56,7 @@ export default function AuthModalPanel({
   /** Which signup control triggered the legal nudge: `google` | `create`. */
   const [legalNudgeSource, setLegalNudgeSource] = useState(null)
   const legalCheckboxRef = useRef(null)
+  const signupMessageRef = useRef(null)
 
   useEffect(() => {
     if (!legalNudgeSource) return
@@ -69,6 +70,16 @@ export default function AuthModalPanel({
   useEffect(() => {
     if (authTab !== 'join') setLegalNudgeSource(null)
   }, [authTab])
+
+  /** After Create account, success lives at the top ... scroll the sheet so it is not below the fold. */
+  useEffect(() => {
+    if (!signupMessage) return
+    const modal = document.querySelector('[data-auth-modal]')
+    if (modal instanceof HTMLElement) {
+      modal.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    signupMessageRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [signupMessage])
 
   const requireLegalAcceptance = (source) => {
     if (acceptedLegal) return false
@@ -176,6 +187,16 @@ export default function AuthModalPanel({
 
   return (
     <div className="space-y-4">
+      {signupMessage ? (
+        <div
+          ref={signupMessageRef}
+          data-auth-signup-message
+          role="status"
+          className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed"
+        >
+          {signupMessage}
+        </div>
+      ) : null}
       {verificationSuccess ? (
         <div className="p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm sm:text-base font-medium leading-relaxed">
           ✅ Account verified - have fun!
@@ -280,11 +301,6 @@ export default function AuthModalPanel({
           {signupError ? (
             <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
               {signupError}
-            </div>
-          ) : null}
-          {signupMessage ? (
-            <div className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed">
-              {signupMessage}
             </div>
           ) : null}
           {legalNudgeSource === 'create' ? <LegalAcceptanceNudge /> : null}

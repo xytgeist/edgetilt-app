@@ -832,7 +832,7 @@ export default function PokerStableScreen({
             <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Counter-proposals
             </h2>
-            <div className="space-y-2">
+            <div className={`space-y-2 ${highlightPendingOffer ? 'relative z-[1] pt-2' : ''}`}>
               {counterProposals.map((deal) => (
                 <div
                   key={deal.id}
@@ -886,6 +886,8 @@ export default function PokerStableScreen({
           <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
             Active horses
           </h2>
+          {/* pt keeps first-arrival pulse glow above the card from sitting under the label */}
+          <div className={highlightPendingOffer ? 'relative z-[1] pt-2' : undefined}>
           {loading ? (
             <p className="py-10 text-center text-sm text-zinc-500">Loading…</p>
           ) : activeDeals.length === 0 ? (
@@ -929,6 +931,7 @@ export default function PokerStableScreen({
               highlightPendingInvite={highlightPendingOffer}
             />
           )}
+          </div>
         </section>
 
         {historyDeals.length > 0 ? (

@@ -1,14 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   fetchPokerPendingOfferAttention,
+  hasUnaackedAttentionIds,
+  mergeAttentionAckIds,
   POKER_OFFER_ATTENTION_CHANGED_EVENT,
+  prunePokerOfferAttentionAcks,
+  readPokerOfferAttentionAcks,
+  writePokerOfferAttentionAcks,
 } from '../poker-stable/pokerPendingOfferAttention.js'
 
 /**
  * Shell-level pending Accept/Decline signals + breadcrumb dismiss / first-open pulse.
  *
  * Dots clear per step as the viewer opens hamburger → Poker → Bankroll/Stable.
- * Opening a tool clears that tool's dot even if the offer is still pending.
+ * Acks persist in localStorage per offer id so a reopen does not resurrect a
+ * step the user already tapped (even if they never Accept/Decline).
+ *
+ * Opening Bankroll/Stable also acks hamburger + poker for those offer ids and
+ * pulses the offer card once (first arrival only).
  *
  * @param {{
  *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null,
@@ -21,30 +30,43 @@ export function usePokerPendingOfferAttention({
   userId = null,
   enabled = true,
 } = {}) {
-  const [bankroll, setBankroll] = useState(false)
-  const [stable, setStable] = useState(false)
-  const [dismissedHamburger, setDismissedHamburger] = useState(false)
-  const [dismissedPoker, setDismissedPoker] = useState(false)
-  const [dismissedBankroll, setDismissedBankroll] = useState(false)
-  const [dismissedStable, setDismissedStable] = useState(false)
+  const [bankrollIds, setBankrollIds] = useState(/** @type {string[]} */ ([]))
+  const [stableIds, setStableIds] = useState(/** @type {string[]} */ ([]))
+  const [acks, setAcks] = useState(() => readPokerOfferAttentionAcks(userId))
   const [pulseBankrollOffer, setPulseBankrollOffer] = useState(false)
   const [pulseStableOffer, setPulseStableOffer] = useState(false)
 
-  const prevBankrollRef = useRef(false)
-  const prevStableRef = useRef(false)
-  const pulsedBankrollRef = useRef(false)
-  const pulsedStableRef = useRef(false)
+  useEffect(() => {
+    setAcks(readPokerOfferAttentionAcks(userId))
+    setPulseBankrollOffer(false)
+    setPulseStableOffer(false)
+  }, [userId])
+
+  const commitAcks = useCallback(
+    (updater) => {
+      setAcks((prev) => {
+        const next = typeof updater === 'function' ? updater(prev) : updater
+        writePokerOfferAttentionAcks(userId, next)
+        return next
+      })
+    },
+    [userId],
+  )
 
   const refresh = useCallback(async () => {
     if (!enabled || !supabaseClient || !userId) {
-      setBankroll(false)
-      setStable(false)
+      setBankrollIds([])
+      setStableIds([])
       return
     }
     const next = await fetchPokerPendingOfferAttention(supabaseClient, userId)
-    setBankroll(Boolean(next.bankroll))
-    setStable(Boolean(next.stable))
-  }, [enabled, supabaseClient, userId])
+    const nextBankroll = next.bankrollIds || []
+    const nextStable = next.stableIds || []
+    const pendingIds = next.pendingIds || [...nextBankroll, ...nextStable]
+    setBankrollIds(nextBankroll)
+    setStableIds(nextStable)
+    commitAcks((prev) => prunePokerOfferAttentionAcks(prev, pendingIds))
+  }, [commitAcks, enabled, supabaseClient, userId])
 
   useEffect(() => {
     void refresh()
@@ -66,89 +88,59 @@ export function usePokerPendingOfferAttention({
     }
   }, [enabled, refresh])
 
-  // New pending attention reopens the breadcrumb trail + allows pulse again.
-  useEffect(() => {
-    if (bankroll && !prevBankrollRef.current) {
-      setDismissedHamburger(false)
-      setDismissedPoker(false)
-      setDismissedBankroll(false)
-      pulsedBankrollRef.current = false
-      setPulseBankrollOffer(false)
-    }
-    if (!bankroll) {
-      setDismissedBankroll(false)
-      pulsedBankrollRef.current = false
-      setPulseBankrollOffer(false)
-    }
-    prevBankrollRef.current = bankroll
-  }, [bankroll])
-
-  useEffect(() => {
-    if (stable && !prevStableRef.current) {
-      setDismissedHamburger(false)
-      setDismissedPoker(false)
-      setDismissedStable(false)
-      pulsedStableRef.current = false
-      setPulseStableOffer(false)
-    }
-    if (!stable) {
-      setDismissedStable(false)
-      pulsedStableRef.current = false
-      setPulseStableOffer(false)
-    }
-    prevStableRef.current = stable
-  }, [stable])
-
-  useEffect(() => {
-    if (!userId) {
-      setDismissedHamburger(false)
-      setDismissedPoker(false)
-      setDismissedBankroll(false)
-      setDismissedStable(false)
-      setPulseBankrollOffer(false)
-      setPulseStableOffer(false)
-      pulsedBankrollRef.current = false
-      pulsedStableRef.current = false
-      prevBankrollRef.current = false
-      prevStableRef.current = false
-    }
-  }, [userId])
-
-  const pokerRaw = bankroll || stable
+  const pendingIds = [...bankrollIds, ...stableIds]
 
   const acknowledgeHamburger = useCallback(() => {
-    if (!pokerRaw) return
-    setDismissedHamburger(true)
-  }, [pokerRaw])
+    if (!pendingIds.length) return
+    commitAcks((prev) => ({
+      ...prev,
+      hamburger: mergeAttentionAckIds(prev.hamburger, pendingIds),
+    }))
+  }, [commitAcks, pendingIds])
 
   const acknowledgePoker = useCallback(() => {
-    if (!pokerRaw) return
-    setDismissedPoker(true)
-  }, [pokerRaw])
+    if (!pendingIds.length) return
+    commitAcks((prev) => ({
+      ...prev,
+      poker: mergeAttentionAckIds(prev.poker, pendingIds),
+    }))
+  }, [commitAcks, pendingIds])
 
   const acknowledgeBankrollTool = useCallback(() => {
-    if (!bankroll) {
-      setDismissedBankroll(true)
-      return
-    }
-    setDismissedBankroll(true)
-    if (!pulsedBankrollRef.current) {
-      pulsedBankrollRef.current = true
-      setPulseBankrollOffer(true)
-    }
-  }, [bankroll])
+    if (!bankrollIds.length) return
+    let shouldPulse = false
+    commitAcks((prev) => {
+      shouldPulse = hasUnaackedAttentionIds(bankrollIds, prev.pulsedBankroll)
+      return {
+        ...prev,
+        hamburger: mergeAttentionAckIds(prev.hamburger, bankrollIds),
+        poker: mergeAttentionAckIds(prev.poker, bankrollIds),
+        bankroll: mergeAttentionAckIds(prev.bankroll, bankrollIds),
+        pulsedBankroll: shouldPulse
+          ? mergeAttentionAckIds(prev.pulsedBankroll, bankrollIds)
+          : prev.pulsedBankroll,
+      }
+    })
+    if (shouldPulse) setPulseBankrollOffer(true)
+  }, [bankrollIds, commitAcks])
 
   const acknowledgeStableTool = useCallback(() => {
-    if (!stable) {
-      setDismissedStable(true)
-      return
-    }
-    setDismissedStable(true)
-    if (!pulsedStableRef.current) {
-      pulsedStableRef.current = true
-      setPulseStableOffer(true)
-    }
-  }, [stable])
+    if (!stableIds.length) return
+    let shouldPulse = false
+    commitAcks((prev) => {
+      shouldPulse = hasUnaackedAttentionIds(stableIds, prev.pulsedStable)
+      return {
+        ...prev,
+        hamburger: mergeAttentionAckIds(prev.hamburger, stableIds),
+        poker: mergeAttentionAckIds(prev.poker, stableIds),
+        stable: mergeAttentionAckIds(prev.stable, stableIds),
+        pulsedStable: shouldPulse
+          ? mergeAttentionAckIds(prev.pulsedStable, stableIds)
+          : prev.pulsedStable,
+      }
+    })
+    if (shouldPulse) setPulseStableOffer(true)
+  }, [commitAcks, stableIds])
 
   const clearBankrollOfferPulse = useCallback(() => {
     setPulseBankrollOffer(false)
@@ -159,10 +151,10 @@ export function usePokerPendingOfferAttention({
   }, [])
 
   return {
-    bankrollAttention: bankroll && !dismissedBankroll,
-    stableAttention: stable && !dismissedStable,
-    pokerAttention: pokerRaw && !dismissedPoker,
-    hamburgerAttention: pokerRaw && !dismissedHamburger,
+    bankrollAttention: hasUnaackedAttentionIds(bankrollIds, acks.bankroll),
+    stableAttention: hasUnaackedAttentionIds(stableIds, acks.stable),
+    pokerAttention: hasUnaackedAttentionIds(pendingIds, acks.poker),
+    hamburgerAttention: hasUnaackedAttentionIds(pendingIds, acks.hamburger),
     pulseBankrollOffer,
     pulseStableOffer,
     acknowledgeHamburger,

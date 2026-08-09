@@ -957,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-08-09: **Hamburger → Slots/Poker ghost-click fix:** after menu nav away from Lounge, arm document pointer capture (~650ms) so a synthesized tap cannot hit the portaled dock Home and bounce back to Lounge (`shellNavGhostClickGuard.js`).
 - 2026-08-09: **Chat shortcut removed:** no title-bar pin / in-screen Shortcut for Chat (dock + other entry points are enough).
+- 2026-08-09: **Poker attention breadcrumbs persist per offer:** hamburger / Poker / Bankroll|Stable dots ack in **`localStorage`** (`edgetilt.pokerOfferAttentionAck.v1`) by offer id … reopen does not resurrect a step already tapped; Accept/Decline not required. Opening the tool also acks parent steps + first-arrival pulse once. Pulse glow no longer uses `transform` (was clipping under Active horses).
 - 2026-08-09: **Android reply composer typing:** same leftover as feed fix **`66e85772`** … reply / post-edit / quote / thread composers still wired `onKeyUp` + `onInput` to mention/cashtag `onCursorMove`, doubling SocialFeed work per key. Dropped duplicate `onKeyUp` (idle clear no-ops already shared via hooks).
 - 2026-08-09: **Slots hub pins:** same pin UX as Poker on Guides / Bankroll / Calcs / Calendar / Logbook hub cards; removed per-tool-screen Shortcut switches. Title-bar icons tint to hub colors.
 - 2026-08-09: **Poker Bankroll shortcut:** same hub pin as Stable (`poker-bankroll` quick-link … Club icon, mint tint). Pins to title bar from Poker tools card.

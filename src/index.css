@@ -8420,20 +8420,21 @@ html.light [data-auth-modal] [data-auth-legal-nudge] {
   animation: auth-legal-checkbox-pulse 1.35s ease-in-out infinite;
 }
 
-/* Poker pending-offer breadcrumb: pulse the Accept/Decline target once on first arrival */
+/* Poker pending-offer breadcrumb: pulse the Accept/Decline target once on first arrival.
+   Shadow-only (no transform) so the glow is not clipped under section labels / carousels. */
 @keyframes poker-offer-attention-pulse {
   0%,
   100% {
     box-shadow: 0 0 0 0 rgba(253, 38, 45, 0.45);
-    transform: scale(1);
   }
   50% {
     box-shadow: 0 0 0 8px rgba(253, 38, 45, 0.08);
-    transform: scale(1.015);
   }
 }
 
 [data-poker-offer-attention-pulse='1'] {
+  position: relative;
+  z-index: 2;
   animation: poker-offer-attention-pulse 1.2s ease-in-out 3;
 }
 
@@ -8445,11 +8446,9 @@ html.light [data-poker-offer-attention-pulse='1'] {
   0%,
   100% {
     box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.35);
-    transform: scale(1);
   }
   50% {
     box-shadow: 0 0 0 8px rgba(225, 29, 72, 0.1);
-    transform: scale(1.015);
   }
 }
 

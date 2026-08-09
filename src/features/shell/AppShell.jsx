@@ -97,8 +97,10 @@ import {
 import { viewerNeedsDealCommitSync } from '../poker-stable/pokerStableApi.js'
 import { queueLoungeActivityMarkRead } from '../../utils/loungeActivityMarkReadQueue.js'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import AttentionDot from '../../components/AttentionDot.jsx'
 import TitleBarQuickLinks from '../../components/TitleBarQuickLinks.jsx'
 import TitleBarCloseButton from '../../components/TitleBarCloseButton.jsx'
+import { usePokerPendingOfferAttention } from '../poker/usePokerPendingOfferAttention.js'
 import {
   canOpenCalculator,
   calculatorsTabFullyGated,
@@ -402,6 +404,15 @@ export default function AppShell({
   const starterUnlockedCalculatorKeys = useStarterCalculatorUnlocks(supabaseClient, {
     enabled: browseMode === 'member' && hasSlotsEdgeStarter && !hasActiveSubscription && !isStaff,
     starterUnlockedGuideSlugs: starterWeeklyDropGuideSlugs,
+  })
+  const {
+    bankrollAttention: pokerBankrollAttention,
+    stableAttention: pokerStableAttention,
+    pokerAttention: pokerMenuAttention,
+  } = usePokerPendingOfferAttention({
+    supabaseClient,
+    userId: chatCallViewerUserId,
+    enabled: browseMode === 'member' && Boolean(chatCallViewerUserId),
   })
   const [activeCalculator, setActiveCalculator] = useState(null) // 'phoenix' | 'buffalo-link' | 'stackup' | 'mhb' | null
   const [communityPosts, setCommunityPosts] = useState([])
@@ -1812,11 +1823,18 @@ export default function AppShell({
         tab === item.id ||
         (item.id === 'slots' && isSlotsAreaTab(tab)) ||
         (item.id === 'poker' && isPokerAreaTab(tab))
+      const showPokerDot = item.id === 'poker' && pokerMenuAttention
       return (
         <button
           key={item.id}
           type="button"
-          title={showLock ? 'Subscribe to unlock Slots Edge' : undefined}
+          title={
+            showLock
+              ? 'Subscribe to unlock Slots Edge'
+              : showPokerDot
+                ? 'Poker · pending offer needs attention'
+                : undefined
+          }
           onClick={() => {
             if (browseMode === 'anonymous' && item.id !== 'home') {
               onRequireAuth?.()
@@ -1849,10 +1867,11 @@ export default function AppShell({
               : 'text-zinc-300 hover:bg-zinc-900'
           }`}
         >
-          <span className="flex min-w-0 items-center gap-2">
+          <span className="relative flex min-w-0 items-center gap-2 pr-2">
             <span aria-hidden>{item.icon}</span>
             <span className="min-w-0 flex-1 font-semibold truncate">{item.label}</span>
             {showLock ? <NavLockGlyph className="h-3.5 w-3.5 shrink-0 text-amber-400/95" /> : null}
+            {showPokerDot ? <AttentionDot className="right-0 top-1/2 -translate-y-1/2" /> : null}
           </span>
         </button>
       )
@@ -1885,14 +1904,23 @@ export default function AppShell({
         type="button"
         data-title-bar-menu-btn
         onClick={() => setMenuOpen((v) => !v)}
-        aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-label={
+          menuOpen
+            ? 'Close navigation menu'
+            : pokerMenuAttention
+              ? 'Open navigation menu · pending poker offer'
+              : 'Open navigation menu'
+        }
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        className="lounge-title-nav-btn grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+        className="lounge-title-nav-btn relative grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
       >
         <span aria-hidden className="block leading-none text-xl -translate-y-px">
           {menuOpen ? '×' : '☰'}
         </span>
+        {pokerMenuAttention && !menuOpen ? (
+          <AttentionDot className="-right-0.5 -top-0.5 ring-zinc-800" />
+        ) : null}
       </button>
       </div>
       {slotsToolTitleBarCloseVisible ? (
@@ -2428,6 +2456,8 @@ export default function AppShell({
           browseMode={browseMode}
           onOpenAuth={() => onOpenAuth?.('login')}
           onOpenTool={openPokerTool}
+          showBankrollAttentionDot={pokerBankrollAttention}
+          showStableAttentionDot={pokerStableAttention}
         />
       )
     } else if (tab === 'calculators') {

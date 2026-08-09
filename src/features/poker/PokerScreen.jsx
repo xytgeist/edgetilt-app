@@ -1,4 +1,5 @@
 import { Spade, Users } from 'lucide-react'
+import AttentionDot from '../../components/AttentionDot.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 
 const POKER_TOOLS = [
@@ -26,6 +27,8 @@ export default function PokerScreen({
   browseMode = 'member',
   onOpenAuth,
   onOpenTool,
+  showBankrollAttentionDot = false,
+  showStableAttentionDot = false,
 }) {
   const handleOpen = (tool) => {
     if (browseMode !== 'member') {
@@ -49,6 +52,9 @@ export default function PokerScreen({
         {POKER_TOOLS.map((tool) => {
           const { Icon, color } = tool
           const comingSoon = Boolean(tool.comingSoon)
+          const showAttention =
+            (tool.id === 'poker-bankroll' && showBankrollAttentionDot) ||
+            (tool.id === 'poker-stable' && showStableAttentionDot)
           const cardClass =
             'relative flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-4 text-left'
           const body = (
@@ -79,6 +85,9 @@ export default function PokerScreen({
                   </span>
                 </span>
               ) : null}
+              {showAttention ? (
+                <AttentionDot className="right-3 top-3 ring-zinc-900" />
+              ) : null}
             </>
           )
           if (comingSoon) {
@@ -99,6 +108,7 @@ export default function PokerScreen({
               key={tool.id}
               type="button"
               data-hub-tool-card
+              title={showAttention ? `${tool.label} · pending offer needs attention` : undefined}
               onClick={() => handleOpen(tool)}
               className={`${cardClass} touch-manipulation active:scale-[0.99] transition-transform`}
             >

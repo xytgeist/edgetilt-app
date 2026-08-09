@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Poker pending-offer attention dots:** red dot (no count) breadcrumb … hamburger → Poker menu → Bankroll Manager and/or Stable Manager hub card when that surface has an Accept/Decline offer. Probe: **`usePokerPendingOfferAttention`**; clears on accept/decline via **`poker-offer-attention-changed`**.
 - 2026-08-09: **Guest backer claim CTA dock:** `/poker-stable-claim` keeps terms in the scroll body; **Create account or sign in** (and signed-in **Try again**) sit in a sticky bottom bar above the browser chrome / safe-area (`data-poker-stable-claim-cta`).
 - 2026-08-09: **Lounge admin Views count:** unique signed-in impressions (`lounge_feed_post_views` + `community_feed_posts.view_count`, RPC **`lounge_record_feed_post_view`**). Client dwell/IO tracking for all signed-in viewers; tiny **Views N** left of bookmark for **`profiles.role = admin`** only. Migration **`20260809120000_lounge_feed_post_views.sql`** applied on **test + prod**.
 - 2026-08-09: **Coffee & Covers “Other Soccer” label:** lower-tier soccer thread uses **Other Soccer** only when a prior soccer Best Lines part already exists (Top / More Soccer / Soccer); alone it labels **Soccer**. Redeploy **`lounge-odds-poll`** (bundles shared Coffee helpers).

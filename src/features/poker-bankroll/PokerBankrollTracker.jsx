@@ -26,6 +26,7 @@ import PokerLocationsTab from './PokerLocationsTab.jsx'
 import PokerSessionDetailSheet from './PokerSessionDetailSheet.jsx'
 import PokerStakeArchiveDetailModal from './PokerStakeArchiveDetailModal.jsx'
 import { tryAutoLinkGuestStakeeOffers } from './pokerGuestStakeeAutoLink.js'
+import { notifyPokerOfferAttentionChanged } from '../poker-stable/pokerPendingOfferAttention.js'
 import PokerStakeOfferOnboardingModal from './PokerStakeOfferOnboardingModal.jsx'
 import PokerStakeeClosedStakeSheet from './PokerStakeeClosedStakeSheet.jsx'
 import PokerBankrollCarouselCoachModal from './PokerBankrollCarouselCoachModal.jsx'
@@ -1591,6 +1592,7 @@ export default function PokerBankrollTracker({
       if (error) throw error
       showStakeNotice('Stake accepted ... your backing bankroll is live.')
       triggerTapHapticLight()
+      notifyPokerOfferAttentionChanged()
       await loadData()
     } catch (e) {
       setError(e?.message || 'Could not accept stake.')
@@ -1611,6 +1613,7 @@ export default function PokerBankrollTracker({
       if (error) throw error
       if (bankrollScope === dealId) setBankrollScope('personal')
       showStakeNotice('Stake declined.')
+      notifyPokerOfferAttentionChanged()
       await loadData()
     } catch (e) {
       setError(e?.message || 'Could not decline stake.')
@@ -1712,6 +1715,7 @@ export default function PokerBankrollTracker({
       if (error) throw error
       setStakeOfferOnboardingOpen(false)
       triggerTapHapticLight()
+      notifyPokerOfferAttentionChanged()
       await loadData()
       finishStakeOnboardingFlow('accepted', dealId)
     } catch (e) {
@@ -1730,6 +1734,7 @@ export default function PokerBankrollTracker({
       if (error) throw error
       setStakeOfferOnboardingOpen(false)
       if (bankrollScope === dealId) setBankrollScope('personal')
+      notifyPokerOfferAttentionChanged()
       await loadData()
       finishStakeOnboardingFlow('declined', dealId)
     } catch (e) {

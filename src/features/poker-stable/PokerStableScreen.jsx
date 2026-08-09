@@ -61,6 +61,7 @@ import {
   stakerAcceptCounterTerms,
   stakerDeclineCounterTerms,
 } from './pokerStableApi.js'
+import { notifyPokerOfferAttentionChanged } from './pokerPendingOfferAttention.js'
 import { dealTypeLabel } from './pokerStableMath.js'
 import {
   archivedStakeOutcomeBadgeClass,
@@ -513,6 +514,7 @@ export default function PokerStableScreen({
       const { error: err } = await stakerAcceptCounterTerms(supabaseClient, dealId)
       if (err) throw err
       triggerTapHapticLight()
+      notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
       setError(e?.message || 'Could not accept counter-proposal.')
@@ -533,6 +535,7 @@ export default function PokerStableScreen({
     try {
       const { error: err } = await stakerDeclineCounterTerms(supabaseClient, dealId)
       if (err) throw err
+      notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
       setError(e?.message || 'Could not decline counter-proposal.')
@@ -549,6 +552,7 @@ export default function PokerStableScreen({
       const { error: err } = await acceptSliceAsStaker(supabaseClient, sliceId, userId)
       if (err) throw err
       triggerTapHapticLight()
+      notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
       setError(e?.message || 'Could not accept slice.')
@@ -564,6 +568,7 @@ export default function PokerStableScreen({
     try {
       const { error: err } = await declineSliceAsStaker(supabaseClient, sliceId, userId)
       if (err) throw err
+      notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
       setError(e?.message || 'Could not decline slice.')

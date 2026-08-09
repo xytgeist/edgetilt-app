@@ -2134,6 +2134,13 @@ html.light .lounge-title-nav-menu-item--active {
   color: #18181b !important;
 }
 
+/* Poker pending-offer attention dots (hamburger → Poker → tool hub) */
+html.light .lounge-title-nav-btn [data-attention-dot],
+html.light .lounge-title-nav-menu [data-attention-dot],
+html.light [data-hub-tool-card] [data-attention-dot] {
+  --tw-ring-color: #ffffff;
+}
+
 /* Dock menu backdrop - minimal blur with subtle dark tint in light mode */
 html.light .lounge-dock-backdrop {
   background-color: transparent !important;

@@ -953,6 +953,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **First-time backer bankroll seed (test):** migration **`20260809130000`** on test ... empty / $0 backing bankroll with no other open stakes auto-seeds slice capital before hold/debit (Accept + Create Stake). Hero lands ~$0 liquid + stake MTM in portfolio, not −slice. Repair for prior negative rows with no Adjust history. Prod not applied yet.
 - 2026-08-09: **Backer Edit terms = own slice only:** from Review your backing slice → Edit terms, Propose stake terms shows only that backer’s slice (not co-backers). Submit merges other slices unchanged into `pending_terms_json`.
 - 2026-08-09: **Poker attention breadcrumb dismiss + pulse:** hamburger / Poker / Bankroll|Stable dots clear per step when that control is opened (Stable/Bankroll clear on open even without Accept/Decline). First arrival at the tool pulses the pending offer card (`data-poker-offer-attention-pulse`).
 - 2026-08-09: **Stake/backer offer onboarding CTA dock:** post-confirm **Review your backing slice / stake** sheets pin Decline | Accept (Accept on the right) + Edit/Offer terms in a sticky bottom bar above safe-area (`data-poker-stake-offer-cta`). Same pattern as guest claim page.

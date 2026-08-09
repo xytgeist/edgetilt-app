@@ -2341,20 +2341,9 @@ export default function SocialFeed({
     }
   }, [])
 
-  /**
-   * Header seam: text/image fast-lane only (never video... conflicts with prep / inline tile).
-   * Bottom HUD: video mediaPrep + non-compact uploads (threads, etc.).
-   */
-  const showLoungeHeaderPostingProgress = Boolean(
-    loungePostUploadBar?.compact && loungePostUploadBar.mode !== 'mediaPrep',
-  )
-  const showLoungeBottomUploadBar = Boolean(
-    loungePostUploadBar && !loungePostUploadBar.compact,
-  )
-
   /** Stable bottom inset for the dock FAB while the upload bar is visible (avoids collision feedback loops). */
   useLayoutEffect(() => {
-    if (!showLoungeBottomUploadBar) {
+    if (!loungePostUploadBar) {
       setLoungeUploadBarHeightPx(0)
       return undefined
     }
@@ -2376,7 +2365,7 @@ export default function SocialFeed({
       ro.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [showLoungeBottomUploadBar, loungePostUploadBar])
+  }, [loungePostUploadBar])
 
   useEffect(() => {
     const sync = () => setLoungeDockMenuLayout(readLoungeDockMenuLayout())
@@ -2721,8 +2710,7 @@ export default function SocialFeed({
       loungePostJobRunningRef.current ||
       loungeDetailCommentJobRunningRef.current ||
       loungeDetailEditJobRunningRef.current ||
-      loungeDetailCommentEditJobRunningRef.current ||
-      loungeFastLaneInFlightRef.current > 0
+      loungeDetailCommentEditJobRunningRef.current
     ) {
       return
     }
@@ -3755,17 +3743,10 @@ export default function SocialFeed({
           : typeof prev?.threadPartTotal === 'number' && prev.threadPartTotal > 1
             ? prev.threadPartTotal
             : threadTotal
-      const compact =
-        typeof barBase.compact === 'boolean'
-          ? barBase.compact
-          : typeof prev?.compact === 'boolean'
-            ? prev.compact
-            : threadPartTotal <= 1
       return {
         ...(prev || {}),
         ...barBase,
         postSubmission: true,
-        compact,
         threadPartTotal: threadPartTotal > 1 ? threadPartTotal : 0,
         threadPartPublished,
         progress: typeof info?.progress === 'number' ? info.progress : prev?.progress ?? 0,
@@ -11057,19 +11038,12 @@ export default function SocialFeed({
     } catch {
       // ignore
     }
-    try {
-      loungeDetailCommentEditAbortRef.current?.abort()
-    } catch {
-      // ignore
-    }
     loungePostAbortRef.current = null
     loungeDetailCommentAbortRef.current = null
     loungeDetailEditAbortRef.current = null
-    loungeDetailCommentEditAbortRef.current = null
     loungePostJobRunningRef.current = false
     loungeDetailCommentJobRunningRef.current = false
     loungeDetailEditJobRunningRef.current = false
-    loungeDetailCommentEditJobRunningRef.current = false
     loungePostUploadLastPhaseRef.current = ''
     setLoungeFeedPostEditPendingPostId(null)
     setLoungeDetailCommentEditPendingCommentId(null)
@@ -12503,75 +12477,29 @@ export default function SocialFeed({
       loungeFastLaneInFlightRef.current += 1
       bumpLoungeSubmitInFlight(1)
       const ac = new AbortController()
-      const useBottomUploadBar = loungeSubmissionShouldUseBottomUploadBar(snapshot)
-      const postingBarBase = {
-        mode: 'post',
-        postSubmission: true,
-        compact: true,
-        progress: 0,
-        status: 'Starting…',
-        detail: '',
-      }
-      if (type === 'post' || type === 'quote') {
-        loungePostSnapshotRef.current = snapshot
-        loungePostAbortRef.current = ac
-      } else if (type === 'comment') {
-        loungeDetailCommentSnapshotRef.current = snapshot
-        loungeDetailCommentAbortRef.current = ac
-      } else if (type === 'postEdit') {
-        loungeDetailEditAbortRef.current = ac
-      } else if (type === 'commentEdit') {
-        loungeDetailCommentEditAbortRef.current = ac
-      }
       try {
         if (type === 'commentEdit') {
-          if (useBottomUploadBar) {
-            setLoungePostUploadBar({ ...postingBarBase, editSave: true, status: 'Saving edit…' })
-          }
           const data = await executeLoungeCommentUpdate({
             supabaseClient,
             snapshot,
             signal: ac.signal,
-            onProgress: useBottomUploadBar
-              ? (info) =>
-                  applyLoungePostSubmitUploadProgress(info, snapshot, {
-                    mode: 'post',
-                    postSubmission: true,
-                    compact: true,
-                    editSave: true,
-                  })
-              : undefined,
           })
           loungeDetailCommentEditSnapshotRef.current = null
           patchLoungeCommentEditResult(data)
         } else if (type === 'postEdit') {
           loungeDetailEditJobRunningRef.current = true
-          if (useBottomUploadBar) {
-            setLoungePostUploadBar({ ...postingBarBase, editSave: true, status: 'Saving edit…' })
-          }
+          loungeDetailEditAbortRef.current = ac
           const data = await executeLoungeCommunityPostUpdate({
             supabaseClient,
             snapshot,
             signal: ac.signal,
             rateLimitMessage,
-            onProgress: useBottomUploadBar
-              ? (info) =>
-                  applyLoungePostSubmitUploadProgress(info, snapshot, {
-                    mode: 'post',
-                    postSubmission: true,
-                    compact: true,
-                    editSave: true,
-                  })
-              : undefined,
           })
           loungeDetailEditSnapshotRef.current = null
           patchLoungePostEditResult(data)
           persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
         } else if (type === 'comment') {
           const snap = snapshot
-          if (useBottomUploadBar) {
-            setLoungePostUploadBar({ ...postingBarBase, status: 'Sending reply…' })
-          }
           const data = await executeLoungeCommentSubmission({
             supabaseClient,
             snapshot: {
@@ -12586,14 +12514,6 @@ export default function SocialFeed({
               userId: snap.userId,
             },
             signal: ac.signal,
-            onProgress: useBottomUploadBar
-              ? (info) =>
-                  applyLoungePostSubmitUploadProgress(info, snap, {
-                    mode: 'post',
-                    postSubmission: true,
-                    compact: true,
-                  })
-              : undefined,
           })
           const pr = await supabaseClient
             .from('profiles')
@@ -12642,18 +12562,18 @@ export default function SocialFeed({
           }
         } else {
           const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
-          loungePostJobRunningRef.current = true
-          loungePostUploadLastPhaseRef.current = ''
-          if (useBottomUploadBar || threadTotal > 1) {
+          if (threadTotal > 1) {
+            loungePostSnapshotRef.current = snapshot
+            loungePostJobRunningRef.current = true
+            loungePostUploadLastPhaseRef.current = ''
             setLoungePostUploadBar({
-              mode: 'post',
+              mode: 'mediaPrep',
               postSubmission: true,
-              compact: threadTotal <= 1,
-              threadPartTotal: threadTotal > 1 ? threadTotal : 0,
+              threadPartTotal: threadTotal,
               threadPartPublished: 0,
-              threadPartActive: threadTotal > 1 ? 1 : 0,
+              threadPartActive: 1,
               progress: 0,
-              status: threadTotal > 1 ? 'Starting thread…' : 'Starting…',
+              status: 'Starting thread…',
               detail: '',
             })
           }
@@ -12663,12 +12583,11 @@ export default function SocialFeed({
             signal: ac.signal,
             rateLimitMessage,
             onProgress:
-              useBottomUploadBar || threadTotal > 1
+              threadTotal > 1
                 ? (info) =>
                     applyLoungePostSubmitUploadProgress(info, snapshot, {
-                      mode: 'post',
+                      mode: 'mediaPrep',
                       postSubmission: true,
-                      compact: threadTotal <= 1,
                     })
                 : undefined,
           })
@@ -12682,8 +12601,10 @@ export default function SocialFeed({
             await refreshLoungeDraftCount()
           }
           await loadCommunityFeed({ silent: true })
-          loungePostSnapshotRef.current = null
-          loungePostJobRunningRef.current = false
+          if (threadTotal > 1) {
+            loungePostSnapshotRef.current = null
+            loungePostJobRunningRef.current = false
+          }
           const quoteOrigPostId = String(snapshot.quoteRepostOfPostId || '').trim()
           const quoteOrigCommentId = String(snapshot.quoteRepostOfCommentId || '').trim()
           if (quoteOrigPostId) {
@@ -12730,26 +12651,12 @@ export default function SocialFeed({
           deferOrShowFastLaneFailure(failKind, snapshot, 'Publishing', msg)
         }
       } finally {
-        if (type === 'post' || type === 'quote') {
-          if (loungePostAbortRef.current === ac) loungePostAbortRef.current = null
-          loungePostJobRunningRef.current = false
-          if (loungePostSnapshotRef.current === snapshot) loungePostSnapshotRef.current = null
-        }
-        if (type === 'comment') {
-          if (loungeDetailCommentAbortRef.current === ac) loungeDetailCommentAbortRef.current = null
-          if (loungeDetailCommentSnapshotRef.current === snapshot) {
-            loungeDetailCommentSnapshotRef.current = null
-          }
-        }
         if (type === 'postEdit') {
-          if (loungeDetailEditAbortRef.current === ac) loungeDetailEditAbortRef.current = null
+          loungeDetailEditAbortRef.current = null
           loungeDetailEditJobRunningRef.current = false
           setLoungeFeedPostEditPendingPostId(null)
         }
         if (type === 'commentEdit') {
-          if (loungeDetailCommentEditAbortRef.current === ac) {
-            loungeDetailCommentEditAbortRef.current = null
-          }
           setLoungeDetailCommentEditPendingCommentId(null)
         }
         loungeFastLaneInFlightRef.current = Math.max(0, loungeFastLaneInFlightRef.current - 1)
@@ -15336,9 +15243,7 @@ export default function SocialFeed({
     getLoungeDockSuppressed,
     () => false,
   )
-  const loungeDockFabBottomObstaclePx = showLoungeBottomUploadBar
-    ? loungeUploadBarHeightPx + 10
-    : 0
+  const loungeDockFabBottomObstaclePx = loungePostUploadBar ? loungeUploadBarHeightPx + 10 : 0
   const toolScrollTitleReveal = useEdgeTitleBarReveal()
 
   const showLoungeViewportDock = !loungeStreamLightboxOpen && !loungeDockSuppressed
@@ -15599,22 +15504,6 @@ export default function SocialFeed({
               </>
             }
           />
-          {showLoungeHeaderPostingProgress ? (
-            <div
-              data-lounge-posting-progress="header"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] overflow-hidden bg-zinc-800/55"
-              role="progressbar"
-              aria-label="Posting"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
-            >
-              <div
-                className="h-full bg-cyan-400 transition-[width] duration-300 ease-out"
-                style={{ width: `${Math.max(4, Math.round((loungePostUploadBar.progress || 0) * 100))}%` }}
-              />
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -18942,10 +18831,9 @@ export default function SocialFeed({
         }}
       />
 
-      {showLoungeBottomUploadBar ? (
+      {loungePostUploadBar ? (
         <div
           ref={loungeUploadBarRef}
-          data-lounge-posting-progress="full"
           className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
         >
           <div className="mx-auto flex max-w-2xl items-center gap-3">
@@ -18959,9 +18847,7 @@ export default function SocialFeed({
                       ? 'Saving edit…'
                       : loungePostUploadBar.mode === 'mediaPrep'
                         ? LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
-                        : loungePostUploadBar.threadPartTotal > 1
-                          ? 'Posting thread…'
-                          : 'Uploading post…'}
+                        : 'Uploading post…'}
               </div>
               <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">
                 <span className="font-semibold text-cyan-300/95">Now:</span>{' '}
@@ -19004,9 +18890,7 @@ export default function SocialFeed({
                 const backgroundUploadActive =
                   loungePostJobRunningRef.current ||
                   loungeDetailCommentJobRunningRef.current ||
-                  loungeDetailEditJobRunningRef.current ||
-                  loungeDetailCommentEditJobRunningRef.current ||
-                  loungeFastLaneInFlightRef.current > 0
+                  loungeDetailEditJobRunningRef.current
                 if (
                   backgroundUploadActive ||
                   loungePostUploadBar.postSubmission ||

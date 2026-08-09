@@ -2341,9 +2341,19 @@ export default function SocialFeed({
     }
   }, [])
 
+  /** Header seam for compact text/image posts; full bottom HUD for non-video uploads. Video uses inline / in-composer HUD only. */
+  const showLoungeHeaderPostingProgress = Boolean(
+    loungePostUploadBar?.compact && loungePostUploadBar.mode !== 'mediaPrep',
+  )
+  const showLoungeBottomUploadBar = Boolean(
+    loungePostUploadBar &&
+      !loungePostUploadBar.compact &&
+      loungePostUploadBar.mode !== 'mediaPrep',
+  )
+
   /** Stable bottom inset for the dock FAB while the upload bar is visible (avoids collision feedback loops). */
   useLayoutEffect(() => {
-    if (!loungePostUploadBar) {
+    if (!showLoungeBottomUploadBar) {
       setLoungeUploadBarHeightPx(0)
       return undefined
     }
@@ -2365,7 +2375,7 @@ export default function SocialFeed({
       ro.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [loungePostUploadBar])
+  }, [showLoungeBottomUploadBar, loungePostUploadBar])
 
   useEffect(() => {
     const sync = () => setLoungeDockMenuLayout(readLoungeDockMenuLayout())
@@ -15325,8 +15335,9 @@ export default function SocialFeed({
     getLoungeDockSuppressed,
     () => false,
   )
-  const loungeDockFabBottomObstaclePx =
-    loungePostUploadBar && !loungePostUploadBar.compact ? loungeUploadBarHeightPx + 10 : 0
+  const loungeDockFabBottomObstaclePx = showLoungeBottomUploadBar
+    ? loungeUploadBarHeightPx + 10
+    : 0
   const toolScrollTitleReveal = useEdgeTitleBarReveal()
 
   const showLoungeViewportDock = !loungeStreamLightboxOpen && !loungeDockSuppressed
@@ -15587,7 +15598,7 @@ export default function SocialFeed({
               </>
             }
           />
-          {loungePostUploadBar?.compact ? (
+          {showLoungeHeaderPostingProgress ? (
             <div
               data-lounge-posting-progress="header"
               className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] overflow-hidden bg-zinc-800/55"
@@ -18930,7 +18941,7 @@ export default function SocialFeed({
         }}
       />
 
-      {loungePostUploadBar && !loungePostUploadBar.compact ? (
+      {showLoungeBottomUploadBar ? (
         <div
           ref={loungeUploadBarRef}
           data-lounge-posting-progress="full"

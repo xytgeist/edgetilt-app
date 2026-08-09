@@ -14,7 +14,6 @@ const SLOTS_TOOLS = [
     description: 'Guide cards and community Q&A',
     subscriberGated: (gatesMap) => guidesTabFullyGated(gatesMap),
     shortcutDestinationId: 'guides',
-    pinActiveClassName: 'text-[#fb923c]',
   },
   {
     id: 'bankroll',
@@ -24,7 +23,6 @@ const SLOTS_TOOLS = [
     description: 'Track sessions and bankroll growth',
     subscriberGated: () => false,
     shortcutDestinationId: 'bankroll',
-    pinActiveClassName: 'text-[#34d399]',
   },
   {
     id: 'calculators',
@@ -35,7 +33,6 @@ const SLOTS_TOOLS = [
     subscriberGated: (gatesMap, starterUnlockedCalculatorKeys) =>
       calculatorsTabFullyGated(gatesMap, starterUnlockedCalculatorKeys),
     shortcutDestinationId: 'calculators',
-    pinActiveClassName: 'text-[#22d3ee]',
   },
   {
     id: 'offers',
@@ -45,7 +42,6 @@ const SLOTS_TOOLS = [
     description: 'Offers, mailers, and trip planning',
     subscriberGated: () => false,
     shortcutDestinationId: 'offers',
-    pinActiveClassName: 'text-[#a78bfa]',
   },
   {
     id: 'logbook',
@@ -55,7 +51,6 @@ const SLOTS_TOOLS = [
     description: 'Log AP plays and analyze your data',
     subscriberGated: () => false,
     shortcutDestinationId: 'logbook',
-    pinActiveClassName: 'text-[#f472b6]',
   },
   {
     id: 'slots-pro-lounge',
@@ -138,7 +133,7 @@ export default function SlotsScreen({
                   <QuickLinkPageToggle
                     destinationId={tool.shortcutDestinationId}
                     variant="pin"
-                    pinActiveClassName={tool.pinActiveClassName || 'text-cyan-400'}
+                    pinActiveColor={color}
                   />
                 </div>
               ) : (

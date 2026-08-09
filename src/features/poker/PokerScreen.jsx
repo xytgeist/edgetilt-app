@@ -12,7 +12,6 @@ const POKER_TOOLS = [
     color: '#6ee7b7',
     description: 'Cash & tourneys · swaps and stakes',
     shortcutDestinationId: 'poker-bankroll',
-    pinActiveClassName: 'text-[#6ee7b7]',
   },
   {
     id: 'poker-stable',
@@ -21,7 +20,6 @@ const POKER_TOOLS = [
     color: '#b4533c',
     description: 'Track horses · live updates',
     shortcutDestinationId: 'poker-stable',
-    pinActiveClassName: 'text-[#b4533c]',
   },
 ]
 
@@ -86,7 +84,7 @@ export default function PokerScreen({
                   <QuickLinkPageToggle
                     destinationId={tool.shortcutDestinationId}
                     variant="pin"
-                    pinActiveClassName={tool.pinActiveClassName || 'text-cyan-400'}
+                    pinActiveColor={color}
                   />
                 </div>
               ) : !comingSoon ? (

@@ -7585,8 +7585,9 @@ html.light [data-quick-link-toggle='pin'] {
 html.light [data-quick-link-toggle='pin'] button:not([data-quick-link-pin='on']) {
   color: #a1a1aa !important;
 }
+/* Match hub `.slots-icon-tile` light glyph mix (same `--tc` / `--pin-tc`). */
 html.light [data-hub-tool-card] [data-quick-link-toggle='pin'] button[data-quick-link-pin='on'] {
-  color: #b4533c !important;
+  color: color-mix(in srgb, var(--pin-tc) 58%, #09090b 42%) !important;
 }
 html.light [data-quick-link-modal] {
   background-color: #ffffff !important;

@@ -13,14 +13,14 @@ import QuickLinkAtCapModal from './QuickLinkAtCapModal.jsx'
  *   destinationId: import('../features/shell/quickLinkDestinations.js').QuickLinkId,
  *   className?: string,
  *   variant?: 'pill' | 'bare' | 'pin',
- *   pinActiveClassName?: string,
+ *   pinActiveColor?: string,
  * }} props
  */
 export default function QuickLinkPageToggle({
   destinationId,
   className = '',
   variant = 'pill',
-  pinActiveClassName = 'text-cyan-400',
+  pinActiveColor = '#22d3ee',
 }) {
   const enabled = useQuickLinkEnabled(destinationId)
   const activeIds = useQuickLinkIds()
@@ -81,10 +81,17 @@ export default function QuickLinkPageToggle({
       aria-label={enabled ? `Unpin ${dest.label} shortcut` : `Pin ${dest.label} shortcut`}
       onClick={onToggle}
       className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg touch-manipulation transition-colors [-webkit-tap-highlight-color:transparent] ${
-        enabled
-          ? pinActiveClassName
-          : 'text-zinc-500 hover:text-zinc-300 active:text-zinc-200'
+        enabled ? '' : 'text-zinc-500 hover:text-zinc-300 active:text-zinc-200'
       }`}
+      style={
+        enabled
+          ? {
+              // Same token as hub `.slots-icon-tile` (`--tc`); light mode mixes it in CSS.
+              ['--pin-tc']: pinActiveColor,
+              color: 'var(--pin-tc)',
+            }
+          : undefined
+      }
       data-quick-link-pin={enabled ? 'on' : 'off'}
     >
       <Pin

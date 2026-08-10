@@ -60,7 +60,7 @@ export function guestBackerClaimOfferDetails(preview) {
       { label: 'Baseline bankroll', value: fmtPoker$(baseline) },
       { label: 'Your action', value: `${actionPct}%` },
     ],
-    sliceSummaries: [sliceTermsSummary(slice)],
+    sliceSummaries: [sliceTermsSummary(slice, {}, { playerName })],
     notes: preview.notes,
   }
 }
@@ -82,7 +82,7 @@ export function guestBackerSliceOfferDetails(deal, slice, profilesById = {}) {
       { label: 'Baseline bankroll', value: fmtPoker$(baseline) },
       { label: 'Your action', value: `${actionPct}%` },
     ],
-    sliceSummaries: [sliceTermsSummary(slice, profilesById)],
+    sliceSummaries: [sliceTermsSummary(slice, profilesById, { deal })],
     notes: deal.notes,
   }
 }
@@ -106,7 +106,9 @@ export function stakeOfferOnboardingDetails(deal, slices = [], profilesById = {}
       { label: 'Baseline bankroll', value: fmtPoker$(Number(deal.baseline_bankroll) || 0) },
       { label: 'Action sold', value: `${actionSold}%` },
     ],
-    sliceSummaries: (slices || []).map((slice) => sliceTermsSummary(slice, profilesById)),
+    sliceSummaries: (slices || []).map((slice) =>
+      sliceTermsSummary(slice, profilesById, { deal }),
+    ),
     notes: deal.notes,
   }
 }

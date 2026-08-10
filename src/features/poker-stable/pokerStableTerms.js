@@ -28,6 +28,14 @@ function formatTermsPct(value) {
   return n.toFixed(2).replace(/\.?0+$/, '')
 }
 
+function profileDisplayNameOnly(profile) {
+  const displayName = String(profile?.display_name || '').trim()
+  if (displayName) return displayName
+  const handle = profile?.handle ? String(profile.handle).replace(/^@+/, '') : ''
+  if (handle) return `@${handle}`
+  return ''
+}
+
 function sliceBackerShortName(slice, profilesById = {}) {
   if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {
     return slice.guest_label || slice.guestLabel || 'Guest'
@@ -44,6 +52,27 @@ function sliceBackerShortName(slice, profilesById = {}) {
   const inviteLabel = String(slice.guest_label || slice.guestLabel || '').trim()
   if (inviteLabel) return inviteLabel.split(/\s+/)[0] || inviteLabel
   return 'Stake'
+}
+
+/** Full display name for profit-split / rakeback lines (no @handle suffix). */
+function sliceBackerDisplayNameForTerms(slice, profilesById = {}) {
+  if (slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest') {
+    return String(slice.guest_label || slice.guestLabel || '').trim() || 'Guest'
+  }
+  const stakerId = slice.staker_user_id || slice.stakerUserId
+  const fromProfile = profileDisplayNameOnly(stakerId ? profilesById[stakerId] : null)
+  if (fromProfile) return fromProfile
+  const inviteLabel = String(slice.guest_label || slice.guestLabel || '').trim()
+  if (inviteLabel) return inviteLabel
+  return sliceBackerShortName(slice, profilesById)
+}
+
+function dealStakeeDisplayNameForTerms(deal, profilesById = {}) {
+  const guestLabel = deal?.stakee_guest_label || deal?.stakeeGuestLabel
+  if (guestLabel) return String(guestLabel).trim() || 'Player'
+  const stakeeId = deal?.stakee_user_id
+  const fromProfile = profileDisplayNameOnly(stakeeId ? profilesById[stakeeId] : null)
+  return fromProfile || 'Player'
 }
 
 /** Edge profile picker / locked typeahead: "Joey K (@smokewagon)". */
@@ -211,9 +240,18 @@ export function stakeBackingCapitalSplit(deal, slices = []) {
 /** @deprecated Prefer {@link stakeGoesLivePendingCopy} with deal + slices. */
 export const STAKE_GOES_LIVE_COPY = 'Once a backer accepts, this stake goes live.'
 
-export function sliceTermsSummary(slice, profilesById = {}) {
+/**
+ * @param {object} slice
+ * @param {Record<string, object>} [profilesById]
+ * @param {{ deal?: object | null, playerName?: string | null }} [opts]
+ */
+export function sliceTermsSummary(slice, profilesById = {}, opts = {}) {
   const name = sliceCounterpartyDisplayName(slice, profilesById)
-  const backerShort = sliceBackerShortName(slice, profilesById)
+  const backerName = sliceBackerDisplayNameForTerms(slice, profilesById)
+  const playerName =
+    String(opts.playerName || '').trim() ||
+    (opts.deal ? dealStakeeDisplayNameForTerms(opts.deal, profilesById) : '') ||
+    'Player'
   const actionPct = formatTermsPct(slice.action_pct ?? slice.actionPct)
   const pricingMode = slice.pricing_mode || slice.pricingMode || 'profit_split'
   const rakeMode = slice.rakeback_mode || slice.rakebackMode || 'disabled'
@@ -231,7 +269,7 @@ export function sliceTermsSummary(slice, profilesById = {}) {
       label: 'Profit split',
       value:
         Number.isFinite(backerPct) && Number.isFinite(playerPct)
-          ? `${backerShort} - ${formatTermsPct(backerPct)}% | Player - ${formatTermsPct(playerPct)}%`
+          ? `${backerName} - ${formatTermsPct(backerPct)}% | ${playerName} - ${formatTermsPct(playerPct)}%`
           : '—',
     })
   }
@@ -244,7 +282,7 @@ export function sliceTermsSummary(slice, profilesById = {}) {
     if (Number.isFinite(stakeRb) && Number.isFinite(playerRb)) {
       lines.push({
         label: 'Rakeback',
-        value: `Stake - ${formatTermsPct(stakeRb)}% | Player - ${formatTermsPct(playerRb)}%`,
+        value: `Stake - ${formatTermsPct(stakeRb)}% | ${playerName} - ${formatTermsPct(playerRb)}%`,
       })
     }
   }

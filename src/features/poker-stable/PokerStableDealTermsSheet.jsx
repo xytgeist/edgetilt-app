@@ -90,6 +90,7 @@ function GuestReassignPanel({
 function TermsSliceCard({
   slice,
   idx,
+  deal,
   profilesById,
   proposed = false,
   showReassign = false,
@@ -102,7 +103,7 @@ function TermsSliceCard({
   onReassignConfirm,
   onError,
 }) {
-  const summary = sliceTermsSummary(slice, profilesById)
+  const summary = sliceTermsSummary(slice, profilesById, { deal })
   return (
     <div
       data-poker-stable-slice={idx}
@@ -331,6 +332,7 @@ export default function PokerStableDealTermsSheet({
                   key={slice.id || `cur-${idx}`}
                   slice={slice}
                   idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
+                  deal={deal}
                   profilesById={profilesById}
                 />
               ))}
@@ -361,6 +363,7 @@ export default function PokerStableDealTermsSheet({
                   key={`prop-${idx}`}
                   slice={slice}
                   idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
+                  deal={deal}
                   profilesById={profilesById}
                   proposed
                 />
@@ -374,6 +377,7 @@ export default function PokerStableDealTermsSheet({
                 key={slice.id || idx}
                 slice={slice}
                 idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
+                deal={deal}
                 profilesById={profilesById}
                 showReassign={
                   canReassignGuestSlice({ deal, slice, userId, hasProposal }) &&

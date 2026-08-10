@@ -195,6 +195,12 @@ function SliceEditor({
   const actionOverBy = roundMoney(Math.max(0, actionSoldTotal - 100), 3)
   const actionRemaining = roundMoney(Math.max(0, 100 - actionSoldTotal), 3)
   const actionOverCap = actionOverBy > 0
+  const thisActionPct = Number(sl.actionPct)
+  const thisActionCounted = Number.isFinite(thisActionPct) ? Math.max(0, thisActionPct) : 0
+  const actionUpToPct = roundMoney(
+    Math.max(0, 100 - (actionSoldTotal - thisActionCounted)),
+    3,
+  )
 
   return (
     <div
@@ -313,7 +319,7 @@ function SliceEditor({
             <input
               value={sl.actionPct}
               onChange={(e) => onChange({ actionPct: e.target.value })}
-              placeholder="50"
+              placeholder={`Up to ${formatActionBudgetPct(actionUpToPct)}%`}
               inputMode="decimal"
               className={INFIELD_CONTROL}
               aria-invalid={actionOverCap ? 'true' : undefined}

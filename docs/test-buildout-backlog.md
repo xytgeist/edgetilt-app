@@ -957,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-10: **Accept re-seeded after debit (bankroll $10k / portfolio $20k):** seed+debit left liquid `$0`, then a second `ensure` seeded again. **`20260810180000`** never re-seeds after `bankroll_debited`; repairs phantom liquid = deployed capital. Applied on test (Pokerdean).
 - 2026-08-10: **Received invite must not seed backing bankroll:** player-offer pending slices were auto-seeding $slice + pending hold (Pokerdean $10k/−$10k). Seed only for Create Stake initiator or on Accept/debit (**`20260810170000`** + client pending-hold gate). Applied on test; repairs mistaken seeds.
 - 2026-08-10: **Edit terms form wiped in-progress markup:** `PokerStableCreateDealSheet` re-hydrated on every `editDeal`/`editSlices` ref change (parent silent reload) … Save could re-apply old 1.2× after Joey typed 1.1×. Hydrate only when deal id / slice ids change.
 - 2026-08-10: **Stable blank after terms edit (Pokerdean):** pending terms edit delete+reinsert changed slice ids (stale Accept → false “deleted”) and soft `load()` / slice-fetch failures wiped deals or emptied `slicesByDeal` so `partitionBackerDeals` hid player-initiated invites. **`20260810160000`** preserves slice ids + collapses invite Alerts into one terms_edited; client keeps last-good Stable/Alerts on soft errors. Applied on test.

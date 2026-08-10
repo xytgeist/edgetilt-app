@@ -957,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-10: **AP Guides deep-link sticky expand:** Lounge / `?guide=` set `guideOpenCardSlug` but never cleared … leaving Guides and reopening always re-expanded that card. Consume after apply + clear when leaving Guides tab. **`GuidesScreen.jsx`**, **`AppShell.jsx`**.
 - 2026-08-10: **Lounge dock FAB collision max-update-depth (Sentry JAVASCRIPT-REACT-6H):** collision inset was measured against the already-nudged FAB rect → overlap cleared → inset 0 → FAB dropped back → loop. Measure against preferred seat (prefs / drag in base bounds). **`LoungeDockArcCarouselPrototype.jsx`**.
 - 2026-08-10: **Stable deep-link `setActiveTab` crash (Sentry JAVASCRIPT-REACT-6F):** `PokerStableScreen` invite/focus path called bare `setActiveTab('overview')` after tab state moved into **`PokerStableDealDetailSheet`**. Removed; focus card + silent reload only.
 - 2026-08-10: **Verified badge path = Twilio Verify:** backlog Account & identity section retargeted to **Twilio Verify** OTP (auth-only). Guest swap/stake SMS / DIY TFV notify abandoned … email/push only. **`docs/access-tiers.md`** signup row updated.

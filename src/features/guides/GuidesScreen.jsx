@@ -1465,6 +1465,8 @@ export default function GuidesScreen({
   titleBarNavSlot = null,
   /** When set, scroll to and expand this guide card slug (used by Lounge guide embed tap). */
   openCardSlug = null,
+  /** Clear parent deep-link slug after apply so leaving/re-entering Guides does not re-expand. */
+  onOpenCardSlugConsumed = null,
   titleBarToolCloseVisible = false,
 }) {
   const [query, setQuery] = useState('')
@@ -1820,11 +1822,15 @@ export default function GuidesScreen({
     return () => observer.disconnect()
   }, [filtered.length, loading, visibleCount])
 
-  // Deep-link: announcement / push URLs always land on the card (lock UI stays on-card).
+  // Deep-link: announcement / push / Lounge tap land on the card (lock UI stays on-card).
+  // Consume immediately so a later remount (leave Guides → reopen) is a clean list.
   useEffect(() => {
     if (!openCardSlug || loading) return
     const slug = normalizeGuideAccessSlug(openCardSlug)
-    if (!slug) return
+    if (!slug) {
+      onOpenCardSlugConsumed?.()
+      return
+    }
     const idx = filtered.findIndex((row) => {
       const m = machineForGuide(row)
       const cardSlug = normalizeGuideAccessSlug(m?.slug || row.slug)
@@ -1836,7 +1842,8 @@ export default function GuidesScreen({
       )
     }
     setExpandedSlug(slug)
-  }, [openCardSlug, loading, filtered])
+    onOpenCardSlugConsumed?.()
+  }, [openCardSlug, loading, filtered, onOpenCardSlugConsumed])
 
   useLayoutEffect(() => {
     const reduceMotion =

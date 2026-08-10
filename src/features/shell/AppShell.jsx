@@ -2056,6 +2056,10 @@ export default function AppShell({
     return () => { cancelled = true }
   }, [browseMode, hasActiveSubscription, isStaff, supabaseClient])
 
+  const clearGuideOpenCardSlug = useCallback(() => {
+    setGuideOpenCardSlug(null)
+  }, [])
+
   const openGuideFromLounge = useCallback((rawSlug) => {
     const slug = normalizeGuideAccessSlug(rawSlug)
     if (!slug) return
@@ -2078,6 +2082,11 @@ export default function AppShell({
         }
       })
   }, [])
+
+  // Drop sticky deep-link if the user leaves Guides before GuidesScreen can consume it.
+  useEffect(() => {
+    if (tab !== 'guides') setGuideOpenCardSlug(null)
+  }, [tab])
 
   const { splashVisible, splashDismissing, onSplashAnimationStart, onSplashAnimationComplete } =
     useLoungeColdBootSplash({
@@ -2644,6 +2653,7 @@ export default function AppShell({
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           openCardSlug={guideOpenCardSlug}
+          onOpenCardSlugConsumed={clearGuideOpenCardSlug}
         />
       )
     } else if (tab === 'offers') {

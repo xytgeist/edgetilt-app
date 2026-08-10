@@ -161,19 +161,21 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 **Goal:** **Verified user** badge (see **`docs/access-tiers.md`** §2) gated on **phone OTP**, not “signed in” alone. Account info screen ships a placeholder phone field today; verification track is separate.
 
-**Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, optional `profiles.phone_number`; delete account text link. Migration **`20260727210000`** on test. **Not verified yet.**
+**Decision (2026-08-10):** Use **Twilio Verify** for OTP (auth-only). Do **not** run a separate toll-free TFV program for guest swap/stake SMS … those stay **email/push**. Own TFV’d From number for agreement notices is abandoned after carrier gambling-adjacent rejection.
 
-### Phone verification (Twilio + Supabase Phone Auth)
+**Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, optional `profiles.phone_number`; delete account text link. Migration **`20260727210000`** on test. **Not verified yet.** OTP opt-in proof page for future TFV/Verify docs: **`public/compliance/sms-otp-opt-in.html`**.
 
-- [ ] **Vendor setup:** Twilio account; enable **Phone** provider on Supabase **test + prod**; US **A2P 10DLC** brand/campaign registration for reliable prod SMS (~$0.0083/msg US + ~$1.15/mo number).
-- [ ] **Schema:** `profiles.phone_verified_at` (or trusted sync from `auth.users.phone_confirmed_at`); RLS/trigger so clients cannot self-stamp verified.
-- [ ] **Account info UX:** replace free-text phone **Save** with **Send code → Enter OTP → Resend cooldown** (`SettingsAccountInfoScreen.jsx` + Supabase `updateUser` / `verifyOtp`).
+### Phone verification (Twilio Verify)
+
+- [ ] **Vendor setup:** Twilio **Verify** service (SMS channel) on test + prod; Edge secrets for Verify SID + auth; confirm US SMS compliance path Twilio requires for Verify (prefer Verify-managed senders … avoid DIY guest-notify TFV).
+- [ ] **Schema:** `profiles.phone_verified_at` (or trusted sync from Verify / `auth.users`); RLS/trigger so clients cannot self-stamp verified.
+- [ ] **Account info UX:** replace free-text phone **Save** with **Send code → Enter OTP → Resend cooldown** (`SettingsAccountInfoScreen.jsx` + Edge Verify start/check, or Supabase Phone Auth backed by Twilio if we keep that path).
 - [ ] **Verified badge UI:** `LoungeVerifiedBadge` on feed, profile, composer meta (pattern: **`LoungeOgBadge.jsx`**).
 - [ ] **Product rules:** badge = phone verified only; optional gate on post/comment until verified; prompt existing email-only users (no hard block v1 TBD).
 - [ ] **Abuse:** rate-limit OTP sends per user/IP; cap resends.
 - [ ] **Smoke (test):** complete OTP → badge visible; change phone → re-verify; unverified user has no badge.
 
-**Rough effort:** ~3–5 focused days after Twilio/10DLC setup (see chat 2026-07-26).
+**Rough effort:** ~3–5 focused days after Verify service setup (see chat 2026-07-26 / 2026-08-10).
 
 ---
 
@@ -955,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-10: **Verified badge path = Twilio Verify:** backlog Account & identity section retargeted to **Twilio Verify** OTP (auth-only). Guest swap/stake SMS / DIY TFV notify abandoned … email/push only. **`docs/access-tiers.md`** signup row updated.
 - 2026-08-10: **Lounge reply/edit caption tier:** comment edit UI was hardcoded to free **500** (`LOUNGE_COMMENT_BODY_MAX`). Now uses same `loungeComposerCaptionMax` as posts (500 free / 2000 sub+staff). Staff role check case-insensitive; composer profile select includes `has_active_subscription` + `is_bot`.
 - 2026-08-09: **X editorial inbox dry:** cron + Edge healthy; `lounge-x-ingest` returns `polled:4, ingested:0`. Per-source diag (redeployed prod+test): X `GET /2/users/:id/tweets` returns **200** with only `meta.result_count=0` for all handles (incl. old `since_id`). Credits present; suspect User Tweet Timeline entitlement / app product access. Empty polls now stamp `last_polled_at` + `last_error`.
 - 2026-08-09: **Timberwolf Diamond → Logbook (not calculator):** machine was wrongly `has_calculator` + `calculator_slug=buffalo-diamond` on test + prod … cleared. Client `resolveCalculatorKeyFromMachine` refuses Timberwolf / non-Buffalo skins tagged buffalo-diamond. Card shows **Log play in Logbook**.

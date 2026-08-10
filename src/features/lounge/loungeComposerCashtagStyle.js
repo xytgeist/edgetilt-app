@@ -87,6 +87,7 @@ export function useComposerCashtagStyleContext(supabase, caption, marketSymbolRo
           if (gen !== genRef.current) return
           if (!quotes || typeof quotes !== 'object') return
           setCaptionQuotes((prev) => {
+            let changed = false
             const next = { ...prev }
             for (const item of symbols) {
               const ticker = String(item.display_symbol || '').trim().toUpperCase()
@@ -94,10 +95,13 @@ export function useComposerCashtagStyleContext(supabase, caption, marketSymbolRo
               const row = quotes[key]
               const pct = row?.quote?.change_pct
               if (ticker && Number.isFinite(Number(pct))) {
-                next[ticker] = { change_pct: Number(pct) }
+                if (next[ticker]?.change_pct !== Number(pct)) {
+                  next[ticker] = { change_pct: Number(pct) }
+                  changed = true
+                }
               }
             }
-            return next
+            return changed ? next : prev
           })
         })
         .catch((err) => {

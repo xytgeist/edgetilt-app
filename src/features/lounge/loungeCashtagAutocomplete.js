@@ -235,7 +235,8 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
 
       const finishSuggestionsWithQuotes = (rows) => {
         if (!rows.length) {
-          setSuggestions([])
+          // Preserve [] identity … avoids SocialFeed max-update-depth on cursor churn.
+          setSuggestions((prev) => (prev.length === 0 ? prev : []))
           setLoading(false)
           return
         }
@@ -265,7 +266,7 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
         // local has hits but no exact display_symbol match.
         if (hasExactLocal || !supabaseClient) return
       } else {
-        setSuggestions([])
+        setSuggestions((prev) => (prev.length === 0 ? prev : []))
         if (!supabaseClient) {
           setLoading(false)
           return
@@ -371,10 +372,10 @@ export function useCashtagState(value, supabaseClient, enabled = true, onAddSymb
         setActiveIndex(0)
       }
 
-      if (
-        active.query === lastQueryRef.current &&
-        (suggestionsRef.current.length > 0 || loadingRef.current)
-      ) {
+      // Same query already applied (including resolved empty miss). Re-running
+      // applyCashtagQuery would sync setSuggestions([]) and can nest SocialFeed
+      // updates until "Maximum update depth exceeded" (Sentry prod).
+      if (active.query === lastQueryRef.current) {
         return
       }
 

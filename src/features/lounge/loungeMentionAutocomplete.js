@@ -123,7 +123,9 @@ export function useMentionState(value, supabaseClient, enabled = true) {
         setActiveIndex(0)
       }
 
-      if (active.query === lastQueryRef.current && suggestionsRef.current.length > 0) {
+      // Same query already fetched (including empty). Avoid re-arming debounce /
+      // setState storms on every cursor notify.
+      if (active.query === lastQueryRef.current) {
         if (loadingRef.current) setLoading(false)
         return
       }

@@ -15,13 +15,17 @@ export function backerSliceCapitalIsDeployed(deal, slice, slices = []) {
 
 /**
  * Backer's slice capital is reserved as a pending hold (not yet debited).
+ * Unaccepted invites (pending slices) do not reserve funds … only Create Stake
+ * initiator seed / Accept commits capital. Hold applies after Accept while the
+ * deal is not live yet (e.g. waiting on the other party).
  * @param {object} deal
  * @param {object} slice
  * @param {object[]} [slices]
  */
 export function backerSliceCapitalIsPendingHold(deal, slice, slices = []) {
   if (!deal || !slice || slice.status === 'declined' || slice.status === 'cancelled') return false
-  if (slice.status === 'pending') return true
+  // Received invites stay off bankroll until Accept (no invented pending hold).
+  if (slice.status === 'pending') return false
   if (slice.status === 'active' && !stakeDealIsLiveForStakee(deal, slices)) return true
   return false
 }
@@ -98,7 +102,8 @@ export function computeBackerBackingBankroll({
 
 /**
  * Capital reserved until the stake is live (player + at least one backer accepted).
- * Sum of baseline × action % for the viewer's non-declined slices on pending deals.
+ * Sum of baseline × action % for the viewer's accepted-but-not-live slices.
+ * Pending invite slices are excluded (no bankroll reservation until Accept).
  */
 export function computeBackerPendingHold({ deals = [], slicesByDeal = {}, userId }) {
   if (!userId) return 0

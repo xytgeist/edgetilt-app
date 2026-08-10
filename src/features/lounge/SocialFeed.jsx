@@ -1540,7 +1540,7 @@ export default function SocialFeed({
   }, [])
 
   const loungeViewerIsStaff = useMemo(() => {
-    const r = composerUserProfile?.role
+    const r = String(composerUserProfile?.role || '').toLowerCase()
     return r === 'moderator' || r === 'admin'
   }, [composerUserProfile?.role])
 
@@ -9554,7 +9554,9 @@ export default function SocialFeed({
         if (cached) setComposerUserProfile(cached)
         const { data } = await supabaseClient
           .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og')
+          .select(
+            'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og,has_active_subscription,is_bot',
+          )
           .eq('user_id', uid)
           .maybeSingle()
         if (cancelled) return
@@ -17497,6 +17499,7 @@ export default function SocialFeed({
                     commentEditFieldRef: loungeDetailCommentEditFieldRef,
                     onCommentEditPasteImageFiles: enqueueDetailCommentEditPastedImages,
                     commentEditVideoPostBlocked: loungeDetailCommentEditVideoPostBlocked,
+                    captionMax: loungeComposerCaptionMax,
                     onMentionClick: openProfileByHandle,
                     onHashtagClick: openSearchByHashtag,
                     onCashtagClick: openSearchByCashtag,
@@ -17579,6 +17582,8 @@ export default function SocialFeed({
                     commentEditMediaSlot: loungeDetailCommentEditMediaSlot,
                     commentEditFieldRef: loungeDetailCommentEditFieldRef,
                     onCommentEditPasteImageFiles: enqueueDetailCommentEditPastedImages,
+                    commentEditVideoPostBlocked: loungeDetailCommentEditVideoPostBlocked,
+                    captionMax: loungeComposerCaptionMax,
                     resolveMediaFeedVariant: (c) =>
                       c?.id === loungeDetailCommentHierarchyFocusId ? 'detail' : 'commentInline',
                     onMentionClick: openProfileByHandle,
@@ -17680,6 +17685,7 @@ export default function SocialFeed({
                           commentEditFieldRef={loungeDetailCommentEditFieldRef}
                           onCommentEditPasteImageFiles={enqueueDetailCommentEditPastedImages}
                           commentEditVideoPostBlocked={loungeDetailCommentEditVideoPostBlocked}
+                          captionMax={loungeComposerCaptionMax}
                           interactionStateFor={interactionStateForComment}
                           toggleInteraction={noopLoungeBarPostToggle}
                           onPlainRepost={(p) => void addLoungeDetailCommentPlainRepost(p.id)}

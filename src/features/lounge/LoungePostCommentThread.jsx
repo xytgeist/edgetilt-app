@@ -21,7 +21,7 @@ import {
   orderPostDetailRootComments,
   stabilizeCommentListOrder,
 } from '../../utils/loungeFeedCommentSort.js'
-import { LOUNGE_COMMENT_BODY_MAX } from '../../utils/loungeCommentLimits.js'
+import { LOUNGE_CAPTION_MAX } from '../../utils/loungeCommentLimits.js'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeRichComposerField from './LoungeRichComposerField.jsx'
 import LoungeExpandableRichCaption from './LoungeExpandableRichCaption.jsx'
@@ -95,6 +95,8 @@ export function LoungeCommentCard({
   commentEditFieldRef = null,
   onCommentEditPasteImageFiles = null,
   commentEditVideoPostBlocked = false,
+  /** Same tiered cap as Lounge posts (500 free / 2000 sub+staff). */
+  captionMax = LOUNGE_CAPTION_MAX,
   mediaFeedVariant: mediaFeedVariantProp = 'commentInline',
   resolveMediaFeedVariant,
   showDetailTimestamp = false,
@@ -184,7 +186,7 @@ export function LoungeCommentCard({
           variant="detailCommentEdit"
           value={commentEditDraft}
           onChange={onCommentEditDraftChange}
-          maxLength={LOUNGE_COMMENT_BODY_MAX}
+          maxLength={captionMax}
           placeholder="Edit reply"
           ariaLabel="Edit reply"
           disabled={commentEditBusy}
@@ -195,7 +197,7 @@ export function LoungeCommentCard({
           value={commentEditDraft}
           onChange={(e) => onCommentEditDraftChange?.(e.target.value)}
           rows={3}
-          maxLength={LOUNGE_COMMENT_BODY_MAX}
+          maxLength={captionMax}
           className={`w-full resize-y rounded-xl border border-zinc-600/70 bg-zinc-900/90 px-3 py-2 ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-100 outline-none focus:border-cyan-600/55 touch-manipulation`}
           aria-label="Edit reply"
         />
@@ -217,7 +219,7 @@ export function LoungeCommentCard({
             commentEditBusy ||
             commentEditVideoPostBlocked ||
             (!String(commentEditDraft || '').trim() && !commentEditHasRemoteMedia) ||
-            String(commentEditDraft || '').length > LOUNGE_COMMENT_BODY_MAX
+            String(commentEditDraft || '').length > captionMax
           }
           className="rounded-full border border-cyan-600/70 bg-cyan-950/40 px-3 py-1 text-[13px] font-semibold text-cyan-100 hover:bg-cyan-900/50 disabled:opacity-50 touch-manipulation"
         >
@@ -225,7 +227,7 @@ export function LoungeCommentCard({
         </button>
         <LoungeComposerCharRing
           len={String(commentEditDraft || '').length}
-          max={LOUNGE_COMMENT_BODY_MAX}
+          max={captionMax}
         />
       </div>
     </div>
@@ -486,6 +488,8 @@ export default function LoungePostCommentThread({
   commentEditFieldRef = null,
   onCommentEditPasteImageFiles = null,
   commentEditVideoPostBlocked = false,
+  /** Same tiered cap as Lounge posts (500 free / 2000 sub+staff). */
+  captionMax = LOUNGE_CAPTION_MAX,
   /** Comment ids the signed-in viewer just posted - shown at top of their list only (chronological for others). */
   viewerPinnedCommentIds = [],
   /** First-level sort on post detail (`ranked` | `popular` | `chronological` | `likes`). */
@@ -657,6 +661,7 @@ export default function LoungePostCommentThread({
     commentEditFieldRef,
     onCommentEditPasteImageFiles,
     commentEditVideoPostBlocked,
+    captionMax,
     lightboxPortalClass,
     avatarText,
     avatarToneClass,

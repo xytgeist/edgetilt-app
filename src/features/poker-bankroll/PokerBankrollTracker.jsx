@@ -3121,7 +3121,6 @@ export default function PokerBankrollTracker({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              data-poker-chrome-tab={activeTab === tab.id ? 'on' : 'off'}
               className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold tracking-wide touch-manipulation transition-colors ${
                 activeTab === tab.id
                   ? 'bg-cyan-600 text-white'
@@ -5375,7 +5374,6 @@ function FilterChip({ active, onClick, label }) {
       type="button"
       onClick={onClick}
       data-poker-filter-chip={active ? 'on' : 'off'}
-      data-poker-chrome-tab={active ? 'on' : 'off'}
       className={`min-w-0 flex-1 truncate rounded-full px-1 py-1 text-center text-[10px] font-semibold touch-manipulation sm:px-2 sm:text-[11px] ${
         active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
       }`}

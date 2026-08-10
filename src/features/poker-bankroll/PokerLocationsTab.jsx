@@ -838,7 +838,6 @@ function LocationDetailModal({ location, onClose, onOpenSession }) {
               <button
                 type="button"
                 onClick={() => setYearFilter('all')}
-                data-poker-chrome-tab={yearFilter === 'all' ? 'on' : 'off'}
                 className={`rounded-full px-3 py-1 text-xs font-semibold touch-manipulation ${
                   yearFilter === 'all'
                     ? 'bg-zinc-100 text-zinc-900'
@@ -852,7 +851,6 @@ function LocationDetailModal({ location, onClose, onOpenSession }) {
                   key={y}
                   type="button"
                   onClick={() => setYearFilter(String(y))}
-                  data-poker-chrome-tab={yearFilter === String(y) ? 'on' : 'off'}
                   className={`rounded-full px-3 py-1 text-xs font-semibold touch-manipulation ${
                     yearFilter === String(y)
                       ? 'bg-zinc-100 text-zinc-900'
@@ -936,7 +934,6 @@ export default function PokerLocationsTab({ sessions, loading, onOpenSession }) 
             key={opt.id}
             type="button"
             onClick={() => selectVenueFilter(opt.id)}
-            data-poker-chrome-tab={venueFilter === opt.id ? 'on' : 'off'}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold touch-manipulation ${
               venueFilter === opt.id
                 ? 'bg-zinc-700 text-white'

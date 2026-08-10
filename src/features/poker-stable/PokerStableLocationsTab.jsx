@@ -40,7 +40,6 @@ export default function PokerStableLocationsTab({
         <button
           type="button"
           onClick={() => onSelectDealId?.(null)}
-          data-poker-chrome-tab={!selectedDealId ? 'on' : 'off'}
           className={`rounded-full px-3 py-1 text-xs font-semibold ${
             !selectedDealId ? STABLE_TAB_ACTIVE : 'bg-zinc-800 text-zinc-300'
           }`}
@@ -55,7 +54,6 @@ export default function PokerStableLocationsTab({
               key={deal.id}
               type="button"
               onClick={() => onSelectDealId?.(deal.id)}
-              data-poker-chrome-tab={selectedDealId === deal.id ? 'on' : 'off'}
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 selectedDealId === deal.id ? STABLE_TAB_ACTIVE : 'bg-zinc-800 text-zinc-300'
               }`}

@@ -145,7 +145,6 @@ function FilterChips({ value, onChange, options, activeClass }) {
           key={opt.id}
           type="button"
           onClick={() => onChange(opt.id)}
-          data-poker-chrome-tab={value === opt.id ? 'on' : 'off'}
           className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
             value === opt.id ? activeClass : 'bg-zinc-800 text-zinc-500'
           }`}
@@ -398,7 +397,6 @@ export default function PokerBankrollOverview({ sessions = [] }) {
           <button
             type="button"
             onClick={() => setCashMode('tiers')}
-            data-poker-chrome-tab={cashMode === 'tiers' ? 'on' : 'off'}
             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
               cashMode === 'tiers' ? 'bg-cyan-600/30 text-cyan-300' : 'bg-zinc-800 text-zinc-500'
             }`}
@@ -408,7 +406,6 @@ export default function PokerBankrollOverview({ sessions = [] }) {
           <button
             type="button"
             onClick={() => setCashMode('games')}
-            data-poker-chrome-tab={cashMode === 'games' ? 'on' : 'off'}
             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
               cashMode === 'games' ? 'bg-cyan-600/30 text-cyan-300' : 'bg-zinc-800 text-zinc-500'
             }`}
@@ -448,7 +445,6 @@ export default function PokerBankrollOverview({ sessions = [] }) {
           <button
             type="button"
             onClick={() => setTourneyMode('tiers')}
-            data-poker-chrome-tab={tourneyMode === 'tiers' ? 'on' : 'off'}
             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
               tourneyMode === 'tiers' ? 'bg-amber-500/20 text-amber-200' : 'bg-zinc-800 text-zinc-500'
             }`}
@@ -458,7 +454,6 @@ export default function PokerBankrollOverview({ sessions = [] }) {
           <button
             type="button"
             onClick={() => setTourneyMode('games')}
-            data-poker-chrome-tab={tourneyMode === 'games' ? 'on' : 'off'}
             className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
               tourneyMode === 'games' ? 'bg-amber-500/20 text-amber-200' : 'bg-zinc-800 text-zinc-500'
             }`}

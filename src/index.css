@@ -7263,18 +7263,6 @@ html.light [data-poker-stable] [data-poker-stable-invite-card],
 html.light [data-poker-stable] .rounded-3xl.border {
   box-shadow: var(--edge-light-card-shadow) !important;
 }
-/*
- * Bankroll / Stable chrome tab + filter pills — same soft lift as elevated cards.
- * Light only; dark keeps flat zinc fills.
- */
-html.light [data-poker-bankroll] [data-poker-chrome-tab],
-html.light [data-poker-stable] [data-poker-chrome-tab],
-html.light [data-poker-stable-sheet] [data-poker-chrome-tab],
-html.light [data-poker-stable-deal-detail] [data-poker-chrome-tab],
-html.light [data-poker-stable-locations] [data-poker-chrome-tab],
-html.light [data-poker-bankroll-sheet] [data-poker-chrome-tab] {
-  box-shadow: var(--edge-light-card-shadow) !important;
-}
 /* Stake deal history lines — kind accent (Bankroll on-stake session list) */
 [data-poker-stake-history-line][data-poker-stake-history-kind='offer'] {
   color: rgb(110 231 183);

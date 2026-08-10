@@ -350,6 +350,8 @@ export default function AppShell({
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
   /** Alert tap for rewritten withdrawn invite (deal row already gone). */
   const [pendingStableOfferWithdrawn, setPendingStableOfferWithdrawn] = useState(false)
+  const clearPendingPokerStableDealId = useCallback(() => setPendingPokerStableDealId(null), [])
+  const clearPendingStableOfferWithdrawn = useCallback(() => setPendingStableOfferWithdrawn(false), [])
   const [stakeOnboardingDealId, setStakeOnboardingDealId] = useState(() => {
     if (typeof window === 'undefined') return null
     return readPokerStakeOnboardingDeal()
@@ -2717,9 +2719,9 @@ export default function AppShell({
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
           openStableDealId={pendingPokerStableDealId}
-          onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
+          onOpenStableDealConsumed={clearPendingPokerStableDealId}
           showWithdrawnOfferNotice={pendingStableOfferWithdrawn}
-          onWithdrawnOfferNoticeConsumed={() => setPendingStableOfferWithdrawn(false)}
+          onWithdrawnOfferNoticeConsumed={clearPendingStableOfferWithdrawn}
           backerSliceOnboardingDealId={backerSliceOnboardingDealId}
           backerSliceOnboardingSliceId={backerSliceOnboardingSliceId}
           onBackerSliceOnboardingConsumed={() => {

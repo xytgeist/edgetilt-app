@@ -136,6 +136,29 @@ export function clearStableCommitDeepLinkParams() {
   }
 }
 
+/**
+ * Drop withdrawn-offer deep-link flags after Stable shows the banner once.
+ * Leaving `stableWithdrawn=1` / a dead `stableDeal=` in the URL re-arms the toast on remount.
+ */
+export function clearStableWithdrawnDeepLinkParams({ clearStableDeal = true } = {}) {
+  if (typeof window === 'undefined') return
+  try {
+    const params = new URLSearchParams(window.location.search || '')
+    const hadWithdrawn = params.has('stableWithdrawn')
+    const hadDeal = clearStableDeal && params.has('stableDeal')
+    if (!hadWithdrawn && !hadDeal) return
+    params.delete('stableWithdrawn')
+    if (clearStableDeal) params.delete('stableDeal')
+    const qs = params.toString()
+    const nextPath = `${window.location.pathname || '/'}${qs ? `?${qs}` : ''}${window.location.hash || ''}`
+    if (window.location.pathname + window.location.search + window.location.hash !== nextPath) {
+      window.history.replaceState({}, '', nextPath)
+    }
+  } catch {
+    // ignore
+  }
+}
+
 /** Navigate from a Lounge activity push / in-app toast payload (relative app URL). */
 export function navigateFromLoungeActivityPayload(payload) {
   const empty = {

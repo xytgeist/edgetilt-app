@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BarnIcon from '../../components/BarnIcon.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import { clearStableCommitDeepLinkParams } from '../../utils/loungeActivityInAppNavigate.js'
+import {
+  clearStableCommitDeepLinkParams,
+  clearStableWithdrawnDeepLinkParams,
+} from '../../utils/loungeActivityInAppNavigate.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
@@ -331,29 +334,43 @@ export default function PokerStableScreen({
   const activeBackerOnboardingSliceId =
     backerSliceOnboardingSliceId || readPokerStableBackerOnboardingSliceId()
 
+  const onWithdrawnOfferNoticeConsumedRef = useRef(onWithdrawnOfferNoticeConsumed)
+  onWithdrawnOfferNoticeConsumedRef.current = onWithdrawnOfferNoticeConsumed
+  const onOpenStableDealConsumedRef = useRef(onOpenStableDealConsumed)
+  onOpenStableDealConsumedRef.current = onOpenStableDealConsumed
+  /** One-shot per deep-link deal id so silent reloads cannot re-toast. */
+  const withdrawnMissingDealHandledRef = useRef(/** @type {string | null} */ (null))
+
   // Rewritten invite Alert (stableWithdrawn=1) … deal id was cleared on cancel.
   useEffect(() => {
     if (!showWithdrawnOfferNotice) return
     setWithdrawnOfferNotice('This stake offer was withdrawn.')
     setDetailDealId(null)
     setFocusHorseDealId(null)
-    onWithdrawnOfferNoticeConsumed?.()
-  }, [showWithdrawnOfferNotice, onWithdrawnOfferNoticeConsumed])
+    clearStableWithdrawnDeepLinkParams({ clearStableDeal: true })
+    onWithdrawnOfferNoticeConsumedRef.current?.()
+  }, [showWithdrawnOfferNotice])
 
   useEffect(() => {
     if (!openStableDealId || loading || !userId) return
     if (activeBackerOnboardingDealId && activeBackerOnboardingSliceId) {
-      onOpenStableDealConsumed?.()
+      onOpenStableDealConsumedRef.current?.()
       return
     }
     const dealStillVisible = deals.some((d) => d.id === openStableDealId)
     if (!dealStillVisible) {
       // Keep deep link if load failed … only treat a clean empty result as withdrawn.
       if (error || schemaMissing) return
+      if (withdrawnMissingDealHandledRef.current === openStableDealId) {
+        onOpenStableDealConsumedRef.current?.()
+        return
+      }
+      withdrawnMissingDealHandledRef.current = openStableDealId
       setWithdrawnOfferNotice('This stake offer was withdrawn.')
       setDetailDealId(null)
       setFocusHorseDealId(null)
-      onOpenStableDealConsumed?.()
+      clearStableWithdrawnDeepLinkParams({ clearStableDeal: true })
+      onOpenStableDealConsumedRef.current?.()
       return
     }
     const dealSlices = slicesByDeal[openStableDealId] || []
@@ -387,12 +404,12 @@ export default function PokerStableScreen({
       setDetailDealId(null)
       setFocusHorseDealId(openStableDealId)
       void load({ silent: true })
-      onOpenStableDealConsumed?.()
+      onOpenStableDealConsumedRef.current?.()
       return
     }
     setDetailDealId(openStableDealId)
     void load({ silent: true })
-    onOpenStableDealConsumed?.()
+    onOpenStableDealConsumedRef.current?.()
   }, [
     openStableDealId,
     loading,
@@ -402,7 +419,6 @@ export default function PokerStableScreen({
     schemaMissing,
     slicesByDeal,
     pendingCommits,
-    onOpenStableDealConsumed,
     activeBackerOnboardingDealId,
     activeBackerOnboardingSliceId,
     load,
@@ -884,7 +900,10 @@ export default function PokerStableScreen({
             <p className="min-w-0 flex-1 text-center sm:text-left">{withdrawnOfferNotice}</p>
             <button
               type="button"
-              onClick={() => setWithdrawnOfferNotice('')}
+              onClick={() => {
+                setWithdrawnOfferNotice('')
+                clearStableWithdrawnDeepLinkParams({ clearStableDeal: true })
+              }}
               className="shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-amber-200/90 touch-manipulation hover:bg-amber-900/40"
               aria-label="Dismiss"
             >

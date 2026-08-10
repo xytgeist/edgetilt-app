@@ -19,6 +19,8 @@ export function machineForGuideRow(row) {
 export function resolveCalculatorKeyFromMachine(machine) {
   if (!machine) return null
   const { slug, calculator_slug: calc, has_calculator: has } = machine
+  // Similar meter family to Buffalo Diamond, but no calculator … Logbook only.
+  if (slug === 'timberwolf-diamond') return null
   if (
     slug === 'buffalo-link' ||
     slug === 'lightning-buffalo-link' ||
@@ -27,8 +29,12 @@ export function resolveCalculatorKeyFromMachine(machine) {
   ) {
     return 'buffalo-link'
   }
-  if (slug === 'buffalo-diamond' || slug === 'buffalo-diamond-extreme' || calc === 'buffalo-diamond') {
+  if (slug === 'buffalo-diamond' || slug === 'buffalo-diamond-extreme') {
     return 'buffalo-diamond'
+  }
+  // Do not map other skins (e.g. Timberwolf) that were wrongly tagged buffalo-diamond in DB.
+  if (calc === 'buffalo-diamond' && slug !== 'buffalo-diamond' && slug !== 'buffalo-diamond-extreme') {
+    return null
   }
   if (slug === 'stack-up-pays' || calc === 'stack-up-pays') return 'stackup'
   if (slug === 'phoenix-link' || calc === 'phoenix-link') return 'phoenix'

@@ -16,6 +16,7 @@ import remarkGfm from 'remark-gfm'
 import { guideMarkdownForDisplay } from './formUtils.js'
 import { useBlobObjectUrl } from './guideImageUtils.js'
 import { extractAccentFromImageFile, resolveGuideAccent } from '../utils/guideCardAccent.js'
+import { resolveCalculatorKeyFromMachine } from '../features/guides/guideCalculatorKey.js'
 
 // ─── ratings helpers ──────────────────────────────────────────────────────────
 function volatilityLabel(m) {
@@ -263,9 +264,10 @@ export default function GuideCardPreview({
       : `bg-gradient-to-br ${accent.heroGradientClass}`
 
   const evLine = guide.card_ev_threshold?.trim() || 'Verify +EV on the glass - open guide'
-  const calcKey = machine.has_calculator
-    ? (machine.calculator_slug || machine.slug || slug)
-    : null
+  const calcKey = resolveCalculatorKeyFromMachine({
+    ...machine,
+    slug: machine.slug || slug,
+  })
 
   const vLabel = volatilityLabel(machine)
   const pLabel = popularityLabel(machine)
@@ -418,9 +420,13 @@ export default function GuideCardPreview({
       {/* ── ACTION BUTTONS ── */}
       <div className="px-4 pb-4 flex flex-col gap-2 border-t border-zinc-800/80 pt-3 -mt-px">
         <div className="flex gap-2">
-          {calcKey && (
+          {calcKey ? (
             <button type="button" className="flex-1 min-h-11 rounded-2xl bg-emerald-600 text-white text-sm font-bold cursor-default select-none">
               Open calculator
+            </button>
+          ) : (
+            <button type="button" className="flex-1 min-h-11 rounded-2xl bg-amber-700 text-white text-sm font-bold cursor-default select-none">
+              Log play in Logbook
             </button>
           )}
           <button type="button" className="flex-1 min-h-11 rounded-2xl bg-cyan-700 text-white text-sm font-bold cursor-default select-none">

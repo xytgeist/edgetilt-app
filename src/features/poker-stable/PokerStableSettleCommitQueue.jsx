@@ -20,6 +20,7 @@ export default function PokerStableSettleCommitQueue({
   onSavingChange,
   onSynced,
   onError,
+  onHeadLoadingChange = null,
 }) {
   const [committingAll, setCommittingAll] = useState(false)
   const queue = settleCommits.filter((row) => isSettleCommitKind(row.event_kind))
@@ -100,6 +101,7 @@ export default function PokerStableSettleCommitQueue({
         onSavingChange={onSavingChange}
         onSynced={onSynced}
         onError={onError}
+        onLoadingChange={onHeadLoadingChange}
       />
 
       {rest.length ? (

@@ -4538,6 +4538,7 @@ export default function PokerBankrollTracker({
           topups={dealTopupsByDeal[ledgerDealId] || []}
           reductions={dealReductionsByDeal[ledgerDealId] || []}
           settlements={dealSettlementsByDeal[ledgerDealId] || []}
+          pendingCommits={pendingStakeCommits.filter((row) => row.deal_id === ledgerDealId)}
           saving={stableSaving}
           onSavingChange={setStableSaving}
           onClose={() => setLedgerDealId(null)}

@@ -44,6 +44,8 @@ export default function PokerStableCommitSyncPanel({
   onClose,
   onSynced,
   onError,
+  /** Fires whenever this panel's loading gate flips (parent can hold Overview until ready). */
+  onLoadingChange = null,
 }) {
   const [loading, setLoading] = useState(true)
   const [savingLocal, setSavingLocal] = useState(false)
@@ -168,6 +170,10 @@ export default function PokerStableCommitSyncPanel({
     void loadBundle()
   }, [loadBundle])
 
+  useEffect(() => {
+    onLoadingChange?.(loading)
+  }, [loading, onLoadingChange])
+
   const actorLabel = useMemo(() => {
     const name = String(actorProfile?.display_name || '').trim()
     if (name) return name
@@ -266,13 +272,30 @@ export default function PokerStableCommitSyncPanel({
     return (
       <div
         data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined}
+        data-poker-stable-commit-sync-loading
         className={
           variant === 'inline'
             ? 'rounded-2xl border border-zinc-700/40 bg-zinc-900/70 p-4 shadow-none'
             : ''
         }
+        aria-busy="true"
+        aria-live="polite"
       >
-        <p className="text-sm text-zinc-400">Loading settlement…</p>
+        <div className="h-3 w-40 animate-pulse rounded bg-zinc-700/70" />
+        <div className="mt-3 space-y-2">
+          <div className="h-3 w-full animate-pulse rounded bg-zinc-800/80" />
+          <div className="h-3 w-4/5 animate-pulse rounded bg-zinc-800/80" />
+        </div>
+        <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-5">
+          <div className="h-2.5 w-48 animate-pulse rounded bg-emerald-500/20" />
+          <div className="mt-3 h-8 w-28 animate-pulse rounded bg-emerald-500/25" />
+          <div className="mt-4 space-y-2">
+            <div className="h-3 w-4/5 animate-pulse rounded bg-emerald-500/15" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-emerald-500/15" />
+          </div>
+        </div>
+        <div className="mt-4 h-11 w-full animate-pulse rounded-2xl bg-emerald-600/30" />
+        <p className="sr-only">Loading settlement</p>
       </div>
     )
   }

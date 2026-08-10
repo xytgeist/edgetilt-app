@@ -1273,6 +1273,7 @@ export default function PokerStableScreen({
           topups={dealTopupsByDeal[detailDeal.id] || []}
           reductions={dealReductionsByDeal[detailDeal.id] || []}
           settlements={dealSettlementsByDeal[detailDeal.id] || []}
+          pendingCommits={pendingCommits.filter((row) => row.deal_id === detailDeal.id)}
           saving={saving}
           onSavingChange={setSaving}
           onClose={() => setDetailDealId(null)}

@@ -95,6 +95,8 @@ export default function PokerStableDealDetailSheet({
   topups: topupsProp = [],
   reductions: reductionsProp = [],
   settlements: settlementsProp = [],
+  /** Parent-known pending commits for this deal … seeds settle queue so Overview does not flash first. */
+  pendingCommits: pendingCommitsProp = [],
   saving,
   onSavingChange,
   onClose,
@@ -116,7 +118,10 @@ export default function PokerStableDealDetailSheet({
   const [settlement, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [ledgerEntries, setLedgerEntries] = useState([])
-  const [pendingCommits, setPendingCommits] = useState([])
+  const [pendingCommits, setPendingCommits] = useState(() =>
+    (pendingCommitsProp || []).filter((row) => row?.deal_id === deal?.id),
+  )
+  const [settleCommitHeadLoading, setSettleCommitHeadLoading] = useState(true)
   const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
   const [closeStakeOpen, setCloseStakeOpen] = useState(false)
   const [dealTopups, setDealTopups] = useState(topupsProp)
@@ -126,6 +131,25 @@ export default function PokerStableDealDetailSheet({
   useEffect(() => {
     setActiveTab(manageOnly ? 'manage' : 'overview')
   }, [deal?.id, manageOnly])
+
+  const pendingCommitSeedKey = useMemo(
+    () =>
+      (pendingCommitsProp || [])
+        .filter((row) => row?.deal_id === deal?.id)
+        .map((row) => String(row.commit_id || ''))
+        .filter(Boolean)
+        .join(','),
+    [pendingCommitsProp, deal?.id],
+  )
+
+  useEffect(() => {
+    setPendingCommits(
+      (pendingCommitsProp || []).filter((row) => row?.deal_id === deal?.id),
+    )
+    setSettleCommitHeadLoading(true)
+    // Seed from parent on deal open / when known commit ids change … loadLedger refreshes after.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional seed key
+  }, [deal?.id, pendingCommitSeedKey])
 
   useEffect(() => {
     setDealTopups(topupsProp)
@@ -169,6 +193,14 @@ export default function PokerStableDealDetailSheet({
     () => pendingSettleCommitsForDeal(pendingCommits, deal?.id),
     [pendingCommits, deal?.id],
   )
+  const settleCommitHeadId = settleCommitQueue[0]?.commit_id
+    ? String(settleCommitQueue[0].commit_id)
+    : ''
+  useEffect(() => {
+    setSettleCommitHeadLoading(Boolean(settleCommitHeadId))
+  }, [settleCommitHeadId])
+  const holdOverviewForSettleCommit =
+    settleCommitQueue.length > 0 && settleCommitHeadLoading
   const nonSettlePendingCommits = useMemo(
     () =>
       visiblePendingCommits.filter(
@@ -410,6 +442,7 @@ export default function PokerStableDealDetailSheet({
                 settleCommits={settleCommitQueue}
                 saving={saving}
                 onSavingChange={onSavingChange}
+                onHeadLoadingChange={setSettleCommitHeadLoading}
                 onSynced={async (result) => {
                   await onRefresh?.()
                   if (result?.isSettleCommit) {
@@ -441,35 +474,37 @@ export default function PokerStableDealDetailSheet({
                 ))}
               </div>
             ) : null}
-            <PokerStableDealOverviewPanel
-              deal={deal}
-              slices={slices}
-              roll={roll}
-              profilesById={profilesById}
-              userId={userId}
-              sessions={sessions}
-              topups={dealTopups}
-              reductions={dealReductions}
-              settlements={dealSettlements}
-              ledgerEntries={ledgerEntries}
-              onOpenTrend={() => setActiveTab('trend')}
-              canProposeSettle={showSettleSection}
-              showPeriodicSettle={showPeriodicSettle}
-              settleBlockedPending={settleBlockedPending}
-              settleBlockedMessage={SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE}
-              saving={saving}
-              profitUp={profitUp}
-              onOpenPeriodicSettle={() => {
-                if (settleBlockedPending) return
-                setPeriodicSettleOpen(true)
-              }}
-              onOpenCloseStake={() => {
-                if (settleBlockedPending) return
-                setCloseStakeOpen(true)
-              }}
-              showArchive={showArchive}
-              onArchive={onArchive}
-            />
+            {holdOverviewForSettleCommit ? null : (
+              <PokerStableDealOverviewPanel
+                deal={deal}
+                slices={slices}
+                roll={roll}
+                profilesById={profilesById}
+                userId={userId}
+                sessions={sessions}
+                topups={dealTopups}
+                reductions={dealReductions}
+                settlements={dealSettlements}
+                ledgerEntries={ledgerEntries}
+                onOpenTrend={() => setActiveTab('trend')}
+                canProposeSettle={showSettleSection}
+                showPeriodicSettle={showPeriodicSettle}
+                settleBlockedPending={settleBlockedPending}
+                settleBlockedMessage={SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE}
+                saving={saving}
+                profitUp={profitUp}
+                onOpenPeriodicSettle={() => {
+                  if (settleBlockedPending) return
+                  setPeriodicSettleOpen(true)
+                }}
+                onOpenCloseStake={() => {
+                  if (settleBlockedPending) return
+                  setCloseStakeOpen(true)
+                }}
+                showArchive={showArchive}
+                onArchive={onArchive}
+              />
+            )}
           </>
         ) : null}
 
@@ -504,6 +539,7 @@ export default function PokerStableDealDetailSheet({
             settleCommits={settleCommitQueue}
             saving={saving}
             onSavingChange={onSavingChange}
+            onHeadLoadingChange={setSettleCommitHeadLoading}
             onSynced={async (result) => {
               await onRefresh?.()
               if (result?.isSettleCommit) {

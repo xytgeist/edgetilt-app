@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchPokerPendingOfferAttention,
   hasUnaackedAttentionIds,
@@ -46,6 +46,9 @@ export function usePokerPendingOfferAttention({
     (updater) => {
       setAcks((prev) => {
         const next = typeof updater === 'function' ? updater(prev) : updater
+        // Bail when updater returns the same bucket … prevents Poker-hub ack loops
+        // (mergeAttentionAckIds always allocates a new array).
+        if (next === prev) return prev
         writePokerOfferAttentionAcks(userId, next)
         return next
       })
@@ -55,17 +58,20 @@ export function usePokerPendingOfferAttention({
 
   const refresh = useCallback(async () => {
     if (!enabled || !supabaseClient || !userId) {
-      setBankrollIds([])
-      setStableIds([])
+      setBankrollIds((prev) => (prev.length ? [] : prev))
+      setStableIds((prev) => (prev.length ? [] : prev))
       return
     }
     const next = await fetchPokerPendingOfferAttention(supabaseClient, userId)
     const nextBankroll = next.bankrollIds || []
     const nextStable = next.stableIds || []
     const pendingIds = next.pendingIds || [...nextBankroll, ...nextStable]
-    setBankrollIds(nextBankroll)
-    setStableIds(nextStable)
-    commitAcks((prev) => prunePokerOfferAttentionAcks(prev, pendingIds))
+    setBankrollIds((prev) => (sameIdList(prev, nextBankroll) ? prev : nextBankroll))
+    setStableIds((prev) => (sameIdList(prev, nextStable) ? prev : nextStable))
+    commitAcks((prev) => {
+      const pruned = prunePokerOfferAttentionAcks(prev, pendingIds)
+      return ackBucketsEqual(prev, pruned) ? prev : pruned
+    })
   }, [commitAcks, enabled, supabaseClient, userId])
 
   useEffect(() => {
@@ -88,22 +94,30 @@ export function usePokerPendingOfferAttention({
     }
   }, [enabled, refresh])
 
-  const pendingIds = [...bankrollIds, ...stableIds]
+  const pendingIds = useMemo(() => [...bankrollIds, ...stableIds], [bankrollIds, stableIds])
 
   const acknowledgeHamburger = useCallback(() => {
     if (!pendingIds.length) return
-    commitAcks((prev) => ({
-      ...prev,
-      hamburger: mergeAttentionAckIds(prev.hamburger, pendingIds),
-    }))
+    commitAcks((prev) => {
+      if (!hasUnaackedAttentionIds(pendingIds, prev.hamburger)) return prev
+      return {
+        ...prev,
+        hamburger: mergeAttentionAckIds(prev.hamburger, pendingIds),
+      }
+    })
   }, [commitAcks, pendingIds])
 
   const acknowledgePoker = useCallback(() => {
     if (!pendingIds.length) return
-    commitAcks((prev) => ({
-      ...prev,
-      poker: mergeAttentionAckIds(prev.poker, pendingIds),
-    }))
+    commitAcks((prev) => {
+      // Already acked … must return `prev` or AppShell's tab===poker effect loops forever
+      // (pendingIds was a fresh []/[...] every render + merge always allocated).
+      if (!hasUnaackedAttentionIds(pendingIds, prev.poker)) return prev
+      return {
+        ...prev,
+        poker: mergeAttentionAckIds(prev.poker, pendingIds),
+      }
+    })
   }, [commitAcks, pendingIds])
 
   const acknowledgeBankrollTool = useCallback(() => {
@@ -111,7 +125,7 @@ export function usePokerPendingOfferAttention({
     let shouldPulse = false
     commitAcks((prev) => {
       shouldPulse = hasUnaackedAttentionIds(bankrollIds, prev.pulsedBankroll)
-      return {
+      const next = {
         ...prev,
         hamburger: mergeAttentionAckIds(prev.hamburger, bankrollIds),
         poker: mergeAttentionAckIds(prev.poker, bankrollIds),
@@ -120,6 +134,7 @@ export function usePokerPendingOfferAttention({
           ? mergeAttentionAckIds(prev.pulsedBankroll, bankrollIds)
           : prev.pulsedBankroll,
       }
+      return ackBucketsEqual(prev, next) ? prev : next
     })
     if (shouldPulse) setPulseBankrollOffer(true)
   }, [bankrollIds, commitAcks])
@@ -129,7 +144,7 @@ export function usePokerPendingOfferAttention({
     let shouldPulse = false
     commitAcks((prev) => {
       shouldPulse = hasUnaackedAttentionIds(stableIds, prev.pulsedStable)
-      return {
+      const next = {
         ...prev,
         hamburger: mergeAttentionAckIds(prev.hamburger, stableIds),
         poker: mergeAttentionAckIds(prev.poker, stableIds),
@@ -138,6 +153,7 @@ export function usePokerPendingOfferAttention({
           ? mergeAttentionAckIds(prev.pulsedStable, stableIds)
           : prev.pulsedStable,
       }
+      return ackBucketsEqual(prev, next) ? prev : next
     })
     if (shouldPulse) setPulseStableOffer(true)
   }, [commitAcks, stableIds])
@@ -165,4 +181,32 @@ export function usePokerPendingOfferAttention({
     clearStableOfferPulse,
     refreshPokerOfferAttention: refresh,
   }
+}
+
+/** @param {string[]} a @param {string[]} b */
+function sameIdList(a, b) {
+  if (a === b) return true
+  if (!a?.length && !b?.length) return true
+  if ((a?.length || 0) !== (b?.length || 0)) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+/**
+ * @param {import('../poker-stable/pokerPendingOfferAttention.js').PokerOfferAttentionAckBucket} a
+ * @param {import('../poker-stable/pokerPendingOfferAttention.js').PokerOfferAttentionAckBucket} b
+ */
+function ackBucketsEqual(a, b) {
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    sameIdList(a.hamburger, b.hamburger) &&
+    sameIdList(a.poker, b.poker) &&
+    sameIdList(a.bankroll, b.bankroll) &&
+    sameIdList(a.stable, b.stable) &&
+    sameIdList(a.pulsedBankroll, b.pulsedBankroll) &&
+    sameIdList(a.pulsedStable, b.pulsedStable)
+  )
 }

@@ -65,6 +65,7 @@ export default function PokerStableDealOverviewPanel({
   onOpenCloseStake,
   showArchive = false,
   onArchive = null,
+  archiveBlockedPendingSettle = false,
 }) {
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? deal?.baseline_bankroll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
@@ -264,9 +265,10 @@ export default function PokerStableDealOverviewPanel({
           <div className={`mt-3 border-t ${STABLE_SURFACE_DIVIDER} pt-3`}>
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || archiveBlockedPendingSettle}
               data-poker-stable-archive-btn
               onClick={() => {
+                if (archiveBlockedPendingSettle) return
                 triggerTapHapticLight()
                 onArchive?.()
               }}
@@ -274,6 +276,11 @@ export default function PokerStableDealOverviewPanel({
             >
               Archive stake
             </button>
+            {archiveBlockedPendingSettle ? (
+              <p className="mt-2 text-center text-[11px] leading-snug text-zinc-500">
+                Commit the settlement above before archiving this stake.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

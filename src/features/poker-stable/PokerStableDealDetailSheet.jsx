@@ -503,6 +503,7 @@ export default function PokerStableDealDetailSheet({
                 }}
                 showArchive={showArchive}
                 onArchive={onArchive}
+                archiveBlockedPendingSettle={settleCommitQueue.length > 0}
               />
             )}
           </>

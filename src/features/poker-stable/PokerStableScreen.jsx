@@ -73,6 +73,7 @@ import {
   archivedStakeOutcomeLabel,
   dealStakeeDisplayName,
   dealLeadBackerDisplayName,
+  pendingSettleCommitsForDeal,
   stakeeSkipsBackerCommitSync,
 } from './pokerStableTerms.js'
 function statusLabel(status) {
@@ -744,6 +745,12 @@ export default function PokerStableScreen({
 
   async function onArchiveHorse(dealId) {
     if (!supabaseClient || !userId) return
+    const pendingSettle = pendingSettleCommitsForDeal(pendingCommits, dealId)[0]
+    if (pendingSettle) {
+      setDetailDealId(dealId)
+      setError('Commit the settlement to your books before archiving this stake.')
+      return
+    }
     setSaving(true)
     setError('')
     const archivedAt = new Date().toISOString()

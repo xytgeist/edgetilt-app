@@ -204,8 +204,8 @@ export default function LoungeNotificationsPanel({
           setItems([])
           setHasMore(false)
         } else {
+          // Keep last good list … a blip was wiping Alerts to "No notifications yet".
           setErr(e?.message || 'Could not load notifications.')
-          if (!append) setItems([])
         }
       } finally {
         if (seq !== fetchSeqRef.current) return

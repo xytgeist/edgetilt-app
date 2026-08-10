@@ -33,6 +33,21 @@ function stableOfferWithdrawnError(message = 'This stake offer was withdrawn.') 
   return err
 }
 
+/** Terms edit used to rebuild slice ids … Accept on a stale id is not a withdraw. */
+export const STABLE_OFFER_REFRESH_CODE = 'STABLE_OFFER_REFRESH'
+
+export function isStableOfferRefreshError(err) {
+  if (!err) return false
+  if (err.code === STABLE_OFFER_REFRESH_CODE) return true
+  return /offer was updated/i.test(String(err.message || ''))
+}
+
+function stableOfferRefreshError(message = 'This offer was updated. Refreshing…') {
+  const err = new Error(message)
+  err.code = STABLE_OFFER_REFRESH_CODE
+  return err
+}
+
 /** True when the slice row is gone (deal cancel cascades) or no longer pending for this backer. */
 async function diagnoseMissingPendingSlice(supabase, sliceId, stakerUserId) {
   const { data: slice, error } = await supabase
@@ -41,7 +56,18 @@ async function diagnoseMissingPendingSlice(supabase, sliceId, stakerUserId) {
     .eq('id', sliceId)
     .maybeSingle()
   if (error && !isMissingStableTableError(error)) return error
-  if (!slice) return stableOfferWithdrawnError()
+  if (!slice) {
+    // Slice id churn (terms edit) … still pending for this backer on some deal.
+    const { data: stillPending, error: pendErr } = await supabase
+      .from('poker_stable_deal_slices')
+      .select('id')
+      .eq('staker_user_id', stakerUserId)
+      .eq('status', 'pending')
+      .limit(1)
+    if (pendErr && !isMissingStableTableError(pendErr)) return pendErr
+    if ((stillPending || []).length > 0) return stableOfferRefreshError()
+    return stableOfferWithdrawnError()
+  }
   if (slice.staker_user_id !== stakerUserId) {
     return new Error('Could not update slice. You lack access.')
   }
@@ -182,17 +208,26 @@ export async function loadMyStableDeals(supabase, userId) {
     .from('poker_stable_deal_slices')
     .select('deal_id')
     .eq('staker_user_id', userId)
-  if (sErr && !isMissingStableTableError(sErr)) return { deals: direct || [], error: sErr }
+  // Slice-only backers (player-initiated invites) have no direct deal rows.
+  // Surface the slice probe error but still merge whatever we can.
+  if (sErr && !isMissingStableTableError(sErr) && !(direct || []).length) {
+    return { deals: [], error: sErr }
+  }
 
   const sliceDealIds = [...new Set((sliceRows || []).map((r) => r.deal_id))]
   let sliceDeals = []
+  let sliceDealErr = sErr && !isMissingStableTableError(sErr) ? sErr : null
   if (sliceDealIds.length) {
     const { data, error } = await supabase
       .from('poker_stable_deals')
       .select(DEAL_SELECT)
       .in('id', sliceDealIds)
-    if (error && !isMissingStableTableError(error)) return { deals: direct || [], error }
-    sliceDeals = data || []
+    if (error && !isMissingStableTableError(error)) {
+      if (!(direct || []).length) return { deals: [], error }
+      sliceDealErr = error
+    } else {
+      sliceDeals = data || []
+    }
   }
 
   const byId = new Map()
@@ -200,7 +235,7 @@ export async function loadMyStableDeals(supabase, userId) {
   const deals = [...byId.values()].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   )
-  return { deals, error: null }
+  return { deals, error: sliceDealErr }
 }
 
 /**

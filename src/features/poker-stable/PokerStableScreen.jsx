@@ -43,6 +43,7 @@ import {
   declineSliceAsStaker,
   dealIdsForAcceptedBackerVisibility,
   isMissingStableTableError,
+  isStableOfferRefreshError,
   isStableOfferWithdrawnError,
   isViewerBackingDeal,
   depositBackerBankroll,
@@ -176,6 +177,7 @@ export default function PokerStableScreen({
   const load = useCallback(async ({ silent = false, light = false } = {}) => {
     if (!supabaseClient || !userId) {
       setDeals([])
+      setSlicesByDeal({})
       setLoading(false)
       return
     }
@@ -187,15 +189,26 @@ export default function PokerStableScreen({
         if (isMissingStableTableError(dErr)) {
           setSchemaMissing(true)
           setDeals([])
+          setSlicesByDeal({})
           return
         }
-        throw dErr
+        // Keep last good horses … a soft deal-probe blip must not blank Stable.
+        setError(dErr.message || 'Could not load Stable.')
+        return
       }
       setSchemaMissing(false)
-      setDeals(rows)
       const dealIds = rows.map((d) => d.id)
       const { byDeal: sliceMap, error: slErr } = await loadDealSlices(supabaseClient, dealIds)
-      if (slErr && !isMissingStableTableError(slErr)) console.warn('[poker-stable] slices', slErr.message)
+      if (slErr && !isMissingStableTableError(slErr)) {
+        console.warn('[poker-stable] slices', slErr.message)
+        // Deals without slices get partitioned out for player-initiated invites.
+        // Keep prior slice map so a failed refresh cannot hide a live pending offer.
+        setDeals(rows)
+        setError(slErr.message || 'Could not refresh stake slices.')
+        if (light) return
+        return
+      }
+      setDeals(rows)
       setSlicesByDeal(sliceMap || {})
 
       // Pending-invite poll: deals+slices only (drop ghost card). Full history refetch cooks phones.
@@ -285,8 +298,8 @@ export default function PokerStableScreen({
       setDealReductionsByDeal(reductionsByDeal)
       setDealSettlementsByDeal(settlementsByDeal)
     } catch (e) {
+      // Do not setDeals([]) … a throw after a good deals/slices paint was blanking horses.
       setError(e?.message || 'Could not load Stable.')
-      setDeals([])
     } finally {
       if (!silent) setLoading(false)
     }
@@ -660,7 +673,10 @@ export default function PokerStableScreen({
       notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
-      if (isStableOfferWithdrawnError(e)) {
+      if (isStableOfferRefreshError(e)) {
+        setWithdrawnOfferNotice('')
+        await load({ silent: true })
+      } else if (isStableOfferWithdrawnError(e)) {
         await handleGoneSliceOffer(sliceId)
       } else {
         setError(e?.message || 'Could not accept slice.')
@@ -680,7 +696,10 @@ export default function PokerStableScreen({
       notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
-      if (isStableOfferWithdrawnError(e)) {
+      if (isStableOfferRefreshError(e)) {
+        setWithdrawnOfferNotice('')
+        await load({ silent: true })
+      } else if (isStableOfferWithdrawnError(e)) {
         await handleGoneSliceOffer(sliceId)
       } else {
         setError(e?.message || 'Could not decline slice.')

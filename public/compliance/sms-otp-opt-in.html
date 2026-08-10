@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>EdgeTilt — Account SMS OTP opt-in</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        line-height: 1.5;
+      }
+      body {
+        margin: 0;
+        background: #09090b;
+        color: #e4e4e7;
+        padding: 24px 16px 48px;
+      }
+      main {
+        max-width: 480px;
+        margin: 0 auto;
+      }
+      .brand {
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+        color: #67e8f9;
+        margin-bottom: 8px;
+      }
+      h1 {
+        font-size: 1.2rem;
+        margin: 0 0 6px;
+        color: #fff;
+      }
+      .subtitle {
+        color: #71717a;
+        font-size: 0.875rem;
+        margin: 0 0 20px;
+      }
+      .card {
+        background: rgba(24, 24, 27, 0.85);
+        border: 1px solid rgba(63, 63, 70, 0.9);
+        border-radius: 16px;
+        padding: 16px;
+      }
+      .card h2 {
+        margin: 0 0 4px;
+        font-size: 1rem;
+        color: #fff;
+      }
+      .card-lead {
+        margin: 0 0 14px;
+        font-size: 0.8125rem;
+        color: #a1a1aa;
+      }
+      label.field-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #71717a;
+        margin: 0 0 4px;
+      }
+      .field {
+        width: 100%;
+        box-sizing: border-box;
+        height: 44px;
+        border-radius: 12px;
+        border: 1px solid #3f3f46;
+        background: #27272a;
+        color: #fff;
+        padding: 0 12px;
+        font-size: 0.875rem;
+        margin-bottom: 12px;
+      }
+      .consent {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin: 4px 0 14px;
+        font-size: 0.8125rem;
+        color: #d4d4d8;
+      }
+      .consent input {
+        margin-top: 3px;
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        accent-color: #22d3ee;
+      }
+      .disclosure {
+        font-size: 11px;
+        line-height: 1.5;
+        color: #71717a;
+        margin: 0 0 14px;
+      }
+      .disclosure a {
+        color: #67e8f9;
+      }
+      .btn {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        border: 0;
+        border-radius: 12px;
+        background: #0891b2;
+        color: #fff;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        padding: 12px 16px;
+        cursor: default;
+      }
+      .note {
+        margin-top: 20px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #18181b;
+        border: 1px solid #3f3f46;
+        font-size: 0.8125rem;
+        color: #a1a1aa;
+      }
+      .note strong {
+        color: #e4e4e7;
+      }
+      .note ul {
+        margin: 8px 0 0;
+        padding-left: 1.1rem;
+      }
+      .note li {
+        margin-bottom: 6px;
+      }
+      a {
+        color: #67e8f9;
+      }
+      .sample {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: #0c0c0e;
+        border: 1px dashed #3f3f46;
+        font-size: 0.8125rem;
+        color: #d4d4d8;
+      }
+      .sample-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #71717a;
+        margin-bottom: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">EDGETILT</div>
+      <h1>Account phone verification (SMS OTP)</h1>
+      <p class="subtitle">
+        Public documentation of the web opt-in used when a signed-in EdgeTilt member verifies their
+        mobile number. Messages are one-time passcodes for account security only. No marketing.
+      </p>
+
+      <div class="card" aria-label="Example account SMS OTP opt-in form">
+        <h2>Verify your phone</h2>
+        <p class="card-lead">
+          Product path: EdgeTilt → Settings → Account info → Verify phone. This static page mirrors
+          the consent UI for carrier review.
+        </p>
+
+        <label class="field-label" for="otp-phone">Mobile number</label>
+        <input
+          id="otp-phone"
+          class="field"
+          type="tel"
+          value="+1 (702) 555-0142"
+          readonly
+          autocomplete="tel"
+        />
+
+        <label class="consent">
+          <input id="otp-consent" type="checkbox" />
+          <span>
+            I agree to receive a one-time SMS verification code from EdgeTilt to verify this phone
+            number for my account. Message frequency: message frequency varies (typically 1 message
+            per verification request). Message and data rates may apply. Reply <strong>STOP</strong>
+            to opt out, <strong>HELP</strong> for help.
+          </span>
+        </label>
+
+        <p class="disclosure">
+          By tapping Send verification code, you confirm the number belongs to you and you consent
+          to receive transactional OTP texts only. No promotional or marketing messages are sent
+          from this program.
+          <a href="https://edgetilt.com/terms?from=public">Terms of Service</a>
+          ·
+          <a href="https://edgetilt.com/privacy?from=public">Privacy Policy</a>
+        </p>
+
+        <button type="button" class="btn" disabled>Send verification code</button>
+
+        <div class="sample">
+          <div class="sample-label">Sample message</div>
+          Your EdgeTilt verification code is 482913. It expires in 10 minutes. Do not share this
+          code with anyone. Reply STOP to opt out, HELP for help.
+        </div>
+      </div>
+
+      <div class="note">
+        <strong>Opt-in summary for reviewers</strong>
+        <ul>
+          <li>
+            <strong>Type:</strong> Web form on EdgeTilt after the user signs in (Account settings).
+          </li>
+          <li>
+            <strong>Consent:</strong> Unchecked checkbox required before Send verification code.
+            Checkbox is never pre-selected.
+          </li>
+          <li>
+            <strong>Use case:</strong> Two-factor / phone verification one-time passcodes only.
+          </li>
+          <li>
+            <strong>Opt-out:</strong> Reply STOP. Support: Reply HELP or email
+            support@edgetilt.com.
+          </li>
+          <li>
+            Policies:
+            <a href="https://edgetilt.com/terms?from=public">https://edgetilt.com/terms?from=public</a>
+            ·
+            <a href="https://edgetilt.com/privacy?from=public"
+              >https://edgetilt.com/privacy?from=public</a
+            >
+          </li>
+        </ul>
+      </div>
+    </main>
+  </body>
+</html>

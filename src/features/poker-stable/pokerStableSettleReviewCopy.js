@@ -1,6 +1,17 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
+import { backerSliceAllocatedCapital } from './pokerStableBackerMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
-import { computeProRataBackerShares, roundMoney } from './pokerStableMath.js'
+import { computeProRataBackerShares, roundMoney, stableNum } from './pokerStableMath.js'
+
+/** Profit (+ stake capital on close). */
+function formatSettlePayAmount(profitAmount, capital, isClose) {
+  const profit = roundMoney(profitAmount)
+  const cap = roundMoney(capital)
+  if (isClose && cap > 0.005) {
+    return `${fmtPoker$(profit)} + ${fmtPoker$(cap)}`
+  }
+  return fmtPoker$(profit)
+}
 
 /**
  * Normalize settle lines so pay-copy helpers can read total_owed + nested slice.
@@ -27,28 +38,48 @@ export function attachSlicesToSettleLines(lines = [], slices = []) {
 
 /**
  * Viewer-facing settle payment phrases.
- * @param {{ isStakee: boolean, lines: object[], userId?: string | null, playerName: string, profilesById?: object }} params
+ * On close, appends that backer's stake capital (baseline × action %) after profit.
+ * @param {{
+ *   isStakee: boolean,
+ *   lines: object[],
+ *   userId?: string | null,
+ *   playerName: string,
+ *   profilesById?: object,
+ *   isClose?: boolean,
+ *   baseline?: number,
+ * }} params
  */
-export function settlePayPhrases({ isStakee, lines, userId, playerName, profilesById = {} }) {
+export function settlePayPhrases({
+  isStakee,
+  lines,
+  userId,
+  playerName,
+  profilesById = {},
+  isClose = false,
+  baseline = 0,
+}) {
   const phrases = []
+  const capitalDeal = { baseline_bankroll: stableNum(baseline) }
   for (const line of lines || []) {
     const amount = roundMoney(line.total_owed)
-    if (amount < 0.005) continue
     const slice = line.slice || {}
+    const capital = isClose ? backerSliceAllocatedCapital(capitalDeal, slice) : 0
+    if (amount < 0.005 && !(isClose && capital > 0.005)) continue
+    const payAmount = formatSettlePayAmount(amount, capital, isClose)
     if (isStakee) {
       const backerName = sliceDisplayName(slice, profilesById)
       phrases.push(
         line.direction === 'player_to_staker'
-          ? `You pay ${backerName} ${fmtPoker$(amount)}`
-          : `${backerName} pays you ${fmtPoker$(amount)}`,
+          ? `You pay ${backerName} ${payAmount}`
+          : `${backerName} pays you ${payAmount}`,
       )
       continue
     }
     if (!userId || slice.staker_user_id !== userId) continue
     phrases.push(
       line.direction === 'player_to_staker'
-        ? `${playerName} pays you ${fmtPoker$(amount)}`
-        : `You pay ${playerName} ${fmtPoker$(amount)}`,
+        ? `${playerName} pays you ${payAmount}`
+        : `You pay ${playerName} ${payAmount}`,
     )
   }
   return phrases

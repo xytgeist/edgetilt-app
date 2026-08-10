@@ -202,6 +202,8 @@ export default function PokerStableCommitSyncPanel({
         userId,
         playerName,
         profilesById,
+        isClose: isCloseSettle,
+        baseline: stableNum(settlement.baseline_at_settle),
       }),
       resetBullet: settleResetBullet({
         baseline: stableNum(settlement.baseline_at_settle),
@@ -290,7 +292,7 @@ export default function PokerStableCommitSyncPanel({
   const titleLine = [queueLabel, title, dateBit].filter(Boolean).join(' · ')
   const intro =
     isSettleCommit && !alreadyMine
-      ? `${actorLabel} logged a ${isCloseSettle ? 'close' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}${
+      ? `${actorLabel} logged a ${isCloseSettle ? 'closing' : 'periodic'} settlement on ${deal?.label?.trim() || 'this stake'}${
           dateBit ? ` (${dateBit})` : ''
         }. Review the details, then commit to update your books.`
       : `${actorLabel} recorded ${pokerStableCommitEventLabel(commit?.event_kind)} on ${deal?.label?.trim() || 'this stake'}.`

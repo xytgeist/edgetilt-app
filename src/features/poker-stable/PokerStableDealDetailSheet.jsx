@@ -21,6 +21,7 @@ import {
   recordDealTopup,
   recordDealReduction,
   sliceDisplayName,
+  slicesVisibleOnManageTab,
 } from './pokerStableApi.js'
 import PokerStableCommitSyncPanel from './PokerStableCommitSyncPanel.jsx'
 import PokerStableSettleCommitQueue from './PokerStableSettleCommitQueue.jsx'
@@ -554,7 +555,7 @@ export default function PokerStableDealDetailSheet({
         ) : null}
         <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">Slices</h4>
         <div className="mb-4 space-y-2">
-          {slices.map((slice) => {
+          {slicesVisibleOnManageTab(deal, slices, userId).map((slice) => {
             const line = linesBySlice[slice.id]
 
             return (

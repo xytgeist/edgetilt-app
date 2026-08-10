@@ -106,6 +106,22 @@ export function isViewerBackingDeal(deal, userId, slicesByDeal = {}) {
   )
 }
 
+/**
+ * Manage-tab slice list privacy.
+ * Player and stake-initiating backer (`deal.staker_user_id`) see the full syndicate.
+ * Co-backers (and all backers on player-initiated deals) only see their own slice(s).
+ * @param {object | null | undefined} deal
+ * @param {object[]} [slices]
+ * @param {string | null | undefined} userId
+ */
+export function slicesVisibleOnManageTab(deal, slices = [], userId) {
+  const rows = slices || []
+  if (!userId) return []
+  if (deal?.stakee_user_id === userId) return rows
+  if (deal?.staker_user_id === userId) return rows
+  return rows.filter((s) => s.staker_user_id === userId)
+}
+
 /** Viewer has accepted their backing slice (active row). */
 export function viewerHasAcceptedBackingSlice(deal, slicesByDeal, userId) {
   if (!deal || !userId) return false

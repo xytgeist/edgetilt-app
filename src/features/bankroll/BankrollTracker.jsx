@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
@@ -124,6 +125,8 @@ export default function BankrollTracker({
   const [sessions, setSessions] = useState([])
   const [adjustments, setAdjustments] = useState([])
   const [loading, setLoading] = useState(true)
+  /** First-paint gate … avoids empty Overall Bankroll flash before profile/sessions load. */
+  const [initialSlotsBankrollLoadDone, setInitialSlotsBankrollLoadDone] = useState(false)
   const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'locations' | 'charts' | 'trend'
   const [gameTypeFilter, setGameTypeFilter] = useState('all') // 'all' | 'slots' | 'tables'
   const [sheet, setSheet] = useState(null)
@@ -198,7 +201,11 @@ export default function BankrollTracker({
   // ── Data loading ──────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
-    if (!supabaseClient) return
+    if (!supabaseClient) {
+      setLoading(false)
+      setInitialSlotsBankrollLoadDone(true)
+      return
+    }
     try {
       const { data: { user } } = await supabaseClient.auth.getUser()
       if (user) setUserId(user.id)
@@ -221,6 +228,7 @@ export default function BankrollTracker({
       console.error('BankrollTracker load error:', e)
     } finally {
       setLoading(false)
+      setInitialSlotsBankrollLoadDone(true)
     }
   }, [supabaseClient])
 
@@ -660,6 +668,10 @@ export default function BankrollTracker({
       >
 
         <div data-slots-bankroll>
+        {!initialSlotsBankrollLoadDone ? (
+          <PokerSurfaceBootLoading label="Loading bankroll…" />
+        ) : (
+        <>
         <FreemiumUsageCounter
           remaining={bankrollSessionsRemaining}
           limit={FREE_BANKROLL_SESSION_LIMIT}
@@ -726,9 +738,7 @@ export default function BankrollTracker({
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="text-zinc-400 text-xs font-semibold uppercase tracking-wide mb-1">Overall Bankroll</div>
-              {loading ? (
-                <div className="h-10 w-40 rounded-xl bg-zinc-700/40 animate-pulse" />
-              ) : overallBankroll != null ? (
+              {overallBankroll != null ? (
                 <div className="text-4xl font-black text-white tracking-tight">{fmt$(overallBankroll)}</div>
               ) : (
                 <button
@@ -1084,6 +1094,8 @@ export default function BankrollTracker({
         )}
 
         </>}
+        </>
+        )}
 
         </div>
 

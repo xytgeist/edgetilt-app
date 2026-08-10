@@ -955,6 +955,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **Guest SMS retired (swap + stake):** removed Phone (optional SMS) from tournament swap + Stable create UIs; new guests email-only. Terms sheet no longer shows SMS numbers. Edge **`poker-tournament-swap-notify`** + **`poker-stable-notify`** stub Twilio (`guest SMS disabled`) ... redeploy test/prod when Ryan asks. TFV poker/gambling path is dead; OTP 2FA can be a separate auth-only program later.
 - 2026-08-09: **Hamburger → Slots/Poker ghost-click fix:** after menu nav away from Lounge, arm document pointer capture (~650ms) so a synthesized tap cannot hit the portaled dock Home and bounce back to Lounge (`shellNavGhostClickGuard.js`).
 - 2026-08-09: **Chat shortcut removed:** no title-bar pin / in-screen Shortcut for Chat (dock + other entry points are enough).
 - 2026-08-09: **Prod Disk IO / cron history:** `lounge_activity_push_flush` 10s → **every 1 min**; daily prune **`cron.job_run_details`** keep **3 days** (`cron_prune_job_run_details`, job `cron_prune_job_run_details_daily`). Migration **`20260809140000`** on test + prod after Disk IO budget outage.

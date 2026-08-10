@@ -129,7 +129,7 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
     if (!sl.guestLabel.trim()) throw new Error('Guest slices need a name.')
     const { email: guestEmail, phone: guestPhone } = parseGuestNotifyContact({
       email: sl.guestEmail,
-      phone: sl.guestPhone,
+      phone: '',
       label: 'Guest backer',
     })
     return {
@@ -181,7 +181,7 @@ function SliceEditor({
   showRakeback = false,
 }) {
   const guestContactErrors = sl.isGuest
-    ? guestNotifyContactFieldErrors({ email: sl.guestEmail, phone: sl.guestPhone })
+    ? guestNotifyContactFieldErrors({ email: sl.guestEmail, phone: '' })
     : { email: '', phone: '' }
 
   return (
@@ -269,29 +269,15 @@ function SliceEditor({
               <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
                 <input
                   value={sl.guestLabel}
-                  onChange={(e) => onChange({ guestLabel: e.target.value })}
+                  onChange={(e) => onChange({ guestLabel: e.target.value, guestPhone: '' })}
                   placeholder="Name"
                   className={INFIELD_CONTROL}
                 />
               </InField>
-              <InField label="Phone (optional SMS)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
-                <input
-                  value={sl.guestPhone}
-                  onChange={(e) => onChange({ guestPhone: e.target.value })}
-                  placeholder="Phone (optional SMS)"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  className={INFIELD_CONTROL}
-                  aria-invalid={guestContactErrors.phone ? 'true' : undefined}
-                />
-              </InField>
-              {guestContactErrors.phone ? (
-                <p className="mb-2 text-[11px] text-rose-400">{guestContactErrors.phone}</p>
-              ) : null}
               <InField label="Email (optional)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
                 <input
                   value={sl.guestEmail}
-                  onChange={(e) => onChange({ guestEmail: e.target.value })}
+                  onChange={(e) => onChange({ guestEmail: e.target.value, guestPhone: '' })}
                   placeholder="Email (optional)"
                   inputMode="email"
                   autoComplete="email"
@@ -303,7 +289,7 @@ function SliceEditor({
                 <p className="mb-2 text-[11px] text-rose-400">{guestContactErrors.email}</p>
               ) : null}
               <p className="mb-2 text-[11px] leading-snug text-zinc-500">
-                Phone/email optional ... only used to notify them about this stake.
+                Email optional ... used to notify them about this stake.
               </p>
             </>
           ) : null}
@@ -749,7 +735,7 @@ function PokerStableDealFormSheet({
           if (!playerGuestLabel.trim()) throw new Error('Guest players need a name.')
           const { email: guestPlayerEmail, phone: guestPlayerPhone } = parseGuestNotifyContact({
             email: playerGuestEmail,
-            phone: playerGuestPhone,
+            phone: '',
             label: 'Guest player',
           })
           requestArgs = {
@@ -807,8 +793,7 @@ function PokerStableDealFormSheet({
       let guestNotifyWarning = null
       if (isBacker && createdDeal?.id) {
         if (playerIsGuest) {
-          const hadGuestContact =
-            String(playerGuestEmail || '').trim() || String(playerGuestPhone || '').trim()
+          const hadGuestContact = String(playerGuestEmail || '').trim()
           if (hadGuestContact) {
             const { error: notifyErr, notifiedCount } = await notifyStableGuestStakee(
               supabaseClient,
@@ -819,7 +804,7 @@ function PokerStableDealFormSheet({
               console.warn('[poker-stable] guest stakee notify failed', guestNotifyWarning)
             } else if (notifiedCount === 0) {
               guestNotifyWarning =
-                'Guest player notify did not send. Check email/phone on the guest player.'
+                'Guest player notify did not send. Check email on the guest player.'
             }
           }
         }
@@ -899,7 +884,7 @@ function PokerStableDealFormSheet({
   const playerGuestContactErrors = playerIsGuest
     ? guestNotifyContactFieldErrors({
         email: playerGuestEmail,
-        phone: playerGuestPhone,
+        phone: '',
       })
     : { email: '', phone: '' }
 
@@ -907,12 +892,12 @@ function PokerStableDealFormSheet({
     (!playerIsGuest ||
       guestNotifyContactFieldsValid({
         email: playerGuestEmail,
-        phone: playerGuestPhone,
+        phone: '',
       })) &&
     [...slices, ...friendSlices].every(
       (sl) =>
         !sl.isGuest ||
-        guestNotifyContactFieldsValid({ email: sl.guestEmail, phone: sl.guestPhone }),
+        guestNotifyContactFieldsValid({ email: sl.guestEmail, phone: '' }),
     )
 
   return (
@@ -980,29 +965,21 @@ function PokerStableDealFormSheet({
                 <InField label="Guest name" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
                   <input
                     value={playerGuestLabel}
-                    onChange={(e) => setPlayerGuestLabel(e.target.value)}
+                    onChange={(e) => {
+                      setPlayerGuestLabel(e.target.value)
+                      setPlayerGuestPhone('')
+                    }}
                     placeholder="Name"
                     className={INFIELD_CONTROL}
                   />
                 </InField>
-                <InField label="Phone (optional SMS)" className="mb-2" focusRingClass={STABLE_INFIELD_FOCUS}>
-                  <input
-                    value={playerGuestPhone}
-                    onChange={(e) => setPlayerGuestPhone(e.target.value)}
-                    placeholder="Phone (optional SMS)"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    className={INFIELD_CONTROL}
-                    aria-invalid={playerGuestContactErrors.phone ? 'true' : undefined}
-                  />
-                </InField>
-                {playerGuestContactErrors.phone ? (
-                  <p className="mb-2 text-[11px] text-rose-400">{playerGuestContactErrors.phone}</p>
-                ) : null}
                 <InField label="Email (optional)" className="mb-3" focusRingClass={STABLE_INFIELD_FOCUS}>
                   <input
                     value={playerGuestEmail}
-                    onChange={(e) => setPlayerGuestEmail(e.target.value)}
+                    onChange={(e) => {
+                      setPlayerGuestEmail(e.target.value)
+                      setPlayerGuestPhone('')
+                    }}
                     placeholder="Email (optional)"
                     inputMode="email"
                     autoComplete="email"
@@ -1014,7 +991,7 @@ function PokerStableDealFormSheet({
                   <p className="mb-3 text-[11px] text-rose-400">{playerGuestContactErrors.email}</p>
                 ) : null}
                 <p className="mb-3 text-[11px] leading-snug text-zinc-500">
-                  Phone/email optional ... only used to notify them about this stake.
+                  Email optional ... used to notify them about this stake.
                 </p>
               </>
             ) : null}

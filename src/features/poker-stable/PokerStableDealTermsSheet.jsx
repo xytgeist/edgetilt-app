@@ -127,12 +127,8 @@ function TermsSliceCard({
             {line.value}
           </p>
         ))}
-        {(slice.guest_phone || slice.guest_email) && slice.counterparty_kind === 'guest' ? (
-          <p className="text-xs text-zinc-500">
-            {slice.guest_phone ? `SMS ${slice.guest_phone}` : null}
-            {slice.guest_phone && slice.guest_email ? ' · ' : null}
-            {slice.guest_email ? slice.guest_email : null}
-          </p>
+        {slice.guest_email && slice.counterparty_kind === 'guest' ? (
+          <p className="text-xs text-zinc-500">{slice.guest_email}</p>
         ) : null}
       </div>
       {showReassign && !reassignOpen ? (

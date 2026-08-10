@@ -177,7 +177,8 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
   try {
     ;({ phone, email } = parseGuestNotifyContact({
       email: draft.counterparty_guest_email,
-      phone: draft.counterparty_guest_phone,
+      // SMS dropped for guest swaps (carrier TFV). Email only.
+      phone: '',
       label: 'Guest swap',
     }))
   } catch (err) {

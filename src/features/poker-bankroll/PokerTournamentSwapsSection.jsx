@@ -368,14 +368,14 @@ export default function PokerTournamentSwapsSection({
             draft.counterparty_kind === 'guest'
               ? guestNotifyContactFieldErrors({
                   email: draft.counterparty_guest_email,
-                  phone: draft.counterparty_guest_phone,
+                  phone: '',
                 })
               : { email: '', phone: '' }
           const guestContactOk =
             draft.counterparty_kind !== 'guest' ||
             guestNotifyContactFieldsValid({
               email: draft.counterparty_guest_email,
-              phone: draft.counterparty_guest_phone,
+              phone: '',
             })
           const edgeUserOk =
             draft.counterparty_kind !== 'user' || Boolean(draft.counterparty_user_id)
@@ -416,24 +416,10 @@ export default function PokerTournamentSwapsSection({
                     onChange={(e) =>
                       updateDraft(draft.localId, {
                         counterparty_guest_label: e.target.value,
+                        counterparty_guest_phone: '',
                       })
                     }
                   />
-                  <input
-                    className={FIELD}
-                    placeholder="Phone (optional SMS)"
-                    inputMode="tel"
-                    value={draft.counterparty_guest_phone}
-                    onChange={(e) =>
-                      updateDraft(draft.localId, {
-                        counterparty_guest_phone: e.target.value,
-                      })
-                    }
-                    aria-invalid={guestContactErrors.phone ? 'true' : undefined}
-                  />
-                  {guestContactErrors.phone ? (
-                    <p className="text-[11px] text-rose-400">{guestContactErrors.phone}</p>
-                  ) : null}
                   <input
                     className={FIELD}
                     placeholder="Email (optional)"
@@ -442,6 +428,7 @@ export default function PokerTournamentSwapsSection({
                     onChange={(e) =>
                       updateDraft(draft.localId, {
                         counterparty_guest_email: e.target.value,
+                        counterparty_guest_phone: '',
                       })
                     }
                     aria-invalid={guestContactErrors.email ? 'true' : undefined}
@@ -450,7 +437,7 @@ export default function PokerTournamentSwapsSection({
                     <p className="text-[11px] text-rose-400">{guestContactErrors.email}</p>
                   ) : null}
                   <p className="text-[11px] leading-snug text-zinc-500">
-                    Phone/email optional ... only used to notify them of the swap.
+                    Email optional ... used to notify them of the swap.
                   </p>
                 </div>
               ) : null}

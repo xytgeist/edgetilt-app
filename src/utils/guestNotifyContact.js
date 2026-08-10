@@ -1,6 +1,6 @@
 /**
- * Guest phone/email validation for poker stake + swap notify fields.
- * Matches `isValidEmail` / `normalizePhone` in poker-stable-notify and poker-tournament-swap-notify.
+ * Guest notify contact validation for poker stake + swap.
+ * UI is email-only now (guest SMS retired). Phone helpers remain for legacy rows / Edge parity.
  */
 
 export function isValidGuestNotifyEmail(raw) {

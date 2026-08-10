@@ -135,39 +135,9 @@ async function sendResendEmail(to: string, subject: string, html: string, text: 
   return { skipped: false as const }
 }
 
-async function sendTwilioSms(to: string, body: string) {
-  const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID')?.trim()
-  const from = Deno.env.get('TWILIO_FROM_NUMBER')?.trim()
-  const apiKeySid = Deno.env.get('TWILIO_API_KEY_SID')?.trim()
-  const apiKeySecret = Deno.env.get('TWILIO_API_KEY_SECRET')?.trim()
-  const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')?.trim()
-  if (!accountSid || !from) {
-    return { skipped: true as const, reason: 'Twilio secrets not set' }
-  }
-  // Prefer API key (scoped / rotatable). Auth token still works as fallback.
-  const basicUser = apiKeySid && apiKeySecret ? apiKeySid : authToken ? accountSid : ''
-  const basicPass = apiKeySid && apiKeySecret ? apiKeySecret : authToken || ''
-  if (!basicUser || !basicPass) {
-    return { skipped: true as const, reason: 'Twilio API key or auth token not set' }
-  }
-  const auth = btoa(`${basicUser}:${basicPass}`)
-  const params = new URLSearchParams({ To: to, From: from, Body: body })
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params,
-    },
-  )
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Twilio failed (${res.status}): ${text}`)
-  }
-  return { skipped: false as const }
+async function sendTwilioSms(_to: string, _body: string) {
+  // Guest swap SMS retired (carrier TFV / gambling-adjacent). Email + in-app only.
+  return { skipped: true as const, reason: 'guest SMS disabled' }
 }
 
 type SwapRow = {

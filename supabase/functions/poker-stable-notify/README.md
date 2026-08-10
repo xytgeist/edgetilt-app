@@ -1,6 +1,6 @@
 # `poker-stable-notify`
 
-Sends **Twilio SMS** and/or **Resend email** to guest backers when a player creates a cash stake, edits stake terms, deletes a stake with guest slices, or **completes a stake session**.
+Sends **Resend email** to guest backers when a player creates a cash stake, edits stake terms, deletes a stake with guest slices, or **completes a stake session**. **Guest SMS is disabled** (carrier TFV).
 
 Offer copy (email):
 

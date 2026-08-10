@@ -379,6 +379,7 @@ function TrendDockPill({ active, onClick, label }) {
       type="button"
       onClick={onClick}
       data-poker-filter-chip={active ? 'on' : 'off'}
+      data-poker-chrome-tab={active ? 'on' : 'off'}
       className={`rounded-full px-2.5 py-1 text-[11px] font-semibold touch-manipulation ${
         active ? 'bg-zinc-700 text-white' : 'bg-zinc-800/60 text-zinc-500 active:bg-zinc-700'
       }`}

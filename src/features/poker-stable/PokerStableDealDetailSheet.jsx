@@ -382,6 +382,7 @@ export default function PokerStableDealDetailSheet({
                   setActiveTab(tab.id)
                   triggerTapHapticLight()
                 }}
+                data-poker-chrome-tab={activeTab === tab.id ? 'on' : 'off'}
                 className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-bold tracking-wide touch-manipulation sm:px-4 sm:text-xs ${
                   activeTab === tab.id
                     ? STABLE_TAB_ACTIVE

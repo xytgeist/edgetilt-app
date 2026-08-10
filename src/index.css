@@ -5474,7 +5474,16 @@ html.light [data-poker-stable-claim] [data-poker-guest-claim-offer] .border-zinc
   scroll-margin-bottom: min(16rem, 42vh);
 }
 [data-poker-stable-sheet] [data-poker-stable-sheet-actions] {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
   scroll-margin-bottom: 1.25rem;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  padding: 0.75rem 1.25rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(63, 63, 70, 0.55);
+  background-color: #18181b;
+  box-shadow: 0 -10px 24px -12px rgba(0, 0, 0, 0.55);
 }
 [data-poker-stable-sheet] input::placeholder,
 [data-poker-stable-sheet] textarea::placeholder {
@@ -5926,8 +5935,13 @@ html.light [data-poker-stable-sheet] [data-poker-stable-form-error] {
   border-color: #fda4af !important;
   color: #be123c !important;
 }
-html.light [data-poker-stable-sheet] [data-poker-stable-action-total].text-rose-400 {
-  color: #e11d48 !important;
+html.light [data-poker-stable-sheet] [data-poker-stable-sheet-actions] {
+  background-color: #ffffff !important;
+  border-top-color: #e4e4e7 !important;
+  box-shadow: 0 -10px 24px -14px rgba(24, 24, 27, 0.18) !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-action-total].text-zinc-400 {
+  color: #71717a !important;
 }
 html.light [data-poker-stable-sheet] [data-edge-handle-typeahead-list] {
   background-color: #ffffff !important;

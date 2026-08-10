@@ -1135,17 +1135,6 @@ function PokerStableDealFormSheet({
             {isBackerPropose ? 'Your slice' : 'Backer slices'}
           </h4>
         ) : null}
-        {!isBackerPropose ? (
-          <p
-            className={`mb-2 text-sm tabular-nums ${
-              formActionOverCap ? 'font-semibold text-rose-400' : 'text-zinc-400'
-            }`}
-            data-poker-stable-action-total
-          >
-            Action sold: {formActionTotal}%
-            {formActionOverCap ? ' (max 100%)' : ''}
-          </p>
-        ) : null}
         <div className="mb-4 space-y-3">
           {showPlayerTermsForm ? (
             slices.map((sl, idx) => (
@@ -1202,42 +1191,61 @@ function PokerStableDealFormSheet({
         </div>
 
         <div ref={actionsRef} data-poker-stable-sheet-actions>
-        {formError ? (
-          <p
-            data-poker-stable-form-error
-            className="mb-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-center text-sm text-rose-300"
-            role="alert"
-          >
-            {formError}
-          </p>
-        ) : null}
-        {showPlayerTermsForm && !isBackerPropose ? (
-        <button
-          type="button"
-          onClick={addBackerSlice}
-          className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
-        >
-          + Add backer slice
-        </button>
-        ) : !showPlayerTermsForm ? (
-        <button
-          type="button"
-          onClick={addBackerSlice}
-          className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
-        >
-          + Add syndicate backer
-        </button>
-        ) : null}
+          {!isBackerPropose ? (
+            formActionOverCap ? (
+              <p
+                data-poker-stable-action-total
+                data-poker-stable-form-error
+                className="mb-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-center text-sm font-semibold text-rose-300"
+                role="alert"
+              >
+                Action sold {formActionTotal}% … max 100%
+              </p>
+            ) : (
+              <p
+                className="mb-2 text-center text-sm tabular-nums text-zinc-400"
+                data-poker-stable-action-total
+              >
+                Action sold: {formActionTotal}%
+              </p>
+            )
+          ) : null}
+          {formError ? (
+            <p
+              data-poker-stable-form-error
+              className="mb-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-center text-sm text-rose-300"
+              role="alert"
+            >
+              {formError}
+            </p>
+          ) : null}
+          {showPlayerTermsForm && !isBackerPropose ? (
+            <button
+              type="button"
+              onClick={addBackerSlice}
+              className="mb-3 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+            >
+              + Add backer slice
+            </button>
+          ) : !showPlayerTermsForm ? (
+            <button
+              type="button"
+              onClick={addBackerSlice}
+              className="mb-3 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+            >
+              + Add syndicate backer
+            </button>
+          ) : null}
 
-        <button
-          type="button"
-          disabled={saving || !guestContactFormValid || formActionOverCap}
-          onClick={() => void submit()}
-          data-poker-stable-primary-btn
-          className="w-full rounded-3xl bg-amber-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : submitLabel}
-        </button>
+          <button
+            type="button"
+            disabled={saving || !guestContactFormValid || formActionOverCap}
+            onClick={() => void submit()}
+            data-poker-stable-primary-btn
+            className="w-full rounded-3xl bg-amber-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : submitLabel}
+          </button>
         </div>
       </div>
     </div>

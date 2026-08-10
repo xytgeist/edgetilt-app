@@ -126,15 +126,34 @@ function parsePokerStableActivityDetail(detail: string | null | undefined): {
 const POKER_STABLE_SESSION_LOSS_EMOJI = '🐡'
 const POKER_STABLE_SESSION_WIN_EMOJI = '🦈'
 const SESSION_COMPLETE_TABLE_MARKER = ' · table '
+const SESSION_COMPLETE_AMOUNT_RE = /^(?:table\s+)?([+-])?\$?([\d,]+)(?:\.(\d+))?$/i
 
 function pokerStableSessionCompleteEmojiPrefix(detailText?: string | null): string {
   const raw = String(detailText || '').trim()
+  if (!raw) return ''
+
   const tableIdx = raw.indexOf(SESSION_COMPLETE_TABLE_MARKER)
-  if (tableIdx === -1) return ''
-  const amountRaw = raw.slice(tableIdx + SESSION_COMPLETE_TABLE_MARKER.length).trim()
-  const grossPl = Number(amountRaw.replace(/,/g, ''))
-  if (!Number.isFinite(grossPl) || grossPl === 0) return ''
-  return grossPl < 0 ? `${POKER_STABLE_SESSION_LOSS_EMOJI} ` : `${POKER_STABLE_SESSION_WIN_EMOJI} `
+  if (tableIdx !== -1) {
+    const amountRaw = raw.slice(tableIdx + SESSION_COMPLETE_TABLE_MARKER.length).trim()
+    const grossPl = Number(amountRaw.replace(/,/g, '').replace(/^\$/, ''))
+    if (!Number.isFinite(grossPl) || grossPl === 0) return ''
+    return grossPl < 0 ? `${POKER_STABLE_SESSION_LOSS_EMOJI} ` : `${POKER_STABLE_SESSION_WIN_EMOJI} `
+  }
+
+  const parts = raw
+    .split(' · ')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    const m = parts[i].match(SESSION_COMPLETE_AMOUNT_RE)
+    if (!m) continue
+    const sign = m[1] === '-' ? -1 : 1
+    const abs = Number(String(m[2] || '').replace(/,/g, ''))
+    if (!Number.isFinite(abs) || abs === 0) return ''
+    const grossPl = sign * abs
+    return grossPl < 0 ? `${POKER_STABLE_SESSION_LOSS_EMOJI} ` : `${POKER_STABLE_SESSION_WIN_EMOJI} `
+  }
+  return ''
 }
 
 function actorDisplayName(

@@ -25,10 +25,12 @@ import {
   isLoungeActivitySchemaMissingError,
   isPokerStableLoungeActivityEvent,
   loungeActivityActionPhrase,
+  loungeActivityActorLabel,
   loungeActivityEventsPage,
   loungeActivityMarkAllRead,
   loungeActivityMarkPushOpened,
   loungeActivityPlainPostRepostEvent,
+  loungeActivityPokerDetailLine,
   resolveLoungeActivityOpenPostTarget,
   loungeActivitySummary,
   loungeActivityUnreadCount,
@@ -785,12 +787,19 @@ export default function LoungeNotificationsPanel({
     const when = formatLoungeActivityWhen(event.created_at)
     const actionPhrase = loungeActivityActionPhrase(event)
     const summary = loungeActivitySummary(event)
-    const actionLine = isPokerStableLoungeActivityEvent(event.event_type) ? summary : actionPhrase
+    const isPokerStable = isPokerStableLoungeActivityEvent(event.event_type)
+    // Stake Alerts mirror like/repost layout: icon + caption, optional detail on next line.
+    const actionLine = isPokerStable
+      ? `${loungeActivityActorLabel(event)} ${actionPhrase}`
+      : actionPhrase
     const isGuideRelease =
       event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED ||
       Boolean(String(event.guide_slug || '').trim())
     const showContext = loungeActivityShowsContextPreview(event.event_type)
-    const previewText = showContext ? String(event.preview_text || '').trim() : ''
+    const pokerDetailLine = isPokerStable ? loungeActivityPokerDetailLine(event) : ''
+    const previewText = showContext
+      ? String(event.preview_text || '').trim()
+      : pokerDetailLine
     const previewPosterUrl = showContext ? String(event.preview_poster_url || '').trim() : ''
     const clampClass = previewClampClass(event.event_type)
 

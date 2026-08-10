@@ -1,6 +1,7 @@
 /** Lounge in-app activity notifications (Phase H1). */
 
 import {
+  formatPokerStableSessionCompleteDetailDisplay,
   parsePokerStableActivityDetail,
   pokerStableSessionCompleteNotificationEmoji,
 } from '../features/poker-stable/pokerStableActivityDetail.js'
@@ -313,16 +314,10 @@ export function loungeActivityActionPhrase(event) {
       const detail = String(event?.detail_text || '').trim()
       return detail ? `invited you to back ${detail}` : 'invited you to back a stake'
     }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail
-        ? `reminded you to accept your backing slice · ${detail}`
-        : 'reminded you to accept your backing slice'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `completed a stake session · ${detail}` : 'completed a stake session'
-    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE:
+      return 'reminded you to accept your backing slice'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE:
+      return 'completed a stake session'
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED: {
       const detail = String(event?.detail_text || '').trim()
       return detail || 'proposed a settlement that needs your response'
@@ -335,48 +330,26 @@ export function loungeActivityActionPhrase(event) {
       const detail = String(event?.detail_text || '').trim()
       return detail || 'recorded a stake update — sync your books'
     }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `offered you a backing stake · ${detail}` : 'offered you a backing stake'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `accepted your backing offer · ${detail}` : 'accepted your backing offer'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_DECLINED: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `declined your backing offer · ${detail}` : 'declined your backing offer'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_COUNTER_PROPOSED: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `proposed new stake terms · ${detail}` : 'proposed new stake terms'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_ACCEPTED: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `accepted your counter-proposal · ${detail}` : 'accepted your counter-proposal'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `declined your counter-proposal · ${detail}` : 'declined your counter-proposal'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED: {
-      const { dealLabel } = parsePokerStableActivityDetail(event?.detail_text)
-      const detail = dealLabel || String(event?.detail_text || '').trim()
-      return detail ? `accepted your backing slice · ${detail}` : 'accepted your backing slice'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED: {
-      const { dealLabel } = parsePokerStableActivityDetail(event?.detail_text)
-      const detail = dealLabel || String(event?.detail_text || '').trim()
-      return detail ? `declined your backing slice · ${detail}` : 'declined your backing slice'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_OFFER_WITHDRAWN: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `withdrew the stake offer · ${detail}` : 'withdrew the stake offer'
-    }
-    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_TERMS_EDITED: {
-      const detail = String(event?.detail_text || '').trim()
-      return detail ? `updated the stake terms · ${detail}` : 'updated the stake terms'
-    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_BACKER_OFFER:
+      return 'offered you a backing stake'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_ACCEPTED:
+      return 'accepted your backing offer'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_DECLINED:
+      return 'declined your backing offer'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKEE_COUNTER_PROPOSED:
+      return 'proposed new stake terms'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_ACCEPTED:
+      return 'accepted your counter-proposal'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED:
+      return 'declined your counter-proposal'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED:
+      return 'accepted your backing slice'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED:
+      return 'declined your backing slice'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_OFFER_WITHDRAWN:
+      return 'withdrew the stake offer'
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_TERMS_EDITED:
+      return 'updated the stake terms'
     default: {
       if (String(event?.guide_slug || '').trim()) {
         const guideTitle = String(event?.detail_text || '').trim()
@@ -398,12 +371,47 @@ export function loungeActivitySummary(event) {
   }
   const who = loungeActivityActorLabel(event)
   const phrase = loungeActivityActionPhrase(event)
-  if (event?.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE) {
-    const emoji = pokerStableSessionCompleteNotificationEmoji(event)
-    const prefix = emoji ? `${emoji} ` : ''
-    return `${prefix}${who} ${phrase}`
-  }
+  const detailLine = loungeActivityPokerDetailLine(event)
+  if (detailLine) return `${who} ${phrase} · ${detailLine}`
   return `${who} ${phrase}`
+}
+
+/**
+ * Second-line stake detail for Alerts (like/repost preview slot).
+ * Invite keeps the deal name in the action phrase; session puts shark/fish here.
+ * @param {{ event_type?: string, detail_text?: string | null }} event
+ */
+export function loungeActivityPokerDetailLine(event) {
+  if (!isPokerStableLoungeActivityEvent(event?.event_type)) return ''
+  const type = event.event_type
+  // Deal name stays on the caption line (matches like/repost: verb up top, body below only when extra).
+  if (type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE) return ''
+
+  if (type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE) {
+    const display = formatPokerStableSessionCompleteDetailDisplay(event?.detail_text)
+    if (!display) return ''
+    const emoji = pokerStableSessionCompleteNotificationEmoji(event)
+    return emoji ? `${emoji} ${display}` : display
+  }
+
+  if (
+    type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED ||
+    type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED
+  ) {
+    const { dealLabel } = parsePokerStableActivityDetail(event?.detail_text)
+    return dealLabel || String(event?.detail_text || '').trim()
+  }
+
+  // Settlement / commit detail_text is often the full sentence (already the phrase fallback).
+  if (
+    type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED ||
+    type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED ||
+    type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_COMMIT_RECORDED
+  ) {
+    return ''
+  }
+
+  return String(event?.detail_text || '').trim()
 }
 
 /**

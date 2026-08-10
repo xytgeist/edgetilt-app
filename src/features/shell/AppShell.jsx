@@ -572,7 +572,10 @@ export default function AppShell({
 
       const commitId = stableCommitId || stableSettlementRequestId
       if (stableDealId) setPendingPokerStableDealId(stableDealId)
-      if (stableOfferWithdrawn) setPendingStableOfferWithdrawn(true)
+      // Withdrawn banner is opt-in only … clear on every other Stable deep link (new invite, etc.).
+      if (targetTab === 'poker-stable' || targetTab === 'poker-bankroll') {
+        setPendingStableOfferWithdrawn(Boolean(stableOfferWithdrawn))
+      }
       // Backer Stable: horse deal Overview already has inline Commit. Skip stacked sync modal
       // when the deep link includes the deal (periodic/close settle Alerts/push).
       if (commitId && !(targetTab === 'poker-stable' && stableDealId)) {
@@ -1264,7 +1267,7 @@ export default function AppShell({
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
           const withdrawnRaw = (params.get('stableWithdrawn') || '').trim().toLowerCase()
-          if (withdrawnRaw === '1' || withdrawnRaw === 'true') setPendingStableOfferWithdrawn(true)
+          setPendingStableOfferWithdrawn(withdrawnRaw === '1' || withdrawnRaw === 'true')
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
           // Deal Overview hosts Commit inline; only open sync modal when deal id is missing.
           if (stableCommit && !stableDeal) openStableCommitDeepLinkIfPending(stableCommit)
@@ -1432,7 +1435,7 @@ export default function AppShell({
           const withdrawnRaw = String(msgUrl.searchParams.get('stableWithdrawn') || '')
             .trim()
             .toLowerCase()
-          if (withdrawnRaw === '1' || withdrawnRaw === 'true') setPendingStableOfferWithdrawn(true)
+          setPendingStableOfferWithdrawn(withdrawnRaw === '1' || withdrawnRaw === 'true')
           const stableCommit = String(
             msgUrl.searchParams.get('stableCommit') ||
               msgUrl.searchParams.get('stableSettlement') ||

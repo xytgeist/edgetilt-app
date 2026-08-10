@@ -338,10 +338,8 @@ export default function PokerStableScreen({
   onWithdrawnOfferNoticeConsumedRef.current = onWithdrawnOfferNoticeConsumed
   const onOpenStableDealConsumedRef = useRef(onOpenStableDealConsumed)
   onOpenStableDealConsumedRef.current = onOpenStableDealConsumed
-  /** One-shot per deep-link deal id so silent reloads cannot re-toast. */
-  const withdrawnMissingDealHandledRef = useRef(/** @type {string | null} */ (null))
-
-  // Rewritten invite Alert (stableWithdrawn=1) … deal id was cleared on cancel.
+  // Only from tapping a poker_stable_offer_withdrawn Alert/push (stableWithdrawn=1).
+  // Do not infer withdrawal from a missing stableDeal … that bleeds onto new-invite opens.
   useEffect(() => {
     if (!showWithdrawnOfferNotice) return
     setWithdrawnOfferNotice('This stake offer was withdrawn.')
@@ -359,20 +357,17 @@ export default function PokerStableScreen({
     }
     const dealStillVisible = deals.some((d) => d.id === openStableDealId)
     if (!dealStillVisible) {
-      // Keep deep link if load failed … only treat a clean empty result as withdrawn.
+      // Keep deep link if load failed; otherwise drop a stale/missing deal id quietly.
+      // Withdrawn copy is reserved for explicit stableWithdrawn=1 (or accept/decline on a gone card).
       if (error || schemaMissing) return
-      if (withdrawnMissingDealHandledRef.current === openStableDealId) {
-        onOpenStableDealConsumedRef.current?.()
-        return
-      }
-      withdrawnMissingDealHandledRef.current = openStableDealId
-      setWithdrawnOfferNotice('This stake offer was withdrawn.')
       setDetailDealId(null)
       setFocusHorseDealId(null)
       clearStableWithdrawnDeepLinkParams({ clearStableDeal: true })
       onOpenStableDealConsumedRef.current?.()
       return
     }
+    // Live deal focus … clear any leftover withdrawn banner from an earlier Alert tap.
+    setWithdrawnOfferNotice('')
     const dealSlices = slicesByDeal[openStableDealId] || []
     const myPendingInvite = dealSlices.some(
       (s) => s.staker_user_id === userId && s.status === 'pending',

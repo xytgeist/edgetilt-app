@@ -94,7 +94,7 @@ export function isPersonalMetricSession(session, dealsById = {}, slicesByDeal = 
  * @param {object | null | undefined} session
  * @param {object[]} swaps
  * @param {string} userId
- * @param {{ stakeScope?: boolean, deal?: object | null, slices?: object[] }} [opts]
+ * @param {{ stakeScope?: boolean, deal?: object | null, slices?: object[], sessions?: object[] }} [opts]
  */
 export function sessionMetricWinLoss(session, swaps, userId, opts = {}) {
   const gross = pokerSessionWinLoss(session)
@@ -103,7 +103,13 @@ export function sessionMetricWinLoss(session, swaps, userId, opts = {}) {
 
   const swapDelta = sessionSwapSettlementDelta(swaps, session.id, userId)
   if (session?.deal_id && opts.deal) {
-    return playerNetSessionValue(session, opts.deal, opts.slices || [], swapDelta)
+    return playerNetSessionValue(
+      session,
+      opts.deal,
+      opts.slices || [],
+      swapDelta,
+      opts.sessions || [],
+    )
   }
   return roundMoney(gross + swapDelta)
 }
@@ -112,16 +118,25 @@ export function sessionMetricWinLoss(session, swaps, userId, opts = {}) {
  * @param {object | null | undefined} session
  * @param {object[]} swaps
  * @param {string} userId
- * @param {{ stakeScope?: boolean, dealsById?: Record<string, object>, slicesByDeal?: Record<string, object[]> }} opts
+ * @param {{
+ *   stakeScope?: boolean,
+ *   dealsById?: Record<string, object>,
+ *   slicesByDeal?: Record<string, object[]>,
+ *   sessions?: object[],
+ * }} opts
  */
 export function resolveSessionMetricWinLoss(session, swaps, userId, opts) {
   const deal =
     !opts.stakeScope && session?.deal_id ? opts.dealsById?.[session.deal_id] ?? null : null
   const slices = deal ? opts.slicesByDeal?.[session.deal_id] || [] : []
+  const sessions = deal
+    ? (opts.sessions || []).filter((s) => s.deal_id === deal.id)
+    : []
   return sessionMetricWinLoss(session, swaps, userId, {
     stakeScope: opts.stakeScope,
     deal,
     slices,
+    sessions,
   })
 }
 
@@ -154,9 +169,10 @@ export function playerStakeSessionValue(session, deal, slices = [], sessions = [
  * @param {object | null | undefined} deal
  * @param {object[]} [slices]
  * @param {number} [swapDelta=0]
+ * @param {object[]} [sessions] deal sessions for makeup roll-through (required for correct net)
  */
-export function playerNetSessionValue(session, deal, slices = [], swapDelta = 0) {
-  const stakeValue = playerStakeSessionValue(session, deal, slices)
+export function playerNetSessionValue(session, deal, slices = [], swapDelta = 0, sessions = []) {
+  const stakeValue = playerStakeSessionValue(session, deal, slices, sessions)
   if (stakeValue == null) return null
   return roundMoney(stakeValue + stableNum(swapDelta))
 }
@@ -209,7 +225,7 @@ export function computeSessionAttribution(
     return {
       gross,
       playerStakeValue,
-      playerNetValue: playerNetSessionValue(session, deal, slices, swapDelta),
+      playerNetValue: playerNetSessionValue(session, deal, slices, swapDelta, sessions),
       unsoldActionPct: 100,
       onStake: false,
       parties: [{ key: 'player', role: 'player', label: 'You', amount: playerStakeValue }],
@@ -296,7 +312,7 @@ export function computeSessionAttribution(
   return {
     gross,
     playerStakeValue: playerTotal,
-    playerNetValue: playerNetSessionValue(session, deal, slices, swapDelta),
+    playerNetValue: playerNetSessionValue(session, deal, slices, swapDelta, sessions),
     unsoldActionPct: roundMoney(unsoldPct, 1),
     onStake: true,
     parties,

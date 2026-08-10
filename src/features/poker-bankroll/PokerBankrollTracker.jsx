@@ -513,8 +513,9 @@ export default function PokerBankrollTracker({
       stakeScope: isOnStake,
       dealsById: stakeeDealsById,
       slicesByDeal,
+      sessions: metricSessions,
     }),
-    [isOnStake, stakeeDealsById, slicesByDeal],
+    [isOnStake, stakeeDealsById, slicesByDeal, metricSessions],
   )
 
   const hasAnyStakeDeals = useMemo(
@@ -1454,6 +1455,7 @@ export default function PokerBankrollTracker({
         stakeScope: onStake,
         dealsById: stakeeDealsById,
         slicesByDeal,
+        sessions: scopeSessions,
       }
       let profit = 0
       let hours = 0
@@ -3973,6 +3975,7 @@ export default function PokerBankrollTracker({
                       stakeScope: isOnStake,
                       dealsById: stakeeDealsById,
                       slicesByDeal,
+                      sessions: sessionDealSessions,
                     },
                   )
                   const displayWl =

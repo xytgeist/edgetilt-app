@@ -76,6 +76,10 @@ export function buildPokerStableActivityNavigateUrl(event, opts = {}) {
   if (event.poker_stable_deal_id) {
     params.set('stableDeal', String(event.poker_stable_deal_id))
   }
+  // After cancel, deal_id is cleared (ON DELETE SET NULL) … still tell Stable to show withdrawn UI.
+  if (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_OFFER_WITHDRAWN) {
+    params.set('stableWithdrawn', '1')
+  }
   // Edge Alert/push: Bankroll stake card only. Guest claim still uses stakeOnboarding=1.
   if (event.poker_stable_commit_id) {
     params.set('stableCommit', String(event.poker_stable_commit_id))
@@ -147,6 +151,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     stableDealId: null,
     stableCommitId: null,
     stableSettlementRequestId: null,
+    stableOfferWithdrawn: false,
     urlChanged: false,
   }
   if (typeof window === 'undefined') return empty
@@ -165,6 +170,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     payload?.activityEventId || parsed.searchParams.get('activityEvent') || null
   const activityBatchId =
     payload?.activityBatchId || parsed.searchParams.get('activityBatch') || null
+  const withdrawnRaw = (parsed.searchParams.get('stableWithdrawn') || '').trim().toLowerCase()
 
   return {
     activityEventId: activityEventId ? String(activityEventId) : null,
@@ -182,6 +188,7 @@ export function navigateFromLoungeActivityPayload(payload) {
         .trim() || null,
     stableSettlementRequestId:
       (parsed.searchParams.get('stableSettlement') || '').trim() || null,
+    stableOfferWithdrawn: withdrawnRaw === '1' || withdrawnRaw === 'true',
     urlChanged,
   }
 }

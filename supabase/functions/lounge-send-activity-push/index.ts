@@ -419,6 +419,9 @@ function buildTargetUrl(
     if (event.poker_stable_deal_id) {
       params.set('stableDeal', event.poker_stable_deal_id)
     }
+    if (event.event_type === 'poker_stable_offer_withdrawn') {
+      params.set('stableWithdrawn', '1')
+    }
     // Edge push: Bankroll + stableDeal focuses the stake card. Guest claim URLs still pass stakeOnboarding=1.
     if (event.poker_stable_commit_id) {
       params.set('stableCommit', event.poker_stable_commit_id)

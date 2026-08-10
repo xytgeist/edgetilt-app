@@ -348,6 +348,8 @@ export default function AppShell({
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
+  /** Alert tap for rewritten withdrawn invite (deal row already gone). */
+  const [pendingStableOfferWithdrawn, setPendingStableOfferWithdrawn] = useState(false)
   const [stakeOnboardingDealId, setStakeOnboardingDealId] = useState(() => {
     if (typeof window === 'undefined') return null
     return readPokerStakeOnboardingDeal()
@@ -563,10 +565,12 @@ export default function AppShell({
         stableDealId,
         stableCommitId,
         stableSettlementRequestId,
+        stableOfferWithdrawn,
       } = navigateFromLoungeActivityPayload(payload)
 
       const commitId = stableCommitId || stableSettlementRequestId
       if (stableDealId) setPendingPokerStableDealId(stableDealId)
+      if (stableOfferWithdrawn) setPendingStableOfferWithdrawn(true)
       // Backer Stable: horse deal Overview already has inline Commit. Skip stacked sync modal
       // when the deep link includes the deal (periodic/close settle Alerts/push).
       if (commitId && !(targetTab === 'poker-stable' && stableDealId)) {
@@ -1257,6 +1261,8 @@ export default function AppShell({
           setMenuOpen(false)
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const withdrawnRaw = (params.get('stableWithdrawn') || '').trim().toLowerCase()
+          if (withdrawnRaw === '1' || withdrawnRaw === 'true') setPendingStableOfferWithdrawn(true)
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
           // Deal Overview hosts Commit inline; only open sync modal when deal id is missing.
           if (stableCommit && !stableDeal) openStableCommitDeepLinkIfPending(stableCommit)
@@ -1421,6 +1427,10 @@ export default function AppShell({
           const msgUrl = new URL(data.url || '', window.location.origin)
           const stableDeal = String(msgUrl.searchParams.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const withdrawnRaw = String(msgUrl.searchParams.get('stableWithdrawn') || '')
+            .trim()
+            .toLowerCase()
+          if (withdrawnRaw === '1' || withdrawnRaw === 'true') setPendingStableOfferWithdrawn(true)
           const stableCommit = String(
             msgUrl.searchParams.get('stableCommit') ||
               msgUrl.searchParams.get('stableSettlement') ||
@@ -2708,6 +2718,8 @@ export default function AppShell({
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
           openStableDealId={pendingPokerStableDealId}
           onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
+          showWithdrawnOfferNotice={pendingStableOfferWithdrawn}
+          onWithdrawnOfferNoticeConsumed={() => setPendingStableOfferWithdrawn(false)}
           backerSliceOnboardingDealId={backerSliceOnboardingDealId}
           backerSliceOnboardingSliceId={backerSliceOnboardingSliceId}
           onBackerSliceOnboardingConsumed={() => {

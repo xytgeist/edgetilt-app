@@ -96,6 +96,9 @@ export default function PokerStableScreen({
   titleBarToolCloseVisible = false,
   openStableDealId = null,
   onOpenStableDealConsumed = null,
+  /** Alert tap for rewritten withdrawn invite (no deal id left on the activity row). */
+  showWithdrawnOfferNotice = false,
+  onWithdrawnOfferNoticeConsumed = null,
   backerSliceOnboardingDealId = null,
   backerSliceOnboardingSliceId = null,
   onBackerSliceOnboardingConsumed = null,
@@ -310,6 +313,15 @@ export default function PokerStableScreen({
     backerSliceOnboardingDealId || readPokerStableBackerOnboardingDealId()
   const activeBackerOnboardingSliceId =
     backerSliceOnboardingSliceId || readPokerStableBackerOnboardingSliceId()
+
+  // Rewritten invite Alert (stableWithdrawn=1) … deal id was cleared on cancel.
+  useEffect(() => {
+    if (!showWithdrawnOfferNotice) return
+    setWithdrawnOfferNotice('This stake offer was withdrawn.')
+    setDetailDealId(null)
+    setFocusHorseDealId(null)
+    onWithdrawnOfferNoticeConsumed?.()
+  }, [showWithdrawnOfferNotice, onWithdrawnOfferNoticeConsumed])
 
   useEffect(() => {
     if (!openStableDealId || loading || !userId) return

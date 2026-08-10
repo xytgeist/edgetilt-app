@@ -1,16 +1,19 @@
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
-import { fmtPoker$ } from './pokerBankrollMath.js'
+import { fmtPoker$, pokerPlTone } from './pokerBankrollMath.js'
 import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
-import { dealLeadBackerDisplayName } from '../poker-stable/pokerStableTerms.js'
+import { buildStakeeClosedStakeReview } from '../poker-stable/pokerStableDealHistory.js'
 
 /**
- * Stakee-facing sheet after a stake is closed by the backer (or otherwise ended).
- * Manual archive only ... carousel keeps the card until the player taps Archive.
+ * Stakee-facing review after a stake is closed.
+ * Shows closer, table result, personal bankroll deposit, and per-backer made / unwind owed.
  */
 export default function PokerStakeeClosedStakeSheet({
   deal,
   slices = [],
+  settlements = [],
+  sessions = [],
   profilesById = {},
+  viewerUserId = null,
   saving = false,
   onClose,
   onArchive,
@@ -18,18 +21,28 @@ export default function PokerStakeeClosedStakeSheet({
   if (!deal) return null
 
   const label = deal.label?.trim() || dealTypeLabel(deal.deal_type) || 'Cash backing'
-  const backerName = dealLeadBackerDisplayName(deal, profilesById) || 'Your backer'
-  const closedAt = deal.settled_at || deal.updated_at || deal.responded_at
-  const closedLabel = closedAt
-    ? new Date(closedAt).toLocaleDateString('en-US', {
+  const isDeclined = deal.status === 'declined'
+  const isRevoked = deal.status === 'revoked'
+  const review = buildStakeeClosedStakeReview({
+    deal,
+    slices,
+    settlements,
+    sessions,
+    profilesById,
+    viewerUserId,
+  })
+  const closedLabel = review.closedAt
+    ? new Date(review.closedAt).toLocaleDateString('en-US', {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       })
     : null
-  const isDeclined = deal.status === 'declined'
-  const isRevoked = deal.status === 'revoked'
+
+  const closerPhrase = review.closer.isViewer
+    ? 'You closed this stake'
+    : `${review.closer.label} closed this stake`
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -60,31 +73,106 @@ export default function PokerStakeeClosedStakeSheet({
             <p>A backer revoked this stake. You can archive it when you are done reviewing.</p>
           ) : (
             <p>
-              {backerName} closed this stake{closedLabel ? ` on ${closedLabel}` : ''}. Your sessions
-              stay on your personal Bankroll history. Archive this card when you are ready to move
-              it out of the carousel.
+              {closerPhrase}
+              {closedLabel ? ` on ${closedLabel}` : ''}. Your sessions stay on your personal Bankroll
+              history. Archive this card when you are ready to move it out of the carousel.
             </p>
           )}
         </div>
 
-        <dl className="mt-4 space-y-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 text-sm">
-          <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500">Backer</dt>
-            <dd className="text-right font-medium text-zinc-100">{backerName}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-zinc-500">Baseline</dt>
-            <dd className="text-right font-medium text-zinc-100">
-              {fmtPoker$(Number(deal.baseline_bankroll) || 0)}
-            </dd>
-          </div>
-          {slices.length ? (
+        {!isDeclined && !isRevoked ? (
+          <>
+            <dl className="mt-4 space-y-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-zinc-500">Closed by</dt>
+                <dd className="text-right font-medium text-zinc-100">{review.closer.label}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-zinc-500">Baseline</dt>
+                <dd className="text-right font-medium text-zinc-100">
+                  {fmtPoker$(review.baseline)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-zinc-500">Your stake result</dt>
+                <dd
+                  data-poker-pl-tone={pokerPlTone(review.tableProfit)}
+                  className="text-right font-semibold tabular-nums"
+                >
+                  {fmtPoker$(review.tableProfit)}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="min-w-0 text-zinc-500">Deposited to personal bankroll</dt>
+                <dd
+                  data-poker-pl-tone={pokerPlTone(review.personalDeposit)}
+                  className="shrink-0 text-right font-semibold tabular-nums"
+                >
+                  {fmtPoker$(review.personalDeposit)}
+                </dd>
+              </div>
+            </dl>
+
+            {review.backers.length ? (
+              <div className="mt-4 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                  Backers
+                </p>
+                {review.backers.map((row) => (
+                  <div
+                    key={row.sliceId}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-sm"
+                  >
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 truncate font-semibold text-zinc-100">{row.name}</span>
+                      <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
+                        {row.actionPct}%
+                      </span>
+                    </div>
+                    <div className="mt-2 space-y-1 text-[13px]">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-zinc-500">Made</span>
+                        <span
+                          data-poker-pl-tone={pokerPlTone(row.profitMade)}
+                          className="font-semibold tabular-nums"
+                        >
+                          {fmtPoker$(row.profitMade)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-zinc-500">Stake capital</span>
+                        <span className="font-medium tabular-nums text-zinc-200">
+                          {fmtPoker$(row.capital)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3 border-t border-zinc-800/70 pt-1.5">
+                        <span className="text-zinc-400">Backer owed</span>
+                        <span className="font-semibold tabular-nums text-zinc-100">
+                          {fmtPoker$(row.owed)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {review.declinedCount > 0 ? (
+                  <p className="text-[11px] text-zinc-500">
+                    {review.declinedCount} declined slice
+                    {review.declinedCount === 1 ? '' : 's'} not included.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <dl className="mt-4 space-y-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 text-sm">
             <div className="flex justify-between gap-3">
-              <dt className="text-zinc-500">Backers on stake</dt>
-              <dd className="text-right font-medium text-zinc-100">{slices.length}</dd>
+              <dt className="text-zinc-500">Baseline</dt>
+              <dd className="text-right font-medium text-zinc-100">
+                {fmtPoker$(Number(deal.baseline_bankroll) || 0)}
+              </dd>
             </div>
-          ) : null}
-        </dl>
+          </dl>
+        )}
 
         <button
           type="button"

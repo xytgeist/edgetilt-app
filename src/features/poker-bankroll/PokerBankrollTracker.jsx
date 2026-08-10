@@ -4389,7 +4389,10 @@ export default function PokerBankrollTracker({
         <PokerStakeeClosedStakeSheet
           deal={termsDealForSheet}
           slices={slicesByDeal[termsDealId] || []}
+          settlements={dealSettlementsByDeal[termsDealId] || []}
+          sessions={sessions.filter((s) => s.deal_id === termsDealId)}
           profilesById={stableProfilesById}
+          viewerUserId={userId}
           saving={stableSaving}
           onClose={() => setTermsDealId(null)}
           onArchive={() => void handleArchiveStakeeBankrollDeal(termsDealId)}

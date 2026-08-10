@@ -5222,30 +5222,36 @@ html.light [data-poker-stable] [data-poker-stake-archive-card] .text-emerald-400
 
 /* Archive / modal P/L tone — explicit gain/loss (light + dark) */
 [data-poker-stake-archive-card] [data-poker-pl-tone='gain'],
-[data-poker-stake-archive-modal] [data-poker-pl-tone='gain'] {
+[data-poker-stake-archive-modal] [data-poker-pl-tone='gain'],
+[data-poker-stakee-closed-sheet] [data-poker-pl-tone='gain'] {
   color: rgb(52 211 153);
 }
 [data-poker-stake-archive-card] [data-poker-pl-tone='loss'],
-[data-poker-stake-archive-modal] [data-poker-pl-tone='loss'] {
+[data-poker-stake-archive-modal] [data-poker-pl-tone='loss'],
+[data-poker-stakee-closed-sheet] [data-poker-pl-tone='loss'] {
   color: rgb(251 113 133);
 }
 [data-poker-stake-archive-card] [data-poker-pl-tone='neutral'],
-[data-poker-stake-archive-modal] [data-poker-pl-tone='neutral'] {
+[data-poker-stake-archive-modal] [data-poker-pl-tone='neutral'],
+[data-poker-stakee-closed-sheet] [data-poker-pl-tone='neutral'] {
   color: rgb(113 113 122);
 }
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-pl-tone='gain'],
 html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-pl-tone='gain'],
-html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='gain'] {
+html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='gain'],
+html.light [data-poker-stakee-closed-sheet] [data-poker-pl-tone='gain'] {
   color: #059669 !important;
 }
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-pl-tone='loss'],
 html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-pl-tone='loss'],
-html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='loss'] {
+html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='loss'],
+html.light [data-poker-stakee-closed-sheet] [data-poker-pl-tone='loss'] {
   color: #be123c !important;
 }
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] [data-poker-pl-tone='neutral'],
 html.light [data-poker-stable] [data-poker-stake-archive-card] [data-poker-pl-tone='neutral'],
-html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='neutral'] {
+html.light [data-poker-stake-archive-modal] [data-poker-pl-tone='neutral'],
+html.light [data-poker-stakee-closed-sheet] [data-poker-pl-tone='neutral'] {
   color: #71717a !important;
 }
 

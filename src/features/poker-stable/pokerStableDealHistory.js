@@ -1,6 +1,9 @@
 import { fmtPoker$, pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
-import { backerSliceSessionEconomicShare } from './pokerStableBackerMath.js'
-import { isBackerInitiatedBackingDeal } from './pokerStableApi.js'
+import {
+  backerSliceAllocatedCapital,
+  backerSliceSessionEconomicShare,
+} from './pokerStableBackerMath.js'
+import { isBackerInitiatedBackingDeal, sliceDisplayName } from './pokerStableApi.js'
 import {
   computeDealSettlement,
   computeSliceSettleShares,
@@ -10,6 +13,7 @@ import {
 import {
   dealLeadBackerDisplayName,
   dealStakeeDisplayName,
+  edgeProfileDisplayName,
   sliceCounterpartyDisplayName,
 } from './pokerStableTerms.js'
 
@@ -204,6 +208,101 @@ export function archivedStakePlayerSessionProfit({ deal, sessions = [] }) {
     profit += wl
   }
   return roundMoney(profit)
+}
+
+/** Latest settlement row for a deal (close settle when status is settled). */
+export function latestDealSettlement(settlements = []) {
+  return (
+    [...(settlements || [])]
+      .filter((st) => st?.created_at)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null
+  )
+}
+
+/**
+ * Who closed/settled the stake (from settlement.settled_by_user_id).
+ * @returns {{ closerUserId: string | null, label: string, isViewer: boolean }}
+ */
+export function stakeClosedByActor({
+  settlements = [],
+  profilesById = {},
+  viewerUserId = null,
+}) {
+  const st = latestDealSettlement(settlements)
+  const closerUserId = st?.settled_by_user_id || null
+  if (!closerUserId) {
+    return { closerUserId: null, label: 'Someone', isViewer: false }
+  }
+  if (viewerUserId && String(closerUserId) === String(viewerUserId)) {
+    return { closerUserId, label: 'You', isViewer: true }
+  }
+  const label =
+    edgeProfileDisplayName(profilesById[closerUserId]) ||
+    profileHandleFallback(profilesById[closerUserId]) ||
+    'Someone'
+  return { closerUserId, label, isViewer: false }
+}
+
+function profileHandleFallback(profile) {
+  const handle = profile?.handle ? String(profile.handle).replace(/^@+/, '') : ''
+  return handle ? `@${handle}` : ''
+}
+
+/**
+ * Player closed-stake review: table result, personal deposit, per-backer made + unwind owed.
+ * Owed = returned stake capital (baseline × action %) + that backer's settle profit result.
+ * @param {object} args
+ */
+export function buildStakeeClosedStakeReview({
+  deal,
+  slices = [],
+  settlements = [],
+  sessions = [],
+  profilesById = {},
+  viewerUserId = null,
+}) {
+  const closer = stakeClosedByActor({ settlements, profilesById, viewerUserId })
+  const closeSt = latestDealSettlement(settlements)
+  const closedAt = deal?.settled_at || closeSt?.created_at || deal?.updated_at || null
+  const tableProfit = archivedStakePlayerSessionProfit({ deal, sessions })
+  const personalDeposit = archivedStakePersonalBankrollNet({ deal, slices, settlements })
+  const capitalDeal = {
+    baseline_bankroll: Number(closeSt?.baseline_at_settle) || Number(deal?.baseline_bankroll) || 0,
+  }
+
+  const declinedSlices = (slices || []).filter((s) => s.status === 'declined')
+  const reviewSlices = (slices || []).filter(
+    (s) => s.status !== 'declined' && s.status !== 'cancelled',
+  )
+
+  const backers = reviewSlices.map((slice) => {
+    const capital = backerSliceAllocatedCapital(capitalDeal, slice)
+    const profitMade = roundMoney(
+      (settlements || []).reduce(
+        (sum, st) => sum + settlementBackerArchiveResult(st, deal, slice, null),
+        0,
+      ),
+    )
+    return {
+      sliceId: slice.id,
+      name: sliceDisplayName(slice, profilesById),
+      actionPct: Number(slice.action_pct) || 0,
+      capital,
+      profitMade,
+      owed: roundMoney(capital + profitMade),
+    }
+  })
+
+  return {
+    closer,
+    closedAt,
+    tableProfit,
+    personalDeposit,
+    baseline: capitalDeal.baseline_bankroll,
+    backers,
+    declinedCount: declinedSlices.length,
+    settleCount: (settlements || []).length,
+  }
 }
 
 /** @param {string[]} names */

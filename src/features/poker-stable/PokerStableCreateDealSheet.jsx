@@ -193,7 +193,6 @@ function SliceEditor({
     ? guestNotifyContactFieldErrors({ email: sl.guestEmail, phone: '' })
     : { email: '', phone: '' }
   const actionOverBy = roundMoney(Math.max(0, actionSoldTotal - 100), 3)
-  const actionRemaining = roundMoney(Math.max(0, 100 - actionSoldTotal), 3)
   const actionOverCap = actionOverBy > 0
   const thisActionPct = Number(sl.actionPct)
   const thisActionCounted = Number.isFinite(thisActionPct) ? Math.max(0, thisActionPct) : 0
@@ -325,18 +324,16 @@ function SliceEditor({
               aria-invalid={actionOverCap ? 'true' : undefined}
             />
           </InField>
-          <p
-            className={`mt-1 text-[11px] tabular-nums ${
-              actionOverCap ? 'font-semibold text-rose-400' : 'text-zinc-500'
-            }`}
-            data-poker-stable-action-budget
-            data-over={actionOverCap ? 'true' : 'false'}
-            role={actionOverCap ? 'alert' : undefined}
-          >
-            {actionOverCap
-              ? `Over by ${formatActionBudgetPct(actionOverBy)}%`
-              : `Remaining: ${formatActionBudgetPct(actionRemaining)}%`}
-          </p>
+          {actionOverCap ? (
+            <p
+              className="mt-1 text-[11px] font-semibold tabular-nums text-rose-400"
+              data-poker-stable-action-budget
+              data-over="true"
+              role="alert"
+            >
+              Over by {formatActionBudgetPct(actionOverBy)}%
+            </p>
+          ) : null}
         </div>
         <InField label="Pricing" focusRingClass={STABLE_INFIELD_FOCUS}>
           <select

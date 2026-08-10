@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BarnIcon from '../../components/BarnIcon.jsx'
+import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import {
   clearStableCommitDeepLinkParams,
@@ -124,6 +125,8 @@ export default function PokerStableScreen({
     /** @type {Record<string, { sessions: number, profit: number }>} */ ({}),
   )
   const [loading, setLoading] = useState(true)
+  /** First successful paint gate … avoids $0 portfolio flash before deals/bankroll load. */
+  const [initialStableLoadDone, setInitialStableLoadDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [nudgingSliceId, setNudgingSliceId] = useState(null)
@@ -182,6 +185,7 @@ export default function PokerStableScreen({
       setDeals([])
       setSlicesByDeal({})
       setLoading(false)
+      setInitialStableLoadDone(false)
       return
     }
     if (!silent) setLoading(true)
@@ -305,6 +309,7 @@ export default function PokerStableScreen({
       setError(e?.message || 'Could not load Stable.')
     } finally {
       if (!silent) setLoading(false)
+      setInitialStableLoadDone(true)
     }
   }, [supabaseClient, userId])
 
@@ -943,7 +948,16 @@ export default function PokerStableScreen({
           </div>
         ) : null}
 
-        {!schemaMissing && userId ? (
+        {!schemaMissing && userId && !initialStableLoadDone ? (
+          <>
+            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+              Stable Manager
+            </h2>
+            <PokerSurfaceBootLoading label="Loading Stable…" />
+          </>
+        ) : null}
+
+        {!schemaMissing && userId && initialStableLoadDone ? (
           <>
             <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
               Stable Manager
@@ -958,11 +972,6 @@ export default function PokerStableScreen({
                 setSheet('request')
               }}
             />
-          </>
-        ) : null}
-
-        {!schemaMissing && userId ? (
-          <>
         {counterProposals.length > 0 ? (
           <section className="mb-6">
             <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
@@ -1024,9 +1033,7 @@ export default function PokerStableScreen({
           </h2>
           {/* pt keeps first-arrival pulse glow above the card from sitting under the label */}
           <div className={highlightPendingOffer ? 'relative z-[1] pt-2' : undefined}>
-          {loading ? (
-            <p className="py-10 text-center text-sm text-zinc-500">Loading…</p>
-          ) : activeDeals.length === 0 ? (
+          {activeDeals.length === 0 ? (
             <div
               data-elevated-card="surface"
               className="rounded-3xl border border-dashed border-zinc-700 bg-zinc-900/40 px-5 py-10 text-center"

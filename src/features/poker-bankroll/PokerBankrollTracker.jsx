@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { DollarSign, FileText, Info, Trophy } from 'lucide-react'
+import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -3184,7 +3185,7 @@ export default function PokerBankrollTracker({
         ) : null}
 
         {activeTab === 'details' ? (
-          loading ? (
+          !initialBankrollLoadDone ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
           ) : (
             <PokerBankrollOverview sessions={completedSessions} />
@@ -3192,6 +3193,9 @@ export default function PokerBankrollTracker({
         ) : null}
 
         {activeTab === 'overview' ? (
+          !initialBankrollLoadDone ? (
+            <PokerSurfaceBootLoading label="Loading bankroll…" />
+          ) : (
           <>
             <PokerBankrollHeroCarousel
               slides={bankrollSlides}
@@ -3351,18 +3355,7 @@ export default function PokerBankrollTracker({
                         </div>
                       )}
                     </div>
-                    {loading ? (
-                      <>
-                        <div className="min-h-12 w-48 animate-pulse rounded-xl bg-zinc-700/40" />
-                        <div
-                          className={`mt-3 w-full ${stakeHeroMessage ? 'min-h-10' : 'h-10'}`}
-                          aria-hidden
-                        >
-                          <div className="h-full min-h-10 animate-pulse rounded-xl bg-zinc-700/25" />
-                        </div>
-                      </>
-                    ) : (
-                      <>
+                    <>
                         <div
                           className={`flex min-h-12 flex-wrap items-end gap-x-3 gap-y-1 text-5xl font-black leading-none tracking-tight ${
                             onStake ? theme.amount : 'text-white'
@@ -3592,36 +3585,33 @@ export default function PokerBankrollTracker({
                           ) : null}
                         </div>
                       </>
-                    )}
-                    {!loading ? (
-                      <div
-                        className={`mt-4 grid grid-cols-4 gap-2 border-t pt-3 ${
-                          onStake ? theme.borderStat : 'border-zinc-700/40'
-                        }`}
-                      >
-                        <BankrollStat
-                          label="Profit"
-                          value={fmtPoker$(hero.stats.profit)}
-                          tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
-                        />
-                        <BankrollStat
-                          label="Hourly"
-                          value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
-                          tone={
-                            hero.stats.hourly == null
-                              ? 'neutral'
-                              : hero.stats.hourly >= 0
-                                ? 'good'
-                                : 'bad'
-                          }
-                        />
-                        <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
-                        <BankrollStat
-                          label="Win rate"
-                          value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
-                        />
-                      </div>
-                    ) : null}
+                    <div
+                      className={`mt-4 grid grid-cols-4 gap-2 border-t pt-3 ${
+                        onStake ? theme.borderStat : 'border-zinc-700/40'
+                      }`}
+                    >
+                      <BankrollStat
+                        label="Profit"
+                        value={fmtPoker$(hero.stats.profit)}
+                        tone={hero.stats.profit >= 0 ? 'good' : 'bad'}
+                      />
+                      <BankrollStat
+                        label="Hourly"
+                        value={hero.stats.hourly == null ? '-' : fmtPoker$(hero.stats.hourly)}
+                        tone={
+                          hero.stats.hourly == null
+                            ? 'neutral'
+                            : hero.stats.hourly >= 0
+                              ? 'good'
+                              : 'bad'
+                        }
+                      />
+                      <BankrollStat label="Hours" value={hero.stats.hours.toFixed(1)} />
+                      <BankrollStat
+                        label="Win rate"
+                        value={hero.stats.winRate == null ? '-' : `${hero.stats.winRate}%`}
+                      />
+                    </div>
                   </div>
                 )
               }}
@@ -3898,9 +3888,7 @@ export default function PokerBankrollTracker({
               </div>
             ) : null}
 
-            {loading ? (
-              <p className="py-16 text-center text-sm text-zinc-500">Loading sessions…</p>
-            ) : historyFeed.length === 0 ? (
+            {historyFeed.length === 0 ? (
               <div
                 data-elevated-card="surface"
                 className="rounded-3xl border border-zinc-800 bg-zinc-900/50 px-4 py-10 text-center"
@@ -4198,10 +4186,11 @@ export default function PokerBankrollTracker({
               </div>
             ) : null}
           </>
+          )
         ) : null}
 
         {activeTab === 'archive' ? (
-          loading ? (
+          !initialBankrollLoadDone ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
           ) : archivedStakeeDeals.length === 0 ? (
             <div
@@ -4300,7 +4289,7 @@ export default function PokerBankrollTracker({
         ) : null}
 
         {activeTab === 'charts' ? (
-          loading ? (
+          !initialBankrollLoadDone ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
           ) : (
             <PokerBankrollChartsTab sessions={completedSessions} />
@@ -4308,7 +4297,7 @@ export default function PokerBankrollTracker({
         ) : null}
 
         {activeTab === 'trend' ? (
-          loading ? (
+          !initialBankrollLoadDone ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
           ) : (
             <PokerBankrollTrendTab

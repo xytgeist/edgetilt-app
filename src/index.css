@@ -5120,6 +5120,19 @@ html.light [data-poker-stake-offer-onboarding] [data-poker-stake-offer-cta] {
   border-color: #e4e4e7 !important;
 }
 
+html.light [data-poker-surface-boot-loading] [data-elevated-card='surface'] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-surface-boot-loading] .bg-zinc-700\/70,
+html.light [data-poker-surface-boot-loading] .bg-zinc-700\/50,
+html.light [data-poker-surface-boot-loading] .bg-zinc-700\/45,
+html.light [data-poker-surface-boot-loading] .bg-zinc-800\/80,
+html.light [data-poker-surface-boot-loading] .bg-zinc-800\/70,
+html.light [data-poker-surface-boot-loading] .bg-zinc-800\/60 {
+  background-color: #e4e4e7 !important;
+}
+
 html.light [data-poker-stakee-closed-sheet] {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;

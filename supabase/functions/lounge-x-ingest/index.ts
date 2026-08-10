@@ -43,12 +43,21 @@ function isTopLevelTweet(tw: { referenced_tweets?: Array<{ type?: string }> }) {
   return !refs.some((r) => r?.type === 'replied_to' || r?.type === 'retweeted')
 }
 
+type XTimelineFetch = {
+  tweets: Array<Record<string, unknown>>
+  newestId: string | null
+  resultCount: number | null
+  meta: Record<string, unknown> | null
+  errors: unknown
+  rawKeys: string[]
+}
+
 async function fetchTweets(
   userId: string,
   sinceId: string | null,
   token: string,
   src: { exclude_replies?: boolean | null; exclude_retweets?: boolean | null },
-) {
+): Promise<XTimelineFetch> {
   const params = new URLSearchParams({
     max_results: '10',
     'tweet.fields': 'created_at,entities,referenced_tweets',
@@ -62,7 +71,22 @@ async function fetchTweets(
   if (!res.ok) {
     throw new Error(await readXApiError(res))
   }
-  return res.json()
+  const json = await res.json()
+  const tweets = Array.isArray(json?.data) ? json.data : []
+  const meta = json?.meta && typeof json.meta === 'object' ? (json.meta as Record<string, unknown>) : null
+  const newestId = meta?.newest_id != null ? String(meta.newest_id) : null
+  const resultCount =
+    meta?.result_count != null && Number.isFinite(Number(meta.result_count))
+      ? Number(meta.result_count)
+      : tweets.length
+  return {
+    tweets,
+    newestId,
+    resultCount,
+    meta,
+    errors: json?.errors ?? null,
+    rawKeys: json && typeof json === 'object' ? Object.keys(json) : [],
+  }
 }
 
 async function ingestTweetUrl(
@@ -231,6 +255,7 @@ Deno.serve(async (req) => {
 
     let ingested = 0
     let polled = 0
+    const sourcesDiag: Array<Record<string, unknown>> = []
 
     for (const bot of bots) {
       if (!dryRun && bot.run_state !== 'running') continue
@@ -249,30 +274,46 @@ Deno.serve(async (req) => {
 
       for (const src of sources || []) {
         polled += 1
+        const diag: Record<string, unknown> = {
+          bot: bot.slug,
+          handle: src.x_handle,
+          sinceId: src.since_id || null,
+          xUserId: src.x_user_id || null,
+        }
         try {
           let xUserId = src.x_user_id
           if (!xUserId) {
             xUserId = await resolveXUserId(src.x_handle, token)
+            diag.xUserId = xUserId
             if (xUserId && !dryRun) {
               await admin.from('lounge_bot_x_sources').update({ x_user_id: xUserId }).eq('id', src.id)
             }
           }
           if (!xUserId) {
+            diag.error = `Could not resolve X user id for @${src.x_handle}`
             if (!dryRun) {
               await admin.from('lounge_bot_x_sources').update({
                 last_polled_at: new Date().toISOString(),
-                last_error: `Could not resolve X user id for @${src.x_handle}`,
+                last_error: String(diag.error).slice(0, 400),
               }).eq('id', src.id)
             }
+            sourcesDiag.push(diag)
             continue
           }
 
-          const json = await fetchTweets(xUserId, src.since_id, token, src)
-          const tweets = Array.isArray(json?.data) ? json.data : []
-          const newestId = json?.meta?.newest_id as string | undefined
+          const fetched = await fetchTweets(xUserId, src.since_id, token, src)
+          const tweets = fetched.tweets
+          const newestId = fetched.newestId
+          diag.resultCount = fetched.resultCount
+          diag.tweetRows = tweets.length
+          diag.newestId = newestId
+          diag.meta = fetched.meta
+          diag.rawKeys = fetched.rawKeys
+          if (fetched.errors) diag.xErrors = fetched.errors
 
           // First poll on a source: seed since_id only (forward from next run, no history backfill).
           if (!src.since_id && newestId) {
+            diag.action = 'seed_since_id'
             if (!dryRun) {
               await admin.from('lounge_bot_x_sources').update({
                 since_id: newestId,
@@ -281,11 +322,25 @@ Deno.serve(async (req) => {
                 last_error: null,
               }).eq('id', src.id)
             }
+            sourcesDiag.push(diag)
             continue
           }
 
-          for (const tw of tweets) {
-            if (!isTopLevelTweet(tw)) continue
+          let kept = 0
+          let skippedNotTopLevel = 0
+          let skippedDup = 0
+          for (const twRaw of tweets) {
+            const tw = twRaw as {
+              id?: string
+              text?: string
+              created_at?: string
+              entities?: unknown
+              referenced_tweets?: Array<{ type?: string }>
+            }
+            if (!isTopLevelTweet(tw)) {
+              skippedNotTopLevel += 1
+              continue
+            }
             const tweetId = String(tw.id || '')
             const text = expandTweetTextUrls(String(tw.text || '').trim(), tw.entities)
             if (!text || !tweetId) continue
@@ -296,7 +351,10 @@ Deno.serve(async (req) => {
               .eq('bot_user_id', bot.user_id)
               .eq('external_key', tweetId)
               .maybeSingle()
-            if (existing?.id) continue
+            if (existing?.id) {
+              skippedDup += 1
+              continue
+            }
 
             const draft = await rewriteTweetForBot({
               sourceText: text,
@@ -305,6 +363,7 @@ Deno.serve(async (req) => {
             })
 
             if (dryRun) {
+              kept += 1
               ingested += 1
               continue
             }
@@ -321,26 +380,56 @@ Deno.serve(async (req) => {
               category_pills: bot.category_pills_default || [],
               attach_source_link: false,
               status: 'pending_review',
-              source_payload: tw,
+              source_payload: twRaw,
             })
+            kept += 1
             ingested += 1
           }
 
-          if (!dryRun && newestId) {
+          diag.kept = kept
+          diag.skippedNotTopLevel = skippedNotTopLevel
+          diag.skippedDup = skippedDup
+
+          // Always stamp last_polled_at. Empty timelines used to leave it stale.
+          const emptyNote =
+            tweets.length === 0
+              ? `X empty timeline (result_count=${fetched.resultCount ?? 0}, newest_id=${newestId || 'none'}, keys=${fetched.rawKeys.join(',') || 'none'})`
+              : null
+          diag.action = newestId ? 'advance_since_id' : tweets.length ? 'polled_no_newest_id' : 'empty'
+          if (!dryRun) {
             await admin.from('lounge_bot_x_sources').update({
-              since_id: newestId,
+              ...(newestId ? { since_id: newestId } : {}),
               last_polled_at: new Date().toISOString(),
-              last_error: null,
+              last_error: emptyNote,
             }).eq('id', src.id)
           }
+          if (emptyNote) {
+            console.warn('[lounge-x-ingest] empty timeline', {
+              bot: bot.slug,
+              handle: src.x_handle,
+              sinceId: src.since_id,
+              resultCount: fetched.resultCount,
+              newestId,
+              rawKeys: fetched.rawKeys,
+              xErrors: fetched.errors,
+            })
+          }
+          sourcesDiag.push(diag)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'X poll failed'
+          diag.error = msg
+          console.error('[lounge-x-ingest] source poll failed', {
+            bot: bot.slug,
+            handle: src.x_handle,
+            msg,
+          })
           if (!dryRun) {
             await admin.from('lounge_bot_x_sources').update({
               last_polled_at: new Date().toISOString(),
               last_error: msg.slice(0, 400),
             }).eq('id', src.id)
           }
+          sourcesDiag.push(diag)
         }
       }
 
@@ -352,7 +441,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    return adminOpsJson(200, { ok: true, slug: slug || 'all', dryRun, polled, ingested })
+    return adminOpsJson(200, {
+      ok: true,
+      slug: slug || 'all',
+      dryRun,
+      polled,
+      ingested,
+      sources: sourcesDiag,
+    })
   } catch (err) {
     if (err instanceof Response) return err
     const msg = err instanceof Error ? err.message : 'Unexpected error'

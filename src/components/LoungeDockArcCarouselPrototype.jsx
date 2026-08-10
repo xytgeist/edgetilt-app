@@ -476,24 +476,46 @@ export default function LoungeDockArcCarouselPrototype({
   /** Push FAB up only when it overlaps marked UI (fixed bars or in-scroll controls) - not on post/comment detail. */
   useEffect(() => {
     if (!fabObstacleCollisionEnabled) {
-      setCollisionInsetPx(0)
+      setCollisionInsetPx((prev) => (prev === 0 ? prev : 0))
       measureCollisionRef.current = () => {}
       return undefined
     }
 
     const measureCollision = () => {
-      const cur = fabPosRef.current
-      if (!cur) {
-        setCollisionInsetPx(0)
+      // Measure against the *preferred* FAB seat (prefs / drag), not the already-nudged
+      // visual position. Using the post-clamp rect clears overlap → inset 0 → FAB drops
+      // back onto the obstacle → inset again → max update depth (Sentry JAVASCRIPT-REACT-6H).
+      const { width, height } = loungeDockLayoutViewportSize()
+      const baseBounds = loungeDockFabMoveBounds(
+        width,
+        height,
+        LOUNGE_DOCK_FAB_SIZE_PX,
+        bottomObstaclePx,
+      )
+      let measurePos = null
+      if (repositioningRef.current && fabPosRef.current) {
+        measurePos = loungeDockFabClampToBounds(
+          fabPosRef.current.left,
+          fabPosRef.current.top,
+          baseBounds,
+        )
+      } else {
+        const saved = readLoungeDockFabPrefs()
+        measurePos = saved
+          ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, baseBounds)
+          : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
+      }
+      if (!measurePos) {
+        setCollisionInsetPx((prev) => (prev === 0 ? prev : 0))
         return
       }
       const fabRect = {
-        left: cur.left,
-        top: cur.top,
-        right: cur.left + LOUNGE_DOCK_FAB_SIZE_PX,
-        bottom: cur.top + LOUNGE_DOCK_FAB_SIZE_PX,
+        left: measurePos.left,
+        top: measurePos.top,
+        right: measurePos.left + LOUNGE_DOCK_FAB_SIZE_PX,
+        bottom: measurePos.top + LOUNGE_DOCK_FAB_SIZE_PX,
       }
-      const next = loungeDockFabCollisionBottomInsetPx(fabRect, window.innerHeight)
+      const next = loungeDockFabCollisionBottomInsetPx(fabRect, height)
       setCollisionInsetPx((prev) => (Math.abs(prev - next) < 0.5 ? prev : next))
     }
 

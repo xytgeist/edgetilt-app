@@ -25,7 +25,6 @@ import {
   isLoungeActivitySchemaMissingError,
   isPokerStableLoungeActivityEvent,
   loungeActivityActionPhrase,
-  loungeActivityActorLabel,
   loungeActivityEventsPage,
   loungeActivityMarkAllRead,
   loungeActivityMarkPushOpened,
@@ -788,10 +787,6 @@ export default function LoungeNotificationsPanel({
     const actionPhrase = loungeActivityActionPhrase(event)
     const summary = loungeActivitySummary(event)
     const isPokerStable = isPokerStableLoungeActivityEvent(event.event_type)
-    // Stake Alerts mirror like/repost layout: icon + caption, optional detail on next line.
-    const actionLine = isPokerStable
-      ? `${loungeActivityActorLabel(event)} ${actionPhrase}`
-      : actionPhrase
     const isGuideRelease =
       event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.AP_GUIDE_RELEASED ||
       Boolean(String(event.guide_slug || '').trim())
@@ -894,7 +889,7 @@ export default function LoungeNotificationsPanel({
                     </div>
                     <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[15px] leading-snug text-zinc-400">
                       <LoungeNotificationActionBadge eventType={event.event_type} slot="inline" />
-                      <span className="min-w-0">{actionLine}</span>
+                      <span className="min-w-0">{actionPhrase}</span>
                     </span>
                   </>
                 )}

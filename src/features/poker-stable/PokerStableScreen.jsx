@@ -146,6 +146,8 @@ export default function PokerStableScreen({
   )
   /** Deep-link focus for pending slice invite / nudge (carousel, not Overview sheet). */
   const [focusHorseDealId, setFocusHorseDealId] = useState(/** @type {string | null} */ (null))
+  /** Alert/push landed on a deal that no longer exists (player withdrew pending offer). */
+  const [withdrawnOfferNotice, setWithdrawnOfferNotice] = useState('')
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -315,6 +317,16 @@ export default function PokerStableScreen({
       onOpenStableDealConsumed?.()
       return
     }
+    const dealStillVisible = deals.some((d) => d.id === openStableDealId)
+    if (!dealStillVisible) {
+      // Keep deep link if load failed … only treat a clean empty result as withdrawn.
+      if (error || schemaMissing) return
+      setWithdrawnOfferNotice('This stake offer was withdrawn.')
+      setDetailDealId(null)
+      setFocusHorseDealId(null)
+      onOpenStableDealConsumed?.()
+      return
+    }
     const dealSlices = slicesByDeal[openStableDealId] || []
     const myPendingInvite = dealSlices.some(
       (s) => s.staker_user_id === userId && s.status === 'pending',
@@ -356,6 +368,9 @@ export default function PokerStableScreen({
     openStableDealId,
     loading,
     userId,
+    deals,
+    error,
+    schemaMissing,
     slicesByDeal,
     pendingCommits,
     onOpenStableDealConsumed,
@@ -806,6 +821,23 @@ export default function PokerStableScreen({
         ) : null}
 
         {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
+
+        {withdrawnOfferNotice ? (
+          <div
+            role="status"
+            className="mb-3 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100"
+          >
+            <p className="min-w-0 flex-1 text-center sm:text-left">{withdrawnOfferNotice}</p>
+            <button
+              type="button"
+              onClick={() => setWithdrawnOfferNotice('')}
+              className="shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-amber-200/90 touch-manipulation hover:bg-amber-900/40"
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
 
         {!schemaMissing && userId ? (
           <>

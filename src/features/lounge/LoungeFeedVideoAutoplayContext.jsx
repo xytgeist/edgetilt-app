@@ -251,16 +251,16 @@ export function LoungeFeedInlineSoundResetBinder({ resetRef }) {
 
 /**
  * Suspend coordinator handoff/ring expansion (e.g. feed hidden under post detail overlay).
- * @param {{ suspended: boolean }} props
+ * @param {{ suspended: boolean, clearActive?: boolean }} props
  */
-export function LoungeFeedCoordinatorSuspendBinder({ suspended }) {
+export function LoungeFeedCoordinatorSuspendBinder({ suspended, clearActive = false }) {
   const ctx = useContext(LoungeFeedVideoAutoplayContext)
   useLayoutEffect(() => {
-    ctx?.store?.setCoordinatorSuspended(Boolean(suspended))
+    ctx?.store?.setCoordinatorSuspended(Boolean(suspended), { clearActive: Boolean(clearActive) })
     return () => {
       ctx?.store?.setCoordinatorSuspended(false)
     }
-  }, [ctx, suspended])
+  }, [ctx, suspended, clearActive])
   return null
 }
 

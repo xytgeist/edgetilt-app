@@ -788,11 +788,32 @@ export function createAutoplayStore() {
       activeId = null
       schedule()
     },
-    /** Post detail / overlay: freeze handoff and shrink ring (feed stays mounted). */
-    setCoordinatorSuspended(suspended) {
+    /**
+     * Post detail / overlay / other app tabs: freeze handoff and shrink ring (feed stays mounted).
+     * @param {boolean} suspended
+     * @param {{ clearActive?: boolean }} [opts] - when leaving Lounge (`!isActivePage`), clear
+     *   activeId so HLS does not stay warm under Poker/Stable. Do not clear for post-detail
+     *   suspend (same `<video>` may be the hero player).
+     */
+    setCoordinatorSuspended(suspended, opts = {}) {
       const next = Boolean(suspended)
-      if (coordinatorSuspended === next) return
+      const clearActive = Boolean(opts?.clearActive)
+      if (coordinatorSuspended === next && !(next && clearActive && activeId)) return
       coordinatorSuspended = next
+      if (next && clearActive && activeId) {
+        try {
+          const prevGetEl = entries.get(activeId)
+          const prevEl = prevGetEl?.()
+          const video = prevEl?.querySelector?.('video')
+          if (video) {
+            video.pause()
+            video.muted = true
+          }
+        } catch {
+          // ignore
+        }
+        activeId = null
+      }
       schedule()
     },
     /** Active tile registers gesture-scoped unmute (iOS feed-wide sound handoffs). */

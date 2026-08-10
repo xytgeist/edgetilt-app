@@ -15595,8 +15595,14 @@ export default function SocialFeed({
         <LoungeFeedInlineSoundResetBinder resetRef={resetFeedInlineSoundRef} />
         <LoungeFeedCoordinatorSuspendBinder
           suspended={Boolean(
-            loungePostDetail?.id || profileModalOpen || profileOverlayStack.length > 0,
+            // Keep-alive SocialFeed stays mounted under Poker/Stable (`hidden`) … must pause
+            // HLS/autoplay or the phone cooks while the feed is not even on screen.
+            !isActivePage ||
+              loungePostDetail?.id ||
+              profileModalOpen ||
+              profileOverlayStack.length > 0,
           )}
+          clearActive={!isActivePage}
         />
         <div
           aria-hidden

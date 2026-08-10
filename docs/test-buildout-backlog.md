@@ -957,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-10: **Lounge FAB heat / dead Notifications:** body `MutationObserver` collision measure was thrashing on Stable close + toast (FAB portaled while `awayFromFeed`); pointer guard then left `clickShield` + capture listeners + panel `pointer-events:none` stuck. Pause collision off-feed, debounce MO work, never zero slide-panel pointer-events, disarm guard when a slide panel is open + 1.5s watchdog. **`LoungeDockArcCarouselPrototype.jsx`**, **`LoungeDockSlidePanels.jsx`**.
 - 2026-08-10: **Stable accept after player delete:** Accept/Decline on a gone slice shows **`{Player} deleted this stake offer.`** banner (not the vague access error), reloads to drop the card; 8s poll while pending invites are on screen. **`pokerStableApi.js`**, **`PokerStableScreen.jsx`**.
 - 2026-08-10: **Stable pending offer withdrawn:** migration **`20260810120000`** — cancel stake rewrites invite/nudge Alerts to **`poker_stable_offer_withdrawn`** (no second push). Banner only when tapping that row (`stableWithdrawn=1`); missing `stableDeal` deep links clear quietly (no toast). Apply SQL on test (+ prod when Ryan asks).
 - 2026-08-10: **AP Guides deep-link sticky expand:** Lounge / `?guide=` set `guideOpenCardSlug` but never cleared … leaving Guides and reopening always re-expanded that card. Consume after apply + clear when leaving Guides tab. **`GuidesScreen.jsx`**, **`AppShell.jsx`**.

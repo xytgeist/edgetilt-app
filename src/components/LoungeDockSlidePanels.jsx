@@ -178,8 +178,11 @@ export default function LoungeDockSlidePanels({
   settingsViewerIsStaff = false,
   buildBadgeEnabled = false,
   onBuildBadgeChange,
-  /** When true (e.g. FAB long-press), block scroll-region hits so gestures don’t fight the dock. */
-  blockUnderlyingPointer = false,
+  /**
+   * Kept for SocialFeed API compat. Do not zero panel scroll pointer-events ...
+   * ghost-click blocking belongs on the feed only (a stuck guard bricked Notifications).
+   */
+  blockUnderlyingPointer: _blockUnderlyingPointer = false,
   /** Scroll-linked 0–1 reveal for `LoungeDockArcCarouselPrototype` (same curve as panel title bar). */
   onTitleRevealChange,
   /** Pre-fill the search input when the panel opens (e.g. from a #hashtag tap). */
@@ -1082,7 +1085,6 @@ export default function LoungeDockSlidePanels({
         style={{
           paddingTop: scrollPaddingTopPx,
           paddingBottom: scrollBottomInsetPx,
-          pointerEvents: blockUnderlyingPointer ? 'none' : undefined,
         }}
       >
         {openPanel === 'search' ? (

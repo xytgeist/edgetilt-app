@@ -52,12 +52,18 @@ const DRAG_THRESHOLD_PX = 8
 const SPIN_WHEEL_SENSITIVITY = 0.0045
 /** Below this rotation delta (rad), pointer-up on an icon counts as a tap. */
 const SPIN_TAP_SLOP_RAD = 0.04
-/** Brief block on feed/panel under the wheel so synthesized clicks cannot pass through after tap. */
+/** Brief block on feed under the wheel so synthesized clicks cannot pass through after tap. */
 const POINTER_GUARD_MS = 400
 /** Home from another tab/panel: feed un-hides under the finger; Android needs a longer capture guard. */
 const AWAY_HOME_POINTER_GUARD_MS = 650
 /** After reposition, release often synthesizes a click on whatever is under the finger. */
 const REPOSITION_POINTER_GUARD_MS = 1000
+/** Hard cap so a wedged main thread cannot leave clickShield/capture listeners forever. */
+const POINTER_GUARD_WATCHDOG_MS = 1500
+/** Slide panels that must stay tappable (not awayFromFeed / tool screens). */
+const SLIDE_PANEL_CHROME = new Set(['search', 'notifications', 'chat', 'settings'])
+/** Coalesce body MutationObserver → collision measure (avoids heat on Stable close / toast DOM churn). */
+const FAB_COLLISION_MO_DEBOUNCE_MS = 100
 /** Hold on the menu button to unlock position, then drag; release to lock at the new spot. */
 const FAB_REPOSITION_LONG_PRESS_MS = 450
 /** Backdrop: past this movement = pan/scroll (close menu, release capture); below = tap (close only, block click-through). */
@@ -368,6 +374,7 @@ export default function LoungeDockArcCarouselPrototype({
   const carouselRotationRef = useRef(0)
   const pointerGuardRef = useRef(false)
   const pointerGuardTimerRef = useRef(0)
+  const pointerGuardWatchdogRef = useRef(0)
   const pointerGuardCaptureCleanupRef = useRef(null)
   const spinEnabledRef = useRef(false)
   const suppressFabClickRef = useRef(false)
@@ -377,9 +384,12 @@ export default function LoungeDockArcCarouselPrototype({
 
   const bottomObstaclePx = Math.max(0, Math.round(Number(bottomObstacleInsetPx) || 0))
   const androidFabKeyboardOpen = loungeDockFabAndroidKeyboardLikelyOpen(viewport.height)
-  /** Post/comment detail + Android IME: FAB stays put; keyboard covers it instead of yanking the menu up. */
+  /**
+   * Post/comment detail + Android IME: FAB stays put; keyboard covers it instead of yanking the menu up.
+   * awayFromFeed (Stable/tools): pause body MutationObserver collision ... Stable close + toast was cooking phones.
+   */
   const fabObstacleCollisionEnabled =
-    !fabDetailShellCompact && !androidFabKeyboardOpen
+    !fabDetailShellCompact && !androidFabKeyboardOpen && panelChrome !== 'awayFromFeed'
   const totalBottomObstaclePx = bottomObstaclePx + (fabObstacleCollisionEnabled ? collisionInsetPx : 0)
 
   const fabMoveBounds = useMemo(
@@ -522,6 +532,9 @@ export default function LoungeDockArcCarouselPrototype({
     measureCollisionRef.current = measureCollision
 
     let scrollRaf = 0
+    let moRaf = 0
+    let moDebounceTimer = 0
+    let observeDebounceTimer = 0
     const measureCollisionOnScroll = () => {
       if (scrollRaf) return
       scrollRaf = requestAnimationFrame(() => {
@@ -539,12 +552,30 @@ export default function LoungeDockArcCarouselPrototype({
     }
     observeObstacles()
 
+    const scheduleObstacleRefresh = () => {
+      if (observeDebounceTimer) return
+      observeDebounceTimer = window.setTimeout(() => {
+        observeDebounceTimer = 0
+        observeObstacles()
+      }, FAB_COLLISION_MO_DEBOUNCE_MS)
+    }
+
+    const scheduleMeasureFromMutation = () => {
+      scheduleObstacleRefresh()
+      if (moRaf) return
+      moRaf = requestAnimationFrame(() => {
+        moRaf = 0
+        if (moDebounceTimer) window.clearTimeout(moDebounceTimer)
+        moDebounceTimer = window.setTimeout(() => {
+          moDebounceTimer = 0
+          measureCollision()
+        }, FAB_COLLISION_MO_DEBOUNCE_MS)
+      })
+    }
+
     const mo =
       typeof MutationObserver !== 'undefined'
-        ? new MutationObserver(() => {
-            observeObstacles()
-            measureCollision()
-          })
+        ? new MutationObserver(scheduleMeasureFromMutation)
         : null
     mo?.observe(document.body, { childList: true, subtree: true })
 
@@ -556,6 +587,9 @@ export default function LoungeDockArcCarouselPrototype({
 
     return () => {
       if (scrollRaf) cancelAnimationFrame(scrollRaf)
+      if (moRaf) cancelAnimationFrame(moRaf)
+      if (moDebounceTimer) window.clearTimeout(moDebounceTimer)
+      if (observeDebounceTimer) window.clearTimeout(observeDebounceTimer)
       ro?.disconnect()
       mo?.disconnect()
       window.removeEventListener('resize', measureCollision)
@@ -657,6 +691,10 @@ export default function LoungeDockArcCarouselPrototype({
       window.clearTimeout(pointerGuardTimerRef.current)
       pointerGuardTimerRef.current = 0
     }
+    if (pointerGuardWatchdogRef.current) {
+      window.clearTimeout(pointerGuardWatchdogRef.current)
+      pointerGuardWatchdogRef.current = 0
+    }
     pointerGuardRef.current = false
     setClickShield(false)
     clearPointerGuardCapture()
@@ -683,6 +721,12 @@ export default function LoungeDockArcCarouselPrototype({
         pointerGuardTimerRef.current = 0
         disarmPointerGuard()
       }, durationMs)
+      // Hard cap independent of durationMs ... wedged main thread left Notifications untappable.
+      if (pointerGuardWatchdogRef.current) window.clearTimeout(pointerGuardWatchdogRef.current)
+      pointerGuardWatchdogRef.current = window.setTimeout(() => {
+        pointerGuardWatchdogRef.current = 0
+        disarmPointerGuard()
+      }, POINTER_GUARD_WATCHDOG_MS)
     },
     [clearPointerGuardCapture, disarmPointerGuard, syncPointerBlock],
   )
@@ -692,6 +736,12 @@ export default function LoungeDockArcCarouselPrototype({
       disarmPointerGuard()
     }
   }, [disarmPointerGuard])
+
+  // Live slide panel must stay tappable ... never leave clickShield over Notifications/etc.
+  useEffect(() => {
+    if (!panelChrome || !SLIDE_PANEL_CHROME.has(panelChrome)) return
+    disarmPointerGuard()
+  }, [panelChrome, disarmPointerGuard])
 
   const clearRepositionCapture = useCallback(() => {
     repositionCaptureCleanupRef.current?.()

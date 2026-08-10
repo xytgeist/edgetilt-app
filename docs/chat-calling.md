@@ -67,7 +67,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 - **No CallKit** ... incoming = web push + in-app overlay only.
 - `getUserMedia` only after user tap (Start / Accept, or first-open PWA mic opt-in).
-- **First-open PWA mic prompt:** **Android installed PWA only** (`isStandalonePwa` + `isAndroidDevice`). After splash (and after the push opt-in if that also shows), Edge asks once to Enable microphone, then calls `getUserMedia` and immediately stops the track. Seen flag: `edge_pwa_mic_prompt_v2:{userId}` (`src/utils/pwaMicrophonePrompt.js`). iPhone / iPad: no sheet (OS prompt on Accept / Start call is enough).
+- **Mic permission:** request only when a call is **made or received** (LiveKit / `getUserMedia` on the call path). Do **not** show a first-open / sign-in mic sheet (`AppShell` no longer queues PWA mic opt-in). Helpers remain in `src/utils/pwaMicrophonePrompt.js` if call-side priming needs them.
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).
 - Call provider + overlay live at **AppShell** so tab switches do not tear down ringing/active media.
 - **In-app tones:** Web Audio ringtone on incoming overlay; ringback while outgoing caller awaits a remote participant (`chatCallRingTone.js`). Recording cues are separate (`chatCallRecordingTone.js`). Stops on accept/decline/answer/hangup. Not a substitute for OS notification sound when backgrounded.

@@ -1,10 +1,9 @@
 import { isAndroidDevice, isStandalonePwa } from './pwaNotificationPrompt.js'
 
 /**
- * One-time installed-PWA mic opt-in for chat calling (localStorage).
- * Android only... iOS PWA mic priming is flaky and not worth the sheet.
- * v2: do not skip the in-app sheet when Permissions API already says granted/denied
- * (v1 silently marked seen after call testing and never showed Enable Microphone).
+ * Mic helpers for chat calling. Do **not** prompt on sign-in / first open...
+ * OS mic permission should only be requested when a call is made or received
+ * (`getUserMedia` / LiveKit on the call path). Kept for call-side priming if needed.
  */
 export const PWA_MIC_PROMPT_KEY_PREFIX = 'edge_pwa_mic_prompt_v2:'
 

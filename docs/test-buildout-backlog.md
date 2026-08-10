@@ -957,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-10: **Progressive decline left stake hero at full baseline:** `poker_stable_decline_backer_slice` only marked the slice declined (subtext skipped it; hero still showed $50k). **`20260810210000`** shrinks baseline/roll/starting_roll by declined capital, renormalizes remaining open action%, releases/credits backer allocation. Applied on **test** (repaired Joey **Test 9** → $25k; Edge Lord allocation released). Prod not applied yet.
 - 2026-08-10: **Create stake allowed >100% action:** `sumSliceActionPct` ignored camelCase `actionPct` so client cap was a no-op. Fixed math + create-sheet Action sold total; **`20260810190000`** deferred DB trigger + propose asserts. Applied on test.
 - 2026-08-10: **Accept re-seeded after debit (bankroll $10k / portfolio $20k):** seed+debit left liquid `$0`, then a second `ensure` seeded again. **`20260810180000`** never re-seeds after `bankroll_debited`; repairs phantom liquid = deployed capital. Applied on test (Pokerdean).
 - 2026-08-10: **Received invite must not seed backing bankroll:** player-offer pending slices were auto-seeding $slice + pending hold (Pokerdean $10k/−$10k). Seed only for Create Stake initiator or on Accept/debit (**`20260810170000`** + client pending-hold gate). Applied on test; repairs mistaken seeds.

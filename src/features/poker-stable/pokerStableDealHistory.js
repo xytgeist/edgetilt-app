@@ -362,7 +362,11 @@ export function buildStakeDealHistoryEvents({
   const events = []
   for (const entry of ledgerEntries) {
     if (!entry?.created_at || !entry?.message) continue
-    if (entry.entry_kind === 'session_deleted' || entry.entry_kind === 'sessions_detached') {
+    if (
+      entry.entry_kind === 'session_deleted' ||
+      entry.entry_kind === 'sessions_detached' ||
+      entry.entry_kind === 'backing_reduced'
+    ) {
       events.push({
         id: `ledger-${entry.id}`,
         kind: entry.entry_kind,

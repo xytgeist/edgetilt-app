@@ -1,4 +1,4 @@
-import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
+import { fmtPoker$, pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
 import { backerSliceSessionEconomicShare } from './pokerStableBackerMath.js'
 import { isBackerInitiatedBackingDeal } from './pokerStableApi.js'
 import {
@@ -185,6 +185,25 @@ export function archivedStakeBackerSessionShareTotal({ deal, slices = [], sessio
       .filter((s) => s.deal_id === deal.id && s.status !== 'active')
       .reduce((sum, session) => sum + backerSliceSessionEconomicShare(deal, slice, session, sessions), 0),
   )
+}
+
+/**
+ * Horse's full table session W/L on a closed stake (not a backer slice cut).
+ * Used for "{player} performance" on Stable Closed stakes / archive detail.
+ * @param {object} args
+ * @param {object} args.deal
+ * @param {object[]} [args.sessions]
+ */
+export function archivedStakePlayerSessionProfit({ deal, sessions = [] }) {
+  if (!deal?.id) return 0
+  let profit = 0
+  for (const s of sessions || []) {
+    if (s.deal_id !== deal.id || s.status === 'active') continue
+    const wl = pokerSessionWinLoss(s)
+    if (wl == null) continue
+    profit += wl
+  }
+  return roundMoney(profit)
 }
 
 /** @param {string[]} names */

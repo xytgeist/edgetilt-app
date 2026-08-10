@@ -33,7 +33,7 @@ import { computeDealRollSparkSeries } from './pokerStableDealSessionStats.js'
 import { stableHorseToneScopeDeals } from './pokerStableHorseTone.js'
 import {
   archivedStakeBackerEconomicsBreakdown,
-  archivedStakeBackerSessionShareTotal,
+  archivedStakePlayerSessionProfit,
 } from './pokerStableDealHistory.js'
 import {
   acceptSliceAsStaker,
@@ -1084,11 +1084,9 @@ export default function PokerStableScreen({
                   settlements: dealSettlementsByDeal[deal.id] || [],
                   viewerUserId: userId,
                 })
-                const sessionShareTotal = archivedStakeBackerSessionShareTotal({
+                const playerSessionProfit = archivedStakePlayerSessionProfit({
                   deal,
-                  slices,
                   sessions: stableSessions,
-                  viewerUserId: userId,
                 })
                 const outcomeLabel = archivedStakeOutcomeLabel(deal, slices)
                 const settleRows = dealSettlementsByDeal[deal.id] || []
@@ -1129,10 +1127,10 @@ export default function PokerStableScreen({
                       {fmtPoker$(deal.baseline_bankroll)}
                     </p>
                     <p
-                      data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
+                      data-poker-pl-tone={pokerPlTone(playerSessionProfit)}
                       className="text-[11px] font-semibold tabular-nums"
                     >
-                      {playerName} performance {fmtPoker$(sessionShareTotal)}
+                      {playerName} performance {fmtPoker$(playerSessionProfit)}
                     </p>
                     <p
                       data-poker-pl-tone={pokerPlTone(realizedBackingNet)}

@@ -14,7 +14,7 @@ import {
 } from './pokerSessionLabels.js'
 import {
   archivedStakeBackerEconomicsBreakdown,
-  archivedStakeBackerSessionShareTotal,
+  archivedStakePlayerSessionProfit,
   archivedStakePersonalBankrollBreakdown,
   buildFullStakeArchiveTimeline,
   viewerBackingSlice,
@@ -107,11 +107,9 @@ export default function PokerStakeArchiveDetailModal({
     })
   const realizedBackingNeutral = Math.abs(realizedBackingNet) < 0.005
   const backerSettleCount = realizedBackingItems.length
-  const sessionShareTotal = archivedStakeBackerSessionShareTotal({
+  const playerSessionProfit = archivedStakePlayerSessionProfit({
     deal,
-    slices,
     sessions,
-    viewerUserId,
   })
   const viewerSlice = viewerBackingSlice(slices, viewerUserId)
   const viewerActionPct = viewerSlice ? Number(viewerSlice.action_pct) || 0 : null
@@ -163,13 +161,14 @@ export default function PokerStakeArchiveDetailModal({
                 {playerDisplayName} performance
               </div>
               <div
-                data-poker-pl-tone={pokerPlTone(sessionShareTotal)}
+                data-poker-pl-tone={pokerPlTone(playerSessionProfit)}
                 className="mt-0.5 text-xl font-black tabular-nums"
               >
-                {fmtPoker$(sessionShareTotal)}
+                {fmtPoker$(playerSessionProfit)}
               </div>
               <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-                How this horse played for your slice (not settle cash). Gross W/L × your action %.
+                Full table session W/L for this horse (not your cut). Realized backing below is your
+                slice settle result.
               </p>
             </div>
             <div

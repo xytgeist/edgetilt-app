@@ -203,7 +203,8 @@ export default function PokerStableHorseCarousel({
                 </button>
               ) : null}
               <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone}`}
+                data-poker-stable-horse-status={String(statusLabel || '').toLowerCase()}
+                className={`rounded-full border border-transparent px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone}`}
               >
                 {statusLabel}
               </span>

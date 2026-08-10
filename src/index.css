@@ -6449,6 +6449,15 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='1'] .bg-emerald-500\/20 {
   background-color: #ecfdf5 !important;
 }
+/*
+ * Active status pill … light-only. Washed emerald-300 on #ecfdf5 read too faint vs
+ * Closed archive pills (border + blue-700). Match that weight via horse accent.
+ */
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-horse-status='active'] {
+  color: var(--horse-tone-accent) !important;
+  background-color: color-mix(in srgb, var(--horse-tone-accent) 14%, #ffffff) !important;
+  border-color: color-mix(in srgb, var(--horse-tone-accent) 42%, #ffffff) !important;
+}
 /* 2 orange */
 html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-horse-tone='2'] {
   --horse-tone-accent: #ea580c;

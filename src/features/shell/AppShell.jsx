@@ -2639,6 +2639,12 @@ export default function AppShell({
           }}
           highlightPendingOffer={pulseStableOffer}
           onHighlightPendingOfferConsumed={clearStableOfferPulse}
+          onOpenChatWithUser={(peerUserId) => {
+            if (!peerUserId) return
+            setPendingChatPeerUserId(peerUserId)
+            setTab('chat')
+            setMenuOpen(false)
+          }}
         />
       )
     } else if (tab === 'logbook') {

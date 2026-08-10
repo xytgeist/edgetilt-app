@@ -95,6 +95,24 @@ export function dealStakeeDisplayName(deal, profilesById = {}) {
   return edgeProfileDisplayName(profile) || 'Player'
 }
 
+/**
+ * Edge user id to open a Chat DM with from Stable. Null when the counterpart is a
+ * guest, missing, or the viewer themself. Both sides must be Edge users.
+ * Backer → player (`stakee_user_id`). Player → lead backer (`staker_user_id`).
+ * @param {object | null | undefined} deal
+ * @param {string | null | undefined} viewerUserId
+ */
+export function stableDealEdgeChatPeerUserId(deal, viewerUserId) {
+  if (!deal || !viewerUserId) return null
+  const stakeeId = deal.stakee_user_id || null
+  const leadId = deal.staker_user_id || null
+  if (stakeeId && stakeeId === viewerUserId) {
+    return leadId && leadId !== viewerUserId ? leadId : null
+  }
+  if (stakeeId && stakeeId !== viewerUserId) return stakeeId
+  return null
+}
+
 /** Lead backer who proposed a horse deal (`deal.staker_user_id`). */
 export function dealLeadBackerDisplayName(deal, profilesById = {}) {
   const stakerId = deal?.staker_user_id

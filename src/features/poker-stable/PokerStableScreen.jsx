@@ -112,6 +112,8 @@ export default function PokerStableScreen({
   /** First breadcrumb arrival: pulse pending Accept/Decline offer cards. */
   highlightPendingOffer = false,
   onHighlightPendingOfferConsumed = null,
+  /** @type {(peerUserId: string) => void} */
+  onOpenChatWithUser = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [deals, setDeals] = useState([])
@@ -1047,6 +1049,7 @@ export default function PokerStableScreen({
               onAcceptSlice={onAcceptSlice}
               onDeclineSlice={onDeclineSlice}
               onOpenTerms={setTermsDealId}
+              onOpenChatWithUser={onOpenChatWithUser}
               saving={saving}
               onNudgePendingBacker={onNudgePendingBacker}
               nudgingSliceId={nudgingSliceId}

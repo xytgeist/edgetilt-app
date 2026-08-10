@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import PokerBankrollHeroCarousel from '../poker-bankroll/PokerBankrollHeroCarousel.jsx'
 import BankrollSparkline from '../../components/BankrollSparkline.jsx'
-import { FileText } from 'lucide-react'
+import { FileText, MessageCircle } from 'lucide-react'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   backerSliceEstimatedShare,
@@ -17,6 +17,7 @@ import {
   pendingBackerNudgeTargetsForActiveBacker,
   pendingSettleCommitsForDeal,
   sliceCounterpartyDisplayName,
+  stableDealEdgeChatPeerUserId,
   stakeDealIsLiveForStakee,
   stakeHorseCardStatusLabel,
 } from './pokerStableTerms.js'
@@ -46,6 +47,8 @@ export default function PokerStableHorseCarousel({
   onAcceptSlice,
   onDeclineSlice,
   onOpenTerms,
+  /** Open Chat DM with Edge peer (null / omitted when guest counterpart). */
+  onOpenChatWithUser = null,
   onNudgePendingBacker,
   nudgingSliceId = null,
   nudgeDisabled = false,
@@ -147,6 +150,8 @@ export default function PokerStableHorseCarousel({
         // Match Sessions / Unsettled tone … not padded trend first/last (can disagree after settles).
         const sparkUp = (stats.profit ?? 0) >= 0
         const cardClassName = `relative flex w-full flex-col overflow-hidden ${horseTone.surface} p-5 text-left`
+        const chatPeerUserId = stableDealEdgeChatPeerUserId(deal, userId)
+        const showChatBtn = Boolean(chatPeerUserId && typeof onOpenChatWithUser === 'function')
 
         const statsSparkBackground = showSparkBackground ? (
           <div
@@ -178,11 +183,31 @@ export default function PokerStableHorseCarousel({
                 {backerStableDealDisplayLabel(deal, labelScope)}
               </div>
             </div>
-            <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone}`}
+            <div
+              className="flex shrink-0 items-center gap-1.5"
+              onClick={(e) => e.stopPropagation()}
             >
-              {statusLabel}
-            </span>
+              {showChatBtn ? (
+                <button
+                  type="button"
+                  data-poker-stable-chat-btn
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenChatWithUser?.(chatPeerUserId)
+                  }}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-cyan-300 touch-manipulation active:bg-white/5"
+                  aria-label="Chat"
+                  title="Chat"
+                >
+                  <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
+                </button>
+              ) : null}
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusTone}`}
+              >
+                {statusLabel}
+              </span>
+            </div>
           </div>
         )
 

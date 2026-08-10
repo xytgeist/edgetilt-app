@@ -200,7 +200,11 @@ export function computeSliceLedgerOwed({
 
 /** @param {object[]} slices */
 export function sumSliceActionPct(slices) {
-  return roundMoney((slices || []).reduce((s, sl) => s + stableNum(sl.action_pct), 0), 3)
+  // Form / API payloads use actionPct; DB rows use action_pct.
+  return roundMoney(
+    (slices || []).reduce((s, sl) => s + stableNum(sl.action_pct ?? sl.actionPct), 0),
+    3,
+  )
 }
 
 /** At least one backer slice has accepted (`status === 'active'`). */

@@ -19,7 +19,7 @@ import {
   scrollPokerStableSliceIntoView,
   usePokerStableSheetKeyboardDismissScroll,
 } from './pokerStableSheetScroll.js'
-import { roundMoney } from './pokerStableMath.js'
+import { roundMoney, sumSliceActionPct } from './pokerStableMath.js'
 import {
   guestNotifyContactFieldErrors,
   guestNotifyContactFieldsValid,
@@ -550,6 +550,13 @@ function PokerStableDealFormSheet({
     [isBacker, userId, stableDeals, stableSlicesByDeal],
   )
 
+  const formActionTotal = useMemo(() => {
+    const formSlices = showPlayerTermsForm ? slices : [mySlice, ...friendSlices]
+    return sumSliceActionPct(formSlices)
+  }, [showPlayerTermsForm, slices, mySlice, friendSlices])
+
+  const formActionOverCap = formActionTotal > 100.001
+
   const backerAvailableBankrollDisplay = useMemo(() => {
     const pool = computeBackerAvailableBankroll(
       Number(backingBankrollBalance) || 0,
@@ -604,6 +611,9 @@ function PokerStableDealFormSheet({
     onSavingChange(true)
     setFormError('')
     try {
+      if (formActionOverCap) {
+        throw new Error('Total action sold cannot exceed 100%.')
+      }
       let createdDeal = null
       let beforeTermsEdit = null
       let afterTermsEdit = null
@@ -1125,6 +1135,17 @@ function PokerStableDealFormSheet({
             {isBackerPropose ? 'Your slice' : 'Backer slices'}
           </h4>
         ) : null}
+        {!isBackerPropose ? (
+          <p
+            className={`mb-2 text-sm tabular-nums ${
+              formActionOverCap ? 'font-semibold text-rose-400' : 'text-zinc-400'
+            }`}
+            data-poker-stable-action-total
+          >
+            Action sold: {formActionTotal}%
+            {formActionOverCap ? ' (max 100%)' : ''}
+          </p>
+        ) : null}
         <div className="mb-4 space-y-3">
           {showPlayerTermsForm ? (
             slices.map((sl, idx) => (
@@ -1210,7 +1231,7 @@ function PokerStableDealFormSheet({
 
         <button
           type="button"
-          disabled={saving || !guestContactFormValid}
+          disabled={saving || !guestContactFormValid || formActionOverCap}
           onClick={() => void submit()}
           data-poker-stable-primary-btn
           className="w-full rounded-3xl bg-amber-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"

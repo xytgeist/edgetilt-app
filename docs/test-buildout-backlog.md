@@ -955,6 +955,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-09: **X editorial inbox dry:** cron + Edge healthy; `lounge-x-ingest` returns `polled:4, ingested:0`. Per-source diag (redeployed prod+test): X `GET /2/users/:id/tweets` returns **200** with only `meta.result_count=0` for all handles (incl. old `since_id`). Credits present; suspect User Tweet Timeline entitlement / app product access. Empty polls now stamp `last_polled_at` + `last_error`.
 - 2026-08-09: **Timberwolf Diamond → Logbook (not calculator):** machine was wrongly `has_calculator` + `calculator_slug=buffalo-diamond` on test + prod … cleared. Client `resolveCalculatorKeyFromMachine` refuses Timberwolf / non-Buffalo skins tagged buffalo-diamond. Card shows **Log play in Logbook**.
 - 2026-08-09: **Lounge SocialFeed max update depth (Sentry prod):** cashtag autocomplete re-applied the same resolved miss on every cursor/`selectionchange`, sync `setSuggestions([])` nesting updates. Early-return when query unchanged; empty suggestions preserve `[]` identity. Mention same-query skip + composer cashtag quote no-op harden.
 - 2026-08-09: **TFV OTP opt-in proof page:** static **`public/compliance/sms-otp-opt-in.html`** (web-form consent mock for account phone OTP only … unchecked checkbox, STOP/HELP, Terms/Privacy). For Twilio toll-free verification; not guest swap/stake SMS.

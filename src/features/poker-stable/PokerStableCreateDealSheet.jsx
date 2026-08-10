@@ -459,8 +459,17 @@ function PokerStableDealFormSheet({
     }
   }
 
+  // Stable identity for hydrate … parent silent reloads pass new editDeal/editSlices
+  // object refs every poll and were wiping in-progress markup/baseline edits.
+  const editHydrateKey = editDeal?.id
+    ? `${editDeal.id}|${(editSlices || [])
+        .filter((sl) => sl?.status !== 'declined')
+        .map((sl) => sl.id || '')
+        .join(',')}`
+    : ''
+
   useEffect(() => {
-    if (!editDeal) return
+    if (!editDeal?.id || !editHydrateKey) return
     setDealType(editDeal.deal_type || 'cash_backing')
     setVenueKind(editDeal.venue_kind || 'live')
     setLabel(editDeal.label || '')
@@ -500,7 +509,9 @@ function PokerStableDealFormSheet({
         : [newEmptySlice(editDeal.deal_type || 'cash_backing')],
     )
     setFormError('')
-  }, [editDeal, editSlices, editProfilesById, isBackerPropose, userId])
+    // editDeal / editSlices / editProfilesById intentionally omitted … use editHydrateKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate only on deal/slice identity
+  }, [editHydrateKey, isBackerPropose, userId])
 
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length

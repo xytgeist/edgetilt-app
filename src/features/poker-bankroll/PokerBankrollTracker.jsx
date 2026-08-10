@@ -3103,7 +3103,7 @@ export default function PokerBankrollTracker({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
-        contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+        contentClassName="px-3 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div data-poker-bankroll>
 

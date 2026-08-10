@@ -40,6 +40,7 @@ import {
   declineSliceAsStaker,
   dealIdsForAcceptedBackerVisibility,
   isMissingStableTableError,
+  isStableOfferWithdrawnError,
   isViewerBackingDeal,
   depositBackerBankroll,
   loadBackerBankroll,
@@ -308,6 +309,22 @@ export default function PokerStableScreen({
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
+
+  /** While a pending invite is on screen, poll so a player delete drops the ghost card. */
+  const hasPendingSliceInvite = useMemo(() => {
+    if (!userId) return false
+    return Object.values(slicesByDeal || {}).some((slices) =>
+      (slices || []).some((s) => s.staker_user_id === userId && s.status === 'pending'),
+    )
+  }, [slicesByDeal, userId])
+
+  useEffect(() => {
+    if (!hasPendingSliceInvite || !userId) return undefined
+    const id = window.setInterval(() => {
+      void load({ silent: true })
+    }, 8000)
+    return () => window.clearInterval(id)
+  }, [hasPendingSliceInvite, userId, load])
 
   const activeBackerOnboardingDealId =
     backerSliceOnboardingDealId || readPokerStableBackerOnboardingDealId()
@@ -596,6 +613,23 @@ export default function PokerStableScreen({
     }
   }
 
+  function playerLabelForSlice(sliceId) {
+    for (const [dealId, slices] of Object.entries(slicesByDeal || {})) {
+      if (!(slices || []).some((s) => s.id === sliceId)) continue
+      const deal = deals.find((d) => d.id === dealId)
+      return dealStakeeDisplayName(deal, profilesById) || 'The player'
+    }
+    return 'The player'
+  }
+
+  async function handleGoneSliceOffer(sliceId) {
+    const who = playerLabelForSlice(sliceId)
+    setError('')
+    setWithdrawnOfferNotice(`${who} deleted this stake offer.`)
+    notifyPokerOfferAttentionChanged()
+    await load({ silent: true })
+  }
+
   async function onAcceptSlice(sliceId) {
     if (!supabaseClient || !userId) return
     setSaving(true)
@@ -607,7 +641,11 @@ export default function PokerStableScreen({
       notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
-      setError(e?.message || 'Could not accept slice.')
+      if (isStableOfferWithdrawnError(e)) {
+        await handleGoneSliceOffer(sliceId)
+      } else {
+        setError(e?.message || 'Could not accept slice.')
+      }
     } finally {
       setSaving(false)
     }
@@ -623,7 +661,11 @@ export default function PokerStableScreen({
       notifyPokerOfferAttentionChanged()
       await load()
     } catch (e) {
-      setError(e?.message || 'Could not decline slice.')
+      if (isStableOfferWithdrawnError(e)) {
+        await handleGoneSliceOffer(sliceId)
+      } else {
+        setError(e?.message || 'Could not decline slice.')
+      }
     } finally {
       setSaving(false)
     }

@@ -18,6 +18,49 @@ export function isMissingStableTableError(err) {
   )
 }
 
+/** Player deleted/cancelled the pending offer while the backer still had it on screen. */
+export const STABLE_OFFER_WITHDRAWN_CODE = 'STABLE_OFFER_WITHDRAWN'
+
+export function isStableOfferWithdrawnError(err) {
+  if (!err) return false
+  if (err.code === STABLE_OFFER_WITHDRAWN_CODE) return true
+  return /stake offer was (withdrawn|deleted)/i.test(String(err.message || ''))
+}
+
+function stableOfferWithdrawnError(message = 'This stake offer was withdrawn.') {
+  const err = new Error(message)
+  err.code = STABLE_OFFER_WITHDRAWN_CODE
+  return err
+}
+
+/** True when the slice row is gone (deal cancel cascades) or no longer pending for this backer. */
+async function diagnoseMissingPendingSlice(supabase, sliceId, stakerUserId) {
+  const { data: slice, error } = await supabase
+    .from('poker_stable_deal_slices')
+    .select('id, deal_id, status, staker_user_id')
+    .eq('id', sliceId)
+    .maybeSingle()
+  if (error && !isMissingStableTableError(error)) return error
+  if (!slice) return stableOfferWithdrawnError()
+  if (slice.staker_user_id !== stakerUserId) {
+    return new Error('Could not update slice. You lack access.')
+  }
+  if (slice.status !== 'pending') {
+    return new Error(
+      slice.status === 'active'
+        ? 'This slice is already accepted.'
+        : 'This slice is no longer pending.',
+    )
+  }
+  const { data: deal } = await supabase
+    .from('poker_stable_deals')
+    .select('id, status')
+    .eq('id', slice.deal_id)
+    .maybeSingle()
+  if (!deal) return stableOfferWithdrawnError()
+  return new Error('Could not update slice. It may already be accepted or you lack access.')
+}
+
 /** Player created via Bankroll + Stake (`staker_user_id` null on v2 deals). */
 export function isPlayerInitiatedBackingDeal(deal) {
   return Boolean(deal?.stakee_user_id) && deal?.staker_user_id == null
@@ -1265,10 +1308,12 @@ export async function acceptSliceAsStaker(supabase, sliceId, stakerUserId) {
     .single()
   if (error) {
     const msg = String(error.message || '')
-    if (/single json object/i.test(msg)) {
+    const code = String(error.code || '')
+    // 0-row update → .single() (PGRST116): slice deleted with the deal, or already resolved.
+    if (code === 'PGRST116' || /single json object|0 rows/i.test(msg)) {
       return {
         slice: null,
-        error: new Error('Could not accept slice. It may already be accepted or you lack access.'),
+        error: await diagnoseMissingPendingSlice(supabase, sliceId, stakerUserId),
       }
     }
     return { slice: null, error }
@@ -1354,6 +1399,20 @@ export async function declineSliceAsStaker(supabase, sliceId, stakerUserId) {
     .eq('status', 'pending')
     .select('*')
     .single()
+  if (!updErr && slice) {
+    return { slice, error: null, result: data }
+  }
+  const missMsg = String(updErr?.message || error?.message || '')
+  const missCode = String(updErr?.code || error?.code || '')
+  if (
+    missCode === 'PGRST116' ||
+    /single json object|0 rows|not found|does not exist/i.test(missMsg)
+  ) {
+    return {
+      slice: null,
+      error: await diagnoseMissingPendingSlice(supabase, sliceId, stakerUserId),
+    }
+  }
   return { slice: slice || null, error: updErr || error }
 }
 

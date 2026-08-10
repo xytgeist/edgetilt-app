@@ -1237,7 +1237,8 @@ function PokerStableDealFormSheet({
             <button
               type="button"
               onClick={addBackerSlice}
-              className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+              data-poker-stable-add-slice-btn
+              className="mb-4 w-full rounded-2xl border border-dashed border-amber-500/55 bg-amber-500/10 py-2.5 text-sm font-semibold text-amber-300 touch-manipulation active:bg-amber-500/20"
             >
               + Add backer slice
             </button>
@@ -1245,7 +1246,8 @@ function PokerStableDealFormSheet({
             <button
               type="button"
               onClick={addBackerSlice}
-              className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+              data-poker-stable-add-slice-btn
+              className="mb-4 w-full rounded-2xl border border-dashed border-amber-500/55 bg-amber-500/10 py-2.5 text-sm font-semibold text-amber-300 touch-manipulation active:bg-amber-500/20"
             >
               + Add syndicate backer
             </button>

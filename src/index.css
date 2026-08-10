@@ -5926,6 +5926,14 @@ html.light [data-poker-stable-sheet] [data-poker-stable-form-error] {
   border-color: #fda4af !important;
   color: #be123c !important;
 }
+html.light [data-poker-stable-sheet] [data-poker-stable-add-slice-btn] {
+  border-color: rgba(37, 99, 235, 0.45) !important;
+  background-color: rgba(37, 99, 235, 0.08) !important;
+  color: #1d4ed8 !important;
+}
+html.light [data-poker-stable-sheet] [data-poker-stable-add-slice-btn]:active {
+  background-color: rgba(37, 99, 235, 0.14) !important;
+}
 html.light [data-poker-stable-sheet] [data-poker-stable-action-budget] {
   color: #71717a !important;
 }

@@ -45,6 +45,21 @@ export function pokerStableSliceTitleClass(sliceIndex) {
   return `${POKER_STABLE_SLICE_TITLE_ROW_CLASS} ${SLICE_TONE_TITLE_CLASS[pokerStableSliceToneId(sliceIndex)]}`
 }
 
+/**
+ * Status label next to the backer name on Terms / Manage slice cards.
+ * Active + Declined match the slice title tone; Pending stays muted gray.
+ * @param {number | string | null | undefined} sliceIndex
+ * @param {string | null | undefined} status
+ */
+export function pokerStableSliceStatusClass(sliceIndex, status) {
+  const base = 'text-[10px] font-bold uppercase'
+  const s = String(status || '').toLowerCase()
+  if (s === 'active' || s === 'declined') {
+    return `${base} ${SLICE_TONE_TITLE_CLASS[pokerStableSliceToneId(sliceIndex)]}`
+  }
+  return `${base} text-zinc-500`
+}
+
 /** Shared slice card title row (backer name / Backer N). */
 export const POKER_STABLE_SLICE_TITLE_ROW_CLASS =
   'min-w-0 truncate text-base font-bold leading-snug'

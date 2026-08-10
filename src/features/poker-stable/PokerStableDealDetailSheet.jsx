@@ -29,6 +29,7 @@ import PokerStableCloseStakeSheet from './PokerStableCloseStakeSheet.jsx'
 import PokerStableDealOverviewPanel from './PokerStableDealOverviewPanel.jsx'
 import {
   pokerStableSliceCardClass,
+  pokerStableSliceStatusClass,
   pokerStableSliceTitleClass,
   pokerStableSliceToneAttr,
 } from './pokerStableSliceTone.js'
@@ -537,7 +538,9 @@ export default function PokerStableDealDetailSheet({
                         : `${slice.player_profit_pct}% player split`}
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold uppercase text-zinc-500">{slice.status}</span>
+                  <span className={pokerStableSliceStatusClass(slice.slice_index, slice.status)}>
+                    {slice.status}
+                  </span>
                 </div>
                 {line ? (
                   <div className="mt-2 text-sm text-zinc-300">

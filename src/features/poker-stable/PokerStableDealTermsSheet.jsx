@@ -20,6 +20,7 @@ import {
 } from './pokerStableTerms.js'
 import {
   pokerStableSliceCardClass,
+  pokerStableSliceStatusClass,
   pokerStableSliceTitleClass,
   pokerStableSliceToneAttr,
 } from './pokerStableSliceTone.js'
@@ -116,7 +117,9 @@ function TermsSliceCard({
           {proposed ? ' (proposed)' : ''}
         </span>
         {slice.status ? (
-          <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-bold uppercase text-zinc-400">
+          <span
+            className={`rounded-md bg-zinc-800/80 px-2 py-0.5 ${pokerStableSliceStatusClass(idx, slice.status)}`}
+          >
             {slice.status}
           </span>
         ) : null}

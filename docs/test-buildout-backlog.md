@@ -957,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-10: **Stable deep-link `setActiveTab` crash (Sentry JAVASCRIPT-REACT-6F):** `PokerStableScreen` invite/focus path called bare `setActiveTab('overview')` after tab state moved into **`PokerStableDealDetailSheet`**. Removed; focus card + silent reload only.
 - 2026-08-10: **Verified badge path = Twilio Verify:** backlog Account & identity section retargeted to **Twilio Verify** OTP (auth-only). Guest swap/stake SMS / DIY TFV notify abandoned … email/push only. **`docs/access-tiers.md`** signup row updated.
 - 2026-08-10: **Lounge reply/edit caption tier:** comment edit UI was hardcoded to free **500** (`LOUNGE_COMMENT_BODY_MAX`). Now uses same `loungeComposerCaptionMax` as posts (500 free / 2000 sub+staff). Staff role check case-insensitive; composer profile select includes `has_active_subscription` + `is_bot`.
 - 2026-08-09: **X editorial inbox dry:** cron + Edge healthy; `lounge-x-ingest` returns `polled:4, ingested:0`. Per-source diag (redeployed prod+test): X `GET /2/users/:id/tweets` returns **200** with only `meta.result_count=0` for all handles (incl. old `since_id`). Credits present; suspect User Tweet Timeline entitlement / app product access. Empty polls now stamp `last_polled_at` + `last_error`.

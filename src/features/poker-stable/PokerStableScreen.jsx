@@ -342,9 +342,9 @@ export default function PokerStableScreen({
     // Settle/commit deep links open Overview only while Commit is still pending for the viewer.
     if (myPendingInvite || !commitDeepLinkId || !commitStillPending) {
       if (commitDeepLinkId && !commitStillPending) clearStableCommitDeepLinkParams()
+      // Focus horse card only … detail-sheet tab state lives in PokerStableDealDetailSheet.
       setDetailDealId(null)
       setFocusHorseDealId(openStableDealId)
-      setActiveTab('overview')
       void load({ silent: true })
       onOpenStableDealConsumed?.()
       return

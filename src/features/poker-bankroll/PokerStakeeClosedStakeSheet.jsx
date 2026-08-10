@@ -74,8 +74,9 @@ export default function PokerStakeeClosedStakeSheet({
           ) : (
             <p>
               {closerPhrase}
-              {closedLabel ? ` on ${closedLabel}` : ''}. Your sessions stay on your personal Bankroll
-              history. Archive this card when you are ready to move it out of the carousel.
+              {closedLabel ? ` on ${closedLabel}` : ''}. Your on-stake sessions will merge with your
+              personal Bankroll history. Archive this card when you are ready to move it out of the
+              carousel.
             </p>
           )}
         </div>

@@ -239,6 +239,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'invited you to back a stake'
     case 'poker_stable_slice_nudge':
       return 'reminded you to accept your backing slice'
+    case 'poker_stable_terms_edited':
+      return 'updated the stake terms'
     case 'poker_stable_session_complete':
       return 'completed a stake session'
     case 'poker_stable_settlement_proposed':
@@ -406,7 +408,8 @@ function buildTargetUrl(
     event.event_type === 'poker_stable_staker_counter_declined' ||
     event.event_type === 'poker_stable_slice_accepted' ||
     event.event_type === 'poker_stable_slice_declined' ||
-    event.event_type === 'poker_stable_offer_withdrawn'
+    event.event_type === 'poker_stable_offer_withdrawn' ||
+    event.event_type === 'poker_stable_terms_edited'
   ) {
     const tab = pokerStableTabForRecipient(
       event,
@@ -536,7 +539,8 @@ function buildSingleNotification(
     event.event_type === 'poker_stable_staker_counter_declined' ||
     event.event_type === 'poker_stable_slice_accepted' ||
     event.event_type === 'poker_stable_slice_declined' ||
-    event.event_type === 'poker_stable_offer_withdrawn'
+    event.event_type === 'poker_stable_offer_withdrawn' ||
+    event.event_type === 'poker_stable_terms_edited'
   ) {
     const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
     const fishPrefix =

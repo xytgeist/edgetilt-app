@@ -491,7 +491,8 @@ export default function LoungeNotificationsPanel({
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_STAKER_COUNTER_DECLINED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED ||
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED ||
-        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_OFFER_WITHDRAWN
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_OFFER_WITHDRAWN ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_TERMS_EDITED
       ) {
         void (async () => {
           let dealStakeeUserId = null

@@ -42,11 +42,13 @@ export const LOUNGE_ACTIVITY_EVENT_TYPES = {
   POKER_STABLE_SLICE_ACCEPTED: 'poker_stable_slice_accepted',
   POKER_STABLE_SLICE_DECLINED: 'poker_stable_slice_declined',
   POKER_STABLE_OFFER_WITHDRAWN: 'poker_stable_offer_withdrawn',
+  POKER_STABLE_TERMS_EDITED: 'poker_stable_terms_edited',
 }
 
 const POKER_STABLE_LOUNGE_ACTIVITY_TYPES = new Set([
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_INVITE,
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_NUDGE,
+  LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_TERMS_EDITED,
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SESSION_COMPLETE,
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_PROPOSED,
   LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SETTLEMENT_RESOLVED,
@@ -116,6 +118,7 @@ export function loungeActivityNotificationBadgeKind(eventType) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_ACCEPTED:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_SLICE_DECLINED:
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_OFFER_WITHDRAWN:
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_TERMS_EDITED:
       return 'play_log'
     default:
       return null
@@ -369,6 +372,10 @@ export function loungeActivityActionPhrase(event) {
     case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_OFFER_WITHDRAWN: {
       const detail = String(event?.detail_text || '').trim()
       return detail ? `withdrew the stake offer · ${detail}` : 'withdrew the stake offer'
+    }
+    case LOUNGE_ACTIVITY_EVENT_TYPES.POKER_STABLE_TERMS_EDITED: {
+      const detail = String(event?.detail_text || '').trim()
+      return detail ? `updated the stake terms · ${detail}` : 'updated the stake terms'
     }
     default: {
       if (String(event?.guide_slug || '').trim()) {

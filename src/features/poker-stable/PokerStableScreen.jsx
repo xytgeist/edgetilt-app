@@ -173,7 +173,7 @@ export default function PokerStableScreen({
     }
   }, [supabaseClient])
 
-  const load = useCallback(async ({ silent = false } = {}) => {
+  const load = useCallback(async ({ silent = false, light = false } = {}) => {
     if (!supabaseClient || !userId) {
       setDeals([])
       setLoading(false)
@@ -197,6 +197,9 @@ export default function PokerStableScreen({
       const { byDeal: sliceMap, error: slErr } = await loadDealSlices(supabaseClient, dealIds)
       if (slErr && !isMissingStableTableError(slErr)) console.warn('[poker-stable] slices', slErr.message)
       setSlicesByDeal(sliceMap || {})
+
+      // Pending-invite poll: deals+slices only (drop ghost card). Full history refetch cooks phones.
+      if (light) return
 
       const { byId, error: pErr } = await loadDealCounterpartyProfiles(
         supabaseClient,
@@ -239,6 +242,9 @@ export default function PokerStableScreen({
         console.warn('[poker-stable] backer adjustments', adjRes.error.message)
       }
       setBackerAdjustments(adjRes.adjustments || [])
+
+      // History ledger is for archive sheets … skip on silent refresh (keep last snapshot).
+      if (silent) return
 
       const historyIds = rows
         .filter(
@@ -313,7 +319,7 @@ export default function PokerStableScreen({
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
 
-  /** While a pending invite is on screen, poll so a player delete drops the ghost card. */
+  /** While a pending invite is on screen, light-poll deals/slices so a player delete drops the ghost card. */
   const hasPendingSliceInvite = useMemo(() => {
     if (!userId) return false
     return Object.values(slicesByDeal || {}).some((slices) =>
@@ -324,8 +330,8 @@ export default function PokerStableScreen({
   useEffect(() => {
     if (!hasPendingSliceInvite || !userId) return undefined
     const id = window.setInterval(() => {
-      void load({ silent: true })
-    }, 8000)
+      void load({ silent: true, light: true })
+    }, 20000)
     return () => window.clearInterval(id)
   }, [hasPendingSliceInvite, userId, load])
 
@@ -398,11 +404,13 @@ export default function PokerStableScreen({
       // Focus horse card only … detail-sheet tab state lives in PokerStableDealDetailSheet.
       setDetailDealId(null)
       setFocusHorseDealId(openStableDealId)
+      clearStableWithdrawnDeepLinkParams({ clearStableDeal: true })
       void load({ silent: true })
       onOpenStableDealConsumedRef.current?.()
       return
     }
     setDetailDealId(openStableDealId)
+    clearStableWithdrawnDeepLinkParams({ clearStableDeal: true })
     void load({ silent: true })
     onOpenStableDealConsumedRef.current?.()
   }, [

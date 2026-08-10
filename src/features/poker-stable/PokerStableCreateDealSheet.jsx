@@ -167,6 +167,14 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
   }
 }
 
+function formatActionBudgetPct(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '0'
+  const rounded = roundMoney(n, 3)
+  if (Number.isInteger(rounded)) return String(rounded)
+  return String(rounded)
+}
+
 function SliceEditor({
   sl,
   idx,
@@ -179,10 +187,14 @@ function SliceEditor({
   title,
   lockUserId = null,
   showRakeback = false,
+  actionSoldTotal = 0,
 }) {
   const guestContactErrors = sl.isGuest
     ? guestNotifyContactFieldErrors({ email: sl.guestEmail, phone: '' })
     : { email: '', phone: '' }
+  const actionOverBy = roundMoney(Math.max(0, actionSoldTotal - 100), 3)
+  const actionRemaining = roundMoney(Math.max(0, 100 - actionSoldTotal), 3)
+  const actionOverCap = actionOverBy > 0
 
   return (
     <div
@@ -296,15 +308,30 @@ function SliceEditor({
         </>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
-        <InField label="Action %" focusRingClass={STABLE_INFIELD_FOCUS}>
-          <input
-            value={sl.actionPct}
-            onChange={(e) => onChange({ actionPct: e.target.value })}
-            placeholder="50"
-            inputMode="decimal"
-            className={INFIELD_CONTROL}
-          />
-        </InField>
+        <div>
+          <InField label="Action %" focusRingClass={STABLE_INFIELD_FOCUS}>
+            <input
+              value={sl.actionPct}
+              onChange={(e) => onChange({ actionPct: e.target.value })}
+              placeholder="50"
+              inputMode="decimal"
+              className={INFIELD_CONTROL}
+              aria-invalid={actionOverCap ? 'true' : undefined}
+            />
+          </InField>
+          <p
+            className={`mt-1 text-[11px] tabular-nums ${
+              actionOverCap ? 'font-semibold text-rose-400' : 'text-zinc-500'
+            }`}
+            data-poker-stable-action-budget
+            data-over={actionOverCap ? 'true' : 'false'}
+            role={actionOverCap ? 'alert' : undefined}
+          >
+            {actionOverCap
+              ? `Over by ${formatActionBudgetPct(actionOverBy)}%`
+              : `Remaining: ${formatActionBudgetPct(actionRemaining)}%`}
+          </p>
+        </div>
         <InField label="Pricing" focusRingClass={STABLE_INFIELD_FOCUS}>
           <select
             value={sl.pricingMode}
@@ -1153,6 +1180,7 @@ function PokerStableDealFormSheet({
                 }
                 canRemove={!isBackerPropose && slices.length > 1}
                 showRakeback={venueKind === 'online'}
+                actionSoldTotal={formActionTotal}
                 onChange={(patch) => updateSlice(idx, patch)}
                 onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}
               />
@@ -1169,6 +1197,7 @@ function PokerStableDealFormSheet({
                 title="Your slice"
                 canRemove={false}
                 showRakeback={venueKind === 'online'}
+                actionSoldTotal={formActionTotal}
                 onChange={(patch) => setMySlice((prev) => ({ ...prev, ...patch }))}
               />
               {friendSlices.map((sl, idx) => (
@@ -1182,6 +1211,7 @@ function PokerStableDealFormSheet({
                   title={`Syndicate slice ${idx + 1}`}
                   canRemove
                   showRakeback={venueKind === 'online'}
+                  actionSoldTotal={formActionTotal}
                   onChange={(patch) => updateFriendSlice(idx, patch)}
                   onRemove={() => setFriendSlices((prev) => prev.filter((_, i) => i !== idx))}
                 />
@@ -1191,25 +1221,6 @@ function PokerStableDealFormSheet({
         </div>
 
         <div ref={actionsRef} data-poker-stable-sheet-actions>
-          {!isBackerPropose ? (
-            formActionOverCap ? (
-              <p
-                data-poker-stable-action-total
-                data-poker-stable-form-error
-                className="mb-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-center text-sm font-semibold text-rose-300"
-                role="alert"
-              >
-                Action sold {formActionTotal}% … max 100%
-              </p>
-            ) : (
-              <p
-                className="mb-2 text-center text-sm tabular-nums text-zinc-400"
-                data-poker-stable-action-total
-              >
-                Action sold: {formActionTotal}%
-              </p>
-            )
-          ) : null}
           {formError ? (
             <p
               data-poker-stable-form-error
@@ -1223,7 +1234,7 @@ function PokerStableDealFormSheet({
             <button
               type="button"
               onClick={addBackerSlice}
-              className="mb-3 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+              className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
             >
               + Add backer slice
             </button>
@@ -1231,7 +1242,7 @@ function PokerStableDealFormSheet({
             <button
               type="button"
               onClick={addBackerSlice}
-              className="mb-3 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+              className="mb-4 w-full rounded-2xl border border-dashed border-zinc-600 py-2.5 text-sm font-semibold text-zinc-400 touch-manipulation"
             >
               + Add syndicate backer
             </button>

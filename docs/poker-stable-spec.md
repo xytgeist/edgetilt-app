@@ -197,7 +197,7 @@ Same bankroll rules as cash backing close, one payout when manifest is complete:
 | --- | --- |
 | Do swaps affect stake roll? | **No** |
 | Do swaps affect stake settle / backer share? | **No** |
-| Where do swap settlements post? | **Player personal** economics only (`player_net_value`, not personal bankroll until marked paid / settled if tracking cash separately) |
+| Where do swap settlements post? | **Player personal** bankroll on **Mark settled** (`poker_tournament_swap_mark_paid` … creator `+settlement_amount`, counterparty `−settlement_amount`; idempotent via `settlement_bankroll_posted`). Session “Your net” can show the IOU earlier; cash hits `poker_bankroll_profiles` only when marked paid. |
 | Cap on swap % | Player may swap only on **self-owned action** (`100% − sum of active backing sold action%`) ... see `playerSelfOwnedActionPct` in `pokerStableMath.js` |
 
 Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`poker-tournament-swap-notify`**, `sessionSwapSettlementDelta` in `pokerTournamentSwapMath.js`.

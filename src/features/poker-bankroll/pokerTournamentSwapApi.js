@@ -616,25 +616,18 @@ export function swapIsMarkedPaid(swap) {
 }
 
 /**
+ * Mark cash settled and post settlement_amount to personal bankrolls (both parties).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
- * @param {'creator' | 'counterparty'} role
+ * @param {'creator' | 'counterparty'} _role unused (kept for call-site compat)
  * @param {boolean} paid
  */
-export async function markSwapPaid(supabase, swapId, role, paid) {
-  // Cash settled is a mutual fact: either party marking updates both cards.
-  const patch = paid
-    ? { creator_marked_paid: true, counterparty_marked_paid: true }
-    : role === 'creator'
-      ? { creator_marked_paid: false }
-      : { counterparty_marked_paid: false }
-  const { data, error } = await supabase
-    .from('poker_tournament_swaps')
-    .update(patch)
-    .eq('id', swapId)
-    .select('*')
-    .single()
-  return { swap: data, error }
+export async function markSwapPaid(supabase, swapId, _role, paid) {
+  const { data, error } = await supabase.rpc('poker_tournament_swap_mark_paid', {
+    p_swap_id: swapId,
+    p_paid: paid !== false,
+  })
+  return { swap: data || null, error }
 }
 
 /**

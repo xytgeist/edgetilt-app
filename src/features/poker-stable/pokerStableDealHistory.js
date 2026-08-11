@@ -1,8 +1,10 @@
 import { fmtPoker$, pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   backerSliceAllocatedCapital,
+  backerSliceMarkupApplied,
   backerSliceMarkupFee,
   backerSliceSessionEconomicShare,
+  dealTournamentBuyins,
 } from './pokerStableBackerMath.js'
 import { isBackerInitiatedBackingDeal, sliceDisplayName } from './pokerStableApi.js'
 import {
@@ -273,6 +275,7 @@ function profileHandleFallback(profile) {
 /**
  * Player closed-stake review: table result, personal deposit, per-backer made + unwind owed.
  * Owed = returned stake capital (roll × action % at close) + that backer's settle profit result.
+ * Tournament: also includes prepaid markup applied vs unused refunded on close.
  * @param {object} args
  */
 export function buildStakeeClosedStakeReview({
@@ -293,6 +296,13 @@ export function buildStakeeClosedStakeReview({
   const capitalDeal = {
     baseline_bankroll: Number.isFinite(rollAt) ? rollAt : baselineAt,
   }
+  const isTournamentPackage = deal?.deal_type === 'tournament_package'
+  const dealSessions = (sessions || []).filter((s) => s?.deal_id === deal?.id)
+  const buyins = isTournamentPackage ? dealTournamentBuyins(dealSessions) : 0
+  const markupDeal = {
+    ...deal,
+    baseline_bankroll: baselineAt,
+  }
 
   const declinedSlices = (slices || []).filter((s) => s.status === 'declined')
   const reviewSlices = (slices || []).filter(
@@ -307,6 +317,9 @@ export function buildStakeeClosedStakeReview({
         0,
       ),
     )
+    const { fee, applied, unused } = isTournamentPackage
+      ? backerSliceMarkupApplied(markupDeal, slice, buyins)
+      : { fee: 0, applied: 0, unused: 0 }
     return {
       sliceId: slice.id,
       name: sliceDisplayName(slice, profilesById),
@@ -314,8 +327,17 @@ export function buildStakeeClosedStakeReview({
       capital,
       profitMade,
       owed: roundMoney(capital + profitMade),
+      prepaidFee: fee,
+      appliedMarkup: applied,
+      unusedMarkup: unused,
+      // Tournament books return roll share + unused markup to backing bankroll.
+      returnedToBacker: roundMoney(capital + unused),
     }
   })
+
+  const unusedMarkupTotal = roundMoney(
+    backers.reduce((sum, row) => sum + (Number(row.unusedMarkup) || 0), 0),
+  )
 
   return {
     closer,
@@ -323,6 +345,9 @@ export function buildStakeeClosedStakeReview({
     tableProfit,
     personalDeposit,
     baseline: baselineAt,
+    isTournamentPackage,
+    buyins,
+    unusedMarkupTotal,
     backers,
     declinedCount: declinedSlices.length,
     settleCount: (settlements || []).length,

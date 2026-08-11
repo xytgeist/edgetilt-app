@@ -112,6 +112,14 @@ export default function PokerStakeeClosedStakeSheet({
                   {fmtPoker$(review.personalDeposit)}
                 </dd>
               </div>
+              {review.isTournamentPackage && review.unusedMarkupTotal > 0.005 ? (
+                <div className="flex justify-between gap-3">
+                  <dt className="min-w-0 text-zinc-500">Unused markup returned to backers</dt>
+                  <dd className="shrink-0 text-right font-semibold tabular-nums text-zinc-100">
+                    {fmtPoker$(review.unusedMarkupTotal)}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
 
             {review.backers.length ? (
@@ -141,15 +149,39 @@ export default function PokerStakeeClosedStakeSheet({
                         </span>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <span className="text-zinc-500">Stake capital</span>
+                        <span className="text-zinc-500">
+                          {review.isTournamentPackage ? 'Stake value returned' : 'Stake capital'}
+                        </span>
                         <span className="font-medium tabular-nums text-zinc-200">
                           {fmtPoker$(row.capital)}
                         </span>
                       </div>
+                      {review.isTournamentPackage && row.prepaidFee > 0.005 ? (
+                        <>
+                          <div className="flex justify-between gap-3">
+                            <span className="text-zinc-500">Markup applied</span>
+                            <span className="font-medium tabular-nums text-zinc-200">
+                              {fmtPoker$(row.appliedMarkup)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <span className="text-zinc-500">Unused markup refunded</span>
+                            <span className="font-medium tabular-nums text-zinc-200">
+                              {fmtPoker$(row.unusedMarkup)}
+                            </span>
+                          </div>
+                        </>
+                      ) : null}
                       <div className="flex justify-between gap-3 border-t border-zinc-800/70 pt-1.5">
-                        <span className="text-zinc-400">Backer owed</span>
+                        <span className="text-zinc-400">
+                          {review.isTournamentPackage
+                            ? 'Returned to backing bankroll'
+                            : 'Backer owed'}
+                        </span>
                         <span className="font-semibold tabular-nums text-zinc-100">
-                          {fmtPoker$(row.owed)}
+                          {fmtPoker$(
+                            review.isTournamentPackage ? row.returnedToBacker : row.owed,
+                          )}
                         </span>
                       </div>
                     </div>

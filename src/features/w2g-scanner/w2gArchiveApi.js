@@ -161,6 +161,50 @@ export async function deleteW2GSlip({ supabase, slip }) {
 }
 
 /**
+ * Update slip fields and optionally mark verified.
+ * @param {{
+ *   supabase: import('@supabase/supabase-js').SupabaseClient,
+ *   slipId: string,
+ *   fields: Record<string, string>,
+ *   markVerified?: boolean,
+ * }} args
+ */
+export async function updateW2GSlip({ supabase, slipId, fields, markVerified = false }) {
+  if (!supabase) throw new Error('Supabase client missing')
+  await requireUserId(supabase)
+  if (!slipId) throw new Error('Missing slip id')
+
+  const row = fieldsToDbRow(fields)
+  const patch = {
+    tax_year: row.tax_year,
+    payer_name: row.payer_name,
+    payer_address: row.payer_address,
+    payer_ein: row.payer_ein,
+    box1_winnings: row.box1_winnings,
+    box4_federal_withheld: row.box4_federal_withheld,
+    date_won: row.date_won,
+    updated_at: new Date().toISOString(),
+  }
+  if (markVerified) {
+    patch.verified_at = new Date().toISOString()
+  }
+
+  const { data, error } = await supabase
+    .from('w2g_slips')
+    .update(patch)
+    .eq('id', slipId)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data
+}
+
+/** @param {object | null | undefined} slip */
+export function isW2GSlipVerified(slip) {
+  return Boolean(slip?.verified_at)
+}
+
+/**
  * Group slips by EIN for TurboTax combine.
  * @param {Array<object>} slips
  */

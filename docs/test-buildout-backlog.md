@@ -958,6 +958,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-11: **W-2G Verify on archive cards:** My W-2Gs **Verify** opens image + six fields; **Confirm verified** sets **`verified_at`** (**`20260811410000`** on test). Button becomes **Verified** badge; tap card/badge to reopen.
 - 2026-08-11: **W-2G AI vision extract:** Edge **`w2g-vision-extract`** (OpenAI vision, same `OPENAI_API_KEY` as offer OCR) for six TurboTax fields; Starter+ / staff; client falls back to Tesseract. Deploy on **test**. Bulk import uses vision when entitled.
 - 2026-08-11: **W-2G bulk import (paywalled):** multi-image OCR+save on Scan tab; **Slots Edge Starter and up** (Starter / Pro / Lifetime / staff); lock opens subscribe on Starter. Headless crop via **`w2gBulkImport.js`** (no Adjust UI in queue).
 - 2026-08-11: **W-2G tax archive:** six TurboTax-combine fields only; **Scan** / **My W-2Gs** + collate by EIN; private bucket **`w2g-slips`** + table **`w2g_slips`** (**`20260811400000`** applied + tracked on **test**). Free hub tile; save needs auth. Prod promote later.

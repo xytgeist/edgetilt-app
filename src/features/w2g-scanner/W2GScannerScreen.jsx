@@ -16,6 +16,7 @@ import {
   Images,
   BadgeCheck,
   X,
+  ChevronLeft,
 } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
@@ -112,6 +113,7 @@ export default function W2GScannerScreen({
   const resetAllRef = useRef(/** @type {any} */ (null))
 
   const [mainTab, setMainTab] = useState('scan') // scan | archive
+  const [archivePane, setArchivePane] = useState('list') // list | collate
   const [phase, setPhase] = useState('idle') // idle | scanning | adjust | result
   const [resultCanvas, setResultCanvas] = useState(null)
   const [resultPreviewUrl, setResultPreviewUrl] = useState(null)
@@ -248,7 +250,10 @@ export default function W2GScannerScreen({
   }, [supabaseClient, taxYear])
 
   useEffect(() => {
-    if (mainTab !== 'archive') return
+    if (mainTab !== 'archive') {
+      setArchivePane('list')
+      return
+    }
     void refreshArchive()
   }, [mainTab, refreshArchive])
 
@@ -1339,6 +1344,17 @@ export default function W2GScannerScreen({
         {mainTab === 'archive' ? (
           <div className="space-y-4" data-w2g-archive>
             <div className="flex flex-wrap items-center gap-2">
+              {archivePane === 'collate' ? (
+                <button
+                  type="button"
+                  onClick={() => setArchivePane('list')}
+                  className="inline-flex min-h-9 items-center justify-center gap-1 rounded-xl bg-zinc-900 px-3 text-xs font-semibold text-zinc-200 touch-manipulation"
+                  data-w2g-collate-back
+                >
+                  <ChevronLeft size={16} aria-hidden />
+                  Slips
+                </button>
+              ) : null}
               <label className="flex items-center gap-2 text-sm text-zinc-400">
                 <span className="font-semibold text-zinc-300">Tax year</span>
                 <select
@@ -1363,6 +1379,29 @@ export default function W2GScannerScreen({
                 <RefreshCw size={14} aria-hidden />
                 Refresh
               </button>
+              {archivePane === 'list' ? (
+                <button
+                  type="button"
+                  disabled={!slips.length || archiveLoading}
+                  onClick={() => setArchivePane('collate')}
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-500/90 px-3 text-xs font-semibold text-zinc-950 touch-manipulation disabled:opacity-50"
+                  data-w2g-collate-open
+                >
+                  <Layers size={14} aria-hidden />
+                  Collate
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!collated.length}
+                  onClick={() => void onCopyCollate()}
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-500/90 px-3 text-xs font-semibold text-zinc-950 touch-manipulation disabled:opacity-50"
+                  data-w2g-copy
+                >
+                  {collateCopied ? <ClipboardCheck size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                  {collateCopied ? 'Copied' : 'Copy combine'}
+                </button>
+              )}
             </div>
 
             {archiveError ? (
@@ -1387,136 +1426,150 @@ export default function W2GScannerScreen({
               </div>
             ) : null}
 
-            {archiveLoading ? (
-              <div className="text-sm text-zinc-400">Loading archive…</div>
-            ) : slips.length === 0 && !archiveError ? (
-              <div className="rounded-3xl bg-zinc-900 px-4 py-6 text-sm text-zinc-400" data-w2g-empty>
-                No saved W-2Gs for {taxYear} yet. Scan a slip and tap <span className="text-zinc-200">Save to archive</span>.
-              </div>
-            ) : null}
+            {archivePane === 'list' ? (
+              <>
+                {archiveLoading ? (
+                  <div className="text-sm text-zinc-400">Loading archive…</div>
+                ) : slips.length === 0 && !archiveError ? (
+                  <div className="rounded-3xl bg-zinc-900 px-4 py-6 text-sm text-zinc-400" data-w2g-empty>
+                    No saved W-2Gs for {taxYear} yet. Scan a slip and tap{' '}
+                    <span className="text-zinc-200">Save to archive</span>.
+                  </div>
+                ) : null}
 
-            {slips.length > 0 ? (
-              <ul className="space-y-3">
-                {slips.map((slip) => {
-                  const verified = isW2GSlipVerified(slip)
-                  const extracting = processingSlipIdSet.has(slip.id)
-                  return (
-                    <li
-                      key={slip.id}
-                      className="flex gap-3 rounded-3xl bg-zinc-900 p-3"
-                      data-w2g-slip
-                    >
-                      <button
-                        type="button"
-                        onClick={() => openVerifySlip(slip)}
-                        className="flex min-w-0 flex-1 gap-3 text-left touch-manipulation"
-                      >
-                        <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-800 ring-1 ring-zinc-700">
-                          {thumbUrls[slip.id] ? (
-                            <img
-                              src={thumbUrls[slip.id]}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="grid h-full place-items-center text-[10px] text-zinc-500">No img</div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-bold text-white">
-                            {slip.payer_name || (extracting ? 'Extracting fields…' : 'Unknown payer')}
-                          </div>
-                          <div className="mt-0.5 text-xs text-zinc-500">
-                            {formatIsoDate(slip.date_won)}
-                            {slip.payer_ein ? ` · EIN ${slip.payer_ein}` : ''}
-                            {extracting ? ' · Extracting…' : ''}
-                          </div>
-                          <div className="mt-1 text-xs text-zinc-300">
-                            Box 1 {moneyLabel(slip.box1_winnings)} · Box 4 {moneyLabel(slip.box4_federal_withheld)}
-                          </div>
-                        </div>
-                      </button>
-                      <div className="flex shrink-0 flex-col items-end gap-2">
-                        {verified ? (
-                          <span
-                            className="inline-flex min-h-9 items-center gap-1 rounded-xl bg-emerald-500/15 px-2.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30"
-                            data-w2g-verified-badge
-                          >
-                            <BadgeCheck size={14} aria-hidden />
-                            Verified
-                          </span>
-                        ) : (
+                {slips.length > 0 ? (
+                  <ul className="space-y-3">
+                    {slips.map((slip) => {
+                      const verified = isW2GSlipVerified(slip)
+                      const extracting = processingSlipIdSet.has(slip.id)
+                      return (
+                        <li
+                          key={slip.id}
+                          className="flex gap-3 rounded-3xl bg-zinc-900 p-3"
+                          data-w2g-slip
+                        >
                           <button
                             type="button"
                             onClick={() => openVerifySlip(slip)}
-                            className="inline-flex min-h-9 items-center justify-center rounded-xl bg-amber-500/90 px-3 text-xs font-semibold text-zinc-950 touch-manipulation"
-                            data-w2g-verify-btn
+                            className="flex min-w-0 flex-1 gap-3 text-left touch-manipulation"
                           >
-                            Verify
+                            <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-800 ring-1 ring-zinc-700">
+                              {thumbUrls[slip.id] ? (
+                                <img
+                                  src={thumbUrls[slip.id]}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="grid h-full place-items-center text-[10px] text-zinc-500">No img</div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-bold text-white">
+                                {slip.payer_name || (extracting ? 'Extracting fields…' : 'Unknown payer')}
+                              </div>
+                              <div className="mt-0.5 text-xs text-zinc-500">
+                                {formatIsoDate(slip.date_won)}
+                                {slip.payer_ein ? ` · EIN ${slip.payer_ein}` : ''}
+                                {extracting ? ' · Extracting…' : ''}
+                              </div>
+                              <div className="mt-1 text-xs text-zinc-300">
+                                Box 1 {moneyLabel(slip.box1_winnings)} · Box 4{' '}
+                                {moneyLabel(slip.box4_federal_withheld)}
+                              </div>
+                            </div>
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={deletingId === slip.id}
-                          onClick={() => void onDeleteSlip(slip)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-800 text-zinc-300 touch-manipulation disabled:opacity-50"
-                          aria-label="Delete slip"
-                        >
-                          <Trash2 size={16} aria-hidden />
-                        </button>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : null}
-
-            {slips.length > 0 ? (
-              <div className="rounded-3xl bg-zinc-900 px-4 py-4 space-y-3" data-w2g-collate>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-base font-bold text-white">
-                      <Layers size={18} aria-hidden />
-                      Collate by EIN
-                    </div>
-                    <div className="text-xs text-zinc-500 mt-0.5">
-                      Sums for TurboTax combine … {taxYear}
-                    </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            {verified ? (
+                              <span
+                                className="inline-flex min-h-9 items-center gap-1 rounded-xl bg-emerald-500/15 px-2.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30"
+                                data-w2g-verified-badge
+                              >
+                                <BadgeCheck size={14} aria-hidden />
+                                Verified
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openVerifySlip(slip)}
+                                className="inline-flex min-h-9 items-center justify-center rounded-xl bg-amber-500/90 px-3 text-xs font-semibold text-zinc-950 touch-manipulation"
+                                data-w2g-verify-btn
+                              >
+                                Verify
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={deletingId === slip.id}
+                              onClick={() => void onDeleteSlip(slip)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-800 text-zinc-300 touch-manipulation disabled:opacity-50"
+                              aria-label="Delete slip"
+                            >
+                              <Trash2 size={16} aria-hidden />
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : null}
+              </>
+            ) : (
+              <div className="space-y-4" data-w2g-collate-screen>
+                <div>
+                  <div className="text-xl font-black tracking-tight text-white">Collate by casino</div>
+                  <div className="text-sm text-zinc-400 mt-0.5">
+                    Combined Box 1 / Box 4 totals for {taxYear}, grouped by casino name + EIN.
                   </div>
-                  <button
-                    type="button"
-                    disabled={!collated.length}
-                    onClick={() => void onCopyCollate()}
-                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-500/90 px-3 text-xs font-semibold text-zinc-950 touch-manipulation disabled:opacity-50"
-                    data-w2g-copy
-                  >
-                    {collateCopied ? <ClipboardCheck size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-                    {collateCopied ? 'Copied' : 'Copy combine'}
-                  </button>
                 </div>
 
-                <ul className="space-y-3">
-                  {collated.map((g, idx) => (
-                    <li
-                      key={`${g.payerEin || 'missing'}-${idx}`}
-                      className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-3 py-3"
-                    >
-                      <div className="text-sm font-bold text-white">{g.payerName || 'Unknown payer'}</div>
-                      {g.payerAddress ? (
-                        <div className="mt-0.5 text-xs text-zinc-500 whitespace-pre-wrap">{g.payerAddress}</div>
-                      ) : null}
-                      <div className="mt-1 text-xs text-zinc-400">
-                        EIN {g.payerEin || '...'} · {g.slipCount} slip{g.slipCount === 1 ? '' : 's'} · latest{' '}
-                        {formatIsoDate(g.dateWon)}
-                      </div>
-                      <div className="mt-1 text-sm text-zinc-200">
-                        Box 1 {moneyLabel(g.box1Sum)} · Box 4 {moneyLabel(g.box4Sum)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                {archiveLoading ? (
+                  <div className="text-sm text-zinc-400">Loading…</div>
+                ) : !collated.length ? (
+                  <div className="rounded-3xl bg-zinc-900 px-4 py-6 text-sm text-zinc-400" data-w2g-empty>
+                    No slips to collate for {taxYear}.
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {collated.map((g, idx) => (
+                      <li
+                        key={`${g.payerEin || 'missing'}-${idx}`}
+                        className="rounded-3xl bg-zinc-900 px-4 py-4 space-y-2"
+                        data-w2g-collate-card
+                      >
+                        <div className="text-base font-bold text-white">
+                          {g.payerName || 'Unknown casino'}
+                        </div>
+                        <div className="text-xs font-semibold text-zinc-400">
+                          EIN {g.payerEin || 'missing'}
+                        </div>
+                        {g.payerAddress ? (
+                          <div className="text-xs text-zinc-500 whitespace-pre-wrap">{g.payerAddress}</div>
+                        ) : null}
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div className="rounded-2xl bg-zinc-950/70 px-3 py-2.5" data-w2g-collate-stat>
+                            <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                              Box 1 winnings
+                            </div>
+                            <div className="mt-0.5 text-sm font-bold text-white">{moneyLabel(g.box1Sum)}</div>
+                          </div>
+                          <div className="rounded-2xl bg-zinc-950/70 px-3 py-2.5" data-w2g-collate-stat>
+                            <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                              Box 4 withheld
+                            </div>
+                            <div className="mt-0.5 text-sm font-bold text-white">{moneyLabel(g.box4Sum)}</div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-zinc-500">
+                          {g.slipCount} slip{g.slipCount === 1 ? '' : 's'}
+                          {g.dateWon ? ` · latest ${formatIsoDate(g.dateWon)}` : ''}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            ) : null}
+            )}
           </div>
         ) : null}
       </div>

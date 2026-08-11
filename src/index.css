@@ -9378,9 +9378,18 @@ html.light [data-w2g-scanner] [data-w2g-bulk-summary] {
 html.light [data-w2g-scanner] [data-w2g-bulk-summary] .text-emerald-200\/80 {
   color: #047857 !important;
 }
-html.light [data-w2g-scanner] [data-w2g-verify-btn] {
+html.light [data-w2g-scanner] [data-w2g-verify-btn],
+html.light [data-w2g-scanner] [data-w2g-collate-open] {
   background-color: #f59e0b !important;
   color: #18181b !important;
+}
+html.light [data-w2g-scanner] [data-w2g-collate-card] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--edge-light-list-card-shadow);
+}
+html.light [data-w2g-scanner] [data-w2g-collate-stat] {
+  background-color: #f4f4f5 !important;
 }
 html.light [data-w2g-scanner] [data-w2g-verified-badge] {
   background-color: #ecfdf5 !important;

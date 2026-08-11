@@ -175,7 +175,7 @@ export default function PokerStakeeClosedStakeSheet({
                       <div className="flex justify-between gap-3 border-t border-zinc-800/70 pt-1.5">
                         <span className="text-zinc-400">
                           {review.isTournamentPackage
-                            ? 'Returned to backing bankroll'
+                            ? 'Returned to backer'
                             : 'Backer owed'}
                         </span>
                         <span className="font-semibold tabular-nums text-zinc-100">

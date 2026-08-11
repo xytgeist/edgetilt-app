@@ -84,6 +84,7 @@ export default function PokerStakeArchiveDetailModal({
     settlements,
     sessions,
     playerLabel: isBackerView ? playerDisplayName : 'You',
+    viewerUserId,
   })
 
   const backerNames = slices

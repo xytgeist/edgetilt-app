@@ -16,6 +16,7 @@ import {
   sumSliceActionPct,
   tournamentPlayerCloseEconomics,
 } from './pokerStableMath.js'
+import { backerCloseStakePl } from './pokerStableSettleReviewCopy.js'
 import {
   dealLeadBackerDisplayName,
   dealStakeeDisplayName,
@@ -456,13 +457,14 @@ function isCloseSettlement(st, deal, settlementsForDeal) {
 
 /**
  * @param {object} econ
+ * @param {{ markupIsCost?: boolean }} [opts] backer view treats applied markup as a cost (−)
  */
-function tournamentCloseOverallPlDetail(econ) {
+function tournamentCloseOverallPlDetail(econ, { markupIsCost = false } = {}) {
   const { overallPl, stakePl, appliedMarkup } = econ
   const plBit = `${overallPl >= 0 ? '+' : ''}${fmtPoker$(overallPl)}`
   if (appliedMarkup > 0.005) {
     const stakeBit = `${stakePl >= 0 ? '+' : ''}${fmtPoker$(stakePl)}`
-    const markupBit = `+${fmtPoker$(appliedMarkup)}`
+    const markupBit = `${markupIsCost ? '−' : '+'}${fmtPoker$(appliedMarkup)}`
     return `Overall P/L ${plBit} (stake ${stakeBit} · markup ${markupBit})`
   }
   return `Overall P/L ${plBit}`
@@ -476,6 +478,8 @@ function tournamentCloseOverallPlDetail(econ) {
  * @param {object[]} [args.settlementsForDeal]
  * @param {boolean} [args.personal]
  * @param {number} [args.buyins]
+ * @param {boolean} [args.viewerIsStakee] player close voice when true (default for personal history)
+ * @param {object | null} [args.viewerSlice] backer's slice when viewer is a staker
  */
 function settlementHistoryEventFromRow({
   st,
@@ -484,6 +488,8 @@ function settlementHistoryEventFromRow({
   settlementsForDeal = [],
   personal = false,
   buyins = 0,
+  viewerIsStakee = true,
+  viewerSlice = null,
 }) {
   const profit = Number(st.profit_above_baseline) || 0
   const makeup = Number(st.makeup_at_settle) || 0
@@ -494,8 +500,24 @@ function settlementHistoryEventFromRow({
   let detail = ''
   const isTournamentPackage = deal?.deal_type === 'tournament_package'
   if (isTournamentPackage && isClose) {
-    const econ = tournamentPlayerCloseEconomics(st, slices, deal, buyins)
-    detail = ` · ${fmtPoker$(econ.returned)} returned to your personal bankroll · ${tournamentCloseOverallPlDetail(econ)}`
+    if (viewerIsStakee || personal) {
+      const econ = tournamentPlayerCloseEconomics(st, slices, deal, buyins)
+      detail = ` · ${fmtPoker$(econ.returned)} returned to your personal bankroll · ${tournamentCloseOverallPlDetail(econ)}`
+    } else if (viewerSlice) {
+      const baseline = stableNum(st.baseline_at_settle ?? deal?.baseline_bankroll)
+      const roll = stableNum(st.roll_at_settle)
+      const markupDeal = { ...deal, baseline_bankroll: baseline }
+      const { applied, unused } = backerSliceMarkupApplied(markupDeal, viewerSlice, buyins)
+      const stakePl = backerCloseStakePl(st, viewerSlice, null)
+      const action = (Number(viewerSlice.action_pct) || 0) / 100
+      const rollShare = roundMoney(Math.max(0, roll * action))
+      const returned = roundMoney(rollShare + unused)
+      const overallPl = roundMoney(stakePl - applied)
+      detail = ` · ${fmtPoker$(returned)} returned to your backing bankroll · ${tournamentCloseOverallPlDetail(
+        { overallPl, stakePl, appliedMarkup: applied },
+        { markupIsCost: true },
+      )}`
+    }
   } else if (personal) {
     const credit = settlementPlayerPersonalCredit(st, deal, slices)
     if (credit > 0.005) {
@@ -625,6 +647,7 @@ export function buildStakeDealHistoryEvents({
   const backerInitiated = isBackerInitiatedBackingDeal(deal)
   const viewerIsStakee = Boolean(viewerId && deal.stakee_user_id && viewerId === deal.stakee_user_id)
   const viewerIsLeadBacker = Boolean(viewerId && deal.staker_user_id && viewerId === deal.staker_user_id)
+  const viewerSlice = viewerIsStakee ? null : viewerBackingSlice(slices, viewerId)
   const buyins = dealTournamentBuyins(sessions)
   const ledgerBySettlement = {}
   for (const entry of ledgerEntries) {
@@ -791,6 +814,8 @@ export function buildStakeDealHistoryEvents({
       settlementsForDeal: settlements,
       personal: false,
       buyins,
+      viewerIsStakee,
+      viewerSlice,
     })
     events.push({
       id: `settle-${st.id}`,

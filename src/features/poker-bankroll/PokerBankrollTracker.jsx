@@ -1260,16 +1260,19 @@ export default function PokerBankrollTracker({
     return data
   }
 
-  async function applyBankrollDelta(delta) {
+  /**
+   * Adjust personal bankroll by session W/L.
+   * Stake deal roll is owned by SQL (session triggers + delete RPCs) … never apply
+   * client deltas there or buy-in costs / W/L get double-counted.
+   * @param {number} delta
+   * @param {{ sessionDealId?: string | null }} [opts]
+   */
+  async function applyBankrollDelta(delta, opts = {}) {
     if (!Number.isFinite(delta) || Math.abs(delta) < 0.0005) return
-    if (isOnStake && stakeScopeSessionBlocked) return
-    const current = isOnStake
-      ? dealProfile
-        ? Number(dealProfile.overall_bankroll)
-        : 0
-      : profile
-        ? Number(profile.overall_bankroll)
-        : 0
+    const sessionDealId = opts.sessionDealId != null ? String(opts.sessionDealId) : ''
+    if (sessionDealId || isOnStake) return
+    if (stakeScopeSessionBlocked) return
+    const current = profile ? Number(profile.overall_bankroll) : 0
     await upsertBankroll(current + delta)
   }
 
@@ -2541,7 +2544,7 @@ export default function PokerBankrollTracker({
         .eq('id', activeSession.id)
         .eq('user_id', userId)
       if (uErr) throw uErr
-      await applyBankrollDelta(wl)
+      await applyBankrollDelta(wl, { sessionDealId: activeSession.deal_id })
       if (activeSession.session_type === 'tournament') {
         const ended = {
           ...sessionRow,
@@ -2967,7 +2970,9 @@ export default function PokerBankrollTracker({
           sessionRow = await linkTournamentEventForSession(updated)
         }
         if (!editingActiveSession && newWl != null) {
-          await applyBankrollDelta(newWl - editingPrevWl)
+          await applyBankrollDelta(newWl - editingPrevWl, {
+            sessionDealId: sessionRow.deal_id || payload.deal_id,
+          })
         }
         if (payload.session_type === 'tournament') {
           if (draftSwaps.length > 0) {
@@ -3007,7 +3012,7 @@ export default function PokerBankrollTracker({
         if (payload.session_type === 'tournament') {
           sessionRow = await linkTournamentEventForSession(created)
         }
-        await applyBankrollDelta(newWl)
+        await applyBankrollDelta(newWl, { sessionDealId: created.deal_id })
         if (created.deal_id) {
           await notifyGuestBackersOnSessionComplete(created.id, created.deal_id)
         }
@@ -3105,7 +3110,8 @@ export default function PokerBankrollTracker({
       q = isOnStake ? q.eq('deal_id', bankrollScope) : q.is('deal_id', null)
       const { error: dErr } = await q
       if (dErr) throw dErr
-      await applyBankrollDelta(-totalWl)
+      // On stake: DELETE trigger refreshes deal roll. Personal: reverse session P/L.
+      if (!isOnStake) await applyBankrollDelta(-totalWl)
       setSheet(null)
       triggerTapHapticLight()
       await loadData()

@@ -4418,7 +4418,10 @@ export default function PokerBankrollTracker({
           deal={termsDealForSheet}
           slices={slicesByDeal[termsDealId] || []}
           proposedPayload={
-            stakeeDeals.find((d) => d.id === termsDealId)?.pending_terms_json ?? null
+            stakeeDeals.find((d) => d.id === termsDealId)?.pending_terms_json ??
+            stakeeDealsById[termsDealId]?.pending_terms_json ??
+            termsDealForSheet?.pending_terms_json ??
+            null
           }
           profilesById={stableProfilesById}
           userId={userId}

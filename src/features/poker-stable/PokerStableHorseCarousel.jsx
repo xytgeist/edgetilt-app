@@ -108,10 +108,10 @@ export default function PokerStableHorseCarousel({
         const sliceAccepted = slice?.status === 'active'
         const dealLive = deal.status === 'active'
         // Backer who sent revised terms: implied slice accept, waiting on player (not invite CTAs).
+        // Do not require deal.status === 'pending' ... activate-on-slice used to flip deal active early.
         const waitingPlayerTermsAck =
-          deal.status === 'pending' &&
           Boolean(deal.stakee_terms_ack_required) &&
-          deal.terms_revised_by === userId
+          (String(deal.terms_revised_by || '') === String(userId || '') || sliceAccepted)
         // Accepted backer sees roll/sessions even if co-backers still pending (deal may be pending briefly).
         const showBackerStats =
           sliceAccepted &&

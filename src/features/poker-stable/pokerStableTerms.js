@@ -182,9 +182,9 @@ export function stakeHeroBadgeLabel(deal, slices = []) {
 
 /** Stable horse carousel status pill when deal is live vs still pending. */
 export function stakeHorseCardStatusLabel(deal, slices = []) {
-  if (deal?.staker_terms_ack_required && deal?.status === 'pending') return 'Review'
+  if (deal?.staker_terms_ack_required) return 'Review'
   // Backer proposed revised terms (slice may already be active) ... still Pending until player acks.
-  if (deal?.stakee_terms_ack_required && deal?.status === 'pending') return 'Pending'
+  if (deal?.stakee_terms_ack_required) return 'Pending'
   if (stakeDealIsLiveForStakee(deal, slices)) return 'Active'
   if (deal?.status === 'pending') return 'Pending'
   return deal?.status || 'Unknown'
@@ -389,9 +389,10 @@ export function dealHasEdgeStakerSlices(slices = []) {
 }
 
 /** Player may edit deal terms when pending, revoked, or active with guest-only backers. */
-export function stakeeCanEditDealTerms(deal, slices = [], { hasProposal: _hasProposal = false } = {}) {
-  // Allow re-edit while a counterparty proposal is pending (Accept / Decline / Offer new terms).
+export function stakeeCanEditDealTerms(deal, slices = [], { hasProposal = false } = {}) {
+  // Allow re-edit while a counterparty proposal is pending (Accept / Decline / Edit terms).
   if (!deal) return false
+  if (hasProposal || deal.stakee_terms_ack_required) return true
   if (deal.status === 'pending' || deal.status === 'revoked') return true
   if (deal.status === 'active' && !dealHasEdgeStakerSlices(slices)) return true
   return false

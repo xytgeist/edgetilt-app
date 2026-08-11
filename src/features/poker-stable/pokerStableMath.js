@@ -236,10 +236,11 @@ export function stakeDealPlayerSideAccepted(deal) {
 export function stakeDealIsLiveForStakee(deal, slices = []) {
   if (!deal) return false
   if (deal.status === 'revoked' || deal.status === 'declined') return false
+  // Revised terms outstanding: proposer slice may be active (implied accept) and a buggy
+  // activate path may have flipped deal.status to active ... still not live until ack clears.
+  if (deal.stakee_terms_ack_required || deal.staker_terms_ack_required) return false
   if (deal.status === 'active') return true
   if (deal.status !== 'pending') return false
-  // Revised terms outstanding: proposer slice may be active (implied accept) but stake is not live yet.
-  if (deal.stakee_terms_ack_required || deal.staker_terms_ack_required) return false
   return stakeDealPlayerSideAccepted(deal) && dealHasAcceptedBackerSlice(deal, slices)
 }
 

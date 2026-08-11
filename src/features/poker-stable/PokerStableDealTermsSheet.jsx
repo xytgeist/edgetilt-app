@@ -422,7 +422,7 @@ export default function PokerStableDealTermsSheet({
                 >
                   Decline
                 </button>
-                {canEdit ? (
+                {typeof onEdit === 'function' ? (
                   <button
                     type="button"
                     disabled={saving}

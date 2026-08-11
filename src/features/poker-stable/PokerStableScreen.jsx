@@ -636,7 +636,11 @@ export default function PokerStableScreen({
     if (!supabaseClient) return
     const deal = deals.find((d) => d.id === dealId)
     const label = deal?.label?.trim() || 'this stake'
-    if (!window.confirm(`Decline the counter-proposal on ${label}? This kills the stake for everyone.`)) {
+    if (
+      !window.confirm(
+        `Decline the counter-proposal on ${label}? Your original offer stays ... the player can accept it or send new terms.`,
+      )
+    ) {
       return
     }
     setSaving(true)
@@ -991,8 +995,8 @@ export default function PokerStableScreen({
                     {deal.label ? ` · ${deal.label}` : ''}
                   </div>
                   <p className="mt-2 text-xs text-amber-200/90">
-                    Accept to apply their terms. The player still must accept before the stake goes
-                    live.
+                    Accept to apply their terms, decline to keep your original offer, or ask them to
+                    re-edit. The player still must accept before the stake goes live.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
@@ -1062,6 +1066,8 @@ export default function PokerStableScreen({
               onRevoke={onRevoke}
               onAcceptSlice={onAcceptSlice}
               onDeclineSlice={onDeclineSlice}
+              onAcceptCounter={onAcceptCounter}
+              onDeclineCounter={onDeclineCounter}
               onOpenTerms={setTermsDealId}
               onOpenChatWithUser={onOpenChatWithUser}
               saving={saving}

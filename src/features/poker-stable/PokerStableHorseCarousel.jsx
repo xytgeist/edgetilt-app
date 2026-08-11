@@ -46,6 +46,8 @@ export default function PokerStableHorseCarousel({
   onRevoke,
   onAcceptSlice,
   onDeclineSlice,
+  onAcceptCounter,
+  onDeclineCounter,
   onOpenTerms,
   /** Open Chat DM with Edge peer (null / omitted when guest counterpart). */
   onOpenChatWithUser = null,
@@ -125,20 +127,26 @@ export default function PokerStableHorseCarousel({
             ? pendingSettleQueue[pendingSettleCount - 1]?.created_at || null
             : null
         const closedUnarchived = backerStableShowsClosedCarouselCard(deal, dealSlices, userId)
+        const needsCounterAck =
+          isLeadBackerOnPendingDeal && Boolean(deal.staker_terms_ack_required)
         const statusLabel = closedUnarchived
           ? 'Closed'
-          : slice?.status === 'pending'
-            ? 'Pending'
-            : stakeHorseCardStatusLabel(deal, dealSlices)
+          : needsCounterAck
+            ? 'Review'
+            : slice?.status === 'pending'
+              ? 'Pending'
+              : stakeHorseCardStatusLabel(deal, dealSlices)
         const horseTone = stableHorseCardToneForDeal(deal.id, toneScope)
         const horseToneAttr = stableHorseCardToneAttrForDeal(deal.id, toneScope)
         const statusTone = closedUnarchived
           ? 'bg-zinc-700/60 text-zinc-300'
-          : slice?.status === 'pending'
-            ? 'bg-zinc-700/60 text-zinc-300'
-            : stakeDealIsLiveForStakee(deal, dealSlices)
-              ? horseTone.statusActive
-              : 'bg-zinc-700/60 text-zinc-400'
+          : needsCounterAck
+            ? 'bg-amber-500/20 text-amber-200'
+            : slice?.status === 'pending'
+              ? 'bg-zinc-700/60 text-zinc-300'
+              : stakeDealIsLiveForStakee(deal, dealSlices)
+                ? horseTone.statusActive
+                : 'bg-zinc-700/60 text-zinc-400'
         const sparkSeries = horseSparkByDeal[deal.id] || []
         // Require this deal's sessions (not portfolio-padded points from other horses).
         const showSparkBackground =
@@ -381,29 +389,71 @@ export default function PokerStableHorseCarousel({
               </div>
             ) : isLeadBackerOnPendingDeal ? (
               <>
-                <p className="mt-3 text-xs text-zinc-400">
-                  {slice?.status === 'pending'
-                    ? 'Pending acceptance'
-                    : `Waiting for ${dealStakeeDisplayName(deal, profilesById)} to accept this stake.`}
-                </p>
-                {pendingNudgeBlock}
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    void onRevoke?.(deal.id)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.stopPropagation()
-                      void onRevoke?.(deal.id)
-                    }
-                  }}
-                  className="mt-3 block w-full rounded-xl py-2 text-center text-xs font-semibold text-zinc-500 touch-manipulation active:text-zinc-300"
-                >
-                  Revoke deal
-                </span>
+                {needsCounterAck ? (
+                  <div
+                    data-poker-stable-counter-ack
+                    className={`mt-3 space-y-2 border-t ${horseTone.divider} pt-3 text-left`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <p className="text-xs leading-snug text-amber-200/90">
+                      {dealStakeeDisplayName(deal, profilesById)} proposed revised terms. Accept to
+                      apply them, decline to keep your original offer, or review details.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpenTerms?.(deal.id)}
+                        className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+                      >
+                        Review terms
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void onAcceptCounter?.(deal.id)}
+                        className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+                      >
+                        Accept counter
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void onDeclineCounter?.(deal.id)}
+                        className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-3 text-xs text-zinc-400">
+                      {slice?.status === 'pending'
+                        ? 'Pending acceptance'
+                        : `Waiting for ${dealStakeeDisplayName(deal, profilesById)} to accept this stake.`}
+                    </p>
+                    {pendingNudgeBlock}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void onRevoke?.(deal.id)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.stopPropagation()
+                          void onRevoke?.(deal.id)
+                        }
+                      }}
+                      className="mt-3 block w-full rounded-xl py-2 text-center text-xs font-semibold text-zinc-500 touch-manipulation active:text-zinc-300"
+                    >
+                      Revoke deal
+                    </span>
+                  </>
+                )}
               </>
             ) : null
 

@@ -55,13 +55,15 @@ export function listPendingBankrollOfferAttentionIds(deals, userId) {
   if (!userId) return []
   const out = []
   for (const deal of deals || []) {
+    if (!deal?.id || deal?.stakee_user_id !== userId || deal?.status !== 'pending') continue
+    // Backer proposed revised terms on a pending stake (player- or backer-initiated).
+    if (deal.stakee_terms_ack_required) {
+      out.push(`br:terms:${deal.id}`)
+      continue
+    }
     if (
-      deal?.stakee_user_id === userId &&
-      deal?.status === 'pending' &&
       isBackerInitiatedBackingDeal(deal) &&
-      !deal?.staker_terms_ack_required &&
-      !deal?.stakee_terms_ack_required &&
-      deal?.id
+      !deal.staker_terms_ack_required
     ) {
       out.push(`br:${deal.id}`)
     }

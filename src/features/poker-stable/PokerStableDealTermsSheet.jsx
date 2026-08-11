@@ -434,7 +434,7 @@ export default function PokerStableDealTermsSheet({
               data-poker-stable-terms-edit-btn
               className="w-full rounded-xl bg-zinc-100 py-3 text-sm font-semibold text-zinc-900 touch-manipulation disabled:opacity-50"
             >
-              Edit terms
+              {hasProposal && isStakee ? 'Offer different terms' : 'Edit terms'}
             </button>
           ) : null}
           {canOpenLedger ? (

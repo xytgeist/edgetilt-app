@@ -6472,6 +6472,14 @@ html.light [data-poker-stable] [data-poker-stable-horse-card][data-poker-stable-
  * Active status pill … light-only. Washed emerald-300 on #ecfdf5 read too faint vs
  * Closed archive pills (border + blue-700). Match that weight via horse accent.
  */
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-horse-status='review'] {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  border-color: #a1a1aa !important;
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-counter-ack] .text-amber-200\/90 {
+  color: #3f3f46 !important;
+}
 html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-horse-status='active'] {
   color: var(--horse-tone-accent) !important;
   background-color: color-mix(in srgb, var(--horse-tone-accent) 14%, #ffffff) !important;
@@ -7085,7 +7093,9 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 }
 
 /* Hero stake status badges — dark default */
-[data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='pending'] {
+[data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='pending'],
+[data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='terms_review'],
+[data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='counter_sent'] {
   background-color: rgba(245, 158, 11, 0.2);
   border-color: rgba(245, 158, 11, 0.35);
   color: rgb(252 211 77);
@@ -7097,7 +7107,9 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero
 }
 
 /* Revoked / pending stake — light (after generic badge remaps above) */
-html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='pending'] {
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='pending'],
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='terms_review'],
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-hero-badge='counter_sent'] {
   /* Neutral chip ... amber-on-pastel read as muddy on blue/emerald/rose heroes */
   background-color: rgba(255, 255, 255, 0.82) !important;
   border-color: #a1a1aa !important;
@@ -7111,6 +7123,8 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-sta
 /* Pending helper copy uses text-amber-200/85 (not in global light amber remap) */
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending],
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-offer] .text-amber-200\/85,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-terms-review] .text-amber-200\/85,
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-counter-sent],
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-200\/85,
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-stake-pending-backers] .text-amber-100\/90 {
   color: #3f3f46 !important;

@@ -270,6 +270,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'recorded a stake update — sync your books'
     case 'poker_stable_backer_offer':
       return 'offered you a backing stake'
+    case 'poker_stable_backer_terms_proposed':
+      return 'proposed revised stake terms for your review'
     case 'poker_stable_stakee_accepted':
       return 'accepted your backing offer'
     case 'poker_stable_stakee_declined':
@@ -322,6 +324,7 @@ function pokerStableTabForRecipient(
 ): 'poker-bankroll' | 'poker-stable' {
   const bankrollTab =
     event.event_type === 'poker_stable_backer_offer' ||
+    event.event_type === 'poker_stable_backer_terms_proposed' ||
     event.event_type === 'poker_stable_staker_counter_accepted' ||
     event.event_type === 'poker_stable_staker_counter_declined' ||
     event.event_type === 'poker_stable_slice_accepted' ||
@@ -423,6 +426,7 @@ function buildTargetUrl(
     event.event_type === 'poker_stable_stakee_declined' ||
     event.event_type === 'poker_stable_stakee_counter_proposed' ||
     event.event_type === 'poker_stable_backer_offer' ||
+    event.event_type === 'poker_stable_backer_terms_proposed' ||
     event.event_type === 'poker_stable_staker_counter_accepted' ||
     event.event_type === 'poker_stable_staker_counter_declined' ||
     event.event_type === 'poker_stable_slice_accepted' ||
@@ -554,6 +558,7 @@ function buildSingleNotification(
     event.event_type === 'poker_stable_stakee_declined' ||
     event.event_type === 'poker_stable_stakee_counter_proposed' ||
     event.event_type === 'poker_stable_backer_offer' ||
+    event.event_type === 'poker_stable_backer_terms_proposed' ||
     event.event_type === 'poker_stable_staker_counter_accepted' ||
     event.event_type === 'poker_stable_staker_counter_declined' ||
     event.event_type === 'poker_stable_slice_accepted' ||

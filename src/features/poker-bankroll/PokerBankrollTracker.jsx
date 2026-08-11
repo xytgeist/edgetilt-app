@@ -3169,16 +3169,6 @@ export default function PokerBankrollTracker({
             data-poker-stake-notice
             className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-center text-sm text-amber-100"
           >
-            Waiting for {dealLeadBackerDisplayName(activeDeal, stableProfilesById)} to respond to
-            your counter-proposal.
-          </div>
-        ) : null}
-
-        {waitingBackerCounterResponse && activeTab === 'overview' ? (
-          <div
-            data-poker-stake-notice
-            className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-center text-sm text-amber-100"
-          >
             Counter-proposal sent ... waiting for{' '}
             {dealLeadBackerDisplayName(activeDeal, stableProfilesById)} to respond in Stable.
           </div>
@@ -3251,15 +3241,19 @@ export default function PokerBankrollTracker({
                     ? null
                     : onStake && hero.deal?.status === 'revoked'
                       ? 'revoked'
-                      : heroAwaitingPlayerAccept
-                        ? 'pendingBackerOffer'
-                        : onStake && hero.deal && !heroStakeLive
-                          ? pendingBackerSlices.length > 0
-                            ? 'pendingBackers'
-                            : 'pendingStake'
-                          : pendingBackerSlices.length > 0
-                            ? 'pendingBackers'
-                            : null
+                      : onStake && hero.deal?.stakee_terms_ack_required
+                        ? 'termsReview'
+                        : onStake && hero.deal?.staker_terms_ack_required
+                          ? 'counterSent'
+                          : heroAwaitingPlayerAccept
+                            ? 'pendingBackerOffer'
+                            : onStake && hero.deal && !heroStakeLive
+                              ? pendingBackerSlices.length > 0
+                                ? 'pendingBackers'
+                                : 'pendingStake'
+                              : pendingBackerSlices.length > 0
+                                ? 'pendingBackers'
+                                : null
                 const stakeHeroSlotExpands =
                   Boolean(stakeHeroMessage) ||
                   Boolean(hero.pendingSettleCommit) ||
@@ -3464,6 +3458,55 @@ export default function PokerBankrollTracker({
                                 dealSlices,
                                 stableProfilesById,
                               )}
+                            </p>
+                          ) : stakeHeroMessage === 'termsReview' ? (
+                            <div
+                              data-poker-stake-terms-review
+                              data-poker-offer-attention-pulse={highlightPendingOffer ? '1' : undefined}
+                              className="space-y-2 text-left"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <p className="text-xs leading-snug text-amber-200/85">
+                                A backer proposed revised terms. Accept, decline, or offer different
+                                terms.
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={stableSaving}
+                                  onClick={() => {
+                                    setTermsDealId(scopeId)
+                                    triggerTapHapticLight()
+                                  }}
+                                  className="flex-1 rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
+                                >
+                                  Review
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={stableSaving}
+                                  onClick={() => {
+                                    setEditTermsIntent(
+                                      isBackerInitiatedBackingDeal(hero.deal)
+                                        ? 'stakee_counter'
+                                        : 'stakee_update',
+                                    )
+                                    setEditTermsDealId(scopeId)
+                                    triggerTapHapticLight()
+                                  }}
+                                  className="flex-1 rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
+                                >
+                                  Re-edit
+                                </button>
+                              </div>
+                            </div>
+                          ) : stakeHeroMessage === 'counterSent' ? (
+                            <p
+                              data-poker-stake-counter-sent
+                              className="text-left text-xs leading-snug text-amber-200/85"
+                            >
+                              Counter-proposal sent ... waiting for{' '}
+                              {dealLeadBackerDisplayName(hero.deal, stableProfilesById)} in Stable.
                             </p>
                           ) : stakeHeroMessage === 'pendingBackerOffer' ? (
                             <div
@@ -4411,8 +4454,15 @@ export default function PokerBankrollTracker({
           }}
           onError={setError}
           onEdit={() => {
+            const deal =
+              stakeeDeals.find((d) => d.id === termsDealId) ??
+              stakeeDealsById[termsDealId] ??
+              null
             setTermsDealId(null)
-            setEditTermsIntent('stakee_update')
+            // Backer→player: counter-propose (lead must Accept). Player→backer: apply as initiator.
+            setEditTermsIntent(
+              isBackerInitiatedBackingDeal(deal) ? 'stakee_counter' : 'stakee_update',
+            )
             setEditTermsDealId(termsDealId)
           }}
           onReassignGuest={async ({ sliceId, stakerUserId }) => {

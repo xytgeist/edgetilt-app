@@ -94,3 +94,7 @@ verify_jwt = true
 
 [functions.poker-stable-notify]
 verify_jwt = true
+
+# W-2G vision extract: user JWT; Starter+ / staff checked in function.
+[functions.w2g-vision-extract]
+verify_jwt = true

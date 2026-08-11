@@ -2681,6 +2681,7 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           onOpenAuth={(mode) => onOpenAuth?.(mode || 'login')}
           canUseBulkImport={Boolean(hasSlotsEdgeStarter || hasActiveSubscription)}
+          canUseVisionExtract={Boolean(hasSlotsEdgeStarter || hasActiveSubscription)}
           onRequireSubscribe={(slug) => onRequireSubscribe?.(slug || 'slots-edge-starter')}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}

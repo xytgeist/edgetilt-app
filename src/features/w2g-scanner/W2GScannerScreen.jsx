@@ -44,6 +44,7 @@ import {
   signedW2GImageUrl,
 } from './w2gArchiveApi.js'
 import { processW2GImageForArchive } from './w2gBulkImport.js'
+import { canvasToVisionJpegBlob, extractW2GFieldsWithVision } from './w2gVisionApi.js'
 
 function moneyLabel(n) {
   return Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -77,8 +78,9 @@ export default function W2GScannerScreen({
   titleBarToolCloseVisible = false,
   supabaseClient = null,
   onOpenAuth = null,
-  /** Slots Edge Starter and up (or staff). */
+  /** Slots Edge Starter and up (or staff) … bulk import + AI vision extract. */
   canUseBulkImport = false,
+  canUseVisionExtract = false,
   onRequireSubscribe = null,
 }) {
   const cameraInputRef = useRef(null)
@@ -241,30 +243,74 @@ export default function W2GScannerScreen({
     setOcrStatus('loading')
     setOcrProgress(0)
     ocrConfidenceRef.current = null
+    setError('')
+
+    const applyFields = (fields, confidence, engineLabel) => {
+      if (ocrSeqRef.current !== seq) return
+      setFieldList(fieldsToList(fields))
+      setOcrStatus('ready')
+      ocrConfidenceRef.current = confidence ?? null
+      setStatusNote((prev) => {
+        const base = String(prev || '')
+          .replace(/\s*·\s*(AI|OCR)\s+\d*%?/i, '')
+          .trim()
+        const tag =
+          confidence != null
+            ? `${engineLabel} ${Math.round(confidence)}%`
+            : engineLabel
+        return base ? `${base} · ${tag}` : tag
+      })
+    }
+
+    // Starter+: OpenAI vision (same class as human/vision read). Tesseract is fallback.
+    if (canUseVisionExtract && supabaseClient && flatCanvas) {
+      try {
+        setOcrProgress(12)
+        setStatusNote((prev) => {
+          const base = String(prev || '')
+            .replace(/\s*·\s*(AI|OCR).*$/i, '')
+            .trim()
+          return base ? `${base} · AI extract…` : 'AI extract…'
+        })
+        const imageBlob = await canvasToVisionJpegBlob(flatCanvas)
+        if (ocrSeqRef.current !== seq) return
+        setOcrProgress(45)
+        const vision = await extractW2GFieldsWithVision({
+          supabase: supabaseClient,
+          imageBlob,
+        })
+        if (ocrSeqRef.current !== seq) return
+        setOcrProgress(100)
+        applyFields(vision.fields, vision.confidence, 'AI')
+        return
+      } catch (err) {
+        if (ocrSeqRef.current !== seq) return
+        if (err?.code === 'subscribe_required') {
+          onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
+        }
+        // Fall through to on-device OCR.
+        setStatusNote((prev) => {
+          const base = String(prev || '')
+            .replace(/\s*·\s*(AI|OCR).*$/i, '')
+            .trim()
+          return base ? `${base} · AI missed, local OCR…` : 'AI missed, local OCR…'
+        })
+      }
+    }
+
     try {
       const { fields, confidence } = await ocrW2G(flatCanvas, {
         onProgress: (pct) => {
           if (ocrSeqRef.current === seq) setOcrProgress(pct)
         },
       })
-      if (ocrSeqRef.current !== seq) return
-      setFieldList(fieldsToList(fields))
-      setOcrStatus('ready')
-      ocrConfidenceRef.current = confidence ?? null
-      if (confidence != null) {
-        setStatusNote((prev) => {
-          const base = String(prev || '')
-            .replace(/\s*·\s*OCR\s+\d+%/i, '')
-            .trim()
-          return base ? `${base} · OCR ${Math.round(confidence)}%` : `OCR ${Math.round(confidence)}%`
-        })
-      }
+      applyFields(fields, confidence, 'OCR')
     } catch (err) {
       if (ocrSeqRef.current !== seq) return
       setOcrStatus('error')
       setError(err?.message || 'OCR failed. You can still edit fields and save.')
     }
-  }, [])
+  }, [canUseVisionExtract, onRequireSubscribe, supabaseClient])
 
   const finishPretty = useCallback(
     async (docCanvas, note) => {
@@ -495,7 +541,11 @@ export default function W2GScannerScreen({
           setBulkProgress({ index: i + 1, total: list.length, fileName: file.name || `Image ${i + 1}` })
           setStatusNote(`Bulk import ${i + 1}/${list.length}…`)
           try {
-            const result = await processW2GImageForArchive(file, { signal: ac.signal })
+            const result = await processW2GImageForArchive(file, {
+              signal: ac.signal,
+              supabase: canUseVisionExtract ? supabaseClient : null,
+              useVision: canUseVisionExtract,
+            })
             if (!result.ok) {
               failed.push({ fileName: result.fileName, error: result.error })
               continue
@@ -524,6 +574,7 @@ export default function W2GScannerScreen({
     },
     [
       canUseBulkImport,
+      canUseVisionExtract,
       clearEditor,
       onOpenAuth,
       onRequireSubscribe,
@@ -1011,12 +1062,16 @@ export default function W2GScannerScreen({
                       <div className="text-base font-bold text-white">Tax fields</div>
                       <div className="text-xs text-zinc-500 mt-0.5">
                         {ocrStatus === 'loading'
-                          ? `Reading form… ${ocrProgress}%`
+                          ? canUseVisionExtract
+                            ? `AI reading form… ${ocrProgress}%`
+                            : `Reading form… ${ocrProgress}%`
                           : ocrStatus === 'ready'
                             ? 'Edit anything that looks off, then save.'
                             : ocrStatus === 'error'
-                              ? 'OCR hiccuped. Retry or fill manually.'
-                              : 'OCR runs after crop.'}
+                              ? 'Extract hiccuped. Retry or fill manually.'
+                              : canUseVisionExtract
+                                ? 'AI extract runs after crop (Slots Edge).'
+                                : 'OCR runs after crop.'}
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2">

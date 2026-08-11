@@ -1,23 +1,15 @@
 /**
- * Client-side W-2G pretty-scan: load photo → detect page → perspective crop → centered pad.
- * Uses scanic (lazy-imported) so the main app bundle stays light.
+ * Client-side W-2G scan: load photo → detect page → safe crop → light enhance → pad.
+ * Prefer axis-aligned crop over homography on wrinkled slips (homography was melting forms).
  */
 
 /** @typedef {import('scanic').CornerPoints} CornerPoints */
 /** @typedef {import('scanic').ScannerResult} ScannerResult */
 
-const CLASSICAL_OPTS = {
-  mode: 'extract',
+const DETECT_BASE = {
+  mode: 'detect',
   output: 'canvas',
-  detector: 'classical',
-  maxProcessingDimension: 1600,
-}
-
-const ML_OPTS = {
-  mode: 'extract',
-  output: 'canvas',
-  detector: 'ml',
-  maxProcessingDimension: 1600,
+  maxProcessingDimension: 1800,
 }
 
 /**
@@ -63,55 +55,162 @@ export async function loadImageCanvasFromFile(file) {
 
 /**
  * @param {HTMLCanvasElement} source
- * @returns {Promise<{ result: ScannerResult, detector: 'classical' | 'ml' | null }>}
+ * @param {'classical' | 'ml'} detector
  */
-export async function autoScanDocument(source) {
+async function detectCorners(source, detector) {
   const { scanDocument } = await import('scanic')
-
-  let classical = await scanDocument(source, CLASSICAL_OPTS)
-  const classicalOk = Boolean(classical?.success && classical.output)
-  const classicalConf = typeof classical?.confidence === 'number' ? classical.confidence : null
-
-  // Prefer ML on weak classical hits (common for angled casino photos).
-  const shouldTryMl = !classicalOk || classicalConf == null || classicalConf < 0.55
-  if (shouldTryMl) {
-    try {
-      const ml = await scanDocument(source, ML_OPTS)
-      if (ml?.success && ml.output) {
-        const mlConf = typeof ml.confidence === 'number' ? ml.confidence : null
-        if (!classicalOk || mlConf == null || classicalConf == null || mlConf >= classicalConf) {
-          return { result: ml, detector: 'ml' }
-        }
-      }
-    } catch {
-      // ML CDN / wasm may fail offline; keep classical.
-    }
-  }
-
-  if (classicalOk) {
-    return { result: classical, detector: 'classical' }
-  }
-
-  return {
-    result: classical || { success: false, message: 'No document found', output: null, corners: null },
-    detector: null,
-  }
+  return scanDocument(source, {
+    ...DETECT_BASE,
+    detector,
+  })
 }
 
 /**
  * @param {HTMLCanvasElement} source
- * @param {CornerPoints} corners
- * @returns {Promise<ScannerResult>}
+ * @returns {Promise<{
+ *   result: ScannerResult,
+ *   detector: 'classical' | 'ml' | null,
+ *   cropMode: 'bounds' | 'perspective' | null,
+ * }>}
  */
-export async function extractWithCorners(source, corners) {
+export async function autoScanDocument(source) {
   const { extractDocument } = await import('scanic')
-  return extractDocument(source, corners, { output: 'canvas' })
+  const { analyzeCorners, isValidCornerQuad, axisAlignedCropFromCorners } = await import('./w2gCorners.js')
+
+  /** @type {ScannerResult | null} */
+  let best = null
+  /** @type {'classical' | 'ml' | null} */
+  let bestDetector = null
+  /** @type {ReturnType<typeof analyzeCorners> | null} */
+  let bestAnalysis = null
+
+  for (const detector of /** @type {const} */ (['classical', 'ml'])) {
+    try {
+      const detected = await detectCorners(source, detector)
+      if (!isValidCornerQuad(detected?.corners)) continue
+      const analysis = analyzeCorners(detected.corners, source.width, source.height)
+      if (!bestAnalysis || analysis.score > bestAnalysis.score) {
+        best = detected
+        bestDetector = detector
+        bestAnalysis = analysis
+      }
+      // Strong classical hit — skip ML wait.
+      if (detector === 'classical' && analysis.usable && analysis.score >= 0.92) break
+    } catch {
+      // ML CDN / classical miss — try next.
+    }
+  }
+
+  if (!best?.corners || !bestAnalysis?.usable) {
+    return {
+      result:
+        best ||
+        /** @type {ScannerResult} */ ({
+          success: false,
+          message: 'No document found',
+          output: null,
+          corners: null,
+        }),
+      detector: bestDetector,
+      cropMode: null,
+    }
+  }
+
+  // Perspective only when the page looks flat + clearly trapezoidal.
+  if (bestAnalysis.preferPerspective) {
+    try {
+      const extracted = await extractDocument(source, best.corners, { output: 'canvas' })
+      if (extracted?.success && extracted.output) {
+        return {
+          result: {
+            ...extracted,
+            corners: best.corners,
+            confidence: best.confidence ?? bestAnalysis.score,
+          },
+          detector: bestDetector,
+          cropMode: 'perspective',
+        }
+      }
+    } catch {
+      // fall through to bounds crop
+    }
+  }
+
+  const cropped = axisAlignedCropFromCorners(source, best.corners)
+  return {
+    result: {
+      success: true,
+      message: 'Bounds crop',
+      output: cropped,
+      corners: best.corners,
+      confidence: best.confidence ?? bestAnalysis.score,
+      contour: best.contour ?? null,
+      debug: null,
+      timings: best.timings || [],
+    },
+    detector: bestDetector,
+    cropMode: 'bounds',
+  }
 }
 
 /**
- * Perspective crop → landscape + illumination flatten (scanner-style).
+ * Manual corners: prefer gentle bounds crop (avoids crease melt). Use perspective only if clean.
+ * @param {HTMLCanvasElement} source
+ * @param {CornerPoints} corners
+ * @returns {Promise<{ result: ScannerResult, cropMode: 'bounds' | 'perspective' }>}
+ */
+export async function extractWithCorners(source, corners) {
+  const { extractDocument } = await import('scanic')
+  const { analyzeCorners, isValidCornerQuad, axisAlignedCropFromCorners } = await import('./w2gCorners.js')
+
+  if (!isValidCornerQuad(corners)) {
+    return {
+      result: {
+        success: false,
+        message: 'Invalid corners',
+        output: null,
+        corners,
+        confidence: null,
+        contour: null,
+        debug: null,
+        timings: [],
+      },
+      cropMode: 'bounds',
+    }
+  }
+
+  const analysis = analyzeCorners(corners, source.width, source.height)
+  if (analysis.preferPerspective) {
+    try {
+      const extracted = await extractDocument(source, corners, { output: 'canvas' })
+      if (extracted?.success && extracted.output) {
+        return { result: extracted, cropMode: 'perspective' }
+      }
+    } catch {
+      /* bounds fallback */
+    }
+  }
+
+  const cropped = axisAlignedCropFromCorners(source, corners)
+  return {
+    result: {
+      success: true,
+      message: 'Bounds crop',
+      output: cropped,
+      corners,
+      confidence: analysis.score,
+      contour: null,
+      debug: null,
+      timings: [],
+    },
+    cropMode: 'bounds',
+  }
+}
+
+/**
+ * Light enhance after crop (no harsh flatten).
  * @param {HTMLCanvasElement} cropped
- * @returns {HTMLCanvasElement}
+ * @returns {Promise<HTMLCanvasElement>}
  */
 export async function flattenCroppedDocument(cropped) {
   const { prepareFlattenedW2G } = await import('./w2gFlatten.js')
@@ -125,7 +224,7 @@ export async function flattenCroppedDocument(cropped) {
  * @returns {HTMLCanvasElement}
  */
 export function presentPrettyScan(doc, opts = {}) {
-  const padRatio = opts.padRatio ?? 0.06
+  const padRatio = opts.padRatio ?? 0.04
   const bg = opts.bg ?? '#ffffff'
   const maxEdge = opts.maxEdge ?? 2400
 
@@ -144,7 +243,7 @@ export function presentPrettyScan(doc, opts = {}) {
     drawH = Math.max(1, Math.round(drawH * scale))
   }
 
-  const pad = Math.max(12, Math.round(Math.max(drawW, drawH) * padRatio))
+  const pad = Math.max(10, Math.round(Math.max(drawW, drawH) * padRatio))
   const out = document.createElement('canvas')
   out.width = drawW + pad * 2
   out.height = drawH + pad * 2
@@ -159,13 +258,12 @@ export function presentPrettyScan(doc, opts = {}) {
 }
 
 /**
- * Default inset quad when auto-detect misses (manual adjust).
  * @param {number} width
  * @param {number} height
  * @param {number} [insetRatio]
  * @returns {CornerPoints}
  */
-export function defaultInsetCorners(width, height, insetRatio = 0.08) {
+export function defaultInsetCorners(width, height, insetRatio = 0.06) {
   const ix = Math.max(8, width * insetRatio)
   const iy = Math.max(8, height * insetRatio)
   return {

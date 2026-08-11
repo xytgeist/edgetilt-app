@@ -154,13 +154,13 @@ export default function W2GScannerScreen({
 
   const finishPretty = useCallback(
     async (docCanvas, note) => {
-      setStatusNote('Flattening…')
+      setStatusNote('Preparing…')
       const flat = await flattenCroppedDocument(docCanvas)
       flatCanvasRef.current = flat
       setHasFlat(true)
       const pretty = presentPrettyScan(flat)
       setResultCanvas(pretty)
-      setStatusNote(note || 'Flattened')
+      setStatusNote(note || 'Ready')
       setPhase('result')
       setBusy(false)
       try {
@@ -216,12 +216,16 @@ export default function W2GScannerScreen({
             setBusy(true)
             setError('')
             try {
-              const extracted = await extractWithCorners(source, nextCorners)
+              const { result: extracted, cropMode } = await extractWithCorners(source, nextCorners)
               if (!extracted?.success || !extracted.output) {
                 throw new Error(extracted?.message || 'Could not crop that frame.')
               }
               clearEditor()
-              await finishPretty(/** @type {HTMLCanvasElement} */ (extracted.output), 'Manual crop · flattened')
+              const modeLabel = cropMode === 'perspective' ? 'deskewed' : 'cropped'
+              await finishPretty(
+                /** @type {HTMLCanvasElement} */ (extracted.output),
+                `Manual ${modeLabel}`,
+              )
             } catch (err) {
               setBusy(false)
               setError(err?.message || 'Crop failed.')
@@ -252,10 +256,11 @@ export default function W2GScannerScreen({
       try {
         const source = await loadImageCanvasFromFile(file)
         sourceCanvasRef.current = source
-        const { result, detector } = await autoScanDocument(source)
+        const { result, detector, cropMode } = await autoScanDocument(source)
         if (result?.success && result.output) {
-          const label = detector === 'ml' ? 'Auto crop (ML) · flattened' : 'Auto crop · flattened'
-          await finishPretty(/** @type {HTMLCanvasElement} */ (result.output), label)
+          const engine = detector === 'ml' ? 'ML' : 'auto'
+          const mode = cropMode === 'perspective' ? 'deskew' : 'crop'
+          await finishPretty(/** @type {HTMLCanvasElement} */ (result.output), `${engine} ${mode}`)
           return
         }
         await openAdjust(source, result?.corners || null)
@@ -337,7 +342,7 @@ export default function W2GScannerScreen({
         <div>
           <div className="text-white text-2xl font-black tracking-tight">W-2G Scanner</div>
           <div className="text-zinc-400 text-sm mt-0.5">
-            Snap the form… we crop, flatten, and pull the tax fields. Stays on your device.
+            Snap the form… we crop (gently), enhance lightly, and pull tax fields. Stays on your device.
           </div>
         </div>
 

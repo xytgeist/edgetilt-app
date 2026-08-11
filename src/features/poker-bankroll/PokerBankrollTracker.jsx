@@ -63,6 +63,7 @@ import {
   stakeBackingCapitalSplit,
   stakeeBankrollShowsClosedCarouselCard,
   stakeeBankrollTermsOpensManageSheet,
+  stakeInitiatorCanReplaceDeclinedDeal,
   stakeeDisplayDealRoll,
   pendingSettleCommitsForDeal,
   stakeePendingSettleCommitForDeal,
@@ -72,6 +73,7 @@ import {
 import {
   archiveStakeeBankrollDeal,
   cancelStakeDeal,
+  deleteDeclinedStakeDeal,
   closeBackingDeal,
   deleteStakeSessionWithAudit,
   isBackerInitiatedBackingDeal,
@@ -1801,6 +1803,35 @@ export default function PokerBankrollTracker({
     }
   }
 
+  async function handleDeleteDeclinedStakeeDeal(dealId, { openNewProposal = false } = {}) {
+    if (!supabaseClient || !dealId || !userId) return
+    const deal = stakeeDeals.find((d) => d.id === dealId) ?? stakeeDealsById[dealId] ?? null
+    if (!stakeInitiatorCanReplaceDeclinedDeal(deal, userId)) {
+      setError('Only the stake initiator can delete this declined offer.')
+      return
+    }
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await deleteDeclinedStakeDeal(supabaseClient, dealId)
+      if (error) throw error
+      if (bankrollScope === dealId) selectBankrollScope('personal')
+      setTermsDealId(null)
+      setLedgerDealId(null)
+      triggerTapHapticLight()
+      await loadData()
+      if (openNewProposal) {
+        setSheet('createStake')
+      } else {
+        showStakeNotice('Declined stake deleted.')
+      }
+    } catch (e) {
+      setError(e?.message || 'Could not delete declined stake.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
   useEffect(() => {
     if (!termsDealId || !termsDealForSheet) return
     if (!stakeeBankrollShowsClosedCarouselCard(termsDealForSheet)) return
@@ -3495,9 +3526,18 @@ export default function PokerBankrollTracker({
                             <PokerStakeeClosedStakeHeroBanner
                               deal={hero.deal}
                               profilesById={stableProfilesById}
+                              userId={userId}
                               saving={stableSaving}
                               onArchive={() => void handleArchiveStakeeBankrollDeal(hero.deal.id)}
                               onReview={() => openClosedStakeReview(scopeId)}
+                              onDeleteDeclined={() =>
+                                void handleDeleteDeclinedStakeeDeal(hero.deal.id)
+                              }
+                              onNewProposal={() =>
+                                void handleDeleteDeclinedStakeeDeal(hero.deal.id, {
+                                  openNewProposal: true,
+                                })
+                              }
                             />
                           ) : hero.spark.length >= 2 ? (
                             <button

@@ -39,6 +39,7 @@ import {
 import {
   acceptSliceAsStaker,
   archiveBackerStableDeal,
+  deleteDeclinedStakeDeal,
   hideBackerStableDeal,
   declineSliceAsStaker,
   dealIdsForAcceptedBackerVisibility,
@@ -72,6 +73,7 @@ import {
   dealStakeeDisplayName,
   pendingSettleCommitsForDeal,
   stakeeSkipsBackerCommitSync,
+  stakeInitiatorCanReplaceDeclinedDeal,
 } from './pokerStableTerms.js'
 
 /**
@@ -706,6 +708,31 @@ export default function PokerStableScreen({
     }
   }
 
+  async function onDeleteDeclinedHorse(dealId, { openNewProposal = false } = {}) {
+    if (!supabaseClient || !userId || !dealId) return
+    const deal = deals.find((d) => d.id === dealId)
+    if (!stakeInitiatorCanReplaceDeclinedDeal(deal, userId)) {
+      setError('Only the stake initiator can delete this declined offer.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const { error: err } = await deleteDeclinedStakeDeal(supabaseClient, dealId)
+      if (err) throw err
+      dismissStableDealModals()
+      triggerTapHapticLight()
+      await load()
+      if (openNewProposal) {
+        setSheet('request')
+      }
+    } catch (e) {
+      setError(e?.message || 'Could not delete declined stake.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function onDeleteClosedHorse(dealId) {
     if (!supabaseClient || !userId || !dealId) return
     const deal = deals.find((d) => d.id === dealId)
@@ -939,6 +966,10 @@ export default function PokerStableScreen({
               horseSparkByDeal={horseSparkByDeal}
               onArchiveHorse={onArchiveHorse}
               onOpenClosedHorseReview={openClosedHorseReview}
+              onDeleteDeclinedHorse={onDeleteDeclinedHorse}
+              onNewProposalHorse={(dealId) =>
+                void onDeleteDeclinedHorse(dealId, { openNewProposal: true })
+              }
               highlightPendingInvite={highlightPendingOffer}
             />
           )}

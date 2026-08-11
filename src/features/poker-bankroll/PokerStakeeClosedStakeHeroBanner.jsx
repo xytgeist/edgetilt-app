@@ -1,23 +1,70 @@
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isBackerInitiatedBackingDeal } from '../poker-stable/pokerStableApi.js'
-import { dealLeadBackerDisplayName } from '../poker-stable/pokerStableTerms.js'
+import {
+  dealLeadBackerDisplayName,
+  stakeInitiatorCanReplaceDeclinedDeal,
+} from '../poker-stable/pokerStableTerms.js'
 
 /**
  * Closed / ended stake archive prompt in the Bankroll hero sparkline slot.
+ * Fully declined player-initiated offers show Delete / New Proposal for the initiator.
  */
 export default function PokerStakeeClosedStakeHeroBanner({
   deal,
   profilesById = {},
+  userId = null,
   saving = false,
   onArchive,
   onReview,
+  onDeleteDeclined,
+  onNewProposal,
   className = '',
 }) {
   if (!deal) return null
 
+  const replaceDeclined = stakeInitiatorCanReplaceDeclinedDeal(deal, userId)
   const backerPhrase = isBackerInitiatedBackingDeal(deal)
     ? ` by ${dealLeadBackerDisplayName(deal, profilesById)}`
     : ''
+
+  if (replaceDeclined) {
+    return (
+      <div
+        data-poker-stake-closed-hero
+        data-poker-stake-declined-replace
+        data-poker-stake-notice
+        className={`rounded-xl border border-zinc-600/60 bg-zinc-900/80 px-3 py-2.5 text-left ${className}`}
+      >
+        <p className="text-xs leading-snug text-zinc-200">
+          Your backer declined this stake. Delete it, or start a new proposal.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              triggerTapHapticLight()
+              void onDeleteDeclined?.()
+            }}
+            className="rounded-lg bg-zinc-700 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              triggerTapHapticLight()
+              void onNewProposal?.()
+            }}
+            className="rounded-lg bg-amber-600 px-3 py-1.5 text-[11px] font-bold text-white touch-manipulation active:bg-amber-500 disabled:opacity-50"
+          >
+            New proposal
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

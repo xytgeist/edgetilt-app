@@ -152,8 +152,8 @@ export function stakeDealShowsOnStakeBadge(deal, slices = []) {
 export function stakeHeroBadgeVariant(deal, slices = []) {
   if (!deal) return null
   if (deal.status === 'revoked') return 'revoked'
-  if (stakeeBankrollShowsClosedCarouselCard(deal)) return 'closed'
   if (deal.status === 'declined') return 'declined'
+  if (stakeeBankrollShowsClosedCarouselCard(deal)) return 'closed'
   if (stakeDealIsLiveForStakee(deal, slices)) return 'active'
   if (deal.status === 'pending') return 'pending'
   return null
@@ -487,6 +487,19 @@ export function stakeeDisplayDealRoll({
 export function stakeeBankrollShowsClosedCarouselCard(deal) {
   if (!deal?.id || deal.stakee_bankroll_archived_at) return false
   return ['settled', 'closed', 'declined', 'revoked'].includes(deal.status)
+}
+
+/**
+ * Initiator of a fully declined offer (other side declined) ... Delete / New Proposal
+ * instead of Archive / Review. Multi-backer single-slice decline does not set deal declined.
+ *
+ * - Player-initiated: stakee, `staker_user_id` null
+ * - Backer-initiated: lead backer (`staker_user_id`)
+ */
+export function stakeInitiatorCanReplaceDeclinedDeal(deal, userId) {
+  if (!deal?.id || !userId || deal.status !== 'declined') return false
+  if (deal.staker_user_id) return deal.staker_user_id === userId
+  return deal.stakee_user_id === userId
 }
 
 /** Player may open deal ledger (top-up + settle) on active cash backing. */

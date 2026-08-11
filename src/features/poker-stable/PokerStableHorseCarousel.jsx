@@ -19,6 +19,7 @@ import {
   stableDealEdgeChatPeerUserId,
   stakeDealIsLiveForStakee,
   stakeHorseCardStatusLabel,
+  stakeInitiatorCanReplaceDeclinedDeal,
 } from './pokerStableTerms.js'
 import {
   stableHorseCardToneAttrForDeal,
@@ -56,6 +57,8 @@ export default function PokerStableHorseCarousel({
   horseSparkByDeal = {},
   onArchiveHorse,
   onOpenClosedHorseReview,
+  onDeleteDeclinedHorse,
+  onNewProposalHorse,
   /** Pulse pending Accept/Decline invite cards (breadcrumb first arrival). */
   highlightPendingInvite = false,
 }) {
@@ -124,8 +127,11 @@ export default function PokerStableHorseCarousel({
             ? pendingSettleQueue[pendingSettleCount - 1]?.created_at || null
             : null
         const closedUnarchived = backerStableShowsClosedCarouselCard(deal, dealSlices, userId)
+        const replaceDeclinedOffer = stakeInitiatorCanReplaceDeclinedDeal(deal, userId)
         const statusLabel = closedUnarchived
-          ? 'Closed'
+          ? replaceDeclinedOffer
+            ? 'Declined'
+            : 'Closed'
           : slice?.status === 'pending'
             ? 'Pending'
             : stakeHorseCardStatusLabel(deal, dealSlices)
@@ -331,6 +337,8 @@ export default function PokerStableHorseCarousel({
                     saving={saving}
                     onArchive={() => void onArchiveHorse?.(deal.id)}
                     onReview={() => onOpenClosedHorseReview?.(deal.id)}
+                    onDeleteDeclined={() => void onDeleteDeclinedHorse?.(deal.id)}
+                    onNewProposal={() => void onNewProposalHorse?.(deal.id)}
                   />
                 )}
               </div>

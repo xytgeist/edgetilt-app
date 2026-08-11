@@ -430,6 +430,12 @@ function App() {
         })
         return
       }
+      // Cold boot: INITIAL_SESSION often fires null after our custom restore already
+      // hydrated the user. Clearing here flips browseMode to anonymous and AppShell
+      // yanks hamburger→Slots (etc.) back to Lounge until the second tap.
+      if (event === 'INITIAL_SESSION' && hasStoredSupabaseAuthToken()) {
+        return
+      }
       syncUser(null)
     })
 

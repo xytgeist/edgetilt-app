@@ -1875,6 +1875,11 @@ export default function AppShell({
                 : undefined
           }
           onClick={() => {
+            if (!authSessionReady && item.id !== 'home') {
+              // Auth still hydrating ... don't open the gate or navigate yet.
+              setMenuOpen(false)
+              return
+            }
             if (browseMode === 'anonymous' && item.id !== 'home') {
               onRequireAuth?.()
               setMenuOpen(false)
@@ -1986,6 +1991,7 @@ export default function AppShell({
     if (!dest) return
     setMenuOpen(false)
     setActiveCalculator(null)
+    if (!authSessionReady) return
     if (browseMode !== 'member') {
       onRequireAuth?.()
       return
@@ -2007,8 +2013,10 @@ export default function AppShell({
         return
       }
     }
+    if (dest.tab !== 'home') armShellNavGhostClickGuard()
     setTab(dest.tab)
   }, [
+    authSessionReady,
     browseMode,
     contentAccessGatesMap,
     hasActiveSubscription,
@@ -2025,11 +2033,14 @@ export default function AppShell({
   }, [tab, isStaff, hasActiveSubscription, refreshFreemiumUsage])
 
   useEffect(() => {
+    // Wait for auth hydrate ... otherwise a brief anonymous window on cold boot
+    // yanks Slots/Poker/etc. back to Lounge after the first hamburger tap.
+    if (!authSessionReady) return
     if (browseMode !== 'anonymous') return
     if (tab === 'home') return
     setTab('home')
     setMenuOpen(false)
-  }, [browseMode, tab])
+  }, [authSessionReady, browseMode, tab])
 
   useEffect(() => {
     if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: false })) {

@@ -57,6 +57,7 @@ import {
   quoteRepostOriginalUnavailable,
 } from '../../utils/communityFeedPost'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
 import {
   feedPostCategoryPills,
   displayPostCategoryPills,
@@ -8176,6 +8177,8 @@ export default function SocialFeed({
 
   const onLoungeDockHome = useCallback(() => {
     if (!isActivePage) {
+      // Hamburger→Slots/Poker often synthesizes a click on the portaled Home chip.
+      if (isShellNavLoungeHomeSuppressed()) return
       loungeFeedNavClickSuppressUntilRef.current =
         performance.now() + LOUNGE_AWAY_HOME_CLICK_SUPPRESS_MS
       onNavigateToLoungeFeed?.()

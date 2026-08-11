@@ -958,6 +958,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-11: **Hamburger→Slots cold-boot yank to Lounge:** `INITIAL_SESSION` null no longer clears a restored session; anonymous→home bounce waits for `authSessionReady`; shell ghost-click guard 1200ms + dock Home suppress so first Slots tap sticks.
 - 2026-08-11: **Prod promote (W-2G + Stable catch-up):** applied **`20260810120000`**–**`20260811420000`** on **`jtjgtucumuoswnbauxry`** (36 migrations); Edge **`w2g-vision-extract`** deployed; **`test` → `main`**. Also backfilled test **`20260811310000`**–**`11330000`**. Fixed **`20260810120000`** activity check to keep **`poker_stable_terms_edited`** for prod historical rows.
 - 2026-08-11: **W-2G collate drill-down:** Tap a casino/EIN card → list that group’s W-2Gs with Verify/ATTN (same cards as My W-2Gs); **Casinos** back to collate totals.
 - 2026-08-11: **W-2G corner toolbar:** Inject **Rotate** into scanic’s floating toolbar; restyle Reset to corner-brackets + “Reset corners” so it no longer reads as image rotate (`w2gScanicToolbar.js`).

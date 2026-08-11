@@ -24,7 +24,7 @@ const KIND_COPY = {
   },
   seed_reverse: {
     title: 'Automatic adjustment reversed',
-    detail: 'Auto-credited capital removed after the stake offer ended.',
+    detail: 'Auto-credited capital removed after the offer ended or close reclaim.',
   },
   stake_deploy: {
     title: 'Stake funded',

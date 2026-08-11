@@ -28,6 +28,31 @@ import {
   stakeeSkipsBackerCommitSync,
 } from './pokerStableTerms.js'
 
+function formatTermsPctDisplay(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return '—'
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100)
+}
+
+/** One-line original stake terms for tournament close Commit footnote. */
+function tournamentCloseTermsFootnote(deal, slice) {
+  const actionPct = formatTermsPctDisplay(slice?.action_pct ?? slice?.actionPct)
+  const packageAmt = fmtPoker$(
+    stableNum(deal?.baseline_bankroll ?? deal?.baselineBankroll),
+  )
+  const pricingMode = slice?.pricing_mode || slice?.pricingMode || 'profit_split'
+  const rate = slice?.markup_rate ?? slice?.markupRate ?? deal?.markup_rate ?? deal?.markupRate
+  if (pricingMode === 'markup' && Number(rate) > 0) {
+    return `Original terms: ${actionPct}% of ${packageAmt} @ ${formatTermsPctDisplay(rate)}× markup.`
+  }
+  const playerPct = Number(slice?.player_profit_pct ?? slice?.playerProfitPct)
+  const backerPct = Number.isFinite(playerPct) ? 100 - playerPct : null
+  if (Number.isFinite(playerPct) && Number.isFinite(backerPct)) {
+    return `Original terms: ${actionPct}% of ${packageAmt} @ ${formatTermsPctDisplay(playerPct)}/${formatTermsPctDisplay(backerPct)} player/backer split.`
+  }
+  return `Original terms: ${actionPct}% of ${packageAmt} tournament package.`
+}
+
 /**
  * Commit sync body (settle credit + Commit). Used inline on deal Overview and inside the global modal.
  * @param {'inline' | 'modal'} [variant]
@@ -212,6 +237,7 @@ export default function PokerStableCommitSyncPanel({
         stakePl: null,
         markupFee: 0,
         overallPerformance: null,
+        termsFootnote: '',
       }
     }
     const lines = attachSlicesToSettleLines(settlementLines, slices)
@@ -226,21 +252,30 @@ export default function PokerStableCommitSyncPanel({
         ...deal,
         baseline_bankroll: stableNum(settlement.baseline_at_settle ?? deal?.baseline_bankroll),
       }
-      const markupFee = Math.max(0, backerSliceMarkupFee(feeDeal, slice))
+      const feeSlice = {
+        ...slice,
+        markup_rate: slice.markup_rate ?? slice.markupRate ?? deal?.markup_rate,
+        pricing_mode: slice.pricing_mode || slice.pricingMode || 'profit_split',
+      }
+      const markupFee = Math.max(0, backerSliceMarkupFee(feeDeal, feeSlice))
       const overallPerformance = roundMoney(stakePl - markupFee)
       const credit = roundMoney(backerBackingCredit ?? 0)
+      const stakePlBit = `${stakePl >= 0 ? '+' : ''}${fmtPoker$(stakePl)} stake P/L`
+      const breakdown =
+        markupFee > 0.005
+          ? `${stakePlBit} − ${fmtPoker$(markupFee)} markup`
+          : stakePlBit
       return {
         payPhrases: [
-          `Credit to personal backing bankroll ${credit >= 0 ? '+' : ''}${fmtPoker$(credit)}`,
-          `Overall performance: ${overallPerformance >= 0 ? '+' : ''}${fmtPoker$(overallPerformance)}${
-            markupFee > 0.005 ? ' (markup applied)' : ''
-          }`,
+          breakdown,
+          `${fmtPoker$(credit)} returned to Backing Bankroll`,
         ],
         resetBullet: '',
         reductionRows: [],
         stakePl,
         markupFee,
         overallPerformance,
+        termsFootnote: tournamentCloseTermsFootnote(deal, feeSlice),
       }
     }
 
@@ -273,6 +308,7 @@ export default function PokerStableCommitSyncPanel({
       stakePl: null,
       markupFee: 0,
       overallPerformance: null,
+      termsFootnote: '',
     }
   }, [
     showSettleCredit,
@@ -379,22 +415,21 @@ export default function PokerStableCommitSyncPanel({
       : ''
 
   const heroCredit = showPlayerSettleCredit ? playerPersonalCredit : backerBackingCredit
-  const tournamentStakePl = settleDetail.stakePl
   const tournamentOverall = settleDetail.overallPerformance
   const cardIsLoss = tournamentCloseBacker
     ? Number(tournamentOverall) < -0.005
     : Number(heroCredit) < -0.005
   const heroLabel = tournamentCloseBacker
-    ? 'Stake P/L'
+    ? 'Overall performance'
     : showPlayerSettleCredit
       ? 'Credit to personal bankroll'
       : 'Credit to personal backing bankroll'
-  const heroAmount = tournamentCloseBacker ? Number(tournamentStakePl) || 0 : Number(heroCredit) || 0
+  const heroAmount = tournamentCloseBacker ? Number(tournamentOverall) || 0 : Number(heroCredit) || 0
   const plWord = heroAmount >= 0 ? 'Profit' : 'Loss'
   const plWordLower = heroAmount >= 0 ? 'profit' : 'loss'
   const hasReduction = settleDetail.reductionRows.length > 0
   const settleFootnote = tournamentCloseBacker
-    ? 'Credit returns your share of the closing roll to backing bankroll. Stake P/L posts to Realized P/L. Tournament markup fees already applied.'
+    ? settleDetail.termsFootnote || 'Original stake terms apply.'
     : showPlayerSettleCredit
       ? hasReduction
         ? `${plWord} credited to personal bankroll. Stake reduction returns capital to backers.`

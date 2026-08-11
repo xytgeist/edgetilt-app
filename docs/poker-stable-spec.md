@@ -181,8 +181,10 @@ Play history stays complete; double-counting is avoided.
 Same bankroll rules as cash backing close, one payout when manifest is complete:
 
 - Roll reflects all package sessions (gross).
+- Close returns each backer’s share of **current roll** (not baseline face). Underwater makeup posts to backer **Realized P/L**.
+- Markup **fee** was already realized on accept and is **not** refunded on close … overall backer result = stake P/L + fee.
 - Close-out applies slice terms including **markup** (entry pricing) and **profit on sold action** separately in settle lines.
-- Player personal and each backer bankroll update from settle lines.
+- Player personal and each backer bankroll update from settle lines / close books (`20260811220000`).
 - Session cards: gross + player stake value; swaps (if any) adjust player net only.
 - Then merge sessions to personal history with badges.
 

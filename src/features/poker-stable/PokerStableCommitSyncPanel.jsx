@@ -129,7 +129,9 @@ export default function PokerStableCommitSyncPanel({
             ? nextLines.find((row) => row.slice_id === slice.id) || null
             : null
           if (slice) {
-            nextBackerCredit = settlementBackerCredit(st, dealRow, slice, line)
+            nextBackerCredit = settlementBackerCredit(st, dealRow, slice, line, {
+              isClose: commitRow.event_kind === 'close_settle',
+            })
           }
         }
 
@@ -210,6 +212,8 @@ export default function PokerStableCommitSyncPanel({
         profilesById,
         isClose: isCloseSettle,
         baseline: stableNum(settlement.baseline_at_settle),
+        roll: stableNum(settlement.roll_at_settle),
+        settlement,
       }),
       resetBullet: settleResetBullet({
         baseline: stableNum(settlement.baseline_at_settle),
@@ -336,9 +340,13 @@ export default function PokerStableCommitSyncPanel({
     ? hasReduction
       ? `${plWord} credited to personal bankroll. Stake reduction returns capital to backers.`
       : `${plWord} credited to personal bankroll.`
-    : hasReduction
-      ? `${plWord} posts to Realized P/L. Stake reduction and ${plWordLower} credited to personal backing bankroll.`
-      : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
+    : isCloseSettle
+      ? showBackerSettleCredit
+        ? `Credit is your share of the closing roll returned to backing bankroll. Stake P/L (including losses) posts to Realized P/L. Tournament markup fees already taken on accept stay realized.`
+        : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
+      : hasReduction
+        ? `${plWord} posts to Realized P/L. Stake reduction and ${plWordLower} credited to personal backing bankroll.`
+        : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
 
   return (
     <div data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined} className={inlineShell}>

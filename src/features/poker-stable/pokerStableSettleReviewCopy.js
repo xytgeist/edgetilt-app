@@ -3,12 +3,44 @@ import { backerSliceAllocatedCapital } from './pokerStableBackerMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
 import { computeProRataBackerShares, roundMoney, stableNum } from './pokerStableMath.js'
 
-/** Profit (+ stake capital on close). */
+/**
+ * Close returns the backer's share of CURRENT roll (not baseline).
+ * @param {number} baseline
+ * @param {number} roll
+ * @param {object} slice
+ */
+export function backerCloseCapitalReturned(baseline, roll, slice) {
+  const action = (Number(slice?.action_pct) || 0) / 100
+  const rollShare = roundMoney(stableNum(roll) * action)
+  // Prefer roll share; fall back to face if roll missing.
+  if (Math.abs(rollShare) > 0.005 || stableNum(roll) > 0.005) return Math.max(0, rollShare)
+  return backerSliceAllocatedCapital({ baseline_bankroll: stableNum(baseline) }, slice)
+}
+
+/** Signed stake P/L for a slice at settle (profit share or −makeup share). */
+export function backerCloseStakePl(settlement, slice, line = null) {
+  if (!settlement || !slice) return 0
+  const action = (Number(slice.action_pct) || 0) / 100
+  const makeup = stableNum(settlement.makeup_at_settle)
+  if (makeup > 0.005) return roundMoney(-makeup * action)
+  if (line) {
+    let credit = roundMoney(
+      (Number(line.profit_share) || 0) + (Number(line.rakeback_share) || 0),
+    )
+    if (line.direction === 'staker_to_player') credit = -credit
+    return credit
+  }
+  const profit = stableNum(settlement.profit_above_baseline)
+  return roundMoney(profit * action)
+}
+
+/** Profit/loss (+ capital returned on close). */
 function formatSettlePayAmount(profitAmount, capital, isClose) {
   const profit = roundMoney(profitAmount)
   const cap = roundMoney(capital)
   if (isClose && cap > 0.005) {
-    return `${fmtPoker$(profit)} + ${fmtPoker$(cap)}`
+    const plBit = `${profit >= 0 ? '+' : ''}${fmtPoker$(profit)} stake P/L`
+    return `${plBit} · ${fmtPoker$(cap)} returned`
   }
   return fmtPoker$(profit)
 }
@@ -38,7 +70,8 @@ export function attachSlicesToSettleLines(lines = [], slices = []) {
 
 /**
  * Viewer-facing settle payment phrases.
- * On close, appends that backer's stake capital (baseline × action %) after profit.
+ * On close, uses CURRENT roll × action % as capital returned (not baseline),
+ * and signed stake P/L (including underwater makeup).
  * @param {{
  *   isStakee: boolean,
  *   lines: object[],
@@ -47,6 +80,8 @@ export function attachSlicesToSettleLines(lines = [], slices = []) {
  *   profilesById?: object,
  *   isClose?: boolean,
  *   baseline?: number,
+ *   roll?: number,
+ *   settlement?: object | null,
  * }} params
  */
 export function settlePayPhrases({
@@ -57,27 +92,44 @@ export function settlePayPhrases({
   profilesById = {},
   isClose = false,
   baseline = 0,
+  roll = null,
+  settlement = null,
 }) {
   const phrases = []
-  const capitalDeal = { baseline_bankroll: stableNum(baseline) }
+  const rollAt = roll != null ? stableNum(roll) : stableNum(settlement?.roll_at_settle)
+  const baseAt = baseline != null ? stableNum(baseline) : stableNum(settlement?.baseline_at_settle)
   for (const line of lines || []) {
-    const amount = roundMoney(line.total_owed)
     const slice = line.slice || {}
-    const capital = isClose ? backerSliceAllocatedCapital(capitalDeal, slice) : 0
-    if (amount < 0.005 && !(isClose && capital > 0.005)) continue
-    const payAmount = formatSettlePayAmount(amount, capital, isClose)
+    const stakePl = isClose
+      ? backerCloseStakePl(settlement || { makeup_at_settle: 0, profit_above_baseline: line.total_owed }, slice, line)
+      : roundMoney(
+          line.direction === 'staker_to_player'
+            ? -stableNum(line.total_owed)
+            : stableNum(line.total_owed),
+        )
+    const capital = isClose ? backerCloseCapitalReturned(baseAt, rollAt, slice) : 0
+    if (Math.abs(stakePl) < 0.005 && !(isClose && capital > 0.005)) continue
+    const payAmount = formatSettlePayAmount(isClose ? stakePl : Math.abs(stakePl), capital, isClose)
     if (isStakee) {
       const backerName = sliceDisplayName(slice, profilesById)
+      if (isClose) {
+        phrases.push(`${backerName}: ${payAmount}`)
+        continue
+      }
       phrases.push(
-        line.direction === 'player_to_staker'
+        stakePl >= 0
           ? `You pay ${backerName} ${payAmount}`
           : `${backerName} pays you ${payAmount}`,
       )
       continue
     }
     if (!userId || slice.staker_user_id !== userId) continue
+    if (isClose) {
+      phrases.push(payAmount)
+      continue
+    }
     phrases.push(
-      line.direction === 'player_to_staker'
+      stakePl >= 0
         ? `${playerName} pays you ${payAmount}`
         : `You pay ${playerName} ${payAmount}`,
     )

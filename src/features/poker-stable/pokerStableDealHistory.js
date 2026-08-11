@@ -95,15 +95,27 @@ export function viewerBackingSlice(slices = [], viewerUserId) {
 }
 
 /**
- * Backer backing-bankroll credit from one settlement row (matches settle RPC slice loop).
- * Cash settle only ... does not include underwater makeup (floored profit → $0 credit).
+ * Backer backing-bankroll credit from one settlement row.
+ * Periodic: profit/rakeback cash only.
+ * Close: share of CURRENT roll returned to backing bankroll (not baseline face).
  * @param {object} st
  * @param {object} deal
  * @param {object} slice
  * @param {object} [line] optional persisted settlement line for this slice
+ * @param {{ isClose?: boolean }} [opts]
  */
-export function settlementBackerCredit(st, deal, slice, line = null) {
+export function settlementBackerCredit(st, deal, slice, line = null, opts = {}) {
   if (!st || !slice) return 0
+  const isClose =
+    opts.isClose === true ||
+    (deal?.status === 'settled' || deal?.status === 'closed')
+  if (isClose) {
+    const action = (Number(slice.action_pct) || 0) / 100
+    const roll = Number(st.roll_at_settle)
+    if (Number.isFinite(roll)) return roundMoney(Math.max(0, roll * action))
+    const baseline = Number(st.baseline_at_settle) || Number(deal?.baseline_bankroll) || 0
+    return roundMoney(Math.max(0, baseline * action))
+  }
   if (line) {
     let credit = roundMoney(
       (Number(line.profit_share) || 0) + (Number(line.rakeback_share) || 0),
@@ -120,20 +132,20 @@ export function settlementBackerCredit(st, deal, slice, line = null) {
 }
 
 /**
- * Archive / closed-stakes Realized backing for one settle: cash credit plus action-weighted
- * makeup loss so overall losers display negative (not $0 / prior profit-only).
+ * Archive / closed-stakes Realized backing for one settle (P/L only … not capital returned).
+ * Underwater: −makeup × action%. In profit: settle line / profit share.
  * @param {object} st
  * @param {object} deal
  * @param {object} slice
  * @param {object} [line]
  */
 export function settlementBackerArchiveResult(st, deal, slice, line = null) {
-  const cash = settlementBackerCredit(st, deal, slice, line)
-  if (!st || !slice) return cash
+  if (!st || !slice) return 0
   const makeup = Number(st.makeup_at_settle) || 0
-  if (makeup <= 0.005) return cash
   const actionFraction = (Number(slice.action_pct) || 0) / 100
-  return roundMoney(cash - makeup * actionFraction)
+  if (makeup > 0.005) return roundMoney(-makeup * actionFraction)
+  // Profit settles: exclude close capital return (opts.isClose false).
+  return settlementBackerCredit(st, deal, slice, line, { isClose: false })
 }
 
 /**
@@ -250,7 +262,7 @@ function profileHandleFallback(profile) {
 
 /**
  * Player closed-stake review: table result, personal deposit, per-backer made + unwind owed.
- * Owed = returned stake capital (baseline × action %) + that backer's settle profit result.
+ * Owed = returned stake capital (roll × action % at close) + that backer's settle profit result.
  * @param {object} args
  */
 export function buildStakeeClosedStakeReview({
@@ -266,8 +278,10 @@ export function buildStakeeClosedStakeReview({
   const closedAt = deal?.settled_at || closeSt?.created_at || deal?.updated_at || null
   const tableProfit = archivedStakePlayerSessionProfit({ deal, sessions })
   const personalDeposit = archivedStakePersonalBankrollNet({ deal, slices, settlements })
+  const baselineAt = Number(closeSt?.baseline_at_settle) || Number(deal?.baseline_bankroll) || 0
+  const rollAt = Number(closeSt?.roll_at_settle)
   const capitalDeal = {
-    baseline_bankroll: Number(closeSt?.baseline_at_settle) || Number(deal?.baseline_bankroll) || 0,
+    baseline_bankroll: Number.isFinite(rollAt) ? rollAt : baselineAt,
   }
 
   const declinedSlices = (slices || []).filter((s) => s.status === 'declined')
@@ -298,7 +312,7 @@ export function buildStakeeClosedStakeReview({
     closedAt,
     tableProfit,
     personalDeposit,
-    baseline: capitalDeal.baseline_bankroll,
+    baseline: baselineAt,
     backers,
     declinedCount: declinedSlices.length,
     settleCount: (settlements || []).length,

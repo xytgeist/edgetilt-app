@@ -9,8 +9,13 @@ export function stableCommitBooksPhrase(isStakee) {
     : `${STABLE_BACKER_BANKROLL_PHRASE} and ledger`
 }
 
-/** @param {boolean} isStakee @param {boolean} [isSettle] */
-export function stableCommitSyncHint(isStakee, isSettle = false) {
+/** @param {boolean} isStakee @param {boolean} [isSettle] @param {boolean} [isClose] */
+export function stableCommitSyncHint(isStakee, isSettle = false, isClose = false) {
+  if (isClose) {
+    return isStakee
+      ? 'Commit & Archive applies this update to your personal Poker bankroll and ledger, then archives this stake.'
+      : `Commit & Archive applies this update to your ${STABLE_BACKER_BANKROLL_PHRASE} (and Realized P/L) and ledger, then archives this stake.`
+  }
   if (isStakee) {
     return 'Commit applies this update to your personal Poker bankroll and ledger.'
   }

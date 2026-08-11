@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import {
+  archiveBackerStableDeal,
+  archiveStakeeBankrollDeal,
   loadDealSlices,
   loadSettlementBundle,
   syncDealCommit,
@@ -338,6 +340,19 @@ export default function PokerStableCommitSyncPanel({
     try {
       const { error, status } = await syncDealCommit(supabaseClient, commit.id)
       if (error) throw error
+      let archived = false
+      if (isCloseSettle && commit.deal_id) {
+        const archiveFn = isStakee ? archiveStakeeBankrollDeal : archiveBackerStableDeal
+        const { error: archErr } = await archiveFn(supabaseClient, commit.deal_id)
+        if (archErr) {
+          onError?.(
+            archErr.message ||
+              'Committed, but could not archive. Use Archive stake when you are ready.',
+          )
+        } else {
+          archived = true
+        }
+      }
       triggerTapHapticLight()
       setDismissed(true)
       onSynced?.({
@@ -345,6 +360,8 @@ export default function PokerStableCommitSyncPanel({
         dealId: commit.deal_id,
         isStakee,
         isSettleCommit,
+        isCloseSettle,
+        archived,
       })
       if (variant === 'modal') onClose?.()
       // Skip loadBundle after Commit … parent refresh removes the panel; reloading here flashes.
@@ -547,7 +564,7 @@ export default function PokerStableCommitSyncPanel({
       )}
 
       <p className="mb-4 text-xs leading-relaxed text-zinc-500">
-        {stableCommitSyncHint(isStakee, isSettleCommit)}
+        {stableCommitSyncHint(isStakee, isSettleCommit, isCloseSettle)}
         {isStakee && isSettleCommit
           ? ' Until you commit, your stake card keeps the pre-settlement numbers.'
           : ''}
@@ -571,7 +588,7 @@ export default function PokerStableCommitSyncPanel({
             onClick={() => void onSync()}
             className="flex-1 rounded-2xl bg-emerald-600 py-3 text-base font-bold text-white touch-manipulation disabled:opacity-50"
           >
-            {saving ? 'Committing…' : 'Commit'}
+            {saving ? 'Committing…' : isCloseSettle ? 'Commit & Archive' : 'Commit'}
           </button>
         </div>
       ) : (
@@ -581,7 +598,7 @@ export default function PokerStableCommitSyncPanel({
           onClick={() => void onSync()}
           className="w-full rounded-2xl bg-emerald-600 py-3 text-base font-bold text-white touch-manipulation disabled:opacity-50"
         >
-          {saving ? 'Committing…' : 'Commit'}
+          {saving ? 'Committing…' : isCloseSettle ? 'Commit & Archive' : 'Commit'}
         </button>
       )}
     </div>

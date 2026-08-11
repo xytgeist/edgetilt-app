@@ -15,7 +15,7 @@ import {
   notifyStableGuestSyndicateBackers,
 } from './pokerStableApi.js'
 import {
-  backerSliceAllocatedCapital,
+  backerSlicePaidCapital,
   computeBackerAvailableBankroll,
   computeBackerPendingHold,
 } from './pokerStableBackerMath.js'
@@ -751,12 +751,29 @@ function PokerStableDealFormSheet({
     ) {
       return pool
     }
-    const committed = backerSliceAllocatedCapital(
-      { baseline_bankroll: baselineAmount },
-      { action_pct: actionPct },
+    const committed = backerSlicePaidCapital(
+      {
+        baseline_bankroll: baselineAmount,
+        deal_type: dealType,
+        markup_rate: dealPricingMode === 'markup' ? Number(dealMarkupRate) : null,
+      },
+      {
+        action_pct: actionPct,
+        pricing_mode: dealType === 'tournament_package' ? dealPricingMode : 'profit_split',
+        markup_rate: dealPricingMode === 'markup' ? Number(dealMarkupRate) : null,
+      },
     )
     return roundMoney(pool - committed)
-  }, [showPlayerTermsForm, backingBankrollBalance, backerPendingHold, baseline, mySlice.actionPct])
+  }, [
+    showPlayerTermsForm,
+    backingBankrollBalance,
+    backerPendingHold,
+    baseline,
+    mySlice.actionPct,
+    dealType,
+    dealPricingMode,
+    dealMarkupRate,
+  ])
 
   function updateSlice(idx, patch) {
     setSlices((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))

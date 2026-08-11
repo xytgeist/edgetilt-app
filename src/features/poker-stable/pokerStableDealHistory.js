@@ -364,13 +364,13 @@ function tournamentPlayerAcceptHistorySuffix(deal, slices = [], acceptedSlice = 
 
   /** @type {string[]} */
   const bits = []
+  if (fee > 0.005) {
+    bits.push(`${fmtPoker$(fee)} markup credited`)
+  }
   if (capitalDelta > 0.005) {
     bits.push(`${fmtPoker$(capitalDelta)} debited from personal bankroll`)
   } else if (capitalDelta < -0.005) {
     bits.push(`${fmtPoker$(Math.abs(capitalDelta))} returned to personal bankroll`)
-  }
-  if (fee > 0.005) {
-    bits.push(`${fmtPoker$(fee)} markup credited`)
   }
   return bits.length ? ` · ${bits.join(' · ')}` : ''
 }

@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, ImagePlus, Download, Share2, RefreshCw, ScanLine, SlidersHorizontal } from 'lucide-react'
+import {
+  Camera,
+  ImagePlus,
+  Download,
+  Share2,
+  RefreshCw,
+  ScanLine,
+  SlidersHorizontal,
+  Copy,
+  ClipboardCheck,
+} from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import {
   autoScanDocument,
@@ -7,14 +17,21 @@ import {
   defaultInsetCorners,
   downloadScanPng,
   extractWithCorners,
+  flattenCroppedDocument,
   loadImageCanvasFromFile,
   presentPrettyScan,
   shareOrDownloadScan,
 } from './w2gScanPipeline.js'
+import {
+  W2G_FIELD_DEFS,
+  fieldsToList,
+  formatFieldsForCopy,
+  ocrW2G,
+} from './w2gOcr.js'
 
 /**
- * Pretty-picture W-2G scanner: capture → auto-crop/center → save/share.
- * Local-only; no OCR / no upload.
+ * W-2G scanner: capture → perspective crop → flatten → OCR tax fields → save/share.
+ * Local-only (no upload).
  */
 export default function W2GScannerScreen({
   titleBarNavSlot = null,
@@ -25,6 +42,8 @@ export default function W2GScannerScreen({
   const editorHostRef = useRef(null)
   const editorRef = useRef(null)
   const sourceCanvasRef = useRef(null)
+  const flatCanvasRef = useRef(null)
+  const ocrSeqRef = useRef(0)
 
   const [phase, setPhase] = useState('idle') // idle | scanning | adjust | result
   const [resultCanvas, setResultCanvas] = useState(null)
@@ -33,6 +52,11 @@ export default function W2GScannerScreen({
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [canNativeShare, setCanNativeShare] = useState(false)
+  const [ocrStatus, setOcrStatus] = useState('') // '', loading, ready, error
+  const [ocrProgress, setOcrProgress] = useState(0)
+  const [fieldList, setFieldList] = useState(() => fieldsToList({}))
+  const [copied, setCopied] = useState(false)
+  const [hasFlat, setHasFlat] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -54,6 +78,7 @@ export default function W2GScannerScreen({
     return () => {
       editorRef.current?.destroy?.()
       editorRef.current = null
+      ocrSeqRef.current += 1
     }
   }, [])
 
@@ -83,27 +108,71 @@ export default function W2GScannerScreen({
 
   const resetAll = useCallback(() => {
     clearEditor()
+    ocrSeqRef.current += 1
     sourceCanvasRef.current = null
+    flatCanvasRef.current = null
+    setHasFlat(false)
     setResultCanvas(null)
     setStatusNote('')
     setError('')
     setBusy(false)
     setPhase('idle')
+    setOcrStatus('')
+    setOcrProgress(0)
+    setFieldList(fieldsToList({}))
+    setCopied(false)
   }, [clearEditor])
 
-  const finishPretty = useCallback(async (docCanvas, note) => {
-    const pretty = presentPrettyScan(docCanvas)
-    setResultCanvas(pretty)
-    setStatusNote(note || '')
-    setPhase('result')
-    setBusy(false)
+  const runOcr = useCallback(async (flatCanvas) => {
+    const seq = ++ocrSeqRef.current
+    setOcrStatus('loading')
+    setOcrProgress(0)
+    setStatusNote((prev) => prev)
     try {
-      const file = await canvasToPngFile(pretty, 'probe-share.png')
-      setCanNativeShare(Boolean(navigator.canShare?.({ files: [file] })))
-    } catch {
-      /* keep prior */
+      const { fields, confidence } = await ocrW2G(flatCanvas, {
+        onProgress: (pct) => {
+          if (ocrSeqRef.current === seq) setOcrProgress(pct)
+        },
+      })
+      if (ocrSeqRef.current !== seq) return
+      setFieldList(fieldsToList(fields))
+      setOcrStatus('ready')
+      if (confidence != null) {
+        setStatusNote((prev) => {
+          const base = String(prev || '')
+            .replace(/\s*·\s*OCR\s+\d+%/i, '')
+            .trim()
+          return base ? `${base} · OCR ${Math.round(confidence)}%` : `OCR ${Math.round(confidence)}%`
+        })
+      }
+    } catch (err) {
+      if (ocrSeqRef.current !== seq) return
+      setOcrStatus('error')
+      setError(err?.message || 'OCR failed. You can still save the flattened image.')
     }
   }, [])
+
+  const finishPretty = useCallback(
+    async (docCanvas, note) => {
+      setStatusNote('Flattening…')
+      const flat = await flattenCroppedDocument(docCanvas)
+      flatCanvasRef.current = flat
+      setHasFlat(true)
+      const pretty = presentPrettyScan(flat)
+      setResultCanvas(pretty)
+      setStatusNote(note || 'Flattened')
+      setPhase('result')
+      setBusy(false)
+      try {
+        const file = await canvasToPngFile(pretty, 'probe-share.png')
+        setCanNativeShare(Boolean(navigator.canShare?.({ files: [file] })))
+      } catch {
+        /* keep prior */
+      }
+      void runOcr(flat)
+    },
+    [runOcr],
+  )
 
   const openAdjust = useCallback(
     async (source, corners) => {
@@ -113,7 +182,6 @@ export default function W2GScannerScreen({
       setError('')
       setStatusNote('Drag the corners to the W-2G edges, then Apply.')
 
-      // Wait a frame so the host is mounted.
       await new Promise((r) => requestAnimationFrame(() => r(null)))
       const host = editorHostRef.current
       if (!host) {
@@ -153,7 +221,7 @@ export default function W2GScannerScreen({
                 throw new Error(extracted?.message || 'Could not crop that frame.')
               }
               clearEditor()
-              await finishPretty(/** @type {HTMLCanvasElement} */ (extracted.output), 'Manual crop')
+              await finishPretty(/** @type {HTMLCanvasElement} */ (extracted.output), 'Manual crop · flattened')
             } catch (err) {
               setBusy(false)
               setError(err?.message || 'Crop failed.')
@@ -172,8 +240,11 @@ export default function W2GScannerScreen({
         return
       }
       clearEditor()
+      ocrSeqRef.current += 1
       setError('')
       setResultCanvas(null)
+      setFieldList(fieldsToList({}))
+      setOcrStatus('')
       setBusy(true)
       setPhase('scanning')
       setStatusNote('Finding the form…')
@@ -183,7 +254,7 @@ export default function W2GScannerScreen({
         sourceCanvasRef.current = source
         const { result, detector } = await autoScanDocument(source)
         if (result?.success && result.output) {
-          const label = detector === 'ml' ? 'Auto crop (ML)' : 'Auto crop'
+          const label = detector === 'ml' ? 'Auto crop (ML) · flattened' : 'Auto crop · flattened'
           await finishPretty(/** @type {HTMLCanvasElement} */ (result.output), label)
           return
         }
@@ -233,6 +304,29 @@ export default function W2GScannerScreen({
     }
   }
 
+  const onFieldChange = (key, value) => {
+    setFieldList((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)))
+    setCopied(false)
+  }
+
+  const onCopyFields = async () => {
+    const text = formatFieldsForCopy(fieldList)
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1800)
+    } catch {
+      setError('Could not copy. Select the fields manually.')
+    }
+  }
+
+  const onRerunOcr = () => {
+    const flat = flatCanvasRef.current
+    if (!flat) return
+    void runOcr(flat)
+  }
+
   return (
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
@@ -243,7 +337,7 @@ export default function W2GScannerScreen({
         <div>
           <div className="text-white text-2xl font-black tracking-tight">W-2G Scanner</div>
           <div className="text-zinc-400 text-sm mt-0.5">
-            Snap the form… we auto-crop, straighten, and center it. Pretty picture only (no OCR).
+            Snap the form… we crop, flatten, and pull the tax fields. Stays on your device.
           </div>
         </div>
 
@@ -307,8 +401,8 @@ export default function W2GScannerScreen({
               </div>
             ) : (
               <p className="text-xs leading-relaxed text-zinc-500 px-1">
-                Tip: fill the frame, avoid heavy glare, and keep all four edges visible. Processing stays on
-                your device.
+                Tip: fill the frame, avoid heavy glare, and keep all four edges visible. Crop, flatten, and OCR
+                all run locally.
               </p>
             )}
           </div>
@@ -328,12 +422,14 @@ export default function W2GScannerScreen({
 
         {phase === 'result' && resultCanvas ? (
           <div className="space-y-4" data-w2g-result>
-            {statusNote ? <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{statusNote}</div> : null}
+            {statusNote ? (
+              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{statusNote}</div>
+            ) : null}
             <div className="overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800" data-w2g-preview>
               {resultPreviewUrl ? (
                 <img
                   src={resultPreviewUrl}
-                  alt="Cropped W-2G"
+                  alt="Flattened W-2G"
                   className="mx-auto max-h-[min(70vh,640px)] w-full object-contain"
                 />
               ) : (
@@ -379,6 +475,73 @@ export default function W2GScannerScreen({
                 <RefreshCw size={16} strokeWidth={1.75} aria-hidden />
                 New scan
               </button>
+            </div>
+
+            <div className="rounded-3xl bg-zinc-900 px-4 py-4 space-y-3" data-w2g-ocr>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-base font-bold text-white">Tax fields</div>
+                  <div className="text-xs text-zinc-500 mt-0.5">
+                    {ocrStatus === 'loading'
+                      ? `Reading form… ${ocrProgress}%`
+                      : ocrStatus === 'ready'
+                        ? 'Edit anything that looks off, then copy.'
+                        : ocrStatus === 'error'
+                          ? 'OCR hiccuped. Retry or fill manually.'
+                          : 'OCR runs after flatten.'}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    disabled={ocrStatus === 'loading' || !hasFlat}
+                    onClick={onRerunOcr}
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-zinc-800 px-3 text-xs font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                  >
+                    Re-run
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!fieldList.some((f) => f.value)}
+                    onClick={() => void onCopyFields()}
+                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-500/90 px-3 text-xs font-semibold text-zinc-950 touch-manipulation disabled:opacity-50"
+                    data-w2g-copy
+                  >
+                    {copied ? <ClipboardCheck size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              {ocrStatus === 'loading' ? (
+                <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-amber-400 transition-[width] duration-200"
+                    style={{ width: `${Math.max(4, ocrProgress)}%` }}
+                  />
+                </div>
+              ) : null}
+
+              <div className="space-y-2.5">
+                {fieldList.map((field) => {
+                  const def = W2G_FIELD_DEFS.find((d) => d.key === field.key)
+                  return (
+                    <label key={field.key} className="block">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                        {def?.label || field.label}
+                      </span>
+                      <input
+                        type="text"
+                        value={field.value}
+                        onChange={(e) => onFieldChange(field.key, e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                    </label>
+                  )
+                })}
+              </div>
             </div>
           </div>
         ) : null}

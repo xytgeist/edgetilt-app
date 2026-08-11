@@ -957,7 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-11: **W-2G Scanner (Slots tool):** hub tile + tab **`w2g-scanner`** … capture/library → client **`scanic`** auto-crop/straighten → white-matte center → Save/Share + manual corner adjust. Pretty picture only (no OCR/upload). Free-tier unlocked. `/?tab=w2g-scanner`.
+- 2026-08-11: **W-2G Scanner (Slots tool):** hub tile + tab **`w2g-scanner`** … capture/library → client **`scanic`** auto-crop/straighten → illumination flatten → white-matte center → **`tesseract.js`** tax-field OCR (editable + Copy) → Save/Share + manual corner adjust. No upload. Free-tier unlocked. `/?tab=w2g-scanner`.
 - 2026-08-10: **Stake Alerts two-line layout:** icon + caption on first line (like/repost pattern); session detail on second line with 🦈/🐡. Session `detail_text` → `Deal · Wynn 10/20 · +$1,252` (**`20260810220000`** on test). Client reformats legacy `· table +1,252.00`. Redeploy **`lounge-send-activity-push`** on test for emoji parse.
 - 2026-08-10: **Session-complete Alerts missing venue/stakes on older rows:** pre-`20260810220000` events kept `Deal · table +1,252.00` so the UI could not invent venue/blinds. **`20260810230000`** shared formatter + backfill from nearest completed bankroll session (Joey **Test 9** → `Fontainebleau Las Vegas 1/2 · +$1,252`). Applied on **test**.
 - 2026-08-10: **Stake Alerts caption drops actor name:** verb-only first line (name already in From row), same as likes/reposts.

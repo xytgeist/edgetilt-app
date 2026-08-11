@@ -68,21 +68,34 @@ export async function loadImageCanvasFromFile(file) {
 export async function autoScanDocument(source) {
   const { scanDocument } = await import('scanic')
 
-  let result = await scanDocument(source, CLASSICAL_OPTS)
-  if (result?.success && result.output) {
-    return { result, detector: 'classical' }
-  }
+  let classical = await scanDocument(source, CLASSICAL_OPTS)
+  const classicalOk = Boolean(classical?.success && classical.output)
+  const classicalConf = typeof classical?.confidence === 'number' ? classical.confidence : null
 
-  try {
-    result = await scanDocument(source, ML_OPTS)
-    if (result?.success && result.output) {
-      return { result, detector: 'ml' }
+  // Prefer ML on weak classical hits (common for angled casino photos).
+  const shouldTryMl = !classicalOk || classicalConf == null || classicalConf < 0.55
+  if (shouldTryMl) {
+    try {
+      const ml = await scanDocument(source, ML_OPTS)
+      if (ml?.success && ml.output) {
+        const mlConf = typeof ml.confidence === 'number' ? ml.confidence : null
+        if (!classicalOk || mlConf == null || classicalConf == null || mlConf >= classicalConf) {
+          return { result: ml, detector: 'ml' }
+        }
+      }
+    } catch {
+      // ML CDN / wasm may fail offline; keep classical.
     }
-  } catch {
-    // ML CDN / wasm may fail offline; keep classical miss.
   }
 
-  return { result: result || { success: false, message: 'No document found', output: null, corners: null }, detector: null }
+  if (classicalOk) {
+    return { result: classical, detector: 'classical' }
+  }
+
+  return {
+    result: classical || { success: false, message: 'No document found', output: null, corners: null },
+    detector: null,
+  }
 }
 
 /**
@@ -93,6 +106,16 @@ export async function autoScanDocument(source) {
 export async function extractWithCorners(source, corners) {
   const { extractDocument } = await import('scanic')
   return extractDocument(source, corners, { output: 'canvas' })
+}
+
+/**
+ * Perspective crop → landscape + illumination flatten (scanner-style).
+ * @param {HTMLCanvasElement} cropped
+ * @returns {HTMLCanvasElement}
+ */
+export async function flattenCroppedDocument(cropped) {
+  const { prepareFlattenedW2G } = await import('./w2gFlatten.js')
+  return prepareFlattenedW2G(cropped)
 }
 
 /**

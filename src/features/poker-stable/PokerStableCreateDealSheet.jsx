@@ -934,7 +934,7 @@ function PokerStableDealFormSheet({
   const showImpliedAcceptNotice = isStakeeCounter || isBackerPropose
   const impliedAcceptNotice = isStakeeCounter
     ? 'Sending these terms is an implied acceptance. If the backer accepts, this stake goes live under these terms ... you will not need to Accept again.'
-    : 'Sending these terms is an implied acceptance. If the player accepts, your backing slice is accepted under these terms.'
+    : 'Sending these terms is an implied acceptance of your slice. Your card will wait on the player ... no Accept/Decline after you send.'
 
   const playerGuestContactErrors = playerIsGuest
     ? guestNotifyContactFieldErrors({

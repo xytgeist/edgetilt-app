@@ -107,10 +107,20 @@ export default function PokerStableHorseCarousel({
           stats.profit > 0 ? 'text-emerald-400' : stats.profit < 0 ? 'text-rose-400' : 'text-zinc-300'
         const sliceAccepted = slice?.status === 'active'
         const dealLive = deal.status === 'active'
+        // Backer who sent revised terms: implied slice accept, waiting on player (not invite CTAs).
+        const waitingPlayerTermsAck =
+          deal.status === 'pending' &&
+          Boolean(deal.stakee_terms_ack_required) &&
+          deal.terms_revised_by === userId
         // Accepted backer sees roll/sessions even if co-backers still pending (deal may be pending briefly).
-        const showBackerStats = sliceAccepted && (dealLive || deal.status === 'pending')
+        const showBackerStats =
+          sliceAccepted &&
+          (dealLive || deal.status === 'pending') &&
+          !waitingPlayerTermsAck
         const isPendingSyndicateInvite =
-          slice?.status === 'pending' && deal.staker_user_id !== userId
+          slice?.status === 'pending' &&
+          deal.staker_user_id !== userId &&
+          !waitingPlayerTermsAck
         const isLeadBackerOnPendingDeal =
           deal.status === 'pending' && deal.staker_user_id === userId
         const pendingNudgeSlices = pendingBackerNudgeTargetsForActiveBacker(
@@ -133,14 +143,16 @@ export default function PokerStableHorseCarousel({
           ? 'Closed'
           : needsCounterAck
             ? 'Review'
-            : slice?.status === 'pending'
-              ? 'Pending'
-              : stakeHorseCardStatusLabel(deal, dealSlices)
+            : waitingPlayerTermsAck
+              ? 'Revised'
+              : slice?.status === 'pending'
+                ? 'Pending'
+                : stakeHorseCardStatusLabel(deal, dealSlices)
         const horseTone = stableHorseCardToneForDeal(deal.id, toneScope)
         const horseToneAttr = stableHorseCardToneAttrForDeal(deal.id, toneScope)
         const statusTone = closedUnarchived
           ? 'bg-zinc-700/60 text-zinc-300'
-          : needsCounterAck
+          : needsCounterAck || waitingPlayerTermsAck
             ? 'bg-amber-500/20 text-amber-200'
             : slice?.status === 'pending'
               ? 'bg-zinc-700/60 text-zinc-300'
@@ -343,6 +355,45 @@ export default function PokerStableHorseCarousel({
                   />
                 )}
               </div>
+            ) : waitingPlayerTermsAck ? (
+              <div
+                data-poker-stable-waiting-terms-ack
+                className={`mt-3 space-y-2 border-t ${horseTone.divider} pt-3 text-left`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-stretch gap-2">
+                  <p className="min-w-0 flex-1 text-xs leading-snug text-amber-200/90">
+                    Waiting for {dealStakeeDisplayName(deal, profilesById)} to accept your revised
+                    terms. Sending was your acceptance ... no further Accept needed.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenTerms?.(deal.id)}
+                    className="flex w-9 shrink-0 items-center justify-center self-stretch rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
+                    aria-label="Stake terms"
+                    data-poker-stable-terms-icon
+                  >
+                    <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
+                  </button>
+                </div>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void onRevoke?.(deal.id)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.stopPropagation()
+                      void onRevoke?.(deal.id)
+                    }
+                  }}
+                  className="mt-1 block w-full rounded-xl py-2 text-center text-xs font-semibold text-zinc-500 touch-manipulation active:text-zinc-300"
+                >
+                  Revoke deal
+                </span>
+              </div>
             ) : isPendingSyndicateInvite ? (
               <div
                 data-poker-stable-horse-invite
@@ -363,11 +414,6 @@ export default function PokerStableHorseCarousel({
                     <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
                   </button>
                 </div>
-                {deal.stakee_terms_ack_required ? (
-                  <p className="mt-2 text-xs text-amber-200/90">
-                    Waiting for the player to accept revised terms before you can accept your slice.
-                  </p>
-                ) : null}
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
@@ -379,7 +425,7 @@ export default function PokerStableHorseCarousel({
                   </button>
                   <button
                     type="button"
-                    disabled={saving || deal.stakee_terms_ack_required}
+                    disabled={saving}
                     onClick={() => void onAcceptSlice?.(slice.id)}
                     className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
                   >

@@ -6482,7 +6482,13 @@ html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable
   border-color: #a1a1aa !important;
   color: #3f3f46 !important;
 }
-html.light [data-poker-stable] [data-poker-stable-counter-ack] .text-amber-200\/90 {
+html.light [data-poker-stable] [data-poker-stable-counter-ack] .text-amber-200\/90,
+html.light [data-poker-stable] [data-poker-stable-waiting-terms-ack] .text-amber-200\/90 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-horse-status='revised'] {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  border-color: #a1a1aa !important;
   color: #3f3f46 !important;
 }
 html.light [data-poker-stable] [data-poker-stable-horse-card] [data-poker-stable-horse-status='active'] {

@@ -106,10 +106,12 @@ export function listPendingStableOfferAttentionIds(deals, slicesByDeal, userId) 
     const slices = slicesByDeal?.[deal.id] || []
     for (const slice of slices) {
       // Same as PokerStableHorseCarousel `isPendingSyndicateInvite`
+      // Skip when this backer already proposed revised terms (implied accept ... waiting on player).
       if (
         slice?.status === 'pending' &&
         slice?.staker_user_id === userId &&
         deal.staker_user_id !== userId &&
+        !(deal.stakee_terms_ack_required && deal.terms_revised_by === userId) &&
         slice?.id
       ) {
         out.push(`st:slice:${slice.id}`)

@@ -121,7 +121,7 @@ export default function PokerStableScreen({
   const [slicesByDeal, setSlicesByDeal] = useState(/** @type {Record<string, object[]>} */ ({}))
   const [sheet, setSheet] = useState(/** @type {null | 'request'} */ (null))
   const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
-  /** @type {{ seed: object, counterpartLabel: string } | null} */
+  /** @type {{ seed: object, counterpartLabel: string, declinedDealId?: string } | null} */
   const [proposeAfterDecline, setProposeAfterDecline] = useState(null)
   const [detailDealId, setDetailDealId] = useState(/** @type {string | null} */ (null))
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
@@ -659,7 +659,11 @@ export default function PokerStableScreen({
       notifyPokerOfferAttentionChanged()
       await load()
       if (seed) {
-        setProposeAfterDecline({ seed, counterpartLabel })
+        setProposeAfterDecline({
+          seed,
+          counterpartLabel,
+          declinedDealId: dealId || undefined,
+        })
       }
     } catch (e) {
       if (isStableOfferRefreshError(e)) {
@@ -1120,10 +1124,22 @@ export default function PokerStableScreen({
           counterpartLabel={proposeAfterDecline.counterpartLabel}
           onCancel={() => setProposeAfterDecline(null)}
           onPropose={() => {
-            const seed = proposeAfterDecline.seed
-            setProposeAfterDecline(null)
-            setCreateStakeSeed(seed)
-            setSheet('request')
+            void (async () => {
+              const seed = proposeAfterDecline.seed
+              const declinedId =
+                proposeAfterDecline.declinedDealId || seed?.replaceDeclinedDealId || null
+              setProposeAfterDecline(null)
+              // Drop the declined card for the initiator before opening a fresh form.
+              if (supabaseClient && declinedId) {
+                const { error: delErr } = await deleteDeclinedStakeDeal(
+                  supabaseClient,
+                  declinedId,
+                )
+                if (!delErr) await load()
+              }
+              setCreateStakeSeed(seed)
+              setSheet('request')
+            })()
           }}
         />
       ) : null}

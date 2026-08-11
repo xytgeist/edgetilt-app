@@ -384,7 +384,7 @@ export default function PokerBankrollTracker({
   const [sheet, setSheet] = useState(null)
   /** Prefill for + Stake after declining a backer offer. */
   const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
-  /** @type {{ seed: object, counterpartLabel: string } | null} */
+  /** @type {{ seed: object, counterpartLabel: string, declinedDealId?: string } | null} */
   const [proposeAfterDecline, setProposeAfterDecline] = useState(null)
   /** Read-only session detail before edit. */
   const [detailSessionId, setDetailSessionId] = useState(null)
@@ -1646,7 +1646,11 @@ export default function PokerBankrollTracker({
       notifyPokerOfferAttentionChanged()
       await loadData()
       if (seed) {
-        setProposeAfterDecline({ seed, counterpartLabel })
+        setProposeAfterDecline({
+          seed,
+          counterpartLabel,
+          declinedDealId: dealId,
+        })
       }
     } catch (e) {
       setError(e?.message || 'Could not decline stake.')
@@ -4555,10 +4559,22 @@ export default function PokerBankrollTracker({
           counterpartLabel={proposeAfterDecline.counterpartLabel}
           onCancel={() => setProposeAfterDecline(null)}
           onPropose={() => {
-            const seed = proposeAfterDecline.seed
-            setProposeAfterDecline(null)
-            setCreateStakeSeed(seed)
-            setSheet('createStake')
+            void (async () => {
+              const seed = proposeAfterDecline.seed
+              const declinedId =
+                proposeAfterDecline.declinedDealId || seed?.replaceDeclinedDealId || null
+              setProposeAfterDecline(null)
+              // Drop the declined card for the initiator before opening a fresh form.
+              if (supabaseClient && declinedId) {
+                const { error: delErr } = await deleteDeclinedStakeDeal(
+                  supabaseClient,
+                  declinedId,
+                )
+                if (!delErr) await loadData()
+              }
+              setCreateStakeSeed(seed)
+              setSheet('createStake')
+            })()
           }}
         />
       ) : null}

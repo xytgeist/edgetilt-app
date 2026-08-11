@@ -1051,7 +1051,7 @@ export async function stakeeDeclineBackerOffer(supabase, dealId) {
   return { deal: deal || data, error: loadErr }
 }
 
-/** Initiator hard-deletes a fully declined stake offer (Delete / New Proposal). */
+/** Hard-delete a fully declined stake (initiator Delete, or decliner Propose new terms). */
 export async function deleteDeclinedStakeDeal(supabase, dealId) {
   const { error } = await supabase.rpc('poker_stable_delete_declined_deal', {
     p_deal_id: dealId,

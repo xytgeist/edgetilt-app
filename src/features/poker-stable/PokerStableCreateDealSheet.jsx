@@ -114,6 +114,8 @@ export function buildStakeFormSeedFromDeclinedDeal({
   const seedSlices = openSlices.length ? openSlices : slices || []
   const dealType = deal.deal_type || 'cash_backing'
   const base = {
+    /** Soft-deleted when decliner chooses Propose new terms (clears initiator's declined card). */
+    replaceDeclinedDealId: deal.id || null,
     label: String(deal.label || '').trim(),
     dealType,
     venueKind: deal.venue_kind || 'live',

@@ -44,6 +44,10 @@ export default function W2GScannerScreen({
   const sourceCanvasRef = useRef(null)
   const flatCanvasRef = useRef(null)
   const ocrSeqRef = useRef(0)
+  /** @type {{ current: { source: HTMLCanvasElement, corners: any } | null }} */
+  const pendingAdjustRef = useRef(null)
+  const finishPrettyRef = useRef(/** @type {any} */ (null))
+  const resetAllRef = useRef(/** @type {any} */ (null))
 
   const [phase, setPhase] = useState('idle') // idle | scanning | adjust | result
   const [resultCanvas, setResultCanvas] = useState(null)
@@ -174,68 +178,103 @@ export default function W2GScannerScreen({
     [runOcr],
   )
 
-  const openAdjust = useCallback(
-    async (source, corners) => {
-      clearEditor()
-      setPhase('adjust')
-      setBusy(false)
-      setError('')
-      setStatusNote('Drag the corners to the W-2G edges, then Apply.')
+  finishPrettyRef.current = finishPretty
+  resetAllRef.current = resetAll
 
-      await new Promise((r) => requestAnimationFrame(() => r(null)))
-      const host = editorHostRef.current
+  const openAdjust = useCallback((source, corners) => {
+    clearEditor()
+    pendingAdjustRef.current = { source, corners: corners || null }
+    setBusy(false)
+    setError('')
+    setStatusNote('Drag the corners to the W-2G edges, then Apply.')
+    setPhase('adjust')
+  }, [clearEditor])
+
+  // Mount scanic editor only after the adjust host is actually in the DOM.
+  useEffect(() => {
+    if (phase !== 'adjust') return undefined
+    const pending = pendingAdjustRef.current
+    if (!pending?.source) return undefined
+
+    let cancelled = false
+
+    const mountEditor = async () => {
+      let host = editorHostRef.current
+      for (let i = 0; i < 45 && !host && !cancelled; i++) {
+        await new Promise((r) => requestAnimationFrame(() => r(null)))
+        host = editorHostRef.current
+      }
+      if (cancelled) return
       if (!host) {
         setError('Could not open corner editor.')
         setPhase('idle')
         return
       }
 
-      const { createCornerEditor } = await import('scanic')
-      const initial = corners || defaultInsetCorners(source.width, source.height)
-      editorRef.current = createCornerEditor({
-        container: host,
-        image: source,
-        corners: initial,
-        magnifier: { enabled: true, zoom: 2.2, size: 112 },
-        toolbar: {
-          enabled: true,
-          labels: { reset: 'Reset', cancel: 'Cancel', apply: 'Apply' },
-        },
-        theme: {
-          accent: '#22d3ee',
-          mask: 'rgba(9, 9, 11, 0.55)',
-          surface: '#18181b',
-          surfaceColor: '#fafafa',
-          radius: '14px',
-        },
-        onCancel: () => {
-          resetAll()
-        },
-        onConfirm: (nextCorners) => {
-          void (async () => {
-            setBusy(true)
-            setError('')
-            try {
-              const { result: extracted, cropMode } = await extractWithCorners(source, nextCorners)
-              if (!extracted?.success || !extracted.output) {
-                throw new Error(extracted?.message || 'Could not crop that frame.')
+      try {
+        const { createCornerEditor } = await import('scanic')
+        if (cancelled || !editorHostRef.current) return
+        host = editorHostRef.current
+        host.innerHTML = ''
+        const source = pending.source
+        const initial = pending.corners || defaultInsetCorners(source.width, source.height)
+        editorRef.current = createCornerEditor({
+          container: host,
+          image: source,
+          corners: initial,
+          magnifier: { enabled: true, zoom: 2.2, size: 112 },
+          toolbar: {
+            enabled: true,
+            labels: { reset: 'Reset', cancel: 'Cancel', apply: 'Apply' },
+          },
+          theme: {
+            accent: '#22d3ee',
+            mask: 'rgba(9, 9, 11, 0.55)',
+            surface: '#18181b',
+            surfaceColor: '#fafafa',
+            radius: '14px',
+          },
+          onCancel: () => {
+            resetAllRef.current?.()
+          },
+          onConfirm: (nextCorners) => {
+            void (async () => {
+              setBusy(true)
+              setError('')
+              try {
+                const { result: extracted, cropMode } = await extractWithCorners(source, nextCorners)
+                if (!extracted?.success || !extracted.output) {
+                  throw new Error(extracted?.message || 'Could not crop that frame.')
+                }
+                clearEditor()
+                pendingAdjustRef.current = null
+                const modeLabel = cropMode === 'perspective' ? 'deskewed' : 'cropped'
+                await finishPrettyRef.current?.(
+                  /** @type {HTMLCanvasElement} */ (extracted.output),
+                  `Manual ${modeLabel}`,
+                )
+              } catch (err) {
+                setBusy(false)
+                setError(err?.message || 'Crop failed.')
               }
-              clearEditor()
-              const modeLabel = cropMode === 'perspective' ? 'deskewed' : 'cropped'
-              await finishPretty(
-                /** @type {HTMLCanvasElement} */ (extracted.output),
-                `Manual ${modeLabel}`,
-              )
-            } catch (err) {
-              setBusy(false)
-              setError(err?.message || 'Crop failed.')
-            }
-          })()
-        },
-      })
-    },
-    [clearEditor, finishPretty, resetAll],
-  )
+            })()
+          },
+        })
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || 'Could not open corner editor.')
+          setPhase('idle')
+        }
+      }
+    }
+
+    void mountEditor()
+    return () => {
+      cancelled = true
+      editorRef.current?.destroy?.()
+      editorRef.current = null
+    }
+  }, [phase, clearEditor])
 
   const processFile = useCallback(
     async (file) => {

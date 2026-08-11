@@ -611,6 +611,8 @@ export default function PokerStableScreen({
         horseDeals,
         sessions: stableSessions,
         adjustments: backerAdjustments,
+        pendingCommits,
+        settlementsByDeal: dealSettlementsByDeal,
       }),
     [
       deals,
@@ -621,6 +623,8 @@ export default function PokerStableScreen({
       horseDeals,
       stableSessions,
       backerAdjustments,
+      pendingCommits,
+      dealSettlementsByDeal,
     ],
   )
 

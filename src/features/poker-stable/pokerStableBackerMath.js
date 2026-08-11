@@ -13,6 +13,72 @@ export function backerSliceCapitalIsDeployed(deal, slice, slices = []) {
   return stakeDealIsLiveForStakee(deal, slices)
 }
 
+function isBackerSettleCommitKind(kind) {
+  return kind === 'close_settle' || kind === 'periodic_settle'
+}
+
+/**
+ * Deal ids where this viewer still owes a periodic/close Commit (books not updated yet).
+ * @param {object[]} [pendingCommits]
+ * @returns {Set<string>}
+ */
+export function pendingSettleDealIdSet(pendingCommits = []) {
+  /** @type {Set<string>} */
+  const ids = new Set()
+  for (const row of pendingCommits || []) {
+    if (!row?.deal_id) continue
+    if (!isBackerSettleCommitKind(row.event_kind)) continue
+    ids.add(String(row.deal_id))
+  }
+  return ids
+}
+
+/** Oldest pending settle Commit for a deal (from the viewer's pending list). */
+function oldestPendingSettleCommitForDeal(pendingCommits, dealId) {
+  if (!dealId) return null
+  const rows = (pendingCommits || [])
+    .filter((row) => String(row.deal_id) === String(dealId) && isBackerSettleCommitKind(row.event_kind))
+    .slice()
+    .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+  return rows[0] || null
+}
+
+/**
+ * Capital still out on a slice until the backer Commits a close/periodic settle.
+ * Live stakes use the normal deploy gate; settled deals stay open while Commit is pending.
+ * @param {object} deal
+ * @param {object} slice
+ * @param {object[]} [slices]
+ * @param {Set<string> | null} [pendingSettleDealIds]
+ */
+export function backerSliceCapitalStillOpen(deal, slice, slices = [], pendingSettleDealIds = null) {
+  if (backerSliceCapitalIsDeployed(deal, slice, slices)) return true
+  if (!deal?.id || !slice || slice.status !== 'active') return false
+  if (!pendingSettleDealIds?.has(String(deal.id))) return false
+  return deal.status === 'settled' || deal.status === 'closed'
+}
+
+/**
+ * Deal roll for portfolio MTM while a settle Commit is pending.
+ * apply_settlement resets deal bankroll to baseline immediately … keep roll_at_settle until Commit.
+ * @param {object} args
+ */
+export function backerDisplayDealRollProfile({
+  deal,
+  bankrollProfile,
+  pendingCommits = [],
+  settlements = [],
+}) {
+  const pending = oldestPendingSettleCommitForDeal(pendingCommits, deal?.id)
+  if (pending && (deal?.status === 'settled' || deal?.status === 'closed')) {
+    const settlement = (settlements || []).find((row) => row.id === pending.ref_id)
+    if (settlement?.roll_at_settle != null) {
+      return { ...(bankrollProfile || {}), overall_bankroll: Number(settlement.roll_at_settle) || 0 }
+    }
+  }
+  return bankrollProfile
+}
+
 /**
  * Backer's slice capital is reserved as a pending hold (not yet debited).
  * Unaccepted invites (pending slices) do not reserve funds … Create Stake /
@@ -151,17 +217,30 @@ export function computeBackerManualAdjustmentTotal(adjustments = []) {
  * Capital deployed on accepted (active) stakes only — baseline × action %.
  * Pending offers do not reduce backing bankroll (they use pendingHold instead).
  */
-export function computeBackerActiveAllocatedCapital({ deals = [], slicesByDeal = {}, userId }) {
+export function computeBackerActiveAllocatedCapital({
+  deals = [],
+  slicesByDeal = {},
+  userId,
+  pendingSettleDealIds = null,
+}) {
   if (!userId) return 0
+  const pendingIds = pendingSettleDealIds || new Set()
   let total = 0
   for (const deal of deals) {
-    if (deal.status !== 'active' && deal.status !== 'pending') continue
+    const awaitingSettleCommit = pendingIds.has(String(deal.id))
+    if (
+      deal.status !== 'active' &&
+      deal.status !== 'pending' &&
+      !(awaitingSettleCommit && (deal.status === 'settled' || deal.status === 'closed'))
+    ) {
+      continue
+    }
     const dealSlices = slicesByDeal[deal.id] || []
     const slices = dealSlices.filter(
       (s) => s.staker_user_id === userId && s.status !== 'declined',
     )
     for (const slice of slices) {
-      if (!backerSliceCapitalIsDeployed(deal, slice, dealSlices)) continue
+      if (!backerSliceCapitalStillOpen(deal, slice, dealSlices, pendingIds)) continue
       total = roundMoney(total + backerSliceAllocatedCapital(deal, slice))
     }
   }
@@ -594,6 +673,8 @@ export function computeBackerPortfolioMetrics({
   realizedPl = 0,
   adjustments = [],
   sessions = [],
+  pendingCommits = [],
+  settlementsByDeal = {},
 }) {
   let capitalAtRisk = 0
   let stakeValueMtm = 0
@@ -601,8 +682,14 @@ export function computeBackerPortfolioMetrics({
   let activeHorseCount = 0
   let pendingCommitCount = 0
 
+  const pendingSettleDealIds = pendingSettleDealIdSet(pendingCommits)
   const pendingHold = computeBackerPendingHold({ deals, slicesByDeal, userId })
-  const activeAllocatedCapital = computeBackerActiveAllocatedCapital({ deals, slicesByDeal, userId })
+  const activeAllocatedCapital = computeBackerActiveAllocatedCapital({
+    deals,
+    slicesByDeal,
+    userId,
+    pendingSettleDealIds,
+  })
   const backingBankroll = computeBackerBackingBankroll({
     adjustments,
     realizedBackingPl: realizedPl,
@@ -612,7 +699,13 @@ export function computeBackerPortfolioMetrics({
   })
 
   for (const deal of deals) {
-    if (!['active', 'pending'].includes(deal.status)) continue
+    const awaitingSettleCommit = pendingSettleDealIds.has(String(deal.id))
+    if (
+      !['active', 'pending'].includes(deal.status) &&
+      !(awaitingSettleCommit && (deal.status === 'settled' || deal.status === 'closed'))
+    ) {
+      continue
+    }
 
     const dealSlices = slicesByDeal[deal.id] || []
     const slices = dealSlices.filter(
@@ -620,12 +713,17 @@ export function computeBackerPortfolioMetrics({
     )
     if (!slices.length) continue
 
-    const roll = bankrollByDeal[deal.id]
+    const roll = backerDisplayDealRollProfile({
+      deal,
+      bankrollProfile: bankrollByDeal[deal.id],
+      pendingCommits,
+      settlements: settlementsByDeal[deal.id] || [],
+    })
 
     for (const slice of slices) {
       if (slice.status !== 'active' && slice.status !== 'pending') continue
 
-      if (backerSliceCapitalIsDeployed(deal, slice, dealSlices)) {
+      if (backerSliceCapitalStillOpen(deal, slice, dealSlices, pendingSettleDealIds)) {
         // At-risk basis includes markup fee; stake MTM stays on face capital.
         capitalAtRisk = roundMoney(capitalAtRisk + backerSlicePaidCapital(deal, slice))
         activeHorseCount += 1
@@ -670,6 +768,8 @@ export function computeBackerPortfolioPerformanceMetrics({
   horseDeals = [],
   sessions = [],
   adjustments = [],
+  pendingCommits = [],
+  settlementsByDeal = {},
 }) {
   const base = computeBackerPortfolioMetrics({
     deals,
@@ -680,6 +780,8 @@ export function computeBackerPortfolioPerformanceMetrics({
     realizedPl,
     adjustments,
     sessions,
+    pendingCommits,
+    settlementsByDeal,
   })
 
   const sessionShareTotal = computeBackerSessionShareTotal({

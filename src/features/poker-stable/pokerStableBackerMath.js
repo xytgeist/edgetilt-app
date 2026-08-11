@@ -157,6 +157,18 @@ export function computeBackerAvailableBankroll(liquidBankroll, pendingHold) {
  * @param {object | null | undefined} dealRoll profile row
  * @param {object[]} [sessions]
  */
+/** Session impact on stake roll: active sessions debit costs immediately. */
+function dealSessionRollDelta(session) {
+  if (!session) return 0
+  const buyIn = Number(session.buy_in) || 0
+  const rebuy = Number(session.rebuy_amount) || 0
+  const addon = Number(session.addon_amount) || 0
+  const cost = buyIn + rebuy + addon
+  if (session.status === 'active') return roundMoney(-cost)
+  const wl = pokerSessionWinLoss(session)
+  return wl != null ? roundMoney(wl) : 0
+}
+
 export function resolveDealOverallRoll(deal, dealRoll, sessions = []) {
   if (dealRoll != null && Number.isFinite(Number(dealRoll.overall_bankroll))) {
     return Number(dealRoll.overall_bankroll)
@@ -165,9 +177,7 @@ export function resolveDealOverallRoll(deal, dealRoll, sessions = []) {
   let sessionPl = 0
   for (const session of sessions) {
     if (session.deal_id !== deal?.id) continue
-    if (session.status === 'active') continue
-    const wl = pokerSessionWinLoss(session)
-    if (wl != null) sessionPl = roundMoney(sessionPl + wl)
+    sessionPl = roundMoney(sessionPl + dealSessionRollDelta(session))
   }
   return roundMoney(base + sessionPl)
 }

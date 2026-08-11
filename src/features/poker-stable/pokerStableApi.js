@@ -1010,17 +1010,25 @@ export async function requestBackingDeal(supabase, args) {
 }
 
 /** Sum completed session P/L for a deal (used when bootstrapping roll on accept). */
-async function sumCompletedDealSessionProfit(supabase, dealId) {
+async function sumDealSessionRollDelta(supabase, dealId) {
   const { data, error } = await supabase
     .from('poker_bankroll_sessions')
     .select('buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, status')
     .eq('deal_id', dealId)
-    .eq('status', 'completed')
+    .in('status', ['completed', 'active'])
   if (error) throw error
   let profit = 0
   for (const s of data || []) {
+    const buyIn = Number(s.buy_in) || 0
+    const rebuy = Number(s.rebuy_amount) || 0
+    const addon = Number(s.addon_amount) || 0
+    const cost = buyIn + rebuy + addon
+    if (s.status === 'active') {
+      profit = roundMoney(profit - cost)
+      continue
+    }
     const wl = pokerSessionWinLoss(s)
-    if (wl != null) profit += wl
+    if (wl != null) profit = roundMoney(profit + wl)
   }
   return roundMoney(profit)
 }
@@ -1029,7 +1037,7 @@ async function bootstrapDealBankrollProfile(supabase, dealId, startingRoll) {
   const base = roundMoney(startingRoll)
   let sessionProfit = 0
   try {
-    sessionProfit = await sumCompletedDealSessionProfit(supabase, dealId)
+    sessionProfit = await sumDealSessionRollDelta(supabase, dealId)
   } catch {
     sessionProfit = 0
   }

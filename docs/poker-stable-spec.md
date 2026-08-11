@@ -180,7 +180,7 @@ Play history stays complete; double-counting is avoided.
 
 Same bankroll rules as cash backing close, one payout when manifest is complete:
 
-- Roll reflects all package sessions (gross).
+- Roll reflects all package sessions (gross). **Buy-in, re-entries, and add-ons debit the stake roll as soon as they are logged** (active session), not only when the tournament is completed (`20260811230000`).
 - Close returns each backer’s share of **current roll** (not baseline face). Underwater makeup posts to backer **Realized P/L**.
 - Markup **fee** was already realized on accept and is **not** refunded on close … overall backer result = stake P/L + fee.
 - Close-out applies slice terms including **markup** (entry pricing) and **profit on sold action** separately in settle lines.

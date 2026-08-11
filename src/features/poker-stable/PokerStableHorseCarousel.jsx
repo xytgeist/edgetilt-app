@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import PokerBankrollHeroCarousel from '../poker-bankroll/PokerBankrollHeroCarousel.jsx'
 import BankrollSparkline from '../../components/BankrollSparkline.jsx'
-import { FileText, MessageCircle } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   backerSliceEstimatedShare,
   backerSliceStakeValue,
+  backerStableDealDisplayLabel,
+  backerStableShowsClosedCarouselCard,
 } from './pokerStableBackerMath.js'
 import PokerStableSettleNeedsAttnBanner from './PokerStableSettleNeedsAttnBanner.jsx'
 import PokerStableClosedHorseHeroBanner from './PokerStableClosedHorseHeroBanner.jsx'
-import { backerStableDealDisplayLabel, backerStableShowsClosedCarouselCard } from './pokerStableBackerMath.js'
 import {
+  backerSliceInviteRiskLine,
   backerSliceInviteSummaryLine,
   dealStakeeDisplayName,
   pendingBackerNudgeTargetsForActiveBacker,
@@ -348,20 +350,15 @@ export default function PokerStableHorseCarousel({
                 className={`mt-4 border-t ${horseTone.divider} pt-3 text-left`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-stretch gap-2">
-                  <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-white">
-                    {backerSliceInviteSummaryLine(deal, slice, profilesById)}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onOpenTerms?.(deal.id)}
-                    className="flex w-9 shrink-0 items-center justify-center self-stretch rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
-                    aria-label="Stake terms"
-                    data-poker-stable-terms-icon
-                  >
-                    <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
-                  </button>
-                </div>
+                <p className="text-sm font-semibold leading-snug text-white">
+                  {backerSliceInviteSummaryLine(deal, slice, profilesById)}
+                </p>
+                <p
+                  className="mt-1.5 text-xs font-medium leading-snug text-zinc-400"
+                  data-poker-stable-invite-risk
+                >
+                  {backerSliceInviteRiskLine(deal, slice)}
+                </p>
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"

@@ -1,6 +1,11 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { formatMoneyInputValue } from '../../utils/moneyInputFormat.js'
 import {
+  backerSliceAllocatedCapital,
+  backerSliceMarkupFee,
+  backerSlicePaidCapital,
+} from './pokerStableBackerMath.js'
+import {
   computeDealMakeup,
   dealHasAcceptedBackerSlice,
   dealTypeLabel,
@@ -326,7 +331,9 @@ export function backerSliceInviteSummaryLine(deal, slice, profilesById = {}) {
 
   let pricingPhrase = 'a profit split'
   if (pricingMode === 'markup') {
-    const rate = formatTermsPct(slice?.markup_rate ?? slice?.markupRate)
+    const rate = formatTermsPct(
+      slice?.markup_rate ?? slice?.markupRate ?? deal?.markup_rate ?? deal?.markupRate,
+    )
     pricingPhrase = `a ${rate}x markup`
   } else {
     const playerPct = Number(slice?.player_profit_pct ?? slice?.playerProfitPct)
@@ -337,6 +344,21 @@ export function backerSliceInviteSummaryLine(deal, slice, profilesById = {}) {
   }
 
   return `${playerName} has invited you to back ${actionPct}% of a ${baseline} ${stakeKind} @ ${pricingPhrase}`
+}
+
+/**
+ * Second line under pending invite copy: dollars at risk (stake face + markup fee).
+ * @param {object} deal
+ * @param {object} slice
+ */
+export function backerSliceInviteRiskLine(deal, slice) {
+  const face = backerSliceAllocatedCapital(deal, slice)
+  const fee = backerSliceMarkupFee(deal, slice)
+  const paid = backerSlicePaidCapital(deal, slice)
+  if (fee > 0.005) {
+    return `At risk ${fmtPoker$(paid)} · ${fmtPoker$(face)} stake + ${fmtPoker$(fee)} markup`
+  }
+  return `At risk ${fmtPoker$(paid)}`
 }
 
 /**

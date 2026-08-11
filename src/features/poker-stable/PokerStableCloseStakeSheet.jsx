@@ -18,7 +18,12 @@ import {
   settlePayPhrases,
   tournamentCloseBackerReturnRows,
 } from './pokerStableSettleReviewCopy.js'
-import { dealHasMakeup, dealHasRakebackEnabled, dealStakeeDisplayName } from './pokerStableTerms.js'
+import {
+  dealHasMakeup,
+  dealHasRakebackEnabled,
+  dealStakeeDisplayName,
+  dealStakeeDisplayNameForTerms,
+} from './pokerStableTerms.js'
 
 /**
  * Close stake review before confirm.
@@ -86,7 +91,9 @@ export default function PokerStableCloseStakeSheet({
   const isStakee = Boolean(deal?.stakee_user_id && userId && deal.stakee_user_id === userId)
   const showMakeup = deal ? dealHasMakeup(deal) : false
   const showRakeback = deal ? dealHasRakebackEnabled(slices, deal) : false
-  const playerName = dealStakeeDisplayName(deal, profilesById) || 'Player'
+  /** Full once in the header; short name for body copy. */
+  const playerNameFull = dealStakeeDisplayName(deal, profilesById) || 'Player'
+  const playerName = dealStakeeDisplayNameForTerms(deal, profilesById) || 'Player'
 
   const settlement = useMemo(
     () =>
@@ -240,7 +247,7 @@ export default function PokerStableCloseStakeSheet({
           {!isStakee ? (
             <>
               {' · '}
-              <span className="text-zinc-400">{playerName}</span>
+              <span className="text-zinc-400">{playerNameFull}</span>
             </>
           ) : null}
         </p>
@@ -325,8 +332,8 @@ export default function PokerStableCloseStakeSheet({
               {isStakee
                 ? `${fmtPoker$(unusedMarkupTotal)} unused markup returns to backers from your personal bankroll.`
                 : myUnusedMarkup > 0.005
-                  ? `${fmtPoker$(myUnusedMarkup)} unused markup returns to your backing bankroll from ${playerName}'s personal bankroll.`
-                  : `${fmtPoker$(unusedMarkupTotal)} unused markup returns to backers from ${playerName}'s personal bankroll.`}
+                  ? `${fmtPoker$(myUnusedMarkup)} unused markup returned from ${playerName}.`
+                  : `${fmtPoker$(unusedMarkupTotal)} unused markup returned from ${playerName}.`}
             </p>
           ) : null}
         </div>

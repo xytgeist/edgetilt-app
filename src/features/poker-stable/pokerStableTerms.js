@@ -72,7 +72,8 @@ function sliceBackerDisplayNameForTerms(slice, profilesById = {}) {
   return sliceBackerShortName(slice, profilesById)
 }
 
-function dealStakeeDisplayNameForTerms(deal, profilesById = {}) {
+/** Display name only (no `@handle`) for repeated body copy on a screen. */
+export function dealStakeeDisplayNameForTerms(deal, profilesById = {}) {
   const guestLabel = deal?.stakee_guest_label || deal?.stakeeGuestLabel
   if (guestLabel) return String(guestLabel).trim() || 'Player'
   const stakeeId = deal?.stakee_user_id

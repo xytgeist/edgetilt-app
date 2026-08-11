@@ -95,6 +95,8 @@ export default function PokerStableCloseStakeSheet({
     [deal, slices, baseline, rollValue, rakebackAmount],
   )
 
+  const buyins = fetchedBuyins == null ? 0 : fetchedBuyins
+
   const tourneyClose = useMemo(
     () =>
       isTournamentPackage && deal
@@ -102,12 +104,11 @@ export default function PokerStableCloseStakeSheet({
             { baseline_at_settle: baseline, roll_at_settle: rollValue },
             slices,
             deal,
+            buyins,
           )
         : null,
-    [isTournamentPackage, deal, baseline, rollValue, slices],
+    [isTournamentPackage, deal, baseline, rollValue, slices, buyins],
   )
-
-  const buyins = fetchedBuyins == null ? 0 : fetchedBuyins
 
   const backerReturnRows = useMemo(
     () =>
@@ -234,6 +235,9 @@ export default function PokerStableCloseStakeSheet({
             >
               Overall P/L {overallPl >= 0 ? '+' : ''}
               {fmtPoker$(overallPl)}
+              {tourneyClose?.appliedMarkup > 0.005
+                ? ` (stake ${tourneyClose.stakePl >= 0 ? '+' : ''}${fmtPoker$(tourneyClose.stakePl)} · markup +${fmtPoker$(tourneyClose.appliedMarkup)})`
+                : ''}
               {tourneyClose?.contribution > 0.005
                 ? ` · your package share was ${fmtPoker$(tourneyClose.contribution)}`
                 : ''}

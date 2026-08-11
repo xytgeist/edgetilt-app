@@ -221,12 +221,44 @@ export function dealPlayerRetainedActionPct(slices = []) {
 }
 
 /**
- * Tournament package player close economics (face contribution, no markup).
+ * Prepaid markup fee earned on buy-ins for a tournament package (sum across backer slices).
+ * Mirrors pokerStableBackerMath.backerSliceMarkupApplied without importing that module.
+ * @param {object | null | undefined} deal
+ * @param {object[]} [slices]
+ * @param {number} [buyins]
+ */
+export function tournamentPlayerAppliedMarkup(deal, slices = [], buyins = 0) {
+  if (!deal || deal.deal_type !== 'tournament_package') return 0
+  const baseline = stableNum(
+    deal.baseline_bankroll ?? deal.baselineBankroll,
+  )
+  if (baseline <= 0.005) return 0
+  const rate = Number(deal.markup_rate ?? deal.markupRate)
+  let feeTotal = 0
+  for (const slice of slices || []) {
+    if (slice?.status === 'declined' || slice?.status === 'cancelled') continue
+    const mode = slice?.pricing_mode || slice?.pricingMode
+    if (mode && mode !== 'markup') continue
+    const sliceRate = Number(deal.markup_rate ?? deal.markupRate ?? slice?.markup_rate ?? slice?.markupRate)
+    const useRate = Number.isFinite(sliceRate) ? sliceRate : rate
+    if (!Number.isFinite(useRate) || useRate < 1) continue
+    const face = roundMoney(baseline * (stableNum(slice.action_pct ?? slice.actionPct) / 100))
+    feeTotal = roundMoney(feeTotal + roundMoney(face * useRate - face))
+  }
+  if (feeTotal <= 0.005) return 0
+  const used = Math.min(Math.max(0, Number(buyins) || 0), baseline)
+  return roundMoney(feeTotal * (used / baseline))
+}
+
+/**
+ * Tournament package player close economics.
+ * Overall P/L = stake capital result (returned − contribution) + earned markup kept.
  * @param {object} settlement
  * @param {object[]} [slices]
  * @param {object} [deal]
+ * @param {number} [buyins] total buy-in+re-entry+add-on on the stake (markup basis)
  */
-export function tournamentPlayerCloseEconomics(settlement, slices = [], deal = null) {
+export function tournamentPlayerCloseEconomics(settlement, slices = [], deal = null, buyins = 0) {
   const baseline = stableNum(
     settlement?.baseline_at_settle ?? deal?.baseline_bankroll ?? deal?.baselineBankroll,
   )
@@ -235,11 +267,23 @@ export function tournamentPlayerCloseEconomics(settlement, slices = [], deal = n
   const retained = retainedPct / 100
   const contribution = roundMoney(baseline * retained)
   const returned = roundMoney(roll * retained)
-  const overallPl = roundMoney(returned - contribution)
+  const stakePl = roundMoney(returned - contribution)
+  const appliedMarkup = tournamentPlayerAppliedMarkup(
+    {
+      ...(deal || {}),
+      baseline_bankroll: baseline,
+      deal_type: deal?.deal_type || 'tournament_package',
+    },
+    slices,
+    buyins,
+  )
+  const overallPl = roundMoney(stakePl + appliedMarkup)
   return {
     retainedActionPct: retainedPct,
     contribution,
     returned,
+    stakePl,
+    appliedMarkup,
     overallPl,
   }
 }

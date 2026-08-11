@@ -101,6 +101,7 @@ export default function PokerStableDealOverviewPanel({
       reductions,
       settlements,
       ledgerEntries,
+      sessions: dealSessions,
       viewerUserId: userId,
     })
     const eventItems = historyEvents.map((event) => ({

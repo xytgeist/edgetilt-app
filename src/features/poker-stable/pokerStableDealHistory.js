@@ -455,12 +455,27 @@ function isCloseSettlement(st, deal, settlementsForDeal) {
 }
 
 /**
+ * @param {object} econ
+ */
+function tournamentCloseOverallPlDetail(econ) {
+  const { overallPl, stakePl, appliedMarkup } = econ
+  const plBit = `${overallPl >= 0 ? '+' : ''}${fmtPoker$(overallPl)}`
+  if (appliedMarkup > 0.005) {
+    const stakeBit = `${stakePl >= 0 ? '+' : ''}${fmtPoker$(stakePl)}`
+    const markupBit = `+${fmtPoker$(appliedMarkup)}`
+    return `Overall P/L ${plBit} (stake ${stakeBit} · markup ${markupBit})`
+  }
+  return `Overall P/L ${plBit}`
+}
+
+/**
  * @param {object} args
  * @param {object} args.st
  * @param {object} args.deal
  * @param {object[]} [args.slices]
  * @param {object[]} [args.settlementsForDeal]
  * @param {boolean} [args.personal]
+ * @param {number} [args.buyins]
  */
 function settlementHistoryEventFromRow({
   st,
@@ -468,6 +483,7 @@ function settlementHistoryEventFromRow({
   slices = [],
   settlementsForDeal = [],
   personal = false,
+  buyins = 0,
 }) {
   const profit = Number(st.profit_above_baseline) || 0
   const makeup = Number(st.makeup_at_settle) || 0
@@ -477,10 +493,9 @@ function settlementHistoryEventFromRow({
 
   let detail = ''
   const isTournamentPackage = deal?.deal_type === 'tournament_package'
-  if (personal && isTournamentPackage && isClose) {
-    const { returned, overallPl } = tournamentPlayerCloseEconomics(st, slices, deal)
-    const plBit = `${overallPl >= 0 ? '+' : ''}${fmtPoker$(overallPl)}`
-    detail = ` · ${fmtPoker$(returned)} returned to personal bankroll · Overall P/L ${plBit}`
+  if (isTournamentPackage && isClose) {
+    const econ = tournamentPlayerCloseEconomics(st, slices, deal, buyins)
+    detail = ` · ${fmtPoker$(econ.returned)} returned to your personal bankroll · ${tournamentCloseOverallPlDetail(econ)}`
   } else if (personal) {
     const credit = settlementPlayerPersonalCredit(st, deal, slices)
     if (credit > 0.005) {
@@ -492,10 +507,6 @@ function settlementHistoryEventFromRow({
     } else if (profit < -0.005) {
       detail = ` · ${fmtPoker$(Math.abs(profit))} underwater`
     }
-  } else if (isTournamentPackage && isClose) {
-    const { returned, overallPl } = tournamentPlayerCloseEconomics(st, slices, deal)
-    const plBit = `${overallPl >= 0 ? '+' : ''}${fmtPoker$(overallPl)}`
-    detail = ` · ${fmtPoker$(returned)} returned · Overall P/L ${plBit}`
   } else if (!isTournamentPackage && makeup > 0.005) {
     detail = ` · ${fmtPoker$(makeup)} makeup cleared`
   } else if (profit > 0.005) {
@@ -525,6 +536,7 @@ export function buildPersonalSettlementHistoryEvents({
   settlementsByDeal = {},
   slicesByDeal = {},
   ledgerEntriesByDeal = {},
+  sessionsByDeal = {},
   viewerUserId = null,
 }) {
   /** @type {{ id: string, kind: string, at: string, text: string }[]} */
@@ -534,6 +546,7 @@ export function buildPersonalSettlementHistoryEvents({
     const deal = dealsById[dealId]
     if (!deal || !settlements?.length) continue
     const slices = slicesByDeal[dealId] || []
+    const buyins = dealTournamentBuyins(sessionsByDeal[dealId] || [])
     const ledgerEntries = ledgerEntriesByDeal[dealId] || []
     const ledgerBySettlement = {}
     for (const entry of ledgerEntries) {
@@ -564,6 +577,7 @@ export function buildPersonalSettlementHistoryEvents({
         slices,
         settlementsForDeal: settlements,
         personal: true,
+        buyins,
       })
       events.push({
         id: `settle-${st.id}`,
@@ -599,6 +613,7 @@ export function buildStakeDealHistoryEvents({
   reductions = [],
   settlements = [],
   ledgerEntries = [],
+  sessions = [],
   playerUserId,
   viewerUserId,
   playerLabel = 'You',
@@ -610,6 +625,7 @@ export function buildStakeDealHistoryEvents({
   const backerInitiated = isBackerInitiatedBackingDeal(deal)
   const viewerIsStakee = Boolean(viewerId && deal.stakee_user_id && viewerId === deal.stakee_user_id)
   const viewerIsLeadBacker = Boolean(viewerId && deal.staker_user_id && viewerId === deal.staker_user_id)
+  const buyins = dealTournamentBuyins(sessions)
   const ledgerBySettlement = {}
   for (const entry of ledgerEntries) {
     if (!entry?.settlement_id || entry.user_id !== stakeeId) continue
@@ -774,6 +790,7 @@ export function buildStakeDealHistoryEvents({
       slices,
       settlementsForDeal: settlements,
       personal: false,
+      buyins,
     })
     events.push({
       id: `settle-${st.id}`,
@@ -836,6 +853,7 @@ export function buildFullStakeArchiveTimeline({
     topups,
     reductions,
     settlements,
+    sessions,
     playerLabel,
     viewerUserId,
   })

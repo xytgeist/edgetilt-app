@@ -176,6 +176,7 @@ export default function PokerStableCommitSyncPanel({
             st,
             nextSlices,
             dealRow,
+            nextBuyins,
           ).returned
         } else {
           nextPlayerCredit = calc ? stableNum(calc.player_net) : null
@@ -319,28 +320,35 @@ export default function PokerStableCommitSyncPanel({
     }
 
     if (tournamentClosePlayer) {
-      const econ = tournamentPlayerCloseEconomics(settlement, slices, deal)
+      const econ = tournamentPlayerCloseEconomics(settlement, slices, deal, dealBuyins)
       const overallPerformance = econ.overallPl
       const unusedMarkup = dealUnusedMarkupTotal(deal, slices, dealBuyins)
       const payPhrases = [
         econ.contribution > 0.005
           ? `Your package share ${fmtPoker$(econ.contribution)}`
           : 'Your package share $0',
-        `${fmtPoker$(econ.returned)} returned to personal bankroll`,
+        `${fmtPoker$(econ.returned)} returned to your personal bankroll`,
       ]
+      if (econ.appliedMarkup > 0.005) {
+        payPhrases.push(`${fmtPoker$(econ.appliedMarkup)} markup earned (kept)`)
+      }
       if (unusedMarkup > 0.005) {
         payPhrases.push(
           `${fmtPoker$(unusedMarkup)} unused markup returned to backers`,
         )
       }
+      const plFoot =
+        econ.appliedMarkup > 0.005
+          ? `Overall P/L ${overallPerformance >= 0 ? '+' : ''}${fmtPoker$(overallPerformance)} (stake ${econ.stakePl >= 0 ? '+' : ''}${fmtPoker$(econ.stakePl)} · markup +${fmtPoker$(econ.appliedMarkup)}).`
+          : `Overall P/L ${overallPerformance >= 0 ? '+' : ''}${fmtPoker$(overallPerformance)}.`
       return {
         payPhrases,
         resetBullet: '',
         reductionRows: [],
-        stakePl: overallPerformance,
-        markupFee: 0,
+        stakePl: econ.stakePl,
+        markupFee: econ.appliedMarkup,
         overallPerformance,
-        termsFootnote: `Overall P/L ${overallPerformance >= 0 ? '+' : ''}${fmtPoker$(overallPerformance)}.`,
+        termsFootnote: plFoot,
       }
     }
 

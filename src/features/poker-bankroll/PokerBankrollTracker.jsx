@@ -1318,6 +1318,9 @@ export default function PokerBankrollTracker({
 
   const stakeHistoryEvents = useMemo(() => {
     if (!isOnStake || !activeDeal) return []
+    const dealSessions = (completedSessions || []).filter(
+      (s) => String(s?.deal_id || '') === String(bankrollScope || ''),
+    )
     return buildStakeDealHistoryEvents({
       deal: activeDeal,
       slices: slicesByDeal[bankrollScope] || [],
@@ -1326,6 +1329,7 @@ export default function PokerBankrollTracker({
       reductions: dealReductionsByDeal[bankrollScope] || [],
       settlements: dealSettlementsByDeal[bankrollScope] || [],
       ledgerEntries: dealLedgerByDeal[bankrollScope] || [],
+      sessions: dealSessions,
       viewerUserId: userId,
     })
   }, [
@@ -1338,17 +1342,27 @@ export default function PokerBankrollTracker({
     dealReductionsByDeal,
     dealSettlementsByDeal,
     dealLedgerByDeal,
+    completedSessions,
     userId,
   ])
 
   const personalSettlementEvents = useMemo(() => {
     if (isOnStake) return []
+    /** @type {Record<string, object[]>} */
+    const sessionsByDeal = {}
+    for (const s of completedSessions || []) {
+      const dealId = s?.deal_id
+      if (!dealId) continue
+      if (!sessionsByDeal[dealId]) sessionsByDeal[dealId] = []
+      sessionsByDeal[dealId].push(s)
+    }
     return buildPersonalSettlementHistoryEvents({
       dealsById: stakeeDealsById,
       settlementsByDeal: dealSettlementsByDeal,
       slicesByDeal,
+      sessionsByDeal,
     })
-  }, [isOnStake, stakeeDealsById, dealSettlementsByDeal, slicesByDeal])
+  }, [isOnStake, stakeeDealsById, dealSettlementsByDeal, slicesByDeal, completedSessions])
 
   const historyFeed = useMemo(() => {
     const sessionItems = filtered.map((session) => ({

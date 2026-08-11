@@ -155,10 +155,57 @@ export function normalizeHandleInput(raw) {
 }
 
 const DEAL_SELECT =
-  'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_phone, stakee_guest_email, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, staker_terms_ack_required, terms_revised_at, terms_revised_by, stakee_bankroll_archived_at'
+  'id, staker_user_id, stakee_user_id, stakee_guest_label, stakee_guest_phone, stakee_guest_email, status, deal_type, venue_kind, label, notes, baseline_bankroll, starting_roll, is_migration, stake_wide_starting_pl, lifetime_pl_display, manifest_edit_mode, currency, linked_session_id, settled_at, created_at, updated_at, responded_at, pending_terms_json, stakee_terms_ack_required, staker_terms_ack_required, terms_revised_at, terms_revised_by, stakee_bankroll_archived_at, markup_rate'
 
 const SLICE_SELECT =
   'id, deal_id, slice_index, counterparty_kind, staker_user_id, guest_label, guest_phone, guest_email, action_pct, pricing_mode, player_profit_pct, markup_rate, rakeback_mode, rakeback_player_pct, starting_pl, status, responded_at, label, created_at, stable_archived_at, stable_hidden_at'
+
+/**
+ * Cash backing never uses markup. Tournament markup is deal-level (same rate on every slice).
+ * @param {string} dealType
+ * @param {object[]} slices
+ */
+function normalizeDealPricing(dealType, slices = []) {
+  if (dealType !== 'tournament_package') {
+    return {
+      dealMarkupRate: null,
+      slices: slices.map((sl) => ({
+        ...sl,
+        pricingMode: 'profit_split',
+        markupRate: undefined,
+        playerProfitPct: sl.playerProfitPct,
+      })),
+    }
+  }
+  const modes = slices.map((sl) => sl.pricingMode || 'profit_split')
+  const anyMarkup = modes.some((m) => m === 'markup')
+  const anySplit = modes.some((m) => m !== 'markup')
+  // Mixed modes on one stake are not supported … prefer the first slice's mode.
+  const mode = anyMarkup && !anySplit ? 'markup' : anyMarkup ? slices[0]?.pricingMode || 'markup' : 'profit_split'
+  if (mode === 'markup') {
+    const rate = Number(
+      slices.find((sl) => sl.pricingMode === 'markup')?.markupRate ?? slices[0]?.markupRate,
+    )
+    return {
+      dealMarkupRate: Number.isFinite(rate) && rate >= 1 ? rate : null,
+      slices: slices.map((sl) => ({
+        ...sl,
+        pricingMode: 'markup',
+        markupRate: Number.isFinite(rate) && rate >= 1 ? rate : sl.markupRate,
+        playerProfitPct: undefined,
+      })),
+    }
+  }
+  return {
+    dealMarkupRate: null,
+    slices: slices.map((sl) => ({
+      ...sl,
+      pricingMode: 'profit_split',
+      markupRate: undefined,
+      playerProfitPct: sl.playerProfitPct,
+    })),
+  }
+}
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
@@ -518,12 +565,19 @@ export async function createBackingDeal(supabase, args) {
     activate = false,
   } = args
 
-  const actionTotal = sumSliceActionPct(slices)
+  const { dealMarkupRate, slices: pricedSlices } = normalizeDealPricing(dealType, slices)
+
+  const actionTotal = sumSliceActionPct(pricedSlices)
   if (actionTotal > 100.001) {
     return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
   }
-  if (!slices.length) {
+  if (!pricedSlices.length) {
     return { deal: null, error: new Error('Add at least one backer slice.') }
+  }
+  if (dealType === 'tournament_package' && pricedSlices[0]?.pricingMode === 'markup') {
+    if (!(Number(dealMarkupRate) >= 1)) {
+      return { deal: null, error: new Error('Tournament markup needs a rate of 1.0 or higher.') }
+    }
   }
 
   const baseline = roundMoney(baselineBankroll)
@@ -555,13 +609,14 @@ export async function createBackingDeal(supabase, args) {
       lifetime_pl_display: lifetimePlDisplay ?? null,
       manifest_edit_mode: manifestEditMode,
       venue_kind: venueKind,
+      markup_rate: dealMarkupRate,
       responded_at: activate ? new Date().toISOString() : null,
     })
     .select(DEAL_SELECT)
     .single()
   if (dErr) return { deal: null, error: dErr }
 
-  const sliceRows = slices.map((sl, idx) => ({
+  const sliceRows = pricedSlices.map((sl, idx) => ({
     deal_id: deal.id,
     slice_index: idx,
     counterparty_kind: sl.counterpartyKind || 'user',
@@ -644,7 +699,7 @@ export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId
   return { slice, error: loadErr }
 }
 
-/** Stakee deletes a stake before any Edge backer has accepted. Removes stake sessions too. */
+/** Stakee cancels an unsettled stake (unwinds accepted capital + markup fees, then deletes). */
 export async function cancelStakeDeal(supabase, dealId, stakeeUserId) {
   const { error: notifyErr, notifiedCount, data: notifyData } = await notifyStableStakeGuests(
     supabase,
@@ -786,14 +841,20 @@ export async function requestBackingDeal(supabase, args) {
   if (!slices.length) {
     return { deal: null, error: new Error('Add at least one backing slice.') }
   }
-  const leadSlice = slices.find((s) => s.stakerUserId === stakerUserId)
+  const { dealMarkupRate, slices: pricedSlices } = normalizeDealPricing(dealType, slices)
+  const leadSlice = pricedSlices.find((s) => s.stakerUserId === stakerUserId)
   if (!leadSlice) {
     return { deal: null, error: new Error('Your backing slice is required.') }
   }
 
-  const actionTotal = sumSliceActionPct(slices)
+  const actionTotal = sumSliceActionPct(pricedSlices)
   if (actionTotal > 100.001) {
     return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
+  }
+  if (dealType === 'tournament_package' && pricedSlices[0]?.pricingMode === 'markup') {
+    if (!(Number(dealMarkupRate) >= 1)) {
+      return { deal: null, error: new Error('Tournament markup needs a rate of 1.0 or higher.') }
+    }
   }
 
   if (!stakeeUserId) {
@@ -835,6 +896,7 @@ export async function requestBackingDeal(supabase, args) {
     notes: notes?.trim() || null,
     baseline_bankroll: baseline,
     starting_roll: 0,
+    markup_rate: dealMarkupRate,
   }
 
   /** @type {object | null} */
@@ -919,7 +981,7 @@ export async function requestBackingDeal(supabase, args) {
     deal = inserted
   }
 
-  const sliceRows = slices.map((sl, idx) => ({
+  const sliceRows = pricedSlices.map((sl, idx) => ({
     deal_id: deal.id,
     slice_index: idx,
     counterparty_kind: sl.counterpartyKind || 'user',

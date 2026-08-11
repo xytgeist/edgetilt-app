@@ -179,12 +179,37 @@ export function buildStakeFormSeedFromDeclinedDeal({
 
 function applyDealTypePricingDefaults(slice, dealType) {
   const pricingMode = defaultPricingModeForDealType(dealType)
-  if (slice.pricingMode === pricingMode) return slice
   return {
     ...slice,
     pricingMode,
-    playerProfitPct: pricingMode === 'profit_split' ? '' : '',
-    markupRate: pricingMode === 'markup' ? '' : '',
+    playerProfitPct: pricingMode === 'profit_split' ? slice.playerProfitPct || '' : '',
+    markupRate: pricingMode === 'markup' ? slice.markupRate || '' : '',
+  }
+}
+
+/** Apply deal-level pricing onto every slice (tournament markup is stake-wide). */
+function withDealPricing(slice, dealType, pricingMode, markupRate, playerProfitPct) {
+  if (dealType !== 'tournament_package') {
+    return {
+      ...slice,
+      pricingMode: 'profit_split',
+      markupRate: '',
+      playerProfitPct: playerProfitPct || slice.playerProfitPct || '',
+    }
+  }
+  if (pricingMode === 'markup') {
+    return {
+      ...slice,
+      pricingMode: 'markup',
+      markupRate: markupRate || '',
+      playerProfitPct: '',
+    }
+  }
+  return {
+    ...slice,
+    pricingMode: 'profit_split',
+    markupRate: '',
+    playerProfitPct: playerProfitPct || '',
   }
 }
 
@@ -273,6 +298,8 @@ function SliceEditor({
   lockUserId = null,
   showRakeback = false,
   actionSoldTotal = 0,
+  /** When true, pricing is edited at deal level (tournament) or forced cash profit-split. */
+  hidePricing = false,
 }) {
   const guestContactErrors = sl.isGuest
     ? guestNotifyContactFieldErrors({ email: sl.guestEmail, phone: '' })
@@ -397,7 +424,7 @@ function SliceEditor({
           ) : null}
         </>
       ) : null}
-      <div className="grid grid-cols-2 gap-2">
+      {hidePricing ? (
         <div>
           <InField label="Action %" focusRingClass={STABLE_INFIELD_FOCUS}>
             <input
@@ -420,37 +447,64 @@ function SliceEditor({
             </p>
           ) : null}
         </div>
-        <InField label="Pricing" focusRingClass={STABLE_INFIELD_FOCUS}>
-          <select
-            value={sl.pricingMode}
-            onChange={(e) => onChange({ pricingMode: e.target.value })}
-            className={`${INFIELD_CONTROL} appearance-none`}
-          >
-            <option value="profit_split">Profit split</option>
-            <option value="markup">Markup</option>
-          </select>
-        </InField>
-      </div>
-      {sl.pricingMode === 'profit_split' ? (
-        <InField label="Player profit %" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
-          <input
-            value={sl.playerProfitPct}
-            onChange={(e) => onChange({ playerProfitPct: e.target.value })}
-            placeholder="70"
-            inputMode="decimal"
-            className={INFIELD_CONTROL}
-          />
-        </InField>
       ) : (
-        <InField label="Markup rate" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
-          <input
-            value={sl.markupRate}
-            onChange={(e) => onChange({ markupRate: e.target.value })}
-            placeholder="1.2"
-            inputMode="decimal"
-            className={INFIELD_CONTROL}
-          />
-        </InField>
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <InField label="Action %" focusRingClass={STABLE_INFIELD_FOCUS}>
+                <input
+                  value={sl.actionPct}
+                  onChange={(e) => onChange({ actionPct: e.target.value })}
+                  placeholder={`Up to ${formatActionBudgetPct(actionUpToPct)}%`}
+                  inputMode="decimal"
+                  className={INFIELD_CONTROL}
+                  aria-invalid={actionOverCap ? 'true' : undefined}
+                />
+              </InField>
+              {actionOverCap ? (
+                <p
+                  className="mt-1 text-[11px] font-semibold tabular-nums text-rose-400"
+                  data-poker-stable-action-budget
+                  data-over="true"
+                  role="alert"
+                >
+                  Over by {formatActionBudgetPct(actionOverBy)}%
+                </p>
+              ) : null}
+            </div>
+            <InField label="Pricing" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <select
+                value={sl.pricingMode}
+                onChange={(e) => onChange({ pricingMode: e.target.value })}
+                className={`${INFIELD_CONTROL} appearance-none`}
+              >
+                <option value="profit_split">Profit split</option>
+                <option value="markup">Markup</option>
+              </select>
+            </InField>
+          </div>
+          {sl.pricingMode === 'profit_split' ? (
+            <InField label="Player profit %" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <input
+                value={sl.playerProfitPct}
+                onChange={(e) => onChange({ playerProfitPct: e.target.value })}
+                placeholder="70"
+                inputMode="decimal"
+                className={INFIELD_CONTROL}
+              />
+            </InField>
+          ) : (
+            <InField label="Markup rate" className="mt-2" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <input
+                value={sl.markupRate}
+                onChange={(e) => onChange({ markupRate: e.target.value })}
+                placeholder="1.2"
+                inputMode="decimal"
+                className={INFIELD_CONTROL}
+              />
+            </InField>
+          )}
+        </>
       )}
       {showRakeback ? (
         <>
@@ -525,6 +579,10 @@ function PokerStableDealFormSheet({
   const [label, setLabel] = useState('')
   const [dealType, setDealType] = useState('cash_backing')
   const [venueKind, setVenueKind] = useState('live')
+  /** Deal-level pricing (tournament). Cash is always profit_split. */
+  const [dealPricingMode, setDealPricingMode] = useState('profit_split')
+  const [dealMarkupRate, setDealMarkupRate] = useState('')
+  const [dealPlayerProfitPct, setDealPlayerProfitPct] = useState('')
   const [baseline, setBaseline] = useState('')
   const [isMigration, setIsMigration] = useState(false)
   const [startingRoll, setStartingRoll] = useState('')
@@ -540,6 +598,7 @@ function PokerStableDealFormSheet({
   const [friendSlices, setFriendSlices] = useState([])
   const [slices, setSlices] = useState([{ ...EMPTY_SLICE }])
   const [formError, setFormError] = useState('')
+  const hideSlicePricing = true
   const sheetRef = useRef(null)
   const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
@@ -550,8 +609,20 @@ function PokerStableDealFormSheet({
     if (!seedForm || seededRef.current) return
     seededRef.current = true
     setLabel(seedForm.label || '')
-    setDealType(seedForm.dealType || 'cash_backing')
+    const seededType = seedForm.dealType || 'cash_backing'
+    setDealType(seededType)
     setVenueKind(seedForm.venueKind || 'live')
+    const seedSlice =
+      seedForm.mySlice ||
+      (Array.isArray(seedForm.slices) && seedForm.slices[0]) ||
+      null
+    const seededPricing =
+      seededType === 'tournament_package'
+        ? seedSlice?.pricingMode || defaultPricingModeForDealType(seededType)
+        : 'profit_split'
+    setDealPricingMode(seededPricing)
+    setDealMarkupRate(seedSlice?.markupRate || '')
+    setDealPlayerProfitPct(seedSlice?.playerProfitPct || '')
     setBaseline(seedForm.baseline || '')
     setIsMigration(Boolean(seedForm.isMigration))
     setStartingRoll(seedForm.startingRoll || '')
@@ -587,12 +658,23 @@ function PokerStableDealFormSheet({
 
   function onDealTypeChange(next) {
     setDealType(next)
+    const nextPricing = defaultPricingModeForDealType(next)
+    setDealPricingMode(nextPricing)
+    if (next !== 'tournament_package') {
+      setDealMarkupRate('')
+    }
     const apply = (prev) => prev.map((s) => applyDealTypePricingDefaults(s, next))
     setSlices(apply)
     if (isBacker) {
       setMySlice((prev) => applyDealTypePricingDefaults(prev, next))
       setFriendSlices(apply)
     }
+  }
+
+  function onDealPricingModeChange(next) {
+    setDealPricingMode(next)
+    if (next !== 'markup') setDealMarkupRate('')
+    if (next !== 'profit_split') setDealPlayerProfitPct('')
   }
 
   function onVenueKindChange(next) {
@@ -708,18 +790,37 @@ function PokerStableDealFormSheet({
       if (formActionOverCap) {
         throw new Error('Total action sold cannot exceed 100%.')
       }
+      if (dealType === 'tournament_package' && dealPricingMode === 'markup') {
+        const rate = Number(dealMarkupRate)
+        if (!Number.isFinite(rate) || rate < 1) {
+          throw new Error('Enter a markup rate of 1.0 or higher.')
+        }
+      } else {
+        const pct = Number(dealPlayerProfitPct)
+        if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
+          throw new Error('Player profit % must be between 1 and 100.')
+        }
+      }
       let createdDeal = null
       if (isBacker) {
+        const pricedMy = withDealPricing(
+          { ...mySlice, stakerUserId: userId, handle: '', selectedProfile: null },
+          dealType,
+          dealPricingMode,
+          dealMarkupRate,
+          dealPlayerProfitPct,
+        )
         const allSlices = [
-          await resolveUserSlice(
-            supabaseClient,
-            { ...mySlice, stakerUserId: userId, handle: '', selectedProfile: null },
-            userId,
-            { allowSelf: true },
-          ),
+          await resolveUserSlice(supabaseClient, pricedMy, userId, { allowSelf: true }),
         ]
         for (const sl of friendSlices) {
-          allSlices.push(await resolveUserSlice(supabaseClient, sl, userId))
+          allSlices.push(
+            await resolveUserSlice(
+              supabaseClient,
+              withDealPricing(sl, dealType, dealPricingMode, dealMarkupRate, dealPlayerProfitPct),
+              userId,
+            ),
+          )
         }
 
         let requestArgs = {
@@ -769,7 +870,13 @@ function PokerStableDealFormSheet({
         }
         const parsedSlices = []
         for (const sl of slices) {
-          parsedSlices.push(await resolveUserSlice(supabaseClient, sl, userId))
+          parsedSlices.push(
+            await resolveUserSlice(
+              supabaseClient,
+              withDealPricing(sl, dealType, dealPricingMode, dealMarkupRate, dealPlayerProfitPct),
+              userId,
+            ),
+          )
         }
         const { deal, error } = await createBackingDeal(supabaseClient, {
           stakeeUserId: userId,
@@ -1077,6 +1184,62 @@ function PokerStableDealFormSheet({
           </>
         )}
 
+        <div className="mb-4 space-y-2" data-poker-stable-deal-pricing>
+          {dealType === 'tournament_package' ? (
+            <div className="grid grid-cols-2 gap-2">
+              <InField label="Pricing" focusRingClass={STABLE_INFIELD_FOCUS}>
+                <select
+                  value={dealPricingMode}
+                  onChange={(e) => onDealPricingModeChange(e.target.value)}
+                  className={`${INFIELD_CONTROL} appearance-none`}
+                  data-poker-stable-deal-pricing-mode
+                >
+                  <option value="markup">Markup</option>
+                  <option value="profit_split">Profit split</option>
+                </select>
+              </InField>
+              {dealPricingMode === 'markup' ? (
+                <InField label="Markup rate" focusRingClass={STABLE_INFIELD_FOCUS}>
+                  <input
+                    value={dealMarkupRate}
+                    onChange={(e) => setDealMarkupRate(e.target.value)}
+                    placeholder="1.15"
+                    inputMode="decimal"
+                    className={INFIELD_CONTROL}
+                    data-poker-stable-deal-markup-rate
+                  />
+                </InField>
+              ) : (
+                <InField label="Player profit %" focusRingClass={STABLE_INFIELD_FOCUS}>
+                  <input
+                    value={dealPlayerProfitPct}
+                    onChange={(e) => setDealPlayerProfitPct(e.target.value)}
+                    placeholder="70"
+                    inputMode="decimal"
+                    className={INFIELD_CONTROL}
+                  />
+                </InField>
+              )}
+            </div>
+          ) : (
+            <InField label="Player profit %" focusRingClass={STABLE_INFIELD_FOCUS}>
+              <input
+                value={dealPlayerProfitPct}
+                onChange={(e) => setDealPlayerProfitPct(e.target.value)}
+                placeholder="70"
+                inputMode="decimal"
+                className={INFIELD_CONTROL}
+              />
+            </InField>
+          )}
+          {dealType === 'tournament_package' && dealPricingMode === 'markup' ? (
+            <p className="text-[11px] leading-snug text-zinc-500">
+              Backers pay package × action% × markup. Face capital stays in the stake; the markup
+              overage goes to the player&apos;s personal bankroll as a fee.
+            </p>
+          ) : null}
+        </div>
+
         {showPlayerTermsForm ? (
           <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
             Backer slices
@@ -1095,6 +1258,7 @@ function PokerStableDealFormSheet({
                 title={pokerStableBackerSliceLabel(slices.length, idx)}
                 canRemove={slices.length > 1}
                 showRakeback={venueKind === 'online'}
+                hidePricing={hideSlicePricing}
                 actionSoldTotal={formActionTotal}
                 onChange={(patch) => updateSlice(idx, patch)}
                 onRemove={() => setSlices((prev) => prev.filter((_, i) => i !== idx))}
@@ -1112,6 +1276,7 @@ function PokerStableDealFormSheet({
                 title="Your slice"
                 canRemove={false}
                 showRakeback={venueKind === 'online'}
+                hidePricing={hideSlicePricing}
                 actionSoldTotal={formActionTotal}
                 onChange={(patch) => setMySlice((prev) => ({ ...prev, ...patch }))}
               />
@@ -1126,6 +1291,7 @@ function PokerStableDealFormSheet({
                   title={`Syndicate slice ${idx + 1}`}
                   canRemove
                   showRakeback={venueKind === 'online'}
+                  hidePricing={hideSlicePricing}
                   actionSoldTotal={formActionTotal}
                   onChange={(patch) => updateFriendSlice(idx, patch)}
                   onRemove={() => setFriendSlices((prev) => prev.filter((_, i) => i !== idx))}

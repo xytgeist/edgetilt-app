@@ -31,7 +31,8 @@ export function backerSliceCapitalIsPendingHold(deal, slice, slices = []) {
 }
 
 /**
- * Backer's allocated capital for one slice (baseline × action %).
+ * Backer's face stake capital for one slice (baseline × action %).
+ * Portfolio / MTM basis … does not include tournament markup fee.
  * @param {object} deal
  * @param {object} slice
  */
@@ -39,6 +40,25 @@ export function backerSliceAllocatedCapital(deal, slice) {
   const baseline = Number(deal?.baseline_bankroll) || 0
   const pct = Number(slice?.action_pct) || 0
   return roundMoney(baseline * (pct / 100))
+}
+
+/**
+ * Amount the backer pays / has reserved for a slice (face × markup for tournament markup).
+ * @param {object} deal
+ * @param {object} slice
+ */
+export function backerSlicePaidCapital(deal, slice) {
+  const face = backerSliceAllocatedCapital(deal, slice)
+  const mode = slice?.pricing_mode || slice?.pricingMode
+  if (deal?.deal_type !== 'tournament_package' || mode !== 'markup') return face
+  const rate = Number(deal?.markup_rate ?? slice?.markup_rate ?? slice?.markupRate)
+  if (!Number.isFinite(rate) || rate < 1) return face
+  return roundMoney(face * rate)
+}
+
+/** Markup fee portion of paid capital (paid − face). */
+export function backerSliceMarkupFee(deal, slice) {
+  return roundMoney(backerSlicePaidCapital(deal, slice) - backerSliceAllocatedCapital(deal, slice))
 }
 
 /**
@@ -116,7 +136,8 @@ export function computeBackerPendingHold({ deals = [], slicesByDeal = {}, userId
     )
     for (const slice of slices) {
       if (!backerSliceCapitalIsPendingHold(deal, slice, dealSlices)) continue
-      pendingHold = roundMoney(pendingHold + backerSliceAllocatedCapital(deal, slice))
+      // Reserve what will actually leave backing bankroll (includes markup premium).
+      pendingHold = roundMoney(pendingHold + backerSlicePaidCapital(deal, slice))
     }
   }
   return pendingHold
@@ -517,10 +538,10 @@ export function computeBackerPortfolioMetrics({
 
     for (const slice of slices) {
       if (slice.status !== 'active' && slice.status !== 'pending') continue
-      const allocated = backerSliceAllocatedCapital(deal, slice)
 
       if (backerSliceCapitalIsDeployed(deal, slice, dealSlices)) {
-        capitalAtRisk = roundMoney(capitalAtRisk + allocated)
+        // At-risk basis includes markup fee; stake MTM stays on face capital.
+        capitalAtRisk = roundMoney(capitalAtRisk + backerSlicePaidCapital(deal, slice))
         activeHorseCount += 1
         stakeValueMtm = roundMoney(
           stakeValueMtm + backerSliceStakeValue(deal, slice, roll, sessions),

@@ -386,19 +386,14 @@ export function canReassignGuestSlice({ deal, slice, userId, hasProposal = false
   return slice.counterparty_kind === 'guest' || slice.counterpartyKind === 'guest'
 }
 
-/** Player may delete before any Edge backer has accepted (guest-only stakes included). */
+/**
+ * Player may cancel a stake that has not been settled.
+ * After Edge accept, cancel unwinds paid capital + markup fees server-side.
+ */
 export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false
   if (!['pending', 'active'].includes(deal.status)) return false
-  const hasActiveEdgeSlice = slices.some(
-    (slice) =>
-      (slice.counterparty_kind === 'user' ||
-        slice.counterpartyKind === 'user' ||
-        slice.staker_user_id ||
-        slice.stakerUserId) &&
-      slice.status === 'active',
-  )
-  return !hasActiveEdgeSlice
+  return true
 }
 
 /** Backer-initiated stakes: player skips top-up/reduce sync; periodic/close settle still requires review. */

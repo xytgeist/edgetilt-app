@@ -309,10 +309,8 @@ export default function PokerStableCloseStakeSheet({
               {tourneyClose?.appliedMarkup > 0.005
                 ? ` (stake ${tourneyClose.stakePl >= 0 ? '+' : ''}${fmtPoker$(tourneyClose.stakePl)} · markup +${fmtPoker$(tourneyClose.appliedMarkup)})`
                 : ''}
-              {tourneyClose?.contribution > 0.005
-                ? isStakee
-                  ? ` · your package share was ${fmtPoker$(tourneyClose.contribution)}`
-                  : ` · ${playerName}'s package share was ${fmtPoker$(tourneyClose.contribution)}`
+              {isStakee && tourneyClose?.contribution > 0.005
+                ? ` · your package share was ${fmtPoker$(tourneyClose.contribution)}`
                 : ''}
             </p>
           ) : (
@@ -329,15 +327,6 @@ export default function PokerStableCloseStakeSheet({
                 : myUnusedMarkup > 0.005
                   ? `${fmtPoker$(myUnusedMarkup)} unused markup returns to your backing bankroll from ${playerName}'s personal bankroll.`
                   : `${fmtPoker$(unusedMarkupTotal)} unused markup returns to backers from ${playerName}'s personal bankroll.`}
-            </p>
-          ) : null}
-          {isTournamentPackage && !isStakee && tourneyClose ? (
-            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-              {playerName} keeps {fmtPoker$(playerCredit)} in personal bankroll
-              {tourneyClose.contribution > 0.005
-                ? ` from a ${fmtPoker$(tourneyClose.contribution)} package share`
-                : ''}
-              .
             </p>
           ) : null}
         </div>

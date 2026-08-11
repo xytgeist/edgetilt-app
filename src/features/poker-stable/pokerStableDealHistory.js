@@ -9,6 +9,7 @@ import {
   computeSliceSettleShares,
   dealTypeLabel,
   roundMoney,
+  tournamentPlayerCloseEconomics,
 } from './pokerStableMath.js'
 import {
   dealLeadBackerDisplayName,
@@ -18,12 +19,18 @@ import {
 } from './pokerStableTerms.js'
 
 /**
- * Personal bankroll credit from one settle/close row (matches settle RPC: credit only when profit above baseline).
+ * Personal bankroll credit from one settle/close row.
+ * Cash: credit only when profit above baseline.
+ * Tournament package close: player's share of CURRENT roll returned.
  * @param {object} st
  * @param {object} deal
  * @param {object[]} [slices]
  */
 export function settlementPlayerPersonalCredit(st, deal, slices = []) {
+  // Tournament packages only close-settle (no periodic).
+  if (deal?.deal_type === 'tournament_package') {
+    return tournamentPlayerCloseEconomics(st, slices, deal).returned
+  }
   const profit = Number(st?.profit_above_baseline) || 0
   if (profit <= 0.005) return 0
   const calc = computeDealSettlement(
@@ -363,18 +370,27 @@ function settlementHistoryEventFromRow({
   const dealLabel = deal?.label?.trim() || dealTypeLabel(deal?.deal_type)
 
   let detail = ''
-  if (personal) {
+  const isTournamentPackage = deal?.deal_type === 'tournament_package'
+  if (personal && isTournamentPackage && isClose) {
+    const { returned, overallPl } = tournamentPlayerCloseEconomics(st, slices, deal)
+    const plBit = `${overallPl >= 0 ? '+' : ''}${fmtPoker$(overallPl)}`
+    detail = ` · ${fmtPoker$(returned)} returned to personal bankroll · Overall P/L ${plBit}`
+  } else if (personal) {
     const credit = settlementPlayerPersonalCredit(st, deal, slices)
     if (credit > 0.005) {
       detail = ` · +${fmtPoker$(credit)} to personal bankroll`
-    } else if (makeup > 0.005) {
+    } else if (!isTournamentPackage && makeup > 0.005) {
       detail = ` · ${fmtPoker$(makeup)} makeup cleared`
     } else if (profit > 0.005) {
       detail = ` · ${fmtPoker$(profit)} above baseline`
     } else if (profit < -0.005) {
       detail = ` · ${fmtPoker$(Math.abs(profit))} underwater`
     }
-  } else if (makeup > 0.005) {
+  } else if (isTournamentPackage && isClose) {
+    const { returned, overallPl } = tournamentPlayerCloseEconomics(st, slices, deal)
+    const plBit = `${overallPl >= 0 ? '+' : ''}${fmtPoker$(overallPl)}`
+    detail = ` · ${fmtPoker$(returned)} returned · Overall P/L ${plBit}`
+  } else if (!isTournamentPackage && makeup > 0.005) {
     detail = ` · ${fmtPoker$(makeup)} makeup cleared`
   } else if (profit > 0.005) {
     detail = ` · ${fmtPoker$(profit)} above baseline`

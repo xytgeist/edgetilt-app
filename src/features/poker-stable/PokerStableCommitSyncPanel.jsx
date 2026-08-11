@@ -16,7 +16,7 @@ import {
   viewerBackingSlice,
 } from './pokerStableDealHistory.js'
 import { backerSliceMarkupFee } from './pokerStableBackerMath.js'
-import { roundMoney, stableNum } from './pokerStableMath.js'
+import { roundMoney, stableNum, tournamentPlayerCloseEconomics } from './pokerStableMath.js'
 import {
   attachSlicesToSettleLines,
   backerCloseStakePl,
@@ -151,7 +151,18 @@ export default function PokerStableCommitSyncPanel({
         nextSettlement = st
         nextLines = lines || []
         nextSlices = byDeal[commitRow.deal_id] || []
-        nextPlayerCredit = calc ? stableNum(calc.player_net) : null
+        if (
+          dealRow?.deal_type === 'tournament_package' &&
+          commitRow.event_kind === 'close_settle'
+        ) {
+          nextPlayerCredit = tournamentPlayerCloseEconomics(
+            st,
+            nextSlices,
+            dealRow,
+          ).returned
+        } else {
+          nextPlayerCredit = calc ? stableNum(calc.player_net) : null
+        }
         if (dealRow && dealRow.stakee_user_id !== userId) {
           const slice = viewerBackingSlice(nextSlices, userId)
           const line = slice
@@ -229,6 +240,9 @@ export default function PokerStableCommitSyncPanel({
   const tournamentCloseBacker = Boolean(
     showBackerSettleCredit && isCloseSettle && isTournamentPackage,
   )
+  const tournamentClosePlayer = Boolean(
+    showPlayerSettleCredit && isCloseSettle && isTournamentPackage,
+  )
 
   const settleDetail = useMemo(() => {
     if (!showSettleCredit || !settlement) {
@@ -281,6 +295,25 @@ export default function PokerStableCommitSyncPanel({
       }
     }
 
+    if (tournamentClosePlayer) {
+      const econ = tournamentPlayerCloseEconomics(settlement, slices, deal)
+      const overallPerformance = econ.overallPl
+      return {
+        payPhrases: [
+          econ.contribution > 0.005
+            ? `Your package share ${fmtPoker$(econ.contribution)}`
+            : 'Your package share $0',
+          `${fmtPoker$(econ.returned)} returned to personal bankroll`,
+        ],
+        resetBullet: '',
+        reductionRows: [],
+        stakePl: overallPerformance,
+        markupFee: 0,
+        overallPerformance,
+        termsFootnote: `Overall P/L ${overallPerformance >= 0 ? '+' : ''}${fmtPoker$(overallPerformance)}.`,
+      }
+    }
+
     return {
       payPhrases: settlePayPhrases({
         isStakee: Boolean(isStakee),
@@ -323,6 +356,7 @@ export default function PokerStableCommitSyncPanel({
     userId,
     isCloseSettle,
     tournamentCloseBacker,
+    tournamentClosePlayer,
     isTournamentPackage,
     backerBackingCredit,
   ])
@@ -433,39 +467,47 @@ export default function PokerStableCommitSyncPanel({
 
   const heroCredit = showPlayerSettleCredit ? playerPersonalCredit : backerBackingCredit
   const tournamentOverall = settleDetail.overallPerformance
-  const cardIsLoss = tournamentCloseBacker
+  const tournamentCloseParty = tournamentCloseBacker || tournamentClosePlayer
+  const cardIsLoss = tournamentCloseParty
     ? Number(tournamentOverall) < -0.005
     : Number(heroCredit) < -0.005
   const heroLabel = tournamentCloseBacker
     ? 'Overall performance'
-    : showPlayerSettleCredit
-      ? 'Credit to personal bankroll'
-      : 'Credit to personal backing bankroll'
-  const heroAmount = tournamentCloseBacker ? Number(tournamentOverall) || 0 : Number(heroCredit) || 0
+    : tournamentClosePlayer
+      ? 'Overall performance'
+      : showPlayerSettleCredit
+        ? 'Credit to personal bankroll'
+        : 'Credit to personal backing bankroll'
+  const heroAmount = tournamentCloseParty
+    ? Number(tournamentOverall) || 0
+    : Number(heroCredit) || 0
   const plWord = heroAmount >= 0 ? 'Profit' : 'Loss'
   const plWordLower = heroAmount >= 0 ? 'profit' : 'loss'
   const hasReduction = settleDetail.reductionRows.length > 0
   const settleFootnote = tournamentCloseBacker
     ? settleDetail.termsFootnote || 'Original stake terms apply.'
-    : showPlayerSettleCredit
-      ? hasReduction
-        ? `${plWord} credited to personal bankroll. Stake reduction returns capital to backers.`
-        : `${plWord} credited to personal bankroll.`
-      : isCloseSettle
-        ? showBackerSettleCredit
-          ? `Credit is your share of the closing roll returned to backing bankroll. Stake P/L (including losses) posts to Realized P/L.`
-          : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
-        : hasReduction
-          ? `${plWord} posts to Realized P/L. Stake reduction and ${plWordLower} credited to personal backing bankroll.`
-          : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
+    : tournamentClosePlayer
+      ? settleDetail.termsFootnote ||
+        'Your unsold package share was funded from personal bankroll (no markup).'
+      : showPlayerSettleCredit
+        ? hasReduction
+          ? `${plWord} credited to personal bankroll. Stake reduction returns capital to backers.`
+          : `${plWord} credited to personal bankroll.`
+        : isCloseSettle
+          ? showBackerSettleCredit
+            ? `Credit is your share of the closing roll returned to backing bankroll. Stake P/L (including losses) posts to Realized P/L.`
+            : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
+          : hasReduction
+            ? `${plWord} posts to Realized P/L. Stake reduction and ${plWordLower} credited to personal backing bankroll.`
+            : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
 
-  const backerCardClass = cardIsLoss
+  const settleCardClass = cardIsLoss
     ? 'mb-4 rounded-2xl border-2 border-rose-400/50 bg-rose-950/45 px-4 py-5 text-center shadow-none'
     : 'mb-4 rounded-2xl border-2 border-emerald-400/50 bg-emerald-950/45 px-4 py-5 text-center shadow-none'
-  const backerLabelClass = cardIsLoss
+  const settleLabelClass = cardIsLoss
     ? 'text-[11px] font-bold uppercase tracking-wide text-rose-200/90'
     : 'text-[11px] font-bold uppercase tracking-wide text-emerald-200/90'
-  const backerFootnoteClass = cardIsLoss ? 'text-rose-100/70' : 'text-emerald-100/70'
+  const settleFootnoteClass = cardIsLoss ? 'text-rose-100/70' : 'text-emerald-100/70'
 
   return (
     <div data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined} className={inlineShell}>
@@ -495,15 +537,15 @@ export default function PokerStableCommitSyncPanel({
                 : undefined
             }
             className={
-              showBackerSettleCredit
-                ? backerCardClass
+              tournamentCloseParty || showBackerSettleCredit
+                ? settleCardClass
                 : 'mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-4 text-center'
             }
           >
             <div
               className={
-                showBackerSettleCredit
-                  ? backerLabelClass
+                tournamentCloseParty || showBackerSettleCredit
+                  ? settleLabelClass
                   : 'text-[10px] font-bold uppercase tracking-wide text-emerald-300/80'
               }
             >
@@ -511,7 +553,7 @@ export default function PokerStableCommitSyncPanel({
             </div>
             <div
               className={`mt-2 font-black tabular-nums tracking-tight ${
-                showBackerSettleCredit ? 'text-4xl sm:text-5xl' : 'text-3xl'
+                tournamentCloseParty || showBackerSettleCredit ? 'text-4xl sm:text-5xl' : 'text-3xl'
               } ${heroAmount >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}
             >
               {heroAmount >= 0 ? '+' : ''}
@@ -547,8 +589,8 @@ export default function PokerStableCommitSyncPanel({
             {showSettleCredit ? (
               <p
                 className={`mt-2.5 text-xs font-medium leading-relaxed ${
-                  showBackerSettleCredit
-                    ? backerFootnoteClass
+                  tournamentCloseParty || showBackerSettleCredit
+                    ? settleFootnoteClass
                     : 'text-emerald-200/75'
                 }`}
               >

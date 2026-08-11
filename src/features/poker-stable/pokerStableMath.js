@@ -207,6 +207,43 @@ export function sumSliceActionPct(slices) {
   )
 }
 
+/** Active (accepted) sold action % on a deal. */
+export function dealActiveSoldActionPct(slices = []) {
+  return sumSliceActionPct((slices || []).filter((s) => s.status === 'active'))
+}
+
+/**
+ * Player-retained action % on a tournament package (100 − sold active).
+ * @param {object[]} [slices]
+ */
+export function dealPlayerRetainedActionPct(slices = []) {
+  return roundMoney(Math.max(0, 100 - dealActiveSoldActionPct(slices)), 3)
+}
+
+/**
+ * Tournament package player close economics (face contribution, no markup).
+ * @param {object} settlement
+ * @param {object[]} [slices]
+ * @param {object} [deal]
+ */
+export function tournamentPlayerCloseEconomics(settlement, slices = [], deal = null) {
+  const baseline = stableNum(
+    settlement?.baseline_at_settle ?? deal?.baseline_bankroll ?? deal?.baselineBankroll,
+  )
+  const roll = stableNum(settlement?.roll_at_settle ?? deal?.roll ?? deal?.overall_bankroll)
+  const retainedPct = dealPlayerRetainedActionPct(slices)
+  const retained = retainedPct / 100
+  const contribution = roundMoney(baseline * retained)
+  const returned = roundMoney(roll * retained)
+  const overallPl = roundMoney(returned - contribution)
+  return {
+    retainedActionPct: retainedPct,
+    contribution,
+    returned,
+    overallPl,
+  }
+}
+
 /** At least one backer slice has accepted (`status === 'active'`). */
 export function dealHasAcceptedBackerSlice(_deal, slices = []) {
   return (slices || []).some((s) => s.status === 'active')

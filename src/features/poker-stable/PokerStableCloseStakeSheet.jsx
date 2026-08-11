@@ -8,6 +8,7 @@ import {
   computeDealSettlement,
   computeProfitAboveBaseline,
   dealTypeLabel,
+  tournamentPlayerCloseEconomics,
 } from './pokerStableMath.js'
 import { dealHasMakeup, dealHasRakebackEnabled } from './pokerStableTerms.js'
 
@@ -50,7 +51,16 @@ export default function PokerStableCloseStakeSheet({
     [deal, slices, baseline, rollValue, rakebackAmount],
   )
 
-  const playerCredit = settlement.player_net
+  const isTournamentPackage = deal.deal_type === 'tournament_package'
+  const tourneyClose = isTournamentPackage
+    ? tournamentPlayerCloseEconomics(
+        { baseline_at_settle: baseline, roll_at_settle: rollValue },
+        slices,
+        deal,
+      )
+    : null
+  const playerCredit = tourneyClose ? tourneyClose.returned : settlement.player_net
+  const overallPl = tourneyClose?.overallPl ?? null
 
   return (
     <div
@@ -76,40 +86,58 @@ export default function PokerStableCloseStakeSheet({
         <p className="mb-4 text-sm text-zinc-300">
           <span className="font-semibold text-white">{label}</span>
           {' · '}
-          Roll {fmtPoker$(rollValue)} · Baseline {fmtPoker$(baseline)}
+          {isTournamentPackage
+            ? `Roll ${fmtPoker$(rollValue)}`
+            : `Roll ${fmtPoker$(rollValue)} · Baseline ${fmtPoker$(baseline)}`}
         </p>
 
-        <div
-          data-poker-stable-close-stake-summary
-          className={`mb-4 grid gap-2 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-3 text-center ${
-            showMakeup ? 'grid-cols-2' : 'grid-cols-1'
-          }`}
-        >
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
-              Profit above baseline
-            </div>
-            <div
-              className={`mt-1 text-base font-bold tabular-nums ${
-                profitUp >= 0 ? 'text-emerald-400' : 'text-zinc-300'
-              }`}
-            >
-              {fmtPoker$(profitUp)}
-            </div>
-          </div>
-          {showMakeup ? (
+        {isTournamentPackage ? null : (
+          <div
+            data-poker-stable-close-stake-summary
+            className={`mb-4 grid gap-2 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 p-3 text-center ${
+              showMakeup ? 'grid-cols-2' : 'grid-cols-1'
+            }`}
+          >
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Makeup</div>
-              <div className="mt-1 text-base font-bold tabular-nums text-amber-300/90">
-                {fmtPoker$(makeup)}
+              <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                Profit above baseline
+              </div>
+              <div
+                className={`mt-1 text-base font-bold tabular-nums ${
+                  profitUp >= 0 ? 'text-emerald-400' : 'text-zinc-300'
+                }`}
+              >
+                {fmtPoker$(profitUp)}
               </div>
             </div>
-          ) : null}
-        </div>
+            {showMakeup ? (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+                  Makeup
+                </div>
+                <div className="mt-1 text-base font-bold tabular-nums text-amber-300/90">
+                  {fmtPoker$(makeup)}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
 
-        <div className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/80">
-            Credit to personal bankroll
+        <div
+          className={`mb-4 rounded-2xl border p-3 ${
+            overallPl != null && overallPl < -0.005
+              ? 'border-rose-400/50 bg-rose-950/45'
+              : 'border-emerald-500/25 bg-emerald-950/30'
+          }`}
+        >
+          <div
+            className={`text-[10px] font-bold uppercase tracking-wide ${
+              overallPl != null && overallPl < -0.005
+                ? 'text-rose-200/90'
+                : 'text-emerald-300/80'
+            }`}
+          >
+            {isTournamentPackage ? 'Returned to personal bankroll' : 'Credit to personal bankroll'}
           </div>
           <div
             className={`mt-1 text-xl font-black tabular-nums ${
@@ -119,16 +147,32 @@ export default function PokerStableCloseStakeSheet({
             {playerCredit >= 0 ? '+' : ''}
             {fmtPoker$(playerCredit)}
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-            This stake will be archived, roll resets to {fmtPoker$(baseline)}, and its sessions move
-            onto your personal timeline.
-          </p>
+          {isTournamentPackage && overallPl != null ? (
+            <p
+              className={`mt-2 text-xs font-medium leading-relaxed ${
+                overallPl < -0.005 ? 'text-rose-100/70' : 'text-emerald-100/70'
+              }`}
+            >
+              Overall P/L {overallPl >= 0 ? '+' : ''}
+              {fmtPoker$(overallPl)}
+              {tourneyClose?.contribution > 0.005
+                ? ` · your package share was ${fmtPoker$(tourneyClose.contribution)}`
+                : ''}
+            </p>
+          ) : (
+            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+              This stake will be archived, roll resets to {fmtPoker$(baseline)}, and its sessions
+              move onto your personal timeline.
+            </p>
+          )}
         </div>
 
         <p className="mb-4 text-xs leading-relaxed text-zinc-500">
-          Backer slices settle together from profit above baseline
-          {showRakeback ? ' and any rakeback you enter below' : ''}. Confirm when the numbers look
-          right.
+          {isTournamentPackage
+            ? 'Your unsold package share returns with the closing roll. Sessions move onto your personal timeline.'
+            : `Backer slices settle together from profit above baseline${
+                showRakeback ? ' and any rakeback you enter below' : ''
+              }. Confirm when the numbers look right.`}
         </p>
 
         {showRakeback ? (

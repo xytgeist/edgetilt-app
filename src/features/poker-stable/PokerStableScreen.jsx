@@ -135,7 +135,6 @@ export default function PokerStableScreen({
   const [attentionOpen, setAttentionOpen] = useState(false)
   const [backerSliceOnboardingOpen, setBackerSliceOnboardingOpen] = useState(false)
   const backerSliceOnboardingOpenedRef = useRef(false)
-  const [locationsDealId, setLocationsDealId] = useState(/** @type {string | null} */ (null))
   const [dealSettlementsByDeal, setDealSettlementsByDeal] = useState(
     /** @type {Record<string, object[]>} */ ({}),
   )
@@ -1156,8 +1155,7 @@ export default function PokerStableScreen({
           slicesByDeal={slicesByDeal}
           profilesById={profilesById}
           userId={userId}
-          locationsDealId={locationsDealId}
-          onSelectLocationsDealId={setLocationsDealId}
+          adjustments={backerAdjustments}
         />
       ) : null}
 

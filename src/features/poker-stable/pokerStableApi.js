@@ -415,7 +415,7 @@ export async function loadBackerBankroll(supabase) {
 export async function loadBackerBankrollAdjustments(supabase) {
   const { data, error } = await supabase
     .from('poker_stable_backer_bankroll_adjustments')
-    .select('id, amount, balance_after, occurred_at, created_at')
+    .select('id, amount, balance_after, occurred_at, created_at, kind, deal_id, note')
     .order('occurred_at', { ascending: true })
   return { adjustments: data || [], error }
 }

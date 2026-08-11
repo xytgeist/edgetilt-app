@@ -5,7 +5,7 @@ import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import PokerStableLocationsTab from './PokerStableLocationsTab.jsx'
+import PokerStableLedgerTab from './PokerStableLedgerTab.jsx'
 import PokerStableTrendTab from './PokerStableTrendTab.jsx'
 import { roundMoney } from './pokerStableMath.js'
 import { STABLE_PRIMARY_BTN, STABLE_TAB_ACTIVE } from './pokerStableUi.js'
@@ -21,11 +21,11 @@ function HeroInfoSection({ title, children }) {
 
 const PORTFOLIO_TABS = [
   { id: 'overview', label: 'Overview' },
+  { id: 'ledger', label: 'Ledger' },
   { id: 'trend', label: 'Trend' },
-  { id: 'locations', label: 'Locations' },
 ]
 
-/** Cap only … Overview hugs content; Trend/Locations reuse measured Overview height. */
+/** Cap only … Overview hugs content; Ledger/Trend reuse measured Overview height. */
 const PORTFOLIO_DETAIL_SHEET_MAX_H =
   'max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
 
@@ -41,7 +41,7 @@ function pctToneClass(n) {
 }
 
 /**
- * Portfolio detail sheet: Overview (metrics + adjust) / Trend / Locations.
+ * Portfolio detail sheet: Overview (metrics + adjust) / Ledger / Trend.
  */
 export default function PokerStablePortfolioDetailSheet({
   open,
@@ -56,8 +56,7 @@ export default function PokerStablePortfolioDetailSheet({
   slicesByDeal = {},
   profilesById = {},
   userId,
-  locationsDealId = null,
-  onSelectLocationsDealId,
+  adjustments = [],
 }) {
   const [tab, setTab] = useState('overview')
   const [infoOpen, setInfoOpen] = useState(false)
@@ -65,7 +64,7 @@ export default function PokerStablePortfolioDetailSheet({
   const [adjustDirection, setAdjustDirection] = useState('add')
   const [amountInput, setAmountInput] = useState('')
   const [newBalanceInput, setNewBalanceInput] = useState('')
-  /** Overview natural height … locked onto Trend/Locations so the sheet does not resize. */
+  /** Overview natural height … locked onto Ledger/Trend so the sheet does not resize. */
   const [overviewSheetHeightPx, setOverviewSheetHeightPx] = useState(/** @type {number | null} */ (null))
   const sheetRef = useRef(/** @type {HTMLDivElement | null} */ (null))
 
@@ -218,7 +217,7 @@ export default function PokerStablePortfolioDetailSheet({
                 <Info className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               </button>
             </div>
-            <p className="mt-0.5 text-xs text-zinc-500">Liquid bankroll, performance, and venues</p>
+            <p className="mt-0.5 text-xs text-zinc-500">Liquid bankroll, ledger, and performance</p>
           </div>
           <button
             type="button"
@@ -394,6 +393,16 @@ export default function PokerStablePortfolioDetailSheet({
             </div>
           ) : null}
 
+          {tab === 'ledger' ? (
+            <PokerStableLedgerTab
+              adjustments={adjustments}
+              horseDeals={horseDeals}
+              slicesByDeal={slicesByDeal}
+              profilesById={profilesById}
+              userId={userId}
+            />
+          ) : null}
+
           {tab === 'trend' ? (
             <PokerStableTrendTab
               horseDeals={horseDeals}
@@ -401,18 +410,6 @@ export default function PokerStablePortfolioDetailSheet({
               slicesByDeal={slicesByDeal}
               profilesById={profilesById}
               userId={userId}
-            />
-          ) : null}
-
-          {tab === 'locations' ? (
-            <PokerStableLocationsTab
-              sessions={sessions}
-              horseDeals={horseDeals}
-              slicesByDeal={slicesByDeal}
-              profilesById={profilesById}
-              userId={userId}
-              selectedDealId={locationsDealId}
-              onSelectDealId={onSelectLocationsDealId}
             />
           ) : null}
         </div>
@@ -467,7 +464,9 @@ export default function PokerStablePortfolioDetailSheet({
                 <p>
                   Use <strong className="font-semibold text-zinc-300">Adjust bankroll</strong> on
                   Overview to Add or Remove funds. Liquid pool only ... does not change Realized
-                  P/L, At risk, Stakes MTM, or Trend.
+                  P/L, At risk, Stakes MTM, or Trend. Every move (including auto top-ups and stake
+                  funding) lands on the <strong className="font-semibold text-zinc-300">Ledger</strong>{' '}
+                  tab.
                 </p>
               </HeroInfoSection>
               <HeroInfoSection title="Metrics">

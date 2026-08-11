@@ -113,13 +113,35 @@ export function dealUnusedMarkupTotal(deal, slices = [], buyins = 0) {
   return total
 }
 
+/** Capital-flow ledger kinds that change the backing pool for TWR / reconstructed liquid. */
+export const BACKER_CAPITAL_ADJUSTMENT_KINDS = new Set([
+  'deposit',
+  'withdraw',
+  'set_balance',
+  'auto_top_up',
+  'seed_reverse',
+  'manual',
+])
+
 /**
- * Sum of manual Edit → Adjust bankroll rows (deposits +, withdrawals −).
+ * True when a ledger row is a capital top-up / withdrawal (not stake deploy / settle / close).
+ * Legacy rows without `kind` count as capital (`manual`).
+ * @param {object} row
+ */
+export function isBackerCapitalAdjustment(row) {
+  const kind = String(row?.kind || 'manual').trim() || 'manual'
+  return BACKER_CAPITAL_ADJUSTMENT_KINDS.has(kind)
+}
+
+/**
+ * Sum of capital Edit → Adjust / auto top-up rows (deposits +, withdrawals −).
+ * Excludes stake_deploy, close_return, settle, markup_refund, etc.
  * @param {object[]} adjustments
  */
 export function computeBackerManualAdjustmentTotal(adjustments = []) {
   let total = 0
   for (const row of adjustments) {
+    if (!isBackerCapitalAdjustment(row)) continue
     total = roundMoney(total + (Number(row?.amount) || 0))
   }
   return total
@@ -157,8 +179,9 @@ export function computeBackerBackingBankroll({
   storedBankrollBalance = 0,
   pendingHold = 0,
 }) {
+  const capitalRows = (adjustments || []).filter(isBackerCapitalAdjustment)
   const manual = computeBackerManualAdjustmentTotal(adjustments)
-  if (adjustments.length) {
+  if (capitalRows.length) {
     return roundMoney(manual + roundMoney(realizedBackingPl) - roundMoney(activeAllocatedCapital))
   }
   // Stored balance may still reflect legacy pending allocation debits; pending holds are
@@ -484,6 +507,7 @@ export function computeBackerTwrPct({
 
   /** @type {{ t: number, kind: 'adjust', amount: number }[]} */
   const adjustEvents = (adjustments || [])
+    .filter(isBackerCapitalAdjustment)
     .map((row) => ({
       t: new Date(row.occurred_at || row.created_at).getTime(),
       kind: 'adjust',

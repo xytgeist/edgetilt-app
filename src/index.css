@@ -6445,6 +6445,13 @@ html.light [data-poker-stable-portfolio-detail] [data-poker-stable-adjust-bankro
   background-color: #f4f4f5 !important;
   color: #18181b !important;
 }
+html.light [data-poker-stable-portfolio-detail] [data-poker-stable-ledger-row] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stable-portfolio-detail] [data-poker-stable-ledger] .text-white {
+  color: #18181b !important;
+}
 html.light [data-poker-stable] [data-poker-stable-portfolio-hero] .text-zinc-600 {
   color: #a1a1aa !important;
 }

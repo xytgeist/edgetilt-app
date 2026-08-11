@@ -6446,8 +6446,10 @@ html.light [data-poker-stable-portfolio-detail] [data-poker-stable-adjust-bankro
   color: #18181b !important;
 }
 html.light [data-poker-stable-portfolio-detail] [data-poker-stable-ledger-row] {
-  background-color: #fafafa !important;
+  background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
+  border-radius: 1rem !important; /* match rounded-2xl … soft shadow follows the curve */
+  box-shadow: var(--edge-light-card-shadow) !important;
 }
 html.light [data-poker-stable-portfolio-detail] [data-poker-stable-ledger] .text-white {
   color: #18181b !important;
@@ -6657,6 +6659,14 @@ html.light [data-poker-bankroll-sheet] .rounded-3xl.border,
 html.light [data-poker-stable-locations] .rounded-2xl.border,
 html.light [data-poker-stable] [data-poker-stable-locations] .rounded-2xl.border {
   box-shadow: var(--edge-light-list-card-shadow) !important;
+}
+/* Portfolio Ledger rows … fuller rounded shadow (beats sheet list-card shadow above). */
+html.light [data-poker-stable-portfolio-detail] [data-poker-stable-ledger-row],
+html.light [data-poker-stable-sheet] [data-poker-stable-ledger-row] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  border-radius: 1rem !important;
+  box-shadow: var(--edge-light-card-shadow) !important;
 }
 html.light [data-poker-stable] [data-poker-stake-archive-card] {
   background-color: #ffffff !important;

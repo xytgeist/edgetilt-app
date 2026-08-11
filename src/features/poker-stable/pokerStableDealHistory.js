@@ -376,12 +376,15 @@ export function buildStakeeClosedStakeReview({
   const unusedMarkupTotal = roundMoney(
     backers.reduce((sum, row) => sum + (Number(row.unusedMarkup) || 0), 0),
   )
+  // Close credit to personal, net of unused markup clawed back to backers.
+  const returnToBankroll = roundMoney(personalDeposit - unusedMarkupTotal)
 
   return {
     closer,
     closedAt,
     tableProfit,
     personalDeposit,
+    returnToBankroll,
     baseline: baselineAt,
     isTournamentPackage,
     buyins,

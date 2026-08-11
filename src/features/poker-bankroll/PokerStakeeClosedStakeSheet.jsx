@@ -83,44 +83,58 @@ export default function PokerStakeeClosedStakeSheet({
 
         {!isDeclined && !isRevoked ? (
           <>
-            <dl className="mt-4 space-y-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 text-sm">
-              <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Closed by</dt>
-                <dd className="text-right font-medium text-zinc-100">{review.closer.label}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Baseline</dt>
-                <dd className="text-right font-medium text-zinc-100">
-                  {fmtPoker$(review.baseline)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-zinc-500">Your stake result</dt>
-                <dd
-                  data-poker-pl-tone={pokerPlTone(review.tableProfit)}
-                  className="text-right font-semibold tabular-nums"
-                >
-                  {fmtPoker$(review.tableProfit)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt className="min-w-0 text-zinc-500">Deposited to personal bankroll</dt>
-                <dd
-                  data-poker-pl-tone={pokerPlTone(review.personalDeposit)}
-                  className="shrink-0 text-right font-semibold tabular-nums"
-                >
-                  {fmtPoker$(review.personalDeposit)}
-                </dd>
-              </div>
-              {review.isTournamentPackage && review.unusedMarkupTotal > 0.005 ? (
+            <div className="mt-4 space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                Your bankroll
+              </p>
+              <dl className="space-y-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 text-sm">
                 <div className="flex justify-between gap-3">
-                  <dt className="min-w-0 text-zinc-500">Unused markup returned to backers</dt>
-                  <dd className="shrink-0 text-right font-semibold tabular-nums text-zinc-100">
-                    {fmtPoker$(review.unusedMarkupTotal)}
+                  <dt className="text-zinc-500">Closed by</dt>
+                  <dd className="text-right font-medium text-zinc-100">{review.closer.label}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-zinc-500">Baseline</dt>
+                  <dd className="text-right font-medium text-zinc-100">
+                    {fmtPoker$(review.baseline)}
                   </dd>
                 </div>
-              ) : null}
-            </dl>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-zinc-500">Your stake result</dt>
+                  <dd
+                    data-poker-pl-tone={pokerPlTone(review.tableProfit)}
+                    className="text-right font-semibold tabular-nums"
+                  >
+                    {fmtPoker$(review.tableProfit)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="min-w-0 text-zinc-500">Deposited to personal bankroll</dt>
+                  <dd
+                    data-poker-pl-tone={pokerPlTone(review.personalDeposit)}
+                    className="shrink-0 text-right font-semibold tabular-nums"
+                  >
+                    {fmtPoker$(review.personalDeposit)}
+                  </dd>
+                </div>
+                {review.isTournamentPackage && review.unusedMarkupTotal > 0.005 ? (
+                  <div className="flex justify-between gap-3">
+                    <dt className="min-w-0 text-zinc-500">Unused markup returned to backers</dt>
+                    <dd className="shrink-0 text-right font-semibold tabular-nums text-zinc-100">
+                      {fmtPoker$(review.unusedMarkupTotal)}
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="flex justify-between gap-3 border-t border-zinc-800/70 pt-1.5">
+                  <dt className="min-w-0 text-zinc-400">Return to bankroll</dt>
+                  <dd
+                    data-poker-pl-tone={pokerPlTone(review.returnToBankroll)}
+                    className="shrink-0 text-right font-semibold tabular-nums"
+                  >
+                    {fmtPoker$(review.returnToBankroll)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
 
             {review.backers.length ? (
               <div className="mt-4 space-y-2">

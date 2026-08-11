@@ -13,9 +13,11 @@ import {
   settlementBackerCredit,
   viewerBackingSlice,
 } from './pokerStableDealHistory.js'
+import { backerSliceMarkupFee } from './pokerStableBackerMath.js'
 import { roundMoney, stableNum } from './pokerStableMath.js'
 import {
   attachSlicesToSettleLines,
+  backerCloseStakePl,
   settlePayPhrases,
   settleReductionShareRows,
   settleResetBullet,
@@ -90,7 +92,7 @@ export default function PokerStableCommitSyncPanel({
         supabaseClient
           .from('poker_stable_deals')
           .select(
-            'id, label, deal_type, stakee_user_id, stakee_guest_label, staker_user_id, status, baseline_bankroll',
+            'id, label, deal_type, stakee_user_id, stakee_guest_label, staker_user_id, status, baseline_bankroll, markup_rate',
           )
           .eq('id', commitRow.deal_id)
           .maybeSingle(),
@@ -196,13 +198,52 @@ export default function PokerStableCommitSyncPanel({
     !isStakee && isSettleCommit && settlement && backerBackingCredit != null
   const showSettleCredit = showPlayerSettleCredit || showBackerSettleCredit
 
+  const isTournamentPackage = deal?.deal_type === 'tournament_package'
+  const tournamentCloseBacker = Boolean(
+    showBackerSettleCredit && isCloseSettle && isTournamentPackage,
+  )
+
   const settleDetail = useMemo(() => {
     if (!showSettleCredit || !settlement) {
-      return { payPhrases: [], resetBullet: '', reductionRows: [] }
+      return {
+        payPhrases: [],
+        resetBullet: '',
+        reductionRows: [],
+        stakePl: null,
+        markupFee: 0,
+        overallPerformance: null,
+      }
     }
     const lines = attachSlicesToSettleLines(settlementLines, slices)
     const playerName = dealStakeeDisplayName(deal, profilesById) || 'Player'
     const reductionAmount = roundMoney(settlement.stake_reduction_total || 0)
+    const slice = !isStakee ? viewerBackingSlice(slices, userId) : null
+    const line = slice ? lines.find((row) => row.slice?.id === slice.id || row.slice_id === slice.id) : null
+
+    if (tournamentCloseBacker && slice) {
+      const stakePl = backerCloseStakePl(settlement, slice, line)
+      const feeDeal = {
+        ...deal,
+        baseline_bankroll: stableNum(settlement.baseline_at_settle ?? deal?.baseline_bankroll),
+      }
+      const markupFee = Math.max(0, backerSliceMarkupFee(feeDeal, slice))
+      const overallPerformance = roundMoney(stakePl - markupFee)
+      const credit = roundMoney(backerBackingCredit ?? 0)
+      return {
+        payPhrases: [
+          `Credit to personal backing bankroll ${credit >= 0 ? '+' : ''}${fmtPoker$(credit)}`,
+          `Overall performance: ${overallPerformance >= 0 ? '+' : ''}${fmtPoker$(overallPerformance)}${
+            markupFee > 0.005 ? ' (markup applied)' : ''
+          }`,
+        ],
+        resetBullet: '',
+        reductionRows: [],
+        stakePl,
+        markupFee,
+        overallPerformance,
+      }
+    }
+
     return {
       payPhrases: settlePayPhrases({
         isStakee: Boolean(isStakee),
@@ -215,11 +256,13 @@ export default function PokerStableCommitSyncPanel({
         roll: stableNum(settlement.roll_at_settle),
         settlement,
       }),
-      resetBullet: settleResetBullet({
-        baseline: stableNum(settlement.baseline_at_settle),
-        reductionAmount,
-        isClose: isCloseSettle,
-      }),
+      resetBullet: isTournamentPackage
+        ? ''
+        : settleResetBullet({
+            baseline: stableNum(settlement.baseline_at_settle),
+            reductionAmount,
+            isClose: isCloseSettle,
+          }),
       reductionRows: settleReductionShareRows({
         isStakee: Boolean(isStakee),
         slices,
@@ -227,6 +270,9 @@ export default function PokerStableCommitSyncPanel({
         userId,
         profilesById,
       }),
+      stakePl: null,
+      markupFee: 0,
+      overallPerformance: null,
     }
   }, [
     showSettleCredit,
@@ -238,6 +284,9 @@ export default function PokerStableCommitSyncPanel({
     isStakee,
     userId,
     isCloseSettle,
+    tournamentCloseBacker,
+    isTournamentPackage,
+    backerBackingCredit,
   ])
 
   useEffect(() => {
@@ -330,23 +379,41 @@ export default function PokerStableCommitSyncPanel({
       : ''
 
   const heroCredit = showPlayerSettleCredit ? playerPersonalCredit : backerBackingCredit
-  const heroLabel = showPlayerSettleCredit
-    ? 'Credit to personal bankroll'
-    : 'Credit to personal backing bankroll'
-  const plWord = heroCredit >= 0 ? 'Profit' : 'Loss'
-  const plWordLower = heroCredit >= 0 ? 'profit' : 'loss'
+  const tournamentStakePl = settleDetail.stakePl
+  const tournamentOverall = settleDetail.overallPerformance
+  const cardIsLoss = tournamentCloseBacker
+    ? Number(tournamentOverall) < -0.005
+    : Number(heroCredit) < -0.005
+  const heroLabel = tournamentCloseBacker
+    ? 'Stake P/L'
+    : showPlayerSettleCredit
+      ? 'Credit to personal bankroll'
+      : 'Credit to personal backing bankroll'
+  const heroAmount = tournamentCloseBacker ? Number(tournamentStakePl) || 0 : Number(heroCredit) || 0
+  const plWord = heroAmount >= 0 ? 'Profit' : 'Loss'
+  const plWordLower = heroAmount >= 0 ? 'profit' : 'loss'
   const hasReduction = settleDetail.reductionRows.length > 0
-  const settleFootnote = showPlayerSettleCredit
-    ? hasReduction
-      ? `${plWord} credited to personal bankroll. Stake reduction returns capital to backers.`
-      : `${plWord} credited to personal bankroll.`
-    : isCloseSettle
-      ? showBackerSettleCredit
-        ? `Credit is your share of the closing roll returned to backing bankroll. Stake P/L (including losses) posts to Realized P/L. Tournament markup fees already taken on accept stay realized.`
-        : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
-      : hasReduction
-        ? `${plWord} posts to Realized P/L. Stake reduction and ${plWordLower} credited to personal backing bankroll.`
-        : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
+  const settleFootnote = tournamentCloseBacker
+    ? 'Credit returns your share of the closing roll to backing bankroll. Stake P/L posts to Realized P/L. Tournament markup fees already applied.'
+    : showPlayerSettleCredit
+      ? hasReduction
+        ? `${plWord} credited to personal bankroll. Stake reduction returns capital to backers.`
+        : `${plWord} credited to personal bankroll.`
+      : isCloseSettle
+        ? showBackerSettleCredit
+          ? `Credit is your share of the closing roll returned to backing bankroll. Stake P/L (including losses) posts to Realized P/L.`
+          : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
+        : hasReduction
+          ? `${plWord} posts to Realized P/L. Stake reduction and ${plWordLower} credited to personal backing bankroll.`
+          : `${plWord} posts to Realized P/L and is credited to personal backing bankroll.`
+
+  const backerCardClass = cardIsLoss
+    ? 'mb-4 rounded-2xl border-2 border-rose-400/50 bg-rose-950/45 px-4 py-5 text-center shadow-none'
+    : 'mb-4 rounded-2xl border-2 border-emerald-400/50 bg-emerald-950/45 px-4 py-5 text-center shadow-none'
+  const backerLabelClass = cardIsLoss
+    ? 'text-[11px] font-bold uppercase tracking-wide text-rose-200/90'
+    : 'text-[11px] font-bold uppercase tracking-wide text-emerald-200/90'
+  const backerFootnoteClass = cardIsLoss ? 'text-rose-100/70' : 'text-emerald-100/70'
 
   return (
     <div data-poker-stable-commit-sync-modal={variant === 'inline' ? 'inline' : undefined} className={inlineShell}>
@@ -359,22 +426,32 @@ export default function PokerStableCommitSyncPanel({
       {showSettleCredit ? (
         <>
           <p className="mb-3 text-xs leading-relaxed text-zinc-500">
-            Roll {fmtPoker$(settlement.roll_at_settle)} · Baseline{' '}
-            {fmtPoker$(settlement.baseline_at_settle)} at settlement
+            {isTournamentPackage || tournamentCloseBacker
+              ? `Roll ${fmtPoker$(settlement.roll_at_settle)} at settlement`
+              : `Roll ${fmtPoker$(settlement.roll_at_settle)} · Baseline ${fmtPoker$(
+                  settlement.baseline_at_settle,
+                )} at settlement`}
           </p>
           <div
             data-poker-stable-settle-player-credit={showPlayerSettleCredit ? '' : undefined}
             data-poker-stable-settle-backer-credit={showBackerSettleCredit ? '' : undefined}
+            data-poker-stable-settle-tone={
+              showBackerSettleCredit || showPlayerSettleCredit
+                ? cardIsLoss
+                  ? 'loss'
+                  : 'gain'
+                : undefined
+            }
             className={
               showBackerSettleCredit
-                ? 'mb-4 rounded-2xl border-2 border-emerald-400/50 bg-emerald-950/45 px-4 py-5 text-center shadow-none'
+                ? backerCardClass
                 : 'mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-950/30 p-4 text-center'
             }
           >
             <div
               className={
                 showBackerSettleCredit
-                  ? 'text-[11px] font-bold uppercase tracking-wide text-emerald-200/90'
+                  ? backerLabelClass
                   : 'text-[10px] font-bold uppercase tracking-wide text-emerald-300/80'
               }
             >
@@ -383,10 +460,10 @@ export default function PokerStableCommitSyncPanel({
             <div
               className={`mt-2 font-black tabular-nums tracking-tight ${
                 showBackerSettleCredit ? 'text-4xl sm:text-5xl' : 'text-3xl'
-              } ${heroCredit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}
+              } ${heroAmount >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}
             >
-              {heroCredit >= 0 ? '+' : ''}
-              {fmtPoker$(heroCredit)}
+              {heroAmount >= 0 ? '+' : ''}
+              {fmtPoker$(heroAmount)}
             </div>
             <ul
               className="mt-3 list-disc space-y-1 pl-5 text-left text-xs leading-relaxed text-zinc-400"
@@ -418,7 +495,9 @@ export default function PokerStableCommitSyncPanel({
             {showSettleCredit ? (
               <p
                 className={`mt-2.5 text-xs font-medium leading-relaxed ${
-                  showBackerSettleCredit ? 'text-emerald-100/70' : 'text-emerald-200/75'
+                  showBackerSettleCredit
+                    ? backerFootnoteClass
+                    : 'text-emerald-200/75'
                 }`}
               >
                 {settleFootnote}

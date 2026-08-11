@@ -6786,6 +6786,10 @@ html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backe
   border-color: #34d399 !important;
   box-shadow: var(--edge-light-list-card-shadow) !important;
 }
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit][data-poker-stable-settle-tone='loss'] {
+  background-color: #fff1f2 !important;
+  border-color: #fb7185 !important;
+}
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/90,
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/80,
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-200\/75,
@@ -6794,6 +6798,8 @@ html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backe
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-emerald-300 {
   color: #047857 !important;
 }
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit][data-poker-stable-settle-tone='loss'] .text-rose-200\/90,
+html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit][data-poker-stable-settle-tone='loss'] .text-rose-100\/70,
 html.light [data-poker-stable-commit-sync-modal] [data-poker-stable-settle-backer-credit] .text-rose-300 {
   color: #be123c !important;
 }

@@ -329,21 +329,62 @@ export default function PokerStableScreen({
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [load])
 
-  /** While a pending invite is on screen, light-poll deals/slices so a player delete drops the ghost card. */
-  const hasPendingSliceInvite = useMemo(() => {
+  /**
+   * Live refresh while Stable has open horses (pending/active), matching Bankroll:
+   * Realtime on deals/slices/commits + 8s poll so counterparty close/settle updates
+   * the horse card without leaving the screen.
+   */
+  const hasOpenStableHorses = useMemo(() => {
     if (!userId) return false
-    return Object.values(slicesByDeal || {}).some((slices) =>
-      (slices || []).some((s) => s.staker_user_id === userId && s.status === 'pending'),
-    )
-  }, [slicesByDeal, userId])
+    return (deals || []).some((d) => d.status === 'pending' || d.status === 'active')
+  }, [deals, userId])
 
   useEffect(() => {
-    if (!hasPendingSliceInvite || !userId) return undefined
+    if (!supabaseClient || !userId || !hasOpenStableHorses) return undefined
     const id = window.setInterval(() => {
-      void load({ silent: true, light: true })
-    }, 20000)
+      void load({ silent: true })
+    }, 8000)
     return () => window.clearInterval(id)
-  }, [hasPendingSliceInvite, userId, load])
+  }, [supabaseClient, userId, hasOpenStableHorses, load])
+
+  useEffect(() => {
+    if (!supabaseClient || !userId) return undefined
+    const refresh = () => void load({ silent: true })
+    const channel = supabaseClient
+      .channel(`poker-stable-live-backer-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'poker_stable_deals',
+        },
+        refresh,
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'poker_stable_deal_slices',
+          filter: `staker_user_id=eq.${userId}`,
+        },
+        refresh,
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'poker_stable_deal_commits',
+        },
+        refresh,
+      )
+      .subscribe()
+    return () => {
+      supabaseClient.removeChannel(channel)
+    }
+  }, [supabaseClient, userId, load])
 
   const activeBackerOnboardingDealId =
     backerSliceOnboardingDealId || readPokerStableBackerOnboardingDealId()

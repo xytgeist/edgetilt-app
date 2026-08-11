@@ -449,7 +449,7 @@ When a backer exits after accept, the player stake card must **not disappear** .
 | **Backer declines pending slice** | Slice → `declined`; deal stays **`pending`**. If **all** slices decline → deal stays an **editable draft** (no auto-revoke). Player edits terms to add/re-offer backers. |
 | **Re-offer after revoke** | Not supported. Close/archive the revoked stake and **create a new stake**. |
 | **Close revoked stake** | Stakee **Close stake** runs `poker_stable_close_deal` (finalize settle, no active slices → player keeps profit above baseline if any); deal → **`settled`** / archive. Periodic settle **not** allowed on revoked. |
-| **Player notification** | Bankroll Realtime + **8s poll** while carousel has pending/active stakes. Edge in-app / push **v2c**. |
+| **Live card refresh** | **Bankroll** (player): Realtime on `poker_stable_deals` + **8s poll** while pending/active stakes. **Stable** (backer): Realtime on deals / own slices / commits + **8s poll** while open horses exist … counterparty close/settle updates the horse without leaving. Edge in-app / push **v2c**. |
 
 **Delete stake** (separate rule): only on **`pending`** / **`active`** deals **before any Edge backer has accepted** (`stakeDealCanBeCancelled`). Unrelated to post-accept revoke.
 

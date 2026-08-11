@@ -107,6 +107,8 @@ export function analyzeCorners(corners, imgW, imgH) {
     (balancedOk ? 0.15 : 0) +
     Math.max(0, 0.1 - angleErr / 200)
 
+  const usable = aspectOk && coverageOk && anglesOk && balancedOk && score >= 0.7
+
   return {
     aspect,
     coverage,
@@ -118,7 +120,7 @@ export function analyzeCorners(corners, imgW, imgH) {
     anglesOk,
     balancedOk,
     score,
-    usable: aspectOk && coverageOk && anglesOk && balancedOk && score >= 0.7,
+    usable,
     /** Strong trapezoid + clean corners → perspective may help. */
     preferPerspective: usable && trapezoid >= 0.08 && angleErr <= 14 && sideBalance <= 1.85,
   }

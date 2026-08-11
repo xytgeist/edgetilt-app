@@ -325,7 +325,9 @@ export default function PokerStablePortfolioDetailSheet({
                 </div>
                 <div>
                   <div className="text-[10px] font-bold uppercase text-zinc-500">Realized P/L</div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-emerald-300">
+                  <div
+                    className={`mt-0.5 text-sm font-bold tabular-nums ${pctToneClass(m.realizedBackingPl ?? 0)}`}
+                  >
                     {fmtPoker$(m.realizedBackingPl ?? 0)}
                   </div>
                 </div>

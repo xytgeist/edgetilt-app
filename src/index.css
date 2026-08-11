@@ -9420,3 +9420,6 @@ html.light [data-w2g-verify-modal] [data-w2g-alert] {
   border-color: rgba(244, 63, 94, 0.35) !important;
   color: #9f1239 !important;
 }
+html.light [data-w2g-verify-modal] [data-w2g-preview] button .text-zinc-500 {
+  color: #71717a !important;
+}

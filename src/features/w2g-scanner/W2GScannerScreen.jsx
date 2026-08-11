@@ -22,6 +22,7 @@ import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import {
   APP_MODAL_OVERLAY_CLASS,
   APP_MODAL_SHEET_PANEL_CLASS,
+  Z_APP_ALERT,
 } from '../../constants/appZIndex.js'
 import { PRODUCT_SLOTS_EDGE_STARTER } from '../billing/edgeProducts.js'
 import {
@@ -140,6 +141,7 @@ export default function W2GScannerScreen({
   const [verifySaving, setVerifySaving] = useState(false)
   const [verifyError, setVerifyError] = useState('')
   const [verifyReprocessing, setVerifyReprocessing] = useState(false)
+  const [verifyImageExpanded, setVerifyImageExpanded] = useState(false)
 
   const collated = useMemo(() => collateW2GSlips(slips), [slips])
   const verifyImageUrl = verifySlip?.id ? thumbUrls[verifySlip.id] || '' : ''
@@ -869,6 +871,7 @@ export default function W2GScannerScreen({
     if (!slip) return
     setVerifyError('')
     setVerifyReprocessing(false)
+    setVerifyImageExpanded(false)
     setVerifySlip(slip)
     setVerifyFieldList(fieldsToList(dbRowToFields(slip)))
   }
@@ -878,6 +881,7 @@ export default function W2GScannerScreen({
     setVerifySlip(null)
     setVerifyError('')
     setVerifyReprocessing(false)
+    setVerifyImageExpanded(false)
   }
 
   const onVerifyFieldChange = (key, value) => {
@@ -1520,6 +1524,7 @@ export default function W2GScannerScreen({
 
     {verifySlip && typeof document !== 'undefined'
       ? createPortal(
+          <>
           <div
             className={APP_MODAL_OVERLAY_CLASS}
             role="dialog"
@@ -1565,11 +1570,21 @@ export default function W2GScannerScreen({
 
               <div className="overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800" data-w2g-preview>
                 {verifyImageUrl ? (
-                  <img
-                    src={verifyImageUrl}
-                    alt="W-2G slip"
-                    className="mx-auto max-h-[min(40vh,360px)] w-full object-contain"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setVerifyImageExpanded(true)}
+                    className="block w-full touch-manipulation"
+                    aria-label="Expand slip image"
+                  >
+                    <img
+                      src={verifyImageUrl}
+                      alt="W-2G slip"
+                      className="mx-auto max-h-[min(40vh,360px)] w-full object-contain"
+                    />
+                    <div className="mt-1 text-center text-[11px] font-semibold text-zinc-500">
+                      Tap to enlarge
+                    </div>
+                  </button>
                 ) : (
                   <div className="grid min-h-[140px] place-items-center text-sm text-zinc-500">
                     No image preview
@@ -1626,7 +1641,35 @@ export default function W2GScannerScreen({
                 </button>
               </div>
             </div>
-          </div>,
+          </div>
+
+          {verifyImageExpanded && verifyImageUrl ? (
+            <div
+              className="fixed inset-0 flex items-center justify-center bg-black/92 px-3 py-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+              style={{ zIndex: Z_APP_ALERT + 10 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Expanded W-2G slip"
+              data-w2g-verify-lightbox
+              onClick={() => setVerifyImageExpanded(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setVerifyImageExpanded(false)}
+                className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-800/90 text-white touch-manipulation"
+                aria-label="Close enlarged image"
+              >
+                <X size={20} aria-hidden />
+              </button>
+              <img
+                src={verifyImageUrl}
+                alt="W-2G slip enlarged"
+                className="max-h-full max-w-full object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          ) : null}
+          </>,
           document.body,
         )
       : null}

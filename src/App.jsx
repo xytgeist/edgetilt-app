@@ -45,7 +45,10 @@ import {
   shouldShowLoungeColdBootSplash,
 } from './utils/loungeColdBootSplash.js'
 import { clearAccountClientState } from './utils/clearAccountClientState.js'
-import { restoreSupabaseSession } from './utils/supabaseSessionRestore.js'
+import {
+  hasStoredSupabaseAuthToken,
+  restoreSupabaseSession,
+} from './utils/supabaseSessionRestore.js'
 import { parseMonitorPathname } from './features/ops/opsMonitorNavigation.js'
 import { parsePokerSwapClaimFromLocation } from './features/poker-bankroll/pokerTournamentSwapNav.js'
 import {
@@ -411,8 +414,26 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncUser(session)
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return
+      if (session?.user) {
+        syncUser(session)
+        return
+      }
+      // iOS PWA: native confirm / resume can race supabase-js auth locks and emit
+      // SIGNED_OUT even though the refresh token is still on disk. Real logout clears
+      // storage first ... only soft-restore when a token is still present.
+      if (
+        (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') &&
+        hasStoredSupabaseAuthToken()
+      ) {
+        void restoreSupabaseSession(supabase).then((restored) => {
+          if (cancelled) return
+          syncUser(restored?.user ? restored : null)
+        })
+        return
+      }
+      syncUser(null)
     })
 
     const onResume = () => {

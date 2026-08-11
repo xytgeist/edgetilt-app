@@ -345,6 +345,8 @@ export default function PokerBankrollTracker({
   /** First breadcrumb arrival: pulse pending Accept/Decline offer. */
   highlightPendingOffer = false,
   onHighlightPendingOfferConsumed = null,
+  /** In-app confirm (prefer over window.confirm on iOS PWA). */
+  showGlobalConfirm = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -2191,7 +2193,15 @@ export default function PokerBankrollTracker({
   async function declineIncomingSwap(swap) {
     if (!supabaseClient || !swap?.id) return
     const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
-    const ok = window.confirm(`Decline swap with ${other}? This cancels the deal.`)
+    const ok =
+      typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: `Decline swap with ${other}?`,
+            message: 'This cancels the deal.',
+            confirmLabel: 'Decline',
+            cancelLabel: 'Keep',
+          })
+        : window.confirm(`Decline swap with ${other}? This cancels the deal.`)
     if (!ok) return
     setSaving(true)
     setError('')
@@ -4759,6 +4769,7 @@ export default function PokerBankrollTracker({
               savedSwaps={editingSessionSwaps}
               profilesById={swapProfilesById}
               onSavedSwapsMutated={() => void loadData()}
+              showGlobalConfirm={showGlobalConfirm}
               onSendDraft={
                 editingId
                   ? (draft) => {
@@ -4996,6 +5007,7 @@ export default function PokerBankrollTracker({
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={[]}
               profilesById={swapProfilesById}
+              showGlobalConfirm={showGlobalConfirm}
               incomingAcceptSwap={incomingAcceptSwap}
               onDeclineIncomingAccept={
                 incomingAcceptSwap
@@ -5055,6 +5067,7 @@ export default function PokerBankrollTracker({
               savedSwaps={activeSessionSwaps}
               profilesById={swapProfilesById}
               onSavedSwapsMutated={() => void loadData()}
+              showGlobalConfirm={showGlobalConfirm}
               compact
               onSendDraft={(draft) => {
                 if (!activeSession) return

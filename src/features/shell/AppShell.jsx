@@ -2615,6 +2615,7 @@ export default function AppShell({
           onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
           highlightPendingOffer={pulseBankrollOffer}
           onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
+          showGlobalConfirm={showGlobalConfirm}
         />
       )
     } else if (tab === 'poker-stable') {

@@ -52,6 +52,12 @@ const FIELD =
  *   sendingDrafts?: boolean,
  *   maxSwapGivePct?: number,
  *   showOwnershipSummary?: boolean,
+ *   showGlobalConfirm?: (opts: {
+ *     title: string,
+ *     message?: string,
+ *     confirmLabel?: string,
+ *     cancelLabel?: string,
+ *   }) => Promise<boolean>,
  * }} props
  */
 export default function PokerTournamentSwapsSection({
@@ -71,6 +77,7 @@ export default function PokerTournamentSwapsSection({
   sendingDrafts = false,
   maxSwapGivePct = 100,
   showOwnershipSummary = false,
+  showGlobalConfirm = null,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   /** swapId → show manual payout fields */
@@ -187,9 +194,19 @@ export default function PokerTournamentSwapsSection({
   async function onCancelSwap(swap) {
     if (!supabaseClient || !swap?.id) return
     const other = swapOtherPartyLabel(swap, profilesById, userId)
-    const ok = window.confirm(
-      `Cancel swap with ${other}? This cannot be undone (you can add a new swap after).`,
-    )
+    // Prefer in-app confirm on iOS PWA ... native window.confirm can background the
+    // webview, race auth token locks, and look like a Lounge logout.
+    const ok =
+      typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: `Cancel swap with ${other}?`,
+            message: 'This cannot be undone (you can add a new swap after).',
+            confirmLabel: 'Cancel swap',
+            cancelLabel: 'Keep',
+          })
+        : window.confirm(
+            `Cancel swap with ${other}? This cannot be undone (you can add a new swap after).`,
+          )
     if (!ok) return
     setBusyId(swap.id)
     setLocalError('')

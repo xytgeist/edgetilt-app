@@ -143,18 +143,16 @@ export default function PokerStableHorseCarousel({
           ? 'Closed'
           : needsCounterAck
             ? 'Review'
-            : waitingPlayerTermsAck
-              ? 'Revised'
-              : slice?.status === 'pending'
-                ? 'Pending'
-                : stakeHorseCardStatusLabel(deal, dealSlices)
+            : waitingPlayerTermsAck || slice?.status === 'pending'
+              ? 'Pending'
+              : stakeHorseCardStatusLabel(deal, dealSlices)
         const horseTone = stableHorseCardToneForDeal(deal.id, toneScope)
         const horseToneAttr = stableHorseCardToneAttrForDeal(deal.id, toneScope)
         const statusTone = closedUnarchived
           ? 'bg-zinc-700/60 text-zinc-300'
-          : needsCounterAck || waitingPlayerTermsAck
+          : needsCounterAck
             ? 'bg-amber-500/20 text-amber-200'
-            : slice?.status === 'pending'
+            : waitingPlayerTermsAck || slice?.status === 'pending'
               ? 'bg-zinc-700/60 text-zinc-300'
               : stakeDealIsLiveForStakee(deal, dealSlices)
                 ? horseTone.statusActive

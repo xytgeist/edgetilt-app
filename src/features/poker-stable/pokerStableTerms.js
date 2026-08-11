@@ -183,7 +183,8 @@ export function stakeHeroBadgeLabel(deal, slices = []) {
 /** Stable horse carousel status pill when deal is live vs still pending. */
 export function stakeHorseCardStatusLabel(deal, slices = []) {
   if (deal?.staker_terms_ack_required && deal?.status === 'pending') return 'Review'
-  if (deal?.stakee_terms_ack_required && deal?.status === 'pending') return 'Revised'
+  // Backer proposed revised terms (slice may already be active) ... still Pending until player acks.
+  if (deal?.stakee_terms_ack_required && deal?.status === 'pending') return 'Pending'
   if (stakeDealIsLiveForStakee(deal, slices)) return 'Active'
   if (deal?.status === 'pending') return 'Pending'
   return deal?.status || 'Unknown'

@@ -3,14 +3,21 @@ import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
+import { dealTournamentBuyins } from './pokerStableBackerMath.js'
 import {
   computeDealMakeup,
   computeDealSettlement,
   computeProfitAboveBaseline,
   dealTypeLabel,
+  roundMoney,
   tournamentPlayerCloseEconomics,
 } from './pokerStableMath.js'
-import { dealHasMakeup, dealHasRakebackEnabled } from './pokerStableTerms.js'
+import {
+  attachSlicesToSettleLines,
+  settlePayPhrases,
+  tournamentCloseBackerReturnRows,
+} from './pokerStableSettleReviewCopy.js'
+import { dealHasMakeup, dealHasRakebackEnabled, dealStakeeDisplayName } from './pokerStableTerms.js'
 
 /**
  * Close stake review screen before the stakee confirms.
@@ -19,48 +26,123 @@ export default function PokerStableCloseStakeSheet({
   deal,
   slices = [],
   dealRoll = null,
+  profilesById = {},
+  sessions = [],
+  supabaseClient = null,
   saving = false,
   onClose,
   onConfirm,
   onError,
 }) {
   const [rakebackTotal, setRakebackTotal] = useState('')
+  const [fetchedBuyins, setFetchedBuyins] = useState(null)
 
   useEffect(() => {
     setRakebackTotal('')
   }, [deal?.id])
 
-  if (!deal) return null
+  useEffect(() => {
+    let cancelled = false
+    setFetchedBuyins(null)
+    if (!deal?.id || deal.deal_type !== 'tournament_package') return undefined
 
-  const rollValue = dealRoll?.overall_bankroll ?? deal.starting_roll ?? deal.baseline_bankroll ?? 0
-  const baseline = Number(deal.baseline_bankroll) || 0
-  const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
-  const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
-  const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
-  const showMakeup = dealHasMakeup(deal)
-  const showRakeback = dealHasRakebackEnabled(slices, deal)
+    const fromSessions = (sessions || []).filter((s) => s?.deal_id === deal.id)
+    if (fromSessions.length) {
+      setFetchedBuyins(dealTournamentBuyins(fromSessions))
+      return undefined
+    }
+
+    if (!supabaseClient) {
+      setFetchedBuyins(0)
+      return undefined
+    }
+
+    void (async () => {
+      const { data, error } = await supabaseClient
+        .from('poker_bankroll_sessions')
+        .select('buy_in, rebuy_amount, addon_amount')
+        .eq('deal_id', deal.id)
+      if (cancelled) return
+      if (error) {
+        setFetchedBuyins(0)
+        return
+      }
+      setFetchedBuyins(dealTournamentBuyins(data || []))
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [deal?.id, deal?.deal_type, sessions, supabaseClient])
+
+  const rollValue =
+    dealRoll?.overall_bankroll ?? deal?.starting_roll ?? deal?.baseline_bankroll ?? 0
+  const baseline = Number(deal?.baseline_bankroll) || 0
   const rakebackAmount = parseMoneyInputNumber(rakebackTotal) || 0
+  const isTournamentPackage = deal?.deal_type === 'tournament_package'
+  const showMakeup = deal ? dealHasMakeup(deal) : false
+  const showRakeback = deal ? dealHasRakebackEnabled(slices, deal) : false
 
   const settlement = useMemo(
     () =>
-      computeDealSettlement(
-        { ...deal, baseline_bankroll: baseline, roll: rollValue },
-        slices,
-        rakebackAmount,
-      ),
+      deal
+        ? computeDealSettlement(
+            { ...deal, baseline_bankroll: baseline, roll: rollValue },
+            slices,
+            rakebackAmount,
+          )
+        : null,
     [deal, slices, baseline, rollValue, rakebackAmount],
   )
 
-  const isTournamentPackage = deal.deal_type === 'tournament_package'
-  const tourneyClose = isTournamentPackage
-    ? tournamentPlayerCloseEconomics(
-        { baseline_at_settle: baseline, roll_at_settle: rollValue },
-        slices,
-        deal,
-      )
-    : null
-  const playerCredit = tourneyClose ? tourneyClose.returned : settlement.player_net
+  const tourneyClose = useMemo(
+    () =>
+      isTournamentPackage && deal
+        ? tournamentPlayerCloseEconomics(
+            { baseline_at_settle: baseline, roll_at_settle: rollValue },
+            slices,
+            deal,
+          )
+        : null,
+    [isTournamentPackage, deal, baseline, rollValue, slices],
+  )
+
+  const buyins = fetchedBuyins == null ? 0 : fetchedBuyins
+
+  const backerReturnRows = useMemo(
+    () =>
+      isTournamentPackage && deal
+        ? tournamentCloseBackerReturnRows(deal, slices, rollValue, buyins, profilesById)
+        : [],
+    [isTournamentPackage, deal, slices, rollValue, buyins, profilesById],
+  )
+
+  const cashBackerPhrases = useMemo(() => {
+    if (!deal || isTournamentPackage || !settlement) return []
+    const lines = attachSlicesToSettleLines(settlement.lines || [], slices)
+    return settlePayPhrases({
+      isStakee: true,
+      lines,
+      playerName: dealStakeeDisplayName(deal, profilesById) || 'You',
+      profilesById,
+      isClose: true,
+      baseline,
+      roll: rollValue,
+      settlement,
+    })
+  }, [deal, isTournamentPackage, settlement, slices, profilesById, baseline, rollValue])
+
+  if (!deal) return null
+
+  const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
+  const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
+  const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+  const playerCredit = tourneyClose ? tourneyClose.returned : settlement?.player_net ?? 0
   const overallPl = tourneyClose?.overallPl ?? null
+  const unusedMarkupTotal = roundMoney(
+    backerReturnRows.reduce((sum, row) => sum + (row.unusedMarkup || 0), 0),
+  )
+  const lossTone = overallPl != null && overallPl < -0.005
 
   return (
     <div
@@ -124,17 +206,14 @@ export default function PokerStableCloseStakeSheet({
         )}
 
         <div
+          data-poker-stable-close-stake-player-card
           className={`mb-4 rounded-2xl border p-3 ${
-            overallPl != null && overallPl < -0.005
-              ? 'border-rose-400/50 bg-rose-950/45'
-              : 'border-emerald-500/25 bg-emerald-950/30'
+            lossTone ? 'border-rose-400/50 bg-rose-950/45' : 'border-emerald-500/25 bg-emerald-950/30'
           }`}
         >
           <div
             className={`text-[10px] font-bold uppercase tracking-wide ${
-              overallPl != null && overallPl < -0.005
-                ? 'text-rose-200/90'
-                : 'text-emerald-300/80'
+              lossTone ? 'text-rose-200/90' : 'text-emerald-300/80'
             }`}
           >
             {isTournamentPackage ? 'Returned to personal bankroll' : 'Credit to personal bankroll'}
@@ -150,7 +229,7 @@ export default function PokerStableCloseStakeSheet({
           {isTournamentPackage && overallPl != null ? (
             <p
               className={`mt-2 text-xs font-medium leading-relaxed ${
-                overallPl < -0.005 ? 'text-rose-100/70' : 'text-emerald-100/70'
+                lossTone ? 'text-rose-100/70' : 'text-emerald-100/70'
               }`}
             >
               Overall P/L {overallPl >= 0 ? '+' : ''}
@@ -165,11 +244,83 @@ export default function PokerStableCloseStakeSheet({
               move onto your personal timeline.
             </p>
           )}
+          {isTournamentPackage && unusedMarkupTotal > 0.005 ? (
+            <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+              {fmtPoker$(unusedMarkupTotal)} unused markup returns to backers from your personal
+              bankroll.
+            </p>
+          ) : null}
         </div>
+
+        {isTournamentPackage && backerReturnRows.length ? (
+          <div data-poker-stable-close-stake-backers className="mb-4">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+              Returns to backers
+            </div>
+            <ul className="space-y-2">
+              {backerReturnRows.map((row) => (
+                <li
+                  key={row.sliceId}
+                  data-poker-stable-close-stake-backer-row
+                  className="rounded-2xl border border-zinc-700/80 bg-zinc-900/60 px-3 py-3"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-white">{row.name}</div>
+                      <div className="text-[11px] text-zinc-500">
+                        {Number.isInteger(row.actionPct)
+                          ? `${row.actionPct}%`
+                          : `${Math.round(row.actionPct * 100) / 100}%`}{' '}
+                        action
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right text-sm font-bold tabular-nums text-zinc-100">
+                      {fmtPoker$(row.totalToBacker)}
+                    </div>
+                  </div>
+                  <div className="mt-2 space-y-1 text-xs leading-relaxed text-zinc-400">
+                    <div className="flex justify-between gap-3">
+                      <span>Stake value returned</span>
+                      <span className="tabular-nums text-zinc-300">{fmtPoker$(row.rollShare)}</span>
+                    </div>
+                    {row.unusedMarkup > 0.005 ? (
+                      <div className="flex justify-between gap-3">
+                        <span>Unused markup refunded</span>
+                        <span className="tabular-nums text-zinc-300">
+                          {fmtPoker$(row.unusedMarkup)}
+                        </span>
+                      </div>
+                    ) : row.prepaidFee > 0.005 ? (
+                      <div className="flex justify-between gap-3">
+                        <span>Markup</span>
+                        <span className="tabular-nums text-zinc-300">
+                          {fmtPoker$(row.appliedMarkup)} applied (none unused)
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {!isTournamentPackage && cashBackerPhrases.length ? (
+          <div data-poker-stable-close-stake-backers className="mb-4">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-zinc-500">
+              Backer settlements
+            </div>
+            <ul className="space-y-1.5 rounded-2xl border border-zinc-700/80 bg-zinc-900/60 px-3 py-3 text-sm text-zinc-300">
+              {cashBackerPhrases.map((phrase) => (
+                <li key={phrase}>{phrase}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <p className="mb-4 text-xs leading-relaxed text-zinc-500">
           {isTournamentPackage
-            ? 'Your unsold package share returns with the closing roll. Sessions move onto your personal timeline.'
+            ? 'Closing distributes the current roll by action % and refunds unused prepaid markup. Sessions move onto your personal timeline.'
             : `Backer slices settle together from profit above baseline${
                 showRakeback ? ' and any rakeback you enter below' : ''
               }. Confirm when the numbers look right.`}

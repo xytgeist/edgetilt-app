@@ -819,6 +819,9 @@ export default function PokerStableDealDetailSheet({
           deal={deal}
           slices={slices}
           dealRoll={roll}
+          profilesById={profilesById}
+          sessions={sessions}
+          supabaseClient={supabaseClient}
           saving={saving}
           onClose={() => setCloseStakeOpen(false)}
           onError={onError}

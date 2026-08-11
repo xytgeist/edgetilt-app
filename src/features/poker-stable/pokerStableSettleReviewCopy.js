@@ -1,7 +1,51 @@
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { backerSliceAllocatedCapital } from './pokerStableBackerMath.js'
+import {
+  backerSliceAllocatedCapital,
+  backerSliceMarkupApplied,
+  dealTournamentBuyins,
+} from './pokerStableBackerMath.js'
 import { sliceDisplayName } from './pokerStableApi.js'
 import { computeProRataBackerShares, roundMoney, stableNum } from './pokerStableMath.js'
+
+/**
+ * Player close preview: per-backer roll return + unused markup refund.
+ * @param {object} deal
+ * @param {object[]} [slices]
+ * @param {number} roll
+ * @param {number|object[]} [buyinsOrSessions] buy-in total or session rows
+ * @param {Record<string, object>} [profilesById]
+ */
+export function tournamentCloseBackerReturnRows(
+  deal,
+  slices = [],
+  roll = 0,
+  buyinsOrSessions = 0,
+  profilesById = {},
+) {
+  const buyins =
+    typeof buyinsOrSessions === 'number'
+      ? buyinsOrSessions
+      : dealTournamentBuyins(buyinsOrSessions || [])
+  const rollAt = stableNum(roll)
+  return (slices || [])
+    .filter((s) => s && s.status === 'active')
+    .map((slice) => {
+      const actionPct = Number(slice.action_pct) || 0
+      const rollShare = roundMoney(Math.max(0, rollAt * (actionPct / 100)))
+      const { fee, applied, unused } = backerSliceMarkupApplied(deal, slice, buyins)
+      return {
+        sliceId: slice.id,
+        name: sliceDisplayName(slice, profilesById),
+        actionPct,
+        rollShare,
+        prepaidFee: fee,
+        appliedMarkup: applied,
+        unusedMarkup: unused,
+        totalToBacker: roundMoney(rollShare + unused),
+      }
+    })
+    .filter((row) => row.rollShare > 0.005 || row.unusedMarkup > 0.005 || row.actionPct > 0.005)
+}
 
 /**
  * Close returns the backer's share of CURRENT roll (not baseline).

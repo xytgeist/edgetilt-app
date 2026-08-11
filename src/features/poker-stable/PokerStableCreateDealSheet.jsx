@@ -1,19 +1,24 @@
-import { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
-import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
+import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import StablePlayerPicker from './StablePlayerPicker.jsx'
-import { createBackingDeal, lookupProfileByHandle, requestBackingDeal, applyStakeeDealTerms, proposePendingDealTerms, reassignGuestSliceToUser, notifyStableStakeGuests, notifyStableGuestStakee, notifyStableGuestSyndicateBackers, stakeeProposeCounterTerms } from './pokerStableApi.js'
-import { buildStakeTermsEditNotifyPayload, stakeTermsEditNotifyPayloadsEqual } from './pokerStableNotifyTerms.js'
+import {
+  createBackingDeal,
+  lookupProfileByHandle,
+  requestBackingDeal,
+  notifyStableStakeGuests,
+  notifyStableGuestStakee,
+  notifyStableGuestSyndicateBackers,
+} from './pokerStableApi.js'
 import {
   backerSliceAllocatedCapital,
   computeBackerAvailableBankroll,
   computeBackerPendingHold,
 } from './pokerStableBackerMath.js'
-import { buildTermsPayload, sliceRowToFormSlice } from './pokerStableTerms.js'
 import {
   POKER_STABLE_TYPEAHEAD_RESERVE_PX,
   scrollPokerStableSliceIntoView,
@@ -66,40 +71,6 @@ function applyDealTypePricingDefaults(slice, dealType) {
     pricingMode,
     playerProfitPct: pricingMode === 'profit_split' ? '' : '',
     markupRate: pricingMode === 'markup' ? '' : '',
-  }
-}
-
-/** DB slice row → terms payload slice (preserve co-backers when a backer edits only their slice). */
-function dbSliceRowToTermsSlice(sl) {
-  return {
-    ...(sl?.id ? { sliceId: sl.id } : {}),
-    counterpartyKind: sl.counterparty_kind || sl.counterpartyKind || 'user',
-    stakerUserId: sl.staker_user_id || sl.stakerUserId || null,
-    guestLabel: sl.guest_label || sl.guestLabel || null,
-    guestPhone: sl.guest_phone || sl.guestPhone || null,
-    guestEmail: sl.guest_email || sl.guestEmail || null,
-    actionPct: Number(sl.action_pct ?? sl.actionPct),
-    pricingMode: sl.pricing_mode || sl.pricingMode || 'profit_split',
-    playerProfitPct:
-      sl.player_profit_pct != null
-        ? Number(sl.player_profit_pct)
-        : sl.playerProfitPct != null
-          ? Number(sl.playerProfitPct)
-          : null,
-    markupRate:
-      sl.markup_rate != null
-        ? Number(sl.markup_rate)
-        : sl.markupRate != null
-          ? Number(sl.markupRate)
-          : null,
-    rakebackMode: sl.rakeback_mode || sl.rakebackMode || 'disabled',
-    rakebackPlayerPct:
-      sl.rakeback_player_pct != null
-        ? Number(sl.rakeback_player_pct)
-        : sl.rakebackPlayerPct != null
-          ? Number(sl.rakebackPlayerPct)
-          : null,
-    label: sl.label || null,
   }
 }
 
@@ -417,22 +388,24 @@ function PokerStableDealFormSheet({
   onSavingChange,
   onClose,
   onCreated,
-  onUpdated,
-  onError,
-  editDeal = null,
-  editSlices = null,
-  editProfilesById = {},
-  termsIntent = 'create',
+  // Legacy edit/propose props kept for call-site compat; create/request only (ignored).
+  editDeal: _editDeal = null,
+  editSlices: _editSlices = null,
+  editProfilesById: _editProfilesById = {},
+  termsIntent: _termsIntent = 'create',
   backingBankrollBalance = null,
   stableDeals = [],
   stableSlicesByDeal = {},
+  ..._rest
 }) {
+  void _editDeal
+  void _editSlices
+  void _editProfilesById
+  void _termsIntent
+  void _rest
   const isBacker = mode === 'backer'
-  const isEdit = Boolean(editDeal?.id)
-  const isBackerPropose = termsIntent === 'backer_propose'
-  const isStakeeCounter = termsIntent === 'stakee_counter'
-  const showHorsePicker = isBacker && !isEdit && !isBackerPropose
-  const showPlayerTermsForm = !isBacker || isBackerPropose || isStakeeCounter
+  const showHorsePicker = isBacker
+  const showPlayerTermsForm = !isBacker
   const [label, setLabel] = useState('')
   const [dealType, setDealType] = useState('cash_backing')
   const [venueKind, setVenueKind] = useState('live')
@@ -445,7 +418,7 @@ function PokerStableDealFormSheet({
   const [selectedPlayerProfile, setSelectedPlayerProfile] = useState(null)
   const [playerIsGuest, setPlayerIsGuest] = useState(false)
   const [playerGuestLabel, setPlayerGuestLabel] = useState('')
-  const [playerGuestPhone, setPlayerGuestPhone] = useState('')
+  const [, setPlayerGuestPhone] = useState('')
   const [playerGuestEmail, setPlayerGuestEmail] = useState('')
   const [mySlice, setMySlice] = useState({ ...EMPTY_SLICE, stakerUserId: userId })
   const [friendSlices, setFriendSlices] = useState([])
@@ -454,8 +427,6 @@ function PokerStableDealFormSheet({
   const sheetRef = useRef(null)
   const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
-  /** Full non-declined slices when backer proposes … form may show only the viewer’s slice. */
-  const allEditSlicesRef = useRef(/** @type {object[]} */ ([]))
   usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef)
 
   function clearPlayerSelection() {
@@ -488,60 +459,6 @@ function PokerStableDealFormSheet({
       }
     }
   }
-
-  // Stable identity for hydrate … parent silent reloads pass new editDeal/editSlices
-  // object refs every poll and were wiping in-progress markup/baseline edits.
-  const editHydrateKey = editDeal?.id
-    ? `${editDeal.id}|${(editSlices || [])
-        .filter((sl) => sl?.status !== 'declined')
-        .map((sl) => sl.id || '')
-        .join(',')}`
-    : ''
-
-  useEffect(() => {
-    if (!editDeal?.id || !editHydrateKey) return
-    setDealType(editDeal.deal_type || 'cash_backing')
-    setVenueKind(editDeal.venue_kind || 'live')
-    setLabel(editDeal.label || '')
-    setBaseline(
-      editDeal.baseline_bankroll != null
-        ? formatMoneyInputValue(String(editDeal.baseline_bankroll))
-        : '',
-    )
-    setIsMigration(Boolean(editDeal.is_migration))
-    setStartingRoll(
-      editDeal.starting_roll != null
-        ? formatMoneyInputValue(String(editDeal.starting_roll))
-        : '',
-    )
-    setStakeWidePl(
-      editDeal.stake_wide_starting_pl != null
-        ? formatMoneyInputValue(String(editDeal.stake_wide_starting_pl), { allowNegative: true })
-        : '',
-    )
-    setLifetimePl(
-      editDeal.lifetime_pl_display != null
-        ? formatMoneyInputValue(String(editDeal.lifetime_pl_display), { allowNegative: true })
-        : '',
-    )
-    const rows =
-      editDeal.status === 'revoked'
-        ? []
-        : (editSlices || []).filter((sl) => sl.status !== 'declined')
-    allEditSlicesRef.current = rows
-    const formRows =
-      isBackerPropose && userId
-        ? rows.filter((sl) => sl.staker_user_id === userId || sl.stakerUserId === userId)
-        : rows
-    setSlices(
-      formRows.length
-        ? formRows.map((sl) => sliceRowToFormSlice(sl, editProfilesById))
-        : [newEmptySlice(editDeal.deal_type || 'cash_backing')],
-    )
-    setFormError('')
-    // editDeal / editSlices / editProfilesById intentionally omitted … use editHydrateKey.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate only on deal/slice identity
-  }, [editHydrateKey, isBackerPropose, userId])
 
   function addBackerSlice() {
     scrollSliceIdxRef.current = isBacker ? friendSlices.length + 1 : slices.length
@@ -645,122 +562,7 @@ function PokerStableDealFormSheet({
         throw new Error('Total action sold cannot exceed 100%.')
       }
       let createdDeal = null
-      let beforeTermsEdit = null
-      let afterTermsEdit = null
-      if (isEdit && showPlayerTermsForm) {
-        if (!isBackerPropose) {
-          beforeTermsEdit = buildStakeTermsEditNotifyPayload(editDeal, editSlices)
-        }
-        const baselineAmount = parseMoneyInputNumber(baseline)
-        if (!baseline.trim() || !Number.isFinite(baselineAmount) || baselineAmount <= 0) {
-          throw new Error('Enter a baseline stake.')
-        }
-        const parsedSlices = []
-        const reassignments = []
-        if (!isBackerPropose) {
-          for (const sl of slices) {
-            const parsed = await resolveUserSlice(supabaseClient, sl, userId)
-            if (
-              editDeal.status === 'active' &&
-              sl.sliceId &&
-              sl.wasGuest &&
-              !sl.isGuest
-            ) {
-              reassignments.push({ sliceId: sl.sliceId, stakerUserId: parsed.stakerUserId })
-            } else {
-              parsedSlices.push(parsed)
-            }
-          }
-        }
-        const dealFields = {
-          label,
-          baselineBankroll: baselineAmount,
-          startingRoll:
-            isMigration && startingRoll.trim()
-              ? parseMoneyInputNumber(startingRoll)
-              : baselineAmount,
-          isMigration,
-          stakeWideStartingPl: stakeWidePl.trim() ? parseMoneyInputNumber(stakeWidePl) : null,
-          lifetimePlDisplay: lifetimePl.trim() ? parseMoneyInputNumber(lifetimePl) : null,
-        }
-        if (isBackerPropose) {
-          const viewerParsed = []
-          for (const sl of slices) {
-            viewerParsed.push(
-              await resolveUserSlice(supabaseClient, sl, userId, { allowSelf: true }),
-            )
-          }
-          const bySliceId = new Map(
-            viewerParsed.filter((p) => p.sliceId).map((p) => [p.sliceId, p]),
-          )
-          const byStaker = new Map(
-            viewerParsed.filter((p) => p.stakerUserId).map((p) => [p.stakerUserId, p]),
-          )
-          const mergedSlices = (allEditSlicesRef.current.length
-            ? allEditSlicesRef.current
-            : editSlices || []
-          )
-            .filter((sl) => sl.status !== 'declined')
-            .map((row) => {
-              const fromForm =
-                (row.id && bySliceId.get(row.id)) ||
-                (row.staker_user_id && byStaker.get(row.staker_user_id)) ||
-                null
-              return fromForm || dbSliceRowToTermsSlice(row)
-            })
-          const payload = buildTermsPayload({
-            label,
-            baseline: baselineAmount,
-            isMigration,
-            startingRoll: dealFields.startingRoll,
-            stakeWidePl: dealFields.stakeWideStartingPl,
-            lifetimePl: dealFields.lifetimePlDisplay,
-            slices: mergedSlices,
-          })
-          const { error } = await proposePendingDealTerms(
-            supabaseClient,
-            editDeal.id,
-            userId,
-            payload,
-          )
-          if (error) throw error
-        } else if (isStakeeCounter) {
-          const payload = buildTermsPayload({
-            label,
-            baseline: baselineAmount,
-            isMigration,
-            startingRoll: dealFields.startingRoll,
-            stakeWidePl: dealFields.stakeWideStartingPl,
-            lifetimePl: dealFields.lifetimePlDisplay,
-            slices: parsedSlices,
-          })
-          const { error } = await stakeeProposeCounterTerms(supabaseClient, editDeal.id, payload)
-          if (error) throw error
-        } else {
-          if (
-            (editDeal.status === 'pending' || editDeal.status === 'revoked') &&
-            !parsedSlices.length
-          ) {
-            throw new Error('Add at least one backer slice.')
-          }
-          const { deal, error } = await applyStakeeDealTerms(supabaseClient, {
-            dealId: editDeal.id,
-            stakeeUserId: userId,
-            dealFields,
-            slices: parsedSlices,
-          })
-          if (error) throw error
-          createdDeal = deal
-          afterTermsEdit = buildStakeTermsEditNotifyPayload(createdDeal, parsedSlices)
-          for (const reassignment of reassignments) {
-            const { error: reassignErr } = await reassignGuestSliceToUser(
-              supabaseClient,
-              reassignment,
-            )
-            if (reassignErr) throw reassignErr
-          }
-        }
-      } else if (isBacker) {
+      if (isBacker) {
         const allSlices = [
           await resolveUserSlice(
             supabaseClient,
@@ -874,36 +676,22 @@ function PokerStableDealFormSheet({
             guestNotifyWarning = guestNotifyWarning ? `${guestNotifyWarning} ${msg}` : msg
           }
         }
-      } else if (!isBacker && !isBackerPropose && createdDeal?.id) {
+      } else if (!isBacker && createdDeal?.id) {
         const hadGuestContact = formSlicesHadGuestContact()
-        let notifyOpts = null
-        if (beforeTermsEdit && afterTermsEdit) {
-          if (!stakeTermsEditNotifyPayloadsEqual(beforeTermsEdit, afterTermsEdit)) {
-            notifyOpts = {
-              kind: 'terms_edited',
-              termsEdit: { before: beforeTermsEdit, after: afterTermsEdit },
-            }
-          }
-        } else if (!isEdit) {
-          notifyOpts = { kind: 'offer' }
-        }
-        if (notifyOpts) {
-          const { error: notifyErr, notifiedCount } = await notifyStableStakeGuests(
-            supabaseClient,
-            createdDeal.id,
-            notifyOpts,
-          )
-          if (notifyErr) {
-            guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
-            console.warn('[poker-stable] guest notify failed', guestNotifyWarning)
-          } else if (hadGuestContact && notifiedCount === 0) {
-            guestNotifyWarning = 'Guest notify did not send. Check email/phone on the guest slice.'
-          }
+        const { error: notifyErr, notifiedCount } = await notifyStableStakeGuests(
+          supabaseClient,
+          createdDeal.id,
+          { kind: 'offer' },
+        )
+        if (notifyErr) {
+          guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
+          console.warn('[poker-stable] guest notify failed', guestNotifyWarning)
+        } else if (hadGuestContact && notifiedCount === 0) {
+          guestNotifyWarning = 'Guest notify did not send. Check email/phone on the guest slice.'
         }
       }
       triggerTapHapticLight()
-      if (isEdit) onUpdated?.(createdDeal, { guestNotifyWarning })
-      else onCreated?.(createdDeal, { guestNotifyWarning })
+      onCreated?.(createdDeal, { guestNotifyWarning })
       onClose()
     } catch (e) {
       const message = e?.message || 'Could not save deal.'
@@ -913,28 +701,8 @@ function PokerStableDealFormSheet({
     }
   }
 
-  const title = isStakeeCounter
-    ? 'Offer new terms'
-    : isBackerPropose
-    ? 'Propose stake terms'
-    : isEdit
-      ? 'Edit stake terms'
-      : isBacker
-        ? 'Create Stake'
-        : 'New stake deal'
-  const submitLabel = isStakeeCounter
-    ? 'Send counter-proposal'
-    : isBackerPropose
-    ? 'Send proposal'
-    : isEdit
-      ? 'Save terms'
-      : isBacker
-        ? 'Create stake'
-        : 'Create stake'
-  const showImpliedAcceptNotice = isStakeeCounter || isBackerPropose
-  const impliedAcceptNotice = isStakeeCounter
-    ? 'Sending these terms is an implied acceptance. If the backer accepts, this stake goes live under these terms ... you will not need to Accept again.'
-    : 'Sending these terms is an implied acceptance of your slice. Your card will wait on the player ... no Accept/Decline after you send.'
+  const title = isBacker ? 'Create Stake' : 'New stake deal'
+  const submitLabel = 'Create stake'
 
   const playerGuestContactErrors = playerIsGuest
     ? guestNotifyContactFieldErrors({
@@ -1062,32 +830,30 @@ function PokerStableDealFormSheet({
           />
         </InField>
 
-        {!isEdit ? (
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <InField label="Stake type" focusRingClass={STABLE_INFIELD_FOCUS}>
-              <select
-                value={dealType}
-                onChange={(e) => onDealTypeChange(e.target.value)}
-                className={`${INFIELD_CONTROL} appearance-none`}
-                data-poker-stable-deal-type-select
-              >
-                <option value="cash_backing">Cash game</option>
-                <option value="tournament_package">Tournament package</option>
-              </select>
-            </InField>
-            <InField label="Venue" focusRingClass={STABLE_INFIELD_FOCUS}>
-              <select
-                value={venueKind}
-                onChange={(e) => onVenueKindChange(e.target.value)}
-                className={`${INFIELD_CONTROL} appearance-none`}
-                data-poker-stable-venue-kind-select
-              >
-                <option value="live">Live</option>
-                <option value="online">Online</option>
-              </select>
-            </InField>
-          </div>
-        ) : null}
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <InField label="Stake type" focusRingClass={STABLE_INFIELD_FOCUS}>
+            <select
+              value={dealType}
+              onChange={(e) => onDealTypeChange(e.target.value)}
+              className={`${INFIELD_CONTROL} appearance-none`}
+              data-poker-stable-deal-type-select
+            >
+              <option value="cash_backing">Cash game</option>
+              <option value="tournament_package">Tournament package</option>
+            </select>
+          </InField>
+          <InField label="Venue" focusRingClass={STABLE_INFIELD_FOCUS}>
+            <select
+              value={venueKind}
+              onChange={(e) => onVenueKindChange(e.target.value)}
+              className={`${INFIELD_CONTROL} appearance-none`}
+              data-poker-stable-venue-kind-select
+            >
+              <option value="live">Live</option>
+              <option value="online">Online</option>
+            </select>
+          </InField>
+        </div>
 
         {showPlayerTermsForm ? (
           <>
@@ -1166,7 +932,7 @@ function PokerStableDealFormSheet({
 
         {showPlayerTermsForm ? (
           <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-            {isBackerPropose ? 'Your slice' : 'Backer slices'}
+            Backer slices
           </h4>
         ) : null}
         <div className="mb-4 space-y-3">
@@ -1179,13 +945,8 @@ function PokerStableDealFormSheet({
                 sliceIndex={idx}
                 userId={userId}
                 supabaseClient={supabaseClient}
-                lockUserId={isBackerPropose ? userId : undefined}
-                title={
-                  isBackerPropose
-                    ? 'Your slice'
-                    : pokerStableBackerSliceLabel(slices.length, idx)
-                }
-                canRemove={!isBackerPropose && slices.length > 1}
+                title={pokerStableBackerSliceLabel(slices.length, idx)}
+                canRemove={slices.length > 1}
                 showRakeback={venueKind === 'online'}
                 actionSoldTotal={formActionTotal}
                 onChange={(patch) => updateSlice(idx, patch)}
@@ -1237,7 +998,7 @@ function PokerStableDealFormSheet({
               {formError}
             </p>
           ) : null}
-          {showPlayerTermsForm && !isBackerPropose ? (
+          {showPlayerTermsForm ? (
             <button
               type="button"
               onClick={addBackerSlice}
@@ -1246,7 +1007,7 @@ function PokerStableDealFormSheet({
             >
               + Add backer slice
             </button>
-          ) : !showPlayerTermsForm ? (
+          ) : (
             <button
               type="button"
               onClick={addBackerSlice}
@@ -1255,16 +1016,7 @@ function PokerStableDealFormSheet({
             >
               + Add syndicate backer
             </button>
-          ) : null}
-
-          {showImpliedAcceptNotice ? (
-            <p
-              data-poker-stable-implied-accept-notice
-              className="mb-3 rounded-2xl border border-amber-500/35 bg-amber-950/40 px-4 py-3 text-center text-xs leading-relaxed text-amber-100/95"
-            >
-              {impliedAcceptNotice}
-            </p>
-          ) : null}
+          )}
 
           <button
             type="button"

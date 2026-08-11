@@ -70,11 +70,9 @@ import {
   sliceCounterpartyDisplayName,
 } from '../poker-stable/pokerStableTerms.js'
 import {
-  acceptProposedDealTerms,
   archiveStakeeBankrollDeal,
   cancelStakeDeal,
   closeBackingDeal,
-  declineProposedDealTerms,
   deleteStakeSessionWithAudit,
   isBackerInitiatedBackingDeal,
   loadLedgerEntries,
@@ -356,10 +354,6 @@ export default function PokerBankrollTracker({
   const [stableProfilesById, setStableProfilesById] = useState({})
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
   const [ledgerDealId, setLedgerDealId] = useState(/** @type {string | null} */ (null))
-  const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
-  const [editTermsIntent, setEditTermsIntent] = useState(
-    /** @type {'stakee_update' | 'stakee_counter'} */ ('stakee_update'),
-  )
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
   /** @type {Record<string, object[]>} */
@@ -401,10 +395,9 @@ export default function PokerBankrollTracker({
   const [stakeOfferOnboardingOpen, setStakeOfferOnboardingOpen] = useState(false)
   const [carouselCoachOpen, setCarouselCoachOpen] = useState(false)
   const [carouselCoachMode, setCarouselCoachMode] = useState(
-    /** @type {'accepted' | 'declined' | 'counter' | null} */ (null),
+    /** @type {'accepted' | 'declined' | null} */ (null),
   )
   const stakeOfferOnboardingOpenedRef = useRef(false)
-  const stakeOnboardingCounterPendingRef = useRef(false)
   const [carouselCoachDealId, setCarouselCoachDealId] = useState(/** @type {string | null} */ (null))
   /** @type {object[]} */
   const [draftSwaps, setDraftSwaps] = useState([])
@@ -465,16 +458,11 @@ export default function PokerBankrollTracker({
   const pendingBackerOffer =
     isOnStake &&
     activeDeal?.status === 'pending' &&
-    isBackerInitiatedBackingDeal(activeDeal) &&
-    !activeDeal?.staker_terms_ack_required &&
-    !activeDeal?.stakee_terms_ack_required
-  const waitingBackerCounterResponse =
-    isOnStake && activeDeal?.status === 'pending' && Boolean(activeDeal?.staker_terms_ack_required)
+    isBackerInitiatedBackingDeal(activeDeal)
   /** Pending-play: log on stake after player accepted terms; still block backer-offer until player accepts. */
   const stakeScopeSessionBlocked =
     stakeScopeRevoked ||
     stakeScopeClosedUnarchived ||
-    waitingBackerCounterResponse ||
     (isOnStake && activeDeal && !stakeDealPlayerSideAccepted(activeDeal))
   const termsDealForSheet = useMemo(() => {
     if (!termsDealId) return null
@@ -785,11 +773,7 @@ export default function PokerBankrollTracker({
       return
     }
     const pendingOffer = stakeeDeals.find(
-      (d) =>
-        d.status === 'pending' &&
-        isBackerInitiatedBackingDeal(d) &&
-        !d.staker_terms_ack_required &&
-        !d.stakee_terms_ack_required,
+      (d) => d.status === 'pending' && isBackerInitiatedBackingDeal(d),
     )
     if (!pendingOffer) return
     // Already focused this offer (or user is viewing a stake) ... never re-yank from Personal.
@@ -816,11 +800,7 @@ export default function PokerBankrollTracker({
   useEffect(() => {
     if (!highlightPendingOffer || loading || !userId) return undefined
     const pendingOffer = stakeeDeals.find(
-      (d) =>
-        d.status === 'pending' &&
-        isBackerInitiatedBackingDeal(d) &&
-        !d.staker_terms_ack_required &&
-        !d.stakee_terms_ack_required,
+      (d) => d.status === 'pending' && isBackerInitiatedBackingDeal(d),
     )
     if (pendingOffer?.id) setBankrollScope(pendingOffer.id)
     const clearTimer = window.setTimeout(() => {
@@ -837,7 +817,6 @@ export default function PokerBankrollTracker({
       stakeeDeals.find((d) => d.id === activeStakeOnboardingDealId) ??
       stakeeDealsById[activeStakeOnboardingDealId]
     if (!deal || deal.status !== 'pending' || !isBackerInitiatedBackingDeal(deal)) return
-    if (deal.staker_terms_ack_required || deal.stakee_terms_ack_required) return
     stakeOfferOnboardingOpenedRef.current = true
     pendingRestoreScopeRef.current = activeStakeOnboardingDealId
     setScopeHydrated(true)
@@ -1766,14 +1745,6 @@ export default function PokerBankrollTracker({
     }
   }
 
-  function handleStakeOnboardingOfferNewTerms(dealId) {
-    setStakeOfferOnboardingOpen(false)
-    stakeOnboardingCounterPendingRef.current = true
-    setEditTermsIntent('stakee_counter')
-    setEditTermsDealId(dealId)
-    triggerTapHapticLight()
-  }
-
   function openClosedStakeReview(dealId) {
     if (!dealId) return
     const pending = stakeePendingSettleCommitForDeal(pendingStakeCommits, dealId)
@@ -1788,14 +1759,13 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
-  /** Active stakes → Manage sheet; pending/proposal/closed → Stake terms sheet. */
+  /** Active stakes → Manage sheet; pending/closed → Stake terms sheet (read-only). */
   function openStakeTermsFromHero(dealId) {
     const id = String(dealId || '').trim()
     if (!id) return
     setError('')
     const deal = stakeeDeals.find((d) => d.id === id) ?? stakeeDealsById[id] ?? null
-    const hasProposal = Boolean(deal?.stakee_terms_ack_required && deal?.pending_terms_json)
-    if (stakeeBankrollTermsOpensManageSheet(deal, { userId, hasProposal })) {
+    if (stakeeBankrollTermsOpensManageSheet(deal, { userId, hasProposal: false })) {
       setTermsDealId(null)
       setLedgerDealId(id)
     } else {
@@ -3148,32 +3118,6 @@ export default function PokerBankrollTracker({
           </div>
         ) : null}
 
-        {activeDeal?.stakee_terms_ack_required && activeTab === 'overview' && isOnStake ? (
-          <div
-            data-poker-stake-notice
-            className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-center text-sm text-amber-100"
-          >
-            A backer proposed new stake terms.{' '}
-            <button
-              type="button"
-              onClick={() => setTermsDealId(bankrollScope)}
-              className="font-semibold text-amber-200 underline touch-manipulation"
-            >
-              Review terms
-            </button>
-          </div>
-        ) : null}
-
-        {waitingBackerCounterResponse && activeTab === 'overview' && isOnStake ? (
-          <div
-            data-poker-stake-notice
-            className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-center text-sm text-amber-100"
-          >
-            Counter-proposal sent ... waiting for{' '}
-            {dealLeadBackerDisplayName(activeDeal, stableProfilesById)} to respond in Stable.
-          </div>
-        ) : null}
-
         {activeTab === 'details' ? (
           !initialBankrollLoadDone ? (
             <p className="py-16 text-center text-sm text-zinc-500">Loading…</p>
@@ -3241,19 +3185,15 @@ export default function PokerBankrollTracker({
                     ? null
                     : onStake && hero.deal?.status === 'revoked'
                       ? 'revoked'
-                      : onStake && hero.deal?.stakee_terms_ack_required
-                        ? 'termsReview'
-                        : onStake && hero.deal?.staker_terms_ack_required
-                          ? 'counterSent'
-                          : heroAwaitingPlayerAccept
-                            ? 'pendingBackerOffer'
-                            : onStake && hero.deal && !heroStakeLive
-                              ? pendingBackerSlices.length > 0
-                                ? 'pendingBackers'
-                                : 'pendingStake'
-                              : pendingBackerSlices.length > 0
-                                ? 'pendingBackers'
-                                : null
+                      : heroAwaitingPlayerAccept
+                        ? 'pendingBackerOffer'
+                        : onStake && hero.deal && !heroStakeLive
+                          ? pendingBackerSlices.length > 0
+                            ? 'pendingBackers'
+                            : 'pendingStake'
+                          : pendingBackerSlices.length > 0
+                            ? 'pendingBackers'
+                            : null
                 const stakeHeroSlotExpands =
                   Boolean(stakeHeroMessage) ||
                   Boolean(hero.pendingSettleCommit) ||
@@ -3458,36 +3398,6 @@ export default function PokerBankrollTracker({
                                 dealSlices,
                                 stableProfilesById,
                               )}
-                            </p>
-                          ) : stakeHeroMessage === 'termsReview' ? (
-                            <div
-                              data-poker-stake-terms-review
-                              data-poker-offer-attention-pulse={highlightPendingOffer ? '1' : undefined}
-                              className="space-y-2 text-left"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <p className="text-xs leading-snug text-amber-200/85">
-                                A backer proposed revised terms.
-                              </p>
-                              <button
-                                type="button"
-                                disabled={stableSaving}
-                                onClick={() => {
-                                  setTermsDealId(scopeId)
-                                  triggerTapHapticLight()
-                                }}
-                                className="w-full rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
-                              >
-                                Review
-                              </button>
-                            </div>
-                          ) : stakeHeroMessage === 'counterSent' ? (
-                            <p
-                              data-poker-stake-counter-sent
-                              className="text-left text-xs leading-snug text-amber-200/85"
-                            >
-                              Counter-proposal sent ... waiting for{' '}
-                              {dealLeadBackerDisplayName(hero.deal, stableProfilesById)} in Stable.
                             </p>
                           ) : stakeHeroMessage === 'pendingBackerOffer' ? (
                             <div
@@ -4344,7 +4254,6 @@ export default function PokerBankrollTracker({
           saving={stableSaving}
           onAccept={() => void handleStakeOnboardingAccept(onboardingDeal.id)}
           onDecline={() => void handleStakeOnboardingDecline(onboardingDeal.id)}
-          onOfferNewTerms={() => handleStakeOnboardingOfferNewTerms(onboardingDeal.id)}
         />
       ) : null}
 
@@ -4372,14 +4281,6 @@ export default function PokerBankrollTracker({
             stakeeDeals.find((d) => d.id === carouselCoachDealId)?.label?.trim() ||
             stakeeDealsById[carouselCoachDealId]?.label?.trim() ||
             'your stake'
-          }
-          backerName={
-            dealLeadBackerDisplayName(
-              stakeeDeals.find((d) => d.id === carouselCoachDealId) ??
-                stakeeDealsById[carouselCoachDealId] ??
-                null,
-              stableProfilesById,
-            ) || 'Your backer'
           }
           onDismiss={dismissStakeCarouselCoach}
         />
@@ -4417,12 +4318,6 @@ export default function PokerBankrollTracker({
         <PokerStableDealTermsSheet
           deal={termsDealForSheet}
           slices={slicesByDeal[termsDealId] || []}
-          proposedPayload={
-            stakeeDeals.find((d) => d.id === termsDealId)?.pending_terms_json ??
-            stakeeDealsById[termsDealId]?.pending_terms_json ??
-            termsDealForSheet?.pending_terms_json ??
-            null
-          }
           profilesById={stableProfilesById}
           userId={userId}
           supabaseClient={supabaseClient}
@@ -4437,18 +4332,6 @@ export default function PokerBankrollTracker({
             if (reopenOffer) setStakeOfferOnboardingOpen(true)
           }}
           onError={setError}
-          onEdit={() => {
-            const deal =
-              stakeeDeals.find((d) => d.id === termsDealId) ??
-              stakeeDealsById[termsDealId] ??
-              null
-            setTermsDealId(null)
-            // Backer→player: counter-propose (lead must Accept). Player→backer: apply as initiator.
-            setEditTermsIntent(
-              isBackerInitiatedBackingDeal(deal) ? 'stakee_counter' : 'stakee_update',
-            )
-            setEditTermsDealId(termsDealId)
-          }}
           onReassignGuest={async ({ sliceId, stakerUserId }) => {
             setStableSaving(true)
             setError('')
@@ -4510,40 +4393,6 @@ export default function PokerBankrollTracker({
             setTermsDealId(null)
             if (dealId) setLedgerDealId(dealId)
           }}
-          onAcceptProposal={async () => {
-            setStableSaving(true)
-            setError('')
-            try {
-              const { error } = await acceptProposedDealTerms(
-                supabaseClient,
-                termsDealId,
-                userId,
-              )
-              if (error) throw error
-              showStakeNotice('Proposed terms accepted.')
-              setTermsDealId(null)
-              await loadData()
-            } catch (e) {
-              setError(e?.message || 'Could not accept proposed terms.')
-            } finally {
-              setStableSaving(false)
-            }
-          }}
-          onDeclineProposal={async () => {
-            setStableSaving(true)
-            setError('')
-            try {
-              const { error } = await declineProposedDealTerms(supabaseClient, termsDealId)
-              if (error) throw error
-              showStakeNotice('Proposal declined. Your terms are unchanged.')
-              setTermsDealId(null)
-              await loadData()
-            } catch (e) {
-              setError(e?.message || 'Could not decline proposal.')
-            } finally {
-              setStableSaving(false)
-            }
-          }}
         />
       ) : null}
 
@@ -4570,56 +4419,6 @@ export default function PokerBankrollTracker({
           onClose={() => setLedgerDealId(null)}
           onRefresh={loadData}
           onError={setError}
-        />
-      ) : null}
-
-      {editTermsDealId && supabaseClient && userId ? (
-        <PokerStablePlayerDealSheet
-          supabaseClient={supabaseClient}
-          userId={userId}
-          saving={stableSaving}
-          onSavingChange={setStableSaving}
-          editDeal={
-            stakeeDeals.find((d) => d.id === editTermsDealId) ??
-            stakeeDealsById[editTermsDealId] ??
-            null
-          }
-          editSlices={slicesByDeal[editTermsDealId] || []}
-          editProfilesById={stableProfilesById}
-          termsIntent={editTermsIntent}
-          onClose={() => {
-            if (stakeOnboardingCounterPendingRef.current) {
-              stakeOnboardingCounterPendingRef.current = false
-              setStakeOfferOnboardingOpen(true)
-            }
-            setEditTermsDealId(null)
-            setEditTermsIntent('stakee_update')
-          }}
-          onUpdated={(deal, meta) => {
-            const warn = meta?.guestNotifyWarning
-            const wasRevoked = stakeeDealsById[editTermsDealId]?.status === 'revoked'
-            const wasCounter = editTermsIntent === 'stakee_counter'
-            showStakeNotice(
-              warn
-                ? wasCounter
-                  ? `Counter-proposal sent. ${warn}`
-                  : wasRevoked
-                    ? `Stake re-offered. ${warn}`
-                    : `Stake terms updated. ${warn}`
-                : wasCounter
-                  ? 'Counter-proposal sent ... waiting for the backer in Stable.'
-                  : wasRevoked
-                    ? 'Stake re-offered ... waiting on backers.'
-                    : 'Stake terms updated.',
-            )
-            setEditTermsDealId(null)
-            setEditTermsIntent('stakee_update')
-            if (stakeOnboardingCounterPendingRef.current && wasCounter) {
-              stakeOnboardingCounterPendingRef.current = false
-              finishStakeOnboardingFlow('counter', deal?.id || editTermsDealId)
-            }
-            void loadData()
-          }}
         />
       ) : null}
 

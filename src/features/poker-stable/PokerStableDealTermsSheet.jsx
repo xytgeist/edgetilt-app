@@ -13,10 +13,8 @@ import {
   settleBlockedByPendingCommit,
   sliceTermsSummary,
   stakeDealCanBeCancelled,
-  stakeeCanEditDealTerms,
   stakeeCanOpenLedger,
   stakeeCanSettleStake,
-  termsPayloadToFormState,
 } from './pokerStableTerms.js'
 import {
   pokerStableSliceCardClass,
@@ -93,7 +91,6 @@ function TermsSliceCard({
   idx,
   deal,
   profilesById,
-  proposed = false,
   showReassign = false,
   reassignOpen = false,
   userId,
@@ -112,10 +109,7 @@ function TermsSliceCard({
       className={pokerStableSliceCardClass(idx)}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className={pokerStableSliceTitleClass(idx)}>
-          {summary.name}
-          {proposed ? ' (proposed)' : ''}
-        </span>
+        <span className={pokerStableSliceTitleClass(idx)}>{summary.name}</span>
         {slice.status ? (
           <span
             className={`rounded-md bg-zinc-800/80 px-2 py-0.5 ${pokerStableSliceStatusClass(idx, slice.status)}`}
@@ -164,20 +158,16 @@ function TermsSliceCard({
 }
 
 /**
- * Read-only stake terms + optional accept/decline for backer-proposed revisions.
+ * Read-only stake terms (view, guest reassign, ledger, settle, cancel/revoke).
  */
 export default function PokerStableDealTermsSheet({
   deal,
   slices = [],
-  proposedPayload = null,
   profilesById = {},
   userId,
   supabaseClient,
   saving = false,
   onClose,
-  onEdit,
-  onAcceptProposal,
-  onDeclineProposal,
   onReassignGuest,
   onCancelStake,
   onPeriodicSettle,
@@ -194,58 +184,21 @@ export default function PokerStableDealTermsSheet({
   if (!deal) return null
 
   const isStakee = deal.stakee_user_id === userId
-  const hasProposal = Boolean(deal.stakee_terms_ack_required && proposedPayload)
   const settleBlockedPending = settleBlockedByPendingCommit(pendingCommits, deal.id)
-  const proposedState = proposedPayload
-    ? termsPayloadToFormState(proposedPayload, profilesById)
-    : null
-  const proposedSlices =
-    proposedPayload?.slices?.map((sl, idx) => ({
-      ...sl,
-      counterparty_kind: sl.counterparty_kind || sl.counterpartyKind,
-      action_pct: sl.action_pct ?? sl.actionPct,
-      pricing_mode: sl.pricing_mode || sl.pricingMode,
-      player_profit_pct: sl.player_profit_pct ?? sl.playerProfitPct,
-      markup_rate: sl.markup_rate ?? sl.markupRate,
-      rakeback_mode: sl.rakeback_mode || sl.rakebackMode || 'disabled',
-      rakeback_player_pct: sl.rakeback_player_pct ?? sl.rakebackPlayerPct,
-      guest_label: sl.guest_label || sl.guestLabel,
-      guest_phone: sl.guest_phone || sl.guestPhone,
-      guest_email: sl.guest_email || sl.guestEmail,
-      staker_user_id: sl.staker_user_id || sl.stakerUserId,
-      slice_index: idx,
-      status: 'proposed',
-    })) || []
 
   // Backers only see their own slice(s). Player (stakee) still sees the full syndicate.
   const visibleSlices = isStakee
     ? slices
     : (slices || []).filter((s) => s.staker_user_id === userId)
-  const visibleProposedSlices = isStakee
-    ? proposedSlices
-    : proposedSlices.filter((s) => (s.staker_user_id || s.stakerUserId) === userId)
 
-  const viewerPendingSlice = slices.find(
-    (s) => s.staker_user_id === userId && s.status === 'pending',
-  )
-  const canEditAsBacker =
-    !isStakee &&
-    viewerPendingSlice &&
-    !deal.stakee_terms_ack_required &&
-    typeof onEdit === 'function'
-  const canEdit =
-    (isStakee &&
-      stakeeCanEditDealTerms(deal, slices, { hasProposal }) &&
-      typeof onEdit === 'function') ||
-    canEditAsBacker
   const canCancel =
     isStakee &&
     stakeDealCanBeCancelled(deal, slices, { userId }) &&
     typeof onCancelStake === 'function'
   const canOpenLedger =
-    stakeeCanOpenLedger(deal, { userId, hasProposal }) && typeof onOpenLedger === 'function'
+    stakeeCanOpenLedger(deal, { userId }) && typeof onOpenLedger === 'function'
   const canSettleBase =
-    stakeeCanSettleStake(deal, slices, { userId, hasProposal }) &&
+    stakeeCanSettleStake(deal, slices, { userId }) &&
     (typeof onPeriodicSettle === 'function' || typeof onCloseStake === 'function')
   const canSettle = canSettleBase
   const showPeriodicSettle = canSettleBase && dealCanPeriodicSettle(deal, dealRoll)
@@ -274,32 +227,12 @@ export default function PokerStableDealTermsSheet({
           </button>
         </div>
 
-        {hasProposal && isStakee ? (
-          <div
-            data-poker-stake-notice
-            className="mb-4 border-l-2 border-amber-500/70 pl-3 text-sm leading-relaxed text-amber-100"
-          >
-            A backer proposed new terms. Review below and accept to update your stake, or decline to
-            keep your current terms.
-          </div>
-        ) : null}
-
-        {!hasProposal && isStakee && deal.status === 'revoked' ? (
+        {isStakee && deal.status === 'revoked' ? (
           <div
             data-poker-stable-sheet-hint
             className="mb-4 border-l-2 border-rose-500/60 pl-3 text-xs leading-relaxed text-rose-200/90"
           >
-            A backer revoked this stake. Edit backers to re-offer, or close the stake to archive it.
-          </div>
-        ) : null}
-
-        {!hasProposal && isStakee && deal.status === 'active' && canEdit ? (
-          <div
-            data-poker-stable-sheet-hint
-            className="mb-4 border-l-2 border-zinc-600 pl-3 text-xs leading-relaxed text-zinc-400"
-          >
-            Guest backers are not on Edge ... you can edit terms here or assign a guest to their
-            Edge account when they join.
+            A backer revoked this stake. Close the stake to archive it, or delete if still allowed.
           </div>
         ) : null}
 
@@ -324,134 +257,34 @@ export default function PokerStableDealTermsSheet({
           ) : null}
         </div>
 
-        {hasProposal ? (
-          <>
-            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Current terms
-            </h4>
-            <div className="mb-4 space-y-2">
-              {visibleSlices.map((slice, idx) => (
-                <TermsSliceCard
-                  key={slice.id || `cur-${idx}`}
-                  slice={slice}
-                  idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
-                  deal={deal}
-                  profilesById={profilesById}
-                />
-              ))}
-            </div>
-            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-amber-300/90">
-              Proposed terms
-            </h4>
-            {proposedState ? (
-              <>
-                <p className="mb-1 text-sm font-semibold text-amber-100">
-                  {proposedState.label?.trim() || deal.label || 'Proposed terms'}
-                </p>
-                <p className="mb-2 text-xs text-zinc-500">
-                  {dealTermsMeta({
-                    ...deal,
-                    baseline_bankroll: proposedState.baseline,
-                    starting_roll: proposedState.startingRoll,
-                    is_migration: proposedState.isMigration,
-                    stake_wide_starting_pl: proposedState.stakeWidePl,
-                    lifetime_pl_display: proposedState.lifetimePl,
-                  })}
-                </p>
-              </>
-            ) : null}
-            <div className="mb-4 space-y-2">
-              {visibleProposedSlices.map((slice, idx) => (
-                <TermsSliceCard
-                  key={`prop-${idx}`}
-                  slice={slice}
-                  idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
-                  deal={deal}
-                  profilesById={profilesById}
-                  proposed
-                />
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="mb-4 space-y-2">
-            {visibleSlices.map((slice, idx) => (
-              <TermsSliceCard
-                key={slice.id || idx}
-                slice={slice}
-                idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
-                deal={deal}
-                profilesById={profilesById}
-                showReassign={
-                  canReassignGuestSlice({ deal, slice, userId, hasProposal }) &&
-                  typeof onReassignGuest === 'function'
-                }
-                reassignOpen={reassignSliceId === slice.id}
-                userId={userId}
-                supabaseClient={supabaseClient}
-                saving={saving}
-                onReassignOpen={() => setReassignSliceId(slice.id)}
-                onReassignCancel={() => setReassignSliceId(null)}
-                onReassignConfirm={async (stakerUserId) => {
-                  await onReassignGuest?.({ sliceId: slice.id, stakerUserId })
-                  setReassignSliceId(null)
-                }}
-                onError={onError}
-              />
-            ))}
-          </div>
-        )}
+        <div className="mb-4 space-y-2">
+          {visibleSlices.map((slice, idx) => (
+            <TermsSliceCard
+              key={slice.id || idx}
+              slice={slice}
+              idx={typeof slice.slice_index === 'number' ? slice.slice_index : idx}
+              deal={deal}
+              profilesById={profilesById}
+              showReassign={
+                canReassignGuestSlice({ deal, slice, userId }) &&
+                typeof onReassignGuest === 'function'
+              }
+              reassignOpen={reassignSliceId === slice.id}
+              userId={userId}
+              supabaseClient={supabaseClient}
+              saving={saving}
+              onReassignOpen={() => setReassignSliceId(slice.id)}
+              onReassignCancel={() => setReassignSliceId(null)}
+              onReassignConfirm={async (stakerUserId) => {
+                await onReassignGuest?.({ sliceId: slice.id, stakerUserId })
+                setReassignSliceId(null)
+              }}
+              onError={onError}
+            />
+          ))}
+        </div>
 
         <div className="space-y-2">
-          {hasProposal && isStakee ? (
-            <>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void onAcceptProposal?.()}
-                className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
-              >
-                {saving ? 'Saving…' : 'Accept revised terms'}
-              </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void onDeclineProposal?.()}
-                  className="flex-1 rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-                >
-                  Decline
-                </button>
-                {typeof onEdit === 'function' ? (
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => {
-                      onError?.('')
-                      onEdit?.()
-                    }}
-                    data-poker-stable-terms-edit-btn
-                    className="flex-1 rounded-xl bg-zinc-100 py-3 text-sm font-semibold text-zinc-900 touch-manipulation disabled:opacity-50"
-                  >
-                    Edit terms
-                  </button>
-                ) : null}
-              </div>
-            </>
-          ) : canEdit ? (
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => {
-                onError?.('')
-                onEdit?.()
-              }}
-              data-poker-stable-terms-edit-btn
-              className="w-full rounded-xl bg-zinc-100 py-3 text-sm font-semibold text-zinc-900 touch-manipulation disabled:opacity-50"
-            >
-              Edit terms
-            </button>
-          ) : null}
           {canOpenLedger ? (
             <>
               <h4 className="pt-1 text-[11px] font-bold uppercase tracking-wide text-zinc-500">

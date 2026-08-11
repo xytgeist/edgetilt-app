@@ -154,8 +154,6 @@ export function stakeHeroBadgeVariant(deal, slices = []) {
   if (deal.status === 'revoked') return 'revoked'
   if (stakeeBankrollShowsClosedCarouselCard(deal)) return 'closed'
   if (deal.status === 'declined') return 'declined'
-  if (deal.stakee_terms_ack_required) return 'terms_review'
-  if (deal.staker_terms_ack_required) return 'counter_sent'
   if (stakeDealIsLiveForStakee(deal, slices)) return 'active'
   if (deal.status === 'pending') return 'pending'
   return null
@@ -169,10 +167,6 @@ export function stakeHeroBadgeLabel(deal, slices = []) {
       return 'Closed'
     case 'declined':
       return 'Declined'
-    case 'terms_review':
-      return 'Review terms'
-    case 'counter_sent':
-      return 'Counter sent'
     case 'pending':
       return 'Pending'
     default:
@@ -182,9 +176,6 @@ export function stakeHeroBadgeLabel(deal, slices = []) {
 
 /** Stable horse carousel status pill when deal is live vs still pending. */
 export function stakeHorseCardStatusLabel(deal, slices = []) {
-  if (deal?.staker_terms_ack_required) return 'Review'
-  // Backer proposed revised terms (slice may already be active) ... still Pending until player acks.
-  if (deal?.stakee_terms_ack_required) return 'Pending'
   if (stakeDealIsLiveForStakee(deal, slices)) return 'Active'
   if (deal?.status === 'pending') return 'Pending'
   return deal?.status || 'Unknown'
@@ -386,16 +377,6 @@ export function dealHasEdgeStakerSlices(slices = []) {
       slice?.counterpartyKind === 'user' ||
       Boolean(slice?.staker_user_id || slice?.stakerUserId),
   )
-}
-
-/** Player may edit deal terms when pending, revoked, or active with guest-only backers. */
-export function stakeeCanEditDealTerms(deal, slices = [], { hasProposal = false } = {}) {
-  // Allow re-edit while a counterparty proposal is pending (Accept / Decline / Edit terms).
-  if (!deal) return false
-  if (hasProposal || deal.stakee_terms_ack_required) return true
-  if (deal.status === 'pending' || deal.status === 'revoked') return true
-  if (deal.status === 'active' && !dealHasEdgeStakerSlices(slices)) return true
-  return false
 }
 
 export function canReassignGuestSlice({ deal, slice, userId, hasProposal = false }) {

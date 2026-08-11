@@ -14,7 +14,6 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
   saving = false,
   onAccept,
   onDecline,
-  onEditTerms,
 }) {
   const [declineConfirm, setDeclineConfirm] = useState(false)
 
@@ -50,7 +49,7 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
           </h2>
           <p className="mt-2 text-center text-sm leading-relaxed text-zinc-300">
             {playerName} invited you to back them on EdgeTilt Stable Manager. Review the terms below,
-            then accept, decline, or propose changes.
+            then accept or decline.
           </p>
 
           {offerDetails ? (
@@ -90,37 +89,26 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
               </div>
             </div>
           ) : (
-            <>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  data-poker-stake-offer-decline
-                  disabled={saving}
-                  onClick={() => setDeclineConfirm(true)}
-                  className="min-w-0 flex-1 rounded-2xl bg-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-                >
-                  Decline
-                </button>
-                <button
-                  type="button"
-                  data-poker-stake-offer-accept
-                  disabled={saving}
-                  onClick={() => onAccept?.()}
-                  className="min-w-0 flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
-                >
-                  Accept
-                </button>
-              </div>
+            <div className="flex gap-2">
               <button
                 type="button"
-                data-poker-stake-offer-counter
+                data-poker-stake-offer-decline
                 disabled={saving}
-                onClick={() => onEditTerms?.()}
-                className="mt-2 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+                onClick={() => setDeclineConfirm(true)}
+                className="min-w-0 flex-1 rounded-2xl bg-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
               >
-                Edit terms
+                Decline
               </button>
-            </>
+              <button
+                type="button"
+                data-poker-stake-offer-accept
+                disabled={saving}
+                onClick={() => onAccept?.()}
+                className="min-w-0 flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
+              >
+                Accept
+              </button>
+            </div>
           )}
         </div>
       </div>

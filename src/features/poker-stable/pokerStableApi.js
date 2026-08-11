@@ -629,78 +629,6 @@ async function replacePendingDealSlices(supabase, dealId, slices) {
   return { error: insErr }
 }
 
-function sliceToTermsJson(sl) {
-  const counterpartyKind = sl.counterpartyKind || sl.counterparty_kind || 'guest'
-  return {
-    ...(sl.sliceId ? { id: sl.sliceId } : {}),
-    counterparty_kind: counterpartyKind,
-    staker_user_id: sl.stakerUserId || sl.staker_user_id || null,
-    guest_label: sl.guestLabel || sl.guest_label || null,
-    guest_phone: sl.guestPhone || sl.guest_phone || null,
-    guest_email: sl.guestEmail || sl.guest_email || null,
-    action_pct: sl.actionPct ?? sl.action_pct,
-    pricing_mode: sl.pricingMode || sl.pricing_mode,
-    player_profit_pct:
-      sl.playerProfitPct != null
-        ? sl.playerProfitPct
-        : sl.player_profit_pct != null
-          ? sl.player_profit_pct
-          : null,
-    markup_rate:
-      sl.markupRate != null ? sl.markupRate : sl.markup_rate != null ? sl.markup_rate : null,
-    rakeback_mode: sl.rakebackMode || sl.rakeback_mode || 'disabled',
-    rakeback_player_pct:
-      sl.rakebackPlayerPct != null
-        ? sl.rakebackPlayerPct
-        : sl.rakeback_player_pct != null
-          ? sl.rakeback_player_pct
-          : null,
-    label: sl.label || null,
-  }
-}
-
-/**
- * Apply deal + slice terms (stakee only). Pending deals replace slices; active guest-only deals update in place.
- * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- */
-export async function applyStakeeDealTerms(supabase, args) {
-  const { dealId, stakeeUserId, dealFields, slices, clearProposal = true } = args
-  const actionTotal = sumSliceActionPct(slices)
-  if (actionTotal > 100.001) {
-    return { deal: null, error: new Error('Total action sold cannot exceed 100%.') }
-  }
-
-  const dealPayload = {
-    label: dealFields.label?.trim() || null,
-    baseline_bankroll: roundMoney(dealFields.baselineBankroll),
-    starting_roll: roundMoney(dealFields.startingRoll ?? dealFields.baselineBankroll),
-    is_migration: Boolean(dealFields.isMigration),
-    stake_wide_starting_pl: dealFields.stakeWideStartingPl ?? null,
-    lifetime_pl_display: dealFields.lifetimePlDisplay ?? null,
-  }
-
-  const { error } = await supabase.rpc('poker_stable_apply_stakee_terms', {
-    p_deal_id: dealId,
-    p_deal: dealPayload,
-    p_slices: slices.map(sliceToTermsJson),
-    p_clear_proposal: clearProposal,
-  })
-  if (error) return { deal: null, error }
-
-  const { data: deal, error: loadErr } = await supabase
-    .from('poker_stable_deals')
-    .select(DEAL_SELECT)
-    .eq('id', dealId)
-    .eq('stakee_user_id', stakeeUserId)
-    .maybeSingle()
-  return { deal, error: loadErr }
-}
-
-/** @deprecated name kept for callers — delegates to applyStakeeDealTerms */
-export async function applyPendingDealTerms(supabase, args) {
-  return applyStakeeDealTerms(supabase, args)
-}
-
 /** Link a guest backer slice to an Edge user (slice invite pending accept in Stable). */
 export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId }) {
   const { error } = await supabase.rpc('poker_stable_reassign_guest_slice', {
@@ -744,50 +672,6 @@ export async function cancelStakeDeal(supabase, dealId, stakeeUserId) {
   })
   if (error) return { error, notifyWarning: null }
   return { error: null, notifyWarning }
-}
-
-/** Backer proposes revised terms; stakee must accept before they apply. */
-export async function proposePendingDealTerms(supabase, dealId, backerUserId, termsPayload) {
-  const { error } = await supabase.rpc('poker_stable_propose_terms', {
-    p_deal_id: dealId,
-    p_terms: termsPayload,
-  })
-  if (error) return { error }
-  const { data: deal, error: loadErr } = await supabase
-    .from('poker_stable_deals')
-    .select(DEAL_SELECT)
-    .eq('id', dealId)
-    .maybeSingle()
-  return { deal, error: loadErr }
-}
-
-/** Stakee accepts backer-proposed terms (applies pending_terms_json; proposer slice activates). */
-export async function acceptProposedDealTerms(supabase, dealId, stakeeUserId) {
-  const { error } = await supabase.rpc('poker_stable_stakee_accept_proposed_terms', {
-    p_deal_id: dealId,
-  })
-  if (error) return { deal: null, error }
-  const { data: deal, error: loadErr } = await supabase
-    .from('poker_stable_deals')
-    .select(DEAL_SELECT)
-    .eq('id', dealId)
-    .eq('stakee_user_id', stakeeUserId)
-    .maybeSingle()
-  return { deal, error: loadErr }
-}
-
-/** Stakee or proposing backer clears a pending terms revision without applying. */
-export async function declineProposedDealTerms(supabase, dealId) {
-  const { error } = await supabase.rpc('poker_stable_clear_proposed_terms', {
-    p_deal_id: dealId,
-  })
-  if (error) return { error }
-  const { data: deal, error: loadErr } = await supabase
-    .from('poker_stable_deals')
-    .select(DEAL_SELECT)
-    .eq('id', dealId)
-    .maybeSingle()
-  return { deal, error: loadErr }
 }
 
 /**
@@ -1207,49 +1091,6 @@ export async function hideBackerStableDeal(supabase, dealId) {
     .eq('id', dealId)
     .maybeSingle()
   return { deal, error: loadErr, result: data }
-}
-
-/** Stakee counter-proposes terms on a backer-initiated pending deal. */
-export async function stakeeProposeCounterTerms(supabase, dealId, termsPayload) {
-  const { error } = await supabase.rpc('poker_stable_stakee_propose_counter_terms', {
-    p_deal_id: dealId,
-    p_terms: termsPayload,
-  })
-  if (error) return { deal: null, error }
-  const { data: deal, error: loadErr } = await supabase
-    .from('poker_stable_deals')
-    .select(DEAL_SELECT)
-    .eq('id', dealId)
-    .maybeSingle()
-  return { deal, error: loadErr }
-}
-
-/** Lead backer accepts stakee counter-proposal (deal stays pending for stakee accept). */
-export async function stakerAcceptCounterTerms(supabase, dealId) {
-  const { data, error } = await supabase.rpc('poker_stable_staker_accept_counter_terms', {
-    p_deal_id: dealId,
-  })
-  if (error) return { deal: null, error }
-  const { data: deal, error: loadErr } = await supabase
-    .from('poker_stable_deals')
-    .select(DEAL_SELECT)
-    .eq('id', dealId)
-    .maybeSingle()
-  return { deal: deal || data, error: loadErr }
-}
-
-/** Lead backer declines stakee counter-proposal (kills deal). */
-export async function stakerDeclineCounterTerms(supabase, dealId) {
-  const { data, error } = await supabase.rpc('poker_stable_staker_decline_counter_terms', {
-    p_deal_id: dealId,
-  })
-  if (error) return { deal: null, error }
-  const { data: deal, error: loadErr } = await supabase
-    .from('poker_stable_deals')
-    .select(DEAL_SELECT)
-    .eq('id', dealId)
-    .maybeSingle()
-  return { deal: deal || data, error: loadErr }
 }
 
 /**

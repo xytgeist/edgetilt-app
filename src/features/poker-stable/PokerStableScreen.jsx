@@ -9,7 +9,7 @@ import {
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
-import { PokerStableBackerDealSheet, PokerStablePlayerDealSheet } from './PokerStableCreateDealSheet.jsx'
+import { PokerStableBackerDealSheet } from './PokerStableCreateDealSheet.jsx'
 import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
 import PokerStableClosedHorseSheet from './PokerStableClosedHorseSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
@@ -40,7 +40,6 @@ import {
   acceptSliceAsStaker,
   archiveBackerStableDeal,
   hideBackerStableDeal,
-  declineProposedDealTerms,
   declineSliceAsStaker,
   dealIdsForAcceptedBackerVisibility,
   isMissingStableTableError,
@@ -64,8 +63,6 @@ import {
   nudgeBackerSliceAcceptance,
   revokeHorseDeal,
   sliceDisplayName,
-  stakerAcceptCounterTerms,
-  stakerDeclineCounterTerms,
 } from './pokerStableApi.js'
 import { notifyPokerOfferAttentionChanged } from './pokerPendingOfferAttention.js'
 import { dealTypeLabel } from './pokerStableMath.js'
@@ -73,25 +70,9 @@ import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
   dealStakeeDisplayName,
-  dealLeadBackerDisplayName,
   pendingSettleCommitsForDeal,
   stakeeSkipsBackerCommitSync,
 } from './pokerStableTerms.js'
-function statusLabel(status) {
-  if (status === 'active') return 'Active'
-  if (status === 'pending') return 'Pending'
-  if (status === 'settled') return 'Settled'
-  if (status === 'declined') return 'Declined'
-  if (status === 'revoked') return 'Revoked'
-  return status || 'Unknown'
-}
-
-function statusTone(status) {
-  if (status === 'active') return 'bg-emerald-500/15 text-emerald-300'
-  if (status === 'pending') return 'bg-zinc-700/60 text-zinc-300'
-  if (status === 'declined') return 'bg-zinc-700/60 text-zinc-400'
-  return 'bg-rose-500/20 text-rose-300'
-}
 
 /**
  * Stable Manager — staker tracks horses via per-deal On Stake bankrolls.
@@ -135,7 +116,6 @@ export default function PokerStableScreen({
   const [sheet, setSheet] = useState(/** @type {null | 'request'} */ (null))
   const [detailDealId, setDetailDealId] = useState(/** @type {string | null} */ (null))
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
-  const [editTermsDealId, setEditTermsDealId] = useState(/** @type {string | null} */ (null))
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false)
   const [backerProfile, setBackerProfile] = useState(
     /** @type {{ bankroll_balance: number, realized_backing_pl: number, has_profile: boolean } | null} */ (null),
@@ -456,7 +436,6 @@ export default function PokerStableScreen({
     )
     if (!deal || !slice) return null
     if (slice.staker_user_id !== userId || slice.status !== 'pending') return null
-    if (deal.stakee_terms_ack_required) return null
     return { deal, slice }
   }, [
     activeBackerOnboardingDealId,
@@ -494,14 +473,6 @@ export default function PokerStableScreen({
     closeBackerSliceOnboarding()
   }
 
-  function onEditTermsBackerSliceOnboarding() {
-    const dealId = backerOnboardingSliceRow?.deal?.id
-    if (!dealId) return
-    setBackerSliceOnboardingOpen(false)
-    setEditTermsDealId(dealId)
-    triggerTapHapticLight()
-  }
-
   useEffect(() => {
     if (!detailDealId || !userId) return
     const deal = deals.find((d) => d.id === detailDealId)
@@ -510,16 +481,6 @@ export default function PokerStableScreen({
     }
   }, [detailDealId, deals, userId, slicesByDeal])
 
-  const counterProposals = useMemo(
-    () =>
-      deals.filter(
-        (d) =>
-          d.staker_user_id === userId &&
-          d.status === 'pending' &&
-          d.staker_terms_ack_required,
-      ),
-    [deals, userId],
-  )
   const detailDeal = useMemo(
     () => deals.find((d) => d.id === detailDealId) || null,
     [deals, detailDealId],
@@ -615,48 +576,6 @@ export default function PokerStableScreen({
     ],
   )
 
-  async function onAcceptCounter(dealId) {
-    if (!supabaseClient) return
-    setSaving(true)
-    setError('')
-    try {
-      const { error: err } = await stakerAcceptCounterTerms(supabaseClient, dealId)
-      if (err) throw err
-      triggerTapHapticLight()
-      notifyPokerOfferAttentionChanged()
-      await load()
-    } catch (e) {
-      setError(e?.message || 'Could not accept counter-proposal.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function onDeclineCounter(dealId) {
-    if (!supabaseClient) return
-    const deal = deals.find((d) => d.id === dealId)
-    const label = deal?.label?.trim() || 'this stake'
-    if (
-      !window.confirm(
-        `Decline the counter-proposal on ${label}? Your original offer stays ... the player can accept it or send new terms.`,
-      )
-    ) {
-      return
-    }
-    setSaving(true)
-    setError('')
-    try {
-      const { error: err } = await stakerDeclineCounterTerms(supabaseClient, dealId)
-      if (err) throw err
-      notifyPokerOfferAttentionChanged()
-      await load()
-    } catch (e) {
-      setError(e?.message || 'Could not decline counter-proposal.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   function playerLabelForSlice(sliceId) {
     for (const [dealId, slices] of Object.entries(slicesByDeal || {})) {
       if (!(slices || []).some((s) => s.id === sliceId)) continue
@@ -749,7 +668,6 @@ export default function PokerStableScreen({
     setClosedHorseReviewDealId(null)
     setArchiveDetailDealId(null)
     setTermsDealId(null)
-    setEditTermsDealId(null)
   }
 
   async function onArchiveHorse(dealId) {
@@ -976,61 +894,6 @@ export default function PokerStableScreen({
                 setSheet('request')
               }}
             />
-        {counterProposals.length > 0 ? (
-          <section className="mb-6">
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Counter-proposals
-            </h2>
-            <div className={`space-y-2 ${highlightPendingOffer ? 'relative z-[1] pt-2' : ''}`}>
-              {counterProposals.map((deal) => (
-                <div
-                  key={deal.id}
-                  data-poker-stable-invite-card
-                  data-poker-offer-attention-pulse={highlightPendingOffer ? '1' : undefined}
-                  data-elevated-card="surface"
-                  className="rounded-2xl border border-zinc-700/40 bg-gradient-to-br from-zinc-900 to-zinc-800 p-4"
-                >
-                  <div className="font-bold text-white">
-                    {dealStakeeDisplayName(deal, profilesById)} proposed new terms
-                    {deal.label ? ` · ${deal.label}` : ''}
-                  </div>
-                  <p className="mt-2 text-xs text-amber-200/90">
-                    Accept to apply their terms and go live (sending was their implied accept),
-                    decline to keep your original offer, or ask them to re-edit.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTermsDealId(deal.id)}
-                      className="rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation"
-                    >
-                      Review terms
-                    </button>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onAcceptCounter(deal.id)}
-                      className="flex-1 rounded-2xl bg-emerald-600 py-2.5 text-sm font-bold text-white touch-manipulation disabled:opacity-50"
-                    >
-                      Accept counter
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void onDeclineCounter(deal.id)}
-                      className="flex-1 rounded-2xl bg-zinc-700 py-2.5 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
         <section className="mb-6">
           <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
             Active horses
@@ -1066,8 +929,6 @@ export default function PokerStableScreen({
               onRevoke={onRevoke}
               onAcceptSlice={onAcceptSlice}
               onDeclineSlice={onDeclineSlice}
-              onAcceptCounter={onAcceptCounter}
-              onDeclineCounter={onDeclineCounter}
               onOpenTerms={setTermsDealId}
               onOpenChatWithUser={onOpenChatWithUser}
               saving={saving}
@@ -1207,46 +1068,10 @@ export default function PokerStableScreen({
         <PokerStableDealTermsSheet
           deal={deals.find((d) => d.id === termsDealId) ?? null}
           slices={slicesByDeal[termsDealId] || []}
-          proposedPayload={deals.find((d) => d.id === termsDealId)?.pending_terms_json ?? null}
           profilesById={profilesById}
           userId={userId}
           saving={saving}
           onClose={() => setTermsDealId(null)}
-          onEdit={() => {
-            setTermsDealId(null)
-            setEditTermsDealId(termsDealId)
-          }}
-          onDeclineProposal={async () => {
-            setSaving(true)
-            try {
-              const { error } = await declineProposedDealTerms(supabaseClient, termsDealId)
-              if (error) throw error
-              setTermsDealId(null)
-              await load()
-            } catch (e) {
-              setError(e?.message || 'Could not decline proposal.')
-            } finally {
-              setSaving(false)
-            }
-          }}
-        />
-      ) : null}
-
-      {editTermsDealId && supabaseClient && userId ? (
-        <PokerStablePlayerDealSheet
-          supabaseClient={supabaseClient}
-          userId={userId}
-          saving={saving}
-          onSavingChange={setSaving}
-          editDeal={deals.find((d) => d.id === editTermsDealId) ?? null}
-          editSlices={slicesByDeal[editTermsDealId] || []}
-          editProfilesById={profilesById}
-          termsIntent="backer_propose"
-          onClose={() => setEditTermsDealId(null)}
-          onUpdated={() => {
-            setEditTermsDealId(null)
-            void load()
-          }}
         />
       ) : null}
 
@@ -1333,7 +1158,6 @@ export default function PokerStableScreen({
           saving={saving}
           onAccept={() => void onAcceptBackerSliceOnboarding()}
           onDecline={() => void onDeclineBackerSliceOnboarding()}
-          onEditTerms={onEditTermsBackerSliceOnboarding}
         />
       ) : null}
     </>

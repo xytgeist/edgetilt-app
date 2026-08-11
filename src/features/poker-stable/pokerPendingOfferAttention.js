@@ -56,15 +56,7 @@ export function listPendingBankrollOfferAttentionIds(deals, userId) {
   const out = []
   for (const deal of deals || []) {
     if (!deal?.id || deal?.stakee_user_id !== userId || deal?.status !== 'pending') continue
-    // Backer proposed revised terms on a pending stake (player- or backer-initiated).
-    if (deal.stakee_terms_ack_required) {
-      out.push(`br:terms:${deal.id}`)
-      continue
-    }
-    if (
-      isBackerInitiatedBackingDeal(deal) &&
-      !deal.staker_terms_ack_required
-    ) {
+    if (isBackerInitiatedBackingDeal(deal)) {
       out.push(`br:${deal.id}`)
     }
   }
@@ -72,7 +64,7 @@ export function listPendingBankrollOfferAttentionIds(deals, userId) {
 }
 
 /**
- * Stable Manager: pending slice invite (Accept/Decline) or counter-proposal for the lead backer.
+ * Stable Manager: pending slice invite (Accept/Decline).
  *
  * @param {object[]} deals
  * @param {Record<string, object[]>} slicesByDeal
@@ -95,23 +87,13 @@ export function listPendingStableOfferAttentionIds(deals, slicesByDeal, userId) 
     if (!deal?.id) continue
     if (deal.status === 'revoked' || deal.status === 'declined') continue
 
-    if (
-      deal.staker_user_id === userId &&
-      deal.status === 'pending' &&
-      deal.staker_terms_ack_required
-    ) {
-      out.push(`st:deal:${deal.id}`)
-    }
-
     const slices = slicesByDeal?.[deal.id] || []
     for (const slice of slices) {
       // Same as PokerStableHorseCarousel `isPendingSyndicateInvite`
-      // Skip when this backer already proposed revised terms (implied accept ... waiting on player).
       if (
         slice?.status === 'pending' &&
         slice?.staker_user_id === userId &&
         deal.staker_user_id !== userId &&
-        !(deal.stakee_terms_ack_required && deal.terms_revised_by === userId) &&
         slice?.id
       ) {
         out.push(`st:slice:${slice.id}`)

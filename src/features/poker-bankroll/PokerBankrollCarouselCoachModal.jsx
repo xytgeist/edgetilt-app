@@ -2,20 +2,14 @@ import { ArrowRight } from 'lucide-react'
 
 /**
  * After stake-offer onboarding: explain personal vs stake carousel cards.
- * @param {{ mode: 'accepted' | 'declined' | 'counter', dealLabel?: string, backerName?: string, onDismiss: () => void }} props
+ * @param {{ mode: 'accepted' | 'declined', dealLabel?: string, backerName?: string, onDismiss: () => void }} props
  */
 export default function PokerBankrollCarouselCoachModal({
   mode,
   dealLabel = 'your stake',
-  backerName = 'Your backer',
   onDismiss,
 }) {
-  const title =
-    mode === 'accepted'
-      ? 'Poker Bankroll Manager'
-      : mode === 'counter'
-        ? 'Counter sent'
-        : 'Poker Bankroll'
+  const title = mode === 'accepted' ? 'Poker Bankroll Manager' : 'Poker Bankroll'
 
   const body =
     mode === 'accepted' ? (
@@ -30,18 +24,6 @@ export default function PokerBankrollCarouselCoachModal({
           <span className="font-semibold text-white">{dealLabel}</span>. Log sessions{' '}
           <span className="font-semibold text-white">on stake</span> there so your backer can track
           your progress.
-        </p>
-      </>
-    ) : mode === 'counter' ? (
-      <>
-        <p>
-          Your counter-proposal was sent to{' '}
-          <span className="font-semibold text-white">{backerName}</span>. When they respond, swipe
-          right from your personal card to open the stake card and log sessions there.
-        </p>
-        <p className="mt-3">
-          The left card is your <span className="font-semibold text-white">personal bankroll</span>{' '}
-          for sessions that are not on a stake.
         </p>
       </>
     ) : (

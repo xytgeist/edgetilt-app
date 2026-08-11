@@ -21,7 +21,9 @@ Canonical spec for Stable staking: deal types, slices, makeup, settle, top-up, a
 - **Profit split:** `player_profit_pct` = player share of winnings on that slice (backer gets complement).
 - **Markup:** backer pays `action_pct × buy-in × markup_rate`; typically 100% of profit on sold action to backer.
 - **Guests (player-initiated):** player-entered terms authoritative; optional phone/email for notify (SMS/email via Edge **`poker-stable-notify`** on create, terms edit with before/after diff, and **session complete**); no guest ledger UI. Player may **delete** the stake until an Edge backer accepts; guest-only stakes remain deletable.
-- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets email/SMS with **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); signup from that page sends email confirm back to the same claim URL (auto-link after verify). Player then **Accept / Decline / Offer new terms** on Bankroll. Decline kills the deal for everyone. Counter-proposal → lead backer **Accept counter / Decline** in Stable; stake stays pending until player accepts final terms. Migration **`20260803100000`**. **Guest syndicate co-backers** on the same create flow are **not wired yet** ... see § Notifications → Phase 1b.
+- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets email/SMS with **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); signup from that page sends email confirm back to the same claim URL (auto-link after verify). Player then **Accept / Decline** on Bankroll (no terms renegotiation). Decline kills the deal for everyone; unhappy with terms → decline and create a new stake. Migration **`20260803100000`**. **Guest syndicate co-backers** on the same create flow are **not wired yet** ... see § Notifications → Phase 1b.
+- **No terms edit (Phase 1, 2026-08-11):** pending stakes are **Accept / Decline only**. Edit terms / Offer new terms / counter / propose are removed (RPCs disabled via **`20260811170000`**). Renegotiate by declining (or revoking) and creating a new stake.
+- **Planned (Phase 2):** deal-level economics (`pricing_mode`, `player_profit_pct` / markup, rakeback) with slices holding identity + `action_pct` only; different economics = separate deals.
 - **Edge stakers:** full slice UI + asymmetric ledger confirm/dispute.
 
 ### Cash backing extras
@@ -275,13 +277,11 @@ Scoped recipients ... not broadcast-everything-to-everyone.
 | Event | Notify |
 | --- | --- |
 | Stakee **accept / decline** backer-initiated offer | Lead backer + other **pending/active Edge** slice stakers (not actor) |
-| Stakee **counter-propose** | **Lead backer only** |
-| Lead backer **accept / decline** counter | **Stakee** |
 | Edge backer **accept / decline** slice on player-created deal | **Stakee** |
 
-Activity types: `poker_stable_stakee_*`, `poker_stable_staker_counter_*`, `poker_stable_slice_accepted` / `_declined`. Migration **`20260804100000`**.
+Activity types: `poker_stable_stakee_*`, `poker_stable_slice_accepted` / `_declined` (counter/propose activity types retired with terms-edit removal). Migration **`20260804100000`**.
 
-Guest counterparts on terms events: **deferred** (Phase 2+ in notification roadmap) ... Edge path is enough for syndicate Edge backers today.
+Guest counterparts on accept/decline: **deferred** (notification roadmap) ... Edge path is enough for syndicate Edge backers today.
 
 ### Phase 1b — Backer Create Stake → guest syndicate co-backer (planned)
 
@@ -443,10 +443,10 @@ When a backer exits after accept, the player stake card must **not disappear** .
 
 | Scenario | Behavior (Ryan 2026-08-02) |
 | --- | --- |
-| **Sole backer revokes** | Backer's slice → `declined`; no active slices remain → deal → `revoked`. Player carousel **Revoked**; sessions blocked. Player may **Edit terms** to re-offer (deal → `pending` + new slice invites) or **Close stake** to archive. **Delete stake** is **not** available here ... revoke only happens after accept. |
+| **Sole backer revokes** | Backer's slice → `declined`; no active slices remain → deal → `revoked`. Player carousel **Revoked**; sessions blocked. Player may **Close stake** to archive, then create a new stake if desired (no Edit terms re-offer). **Delete stake** is **not** available here ... revoke only happens after accept. |
 | **One of several backers revokes** | Only that slice → `declined`; deal stays **`active`** if other slices remain. Declined action % returns to player's **self-owned %** (swap cap uses `playerSelfOwnedActionPct`; declined slices excluded). |
 | **Backer declines pending slice** | Slice → `declined`; deal stays **`pending`**. If **all** slices decline → deal stays an **editable draft** (no auto-revoke). Player edits terms to add/re-offer backers. |
-| **Re-offer after revoke** | Stakee **Edit terms** on revoked deal → `poker_stable_apply_stakee_terms` flips deal **`pending`**, replaces slices, new Edge invites. |
+| **Re-offer after revoke** | Not supported. Close/archive the revoked stake and **create a new stake**. |
 | **Close revoked stake** | Stakee **Close stake** runs `poker_stable_close_deal` (finalize settle, no active slices → player keeps profit above baseline if any); deal → **`settled`** / archive. Periodic settle **not** allowed on revoked. |
 | **Player notification** | Bankroll Realtime + **8s poll** while carousel has pending/active stakes. Edge in-app / push **v2c**. |
 
@@ -588,6 +588,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 - **2026-08-11:** **Terms edit requires counterparty ack both ways:** backer-initiated pending … player **Offer new terms** counters (`staker_terms_ack_required`); lead Accept / soft Decline (keeps original offer) / player re-edit. Player-initiated … backer propose sets `stakee_terms_ack_required` + Alert `poker_stable_backer_terms_proposed`. Card badges: Bankroll **Review terms** / **Counter sent**; Stable horse **Review** + inline Accept counter. Migration **`20260811120000`** blocks immediate `apply_stakee_terms` on backer-initiated pending.
 - **2026-08-11:** **Terms edit = implied acceptance:** lead Accept counter activates the deal (player already accepted by proposing). Player Accept backer proposal activates the proposing backer's slice. Edit sheet disclaimer. Migration **`20260811130000`**.
 - **2026-08-11:** **Backer propose activates slice:** sending revised terms is the backer's slice accept ... horse waits on player with no Accept/Decline (**`20260811140000`**).
+- **2026-08-11:** **Terms edit removed (Phase 1, test):** Accept/Decline only on pending stakes; decline + create a new stake to renegotiate. Propose/counter/apply/accept-proposed RPCs disabled (**`20260811170000`**). Stable deal wipe script: **`scripts/wipe-poker-stable-deals.sql`**. **Phase 2 planned:** deal-level pricing + rakeback; slices keep `action_pct` only.
 - **2026-08-01:** Pending stake sessions: player may **Start Session** / log past on pending deals; sessions attach to `deal_id` immediately; stake bankroll profile bootstraps on accept with starting roll + logged P/L; backers see sessions in Stable after accept (`20260801110000`).
 - **2026-08-01:** Stable filters: player **+ Stake** deals no longer appear on Stable for the stakee; invite cards use amber chrome (not cyan).
 - **2026-08-01:** Post-create stake UX: pending player deals appear on Bankroll carousel; success banner after **Create stake**; push/in-app backer alerts still **v2c**.

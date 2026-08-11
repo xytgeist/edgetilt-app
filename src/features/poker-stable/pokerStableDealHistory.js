@@ -543,9 +543,13 @@ export function buildPersonalSettlementHistoryEvents({
 
     for (const st of settlements) {
       if (!st?.created_at) continue
-      const ledgerText = ledgerBySettlement[st.id]
+      const isClose = isCloseSettlement(st, deal, settlements)
+      // Tournament package close: prefer computed roll-return copy. Cash-era SQL
+      // ledger rows still say "no slice payments" / "rebalanced to baseline".
+      const preferComputedTournamentClose =
+        isClose && deal?.deal_type === 'tournament_package'
+      const ledgerText = preferComputedTournamentClose ? null : ledgerBySettlement[st.id]
       if (ledgerText) {
-        const isClose = isCloseSettlement(st, deal, settlements)
         events.push({
           id: `settle-${st.id}`,
           kind: isClose ? 'close' : 'settlement',
@@ -751,9 +755,11 @@ export function buildStakeDealHistoryEvents({
 
   for (const st of settlements) {
     if (!st?.created_at) continue
-    const ledgerText = ledgerBySettlement[st.id]
+    const isClose = isCloseSettlement(st, deal, settlements)
+    const preferComputedTournamentClose =
+      isClose && deal?.deal_type === 'tournament_package'
+    const ledgerText = preferComputedTournamentClose ? null : ledgerBySettlement[st.id]
     if (ledgerText) {
-      const isClose = isCloseSettlement(st, deal, settlements)
       events.push({
         id: `settle-${st.id}`,
         kind: isClose ? 'close' : 'settlement',

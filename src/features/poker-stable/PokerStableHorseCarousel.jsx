@@ -397,7 +397,8 @@ export default function PokerStableHorseCarousel({
                   >
                     <p className="text-xs leading-snug text-amber-200/90">
                       {dealStakeeDisplayName(deal, profilesById)} proposed revised terms. Accept to
-                      apply them, decline to keep your original offer, or review details.
+                      apply them and go live (their send was an implied accept), decline to keep your
+                      original offer, or review details.
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <button

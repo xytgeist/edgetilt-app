@@ -761,66 +761,19 @@ export async function proposePendingDealTerms(supabase, dealId, backerUserId, te
   return { deal, error: loadErr }
 }
 
-/** Stakee accepts backer-proposed terms (applies pending_terms_json). */
+/** Stakee accepts backer-proposed terms (applies pending_terms_json; proposer slice activates). */
 export async function acceptProposedDealTerms(supabase, dealId, stakeeUserId) {
-  const { data: row, error: loadErr } = await supabase
+  const { error } = await supabase.rpc('poker_stable_stakee_accept_proposed_terms', {
+    p_deal_id: dealId,
+  })
+  if (error) return { deal: null, error }
+  const { data: deal, error: loadErr } = await supabase
     .from('poker_stable_deals')
     .select(DEAL_SELECT)
     .eq('id', dealId)
     .eq('stakee_user_id', stakeeUserId)
-    .eq('status', 'pending')
     .maybeSingle()
-  if (loadErr) return { deal: null, error: loadErr }
-  if (!row?.stakee_terms_ack_required || !row.pending_terms_json) {
-    return { deal: null, error: new Error('No proposed terms to accept.') }
-  }
-
-  const payload = row.pending_terms_json
-  const dealPart = payload.deal || {}
-  const slices = Array.isArray(payload.slices) ? payload.slices : []
-
-  return applyPendingDealTerms(supabase, {
-    dealId,
-    stakeeUserId,
-    dealFields: {
-      label: dealPart.label,
-      baselineBankroll: dealPart.baseline_bankroll,
-      startingRoll: dealPart.starting_roll,
-      isMigration: dealPart.is_migration,
-      stakeWideStartingPl: dealPart.stake_wide_starting_pl,
-      lifetimePlDisplay: dealPart.lifetime_pl_display,
-    },
-    slices: slices.map((sl) => ({
-      counterpartyKind: sl.counterpartyKind || sl.counterparty_kind,
-      stakerUserId: sl.stakerUserId || sl.staker_user_id,
-      guestLabel: sl.guestLabel || sl.guest_label,
-      guestPhone: sl.guestPhone || sl.guest_phone,
-      guestEmail: sl.guestEmail || sl.guest_email,
-      actionPct: Number(sl.actionPct ?? sl.action_pct),
-      pricingMode: sl.pricingMode || sl.pricing_mode,
-      playerProfitPct:
-        sl.playerProfitPct != null
-          ? Number(sl.playerProfitPct)
-          : sl.player_profit_pct != null
-            ? Number(sl.player_profit_pct)
-            : null,
-      markupRate:
-        sl.markupRate != null
-          ? Number(sl.markupRate)
-          : sl.markup_rate != null
-            ? Number(sl.markup_rate)
-            : null,
-      rakebackMode: sl.rakebackMode || sl.rakeback_mode || 'disabled',
-      rakebackPlayerPct:
-        sl.rakebackPlayerPct != null
-          ? Number(sl.rakebackPlayerPct)
-          : sl.rakeback_player_pct != null
-            ? Number(sl.rakeback_player_pct)
-            : null,
-      label: sl.label,
-    })),
-    clearProposal: true,
-  })
+  return { deal, error: loadErr }
 }
 
 /** Stakee or proposing backer clears a pending terms revision without applying. */

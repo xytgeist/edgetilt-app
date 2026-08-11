@@ -995,8 +995,8 @@ export default function PokerStableScreen({
                     {deal.label ? ` · ${deal.label}` : ''}
                   </div>
                   <p className="mt-2 text-xs text-amber-200/90">
-                    Accept to apply their terms, decline to keep your original offer, or ask them to
-                    re-edit. The player still must accept before the stake goes live.
+                    Accept to apply their terms and go live (sending was their implied accept),
+                    decline to keep your original offer, or ask them to re-edit.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button

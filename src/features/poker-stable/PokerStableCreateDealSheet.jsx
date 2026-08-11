@@ -931,6 +931,10 @@ function PokerStableDealFormSheet({
       : isBacker
         ? 'Create stake'
         : 'Create stake'
+  const showImpliedAcceptNotice = isStakeeCounter || isBackerPropose
+  const impliedAcceptNotice = isStakeeCounter
+    ? 'Sending these terms is an implied acceptance. If the backer accepts, this stake goes live under these terms ... you will not need to Accept again.'
+    : 'Sending these terms is an implied acceptance. If the player accepts, your backing slice is accepted under these terms.'
 
   const playerGuestContactErrors = playerIsGuest
     ? guestNotifyContactFieldErrors({
@@ -1251,6 +1255,15 @@ function PokerStableDealFormSheet({
             >
               + Add syndicate backer
             </button>
+          ) : null}
+
+          {showImpliedAcceptNotice ? (
+            <p
+              data-poker-stable-implied-accept-notice
+              className="mb-3 rounded-2xl border border-amber-500/35 bg-amber-950/40 px-4 py-3 text-center text-xs leading-relaxed text-amber-100/95"
+            >
+              {impliedAcceptNotice}
+            </p>
           ) : null}
 
           <button

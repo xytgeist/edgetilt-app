@@ -5940,6 +5940,11 @@ html.light [data-poker-stable-sheet] [data-poker-stable-reduce-stake-block] {
 html.light [data-poker-stable-sheet] [data-poker-stake-history-line] .opacity-70 {
   opacity: 0.55 !important;
 }
+html.light [data-poker-stable-sheet] [data-poker-stable-implied-accept-notice] {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #78350f !important;
+}
 html.light [data-poker-stable-sheet] [data-poker-stable-form-error] {
   background-color: #fff1f2 !important;
   border-color: #fda4af !important;

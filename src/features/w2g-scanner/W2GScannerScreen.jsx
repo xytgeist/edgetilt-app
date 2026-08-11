@@ -38,7 +38,6 @@ import {
 import {
   W2G_FIELD_DEFS,
   fieldsToList,
-  formatFieldsForCopy,
   ocrW2G,
   taxYearFromDate,
 } from './w2gOcr.js'
@@ -100,7 +99,10 @@ export default function W2GScannerScreen({
   const editorRef = useRef(null)
   const sourceCanvasRef = useRef(null)
   const flatCanvasRef = useRef(null)
-  const ocrSeqRef = useRef(0)
+  const ocrJobIdRef = useRef(0)
+  const uiExtractJobIdRef = useRef(0)
+  /** @type {{ current: Map<number, { slipId: string | null, alive: boolean }> }} */
+  const extractJobsRef = useRef(new Map())
   const ocrConfidenceRef = useRef(null)
   const bulkAbortRef = useRef(/** @type {AbortController | null} */ (null))
   /** @type {{ current: { source: HTMLCanvasElement, corners: any } | null }} */
@@ -119,13 +121,11 @@ export default function W2GScannerScreen({
   const [ocrStatus, setOcrStatus] = useState('') // '', loading, ready, error
   const [ocrProgress, setOcrProgress] = useState(0)
   const [fieldList, setFieldList] = useState(() => fieldsToList({}))
-  const [copied, setCopied] = useState(false)
-  const [hasFlat, setHasFlat] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [saveOkNote, setSaveOkNote] = useState('')
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkProgress, setBulkProgress] = useState(/** @type {{ index: number, total: number, fileName: string } | null} */ (null))
   const [bulkSummary, setBulkSummary] = useState(/** @type {{ saved: number, failed: Array<{ fileName: string, error: string }> } | null} */ (null))
+  const [processingSlipIds, setProcessingSlipIds] = useState(/** @type {string[]} */ ([]))
 
   const currentYear = new Date().getFullYear()
   const [taxYear, setTaxYear] = useState(currentYear)
@@ -139,10 +139,29 @@ export default function W2GScannerScreen({
   const [verifyFieldList, setVerifyFieldList] = useState(() => fieldsToList({}))
   const [verifySaving, setVerifySaving] = useState(false)
   const [verifyError, setVerifyError] = useState('')
+  const [verifyReprocessing, setVerifyReprocessing] = useState(false)
 
   const collated = useMemo(() => collateW2GSlips(slips), [slips])
   const verifyImageUrl = verifySlip?.id ? thumbUrls[verifySlip.id] || '' : ''
   const verifyAlreadyDone = isW2GSlipVerified(verifySlip)
+  const processingSlipIdSet = useMemo(() => new Set(processingSlipIds), [processingSlipIds])
+
+  const markSlipProcessing = useCallback((slipId, on) => {
+    if (!slipId) return
+    setProcessingSlipIds((prev) => {
+      const has = prev.includes(slipId)
+      if (on && !has) return [...prev, slipId]
+      if (!on && has) return prev.filter((id) => id !== slipId)
+      return prev
+    })
+  }, [])
+
+  const cancelUnattachedExtractJobs = useCallback(() => {
+    for (const job of extractJobsRef.current.values()) {
+      if (!job.slipId) job.alive = false
+    }
+    uiExtractJobIdRef.current = 0
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -164,7 +183,9 @@ export default function W2GScannerScreen({
     return () => {
       editorRef.current?.destroy?.()
       editorRef.current = null
-      ocrSeqRef.current += 1
+      for (const job of extractJobsRef.current.values()) job.alive = false
+      extractJobsRef.current.clear()
+      uiExtractJobIdRef.current = 0
       bulkAbortRef.current?.abort()
       bulkAbortRef.current = null
     }
@@ -235,13 +256,11 @@ export default function W2GScannerScreen({
     if (editorHostRef.current) editorHostRef.current.innerHTML = ''
   }, [])
 
-  const resetAll = useCallback(() => {
+  const dismissScanUi = useCallback(() => {
     clearEditor()
-    ocrSeqRef.current += 1
     ocrConfidenceRef.current = null
     sourceCanvasRef.current = null
-    flatCanvasRef.current = null
-    setHasFlat(false)
+    // Keep flatCanvasRef until extract jobs that need it finish; cleared when idle + no jobs.
     setResultCanvas(null)
     setStatusNote('')
     setError('')
@@ -250,105 +269,175 @@ export default function W2GScannerScreen({
     setOcrStatus('')
     setOcrProgress(0)
     setFieldList(fieldsToList({}))
-    setCopied(false)
-    setSaveOkNote('')
   }, [clearEditor])
 
-  const runOcr = useCallback(async (flatCanvas) => {
-    const seq = ++ocrSeqRef.current
-    setOcrStatus('loading')
-    setOcrProgress(0)
-    ocrConfidenceRef.current = null
-    setError('')
+  const resetAll = useCallback(() => {
+    cancelUnattachedExtractJobs()
+    flatCanvasRef.current = null
+    dismissScanUi()
+  }, [cancelUnattachedExtractJobs, dismissScanUi])
 
-    const applyFields = (fields, confidence, engineLabel) => {
-      if (ocrSeqRef.current !== seq) return
-      setFieldList(fieldsToList(fields))
-      setOcrStatus('ready')
-      ocrConfidenceRef.current = confidence ?? null
-      setStatusNote((prev) => {
-        const base = String(prev || '')
-          .replace(/\s*·\s*(AI|OCR)\s+\d*%?/i, '')
-          .trim()
-        const tag =
-          confidence != null
-            ? `${engineLabel} ${Math.round(confidence)}%`
-            : engineLabel
-        return base ? `${base} · ${tag}` : tag
-      })
-    }
-
-    // Starter+: OpenAI vision (same class as human/vision read). Tesseract is fallback.
-    if (canUseVisionExtract && supabaseClient && flatCanvas) {
+  const patchSlipFieldsSilent = useCallback(
+    async (slipId, fields, confidence) => {
+      if (!supabaseClient || !slipId) return
       try {
-        setOcrProgress(12)
-        setStatusNote((prev) => {
-          const base = String(prev || '')
-            .replace(/\s*·\s*(AI|OCR).*$/i, '')
-            .trim()
-          return base ? `${base} · AI extract…` : 'AI extract…'
-        })
-        const imageBlob = await canvasToVisionJpegBlob(flatCanvas)
-        if (ocrSeqRef.current !== seq) return
-        setOcrProgress(45)
-        const vision = await extractW2GFieldsWithVision({
+        const updated = await updateW2GSlip({
           supabase: supabaseClient,
-          imageBlob,
+          slipId,
+          fields,
+          ocrConfidence: confidence ?? null,
         })
-        if (ocrSeqRef.current !== seq) return
-        setOcrProgress(100)
-        applyFields(vision.fields, vision.confidence, 'AI')
-        return
-      } catch (err) {
-        if (ocrSeqRef.current !== seq) return
-        if (err?.code === 'subscribe_required') {
-          onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
-        }
-        // Fall through to on-device OCR.
-        setStatusNote((prev) => {
-          const base = String(prev || '')
-            .replace(/\s*·\s*(AI|OCR).*$/i, '')
-            .trim()
-          return base ? `${base} · AI missed, local OCR…` : 'AI missed, local OCR…'
+        setSlips((prev) => {
+          const idx = prev.findIndex((s) => s.id === slipId)
+          if (idx === -1) return prev
+          const next = [...prev]
+          next[idx] = updated
+          return next
         })
+        setVerifySlip((prev) => {
+          if (prev?.id !== slipId) return prev
+          setVerifyFieldList(fieldsToList(fields))
+          return updated
+        })
+      } catch {
+        /* silent — user can re-process on Verify */
+      } finally {
+        markSlipProcessing(slipId, false)
       }
-    }
+    },
+    [markSlipProcessing, supabaseClient],
+  )
 
-    try {
-      const { fields, confidence } = await ocrW2G(flatCanvas, {
-        onProgress: (pct) => {
-          if (ocrSeqRef.current === seq) setOcrProgress(pct)
-        },
-      })
-      applyFields(fields, confidence, 'OCR')
-    } catch (err) {
-      if (ocrSeqRef.current !== seq) return
-      setOcrStatus('error')
-      setError(err?.message || 'OCR failed. You can still edit fields and save.')
-    }
-  }, [canUseVisionExtract, onRequireSubscribe, supabaseClient])
+  const runExtractJob = useCallback(
+    async (flatCanvas, { forUi = true, slipId = null } = {}) => {
+      if (!flatCanvas) return 0
+      const jobId = ++ocrJobIdRef.current
+      extractJobsRef.current.set(jobId, { slipId: slipId || null, alive: true })
+      if (forUi) {
+        uiExtractJobIdRef.current = jobId
+        setOcrStatus('loading')
+        setOcrProgress(0)
+        ocrConfidenceRef.current = null
+        setError('')
+      }
+      if (slipId) markSlipProcessing(slipId, true)
+
+      const jobAlive = () => {
+        const job = extractJobsRef.current.get(jobId)
+        return Boolean(job?.alive)
+      }
+      const attachedSlipId = () => extractJobsRef.current.get(jobId)?.slipId || null
+
+      const deliver = async (fields, confidence, engineLabel) => {
+        if (!jobAlive()) return
+        const targetSlipId = attachedSlipId()
+        if (targetSlipId) {
+          await patchSlipFieldsSilent(targetSlipId, fields || {}, confidence ?? null)
+          extractJobsRef.current.delete(jobId)
+          return
+        }
+        if (forUi && uiExtractJobIdRef.current === jobId) {
+          setFieldList(fieldsToList(fields || {}))
+          setOcrStatus('ready')
+          ocrConfidenceRef.current = confidence ?? null
+          setStatusNote((prev) => {
+            const base = String(prev || '')
+              .replace(/\s*·\s*(AI|OCR)\s+\d*%?/i, '')
+              .trim()
+            const tag =
+              confidence != null
+                ? `${engineLabel} ${Math.round(confidence)}%`
+                : engineLabel
+            return base ? `${base} · ${tag}` : tag
+          })
+        }
+        extractJobsRef.current.delete(jobId)
+      }
+
+      const failSilent = () => {
+        if (!jobAlive()) return
+        const targetSlipId = attachedSlipId()
+        if (targetSlipId) {
+          markSlipProcessing(targetSlipId, false)
+        } else if (forUi && uiExtractJobIdRef.current === jobId) {
+          setOcrStatus('ready')
+          setOcrProgress(0)
+        }
+        extractJobsRef.current.delete(jobId)
+      }
+
+      try {
+        if (canUseVisionExtract && supabaseClient) {
+          try {
+            if (forUi && uiExtractJobIdRef.current === jobId) {
+              setOcrProgress(12)
+              setStatusNote((prev) => {
+                const base = String(prev || '')
+                  .replace(/\s*·\s*(AI|OCR).*$/i, '')
+                  .trim()
+                return base ? `${base} · AI extract…` : 'AI extract…'
+              })
+            }
+            const imageBlob = await canvasToVisionJpegBlob(flatCanvas)
+            if (!jobAlive()) return jobId
+            if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(45)
+            const vision = await extractW2GFieldsWithVision({
+              supabase: supabaseClient,
+              imageBlob,
+            })
+            if (!jobAlive()) return jobId
+            if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(100)
+            await deliver(vision.fields, vision.confidence, 'AI')
+            return jobId
+          } catch (err) {
+            if (!jobAlive()) return jobId
+            if (err?.code === 'subscribe_required' && forUi && !attachedSlipId()) {
+              onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
+            }
+            // Fall through to local OCR; still silent if attached to archive slip.
+          }
+        }
+
+        const { fields, confidence } = await ocrW2G(flatCanvas, {
+          onProgress: (pct) => {
+            if (forUi && uiExtractJobIdRef.current === jobId && jobAlive()) setOcrProgress(pct)
+          },
+        })
+        if (!jobAlive()) return jobId
+        await deliver(fields, confidence, 'OCR')
+      } catch {
+        failSilent()
+      }
+      return jobId
+    },
+    [
+      canUseVisionExtract,
+      markSlipProcessing,
+      onRequireSubscribe,
+      patchSlipFieldsSilent,
+      supabaseClient,
+    ],
+  )
 
   const finishPretty = useCallback(
     async (docCanvas, note) => {
       setStatusNote('Preparing…')
       const flat = await flattenCroppedDocument(docCanvas)
       flatCanvasRef.current = flat
-      setHasFlat(true)
       const pretty = presentPrettyScan(flat)
       setResultCanvas(pretty)
       setStatusNote(note || 'Ready')
       setPhase('result')
       setBusy(false)
-      setSaveOkNote('')
       try {
         const file = await canvasToPngFile(pretty, 'probe-share.png')
         setCanNativeShare(Boolean(navigator.canShare?.({ files: [file] })))
       } catch {
         /* keep prior */
       }
-      void runOcr(flat)
+      void runExtractJob(flat, { forUi: true })
     },
-    [runOcr],
+    [runExtractJob],
   )
 
   finishPrettyRef.current = finishPretty
@@ -460,12 +549,11 @@ export default function W2GScannerScreen({
         return
       }
       clearEditor()
-      ocrSeqRef.current += 1
+      cancelUnattachedExtractJobs()
       setError('')
       setResultCanvas(null)
       setFieldList(fieldsToList({}))
       setOcrStatus('')
-      setSaveOkNote('')
       setBusy(true)
       setPhase('scanning')
       setStatusNote('Finding corners…')
@@ -493,7 +581,7 @@ export default function W2GScannerScreen({
         setError(err?.message || 'Scan failed. Try another photo.')
       }
     },
-    [clearEditor, finishPretty, openAdjust],
+    [cancelUnattachedExtractJobs, clearEditor, finishPretty, openAdjust],
   )
 
   const onPickFile = (event) => {
@@ -544,7 +632,7 @@ export default function W2GScannerScreen({
       setMainTab('scan')
       setPhase('idle')
       clearEditor()
-      ocrSeqRef.current += 1
+      cancelUnattachedExtractJobs()
 
       let saved = 0
       /** @type {Array<{ fileName: string, error: string }>} */
@@ -591,6 +679,7 @@ export default function W2GScannerScreen({
     [
       canUseBulkImport,
       canUseVisionExtract,
+      cancelUnattachedExtractJobs,
       clearEditor,
       onOpenAuth,
       onRequireSubscribe,
@@ -662,8 +751,6 @@ export default function W2GScannerScreen({
 
   const onFieldChange = (key, value) => {
     setFieldList((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)))
-    setCopied(false)
-    setSaveOkNote('')
   }
 
   const fieldsObject = useMemo(() => {
@@ -672,24 +759,6 @@ export default function W2GScannerScreen({
     for (const f of fieldList) o[f.key] = f.value
     return o
   }, [fieldList])
-
-  const onCopyFields = async () => {
-    const text = formatFieldsForCopy(fieldList)
-    if (!text) return
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1800)
-    } catch {
-      setError('Could not copy. Select the fields manually.')
-    }
-  }
-
-  const onRerunOcr = () => {
-    const flat = flatCanvasRef.current
-    if (!flat) return
-    void runOcr(flat)
-  }
 
   const onSaveToArchive = async () => {
     if (!resultCanvas) return
@@ -712,20 +781,54 @@ export default function W2GScannerScreen({
 
     setSaving(true)
     setError('')
-    setSaveOkNote('')
+    const extractStillRunning = ocrStatus === 'loading'
+    const uiJobId = uiExtractJobIdRef.current
+    const flatForLater = flatCanvasRef.current
     try {
       const imageBlob = await canvasToJpegBlob(resultCanvas)
-      await saveW2GSlip({
+      const slip = await saveW2GSlip({
         supabase: supabaseClient,
         fields: fieldsObject,
         imageBlob,
-        ocrConfidence: ocrConfidenceRef.current,
+        ocrConfidence: extractStillRunning ? null : ocrConfidenceRef.current,
       })
-      const year = taxYearFromDate(fieldsObject.dateWon)
+      const year = taxYearFromDate(fieldsObject.dateWon) || Number(slip.tax_year) || new Date().getFullYear()
       setTaxYear(year)
-      resetAll()
-      setSaveOkNote(`Saved to ${year} archive.`)
-      void refreshArchive()
+
+      // Prefer attaching the in-flight extract to this slip (no second AI call).
+      const liveJob = uiJobId ? extractJobsRef.current.get(uiJobId) : null
+      if (extractStillRunning && liveJob?.alive) {
+        liveJob.slipId = slip.id
+        markSlipProcessing(slip.id, true)
+        uiExtractJobIdRef.current = 0
+        dismissScanUi()
+      } else if (
+        flatForLater &&
+        !fieldsObject.payerName &&
+        !fieldsObject.box1Winnings
+      ) {
+        // Fields empty and no live job … start archive-bound extract.
+        dismissScanUi()
+        void runExtractJob(flatForLater, { forUi: false, slipId: slip.id })
+      } else {
+        cancelUnattachedExtractJobs()
+        flatCanvasRef.current = null
+        dismissScanUi()
+      }
+
+      setSlips((prev) => {
+        if (prev.some((s) => s.id === slip.id)) return prev
+        return [slip, ...prev]
+      })
+      if (slip.image_path) {
+        try {
+          const url = await signedW2GImageUrl(supabaseClient, slip.image_path)
+          if (url) setThumbUrls((prev) => ({ ...prev, [slip.id]: url }))
+        } catch {
+          /* thumb later on refresh */
+        }
+      }
+      setMainTab('archive')
     } catch (err) {
       setError(err?.message || 'Save failed.')
     } finally {
@@ -740,6 +843,10 @@ export default function W2GScannerScreen({
     setArchiveError('')
     try {
       await deleteW2GSlip({ supabase: supabaseClient, slip })
+      for (const job of extractJobsRef.current.values()) {
+        if (job.slipId === slip.id) job.alive = false
+      }
+      markSlipProcessing(slip.id, false)
       setSlips((prev) => prev.filter((s) => s.id !== slip.id))
       setThumbUrls((prev) => {
         const next = { ...prev }
@@ -749,6 +856,7 @@ export default function W2GScannerScreen({
       if (verifySlip?.id === slip.id) {
         setVerifySlip(null)
         setVerifyError('')
+        setVerifyReprocessing(false)
       }
     } catch (err) {
       setArchiveError(err?.message || 'Delete failed.')
@@ -760,18 +868,67 @@ export default function W2GScannerScreen({
   const openVerifySlip = (slip) => {
     if (!slip) return
     setVerifyError('')
+    setVerifyReprocessing(false)
     setVerifySlip(slip)
     setVerifyFieldList(fieldsToList(dbRowToFields(slip)))
   }
 
   const closeVerifySlip = () => {
-    if (verifySaving) return
+    if (verifySaving || verifyReprocessing) return
     setVerifySlip(null)
     setVerifyError('')
+    setVerifyReprocessing(false)
   }
 
   const onVerifyFieldChange = (key, value) => {
     setVerifyFieldList((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)))
+  }
+
+  const onReprocessVerify = async () => {
+    if (!supabaseClient || !verifySlip?.image_path) return
+    setVerifyReprocessing(true)
+    setVerifyError('')
+    try {
+      let url = thumbUrls[verifySlip.id]
+      if (!url) {
+        url = await signedW2GImageUrl(supabaseClient, verifySlip.image_path)
+        if (url) setThumbUrls((prev) => ({ ...prev, [verifySlip.id]: url }))
+      }
+      if (!url) throw new Error('Could not load slip image.')
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Could not load slip image.')
+      const blob = await res.blob()
+      const canvas = await loadImageCanvasFromFile(blob)
+
+      /** @type {Record<string, string>} */
+      let fields = {}
+      let confidence = null
+      if (canUseVisionExtract) {
+        try {
+          const visionBlob = await canvasToVisionJpegBlob(canvas)
+          const vision = await extractW2GFieldsWithVision({
+            supabase: supabaseClient,
+            imageBlob: visionBlob,
+          })
+          fields = vision.fields || {}
+          confidence = vision.confidence ?? null
+        } catch {
+          const local = await ocrW2G(canvas)
+          fields = local.fields || {}
+          confidence = local.confidence ?? null
+        }
+      } else {
+        const local = await ocrW2G(canvas)
+        fields = local.fields || {}
+        confidence = local.confidence ?? null
+      }
+      setVerifyFieldList(fieldsToList(fields))
+      ocrConfidenceRef.current = confidence
+    } catch (err) {
+      setVerifyError(err?.message || 'Re-process failed. Edit fields manually.')
+    } finally {
+      setVerifyReprocessing(false)
+    }
   }
 
   const onConfirmVerified = async () => {
@@ -918,21 +1075,6 @@ export default function W2GScannerScreen({
           <>
             {phase === 'idle' || phase === 'scanning' ? (
               <div className="space-y-3" data-w2g-capture>
-                {saveOkNote ? (
-                  <div
-                    className="rounded-2xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-200"
-                    data-w2g-save-ok
-                  >
-                    {saveOkNote}{' '}
-                    <button
-                      type="button"
-                      className="font-semibold underline underline-offset-2"
-                      onClick={() => setMainTab('archive')}
-                    >
-                      View My W-2Gs
-                    </button>
-                  </div>
-                ) : null}
                 <button
                   type="button"
                   disabled={busy}
@@ -1074,7 +1216,7 @@ export default function W2GScannerScreen({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    disabled={busy || saving || ocrStatus === 'loading'}
+                    disabled={busy || saving}
                     onClick={() => void onSaveToArchive()}
                     className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-amber-500 px-3 text-sm font-semibold text-zinc-950 touch-manipulation disabled:opacity-60"
                     data-w2g-save
@@ -1122,42 +1264,12 @@ export default function W2GScannerScreen({
                 </div>
 
                 <div className="rounded-3xl bg-zinc-900 px-4 py-4 space-y-3" data-w2g-ocr>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-base font-bold text-white">Tax fields</div>
-                      <div className="text-xs text-zinc-500 mt-0.5">
-                        {ocrStatus === 'loading'
-                          ? canUseVisionExtract
-                            ? `AI reading form… ${ocrProgress}%`
-                            : `Reading form… ${ocrProgress}%`
-                          : ocrStatus === 'ready'
-                            ? 'Edit anything that looks off, then save.'
-                            : ocrStatus === 'error'
-                              ? 'Extract hiccuped. Retry or fill manually.'
-                              : canUseVisionExtract
-                                ? 'AI extract runs after crop (Slots Edge).'
-                                : 'OCR runs after crop.'}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        disabled={ocrStatus === 'loading' || !hasFlat}
-                        onClick={onRerunOcr}
-                        className="inline-flex min-h-9 items-center justify-center rounded-xl bg-zinc-800 px-3 text-xs font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-                      >
-                        Re-run
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!fieldList.some((f) => f.value)}
-                        onClick={() => void onCopyFields()}
-                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-amber-500/90 px-3 text-xs font-semibold text-zinc-950 touch-manipulation disabled:opacity-50"
-                        data-w2g-copy
-                      >
-                        {copied ? <ClipboardCheck size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-                        {copied ? 'Copied' : 'Copy'}
-                      </button>
+                  <div>
+                    <div className="text-base font-bold text-white">Tax fields</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">
+                      {ocrStatus === 'loading'
+                        ? 'Extracting… you can save now and finish in My W-2Gs.'
+                        : 'Edit if needed, then save. Or save now and verify later.'}
                     </div>
                   </div>
 
@@ -1283,6 +1395,7 @@ export default function W2GScannerScreen({
               <ul className="space-y-3">
                 {slips.map((slip) => {
                   const verified = isW2GSlipVerified(slip)
+                  const extracting = processingSlipIdSet.has(slip.id)
                   return (
                     <li
                       key={slip.id}
@@ -1307,11 +1420,12 @@ export default function W2GScannerScreen({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-bold text-white">
-                            {slip.payer_name || 'Unknown payer'}
+                            {slip.payer_name || (extracting ? 'Extracting fields…' : 'Unknown payer')}
                           </div>
                           <div className="mt-0.5 text-xs text-zinc-500">
                             {formatIsoDate(slip.date_won)}
                             {slip.payer_ein ? ` · EIN ${slip.payer_ein}` : ''}
+                            {extracting ? ' · Extracting…' : ''}
                           </div>
                           <div className="mt-1 text-xs text-zinc-300">
                             Box 1 {moneyLabel(slip.box1_winnings)} · Box 4 {moneyLabel(slip.box4_federal_withheld)}
@@ -1475,7 +1589,8 @@ export default function W2GScannerScreen({
                         type="text"
                         value={field.value}
                         onChange={(e) => onVerifyFieldChange(field.key, e.target.value)}
-                        className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                        disabled={verifyReprocessing}
+                        className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 disabled:opacity-60"
                         autoComplete="off"
                         spellCheck={false}
                       />
@@ -1484,20 +1599,32 @@ export default function W2GScannerScreen({
                 })}
               </div>
 
-              <button
-                type="button"
-                disabled={verifySaving}
-                onClick={() => void onConfirmVerified()}
-                className="inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 text-sm font-semibold text-zinc-950 touch-manipulation disabled:opacity-60"
-                data-w2g-verify-confirm
-              >
-                <BadgeCheck size={18} aria-hidden />
-                {verifySaving
-                  ? 'Saving…'
-                  : verifyAlreadyDone
-                    ? 'Save & keep verified'
-                    : 'Confirm verified'}
-              </button>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  disabled={verifySaving || verifyReprocessing || !verifySlip?.image_path}
+                  onClick={() => void onReprocessVerify()}
+                  className="inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-800 px-4 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-60"
+                  data-w2g-reprocess
+                >
+                  <RefreshCw size={16} aria-hidden className={verifyReprocessing ? 'animate-spin' : undefined} />
+                  {verifyReprocessing ? 'Re-processing…' : 'Re-process image'}
+                </button>
+                <button
+                  type="button"
+                  disabled={verifySaving || verifyReprocessing}
+                  onClick={() => void onConfirmVerified()}
+                  className="inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 text-sm font-semibold text-zinc-950 touch-manipulation disabled:opacity-60"
+                  data-w2g-verify-confirm
+                >
+                  <BadgeCheck size={18} aria-hidden />
+                  {verifySaving
+                    ? 'Saving…'
+                    : verifyAlreadyDone
+                      ? 'Save & keep verified'
+                      : 'Confirm verified'}
+                </button>
+              </div>
             </div>
           </div>,
           document.body,

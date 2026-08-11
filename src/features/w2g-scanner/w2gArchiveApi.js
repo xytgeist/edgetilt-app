@@ -167,9 +167,16 @@ export async function deleteW2GSlip({ supabase, slip }) {
  *   slipId: string,
  *   fields: Record<string, string>,
  *   markVerified?: boolean,
+ *   ocrConfidence?: number | null,
  * }} args
  */
-export async function updateW2GSlip({ supabase, slipId, fields, markVerified = false }) {
+export async function updateW2GSlip({
+  supabase,
+  slipId,
+  fields,
+  markVerified = false,
+  ocrConfidence = undefined,
+}) {
   if (!supabase) throw new Error('Supabase client missing')
   await requireUserId(supabase)
   if (!slipId) throw new Error('Missing slip id')
@@ -187,6 +194,9 @@ export async function updateW2GSlip({ supabase, slipId, fields, markVerified = f
   }
   if (markVerified) {
     patch.verified_at = new Date().toISOString()
+  }
+  if (ocrConfidence !== undefined) {
+    patch.ocr_confidence = ocrConfidence
   }
 
   const { data, error } = await supabase

@@ -696,9 +696,10 @@ export default function W2GScannerScreen({
   )
 
   const onPickBulkFiles = (event) => {
-    const files = event.target.files
+    // Snapshot before clearing … input.files is a live FileList and value='' empties it.
+    const files = Array.from(event.target.files || [])
     event.target.value = ''
-    if (files?.length) void runBulkImport(files)
+    if (files.length) void runBulkImport(files)
   }
 
   const onBulkImportClick = () => {

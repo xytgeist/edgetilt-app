@@ -370,3 +370,15 @@ export function dealTypeLabel(dealType) {
 export function isOngoingDealType(dealType) {
   return dealType === 'cash_backing' || dealType === 'tournament_package'
 }
+
+/**
+ * Start Session / Log past should open as Tournament for these stake types.
+ * @param {string | { deal_type?: string | null } | null | undefined} dealOrType
+ */
+export function dealDefaultsTournamentSessions(dealOrType) {
+  const dealType =
+    typeof dealOrType === 'string'
+      ? dealOrType
+      : String(dealOrType?.deal_type || '')
+  return dealType === 'tournament_package' || dealType === 'tournament_piece'
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 
 const PEEK_PX = 24
 const SLIDE_GAP_PX = 8
@@ -11,20 +11,59 @@ export const POKER_BANKROLL_HERO_SHELL =
  * Horizontal peek carousel for Personal + stake bankroll hero cards.
  * @param {{ slides: Array<{ id: string }>, activeId: string, onActiveIdChange: (id: string) => void, renderSlide: (slide: { id: string }, index: number) => import('react').ReactNode, activeSyncEnabled?: boolean }} props
  */
-export default function PokerBankrollHeroCarousel({
-  slides,
-  activeId,
-  onActiveIdChange,
-  renderSlide,
-  /** When false, ignore scroll→selection (e.g. while Bankroll restores last card). */
-  activeSyncEnabled = true,
-}) {
+const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
+  {
+    slides,
+    activeId,
+    onActiveIdChange,
+    renderSlide,
+    /** When false, ignore scroll→selection (e.g. while Bankroll restores last card). */
+    activeSyncEnabled = true,
+  },
+  ref,
+) {
   const scrollerRef = useRef(null)
   const slideRefs = useRef(/** @type {(HTMLElement | null)[]} */ ([]))
   const ignoreScrollRef = useRef(false)
+  const visibleIdRef = useRef(activeId)
 
   const foundIndex = slides.findIndex((s) => s.id === activeId)
   const activeIndex = Math.max(0, foundIndex)
+
+  const readCenteredSlideId = useCallback(() => {
+    const scroller = scrollerRef.current
+    if (!scroller || !slides.length) return activeId
+    if (slides.length <= 1) return slides[0]?.id || activeId
+    const left = scroller.scrollLeft + PEEK_PX + 24
+    let bestIdx = 0
+    let bestDist = Infinity
+    slideRefs.current.forEach((el, idx) => {
+      if (!el) return
+      const dist = Math.abs(el.offsetLeft - left)
+      if (dist < bestDist) {
+        bestDist = dist
+        bestIdx = idx
+      }
+    })
+    return slides[bestIdx]?.id || activeId
+  }, [slides, activeId])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      /** Centered hero card id (personal or deal), even if scroll→state debounce has not fired. */
+      getVisibleSlideId: () => {
+        const centered = readCenteredSlideId()
+        if (centered) visibleIdRef.current = centered
+        return visibleIdRef.current || activeId
+      },
+    }),
+    [readCenteredSlideId, activeId],
+  )
+
+  useEffect(() => {
+    visibleIdRef.current = activeId
+  }, [activeId])
 
   const scrollToIndex = useCallback((index, smooth = true) => {
     const el = slideRefs.current[index]
@@ -63,19 +102,9 @@ export default function PokerBankrollHeroCarousel({
       if (ignoreScrollRef.current) return
       window.clearTimeout(t)
       t = window.setTimeout(() => {
-        const left = scroller.scrollLeft + PEEK_PX + 24
-        let bestIdx = 0
-        let bestDist = Infinity
-        slideRefs.current.forEach((el, idx) => {
-          if (!el) return
-          const dist = Math.abs(el.offsetLeft - left)
-          if (dist < bestDist) {
-            bestDist = dist
-            bestIdx = idx
-          }
-        })
-        const next = slides[bestIdx]
-        if (next && next.id !== activeId) onActiveIdChange(next.id)
+        const nextId = readCenteredSlideId()
+        if (nextId) visibleIdRef.current = nextId
+        if (nextId && nextId !== activeId) onActiveIdChange(nextId)
       }, 80)
     }
     scroller.addEventListener('scroll', onScroll, { passive: true })
@@ -83,7 +112,7 @@ export default function PokerBankrollHeroCarousel({
       window.clearTimeout(t)
       scroller.removeEventListener('scroll', onScroll)
     }
-  }, [slides, activeId, onActiveIdChange, activeSyncEnabled])
+  }, [slides, activeId, onActiveIdChange, activeSyncEnabled, readCenteredSlideId])
 
   if (slides.length <= 1) {
     return <div className="mb-4">{renderSlide(slides[0], 0)}</div>
@@ -118,7 +147,9 @@ export default function PokerBankrollHeroCarousel({
       </div>
     </div>
   )
-}
+})
+
+export default PokerBankrollHeroCarousel
 
 /** Oldest stake = 0, next = 1, … stable even when carousel order changes. */
 export function stakeHeroThemeIndexForDeal(dealId, stakeeDeals = []) {

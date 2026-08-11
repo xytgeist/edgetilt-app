@@ -48,7 +48,11 @@ import {
   currencyFromNearbyCasinoName,
   currencyFromOnlineSiteId,
 } from './pokerCurrencies.js'
-import { computeDealMakeup, dealTypeLabel } from '../poker-stable/pokerStableMath.js'
+import {
+  computeDealMakeup,
+  dealDefaultsTournamentSessions,
+  dealTypeLabel,
+} from '../poker-stable/pokerStableMath.js'
 import {
   archivedStakeOutcomeBadgeClass,
   archivedStakeOutcomeLabel,
@@ -277,7 +281,7 @@ function defaultNewSessionForm(activeDeal, scopedSessions, completedSessions) {
   const base = emptyForm()
   const venueKind = activeDeal?.venue_kind || 'live'
 
-  if (activeDeal?.deal_type === 'tournament_package') {
+  if (dealDefaultsTournamentSessions(activeDeal)) {
     const lastTourneyGame = lastTournamentGameFromSessions(scopedSessions)
     const next = {
       ...base,
@@ -455,11 +459,17 @@ export default function PokerBankrollTracker({
   const [archiveDetailDealId, setArchiveDetailDealId] = useState(/** @type {string | null} */ (null))
 
   const isOnStake = bankrollScope !== 'personal'
-  const activeDeal = useMemo(
-    () =>
-      isOnStake ? stakeeDeals.find((d) => d.id === bankrollScope) ?? null : null,
-    [isOnStake, stakeeDeals, bankrollScope],
+  const heroCarouselRef = useRef(
+    /** @type {{ getVisibleSlideId?: () => string } | null } */ (null),
   )
+  const activeDeal = useMemo(() => {
+    if (!isOnStake) return null
+    return (
+      stakeeDeals.find((d) => d.id === bankrollScope) ??
+      stakeeDealsById[bankrollScope] ??
+      null
+    )
+  }, [isOnStake, stakeeDeals, stakeeDealsById, bankrollScope])
   const stakeScopePending = activeDeal?.status === 'pending'
   const stakeScopeRevoked = activeDeal?.status === 'revoked'
   const stakeScopeClosedUnarchived =
@@ -2058,32 +2068,69 @@ export default function PokerBankrollTracker({
     }
   }
 
+  /**
+   * Prefer the visually centered hero card when Start/Log is tapped mid-swipe
+   * (scroll→scope debounce can lag ~80ms and leave bankrollScope on Personal).
+   * Do not demote an already-selected stake to Personal from a stale scrollLeft=0 read
+   * before the carousel has scrolled to the restored stake card.
+   */
+  function resolveDealForSessionPrefill() {
+    const visualId = String(heroCarouselRef.current?.getVisibleSlideId?.() || '').trim()
+    let scopeId = bankrollScope
+    if (
+      visualId &&
+      visualId !== bankrollScope &&
+      !(visualId === 'personal' && bankrollScope !== 'personal')
+    ) {
+      scopeId = visualId
+      selectBankrollScope(visualId)
+    }
+    if (!scopeId || scopeId === 'personal') return null
+    return (
+      stakeeDeals.find((d) => d.id === scopeId) ?? stakeeDealsById[scopeId] ?? null
+    )
+  }
+
+  function sessionPrefillBlockedError(deal) {
+    if (!deal?.id) return ''
+    if (deal.status === 'revoked') {
+      return 'This stake was revoked. Re-offer backers or close it from stake terms.'
+    }
+    if (stakeeBankrollShowsClosedCarouselCard(deal)) {
+      return 'This stake is closed. Archive it from your stake card when you are done reviewing.'
+    }
+    if (!stakeDealPlayerSideAccepted(deal)) {
+      return isBackerInitiatedBackingDeal(deal)
+        ? 'Accept the backing offer before logging sessions on this stake.'
+        : stakeGoesLivePendingCopy(deal, slicesByDeal[deal.id] || [], stableProfilesById)
+    }
+    return ''
+  }
+
   function openStartSession() {
-    if (isOnStake && stakeScopeSessionBlocked) {
-      setError(
-        stakeScopeRevoked
-          ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : stakeScopeClosedUnarchived
-            ? 'This stake is closed. Archive it from your stake card when you are done reviewing.'
-            : pendingBackerOffer
-              ? 'Accept the backing offer before logging sessions on this stake.'
-              : stakeGoesLivePendingCopy(
-                  activeDeal,
-                  slicesByDeal[activeDeal?.id] || [],
-                  stableProfilesById,
-                ),
-      )
+    const dealForPrefill = resolveDealForSessionPrefill()
+    const blockedError = sessionPrefillBlockedError(dealForPrefill)
+    if (blockedError) {
+      setError(blockedError)
       return
     }
     if (activeSession) {
       setError('You already have a session in progress.')
       return
     }
-    if (userId) writeStoredPokerBankrollScope(userId, bankrollScope)
+    const scopeToStore = dealForPrefill?.id || 'personal'
+    if (userId) writeStoredPokerBankrollScope(userId, scopeToStore)
     setNearbyCasinos([])
     setDraftSwaps([])
     setIncomingAcceptSwap(null)
-    const nextForm = defaultNewSessionForm(activeDeal, scopedSessions, completedSessions)
+    const prefillSessions = dealForPrefill?.id
+      ? sessions.filter((s) => s.deal_id === dealForPrefill.id)
+      : sessions.filter((s) => isPersonalHistorySession(s, stakeeDealsById))
+    const nextForm = defaultNewSessionForm(
+      dealForPrefill,
+      prefillSessions,
+      prefillSessions.filter((s) => s.status !== 'active'),
+    )
     setForm(nextForm)
     setError('')
     setSheet('start')
@@ -2138,27 +2185,24 @@ export default function PokerBankrollTracker({
   }
 
   function openLogPast() {
-    if (isOnStake && stakeScopeSessionBlocked) {
-      setError(
-        stakeScopeRevoked
-          ? 'This stake was revoked. Re-offer backers or close it from stake terms.'
-          : stakeScopeClosedUnarchived
-            ? 'This stake is closed. Archive it from your stake card when you are done reviewing.'
-            : pendingBackerOffer
-              ? 'Accept the backing offer before logging sessions on this stake.'
-              : stakeGoesLivePendingCopy(
-                  activeDeal,
-                  slicesByDeal[activeDeal?.id] || [],
-                  stableProfilesById,
-                ),
-      )
+    const dealForPrefill = resolveDealForSessionPrefill()
+    const blockedError = sessionPrefillBlockedError(dealForPrefill)
+    if (blockedError) {
+      setError(blockedError)
       return
     }
     setEditingId(null)
     setEditingPrevWl(0)
     setNearbyCasinos([])
     setDraftSwaps([])
-    const nextForm = defaultNewSessionForm(activeDeal, scopedSessions, completedSessions)
+    const prefillSessions = dealForPrefill?.id
+      ? sessions.filter((s) => s.deal_id === dealForPrefill.id)
+      : sessions.filter((s) => isPersonalHistorySession(s, stakeeDealsById))
+    const nextForm = defaultNewSessionForm(
+      dealForPrefill,
+      prefillSessions,
+      prefillSessions.filter((s) => s.status !== 'active'),
+    )
     setForm(nextForm)
     setError('')
     setSheet('session')
@@ -3236,6 +3280,7 @@ export default function PokerBankrollTracker({
           ) : (
           <>
             <PokerBankrollHeroCarousel
+              ref={heroCarouselRef}
               slides={bankrollSlides}
               activeId={bankrollScope}
               onActiveIdChange={selectBankrollScope}

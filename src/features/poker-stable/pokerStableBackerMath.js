@@ -15,9 +15,9 @@ export function backerSliceCapitalIsDeployed(deal, slice, slices = []) {
 
 /**
  * Backer's slice capital is reserved as a pending hold (not yet debited).
- * Unaccepted invites (pending slices) do not reserve funds … only Create Stake
- * initiator seed / Accept commits capital. Hold applies after Accept while the
- * deal is not live yet (e.g. waiting on the other party).
+ * Unaccepted invites (pending slices) do not reserve funds … Create Stake /
+ * Accept tops up any liquid shortfall then commits capital. Hold applies after
+ * Accept while the deal is not live yet (e.g. waiting on the other party).
  * @param {object} deal
  * @param {object} slice
  * @param {object[]} [slices]

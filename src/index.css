@@ -5220,6 +5220,27 @@ html.light [data-poker-bankroll-carousel-coach] [data-poker-carousel-coach-demo]
   color: #0e7490 !important;
 }
 
+/* Propose-after-decline modal — light mode only */
+html.light [data-poker-propose-after-decline] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-propose-after-decline] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-propose-after-decline] .text-zinc-300,
+html.light [data-poker-propose-after-decline] .text-zinc-200 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-propose-after-decline] .bg-amber-600 {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-propose-after-decline] .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+  color: #27272a !important;
+}
+
 html.light [data-poker-bankroll] [data-poker-stake-archive-card] .text-emerald-400 {
   color: var(--poker-money) !important;
 }

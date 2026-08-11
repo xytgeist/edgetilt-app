@@ -486,6 +486,8 @@ export function stakeeDisplayDealRoll({
 /** Stakee Bankroll carousel keeps closed stakes until manually archived. */
 export function stakeeBankrollShowsClosedCarouselCard(deal) {
   if (!deal?.id || deal.stakee_bankroll_archived_at) return false
+  // Player declined a backer Create Stake ... card should disappear (not Archive/Review).
+  if (deal.status === 'declined' && deal.staker_user_id) return false
   return ['settled', 'closed', 'declined', 'revoked'].includes(deal.status)
 }
 

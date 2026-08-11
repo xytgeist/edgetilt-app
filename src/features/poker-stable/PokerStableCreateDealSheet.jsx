@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
@@ -61,6 +61,118 @@ function defaultPricingModeForDealType(dealType) {
 function newEmptySlice(dealType = 'cash_backing') {
   const pricingMode = defaultPricingModeForDealType(dealType)
   return { ...EMPTY_SLICE, pricingMode }
+}
+
+function moneyFieldFromDeal(value) {
+  if (value == null || value === '') return ''
+  const n = Number(value)
+  return Number.isFinite(n) ? String(n) : ''
+}
+
+function dbSliceToFormSlice(sl, profilesById = {}) {
+  const isGuest =
+    sl?.counterparty_kind === 'guest' ||
+    sl?.counterpartyKind === 'guest' ||
+    !sl?.staker_user_id
+  const profile = sl?.staker_user_id ? profilesById[sl.staker_user_id] || null : null
+  const handle = profile?.handle ? String(profile.handle).replace(/^@+/, '') : ''
+  return {
+    ...EMPTY_SLICE,
+    handle,
+    selectedProfile: profile,
+    guestLabel: String(sl?.guest_label || sl?.guestLabel || '').trim(),
+    guestPhone: String(sl?.guest_phone || sl?.guestPhone || '').trim(),
+    guestEmail: String(sl?.guest_email || sl?.guestEmail || '').trim(),
+    isGuest: Boolean(isGuest),
+    actionPct: moneyFieldFromDeal(sl?.action_pct ?? sl?.actionPct),
+    pricingMode: sl?.pricing_mode || sl?.pricingMode || 'profit_split',
+    playerProfitPct: moneyFieldFromDeal(sl?.player_profit_pct ?? sl?.playerProfitPct),
+    markupRate: moneyFieldFromDeal(sl?.markup_rate ?? sl?.markupRate),
+    rakebackMode: sl?.rakeback_mode || sl?.rakebackMode || 'disabled',
+    rakebackPlayerPct: moneyFieldFromDeal(sl?.rakeback_player_pct ?? sl?.rakebackPlayerPct),
+    stakerUserId: sl?.staker_user_id || sl?.stakerUserId || null,
+  }
+}
+
+/**
+ * Snapshot a declined deal so the decliner can open a fresh Create / + Stake form
+ * with the same counterparties (and deal economics).
+ * @param {{ mode: 'player' | 'backer', deal: object, slices?: object[], profilesById?: object, viewerUserId: string }} args
+ */
+export function buildStakeFormSeedFromDeclinedDeal({
+  mode,
+  deal,
+  slices = [],
+  profilesById = {},
+  viewerUserId,
+}) {
+  if (!deal || !viewerUserId) return null
+  const openSlices = (slices || []).filter(
+    (s) => s && s.status !== 'cancelled' && s.status !== 'declined',
+  )
+  // Prefer pre-decline slices; if already declined, still use them for counterparty seed.
+  const seedSlices = openSlices.length ? openSlices : slices || []
+  const dealType = deal.deal_type || 'cash_backing'
+  const base = {
+    label: String(deal.label || '').trim(),
+    dealType,
+    venueKind: deal.venue_kind || 'live',
+    baseline: moneyFieldFromDeal(deal.baseline_bankroll),
+    isMigration: Boolean(deal.is_migration),
+    startingRoll: moneyFieldFromDeal(deal.starting_roll),
+    stakeWidePl: moneyFieldFromDeal(deal.stake_wide_starting_pl),
+    lifetimePl: moneyFieldFromDeal(deal.lifetime_pl_display),
+  }
+
+  if (mode === 'backer') {
+    const stakeeId = deal.stakee_user_id || null
+    const stakeeProfile = stakeeId ? profilesById[stakeeId] || null : null
+    const guestLabel = String(deal.stakee_guest_label || '').trim()
+    const myDb =
+      seedSlices.find((s) => s.staker_user_id === viewerUserId) || seedSlices[0] || null
+    const friends = seedSlices.filter(
+      (s) => s.id !== myDb?.id && s.staker_user_id !== viewerUserId,
+    )
+    return {
+      mode: 'backer',
+      ...base,
+      playerIsGuest: !stakeeId && Boolean(guestLabel),
+      playerHandle: stakeeProfile?.handle
+        ? String(stakeeProfile.handle).replace(/^@+/, '')
+        : '',
+      selectedPlayerProfile: stakeeProfile,
+      playerGuestLabel: guestLabel,
+      playerGuestEmail: String(deal.stakee_guest_email || '').trim(),
+      playerGuestPhone: String(deal.stakee_guest_phone || '').trim(),
+      mySlice: {
+        ...(myDb
+          ? dbSliceToFormSlice(myDb, profilesById)
+          : newEmptySlice(dealType)),
+        stakerUserId: viewerUserId,
+        isGuest: false,
+      },
+      friendSlices: friends.map((s) => dbSliceToFormSlice(s, profilesById)),
+      slices: [newEmptySlice(dealType)],
+    }
+  }
+
+  // Player + Stake: seed backer slices from the declined offer.
+  const formSlices = seedSlices.length
+    ? seedSlices.map((s) => dbSliceToFormSlice(s, profilesById))
+    : [newEmptySlice(dealType)]
+  return {
+    mode: 'player',
+    ...base,
+    slices: formSlices,
+    mySlice: { ...newEmptySlice(dealType), stakerUserId: viewerUserId },
+    friendSlices: [],
+    playerIsGuest: false,
+    playerHandle: '',
+    selectedPlayerProfile: null,
+    playerGuestLabel: '',
+    playerGuestEmail: '',
+    playerGuestPhone: '',
+  }
 }
 
 function applyDealTypePricingDefaults(slice, dealType) {
@@ -388,6 +500,8 @@ function PokerStableDealFormSheet({
   onSavingChange,
   onClose,
   onCreated,
+  /** Prefill from a declined offer (Propose new terms). */
+  seedForm = null,
   // Legacy edit/propose props kept for call-site compat; create/request only (ignored).
   editDeal: _editDeal = null,
   editSlices: _editSlices = null,
@@ -427,7 +541,38 @@ function PokerStableDealFormSheet({
   const sheetRef = useRef(null)
   const actionsRef = useRef(null)
   const scrollSliceIdxRef = useRef(/** @type {number | null} */ (null))
+  const seededRef = useRef(false)
   usePokerStableSheetKeyboardDismissScroll(sheetRef, actionsRef)
+
+  useEffect(() => {
+    if (!seedForm || seededRef.current) return
+    seededRef.current = true
+    setLabel(seedForm.label || '')
+    setDealType(seedForm.dealType || 'cash_backing')
+    setVenueKind(seedForm.venueKind || 'live')
+    setBaseline(seedForm.baseline || '')
+    setIsMigration(Boolean(seedForm.isMigration))
+    setStartingRoll(seedForm.startingRoll || '')
+    setStakeWidePl(seedForm.stakeWidePl || '')
+    setLifetimePl(seedForm.lifetimePl || '')
+    setPlayerHandle(seedForm.playerHandle || '')
+    setSelectedPlayerProfile(seedForm.selectedPlayerProfile || null)
+    setPlayerIsGuest(Boolean(seedForm.playerIsGuest))
+    setPlayerGuestLabel(seedForm.playerGuestLabel || '')
+    setPlayerGuestPhone(seedForm.playerGuestPhone || '')
+    setPlayerGuestEmail(seedForm.playerGuestEmail || '')
+    setMySlice(
+      seedForm.mySlice
+        ? { ...seedForm.mySlice, stakerUserId: userId }
+        : { ...EMPTY_SLICE, stakerUserId: userId },
+    )
+    setFriendSlices(Array.isArray(seedForm.friendSlices) ? seedForm.friendSlices : [])
+    setSlices(
+      Array.isArray(seedForm.slices) && seedForm.slices.length
+        ? seedForm.slices
+        : [{ ...EMPTY_SLICE }],
+    )
+  }, [seedForm, userId])
 
   function clearPlayerSelection() {
     setPlayerIsGuest(false)

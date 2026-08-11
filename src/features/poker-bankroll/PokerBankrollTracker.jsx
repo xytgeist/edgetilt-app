@@ -94,7 +94,11 @@ import {
   stakeeAcceptBackerOffer,
   stakeeDeclineBackerOffer,
 } from '../poker-stable/pokerStableApi.js'
-import { PokerStablePlayerDealSheet } from '../poker-stable/PokerStableCreateDealSheet.jsx'
+import {
+  buildStakeFormSeedFromDeclinedDeal,
+  PokerStablePlayerDealSheet,
+} from '../poker-stable/PokerStableCreateDealSheet.jsx'
+import PokerStableProposeAfterDeclineModal from '../poker-stable/PokerStableProposeAfterDeclineModal.jsx'
 import PokerStableDealDetailSheet from '../poker-stable/PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from '../poker-stable/PokerStableDealTermsSheet.jsx'
 import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
@@ -378,6 +382,10 @@ export default function PokerBankrollTracker({
   const [nudgingSliceId, setNudgingSliceId] = useState(/** @type {string | null} */ (null))
   /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
+  /** Prefill for + Stake after declining a backer offer. */
+  const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
+  /** @type {{ seed: object, counterpartLabel: string } | null} */
+  const [proposeAfterDecline, setProposeAfterDecline] = useState(null)
   /** Read-only session detail before edit. */
   const [detailSessionId, setDetailSessionId] = useState(null)
   const [stableSaving, setStableSaving] = useState(false)
@@ -1604,25 +1612,55 @@ export default function PokerBankrollTracker({
     }
   }
 
-  async function onDeclineBackerOffer(dealId) {
-    if (!supabaseClient || !dealId) return
-    const deal = stakeeDealsById[dealId]
-    const label = deal?.label?.trim() || 'this stake'
-    if (!window.confirm(`Decline ${label}? This kills the stake for everyone.`)) return
+  async function completePlayerDeclineBackerOffer(dealId, { fromOnboarding = false } = {}) {
+    if (!supabaseClient || !dealId || !userId) return
+    const deal =
+      stakeeDeals.find((d) => d.id === dealId) ?? stakeeDealsById[dealId] ?? null
+    const slices = slicesByDeal[dealId] || []
+    const seed = buildStakeFormSeedFromDeclinedDeal({
+      mode: 'player',
+      deal,
+      slices,
+      profilesById: stableProfilesById,
+      viewerUserId: userId,
+    })
+    const counterpartLabel = dealLeadBackerDisplayName(deal, stableProfilesById) || 'your backer'
+
     setStableSaving(true)
     setError('')
     try {
       const { error } = await stakeeDeclineBackerOffer(supabaseClient, dealId)
       if (error) throw error
-      if (bankrollScope === dealId) setBankrollScope('personal')
-      showStakeNotice('Stake declined.')
+      // Hide the declined card for the decliner (soft archive).
+      try {
+        await archiveStakeeBankrollDeal(supabaseClient, dealId)
+      } catch {
+        /* filter also hides backer-initiated declined cards */
+      }
+      if (fromOnboarding) {
+        setStakeOfferOnboardingOpen(false)
+        clearPokerStakeOnboardingDeal()
+        onStakeOnboardingConsumed?.()
+      }
+      if (bankrollScope === dealId) selectBankrollScope('personal')
       notifyPokerOfferAttentionChanged()
       await loadData()
+      if (seed) {
+        setProposeAfterDecline({ seed, counterpartLabel })
+      }
     } catch (e) {
       setError(e?.message || 'Could not decline stake.')
     } finally {
       setStableSaving(false)
     }
+  }
+
+  async function onDeclineBackerOffer(dealId) {
+    if (!dealId) return
+    const deal = stakeeDealsById[dealId]
+    const label = deal?.label?.trim() || 'this stake'
+    if (!window.confirm(`Decline ${label}? This kills the stake for everyone.`)) return
+    await completePlayerDeclineBackerOffer(dealId)
   }
 
   async function runPeriodicSettle(dealId, rakebackTotal, stakeReductionTotal = 0) {
@@ -1686,15 +1724,17 @@ export default function PokerBankrollTracker({
   }
 
   function finishStakeOnboardingFlow(mode, dealId) {
+    // Declined path uses Propose-after-decline modal instead of carousel coach.
+    if (mode !== 'accepted') return
     setCarouselCoachDealId(dealId || null)
     clearPokerStakeOnboardingDeal()
     onStakeOnboardingConsumed?.()
     if (userId && readPokerStakeCarouselCoachAck(userId)) {
-      if (mode === 'accepted' && dealId) setBankrollScope(dealId)
+      if (dealId) setBankrollScope(dealId)
       setCarouselCoachDealId(null)
       return
     }
-    setCarouselCoachMode(mode)
+    setCarouselCoachMode('accepted')
     setCarouselCoachOpen(true)
   }
 
@@ -1729,22 +1769,8 @@ export default function PokerBankrollTracker({
   }
 
   async function handleStakeOnboardingDecline(dealId) {
-    if (!supabaseClient || !dealId) return
-    setStableSaving(true)
-    setError('')
-    try {
-      const { error } = await stakeeDeclineBackerOffer(supabaseClient, dealId)
-      if (error) throw error
-      setStakeOfferOnboardingOpen(false)
-      if (bankrollScope === dealId) setBankrollScope('personal')
-      notifyPokerOfferAttentionChanged()
-      await loadData()
-      finishStakeOnboardingFlow('declined', dealId)
-    } catch (e) {
-      setError(e?.message || 'Could not decline stake.')
-    } finally {
-      setStableSaving(false)
-    }
+    if (!dealId) return
+    await completePlayerDeclineBackerOffer(dealId, { fromOnboarding: true })
   }
 
   function openClosedStakeReview(dealId) {
@@ -3302,6 +3328,7 @@ export default function PokerBankrollTracker({
                             onClick={() => {
                               setError('')
                               setStakeNotice('')
+                              setCreateStakeSeed(null)
                               setSheet('createStake')
                               triggerTapHapticLight()
                             }}
@@ -4523,14 +4550,32 @@ export default function PokerBankrollTracker({
         </div>
       ) : null}
 
+      {proposeAfterDecline ? (
+        <PokerStableProposeAfterDeclineModal
+          counterpartLabel={proposeAfterDecline.counterpartLabel}
+          onCancel={() => setProposeAfterDecline(null)}
+          onPropose={() => {
+            const seed = proposeAfterDecline.seed
+            setProposeAfterDecline(null)
+            setCreateStakeSeed(seed)
+            setSheet('createStake')
+          }}
+        />
+      ) : null}
+
       {sheet === 'createStake' && supabaseClient && userId ? (
         <PokerStablePlayerDealSheet
           supabaseClient={supabaseClient}
           userId={userId}
           saving={stableSaving}
           onSavingChange={setStableSaving}
-          onClose={() => setSheet(null)}
+          seedForm={createStakeSeed}
+          onClose={() => {
+            setSheet(null)
+            setCreateStakeSeed(null)
+          }}
           onCreated={(deal, meta) => {
+            setCreateStakeSeed(null)
             if (deal?.id) {
               pendingCarouselDealIdRef.current = deal.id
               const warn = meta?.guestNotifyWarning

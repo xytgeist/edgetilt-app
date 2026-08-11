@@ -9,7 +9,11 @@ import {
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$, pokerPlTone } from '../poker-bankroll/pokerBankrollMath.js'
 import PokerStakeArchiveDetailModal from '../poker-bankroll/PokerStakeArchiveDetailModal.jsx'
-import { PokerStableBackerDealSheet } from './PokerStableCreateDealSheet.jsx'
+import {
+  buildStakeFormSeedFromDeclinedDeal,
+  PokerStableBackerDealSheet,
+} from './PokerStableCreateDealSheet.jsx'
+import PokerStableProposeAfterDeclineModal from './PokerStableProposeAfterDeclineModal.jsx'
 import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
 import PokerStableClosedHorseSheet from './PokerStableClosedHorseSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
@@ -116,6 +120,9 @@ export default function PokerStableScreen({
   const [schemaMissing, setSchemaMissing] = useState(false)
   const [slicesByDeal, setSlicesByDeal] = useState(/** @type {Record<string, object[]>} */ ({}))
   const [sheet, setSheet] = useState(/** @type {null | 'request'} */ (null))
+  const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
+  /** @type {{ seed: object, counterpartLabel: string } | null} */
+  const [proposeAfterDecline, setProposeAfterDecline] = useState(null)
   const [detailDealId, setDetailDealId] = useState(/** @type {string | null} */ (null))
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
   const [portfolioDetailOpen, setPortfolioDetailOpen] = useState(false)
@@ -472,7 +479,6 @@ export default function PokerStableScreen({
     const sliceId = backerOnboardingSliceRow?.slice?.id
     if (!sliceId) return
     await onDeclineSlice(sliceId)
-    closeBackerSliceOnboarding()
   }
 
   useEffect(() => {
@@ -621,13 +627,40 @@ export default function PokerStableScreen({
 
   async function onDeclineSlice(sliceId) {
     if (!supabaseClient || !userId) return
+    const dealId =
+      Object.keys(slicesByDeal).find((id) =>
+        (slicesByDeal[id] || []).some((s) => s.id === sliceId),
+      ) || null
+    const deal = dealId ? deals.find((d) => d.id === dealId) : null
+    const slices = dealId ? slicesByDeal[dealId] || [] : []
+    const seed = buildStakeFormSeedFromDeclinedDeal({
+      mode: 'backer',
+      deal,
+      slices,
+      profilesById,
+      viewerUserId: userId,
+    })
+    const counterpartLabel = dealStakeeDisplayName(deal, profilesById) || 'the player'
+
     setSaving(true)
     setError('')
     try {
       const { error: err } = await declineSliceAsStaker(supabaseClient, sliceId, userId)
       if (err) throw err
+      closeBackerSliceOnboarding()
+      // If the whole offer died, archive so the decliner never sees Archive/Review.
+      if (dealId) {
+        try {
+          await archiveBackerStableDeal(supabaseClient, dealId)
+        } catch {
+          /* player-initiated declined cards are filtered out of the carousel */
+        }
+      }
       notifyPokerOfferAttentionChanged()
       await load()
+      if (seed) {
+        setProposeAfterDecline({ seed, counterpartLabel })
+      }
     } catch (e) {
       if (isStableOfferRefreshError(e)) {
         setWithdrawnOfferNotice('')
@@ -918,6 +951,7 @@ export default function PokerStableScreen({
               onNeedsAttention={() => setAttentionOpen(true)}
               onCreateStake={() => {
                 setError('')
+                setCreateStakeSeed(null)
                 setSheet('request')
               }}
             />
@@ -1081,17 +1115,37 @@ export default function PokerStableScreen({
         />
       ) : null}
 
+      {proposeAfterDecline ? (
+        <PokerStableProposeAfterDeclineModal
+          counterpartLabel={proposeAfterDecline.counterpartLabel}
+          onCancel={() => setProposeAfterDecline(null)}
+          onPropose={() => {
+            const seed = proposeAfterDecline.seed
+            setProposeAfterDecline(null)
+            setCreateStakeSeed(seed)
+            setSheet('request')
+          }}
+        />
+      ) : null}
+
       {sheet === 'request' && supabaseClient && userId ? (
         <PokerStableBackerDealSheet
           supabaseClient={supabaseClient}
           userId={userId}
           saving={saving}
           onSavingChange={setSaving}
+          seedForm={createStakeSeed}
           backingBankrollBalance={portfolioMetrics.liquidBankroll ?? 0}
           stableDeals={deals}
           stableSlicesByDeal={slicesByDeal}
-          onClose={() => setSheet(null)}
-          onCreated={() => void load()}
+          onClose={() => {
+            setSheet(null)
+            setCreateStakeSeed(null)
+          }}
+          onCreated={() => {
+            setCreateStakeSeed(null)
+            void load()
+          }}
         />
       ) : null}
 

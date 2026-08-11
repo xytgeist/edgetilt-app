@@ -631,6 +631,8 @@ export function backerStableDealIsHidden(deal, slices = [], userId) {
 export function backerStableShowsClosedCarouselCard(deal, slices = [], userId) {
   if (!deal?.id || !userId) return false
   if (!['settled', 'closed', 'declined', 'revoked'].includes(deal.status)) return false
+  // Backer declined a player-initiated offer ... card should disappear for the decliner.
+  if (deal.status === 'declined' && !deal.staker_user_id) return false
   if (backerStableDealIsHidden(deal, slices, userId)) return false
   const mine = backerStableArchiveSlices(deal, slices, userId)
   if (!mine.length && deal.staker_user_id !== userId) return false

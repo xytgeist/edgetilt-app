@@ -48,7 +48,9 @@ alter table public.activity_events
       'poker_stable_staker_counter_declined',
       'poker_stable_slice_accepted',
       'poker_stable_slice_declined',
-      'poker_stable_offer_withdrawn'
+      'poker_stable_offer_withdrawn',
+      -- Keep historical rows valid on prod promote (terms edit existed before this migration).
+      'poker_stable_terms_edited'
     )
   );
 

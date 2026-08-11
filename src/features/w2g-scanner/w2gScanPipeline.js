@@ -279,6 +279,44 @@ export function defaultInsetCorners(width, height, insetRatio = 0.06) {
 }
 
 /**
+ * Rotate a canvas 90° clockwise (new canvas).
+ * @param {HTMLCanvasElement} source
+ * @returns {HTMLCanvasElement}
+ */
+export function rotateCanvas90Cw(source) {
+  if (!(source?.width > 0 && source?.height > 0)) return source
+  const out = document.createElement('canvas')
+  out.width = source.height
+  out.height = source.width
+  const ctx = out.getContext('2d')
+  if (!ctx) return source
+  ctx.translate(out.width, 0)
+  ctx.rotate(Math.PI / 2)
+  ctx.drawImage(source, 0, 0)
+  return out
+}
+
+/**
+ * Map corner points after a 90° CW image rotate (keeps document edge labels coherent).
+ * @param {CornerPoints} corners
+ * @param {number} srcW
+ * @param {number} srcH
+ * @returns {CornerPoints}
+ */
+export function rotateCorners90Cw(corners, srcW, srcH) {
+  const rot = (p) => ({
+    x: srcH - Number(p?.y || 0),
+    y: Number(p?.x || 0),
+  })
+  return {
+    topLeft: rot(corners.bottomLeft),
+    topRight: rot(corners.topLeft),
+    bottomRight: rot(corners.topRight),
+    bottomLeft: rot(corners.bottomRight),
+  }
+}
+
+/**
  * @param {HTMLCanvasElement} canvas
  * @param {string} [filename]
  * @returns {Promise<File>}

@@ -16,6 +16,7 @@ import {
   Images,
   BadgeCheck,
   AlertTriangle,
+  RotateCw,
   X,
   ChevronLeft,
 } from 'lucide-react'
@@ -36,6 +37,8 @@ import {
   flattenCroppedDocument,
   loadImageCanvasFromFile,
   presentPrettyScan,
+  rotateCanvas90Cw,
+  rotateCorners90Cw,
   shareOrDownloadScan,
 } from './w2gScanPipeline.js'
 import {
@@ -116,10 +119,14 @@ export default function W2GScannerScreen({
   const attnEditorHostRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const attnEditorRef = useRef(/** @type {any} */ (null))
   const attnSourceCanvasRef = useRef(/** @type {HTMLCanvasElement | null} */ (null))
+  /** @type {{ current: import('scanic').CornerPoints | null }} */
+  const attnPendingCornersRef = useRef(null)
 
   const [mainTab, setMainTab] = useState('scan') // scan | archive
   const [archivePane, setArchivePane] = useState('list') // list | collate
   const [phase, setPhase] = useState('idle') // idle | scanning | adjust | result
+  /** Bumps when re-opening adjust (e.g. Rotate) so the corner editor remounts. */
+  const [adjustEpoch, setAdjustEpoch] = useState(0)
   const [resultCanvas, setResultCanvas] = useState(null)
   const [resultPreviewUrl, setResultPreviewUrl] = useState(null)
   const [statusNote, setStatusNote] = useState('')
@@ -493,6 +500,7 @@ export default function W2GScannerScreen({
           : 'Drag each handle to a corner of the W-2G, then Apply.'),
     )
     setPhase('adjust')
+    setAdjustEpoch((n) => n + 1)
   }, [clearEditor])
 
   useEffect(() => {
@@ -578,7 +586,7 @@ export default function W2GScannerScreen({
       editorRef.current?.destroy?.()
       editorRef.current = null
     }
-  }, [phase, clearEditor])
+  }, [phase, adjustEpoch, clearEditor])
 
   const processFile = useCallback(
     async (file) => {
@@ -780,6 +788,35 @@ export default function W2GScannerScreen({
     void openAdjust(source, null)
   }
 
+  const onRotateAdjustImage = () => {
+    const source = sourceCanvasRef.current || pendingAdjustRef.current?.source
+    if (!source) return
+    const currentCorners =
+      editorRef.current?.getCorners?.() || pendingAdjustRef.current?.corners || null
+    const rotated = rotateCanvas90Cw(source)
+    const nextCorners = currentCorners
+      ? rotateCorners90Cw(currentCorners, source.width, source.height)
+      : defaultInsetCorners(rotated.width, rotated.height)
+    sourceCanvasRef.current = rotated
+    openAdjust(rotated, nextCorners, 'Rotated… drag the corners onto the form edges, then Apply.')
+  }
+
+  const onRotateAttnImage = () => {
+    const source = attnSourceCanvasRef.current
+    if (!source || attnApplyingRef.current) return
+    const currentCorners = attnEditorRef.current?.getCorners?.() || null
+    const rotated = rotateCanvas90Cw(source)
+    const nextCorners = currentCorners
+      ? rotateCorners90Cw(currentCorners, source.width, source.height)
+      : defaultInsetCorners(rotated.width, rotated.height)
+    destroyAttnEditor()
+    attnSourceCanvasRef.current = rotated
+    attnPendingCornersRef.current = nextCorners
+    setAttnSourceReady(false)
+    // Remount editor on the rotated canvas (next paint).
+    requestAnimationFrame(() => setAttnSourceReady(true))
+  }
+
   const onDownload = async () => {
     if (!resultCanvas) return
     setBusy(true)
@@ -929,6 +966,7 @@ export default function W2GScannerScreen({
     if (!slip) return
     destroyAttnEditor()
     attnSourceCanvasRef.current = null
+    attnPendingCornersRef.current = null
     setAttnSourceReady(false)
     setAttnLoading(false)
     setAttnApplying(false)
@@ -1027,7 +1065,9 @@ export default function W2GScannerScreen({
         destroyAttnEditor()
         host = attnEditorHostRef.current
         host.innerHTML = ''
-        const initial = defaultInsetCorners(source.width, source.height)
+        const initial =
+          attnPendingCornersRef.current || defaultInsetCorners(source.width, source.height)
+        attnPendingCornersRef.current = null
         attnEditorRef.current = createCornerEditor({
           container: host,
           image: source,
@@ -1455,7 +1495,19 @@ export default function W2GScannerScreen({
 
             {phase === 'adjust' ? (
               <div className="space-y-3" data-w2g-adjust>
-                <div className="text-sm text-zinc-400">{statusNote}</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="text-sm text-zinc-400">{statusNote}</div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={onRotateAdjustImage}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
+                    data-w2g-rotate
+                  >
+                    <RotateCw size={14} aria-hidden />
+                    Rotate
+                  </button>
+                </div>
                 <div
                   ref={editorHostRef}
                   className="min-h-[280px] overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
@@ -1924,17 +1976,31 @@ export default function W2GScannerScreen({
                   {attnLoading ? (
                     <div className="text-sm text-zinc-400">Loading photo…</div>
                   ) : (
-                    <div
-                      ref={attnEditorHostRef}
-                      className="min-h-[min(52vh,420px)] overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
-                      data-w2g-attn-editor
-                    />
+                    <>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          disabled={attnApplying || !attnSourceReady}
+                          onClick={onRotateAttnImage}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
+                          data-w2g-rotate
+                        >
+                          <RotateCw size={14} aria-hidden />
+                          Rotate
+                        </button>
+                      </div>
+                      <div
+                        ref={attnEditorHostRef}
+                        className="min-h-[min(52vh,420px)] overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
+                        data-w2g-attn-editor
+                      />
+                    </>
                   )}
                   {attnApplying ? (
                     <div className="text-sm text-zinc-400">Cropping + extracting fields…</div>
                   ) : (
                     <div className="text-xs text-zinc-500">
-                      Drag each handle to a corner of the W-2G, then Apply.
+                      Rotate if sideways, drag each handle to a corner, then Apply.
                     </div>
                   )}
                 </div>

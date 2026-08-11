@@ -51,7 +51,7 @@ export default function PokerStakeeClosedStakeSheet({
         className={`relative z-10 flex w-full max-w-lg flex-col !overflow-y-hidden !pb-0 ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar [-webkit-overflow-scrolling:touch]">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Closed stake</p>

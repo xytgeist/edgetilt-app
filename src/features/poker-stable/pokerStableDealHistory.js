@@ -163,12 +163,15 @@ export function settlementBackerArchiveResult(st, deal, slice, line = null) {
 /**
  * Per-settlement backing result for one backer's slice + running total (oldest first).
  * Includes underwater makeup on each settle for closed-stakes Realized backing display.
+ * Tournament: also includes prepaid markup fee (−) and unused markup refund (+) so the
+ * total matches Stable Realized P/L books (fee posted on accept, unused on close).
  * @param {object} args
  * @param {object} args.deal
  * @param {object[]} [args.slices]
  * @param {object[]} [args.settlements]
  * @param {string} [args.viewerUserId]
  * @param {Record<string, object[]>} [args.settlementLinesBySettlement]
+ * @param {object[]} [args.sessions]
  */
 export function archivedStakeBackerEconomicsBreakdown({
   deal,
@@ -176,6 +179,7 @@ export function archivedStakeBackerEconomicsBreakdown({
   settlements = [],
   viewerUserId,
   settlementLinesBySettlement = {},
+  sessions = [],
 }) {
   const slice = viewerBackingSlice(slices, viewerUserId)
   if (!slice) return { total: 0, items: [], slice: null }
@@ -185,6 +189,30 @@ export function archivedStakeBackerEconomicsBreakdown({
   const ordered = [...(settlements || [])]
     .filter((st) => st?.created_at)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  const closeSt = latestDealSettlement(settlements)
+  let unusedMarkupCredit = 0
+
+  if (deal?.deal_type === 'tournament_package') {
+    const buyins = dealTournamentBuyins(
+      (sessions || []).filter((s) => s?.deal_id === deal.id),
+    )
+    const markupDeal = {
+      ...deal,
+      baseline_bankroll:
+        Number(closeSt?.baseline_at_settle) || Number(deal.baseline_bankroll) || 0,
+    }
+    const { fee, unused } = backerSliceMarkupApplied(markupDeal, slice, buyins)
+    if (fee > 0.005) {
+      items.push({
+        id: `${deal.id}:markup-fee`,
+        at: deal.created_at || closeSt?.created_at || null,
+        kind: 'markup_fee',
+        label: 'Markup fee',
+        credit: roundMoney(-fee),
+      })
+    }
+    unusedMarkupCredit = unused > 0.005 ? unused : 0
+  }
 
   for (const st of ordered) {
     const lines = settlementLinesBySettlement[st.id] || []
@@ -197,6 +225,16 @@ export function archivedStakeBackerEconomicsBreakdown({
       kind: isClose ? 'close' : 'settlement',
       label: isClose ? 'Close settle' : 'Periodic settle',
       credit: roundMoney(credit),
+    })
+  }
+
+  if (unusedMarkupCredit > 0.005) {
+    items.push({
+      id: `${deal.id}:markup-unused`,
+      at: closeSt?.created_at || deal.settled_at || null,
+      kind: 'markup_unused',
+      label: 'Unused markup refund',
+      credit: roundMoney(unusedMarkupCredit),
     })
   }
 

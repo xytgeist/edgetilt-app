@@ -104,9 +104,13 @@ export default function PokerStakeArchiveDetailModal({
       slices,
       settlements,
       viewerUserId,
+      sessions,
     })
   const realizedBackingNeutral = Math.abs(realizedBackingNet) < 0.005
   const backerSettleCount = realizedBackingItems.length
+  const hasMarkupRows = realizedBackingItems.some(
+    (row) => row.kind === 'markup_fee' || row.kind === 'markup_unused',
+  )
   const playerSessionProfit = archivedStakePlayerSessionProfit({
     deal,
     sessions,
@@ -168,7 +172,7 @@ export default function PokerStakeArchiveDetailModal({
               </div>
               <p className="mt-1 text-[11px] leading-snug text-zinc-500">
                 Full table session W/L for this horse (not your cut). Realized backing below is your
-                slice settle result.
+                slice result including markup.
               </p>
             </div>
             <div
@@ -190,8 +194,10 @@ export default function PokerStakeArchiveDetailModal({
                 {backerSettleCount === 0
                   ? 'No settle events recorded for this stake.'
                   : realizedBackingNeutral
-                    ? `${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} · no net result for your slice.`
-                    : `Sum of ${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} (profit credits minus your share of underwater makeup).`}
+                    ? `${backerSettleCount} event${backerSettleCount === 1 ? '' : 's'} · no net result for your slice.`
+                    : hasMarkupRows
+                      ? `Stake settle P/L plus markup fee, minus any unused markup refunded on close.`
+                      : `Sum of ${backerSettleCount} settle event${backerSettleCount === 1 ? '' : 's'} (profit credits minus your share of underwater makeup).`}
               </p>
               {backerSettleCount > 0 ? (
                 <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">

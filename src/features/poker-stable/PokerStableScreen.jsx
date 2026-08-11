@@ -1074,6 +1074,7 @@ export default function PokerStableScreen({
                   slices,
                   settlements: dealSettlementsByDeal[deal.id] || [],
                   viewerUserId: userId,
+                  sessions: stableSessions,
                 })
                 const playerSessionProfit = archivedStakePlayerSessionProfit({
                   deal,

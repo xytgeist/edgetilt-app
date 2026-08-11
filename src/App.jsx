@@ -420,13 +420,10 @@ function App() {
         syncUser(session)
         return
       }
-      // iOS PWA: native confirm / resume can race supabase-js auth locks and emit
-      // SIGNED_OUT even though the refresh token is still on disk. Real logout clears
-      // storage first ... only soft-restore when a token is still present.
-      if (
-        (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') &&
-        hasStoredSupabaseAuthToken()
-      ) {
+      // iOS PWA: auth-lock races can emit SIGNED_OUT while the refresh token is still
+      // on disk. Real logout clears storage first. Soft-restore only on SIGNED_OUT
+      // (not INITIAL_SESSION / TOKEN_REFRESHED) so we don't stack refresh locks.
+      if (event === 'SIGNED_OUT' && hasStoredSupabaseAuthToken()) {
         void restoreSupabaseSession(supabase).then((restored) => {
           if (cancelled) return
           syncUser(restored?.user ? restored : null)

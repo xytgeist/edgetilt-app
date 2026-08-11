@@ -2555,6 +2555,8 @@ export default function PokerBankrollTracker({
         .eq('user_id', userId)
       if (uErr) throw uErr
       await applyBankrollDelta(wl, { sessionDealId: activeSession.deal_id })
+      /** @type {string[]} */
+      let swapNotifyIds = []
       if (activeSession.session_type === 'tournament') {
         const ended = {
           ...sessionRow,
@@ -2581,17 +2583,27 @@ export default function PokerBankrollTracker({
         if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
           console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
         }
-        await notifyTournamentSwapResults(supabaseClient, [
-          ...(syncA.swapIds || []),
-          ...(syncB.swapIds || []),
-        ])
+        swapNotifyIds = [...(syncA.swapIds || []), ...(syncB.swapIds || [])]
       }
-      if (activeSession.deal_id) {
-        await notifyGuestBackersOnSessionComplete(activeSession.id, activeSession.deal_id)
-      }
+      const dealIdForNotify = activeSession.deal_id || null
+      const sessionIdForNotify = activeSession.id
+      // Close the sheet before Edge notify / full reload ... those can stall on auth locks.
       setSheet(null)
       triggerTapHapticLight()
-      await loadData()
+      setSaving(false)
+      void (async () => {
+        try {
+          if (swapNotifyIds.length) {
+            await notifyTournamentSwapResults(supabaseClient, swapNotifyIds)
+          }
+          if (dealIdForNotify) {
+            await notifyGuestBackersOnSessionComplete(sessionIdForNotify, dealIdForNotify)
+          }
+        } finally {
+          await loadData({ silent: true })
+        }
+      })()
+      return
     } catch (e) {
       setError(e?.message || 'Could not end session.')
     } finally {
@@ -3005,7 +3017,8 @@ export default function PokerBankrollTracker({
             if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
               console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
             }
-            await notifyTournamentSwapResults(supabaseClient, [
+            // Don't block Save on Edge notify (auth-lock / Edge latency).
+            void notifyTournamentSwapResults(supabaseClient, [
               ...(syncA.swapIds || []),
               ...(syncB.swapIds || []),
             ])
@@ -3995,11 +4008,19 @@ export default function PokerBankrollTracker({
                   const sessionSwaps = swapsBySessionId[session.id] || []
                   return (
                     <li key={session.id}>
-                      <button
-                        type="button"
+                      {/* div+role=button … Settle is a real <button>; nested buttons are invalid HTML */}
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={() => openSessionDetail(session)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openSessionDetail(session)
+                          }
+                        }}
                         data-elevated-card="surface"
-                        className="flex w-full items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
+                        className="flex w-full cursor-pointer items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
                       >
                         <span
                           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
@@ -4187,7 +4208,7 @@ export default function PokerBankrollTracker({
                             </div>
                           ) : null}
                         </span>
-                      </button>
+                      </div>
                     </li>
                   )
                 })}

@@ -655,17 +655,34 @@ export async function notifyTournamentSwap(supabase, swapId, opts = {}) {
 
 /**
  * After syncing session results, notify the other party on each affected swap.
+ * Runs notifies in parallel ... callers should fire-and-forget so End Session UI
+ * is not blocked on Edge Function / auth-lock latency.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string[]} swapIds
  */
 export async function notifyTournamentSwapResults(supabase, swapIds) {
   const unique = [...new Set((swapIds || []).filter(Boolean))]
-  for (const swapId of unique) {
-    const { error } = await notifyTournamentSwap(supabase, swapId, { kind: 'result' })
-    if (error) {
-      console.warn('[poker-bankroll] swap result notify failed', swapId, error.message || error)
+  if (!unique.length) return
+  const results = await Promise.allSettled(
+    unique.map((swapId) => notifyTournamentSwap(supabase, swapId, { kind: 'result' })),
+  )
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      console.warn(
+        '[poker-bankroll] swap result notify failed',
+        unique[i],
+        result.reason?.message || result.reason,
+      )
+      return
     }
-  }
+    if (result.value?.error) {
+      console.warn(
+        '[poker-bankroll] swap result notify failed',
+        unique[i],
+        result.value.error.message || result.value.error,
+      )
+    }
+  })
 }
 
 /**

@@ -1,4 +1,4 @@
-import { Calculator, CalendarDays, Wallet, BookOpen, ClipboardList, MessageCircle } from 'lucide-react'
+import { Calculator, CalendarDays, Wallet, BookOpen, ClipboardList, MessageCircle, ScanLine } from 'lucide-react'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
@@ -51,6 +51,15 @@ const SLOTS_TOOLS = [
     description: 'Log AP plays and analyze your data',
     subscriberGated: () => false,
     shortcutDestinationId: 'logbook',
+  },
+  {
+    id: 'w2g-scanner',
+    label: 'W-2G Scanner',
+    Icon: ScanLine,
+    color: '#fbbf24',
+    description: 'Snap a W-2G… auto-crop and center',
+    subscriberGated: () => false,
+    shortcutDestinationId: 'w2g-scanner',
   },
   {
     id: 'slots-pro-lounge',

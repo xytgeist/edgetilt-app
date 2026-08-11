@@ -64,7 +64,7 @@ If the user attempts **any** of the following, show the **create account** popup
 **Navigation**
 
 - May open **all** other app areas from the **hamburger menu** (no blanket “create account” wall).
-- **Hamburger UI:** Top-level rows include **Slots** (hub), **Poker** (hub), and **Chat** (Lounge via dock home). **Slots** links to Calcs, Calendar, Bankroll, Logbook, and AP Guides. **Poker** links to **Poker Bankroll Manager** and **Stable Manager**. Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar**, **Bankroll**, **Poker Bankroll**, **Stable**, and **Logbook** hub tiles stay **unlocked** for free users; slots bankroll/logbook **create** actions cap at 10 free uses each — see §4 table; **Poker Bankroll** and **Stable** are unlimited for free users; calendar **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
+- **Hamburger UI:** Top-level rows include **Slots** (hub), **Poker** (hub), and **Chat** (Lounge via dock home). **Slots** links to Calcs, Calendar, Bankroll, Logbook, **W-2G Scanner**, and AP Guides. **Poker** links to **Poker Bankroll Manager** and **Stable Manager**. Hub tiles that are **subscriber-only at the product level** show a **lock icon** next to the label for free (non-subscriber) users; **staff** and **active subscribers** do not see those locks. (**Calendar**, **Bankroll**, **Poker Bankroll**, **Stable**, **Logbook**, and **W-2G Scanner** hub tiles stay **unlocked** for free users; slots bankroll/logbook **create** actions cap at 10 free uses each — see §4 table; **Poker Bankroll** and **Stable** are unlimited for free users; calendar **alerts** and **OCR** stay subscribe-gated **inside** Calendar.)
 
 **Per-feature subscribe requirements**
 
@@ -74,6 +74,7 @@ If the user attempts **any** of the following, show the **create account** popup
 | **Poker Bankroll Manager** | **Free** — unlimited poker sessions for verified users. Hub tile unlocked. |
 | **Stable Manager** | **Free** — unlimited for verified users. Hub tile unlocked. |
 | **Play Logbook** | **10 free play logs**; subscribe for unlimited. Hub tile unlocked; **+ Log Play** and **Log play in Logbook** lock at limit. |
+| **W-2G Scanner** | **Free** — local pretty-picture crop/center (no OCR). Hub tile unlocked. |
 | **Calendar** | May use calendar **without** subscribe. **Subscribe** for **alerts** and for **image upload AI OCR** on offers. |
 | **Calculators** | **Buffalo Link** + **Must Hit By (MHB)** free; **Phoenix Link** + **Stack Up Pays** + all other premium calcs locked → subscribe (**`FREE_CALCULATOR_KEYS`**, **`SUBSCRIBER_ONLY_CALCULATOR_KEYS`**). |
 | **AP Guides** | **14 free guides** — see **`FREE_GUIDE_SLUGS`** in **`guideAccess.js`** (5 Coin Frenzy Jackpots, 88 Fortunes Emperor's Coins, AGS/Ainsworth/IGT Must Hit By, Brian Christopher's World Cruise, Buffalo Link/Cash, Lightning Buffalo Link, Cashman Bingo, Crush Conquest/Dynasty, Dancing Phoenix Soaring Dragon, Golden Egypt). All others locked → subscribe. |

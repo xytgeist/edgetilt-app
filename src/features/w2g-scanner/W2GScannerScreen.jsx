@@ -181,12 +181,17 @@ export default function W2GScannerScreen({
   finishPrettyRef.current = finishPretty
   resetAllRef.current = resetAll
 
-  const openAdjust = useCallback((source, corners) => {
+  const openAdjust = useCallback((source, corners, statusOverride = '') => {
     clearEditor()
     pendingAdjustRef.current = { source, corners: corners || null }
     setBusy(false)
     setError('')
-    setStatusNote('Drag the corners to the W-2G edges, then Apply.')
+    setStatusNote(
+      statusOverride ||
+        (corners
+          ? 'Close… drag the corners onto the form edges, then Apply.'
+          : 'Drag each handle to a corner of the W-2G, then Apply.'),
+    )
     setPhase('adjust')
   }, [clearEditor])
 
@@ -290,7 +295,7 @@ export default function W2GScannerScreen({
       setOcrStatus('')
       setBusy(true)
       setPhase('scanning')
-      setStatusNote('Finding the form…')
+      setStatusNote('Finding corners…')
 
       try {
         const source = await loadImageCanvasFromFile(file)
@@ -302,7 +307,14 @@ export default function W2GScannerScreen({
           await finishPretty(/** @type {HTMLCanvasElement} */ (result.output), `${engine} ${mode}`)
           return
         }
-        await openAdjust(source, result?.corners || null)
+        // Auto missed → manual editor (seeded with best-guess corners when we have them).
+        openAdjust(
+          source,
+          result?.corners || null,
+          result?.corners
+            ? 'Close… drag the corners onto the form edges, then Apply.'
+            : 'Couldn’t lock corners… drag the handles to each corner of the W-2G, then Apply.',
+        )
       } catch (err) {
         setBusy(false)
         setPhase('idle')

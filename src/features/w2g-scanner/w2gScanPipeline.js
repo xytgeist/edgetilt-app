@@ -101,16 +101,19 @@ export async function autoScanDocument(source) {
     }
   }
 
-  if (!best?.corners || !bestAnalysis?.usable) {
+  // No valid page quad → caller opens manual corner editor.
+  if (!best?.corners || !isValidCornerQuad(best.corners) || !bestAnalysis?.usable) {
     return {
-      result:
-        best ||
-        /** @type {ScannerResult} */ ({
-          success: false,
-          message: 'No document found',
-          output: null,
-          corners: null,
-        }),
+      result: {
+        success: false,
+        message: 'No document found',
+        output: null,
+        corners: best?.corners && isValidCornerQuad(best.corners) ? best.corners : null,
+        confidence: best?.confidence ?? null,
+        contour: best?.contour ?? null,
+        debug: null,
+        timings: best?.timings || [],
+      },
       detector: bestDetector,
       cropMode: null,
     }
@@ -136,6 +139,7 @@ export async function autoScanDocument(source) {
     }
   }
 
+  // Default: auto AABB crop from detected corners (no manual step).
   const cropped = axisAlignedCropFromCorners(source, best.corners)
   return {
     result: {

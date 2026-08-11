@@ -94,11 +94,11 @@ export function analyzeCorners(corners, imgW, imgH) {
   const trapezoid =
     Math.max(top / Math.max(1, bottom), bottom / Math.max(1, top)) - 1
 
-  // W-2G landscape is typically ~1.5–2.4 after crop.
-  const aspectOk = aspect >= 1.2 && aspect <= 2.8
-  const coverageOk = coverage >= 0.28 && coverage <= 0.98
-  const anglesOk = angleErr <= 22
-  const balancedOk = sideBalance <= 2.35
+  // Soft gates for auto AABB crop; strict gates only for perspective deskew.
+  const aspectOk = aspect >= 0.85 && aspect <= 3.6
+  const coverageOk = coverage >= 0.18 && coverage <= 0.995
+  const anglesOk = angleErr <= 32
+  const balancedOk = sideBalance <= 2.8
 
   const score =
     (aspectOk ? 0.25 : 0) +
@@ -107,7 +107,16 @@ export function analyzeCorners(corners, imgW, imgH) {
     (balancedOk ? 0.15 : 0) +
     Math.max(0, 0.1 - angleErr / 200)
 
-  const usable = aspectOk && coverageOk && anglesOk && balancedOk && score >= 0.7
+  // Any plausible page quad → auto-crop. Manual only when we find nothing usable.
+  const usable = aspectOk && coverageOk && score >= 0.45
+  const preferPerspective =
+    usable &&
+    aspect >= 1.2 &&
+    aspect <= 2.8 &&
+    coverage >= 0.28 &&
+    angleErr <= 14 &&
+    sideBalance <= 1.85 &&
+    trapezoid >= 0.08
 
   return {
     aspect,
@@ -121,8 +130,7 @@ export function analyzeCorners(corners, imgW, imgH) {
     balancedOk,
     score,
     usable,
-    /** Strong trapezoid + clean corners → perspective may help. */
-    preferPerspective: usable && trapezoid >= 0.08 && angleErr <= 14 && sideBalance <= 1.85,
+    preferPerspective,
   }
 }
 

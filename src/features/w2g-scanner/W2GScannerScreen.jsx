@@ -707,8 +707,9 @@ export default function W2GScannerScreen({
       })
       const year = taxYearFromDate(fieldsObject.dateWon)
       setTaxYear(year)
+      resetAll()
       setSaveOkNote(`Saved to ${year} archive.`)
-      if (mainTab === 'archive') void refreshArchive()
+      void refreshArchive()
     } catch (err) {
       setError(err?.message || 'Save failed.')
     } finally {
@@ -856,6 +857,21 @@ export default function W2GScannerScreen({
           <>
             {phase === 'idle' || phase === 'scanning' ? (
               <div className="space-y-3" data-w2g-capture>
+                {saveOkNote ? (
+                  <div
+                    className="rounded-2xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-200"
+                    data-w2g-save-ok
+                  >
+                    {saveOkNote}{' '}
+                    <button
+                      type="button"
+                      className="font-semibold underline underline-offset-2"
+                      onClick={() => setMainTab('archive')}
+                    >
+                      View My W-2Gs
+                    </button>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   disabled={busy}
@@ -981,18 +997,6 @@ export default function W2GScannerScreen({
               <div className="space-y-4" data-w2g-result>
                 {statusNote ? (
                   <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{statusNote}</div>
-                ) : null}
-                {saveOkNote ? (
-                  <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-200" data-w2g-save-ok>
-                    {saveOkNote}{' '}
-                    <button
-                      type="button"
-                      className="font-semibold underline underline-offset-2"
-                      onClick={() => setMainTab('archive')}
-                    >
-                      View My W-2Gs
-                    </button>
-                  </div>
                 ) : null}
                 <div className="overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800" data-w2g-preview>
                   {resultPreviewUrl ? (

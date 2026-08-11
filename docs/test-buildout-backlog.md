@@ -957,6 +957,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-11: **W-2G bulk import (paywalled):** multi-image OCR+save on Scan tab; **Slots Edge Starter and up** (Starter / Pro / Lifetime / staff); lock opens subscribe on Starter. Headless crop via **`w2gBulkImport.js`** (no Adjust UI in queue).
 - 2026-08-11: **W-2G tax archive:** six TurboTax-combine fields only; **Scan** / **My W-2Gs** + collate by EIN; private bucket **`w2g-slips`** + table **`w2g_slips`** (**`20260811400000`** applied + tracked on **test**). Free hub tile; save needs auth. Prod promote later.
 - 2026-08-11: **W-2G Scanner (Slots tool):** hub tile + tab **`w2g-scanner`** … capture/library → **`scanic`** detect → **bounds crop default** → light enhance → **`tesseract.js` PSM 6** + scavenger field parser (label-following was garbage on Ryan’s Paris slip recording). Free. `/?tab=w2g-scanner`.
 - 2026-08-10: **Stake Alerts two-line layout:** icon + caption on first line (like/repost pattern); session detail on second line with 🦈/🐡. Session `detail_text` → `Deal · Wynn 10/20 · +$1,252` (**`20260810220000`** on test). Client reformats legacy `· table +1,252.00`. Redeploy **`lounge-send-activity-push`** on test for emoji parse.

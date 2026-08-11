@@ -12,8 +12,11 @@ import {
   CloudUpload,
   Trash2,
   Layers,
+  Images,
 } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import { PRODUCT_SLOTS_EDGE_STARTER } from '../billing/edgeProducts.js'
 import {
   autoScanDocument,
   canvasToPngFile,
@@ -40,6 +43,7 @@ import {
   saveW2GSlip,
   signedW2GImageUrl,
 } from './w2gArchiveApi.js'
+import { processW2GImageForArchive } from './w2gBulkImport.js'
 
 function moneyLabel(n) {
   return Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -73,15 +77,20 @@ export default function W2GScannerScreen({
   titleBarToolCloseVisible = false,
   supabaseClient = null,
   onOpenAuth = null,
+  /** Slots Edge Starter and up (or staff). */
+  canUseBulkImport = false,
+  onRequireSubscribe = null,
 }) {
   const cameraInputRef = useRef(null)
   const libraryInputRef = useRef(null)
+  const bulkInputRef = useRef(null)
   const editorHostRef = useRef(null)
   const editorRef = useRef(null)
   const sourceCanvasRef = useRef(null)
   const flatCanvasRef = useRef(null)
   const ocrSeqRef = useRef(0)
   const ocrConfidenceRef = useRef(null)
+  const bulkAbortRef = useRef(/** @type {AbortController | null} */ (null))
   /** @type {{ current: { source: HTMLCanvasElement, corners: any } | null }} */
   const pendingAdjustRef = useRef(null)
   const finishPrettyRef = useRef(/** @type {any} */ (null))
@@ -102,6 +111,9 @@ export default function W2GScannerScreen({
   const [hasFlat, setHasFlat] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveOkNote, setSaveOkNote] = useState('')
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState(/** @type {{ index: number, total: number, fileName: string } | null} */ (null))
+  const [bulkSummary, setBulkSummary] = useState(/** @type {{ saved: number, failed: Array<{ fileName: string, error: string }> } | null} */ (null))
 
   const currentYear = new Date().getFullYear()
   const [taxYear, setTaxYear] = useState(currentYear)
@@ -135,6 +147,8 @@ export default function W2GScannerScreen({
       editorRef.current?.destroy?.()
       editorRef.current = null
       ocrSeqRef.current += 1
+      bulkAbortRef.current?.abort()
+      bulkAbortRef.current = null
     }
   }, [])
 
@@ -426,6 +440,129 @@ export default function W2GScannerScreen({
     if (file) void processFile(file)
   }
 
+  const cancelBulkImport = useCallback(() => {
+    bulkAbortRef.current?.abort()
+  }, [])
+
+  const runBulkImport = useCallback(
+    async (files) => {
+      const list = [...(files || [])].filter((f) => String(f?.type || '').startsWith('image/'))
+      if (!list.length) {
+        setError('Pick one or more W-2G photos.')
+        return
+      }
+      if (!canUseBulkImport) {
+        onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
+        return
+      }
+      if (!supabaseClient) {
+        setError('Archive unavailable.')
+        return
+      }
+      try {
+        const { data } = await supabaseClient.auth.getUser()
+        if (!data?.user?.id) {
+          setError('Sign in to bulk-import W-2Gs.')
+          onOpenAuth?.('login')
+          return
+        }
+      } catch {
+        setError('Sign in to bulk-import W-2Gs.')
+        onOpenAuth?.('login')
+        return
+      }
+
+      bulkAbortRef.current?.abort()
+      const ac = new AbortController()
+      bulkAbortRef.current = ac
+      setBulkBusy(true)
+      setBusy(true)
+      setError('')
+      setBulkSummary(null)
+      setMainTab('scan')
+      setPhase('idle')
+      clearEditor()
+      ocrSeqRef.current += 1
+
+      let saved = 0
+      /** @type {Array<{ fileName: string, error: string }>} */
+      const failed = []
+
+      try {
+        for (let i = 0; i < list.length; i++) {
+          if (ac.signal.aborted) break
+          const file = list[i]
+          setBulkProgress({ index: i + 1, total: list.length, fileName: file.name || `Image ${i + 1}` })
+          setStatusNote(`Bulk import ${i + 1}/${list.length}…`)
+          try {
+            const result = await processW2GImageForArchive(file, { signal: ac.signal })
+            if (!result.ok) {
+              failed.push({ fileName: result.fileName, error: result.error })
+              continue
+            }
+            await saveW2GSlip({
+              supabase: supabaseClient,
+              fields: result.fields,
+              imageBlob: result.imageBlob,
+              ocrConfidence: result.ocrConfidence,
+            })
+            saved += 1
+          } catch (err) {
+            if (err?.name === 'AbortError') break
+            failed.push({ fileName: file.name || `Image ${i + 1}`, error: err?.message || 'Import failed.' })
+          }
+        }
+      } finally {
+        if (bulkAbortRef.current === ac) bulkAbortRef.current = null
+        setBulkBusy(false)
+        setBusy(false)
+        setBulkProgress(null)
+        setStatusNote('')
+        setBulkSummary({ saved, failed })
+        if (saved > 0) void refreshArchive()
+      }
+    },
+    [
+      canUseBulkImport,
+      clearEditor,
+      onOpenAuth,
+      onRequireSubscribe,
+      refreshArchive,
+      supabaseClient,
+    ],
+  )
+
+  const onPickBulkFiles = (event) => {
+    const files = event.target.files
+    event.target.value = ''
+    if (files?.length) void runBulkImport(files)
+  }
+
+  const onBulkImportClick = () => {
+    if (!canUseBulkImport) {
+      if (!supabaseClient) {
+        onOpenAuth?.('login')
+        return
+      }
+      // Anon members still need auth first; subscribe modal is for free verified users.
+      void (async () => {
+        try {
+          const { data } = await supabaseClient.auth.getUser()
+          if (!data?.user?.id) {
+            onOpenAuth?.('login')
+            return
+          }
+        } catch {
+          onOpenAuth?.('login')
+          return
+        }
+        onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
+      })()
+      return
+    }
+    bulkInputRef.current?.click()
+  }
+
   const onAdjustFromResult = () => {
     const source = sourceCanvasRef.current
     if (!source) return
@@ -622,6 +759,48 @@ export default function W2GScannerScreen({
           </div>
         ) : null}
 
+        {bulkSummary && !bulkBusy ? (
+          <div
+            className="rounded-2xl border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-100 space-y-1.5"
+            data-w2g-bulk-summary
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="font-semibold">
+                Bulk import done… {bulkSummary.saved} saved
+                {bulkSummary.failed.length ? `, ${bulkSummary.failed.length} failed` : ''}
+              </div>
+              <button
+                type="button"
+                className="shrink-0 text-xs font-semibold text-emerald-200/90 touch-manipulation"
+                onClick={() => setBulkSummary(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+            {bulkSummary.failed.length ? (
+              <ul className="text-xs text-emerald-200/80 space-y-1 max-h-28 overflow-auto">
+                {bulkSummary.failed.slice(0, 8).map((f) => (
+                  <li key={`${f.fileName}-${f.error}`}>
+                    {f.fileName}: {f.error}
+                  </li>
+                ))}
+                {bulkSummary.failed.length > 8 ? (
+                  <li>+{bulkSummary.failed.length - 8} more</li>
+                ) : null}
+              </ul>
+            ) : null}
+            {bulkSummary.saved > 0 ? (
+              <button
+                type="button"
+                className="text-xs font-semibold underline underline-offset-2"
+                onClick={() => setMainTab('archive')}
+              >
+                Review in My W-2Gs
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         {mainTab === 'scan' ? (
           <>
             {phase === 'idle' || phase === 'scanning' ? (
@@ -667,17 +846,71 @@ export default function W2GScannerScreen({
                   </span>
                 </button>
 
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onBulkImportClick}
+                  className="flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-5 text-left touch-manipulation active:scale-[0.99] transition-transform disabled:opacity-60"
+                  data-w2g-bulk
+                >
+                  <span
+                    aria-hidden
+                    className="slots-icon-tile grid h-12 w-12 shrink-0 place-items-center rounded-2xl"
+                    style={{ '--tc': '#34d399' }}
+                  >
+                    <Images size={22} strokeWidth={1.5} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2 text-lg font-bold text-white">
+                      Bulk import
+                      {!canUseBulkImport ? (
+                        <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-400/95" />
+                      ) : null}
+                    </span>
+                    <span className="mt-0.5 block text-sm text-zinc-500">
+                      {canUseBulkImport
+                        ? 'Select many photos… OCR + save each to your archive'
+                        : 'Slots Edge and up … multi-slip import'}
+                    </span>
+                  </span>
+                </button>
+
+                {bulkBusy && bulkProgress ? (
+                  <div className="space-y-2 rounded-2xl bg-zinc-900/80 px-4 py-3" data-w2g-bulk-progress>
+                    <div className="flex items-center justify-between gap-3 text-sm text-zinc-300">
+                      <span className="min-w-0 truncate">
+                        Importing {bulkProgress.index}/{bulkProgress.total}… {bulkProgress.fileName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={cancelBulkImport}
+                        className="shrink-0 text-xs font-semibold text-amber-300 touch-manipulation"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-emerald-400 transition-[width] duration-200"
+                        style={{
+                          width: `${Math.max(4, Math.round((bulkProgress.index / bulkProgress.total) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
                 {phase === 'scanning' ? (
                   <div className="flex items-center gap-3 rounded-2xl bg-zinc-900/80 px-4 py-3 text-sm text-zinc-300">
                     <ScanLine className="h-4 w-4 shrink-0 animate-pulse text-amber-300" aria-hidden />
                     <span>{statusNote || 'Scanning…'}</span>
                   </div>
-                ) : (
+                ) : !bulkBusy ? (
                   <p className="text-xs leading-relaxed text-zinc-500 px-1">
                     Tip: fill the frame, avoid heavy glare, and keep all four edges visible. OCR runs on-device;
                     saving stores the image privately in your account.
                   </p>
-                )}
+                ) : null}
               </div>
             ) : null}
 
@@ -855,6 +1088,14 @@ export default function W2GScannerScreen({
               accept="image/*"
               className="hidden"
               onChange={onPickFile}
+            />
+            <input
+              ref={bulkInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={onPickBulkFiles}
             />
           </>
         ) : null}

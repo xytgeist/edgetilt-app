@@ -2680,6 +2680,8 @@ export default function AppShell({
         <W2GScannerScreen
           supabaseClient={supabaseClient}
           onOpenAuth={(mode) => onOpenAuth?.(mode || 'login')}
+          canUseBulkImport={Boolean(hasSlotsEdgeStarter || hasActiveSubscription)}
+          onRequireSubscribe={(slug) => onRequireSubscribe?.(slug || 'slots-edge-starter')}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
         />

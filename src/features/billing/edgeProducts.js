@@ -70,6 +70,11 @@ export function hasSlotsEdgePro(entitlements) {
   return hasEntitlement(entitlements, PRODUCT_SLOTS_EDGE)
 }
 
+/** Any paid Slots Edge plan (Starter, Pro, or Lifetime). */
+export function hasAnySlotsEdgePlan(entitlements) {
+  return hasSlotsEdgeStarter(entitlements) || hasSlotsEdge(entitlements)
+}
+
 /** @param {Record<string, { price_interval?: string }> | null | undefined} entitlements @param {string} productSlug @returns {'monthly' | 'annual' | null} */
 export function entitlementPriceInterval(entitlements, productSlug) {
   const raw = entitlements?.[productSlug]?.price_interval

@@ -9365,3 +9365,16 @@ html.light [data-w2g-scanner] [data-w2g-collate] .border-zinc-800 {
 html.light [data-w2g-scanner] [data-w2g-collate] .bg-zinc-950\/60 {
   background-color: #f4f4f5 !important;
 }
+html.light [data-w2g-scanner] [data-w2g-bulk-progress] {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--edge-light-list-card-shadow);
+}
+html.light [data-w2g-scanner] [data-w2g-bulk-summary] {
+  background-color: #ecfdf5 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #065f46 !important;
+}
+html.light [data-w2g-scanner] [data-w2g-bulk-summary] .text-emerald-200\/80 {
+  color: #047857 !important;
+}

@@ -14940,7 +14940,7 @@ export default function SocialFeed({
     () => ({
       hashtagClassName: 'font-semibold text-cyan-300',
       linkClassName:
-        'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
+        'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-all [overflow-wrap:anywhere]',
       onMentionClick: openProfileByHandle,
       onHashtagClick: openSearchByHashtag,
       onCashtagClick: openSearchByCashtag,
@@ -15587,7 +15587,7 @@ export default function SocialFeed({
 
       <div
         ref={loungeFeedScrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
         style={{
           ...(loungeFeedDockPaddingBottom > 0 ? { paddingBottom: loungeFeedDockPaddingBottom } : {}),
           pointerEvents: loungeFabPointerBlocked ? 'none' : undefined,

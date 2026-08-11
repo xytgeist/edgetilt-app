@@ -53,7 +53,7 @@ export default function LoungeExpandableRichCaption({
   if (!rich) return null
 
   return (
-    <span className={`whitespace-pre-wrap break-words ${className}`.trim()}>
+    <span className={`min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${className}`.trim()}>
       {rich}
       {showMore ? (
         <>

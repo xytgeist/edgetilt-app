@@ -87,7 +87,8 @@ export function renderRichCaption(
   text,
   {
     hashtagClassName = 'font-semibold text-cyan-400',
-    linkClassName = 'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words',
+    linkClassName =
+      'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-all [overflow-wrap:anywhere]',
     mentionClassName = 'font-medium text-orange-400',
     cashtagQuotesByTicker = null,
     highlightQuery = '',

@@ -7,7 +7,7 @@ import {
 const MENTION_CLASS = 'font-medium text-orange-400'
 const HASHTAG_CLASS = 'font-semibold text-cyan-400'
 const LINK_CLASS =
-  'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-words'
+  'font-medium text-sky-400 underline underline-offset-2 decoration-sky-400/70 break-all [overflow-wrap:anywhere]'
 
 const CASHTAG_RE = /\$([A-Za-z][A-Za-z0-9.-]{0,14})\b/g
 

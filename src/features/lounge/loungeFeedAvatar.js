@@ -49,7 +49,7 @@ export const LOUNGE_QUOTE_EMBED_OG_AFTER_STAFF_CLASS = 'inline-flex shrink-0 ite
 
 /** Feed / profile / search post row - same rule gaps as post-detail comment `<li>` items. */
 export const LOUNGE_FEED_POST_ROW_CLASS =
-  'border-t border-zinc-800/70 bg-zinc-950/35 px-3 pt-2 pb-2 [-webkit-tap-highlight-color:transparent]'
+  'max-w-full min-w-0 overflow-x-hidden border-t border-zinc-800/70 bg-zinc-950/35 px-3 pt-2 pb-2 [-webkit-tap-highlight-color:transparent]'
 
 /** `LoungePostArticle` root - `pt-1` below rule (pairs with row `pt-2`). */
 export const LOUNGE_FEED_POST_ROW_INNER_CLASS = 'min-w-0 pt-1 pb-0'
@@ -94,7 +94,7 @@ export const LOUNGE_FEED_DISPLAY_NAME_DETAIL_CLASS =
 
 /** Post / comment caption body (not quote-repost embed cards). */
 export const LOUNGE_FEED_CAPTION_TEXT_CLASS =
-  'text-[17px] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere]'
+  'min-w-0 max-w-full text-[17px] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere]'
 
 /** Display name + in-cluster badge(s): gap-x-1 (staff crown or OG-only). */
 export function loungeFeedAuthorIdentityClusterClass(hasStaffBadge, showOgBadge, opts = {}) {
@@ -135,7 +135,7 @@ export const LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS =
 
 /** Quote-repost inset body ... smaller than quoting caption, same color. */
 export const LOUNGE_QUOTE_EMBED_CAPTION_CLASS =
-  'text-[15px] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-zinc-200'
+  'min-w-0 max-w-full text-[15px] leading-snug whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-zinc-200'
 
 /** Quote-repost inset shell ... transparent fill so row bg shows through; border defines the card. */
 export const LOUNGE_QUOTE_EMBED_SHELL_BASE =

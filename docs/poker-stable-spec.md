@@ -183,7 +183,7 @@ Same bankroll rules as cash backing close, one payout when manifest is complete:
 
 - Roll reflects all package sessions (gross). **Buy-in, re-entries, and add-ons debit the stake roll as soon as they are logged** (active session), not only when the tournament is completed (`20260811230000`).
 - Close returns each backer’s share of **current roll** (not baseline face). Underwater makeup posts to backer **Realized P/L**.
-- Markup **fee** was already realized on accept and is **not** refunded on close … overall backer result = stake P/L + fee.
+- Markup is **prepaid on accept** (`face × (markup − 1)`), but **earned per buy-in**: applied fee = prepaid × min(buyins, package) / package. On close, **unused markup** returns to the backer (backing bankroll + reverse Realized) and is clawed from player personal (`20260811260000`). Overall backer performance on Commit = stake P/L − **applied** markup.
 - Close-out applies slice terms including **markup** (entry pricing) and **profit on sold action** separately in settle lines.
 - Player personal and each backer bankroll update from settle lines / close books (`20260811220000`).
 - Session cards: gross + player stake value; swaps (if any) adjust player net only.
@@ -601,6 +601,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 - **2026-08-11:** **Close Commit & Archive (client):** counterparty close settlement button is **Commit & Archive** … syncs books then archives the stake for that viewer (no separate Archive step after close Commit).
 - **2026-08-11:** **Tournament player package contribution (test):** migration **`20260811240000`** — debit unsold face from personal on go-live; close returns roll share; history close line shows returned + overall P/L (no “makeup cleared”).
 - **2026-08-11:** **Always top up backing-bankroll deficiency (test):** migration **`20260811250000`** — any shortfall vs paid amount is credited (manual adjustment) before seed/debit on Create Stake or Accept; cash + tournament. Repairs negative liquid when capital already deployed.
+- **2026-08-11:** **Unused tournament markup refund on close (test):** prepaid fee earned pro-rata to buy-ins vs package face; unused returns to backer + clawed from player personal. Commit shows **markup applied** + unused-return bullet. **`20260811260000`**.
 - **2026-08-01:** Pending stake sessions: player may **Start Session** / log past on pending deals; sessions attach to `deal_id` immediately; stake bankroll profile bootstraps on accept with starting roll + logged P/L; backers see sessions in Stable after accept (`20260801110000`).
 - **2026-08-01:** Stable filters: player **+ Stake** deals no longer appear on Stable for the stakee; invite cards use amber chrome (not cyan).
 - **2026-08-01:** Post-create stake UX: pending player deals appear on Bankroll carousel; success banner after **Create stake**; push/in-app backer alerts still **v2c**.

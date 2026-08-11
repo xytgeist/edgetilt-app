@@ -15,7 +15,11 @@ import {
   settlementBackerCredit,
   viewerBackingSlice,
 } from './pokerStableDealHistory.js'
-import { backerSliceMarkupFee } from './pokerStableBackerMath.js'
+import {
+  backerSliceMarkupApplied,
+  dealTournamentBuyins,
+  dealUnusedMarkupTotal,
+} from './pokerStableBackerMath.js'
 import { roundMoney, stableNum, tournamentPlayerCloseEconomics } from './pokerStableMath.js'
 import {
   attachSlicesToSettleLines,
@@ -89,6 +93,7 @@ export default function PokerStableCommitSyncPanel({
   const [profilesById, setProfilesById] = useState({})
   const [playerPersonalCredit, setPlayerPersonalCredit] = useState(null)
   const [backerBackingCredit, setBackerBackingCredit] = useState(null)
+  const [dealBuyins, setDealBuyins] = useState(0)
 
   const saving = savingProp || savingLocal
   const setSaving = onSavingChange || setSavingLocal
@@ -139,18 +144,30 @@ export default function PokerStableCommitSyncPanel({
       let nextProfiles = {}
       let nextPlayerCredit = null
       let nextBackerCredit = null
+      let nextBuyins = 0
 
       if (isSettleCommit && commitRow.ref_id) {
-        const [{ settlement: st, lines, calc, error: stErr }, { byDeal, error: slErr }] =
-          await Promise.all([
-            loadSettlementBundle(supabaseClient, commitRow.ref_id),
-            loadDealSlices(supabaseClient, [commitRow.deal_id]),
-          ])
+        const [
+          { settlement: st, lines, calc, error: stErr },
+          { byDeal, error: slErr },
+          sessionsRes,
+        ] = await Promise.all([
+          loadSettlementBundle(supabaseClient, commitRow.ref_id),
+          loadDealSlices(supabaseClient, [commitRow.deal_id]),
+          dealRow?.deal_type === 'tournament_package'
+            ? supabaseClient
+                .from('poker_bankroll_sessions')
+                .select('buy_in, rebuy_amount, addon_amount')
+                .eq('deal_id', commitRow.deal_id)
+            : Promise.resolve({ data: [], error: null }),
+        ])
         if (stErr) throw stErr
         if (slErr) throw slErr
+        if (sessionsRes?.error) throw sessionsRes.error
         nextSettlement = st
         nextLines = lines || []
         nextSlices = byDeal[commitRow.deal_id] || []
+        nextBuyins = dealTournamentBuyins(sessionsRes?.data || [])
         if (
           dealRow?.deal_type === 'tournament_package' &&
           commitRow.event_kind === 'close_settle'
@@ -199,6 +216,7 @@ export default function PokerStableCommitSyncPanel({
       setProfilesById(nextProfiles)
       setPlayerPersonalCredit(nextPlayerCredit)
       setBackerBackingCredit(nextBackerCredit)
+      setDealBuyins(nextBuyins)
     } catch (e) {
       onError?.(e?.message || 'Could not load stake commit.')
     } finally {
@@ -273,19 +291,24 @@ export default function PokerStableCommitSyncPanel({
         markup_rate: slice.markup_rate ?? slice.markupRate ?? deal?.markup_rate,
         pricing_mode: slice.pricing_mode || slice.pricingMode || 'profit_split',
       }
-      const markupFee = Math.max(0, backerSliceMarkupFee(feeDeal, feeSlice))
+      const { applied, unused } = backerSliceMarkupApplied(feeDeal, feeSlice, dealBuyins)
+      const markupFee = Math.max(0, applied)
       const overallPerformance = roundMoney(stakePl - markupFee)
       const credit = roundMoney(backerBackingCredit ?? 0)
       const stakePlBit = `${stakePl >= 0 ? '+' : ''}${fmtPoker$(stakePl)} stake P/L`
       const breakdown =
         markupFee > 0.005
-          ? `${stakePlBit} − ${fmtPoker$(markupFee)} markup`
+          ? `${stakePlBit} − ${fmtPoker$(markupFee)} markup applied`
           : stakePlBit
+      const payPhrases = [
+        breakdown,
+        `${fmtPoker$(credit)} returned to Backing Bankroll`,
+      ]
+      if (unused > 0.005) {
+        payPhrases.push(`${fmtPoker$(unused)} unused markup returned`)
+      }
       return {
-        payPhrases: [
-          breakdown,
-          `${fmtPoker$(credit)} returned to Backing Bankroll`,
-        ],
+        payPhrases,
         resetBullet: '',
         reductionRows: [],
         stakePl,
@@ -298,13 +321,20 @@ export default function PokerStableCommitSyncPanel({
     if (tournamentClosePlayer) {
       const econ = tournamentPlayerCloseEconomics(settlement, slices, deal)
       const overallPerformance = econ.overallPl
+      const unusedMarkup = dealUnusedMarkupTotal(deal, slices, dealBuyins)
+      const payPhrases = [
+        econ.contribution > 0.005
+          ? `Your package share ${fmtPoker$(econ.contribution)}`
+          : 'Your package share $0',
+        `${fmtPoker$(econ.returned)} returned to personal bankroll`,
+      ]
+      if (unusedMarkup > 0.005) {
+        payPhrases.push(
+          `${fmtPoker$(unusedMarkup)} unused markup returned to backers`,
+        )
+      }
       return {
-        payPhrases: [
-          econ.contribution > 0.005
-            ? `Your package share ${fmtPoker$(econ.contribution)}`
-            : 'Your package share $0',
-          `${fmtPoker$(econ.returned)} returned to personal bankroll`,
-        ],
+        payPhrases,
         resetBullet: '',
         reductionRows: [],
         stakePl: overallPerformance,
@@ -359,6 +389,7 @@ export default function PokerStableCommitSyncPanel({
     tournamentClosePlayer,
     isTournamentPackage,
     backerBackingCredit,
+    dealBuyins,
   ])
 
   useEffect(() => {

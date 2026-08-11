@@ -62,6 +62,58 @@ export function backerSliceMarkupFee(deal, slice) {
 }
 
 /**
+ * Total buy-in + re-entry + add-on on stake sessions (markup basis).
+ * @param {object[]} [sessions]
+ */
+export function dealTournamentBuyins(sessions = []) {
+  let total = 0
+  for (const s of sessions || []) {
+    total = roundMoney(
+      total +
+        (Number(s?.buy_in) || 0) +
+        (Number(s?.rebuy_amount) || 0) +
+        (Number(s?.addon_amount) || 0),
+    )
+  }
+  return total
+}
+
+/**
+ * Prepaid markup vs buy-in-earned markup for a tournament slice.
+ * @param {object} deal
+ * @param {object} slice
+ * @param {number} buyins
+ * @returns {{ fee: number, applied: number, unused: number }}
+ */
+export function backerSliceMarkupApplied(deal, slice, buyins = 0) {
+  const fee = Math.max(0, backerSliceMarkupFee(deal, slice))
+  const baseline = Number(deal?.baseline_bankroll ?? deal?.baselineBankroll) || 0
+  if (fee <= 0.005 || baseline <= 0.005 || deal?.deal_type !== 'tournament_package') {
+    return { fee, applied: fee, unused: 0 }
+  }
+  const used = Math.min(Math.max(0, Number(buyins) || 0), baseline)
+  const applied = roundMoney(fee * (used / baseline))
+  const unused = roundMoney(Math.max(0, fee - applied))
+  return { fee, applied, unused }
+}
+
+/**
+ * Sum of unused prepaid markup across active slices (player claw / backer refund total).
+ * @param {object} deal
+ * @param {object[]} [slices]
+ * @param {number} [buyins]
+ */
+export function dealUnusedMarkupTotal(deal, slices = [], buyins = 0) {
+  let total = 0
+  for (const slice of slices || []) {
+    if (slice?.status && slice.status !== 'active') continue
+    const { unused } = backerSliceMarkupApplied(deal, slice, buyins)
+    total = roundMoney(total + unused)
+  }
+  return total
+}
+
+/**
  * Sum of manual Edit → Adjust bankroll rows (deposits +, withdrawals −).
  * @param {object[]} adjustments
  */

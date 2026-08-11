@@ -411,19 +411,34 @@ export default function PokerStableDealTermsSheet({
                 onClick={() => void onAcceptProposal?.()}
                 className="w-full rounded-xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
               >
-                {saving ? 'Saving…' : 'Accept proposed terms'}
+                {saving ? 'Saving…' : 'Accept revised terms'}
               </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => void onDeclineProposal?.()}
-                className="w-full rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
-              >
-                Decline proposal
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void onDeclineProposal?.()}
+                  className="flex-1 rounded-xl bg-zinc-800 py-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-50"
+                >
+                  Decline
+                </button>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      onError?.('')
+                      onEdit?.()
+                    }}
+                    data-poker-stable-terms-edit-btn
+                    className="flex-1 rounded-xl bg-zinc-100 py-3 text-sm font-semibold text-zinc-900 touch-manipulation disabled:opacity-50"
+                  >
+                    Edit terms
+                  </button>
+                ) : null}
+              </div>
             </>
-          ) : null}
-          {canEdit ? (
+          ) : canEdit ? (
             <button
               type="button"
               disabled={saving}
@@ -434,7 +449,7 @@ export default function PokerStableDealTermsSheet({
               data-poker-stable-terms-edit-btn
               className="w-full rounded-xl bg-zinc-100 py-3 text-sm font-semibold text-zinc-900 touch-manipulation disabled:opacity-50"
             >
-              {hasProposal && isStakee ? 'Offer different terms' : 'Edit terms'}
+              Edit terms
             </button>
           ) : null}
           {canOpenLedger ? (

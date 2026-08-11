@@ -3467,38 +3467,19 @@ export default function PokerBankrollTracker({
                               onClick={(e) => e.stopPropagation()}
                             >
                               <p className="text-xs leading-snug text-amber-200/85">
-                                A backer proposed revised terms. Accept, decline, or offer different
-                                terms.
+                                A backer proposed revised terms.
                               </p>
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  disabled={stableSaving}
-                                  onClick={() => {
-                                    setTermsDealId(scopeId)
-                                    triggerTapHapticLight()
-                                  }}
-                                  className="flex-1 rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
-                                >
-                                  Review
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={stableSaving}
-                                  onClick={() => {
-                                    setEditTermsIntent(
-                                      isBackerInitiatedBackingDeal(hero.deal)
-                                        ? 'stakee_counter'
-                                        : 'stakee_update',
-                                    )
-                                    setEditTermsDealId(scopeId)
-                                    triggerTapHapticLight()
-                                  }}
-                                  className="flex-1 rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
-                                >
-                                  Re-edit
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                disabled={stableSaving}
+                                onClick={() => {
+                                  setTermsDealId(scopeId)
+                                  triggerTapHapticLight()
+                                }}
+                                className="w-full rounded-xl bg-zinc-700 py-2 text-[11px] font-semibold text-zinc-200 touch-manipulation active:bg-zinc-600 disabled:opacity-50"
+                              >
+                                Review
+                              </button>
                             </div>
                           ) : stakeHeroMessage === 'counterSent' ? (
                             <p

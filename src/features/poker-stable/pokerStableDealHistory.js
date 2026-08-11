@@ -1,6 +1,7 @@
 import { fmtPoker$, pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
 import {
   backerSliceAllocatedCapital,
+  backerSliceMarkupFee,
   backerSliceSessionEconomicShare,
 } from './pokerStableBackerMath.js'
 import { isBackerInitiatedBackingDeal, sliceDisplayName } from './pokerStableApi.js'
@@ -9,6 +10,8 @@ import {
   computeSliceSettleShares,
   dealTypeLabel,
   roundMoney,
+  stableNum,
+  sumSliceActionPct,
   tournamentPlayerCloseEconomics,
 } from './pokerStableMath.js'
 import {
@@ -336,6 +339,43 @@ function formatBackerList(names) {
 }
 
 /**
+ * Player-view suffix for a tournament package accept line: personal debit/return + markup credit.
+ * @param {object} deal
+ * @param {object[]} slices
+ * @param {object | null} acceptedSlice
+ */
+function tournamentPlayerAcceptHistorySuffix(deal, slices = [], acceptedSlice = null) {
+  if (deal?.deal_type !== 'tournament_package' || !acceptedSlice) return ''
+  const baseline = stableNum(deal.baseline_bankroll ?? deal.baselineBankroll)
+  const others = (slices || []).filter(
+    (s) => s.id !== acceptedSlice.id && s.status === 'active',
+  )
+  const soldOthers = sumSliceActionPct(others)
+  const soldAfter = roundMoney(
+    soldOthers + stableNum(acceptedSlice.action_pct ?? acceptedSlice.actionPct),
+    3,
+  )
+  const contribAfter = roundMoney(baseline * (Math.max(0, 100 - soldAfter) / 100))
+  // Before go-live, personal debit is $0 (not full package). After live, track retained face.
+  const contribBefore =
+    soldOthers > 0.005 ? roundMoney(baseline * (Math.max(0, 100 - soldOthers) / 100)) : 0
+  const capitalDelta = roundMoney(contribAfter - contribBefore)
+  const fee = Math.max(0, backerSliceMarkupFee(deal, acceptedSlice))
+
+  /** @type {string[]} */
+  const bits = []
+  if (capitalDelta > 0.005) {
+    bits.push(`${fmtPoker$(capitalDelta)} debited from personal bankroll`)
+  } else if (capitalDelta < -0.005) {
+    bits.push(`${fmtPoker$(Math.abs(capitalDelta))} returned to personal bankroll`)
+  }
+  if (fee > 0.005) {
+    bits.push(`${fmtPoker$(fee)} markup credited`)
+  }
+  return bits.length ? ` · ${bits.join(' · ')}` : ''
+}
+
+/**
  * @param {object} st
  * @param {object} deal
  * @param {object[]} settlementsForDeal
@@ -565,11 +605,18 @@ export function buildStakeDealHistoryEvents({
     (deal.status === 'active' || deal.status === 'settled')
   ) {
     if (viewerIsStakee) {
+      const leadSlice =
+        orderedSlices.find(
+          (s) =>
+            s.status === 'active' &&
+            String(s.staker_user_id || '') === String(deal.staker_user_id || ''),
+        ) || orderedSlices.find((s) => s.status === 'active') || null
+      const detail = tournamentPlayerAcceptHistorySuffix(deal, orderedSlices, leadSlice)
       events.push({
         id: `stakee-accept-${deal.id}`,
         kind: 'accept',
         at: deal.responded_at,
-        text: `You accepted stake terms with ${leadBackerName}`,
+        text: `You accepted stake terms with ${leadBackerName}${detail}`,
       })
     } else if (viewerIsLeadBacker) {
       events.push({
@@ -592,11 +639,14 @@ export function buildStakeDealHistoryEvents({
       if (backerInitiated && slice.staker_user_id === deal.staker_user_id) continue
       const respondedMs = new Date(at).getTime()
       if (dealCreatedMs && respondedMs > dealCreatedMs + 1500) {
+        const detail = viewerIsStakee
+          ? tournamentPlayerAcceptHistorySuffix(deal, orderedSlices, slice)
+          : ''
         events.push({
           id: `accept-${slice.id}`,
           kind: 'accept',
           at,
-          text: `${name} accepted stake`,
+          text: `${name} accepted stake${detail}`,
         })
       }
     } else if (slice.status === 'declined') {

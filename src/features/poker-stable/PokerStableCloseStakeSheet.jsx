@@ -15,6 +15,7 @@ import {
 } from './pokerStableMath.js'
 import {
   attachSlicesToSettleLines,
+  backerCloseStakePl,
   settlePayPhrases,
   tournamentCloseBackerReturnRows,
 } from './pokerStableSettleReviewCopy.js'
@@ -140,6 +141,42 @@ export default function PokerStableCloseStakeSheet({
     return backerReturnRows.find((row) => row.sliceId === mySlice.id) || null
   }, [mySlice, backerReturnRows])
 
+  /**
+   * Tournament Overall P/L under the hero card.
+   * Player: stake result + markup earned. Backer: stake result − markup applied (cost).
+   */
+  const viewerTourneyPl = useMemo(() => {
+    if (!isTournamentPackage || !tourneyClose) return null
+    if (isStakee) {
+      return {
+        overallPl: tourneyClose.overallPl,
+        stakePl: tourneyClose.stakePl,
+        appliedMarkup: tourneyClose.appliedMarkup,
+        markupIsCost: false,
+      }
+    }
+    if (!settlement || !mySlice) return null
+    const line =
+      (settlement.lines || []).find(
+        (row) => row.slice_id === mySlice.id || row.slice?.id === mySlice.id,
+      ) || null
+    const stakePl = backerCloseStakePl(settlement, mySlice, line)
+    const appliedMarkup = roundMoney(myReturnRow?.appliedMarkup || 0)
+    return {
+      overallPl: roundMoney(stakePl - appliedMarkup),
+      stakePl,
+      appliedMarkup,
+      markupIsCost: true,
+    }
+  }, [
+    isTournamentPackage,
+    tourneyClose,
+    isStakee,
+    settlement,
+    mySlice,
+    myReturnRow,
+  ])
+
   const otherBackerRows = useMemo(() => {
     if (isStakee || !mySlice?.id) return backerReturnRows
     return backerReturnRows.filter((row) => row.sliceId !== mySlice.id)
@@ -178,7 +215,7 @@ export default function PokerStableCloseStakeSheet({
   const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
   const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
   const playerCredit = tourneyClose ? tourneyClose.returned : settlement?.player_net ?? 0
-  const overallPl = tourneyClose?.overallPl ?? null
+  const overallPl = viewerTourneyPl?.overallPl ?? null
   const unusedMarkupTotal = roundMoney(
     backerReturnRows.reduce((sum, row) => sum + (row.unusedMarkup || 0), 0),
   )
@@ -313,8 +350,10 @@ export default function PokerStableCloseStakeSheet({
             >
               Overall P/L {overallPl >= 0 ? '+' : ''}
               {fmtPoker$(overallPl)}
-              {tourneyClose?.appliedMarkup > 0.005
-                ? ` (stake ${tourneyClose.stakePl >= 0 ? '+' : ''}${fmtPoker$(tourneyClose.stakePl)} · markup +${fmtPoker$(tourneyClose.appliedMarkup)})`
+              {viewerTourneyPl?.appliedMarkup > 0.005
+                ? ` (stake ${viewerTourneyPl.stakePl >= 0 ? '+' : ''}${fmtPoker$(viewerTourneyPl.stakePl)} · markup ${
+                    viewerTourneyPl.markupIsCost ? '−' : '+'
+                  }${fmtPoker$(viewerTourneyPl.appliedMarkup)})`
                 : ''}
               {isStakee && tourneyClose?.contribution > 0.005
                 ? ` · your package share was ${fmtPoker$(tourneyClose.contribution)}`

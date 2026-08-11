@@ -1,31 +1,18 @@
 /**
- * Client-side W-2G OCR (tesseract.js) + scavenger field parser for tax-relevant boxes.
- * Stays on-device; no upload.
- *
- * Lesson from Ryan's screen recording: label-following parsers hallucinate on noisy
- * tesseract lines. Prefer global regex scavengers + garbage filters, and OCR with PSM 6.
+ * Client-side W-2G OCR (tesseract.js) + scavenger parser for TurboTax-combine fields only.
+ * On-device OCR; archive upload is separate (w2gArchiveApi).
  */
 
 /** @typedef {{ key: string, label: string, value: string }} W2GField */
 
-/** Tax-relevant field order for UI + copy. */
+/** Six fields needed to combine W-2Gs for taxes. */
 export const W2G_FIELD_DEFS = [
   { key: 'payerName', label: "Payer's name" },
-  { key: 'payerTin', label: "Payer's TIN" },
-  { key: 'payerTelephone', label: "Payer's telephone" },
   { key: 'payerAddress', label: "Payer's address" },
-  { key: 'winnerName', label: "Winner's name" },
-  { key: 'winnerTin', label: "Winner's TIN" },
-  { key: 'winnerAddress', label: "Winner's address" },
-  { key: 'reportableWinnings', label: '1 Reportable winnings' },
-  { key: 'dateWon', label: '2 Date won' },
-  { key: 'typeOfWager', label: '3 Type of wager' },
-  { key: 'federalTaxWithheld', label: '4 Federal income tax withheld' },
-  { key: 'transaction', label: '5 Transaction' },
-  { key: 'identicalWagers', label: '7 Winnings from identical wagers' },
-  { key: 'window', label: '10 Window' },
-  { key: 'stateWinnings', label: '14 State winnings' },
-  { key: 'stateTaxWithheld', label: '15 State income tax withheld' },
+  { key: 'payerEin', label: "Payer's EIN" },
+  { key: 'box1Winnings', label: 'Box 1 – Reportable winnings' },
+  { key: 'box4FederalWithheld', label: 'Box 4 – Federal income tax withheld' },
+  { key: 'dateWon', label: 'Date' },
 ]
 
 /** @type {import('tesseract.js').Worker | null} */
@@ -47,7 +34,6 @@ async function getOcrWorker() {
           }
         },
       })
-      // SINGLE_BLOCK crushes AUTO on dense W-2G grids (verified on Ryan's Paris slip).
       await w.setParameters({
         tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
         preserve_interword_spaces: '1',
@@ -60,7 +46,6 @@ async function getOcrWorker() {
 }
 
 /**
- * Upscale + mild grayscale contrast for tesseract (canvas-only, no harsh flatten).
  * @param {HTMLCanvasElement} source
  * @returns {HTMLCanvasElement}
  */
@@ -102,13 +87,25 @@ function cleanSpace(s) {
 function normalizeMoney(s) {
   const raw = cleanSpace(s)
   if (!raw) return ''
-  // "$ .00" / "$.00" / "$ 7,500.00"
   const m = raw.match(/\$?\s*([\d,]*)\.(\d{2})/)
   if (!m) return raw
   const whole = (m[1] || '0').replace(/,/g, '') || '0'
   const n = Number(`${whole}.${m[2]}`)
   if (!Number.isFinite(n)) return raw
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+/**
+ * Parse currency display / raw OCR into a number for DB storage.
+ * @param {string | number | null | undefined} s
+ * @returns {number}
+ */
+export function parseMoneyToNumber(s) {
+  if (typeof s === 'number' && Number.isFinite(s)) return s
+  const raw = String(s || '').replace(/[^\d.-]/g, '')
+  if (!raw) return 0
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : 0
 }
 
 /**
@@ -124,7 +121,6 @@ function normalizeDate(s, opts = {}) {
   let yy = m[3]
   if (yy.length === 2) {
     const n = Number(yy)
-    // Reject DOB-like years (e.g. 80 → 2080). Casino W-2Gs are recent.
     if (!opts.allowTwoDigitYear || n < 20 || n > 39) return ''
     yy = `20${yy}`
   }
@@ -132,17 +128,43 @@ function normalizeDate(s, opts = {}) {
 }
 
 /**
+ * UI date (MM/DD/YYYY) or ISO → YYYY-MM-DD for Postgres date.
+ * @param {string | null | undefined} s
+ * @returns {string | null}
+ */
+export function parseDateToIso(s) {
+  const t = cleanSpace(s)
+  if (!t) return null
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (iso) return t
+  const m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/)
+  if (!m) return null
+  let yy = m[3]
+  if (yy.length === 2) yy = `20${yy}`
+  const mm = m[1].padStart(2, '0')
+  const dd = m[2].padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+/**
+ * @param {string | null | undefined} isoOrUi
+ * @returns {number}
+ */
+export function taxYearFromDate(isoOrUi) {
+  const iso = parseDateToIso(isoOrUi)
+  if (iso) return Number(iso.slice(0, 4))
+  return new Date().getFullYear()
+}
+
+/**
  * @param {string} s
  */
-function normalizeTin(s) {
+function normalizeEin(s) {
   const spaced = cleanSpace(s).replace(/\s+/g, '')
-  // EIN with OCR split: "2 5-2258774" / "26-2258774"
   const einLoose = cleanSpace(s).match(/(\d)\s*(\d)\s*-\s*(\d{7})/)
   if (einLoose) return `${einLoose[1]}${einLoose[2]}-${einLoose[3]}`
   const ein = spaced.match(/(\d{2})-(\d{7})/)
   if (ein) return `${ein[1]}-${ein[2]}`
-  const ssn = spaced.match(/((?:XXX|\d{3})-(?:XX|\d{2})-\d{4})/i)
-  if (ssn) return ssn[1].toUpperCase()
   return cleanSpace(s)
 }
 
@@ -171,20 +193,9 @@ export function parseW2GText(rawText) {
     .map((l) => cleanSpace(l))
     .filter(Boolean)
 
-  // --- global scavengers (order-independent) ---
   const einMatch =
     text.match(/\b(\d{2})\s*-\s*(\d{7})\b/) || text.match(/\b(\d)\s+(\d)\s*-\s*(\d{7})\b/)
-  const payerTin = einMatch
-    ? normalizeTin(einMatch[0])
-    : ''
-
-  const phoneMatch = text.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)
-  const payerTelephone = phoneMatch ? cleanSpace(phoneMatch[0]).replace(/(\d{3})[.-](\d{3})[.-](\d{4})/, '($1) $2-$3') : ''
-
-  const ssnMatches = [...text.matchAll(/\b(?:XXX|\d{3})\s*-\s*(?:XX|\d{2})\s*-\s*\d{4}\b/gi)].map((m) =>
-    normalizeTin(m[0]),
-  )
-  const winnerTin = ssnMatches[0] || ''
+  const payerEin = einMatch ? normalizeEin(einMatch[0]) : ''
 
   const moneyMatches = [...text.matchAll(/\$\s*[\d,]*\.\d{2}/g)].map((m) => m[0])
   const moneyValues = moneyMatches.map((m) => {
@@ -192,38 +203,23 @@ export function parseW2GText(rawText) {
     if (!parts) return { raw: m, n: 0 }
     return { raw: m, n: Number(`${parts[1] || '0'}.${parts[2]}`) }
   })
-  // Reportable winnings = largest dollar amount on the slip (usually box 1).
-  let reportableWinnings = ''
+
+  let box1Winnings = ''
   if (moneyValues.length) {
     const best = moneyValues.reduce((a, b) => (b.n > a.n ? b : a), moneyValues[0])
-    reportableWinnings = normalizeMoney(best.raw)
+    box1Winnings = normalizeMoney(best.raw)
   }
-  // Federal withheld often $0.00; prefer an amount near "federal" else second $0-ish / last small.
-  let federalTaxWithheld = ''
+
+  let box4FederalWithheld = ''
   const fedLine = lines.find((l) => /federal|withheld/i.test(l) && /\$\s*[\d,]*\.\d{2}/.test(l))
   if (fedLine) {
     const m = fedLine.match(/\$\s*[\d,]*\.\d{2}/)
-    if (m) federalTaxWithheld = normalizeMoney(m[0])
+    if (m) box4FederalWithheld = normalizeMoney(m[0])
   } else {
     const zeroish = moneyValues.find((m) => m.n === 0)
-    if (zeroish) federalTaxWithheld = normalizeMoney(zeroish.raw)
+    if (zeroish) box4FederalWithheld = normalizeMoney(zeroish.raw)
   }
 
-  let stateWinnings = ''
-  let stateTaxWithheld = ''
-  const stateWinLine = lines.find((l) => /state winnings/i.test(l))
-  if (stateWinLine) {
-    const m = stateWinLine.match(/\$\s*[\d,]*\.\d{2}/)
-    if (m) stateWinnings = normalizeMoney(m[0])
-  }
-  const stateTaxLine = lines.find((l) => /state income tax/i.test(l))
-  if (stateTaxLine) {
-    const m = stateTaxLine.match(/\$\s*[\d,]*\.\d{2}/)
-    if (m) stateTaxWithheld = normalizeMoney(m[0])
-  }
-  // If still empty and we have multiple $0.00, leave blank rather than invent.
-
-  // Date won: prefer explicit "date won", never DOB lines.
   let dateWon = ''
   const dateNear = text.match(/date\s*won[^\d]{0,24}(\d{1,2}\s*[\/\-|.]\s*\d{1,2}\s*[\/\-|.]\s*\d{2,4})/i)
   if (dateNear) dateWon = normalizeDate(dateNear[1], { allowTwoDigitYear: true })
@@ -240,37 +236,6 @@ export function parseW2GText(rawText) {
     }
   }
 
-  // Type of wager: "91 PQ" / "91 PO" style codes
-  let typeOfWager = ''
-  const wagerMatch = text.match(/\b(\d{2})\s*([A-Z]{1,3})\b/)
-  // Prefer near "type of wager" or known pattern not zip
-  const wagerNear = text.match(/type of wager[^\n]{0,40}?(\d{2}\s*[A-Z]{1,3})/i)
-  if (wagerNear) typeOfWager = cleanSpace(wagerNear[1])
-  else if (wagerMatch && !/89109|890|891/.test(wagerMatch[0])) {
-    // Avoid matching zip fragments; require letter suffix length 2-3 common for casino codes
-    if (wagerMatch[2].length >= 2) typeOfWager = `${wagerMatch[1]} ${wagerMatch[2]}`
-  }
-
-  // Transaction codes like EV82
-  let transaction = ''
-  const txnNear = text.match(/transaction[^\n]{0,30}?\b([A-Z]{1,3}\d{2,})\b/i)
-  if (txnNear) transaction = txnNear[1].toUpperCase()
-  else {
-    const txn = text.match(/\b(EV\d{2,}|[A-Z]{2}\d{2,})\b/)
-    if (txn && !/OMB|IRS|US|NV|XX/i.test(txn[1])) transaction = txn[1].toUpperCase()
-  }
-
-  let window = ''
-  if (/\bMAIN\s*CAGE\b/i.test(text)) window = 'MAIN CAGE'
-  else {
-    const winNear = text.match(/window[^\n]{0,40}?([A-Z][A-Z0-9 /-]{2,20})/i)
-    if (winNear && !/taxpayer|identification|omb/i.test(winNear[1])) window = cleanSpace(winNear[1])
-  }
-
-  let identicalWagers = ''
-  if (/\bN\s*\/\s*A\b/i.test(text) && /identical/i.test(text)) identicalWagers = 'N/A'
-
-  // Payer name: company line + optional D/B/A line (strip trailing box noise).
   let payerName = ''
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -293,7 +258,6 @@ export function parseW2GText(rawText) {
     }
   }
 
-  // Payer address: first street that isn't the winner's (2700…), plus LV/NV/zip.
   let payerAddress = ''
   const payerStreet = lines.find(
     (l) =>
@@ -312,56 +276,13 @@ export function parseW2GText(rawText) {
     payerAddress = cleanSpace([street, zip ? `LAS VEGAS, NV ${zip}` : 'LAS VEGAS, NV'].filter(Boolean).join(', '))
   }
 
-  // Winner name: leading First Last on a line (ignore trailing instructional OCR).
-  let winnerName = ''
-  for (const line of lines) {
-    const m = line.match(/^([A-Z]{2,}(?:\s+[A-Z]{2,}){1,3})\b/)
-    if (!m) continue
-    const name = m[1]
-    if (
-      /\b(LAS VEGAS|PARIS|OPERATING|COMPANY|MAIN CAGE|FORM|COPY|STREET|BLVD|SOUTH|CORRECTED|CERTAIN|GAMBLING|WINNINGS|REPORTABLE|WINDOW|REQUIRED|RETURN|PENALTY)\b/.test(
-        name,
-      )
-    ) {
-      continue
-    }
-    if (looksLikeGarbageName(name)) continue
-    winnerName = name
-    break
-  }
-  if (!winnerName) {
-    const m = text.match(/\b\d{5,}\s+([A-Z]{2,}\s+[A-Z]{2,})\b/)
-    if (m && !looksLikeGarbageName(m[1])) winnerName = m[1]
-  }
-
-  // Winner address: prefer APT / 2700 pattern (tight street match… avoid OCR junk tails).
-  let winnerAddress = ''
-  const winStreetHit = text.match(/(2700\s+LAS VEGAS BLVD(?:\s+S(?:OUTH)?)?)/i)
-  if (winStreetHit) {
-    const apt = (text.match(/APT\.?\s*\d+/i) || [])[0] || ''
-    const zip = (text.match(/\b(89109\d{0,4})\b/) || [])[1] || ''
-    winnerAddress = cleanSpace(
-      [winStreetHit[1], apt, zip ? `LAS VEGAS, NV ${zip}` : 'LAS VEGAS, NV'].filter(Boolean).join(', '),
-    )
-  }
-
   return {
     payerName: cleanSpace(payerName),
-    payerTin,
-    payerTelephone: cleanSpace(payerTelephone),
     payerAddress: cleanSpace(payerAddress),
-    winnerName: cleanSpace(winnerName),
-    winnerTin,
-    winnerAddress: cleanSpace(winnerAddress),
-    reportableWinnings,
+    payerEin: payerEin,
+    box1Winnings,
+    box4FederalWithheld,
     dateWon,
-    typeOfWager: cleanSpace(typeOfWager),
-    federalTaxWithheld,
-    transaction: cleanSpace(transaction),
-    identicalWagers: cleanSpace(identicalWagers),
-    window: cleanSpace(window),
-    stateWinnings,
-    stateTaxWithheld,
   }
 }
 
@@ -388,9 +309,34 @@ export function formatFieldsForCopy(list) {
 }
 
 /**
+ * TurboTax-style combine summary for one EIN group.
+ * @param {{
+ *   payerName: string,
+ *   payerAddress: string,
+ *   payerEin: string,
+ *   box1Sum: number,
+ *   box4Sum: number,
+ *   dateWon: string | null,
+ *   slipCount: number,
+ * }} group
+ */
+export function formatCombineSummary(group) {
+  const money = (n) =>
+    Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  return [
+    `Payer's name: ${group.payerName || ''}`,
+    `Payer's address: ${group.payerAddress || ''}`,
+    `Payer's EIN: ${group.payerEin || ''}`,
+    `Box 1 – Reportable winnings: ${money(group.box1Sum)}`,
+    `Box 4 – Federal income tax withheld: ${money(group.box4Sum)}`,
+    `Date: ${group.dateWon || ''}`,
+    `(${group.slipCount} slip${group.slipCount === 1 ? '' : 's'} combined)`,
+  ].join('\n')
+}
+
+/**
  * @param {HTMLCanvasElement | HTMLImageElement | string} image
  * @param {{ onProgress?: (pct: number) => void }} [opts]
- * @returns {Promise<{ fields: Record<string, string>, rawText: string, confidence: number | null }>}
  */
 export async function ocrW2G(image, opts = {}) {
   const w = await getOcrWorker()

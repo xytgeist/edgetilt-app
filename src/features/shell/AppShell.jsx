@@ -2678,6 +2678,8 @@ export default function AppShell({
     } else if (tab === 'w2g-scanner') {
       visibleTab = (
         <W2GScannerScreen
+          supabaseClient={supabaseClient}
+          onOpenAuth={(mode) => onOpenAuth?.(mode || 'login')}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
         />

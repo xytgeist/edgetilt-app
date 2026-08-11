@@ -957,7 +957,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-11: **W-2G Scanner (Slots tool):** hub tile + tab **`w2g-scanner`** … capture/library → **`scanic`** detect → **bounds crop default** → light enhance → **`tesseract.js` PSM 6** + scavenger field parser (label-following was garbage on Ryan’s Paris slip recording). No upload. Free. `/?tab=w2g-scanner`.
+- 2026-08-11: **W-2G tax archive:** six TurboTax-combine fields only; **Scan** / **My W-2Gs** + collate by EIN; private bucket **`w2g-slips`** + table **`w2g_slips`** (**`20260811400000`** applied + tracked on **test**). Free hub tile; save needs auth. Prod promote later.
+- 2026-08-11: **W-2G Scanner (Slots tool):** hub tile + tab **`w2g-scanner`** … capture/library → **`scanic`** detect → **bounds crop default** → light enhance → **`tesseract.js` PSM 6** + scavenger field parser (label-following was garbage on Ryan’s Paris slip recording). Free. `/?tab=w2g-scanner`.
 - 2026-08-10: **Stake Alerts two-line layout:** icon + caption on first line (like/repost pattern); session detail on second line with 🦈/🐡. Session `detail_text` → `Deal · Wynn 10/20 · +$1,252` (**`20260810220000`** on test). Client reformats legacy `· table +1,252.00`. Redeploy **`lounge-send-activity-push`** on test for emoji parse.
 - 2026-08-10: **Session-complete Alerts missing venue/stakes on older rows:** pre-`20260810220000` events kept `Deal · table +1,252.00` so the UI could not invent venue/blinds. **`20260810230000`** shared formatter + backfill from nearest completed bankroll session (Joey **Test 9** → `Fontainebleau Las Vegas 1/2 · +$1,252`). Applied on **test**.
 - 2026-08-10: **Stake Alerts caption drops actor name:** verb-only first line (name already in From row), same as likes/reposts.

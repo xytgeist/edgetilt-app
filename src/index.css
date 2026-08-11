@@ -9387,11 +9387,6 @@ html.light [data-w2g-scanner] [data-w2g-attn-btn] {
   background-color: #e11d48 !important;
   color: #ffffff !important;
 }
-html.light [data-w2g-scanner] [data-w2g-rotate],
-html.light [data-w2g-verify-modal] [data-w2g-rotate] {
-  background-color: #e4e4e7 !important;
-  color: #18181b !important;
-}
 html.light [data-w2g-scanner] [data-w2g-collate-card] {
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.06);

@@ -958,7 +958,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-11: **W-2G corner Rotate:** Explicit **Rotate** (90° CW) on Scan Adjust + ATTN corner sheets… scanic’s circular icon is Reset corners only, not image rotate.
+- 2026-08-11: **W-2G corner toolbar:** Inject **Rotate** into scanic’s floating toolbar; restyle Reset to corner-brackets + “Reset corners” so it no longer reads as image rotate (`w2gScanicToolbar.js`).
 - 2026-08-11: **W-2G ATTN slips:** Bulk corner (etc.) issues still save into My W-2Gs with **`attention_reason`** (**`20260811420000`** on test). Card shows **ATTN**; open → issue copy + manual corner guide → Apply crops/extracts and clears ATTN into normal Verify.
 - 2026-08-11: **W-2G bulk import fix:** Snapshot selected files before clearing the input (`FileList` is live … `value=''` was wiping the pick so import never ran).
 - 2026-08-11: **W-2G Collate screen:** My W-2Gs toolbar **Collate** opens a casino/EIN totals view (Box 1 + Box 4 cards) with **Copy combine**; **Slips** returns to the list.

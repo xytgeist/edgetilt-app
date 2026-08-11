@@ -16,7 +16,6 @@ import {
   Images,
   BadgeCheck,
   AlertTriangle,
-  RotateCw,
   X,
   ChevronLeft,
 } from 'lucide-react'
@@ -60,6 +59,7 @@ import {
   updateW2GSlip,
 } from './w2gArchiveApi.js'
 import { processW2GImageForArchive } from './w2gBulkImport.js'
+import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
 import { canvasToVisionJpegBlob, extractW2GFieldsWithVision } from './w2gVisionApi.js'
 
 function moneyLabel(n) {
@@ -121,6 +121,8 @@ export default function W2GScannerScreen({
   const attnSourceCanvasRef = useRef(/** @type {HTMLCanvasElement | null} */ (null))
   /** @type {{ current: import('scanic').CornerPoints | null }} */
   const attnPendingCornersRef = useRef(null)
+  const rotateAdjustRef = useRef(/** @type {null | (() => void)} */ (null))
+  const rotateAttnRef = useRef(/** @type {null | (() => void)} */ (null))
 
   const [mainTab, setMainTab] = useState('scan') // scan | archive
   const [archivePane, setArchivePane] = useState('list') // list | collate
@@ -537,7 +539,7 @@ export default function W2GScannerScreen({
           magnifier: { enabled: true, zoom: 2.2, size: 112 },
           toolbar: {
             enabled: true,
-            labels: { reset: 'Reset', cancel: 'Cancel', apply: 'Apply' },
+            labels: { reset: 'Reset corners', cancel: 'Cancel', apply: 'Apply' },
           },
           theme: {
             accent: '#22d3ee',
@@ -571,6 +573,9 @@ export default function W2GScannerScreen({
               }
             })()
           },
+        })
+        enhanceScanicCornerToolbar(host, {
+          onRotate: () => rotateAdjustRef.current?.(),
         })
       } catch (err) {
         if (!cancelled) {
@@ -800,6 +805,7 @@ export default function W2GScannerScreen({
     sourceCanvasRef.current = rotated
     openAdjust(rotated, nextCorners, 'Rotated… drag the corners onto the form edges, then Apply.')
   }
+  rotateAdjustRef.current = onRotateAdjustImage
 
   const onRotateAttnImage = () => {
     const source = attnSourceCanvasRef.current
@@ -816,6 +822,7 @@ export default function W2GScannerScreen({
     // Remount editor on the rotated canvas (next paint).
     requestAnimationFrame(() => setAttnSourceReady(true))
   }
+  rotateAttnRef.current = onRotateAttnImage
 
   const onDownload = async () => {
     if (!resultCanvas) return
@@ -1075,7 +1082,7 @@ export default function W2GScannerScreen({
           magnifier: { enabled: true, zoom: 2.2, size: 112 },
           toolbar: {
             enabled: true,
-            labels: { reset: 'Reset', cancel: 'Close', apply: 'Apply' },
+            labels: { reset: 'Reset corners', cancel: 'Close', apply: 'Apply' },
           },
           theme: {
             accent: '#f59e0b',
@@ -1167,6 +1174,9 @@ export default function W2GScannerScreen({
               }
             })()
           },
+        })
+        enhanceScanicCornerToolbar(host, {
+          onRotate: () => rotateAttnRef.current?.(),
         })
       } catch (err) {
         if (!cancelled) {
@@ -1495,19 +1505,7 @@ export default function W2GScannerScreen({
 
             {phase === 'adjust' ? (
               <div className="space-y-3" data-w2g-adjust>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="text-sm text-zinc-400">{statusNote}</div>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onRotateAdjustImage}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
-                    data-w2g-rotate
-                  >
-                    <RotateCw size={14} aria-hidden />
-                    Rotate
-                  </button>
-                </div>
+                <div className="text-sm text-zinc-400">{statusNote}</div>
                 <div
                   ref={editorHostRef}
                   className="min-h-[280px] overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
@@ -1976,31 +1974,17 @@ export default function W2GScannerScreen({
                   {attnLoading ? (
                     <div className="text-sm text-zinc-400">Loading photo…</div>
                   ) : (
-                    <>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          disabled={attnApplying || !attnSourceReady}
-                          onClick={onRotateAttnImage}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
-                          data-w2g-rotate
-                        >
-                          <RotateCw size={14} aria-hidden />
-                          Rotate
-                        </button>
-                      </div>
-                      <div
-                        ref={attnEditorHostRef}
-                        className="min-h-[min(52vh,420px)] overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
-                        data-w2g-attn-editor
-                      />
-                    </>
+                    <div
+                      ref={attnEditorHostRef}
+                      className="min-h-[min(52vh,420px)] overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
+                      data-w2g-attn-editor
+                    />
                   )}
                   {attnApplying ? (
                     <div className="text-sm text-zinc-400">Cropping + extracting fields…</div>
                   ) : (
                     <div className="text-xs text-zinc-500">
-                      Rotate if sideways, drag each handle to a corner, then Apply.
+                      Use Rotate if sideways, drag each handle to a corner, then Apply.
                     </div>
                   )}
                 </div>

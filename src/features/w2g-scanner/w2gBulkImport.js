@@ -1,5 +1,6 @@
 /**
  * Headless bulk import: crop + OCR/vision one W-2G image for archive save (no corner UI).
+ * Corner failures still return the original image so the archive can keep an ATTN slip.
  */
 
 import {
@@ -42,10 +43,15 @@ function canvasToJpegBlob(canvas, quality = 0.92) {
  *   fields: Record<string, string>,
  *   imageBlob: Blob,
  *   ocrConfidence: number | null,
+ *   needsAttention?: false,
  * } | {
  *   ok: false,
  *   fileName: string,
  *   error: string,
+ *   needsAttention?: boolean,
+ *   imageBlob?: Blob | null,
+ *   fields?: Record<string, string>,
+ *   ocrConfidence?: number | null,
  * }>}
  */
 export async function processW2GImageForArchive(file, opts = {}) {
@@ -59,20 +65,34 @@ export async function processW2GImageForArchive(file, opts = {}) {
     }
   }
 
+  /** @type {Blob | null} */
+  let fallbackBlob = file && String(file.type || '').startsWith('image/') ? file : null
+
   try {
     if (!file || !String(file.type || '').startsWith('image/')) {
-      return { ok: false, fileName, error: 'Not an image file.' }
+      return { ok: false, fileName, error: 'Not an image file.', needsAttention: false, imageBlob: null }
     }
     throwIfAborted()
     const source = await loadImageCanvasFromFile(file)
     throwIfAborted()
+    try {
+      fallbackBlob = await canvasToJpegBlob(source, 0.88)
+    } catch {
+      fallbackBlob = file
+    }
+
     const { result } = await autoScanDocument(source)
     throwIfAborted()
     if (!result?.success || !result.output) {
       return {
         ok: false,
+        needsAttention: true,
         fileName,
-        error: 'Could not find form corners. Import that slip with a single scan and Adjust.',
+        error:
+          "Couldn't lock form corners. Drag the handles onto each corner of the W-2G, then Apply.",
+        imageBlob: fallbackBlob,
+        fields: {},
+        ocrConfidence: null,
       }
     }
     const flat = await flattenCroppedDocument(/** @type {HTMLCanvasElement} */ (result.output))
@@ -117,9 +137,18 @@ export async function processW2GImageForArchive(file, opts = {}) {
       fields,
       imageBlob,
       ocrConfidence: confidence,
+      needsAttention: false,
     }
   } catch (err) {
     if (err?.name === 'AbortError') throw err
-    return { ok: false, fileName, error: err?.message || 'Import failed.' }
+    return {
+      ok: false,
+      needsAttention: Boolean(fallbackBlob),
+      fileName,
+      error: err?.message || 'Import failed.',
+      imageBlob: fallbackBlob,
+      fields: {},
+      ocrConfidence: null,
+    }
   }
 }

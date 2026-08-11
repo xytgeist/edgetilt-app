@@ -36,12 +36,16 @@ export async function signedW2GImageUrl(supabase, imagePath, expiresIn = 60 * 30
 
 /**
  * @param {Record<string, string>} fields
- * @param {{ ocrConfidence?: number | null }} [meta]
+ * @param {{ ocrConfidence?: number | null, taxYearOverride?: number | null }} [meta]
  */
 export function fieldsToDbRow(fields, meta = {}) {
   const dateIso = parseDateToIso(fields.dateWon)
+  const yearOverride =
+    meta.taxYearOverride != null && Number.isFinite(Number(meta.taxYearOverride))
+      ? Number(meta.taxYearOverride)
+      : null
   return {
-    tax_year: taxYearFromDate(fields.dateWon),
+    tax_year: yearOverride ?? taxYearFromDate(fields.dateWon),
     payer_name: String(fields.payerName || '').trim(),
     payer_address: String(fields.payerAddress || '').trim(),
     payer_ein: String(fields.payerEin || '').trim(),
@@ -80,9 +84,18 @@ export function dbRowToFields(row) {
  *   fields: Record<string, string>,
  *   imageBlob: Blob,
  *   ocrConfidence?: number | null,
+ *   attentionReason?: string | null,
+ *   taxYear?: number | null,
  * }} args
  */
-export async function saveW2GSlip({ supabase, fields, imageBlob, ocrConfidence = null }) {
+export async function saveW2GSlip({
+  supabase,
+  fields,
+  imageBlob,
+  ocrConfidence = null,
+  attentionReason = null,
+  taxYear = null,
+}) {
   if (!supabase) throw new Error('Supabase client missing')
   if (!imageBlob) throw new Error('Missing slip image')
   const userId = await requireUserId(supabase)
@@ -97,12 +110,14 @@ export async function saveW2GSlip({ supabase, fields, imageBlob, ocrConfidence =
   })
   if (upErr) throw upErr
 
+  const reason = attentionReason != null ? String(attentionReason).trim() || null : null
   const row = {
     id: slipId,
     user_id: userId,
-    ...fieldsToDbRow(fields, { ocrConfidence }),
+    ...fieldsToDbRow(fields, { ocrConfidence, taxYearOverride: taxYear }),
     image_path: imagePath,
     image_content_type: contentType,
+    attention_reason: reason,
     updated_at: new Date().toISOString(),
   }
 
@@ -161,13 +176,17 @@ export async function deleteW2GSlip({ supabase, slip }) {
 }
 
 /**
- * Update slip fields and optionally mark verified.
+ * Update slip fields and optionally mark verified / clear attention / replace image.
  * @param {{
  *   supabase: import('@supabase/supabase-js').SupabaseClient,
  *   slipId: string,
  *   fields: Record<string, string>,
  *   markVerified?: boolean,
  *   ocrConfidence?: number | null,
+ *   attentionReason?: string | null,
+ *   imageBlob?: Blob | null,
+ *   existingImagePath?: string | null,
+ *   taxYear?: number | null,
  * }} args
  */
 export async function updateW2GSlip({
@@ -176,12 +195,16 @@ export async function updateW2GSlip({
   fields,
   markVerified = false,
   ocrConfidence = undefined,
+  attentionReason = undefined,
+  imageBlob = null,
+  existingImagePath = null,
+  taxYear = null,
 }) {
   if (!supabase) throw new Error('Supabase client missing')
-  await requireUserId(supabase)
+  const userId = await requireUserId(supabase)
   if (!slipId) throw new Error('Missing slip id')
 
-  const row = fieldsToDbRow(fields)
+  const row = fieldsToDbRow(fields, { taxYearOverride: taxYear })
   const patch = {
     tax_year: row.tax_year,
     payer_name: row.payer_name,
@@ -197,6 +220,22 @@ export async function updateW2GSlip({
   }
   if (ocrConfidence !== undefined) {
     patch.ocr_confidence = ocrConfidence
+  }
+  if (attentionReason !== undefined) {
+    patch.attention_reason = attentionReason == null ? null : String(attentionReason).trim() || null
+  }
+
+  if (imageBlob) {
+    const contentType = imageBlob.type || 'image/jpeg'
+    const ext = contentType.includes('png') ? 'png' : 'jpg'
+    const imagePath = existingImagePath || `${userId}/${slipId}.${ext}`
+    const { error: upErr } = await supabase.storage.from(W2G_SLIPS_BUCKET).upload(imagePath, imageBlob, {
+      contentType,
+      upsert: true,
+    })
+    if (upErr) throw upErr
+    patch.image_path = imagePath
+    patch.image_content_type = contentType
   }
 
   const { data, error } = await supabase
@@ -214,6 +253,11 @@ export function isW2GSlipVerified(slip) {
   return Boolean(slip?.verified_at)
 }
 
+/** @param {object | null | undefined} slip */
+export function isW2GSlipNeedsAttention(slip) {
+  return Boolean(String(slip?.attention_reason || '').trim())
+}
+
 /**
  * Group slips by EIN for TurboTax combine.
  * @param {Array<object>} slips
@@ -222,6 +266,8 @@ export function collateW2GSlips(slips) {
   /** @type {Map<string, object>} */
   const map = new Map()
   for (const slip of slips || []) {
+    // Skip slips still waiting on corner/OCR fix … empty zeros would pollute EIN groups.
+    if (isW2GSlipNeedsAttention(slip)) continue
     const ein = String(slip.payer_ein || '').trim() || '(missing EIN)'
     let g = map.get(ein)
     if (!g) {

@@ -9383,6 +9383,10 @@ html.light [data-w2g-scanner] [data-w2g-collate-open] {
   background-color: #f59e0b !important;
   color: #18181b !important;
 }
+html.light [data-w2g-scanner] [data-w2g-attn-btn] {
+  background-color: #e11d48 !important;
+  color: #ffffff !important;
+}
 html.light [data-w2g-scanner] [data-w2g-collate-card] {
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -9428,6 +9432,15 @@ html.light [data-w2g-verify-modal] [data-w2g-alert] {
   background-color: #fff1f2 !important;
   border-color: rgba(244, 63, 94, 0.35) !important;
   color: #9f1239 !important;
+}
+html.light [data-w2g-verify-modal] [data-w2g-attn-reason] {
+  background-color: #fff1f2 !important;
+  border-color: rgba(225, 29, 72, 0.35) !important;
+  color: #9f1239 !important;
+}
+html.light [data-w2g-verify-modal] [data-w2g-attn-editor] {
+  background-color: #f4f4f5 !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 html.light [data-w2g-verify-modal] [data-w2g-preview] button .text-zinc-500 {
   color: #71717a !important;

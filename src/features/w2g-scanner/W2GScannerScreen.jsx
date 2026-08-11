@@ -15,6 +15,7 @@ import {
   Layers,
   Images,
   BadgeCheck,
+  AlertTriangle,
   X,
   ChevronLeft,
 } from 'lucide-react'
@@ -48,6 +49,7 @@ import {
   dbRowToFields,
   deleteW2GSlip,
   formatAllCombineSummaries,
+  isW2GSlipNeedsAttention,
   isW2GSlipVerified,
   listW2GSlips,
   saveW2GSlip,
@@ -111,6 +113,9 @@ export default function W2GScannerScreen({
   const pendingAdjustRef = useRef(null)
   const finishPrettyRef = useRef(/** @type {any} */ (null))
   const resetAllRef = useRef(/** @type {any} */ (null))
+  const attnEditorHostRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const attnEditorRef = useRef(/** @type {any} */ (null))
+  const attnSourceCanvasRef = useRef(/** @type {HTMLCanvasElement | null} */ (null))
 
   const [mainTab, setMainTab] = useState('scan') // scan | archive
   const [archivePane, setArchivePane] = useState('list') // list | collate
@@ -127,7 +132,11 @@ export default function W2GScannerScreen({
   const [saving, setSaving] = useState(false)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkProgress, setBulkProgress] = useState(/** @type {{ index: number, total: number, fileName: string } | null} */ (null))
-  const [bulkSummary, setBulkSummary] = useState(/** @type {{ saved: number, failed: Array<{ fileName: string, error: string }> } | null} */ (null))
+  const [bulkSummary, setBulkSummary] = useState(
+    /** @type {{ saved: number, needsAttention: number, failed: Array<{ fileName: string, error: string }> } | null} */ (
+      null
+    ),
+  )
   const [processingSlipIds, setProcessingSlipIds] = useState(/** @type {string[]} */ ([]))
 
   const currentYear = new Date().getFullYear()
@@ -144,10 +153,16 @@ export default function W2GScannerScreen({
   const [verifyError, setVerifyError] = useState('')
   const [verifyReprocessing, setVerifyReprocessing] = useState(false)
   const [verifyImageExpanded, setVerifyImageExpanded] = useState(false)
+  const [attnSourceReady, setAttnSourceReady] = useState(false)
+  const [attnLoading, setAttnLoading] = useState(false)
+  const [attnApplying, setAttnApplying] = useState(false)
+  const attnApplyingRef = useRef(false)
+  attnApplyingRef.current = attnApplying
 
   const collated = useMemo(() => collateW2GSlips(slips), [slips])
   const verifyImageUrl = verifySlip?.id ? thumbUrls[verifySlip.id] || '' : ''
   const verifyAlreadyDone = isW2GSlipVerified(verifySlip)
+  const verifyNeedsAttention = isW2GSlipNeedsAttention(verifySlip)
   const processingSlipIdSet = useMemo(() => new Set(processingSlipIds), [processingSlipIds])
 
   const markSlipProcessing = useCallback((slipId, on) => {
@@ -223,6 +238,12 @@ export default function W2GScannerScreen({
     setArchiveError('')
     try {
       const rows = await listW2GSlips({ supabase: supabaseClient, taxYear })
+      rows.sort((a, b) => {
+        const aAttn = isW2GSlipNeedsAttention(a) ? 0 : 1
+        const bAttn = isW2GSlipNeedsAttention(b) ? 0 : 1
+        if (aAttn !== bAttn) return aAttn - bAttn
+        return 0
+      })
       setSlips(rows)
       const urls = {}
       await Promise.all(
@@ -261,6 +282,16 @@ export default function W2GScannerScreen({
     editorRef.current?.destroy?.()
     editorRef.current = null
     if (editorHostRef.current) editorHostRef.current.innerHTML = ''
+  }, [])
+
+  const destroyAttnEditor = useCallback(() => {
+    try {
+      attnEditorRef.current?.destroy?.()
+    } catch {
+      /* ignore */
+    }
+    attnEditorRef.current = null
+    if (attnEditorHostRef.current) attnEditorHostRef.current.innerHTML = ''
   }, [])
 
   const dismissScanUi = useCallback(() => {
@@ -642,6 +673,7 @@ export default function W2GScannerScreen({
       cancelUnattachedExtractJobs()
 
       let saved = 0
+      let needsAttention = 0
       /** @type {Array<{ fileName: string, error: string }>} */
       const failed = []
 
@@ -657,17 +689,31 @@ export default function W2GScannerScreen({
               supabase: canUseVisionExtract ? supabaseClient : null,
               useVision: canUseVisionExtract,
             })
-            if (!result.ok) {
-              failed.push({ fileName: result.fileName, error: result.error })
+            if (result.ok) {
+              await saveW2GSlip({
+                supabase: supabaseClient,
+                fields: result.fields,
+                imageBlob: result.imageBlob,
+                ocrConfidence: result.ocrConfidence,
+              })
+              saved += 1
               continue
             }
-            await saveW2GSlip({
-              supabase: supabaseClient,
-              fields: result.fields,
-              imageBlob: result.imageBlob,
-              ocrConfidence: result.ocrConfidence,
-            })
-            saved += 1
+            // Corner / extract issues still land in My W-2Gs as ATTN slips.
+            if (result.needsAttention && result.imageBlob) {
+              await saveW2GSlip({
+                supabase: supabaseClient,
+                fields: result.fields || {},
+                imageBlob: result.imageBlob,
+                ocrConfidence: null,
+                attentionReason: result.error,
+                taxYear,
+              })
+              saved += 1
+              needsAttention += 1
+              continue
+            }
+            failed.push({ fileName: result.fileName, error: result.error })
           } catch (err) {
             if (err?.name === 'AbortError') break
             failed.push({ fileName: file.name || `Image ${i + 1}`, error: err?.message || 'Import failed.' })
@@ -679,7 +725,7 @@ export default function W2GScannerScreen({
         setBusy(false)
         setBulkProgress(null)
         setStatusNote('')
-        setBulkSummary({ saved, failed })
+        setBulkSummary({ saved, needsAttention, failed })
         if (saved > 0) void refreshArchive()
       }
     },
@@ -692,6 +738,7 @@ export default function W2GScannerScreen({
       onRequireSubscribe,
       refreshArchive,
       supabaseClient,
+      taxYear,
     ],
   )
 
@@ -862,6 +909,11 @@ export default function W2GScannerScreen({
         return next
       })
       if (verifySlip?.id === slip.id) {
+        destroyAttnEditor()
+        attnSourceCanvasRef.current = null
+        setAttnSourceReady(false)
+        setAttnLoading(false)
+        setAttnApplying(false)
         setVerifySlip(null)
         setVerifyError('')
         setVerifyReprocessing(false)
@@ -875,6 +927,11 @@ export default function W2GScannerScreen({
 
   const openVerifySlip = (slip) => {
     if (!slip) return
+    destroyAttnEditor()
+    attnSourceCanvasRef.current = null
+    setAttnSourceReady(false)
+    setAttnLoading(false)
+    setAttnApplying(false)
     setVerifyError('')
     setVerifyReprocessing(false)
     setVerifyImageExpanded(false)
@@ -883,12 +940,207 @@ export default function W2GScannerScreen({
   }
 
   const closeVerifySlip = () => {
-    if (verifySaving || verifyReprocessing) return
+    if (verifySaving || verifyReprocessing || attnApplyingRef.current) return
+    destroyAttnEditor()
+    attnSourceCanvasRef.current = null
+    setAttnSourceReady(false)
+    setAttnLoading(false)
     setVerifySlip(null)
     setVerifyError('')
     setVerifyReprocessing(false)
     setVerifyImageExpanded(false)
   }
+
+  const closeVerifySlipRef = useRef(closeVerifySlip)
+  closeVerifySlipRef.current = closeVerifySlip
+  const verifySlipRef = useRef(verifySlip)
+  verifySlipRef.current = verifySlip
+  const taxYearRef = useRef(taxYear)
+  taxYearRef.current = taxYear
+  const canUseVisionExtractRef = useRef(canUseVisionExtract)
+  canUseVisionExtractRef.current = canUseVisionExtract
+  const supabaseClientRef = useRef(supabaseClient)
+  supabaseClientRef.current = supabaseClient
+
+  // Load original photo into a canvas when opening an ATTN slip (for corner guide).
+  useEffect(() => {
+    const slipId = verifySlip?.id
+    const imagePath = verifySlip?.image_path
+    const needsAttn = isW2GSlipNeedsAttention(verifySlip)
+    if (!slipId || !needsAttn || !supabaseClient || !imagePath) {
+      return undefined
+    }
+    let cancelled = false
+    setAttnLoading(true)
+    setAttnSourceReady(false)
+    attnSourceCanvasRef.current = null
+    void (async () => {
+      try {
+        const url = await signedW2GImageUrl(supabaseClient, imagePath)
+        if (cancelled) return
+        if (!url) throw new Error('Could not load slip image.')
+        setThumbUrls((prev) => (prev[slipId] ? prev : { ...prev, [slipId]: url }))
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('Could not load slip image.')
+        const blob = await res.blob()
+        const canvas = await loadImageCanvasFromFile(blob)
+        if (cancelled) return
+        attnSourceCanvasRef.current = canvas
+        setAttnSourceReady(true)
+        setVerifyError('')
+      } catch (err) {
+        if (!cancelled) {
+          setVerifyError(err?.message || 'Could not load slip for corner fix.')
+          setAttnSourceReady(false)
+        }
+      } finally {
+        if (!cancelled) setAttnLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, verifySlip?.id, verifySlip?.image_path, verifySlip?.attention_reason])
+
+  // Mount scanic corner editor inside the ATTN sheet.
+  useEffect(() => {
+    const slip = verifySlipRef.current
+    if (!slip || !isW2GSlipNeedsAttention(slip) || !attnSourceReady) {
+      return undefined
+    }
+    const source = attnSourceCanvasRef.current
+    if (!source) return undefined
+
+    let cancelled = false
+
+    const mountEditor = async () => {
+      let host = attnEditorHostRef.current
+      for (let i = 0; i < 45 && !host && !cancelled; i++) {
+        await new Promise((r) => requestAnimationFrame(() => r(null)))
+        host = attnEditorHostRef.current
+      }
+      if (cancelled || !host) return
+
+      try {
+        const { createCornerEditor } = await import('scanic')
+        if (cancelled || !attnEditorHostRef.current) return
+        destroyAttnEditor()
+        host = attnEditorHostRef.current
+        host.innerHTML = ''
+        const initial = defaultInsetCorners(source.width, source.height)
+        attnEditorRef.current = createCornerEditor({
+          container: host,
+          image: source,
+          corners: initial,
+          magnifier: { enabled: true, zoom: 2.2, size: 112 },
+          toolbar: {
+            enabled: true,
+            labels: { reset: 'Reset', cancel: 'Close', apply: 'Apply' },
+          },
+          theme: {
+            accent: '#f59e0b',
+            mask: 'rgba(9, 9, 11, 0.55)',
+            surface: '#18181b',
+            surfaceColor: '#fafafa',
+            radius: '14px',
+          },
+          onCancel: () => {
+            closeVerifySlipRef.current?.()
+          },
+          onConfirm: (nextCorners) => {
+            void (async () => {
+              const liveSlip = verifySlipRef.current
+              const client = supabaseClientRef.current
+              if (!client || !liveSlip?.id) return
+              setAttnApplying(true)
+              setVerifyError('')
+              try {
+                const { result: extracted } = await extractWithCorners(source, nextCorners)
+                if (!extracted?.success || !extracted.output) {
+                  throw new Error(extracted?.message || 'Could not crop that frame.')
+                }
+                const flat = await flattenCroppedDocument(
+                  /** @type {HTMLCanvasElement} */ (extracted.output),
+                )
+                const pretty = presentPrettyScan(flat)
+                const imageBlob = await canvasToJpegBlob(pretty)
+
+                /** @type {Record<string, string>} */
+                let fields = {}
+                /** @type {number | null} */
+                let confidence = null
+                if (canUseVisionExtractRef.current) {
+                  try {
+                    const visionBlob = await canvasToVisionJpegBlob(flat)
+                    const vision = await extractW2GFieldsWithVision({
+                      supabase: client,
+                      imageBlob: visionBlob,
+                    })
+                    fields = vision.fields || {}
+                    confidence = vision.confidence ?? null
+                  } catch {
+                    const local = await ocrW2G(flat)
+                    fields = local.fields || {}
+                    confidence = local.confidence ?? null
+                  }
+                } else {
+                  const local = await ocrW2G(flat)
+                  fields = local.fields || {}
+                  confidence = local.confidence ?? null
+                }
+
+                const updated = await updateW2GSlip({
+                  supabase: client,
+                  slipId: liveSlip.id,
+                  fields,
+                  ocrConfidence: confidence,
+                  attentionReason: null,
+                  imageBlob,
+                  existingImagePath: liveSlip.image_path || null,
+                  taxYear:
+                    taxYearFromDate(fields.dateWon) || liveSlip.tax_year || taxYearRef.current,
+                })
+
+                destroyAttnEditor()
+                attnSourceCanvasRef.current = null
+                setAttnSourceReady(false)
+
+                setSlips((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+                setVerifySlip(updated)
+                setVerifyFieldList(fieldsToList(fields))
+
+                try {
+                  const url = await signedW2GImageUrl(client, updated.image_path)
+                  if (url) {
+                    setThumbUrls((prev) => ({
+                      ...prev,
+                      [updated.id]: `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`,
+                    }))
+                  }
+                } catch {
+                  /* thumb refresh on next archive load */
+                }
+              } catch (err) {
+                setVerifyError(err?.message || 'Corner fix failed.')
+              } finally {
+                setAttnApplying(false)
+              }
+            })()
+          },
+        })
+      } catch (err) {
+        if (!cancelled) {
+          setVerifyError(err?.message || 'Could not open corner editor.')
+        }
+      }
+    }
+
+    void mountEditor()
+    return () => {
+      cancelled = true
+      destroyAttnEditor()
+    }
+  }, [attnSourceReady, destroyAttnEditor, verifySlip?.id, verifySlip?.attention_reason])
 
   const onVerifyFieldChange = (key, value) => {
     setVerifyFieldList((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)))
@@ -1047,7 +1299,9 @@ export default function W2GScannerScreen({
             <div className="flex items-start justify-between gap-3">
               <div className="font-semibold">
                 Bulk import done… {bulkSummary.saved} saved
-                {bulkSummary.failed.length ? `, ${bulkSummary.failed.length} failed` : ''}
+                {bulkSummary.needsAttention
+                  ? ` · ${bulkSummary.needsAttention} need attention`
+                  : ''}
               </div>
               <button
                 type="button"
@@ -1057,15 +1311,20 @@ export default function W2GScannerScreen({
                 Dismiss
               </button>
             </div>
+            {bulkSummary.needsAttention ? (
+              <div className="text-xs text-emerald-200/80">
+                Open the ATTN slips in My W-2Gs to fix corners, then verify.
+              </div>
+            ) : null}
             {bulkSummary.failed.length ? (
               <ul className="text-xs text-emerald-200/80 space-y-1 max-h-28 overflow-auto">
                 {bulkSummary.failed.slice(0, 8).map((f) => (
                   <li key={`${f.fileName}-${f.error}`}>
-                    {f.fileName}: {f.error}
+                    Skipped {f.fileName}: {f.error}
                   </li>
                 ))}
                 {bulkSummary.failed.length > 8 ? (
-                  <li>+{bulkSummary.failed.length - 8} more</li>
+                  <li>+{bulkSummary.failed.length - 8} more skipped</li>
                 ) : null}
               </ul>
             ) : null}
@@ -1442,6 +1701,7 @@ export default function W2GScannerScreen({
                   <ul className="space-y-3">
                     {slips.map((slip) => {
                       const verified = isW2GSlipVerified(slip)
+                      const needsAttn = isW2GSlipNeedsAttention(slip)
                       const extracting = processingSlipIdSet.has(slip.id)
                       return (
                         <li
@@ -1467,21 +1727,40 @@ export default function W2GScannerScreen({
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-bold text-white">
-                                {slip.payer_name || (extracting ? 'Extracting fields…' : 'Unknown payer')}
+                                {slip.payer_name ||
+                                  (needsAttn
+                                    ? 'Needs attention'
+                                    : extracting
+                                      ? 'Extracting fields…'
+                                      : 'Unknown payer')}
                               </div>
                               <div className="mt-0.5 text-xs text-zinc-500">
-                                {formatIsoDate(slip.date_won)}
-                                {slip.payer_ein ? ` · EIN ${slip.payer_ein}` : ''}
-                                {extracting ? ' · Extracting…' : ''}
+                                {needsAttn
+                                  ? 'Fix corners to extract fields'
+                                  : `${formatIsoDate(slip.date_won)}${
+                                      slip.payer_ein ? ` · EIN ${slip.payer_ein}` : ''
+                                    }${extracting ? ' · Extracting…' : ''}`}
                               </div>
-                              <div className="mt-1 text-xs text-zinc-300">
-                                Box 1 {moneyLabel(slip.box1_winnings)} · Box 4{' '}
-                                {moneyLabel(slip.box4_federal_withheld)}
-                              </div>
+                              {!needsAttn ? (
+                                <div className="mt-1 text-xs text-zinc-300">
+                                  Box 1 {moneyLabel(slip.box1_winnings)} · Box 4{' '}
+                                  {moneyLabel(slip.box4_federal_withheld)}
+                                </div>
+                              ) : null}
                             </div>
                           </button>
                           <div className="flex shrink-0 flex-col items-end gap-2">
-                            {verified ? (
+                            {needsAttn ? (
+                              <button
+                                type="button"
+                                onClick={() => openVerifySlip(slip)}
+                                className="inline-flex min-h-9 items-center justify-center gap-1 rounded-xl bg-rose-500 px-3 text-xs font-bold text-white touch-manipulation"
+                                data-w2g-attn-btn
+                              >
+                                <AlertTriangle size={14} aria-hidden />
+                                ATTN
+                              </button>
+                            ) : verified ? (
                               <span
                                 className="inline-flex min-h-9 items-center gap-1 rounded-xl bg-emerald-500/15 px-2.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30"
                                 data-w2g-verified-badge
@@ -1583,27 +1862,33 @@ export default function W2GScannerScreen({
             className={APP_MODAL_OVERLAY_CLASS}
             role="dialog"
             aria-modal="true"
-            aria-label="Verify W-2G slip"
+            aria-label={verifyNeedsAttention ? 'Fix W-2G slip' : 'Verify W-2G slip'}
             data-w2g-verify-modal
             onClick={(e) => {
-              if (e.target === e.currentTarget) closeVerifySlip()
+              if (e.target === e.currentTarget && !attnApplying) closeVerifySlip()
             }}
           >
             <div className={`${APP_MODAL_SHEET_PANEL_CLASS} space-y-4`} data-w2g-verify-sheet>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-lg font-bold text-white">
-                    {verifyAlreadyDone ? 'Verified slip' : 'Verify slip'}
+                    {verifyNeedsAttention
+                      ? 'Needs attention'
+                      : verifyAlreadyDone
+                        ? 'Verified slip'
+                        : 'Verify slip'}
                   </div>
                   <div className="text-xs text-zinc-500 mt-0.5">
-                    {verifyAlreadyDone
-                      ? 'Review or correct fields, then confirm again.'
-                      : 'Check the image against the fields, then confirm.'}
+                    {verifyNeedsAttention
+                      ? 'Fix the corners, then we’ll extract the TurboTax fields.'
+                      : verifyAlreadyDone
+                        ? 'Review or correct fields, then confirm again.'
+                        : 'Check the image against the fields, then confirm.'}
                   </div>
                 </div>
                 <button
                   type="button"
-                  disabled={verifySaving}
+                  disabled={verifySaving || attnApplying}
                   onClick={closeVerifySlip}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 text-zinc-200 touch-manipulation disabled:opacity-50"
                   aria-label="Close"
@@ -1622,78 +1907,113 @@ export default function W2GScannerScreen({
                 </div>
               ) : null}
 
-              <div className="overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800" data-w2g-preview>
-                {verifyImageUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => setVerifyImageExpanded(true)}
-                    className="block w-full touch-manipulation"
-                    aria-label="Expand slip image"
+              {verifyNeedsAttention ? (
+                <div className="space-y-3" data-w2g-attn-panel>
+                  <div
+                    className="rounded-2xl border border-rose-500/35 bg-rose-950/35 px-4 py-3 text-sm text-rose-100"
+                    data-w2g-attn-reason
                   >
-                    <img
-                      src={verifyImageUrl}
-                      alt="W-2G slip"
-                      className="mx-auto max-h-[min(40vh,360px)] w-full object-contain"
-                    />
-                    <div className="mt-1 text-center text-[11px] font-semibold text-zinc-500">
-                      Tap to enlarge
+                    <div className="inline-flex items-center gap-1.5 font-semibold">
+                      <AlertTriangle size={15} aria-hidden />
+                      Issue
                     </div>
-                  </button>
-                ) : (
-                  <div className="grid min-h-[140px] place-items-center text-sm text-zinc-500">
-                    No image preview
+                    <div className="mt-1 text-rose-100/90">
+                      {String(verifySlip?.attention_reason || 'This slip needs a manual corner fix.')}
+                    </div>
                   </div>
-                )}
-              </div>
+                  {attnLoading ? (
+                    <div className="text-sm text-zinc-400">Loading photo…</div>
+                  ) : (
+                    <div
+                      ref={attnEditorHostRef}
+                      className="min-h-[min(52vh,420px)] overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
+                      data-w2g-attn-editor
+                    />
+                  )}
+                  {attnApplying ? (
+                    <div className="text-sm text-zinc-400">Cropping + extracting fields…</div>
+                  ) : (
+                    <div className="text-xs text-zinc-500">
+                      Drag each handle to a corner of the W-2G, then Apply.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800" data-w2g-preview>
+                    {verifyImageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setVerifyImageExpanded(true)}
+                        className="block w-full touch-manipulation"
+                        aria-label="Expand slip image"
+                      >
+                        <img
+                          src={verifyImageUrl}
+                          alt="W-2G slip"
+                          className="mx-auto max-h-[min(40vh,360px)] w-full object-contain"
+                        />
+                        <div className="mt-1 text-center text-[11px] font-semibold text-zinc-500">
+                          Tap to enlarge
+                        </div>
+                      </button>
+                    ) : (
+                      <div className="grid min-h-[140px] place-items-center text-sm text-zinc-500">
+                        No image preview
+                      </div>
+                    )}
+                  </div>
 
-              <div className="space-y-2.5" data-w2g-ocr>
-                {verifyFieldList.map((field) => {
-                  const def = W2G_FIELD_DEFS.find((d) => d.key === field.key)
-                  return (
-                    <label key={field.key} className="block">
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                        {def?.label || field.label}
-                      </span>
-                      <input
-                        type="text"
-                        value={field.value}
-                        onChange={(e) => onVerifyFieldChange(field.key, e.target.value)}
-                        disabled={verifyReprocessing}
-                        className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 disabled:opacity-60"
-                        autoComplete="off"
-                        spellCheck={false}
-                      />
-                    </label>
-                  )
-                })}
-              </div>
+                  <div className="space-y-2.5" data-w2g-ocr>
+                    {verifyFieldList.map((field) => {
+                      const def = W2G_FIELD_DEFS.find((d) => d.key === field.key)
+                      return (
+                        <label key={field.key} className="block">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                            {def?.label || field.label}
+                          </span>
+                          <input
+                            type="text"
+                            value={field.value}
+                            onChange={(e) => onVerifyFieldChange(field.key, e.target.value)}
+                            disabled={verifyReprocessing}
+                            className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 disabled:opacity-60"
+                            autoComplete="off"
+                            spellCheck={false}
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
 
-              <div className="grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  disabled={verifySaving || verifyReprocessing || !verifySlip?.image_path}
-                  onClick={() => void onReprocessVerify()}
-                  className="inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-800 px-4 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-60"
-                  data-w2g-reprocess
-                >
-                  <RefreshCw size={16} aria-hidden className={verifyReprocessing ? 'animate-spin' : undefined} />
-                  {verifyReprocessing ? 'Re-processing…' : 'Re-process image'}
-                </button>
-                <button
-                  type="button"
-                  disabled={verifySaving || verifyReprocessing}
-                  onClick={() => void onConfirmVerified()}
-                  className="inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 text-sm font-semibold text-zinc-950 touch-manipulation disabled:opacity-60"
-                  data-w2g-verify-confirm
-                >
-                  <BadgeCheck size={18} aria-hidden />
-                  {verifySaving
-                    ? 'Saving…'
-                    : verifyAlreadyDone
-                      ? 'Save & keep verified'
-                      : 'Confirm verified'}
-                </button>
-              </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      type="button"
+                      disabled={verifySaving || verifyReprocessing || !verifySlip?.image_path}
+                      onClick={() => void onReprocessVerify()}
+                      className="inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-800 px-4 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-60"
+                      data-w2g-reprocess
+                    >
+                      <RefreshCw size={16} aria-hidden className={verifyReprocessing ? 'animate-spin' : undefined} />
+                      {verifyReprocessing ? 'Re-processing…' : 'Re-process image'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={verifySaving || verifyReprocessing}
+                      onClick={() => void onConfirmVerified()}
+                      className="inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 text-sm font-semibold text-zinc-950 touch-manipulation disabled:opacity-60"
+                      data-w2g-verify-confirm
+                    >
+                      <BadgeCheck size={18} aria-hidden />
+                      {verifySaving
+                        ? 'Saving…'
+                        : verifyAlreadyDone
+                          ? 'Save & keep verified'
+                          : 'Confirm verified'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

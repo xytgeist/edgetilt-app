@@ -2,7 +2,7 @@ import { fmtPoker$, pokerPlTone } from './pokerBankrollMath.js'
 
 /**
  * Shared player closed-stake economics (Your bankroll + Backers).
- * Used on pre-archive review, ARCHIVE list cards, and archive detail.
+ * Used on pre-archive review and archive detail.
  *
  * @param {{ review: object }} props
  */

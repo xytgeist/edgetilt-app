@@ -42,11 +42,9 @@ import {
   POKER_SHEET_PANEL_TALL_CLASS,
 } from './pokerBankrollTrackerSheet.js'
 import {
-  LOUNGE_IOS,
-  LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
   loungeComposerFooterPaddingBottom,
   useLoungeIosSafeBottomPx,
-  useLoungeKeyboardOverlapPx,
+  useLockedLayoutKeyboardOverlapPx,
 } from '../lounge/useLoungeKeyboardOverlapPx.js'
 import {
   POKER_CURRENCIES,
@@ -396,17 +394,17 @@ export default function PokerBankrollTracker({
   /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
   const startSheetKbActive = sheet === 'start'
-  const startSheetIosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS && startSheetKbActive)
-  const { overlapPx: startSheetKbOverlapPx, targetPx: startSheetKbTargetPx } =
-    useLoungeKeyboardOverlapPx(startSheetKbActive, {
-      smooth: LOUNGE_IOS,
-      smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
-    })
-  const startSheetKbLiftPx = Math.max(startSheetKbOverlapPx, startSheetKbTargetPx)
-  const startSheetKeyboardUp = startSheetKbLiftPx > startSheetIosSafeBottomPx + 0.5
-  const startSheetFooterPadBottom = startSheetKeyboardUp
-    ? `${Math.round(startSheetKbLiftPx)}px`
-    : loungeComposerFooterPaddingBottom(0, startSheetIosSafeBottomPx)
+  const startSheetIosSafeBottomPx = useLoungeIosSafeBottomPx(startSheetKbActive)
+  // iOS shrinks innerHeight with the keyboard … lock pre-keyboard layout height.
+  const startSheetKbLiftPx = useLockedLayoutKeyboardOverlapPx(startSheetKbActive)
+  const startSheetKeyboardUp = startSheetKbLiftPx > 8
+  const startSheetFooterPadBottom = loungeComposerFooterPaddingBottom(
+    0,
+    startSheetIosSafeBottomPx,
+  )
+  const startSheetPanelStyle = startSheetKeyboardUp
+    ? { marginBottom: Math.round(startSheetKbLiftPx) }
+    : undefined
   /** Prefill for + Stake after declining a backer offer. */
   const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
   /** @type {{ seed: object, counterpartLabel: string, declinedDealId?: string } | null} */
@@ -5073,9 +5071,11 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-bankroll-sheet
+            data-poker-bankroll-start-sheet-kb={startSheetKeyboardUp ? 'up' : 'down'}
             className={`${POKER_SHEET_PANEL_CLASS} flex flex-col !overflow-y-hidden !pb-0 ${
               pokerSessionSheetNeedsTall(form) ? POKER_SHEET_PANEL_TALL_CLASS : ''
             }`}
+            style={startSheetPanelStyle}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex shrink-0 items-center justify-between">

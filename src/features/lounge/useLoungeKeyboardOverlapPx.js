@@ -124,3 +124,83 @@ export function useLoungeKeyboardOverlapPx(active = true, options = {}) {
   const overlapPx = smooth ? displayPx : targetPx
   return { overlapPx, targetPx, displayPx: overlapPx }
 }
+
+/**
+ * Keyboard overlap for bottom sheets on iOS.
+ *
+ * Safari often shrinks `window.innerHeight` with the keyboard, so
+ * `innerHeight - visualViewport.height` stays ~0 until a scroll/offset nudge.
+ * Lock the pre-keyboard layout height and measure against that instead.
+ *
+ * @param {boolean} active
+ * @returns {number}
+ */
+export function useLockedLayoutKeyboardOverlapPx(active = true) {
+  const baselineRef = useRef(0)
+  const [overlapPx, setOverlapPx] = useState(0)
+
+  useEffect(() => {
+    if (!active || typeof window === 'undefined') {
+      baselineRef.current = 0
+      setOverlapPx(0)
+      return undefined
+    }
+
+    const vv = window.visualViewport
+
+    const lockBaseline = () => {
+      const layout = Math.max(window.innerHeight || 0, document.documentElement?.clientHeight || 0)
+      if (layout > baselineRef.current) baselineRef.current = layout
+      if (baselineRef.current < 1) baselineRef.current = layout
+    }
+
+    const readOverlap = () => {
+      lockBaseline()
+      const base = baselineRef.current || window.innerHeight || 0
+      const height = vv?.height ?? window.innerHeight ?? 0
+      const offsetTop = vv?.offsetTop ?? 0
+      return Math.max(0, base - height - offsetTop)
+    }
+
+    const sync = () => {
+      try {
+        setOverlapPx(readOverlap())
+      } catch {
+        setOverlapPx(0)
+      }
+    }
+
+    const syncAfterKeyboardAnim = () => {
+      sync()
+      window.setTimeout(sync, 50)
+      window.setTimeout(sync, 180)
+      window.setTimeout(sync, 350)
+      window.setTimeout(sync, 520)
+    }
+
+    const onFocusIn = (e) => {
+      const t = e?.target
+      if (!(t instanceof HTMLElement)) return
+      if (t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA' && t.tagName !== 'SELECT') return
+      syncAfterKeyboardAnim()
+    }
+
+    lockBaseline()
+    sync()
+    vv?.addEventListener('resize', sync)
+    vv?.addEventListener('scroll', sync)
+    window.addEventListener('resize', sync)
+    window.addEventListener('focusin', onFocusIn)
+
+    return () => {
+      vv?.removeEventListener('resize', sync)
+      vv?.removeEventListener('scroll', sync)
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('focusin', onFocusIn)
+      baselineRef.current = 0
+      setOverlapPx(0)
+    }
+  }, [active])
+
+  return overlapPx
+}

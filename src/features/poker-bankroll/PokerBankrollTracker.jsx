@@ -42,6 +42,7 @@ import {
   POKER_SHEET_PANEL_TALL_CLASS,
 } from './pokerBankrollTrackerSheet.js'
 import {
+  LOUNGE_IOS,
   loungeComposerFooterPaddingBottom,
   useLoungeIosSafeBottomPx,
   useLockedLayoutKeyboardOverlapPx,
@@ -395,24 +396,18 @@ export default function PokerBankrollTracker({
   const [sheet, setSheet] = useState(null)
   const startSheetKbActive = sheet === 'start'
   const startSheetIosSafeBottomPx = useLoungeIosSafeBottomPx(startSheetKbActive)
-  // iOS shrinks innerHeight with the keyboard … lock pre-keyboard layout height.
-  const { overlapPx: startSheetKbLiftPx, visibleHeightPx: startSheetVisibleH } =
-    useLockedLayoutKeyboardOverlapPx(startSheetKbActive)
-  const startSheetKeyboardUp = startSheetKbLiftPx > 8
-  // Sticky footer: pad overlay so the sheet sits in the visible band; footer keeps safe-area only.
-  const startSheetFooterPadBottom = loungeComposerFooterPaddingBottom(
-    0,
-    startSheetIosSafeBottomPx,
+  // iOS only: lock pre-keyboard layout height for sticky footer pad.
+  // Android already shrinks via interactive-widget=resizes-content … locked overlay/footer
+  // pad double-counts and blasts the sheet off-screen.
+  const { overlapPx: startSheetIosKbLiftPx } = useLockedLayoutKeyboardOverlapPx(
+    LOUNGE_IOS && startSheetKbActive,
   )
-  const startSheetOverlayStyle = startSheetKeyboardUp
-    ? { paddingBottom: Math.round(startSheetKbLiftPx) }
-    : undefined
-  const startSheetPanelStyle = startSheetKeyboardUp
-    ? {
-        maxHeight: `${Math.max(240, Math.round(startSheetVisibleH))}px`,
-        minHeight: 0,
-      }
-    : undefined
+  const startSheetKbLiftPx = LOUNGE_IOS ? startSheetIosKbLiftPx : 0
+  const startSheetKeyboardUp = startSheetKbLiftPx > 8
+  // Lounge-style sticky footer: pad the footer only; form scrolls in flex-1 above it.
+  const startSheetFooterPadBottom = startSheetKeyboardUp
+    ? `${Math.round(startSheetKbLiftPx)}px`
+    : loungeComposerFooterPaddingBottom(0, startSheetIosSafeBottomPx)
   /** Prefill for + Stake after declining a backer offer. */
   const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
   /** @type {{ seed: object, counterpartLabel: string, declinedDealId?: string } | null} */
@@ -5075,20 +5070,14 @@ export default function PokerBankrollTracker({
       {sheet === 'start' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
-          style={startSheetOverlayStyle}
           onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
             data-poker-bankroll-start-sheet-kb={startSheetKeyboardUp ? 'up' : 'down'}
             className={`${POKER_SHEET_PANEL_CLASS} flex flex-col !overflow-y-hidden !pb-0 ${
-              startSheetKeyboardUp ? '!max-h-none' : ''
-            } ${
-              pokerSessionSheetNeedsTall(form) && !startSheetKeyboardUp
-                ? POKER_SHEET_PANEL_TALL_CLASS
-                : ''
+              pokerSessionSheetNeedsTall(form) ? POKER_SHEET_PANEL_TALL_CLASS : ''
             }`}
-            style={startSheetPanelStyle}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex shrink-0 items-center justify-between">

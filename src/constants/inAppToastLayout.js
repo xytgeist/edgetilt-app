@@ -50,8 +50,9 @@ export const IN_APP_TOAST_ACTIVITY_ICON_PX = 32
 export const IN_APP_TOAST_ACTIVITY_TITLE =
   'in-app-toast-activity-title block text-[12px] font-semibold leading-snug text-zinc-50'
 
+/** No `block` here … it fights `line-clamp-3` (`display: -webkit-box`) in the generated CSS order. */
 export const IN_APP_TOAST_ACTIVITY_BODY =
-  'in-app-toast-activity-body mt-0.5 block line-clamp-3 text-[11px] font-medium leading-snug text-zinc-300'
+  'in-app-toast-activity-body mt-0.5 line-clamp-3 overflow-hidden text-[11px] font-medium leading-snug text-zinc-300'
 
 export const IN_APP_TOAST_DISMISS_BTN =
   'in-app-toast-activity-dismiss shrink-0 rounded-full px-1.5 py-0.5 text-[15px] leading-none text-zinc-400 touch-manipulation hover:bg-white/10 hover:text-zinc-100'

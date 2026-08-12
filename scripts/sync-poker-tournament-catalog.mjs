@@ -238,18 +238,30 @@ async function main() {
       console.error('[poker:catalog:sync] ClubWPT fetch failed:', clubwptFetch.clubwptError)
     }
 
+    /** @type {object[]} */
+    let clubwptGoldOneOff = []
     try {
       const gold = await fetchClubwptGoldCatalogOneOffs()
       clubwptFetch.clubwptGoldSkipped = gold.skippedReason || null
       if (clubwptFetch.clubwptGoldSkipped) {
         console.warn(`[poker:catalog:sync] ClubWPT Gold skipped: ${clubwptFetch.clubwptGoldSkipped}`)
+      } else {
+        clubwptGoldOneOff = gold.oneOff || []
+        console.log(
+          `ClubWPT Gold online: parsed ${gold.stats.parsed}, ingested ${gold.stats.ingested} (skipped date ${gold.stats.skippedDate}, status ${gold.stats.skippedStatus})`,
+        )
       }
     } catch (err) {
       clubwptFetch.clubwptGoldSkipped = String(err?.message || err)
       console.warn('[poker:catalog:sync] ClubWPT Gold skipped:', clubwptFetch.clubwptGoldSkipped)
     }
 
-    mttdbPayload.one_off = dedupeCatalogRows([...liveOneOff, ...onlineOneOff, ...clubwptOneOff])
+    mttdbPayload.one_off = dedupeCatalogRows([
+      ...liveOneOff,
+      ...onlineOneOff,
+      ...clubwptOneOff,
+      ...clubwptGoldOneOff,
+    ])
   }
 
   const rows = buildCatalogUpsertRowsFromPayloads(payloads)
@@ -261,11 +273,12 @@ async function main() {
   const mttdbOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:online:'))
   const mttdbLiveRows = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:live:'))
   const clubwptOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('clubwpt:online:'))
+  const clubwptGoldOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('clubwptgold:online:'))
 
   console.log(`Target: ${targetHuman(target)}`)
   console.log(`Files: ${paths.map((p) => path.relative(repoRoot, p)).join(', ')}`)
   console.log(
-    `Rows: ${rows.length}${dryRun ? ' (dry run)' : ''} (mttdb live ${mttdbLiveRows.length}, online ${mttdbOnlineRows.length}, clubwpt ${clubwptOnlineRows.length})`,
+    `Rows: ${rows.length}${dryRun ? ' (dry run)' : ''} (mttdb live ${mttdbLiveRows.length}, online ${mttdbOnlineRows.length}, clubwpt ${clubwptOnlineRows.length}, clubwpt gold ${clubwptGoldOnlineRows.length})`,
   )
 
   if (dryRun) {

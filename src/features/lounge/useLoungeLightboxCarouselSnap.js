@@ -1,8 +1,11 @@
 import { useEffect } from 'react'
 
+/** Fallback when `scrollend` is missing (older WebViews). */
+const SCROLL_SETTLE_MS = 90
+
 /**
- * Full-bleed lightbox pager: native scroll-snap between slides, index sync on scroll/resize.
- * Unlike feed carousels, rest position always lands on a whole slide (no free scroll).
+ * Full-bleed lightbox pager: native scroll-snap between slides, index sync on settle.
+ * Do not sync React index on every scroll frame … that re-renders mid-swipe and hitches.
  *
  * @param {React.RefObject<HTMLElement|null>} scrollerRef
  * @param {boolean} enabled
@@ -15,7 +18,7 @@ export function useLoungeLightboxCarouselSnap(scrollerRef, enabled, slideCount, 
     const el = scrollerRef.current
     if (!el) return undefined
 
-    let raf = 0
+    let settleTimer = 0
 
     const readIndex = () => {
       const w = el.clientWidth
@@ -27,13 +30,29 @@ export function useLoungeLightboxCarouselSnap(scrollerRef, enabled, slideCount, 
       onIndexChange(readIndex())
     }
 
-    const scheduleSync = () => {
-      cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(syncIndex)
+    const onScroll = () => {
+      // Debounced settle only … avoid React work while the finger is still moving.
+      try {
+        window.clearTimeout(settleTimer)
+      } catch {
+        // ignore
+      }
+      settleTimer = window.setTimeout(() => {
+        settleTimer = 0
+        syncIndex()
+      }, SCROLL_SETTLE_MS)
     }
 
-    const onScroll = () => scheduleSync()
-    const onScrollEnd = () => syncIndex()
+    const onScrollEnd = () => {
+      try {
+        window.clearTimeout(settleTimer)
+      } catch {
+        // ignore
+      }
+      settleTimer = 0
+      syncIndex()
+    }
+
     const onResize = () => {
       const i = readIndex()
       const w = el.clientWidth
@@ -45,13 +64,17 @@ export function useLoungeLightboxCarouselSnap(scrollerRef, enabled, slideCount, 
     el.addEventListener('scrollend', onScrollEnd, { passive: true })
     window.addEventListener('resize', onResize, { passive: true })
 
-    scheduleSync()
+    syncIndex()
 
     return () => {
       el.removeEventListener('scroll', onScroll)
       el.removeEventListener('scrollend', onScrollEnd)
       window.removeEventListener('resize', onResize)
-      cancelAnimationFrame(raf)
+      try {
+        window.clearTimeout(settleTimer)
+      } catch {
+        // ignore
+      }
     }
   }, [enabled, onIndexChange, scrollerRef, slideCount])
 }

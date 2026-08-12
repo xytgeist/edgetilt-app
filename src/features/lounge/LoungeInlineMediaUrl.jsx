@@ -9,6 +9,7 @@ import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import { useLoungeLightboxCarouselSnap } from './useLoungeLightboxCarouselSnap.js'
 import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
 import {
+  clearFlyoutHeroInlineStyles,
   computeHeroTargetRect,
   HERO_CHROME_FADE_MS,
   HERO_EXPAND_MS,
@@ -103,12 +104,16 @@ export function LoungeImageLightbox({
   const [chromeVisible, setChromeVisible] = useState(!wantsFlipOpen)
   const [scrimOpacity, setScrimOpacity] = useState(wantsFlipOpen ? 0 : 1)
   const [dismissProgress, setDismissProgress] = useState(0)
+  /** Keep FLIP flyout painted over open UI until the landed image is ready (kills land flash/jump). */
+  const [flyoutCovering, setFlyoutCovering] = useState(wantsFlipOpen)
 
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
   const carouselScrollRef = useRef(null)
   const phaseRef = useRef(phase)
   phaseRef.current = phase
+  const idxRef = useRef(idx)
+  idxRef.current = idx
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -163,11 +168,12 @@ export function LoungeImageLightbox({
 
   useLoungeLightboxCarouselSnap(carouselScrollRef, carouselMode, list.length, onCarouselIndexChange)
 
+  // Align once when the open carousel mounts (or re-enters after pinch). Never rewrite scrollLeft on every idx … that fights native swipe.
   useLayoutEffect(() => {
-    if (!multi || phase !== 'open') return
+    if (!carouselMode) return
     const el = carouselScrollRef.current
     if (!el) return
-    const alignIndex = Math.max(0, Math.min(initialIndex, list.length - 1))
+    const alignIndex = Math.max(0, Math.min(idxRef.current, list.length - 1))
     const apply = () => {
       const w = el.clientWidth
       if (!w) return
@@ -176,16 +182,7 @@ export function LoungeImageLightbox({
     apply()
     const id = requestAnimationFrame(apply)
     return () => cancelAnimationFrame(id)
-  }, [multi, list, initialIndex, phase])
-
-  useLayoutEffect(() => {
-    if (!carouselMode) return
-    const el = carouselScrollRef.current
-    if (!el) return
-    const w = el.clientWidth
-    if (!w) return
-    el.scrollLeft = idx * w
-  }, [carouselMode, idx])
+  }, [carouselMode, list.length])
 
   const resolveCloseOrigin = useCallback(() => {
     const getter = getOriginRectRef.current
@@ -391,6 +388,7 @@ export function LoungeImageLightbox({
     const flyout = flyoutRef.current
     if (!heroRectUsableForShrinkBack(from) || !flyout) {
       setPhase('open')
+      setFlyoutCovering(false)
       setChromeVisible(true)
       setScrimOpacity(1)
       return undefined
@@ -426,14 +424,16 @@ export function LoungeImageLightbox({
         runHeroExpandAnimation(flyout, from, target, {
           animRef: expandAnimRef,
           finishTimerRef: expandTimerRef,
-          flyoutZIndex: zStack.flyout,
+          // Stay above open chrome/media during handoff (overlay is flyout+1).
+          flyoutZIndex: zStack.overlay + 1,
           onDone: () => {
             if (cancelled) return
-            snapFlyoutToHeroOpen(flyout, target, zStack.flyout)
-            flyout.style.visibility = 'hidden'
+            snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
+            flyout.style.visibility = 'visible'
             flyout.style.pointerEvents = 'none'
+            setFlyoutCovering(true)
             setPhase('open')
-            setChromeVisible(true)
+            // Chrome fades in only after flyout cover drops (see handoff effect).
             setScrimOpacity(1)
           },
         })
@@ -450,7 +450,64 @@ export function LoungeImageLightbox({
         // ignore
       }
     }
-  }, [phase, zStack.flyout])
+  }, [phase, zStack.flyout, zStack.overlay])
+
+  // After open UI mounts under the flyout, drop the cover once the hero image is decoded.
+  useLayoutEffect(() => {
+    if (phase !== 'open' || !flyoutCovering) return undefined
+    const flyout = flyoutRef.current
+    let cancelled = false
+    let fallbackTimer = 0
+
+    const revealOpenUi = () => {
+      if (cancelled) return
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (cancelled) return
+          if (flyout) {
+            flyout.style.visibility = 'hidden'
+            flyout.style.pointerEvents = 'none'
+            clearFlyoutHeroInlineStyles(flyout)
+          }
+          setFlyoutCovering(false)
+          setChromeVisible(true)
+        })
+      })
+    }
+
+    const img = mediaImageRef.current
+    if (img instanceof HTMLImageElement) {
+      if (img.complete && img.naturalWidth > 0) {
+        revealOpenUi()
+      } else {
+        const onReady = () => revealOpenUi()
+        img.addEventListener('load', onReady, { once: true })
+        img.addEventListener('error', onReady, { once: true })
+        fallbackTimer = window.setTimeout(revealOpenUi, 320)
+        return () => {
+          cancelled = true
+          img.removeEventListener('load', onReady)
+          img.removeEventListener('error', onReady)
+          try {
+            window.clearTimeout(fallbackTimer)
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } else {
+      fallbackTimer = window.setTimeout(revealOpenUi, 48)
+    }
+
+    return () => {
+      cancelled = true
+      try {
+        window.clearTimeout(fallbackTimer)
+      } catch {
+        // ignore
+      }
+    }
+  }, [phase, flyoutCovering, current])
 
   useEffect(
     () => () => {
@@ -469,8 +526,9 @@ export function LoungeImageLightbox({
   if (!current) return null
 
   const openUi = phase === 'open'
-  const motionActive = phase === 'opening' || phase === 'closing'
+  const motionActive = phase === 'opening' || phase === 'closing' || flyoutCovering
   const effectiveScrim = Math.max(0, Math.min(1, scrimOpacity * (1 - dismissProgress * 0.55)))
+  const flyoutZ = flyoutCovering || phase === 'opening' || phase === 'closing' ? zStack.overlay + 1 : zStack.flyout
 
   return createPortal(
     <div
@@ -499,22 +557,22 @@ export function LoungeImageLightbox({
         aria-hidden
       />
 
-      {/* FLIP flyout … visible during open/close motion; hidden while interactive open UI owns the image. */}
+      {/* FLIP flyout … covers open UI through land handoff so geometry swap never flashes. */}
       <div
         ref={flyoutRef}
         data-lounge-image-lightbox-flyout
-        className="overflow-hidden bg-zinc-950"
+        className="overflow-hidden bg-black"
         style={{
           visibility: motionActive ? 'visible' : 'hidden',
           pointerEvents: 'none',
-          zIndex: zStack.flyout,
+          zIndex: flyoutZ,
           position: 'fixed',
         }}
       >
         <img
           src={currentDisplaySrc}
           alt=""
-          className="h-full w-full select-none object-cover"
+          className="h-full w-full select-none object-contain"
           draggable={false}
           decoding="async"
         />
@@ -604,14 +662,14 @@ export function LoungeImageLightbox({
           >
             <div
               ref={mediaContainerRef}
-              className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2"
+              className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
             >
               <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
               {carouselMode ? (
                 <div
                   ref={carouselScrollRef}
                   data-lounge-lightbox-carousel
-                  className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto scroll-smooth [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                  className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {list.map((slideUrl, i) => (
                     <div

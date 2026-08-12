@@ -5049,12 +5049,12 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-bankroll-sheet
-            className={`${POKER_SHEET_PANEL_CLASS} ${
+            className={`${POKER_SHEET_PANEL_CLASS} flex flex-col !overflow-y-hidden !pb-0 ${
               pokerSessionSheetNeedsTall(form) ? POKER_SHEET_PANEL_TALL_CLASS : ''
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-3 flex shrink-0 items-center justify-between">
               <div className="text-lg font-bold text-white">Start Session</div>
               <button
                 type="button"
@@ -5066,51 +5066,58 @@ export default function PokerBankrollTracker({
               </button>
             </div>
 
-            <PokerSessionCoreFields
-              form={form}
-              setField={setField}
-              supabaseClient={supabaseClient}
-              nearbyCasinos={nearbyCasinos}
-              customVenues={customVenues}
-              onSaveCustomVenue={saveCustomVenue}
-              gpsLoading={gpsLoading}
-              cashGamePresets={cashGamePresets}
-              showCashDetails={form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
-            />
+            <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y no-scrollbar [-webkit-overflow-scrolling:touch]">
+              <PokerSessionCoreFields
+                form={form}
+                setField={setField}
+                supabaseClient={supabaseClient}
+                nearbyCasinos={nearbyCasinos}
+                customVenues={customVenues}
+                onSaveCustomVenue={saveCustomVenue}
+                gpsLoading={gpsLoading}
+                cashGamePresets={cashGamePresets}
+                showCashDetails={form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
+              />
 
-            <PokerTournamentSwapsSection
-              supabaseClient={supabaseClient}
-              userId={userId}
-              enabled={form.session_type === 'tournament'}
-              maxSwapGivePct={swapSelfOwnedPct}
-              draftSwaps={draftSwaps}
-              onDraftSwapsChange={setDraftSwaps}
-              savedSwaps={[]}
-              profilesById={swapProfilesById}
-              showGlobalConfirm={showGlobalConfirm}
-              incomingAcceptSwap={incomingAcceptSwap}
-              onDeclineIncomingAccept={
-                incomingAcceptSwap
-                  ? () => void declineIncomingSwap(incomingAcceptSwap)
-                  : undefined
-              }
-              decliningIncoming={saving}
-            />
+              <PokerTournamentSwapsSection
+                supabaseClient={supabaseClient}
+                userId={userId}
+                enabled={form.session_type === 'tournament'}
+                maxSwapGivePct={swapSelfOwnedPct}
+                draftSwaps={draftSwaps}
+                onDraftSwapsChange={setDraftSwaps}
+                savedSwaps={[]}
+                profilesById={swapProfilesById}
+                showGlobalConfirm={showGlobalConfirm}
+                incomingAcceptSwap={incomingAcceptSwap}
+                onDeclineIncomingAccept={
+                  incomingAcceptSwap
+                    ? () => void declineIncomingSwap(incomingAcceptSwap)
+                    : undefined
+                }
+                decliningIncoming={saving}
+              />
 
-            {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
+              {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
+            </div>
 
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => void startLiveSession()}
-              className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+            <div
+              data-poker-bankroll-start-footer
+              className="shrink-0 border-t border-zinc-800/90 bg-zinc-900 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
             >
-              {saving
-                ? 'Starting…'
-                : incomingAcceptSwap
-                  ? 'Start & accept swap'
-                  : 'Start Session'}
-            </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void startLiveSession()}
+                className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+              >
+                {saving
+                  ? 'Starting…'
+                  : incomingAcceptSwap
+                    ? 'Start & accept swap'
+                    : 'Start Session'}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

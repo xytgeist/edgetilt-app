@@ -4804,6 +4804,11 @@ html.light [data-poker-bankroll-sheet] .border-zinc-700\/80,
 html.light [data-poker-bankroll-sheet] .border-zinc-800 {
   border-color: #d4d4d8 !important;
 }
+/* Start Session locked footer (dark: zinc-900 bar; light: sheet white) */
+html.light [data-poker-bankroll-sheet] [data-poker-bankroll-start-footer] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
 /* Primary actions + money text — match [data-poker-bankroll] palette (sheets render outside that root) */
 html.light [data-poker-bankroll-sheet] .bg-emerald-600 {
   background-color: #059669 !important;

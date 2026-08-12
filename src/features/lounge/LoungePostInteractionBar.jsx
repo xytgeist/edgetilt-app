@@ -141,9 +141,10 @@ export default function LoungePostInteractionBar({
   const slotRepost = isComment ? 20 : isFeed ? 22 : 24
   const slotLike = isComment ? 20 : isFeed ? 22 : 24
   const slotBookmark = isComment ? 22 : isFeed ? 24 : 26
-  const railMinH = pillOverlay ? 36 : isComment ? 30 : isFeed ? 32 : 44
+  const railMinH = pillOverlay ? undefined : isComment ? 30 : isFeed ? 32 : 44
+  /** Overlay icons scale via CSS clamp on `[data-lounge-lightbox-pill-row] svg`. */
   const iconSz = pillOverlay
-    ? 'h-[22px] w-[22px]'
+    ? 'h-[1em] w-[1em]'
     : isComment
       ? 'h-[20px] w-[20px]'
       : isFeed
@@ -151,7 +152,7 @@ export default function LoungePostInteractionBar({
         : 'h-[24px] w-[24px]'
   /** Bubble glyph sits low in the 20 viewBox - slight Y stretch so it matches the chip visually */
   const iconSzComment = pillOverlay
-    ? `h-[22px] w-[22px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+    ? `h-[1em] w-[1em] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
     : isComment
       ? `h-[20px] w-[20px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
       : isFeed
@@ -159,7 +160,7 @@ export default function LoungePostInteractionBar({
         : `h-[24px] w-[24px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
   /** Bookmark path is inset in the 20 viewBox - slightly larger box than other stats for visual parity with the chip */
   const iconSzBookmark = pillOverlay
-    ? 'h-[23px] w-[23px]'
+    ? 'h-[1.05em] w-[1.05em]'
     : isComment
       ? 'h-[22px] w-[22px]'
       : isFeed
@@ -179,15 +180,14 @@ export default function LoungePostInteractionBar({
   const statSheetBookmark =
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   /**
-   * Lightbox overlay: white frost, fixed sizes (no content-driven grow/shrink).
-   * Comment / repost / like = oval wide enough for icon + compact count (e.g. 3.5K).
-   * Bookmark / share = circle (no count).
+   * Lightbox overlay: white frost, fluid sizes (clamp + flex) so skinny Androids fit.
+   * Comment / repost / like share remaining width; bookmark / share stay square.
    */
   const pillOverlayFrost =
     'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-  // Keep the row inside typical phone width: 3×5rem + 2×2.25rem + gaps ≈ 320px.
-  const pillOverlayCountedStat = `inline-flex h-9 w-20 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
-  const pillOverlayCircleStat = `inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
+  const pillOverlayH = 'h-[clamp(1.5rem,7.2vw,2.25rem)]'
+  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-full min-w-0 items-center justify-center rounded-full ${pillOverlayFrost}`
+  const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-[clamp(1.5rem,7.2vw,2.25rem)] shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls
   const statCommentCls = pickStat(statFeedComment, statSheetComment, pillOverlayCountedStat)
@@ -246,7 +246,7 @@ export default function LoungePostInteractionBar({
   }
 
   const rowClass = pillOverlay
-    ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 text-[15px] ${rootClassName}`.trim()
+    ? `flex w-full min-w-0 flex-nowrap items-center gap-[clamp(0.2rem,1.2vw,0.5rem)] text-[length:clamp(0.7rem,3.4vw,0.875rem)] ${rootClassName}`.trim()
     : isFeed
       ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
       : isComment
@@ -584,6 +584,7 @@ export default function LoungePostInteractionBar({
       <div
         className={rowClass}
         data-lounge-post-interaction-bar
+        data-lounge-lightbox-pill-row={pillOverlay ? '' : undefined}
         role="group"
       >
       <LoungeInteractionGlyphRail
@@ -688,10 +689,14 @@ export default function LoungePostInteractionBar({
       />
 
       <div
-        className="relative flex shrink-0 flex-none items-center justify-end self-center overflow-visible gap-1"
+        className={
+          pillOverlay
+            ? 'relative flex shrink-0 items-center justify-end self-center overflow-visible'
+            : 'relative flex shrink-0 flex-none items-center justify-end self-center overflow-visible gap-1'
+        }
         style={
           pillOverlay
-            ? { minHeight: railMinH }
+            ? undefined
             : showViews
               ? { minHeight: railMinH }
               : { width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }
@@ -759,10 +764,14 @@ export default function LoungePostInteractionBar({
       </div>
       {typeof onShare === 'function' ? (
         <div
-          className="relative flex shrink-0 flex-none items-center justify-center self-center overflow-visible"
+          className={
+            pillOverlay
+              ? 'relative flex shrink-0 items-center justify-center self-center overflow-visible'
+              : 'relative flex shrink-0 flex-none items-center justify-center self-center overflow-visible'
+          }
           style={
             pillOverlay
-              ? { minHeight: railMinH }
+              ? undefined
               : { width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }
           }
         >

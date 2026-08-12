@@ -1367,6 +1367,18 @@ html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text
 html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fb7185\] {
   color: #fb7185 !important;
 }
+/* Fluid lightbox pill chrome … scales with viewport (skinny Android + large phones). */
+[data-lounge-lightbox-pill-row] {
+  --lounge-lightbox-pill-icon: clamp(15px, 5vw, 22px);
+  --lounge-lightbox-pill-count: clamp(11px, 3.2vw, 13px);
+}
+[data-lounge-lightbox-pill-row] svg {
+  width: var(--lounge-lightbox-pill-icon) !important;
+  height: var(--lounge-lightbox-pill-icon) !important;
+}
+[data-lounge-lightbox-pill-row] [data-lounge-pill-count] {
+  font-size: var(--lounge-lightbox-pill-count) !important;
+}
 /* Keep white-frost pill/top shells in light mode (global remaps must not flatten them). */
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .bg-white\/25,
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .bg-white\/25,

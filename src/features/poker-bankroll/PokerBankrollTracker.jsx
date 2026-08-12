@@ -396,14 +396,22 @@ export default function PokerBankrollTracker({
   const startSheetKbActive = sheet === 'start'
   const startSheetIosSafeBottomPx = useLoungeIosSafeBottomPx(startSheetKbActive)
   // iOS shrinks innerHeight with the keyboard … lock pre-keyboard layout height.
-  const startSheetKbLiftPx = useLockedLayoutKeyboardOverlapPx(startSheetKbActive)
+  const { overlapPx: startSheetKbLiftPx, visibleHeightPx: startSheetVisibleH } =
+    useLockedLayoutKeyboardOverlapPx(startSheetKbActive)
   const startSheetKeyboardUp = startSheetKbLiftPx > 8
+  // Sticky footer: pad overlay so the sheet sits in the visible band; footer keeps safe-area only.
   const startSheetFooterPadBottom = loungeComposerFooterPaddingBottom(
     0,
     startSheetIosSafeBottomPx,
   )
+  const startSheetOverlayStyle = startSheetKeyboardUp
+    ? { paddingBottom: Math.round(startSheetKbLiftPx) }
+    : undefined
   const startSheetPanelStyle = startSheetKeyboardUp
-    ? { marginBottom: Math.round(startSheetKbLiftPx) }
+    ? {
+        maxHeight: `${Math.max(240, Math.round(startSheetVisibleH))}px`,
+        minHeight: 0,
+      }
     : undefined
   /** Prefill for + Stake after declining a backer offer. */
   const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
@@ -5067,13 +5075,18 @@ export default function PokerBankrollTracker({
       {sheet === 'start' ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          style={startSheetOverlayStyle}
           onClick={() => !saving && dismissSheet()}
         >
           <div
             data-poker-bankroll-sheet
             data-poker-bankroll-start-sheet-kb={startSheetKeyboardUp ? 'up' : 'down'}
             className={`${POKER_SHEET_PANEL_CLASS} flex flex-col !overflow-y-hidden !pb-0 ${
-              pokerSessionSheetNeedsTall(form) ? POKER_SHEET_PANEL_TALL_CLASS : ''
+              startSheetKeyboardUp ? '!max-h-none' : ''
+            } ${
+              pokerSessionSheetNeedsTall(form) && !startSheetKeyboardUp
+                ? POKER_SHEET_PANEL_TALL_CLASS
+                : ''
             }`}
             style={startSheetPanelStyle}
             onClick={(e) => e.stopPropagation()}

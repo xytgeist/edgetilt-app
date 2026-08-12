@@ -132,17 +132,21 @@ export function useLoungeKeyboardOverlapPx(active = true, options = {}) {
  * `innerHeight - visualViewport.height` stays ~0 until a scroll/offset nudge.
  * Lock the pre-keyboard layout height and measure against that instead.
  *
+ * Use `overlapPx` to pad the overlay (sheet sits in the visible band) and
+ * `visibleHeightPx` to cap the sheet max-height so a sticky footer can shrink
+ * the scroll body instead of shoving the whole form upward.
+ *
  * @param {boolean} active
- * @returns {number}
+ * @returns {{ overlapPx: number, visibleHeightPx: number }}
  */
 export function useLockedLayoutKeyboardOverlapPx(active = true) {
   const baselineRef = useRef(0)
-  const [overlapPx, setOverlapPx] = useState(0)
+  const [metrics, setMetrics] = useState({ overlapPx: 0, visibleHeightPx: 0 })
 
   useEffect(() => {
     if (!active || typeof window === 'undefined') {
       baselineRef.current = 0
-      setOverlapPx(0)
+      setMetrics({ overlapPx: 0, visibleHeightPx: 0 })
       return undefined
     }
 
@@ -154,19 +158,21 @@ export function useLockedLayoutKeyboardOverlapPx(active = true) {
       if (baselineRef.current < 1) baselineRef.current = layout
     }
 
-    const readOverlap = () => {
+    const readMetrics = () => {
       lockBaseline()
       const base = baselineRef.current || window.innerHeight || 0
       const height = vv?.height ?? window.innerHeight ?? 0
       const offsetTop = vv?.offsetTop ?? 0
-      return Math.max(0, base - height - offsetTop)
+      const overlapPx = Math.max(0, base - height - offsetTop)
+      const visibleHeightPx = Math.max(0, height)
+      return { overlapPx, visibleHeightPx }
     }
 
     const sync = () => {
       try {
-        setOverlapPx(readOverlap())
+        setMetrics(readMetrics())
       } catch {
-        setOverlapPx(0)
+        setMetrics({ overlapPx: 0, visibleHeightPx: 0 })
       }
     }
 
@@ -198,9 +204,9 @@ export function useLockedLayoutKeyboardOverlapPx(active = true) {
       window.removeEventListener('resize', sync)
       window.removeEventListener('focusin', onFocusIn)
       baselineRef.current = 0
-      setOverlapPx(0)
+      setMetrics({ overlapPx: 0, visibleHeightPx: 0 })
     }
   }, [active])
 
-  return overlapPx
+  return metrics
 }

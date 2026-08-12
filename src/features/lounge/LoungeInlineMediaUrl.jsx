@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import {
   LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD,
   LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS,
@@ -104,8 +104,6 @@ export function LoungeImageLightbox({
   const [chromeVisible, setChromeVisible] = useState(!wantsFlipOpen)
   const [scrimOpacity, setScrimOpacity] = useState(wantsFlipOpen ? 0 : 1)
   const [dismissProgress, setDismissProgress] = useState(0)
-  /** Keep FLIP flyout painted over open UI until the landed image is ready (kills land flash/jump). */
-  const [flyoutCovering, setFlyoutCovering] = useState(wantsFlipOpen)
 
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
@@ -114,6 +112,11 @@ export function LoungeImageLightbox({
   phaseRef.current = phase
   const idxRef = useRef(idx)
   idxRef.current = idx
+  /** Landed hero frame … open media shells match this so lifting the flyout is not a geometry pop. */
+  const [landFrame, setLandFrame] = useState(
+    /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
+  )
+  const landSlideIndexRef = useRef(Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0))))
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -160,7 +163,10 @@ export function LoungeImageLightbox({
     resetKey: current,
   })
 
-  const carouselMode = multi && !isZoomed && !isPinching && phase === 'open'
+  // Mount carousel during `opening` too so land does not swap single-img → pager (that flash felt worse).
+  const carouselMode = multi && !isZoomed && !isPinching && (phase === 'open' || phase === 'opening')
+  const showMediaLayer = phase === 'opening' || phase === 'open'
+  const mediaInteractive = phase === 'open'
 
   const onCarouselIndexChange = useCallback((i) => {
     setIdx((prev) => (prev === i ? prev : i))
@@ -388,7 +394,6 @@ export function LoungeImageLightbox({
     const flyout = flyoutRef.current
     if (!heroRectUsableForShrinkBack(from) || !flyout) {
       setPhase('open')
-      setFlyoutCovering(false)
       setChromeVisible(true)
       setScrimOpacity(1)
       return undefined
@@ -399,6 +404,8 @@ export function LoungeImageLightbox({
       displayH: from.height,
     })
     targetRectRef.current = target
+    landSlideIndexRef.current = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
+    setLandFrame(target)
 
     flyout.style.visibility = 'visible'
     flyout.style.position = 'fixed'
@@ -406,7 +413,7 @@ export function LoungeImageLightbox({
     flyout.style.left = `${from.left}px`
     flyout.style.width = `${from.width}px`
     flyout.style.height = `${from.height}px`
-    flyout.style.zIndex = String(zStack.flyout)
+    flyout.style.zIndex = String(zStack.overlay + 1)
     flyout.style.transformOrigin = '0 0'
     flyout.style.transform = 'none'
     flyout.style.transition = 'none'
@@ -424,17 +431,20 @@ export function LoungeImageLightbox({
         runHeroExpandAnimation(flyout, from, target, {
           animRef: expandAnimRef,
           finishTimerRef: expandTimerRef,
-          // Stay above open chrome/media during handoff (overlay is flyout+1).
+          // Cover the pre-mounted open media layer for the whole expand.
           flyoutZIndex: zStack.overlay + 1,
           onDone: () => {
             if (cancelled) return
             snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
-            flyout.style.visibility = 'visible'
+            // Open media was painting under the flyout during expand … lift cover in the same frame.
+            flushSync(() => {
+              setPhase('open')
+              setChromeVisible(true)
+              setScrimOpacity(1)
+            })
+            flyout.style.visibility = 'hidden'
             flyout.style.pointerEvents = 'none'
-            setFlyoutCovering(true)
-            setPhase('open')
-            // Chrome fades in only after flyout cover drops (see handoff effect).
-            setScrimOpacity(1)
+            clearFlyoutHeroInlineStyles(flyout)
           },
         })
       })
@@ -450,64 +460,13 @@ export function LoungeImageLightbox({
         // ignore
       }
     }
-  }, [phase, zStack.flyout, zStack.overlay])
+  }, [phase, zStack.overlay, initialIndex, list.length])
 
-  // After open UI mounts under the flyout, drop the cover once the hero image is decoded.
-  useLayoutEffect(() => {
-    if (phase !== 'open' || !flyoutCovering) return undefined
-    const flyout = flyoutRef.current
-    let cancelled = false
-    let fallbackTimer = 0
-
-    const revealOpenUi = () => {
-      if (cancelled) return
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (cancelled) return
-          if (flyout) {
-            flyout.style.visibility = 'hidden'
-            flyout.style.pointerEvents = 'none'
-            clearFlyoutHeroInlineStyles(flyout)
-          }
-          setFlyoutCovering(false)
-          setChromeVisible(true)
-        })
-      })
-    }
-
-    const img = mediaImageRef.current
-    if (img instanceof HTMLImageElement) {
-      if (img.complete && img.naturalWidth > 0) {
-        revealOpenUi()
-      } else {
-        const onReady = () => revealOpenUi()
-        img.addEventListener('load', onReady, { once: true })
-        img.addEventListener('error', onReady, { once: true })
-        fallbackTimer = window.setTimeout(revealOpenUi, 320)
-        return () => {
-          cancelled = true
-          img.removeEventListener('load', onReady)
-          img.removeEventListener('error', onReady)
-          try {
-            window.clearTimeout(fallbackTimer)
-          } catch {
-            // ignore
-          }
-        }
-      }
-    } else {
-      fallbackTimer = window.setTimeout(revealOpenUi, 48)
-    }
-
-    return () => {
-      cancelled = true
-      try {
-        window.clearTimeout(fallbackTimer)
-      } catch {
-        // ignore
-      }
-    }
-  }, [phase, flyoutCovering, current])
+  // After the user pages away from the opened slide, drop the land shell (other aspects differ).
+  useEffect(() => {
+    if (phase !== 'open' || !landFrame) return
+    if (idx !== landSlideIndexRef.current) setLandFrame(null)
+  }, [idx, phase, landFrame])
 
   useEffect(
     () => () => {
@@ -525,10 +484,19 @@ export function LoungeImageLightbox({
 
   if (!current) return null
 
-  const openUi = phase === 'open'
-  const motionActive = phase === 'opening' || phase === 'closing' || flyoutCovering
+  const motionActive = phase === 'opening' || phase === 'closing'
   const effectiveScrim = Math.max(0, Math.min(1, scrimOpacity * (1 - dismissProgress * 0.55)))
-  const flyoutZ = flyoutCovering || phase === 'opening' || phase === 'closing' ? zStack.overlay + 1 : zStack.flyout
+  /** Pixel-match the flyout land frame (incl. visualViewport offsets) … flex-center alone can sit a few px off. */
+  const heroShellStyle =
+    landFrame && landFrame.width > 0 && landFrame.height > 0
+      ? {
+          position: 'fixed',
+          top: landFrame.top,
+          left: landFrame.left,
+          width: landFrame.width,
+          height: landFrame.height,
+        }
+      : undefined
 
   return createPortal(
     <div
@@ -557,7 +525,7 @@ export function LoungeImageLightbox({
         aria-hidden
       />
 
-      {/* FLIP flyout … covers open UI through land handoff so geometry swap never flashes. */}
+      {/* FLIP flyout … only for open/close motion. Open media pre-mounts underneath during expand. */}
       <div
         ref={flyoutRef}
         data-lounge-image-lightbox-flyout
@@ -565,23 +533,26 @@ export function LoungeImageLightbox({
         style={{
           visibility: motionActive ? 'visible' : 'hidden',
           pointerEvents: 'none',
-          zIndex: flyoutZ,
+          zIndex: zStack.overlay + 1,
           position: 'fixed',
         }}
       >
         <img
           src={currentDisplaySrc}
           alt=""
-          className="h-full w-full select-none object-contain"
+          className="h-full w-full select-none object-cover"
           draggable={false}
           decoding="async"
         />
       </div>
 
-      {openUi ? (
+      {showMediaLayer ? (
         <div
           className="absolute inset-0 flex flex-col bg-transparent"
-          style={{ zIndex: zStack.overlay }}
+          style={{
+            zIndex: zStack.overlay,
+            pointerEvents: mediaInteractive ? undefined : 'none',
+          }}
         >
           <div
             className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between"
@@ -641,7 +612,10 @@ export function LoungeImageLightbox({
             <div
               data-lounge-lightbox-image-pager
               className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
-              style={{ opacity: 1 - dismissProgress }}
+              style={{
+                opacity: chromeVisible ? 1 - dismissProgress : 0,
+                transition: chromeVisible ? `opacity ${HERO_CHROME_FADE_MS}ms ease-out` : 'none',
+              }}
             >
               {idx + 1} / {list.length}
             </div>
@@ -676,29 +650,48 @@ export function LoungeImageLightbox({
                       key={`${slideUrl}-${i}`}
                       className="relative z-[1] flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
                     >
-                      <img
-                        ref={i === idx ? mediaImageRef : undefined}
-                        src={loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')}
-                        alt=""
-                        className="relative z-[1] max-h-full max-w-full select-none object-contain"
-                        loading={i === idx ? 'eager' : 'lazy'}
-                        decoding="async"
-                        draggable={false}
-                      />
+                      <div
+                        className="relative z-[1] inline-flex max-h-full max-w-full"
+                        style={
+                          i === landSlideIndexRef.current && heroShellStyle ? heroShellStyle : undefined
+                        }
+                      >
+                        <img
+                          ref={i === idx ? mediaImageRef : undefined}
+                          src={loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')}
+                          alt=""
+                          className={
+                            i === landSlideIndexRef.current && heroShellStyle
+                              ? 'relative z-[1] h-full w-full select-none object-contain'
+                              : 'relative z-[1] max-h-full max-w-full select-none object-contain'
+                          }
+                          loading={i === idx || phase === 'opening' ? 'eager' : 'lazy'}
+                          decoding="async"
+                          draggable={false}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div
-                  className="relative z-[1] inline-flex max-h-full max-w-full origin-center"
-                  style={mediaTransformStyle}
+                  className={
+                    heroShellStyle
+                      ? 'relative z-[1] inline-flex origin-center'
+                      : 'relative z-[1] inline-flex max-h-full max-w-full origin-center'
+                  }
+                  style={{ ...(heroShellStyle || null), ...mediaTransformStyle }}
                 >
                   <img
                     ref={mediaImageRef}
                     key={current}
                     src={currentDisplaySrc}
                     alt=""
-                    className="relative z-[1] max-h-full max-w-full select-none object-contain"
+                    className={
+                      heroShellStyle
+                        ? 'relative z-[1] h-full w-full select-none object-contain'
+                        : 'relative z-[1] max-h-full max-w-full select-none object-contain'
+                    }
                     loading="eager"
                     decoding="async"
                     draggable={false}

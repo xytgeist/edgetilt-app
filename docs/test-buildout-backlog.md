@@ -960,7 +960,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-12: **Image lightbox FLIP polish:** land handoff keeps flyout covering until open image is decoded (no flash/jump); carousel index syncs on settle only and no longer rewrites `scrollLeft` mid-swipe; drop lightbox `scroll-smooth` + media `p-2` mismatch vs hero target.
+- 2026-08-12: **Image lightbox FLIP land v2:** pre-mount open media under the flyout during expand, lift cover same frame (`flushSync`); land shell uses fixed target rect; keep settle-only carousel sync (side-swipe). Replaces decode-wait cover that felt worse.
+- 2026-08-12: **Image lightbox FLIP polish:** land handoff keeps flyout covering until open image is decoded (no flash/jump); carousel index syncs on settle only and no longer rewrites `scrollLeft` mid-swipe; drop lightbox `scroll-smooth` + media `p-2` mismatch vs hero target. *(Land approach superseded same day.)*
 - 2026-08-12: **Image lightbox FLIP like Stream hero:** shared **`loungeLightboxFlip.js`** (rects + 500ms expand/shrink). Tap feed tile → grow from thumbnail; back / Escape / swipe-threshold → shrink to origin (live tile rect when paged). Swipe follows **x+y**; no off-screen fling … parent owns close. Stream video imports the same helpers. Smoke: single + multi image open/close; horizontal page still works; Stream hero unchanged.
 - 2026-08-12: **Image lightbox swipe-dismiss motion:** drag transform via DOM (no per-frame React re-render); release past threshold flings off-screen then closes (was hard-cut unmount). *(Superseded same day by FLIP shrink-back.)*
 - 2026-08-12: **Image lightbox swipe-dismiss restored:** multi-image snap pager no longer eats vertical dismiss. Axis-lock: horizontal → native snap page; vertical → swipe-away. Carousel `touch-action: pan-x`.

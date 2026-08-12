@@ -2,7 +2,6 @@ import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import LoungeStreamVideoLightboxChrome, {
   LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
-  LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS,
   LOUNGE_IMAGE_LIGHTBOX_TOP_FOLLOW_BTN_CLASS,
   LoungeStreamLightboxFollowButton,
 } from './LoungeStreamVideoLightboxChrome.jsx'

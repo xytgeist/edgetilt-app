@@ -914,12 +914,16 @@ async function messageFromEdgeFunctionResponseBody(res) {
   return raw.slice(0, 400)
 }
 
-/** Safari often surfaces failed `fetch` as "Load failed" with no HTTP body. */
+/** Safari / iOS PWA often surfaces failed `fetch` with no HTTP body. */
 export function mapGenericNetworkErrorMessage(raw, fallback) {
   const s = String(raw || '').trim()
-  if (/load failed|failed to fetch|networkerror|network request failed/i.test(s)) {
+  if (
+    /load failed|failed to fetch|networkerror|network request failed|failed to send a request to the edge function/i.test(
+      s,
+    )
+  ) {
     return (
-      'Connection was interrupted (common on cellular Safari or large uploads). Try Wi‑Fi, post again, or export a smaller MP4 (H.264 + AAC).'
+      'Connection was interrupted (common on cellular Safari / iPhone PWA). Try Wi-Fi and post again.'
     )
   }
   return s || String(fallback || '').trim()

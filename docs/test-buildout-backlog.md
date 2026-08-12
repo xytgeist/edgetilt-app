@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Lounge image R2 mint retry (iOS PWA):** `requestCfR2DirectUpload` retries transient `FunctionsFetchError` / “Failed to send a request to the Edge Function” within a **3s** wall budget (gaps 0 / 250 / 600ms). Friendlier remap via `mapGenericNetworkErrorMessage`. Client-only … no Edge redeploy.
 - 2026-08-12: **CoinPoker catalog via WP schedules:** `coinpokerCatalogFetch.mjs` scrapes dated series `/schedule/` tables + Sunday Specials/PKOs templates into `coinpoker:web:*` one_offs; wired into `sync-poker-tournament-catalog.mjs` (same GitHub Actions / MTTDB catalog cron). Soft-fail if pages 429; not a live lobby scrape.
 - 2026-08-12: **Start Session CTA above keyboard:** Lounge-style sticky footer only … iOS locked-layout `visualViewport` pad on the footer (form scrolls in `flex-1`). Android relies on `interactive-widget=resizes-content` with no extra pad (locked overlay pad was double-counting and blasting the sheet).
 - 2026-08-12: **Player ARCHIVE detail shows close review:** Archive detail (not the list card) reuses the pre-archive closed-stake review (Your bankroll + per-backer Made / stake value returned / markup / Returned to backer). Shared **`PokerStakeeClosedStakeReviewSections`**.

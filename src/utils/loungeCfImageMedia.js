@@ -97,6 +97,32 @@ export function loungeFeedImageDeliveryUrl(storedUrl, variant = 'feed', opts = {
   }
 }
 
+/** Total wall-clock budget for iOS PWA Edge invoke flakes (ms). */
+const R2_DIRECT_UPLOAD_INVOKE_BUDGET_MS = 3000
+/** Gaps before attempt 0 / 1 / 2… (capped by remaining budget). */
+const R2_DIRECT_UPLOAD_INVOKE_GAPS_MS = [0, 250, 600]
+
+function sleepMs(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, Math.max(0, ms))
+  })
+}
+
+/** True when invoke never got an HTTP response (Safari/PWA flake). */
+function isTransientR2EdgeInvokeError(error, invokeResponse) {
+  if (invokeResponse && typeof invokeResponse.status === 'number') return false
+  const ctx = error && typeof error === 'object' ? error.context : null
+  if (ctx && typeof ctx === 'object' && typeof ctx.status === 'number') return false
+  const name = error && typeof error === 'object' ? String(error.name || '') : ''
+  if (name === 'FunctionsFetchError') return true
+  const msg = String(
+    (error && typeof error === 'object' && 'message' in error && error.message) || '',
+  )
+  return /failed to send a request to the edge function|failed to fetch|load failed|networkerror|network request failed/i.test(
+    msg,
+  )
+}
+
 async function messageFromR2InvokeError(error, invokeResponse, functionName, defaultUserMessage) {
   const fallback = String(
     (error && typeof error === 'object' && 'message' in error && error.message) || defaultUserMessage,
@@ -137,43 +163,72 @@ async function messageFromR2InvokeError(error, invokeResponse, functionName, def
  * @param {{ contentType?: string, fileName?: string }} [opts]
  */
 export async function requestCfR2DirectUpload(supabaseClient, opts = {}) {
-  const {
-    data: { session },
-  } = await supabaseClient.auth.getSession()
-  if (!session?.access_token) {
-    throw new Error('You must be signed in to upload images.')
+  const body = {
+    contentType: opts.contentType || 'image/jpeg',
+    fileName: opts.fileName || '',
   }
-  const { data, error, response } = await supabaseClient.functions.invoke('lounge-cf-r2-direct-upload', {
-    body: {
-      contentType: opts.contentType || 'image/jpeg',
-      fileName: opts.fileName || '',
-    },
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  })
-  if (error) {
-    const msg = await messageFromR2InvokeError(
-      error,
-      response,
-      'lounge-cf-r2-direct-upload',
-      'Could not start image upload.',
-    )
-    if (msg.startsWith('R2_NOT_CONFIGURED:')) {
-      return { configured: false, data: null, error: null }
+  const deadline = Date.now() + R2_DIRECT_UPLOAD_INVOKE_BUDGET_MS
+  let lastError = /** @type {unknown} */ (null)
+  let lastResponse = /** @type {Response | undefined} */ (undefined)
+
+  for (let attempt = 0; ; attempt += 1) {
+    if (attempt > 0) {
+      const gap =
+        R2_DIRECT_UPLOAD_INVOKE_GAPS_MS[
+          Math.min(attempt, R2_DIRECT_UPLOAD_INVOKE_GAPS_MS.length - 1)
+        ] ?? 600
+      const remaining = deadline - Date.now()
+      if (remaining <= 0) break
+      await sleepMs(Math.min(gap, remaining))
+      if (Date.now() >= deadline) break
     }
-    throw new Error(msg)
+
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('You must be signed in to upload images.')
+    }
+
+    const { data, error, response } = await supabaseClient.functions.invoke(
+      'lounge-cf-r2-direct-upload',
+      {
+        body,
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      },
+    )
+
+    if (!error) {
+      if (!data?.uploadURL || !data?.publicUrl) {
+        throw new Error('Invalid response from image upload service.')
+      }
+      return {
+        configured: true,
+        data: {
+          uploadURL: String(data.uploadURL),
+          publicUrl: String(data.publicUrl),
+          objectKey: String(data.objectKey || ''),
+        },
+        error: null,
+      }
+    }
+
+    lastError = error
+    lastResponse = response
+    if (!isTransientR2EdgeInvokeError(error, response)) break
+    if (Date.now() >= deadline) break
   }
-  if (!data?.uploadURL || !data?.publicUrl) {
-    throw new Error('Invalid response from image upload service.')
+
+  const msg = await messageFromR2InvokeError(
+    lastError,
+    lastResponse,
+    'lounge-cf-r2-direct-upload',
+    'Could not start image upload.',
+  )
+  if (msg.startsWith('R2_NOT_CONFIGURED:')) {
+    return { configured: false, data: null, error: null }
   }
-  return {
-    configured: true,
-    data: {
-      uploadURL: String(data.uploadURL),
-      publicUrl: String(data.publicUrl),
-      objectKey: String(data.objectKey || ''),
-    },
-    error: null,
-  }
+  throw new Error(msg)
 }
 
 /**

@@ -60,26 +60,3 @@ export default function LoungeActivityInAppToast({
     </div>
   )
 }
-
-/** Admin preview payloads: short / medium / long content widths (hug layout). */
-export const ADMIN_IN_APP_TOAST_DEMO_SAMPLES = [
-  {
-    id: 'demo-short',
-    title: 'Chat',
-    body: 'New DM',
-    icon: '/android-icon-192x192.png',
-  },
-  {
-    id: 'demo-medium',
-    title: 'Poker Stable',
-    body: 'Investigence+test1 completed a stake session',
-    icon: '/android-icon-192x192.png',
-  },
-  {
-    id: 'demo-long',
-    title: 'Edge Lounge',
-    body:
-      'Berserk posted in AP Slots: long preview so you can judge frosted glass on a wide banner that still caps before the screen edges…',
-    icon: '/android-icon-192x192.png',
-  },
-]

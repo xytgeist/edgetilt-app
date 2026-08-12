@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Remove admin toast preview bell:** title-bar 🔔 Short/Medium/Long demo control removed (was promoted with frost toast work). Real activity toasts unchanged.
 - 2026-08-12: **In-app toast borderless frost:** activity + status pills drop the hairline border / light inset ring; frost + shadow only.
 - 2026-08-12: **In-app toast long copy:** shell `w-max` capped at **~75vw** (was `w-fit` shrink-wrapping into a tall skinny pill); activity body **`line-clamp-3`**.
 - 2026-08-12: **Lounge image R2 mint retry (iOS PWA):** `requestCfR2DirectUpload` retries transient `FunctionsFetchError` / “Failed to send a request to the Edge Function” within a **3s** wall budget (gaps 0 / 250 / 600ms). Friendlier remap via `mapGenericNetworkErrorMessage`. Client-only … no Edge redeploy.

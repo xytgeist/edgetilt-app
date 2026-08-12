@@ -15536,6 +15536,7 @@ export default function SocialFeed({
       {!loungeDockPanel ? (
         <div
           ref={loungeTitleBarRef}
+          data-lounge-title-bar
           className="fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
           style={{
             top: loungeFeedViewportTopPx,

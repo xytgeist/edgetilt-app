@@ -365,6 +365,20 @@ export function LoungeImageLightbox({
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [])
 
+  // Shrink-back: lift EDGE title bar above the portaled flyout so the tile tucks under the header.
+  useEffect(() => {
+    const bar = document.querySelector('[data-lounge-title-bar]')
+    if (!(bar instanceof HTMLElement)) return undefined
+    if (phase === 'closing') {
+      bar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
+    } else {
+      bar.removeAttribute('data-lounge-title-bar-over-lightbox-close')
+    }
+    return () => {
+      bar.removeAttribute('data-lounge-title-bar-over-lightbox-close')
+    }
+  }, [phase])
+
   useEffect(() => {
     if (!current) return
     const prev = document.body.style.overflow

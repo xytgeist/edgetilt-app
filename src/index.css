@@ -1237,6 +1237,14 @@ html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='closin
 html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   background-color: #fafafa !important;
 }
+/*
+ * Image lightbox shrink-back: EDGE title bar (normally z-50) must sit above the
+ * portaled flyout (z ~100–111) so the tile can tuck under the header.
+ * Below app modals (z-120). Cleared when close ends / lightbox unmounts.
+ */
+[data-lounge-title-bar][data-lounge-title-bar-over-lightbox-close] {
+  z-index: 112 !important;
+}
 /* Lounge image lightbox nav - idle interaction gray + stronger glass over busy media */
 html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn {
   color: #3f3f46 !important;

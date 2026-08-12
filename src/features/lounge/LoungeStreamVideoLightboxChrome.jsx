@@ -12,15 +12,15 @@ const LOUNGE_LIGHTBOX_CAPTION_CLASS = 'text-[#fff]'
 export const LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS =
   'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 [-webkit-tap-highlight-color:transparent]'
 
-/** Image/GIF lightbox top chrome - same glass as chat header (`chat-header-glass`). */
+/** Image/GIF lightbox top chrome - Stream-like frost (light mode overrides via `.media-lightbox-nav-btn`). */
 export const LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS =
-  'chat-header-glass flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full text-zinc-100 transition-opacity active:opacity-70 [-webkit-tap-highlight-color:transparent]'
+  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md hover:bg-black/65 active:bg-black/70 [-webkit-tap-highlight-color:transparent]'
 
 export const LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS =
   `${LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS} media-lightbox-nav-btn`
 
 export const LOUNGE_IMAGE_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
-  'chat-header-glass media-lightbox-nav-btn flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full px-3.5 text-[13px] font-bold text-zinc-100 transition-opacity active:opacity-70 [-webkit-tap-highlight-color:transparent]'
+  'media-lightbox-nav-btn flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/15 bg-black/55 px-3.5 text-[13px] font-bold text-white backdrop-blur-md hover:bg-black/65 active:bg-black/70 [-webkit-tap-highlight-color:transparent]'
 
 /** Horizontal inset for hero / image lightbox chrome (10% side margins in landscape). */
 export const LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD = 'px-3 landscape:px-[10vw]'

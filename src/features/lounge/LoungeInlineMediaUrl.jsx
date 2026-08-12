@@ -610,7 +610,7 @@ export function LoungeImageLightbox({
             </div>
             {lightboxInteractionBarContent ? (
               <div
-                className={`pointer-events-auto w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
+                className={`pointer-events-auto w-full bg-gradient-to-t from-black/95 via-black/65 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
                 data-lounge-image-lightbox-footer
                 data-lounge-lightbox-no-swipe
                 onClick={(e) => e.stopPropagation()}

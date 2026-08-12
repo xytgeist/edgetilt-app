@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Image lightbox chrome frost:** Stream-like `black/55` top buttons; interaction pills `black/60` + blur (image lightbox only); deeper footer scrim. Light mode keeps frosted light pills (no longer strips `bg-black` shells).
 - 2026-08-12: **Image lightbox shrink tucks under EDGE title bar:** while `phase=closing`, title bar (`data-lounge-title-bar`) bumps to z-112 above the portaled flyout so a partially covered feed tile does not paint over the header.
 - 2026-08-12: **Image lightbox FLIP close shows feed:** light-mode opaque `#fafafa` shell only while `phase=open`; opening/closing shell transparent + light scrim fades so Lounge is visible under shrink-back (was blank gray until unmount).
 - 2026-08-12: **Image lightbox FLIP land v2:** pre-mount open media under the flyout during expand, lift cover same frame (`flushSync`); land shell uses fixed target rect; keep settle-only carousel sync (side-swipe). Replaces decode-wait cover that felt worse.

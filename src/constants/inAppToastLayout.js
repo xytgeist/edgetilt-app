@@ -2,8 +2,8 @@
  * Shared layout for top in-app notification toasts (frosted glass pill).
  */
 
-/** Max width cap for wide activity/status toasts (legacy 42rem). */
-export const IN_APP_TOAST_SHELL_WIDTH = 'w-[min(calc(100vw-1.5rem),33.6rem)]'
+/** Hug content; cap wide activity/status toasts. */
+export const IN_APP_TOAST_SHELL_WIDTH = 'w-fit max-w-[min(calc(100vw-1.5rem),33.6rem)]'
 
 /** Max width for short billing/access notices (legacy 20rem). */
 export const IN_APP_TOAST_ACCESS_WIDTH = 'w-[min(calc(100vw-1.5rem),16rem)]'
@@ -13,6 +13,18 @@ export const IN_APP_TOAST_TOP = 'max(0.5rem, env(safe-area-inset-top))'
 /** Stacked toast offset when one toast is already visible (legacy 4.25rem / 3.25rem). */
 export const IN_APP_TOAST_STACKED_TOP =
   'max(3.4rem, calc(0.5rem + 2.6rem + env(safe-area-inset-top)))'
+
+/** Vertical stack step for admin multi-toast previews (approx card height + gap). */
+export const IN_APP_TOAST_STACK_STEP_REM = 3.75
+
+/** @param {number} index 0-based stack index */
+export function inAppToastStackedTopStyle(index = 0) {
+  const i = Math.max(0, Number(index) || 0)
+  if (i <= 0) return { top: IN_APP_TOAST_TOP }
+  return {
+    top: `calc(${IN_APP_TOAST_TOP} + ${IN_APP_TOAST_STACK_STEP_REM * i}rem)`,
+  }
+}
 
 export const IN_APP_TOAST_SHELL_POSITION = `fixed left-1/2 ${IN_APP_TOAST_SHELL_WIDTH} -translate-x-1/2`
 

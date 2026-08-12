@@ -37,6 +37,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 - [-] **Lounge thread compose — iOS options bar behind keyboard:** after image/video pick in **`LoungeThreadComposeSheet`**, the media options toolbar can sit **behind** the software keyboard on iOS Safari/PWA. Known issue; **parked** — revisit later (not blocking test ship).
 
+- [-] **Maybe — poker tools free via Lounge post duty:** Keep Poker Bankroll / Stable (etc.) free, but after first **7 days** require **≥1 substantive Lounge post in the last 30 days** to stay unlocked. Gate plumbing is easy (`can_use_poker_tools()` + UI). Hard part is quality: heuristics (length, dupe, unlock-bait phrases, early delete) + AI judge (substantive / spam-unlock / hostile-to-site) + staff override. Open product calls: comments vs top-level only; quote-reposts; delete-after-unlock; staff/paid exempt. **Not scheduled** … revisit when Ryan wants community reciprocity without a paywall.
+
 ---
 
 ## Planned (Lounge bots)
@@ -962,6 +964,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - 2026-08-12: **ClubWPT online catalog:** Sync guest-logs into `webservices.clubwpt.com` lobbydata (`clubwpt:online:*` → venue **ClubWPT**).
 - 2026-08-12: **ClubWPT Gold catalog path mapped:** Cocos client → `v88mttfront…/mtt/appfile/url_config` → `mttapi.clubwptgold.com/api/mtt/tournamentList` (protobuf). No guest token … sync ingests when `CLUBWPT_GOLD_MTT_TOKEN` is set (`clubwptgold:online:*` → venue **ClubWPT Gold**).
 - 2026-08-12: **ClubWPT Gold catalog wontfix (for now):** Phone OTP + geo compliance block guest/cron login. Leave token-optional path in sync; do not chase bot account or Action secrets unless Ryan reopens.
+- 2026-08-12: **Maybe — poker tools ↔ Lounge post duty:** Parked under *Deferred / someday*. Free poker tools after week 1 gated on a substantive Lounge post in rolling 30d; quality scoring is the hard part.
 - 2026-08-12: **Online tournament picker site starve:** Catalog soft-pick fetched 200 rows across all venues; GGPoker filled the page so PokerStars (and others) never reached the client. Online now filters `venue_name` by selected Site in SQL. MTTDB online lobby is ~13 rooms … no WSOP.com / ClubWPT / ClubWPT Gold rows to ingest.
 - 2026-08-12: **Poker catalog MTTDB false-green:** Prod Action was succeeding on regional JSON only (~2s) with **0** `mttdb:online:*` rows. Sync now isolates live/online scrapes and **fails** if online ingested is 0. Manual prod sync **2207** upserted (**576** online / **556** live).
 - 2026-08-11: **Lounge feed horizontal drag from long URLs:** Main feed scroller now `overflow-x-hidden` / `overscroll-x-none` (match post detail); caption links use `break-all` + `overflow-wrap:anywhere`; feed rows `max-w-full min-w-0 overflow-x-hidden` so unbroken URLs cannot widen the column.

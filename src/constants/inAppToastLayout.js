@@ -1,5 +1,5 @@
 /**
- * Shared layout for top in-app notification toasts (~20% narrower/smaller than legacy sizing).
+ * Shared layout for top in-app notification toasts (frosted glass pill).
  */
 
 /** Max width cap for wide activity/status toasts (legacy 42rem). */
@@ -16,32 +16,32 @@ export const IN_APP_TOAST_STACKED_TOP =
 
 export const IN_APP_TOAST_SHELL_POSITION = `fixed left-1/2 ${IN_APP_TOAST_SHELL_WIDTH} -translate-x-1/2`
 
-const IN_APP_TOAST_STATUS_PILL_BASE = `pointer-events-none ${IN_APP_TOAST_SHELL_POSITION} rounded-lg border px-2.5 py-2 text-center text-[11px] font-medium leading-snug shadow-[0_6px_24px_rgba(0,0,0,0.35)] backdrop-blur-md`
+const IN_APP_TOAST_STATUS_PILL_BASE = `pointer-events-none ${IN_APP_TOAST_SHELL_POSITION} rounded-2xl border px-3 py-2 text-center text-[11px] font-medium leading-snug shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl backdrop-saturate-150`
 
 /** Lounge queued reply / share flash toasts. */
-export const IN_APP_TOAST_STATUS_PILL_CYAN = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--cyan border-cyan-500/50 bg-zinc-950/92 text-cyan-100`
+export const IN_APP_TOAST_STATUS_PILL_CYAN = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--cyan border-white/10 bg-zinc-900/55 text-cyan-50`
 
-export const IN_APP_TOAST_STATUS_PILL_EMERALD = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--emerald border-emerald-500/45 bg-zinc-950/92 text-emerald-100`
+export const IN_APP_TOAST_STATUS_PILL_EMERALD = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--emerald border-white/10 bg-zinc-900/55 text-emerald-50`
 
 /** Rich activity toast card (icon + title + body). */
 export const IN_APP_TOAST_ACTIVITY_CARD =
-  'in-app-toast-activity-card flex w-full items-start gap-2 rounded-lg border border-cyan-500/50 bg-zinc-950/95 px-2 py-1.5 shadow-[0_6px_24px_rgba(0,0,0,0.35)] backdrop-blur-md'
+  'in-app-toast-activity-card flex w-full items-center gap-2.5 rounded-2xl border border-white/10 bg-zinc-900/55 px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl backdrop-saturate-150'
 
 export const IN_APP_TOAST_ACTIVITY_ICON =
-  'in-app-toast-activity-icon mt-0.5 h-[1.8125rem] w-[1.8125rem] shrink-0 rounded-md bg-zinc-900 object-cover'
+  'in-app-toast-activity-icon h-8 w-8 shrink-0 rounded-full bg-zinc-800/80 object-cover ring-1 ring-white/10'
 
-export const IN_APP_TOAST_ACTIVITY_ICON_PX = 29
+export const IN_APP_TOAST_ACTIVITY_ICON_PX = 32
 
 export const IN_APP_TOAST_ACTIVITY_TITLE =
-  'in-app-toast-activity-title block text-[11px] font-semibold leading-snug text-cyan-100'
+  'in-app-toast-activity-title block text-[12px] font-semibold leading-snug text-zinc-50'
 
 export const IN_APP_TOAST_ACTIVITY_BODY =
-  'in-app-toast-activity-body mt-0.5 block text-[11px] font-medium leading-snug text-zinc-100'
+  'in-app-toast-activity-body mt-0.5 block text-[11px] font-medium leading-snug text-zinc-300'
 
 export const IN_APP_TOAST_DISMISS_BTN =
-  'in-app-toast-activity-dismiss shrink-0 rounded-md px-1.5 py-0.5 text-[14px] leading-none text-zinc-400 touch-manipulation hover:bg-zinc-800/80 hover:text-zinc-200'
+  'in-app-toast-activity-dismiss shrink-0 rounded-full px-1.5 py-0.5 text-[15px] leading-none text-zinc-400 touch-manipulation hover:bg-white/10 hover:text-zinc-100'
 
 export const IN_APP_TOAST_ACCESS_BANNER =
-  'access-notice-banner rounded-lg border border-cyan-500/45 bg-cyan-950/95 px-2.5 py-1.5 text-center shadow-[0_6px_22px_rgba(0,0,0,0.35)] backdrop-blur-md'
+  'access-notice-banner rounded-2xl border border-cyan-400/30 bg-cyan-950/55 px-2.5 py-1.5 text-center shadow-[0_8px_28px_rgba(0,0,0,0.28)] backdrop-blur-xl backdrop-saturate-150'
 
-export const IN_APP_TOAST_ACCESS_BANNER_TEXT = 'access-notice-banner-text text-[10px] font-medium leading-snug text-cyan-100'
+export const IN_APP_TOAST_ACCESS_BANNER_TEXT = 'access-notice-banner-text text-[10px] font-medium leading-snug text-cyan-50'

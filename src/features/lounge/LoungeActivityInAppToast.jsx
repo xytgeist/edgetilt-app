@@ -27,7 +27,7 @@ export default function LoungeActivityInAppToast({ toast, onDismiss, onOpen }) {
         <button
           type="button"
           onClick={() => onOpen?.(toast)}
-          className="flex min-w-0 flex-1 items-start gap-2.5 rounded-md px-1 py-0.5 text-left touch-manipulation active:scale-[0.99]"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-0.5 py-0.5 text-left touch-manipulation active:scale-[0.99]"
         >
           <img
             src={toast.icon || '/android-icon-192x192.png'}

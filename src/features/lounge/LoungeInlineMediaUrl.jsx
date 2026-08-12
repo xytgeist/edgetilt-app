@@ -35,9 +35,6 @@ function normalizeUrlList(urls) {
   return urls.map((u) => String(u ?? '').trim()).filter(Boolean)
 }
 
-/** Square / landscape slides sit above optical center so footer chrome has room (X-style). */
-const IMAGE_LIGHTBOX_SHORT_LIFT_PAD = 'min(22vh, 11.5rem)'
-
 /**
  * @param {HTMLImageElement | null | undefined} img
  * @returns {number | null} width/height, or null if unknown
@@ -48,6 +45,32 @@ function readImageAspectRatio(img) {
   const h = img.naturalHeight
   if (!(w > 0 && h > 0)) return null
   return w / h
+}
+
+/**
+ * Pad the media shell so flex-centering sits in the band between top chrome bottom
+ * and the top of footer chrome (avatar row, or interaction pills when compact).
+ * @param {HTMLElement | null | undefined} shell
+ * @param {HTMLElement | null | undefined} topChrome
+ * @param {HTMLElement | null | undefined} footerChrome
+ * @returns {{ top: number, bottom: number }}
+ */
+function measureImageLightboxMediaBand(shell, topChrome, footerChrome) {
+  if (!(shell instanceof HTMLElement) || !(topChrome instanceof HTMLElement)) {
+    return { top: 0, bottom: 0 }
+  }
+  const shellRect = shell.getBoundingClientRect()
+  if (!(shellRect.width > 0 && shellRect.height > 0)) return { top: 0, bottom: 0 }
+  const topRect = topChrome.getBoundingClientRect()
+  const top = Math.max(0, Math.round(topRect.bottom - shellRect.top))
+  let bottom = 0
+  if (footerChrome instanceof HTMLElement) {
+    const footRect = footerChrome.getBoundingClientRect()
+    bottom = Math.max(0, Math.round(shellRect.bottom - footRect.top))
+  }
+  // Keep a usable band if chrome measurement glitches (e.g. display:none mid-unmount).
+  if (top + bottom >= shellRect.height - 8) return { top: 0, bottom: 0 }
+  return { top, bottom }
 }
 
 /**
@@ -131,6 +154,8 @@ export function LoungeImageLightbox({
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
   const carouselScrollRef = useRef(null)
+  const topChromeRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const footerChromeRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const phaseRef = useRef(phase)
   phaseRef.current = phase
   const idxRef = useRef(idx)
@@ -140,17 +165,29 @@ export function LoungeImageLightbox({
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const landSlideIndexRef = useRef(Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0))))
-  /** Current slide natural width/height. `>= 1` → square/landscape (full chrome + lift). */
+  /** Current slide natural width/height. `>= 1` → square/landscape (full chrome). */
   const [imageAspect, setImageAspect] = useState(/** @type {number | null} */ (null))
+  /** Padding so media centers between top buttons and avatar row / bottom pills. */
+  const [mediaBandPad, setMediaBandPad] = useState({ top: 0, bottom: 0 })
   const noteSlideAspect = useCallback((img) => {
     const next = readImageAspectRatio(img)
     if (next == null) return
     setImageAspect((prev) => (prev != null && Math.abs(prev - next) < 0.0001 ? prev : next))
   }, [])
-  // height <= width (square / landscape): full author chrome + lift. Taller: pills only.
+  // height <= width (square / landscape): full author chrome. Taller: pills only.
   const showAuthorMeta = imageAspect == null || imageAspect >= 1
-  const liftShortMedia = showAuthorMeta && imageAspect != null
   const chromeOpts = useMemo(() => ({ showAuthorMeta }), [showAuthorMeta])
+
+  const syncMediaBandPad = useCallback(() => {
+    const next = measureImageLightboxMediaBand(
+      mediaContainerRef.current,
+      topChromeRef.current,
+      footerChromeRef.current,
+    )
+    setMediaBandPad((prev) =>
+      prev.top === next.top && prev.bottom === next.bottom ? prev : next,
+    )
+  }, [])
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -414,6 +451,30 @@ export function LoungeImageLightbox({
     setImageAspect(null)
   }, [idx, current, phase, noteSlideAspect])
 
+  // Keep every slide optically centered in the chrome band (top buttons ↔ avatar/pills).
+  useLayoutEffect(() => {
+    if (phase !== 'open' && phase !== 'opening') return undefined
+    syncMediaBandPad()
+    const shell = mediaContainerRef.current
+    const topEl = topChromeRef.current
+    const footEl = footerChromeRef.current
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', syncMediaBandPad)
+      return () => window.removeEventListener('resize', syncMediaBandPad)
+    }
+    const ro = new ResizeObserver(() => {
+      syncMediaBandPad()
+    })
+    if (shell) ro.observe(shell)
+    if (topEl) ro.observe(topEl)
+    if (footEl) ro.observe(footEl)
+    window.addEventListener('resize', syncMediaBandPad)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', syncMediaBandPad)
+    }
+  }, [phase, showAuthorMeta, chromeVisible, lightboxChromeContent, multi, idx, syncMediaBandPad])
+
   useEffect(() => {
     notifyLoungeStreamLightboxOpen(true)
     return () => notifyLoungeStreamLightboxOpen(false)
@@ -638,6 +699,7 @@ export function LoungeImageLightbox({
           >
             <div className="media-lightbox-status-bar-blend" aria-hidden />
             <div
+              ref={topChromeRef}
               className={`${chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
               data-lounge-lightbox-top-chrome
               data-lounge-lightbox-no-swipe
@@ -667,7 +729,11 @@ export function LoungeImageLightbox({
                 data-lounge-lightbox-no-swipe
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className={chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'}>
+                <div
+                  ref={footerChromeRef}
+                  className={chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'}
+                  data-lounge-image-lightbox-footer-chrome
+                >
                   {lightboxChromeContent}
                 </div>
                 {multi ? (
@@ -710,7 +776,11 @@ export function LoungeImageLightbox({
             <div
               ref={mediaContainerRef}
               className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
-              style={liftShortMedia ? { paddingBottom: IMAGE_LIGHTBOX_SHORT_LIFT_PAD } : undefined}
+              style={
+                mediaBandPad.top > 0 || mediaBandPad.bottom > 0
+                  ? { paddingTop: mediaBandPad.top, paddingBottom: mediaBandPad.bottom }
+                  : undefined
+              }
             >
               <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
               {carouselMode ? (

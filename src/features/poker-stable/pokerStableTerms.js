@@ -13,6 +13,10 @@ import {
   roundMoney,
   stakeDealIsLiveForStakee,
 } from './pokerStableMath.js'
+import {
+  isBackerInitiatedBackingDeal,
+  isPlayerInitiatedBackingDeal,
+} from './pokerStableApi.js'
 
 export { dealHasAcceptedBackerSlice, stakeDealIsLiveForStakee } from './pokerStableMath.js'
 
@@ -112,6 +116,51 @@ export function dealStakeeDisplayName(deal, profilesById = {}) {
  * @param {string | null | undefined} viewerUserId
  * @param {object[]} [slices]
  */
+function edgeBackerUserIdsFromSlices(slices = []) {
+  const ids = []
+  const seen = new Set()
+  for (const s of slices || []) {
+    if (s?.counterparty_kind !== 'user') continue
+    const id = s?.staker_user_id
+    if (!id) continue
+    if (s.status === 'declined' || s.status === 'cancelled' || s.status === 'revoked') continue
+    if (seen.has(id)) continue
+    seen.add(id)
+    ids.push(id)
+  }
+  return ids
+}
+
+/** Unique Edge backer user ids on a deal (lead + slices; guests excluded). */
+export function stableDealEdgeBackerUserIds(deal, slices = []) {
+  const ids = new Set(edgeBackerUserIdsFromSlices(slices))
+  const leadId = deal?.staker_user_id
+  const stakeeId = deal?.stakee_user_id
+  if (leadId && leadId !== stakeeId) ids.add(leadId)
+  return [...ids]
+}
+
+/**
+ * Edge user ids on the stake the viewer can DM (excludes viewer + guests).
+ * @param {object | null | undefined} deal
+ * @param {object[]} [slices]
+ * @param {string | null | undefined} viewerUserId
+ */
+export function stableDealEdgeChatPeers(deal, slices = [], viewerUserId) {
+  if (!deal || !viewerUserId) return []
+  const peers = []
+  const seen = new Set()
+  const add = (id) => {
+    if (!id || id === viewerUserId || seen.has(id)) return
+    seen.add(id)
+    peers.push(id)
+  }
+  if (deal.stakee_user_id) add(deal.stakee_user_id)
+  if (deal.staker_user_id) add(deal.staker_user_id)
+  for (const id of edgeBackerUserIdsFromSlices(slices)) add(id)
+  return peers
+}
+
 export function stableDealEdgeChatPeerUserId(deal, viewerUserId, slices = []) {
   if (!deal || !viewerUserId) return null
   const stakeeId = deal.stakee_user_id || null
@@ -133,6 +182,55 @@ export function stableDealEdgeChatPeerUserId(deal, viewerUserId, slices = []) {
   }
   if (stakeeId && stakeeId !== viewerUserId) return stakeeId
   return null
+}
+
+/**
+ * Stake-card chat affordance: one-tap DM vs creator-only multi menu.
+ * @returns {{ mode: 'none' | 'dm_one' | 'menu', dmPeers: string[], canCreateGroup: boolean, groupMemberIds: string[] }}
+ */
+export function stableDealStakeChatCapabilities(deal, slices = [], viewerUserId) {
+  const none = { mode: 'none', dmPeers: [], canCreateGroup: false, groupMemberIds: [] }
+  if (!deal || !viewerUserId) return none
+
+  const peers = stableDealEdgeChatPeers(deal, slices, viewerUserId)
+  if (!peers.length) return none
+
+  const edgeBackerCount = stableDealEdgeBackerUserIds(deal, slices).length
+  const isPlayer = deal.stakee_user_id === viewerUserId
+  const isCreator =
+    (isPlayerInitiatedBackingDeal(deal) && isPlayer) ||
+    (isBackerInitiatedBackingDeal(deal) && deal.staker_user_id === viewerUserId)
+
+  if (edgeBackerCount < 2) {
+    const one = stableDealEdgeChatPeerUserId(deal, viewerUserId, slices)
+    if (!one) return none
+    return { mode: 'dm_one', dmPeers: [one], canCreateGroup: false, groupMemberIds: [] }
+  }
+
+  if (isCreator) {
+    return {
+      mode: 'menu',
+      dmPeers: peers,
+      canCreateGroup: true,
+      groupMemberIds: [viewerUserId, ...peers],
+    }
+  }
+
+  const creatorId = isPlayerInitiatedBackingDeal(deal)
+    ? deal.stakee_user_id
+    : deal.staker_user_id
+  if (creatorId && creatorId !== viewerUserId) {
+    return {
+      mode: 'dm_one',
+      dmPeers: [creatorId],
+      canCreateGroup: false,
+      groupMemberIds: [],
+    }
+  }
+
+  const one = stableDealEdgeChatPeerUserId(deal, viewerUserId, slices)
+  if (!one) return none
+  return { mode: 'dm_one', dmPeers: [one], canCreateGroup: false, groupMemberIds: [] }
 }
 
 /** Lead backer who proposed a horse deal (`deal.staker_user_id`). */

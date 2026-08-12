@@ -103,6 +103,8 @@ export default function PokerStableScreen({
   onHighlightPendingOfferConsumed = null,
   /** @type {(peerUserId: string) => void} */
   onOpenChatWithUser = null,
+  /** @type {(roomId: string) => void} */
+  onOpenChatRoom = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [deals, setDeals] = useState([])
@@ -1040,6 +1042,8 @@ export default function PokerStableScreen({
               onDeclineSlice={onDeclineSlice}
               onOpenTerms={setTermsDealId}
               onOpenChatWithUser={onOpenChatWithUser}
+              onOpenChatRoom={onOpenChatRoom}
+              supabaseClient={supabaseClient}
               saving={saving}
               onNudgePendingBacker={onNudgePendingBacker}
               nudgingSliceId={nudgingSliceId}

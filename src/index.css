@@ -7310,6 +7310,48 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-ban
   background-color: rgba(244, 244, 245, 0.95) !important;
   color: #155e75 !important;
 }
+/* Multi-backer stake chat menu sheet (portaled outside bankroll/stable roots) */
+html.light [data-poker-stake-chat-menu] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-chat-menu] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-stake-chat-menu] .text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-poker-stake-chat-menu] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stake-chat-menu] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-stake-chat-menu] .bg-zinc-800\/80,
+html.light [data-poker-stake-chat-menu] .bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-stake-chat-menu] .active\:bg-zinc-700\/80:active,
+html.light [data-poker-stake-chat-menu] .active\:bg-zinc-700:active {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-poker-stake-chat-menu] .bg-zinc-700 {
+  background-color: #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-poker-stake-chat-menu] .bg-cyan-600 {
+  background-color: #0891b2 !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stake-chat-menu] .active\:bg-cyan-500:active {
+  background-color: #0e7490 !important;
+}
+html.light [data-poker-stake-chat-menu] .text-cyan-300 {
+  color: #0e7490 !important;
+}
+html.light [data-poker-stake-chat-menu] .bg-zinc-600\/70 {
+  background-color: #d4d4d8 !important;
+}
 [data-poker-bankroll-hero-card] [data-poker-hero-end-stake-link] {
   color: rgb(161 161 170);
 }

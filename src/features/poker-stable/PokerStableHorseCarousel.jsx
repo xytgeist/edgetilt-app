@@ -11,6 +11,7 @@ import {
 } from './pokerStableBackerMath.js'
 import PokerStableSettleNeedsAttnBanner from './PokerStableSettleNeedsAttnBanner.jsx'
 import PokerStableClosedHorseHeroBanner from './PokerStableClosedHorseHeroBanner.jsx'
+import PokerStakeChatMenuSheet from './PokerStakeChatMenuSheet.jsx'
 import {
   backerSliceInviteRiskLine,
   backerSliceInviteSummaryLine,
@@ -18,7 +19,7 @@ import {
   pendingBackerNudgeTargetsForActiveBacker,
   pendingSettleCommitsForDeal,
   sliceCounterpartyDisplayName,
-  stableDealEdgeChatPeerUserId,
+  stableDealStakeChatCapabilities,
   stakeDealIsLiveForStakee,
   stakeHorseCardStatusLabel,
   stakeInitiatorCanReplaceDeclinedDeal,
@@ -51,6 +52,9 @@ export default function PokerStableHorseCarousel({
   onOpenTerms,
   /** Open Chat DM with Edge peer (null / omitted when guest counterpart). */
   onOpenChatWithUser = null,
+  /** Open Chat room by id (stake group create). */
+  onOpenChatRoom = null,
+  supabaseClient = null,
   onNudgePendingBacker,
   nudgingSliceId = null,
   nudgeDisabled = false,
@@ -67,6 +71,7 @@ export default function PokerStableHorseCarousel({
   const slides = deals.map((d) => ({ id: d.id }))
   const slideIdsKey = slides.map((s) => s.id).join('|')
   const [activeId, setActiveId] = useState(() => focusDealId || slides[0]?.id || null)
+  const [stakeChatMenuDealId, setStakeChatMenuDealId] = useState(/** @type {string | null} */ (null))
 
   useEffect(() => {
     if (!focusDealId || !slideIdsKey) return
@@ -85,7 +90,16 @@ export default function PokerStableHorseCarousel({
   const labelScope = labelDeals.length ? labelDeals : deals
   const toneScope = toneDeals.length ? toneDeals : labelScope
 
+  const chatMenuDeal = stakeChatMenuDealId
+    ? deals.find((d) => d.id === stakeChatMenuDealId) || null
+    : null
+  const chatMenuSlices = stakeChatMenuDealId ? slicesByDeal[stakeChatMenuDealId] || [] : []
+  const chatMenuCaps = chatMenuDeal
+    ? stableDealStakeChatCapabilities(chatMenuDeal, chatMenuSlices, userId)
+    : null
+
   return (
+    <>
     <PokerBankrollHeroCarousel
       slides={slides}
       activeId={activeId || slides[0]?.id}
@@ -157,8 +171,10 @@ export default function PokerStableHorseCarousel({
         // Match Sessions / Unsettled tone … not padded trend first/last (can disagree after settles).
         const sparkUp = (stats.profit ?? 0) >= 0
         const cardClassName = `relative flex w-full flex-col overflow-hidden ${horseTone.surface} p-5 text-left`
-        const chatPeerUserId = stableDealEdgeChatPeerUserId(deal, userId, dealSlices)
-        const showChatBtn = Boolean(chatPeerUserId && typeof onOpenChatWithUser === 'function')
+        const stakeChatCaps = stableDealStakeChatCapabilities(deal, dealSlices, userId)
+        const showChatBtn = Boolean(
+          stakeChatCaps.mode !== 'none' && typeof onOpenChatWithUser === 'function',
+        )
 
         const statsSparkBackground = showSparkBackground ? (
           <div
@@ -200,7 +216,12 @@ export default function PokerStableHorseCarousel({
                   data-poker-stable-chat-btn
                   onClick={(e) => {
                     e.stopPropagation()
-                    onOpenChatWithUser?.(chatPeerUserId)
+                    if (stakeChatCaps.mode === 'menu') {
+                      setStakeChatMenuDealId(deal.id)
+                      return
+                    }
+                    const peer = stakeChatCaps.dmPeers[0]
+                    if (peer) onOpenChatWithUser?.(peer)
                   }}
                   className="flex h-9 w-9 items-center justify-center rounded-xl text-cyan-300 touch-manipulation active:bg-white/5"
                   aria-label="Chat"
@@ -441,5 +462,20 @@ export default function PokerStableHorseCarousel({
         )
       }}
     />
+    {chatMenuDeal && chatMenuCaps?.mode === 'menu' ? (
+      <PokerStakeChatMenuSheet
+        open
+        onClose={() => setStakeChatMenuDealId(null)}
+        deal={chatMenuDeal}
+        dmPeers={chatMenuCaps.dmPeers}
+        canCreateGroup={chatMenuCaps.canCreateGroup}
+        groupMemberIds={chatMenuCaps.groupMemberIds}
+        profilesById={profilesById}
+        supabaseClient={supabaseClient}
+        onOpenChatWithUser={onOpenChatWithUser}
+        onOpenChatRoom={onOpenChatRoom}
+      />
+    ) : null}
+    </>
   )
 }

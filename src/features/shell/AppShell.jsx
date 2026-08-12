@@ -2644,6 +2644,10 @@ export default function AppShell({
             setTab('chat')
             setMenuOpen(false)
           }}
+          onOpenChatRoom={(roomId) => {
+            if (!roomId) return
+            openChatRoomDirect(roomId, { skipReloadIfSame: true })
+          }}
         />
       )
     } else if (tab === 'poker-stable') {
@@ -2673,6 +2677,10 @@ export default function AppShell({
             setPendingChatPeerUserId(peerUserId)
             setTab('chat')
             setMenuOpen(false)
+          }}
+          onOpenChatRoom={(roomId) => {
+            if (!roomId) return
+            openChatRoomDirect(roomId, { skipReloadIfSame: true })
           }}
         />
       )

@@ -31,6 +31,7 @@ import { notifyPokerOfferAttentionChanged } from '../poker-stable/pokerPendingOf
 import PokerStakeOfferOnboardingModal from './PokerStakeOfferOnboardingModal.jsx'
 import PokerStakeeClosedStakeSheet from './PokerStakeeClosedStakeSheet.jsx'
 import PokerBankrollCarouselCoachModal from './PokerBankrollCarouselCoachModal.jsx'
+import PokerStakeChatMenuSheet from '../poker-stable/PokerStakeChatMenuSheet.jsx'
 import {
   clearPokerStakeOnboardingDeal,
   readPokerStakeCarouselCoachAck,
@@ -66,7 +67,7 @@ import {
   dealLeadBackerDisplayName,
   pendingBackerAcceptanceSlices,
   dealHasAcceptedBackerSlice,
-  stableDealEdgeChatPeerUserId,
+  stableDealStakeChatCapabilities,
   stakeHeroBadgeLabel,
   stakeHeroBadgeVariant,
   stakeGoesLivePendingCopy,
@@ -360,6 +361,8 @@ export default function PokerBankrollTracker({
   showGlobalConfirm = null,
   /** Open Chat DM with Edge peer (null / omitted when guest counterpart). */
   onOpenChatWithUser = null,
+  /** Open an existing Chat room by id (stake group create). */
+  onOpenChatRoom = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -375,6 +378,8 @@ export default function PokerBankrollTracker({
   const [stableProfilesById, setStableProfilesById] = useState({})
   const [termsDealId, setTermsDealId] = useState(/** @type {string | null} */ (null))
   const [ledgerDealId, setLedgerDealId] = useState(/** @type {string | null} */ (null))
+  /** Multi-backer creator chat menu (deal id). */
+  const [stakeChatMenuDealId, setStakeChatMenuDealId] = useState(/** @type {string | null} */ (null))
   /** @type {Record<string, { deal_id: string, overall_bankroll: number }>} */
   const [dealProfiles, setDealProfiles] = useState({})
   /** @type {Record<string, object[]>} */
@@ -3378,12 +3383,12 @@ export default function PokerBankrollTracker({
                 const heroDisplayBankroll = heroAwaitingPlayerAccept
                   ? Number(hero.deal?.baseline_bankroll) || 0
                   : hero.overallBankroll
-                const chatPeerUserId =
+                const stakeChatCaps =
                   onStake && hero.deal
-                    ? stableDealEdgeChatPeerUserId(hero.deal, userId, dealSlices)
-                    : null
+                    ? stableDealStakeChatCapabilities(hero.deal, dealSlices, userId)
+                    : { mode: 'none', dmPeers: [], canCreateGroup: false, groupMemberIds: [] }
                 const showChatBtn = Boolean(
-                  chatPeerUserId && typeof onOpenChatWithUser === 'function',
+                  stakeChatCaps.mode !== 'none' && typeof onOpenChatWithUser === 'function',
                 )
                 return (
                   <div
@@ -3445,8 +3450,13 @@ export default function PokerBankrollTracker({
                               type="button"
                               data-poker-bankroll-chat-btn
                               onClick={() => {
-                                onOpenChatWithUser?.(chatPeerUserId)
                                 triggerTapHapticLight()
+                                if (stakeChatCaps.mode === 'menu') {
+                                  setStakeChatMenuDealId(scopeId)
+                                  return
+                                }
+                                const peer = stakeChatCaps.dmPeers[0]
+                                if (peer) onOpenChatWithUser?.(peer)
                               }}
                               className="flex h-9 w-9 items-center justify-center rounded-xl text-cyan-300 touch-manipulation active:bg-white/5"
                               aria-label="Chat"
@@ -4477,6 +4487,33 @@ export default function PokerBankrollTracker({
           onDecline={() => void handleStakeOnboardingDecline(onboardingDeal.id)}
         />
       ) : null}
+
+      {stakeChatMenuDealId
+        ? (() => {
+            const chatDeal =
+              stakeeDeals.find((d) => d.id === stakeChatMenuDealId) ||
+              stakeeDealsById[stakeChatMenuDealId] ||
+              null
+            if (!chatDeal) return null
+            const chatSlices = slicesByDeal[stakeChatMenuDealId] || []
+            const caps = stableDealStakeChatCapabilities(chatDeal, chatSlices, userId)
+            if (caps.mode !== 'menu') return null
+            return (
+              <PokerStakeChatMenuSheet
+                open
+                onClose={() => setStakeChatMenuDealId(null)}
+                deal={chatDeal}
+                dmPeers={caps.dmPeers}
+                canCreateGroup={caps.canCreateGroup}
+                groupMemberIds={caps.groupMemberIds}
+                profilesById={stableProfilesById}
+                supabaseClient={supabaseClient}
+                onOpenChatWithUser={onOpenChatWithUser}
+                onOpenChatRoom={onOpenChatRoom}
+              />
+            )
+          })()
+        : null}
 
       {commitSyncId && supabaseClient && userId ? (
         <PokerStableCommitSyncModal

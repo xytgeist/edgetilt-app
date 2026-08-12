@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 const DISMISS_DRAG_PX = 72
 const TAP_SLOP_PX = 12
+/** Wait this far before locking vertical dismiss vs horizontal carousel page. */
+const AXIS_LOCK_PX = 10
 
 function shouldIgnoreSwipeTarget(target, { allowSwipeOnVideo = false } = {}) {
   if (!(target instanceof Element)) return true
@@ -41,64 +43,123 @@ export function useLoungeLightboxSwipeDismiss({
     if (!enabled) resetDrag()
   }, [enabled, resetDrag])
 
-  const onPointerDown = useCallback((e) => {
-    if (!enabled) return
-    if (e.button !== 0 && e.pointerType === 'mouse') return
-    if (shouldIgnoreSwipeTarget(e.target, { allowSwipeOnVideo })) return
-    if (
-      verticalDismissOnly &&
-      e.target instanceof Element &&
-      e.target.closest('[data-lounge-lightbox-carousel]')
-    ) {
-      return
-    }
-    dragRef.current = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startY: e.clientY,
-    }
-    setDragging(true)
-    setOffset({ x: 0, y: 0 })
-    e.currentTarget.setPointerCapture(e.pointerId)
-  }, [allowSwipeOnVideo, enabled])
+  const onPointerDown = useCallback(
+    (e) => {
+      if (!enabled) return
+      if (e.button !== 0 && e.pointerType === 'mouse') return
+      if (shouldIgnoreSwipeTarget(e.target, { allowSwipeOnVideo })) return
 
-  const onPointerMove = useCallback((e) => {
-    if (!enabled) return
-    const drag = dragRef.current
-    if (!drag || drag.pointerId !== e.pointerId) return
-    const dx = e.clientX - drag.startX
-    const dy = e.clientY - drag.startY
-    if (verticalDismissOnly) {
-      if (Math.abs(dy) >= Math.abs(dx)) {
-        setOffset({ x: 0, y: dy })
-      } else {
-        setOffset({ x: 0, y: 0 })
+      // Multi-image: start on the snap carousel without capturing yet so horizontal
+      // paging stays native; capture only after the gesture locks vertical.
+      const fromCarousel =
+        verticalDismissOnly &&
+        e.target instanceof Element &&
+        Boolean(e.target.closest('[data-lounge-lightbox-carousel]'))
+
+      dragRef.current = {
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        /** @type {null | 'x' | 'y'} */
+        axis: null,
+        captured: false,
+        deferCapture: fromCarousel,
       }
-      return
-    }
-    if (Math.abs(dy) >= Math.abs(dx)) {
-      setOffset({ x: 0, y: dy })
-    } else if (onSwipeHorizontal) {
-      setOffset({ x: dx, y: 0 })
-    } else {
-      setOffset({ x: 0, y: dy })
-    }
-  }, [onSwipeHorizontal, enabled, verticalDismissOnly])
+      setDragging(true)
+      setOffset({ x: 0, y: 0 })
+      if (!fromCarousel) {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        dragRef.current.captured = true
+      }
+    },
+    [allowSwipeOnVideo, enabled, verticalDismissOnly],
+  )
+
+  const onPointerMove = useCallback(
+    (e) => {
+      if (!enabled) return
+      const drag = dragRef.current
+      if (!drag || drag.pointerId !== e.pointerId) return
+      const dx = e.clientX - drag.startX
+      const dy = e.clientY - drag.startY
+
+      if (!drag.axis) {
+        if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          drag.axis = 'y'
+          if (!drag.captured) {
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              drag.captured = true
+            } catch {
+              // ignore
+            }
+          }
+        } else if (verticalDismissOnly) {
+          // Horizontal page … abandon so scroll-snap carousel owns the gesture.
+          resetDrag()
+          return
+        } else {
+          drag.axis = 'x'
+          if (!drag.captured) {
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              drag.captured = true
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      if (drag.axis === 'y') {
+        try {
+          e.preventDefault()
+        } catch {
+          // ignore
+        }
+        setOffset({ x: 0, y: dy })
+        return
+      }
+
+      if (verticalDismissOnly) {
+        setOffset({ x: 0, y: 0 })
+        return
+      }
+
+      if (drag.axis === 'x' && onSwipeHorizontal) {
+        setOffset({ x: dx, y: 0 })
+      } else if (Math.abs(dy) >= Math.abs(dx)) {
+        setOffset({ x: 0, y: dy })
+      } else if (onSwipeHorizontal) {
+        setOffset({ x: dx, y: 0 })
+      } else {
+        setOffset({ x: 0, y: dy })
+      }
+    },
+    [onSwipeHorizontal, enabled, verticalDismissOnly, resetDrag],
+  )
 
   const finishDrag = useCallback(
     (e) => {
       if (!enabled) return
       const drag = dragRef.current
       if (!drag || drag.pointerId !== e.pointerId) return
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId)
-      } catch {
-        // ignore
+      if (drag.captured) {
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        } catch {
+          // ignore
+        }
       }
       const dx = e.clientX - drag.startX
       const dy = e.clientY - drag.startY
+      const axis = drag.axis
 
-      if (Math.abs(dy) >= Math.abs(dx) && Math.abs(dy) >= DISMISS_DRAG_PX) {
+      if (
+        (axis === 'y' || (axis == null && Math.abs(dy) >= Math.abs(dx))) &&
+        Math.abs(dy) >= DISMISS_DRAG_PX
+      ) {
         onClose()
         resetDrag()
         return
@@ -107,7 +168,7 @@ export function useLoungeLightboxSwipeDismiss({
       if (
         !verticalDismissOnly &&
         onSwipeHorizontal &&
-        Math.abs(dx) > Math.abs(dy) &&
+        (axis === 'x' || (axis == null && Math.abs(dx) > Math.abs(dy))) &&
         Math.abs(dx) >= DISMISS_DRAG_PX
       ) {
         onSwipeHorizontal(dx < 0 ? 1 : -1)

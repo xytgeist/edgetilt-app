@@ -1,5 +1,6 @@
 /**
- * Fetch Wynn series (JSON-LD) + MTTDB live + online lobbies + merge region catalog JSON → upsert.
+ * Fetch Wynn series (JSON-LD) + MTTDB live + online lobbies + ClubWPT + CoinPoker web schedules
+ * + merge region catalog JSON → upsert.
  *
  * Usage:
  *   npm run poker:catalog:sync:test

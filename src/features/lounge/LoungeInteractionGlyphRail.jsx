@@ -37,7 +37,7 @@ export function LoungeInteractionGlyphRail({
     // Fixed-width oval: icon + count as one group, centered (group shifts as count chars grow).
     const countEl = showCount ? (
       <span
-        className={`shrink-0 text-[15px] font-medium tabular-nums leading-none ${countClass}`}
+        className={`shrink-0 text-[13px] font-medium tabular-nums leading-none ${countClass}`}
         title={fullStatCountTitle(countValue)}
       >
         {formatCompactStatCount(countValue)}

@@ -99,14 +99,18 @@ export default function LoungePostInteractionBar({
   const repostClass = ro
     ? 'text-zinc-500'
     : ui.reposted
-      ? 'text-emerald-400'
+      ? overlayIdle
+        ? 'text-[#4ade80]' // brighter green on frost pills (emerald-400 reads muddy)
+        : 'text-emerald-400'
       : overlayIdle
         ? 'text-white'
         : 'text-zinc-500'
   const likeClass = ro
     ? 'text-zinc-500'
     : ui.liked
-      ? 'text-lv-red'
+      ? overlayIdle
+        ? 'text-[#fb7185]' // softer rose-red on frost pills (lv-red is too neon)
+        : 'text-lv-red'
       : overlayIdle
         ? 'text-white'
         : 'text-zinc-500'
@@ -137,9 +141,9 @@ export default function LoungePostInteractionBar({
   const slotRepost = isComment ? 20 : isFeed ? 22 : 24
   const slotLike = isComment ? 20 : isFeed ? 22 : 24
   const slotBookmark = isComment ? 22 : isFeed ? 24 : 26
-  const railMinH = pillOverlay ? 44 : isComment ? 30 : isFeed ? 32 : 44
+  const railMinH = pillOverlay ? 36 : isComment ? 30 : isFeed ? 32 : 44
   const iconSz = pillOverlay
-    ? 'h-[26px] w-[26px]'
+    ? 'h-[22px] w-[22px]'
     : isComment
       ? 'h-[20px] w-[20px]'
       : isFeed
@@ -147,7 +151,7 @@ export default function LoungePostInteractionBar({
         : 'h-[24px] w-[24px]'
   /** Bubble glyph sits low in the 20 viewBox - slight Y stretch so it matches the chip visually */
   const iconSzComment = pillOverlay
-    ? `h-[26px] w-[26px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+    ? `h-[22px] w-[22px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
     : isComment
       ? `h-[20px] w-[20px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
       : isFeed
@@ -155,7 +159,7 @@ export default function LoungePostInteractionBar({
         : `h-[24px] w-[24px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
   /** Bookmark path is inset in the 20 viewBox - slightly larger box than other stats for visual parity with the chip */
   const iconSzBookmark = pillOverlay
-    ? 'h-[28px] w-[28px]'
+    ? 'h-[23px] w-[23px]'
     : isComment
       ? 'h-[22px] w-[22px]'
       : isFeed
@@ -181,8 +185,9 @@ export default function LoungePostInteractionBar({
    */
   const pillOverlayFrost =
     'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-  const pillOverlayCountedStat = `inline-flex h-11 w-[6.25rem] shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
-  const pillOverlayCircleStat = `inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
+  // Keep the row inside typical phone width: 3×5rem + 2×2.25rem + gaps ≈ 320px.
+  const pillOverlayCountedStat = `inline-flex h-9 w-20 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
+  const pillOverlayCircleStat = `inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls
   const statCommentCls = pickStat(statFeedComment, statSheetComment, pillOverlayCountedStat)

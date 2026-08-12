@@ -56,7 +56,7 @@ export function LoungeInteractionGlyphRail({
           onClick={onClick}
           className={statClassMerged}
         >
-          <span className="inline-flex max-w-full items-center justify-center gap-1">
+          <span className="inline-flex w-full items-center justify-center gap-1">
             {glyph}
             {countEl}
           </span>

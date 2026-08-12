@@ -180,7 +180,7 @@ export default function LoungePostInteractionBar({
    * Bookmark / share = circle (no count).
    */
   const pillOverlayFrost =
-    'border-0 bg-white/25 text-white shadow-sm backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+    'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const pillOverlayCountedStat = `inline-flex h-11 w-[6.25rem] shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pillOverlayCircleStat = `inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>

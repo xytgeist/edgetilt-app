@@ -166,8 +166,8 @@ export default function LoungePostInteractionBar({
    * Bookmark / share = circle (no count).
    */
   const pillOverlayFrost =
-    'border border-white/35 bg-white/25 text-white shadow-sm backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-  const pillOverlayCountedStat = `inline-flex h-10 w-[5.5rem] shrink-0 items-center justify-center gap-1 rounded-full ${pillOverlayFrost}`
+    'border-0 bg-white/25 text-white shadow-sm backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const pillOverlayCountedStat = `inline-flex h-10 w-[5.5rem] shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pillOverlayCircleStat = `inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls

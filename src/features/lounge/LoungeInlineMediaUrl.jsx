@@ -165,18 +165,43 @@ export function LoungeImageLightbox({
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const landSlideIndexRef = useRef(Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0))))
-  /** Current slide natural width/height. `>= 1` → square/landscape (full chrome). */
-  const [imageAspect, setImageAspect] = useState(/** @type {number | null} */ (null))
-  /** Padding so media centers between top buttons and avatar row / bottom pills. */
-  const [mediaBandPad, setMediaBandPad] = useState({ top: 0, bottom: 0 })
-  const noteSlideAspect = useCallback((img) => {
-    const next = readImageAspectRatio(img)
-    if (next == null) return
-    setImageAspect((prev) => (prev != null && Math.abs(prev - next) < 0.0001 ? prev : next))
-  }, [])
+  /** Per-slide natural width/height. `>= 1` → square/landscape (full chrome). */
+  const [aspectByIndex, setAspectByIndex] = useState(/** @type {Record<number, number>} */ ({}))
+  const imageAspect = aspectByIndex[idx] ?? null
+  /**
+   * Chrome-band pads cached per footer mode so each carousel slide can keep its own
+   * vertical centering without jumping when idx / chrome mode changes after snap.
+   */
+  const [bandByMode, setBandByMode] = useState({
+    full: { top: 0, bottom: 0 },
+    compact: { top: 0, bottom: 0 },
+  })
   // height <= width (square / landscape): full author chrome. Taller: pills only.
   const showAuthorMeta = imageAspect == null || imageAspect >= 1
   const chromeOpts = useMemo(() => ({ showAuthorMeta }), [showAuthorMeta])
+  const mediaBandPad = showAuthorMeta ? bandByMode.full : bandByMode.compact
+
+  const noteSlideAspectAt = useCallback((img, slideIndex) => {
+    const next = readImageAspectRatio(img)
+    if (next == null || !Number.isFinite(slideIndex)) return
+    setAspectByIndex((prev) => {
+      const prevA = prev[slideIndex]
+      if (prevA != null && Math.abs(prevA - next) < 0.0001) return prev
+      return { ...prev, [slideIndex]: next }
+    })
+  }, [])
+
+  const bandPadForSlide = useCallback(
+    (slideIndex) => {
+      const a = aspectByIndex[slideIndex]
+      const full = a == null || a >= 1
+      const primary = full ? bandByMode.full : bandByMode.compact
+      if (primary.top > 0 || primary.bottom > 0) return primary
+      const fallback = full ? bandByMode.compact : bandByMode.full
+      return fallback
+    },
+    [aspectByIndex, bandByMode],
+  )
 
   const syncMediaBandPad = useCallback(() => {
     const next = measureImageLightboxMediaBand(
@@ -184,10 +209,29 @@ export function LoungeImageLightbox({
       topChromeRef.current,
       footerChromeRef.current,
     )
-    setMediaBandPad((prev) =>
-      prev.top === next.top && prev.bottom === next.bottom ? prev : next,
-    )
-  }, [])
+    const mode = showAuthorMeta ? 'full' : 'compact'
+    setBandByMode((prev) => {
+      const cur = prev[mode]
+      if (cur.top === next.top && cur.bottom === next.bottom) return prev
+      return { ...prev, [mode]: next }
+    })
+  }, [showAuthorMeta])
+
+  // Decode every slide up front so swipe targets are sized before snap (avoids post-land jump).
+  useEffect(() => {
+    let cancelled = false
+    list.forEach((url, i) => {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = loungeFeedImageDeliveryUrl(url, 'lightbox')
+      img.onload = () => {
+        if (!cancelled) noteSlideAspectAt(img, i)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [list, noteSlideAspectAt])
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -444,14 +488,10 @@ export function LoungeImageLightbox({
 
   useLayoutEffect(() => {
     const img = mediaImageRef.current
-    if (img?.complete) {
-      noteSlideAspect(img)
-      return
-    }
-    setImageAspect(null)
-  }, [idx, current, phase, noteSlideAspect])
+    if (img?.complete) noteSlideAspectAt(img, idx)
+  }, [idx, current, phase, noteSlideAspectAt])
 
-  // Keep every slide optically centered in the chrome band (top buttons ↔ avatar/pills).
+  // Measure chrome band for the active footer mode (full vs compact).
   useLayoutEffect(() => {
     if (phase !== 'open' && phase !== 'opening') return undefined
     syncMediaBandPad()
@@ -473,7 +513,7 @@ export function LoungeImageLightbox({
       ro.disconnect()
       window.removeEventListener('resize', syncMediaBandPad)
     }
-  }, [phase, showAuthorMeta, chromeVisible, lightboxChromeContent, multi, idx, syncMediaBandPad])
+  }, [phase, showAuthorMeta, chromeVisible, lightboxChromeContent, syncMediaBandPad])
 
   useEffect(() => {
     notifyLoungeStreamLightboxOpen(true)
@@ -532,8 +572,9 @@ export function LoungeImageLightbox({
 
     // Seed aspect from the tile so footer chrome (full vs compact) matches before we measure.
     const tileAspect = from.width / Math.max(from.height, 1)
+    const openIdx = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
     if (Number.isFinite(tileAspect) && tileAspect > 0) {
-      setImageAspect((prev) => (prev == null ? tileAspect : prev))
+      setAspectByIndex((prev) => (prev[openIdx] == null ? { ...prev, [openIdx]: tileAspect } : prev))
     }
 
     let cancelled = false
@@ -550,12 +591,8 @@ export function LoungeImageLightbox({
           topChromeRef.current,
           footerChromeRef.current,
         )
-        setMediaBandPad(band)
-        const shell = mediaContainerRef.current
-        if (shell) {
-          shell.style.paddingTop = band.top > 0 ? `${band.top}px` : ''
-          shell.style.paddingBottom = band.bottom > 0 ? `${band.bottom}px` : ''
-        }
+        const mode = tileAspect >= 1 || !Number.isFinite(tileAspect) ? 'full' : 'compact'
+        setBandByMode((prev) => ({ ...prev, [mode]: band }))
 
         const target = computeHeroTargetRect(from, {
           displayW: from.width,
@@ -564,7 +601,7 @@ export function LoungeImageLightbox({
           insetBottom: band.bottom,
         })
         targetRectRef.current = target
-        landSlideIndexRef.current = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
+        landSlideIndexRef.current = openIdx
         setLandFrame(target)
 
         flyout.style.visibility = 'visible'
@@ -700,12 +737,31 @@ export function LoungeImageLightbox({
       </div>
 
       {showMediaLayer ? (
+        <>
+        {/* Ambient under the flyout during expand so letterbox color is already there. */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            zIndex: zStack.overlay,
+            opacity:
+              phase === 'opening'
+                ? scrimOpacity
+                : Math.max(0, Math.min(1, 1 - dismissProgress * 0.55)),
+            transition:
+              phase === 'opening' || phase === 'closing'
+                ? `opacity ${HERO_EXPAND_MS}ms ease-out`
+                : undefined,
+          }}
+          aria-hidden
+        >
+          <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
+        </div>
         <div
           className="absolute inset-0 flex flex-col bg-transparent"
           style={{
             zIndex: zStack.overlay,
             pointerEvents: mediaInteractive ? undefined : 'none',
-            // Pre-mount during expand for decode/layout, but stay invisible until land
+            // Pre-mount sharp media during expand for decode/layout, but stay invisible until land
             // … otherwise the full hero paints behind the growing flyout (double image).
             visibility: phase === 'opening' ? 'hidden' : 'visible',
           }}
@@ -799,22 +855,28 @@ export function LoungeImageLightbox({
               ref={mediaContainerRef}
               className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
               style={
-                mediaBandPad.top > 0 || mediaBandPad.bottom > 0
+                !carouselMode && (mediaBandPad.top > 0 || mediaBandPad.bottom > 0)
                   ? { paddingTop: mediaBandPad.top, paddingBottom: mediaBandPad.bottom }
                   : undefined
               }
             >
-              <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
               {carouselMode ? (
                 <div
                   ref={carouselScrollRef}
                   data-lounge-lightbox-carousel
                   className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 >
-                  {list.map((slideUrl, i) => (
+                  {list.map((slideUrl, i) => {
+                    const slidePad = bandPadForSlide(i)
+                    return (
                     <div
                       key={`${slideUrl}-${i}`}
-                      className="relative z-[1] flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
+                      className="relative z-[1] box-border flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
+                      style={
+                        slidePad.top > 0 || slidePad.bottom > 0
+                          ? { paddingTop: slidePad.top, paddingBottom: slidePad.bottom }
+                          : undefined
+                      }
                     >
                       <div
                         className="relative z-[1] inline-flex max-h-full max-w-full"
@@ -831,16 +893,15 @@ export function LoungeImageLightbox({
                               ? 'relative z-[1] h-full w-full select-none object-contain'
                               : 'relative z-[1] max-h-full max-w-full select-none object-contain'
                           }
-                          loading={i === idx || phase === 'opening' ? 'eager' : 'lazy'}
+                          loading="eager"
                           decoding="async"
                           draggable={false}
-                          onLoad={(e) => {
-                            if (i === idxRef.current) noteSlideAspect(e.currentTarget)
-                          }}
+                          onLoad={(e) => noteSlideAspectAt(e.currentTarget, i)}
                         />
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div
@@ -864,13 +925,14 @@ export function LoungeImageLightbox({
                     loading="eager"
                     decoding="async"
                     draggable={false}
-                    onLoad={(e) => noteSlideAspect(e.currentTarget)}
+                    onLoad={(e) => noteSlideAspectAt(e.currentTarget, idx)}
                   />
                 </div>
               )}
             </div>
           </div>
         </div>
+        </>
       ) : null}
     </div>,
     document.body,

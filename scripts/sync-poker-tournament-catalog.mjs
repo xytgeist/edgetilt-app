@@ -20,6 +20,10 @@ import {
   repoRootFromCatalogLib,
 } from './lib/pokerTournamentCatalog.mjs'
 import { fetchMttdbLiveCatalogOneOffs, fetchMttdbOnlineCatalogOneOffs } from './lib/mttdbCatalogFetch.mjs'
+import {
+  fetchClubwptCatalogOneOffs,
+  fetchClubwptGoldCatalogOneOffs,
+} from './lib/clubwptCatalogFetch.mjs'
 import { createMttdbVenueResolver } from './lib/mttdbCatalogVenues.mjs'
 import { createMttdbSiteResolver } from './lib/mttdbCatalogSites.mjs'
 import { recordOpsJobHeartbeatForTarget } from './lib/opsJobHeartbeat.mjs'
@@ -149,6 +153,12 @@ async function main() {
     liveParsed: 0,
     onlineParsed: 0,
   }
+  /** @type {{ clubwptError: string | null, clubwptIngested: number, clubwptGoldSkipped: string | null }} */
+  const clubwptFetch = {
+    clubwptError: null,
+    clubwptIngested: 0,
+    clubwptGoldSkipped: null,
+  }
 
   if (!skipFetch && !mttdbPayload) {
     console.error('[poker:catalog:sync] Missing poker_tournament_catalog_mttdb.json seed (region=mttdb).')
@@ -214,7 +224,32 @@ async function main() {
       console.error('[poker:catalog:sync] MTTDB online fetch failed:', mttdbFetch.onlineError)
     }
 
-    mttdbPayload.one_off = dedupeCatalogRows([...liveOneOff, ...onlineOneOff])
+    /** @type {object[]} */
+    let clubwptOneOff = []
+    try {
+      const clubwpt = await fetchClubwptCatalogOneOffs()
+      clubwptOneOff = clubwpt.oneOff || []
+      clubwptFetch.clubwptIngested = Number(clubwpt.stats?.ingested) || 0
+      console.log(
+        `ClubWPT online: parsed ${clubwpt.stats.parsed}, ingested ${clubwpt.stats.ingested} (skipped date ${clubwpt.stats.skippedDate}, status ${clubwpt.stats.skippedStatus})`,
+      )
+    } catch (err) {
+      clubwptFetch.clubwptError = String(err?.message || err)
+      console.error('[poker:catalog:sync] ClubWPT fetch failed:', clubwptFetch.clubwptError)
+    }
+
+    try {
+      const gold = await fetchClubwptGoldCatalogOneOffs()
+      clubwptFetch.clubwptGoldSkipped = gold.skippedReason || null
+      if (clubwptFetch.clubwptGoldSkipped) {
+        console.warn(`[poker:catalog:sync] ClubWPT Gold skipped: ${clubwptFetch.clubwptGoldSkipped}`)
+      }
+    } catch (err) {
+      clubwptFetch.clubwptGoldSkipped = String(err?.message || err)
+      console.warn('[poker:catalog:sync] ClubWPT Gold skipped:', clubwptFetch.clubwptGoldSkipped)
+    }
+
+    mttdbPayload.one_off = dedupeCatalogRows([...liveOneOff, ...onlineOneOff, ...clubwptOneOff])
   }
 
   const rows = buildCatalogUpsertRowsFromPayloads(payloads)
@@ -225,15 +260,22 @@ async function main() {
 
   const mttdbOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:online:'))
   const mttdbLiveRows = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:live:'))
+  const clubwptOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('clubwpt:online:'))
 
   console.log(`Target: ${targetHuman(target)}`)
   console.log(`Files: ${paths.map((p) => path.relative(repoRoot, p)).join(', ')}`)
   console.log(
-    `Rows: ${rows.length}${dryRun ? ' (dry run)' : ''} (mttdb live ${mttdbLiveRows.length}, online ${mttdbOnlineRows.length})`,
+    `Rows: ${rows.length}${dryRun ? ' (dry run)' : ''} (mttdb live ${mttdbLiveRows.length}, online ${mttdbOnlineRows.length}, clubwpt ${clubwptOnlineRows.length})`,
   )
 
   if (dryRun) {
-    const mttdbSamples = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:')).slice(0, 8)
+    const mttdbSamples = rows
+      .filter(
+        (r) =>
+          String(r.external_id || '').startsWith('mttdb:') ||
+          String(r.external_id || '').startsWith('clubwpt:'),
+      )
+      .slice(0, 8)
     for (const row of mttdbSamples.length ? mttdbSamples : rows.slice(0, 8)) {
       console.log(
         '  sample:',
@@ -268,6 +310,7 @@ async function main() {
         message: error.message,
         rows: rows.length,
         mttdb: mttdbFetch,
+        clubwpt: clubwptFetch,
       })
       console.error('upsert_poker_tournament_catalog failed:', error.message)
       process.exit(1)
@@ -280,8 +323,10 @@ async function main() {
         upsert: data,
         rows: rows.length,
         mttdb: mttdbFetch,
+        clubwpt: clubwptFetch,
         mttdbOnlineRows: mttdbOnlineRows.length,
         mttdbLiveRows: mttdbLiveRows.length,
+        clubwptOnlineRows: clubwptOnlineRows.length,
         target,
       })
       console.error('[poker:catalog:sync] Upserted regional/partial catalog, but MTTDB check failed:')
@@ -293,8 +338,10 @@ async function main() {
       upsert: data,
       rows: rows.length,
       mttdb: mttdbFetch,
+      clubwpt: clubwptFetch,
       mttdbOnlineRows: mttdbOnlineRows.length,
       mttdbLiveRows: mttdbLiveRows.length,
+      clubwptOnlineRows: clubwptOnlineRows.length,
       target,
     })
     console.log('Done:', data)
@@ -303,6 +350,7 @@ async function main() {
       message: String(err?.message || err),
       rows: rows.length,
       mttdb: mttdbFetch,
+      clubwpt: clubwptFetch,
     })
     throw err
   }

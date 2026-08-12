@@ -219,7 +219,6 @@ export default function PokerStableCloseStakeSheet({
   const unusedMarkupTotal = roundMoney(
     backerReturnRows.reduce((sum, row) => sum + (row.unusedMarkup || 0), 0),
   )
-  const myUnusedMarkup = roundMoney(myReturnRow?.unusedMarkup || 0)
   const myTotalReturn = roundMoney(myReturnRow?.totalToBacker || 0)
   const cashBackerCredit =
     !isStakee && !isTournamentPackage && settlement && mySlice
@@ -366,13 +365,9 @@ export default function PokerStableCloseStakeSheet({
                 : `This stake will be archived and ${playerName}'s sessions move onto their personal timeline.`}
             </p>
           )}
-          {isTournamentPackage && unusedMarkupTotal > 0.005 ? (
+          {isTournamentPackage && isStakee && unusedMarkupTotal > 0.005 ? (
             <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-              {isStakee
-                ? `${fmtPoker$(unusedMarkupTotal)} unused markup returns to backers from your personal bankroll.`
-                : myUnusedMarkup > 0.005
-                  ? `${fmtPoker$(myUnusedMarkup)} unused markup returned from ${playerName}.`
-                  : `${fmtPoker$(unusedMarkupTotal)} unused markup returned from ${playerName}.`}
+              {`${fmtPoker$(unusedMarkupTotal)} unused markup returns to backers from your personal bankroll.`}
             </p>
           ) : null}
         </div>

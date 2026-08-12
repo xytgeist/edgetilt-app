@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **In-app toast divert uses visibility beacon:** `push-sw.js` no longer gates Poker Stable / Chat / Lounge activity on `client.focused` (broken on iPhone PWA). Same Cache beacon + `visibilityState` + probe path as call rings. Force-close PWA / hard refresh so SW updates. Smoke: stay on Bankroll → stake event → frosted toast, no OS banner.
 - 2026-08-12: **Remove admin toast preview bell:** title-bar 🔔 Short/Medium/Long demo control removed (was promoted with frost toast work). Real activity toasts unchanged.
 - 2026-08-12: **In-app toast borderless frost:** activity + status pills drop the hairline border / light inset ring; frost + shadow only.
 - 2026-08-12: **In-app toast long copy:** shell `w-max` capped at **~75vw** (was `w-fit` shrink-wrapping into a tall skinny pill); activity body **`line-clamp-3`**.

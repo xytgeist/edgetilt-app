@@ -85,8 +85,10 @@ async function deliverLoungeActivityInApp(clients, content) {
     activityBatchId: content.activityBatchId,
     icon: content.icon,
   }
+  // Prefer visibly open clients (iPhone PWA often reports focused=false while on-screen).
+  const visible = clients.filter((client) => client.visibilityState === 'visible')
   const focused = clients.filter((client) => client.focused)
-  const targets = focused.length > 0 ? focused : clients
+  const targets = visible.length > 0 ? visible : focused.length > 0 ? focused : clients
   for (const client of targets) {
     if (typeof client.postMessage === 'function') {
       client.postMessage(message)
@@ -163,12 +165,13 @@ async function appVisibilityBeaconSaysVisible() {
 }
 
 /**
- * Suppress OS call banner only when Edge is actually visible.
- * 1) Shared Cache beacon (reliable on iPhone PWA)
+ * True when Edge is actually on-screen (calls + activity toasts).
+ * Never trust client.focused alone on iPhone PWA.
+ * 1) Shared Cache beacon (edgeAppVisibilityBeacon.js)
  * 2) WindowClient.visibilityState when exposed
- * 3) MessageChannel probe fallback
+ * 3) MessageChannel probe fallback (chat-call-push-probe → visibility)
  */
-async function pageIsVisiblyHandlingCalls(clients) {
+async function pageIsVisiblyOpen(clients) {
   if (await appVisibilityBeaconSaysVisible()) return true
   if (clients.some((client) => client.visibilityState === 'visible')) return true
 
@@ -222,12 +225,10 @@ self.addEventListener('push', (event) => {
         type: 'window',
         includeUncontrolled: true,
       })
-      const hasFocusedClient = clients.some((client) => client.focused)
 
-      // Call pushes: suppress OS only when a page is actually visible.
-      // Never trust client.focused alone on iPhone PWA (silent drop regression).
+      // Suppress OS only when a page is actually visible (iPhone PWA: not client.focused).
       if (chatCallPush) {
-        const suppressOs = await pageIsVisiblyHandlingCalls(clients)
+        const suppressOs = await pageIsVisiblyOpen(clients)
         if (suppressOs) {
           // Must hand the event to the open tab... never drop. Invite → ring overlay;
           // missed → Call back prompt (same payloads as notificationclick).
@@ -238,7 +239,8 @@ self.addEventListener('push', (event) => {
           }
           return
         }
-      } else if (loungeActivity && hasFocusedClient) {
+      } else if (loungeActivity && (await pageIsVisiblyOpen(clients))) {
+        // Poker Stable / Chat / Lounge / etc. → frosted in-app toast while app is open.
         await deliverLoungeActivityInApp(clients, content)
         return
       }

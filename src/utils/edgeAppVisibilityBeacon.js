@@ -1,6 +1,6 @@
 /**
- * Shared Cache flag so push-sw.js can suppress OS call banners while Edge is visible.
- * MessageChannel / WindowClient.visibilityState are unreliable on iPhone PWA.
+ * Shared Cache flag so push-sw.js can suppress OS banners (calls + activity/stake toasts)
+ * while Edge is visible. MessageChannel / WindowClient.focused are unreliable on iPhone PWA.
  */
 
 const CACHE_NAME = 'edge-app-visibility-v1'

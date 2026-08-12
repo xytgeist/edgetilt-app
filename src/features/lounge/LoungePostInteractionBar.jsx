@@ -246,7 +246,7 @@ export default function LoungePostInteractionBar({
   }
 
   const rowClass = pillOverlay
-    ? `flex w-full min-w-0 flex-nowrap items-center gap-[clamp(0.2rem,1.2vw,0.5rem)] text-[length:clamp(0.7rem,3.4vw,0.875rem)] ${rootClassName}`.trim()
+    ? `flex w-full min-w-0 flex-nowrap items-center gap-[clamp(0.2rem,1.2vw,0.5rem)] text-[length:clamp(0.75rem,3.6vw,0.9375rem)] ${rootClassName}`.trim()
     : isFeed
       ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
       : isComment

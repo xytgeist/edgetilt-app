@@ -1370,8 +1370,8 @@ html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text
 /* Fluid lightbox pill chrome … scales with viewport (skinny Android + large phones). */
 [data-lounge-lightbox-pill-row] {
   /* Icons sized for h-10 frost pills (match top chrome circles). */
-  --lounge-lightbox-pill-icon: clamp(17px, 5.2vw, 22px);
-  --lounge-lightbox-pill-count: clamp(11px, 3.2vw, 13px);
+  --lounge-lightbox-pill-icon: clamp(19px, 5.8vw, 24px);
+  --lounge-lightbox-pill-count: clamp(12px, 3.6vw, 15px);
 }
 [data-lounge-lightbox-pill-row] svg {
   width: var(--lounge-lightbox-pill-icon) !important;

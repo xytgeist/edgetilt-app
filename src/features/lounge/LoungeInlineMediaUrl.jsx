@@ -151,7 +151,9 @@ export function LoungeImageLightbox({
 
   const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
     onClose,
-    allowSwipeOnVideo: true,
+    // Images are not <video>; keep parent touch-pan-y until vertical dismiss locks so
+    // multi-image snap paging (child touch-action: pan-x) is not blocked.
+    allowSwipeOnVideo: false,
     enabled: !isZoomed && !isPinching,
     verticalDismissOnly: multi,
     className: 'relative flex min-h-0 flex-1 flex-col',

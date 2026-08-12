@@ -15,12 +15,13 @@ import {
 import {
   archivedStakeBackerEconomicsBreakdown,
   archivedStakePlayerSessionProfit,
-  archivedStakePersonalBankrollBreakdown,
   buildFullStakeArchiveTimeline,
+  buildStakeeClosedStakeReview,
   viewerBackingSlice,
 } from '../poker-stable/pokerStableDealHistory.js'
 import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
 import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
+import PokerStakeeClosedStakeReviewSections from './PokerStakeeClosedStakeReviewSections.jsx'
 
 function formatArchiveDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -94,10 +95,6 @@ export default function PokerStakeArchiveDetailModal({
 
   const dealLabel = deal.label?.trim() || dealTypeLabel(deal.deal_type)
   const closedAt = deal.settled_at || deal.responded_at || deal.updated_at
-  const { total: personalBankrollNet, items: personalBankrollItems } =
-    archivedStakePersonalBankrollBreakdown({ deal, slices, settlements })
-  const personalBankrollNeutral = Math.abs(personalBankrollNet) < 0.005
-  const settleCount = personalBankrollItems.length
 
   const { total: realizedBackingNet, items: realizedBackingItems } =
     archivedStakeBackerEconomicsBreakdown({
@@ -118,6 +115,19 @@ export default function PokerStakeArchiveDetailModal({
   })
   const viewerSlice = viewerBackingSlice(slices, viewerUserId)
   const viewerActionPct = viewerSlice ? Number(viewerSlice.action_pct) || 0 : null
+  const playerCloseReview =
+    !isBackerView &&
+    deal.status !== 'declined' &&
+    deal.status !== 'revoked'
+      ? buildStakeeClosedStakeReview({
+          deal,
+          slices,
+          settlements,
+          sessions,
+          profilesById,
+          viewerUserId,
+        })
+      : null
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -220,6 +230,14 @@ export default function PokerStakeArchiveDetailModal({
               ) : null}
             </div>
           </>
+        ) : playerCloseReview ? (
+          <div
+            data-poker-stake-archive-summary
+            data-poker-stake-archive-summary-kind="close-review"
+            className="mb-1"
+          >
+            <PokerStakeeClosedStakeReviewSections review={playerCloseReview} />
+          </div>
         ) : (
           <div
             data-poker-stake-archive-summary
@@ -230,37 +248,12 @@ export default function PokerStakeArchiveDetailModal({
             <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
               Personal bankroll
             </div>
-            <div
-              data-poker-pl-tone={pokerPlTone(personalBankrollNet)}
-              className="mt-0.5 text-xl font-black tabular-nums"
-            >
-              {fmtPoker$(personalBankrollNet)}
-            </div>
             <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-              {settleCount === 0
-                ? 'No settle events recorded for this stake.'
-                : personalBankrollNeutral
-                  ? `${settleCount} settle event${settleCount === 1 ? '' : 's'} · no net credit to personal bankroll.`
-                  : `Sum of ${settleCount} settle event${settleCount === 1 ? '' : 's'} (periodic + close).`}
+              This stake was declined or revoked before a full close review.
             </p>
-            {settleCount > 0 ? (
-              <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">
-                {personalBankrollItems.map((row) => (
-                  <li
-                    key={row.id}
-                    className="flex items-baseline justify-between gap-3 text-[11px]"
-                  >
-                    <span className="text-zinc-500">{row.label}</span>
-                  <span
-                    data-poker-pl-tone={pokerPlTone(row.credit)}
-                    className="shrink-0 font-semibold tabular-nums"
-                  >
-                      {Math.abs(row.credit) < 0.005 ? '$0' : fmtPoker$(row.credit)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            <p className="mt-2 text-sm font-semibold tabular-nums text-zinc-100">
+              Baseline {fmtPoker$(Number(deal.baseline_bankroll) || 0)}
+            </p>
           </div>
         )}
 

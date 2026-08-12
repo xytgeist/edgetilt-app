@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Player ARCHIVE shows close review:** Bankroll ARCHIVE list cards + archive detail reuse the pre-archive closed-stake review (Your bankroll + per-backer Made / stake value returned / markup / Returned to backer) so players can look up what to pay after archiving. Shared **`PokerStakeeClosedStakeReviewSections`**.
 - 2026-08-12: **Prod promote (Stable close UX + tournament player-only close):** applied **`20260812130000`** on **`jtjgtucumuoswnbauxry`**; frontend **`test` → `main`**. Includes Close & Archive for closer, close-sheet copy trims, camelCase Overall P/L fix, tournament package close = player only.
 - 2026-08-12: **Tournament package close = player only:** With an Edge stakee, only the player can close a `tournament_package` (UI + `poker_stable_record_settlement` via **`20260812130000`** on test + prod). Cash backers can still close cash stakes; guest-only packages keep backer close. Spec **`docs/poker-stable-spec.md`**.
 - 2026-08-12: **Close & Archive Stake:** Final close confirm is **Close & Archive Stake**; after a successful close the closer auto-archives (backer Stable / player Bankroll) so they do not see Review / Archive on the closed carousel card. Counterparty still sees Commit until they sync (existing Commit→archive).

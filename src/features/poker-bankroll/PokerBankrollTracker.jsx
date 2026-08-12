@@ -112,7 +112,9 @@ import {
   archivedStakePersonalBankrollNet,
   buildPersonalSettlementHistoryEvents,
   buildStakeDealHistoryEvents,
+  buildStakeeClosedStakeReview,
 } from '../poker-stable/pokerStableDealHistory.js'
+import PokerStakeeClosedStakeReviewSections from './PokerStakeeClosedStakeReviewSections.jsx'
 import {
   playerSelfOwnedActionPct,
   stakeDealIsLiveForStakee,
@@ -4312,21 +4314,29 @@ export default function PokerBankrollTracker({
             <ul className="space-y-3">
               {archivedStakeeDeals.map((deal) => {
                 const slices = slicesByDeal[deal.id] || []
-                const backerNames = slices
-                  .filter((slice) => slice.status !== 'declined')
-                  .map((slice) => sliceCounterpartyDisplayName(slice, stableProfilesById))
-                  .filter(Boolean)
-                const sessionCount = sessions.filter(
-                  (s) => s.deal_id === deal.id && s.status !== 'active',
-                ).length
+                const dealSessions = sessions.filter((s) => s.deal_id === deal.id)
+                const sessionCount = dealSessions.filter((s) => s.status !== 'active').length
                 const closedAt = deal.settled_at || deal.updated_at || deal.created_at
                 const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+                const settlements = dealSettlementsByDeal[deal.id] || []
                 const personalNet = archivedStakePersonalBankrollNet({
                   deal,
                   slices,
-                  settlements: dealSettlementsByDeal[deal.id] || [],
+                  settlements,
                 })
                 const outcomeLabel = archivedStakeOutcomeLabel(deal, slices)
+                const showCloseReview =
+                  deal.status !== 'declined' && deal.status !== 'revoked'
+                const closeReview = showCloseReview
+                  ? buildStakeeClosedStakeReview({
+                      deal,
+                      slices,
+                      settlements,
+                      sessions: dealSessions,
+                      profilesById: stableProfilesById,
+                      viewerUserId: userId,
+                    })
+                  : null
                 return (
                   <li key={deal.id}>
                     <button
@@ -4357,27 +4367,23 @@ export default function PokerBankrollTracker({
                               year: 'numeric',
                             })}`
                           : null}
+                        {` · ${sessionCount} session${sessionCount === 1 ? '' : 's'}`}
                       </p>
-                      {backerNames.length ? (
-                        <p className="text-xs text-zinc-400">
-                          {backerNames.join(', ')}
+                      {closeReview ? (
+                        <div className="mt-3 w-full">
+                          <PokerStakeeClosedStakeReviewSections review={closeReview} />
+                          <p className="mt-3 text-center text-[11px] text-zinc-500">
+                            Tap for session history
+                          </p>
+                        </div>
+                      ) : (
+                        <p
+                          data-poker-pl-tone={pokerPlTone(personalNet)}
+                          className="text-[11px] font-semibold tabular-nums"
+                        >
+                          Personal bankroll {fmtPoker$(personalNet)}
                         </p>
-                      ) : null}
-                      <p className="text-[11px] text-zinc-500">
-                        {sessionCount} session{sessionCount === 1 ? '' : 's'} · baseline{' '}
-                        {fmtPoker$(deal.baseline_bankroll)}
-                      </p>
-                      <p
-                        data-poker-pl-tone={pokerPlTone(personalNet)}
-                        className="text-[11px] font-semibold tabular-nums"
-                      >
-                        Personal bankroll {fmtPoker$(personalNet)}
-                        {(() => {
-                          const settleRows = dealSettlementsByDeal[deal.id] || []
-                          if (settleRows.length <= 1) return null
-                          return ` · ${settleRows.length} settles`
-                        })()}
-                      </p>
+                      )}
                     </button>
                   </li>
                 )
@@ -4467,6 +4473,8 @@ export default function PokerBankrollTracker({
           reductions={dealReductionsByDeal[archiveDetailDealId] || []}
           settlements={dealSettlementsByDeal[archiveDetailDealId] || []}
           sessions={sessions.filter((s) => s.deal_id === archiveDetailDealId)}
+          perspective="player"
+          viewerUserId={userId}
           onClose={() => setArchiveDetailDealId(null)}
         />
       ) : null}

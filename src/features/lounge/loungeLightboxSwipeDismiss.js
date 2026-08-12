@@ -4,8 +4,9 @@ const DISMISS_DRAG_PX = 72
 const TAP_SLOP_PX = 12
 /** Wait this far before locking vertical dismiss vs horizontal carousel page. */
 const AXIS_LOCK_PX = 10
-const FLING_MS = 280
-const SNAP_BACK_MS = 200
+/** Fling off-screen after release (was 280 … felt rushed). */
+const FLING_MS = 520
+const SNAP_BACK_MS = 280
 
 function shouldIgnoreSwipeTarget(target, { allowSwipeOnVideo = false } = {}) {
   if (!(target instanceof Element)) return true
@@ -40,7 +41,7 @@ function applySurfaceVisual(el, x, y, opts = {}) {
   const opacity = typeof opts.opacity === 'number' ? opts.opacity : dragOpacity(x, y)
   el.style.willChange = 'transform, opacity'
   el.style.transition = animate
-    ? `transform ${durationMs}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${durationMs}ms ease-out`
+    ? `transform ${durationMs}ms cubic-bezier(0.33, 0.1, 0.25, 1), opacity ${durationMs}ms ease-out`
     : 'none'
   el.style.transform = `translate3d(${x}px, ${y}px, 0)`
   el.style.opacity = String(opacity)
@@ -74,6 +75,14 @@ export function useLoungeLightboxSwipeDismiss({
     if (clearVisual) clearSurfaceVisual(el)
   }, [])
 
+  /** Drop tracking without React state (keeps native carousel scroll alive). */
+  const abandonDragQuietly = useCallback(() => {
+    const el = dragRef.current?.el
+    // Only clear if we had actually painted a dismiss transform.
+    if (dragRef.current?.didPaint) clearSurfaceVisual(el)
+    dragRef.current = null
+  }, [])
+
   useEffect(() => {
     if (!enabled) resetDrag()
   }, [enabled, resetDrag])
@@ -97,8 +106,8 @@ export function useLoungeLightboxSwipeDismiss({
       if (e.button !== 0 && e.pointerType === 'mouse') return
       if (shouldIgnoreSwipeTarget(e.target, { allowSwipeOnVideo })) return
 
-      // Multi-image: start on the snap carousel without capturing yet so horizontal
-      // paging stays native; capture only after the gesture locks vertical.
+      // Multi-image: start on the snap carousel without capturing / transforming yet so
+      // horizontal paging stays native. Capture + paint only after vertical lock.
       const fromCarousel =
         verticalDismissOnly &&
         e.target instanceof Element &&
@@ -114,13 +123,18 @@ export function useLoungeLightboxSwipeDismiss({
         captured: false,
         deferCapture: fromCarousel,
         flinging: false,
+        didPaint: false,
         el,
       }
-      setDragging(true)
-      applySurfaceVisual(el, 0, 0, { animate: false, opacity: 1 })
-      if (!fromCarousel && el) {
-        el.setPointerCapture(e.pointerId)
-        dragRef.current.captured = true
+
+      // Do not setDragging / apply transform yet on carousel starts … that was breaking side-swipe
+      // (parent transform + re-render mid-gesture kills native overflow scroll).
+      if (!fromCarousel) {
+        setDragging(true)
+        if (el) {
+          el.setPointerCapture(e.pointerId)
+          dragRef.current.captured = true
+        }
       }
     },
     [allowSwipeOnVideo, enabled, verticalDismissOnly],
@@ -138,6 +152,7 @@ export function useLoungeLightboxSwipeDismiss({
         if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return
         if (Math.abs(dy) >= Math.abs(dx)) {
           drag.axis = 'y'
+          if (drag.deferCapture) setDragging(true)
           if (!drag.captured && drag.el) {
             try {
               drag.el.setPointerCapture(e.pointerId)
@@ -147,8 +162,8 @@ export function useLoungeLightboxSwipeDismiss({
             }
           }
         } else if (verticalDismissOnly) {
-          // Horizontal page … abandon so scroll-snap carousel owns the gesture.
-          resetDrag()
+          // Horizontal page … drop quietly so scroll-snap carousel owns the gesture.
+          abandonDragQuietly()
           return
         } else {
           drag.axis = 'x'
@@ -169,26 +184,28 @@ export function useLoungeLightboxSwipeDismiss({
         } catch {
           // ignore
         }
+        drag.didPaint = true
         applySurfaceVisual(drag.el, 0, dy)
         return
       }
 
-      if (verticalDismissOnly) {
-        applySurfaceVisual(drag.el, 0, 0, { opacity: 1 })
-        return
-      }
+      if (verticalDismissOnly) return
 
       if (drag.axis === 'x' && onSwipeHorizontal) {
+        drag.didPaint = true
         applySurfaceVisual(drag.el, dx, 0)
       } else if (Math.abs(dy) >= Math.abs(dx)) {
+        drag.didPaint = true
         applySurfaceVisual(drag.el, 0, dy)
       } else if (onSwipeHorizontal) {
+        drag.didPaint = true
         applySurfaceVisual(drag.el, dx, 0)
       } else {
+        drag.didPaint = true
         applySurfaceVisual(drag.el, 0, dy)
       }
     },
-    [onSwipeHorizontal, enabled, verticalDismissOnly, resetDrag],
+    [onSwipeHorizontal, enabled, verticalDismissOnly, abandonDragQuietly],
   )
 
   const finishDrag = useCallback(
@@ -212,10 +229,11 @@ export function useLoungeLightboxSwipeDismiss({
 
       if (shouldDismiss) {
         drag.flinging = true
+        drag.didPaint = true
         const dir = dy >= 0 ? 1 : -1
         const viewportH =
           typeof window !== 'undefined' ? window.innerHeight || 800 : 800
-        const flingY = dir * Math.max(viewportH * 1.08, Math.abs(dy) + 200)
+        const flingY = dir * Math.max(viewportH * 1.05, Math.abs(dy) + 160)
         applySurfaceVisual(drag.el, 0, flingY, {
           animate: true,
           opacity: 0,
@@ -254,6 +272,13 @@ export function useLoungeLightboxSwipeDismiss({
         return
       }
 
+      // Never locked vertical (e.g. abandoned-to-carousel already, or tiny move).
+      if (!drag.didPaint && axis !== 'y') {
+        abandonDragQuietly()
+        setDragging(false)
+        return
+      }
+
       // Snap back smoothly when dismiss threshold was not met.
       applySurfaceVisual(drag.el, 0, 0, {
         animate: true,
@@ -271,7 +296,7 @@ export function useLoungeLightboxSwipeDismiss({
         resetDrag(true)
       }, SNAP_BACK_MS)
     },
-    [onClose, onSwipeHorizontal, onTap, resetDrag, enabled, verticalDismissOnly],
+    [onClose, onSwipeHorizontal, onTap, resetDrag, enabled, verticalDismissOnly, abandonDragQuietly],
   )
 
   const onPointerUp = useCallback(
@@ -285,6 +310,11 @@ export function useLoungeLightboxSwipeDismiss({
     (e) => {
       const drag = dragRef.current
       if (!drag || drag.pointerId !== e.pointerId || drag.flinging) return
+      if (!drag.didPaint) {
+        abandonDragQuietly()
+        setDragging(false)
+        return
+      }
       applySurfaceVisual(drag.el, 0, 0, {
         animate: true,
         opacity: 1,
@@ -301,7 +331,7 @@ export function useLoungeLightboxSwipeDismiss({
         resetDrag(true)
       }, SNAP_BACK_MS)
     },
-    [resetDrag],
+    [resetDrag, abandonDragQuietly],
   )
 
   /** Video lightbox: keep touch-action none so vertical dismiss is not eaten by pan-y. */

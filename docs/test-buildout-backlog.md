@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **CoinPoker catalog via WP schedules:** `coinpokerCatalogFetch.mjs` scrapes dated series `/schedule/` tables + Sunday Specials/PKOs templates into `coinpoker:web:*` one_offs; wired into `sync-poker-tournament-catalog.mjs` (same GitHub Actions / MTTDB catalog cron). Soft-fail if pages 429; not a live lobby scrape.
 - 2026-08-12: **Start Session CTA above keyboard:** pinned footer uses Lounge `visualViewport` overlap padding so **Start Session** rides up with the iOS/Android keyboard (buy-in stay visible in the scroll body).
 - 2026-08-12: **Player ARCHIVE detail shows close review:** Archive detail (not the list card) reuses the pre-archive closed-stake review (Your bankroll + per-backer Made / stake value returned / markup / Returned to backer). Shared **`PokerStakeeClosedStakeReviewSections`**.
 - 2026-08-12: **Prod promote (Stable close UX + tournament player-only close):** applied **`20260812130000`** on **`jtjgtucumuoswnbauxry`**; frontend **`test` → `main`**. Includes Close & Archive for closer, close-sheet copy trims, camelCase Overall P/L fix, tournament package close = player only.

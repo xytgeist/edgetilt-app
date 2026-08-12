@@ -37,7 +37,7 @@ node scripts/generate-local-intel-seed-sql.mjs
 - Region seeds under `supabase/seed/poker_tournament_catalog_*.json`:
   - **`lv`** Nevada · **`ca`** · **`az`** · **`fl`** · **`pa`** · **`nj`** · **`ct`** · **`ok`** · **`gulf`** · **`md`** · **`chi`** · **`midwest`** · **`in`** · **`wi`** · **`mttdb`** (MTTDB live + online lobby scrape at sync)
 - Each file sets `_meta.timezone` (Pacific / Eastern / Central) for DST-aware `starts_at`.
-- **Sync (recommended):** all region files + Wynn series JSON-LD + **MTTDB live + online lobbies** (`mttdbCatalogFetch.mjs`, `mttdbCatalogSites.mjs`):
+- **Sync (recommended):** all region files + Wynn series JSON-LD + **MTTDB live + online lobbies** (`mttdbCatalogFetch.mjs`, `mttdbCatalogSites.mjs`) + **ClubWPT** guest lobby + **CoinPoker** marketing schedule tables (`coinpokerCatalogFetch.mjs` … series `/schedule/` pages + Sunday Specials/PKOs templates):
 ```bash
 npm run poker:catalog:sync:test:dry
 npm run poker:catalog:sync:test

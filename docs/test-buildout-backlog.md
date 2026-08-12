@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Tournament package close = player only:** With an Edge stakee, only the player can close a `tournament_package` (UI + `poker_stable_record_settlement` via **`20260812130000`** on test). Cash backers can still close cash stakes; guest-only packages keep backer close. Spec **`docs/poker-stable-spec.md`**.
 - 2026-08-12: **Close & Archive Stake:** Final close confirm is **Close & Archive Stake**; after a successful close the closer auto-archives (backer Stable / player Bankroll) so they do not see Review / Archive on the closed carousel card. Counterparty still sees Commit until they sync (existing Commit→archive).
 - 2026-08-12: **Edge Monitor Poker catalog section:** Health tab shows last sync upserted / pruned / MTTDB online+live from `admin_ops_job_heartbeats` (`20260812120000` … `poker_catalog` on scheduled_jobs snapshot).
 - 2026-08-12: **ClubWPT online catalog:** Sync guest-logs into `webservices.clubwpt.com` lobbydata (`clubwpt:online:*` → venue **ClubWPT**).

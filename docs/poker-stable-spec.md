@@ -403,7 +403,7 @@ Run on **lvslotpro.com** with player + second Edge backer (e.g. @edgelord) befor
 | 2 | Backer(s) | Stable — accept slice(s) |
 | 3 | Player | On Stake — log 1–2 sessions (roll above baseline if possible) |
 | 4 | Player | Terms → **Open ledger** — record top-up (baseline + roll bump) |
-| 5 | Player or backer | Propose periodic settle **or** close (guest-only stakes apply immediately) |
+| 5 | Player or backer (cash); **player only** (tournament package with an Edge stakee) | Propose periodic settle **or** close. Tournament packages: only the player closes for all backers; guest-only packages still allow an Edge backer to close. |
 | 6 | Counterparty | Alerts / deal detail — **Confirm** or **Deny** settlement proposal |
 | 7 | Both | Ledger lines per user (`poker_stable_ledger_entries`) on accept |
 | 8 | Player | Close stake → **ARCHIVE** → outcome badge + timeline |
@@ -592,6 +592,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 - **2026-08-11:** **Terms edit requires counterparty ack both ways:** backer-initiated pending … player **Offer new terms** counters (`staker_terms_ack_required`); lead Accept / soft Decline (keeps original offer) / player re-edit. Player-initiated … backer propose sets `stakee_terms_ack_required` + Alert `poker_stable_backer_terms_proposed`. Card badges: Bankroll **Review terms** / **Counter sent**; Stable horse **Review** + inline Accept counter. Migration **`20260811120000`** blocks immediate `apply_stakee_terms` on backer-initiated pending.
 - **2026-08-11:** **Terms edit = implied acceptance:** lead Accept counter activates the deal (player already accepted by proposing). Player Accept backer proposal activates the proposing backer's slice. Edit sheet disclaimer. Migration **`20260811130000`**.
 - **2026-08-11:** **Backer propose activates slice:** sending revised terms is the backer's slice accept ... horse waits on player with no Accept/Decline (**`20260811140000`**).
+- **2026-08-12:** **Tournament package close = player only (test):** with an Edge stakee, only the player may finalize a `tournament_package` close (UI `canProposeSettleStake` + SQL **`20260812130000`**). Cash backers can still close cash stakes; guest-only packages still allow an Edge backer to close.
 - **2026-08-11:** **Terms edit removed (Phase 1, test):** Accept/Decline only on pending stakes; decline + create a new stake to renegotiate. Propose/counter/apply/accept-proposed RPCs disabled (**`20260811170000`**). Stable deal wipe script: **`scripts/wipe-poker-stable-deals.sql`**. **Phase 2 planned:** deal-level pricing + rakeback; slices keep `action_pct` only.
 - **2026-08-11:** **Declined offer cleanup (test):** when the other side declines a whole offer, the **initiator** sees **Delete** / **New proposal** (hard-delete via **`poker_stable_delete_declined_deal`**, then open Create Stake / + Stake). Multi-backer single-slice decline still shrinks the deal. Migration **`20260811180000`**.
 - **2026-08-11:** **Decliner UX (test):** declining agent’s card goes away; modal offers **Propose new terms** (seeded create form with same counterparties) or **Cancel**. Choosing **Propose new terms** hard-deletes the declined deal (`poker_stable_delete_declined_deal`, any party on the deal) so the initiator’s Delete / New proposal card disappears. Migration **`20260811190000`**.

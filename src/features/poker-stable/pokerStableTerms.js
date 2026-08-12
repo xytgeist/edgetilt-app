@@ -570,6 +570,9 @@ export function canProposeSettleStake(deal, slices = [], { userId, hasProposal =
   if (!deal || !userId) return false
   if (!['active', 'revoked'].includes(deal.status)) return false
   if (!isOngoingDealType(deal.deal_type)) return false
+  // Tournament packages can have many backers ... only the Edge player closes for everyone.
+  // Guest-only packages (no stakee) still allow an active Edge backer to close.
+  if (deal.deal_type === 'tournament_package' && deal.stakee_user_id) return false
   return slices.some(
     (slice) =>
       slice.status === 'active' &&

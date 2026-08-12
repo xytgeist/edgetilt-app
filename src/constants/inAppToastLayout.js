@@ -2,8 +2,11 @@
  * Shared layout for top in-app notification toasts (frosted glass pill).
  */
 
-/** Hug content; cap wide activity/status toasts. */
-export const IN_APP_TOAST_SHELL_WIDTH = 'w-fit max-w-[min(calc(100vw-1.5rem),33.6rem)]'
+/**
+ * Hug short copy (`w-max`); long copy expands to ~3/4 viewport then wraps.
+ * Prefer `w-max` over `w-fit` … fit-content shrink-wraps multi-line text into a tall skinny pill.
+ */
+export const IN_APP_TOAST_SHELL_WIDTH = 'w-max max-w-[min(75vw,calc(100vw-1.5rem))]'
 
 /** Max width for short billing/access notices (legacy 20rem). */
 export const IN_APP_TOAST_ACCESS_WIDTH = 'w-[min(calc(100vw-1.5rem),16rem)]'
@@ -14,8 +17,8 @@ export const IN_APP_TOAST_TOP = 'max(0.5rem, env(safe-area-inset-top))'
 export const IN_APP_TOAST_STACKED_TOP =
   'max(3.4rem, calc(0.5rem + 2.6rem + env(safe-area-inset-top)))'
 
-/** Vertical stack step for admin multi-toast previews (approx card height + gap). */
-export const IN_APP_TOAST_STACK_STEP_REM = 3.75
+/** Vertical stack step for admin multi-toast previews (title + up to 3 body lines + gap). */
+export const IN_APP_TOAST_STACK_STEP_REM = 4.5
 
 /** @param {number} index 0-based stack index */
 export function inAppToastStackedTopStyle(index = 0) {
@@ -48,7 +51,7 @@ export const IN_APP_TOAST_ACTIVITY_TITLE =
   'in-app-toast-activity-title block text-[12px] font-semibold leading-snug text-zinc-50'
 
 export const IN_APP_TOAST_ACTIVITY_BODY =
-  'in-app-toast-activity-body mt-0.5 block text-[11px] font-medium leading-snug text-zinc-300'
+  'in-app-toast-activity-body mt-0.5 block line-clamp-3 text-[11px] font-medium leading-snug text-zinc-300'
 
 export const IN_APP_TOAST_DISMISS_BTN =
   'in-app-toast-activity-dismiss shrink-0 rounded-full px-1.5 py-0.5 text-[15px] leading-none text-zinc-400 touch-manipulation hover:bg-white/10 hover:text-zinc-100'

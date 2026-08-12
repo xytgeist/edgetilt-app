@@ -2,7 +2,7 @@ import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import LoungeStreamVideoLightboxChrome, {
   LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
-  LOUNGE_IMAGE_LIGHTBOX_TOP_FOLLOW_BTN_CLASS,
+  LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS,
   LoungeStreamLightboxFollowButton,
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
@@ -200,9 +200,14 @@ function loungeStreamLightboxMenuState(hostPost, ctx) {
  * @param {() => void} dismissLightbox
  * @param {object} ctx - Handlers from {@link LoungeStreamLightboxProvider}.
  */
-export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLightbox, ctx) {
+/**
+ * @param {{ showAuthorMeta?: boolean }} [options]
+ *   Image lightbox: `showAuthorMeta: false` for portrait slides (interaction pills only).
+ */
+export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLightbox, ctx, options = {}) {
   const host = hostEntity ?? mediaPost
   const media = mediaPost ?? host
+  const showAuthorMeta = options.showAuthorMeta !== false
   const menuState = isFeedCommentEntity(host)
     ? { isPlainPostRepost: false, isCommentRepost: false }
     : loungeStreamLightboxMenuState(host, ctx)
@@ -228,6 +233,7 @@ export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLi
       viewerFollowingUserIds={ctx.viewerFollowingUserIds}
       onFollowUser={ctx.onFollowUser}
       interactionBar={interactionBar}
+      showAuthorMeta={showAuthorMeta}
       onMentionClick={ctx.onMentionClick}
       onHashtagClick={ctx.onHashtagClick}
       onCashtagClick={ctx.onCashtagClick}
@@ -272,11 +278,11 @@ export function buildLoungeStreamLightboxTopBarExtra(hostEntity, mediaPost, ctx)
   return buildLoungeLightboxFollowTopBar(hostEntity, mediaPost, ctx, { landscapeOnly: true })
 }
 
-/** Image/GIF lightbox top bar - always beside ⋯. */
+/** Image/GIF lightbox top bar - always beside ⋯ (used when author meta is hidden). */
 export function buildLoungeImageLightboxTopBarExtra(hostEntity, mediaPost, ctx) {
   return buildLoungeLightboxFollowTopBar(hostEntity, mediaPost, ctx, {
     landscapeOnly: false,
-    topBarBtnClass: LOUNGE_IMAGE_LIGHTBOX_TOP_FOLLOW_BTN_CLASS,
+    topBarBtnClass: LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS,
   })
 }
 

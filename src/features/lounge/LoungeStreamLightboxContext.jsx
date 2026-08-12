@@ -39,12 +39,13 @@ function mergeLoungeLightboxTileCtx(ctx, tileCtx, surfaceCtx) {
  */
 export function LoungeStreamLightboxProvider({ ctx, children }) {
   const buildChrome = useCallback(
-    (hostEntity, mediaPost, dismissLightbox, tileCtx, surfaceCtx) =>
+    (hostEntity, mediaPost, dismissLightbox, tileCtx, surfaceCtx, options) =>
       buildLoungeStreamLightboxChrome(
         hostEntity,
         mediaPost,
         dismissLightbox,
         mergeLoungeLightboxTileCtx(ctx, tileCtx, surfaceCtx),
+        options,
       ),
     [ctx],
   )

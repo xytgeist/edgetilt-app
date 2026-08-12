@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Image lightbox chrome by aspect:** square/landscape (`natural height ≤ width`) keeps full Stream chrome + slight upward media bias; taller slides hide avatar/name/handle/caption (interaction pills + top Follow). Cutoff is 1:1.
 - 2026-08-12: **Image lightbox carousel + fly-in radius:** clear fixed land shell on open (was blocking pan-x); swipe surface uses `touch-auto` when multi so parent `touch-pan-y` no longer intersects carousel `pan-x` to none; expand flyout squares corners immediately (`borderRadiusPx: 0`).
 - 2026-08-12: **Image lightbox uses Stream hero chrome:** `buildChrome` (avatar / name / handle / caption / interactions) + Stream top chips; image ⋯ menu still omits autoplay. Light bottom band stays dark-gradient like video (polish later).
 - 2026-08-12: **Image lightbox chrome frost:** Stream-like `black/55` top buttons; interaction pills `black/60` + blur (image lightbox only); deeper footer scrim. Light mode keeps frosted light pills (no longer strips `bg-black` shells). *(Superseded same day by Stream chrome reuse.)*

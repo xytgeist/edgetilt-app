@@ -563,23 +563,40 @@ export function LoungePostFeedImagesAndGif({
     streamLightbox && lightboxHost
       ? () => streamLightbox.buildImageMenu(lightboxHost, streamLightboxTileCtx, streamLightboxSurface)
       : null
-  /** Same Follow / top-bar extras as Stream hero (landscape Follow lives here). */
+  /**
+   * Follow in top bar: landscape device (Stream) when author meta shows; always when
+   * tall-image compact chrome hides the author-row Follow.
+   */
   const imageLightboxTopBarExtraRenderer =
     streamLightbox && lightboxHost
-      ? () => streamLightbox.buildTopBarExtra(lightboxHost, post, streamLightboxTileCtx, streamLightboxSurface)
+      ? (chromeOpts = {}) =>
+          chromeOpts.showAuthorMeta === false
+            ? streamLightbox.buildImageTopBarExtra(
+                lightboxHost,
+                post,
+                streamLightboxTileCtx,
+                streamLightboxSurface,
+              )
+            : streamLightbox.buildTopBarExtra(
+                lightboxHost,
+                post,
+                streamLightboxTileCtx,
+                streamLightboxSurface,
+              )
       : null
   /** Same avatar / name / handle / caption / interactions chrome as Stream hero. */
   const imageLightboxChromeRenderer =
     streamLightbox &&
     lightboxHost &&
     !streamLightboxTileCtx?.hideLightboxInteractionBar
-      ? (dismissLightbox) =>
+      ? (dismissLightbox, chromeOpts) =>
           streamLightbox.buildChrome(
             lightboxHost,
             post,
             dismissLightbox,
             streamLightboxTileCtx,
             streamLightboxSurface,
+            chromeOpts,
           )
       : null
   const chromeRenderer = imageLightboxChromeRenderer

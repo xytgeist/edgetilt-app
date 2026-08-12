@@ -35,6 +35,21 @@ function normalizeUrlList(urls) {
   return urls.map((u) => String(u ?? '').trim()).filter(Boolean)
 }
 
+/** Square / landscape slides sit above optical center so footer chrome has room (X-style). */
+const IMAGE_LIGHTBOX_SHORT_LIFT_PAD = 'min(22vh, 11.5rem)'
+
+/**
+ * @param {HTMLImageElement | null | undefined} img
+ * @returns {number | null} width/height, or null if unknown
+ */
+function readImageAspectRatio(img) {
+  if (!(img instanceof HTMLImageElement)) return null
+  const w = img.naturalWidth
+  const h = img.naturalHeight
+  if (!(w > 0 && h > 0)) return null
+  return w / h
+}
+
 /**
  * Full-screen image/GIF viewer with tile↔hero FLIP (same motion language as Stream video).
  * Pass `urls` + `initialIndex` for multi-image navigation; or legacy single `url`.
@@ -52,11 +67,14 @@ export function LoungeImageLightbox({
   lightboxPortalClass = 'z-[100]',
   /** `() => ReactNode` - top-right ⋯ menu (no autoplay toggle for images). */
   renderMediaLightboxMenu,
-  /** `() => ReactNode` - Follow pill left of ⋯ in the top bar. */
+  /**
+   * `(chromeOpts?: { showAuthorMeta?: boolean }) => ReactNode` - Follow left of ⋯.
+   * Compact (tall) slides pass `showAuthorMeta: false` so Follow stays available.
+   */
   renderMediaLightboxTopBarExtra,
   /**
-   * `(dismissLightbox) => ReactNode` - same bottom chrome as Stream hero
-   * (avatar / name / handle / caption / interactions). Preferred over interaction-bar-only.
+   * `(dismissLightbox, chromeOpts?: { showAuthorMeta?: boolean }) => ReactNode` - Stream hero chrome.
+   * Tall slides (`natural height > width`) omit avatar / name / handle / caption.
    */
   renderMediaLightboxChrome,
   /** `(dismissLightbox) => ReactNode` - legacy pill row only (used if chrome is omitted). */
@@ -122,6 +140,17 @@ export function LoungeImageLightbox({
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const landSlideIndexRef = useRef(Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0))))
+  /** Current slide natural width/height. `>= 1` → square/landscape (full chrome + lift). */
+  const [imageAspect, setImageAspect] = useState(/** @type {number | null} */ (null))
+  const noteSlideAspect = useCallback((img) => {
+    const next = readImageAspectRatio(img)
+    if (next == null) return
+    setImageAspect((prev) => (prev != null && Math.abs(prev - next) < 0.0001 ? prev : next))
+  }, [])
+  // height <= width (square / landscape): full author chrome + lift. Taller: pills only.
+  const showAuthorMeta = imageAspect == null || imageAspect >= 1
+  const liftShortMedia = showAuthorMeta && imageAspect != null
+  const chromeOpts = useMemo(() => ({ showAuthorMeta }), [showAuthorMeta])
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -354,19 +383,30 @@ export function LoungeImageLightbox({
   }, [renderMediaLightboxMenu])
 
   const lightboxTopBarExtraContent = useMemo(() => {
-    if (typeof renderMediaLightboxTopBarExtra === 'function') return renderMediaLightboxTopBarExtra()
+    if (typeof renderMediaLightboxTopBarExtra === 'function') {
+      return renderMediaLightboxTopBarExtra(chromeOpts)
+    }
     return null
-  }, [renderMediaLightboxTopBarExtra])
+  }, [renderMediaLightboxTopBarExtra, chromeOpts])
 
   const lightboxChromeContent = useMemo(() => {
     if (typeof renderMediaLightboxChrome === 'function') {
-      return renderMediaLightboxChrome(requestClose)
+      return renderMediaLightboxChrome(requestClose, chromeOpts)
     }
     if (typeof renderMediaLightboxInteractionBar === 'function') {
       return renderMediaLightboxInteractionBar(requestClose)
     }
     return null
-  }, [renderMediaLightboxChrome, renderMediaLightboxInteractionBar, requestClose])
+  }, [renderMediaLightboxChrome, renderMediaLightboxInteractionBar, requestClose, chromeOpts])
+
+  useLayoutEffect(() => {
+    const img = mediaImageRef.current
+    if (img?.complete) {
+      noteSlideAspect(img)
+      return
+    }
+    setImageAspect(null)
+  }, [idx, current, phase, noteSlideAspect])
 
   useEffect(() => {
     notifyLoungeStreamLightboxOpen(true)
@@ -525,6 +565,7 @@ export function LoungeImageLightbox({
       data-lounge-media-lightbox
       data-lounge-image-lightbox
       data-lounge-image-lightbox-phase={phase}
+      data-lounge-image-lightbox-chrome={showAuthorMeta ? 'full' : 'compact'}
       className={`fixed inset-0 ${lightboxPortalClass}`}
       role="dialog"
       aria-modal="true"
@@ -662,6 +703,7 @@ export function LoungeImageLightbox({
             <div
               ref={mediaContainerRef}
               className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+              style={liftShortMedia ? { paddingBottom: IMAGE_LIGHTBOX_SHORT_LIFT_PAD } : undefined}
             >
               <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
               {carouselMode ? (
@@ -693,6 +735,9 @@ export function LoungeImageLightbox({
                           loading={i === idx || phase === 'opening' ? 'eager' : 'lazy'}
                           decoding="async"
                           draggable={false}
+                          onLoad={(e) => {
+                            if (i === idxRef.current) noteSlideAspect(e.currentTarget)
+                          }}
                         />
                       </div>
                     </div>
@@ -720,6 +765,7 @@ export function LoungeImageLightbox({
                     loading="eager"
                     decoding="async"
                     draggable={false}
+                    onLoad={(e) => noteSlideAspect(e.currentTarget)}
                   />
                 </div>
               )}

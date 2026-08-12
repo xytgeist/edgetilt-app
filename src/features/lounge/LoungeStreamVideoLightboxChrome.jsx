@@ -73,6 +73,7 @@ export function LoungeStreamLightboxFollowButton({
 /**
  * X-style overlay chrome for Stream video hero (author, caption snippet, interactions).
  * Portrait: Follow sits on the author row; landscape: Follow is in the top bar (mute-adjacent).
+ * Image lightbox may pass `showAuthorMeta={false}` for tall slides (interaction pills only).
  */
 export default function LoungeStreamVideoLightboxChrome({
   post,
@@ -94,6 +95,7 @@ export default function LoungeStreamVideoLightboxChrome({
   onCashtagClick,
   onLinkClick,
   onCaptionClick,
+  showAuthorMeta = true,
 }) {
   const author = displayEntity || post
   const userId = author?.user_id
@@ -115,6 +117,25 @@ export default function LoungeStreamVideoLightboxChrome({
         })
       })
     })
+  }
+
+  if (!showAuthorMeta) {
+    if (!interactionBar) return null
+    return (
+      <div
+        data-lounge-stream-lightbox-chrome
+        data-lounge-stream-lightbox-chrome-compact=""
+        className="pointer-events-none flex w-full flex-col"
+      >
+        <div
+          className="pointer-events-auto shrink-0 [&_[data-lounge-post-interaction-bar]]:w-auto"
+          data-lounge-lightbox-no-swipe
+          onClick={(e) => e.stopPropagation()}
+        >
+          {interactionBar}
+        </div>
+      </div>
+    )
   }
 
   return (

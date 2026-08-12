@@ -1211,6 +1211,7 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] .text-\[\#d4d4d8\] {
   color: #d4d4d8 !important;
 }
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-white,
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-200,
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-500,
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-100 {
@@ -1246,19 +1247,9 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   z-index: 112 !important;
 }
 /*
- * Image lightbox now reuses Stream hero chrome (avatar / caption / black/40 pills).
- * Light mode: keep frosted top nav chips; leave bottom Stream chrome dark-on-gradient for now
- * (same as video) … polish light bottom chrome later if needed.
+ * Lounge image lightbox chrome uses X-style dark glass (black/50 + white glyphs) in both
+ * themes so controls stay readable on light or dark media. Do not invert top chips in light mode.
  */
-html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn {
-  color: #3f3f46 !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(22px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(150%) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
-  isolation: isolate;
-}
 /* Chat image lightbox back - frosted glass over full-bleed media */
 [data-chat-image-lightbox] .media-lightbox-nav-btn {
   background: rgba(255, 255, 255, 0.05) !important;
@@ -1303,12 +1294,9 @@ html.light [data-chat-image-lightbox] [data-chat-image-lightbox-footer] {
   width: 1.375rem !important;
   height: 1.375rem !important;
 }
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] .text-zinc-200,
+/* Pager stays light-on-dark like the chrome pills (do not remap to zinc in light mode). */
 html.light [data-lounge-image-lightbox] [data-lounge-lightbox-image-pager] {
-  color: #3f3f46 !important;
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  color: #ffffff !important;
 }
 /*
  * Light-mode image lightboxes - fade #fff into #fafafa under the iOS status bar.
@@ -1353,10 +1341,16 @@ html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] .te
 html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] .text-\[\#d4d4d8\] {
   color: #d4d4d8 !important;
 }
+html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-white,
 html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-200,
 html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-500,
 html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-100 {
-  color: #e4e4e7 !important;
+  color: #ffffff !important;
+}
+/* Keep frosted dark pill shells in light mode (global zinc remaps must not flatten them). */
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .bg-black\/50,
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
 /*

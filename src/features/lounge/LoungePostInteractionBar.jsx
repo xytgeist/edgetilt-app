@@ -94,30 +94,30 @@ export default function LoungePostInteractionBar({
         ? 'text-white'
         : 'text-zinc-100'
       : overlayIdle
-        ? 'text-zinc-200'
+        ? 'text-white'
         : 'text-zinc-500'
   const repostClass = ro
     ? 'text-zinc-500'
     : ui.reposted
       ? 'text-emerald-400'
       : overlayIdle
-        ? 'text-zinc-200'
+        ? 'text-white'
         : 'text-zinc-500'
   const likeClass = ro
     ? 'text-zinc-500'
     : ui.liked
       ? 'text-lv-red'
       : overlayIdle
-        ? 'text-zinc-200'
+        ? 'text-white'
         : 'text-zinc-500'
   const bookmarkClass = ro
     ? 'text-zinc-600'
     : isBookmarked
       ? 'text-lv-yellow'
       : overlayIdle
-        ? 'text-zinc-200'
+        ? 'text-white'
         : 'text-zinc-500'
-  const shareClass = overlayIdle ? 'text-zinc-200' : ro ? 'text-zinc-500' : 'text-zinc-200'
+  const shareClass = overlayIdle ? 'text-white' : ro ? 'text-zinc-500' : 'text-zinc-200'
   const plainId = ui.plainRepostChildId
   const quoteId = ui.quoteRepostChildId
   const commentBubbleD = LOUNGE_COMMENT_BUBBLE_D
@@ -160,9 +160,10 @@ export default function LoungePostInteractionBar({
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const statSheetBookmark =
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  /** X-style frosted dark pills … stay dark in light app theme so they read on any media. */
   const pillOverlayStat = isComment
-    ? 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/40 px-2 py-1.5 backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-    : 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-2 backdrop-blur-[2px] hover:bg-black/55 active:bg-black/60 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+    ? 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/50 px-2 py-1.5 text-white backdrop-blur-md hover:bg-black/60 active:bg-black/65 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+    : 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-2 text-white backdrop-blur-md hover:bg-black/60 active:bg-black/65 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const pickStat = (feedCls, sheetCls) => (pillOverlay ? pillOverlayStat : statsCompact ? feedCls : sheetCls)
   const statCommentCls = pickStat(statFeedComment, statSheetComment)
   const statMidCls = pickStat(statFeedMid, statSheetMid)
@@ -219,11 +220,13 @@ export default function LoungePostInteractionBar({
     toggleInteraction(post.id, 'commented')
   }
 
-  const rowClass = isFeed
-    ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
-    : isComment
-      ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[14px] ${rootClassName}`.trim()
-      : `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[16px] ${rootClassName}`.trim()
+  const rowClass = pillOverlay
+    ? `flex w-full min-w-0 flex-nowrap items-center justify-start gap-1.5 text-[15px] ${rootClassName}`.trim()
+    : isFeed
+      ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
+      : isComment
+        ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[14px] ${rootClassName}`.trim()
+        : `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[16px] ${rootClassName}`.trim()
 
   const repostMenusFeed =
     typeof document !== 'undefined' &&

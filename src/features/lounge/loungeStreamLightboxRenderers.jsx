@@ -388,8 +388,7 @@ export function buildLoungeStreamLightboxMenu(hostEntity, ctx, options = {}) {
 export function buildLoungeImageLightboxMenu(hostEntity, ctx) {
   return buildLoungeStreamLightboxMenu(hostEntity, ctx, {
     showAutoplayToggle: false,
-    // Match Stream hero top chips; `media-lightbox-nav-btn` keeps light-mode frost hooks.
-    menuButtonClassName: `${LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS} media-lightbox-nav-btn`,
+    menuButtonClassName: LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
   })
 }
 

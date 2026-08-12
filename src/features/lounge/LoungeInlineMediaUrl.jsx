@@ -321,9 +321,15 @@ export function LoungeImageLightbox({
     setDismissProgress(detail?.active ? p : 0)
   }, [])
 
+  const onMediaTap = useCallback(() => {
+    if (phaseRef.current !== 'open') return
+    setChromeVisible((v) => !v)
+  }, [])
+
   const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
     onClose: requestClose,
     onDismissProgress,
+    onTap: onMediaTap,
     allowSwipeOnVideo: false,
     enabled: phase === 'open' && !isZoomed && !isPinching,
     verticalDismissOnly: multi,
@@ -626,14 +632,13 @@ export function LoungeImageLightbox({
             className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between"
             style={{
               opacity: chromeVisible ? 1 - dismissProgress : 0,
-              transition: chromeVisible
-                ? `opacity ${HERO_CHROME_FADE_MS}ms ease-out`
-                : 'none',
+              transition: `opacity ${HERO_CHROME_FADE_MS}ms ease-out`,
             }}
+            aria-hidden={chromeVisible ? undefined : true}
           >
             <div className="media-lightbox-status-bar-blend" aria-hidden />
             <div
-              className={`pointer-events-auto relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+              className={`${chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
               data-lounge-lightbox-top-chrome
               data-lounge-lightbox-no-swipe
             >
@@ -644,7 +649,7 @@ export function LoungeImageLightbox({
                   requestClose()
                 }}
                 aria-label="Back"
-                className={`${LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS} media-lightbox-nav-btn`}
+                className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
               >
                 <span className="text-[22px] leading-none" aria-hidden>
                   ←
@@ -662,11 +667,13 @@ export function LoungeImageLightbox({
                 data-lounge-lightbox-no-swipe
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="pointer-events-auto">{lightboxChromeContent}</div>
+                <div className={chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'}>
+                  {lightboxChromeContent}
+                </div>
                 {multi ? (
                   <div
                     data-lounge-lightbox-image-pager
-                    className="pointer-events-none mt-2 text-center text-[12px] font-medium tabular-nums text-zinc-200"
+                    className="pointer-events-none mt-2 text-center text-[12px] font-medium tabular-nums text-white"
                   >
                     {idx + 1} / {list.length}
                   </div>

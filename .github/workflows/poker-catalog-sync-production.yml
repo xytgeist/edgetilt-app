@@ -10,6 +10,8 @@
 #   SUPABASE_DB_URL_PRODUCTION
 #
 # On success, writes admin_ops_job_heartbeats (Edge Monitor) on production.
+# Job fails (red) if MTTDB online scrape errors or returns 0 rows … regional JSON
+# alone must not mark the sync healthy. Live + online scrapes are independent.
 
 name: Poker catalog sync (production)
 

@@ -140,20 +140,42 @@ async function main() {
       console.warn('[poker:catalog:sync] Wynn fetch skipped:', err?.message || err)
     }
   }
+  /** @type {{ liveError: string | null, onlineError: string | null, liveIngested: number, onlineIngested: number, liveParsed: number, onlineParsed: number }} */
+  const mttdbFetch = {
+    liveError: null,
+    onlineError: null,
+    liveIngested: 0,
+    onlineIngested: 0,
+    liveParsed: 0,
+    onlineParsed: 0,
+  }
+
+  if (!skipFetch && !mttdbPayload) {
+    console.error('[poker:catalog:sync] Missing poker_tournament_catalog_mttdb.json seed (region=mttdb).')
+    process.exit(1)
+  }
+
   if (!skipFetch && mttdbPayload) {
+    const supabaseForMttdb = createSupabaseServiceClient(createClient)
+    /** @type {object[]} */
+    let liveOneOff = []
+    /** @type {object[]} */
+    let onlineOneOff = []
+
+    // Live + online are independent … a live scrape failure must not skip online.
     try {
-      const supabase = createSupabaseServiceClient(createClient)
-      const venueResolver = await createMttdbVenueResolver(supabase, {
+      const venueResolver = await createMttdbVenueResolver(supabaseForMttdb, {
         dryRun,
         geocode: !noGeocode && !dryRun,
       })
-      const siteResolver = createMttdbSiteResolver()
-
-      const { oneOff: liveOneOff, stats: liveStats } = await fetchMttdbLiveCatalogOneOffs({
+      const live = await fetchMttdbLiveCatalogOneOffs({
         resolveVenue: venueResolver.resolve,
       })
+      liveOneOff = live.oneOff || []
+      mttdbFetch.liveParsed = Number(live.stats?.parsed) || 0
+      mttdbFetch.liveIngested = Number(live.stats?.ingested) || 0
       console.log(
-        `MTTDB live: parsed ${liveStats.parsed}, ingested ${liveStats.ingested} (skipped venue ${liveStats.skippedVenue}, date ${liveStats.skippedDate})`,
+        `MTTDB live: parsed ${live.stats.parsed}, ingested ${live.stats.ingested} (skipped venue ${live.stats.skippedVenue}, date ${live.stats.skippedDate})`,
       )
       const unmappedVenues = venueResolver.unmappedVenues()
       if (unmappedVenues.length) {
@@ -163,12 +185,21 @@ async function main() {
         }
         if (unmappedVenues.length > 25) console.log(`  … +${unmappedVenues.length - 25} more`)
       }
+    } catch (err) {
+      mttdbFetch.liveError = String(err?.message || err)
+      console.error('[poker:catalog:sync] MTTDB live fetch failed:', mttdbFetch.liveError)
+    }
 
-      const { oneOff: onlineOneOff, stats: onlineStats } = await fetchMttdbOnlineCatalogOneOffs({
+    try {
+      const siteResolver = createMttdbSiteResolver()
+      const online = await fetchMttdbOnlineCatalogOneOffs({
         resolveSite: siteResolver.resolve,
       })
+      onlineOneOff = online.oneOff || []
+      mttdbFetch.onlineParsed = Number(online.stats?.parsed) || 0
+      mttdbFetch.onlineIngested = Number(online.stats?.ingested) || 0
       console.log(
-        `MTTDB online: parsed ${onlineStats.parsed}, ingested ${onlineStats.ingested} (skipped site ${onlineStats.skippedSite}, date ${onlineStats.skippedDate})`,
+        `MTTDB online: parsed ${online.stats.parsed}, ingested ${online.stats.ingested} (skipped site ${online.stats.skippedSite}, date ${online.stats.skippedDate})`,
       )
       const unmappedSites = siteResolver.unmappedSites()
       if (unmappedSites.length) {
@@ -178,11 +209,12 @@ async function main() {
         }
         if (unmappedSites.length > 25) console.log(`  … +${unmappedSites.length - 25} more`)
       }
-
-      mttdbPayload.one_off = dedupeCatalogRows([...liveOneOff, ...onlineOneOff])
     } catch (err) {
-      console.warn('[poker:catalog:sync] MTTDB fetch skipped:', err?.message || err)
+      mttdbFetch.onlineError = String(err?.message || err)
+      console.error('[poker:catalog:sync] MTTDB online fetch failed:', mttdbFetch.onlineError)
     }
+
+    mttdbPayload.one_off = dedupeCatalogRows([...liveOneOff, ...onlineOneOff])
   }
 
   const rows = buildCatalogUpsertRowsFromPayloads(payloads)
@@ -191,9 +223,14 @@ async function main() {
     process.exit(1)
   }
 
+  const mttdbOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:online:'))
+  const mttdbLiveRows = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:live:'))
+
   console.log(`Target: ${targetHuman(target)}`)
   console.log(`Files: ${paths.map((p) => path.relative(repoRoot, p)).join(', ')}`)
-  console.log(`Rows: ${rows.length}${dryRun ? ' (dry run)' : ''}`)
+  console.log(
+    `Rows: ${rows.length}${dryRun ? ' (dry run)' : ''} (mttdb live ${mttdbLiveRows.length}, online ${mttdbOnlineRows.length})`,
+  )
 
   if (dryRun) {
     const mttdbSamples = rows.filter((r) => String(r.external_id || '').startsWith('mttdb:')).slice(0, 8)
@@ -209,6 +246,13 @@ async function main() {
       )
     }
     if (rows.length > 8) console.log(`  … +${rows.length - 8} more`)
+    if (!skipFetch) {
+      const mttdbProblems = mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length)
+      if (mttdbProblems.length) {
+        console.error('[poker:catalog:sync] MTTDB dry-run would fail:', mttdbProblems.join('; '))
+        process.exit(1)
+      }
+    }
     return
   }
 
@@ -223,14 +267,34 @@ async function main() {
       await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
         message: error.message,
         rows: rows.length,
+        mttdb: mttdbFetch,
       })
       console.error('upsert_poker_tournament_catalog failed:', error.message)
+      process.exit(1)
+    }
+
+    const mttdbProblems = skipFetch ? [] : mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length)
+    if (mttdbProblems.length) {
+      await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
+        message: mttdbProblems.join('; '),
+        upsert: data,
+        rows: rows.length,
+        mttdb: mttdbFetch,
+        mttdbOnlineRows: mttdbOnlineRows.length,
+        mttdbLiveRows: mttdbLiveRows.length,
+        target,
+      })
+      console.error('[poker:catalog:sync] Upserted regional/partial catalog, but MTTDB check failed:')
+      for (const p of mttdbProblems) console.error(`  - ${p}`)
       process.exit(1)
     }
 
     await recordOpsJobHeartbeatForTarget(supabase, target, 'ok', {
       upsert: data,
       rows: rows.length,
+      mttdb: mttdbFetch,
+      mttdbOnlineRows: mttdbOnlineRows.length,
+      mttdbLiveRows: mttdbLiveRows.length,
       target,
     })
     console.log('Done:', data)
@@ -238,9 +302,31 @@ async function main() {
     await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
       message: String(err?.message || err),
       rows: rows.length,
+      mttdb: mttdbFetch,
     })
     throw err
   }
+}
+
+/**
+ * Hard fail conditions for scheduled sync (false-green was swallowing MTTDB outages).
+ * @param {{ liveError: string | null, onlineError: string | null, liveIngested: number, onlineIngested: number, onlineParsed: number }} fetch
+ * @param {number} onlineRowCount
+ */
+function mttdbFetchProblems(fetch, onlineRowCount) {
+  /** @type {string[]} */
+  const problems = []
+  if (fetch.onlineError) problems.push(`online scrape error: ${fetch.onlineError}`)
+  if (!fetch.onlineError && (fetch.onlineIngested < 1 || onlineRowCount < 1)) {
+    problems.push(
+      `online ingested ${fetch.onlineIngested} (parsed ${fetch.onlineParsed}, upsert rows ${onlineRowCount})`,
+    )
+  }
+  if (fetch.liveError) {
+    // Live failure is logged in detail; do not block online success.
+    console.warn('[poker:catalog:sync] MTTDB live scrape failed (online still required):', fetch.liveError)
+  }
+  return problems
 }
 
 main().catch((err) => {

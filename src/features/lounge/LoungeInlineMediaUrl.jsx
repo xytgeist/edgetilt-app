@@ -569,7 +569,11 @@ export function LoungeImageLightbox({
           style={{
             zIndex: zStack.overlay,
             pointerEvents: mediaInteractive ? undefined : 'none',
+            // Pre-mount during expand for decode/layout, but stay invisible until land
+            // … otherwise the full hero paints behind the growing flyout (double image).
+            visibility: phase === 'opening' ? 'hidden' : 'visible',
           }}
+          aria-hidden={phase === 'opening' ? true : undefined}
         >
           <div
             className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between"

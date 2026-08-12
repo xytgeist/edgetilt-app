@@ -42,6 +42,13 @@ import {
   POKER_SHEET_PANEL_TALL_CLASS,
 } from './pokerBankrollTrackerSheet.js'
 import {
+  LOUNGE_IOS,
+  LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+  loungeComposerFooterPaddingBottom,
+  useLoungeIosSafeBottomPx,
+  useLoungeKeyboardOverlapPx,
+} from '../lounge/useLoungeKeyboardOverlapPx.js'
+import {
   POKER_CURRENCIES,
   normalizePokerCurrency,
   resolveCurrencyFromGeolocation,
@@ -388,6 +395,18 @@ export default function PokerBankrollTracker({
   const [nudgingSliceId, setNudgingSliceId] = useState(/** @type {string | null} */ (null))
   /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
+  const startSheetKbActive = sheet === 'start'
+  const startSheetIosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS && startSheetKbActive)
+  const { overlapPx: startSheetKbOverlapPx, targetPx: startSheetKbTargetPx } =
+    useLoungeKeyboardOverlapPx(startSheetKbActive, {
+      smooth: LOUNGE_IOS,
+      smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+    })
+  const startSheetKbLiftPx = Math.max(startSheetKbOverlapPx, startSheetKbTargetPx)
+  const startSheetKeyboardUp = startSheetKbLiftPx > startSheetIosSafeBottomPx + 0.5
+  const startSheetFooterPadBottom = startSheetKeyboardUp
+    ? `${Math.round(startSheetKbLiftPx)}px`
+    : loungeComposerFooterPaddingBottom(0, startSheetIosSafeBottomPx)
   /** Prefill for + Stake after declining a backer offer. */
   const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
   /** @type {{ seed: object, counterpartLabel: string, declinedDealId?: string } | null} */
@@ -5108,7 +5127,9 @@ export default function PokerBankrollTracker({
 
             <div
               data-poker-bankroll-start-footer
-              className="shrink-0 border-t border-zinc-800/90 bg-zinc-900 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              data-poker-bankroll-start-footer-kb={startSheetKeyboardUp ? 'up' : 'down'}
+              className="shrink-0 border-t border-zinc-800/90 bg-zinc-900 pt-3"
+              style={{ paddingBottom: startSheetFooterPadBottom }}
             >
               <button
                 type="button"

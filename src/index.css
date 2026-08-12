@@ -1223,8 +1223,18 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-
 /*
  * Lounge image/GIF lightbox - light mode only: white shell so iOS status bar blends;
  * grey idle chrome + interaction glyphs; hydrated colors unchanged.
+ * Opaque shell only while fully open … opening/closing must stay transparent so the
+ * feed shows through the fading scrim during FLIP (otherwise shrink floats on blank #fafafa).
  */
-html.light [data-lounge-image-lightbox] {
+html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='open'] {
+  background-color: #fafafa !important;
+}
+html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='opening'],
+html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='closing'] {
+  background-color: transparent !important;
+}
+/* Light scrim (not black) so open/close fade matches the open shell. */
+html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   background-color: #fafafa !important;
 }
 /* Lounge image lightbox nav - idle interaction gray + stronger glass over busy media */

@@ -239,8 +239,9 @@ export function LoungeImageLightbox({
     closingRef.current = true
     setChromeVisible(false)
     setDismissProgress(0)
-    setPhase('closing')
+    // Keep scrim at full opacity for this paint, then fade with shrink (video hero pattern).
     setScrimOpacity(1)
+    setPhase('closing')
 
     const flyout = flyoutRef.current
     if (!flyout) {
@@ -256,28 +257,29 @@ export function LoungeImageLightbox({
     flyout.style.left = `${heroFrame.left}px`
     flyout.style.width = `${heroFrame.width}px`
     flyout.style.height = `${heroFrame.height}px`
-    flyout.style.zIndex = String(zStack.flyout)
+    flyout.style.zIndex = String(zStack.overlay + 1)
     flyout.style.borderRadius = '0px'
     flyout.style.transform = 'none'
     flyout.style.opacity = '1'
+    flyout.style.backgroundColor = 'transparent'
     void flyout.offsetWidth
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        if (phaseRef.current !== 'closing') return
         runHeroShrinkAnimation(flyout, heroFrame, origin, {
           animRef: shrinkAnimRef,
           finishTimerRef: shrinkTimerRef,
-          flyoutZIndex: zStack.flyout,
+          flyoutZIndex: zStack.overlay + 1,
           onDone: () => {
-            setScrimOpacity(0)
             finishClose()
           },
         })
-        // Fade scrim with shrink.
+        // Fade scrim with shrink so the feed shows through (shell is transparent in closing).
         setScrimOpacity(0)
       })
     })
-  }, [finishClose, resolveCloseOrigin, zStack.flyout])
+  }, [finishClose, resolveCloseOrigin, zStack.overlay])
 
   const onDismissProgress = useCallback((detail) => {
     if (phaseRef.current !== 'open') return
@@ -509,6 +511,7 @@ export function LoungeImageLightbox({
       aria-label={multi ? `Image ${idx + 1} of ${list.length}` : 'Full image'}
     >
       <div
+        data-lounge-image-lightbox-scrim
         className="absolute inset-0 bg-black"
         style={{
           zIndex: zStack.scrim,
@@ -529,7 +532,7 @@ export function LoungeImageLightbox({
       <div
         ref={flyoutRef}
         data-lounge-image-lightbox-flyout
-        className="overflow-hidden bg-black"
+        className="overflow-hidden bg-transparent"
         style={{
           visibility: motionActive ? 'visible' : 'hidden',
           pointerEvents: 'none',

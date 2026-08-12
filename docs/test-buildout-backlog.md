@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Image lightbox FLIP lands in chrome band:** expand target uses measured `insetTop`/`insetBottom` (same media-band pad as open) so fly-in does not center then jump.
 - 2026-08-12: **Lightbox overlay pills:** white frost (`bg-white/25`); comment/repost/like fixed `5.5rem` ovals with reserved compact-count slot; bookmark/share fixed `h-10 w-10` circles; row `justify-between` (no content-sized scrunch).
 - 2026-08-12: **Image lightbox media band:** pad media shell from measured top-chrome bottom → footer chrome top (avatar row or pills) so every slide flex-centers with equal gaps; replaces fixed short-image lift pad.
 - 2026-08-12: **Lightbox chrome glass + tap toggle:** white-frost pills/top chips (both themes). Tap media toggles overlay (pointer-events off while hidden).

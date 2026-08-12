@@ -84,9 +84,17 @@ export function heroRectUsableForShrinkBack(rect) {
   return bottom > 0 && rect.top < window.innerHeight
 }
 
-/** Target hero frame: centered object-contain media filling the viewport (chrome overlays on top). */
+/**
+ * Target hero frame: object-contain media centered in the viewport (or a chrome band).
+ * @param {{ width: number, height: number }} fromRect
+ * @param {{ displayW?: number, displayH?: number, insetTop?: number, insetBottom?: number }} [opts]
+ *   `insetTop` / `insetBottom` - reserve chrome band (top buttons / footer) so FLIP lands
+ *   where the open media will sit after media-band padding (avoids center → band jump).
+ */
 export function computeHeroTargetRect(fromRect, opts = {}) {
   const { displayW, displayH } = opts
+  const insetTop = Math.max(0, Number(opts.insetTop) || 0)
+  const insetBottom = Math.max(0, Number(opts.insetBottom) || 0)
   const vv = typeof window !== 'undefined' ? window.visualViewport : null
   const vw = vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 390)
   const vh = vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
@@ -99,7 +107,7 @@ export function computeHeroTargetRect(fromRect, opts = {}) {
   }
 
   const maxW = Math.max(120, vw)
-  const maxH = Math.max(120, vh)
+  const maxH = Math.max(120, vh - insetTop - insetBottom)
   let w = maxW
   let h = w / aspect
   if (h > maxH) {
@@ -107,7 +115,7 @@ export function computeHeroTargetRect(fromRect, opts = {}) {
     w = h * aspect
   }
   return {
-    top: (vh - h) / 2 + (vv?.offsetTop ?? 0),
+    top: insetTop + (maxH - h) / 2 + (vv?.offsetTop ?? 0),
     left: (vw - w) / 2 + (vv?.offsetLeft ?? 0),
     width: w,
     height: h,

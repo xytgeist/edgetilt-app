@@ -518,7 +518,7 @@ export function LoungeImageLightbox({
     }
   }, [current, requestClose, list.length, goPrev, goNext])
 
-  // FLIP open from feed tile.
+  // FLIP open from feed tile … land in the chrome band (not viewport center) to match open media.
   useLayoutEffect(() => {
     if (phase !== 'opening') return undefined
     const from = openFromRectRef.current
@@ -530,36 +530,58 @@ export function LoungeImageLightbox({
       return undefined
     }
 
-    const target = computeHeroTargetRect(from, {
-      displayW: from.width,
-      displayH: from.height,
-    })
-    targetRectRef.current = target
-    landSlideIndexRef.current = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
-    setLandFrame(target)
-
-    flyout.style.visibility = 'visible'
-    flyout.style.position = 'fixed'
-    flyout.style.top = `${from.top}px`
-    flyout.style.left = `${from.left}px`
-    flyout.style.width = `${from.width}px`
-    flyout.style.height = `${from.height}px`
-    flyout.style.zIndex = String(zStack.overlay + 1)
-    flyout.style.transformOrigin = '0 0'
-    flyout.style.transform = 'none'
-    flyout.style.transition = 'none'
-    // Square immediately … keeping 12px through expand looks fine until land, then pops square.
-    flyout.style.borderRadius = '0px'
-    flyout.style.opacity = '1'
+    // Seed aspect from the tile so footer chrome (full vs compact) matches before we measure.
+    const tileAspect = from.width / Math.max(from.height, 1)
+    if (Number.isFinite(tileAspect) && tileAspect > 0) {
+      setImageAspect((prev) => (prev == null ? tileAspect : prev))
+    }
 
     let cancelled = false
     const scrimRaf = requestAnimationFrame(() => {
       if (!cancelled) setScrimOpacity(1)
     })
 
+    // Double rAF: let chrome (and optional aspect-seeded footer) commit, then measure band + expand.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (cancelled) return
+        const band = measureImageLightboxMediaBand(
+          mediaContainerRef.current,
+          topChromeRef.current,
+          footerChromeRef.current,
+        )
+        setMediaBandPad(band)
+        const shell = mediaContainerRef.current
+        if (shell) {
+          shell.style.paddingTop = band.top > 0 ? `${band.top}px` : ''
+          shell.style.paddingBottom = band.bottom > 0 ? `${band.bottom}px` : ''
+        }
+
+        const target = computeHeroTargetRect(from, {
+          displayW: from.width,
+          displayH: from.height,
+          insetTop: band.top,
+          insetBottom: band.bottom,
+        })
+        targetRectRef.current = target
+        landSlideIndexRef.current = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
+        setLandFrame(target)
+
+        flyout.style.visibility = 'visible'
+        flyout.style.position = 'fixed'
+        flyout.style.top = `${from.top}px`
+        flyout.style.left = `${from.left}px`
+        flyout.style.width = `${from.width}px`
+        flyout.style.height = `${from.height}px`
+        flyout.style.zIndex = String(zStack.overlay + 1)
+        flyout.style.transformOrigin = '0 0'
+        flyout.style.transform = 'none'
+        flyout.style.transition = 'none'
+        // Square immediately … keeping 12px through expand looks fine until land, then pops square.
+        flyout.style.borderRadius = '0px'
+        flyout.style.opacity = '1'
+        void flyout.offsetWidth
+
         runHeroExpandAnimation(flyout, from, target, {
           animRef: expandAnimRef,
           finishTimerRef: expandTimerRef,

@@ -3380,7 +3380,7 @@ export default function PokerBankrollTracker({
                   : hero.overallBankroll
                 const chatPeerUserId =
                   onStake && hero.deal
-                    ? stableDealEdgeChatPeerUserId(hero.deal, userId)
+                    ? stableDealEdgeChatPeerUserId(hero.deal, userId, dealSlices)
                     : null
                 const showChatBtn = Boolean(
                   chatPeerUserId && typeof onOpenChatWithUser === 'function',

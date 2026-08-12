@@ -102,18 +102,34 @@ export function dealStakeeDisplayName(deal, profilesById = {}) {
 }
 
 /**
- * Edge user id to open a Chat DM with from Stable. Null when the counterpart is a
- * guest, missing, or the viewer themself. Both sides must be Edge users.
- * Backer → player (`stakee_user_id`). Player → lead backer (`staker_user_id`).
+ * Edge user id to open a Chat DM with from Stable / Bankroll stake cards.
+ * Null when the counterpart is a guest, missing, or the viewer themself.
+ * Both sides must be Edge users.
+ * Backer → player (`stakee_user_id`).
+ * Player → lead backer (`staker_user_id`), or first Edge slice backer when the
+ * deal is player-created (`+ Stake` leaves `staker_user_id` null).
  * @param {object | null | undefined} deal
  * @param {string | null | undefined} viewerUserId
+ * @param {object[]} [slices]
  */
-export function stableDealEdgeChatPeerUserId(deal, viewerUserId) {
+export function stableDealEdgeChatPeerUserId(deal, viewerUserId, slices = []) {
   if (!deal || !viewerUserId) return null
   const stakeeId = deal.stakee_user_id || null
   const leadId = deal.staker_user_id || null
   if (stakeeId && stakeeId === viewerUserId) {
-    return leadId && leadId !== viewerUserId ? leadId : null
+    if (leadId && leadId !== viewerUserId) return leadId
+    const edgeSlices = (slices || []).filter(
+      (s) =>
+        s?.counterparty_kind === 'user' &&
+        s?.staker_user_id &&
+        s.staker_user_id !== viewerUserId &&
+        s.status !== 'declined' &&
+        s.status !== 'cancelled' &&
+        s.status !== 'revoked',
+    )
+    const preferred =
+      edgeSlices.find((s) => s.status === 'active') || edgeSlices[0] || null
+    return preferred?.staker_user_id || null
   }
   if (stakeeId && stakeeId !== viewerUserId) return stakeeId
   return null

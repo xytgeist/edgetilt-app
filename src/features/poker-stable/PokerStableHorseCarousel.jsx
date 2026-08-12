@@ -157,7 +157,7 @@ export default function PokerStableHorseCarousel({
         // Match Sessions / Unsettled tone … not padded trend first/last (can disagree after settles).
         const sparkUp = (stats.profit ?? 0) >= 0
         const cardClassName = `relative flex w-full flex-col overflow-hidden ${horseTone.surface} p-5 text-left`
-        const chatPeerUserId = stableDealEdgeChatPeerUserId(deal, userId)
+        const chatPeerUserId = stableDealEdgeChatPeerUserId(deal, userId, dealSlices)
         const showChatBtn = Boolean(chatPeerUserId && typeof onOpenChatWithUser === 'function')
 
         const statsSparkBackground = showSparkBackground ? (

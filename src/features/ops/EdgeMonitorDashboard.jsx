@@ -41,6 +41,7 @@ import EdgeMonitorAppSectionMemberUsagePanel from './EdgeMonitorAppSectionMember
 import EdgeMonitorBotOpsPanel from './EdgeMonitorBotOpsPanel.jsx'
 import EdgeMonitorSubscriberRosterPanel from './EdgeMonitorSubscriberRosterPanel.jsx'
 import EdgeMonitorSystemHealthPanel from './EdgeMonitorSystemHealthPanel.jsx'
+import EdgeMonitorPokerCatalogPanel from './EdgeMonitorPokerCatalogPanel.jsx'
 import EdgeMonitorSecurityPanel from './EdgeMonitorSecurityPanel.jsx'
 import EdgeMonitorUserSignupsPanel from './EdgeMonitorUserSignupsPanel.jsx'
 import { useEdgeMonitorLivePulse } from './useEdgeMonitorLivePulse.js'
@@ -943,6 +944,10 @@ export default function EdgeMonitorDashboard({
       return (
         <>
           <AlertsBanner alerts={[...systemAlerts, ...healthMetricAlerts]} />
+          <EdgeMonitorPokerCatalogPanel
+            systemHealth={systemHealth}
+            loading={systemHealthLoading}
+          />
           <EdgeMonitorSystemHealthPanel
             systemHealth={systemHealth}
             loading={systemHealthLoading}

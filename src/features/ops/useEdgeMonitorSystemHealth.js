@@ -37,6 +37,7 @@ function mergeSystemHealth(driftData, jobsData, jobsError = '') {
     },
     billing_drift: drift,
     scheduled_jobs: jobs,
+    poker_catalog: jobsData?.poker_catalog || null,
     known_gaps: KNOWN_GAPS,
     jobs_error: jobsError || null,
   }

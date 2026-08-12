@@ -34,15 +34,16 @@ export function LoungeInteractionGlyphRail({
     railAlign === 'start' ? `${statClass} w-full min-w-0 justify-start`.trim() : statClass
 
   if (pillOverlay) {
-    const countEl =
-      showCount ? (
-        <span
-          className={`shrink-0 tabular-nums leading-none ${countClass}`}
-          title={fullStatCountTitle(countValue)}
-        >
-          {formatCompactStatCount(countValue)}
-        </span>
-      ) : null
+    // Fixed-width ovals: always reserve a compact-count slot so size does not jump 0 → 3.5K.
+    const countEl = (
+      <span
+        className={`inline-block min-w-[2.75ch] shrink-0 text-left text-[13px] tabular-nums leading-none ${countClass}`}
+        title={showCount ? fullStatCountTitle(countValue) : undefined}
+        aria-hidden={showCount ? undefined : true}
+      >
+        {showCount ? formatCompactStatCount(countValue) : '\u00a0'}
+      </span>
+    )
     return (
       <div
         ref={railRef}
@@ -56,7 +57,7 @@ export function LoungeInteractionGlyphRail({
           onClick={onClick}
           className={statClassMerged}
         >
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center justify-center gap-1">
             {glyph}
             {countEl}
           </span>

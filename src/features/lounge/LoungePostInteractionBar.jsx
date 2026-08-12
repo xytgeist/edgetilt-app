@@ -160,14 +160,20 @@ export default function LoungePostInteractionBar({
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const statSheetBookmark =
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-  /** X-style frosted dark pills … stay dark in light app theme so they read on any media. */
-  const pillOverlayStat = isComment
-    ? 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/50 px-2 py-1.5 text-white backdrop-blur-md hover:bg-black/60 active:bg-black/65 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-    : 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-2 text-white backdrop-blur-md hover:bg-black/60 active:bg-black/65 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-  const pickStat = (feedCls, sheetCls) => (pillOverlay ? pillOverlayStat : statsCompact ? feedCls : sheetCls)
-  const statCommentCls = pickStat(statFeedComment, statSheetComment)
-  const statMidCls = pickStat(statFeedMid, statSheetMid)
-  const statBookmarkCls = pickStat(statFeedBookmark, statSheetBookmark)
+  /**
+   * Lightbox overlay: white frost, fixed sizes (no content-driven grow/shrink).
+   * Comment / repost / like = oval wide enough for icon + compact count (e.g. 3.5K).
+   * Bookmark / share = circle (no count).
+   */
+  const pillOverlayFrost =
+    'border border-white/35 bg-white/25 text-white shadow-sm backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  const pillOverlayCountedStat = `inline-flex h-10 w-[5.5rem] shrink-0 items-center justify-center gap-1 rounded-full ${pillOverlayFrost}`
+  const pillOverlayCircleStat = `inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
+  const pickStat = (feedCls, sheetCls, overlayCls) =>
+    pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls
+  const statCommentCls = pickStat(statFeedComment, statSheetComment, pillOverlayCountedStat)
+  const statMidCls = pickStat(statFeedMid, statSheetMid, pillOverlayCountedStat)
+  const statBookmarkCls = pickStat(statFeedBookmark, statSheetBookmark, pillOverlayCircleStat)
 
   useEffect(() => {
     if (!repostMenuOpen) return
@@ -221,7 +227,7 @@ export default function LoungePostInteractionBar({
   }
 
   const rowClass = pillOverlay
-    ? `flex w-full min-w-0 flex-nowrap items-center justify-start gap-1.5 text-[15px] ${rootClassName}`.trim()
+    ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 text-[15px] ${rootClassName}`.trim()
     : isFeed
       ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
       : isComment

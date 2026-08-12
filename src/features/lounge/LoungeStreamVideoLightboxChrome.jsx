@@ -8,9 +8,9 @@ const LOUNGE_LIGHTBOX_DISPLAY_NAME_CLASS =
 const LOUNGE_LIGHTBOX_HANDLE_CLASS = 'text-[#d4d4d8]'
 const LOUNGE_LIGHTBOX_CAPTION_CLASS = 'text-[#fff]'
 
-/** Top-bar icon buttons - X-style dark glass (readable on light + dark media). */
+/** Top-bar icon buttons - white frost glass (readable on light + dark media). */
 export const LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS =
-  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md hover:bg-black/60 active:bg-black/65 [-webkit-tap-highlight-color:transparent]'
+  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/35 bg-white/25 text-white shadow-sm backdrop-blur-xl hover:bg-white/35 active:bg-white/40 [-webkit-tap-highlight-color:transparent]'
 
 /** Image/GIF lightbox top chrome - light frost ovals (light mode overrides via `.media-lightbox-nav-btn`). */
 export const LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS =
@@ -27,11 +27,11 @@ export const LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD = 'px-3 landscape:px-[10vw]'
 
 /** Top-bar Follow pill - same height as mute / ⋯ controls. */
 export const LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
-  'flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/20 bg-black/50 px-3.5 text-[13px] font-bold text-white backdrop-blur-md hover:bg-black/60 active:bg-black/65 [-webkit-tap-highlight-color:transparent]'
+  'flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/35 bg-white/25 px-3.5 text-[13px] font-bold text-white shadow-sm backdrop-blur-xl hover:bg-white/35 active:bg-white/40 [-webkit-tap-highlight-color:transparent]'
 
 /** Portrait author-row Follow - aligned with display name / handle. */
 export const LOUNGE_HERO_LIGHTBOX_AUTHOR_FOLLOW_BTN_CLASS =
-  'shrink-0 rounded-full border border-white/20 bg-black/50 px-3.5 py-1.5 text-[13px] font-bold text-white backdrop-blur-md hover:bg-black/60 active:bg-black/65 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  'shrink-0 rounded-full border border-white/35 bg-white/25 px-3.5 py-1.5 text-[13px] font-bold text-white shadow-sm backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
 
 export function LoungeStreamLightboxFollowButton({
   author,

@@ -5068,6 +5068,13 @@ html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-history-di
 html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-history-divider] .bg-zinc-700\/70 {
   background-color: #d4d4d8 !important;
 }
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-close-btn] {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+}
+html.light [data-poker-stake-archive-modal] [data-poker-stake-archive-close-btn]:active {
+  background-color: #27272a !important;
+}
 
 /* Guest stakee offer onboarding modal — light mode only */
 html.light [data-poker-stake-offer-onboarding] {

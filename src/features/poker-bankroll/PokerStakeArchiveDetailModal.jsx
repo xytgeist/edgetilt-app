@@ -340,21 +340,31 @@ export default function PokerStakeArchiveDetailModal({
           </ul>
         )}
 
-        {isBackerView && onDelete ? (
-          <div className="mt-6 border-t border-zinc-800 pt-4">
-            <button
-              type="button"
-              disabled={deleteBusy}
-              onClick={() => onDelete()}
-              className="w-full rounded-2xl py-3 text-sm font-semibold text-rose-400 touch-manipulation active:bg-zinc-800/80 disabled:opacity-50"
-            >
-              {deleteBusy ? 'Deleting…' : 'Delete from Stable'}
-            </button>
-            <p className="mt-2 text-center text-xs text-zinc-500">
-              Removes this stake from your Closed stakes. Does not erase the player&apos;s history.
-            </p>
-          </div>
-        ) : null}
+        <div className="mt-6 space-y-2 border-t border-zinc-800 pt-4">
+          {isBackerView && onDelete ? (
+            <>
+              <button
+                type="button"
+                disabled={deleteBusy}
+                onClick={() => onDelete()}
+                className="w-full rounded-2xl py-3 text-sm font-semibold text-rose-400 touch-manipulation active:bg-zinc-800/80 disabled:opacity-50"
+              >
+                {deleteBusy ? 'Deleting…' : 'Delete from Stable'}
+              </button>
+              <p className="text-center text-xs text-zinc-500">
+                Removes this stake from your Closed stakes. Does not erase the player&apos;s history.
+              </p>
+            </>
+          ) : null}
+          <button
+            type="button"
+            onClick={onClose}
+            data-poker-stake-archive-close-btn
+            className="w-full rounded-2xl bg-zinc-100 py-3.5 text-base font-bold text-zinc-900 touch-manipulation active:bg-zinc-200"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   )

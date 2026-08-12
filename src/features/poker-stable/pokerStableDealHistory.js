@@ -131,7 +131,8 @@ export function settlementBackerCredit(st, deal, slice, line = null, opts = {}) 
   }
   if (line) {
     let credit = roundMoney(
-      (Number(line.profit_share) || 0) + (Number(line.rakeback_share) || 0),
+      (Number(line.profit_share ?? line.profitShare) || 0) +
+        (Number(line.rakeback_share ?? line.rakebackShare) || 0),
     )
     if (line.direction === 'staker_to_player') credit = -credit
     return credit

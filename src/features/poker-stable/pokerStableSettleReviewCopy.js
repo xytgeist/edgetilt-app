@@ -61,6 +61,15 @@ export function backerCloseCapitalReturned(baseline, roll, slice) {
   return backerSliceAllocatedCapital({ baseline_bankroll: stableNum(baseline) }, slice)
 }
 
+/** Read settle-line profit bits whether from computeDealSettlement (camel) or DB (snake). */
+function settleLineProfitBits(line) {
+  if (!line) return { profitShare: 0, rakebackShare: 0 }
+  return {
+    profitShare: Number(line.profit_share ?? line.profitShare) || 0,
+    rakebackShare: Number(line.rakeback_share ?? line.rakebackShare) || 0,
+  }
+}
+
 /** Signed stake P/L for a slice at settle (profit share or −makeup share). */
 export function backerCloseStakePl(settlement, slice, line = null) {
   if (!settlement || !slice) return 0
@@ -68,13 +77,22 @@ export function backerCloseStakePl(settlement, slice, line = null) {
   const makeup = stableNum(settlement.makeup_at_settle)
   if (makeup > 0.005) return roundMoney(-makeup * action)
   if (line) {
-    let credit = roundMoney(
-      (Number(line.profit_share) || 0) + (Number(line.rakeback_share) || 0),
-    )
-    if (line.direction === 'staker_to_player') credit = -credit
-    return credit
+    const { profitShare, rakebackShare } = settleLineProfitBits(line)
+    let credit = roundMoney(profitShare + rakebackShare)
+    // Client settlement lines use camelCase; empty snake_case used to read as $0 stake P/L.
+    if (Math.abs(credit) > 0.005) {
+      if (line.direction === 'staker_to_player') credit = -credit
+      return credit
+    }
   }
+  // Markup / missing line: face P/L = action% × profit above baseline (not profit_split haircut).
   const profit = stableNum(settlement.profit_above_baseline)
+  const mode = slice.pricing_mode || slice.pricingMode
+  if (mode === 'profit_split') {
+    const playerPct = stableNum(slice.player_profit_pct ?? slice.playerProfitPct) / 100
+    const backerPct = 1 - playerPct
+    return roundMoney(profit * action * backerPct)
+  }
   return roundMoney(profit * action)
 }
 
@@ -104,8 +122,13 @@ export function attachSlicesToSettleLines(lines = [], slices = []) {
         : line.totalOwed != null
           ? line.totalOwed
           : 0
+    const { profitShare, rakebackShare } = settleLineProfitBits(line)
     return {
       ...line,
+      profit_share: profitShare,
+      profitShare,
+      rakeback_share: rakebackShare,
+      rakebackShare,
       total_owed: roundMoney(total),
       slice: line.slice || byId[sliceId] || { id: sliceId },
     }

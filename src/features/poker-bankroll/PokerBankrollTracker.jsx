@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { DollarSign, FileText, Info, Trophy } from 'lucide-react'
+import { DollarSign, FileText, Info, MessageCircle, Trophy } from 'lucide-react'
 import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -66,6 +66,7 @@ import {
   dealLeadBackerDisplayName,
   pendingBackerAcceptanceSlices,
   dealHasAcceptedBackerSlice,
+  stableDealEdgeChatPeerUserId,
   stakeHeroBadgeLabel,
   stakeHeroBadgeVariant,
   stakeGoesLivePendingCopy,
@@ -357,6 +358,8 @@ export default function PokerBankrollTracker({
   onHighlightPendingOfferConsumed = null,
   /** In-app confirm (prefer over window.confirm on iOS PWA). */
   showGlobalConfirm = null,
+  /** Open Chat DM with Edge peer (null / omitted when guest counterpart). */
+  onOpenChatWithUser = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -3375,6 +3378,13 @@ export default function PokerBankrollTracker({
                 const heroDisplayBankroll = heroAwaitingPlayerAccept
                   ? Number(hero.deal?.baseline_bankroll) || 0
                   : hero.overallBankroll
+                const chatPeerUserId =
+                  onStake && hero.deal
+                    ? stableDealEdgeChatPeerUserId(hero.deal, userId)
+                    : null
+                const showChatBtn = Boolean(
+                  chatPeerUserId && typeof onOpenChatWithUser === 'function',
+                )
                 return (
                   <div
                     data-poker-bankroll-hero-card
@@ -3428,16 +3438,37 @@ export default function PokerBankrollTracker({
                           </span>
                         ) : null}
                       </div>
-                        {onStake ? (
-                        <button
-                          type="button"
-                          onClick={() => openStakeTermsFromHero(scopeId)}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
-                          aria-label="Manage stake"
-                          data-poker-hero-terms-icon
-                        >
-                          <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
-                        </button>
+                      {onStake ? (
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {showChatBtn ? (
+                            <button
+                              type="button"
+                              data-poker-bankroll-chat-btn
+                              onClick={() => {
+                                onOpenChatWithUser?.(chatPeerUserId)
+                                triggerTapHapticLight()
+                              }}
+                              className="flex h-9 w-9 items-center justify-center rounded-xl text-cyan-300 touch-manipulation active:bg-white/5"
+                              aria-label="Chat"
+                              title="Chat"
+                            >
+                              <MessageCircle
+                                className="h-[18px] w-[18px]"
+                                strokeWidth={2.1}
+                                aria-hidden
+                              />
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => openStakeTermsFromHero(scopeId)}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-zinc-400 touch-manipulation active:opacity-80"
+                            aria-label="Manage stake"
+                            data-poker-hero-terms-icon
+                          >
+                            <FileText className="h-[18px] w-[18px]" strokeWidth={2.1} aria-hidden />
+                          </button>
+                        </div>
                       ) : (
                         <div className="flex shrink-0 items-center gap-1.5">
                           <button

@@ -2638,6 +2638,12 @@ export default function AppShell({
           highlightPendingOffer={pulseBankrollOffer}
           onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
           showGlobalConfirm={showGlobalConfirm}
+          onOpenChatWithUser={(peerUserId) => {
+            if (!peerUserId) return
+            setPendingChatPeerUserId(peerUserId)
+            setTab('chat')
+            setMenuOpen(false)
+          }}
         />
       )
     } else if (tab === 'poker-stable') {

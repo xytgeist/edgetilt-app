@@ -7302,6 +7302,14 @@ html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-her
   background-color: rgba(244, 244, 245, 0.95) !important;
   color: #27272a !important;
 }
+/* Player stake hero chat … match Stable horse cyan; light needs stronger ink on pastel cards */
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-bankroll-chat-btn] {
+  color: #0e7490 !important;
+}
+html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-bankroll-chat-btn]:active {
+  background-color: rgba(244, 244, 245, 0.95) !important;
+  color: #155e75 !important;
+}
 [data-poker-bankroll-hero-card] [data-poker-hero-end-stake-link] {
   color: rgb(161 161 170);
 }

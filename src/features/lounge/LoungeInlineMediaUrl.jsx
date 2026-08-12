@@ -441,7 +441,8 @@ export function LoungeImageLightbox({
     flyout.style.transformOrigin = '0 0'
     flyout.style.transform = 'none'
     flyout.style.transition = 'none'
-    flyout.style.borderRadius = '12px'
+    // Square immediately … keeping 12px through expand looks fine until land, then pops square.
+    flyout.style.borderRadius = '0px'
     flyout.style.opacity = '1'
 
     let cancelled = false
@@ -457,12 +458,15 @@ export function LoungeImageLightbox({
           finishTimerRef: expandTimerRef,
           // Cover the pre-mounted open media layer for the whole expand.
           flyoutZIndex: zStack.overlay + 1,
+          borderRadiusPx: 0,
           onDone: () => {
             if (cancelled) return
             snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
             // Open media was painting under the flyout during expand … lift cover in the same frame.
+            // Drop landFrame with open … fixed land shell blocks native carousel pan-x.
             flushSync(() => {
               setPhase('open')
+              setLandFrame(null)
               setChromeVisible(true)
               setScrimOpacity(1)
             })
@@ -485,12 +489,6 @@ export function LoungeImageLightbox({
       }
     }
   }, [phase, zStack.overlay, initialIndex, list.length])
-
-  // After the user pages away from the opened slide, drop the land shell (other aspects differ).
-  useEffect(() => {
-    if (phase !== 'open' || !landFrame) return
-    if (idx !== landSlideIndexRef.current) setLandFrame(null)
-  }, [idx, phase, landFrame])
 
   useEffect(
     () => () => {

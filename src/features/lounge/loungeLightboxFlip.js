@@ -230,12 +230,22 @@ export function runHeroShrinkAnimation(
   finishTimerRef.current = window.setTimeout(() => finish('timeout'), HERO_SHRINK_MS + 150)
 }
 
-/** Imperative hero expand - WAAPI avoids iOS skipping CSS transform transitions on reparent. */
+/**
+ * Imperative hero expand - WAAPI avoids iOS skipping CSS transform transitions on reparent.
+ * @param {{ borderRadiusPx?: number }} [opts] Image lightbox passes `0` so corners square as soon as fly-in starts (avoids a full-size round→square pop).
+ */
 export function runHeroExpandAnimation(
   flyout,
   fromRect,
   toRect,
-  { animRef, finishTimerRef, onDone, onDebug, flyoutZIndex = HERO_STACK_BASE_Z_INDEX },
+  {
+    animRef,
+    finishTimerRef,
+    onDone,
+    onDebug,
+    flyoutZIndex = HERO_STACK_BASE_Z_INDEX,
+    borderRadiusPx = 12,
+  },
 ) {
   if (!flyout || !fromRect || !toRect) {
     onDebug?.('expand missing node or rect')
@@ -249,6 +259,8 @@ export function runHeroExpandAnimation(
     finishTimerRef.current = 0
   }
 
+  const radius = `${Math.max(0, Number(borderRadiusPx) || 0)}px`
+
   clearFlyoutHeroMotionStyles(flyout)
   flyout.style.position = 'fixed'
   flyout.style.top = `${fromRect.top}px`
@@ -258,7 +270,7 @@ export function runHeroExpandAnimation(
   flyout.style.zIndex = String(flyoutZIndex)
   flyout.style.transformOrigin = '0 0'
   flyout.style.transition = 'none'
-  flyout.style.borderRadius = '12px'
+  flyout.style.borderRadius = radius
 
   const toTransform = computeHeroExpandTransform(fromRect, toRect)
   void flyout.offsetWidth
@@ -283,8 +295,8 @@ export function runHeroExpandAnimation(
 
   const anim = flyout.animate(
     [
-      { transform: 'none', borderRadius: '12px' },
-      { transform: toTransform, borderRadius: '12px' },
+      { transform: 'none', borderRadius: radius },
+      { transform: toTransform, borderRadius: radius },
     ],
     {
       duration: HERO_EXPAND_MS,

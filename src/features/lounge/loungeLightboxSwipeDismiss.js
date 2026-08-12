@@ -347,7 +347,13 @@ export function useLoungeLightboxSwipeDismiss({
     [resetDrag, abandonDragQuietly, emitProgress],
   )
 
-  const touchClass = dragging || allowSwipeOnVideo ? 'touch-none' : 'touch-pan-y'
+  // Parent `touch-pan-y` ∩ child carousel `pan-x` resolves to none and kills side-swipe.
+  // Multi-image (verticalDismissOnly): leave touch-action auto until vertical dismiss locks.
+  const touchClass = dragging || allowSwipeOnVideo
+    ? 'touch-none'
+    : verticalDismissOnly
+      ? 'touch-auto'
+      : 'touch-pan-y'
   const mergedClass = [className, touchClass].filter(Boolean).join(' ')
 
   return {

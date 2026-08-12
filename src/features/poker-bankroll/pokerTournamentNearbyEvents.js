@@ -209,16 +209,26 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
   const now = new Date()
   const { today, activitySinceIso } = softEventDateWindow(now)
   const catalogWindow = catalogPickerDateWindow(now)
+  const venueKind = String(opts.venueKind || 'live')
+  const onlineSitePick = String(opts.onlineSitePick || '').trim()
+  const onlineSiteLabel =
+    venueKind === 'online' && onlineSitePick ? pokerOnlineSiteLabelFromId(onlineSitePick) : ''
+
+  // Online: filter by site in SQL. A global 200-row cap was GGPoker-heavy and hid PokerStars etc.
+  let catalogQuery = supabase
+    .from('poker_tournament_events')
+    .select(PICKER_SELECT_COLS)
+    .eq('source', 'catalog')
+    .gte('event_date', catalogWindow.from)
+    .lte('event_date', catalogWindow.to)
+    .order('event_date', { ascending: true })
+    .limit(FETCH_LIMIT)
+  if (onlineSiteLabel) {
+    catalogQuery = catalogQuery.eq('venue_name', onlineSiteLabel)
+  }
 
   const [catalogRes, userTodayRes, userActivityRes] = await Promise.all([
-    supabase
-      .from('poker_tournament_events')
-      .select(PICKER_SELECT_COLS)
-      .eq('source', 'catalog')
-      .gte('event_date', catalogWindow.from)
-      .lte('event_date', catalogWindow.to)
-      .order('event_date', { ascending: true })
-      .limit(FETCH_LIMIT),
+    catalogQuery,
     supabase
       .from('poker_tournament_events')
       .select(PICKER_SELECT_COLS)

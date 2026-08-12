@@ -474,6 +474,7 @@ export default function AppShell({
   /** Admin-only stacked short/medium/long toast preview. */
   const [adminInAppToastDemo, setAdminInAppToastDemo] = useState(/** @type {object[] | null} */ (null))
   const adminInAppToastDemoTimerRef = useRef(0)
+  const [adminInAppToastDemoMenuOpen, setAdminInAppToastDemoMenuOpen] = useState(false)
 
   const dismissLoungeActivityInAppToast = useCallback(() => {
     try {
@@ -495,19 +496,28 @@ export default function AppShell({
     setAdminInAppToastDemo(null)
   }, [])
 
-  const runAdminInAppToastDemo = useCallback(() => {
-    dismissLoungeActivityInAppToast()
-    setAdminInAppToastDemo(ADMIN_IN_APP_TOAST_DEMO_SAMPLES)
-    try {
-      window.clearTimeout(adminInAppToastDemoTimerRef.current)
-    } catch {
-      // ignore
-    }
-    adminInAppToastDemoTimerRef.current = window.setTimeout(() => {
-      adminInAppToastDemoTimerRef.current = 0
-      setAdminInAppToastDemo(null)
-    }, 12000)
-  }, [dismissLoungeActivityInAppToast])
+  const runAdminInAppToastDemo = useCallback(
+    (/** @type {'short' | 'medium' | 'long' | 'all'} */ which = 'all') => {
+      dismissLoungeActivityInAppToast()
+      setAdminInAppToastDemoMenuOpen(false)
+      const samples =
+        which === 'all'
+          ? ADMIN_IN_APP_TOAST_DEMO_SAMPLES
+          : ADMIN_IN_APP_TOAST_DEMO_SAMPLES.filter((s) => s.id === `demo-${which}`)
+      if (!samples.length) return
+      setAdminInAppToastDemo(samples)
+      try {
+        window.clearTimeout(adminInAppToastDemoTimerRef.current)
+      } catch {
+        // ignore
+      }
+      adminInAppToastDemoTimerRef.current = window.setTimeout(() => {
+        adminInAppToastDemoTimerRef.current = 0
+        setAdminInAppToastDemo(null)
+      }, which === 'all' ? 12000 : 7000)
+    },
+    [dismissLoungeActivityInAppToast],
+  )
 
   const showLoungeActivityInAppToast = useCallback(
     (payload) => {
@@ -1971,19 +1981,51 @@ export default function AppShell({
         onNavigate={handleQuickLinkNavigate}
       />
       {isAdmin ? (
-        <button
-          type="button"
-          data-admin-in-app-toast-demo
-          onClick={() => {
-            setMenuOpen(false)
-            runAdminInAppToastDemo()
-          }}
-          aria-label="Preview in-app notifications"
-          title="Preview short / medium / long in-app toasts"
-          className="lounge-title-nav-btn relative grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-base text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
-        >
-          <span aria-hidden>🔔</span>
-        </button>
+        <div className="relative z-[56] shrink-0" data-admin-in-app-toast-demo>
+          {adminInAppToastDemoMenuOpen ? (
+            <div
+              className="lounge-title-nav-menu absolute right-0 top-full z-[56] mt-1 min-w-[9.5rem] w-max rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+              role="menu"
+              aria-label="In-app toast preview"
+            >
+              {[
+                { id: 'short', label: 'Short' },
+                { id: 'medium', label: 'Medium' },
+                { id: 'long', label: 'Long' },
+                { id: 'all', label: 'All three' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => runAdminInAppToastDemo(/** @type {'short' | 'medium' | 'long' | 'all'} */ (opt.id))}
+                  className="flex w-full items-center rounded-xl px-3 py-2 text-left text-[13px] font-medium text-zinc-100 touch-manipulation hover:bg-zinc-800/90"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            data-admin-in-app-toast-demo-btn
+            onClick={() => {
+              setMenuOpen(false)
+              setAdminInAppToastDemoMenuOpen((v) => !v)
+            }}
+            aria-label={
+              adminInAppToastDemoMenuOpen
+                ? 'Close in-app toast preview menu'
+                : 'Preview in-app notifications'
+            }
+            aria-expanded={adminInAppToastDemoMenuOpen}
+            aria-haspopup="menu"
+            title="Preview in-app toasts"
+            className="lounge-title-nav-btn relative grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-base text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+          >
+            <span aria-hidden>🔔</span>
+          </button>
+        </div>
       ) : null}
       <div className="relative z-[55] shrink-0">
       {menuOpen ? (
@@ -1998,6 +2040,7 @@ export default function AppShell({
         type="button"
         data-title-bar-menu-btn
         onClick={() => {
+          setAdminInAppToastDemoMenuOpen(false)
           setMenuOpen((v) => {
             const next = !v
             if (next) acknowledgePokerOfferHamburger()

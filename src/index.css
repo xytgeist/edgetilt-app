@@ -1248,7 +1248,19 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
 }
 /*
  * Lounge lightbox chrome: white frost chips/pills (both themes). Readable on light or dark media.
+ * Force no stroke / rim ... `shadow-sm` and theme remaps can read as a hairline border.
  */
+[data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] button,
+[data-lounge-image-lightbox] [data-lounge-post-interaction-bar] button,
+[data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] button,
+[data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-lightbox-top-chrome] button,
+[data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] button,
+[data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] button {
+  border: none !important;
+  border-width: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
 /* Chat image lightbox back - frosted glass over full-bleed media */
 [data-chat-image-lightbox] .media-lightbox-nav-btn {
   background: rgba(255, 255, 255, 0.05) !important;

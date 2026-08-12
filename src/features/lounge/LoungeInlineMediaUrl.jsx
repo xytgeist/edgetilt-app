@@ -169,13 +169,17 @@ export function LoungeImageLightbox({
   const [aspectByIndex, setAspectByIndex] = useState(/** @type {Record<number, number>} */ ({}))
   const imageAspect = aspectByIndex[idx] ?? null
   /**
-   * Single media-band pad for the session. Tall slides hide author meta with `invisible`
-   * (layout height stays) so short↔tall carousel swipes don't reflow vertical centering.
+   * Chrome-band pads cached per footer mode so each carousel slide can keep its own
+   * vertical centering without jumping when idx / chrome mode changes after snap.
    */
-  const [mediaBandPad, setMediaBandPad] = useState({ top: 0, bottom: 0 })
-  // height <= width (square / landscape): show author chrome. Taller: hide it (space reserved).
+  const [bandByMode, setBandByMode] = useState({
+    full: { top: 0, bottom: 0 },
+    compact: { top: 0, bottom: 0 },
+  })
+  // height <= width (square / landscape): full author chrome. Taller: pills only.
   const showAuthorMeta = imageAspect == null || imageAspect >= 1
   const chromeOpts = useMemo(() => ({ showAuthorMeta }), [showAuthorMeta])
+  const mediaBandPad = showAuthorMeta ? bandByMode.full : bandByMode.compact
 
   const noteSlideAspectAt = useCallback((img, slideIndex) => {
     const next = readImageAspectRatio(img)
@@ -187,17 +191,31 @@ export function LoungeImageLightbox({
     })
   }, [])
 
+  const bandPadForSlide = useCallback(
+    (slideIndex) => {
+      const a = aspectByIndex[slideIndex]
+      const full = a == null || a >= 1
+      const primary = full ? bandByMode.full : bandByMode.compact
+      if (primary.top > 0 || primary.bottom > 0) return primary
+      const fallback = full ? bandByMode.compact : bandByMode.full
+      return fallback
+    },
+    [aspectByIndex, bandByMode],
+  )
+
   const syncMediaBandPad = useCallback(() => {
     const next = measureImageLightboxMediaBand(
       mediaContainerRef.current,
       topChromeRef.current,
       footerChromeRef.current,
     )
-    setMediaBandPad((prev) => {
-      if (prev.top === next.top && prev.bottom === next.bottom) return prev
-      return next
+    const mode = showAuthorMeta ? 'full' : 'compact'
+    setBandByMode((prev) => {
+      const cur = prev[mode]
+      if (cur.top === next.top && cur.bottom === next.bottom) return prev
+      return { ...prev, [mode]: next }
     })
-  }, [])
+  }, [showAuthorMeta])
 
   // Decode every slide up front so swipe targets are sized before snap (avoids post-land jump).
   useEffect(() => {
@@ -473,7 +491,7 @@ export function LoungeImageLightbox({
     if (img?.complete) noteSlideAspectAt(img, idx)
   }, [idx, current, phase, noteSlideAspectAt])
 
-  // Measure chrome band once layout is stable (author meta toggles via `invisible`, not height).
+  // Measure chrome band for the active footer mode (full vs compact).
   useLayoutEffect(() => {
     if (phase !== 'open' && phase !== 'opening') return undefined
     syncMediaBandPad()
@@ -495,7 +513,7 @@ export function LoungeImageLightbox({
       ro.disconnect()
       window.removeEventListener('resize', syncMediaBandPad)
     }
-  }, [phase, chromeVisible, lightboxChromeContent, syncMediaBandPad])
+  }, [phase, showAuthorMeta, chromeVisible, lightboxChromeContent, syncMediaBandPad])
 
   useEffect(() => {
     notifyLoungeStreamLightboxOpen(true)
@@ -848,13 +866,15 @@ export function LoungeImageLightbox({
                   data-lounge-lightbox-carousel
                   className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 >
-                  {list.map((slideUrl, i) => (
+                  {list.map((slideUrl, i) => {
+                    const slidePad = bandPadForSlide(i)
+                    return (
                     <div
                       key={`${slideUrl}-${i}`}
                       className="relative z-[1] box-border flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
                       style={
-                        mediaBandPad.top > 0 || mediaBandPad.bottom > 0
-                          ? { paddingTop: mediaBandPad.top, paddingBottom: mediaBandPad.bottom }
+                        slidePad.top > 0 || slidePad.bottom > 0
+                          ? { paddingTop: slidePad.top, paddingBottom: slidePad.bottom }
                           : undefined
                       }
                     >
@@ -880,7 +900,8 @@ export function LoungeImageLightbox({
                         />
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div

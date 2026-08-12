@@ -960,13 +960,13 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-12: **Image lightbox tall chrome no reflow:** tall slides hide avatar/name/caption with `invisible` (layout height kept) so short↔tall carousel settles without media-band jump; single shared band pad.
-- 2026-08-12: **Image lightbox carousel band + ambient:** eager decode of all slides + shared chrome-band pad; ambient backdrop renders under flyout during expand (not only after land). *(Per-slide full/compact pad superseded same day by stable footer height.)*
+- 2026-08-12: **Image lightbox tall chrome no reflow:** reverted same day (reserved empty author space broke layout); back to compact unmount + per-mode band pads.
+- 2026-08-12: **Image lightbox carousel band + ambient:** per-slide chrome-band padding (full/compact cache) + eager decode of all slides so swipe settle does not jump; ambient backdrop renders under flyout during expand (not only after land).
 - 2026-08-12: **Image lightbox FLIP lands in chrome band:** expand target uses measured `insetTop`/`insetBottom` (same media-band pad as open) so fly-in does not center then jump.
 - 2026-08-12: **Lightbox overlay pills:** white frost (`bg-white/25`); comment/repost/like fixed `5.5rem` ovals with reserved compact-count slot; bookmark/share fixed `h-10 w-10` circles; row `justify-between` (no content-sized scrunch).
 - 2026-08-12: **Image lightbox media band:** pad media shell from measured top-chrome bottom → footer chrome top (avatar row or pills) so every slide flex-centers with equal gaps; replaces fixed short-image lift pad.
 - 2026-08-12: **Lightbox chrome glass + tap toggle:** white-frost pills/top chips (both themes). Tap media toggles overlay (pointer-events off while hidden).
-- 2026-08-12: **Image lightbox chrome by aspect:** square/landscape (`natural height ≤ width`) shows full Stream chrome; taller slides hide avatar/name/handle/caption visually (space reserved; pills + top Follow). Cutoff is 1:1.
+- 2026-08-12: **Image lightbox chrome by aspect:** square/landscape (`natural height ≤ width`) keeps full Stream chrome; taller slides hide avatar/name/handle/caption (interaction pills + top Follow). Cutoff is 1:1.
 - 2026-08-12: **Image lightbox carousel + fly-in radius:** clear fixed land shell on open (was blocking pan-x); swipe surface uses `touch-auto` when multi so parent `touch-pan-y` no longer intersects carousel `pan-x` to none; expand flyout squares corners immediately (`borderRadiusPx: 0`).
 - 2026-08-12: **Image lightbox uses Stream hero chrome:** `buildChrome` (avatar / name / handle / caption / interactions) + Stream top chips; image ⋯ menu still omits autoplay. Light bottom band stays dark-gradient like video (polish later).
 - 2026-08-12: **Image lightbox chrome frost:** Stream-like `black/55` top buttons; interaction pills `black/60` + blur (image lightbox only); deeper footer scrim. Light mode keeps frosted light pills (no longer strips `bg-black` shells). *(Superseded same day by Stream chrome reuse.)*

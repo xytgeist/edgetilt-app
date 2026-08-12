@@ -73,8 +73,7 @@ export function LoungeStreamLightboxFollowButton({
 /**
  * X-style overlay chrome for Stream video hero (author, caption snippet, interactions).
  * Portrait: Follow sits on the author row; landscape: Follow is in the top bar (mute-adjacent).
- * Image lightbox may pass `showAuthorMeta={false}` for tall slides ... author block stays in
- * layout (`invisible`) so mixed carousels don't reflow the media band when chrome mode flips.
+ * Image lightbox may pass `showAuthorMeta={false}` for tall slides (interaction pills only).
  */
 export default function LoungeStreamVideoLightboxChrome({
   post,
@@ -120,24 +119,34 @@ export default function LoungeStreamVideoLightboxChrome({
     })
   }
 
-  if (!showAuthorMeta && !interactionBar) return null
+  if (!showAuthorMeta) {
+    if (!interactionBar) return null
+    return (
+      <div
+        data-lounge-stream-lightbox-chrome
+        data-lounge-stream-lightbox-chrome-compact=""
+        className="pointer-events-none flex w-full flex-col"
+      >
+        <div
+          className="pointer-events-auto shrink-0 [&_[data-lounge-post-interaction-bar]]:w-auto"
+          data-lounge-lightbox-no-swipe
+          onClick={(e) => e.stopPropagation()}
+        >
+          {interactionBar}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
       data-lounge-stream-lightbox-chrome
-      {...(!showAuthorMeta ? { 'data-lounge-stream-lightbox-chrome-compact': '' } : {})}
       className="pointer-events-none flex w-full flex-col gap-2 landscape:flex-row landscape:items-center landscape:justify-between landscape:gap-4"
     >
-      <div
-        className={`flex min-w-0 flex-1 items-start gap-2.5 pr-1 landscape:pr-0 ${
-          showAuthorMeta ? 'pointer-events-auto' : 'invisible pointer-events-none'
-        }`}
-        aria-hidden={!showAuthorMeta}
-      >
+      <div className="pointer-events-auto flex min-w-0 flex-1 items-start gap-2.5 pr-1 landscape:pr-0">
         <button
           type="button"
           onClick={openProfile}
-          tabIndex={showAuthorMeta ? undefined : -1}
           className={`${LOUNGE_FEED_AVATAR_CLASS} shrink-0 overflow-hidden rounded-full bg-zinc-900 touch-manipulation [-webkit-tap-highlight-color:transparent]`}
           aria-label={`Open ${displayName} profile`}
         >
@@ -154,12 +163,7 @@ export default function LoungeStreamVideoLightboxChrome({
           )}
         </button>
         <div className="min-w-0 flex-1 pt-0.5">
-          <button
-            type="button"
-            onClick={openProfile}
-            tabIndex={showAuthorMeta ? undefined : -1}
-            className="block max-w-full text-left touch-manipulation"
-          >
+          <button type="button" onClick={openProfile} className="block max-w-full text-left touch-manipulation">
             <div className="flex min-w-0 flex-col gap-0">
               <div className={LOUNGE_FEED_META_ROW_CLASS}>
                 <LoungeFeedAuthorMetaBadges
@@ -180,7 +184,7 @@ export default function LoungeStreamVideoLightboxChrome({
             typeof onCaptionClick === 'function' ? (
               <div
                 role="button"
-                tabIndex={showAuthorMeta ? 0 : -1}
+                tabIndex={0}
                 onClick={(e) => {
                   if (e.target instanceof Element && e.target.closest('button, a')) return
                   e.stopPropagation()

@@ -684,7 +684,7 @@ export default function LoungePostInteractionBar({
             onClick={requireLoungeAuth}
             className={`${statBookmarkCls} box-border flex shrink-0 items-center justify-center text-zinc-600`}
             title="Sign in to save posts"
-            style={{ width: slotBookmark, minWidth: slotBookmark }}
+            style={pillOverlay ? undefined : { width: slotBookmark, minWidth: slotBookmark }}
           >
             <svg className={`block shrink-0 ${iconSzBookmark} ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
               {bookmarkGlyphFilled ? (
@@ -711,7 +711,7 @@ export default function LoungePostInteractionBar({
             }}
             className={`${statBookmarkCls} box-border flex shrink-0 items-center justify-center`}
             title={isBookmarked ? 'Remove bookmark' : 'Save post'}
-            style={{ width: slotBookmark, minWidth: slotBookmark }}
+            style={pillOverlay ? undefined : { width: slotBookmark, minWidth: slotBookmark }}
           >
             <svg className={`block shrink-0 ${iconSzBookmark} ${bookmarkClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
               {bookmarkGlyphFilled ? (

@@ -4,9 +4,7 @@ const DISMISS_DRAG_PX = 72
 const TAP_SLOP_PX = 12
 /** Wait this far before locking vertical dismiss vs horizontal carousel page. */
 const AXIS_LOCK_PX = 10
-/** Fling off-screen after release (was 280 … felt rushed). */
-const FLING_MS = 520
-const SNAP_BACK_MS = 280
+const SNAP_BACK_MS = 220
 
 function shouldIgnoreSwipeTarget(target, { allowSwipeOnVideo = false } = {}) {
   if (!(target instanceof Element)) return true
@@ -28,7 +26,6 @@ function clearSurfaceVisual(el) {
 }
 
 /**
- * Write transform/opacity on the gesture surface (avoids React re-render jank mid-drag).
  * @param {HTMLElement | null | undefined} el
  * @param {number} x
  * @param {number} y
@@ -37,7 +34,7 @@ function clearSurfaceVisual(el) {
 function applySurfaceVisual(el, x, y, opts = {}) {
   if (!(el instanceof HTMLElement)) return
   const animate = Boolean(opts.animate)
-  const durationMs = opts.durationMs ?? (animate ? FLING_MS : 0)
+  const durationMs = opts.durationMs ?? (animate ? SNAP_BACK_MS : 0)
   const opacity = typeof opts.opacity === 'number' ? opts.opacity : dragOpacity(x, y)
   el.style.willChange = 'transform, opacity'
   el.style.transition = animate
@@ -47,16 +44,22 @@ function applySurfaceVisual(el, x, y, opts = {}) {
   el.style.opacity = String(opacity)
 }
 
+function progressFromOffset(x, y) {
+  const dist = Math.hypot(x, y)
+  return Math.max(0, Math.min(1, dist / (DISMISS_DRAG_PX * 1.35)))
+}
+
 /**
- * Vertical swipe (or drag) to dismiss fullscreen Lounge media.
- * Optional horizontal swipe when `onSwipeHorizontal` is set (e.g. carousel in image lightbox).
- * @param {boolean} [allowSwipeOnVideo] - when true, swipes starting on `<video>` count (fullscreen video lightbox).
+ * Vertical-ish swipe (or drag) to dismiss fullscreen Lounge media.
+ * Parent owns close animation (FLIP shrink) … this hook only tracks the gesture.
  */
 export function useLoungeLightboxSwipeDismiss({
   onClose,
   onSwipeHorizontal,
   /** Fired on pointer up when movement stayed within tap slop (e.g. play/pause on hero video). */
   onTap,
+  /** Live dismiss drag progress for scrim fade etc. */
+  onDismissProgress,
   className = '',
   allowSwipeOnVideo = false,
   /** When false, pointer handlers no-op (e.g. image lightbox while pinch-zoomed). */
@@ -65,23 +68,40 @@ export function useLoungeLightboxSwipeDismiss({
   verticalDismissOnly = false,
 }) {
   const dragRef = useRef(null)
-  const flingTimerRef = useRef(0)
+  const snapTimerRef = useRef(0)
+  const progressRef = useRef(onDismissProgress)
+  progressRef.current = onDismissProgress
   const [dragging, setDragging] = useState(false)
 
-  const resetDrag = useCallback((clearVisual = true) => {
-    const el = dragRef.current?.el
-    dragRef.current = null
-    setDragging(false)
-    if (clearVisual) clearSurfaceVisual(el)
+  const emitProgress = useCallback((x, y, active) => {
+    const cb = progressRef.current
+    if (typeof cb !== 'function') return
+    cb({
+      x,
+      y,
+      p: active ? progressFromOffset(x, y) : 0,
+      active: Boolean(active),
+    })
   }, [])
+
+  const resetDrag = useCallback(
+    (clearVisual = true) => {
+      const el = dragRef.current?.el
+      dragRef.current = null
+      setDragging(false)
+      if (clearVisual) clearSurfaceVisual(el)
+      emitProgress(0, 0, false)
+    },
+    [emitProgress],
+  )
 
   /** Drop tracking without React state (keeps native carousel scroll alive). */
   const abandonDragQuietly = useCallback(() => {
     const el = dragRef.current?.el
-    // Only clear if we had actually painted a dismiss transform.
     if (dragRef.current?.didPaint) clearSurfaceVisual(el)
     dragRef.current = null
-  }, [])
+    emitProgress(0, 0, false)
+  }, [emitProgress])
 
   useEffect(() => {
     if (!enabled) resetDrag()
@@ -90,11 +110,11 @@ export function useLoungeLightboxSwipeDismiss({
   useEffect(
     () => () => {
       try {
-        window.clearTimeout(flingTimerRef.current)
+        window.clearTimeout(snapTimerRef.current)
       } catch {
         // ignore
       }
-      flingTimerRef.current = 0
+      snapTimerRef.current = 0
     },
     [],
   )
@@ -102,12 +122,10 @@ export function useLoungeLightboxSwipeDismiss({
   const onPointerDown = useCallback(
     (e) => {
       if (!enabled) return
-      if (dragRef.current?.flinging) return
+      if (dragRef.current?.settling) return
       if (e.button !== 0 && e.pointerType === 'mouse') return
       if (shouldIgnoreSwipeTarget(e.target, { allowSwipeOnVideo })) return
 
-      // Multi-image: start on the snap carousel without capturing / transforming yet so
-      // horizontal paging stays native. Capture + paint only after vertical lock.
       const fromCarousel =
         verticalDismissOnly &&
         e.target instanceof Element &&
@@ -122,13 +140,11 @@ export function useLoungeLightboxSwipeDismiss({
         axis: null,
         captured: false,
         deferCapture: fromCarousel,
-        flinging: false,
+        settling: false,
         didPaint: false,
         el,
       }
 
-      // Do not setDragging / apply transform yet on carousel starts … that was breaking side-swipe
-      // (parent transform + re-render mid-gesture kills native overflow scroll).
       if (!fromCarousel) {
         setDragging(true)
         if (el) {
@@ -144,7 +160,7 @@ export function useLoungeLightboxSwipeDismiss({
     (e) => {
       if (!enabled) return
       const drag = dragRef.current
-      if (!drag || drag.flinging || drag.pointerId !== e.pointerId) return
+      if (!drag || drag.settling || drag.pointerId !== e.pointerId) return
       const dx = e.clientX - drag.startX
       const dy = e.clientY - drag.startY
 
@@ -162,7 +178,6 @@ export function useLoungeLightboxSwipeDismiss({
             }
           }
         } else if (verticalDismissOnly) {
-          // Horizontal page … drop quietly so scroll-snap carousel owns the gesture.
           abandonDragQuietly()
           return
         } else {
@@ -184,8 +199,10 @@ export function useLoungeLightboxSwipeDismiss({
         } catch {
           // ignore
         }
+        // Follow finger on both axes once dismiss lock wins (natural diagonal).
         drag.didPaint = true
-        applySurfaceVisual(drag.el, 0, dy)
+        applySurfaceVisual(drag.el, dx, dy)
+        emitProgress(dx, dy, true)
         return
       }
 
@@ -194,25 +211,29 @@ export function useLoungeLightboxSwipeDismiss({
       if (drag.axis === 'x' && onSwipeHorizontal) {
         drag.didPaint = true
         applySurfaceVisual(drag.el, dx, 0)
+        emitProgress(dx, 0, true)
       } else if (Math.abs(dy) >= Math.abs(dx)) {
         drag.didPaint = true
-        applySurfaceVisual(drag.el, 0, dy)
+        applySurfaceVisual(drag.el, dx, dy)
+        emitProgress(dx, dy, true)
       } else if (onSwipeHorizontal) {
         drag.didPaint = true
         applySurfaceVisual(drag.el, dx, 0)
+        emitProgress(dx, 0, true)
       } else {
         drag.didPaint = true
-        applySurfaceVisual(drag.el, 0, dy)
+        applySurfaceVisual(drag.el, dx, dy)
+        emitProgress(dx, dy, true)
       }
     },
-    [onSwipeHorizontal, enabled, verticalDismissOnly, abandonDragQuietly],
+    [onSwipeHorizontal, enabled, verticalDismissOnly, abandonDragQuietly, emitProgress],
   )
 
   const finishDrag = useCallback(
     (e) => {
       if (!enabled) return
       const drag = dragRef.current
-      if (!drag || drag.flinging || drag.pointerId !== e.pointerId) return
+      if (!drag || drag.settling || drag.pointerId !== e.pointerId) return
       if (drag.captured && drag.el) {
         try {
           drag.el.releasePointerCapture(e.pointerId)
@@ -228,27 +249,10 @@ export function useLoungeLightboxSwipeDismiss({
         Math.abs(dy) >= DISMISS_DRAG_PX
 
       if (shouldDismiss) {
-        drag.flinging = true
-        drag.didPaint = true
-        const dir = dy >= 0 ? 1 : -1
-        const viewportH =
-          typeof window !== 'undefined' ? window.innerHeight || 800 : 800
-        const flingY = dir * Math.max(viewportH * 1.05, Math.abs(dy) + 160)
-        applySurfaceVisual(drag.el, 0, flingY, {
-          animate: true,
-          opacity: 0,
-          durationMs: FLING_MS,
-        })
-        try {
-          window.clearTimeout(flingTimerRef.current)
-        } catch {
-          // ignore
-        }
-        flingTimerRef.current = window.setTimeout(() => {
-          flingTimerRef.current = 0
-          onClose()
-          resetDrag(true)
-        }, FLING_MS)
+        // Parent owns FLIP shrink / hero close … clear drag paint then close immediately.
+        clearSurfaceVisual(drag.el)
+        resetDrag(false)
+        onClose()
         return
       }
 
@@ -272,31 +276,39 @@ export function useLoungeLightboxSwipeDismiss({
         return
       }
 
-      // Never locked vertical (e.g. abandoned-to-carousel already, or tiny move).
       if (!drag.didPaint && axis !== 'y') {
         abandonDragQuietly()
         setDragging(false)
         return
       }
 
-      // Snap back smoothly when dismiss threshold was not met.
       applySurfaceVisual(drag.el, 0, 0, {
         animate: true,
         opacity: 1,
         durationMs: SNAP_BACK_MS,
       })
-      drag.flinging = true
+      emitProgress(0, 0, false)
+      drag.settling = true
       try {
-        window.clearTimeout(flingTimerRef.current)
+        window.clearTimeout(snapTimerRef.current)
       } catch {
         // ignore
       }
-      flingTimerRef.current = window.setTimeout(() => {
-        flingTimerRef.current = 0
+      snapTimerRef.current = window.setTimeout(() => {
+        snapTimerRef.current = 0
         resetDrag(true)
       }, SNAP_BACK_MS)
     },
-    [onClose, onSwipeHorizontal, onTap, resetDrag, enabled, verticalDismissOnly, abandonDragQuietly],
+    [
+      onClose,
+      onSwipeHorizontal,
+      onTap,
+      resetDrag,
+      enabled,
+      verticalDismissOnly,
+      abandonDragQuietly,
+      emitProgress,
+    ],
   )
 
   const onPointerUp = useCallback(
@@ -309,7 +321,7 @@ export function useLoungeLightboxSwipeDismiss({
   const onPointerCancel = useCallback(
     (e) => {
       const drag = dragRef.current
-      if (!drag || drag.pointerId !== e.pointerId || drag.flinging) return
+      if (!drag || drag.pointerId !== e.pointerId || drag.settling) return
       if (!drag.didPaint) {
         abandonDragQuietly()
         setDragging(false)
@@ -320,21 +332,21 @@ export function useLoungeLightboxSwipeDismiss({
         opacity: 1,
         durationMs: SNAP_BACK_MS,
       })
-      drag.flinging = true
+      emitProgress(0, 0, false)
+      drag.settling = true
       try {
-        window.clearTimeout(flingTimerRef.current)
+        window.clearTimeout(snapTimerRef.current)
       } catch {
         // ignore
       }
-      flingTimerRef.current = window.setTimeout(() => {
-        flingTimerRef.current = 0
+      snapTimerRef.current = window.setTimeout(() => {
+        snapTimerRef.current = 0
         resetDrag(true)
       }, SNAP_BACK_MS)
     },
-    [resetDrag, abandonDragQuietly],
+    [resetDrag, abandonDragQuietly, emitProgress],
   )
 
-  /** Video lightbox: keep touch-action none so vertical dismiss is not eaten by pan-y. */
   const touchClass = dragging || allowSwipeOnVideo ? 'touch-none' : 'touch-pan-y'
   const mergedClass = [className, touchClass].filter(Boolean).join(' ')
 
@@ -344,7 +356,6 @@ export function useLoungeLightboxSwipeDismiss({
       onPointerMove,
       onPointerUp,
       onPointerCancel,
-      // Visuals are applied on the gesture element via DOM (smooth); do not fight with React style.
       style: undefined,
       className: mergedClass,
     },

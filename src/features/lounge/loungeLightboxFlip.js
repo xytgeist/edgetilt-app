@@ -1,0 +1,334 @@
+/**
+ * Shared tile ↔ fullscreen FLIP geometry for Stream hero + image lightbox.
+ */
+
+export const HERO_EXPAND_MS = 500
+export const HERO_SHRINK_MS = 500
+/** GPU transform FLIP - gentler start than width/top tweens on mobile. */
+export const HERO_MOTION_CURVE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+export const HERO_MOTION_TRANSITION = `${HERO_EXPAND_MS}ms ${HERO_MOTION_CURVE}`
+export const HERO_SHRINK_TRANSITION = `${HERO_SHRINK_MS}ms ${HERO_MOTION_CURVE}`
+/** Lightbox chrome fades in only after the flyout lands. */
+export const HERO_CHROME_FADE_MS = 220
+/** Default hero stack when no parent `lightboxPortalClass` is passed. */
+export const HERO_STACK_BASE_Z_INDEX = 102
+
+/**
+ * Hero stack must sit above the parent shell (`lightboxPortalClass`, e.g. post detail z-[98]/z-[102]).
+ * @returns {{ scrim: number, flyout: number, overlay: number }}
+ */
+export function resolveLoungeHeroStackZIndexes(lightboxPortalClass) {
+  const m = String(lightboxPortalClass || '').match(/z-\[(\d+)\]/)
+  const portalZ = m ? Number(m[1]) : 0
+  const stackTop =
+    Number.isFinite(portalZ) && portalZ > 0
+      ? Math.max(portalZ, HERO_STACK_BASE_Z_INDEX)
+      : HERO_STACK_BASE_Z_INDEX
+  return {
+    scrim: stackTop - 1,
+    flyout: stackTop,
+    overlay: stackTop + 1,
+  }
+}
+
+/** @returns {{ top: number, left: number, width: number, height: number }} */
+export function readElementViewportRect(el) {
+  const r = el.getBoundingClientRect()
+  return { top: r.top, left: r.left, width: r.width, height: r.height }
+}
+
+/**
+ * Visible media bounds for hero FLIP - not the full poster shell when portrait letterboxes.
+ * Prefer decoded in-flow poster pixels; else object-contain fit from stream display dims.
+ */
+export function readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH) {
+  const shell = slot || flyout || wrap
+  if (!shell) return { top: 0, left: 0, width: 0, height: 0 }
+
+  const posterImg = slot?.querySelector('img')
+  if (posterImg instanceof HTMLImageElement) {
+    const ir = posterImg.getBoundingClientRect()
+    if (ir.width >= 8 && ir.height >= 8) {
+      return { top: ir.top, left: ir.left, width: ir.width, height: ir.height }
+    }
+  }
+
+  const shellRect = readElementViewportRect(shell)
+  const dw = Number(displayW)
+  const dh = Number(displayH)
+  if (Number.isFinite(dw) && Number.isFinite(dh) && dw >= 2 && dh >= 2) {
+    const aspect = dw / dh
+    let w = shellRect.width
+    let h = w / aspect
+    if (h > shellRect.height) {
+      h = shellRect.height
+      w = h * aspect
+    }
+    return {
+      top: shellRect.top + (shellRect.height - h) / 2,
+      left: shellRect.left + (shellRect.width - w) / 2,
+      width: w,
+      height: h,
+    }
+  }
+
+  return shellRect
+}
+
+/** @returns {boolean} */
+export function heroRectUsableForShrinkBack(rect) {
+  if (!rect) return false
+  if (rect.width < 32 || rect.height < 32) return false
+  if (typeof window === 'undefined') return false
+  const bottom = Number.isFinite(rect.bottom) ? rect.bottom : rect.top + rect.height
+  return bottom > 0 && rect.top < window.innerHeight
+}
+
+/** Target hero frame: centered object-contain media filling the viewport (chrome overlays on top). */
+export function computeHeroTargetRect(fromRect, opts = {}) {
+  const { displayW, displayH } = opts
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null
+  const vw = vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 390)
+  const vh = vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
+
+  let aspect = fromRect.width / Math.max(fromRect.height, 1)
+  const dw = Number(displayW)
+  const dh = Number(displayH)
+  if (Number.isFinite(dw) && Number.isFinite(dh) && dw >= 2 && dh >= 2) {
+    aspect = dw / dh
+  }
+
+  const maxW = Math.max(120, vw)
+  const maxH = Math.max(120, vh)
+  let w = maxW
+  let h = w / aspect
+  if (h > maxH) {
+    h = maxH
+    w = h * aspect
+  }
+  return {
+    top: (vh - h) / 2 + (vv?.offsetTop ?? 0),
+    left: (vw - w) / 2 + (vv?.offsetLeft ?? 0),
+    width: w,
+    height: h,
+  }
+}
+
+/** Opening FLIP: laid out at tile `fromRect`, transform grows toward hero `toRect`. */
+export function computeHeroExpandTransform(fromRect, toRect) {
+  const scaleX = toRect.width / fromRect.width
+  const scaleY = toRect.height / fromRect.height
+  const translateX = toRect.left - fromRect.left
+  const translateY = toRect.top - fromRect.top
+  return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`
+}
+
+/** Closing FLIP invert: laid out at tile `toRect`, transform makes it match hero `fromRect`. */
+export function computeHeroShrinkTransform(fromRect, toRect) {
+  const scaleX = fromRect.width / toRect.width
+  const scaleY = fromRect.height / toRect.height
+  const translateX = fromRect.left - toRect.left
+  const translateY = fromRect.top - toRect.top
+  return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`
+}
+
+export function clearFlyoutHeroInlineStyles(flyout) {
+  if (!flyout) return
+  flyout.style.position = ''
+  flyout.style.top = ''
+  flyout.style.left = ''
+  flyout.style.width = ''
+  flyout.style.height = ''
+  flyout.style.zIndex = ''
+  flyout.style.transition = ''
+  flyout.style.borderRadius = ''
+  flyout.style.transform = ''
+  flyout.style.transformOrigin = ''
+  flyout.style.willChange = ''
+  flyout.style.opacity = ''
+}
+
+/** Drop imperative motion styles so DOM shrink owns transform during dismiss. */
+export function clearFlyoutHeroMotionStyles(flyout) {
+  if (!flyout) return
+  flyout.style.transition = ''
+  flyout.style.transform = ''
+  flyout.style.transformOrigin = ''
+  flyout.style.willChange = ''
+  flyout.style.opacity = ''
+}
+
+/** Imperative hero shrink - avoids useLayoutEffect cleanup / React style races on iOS. */
+export function runHeroShrinkAnimation(
+  flyout,
+  heroFrame,
+  tileFrame,
+  { animRef, finishTimerRef, onDone, onDebug, flyoutZIndex = HERO_STACK_BASE_Z_INDEX },
+) {
+  if (!flyout || !heroFrame || !tileFrame) {
+    onDebug?.('shrink missing node or rect')
+    onDone('missing')
+    return
+  }
+
+  animRef.current?.cancel()
+  if (finishTimerRef.current) {
+    window.clearTimeout(finishTimerRef.current)
+    finishTimerRef.current = 0
+  }
+
+  clearFlyoutHeroMotionStyles(flyout)
+  flyout.style.position = 'fixed'
+  flyout.style.top = `${tileFrame.top}px`
+  flyout.style.left = `${tileFrame.left}px`
+  flyout.style.width = `${tileFrame.width}px`
+  flyout.style.height = `${tileFrame.height}px`
+  flyout.style.zIndex = String(flyoutZIndex)
+  flyout.style.transformOrigin = '0 0'
+  flyout.style.transition = 'none'
+  flyout.style.borderRadius = '12px'
+
+  const fromTransform = computeHeroShrinkTransform(heroFrame, tileFrame)
+  void flyout.offsetWidth
+
+  if (typeof flyout.animate !== 'function') {
+    onDebug?.('shrink no waapi')
+    onDone('no-waapi')
+    return
+  }
+
+  let finished = false
+  const finish = (reason) => {
+    if (finished) return
+    finished = true
+    if (finishTimerRef.current) {
+      window.clearTimeout(finishTimerRef.current)
+      finishTimerRef.current = 0
+    }
+    onDebug?.(`shrink done ${reason}`)
+    onDone(reason)
+  }
+
+  const anim = flyout.animate(
+    [
+      { transform: fromTransform, borderRadius: '12px' },
+      { transform: 'none', borderRadius: '12px' },
+    ],
+    {
+      duration: HERO_SHRINK_MS,
+      easing: HERO_MOTION_CURVE,
+      fill: 'forwards',
+    },
+  )
+  animRef.current = anim
+  onDebug?.(`shrink waapi play ${HERO_SHRINK_MS}ms`)
+
+  anim.onfinish = () => finish('waapi')
+  anim.oncancel = () => {
+    if (!finished) onDebug?.('shrink waapi cancelled')
+  }
+  finishTimerRef.current = window.setTimeout(() => finish('timeout'), HERO_SHRINK_MS + 150)
+}
+
+/** Imperative hero expand - WAAPI avoids iOS skipping CSS transform transitions on reparent. */
+export function runHeroExpandAnimation(
+  flyout,
+  fromRect,
+  toRect,
+  { animRef, finishTimerRef, onDone, onDebug, flyoutZIndex = HERO_STACK_BASE_Z_INDEX },
+) {
+  if (!flyout || !fromRect || !toRect) {
+    onDebug?.('expand missing node or rect')
+    onDone('missing')
+    return
+  }
+
+  animRef.current?.cancel()
+  if (finishTimerRef.current) {
+    window.clearTimeout(finishTimerRef.current)
+    finishTimerRef.current = 0
+  }
+
+  clearFlyoutHeroMotionStyles(flyout)
+  flyout.style.position = 'fixed'
+  flyout.style.top = `${fromRect.top}px`
+  flyout.style.left = `${fromRect.left}px`
+  flyout.style.width = `${fromRect.width}px`
+  flyout.style.height = `${fromRect.height}px`
+  flyout.style.zIndex = String(flyoutZIndex)
+  flyout.style.transformOrigin = '0 0'
+  flyout.style.transition = 'none'
+  flyout.style.borderRadius = '12px'
+
+  const toTransform = computeHeroExpandTransform(fromRect, toRect)
+  void flyout.offsetWidth
+
+  if (typeof flyout.animate !== 'function') {
+    onDebug?.('expand no waapi')
+    onDone('no-waapi')
+    return
+  }
+
+  let finished = false
+  const finish = (reason) => {
+    if (finished) return
+    finished = true
+    if (finishTimerRef.current) {
+      window.clearTimeout(finishTimerRef.current)
+      finishTimerRef.current = 0
+    }
+    onDebug?.(`expand done ${reason}`)
+    onDone(reason)
+  }
+
+  const anim = flyout.animate(
+    [
+      { transform: 'none', borderRadius: '12px' },
+      { transform: toTransform, borderRadius: '12px' },
+    ],
+    {
+      duration: HERO_EXPAND_MS,
+      easing: HERO_MOTION_CURVE,
+      fill: 'forwards',
+    },
+  )
+  animRef.current = anim
+  onDebug?.(`expand waapi play ${HERO_EXPAND_MS}ms`)
+
+  anim.onfinish = () => finish('waapi')
+  anim.oncancel = () => {
+    if (!finished) onDebug?.('expand waapi cancelled')
+  }
+  finishTimerRef.current = window.setTimeout(() => finish('timeout'), HERO_EXPAND_MS + 150)
+}
+
+/** Imperative snap before React paint - flyout on body at feed tile size (transform identity). */
+export function snapFlyoutToHeroTile(flyout, host, fromRect, flyoutZIndex = HERO_STACK_BASE_Z_INDEX) {
+  if (!flyout || !host || !fromRect) return
+  if (flyout.parentElement !== host) host.appendChild(flyout)
+  flyout.style.position = 'fixed'
+  flyout.style.top = `${fromRect.top}px`
+  flyout.style.left = `${fromRect.left}px`
+  flyout.style.width = `${fromRect.width}px`
+  flyout.style.height = `${fromRect.height}px`
+  flyout.style.zIndex = String(flyoutZIndex)
+  flyout.style.transformOrigin = '0 0'
+  flyout.style.transform = 'none'
+  flyout.style.transition = 'none'
+  flyout.style.borderRadius = '12px'
+  flyout.style.willChange = 'transform'
+}
+
+/** Imperative snap at hero target - WAAPI expand leaves tile box + transform; React owns layout after land. */
+export function snapFlyoutToHeroOpen(flyout, targetRect, flyoutZIndex = HERO_STACK_BASE_Z_INDEX) {
+  if (!flyout || !targetRect) return
+  clearFlyoutHeroInlineStyles(flyout)
+  flyout.style.position = 'fixed'
+  flyout.style.top = `${targetRect.top}px`
+  flyout.style.left = `${targetRect.left}px`
+  flyout.style.width = `${targetRect.width}px`
+  flyout.style.height = `${targetRect.height}px`
+  flyout.style.zIndex = String(flyoutZIndex)
+  flyout.style.transform = 'none'
+  flyout.style.borderRadius = '0'
+}

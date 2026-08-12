@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
@@ -25,6 +25,7 @@ import LoungePostVideoInlineProgress, {
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
+import { heroRectUsableForShrinkBack, readElementViewportRect } from './loungeLightboxFlip.js'
 
 /** Match `LoungeInlineMediaUrl`: border wraps intrinsic image size (`w-auto`), not a fixed slide width. */
 const imgClassByVariant = {
@@ -74,6 +75,27 @@ export function LoungeImageCarousel({
     loungeFeedCarouselMeasureLayout(null, false),
   )
   const carouselScrollRef = useRef(null)
+  /** @type {React.MutableRefObject<(HTMLImageElement | null)[]>} */
+  const originImgRefs = useRef([])
+
+  const getLightboxOriginRect = useCallback((index) => {
+    const img = originImgRefs.current[index]
+    if (!(img instanceof HTMLElement)) return null
+    const rect = readElementViewportRect(img)
+    return heroRectUsableForShrinkBack(rect) ? rect : null
+  }, [])
+
+  const openLightboxAt = useCallback(
+    (i) => {
+      const fromRect = getLightboxOriginRect(i)
+      setLightbox({
+        urls: list,
+        index: i,
+        fromRect,
+      })
+    },
+    [getLightboxOriginRect, list],
+  )
   const multiSlideCarousel = list.length > 1
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multiSlideCarousel)
   const urlsKey = list.join('\0')
@@ -334,13 +356,13 @@ export function LoungeImageCarousel({
                 className={tapClass}
                 onClick={(e) => {
                   e.stopPropagation()
-                  setLightbox({ urls: list, index: i })
+                  openLightboxAt(i)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
-                    setLightbox({ urls: list, index: i })
+                    openLightboxAt(i)
                   }
                 }}
                 aria-label="View full image"
@@ -348,6 +370,9 @@ export function LoungeImageCarousel({
               >
                 <div className={frameClass}>
                   <img
+                    ref={(el) => {
+                      originImgRefs.current[i] = el
+                    }}
                     src={displaySrc}
                     alt=""
                     className={slideImgClass}
@@ -361,6 +386,9 @@ export function LoungeImageCarousel({
             ) : (
               <div className={frameClass}>
                 <img
+                  ref={(el) => {
+                    originImgRefs.current[i] = el
+                  }}
                   src={displaySrc}
                   alt=""
                   className={slideImgClass}
@@ -416,6 +444,8 @@ export function LoungeImageCarousel({
         <LoungeImageLightbox
           urls={lightbox.urls}
           initialIndex={lightbox.index}
+          fromRect={lightbox.fromRect}
+          getOriginRect={getLightboxOriginRect}
           onClose={() => setLightbox(null)}
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}

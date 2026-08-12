@@ -8,6 +8,17 @@ import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import { useLoungeLightboxCarouselSnap } from './useLoungeLightboxCarouselSnap.js'
 import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
+import {
+  computeHeroTargetRect,
+  HERO_CHROME_FADE_MS,
+  HERO_EXPAND_MS,
+  heroRectUsableForShrinkBack,
+  readElementViewportRect,
+  resolveLoungeHeroStackZIndexes,
+  runHeroExpandAnimation,
+  runHeroShrinkAnimation,
+  snapFlyoutToHeroOpen,
+} from './loungeLightboxFlip.js'
 import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
 import {
   loungeFeedAttachmentFrameClassName,
@@ -15,7 +26,6 @@ import {
   loungeFeedAttachmentOuterShellClassName,
   loungeFeedAttachmentTapTargetClassName,
   loungeFeedImageAttachmentTier,
-  LOUNGE_FEED_ATTACHMENT_COLUMN_MAX_H_CLASS,
 } from './loungeFeedImageAttachment.js'
 import MediaLightboxAmbientBackdrop from '../../components/MediaLightboxAmbientBackdrop.jsx'
 
@@ -25,14 +35,18 @@ function normalizeUrlList(urls) {
 }
 
 /**
- * Full-screen image/GIF viewer - Stream-style chrome: back + ⋯ top bar, pill interactions on bottom gradient.
+ * Full-screen image/GIF viewer with tile↔hero FLIP (same motion language as Stream video).
  * Pass `urls` + `initialIndex` for multi-image navigation; or legacy single `url`.
+ * @param {{ top: number, left: number, width: number, height: number } | null} [fromRect]
+ * @param {(index: number) => ({ top: number, left: number, width: number, height: number } | null | undefined)} [getOriginRect]
  */
 export function LoungeImageLightbox({
   url,
   urls,
   initialIndex = 0,
   onClose,
+  fromRect = null,
+  getOriginRect = null,
   /** Tailwind z-index on the portaled shell (default below profile sheet `z-[101]`). */
   lightboxPortalClass = 'z-[100]',
   /** `() => ReactNode` - top-right ⋯ menu (no autoplay toggle for images). */
@@ -62,12 +76,39 @@ export function LoungeImageLightbox({
   const current = list[idx] || ''
   const currentDisplaySrc = loungeFeedImageDeliveryUrl(current, 'lightbox')
   const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'feed')
-
   const multi = list.length > 1
+
+  const zStack = useMemo(
+    () => resolveLoungeHeroStackZIndexes(lightboxPortalClass),
+    [lightboxPortalClass],
+  )
+
+  const openFromRectRef = useRef(
+    heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
+  )
+  const targetRectRef = useRef(null)
+  const flyoutRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const expandAnimRef = useRef(/** @type {Animation | null} */ (null))
+  const shrinkAnimRef = useRef(/** @type {Animation | null} */ (null))
+  const expandTimerRef = useRef(0)
+  const shrinkTimerRef = useRef(0)
+  const closingRef = useRef(false)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+  const getOriginRectRef = useRef(getOriginRect)
+  getOriginRectRef.current = getOriginRect
+
+  const wantsFlipOpen = Boolean(openFromRectRef.current)
+  const [phase, setPhase] = useState(/** @type {'opening' | 'open' | 'closing'} */ (wantsFlipOpen ? 'opening' : 'open'))
+  const [chromeVisible, setChromeVisible] = useState(!wantsFlipOpen)
+  const [scrimOpacity, setScrimOpacity] = useState(wantsFlipOpen ? 0 : 1)
+  const [dismissProgress, setDismissProgress] = useState(0)
 
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
   const carouselScrollRef = useRef(null)
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -114,19 +155,16 @@ export function LoungeImageLightbox({
     resetKey: current,
   })
 
-  const carouselMode = multi && !isZoomed && !isPinching
+  const carouselMode = multi && !isZoomed && !isPinching && phase === 'open'
 
-  const onCarouselIndexChange = useCallback(
-    (i) => {
-      setIdx((prev) => (prev === i ? prev : i))
-    },
-    [],
-  )
+  const onCarouselIndexChange = useCallback((i) => {
+    setIdx((prev) => (prev === i ? prev : i))
+  }, [])
 
   useLoungeLightboxCarouselSnap(carouselScrollRef, carouselMode, list.length, onCarouselIndexChange)
 
   useLayoutEffect(() => {
-    if (!multi) return
+    if (!multi || phase !== 'open') return
     const el = carouselScrollRef.current
     if (!el) return
     const alignIndex = Math.max(0, Math.min(initialIndex, list.length - 1))
@@ -138,7 +176,7 @@ export function LoungeImageLightbox({
     apply()
     const id = requestAnimationFrame(apply)
     return () => cancelAnimationFrame(id)
-  }, [multi, list, initialIndex])
+  }, [multi, list, initialIndex, phase])
 
   useLayoutEffect(() => {
     if (!carouselMode) return
@@ -147,14 +185,108 @@ export function LoungeImageLightbox({
     const w = el.clientWidth
     if (!w) return
     el.scrollLeft = idx * w
-  }, [carouselMode])
+  }, [carouselMode, idx])
+
+  const resolveCloseOrigin = useCallback(() => {
+    const getter = getOriginRectRef.current
+    if (typeof getter === 'function') {
+      try {
+        const live = getter(idx)
+        if (heroRectUsableForShrinkBack(live)) return live
+      } catch {
+        // ignore
+      }
+    }
+    if (heroRectUsableForShrinkBack(openFromRectRef.current)) return openFromRectRef.current
+    return null
+  }, [idx])
+
+  const finishClose = useCallback(() => {
+    closingRef.current = false
+    onCloseRef.current?.()
+  }, [])
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return
+    if (phaseRef.current === 'opening') {
+      // Cut expand short and close without shrink if still flying in.
+      expandAnimRef.current?.cancel()
+      try {
+        window.clearTimeout(expandTimerRef.current)
+      } catch {
+        // ignore
+      }
+      finishClose()
+      return
+    }
+    if (phaseRef.current !== 'open') return
+
+    const origin = resolveCloseOrigin()
+    const mediaEl = mediaImageRef.current
+    const heroFrame =
+      mediaEl instanceof HTMLElement
+        ? readElementViewportRect(mediaEl)
+        : targetRectRef.current
+
+    if (!heroRectUsableForShrinkBack(origin) || !heroRectUsableForShrinkBack(heroFrame)) {
+      finishClose()
+      return
+    }
+
+    closingRef.current = true
+    setChromeVisible(false)
+    setDismissProgress(0)
+    setPhase('closing')
+    setScrimOpacity(1)
+
+    const flyout = flyoutRef.current
+    if (!flyout) {
+      finishClose()
+      return
+    }
+
+    // Paint flyout over the open hero frame, then WAAPI shrink to tile.
+    flyout.style.visibility = 'visible'
+    flyout.style.pointerEvents = 'none'
+    flyout.style.position = 'fixed'
+    flyout.style.top = `${heroFrame.top}px`
+    flyout.style.left = `${heroFrame.left}px`
+    flyout.style.width = `${heroFrame.width}px`
+    flyout.style.height = `${heroFrame.height}px`
+    flyout.style.zIndex = String(zStack.flyout)
+    flyout.style.borderRadius = '0px'
+    flyout.style.transform = 'none'
+    flyout.style.opacity = '1'
+    void flyout.offsetWidth
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        runHeroShrinkAnimation(flyout, heroFrame, origin, {
+          animRef: shrinkAnimRef,
+          finishTimerRef: shrinkTimerRef,
+          flyoutZIndex: zStack.flyout,
+          onDone: () => {
+            setScrimOpacity(0)
+            finishClose()
+          },
+        })
+        // Fade scrim with shrink.
+        setScrimOpacity(0)
+      })
+    })
+  }, [finishClose, resolveCloseOrigin, zStack.flyout])
+
+  const onDismissProgress = useCallback((detail) => {
+    if (phaseRef.current !== 'open') return
+    const p = Number(detail?.p) || 0
+    setDismissProgress(detail?.active ? p : 0)
+  }, [])
 
   const { swipeSurfaceProps } = useLoungeLightboxSwipeDismiss({
-    onClose,
-    // Images are not <video>; keep parent touch-pan-y until vertical dismiss locks so
-    // multi-image snap paging (child touch-action: pan-x) is not blocked.
+    onClose: requestClose,
+    onDismissProgress,
     allowSwipeOnVideo: false,
-    enabled: !isZoomed && !isPinching,
+    enabled: phase === 'open' && !isZoomed && !isPinching,
     verticalDismissOnly: multi,
     className: 'relative flex min-h-0 flex-1 flex-col',
   })
@@ -164,7 +296,6 @@ export function LoungeImageLightbox({
     onPointerMove: swipePointerMove,
     onPointerUp: swipePointerUp,
     onPointerCancel: swipePointerCancel,
-    style: swipeDragStyle,
     className: swipeClassName,
   } = swipeSurfaceProps
 
@@ -219,10 +350,10 @@ export function LoungeImageLightbox({
 
   const lightboxInteractionBarContent = useMemo(() => {
     if (typeof renderMediaLightboxInteractionBar === 'function') {
-      return renderMediaLightboxInteractionBar(onClose)
+      return renderMediaLightboxInteractionBar(requestClose)
     }
     return null
-  }, [renderMediaLightboxInteractionBar, onClose])
+  }, [renderMediaLightboxInteractionBar, requestClose])
 
   useEffect(() => {
     notifyLoungeStreamLightboxOpen(true)
@@ -234,8 +365,8 @@ export function LoungeImageLightbox({
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose()
-      if (list.length > 1) {
+      if (e.key === 'Escape') requestClose()
+      if (phaseRef.current === 'open' && list.length > 1) {
         if (e.key === 'ArrowLeft') {
           e.preventDefault()
           goPrev()
@@ -251,128 +382,275 @@ export function LoungeImageLightbox({
       document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
     }
-  }, [current, onClose, list.length, goPrev, goNext])
+  }, [current, requestClose, list.length, goPrev, goNext])
+
+  // FLIP open from feed tile.
+  useLayoutEffect(() => {
+    if (phase !== 'opening') return undefined
+    const from = openFromRectRef.current
+    const flyout = flyoutRef.current
+    if (!heroRectUsableForShrinkBack(from) || !flyout) {
+      setPhase('open')
+      setChromeVisible(true)
+      setScrimOpacity(1)
+      return undefined
+    }
+
+    const target = computeHeroTargetRect(from, {
+      displayW: from.width,
+      displayH: from.height,
+    })
+    targetRectRef.current = target
+
+    flyout.style.visibility = 'visible'
+    flyout.style.position = 'fixed'
+    flyout.style.top = `${from.top}px`
+    flyout.style.left = `${from.left}px`
+    flyout.style.width = `${from.width}px`
+    flyout.style.height = `${from.height}px`
+    flyout.style.zIndex = String(zStack.flyout)
+    flyout.style.transformOrigin = '0 0'
+    flyout.style.transform = 'none'
+    flyout.style.transition = 'none'
+    flyout.style.borderRadius = '12px'
+    flyout.style.opacity = '1'
+
+    let cancelled = false
+    const scrimRaf = requestAnimationFrame(() => {
+      if (!cancelled) setScrimOpacity(1)
+    })
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        runHeroExpandAnimation(flyout, from, target, {
+          animRef: expandAnimRef,
+          finishTimerRef: expandTimerRef,
+          flyoutZIndex: zStack.flyout,
+          onDone: () => {
+            if (cancelled) return
+            snapFlyoutToHeroOpen(flyout, target, zStack.flyout)
+            flyout.style.visibility = 'hidden'
+            flyout.style.pointerEvents = 'none'
+            setPhase('open')
+            setChromeVisible(true)
+            setScrimOpacity(1)
+          },
+        })
+      })
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(scrimRaf)
+      expandAnimRef.current?.cancel()
+      try {
+        window.clearTimeout(expandTimerRef.current)
+      } catch {
+        // ignore
+      }
+    }
+  }, [phase, zStack.flyout])
+
+  useEffect(
+    () => () => {
+      expandAnimRef.current?.cancel()
+      shrinkAnimRef.current?.cancel()
+      try {
+        window.clearTimeout(expandTimerRef.current)
+        window.clearTimeout(shrinkTimerRef.current)
+      } catch {
+        // ignore
+      }
+    },
+    [],
+  )
 
   if (!current) return null
+
+  const openUi = phase === 'open'
+  const motionActive = phase === 'opening' || phase === 'closing'
+  const effectiveScrim = Math.max(0, Math.min(1, scrimOpacity * (1 - dismissProgress * 0.55)))
 
   return createPortal(
     <div
       data-lounge-media-lightbox
       data-lounge-image-lightbox
-      className={`fixed inset-0 ${lightboxPortalClass} flex flex-col bg-black`}
+      data-lounge-image-lightbox-phase={phase}
+      className={`fixed inset-0 ${lightboxPortalClass}`}
       role="dialog"
       aria-modal="true"
       aria-label={multi ? `Image ${idx + 1} of ${list.length}` : 'Full image'}
     >
-      <div className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between">
-        <div className="media-lightbox-status-bar-blend" aria-hidden />
+      <div
+        className="absolute inset-0 bg-black"
+        style={{
+          zIndex: zStack.scrim,
+          opacity: effectiveScrim,
+          transition:
+            phase === 'opening'
+              ? `opacity ${HERO_EXPAND_MS}ms ease-out`
+              : phase === 'closing'
+                ? `opacity ${HERO_EXPAND_MS}ms ease-out`
+                : dismissProgress > 0
+                  ? 'none'
+                  : undefined,
+        }}
+        aria-hidden
+      />
+
+      {/* FLIP flyout … visible during open/close motion; hidden while interactive open UI owns the image. */}
+      <div
+        ref={flyoutRef}
+        data-lounge-image-lightbox-flyout
+        className="overflow-hidden bg-zinc-950"
+        style={{
+          visibility: motionActive ? 'visible' : 'hidden',
+          pointerEvents: 'none',
+          zIndex: zStack.flyout,
+          position: 'fixed',
+        }}
+      >
+        <img
+          src={currentDisplaySrc}
+          alt=""
+          className="h-full w-full select-none object-cover"
+          draggable={false}
+          decoding="async"
+        />
+      </div>
+
+      {openUi ? (
         <div
-          className={`pointer-events-auto relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
-          data-lounge-lightbox-top-chrome
-          data-lounge-lightbox-no-swipe
+          className="absolute inset-0 flex flex-col bg-transparent"
+          style={{ zIndex: zStack.overlay }}
         >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onClose()
-            }}
-            aria-label="Back"
-            className={LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS}
-          >
-            <span className="text-[22px] leading-none" aria-hidden>
-              ←
-            </span>
-          </button>
-          <div className="ml-auto flex items-center gap-1" data-lounge-lightbox-no-swipe>
-            {lightboxTopBarExtraContent ? <div>{lightboxTopBarExtraContent}</div> : null}
-            {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
-          </div>
-        </div>
-        {lightboxInteractionBarContent ? (
           <div
-            className={`pointer-events-auto w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
-            data-lounge-image-lightbox-footer
-            data-lounge-lightbox-no-swipe
-            onClick={(e) => e.stopPropagation()}
+            className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between"
+            style={{
+              opacity: chromeVisible ? 1 - dismissProgress : 0,
+              transition: chromeVisible
+                ? `opacity ${HERO_CHROME_FADE_MS}ms ease-out`
+                : 'none',
+            }}
           >
-            <div className="[&_[data-lounge-post-interaction-bar]]:landscape:w-auto [&_[data-lounge-post-interaction-bar]]:landscape:justify-end [&_[data-lounge-post-interaction-bar]]:landscape:gap-1.5">
-              {lightboxInteractionBarContent}
-            </div>
-            {multi ? (
-              <div
-                data-lounge-lightbox-image-pager
-                className="pointer-events-none mt-2 text-center text-[12px] font-medium tabular-nums text-zinc-200"
+            <div className="media-lightbox-status-bar-blend" aria-hidden />
+            <div
+              className={`pointer-events-auto relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+              data-lounge-lightbox-top-chrome
+              data-lounge-lightbox-no-swipe
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  requestClose()
+                }}
+                aria-label="Back"
+                className={LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS}
               >
-                {idx + 1} / {list.length}
+                <span className="text-[22px] leading-none" aria-hidden>
+                  ←
+                </span>
+              </button>
+              <div className="ml-auto flex items-center gap-1" data-lounge-lightbox-no-swipe>
+                {lightboxTopBarExtraContent ? <div>{lightboxTopBarExtraContent}</div> : null}
+                {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
+              </div>
+            </div>
+            {lightboxInteractionBarContent ? (
+              <div
+                className={`pointer-events-auto w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
+                data-lounge-image-lightbox-footer
+                data-lounge-lightbox-no-swipe
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="[&_[data-lounge-post-interaction-bar]]:landscape:w-auto [&_[data-lounge-post-interaction-bar]]:landscape:justify-end [&_[data-lounge-post-interaction-bar]]:landscape:gap-1.5">
+                  {lightboxInteractionBarContent}
+                </div>
+                {multi ? (
+                  <div
+                    data-lounge-lightbox-image-pager
+                    className="pointer-events-none mt-2 text-center text-[12px] font-medium tabular-nums text-zinc-200"
+                  >
+                    {idx + 1} / {list.length}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
-        ) : null}
-      </div>
-      {multi && !lightboxInteractionBarContent ? (
-        <div
-          data-lounge-lightbox-image-pager
-          className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
-        >
-          {idx + 1} / {list.length}
-        </div>
-      ) : null}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={onMediaPointerDown}
-        onPointerMove={onMediaPointerMove}
-        onPointerUp={onMediaPointerUp}
-        onPointerCancel={onMediaPointerCancel}
-        style={swipeDragStyle}
-        className={['relative z-0 flex min-h-0 flex-1 flex-col', swipeClassName, isZoomed || isPinching ? 'touch-none' : '']
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <div
-          ref={mediaContainerRef}
-          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2"
-        >
-          <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
-          {carouselMode ? (
+          {multi && !lightboxInteractionBarContent ? (
             <div
-              ref={carouselScrollRef}
-              data-lounge-lightbox-carousel
-              className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto scroll-smooth [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              data-lounge-lightbox-image-pager
+              className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
+              style={{ opacity: 1 - dismissProgress }}
             >
-              {list.map((slideUrl, i) => (
+              {idx + 1} / {list.length}
+            </div>
+          ) : null}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={onMediaPointerDown}
+            onPointerMove={onMediaPointerMove}
+            onPointerUp={onMediaPointerUp}
+            onPointerCancel={onMediaPointerCancel}
+            className={[
+              'relative z-0 flex min-h-0 flex-1 flex-col',
+              swipeClassName,
+              isZoomed || isPinching ? 'touch-none' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <div
+              ref={mediaContainerRef}
+              className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2"
+            >
+              <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
+              {carouselMode ? (
                 <div
-                  key={`${slideUrl}-${i}`}
-                  className="relative z-[1] flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
+                  ref={carouselScrollRef}
+                  data-lounge-lightbox-carousel
+                  className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto scroll-smooth [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {list.map((slideUrl, i) => (
+                    <div
+                      key={`${slideUrl}-${i}`}
+                      className="relative z-[1] flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
+                    >
+                      <img
+                        ref={i === idx ? mediaImageRef : undefined}
+                        src={loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')}
+                        alt=""
+                        className="relative z-[1] max-h-full max-w-full select-none object-contain"
+                        loading={i === idx ? 'eager' : 'lazy'}
+                        decoding="async"
+                        draggable={false}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className="relative z-[1] inline-flex max-h-full max-w-full origin-center"
+                  style={mediaTransformStyle}
                 >
                   <img
-                    ref={i === idx ? mediaImageRef : undefined}
-                    src={loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')}
+                    ref={mediaImageRef}
+                    key={current}
+                    src={currentDisplaySrc}
                     alt=""
                     className="relative z-[1] max-h-full max-w-full select-none object-contain"
-                    loading={i === idx ? 'eager' : 'lazy'}
+                    loading="eager"
                     decoding="async"
                     draggable={false}
                   />
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            <div className="relative z-[1] inline-flex max-h-full max-w-full origin-center" style={mediaTransformStyle}>
-              <img
-                ref={mediaImageRef}
-                key={current}
-                src={currentDisplaySrc}
-                alt=""
-                className="relative z-[1] max-h-full max-w-full select-none object-contain"
-                loading="eager"
-                decoding="async"
-                draggable={false}
-              />
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>,
     document.body,
   )
@@ -394,6 +672,7 @@ export function LoungeInlineMediaUrl({
   renderMediaLightboxInteractionBar,
 }) {
   const [lightbox, setLightbox] = useState(null)
+  const originImgRef = useRef(/** @type {HTMLImageElement | null} */ (null))
   const [feedAttachmentTier, setFeedAttachmentTier] = useState(
     /** @type {import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier} */ ('column'),
   )
@@ -411,7 +690,10 @@ export function LoungeInlineMediaUrl({
   const rounding = isEmbed ? 'rounded-lg' : 'rounded-xl'
   const border = isEmbed ? 'border-zinc-600/40' : 'border-zinc-700/60'
 
-  const displayUrl = loungeFeedImageDeliveryUrl(url, variant === 'detail' ? 'detail' : variant === 'commentInline' ? 'commentInline' : variant === 'embed' ? 'embed' : 'feed')
+  const displayUrl = loungeFeedImageDeliveryUrl(
+    url,
+    variant === 'detail' ? 'detail' : variant === 'commentInline' ? 'commentInline' : variant === 'embed' ? 'embed' : 'feed',
+  )
 
   const usesFeedAttachmentLayout = variant === 'feed' || variant === 'embed'
   const frameClass = usesFeedAttachmentLayout
@@ -427,9 +709,27 @@ export function LoungeInlineMediaUrl({
     ? loungeFeedAttachmentOuterShellClassName(feedAttachmentTier, { variant })
     : 'w-full min-w-0 max-w-full'
 
+  const openLightbox = useCallback(() => {
+    const img = originImgRef.current
+    const fromRect = img instanceof HTMLElement ? readElementViewportRect(img) : null
+    setLightbox({
+      urls: [String(url).trim()],
+      index: 0,
+      fromRect: heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
+    })
+  }, [url])
+
+  const getOriginRect = useCallback((_index) => {
+    const img = originImgRef.current
+    if (!(img instanceof HTMLElement)) return null
+    const rect = readElementViewportRect(img)
+    return heroRectUsableForShrinkBack(rect) ? rect : null
+  }, [])
+
   const framed = (
     <div className={frameClass}>
       <img
+        ref={originImgRef}
         src={displayUrl}
         alt=""
         className={resolvedImgClass}
@@ -457,13 +757,13 @@ export function LoungeInlineMediaUrl({
           className={tapTargetClass}
           onClick={(e) => {
             e.stopPropagation()
-            setLightbox({ urls: [String(url).trim()], index: 0 })
+            openLightbox()
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
               e.stopPropagation()
-              setLightbox({ urls: [String(url).trim()], index: 0 })
+              openLightbox()
             }
           }}
           aria-label="View full image"
@@ -478,6 +778,8 @@ export function LoungeInlineMediaUrl({
         <LoungeImageLightbox
           urls={lightbox.urls}
           initialIndex={lightbox.index}
+          fromRect={lightbox.fromRect}
+          getOriginRect={getOriginRect}
           onClose={() => setLightbox(null)}
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}

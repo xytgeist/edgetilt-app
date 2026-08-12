@@ -960,7 +960,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-12: **Image lightbox swipe-dismiss motion:** drag transform via DOM (no per-frame React re-render); release past threshold flings off-screen then closes (was hard-cut unmount).
+- 2026-08-12: **Image lightbox FLIP like Stream hero:** shared **`loungeLightboxFlip.js`** (rects + 500ms expand/shrink). Tap feed tile → grow from thumbnail; back / Escape / swipe-threshold → shrink to origin (live tile rect when paged). Swipe follows **x+y**; no off-screen fling … parent owns close. Stream video imports the same helpers. Smoke: single + multi image open/close; horizontal page still works; Stream hero unchanged.
+- 2026-08-12: **Image lightbox swipe-dismiss motion:** drag transform via DOM (no per-frame React re-render); release past threshold flings off-screen then closes (was hard-cut unmount). *(Superseded same day by FLIP shrink-back.)*
 - 2026-08-12: **Image lightbox swipe-dismiss restored:** multi-image snap pager no longer eats vertical dismiss. Axis-lock: horizontal → native snap page; vertical → swipe-away. Carousel `touch-action: pan-x`.
 - 2026-08-12: **In-app toast divert uses visibility beacon:** `push-sw.js` no longer gates Poker Stable / Chat / Lounge activity on `client.focused` (broken on iPhone PWA). Same Cache beacon + `visibilityState` + probe path as call rings. Force-close PWA / hard refresh so SW updates. Smoke: stay on Bankroll → stake event → frosted toast, no OS banner.
 - 2026-08-12: **Remove admin toast preview bell:** title-bar 🔔 Short/Medium/Long demo control removed (was promoted with frost toast work). Real activity toasts unchanged.

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal, flushSync } from 'react-dom'
 import {
   LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD,
-  LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS,
+  LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
@@ -54,7 +54,12 @@ export function LoungeImageLightbox({
   renderMediaLightboxMenu,
   /** `() => ReactNode` - Follow pill left of ⋯ in the top bar. */
   renderMediaLightboxTopBarExtra,
-  /** `(dismissLightbox) => ReactNode` - pill interaction row on bottom gradient. */
+  /**
+   * `(dismissLightbox) => ReactNode` - same bottom chrome as Stream hero
+   * (avatar / name / handle / caption / interactions). Preferred over interaction-bar-only.
+   */
+  renderMediaLightboxChrome,
+  /** `(dismissLightbox) => ReactNode` - legacy pill row only (used if chrome is omitted). */
   renderMediaLightboxInteractionBar,
 }) {
   const list = useMemo(() => {
@@ -353,12 +358,15 @@ export function LoungeImageLightbox({
     return null
   }, [renderMediaLightboxTopBarExtra])
 
-  const lightboxInteractionBarContent = useMemo(() => {
+  const lightboxChromeContent = useMemo(() => {
+    if (typeof renderMediaLightboxChrome === 'function') {
+      return renderMediaLightboxChrome(requestClose)
+    }
     if (typeof renderMediaLightboxInteractionBar === 'function') {
       return renderMediaLightboxInteractionBar(requestClose)
     }
     return null
-  }, [renderMediaLightboxInteractionBar, requestClose])
+  }, [renderMediaLightboxChrome, renderMediaLightboxInteractionBar, requestClose])
 
   useEffect(() => {
     notifyLoungeStreamLightboxOpen(true)
@@ -597,7 +605,7 @@ export function LoungeImageLightbox({
                   requestClose()
                 }}
                 aria-label="Back"
-                className={LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS}
+                className={`${LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS} media-lightbox-nav-btn`}
               >
                 <span className="text-[22px] leading-none" aria-hidden>
                   ←
@@ -608,16 +616,14 @@ export function LoungeImageLightbox({
                 {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
               </div>
             </div>
-            {lightboxInteractionBarContent ? (
+            {lightboxChromeContent ? (
               <div
-                className={`pointer-events-auto w-full bg-gradient-to-t from-black/70 via-black/35 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
+                className={`pointer-events-none w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8`}
                 data-lounge-image-lightbox-footer
                 data-lounge-lightbox-no-swipe
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="[&_[data-lounge-post-interaction-bar]]:landscape:w-auto [&_[data-lounge-post-interaction-bar]]:landscape:justify-end [&_[data-lounge-post-interaction-bar]]:landscape:gap-1.5">
-                  {lightboxInteractionBarContent}
-                </div>
+                <div className="pointer-events-auto">{lightboxChromeContent}</div>
                 {multi ? (
                   <div
                     data-lounge-lightbox-image-pager
@@ -629,7 +635,7 @@ export function LoungeImageLightbox({
               </div>
             ) : null}
           </div>
-          {multi && !lightboxInteractionBarContent ? (
+          {multi && !lightboxChromeContent ? (
             <div
               data-lounge-lightbox-image-pager
               className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
@@ -741,6 +747,7 @@ export function LoungeInlineMediaUrl({
   lightboxPortalClass = 'z-[100]',
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
+  renderMediaLightboxChrome,
   renderMediaLightboxInteractionBar,
 }) {
   const [lightbox, setLightbox] = useState(null)
@@ -856,6 +863,7 @@ export function LoungeInlineMediaUrl({
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
+          renderMediaLightboxChrome={renderMediaLightboxChrome}
           renderMediaLightboxInteractionBar={renderMediaLightboxInteractionBar}
         />
       ) : null}
@@ -876,6 +884,7 @@ export function LoungePostMediaPair({
   lightboxPortalClass = 'z-[100]',
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
+  renderMediaLightboxChrome,
   renderMediaLightboxInteractionBar,
 }) {
   const m = mediaUrl != null ? String(mediaUrl).trim() : ''
@@ -892,6 +901,7 @@ export function LoungePostMediaPair({
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
+          renderMediaLightboxChrome={renderMediaLightboxChrome}
           renderMediaLightboxInteractionBar={renderMediaLightboxInteractionBar}
         />
         <LoungeInlineMediaUrl
@@ -902,6 +912,7 @@ export function LoungePostMediaPair({
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
+          renderMediaLightboxChrome={renderMediaLightboxChrome}
           renderMediaLightboxInteractionBar={renderMediaLightboxInteractionBar}
         />
       </>
@@ -917,6 +928,7 @@ export function LoungePostMediaPair({
       lightboxPortalClass={lightboxPortalClass}
       renderMediaLightboxMenu={renderMediaLightboxMenu}
       renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
+      renderMediaLightboxChrome={renderMediaLightboxChrome}
       renderMediaLightboxInteractionBar={renderMediaLightboxInteractionBar}
     />
   )

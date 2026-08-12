@@ -55,6 +55,8 @@ export function LoungeImageCarousel({
   lightboxPortalClass = 'z-[100]',
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
+  /** Stream-style avatar/caption/interaction chrome (preferred). */
+  renderMediaLightboxChrome,
   renderMediaLightboxInteractionBar,
   /**
    * When set (feed/detail scroll container), carousel snaps back to slide 1 when this block
@@ -450,6 +452,7 @@ export function LoungeImageCarousel({
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
+          renderMediaLightboxChrome={renderMediaLightboxChrome}
           renderMediaLightboxInteractionBar={renderMediaLightboxInteractionBar}
         />
       ) : null}
@@ -560,25 +563,16 @@ export function LoungePostFeedImagesAndGif({
     streamLightbox && lightboxHost
       ? () => streamLightbox.buildImageMenu(lightboxHost, streamLightboxTileCtx, streamLightboxSurface)
       : null
+  /** Same Follow / top-bar extras as Stream hero (landscape Follow lives here). */
   const imageLightboxTopBarExtraRenderer =
     streamLightbox && lightboxHost
-      ? () => streamLightbox.buildImageTopBarExtra(lightboxHost, post, streamLightboxTileCtx, streamLightboxSurface)
+      ? () => streamLightbox.buildTopBarExtra(lightboxHost, post, streamLightboxTileCtx, streamLightboxSurface)
       : null
-  const imageLightboxInteractionBarRenderer =
+  /** Same avatar / name / handle / caption / interactions chrome as Stream hero. */
+  const imageLightboxChromeRenderer =
     streamLightbox &&
     lightboxHost &&
     !streamLightboxTileCtx?.hideLightboxInteractionBar
-      ? (dismissLightbox) =>
-          streamLightbox.buildImageInteractionBar(
-            lightboxHost,
-            post,
-            dismissLightbox,
-            streamLightboxTileCtx,
-            streamLightboxSurface,
-          )
-      : null
-  const chromeRenderer =
-    streamLightbox && lightboxHost
       ? (dismissLightbox) =>
           streamLightbox.buildChrome(
             lightboxHost,
@@ -588,6 +582,7 @@ export function LoungePostFeedImagesAndGif({
             streamLightboxSurface,
           )
       : null
+  const chromeRenderer = imageLightboxChromeRenderer
   const menuRenderer =
     streamLightbox && lightboxHost
       ? () => streamLightbox.buildMenu(lightboxHost, streamLightboxTileCtx, streamLightboxSurface)
@@ -654,7 +649,7 @@ export function LoungePostFeedImagesAndGif({
     lightboxPortalClass,
     renderMediaLightboxMenu: imageLightboxMenuRenderer,
     renderMediaLightboxTopBarExtra: imageLightboxTopBarExtraRenderer,
-    renderMediaLightboxInteractionBar: imageLightboxInteractionBarRenderer,
+    renderMediaLightboxChrome: imageLightboxChromeRenderer,
   }
   const imgs = feedPostImageUrls(post)
   const gif = String(post?.gif_url || '').trim()

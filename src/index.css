@@ -1246,43 +1246,10 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   z-index: 112 !important;
 }
 /*
- * Image lightbox chrome chips (dark): lighter frosted glass + uniform oval hit targets.
- * Counts sit outside the oval so every chip matches top back/⋯ sizing.
+ * Image lightbox now reuses Stream hero chrome (avatar / caption / black/40 pills).
+ * Light mode: keep frosted top nav chips; leave bottom Stream chrome dark-on-gradient for now
+ * (same as video) … polish light bottom chrome later if needed.
  */
-[data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black'] {
-  box-sizing: border-box !important;
-  width: 2.75rem !important;
-  min-width: 2.75rem !important;
-  height: 2.2rem !important;
-  padding: 0 !important;
-  justify-content: center !important;
-  align-items: center !important;
-  background-color: rgba(255, 255, 255, 0.22) !important;
-  backdrop-filter: blur(22px) saturate(165%) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(165%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.32) !important;
-  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.14);
-}
-[data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black']:hover,
-[data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black']:active {
-  background-color: rgba(255, 255, 255, 0.32) !important;
-}
-[data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black'] > span.inline-flex {
-  position: relative;
-  gap: 0 !important;
-  align-items: center;
-  justify-content: center;
-}
-[data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black'] .tabular-nums {
-  position: absolute;
-  left: calc(100% + 0.28rem);
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-}
-
-/* Lounge image lightbox nav - light frost (Follow keeps auto width; icons use .w-11) */
 html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn {
   color: #3f3f46 !important;
   background: rgba(255, 255, 255, 0.78) !important;
@@ -1291,11 +1258,6 @@ html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn {
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
   isolation: isolate;
-}
-html.light [data-lounge-image-lightbox] .media-lightbox-nav-btn.w-11 {
-  width: 2.75rem !important;
-  min-width: 2.75rem !important;
-  height: 2.2rem !important;
 }
 /* Chat image lightbox back - frosted glass over full-bleed media */
 [data-chat-image-lightbox] .media-lightbox-nav-btn {
@@ -1372,49 +1334,29 @@ html.light [data-lounge-image-lightbox] .media-lightbox-status-bar-blend {
     rgba(255, 255, 255, 0) 100%
   );
 }
-/* Interaction row - light frost ovals (match top chrome size) */
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black'] {
-  background-color: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(22px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(150%) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
-}
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black']:hover,
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black']:active {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-}
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] [class*='bg-black'] .tabular-nums {
-  text-shadow: none;
-}
-/* Footer gradient + idle interaction glyphs (pill overlay) */
+/*
+ * Image lightbox footer now matches Stream (dark gradient + light glyphs).
+ * Do not remap interaction colors to dark-on-light here … Stream chrome is dark-banded.
+ */
 html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-footer] {
   background: linear-gradient(
     to top,
-    rgba(250, 250, 250, 0.98) 0%,
-    rgba(250, 250, 250, 0.82) 42%,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.5) 45%,
     transparent 100%
   ) !important;
 }
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-200,
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-500 {
-  color: #3f3f46 !important;
+/* Keep Stream chrome author/caption readable on the dark band in light mode. */
+html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] .text-\[\#fff\] {
+  color: #ffffff !important;
 }
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-white {
-  color: #3f3f46 !important;
+html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] .text-\[\#d4d4d8\] {
+  color: #d4d4d8 !important;
 }
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-zinc-100 {
-  color: #3f3f46 !important;
-}
-/* Hydrated interaction colors - keep feed semantics */
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-emerald-400 {
-  color: #047857 !important;
-}
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-lv-red {
-  color: #fd262d !important;
-}
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-lv-yellow {
-  color: #2563eb !important;
+html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-200,
+html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-500,
+html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-100 {
+  color: #e4e4e7 !important;
 }
 
 /*

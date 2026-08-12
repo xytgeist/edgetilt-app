@@ -361,8 +361,8 @@ export default function PokerStableCloseStakeSheet({
           ) : (
             <p className="mt-2 text-xs leading-relaxed text-zinc-500">
               {isStakee
-                ? `This stake will be archived, roll resets to ${fmtPoker$(baseline)}, and its sessions move onto your personal timeline.`
-                : `This stake will be archived and ${playerName}'s sessions move onto their personal timeline.`}
+                ? `This stake will be archived and roll resets to ${fmtPoker$(baseline)}.`
+                : 'This stake will be archived.'}
             </p>
           )}
           {isTournamentPackage && isStakee && unusedMarkupTotal > 0.005 ? (
@@ -424,9 +424,7 @@ export default function PokerStableCloseStakeSheet({
 
         <p className="mb-4 text-xs leading-relaxed text-zinc-500">
           {isTournamentPackage
-            ? isStakee
-              ? 'Closing distributes the current roll by action % and refunds unused prepaid markup. Sessions move onto your personal timeline.'
-              : `Closing distributes the current roll by action % and refunds unused prepaid markup. ${playerName}'s sessions move onto their personal timeline.`
+            ? 'Closing distributes the current roll by action % and refunds unused prepaid markup.'
             : isStakee
               ? `Backer slices settle together from profit above baseline${
                   showRakeback ? ' and any rakeback you enter below' : ''

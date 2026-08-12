@@ -31,16 +31,16 @@ export function inAppToastStackedTopStyle(index = 0) {
 
 export const IN_APP_TOAST_SHELL_POSITION = `fixed left-1/2 ${IN_APP_TOAST_SHELL_WIDTH} -translate-x-1/2`
 
-const IN_APP_TOAST_STATUS_PILL_BASE = `pointer-events-none ${IN_APP_TOAST_SHELL_POSITION} rounded-2xl border px-3 py-2 text-center text-[11px] font-medium leading-snug shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl backdrop-saturate-150`
+const IN_APP_TOAST_STATUS_PILL_BASE = `pointer-events-none ${IN_APP_TOAST_SHELL_POSITION} rounded-2xl border-0 px-3 py-2 text-center text-[11px] font-medium leading-snug shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl backdrop-saturate-150`
 
 /** Lounge queued reply / share flash toasts. */
-export const IN_APP_TOAST_STATUS_PILL_CYAN = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--cyan border-white/10 bg-zinc-900/55 text-cyan-50`
+export const IN_APP_TOAST_STATUS_PILL_CYAN = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--cyan bg-zinc-900/55 text-cyan-50`
 
-export const IN_APP_TOAST_STATUS_PILL_EMERALD = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--emerald border-white/10 bg-zinc-900/55 text-emerald-50`
+export const IN_APP_TOAST_STATUS_PILL_EMERALD = `${IN_APP_TOAST_STATUS_PILL_BASE} in-app-toast-status-pill in-app-toast-status-pill--emerald bg-zinc-900/55 text-emerald-50`
 
 /** Rich activity toast card (icon + title + body). */
 export const IN_APP_TOAST_ACTIVITY_CARD =
-  'in-app-toast-activity-card flex w-full items-center gap-2.5 rounded-2xl border border-white/10 bg-zinc-900/55 px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl backdrop-saturate-150'
+  'in-app-toast-activity-card flex w-full items-center gap-2.5 rounded-2xl border-0 bg-zinc-900/55 px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.28)] backdrop-blur-xl backdrop-saturate-150'
 
 export const IN_APP_TOAST_ACTIVITY_ICON =
   'in-app-toast-activity-icon h-8 w-8 shrink-0 rounded-full bg-zinc-800/80 object-cover ring-1 ring-white/10'

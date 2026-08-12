@@ -3749,10 +3749,8 @@ html.light [data-in-app-toast] .in-app-toast-activity-card,
 html.light [data-in-app-toast].in-app-toast-status-pill--cyan,
 html.light [data-in-app-toast].in-app-toast-status-pill--emerald {
   background: rgba(255, 255, 255, 0.62) !important;
-  border-color: rgba(24, 24, 27, 0.08) !important;
-  box-shadow:
-    0 10px 36px rgba(24, 24, 27, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.45) inset !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 36px rgba(24, 24, 27, 0.12) !important;
   -webkit-backdrop-filter: blur(22px) saturate(1.4);
   backdrop-filter: blur(22px) saturate(1.4);
 }

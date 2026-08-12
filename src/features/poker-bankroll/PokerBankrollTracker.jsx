@@ -1736,17 +1736,22 @@ export default function PokerBankrollTracker({
         rakebackTotal,
       })
       if (error) throw error
-      showStakeNotice(
-        immediate
-          ? 'Stake closed ... sessions are on your personal timeline now.'
-          : 'Close settlement proposed ... waiting for confirmation.',
-      )
       if (immediate) {
+        const { error: archErr } = await archiveStakeeBankrollDeal(supabaseClient, dealId)
+        if (archErr) {
+          showStakeNotice(
+            'Stake closed, but could not archive. Use Archive stake when you are ready.',
+          )
+        } else {
+          showStakeNotice('Stake closed and archived.')
+        }
         flushSync(() => {
           setTermsDealId(null)
           setLedgerDealId(null)
           if (bankrollScope === dealId) setBankrollScope('personal')
         })
+      } else {
+        showStakeNotice('Close settlement proposed ... waiting for confirmation.')
       }
       await loadData()
     } catch (e) {

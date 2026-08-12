@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Close & Archive Stake:** Final close confirm is **Close & Archive Stake**; after a successful close the closer auto-archives (backer Stable / player Bankroll) so they do not see Review / Archive on the closed carousel card. Counterparty still sees Commit until they sync (existing Commit→archive).
 - 2026-08-12: **Edge Monitor Poker catalog section:** Health tab shows last sync upserted / pruned / MTTDB online+live from `admin_ops_job_heartbeats` (`20260812120000` … `poker_catalog` on scheduled_jobs snapshot).
 - 2026-08-12: **ClubWPT online catalog:** Sync guest-logs into `webservices.clubwpt.com` lobbydata (`clubwpt:online:*` → venue **ClubWPT**).
 - 2026-08-12: **ClubWPT Gold catalog path mapped:** Cocos client → `v88mttfront…/mtt/appfile/url_config` → `mttapi.clubwptgold.com/api/mtt/tournamentList` (protobuf). No guest token … sync ingests when `CLUBWPT_GOLD_MTT_TOKEN` is set (`clubwptgold:online:*` → venue **ClubWPT Gold**).

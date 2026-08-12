@@ -10,6 +10,8 @@ import PokerBankrollTrendTab from '../poker-bankroll/PokerBankrollTrendTab.jsx'
 import PokerLocationsTab from '../poker-bankroll/PokerLocationsTab.jsx'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import {
+  archiveBackerStableDeal,
+  archiveStakeeBankrollDeal,
   closeBackingDeal,
   loadLatestSettlement,
   loadLedgerEntries,
@@ -361,11 +363,22 @@ export default function PokerStableDealDetailSheet({
     onSavingChange(true)
     onError('')
     try {
-      const { error } = await closeBackingDeal(supabaseClient, {
+      const { error, immediate } = await closeBackingDeal(supabaseClient, {
         dealId: deal.id,
         rakebackTotal: rakebackAmount,
       })
       if (error) throw error
+      // Closer should not see Review / Archive on the closed carousel card.
+      if (immediate !== false) {
+        const archiveFn = isStakee ? archiveStakeeBankrollDeal : archiveBackerStableDeal
+        const { error: archErr } = await archiveFn(supabaseClient, deal.id)
+        if (archErr) {
+          onError(
+            archErr.message ||
+              'Stake closed, but could not archive. Use Archive stake when you are ready.',
+          )
+        }
+      }
       triggerTapHapticLight()
       flushSync(() => {
         onClose()

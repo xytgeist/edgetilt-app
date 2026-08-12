@@ -454,7 +454,7 @@ export default function PokerStableCloseStakeSheet({
           data-poker-stable-close-stake-confirm-btn
           className="w-full rounded-xl bg-zinc-100 py-3.5 text-base font-bold text-zinc-900 touch-manipulation disabled:opacity-50"
         >
-          {saving ? 'Closing…' : 'Confirm close stake'}
+          {saving ? 'Closing…' : 'Close & Archive Stake'}
         </button>
       </div>
     </div>

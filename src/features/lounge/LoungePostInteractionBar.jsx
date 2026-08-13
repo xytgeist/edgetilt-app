@@ -109,9 +109,7 @@ export default function LoungePostInteractionBar({
   const likeClass = ro
     ? 'text-zinc-500'
     : ui.liked
-      ? overlayIdle
-        ? 'text-[#fd262d]' // match LoungeFlameIcon hydrated chip heart
-        : 'text-lv-red'
+      ? 'text-lv-red' // same #fd262d as LoungeFlameIcon … keep a real Tailwind token (arbitrary hex can miss the CSS bundle)
       : overlayIdle
         ? 'text-white'
         : 'text-zinc-500'
@@ -188,7 +186,7 @@ export default function LoungePostInteractionBar({
   const pillOverlayFrost =
     'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const pillOverlayH = 'h-10'
-  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 rounded-full ${pillOverlayFrost}`
+  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 overflow-visible rounded-full ${pillOverlayFrost}`
   const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls

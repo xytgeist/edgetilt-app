@@ -1387,8 +1387,15 @@ html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text
   /* Light mode: normal green-600 (mint #4ade80 reads odd on light frost). */
   color: #16a34a !important;
 }
+[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-lv-red,
 [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\],
+html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-lv-red,
 html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\] {
+  color: #fd262d !important;
+}
+/* Liked pill count must win over inherited frost `text-white !important` remaps. */
+[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] [data-lounge-pill-count].text-lv-red,
+html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] [data-lounge-pill-count].text-lv-red {
   color: #fd262d !important;
 }
 /* Fluid lightbox pill chrome … scales with viewport (skinny Android + large phones). */

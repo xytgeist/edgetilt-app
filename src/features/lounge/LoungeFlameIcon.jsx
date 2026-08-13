@@ -6,7 +6,9 @@ import {
   loungeInteractionStatGridClass,
 } from '../../utils/formatCompactStatCount.js'
 
-const CHIP_RED = '#fd262d'
+/** Hydrated like chip / heart fill … keep count text in sync (lightbox frost pills). */
+export const LOUNGE_LIKE_CHIP_RED = '#fd262d'
+const CHIP_RED = LOUNGE_LIKE_CHIP_RED
 
 const HEART =
   'M12 17.15C9.35 14.85 7.85 13.35 7.85 11.2c0-1.55 1.15-2.65 2.55-2.65.75 0 1.45.35 2.05.95.6-.6 1.3-.95 2.05-.95 1.4 0 2.55 1.1 2.55 2.65 0 2.15-1.5 3.65-4.15 5.95z'

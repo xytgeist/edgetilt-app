@@ -1383,9 +1383,9 @@ html.light [data-lounge-repost-menu] .text-zinc-100 {
 html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\] {
   color: #4ade80 !important;
 }
-[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fb7185\],
-html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fb7185\] {
-  color: #fb7185 !important;
+[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\],
+html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\] {
+  color: #fd262d !important;
 }
 /* Fluid lightbox pill chrome … scales with viewport (skinny Android + large phones). */
 [data-lounge-lightbox-pill-row] {

@@ -110,7 +110,7 @@ export default function LoungePostInteractionBar({
     ? 'text-zinc-500'
     : ui.liked
       ? overlayIdle
-        ? 'text-[#fb7185]' // softer rose-red on frost pills (lv-red is too neon)
+        ? `text-[${LOUNGE_LIKE_CHIP_RED}]` // match hydrated chip heart (#fd262d)
         : 'text-lv-red'
       : overlayIdle
         ? 'text-white'

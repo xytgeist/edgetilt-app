@@ -7,7 +7,7 @@ import { mapGenericNetworkErrorMessage } from './loungeVideoUpload.js'
 export const LOUNGE_CF_R2_OBJECT_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
 
-/** @typedef {'feed' | 'detail' | 'commentInline' | 'embed' | 'composer' | 'lightbox' | 'poster' | 'og'} LoungeFeedImageDeliveryVariant */
+/** @typedef {'feed' | 'detail' | 'commentInline' | 'embed' | 'composer' | 'lightbox' | 'ambient' | 'poster' | 'og'} LoungeFeedImageDeliveryVariant */
 
 const DELIVERY_WIDTH_BY_VARIANT = {
   feed: 960,
@@ -16,6 +16,8 @@ const DELIVERY_WIDTH_BY_VARIANT = {
   embed: 800,
   composer: 640,
   lightbox: 2048,
+  /** Blur-fill only … keep small so mobile GPU blur does not OOM on multi-image lightboxes. */
+  ambient: 480,
   poster: 960,
   og: 1200,
 }

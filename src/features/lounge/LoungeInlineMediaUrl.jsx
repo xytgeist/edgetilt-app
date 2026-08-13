@@ -35,6 +35,16 @@ function normalizeUrlList(urls) {
   return urls.map((u) => String(u ?? '').trim()).filter(Boolean)
 }
 
+/** When Cloudflare Image Resizing 404s, fall back once to the stored R2 URL. */
+function onLoungeLightboxImgError(e, storedUrl) {
+  const el = e?.currentTarget
+  if (!(el instanceof HTMLImageElement)) return
+  const raw = String(storedUrl || '').trim()
+  if (!raw || el.dataset.loungeImgFallback === '1') return
+  el.dataset.loungeImgFallback = '1'
+  el.src = raw
+}
+
 /**
  * @param {HTMLImageElement | null | undefined} img
  * @returns {number | null} width/height, or null if unknown
@@ -116,10 +126,11 @@ export function LoungeImageLightbox({
   const ambientAWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const ambientBWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const ambientPairRef = useRef({ a: 0, b: 0 })
-  const [prevList, setPrevList] = useState(null)
+  const listKey = list.join('\n')
+  const [prevListKey, setPrevListKey] = useState(null)
   const [prevInitialIndex, setPrevInitialIndex] = useState(null)
-  if (prevList !== list || prevInitialIndex !== initialIndex) {
-    setPrevList(list)
+  if (prevListKey !== listKey || prevInitialIndex !== initialIndex) {
+    setPrevListKey(listKey)
     setPrevInitialIndex(initialIndex)
     const n = list.length
     const nextIdx = n === 0 ? 0 : Math.max(0, Math.min(initialIndex, n - 1))
@@ -130,7 +141,7 @@ export function LoungeImageLightbox({
 
   const current = list[idx] || ''
   const currentDisplaySrc = loungeFeedImageDeliveryUrl(current, 'lightbox')
-  const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'feed')
+  const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'ambient')
   const multi = list.length > 1
 
   const zStack = useMemo(
@@ -220,25 +231,39 @@ export function LoungeImageLightbox({
     })
   }, [showAuthorMeta])
 
-  // Decode every slide up front so swipe targets are sized before snap (avoids post-land jump).
-  // Also warm feed-tier URLs for ambient crossfade during carousel swipe.
+  // Warm current ±1 only (full-carousel eager decode OOMs fat PNG/webp carousels on mobile).
   useEffect(() => {
+    if (!list.length) return undefined
     let cancelled = false
-    list.forEach((url, i) => {
+    const n = list.length
+    const center = Math.max(0, Math.min(idx, n - 1))
+    const indexes = new Set([center, center - 1, center + 1].filter((i) => i >= 0 && i < n))
+    indexes.forEach((i) => {
+      const url = list[i]
       const img = new Image()
       img.decoding = 'async'
       img.src = loungeFeedImageDeliveryUrl(url, 'lightbox')
       img.onload = () => {
         if (!cancelled) noteSlideAspectAt(img, i)
       }
+      img.onerror = () => {
+        if (cancelled || img.dataset.loungeImgFallback === '1') return
+        img.dataset.loungeImgFallback = '1'
+        img.src = url
+      }
       const ambientImg = new Image()
       ambientImg.decoding = 'async'
-      ambientImg.src = loungeFeedImageDeliveryUrl(url, 'feed')
+      ambientImg.src = loungeFeedImageDeliveryUrl(url, 'ambient')
+      ambientImg.onerror = () => {
+        if (ambientImg.dataset.loungeImgFallback === '1') return
+        ambientImg.dataset.loungeImgFallback = '1'
+        // Last resort: still avoid full original for blur fill … skip if resize fails.
+      }
     })
     return () => {
       cancelled = true
     }
-  }, [list, noteSlideAspectAt])
+  }, [list, listKey, idx, noteSlideAspectAt])
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -350,7 +375,7 @@ export function LoungeImageLightbox({
       el.removeEventListener('scroll', onScroll)
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [carouselMode, list])
+  }, [carouselMode, listKey, list.length])
 
   // When scroll position already matches idx (snap settle / open), lock ambient to that slide.
   // Skip while chevrons set idx early mid-scroll … scroll listener owns the crossfade.
@@ -794,6 +819,7 @@ export function LoungeImageLightbox({
           className="h-full w-full select-none object-cover"
           draggable={false}
           decoding="async"
+          onError={(e) => onLoungeLightboxImgError(e, current)}
         />
       </div>
 
@@ -819,12 +845,12 @@ export function LoungeImageLightbox({
             <>
               <div ref={ambientAWrapRef} className="absolute inset-0">
                 <MediaLightboxAmbientBackdrop
-                  src={loungeFeedImageDeliveryUrl(list[ambientPair.a] || current, 'feed')}
+                  src={loungeFeedImageDeliveryUrl(list[ambientPair.a] || current, 'ambient')}
                 />
               </div>
               <div ref={ambientBWrapRef} className="absolute inset-0">
                 <MediaLightboxAmbientBackdrop
-                  src={loungeFeedImageDeliveryUrl(list[ambientPair.b] || current, 'feed')}
+                  src={loungeFeedImageDeliveryUrl(list[ambientPair.b] || current, 'ambient')}
                 />
               </div>
             </>
@@ -969,10 +995,11 @@ export function LoungeImageLightbox({
                               ? 'relative z-[1] h-full w-full select-none object-contain'
                               : 'relative z-[1] max-h-full max-w-full select-none object-contain'
                           }
-                          loading="eager"
+                          loading={Math.abs(i - idx) <= 1 ? 'eager' : 'lazy'}
                           decoding="async"
                           draggable={false}
                           onLoad={(e) => noteSlideAspectAt(e.currentTarget, i)}
+                          onError={(e) => onLoungeLightboxImgError(e, slideUrl)}
                         />
                       </div>
                     </div>
@@ -1002,6 +1029,7 @@ export function LoungeImageLightbox({
                     decoding="async"
                     draggable={false}
                     onLoad={(e) => noteSlideAspectAt(e.currentTarget, idx)}
+                    onError={(e) => onLoungeLightboxImgError(e, current)}
                   />
                 </div>
               )}

@@ -92,6 +92,7 @@ import {
   loungeAndroidOversizedTrimSourceMessage,
   loungeAndroidOversizedTrimSourceTitle,
   probeVideoFileDurationSeconds,
+  isAndroidBrowser,
 } from '../../utils/loungeVideoUpload'
 import {
   buildLoungePostShareUrl,
@@ -1358,6 +1359,8 @@ export default function SocialFeed({
   const composerExpandedRef = useRef(loungeComposerInitial.expanded)
   const [loungeTitleBarHeight, setLoungeTitleBarHeight] = useState(0)
   const [loungeTitleReveal, setLoungeTitleReveal] = useState(1)
+  /** Older Adreno: skip always-on title-bar backdrop-filter + will-change (recomposites over autoplay). */
+  const loungeAndroidChromeLite = isAndroidBrowser()
   const quickLinkIds = useQuickLinkIds()
   const loungeTitleLogoClassName = edgeLogoTitleBarClassName(quickLinkIds.length)
   const [loungeFeedViewportTopPx, setLoungeFeedViewportTopPx] = useState(0)
@@ -15539,7 +15542,11 @@ export default function SocialFeed({
         <div
           ref={loungeTitleBarRef}
           data-lounge-title-bar
-          className="fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
+          className={
+            loungeAndroidChromeLite
+              ? 'fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950 shadow-[0_1px_0_rgba(0,0,0,0.22)]'
+              : 'fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform'
+          }
           style={{
             top: loungeFeedViewportTopPx,
             transform: `translate3d(-50%, ${-(1 - loungeTitleReveal) * (loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56)}px, 0)`,

@@ -114,6 +114,8 @@ export function createAutoplayStore() {
   /** @type {string | null} */
   let heroClientId = null
   let coordinatorSuspended = false
+  /** Sitting idle on the feed: freeze HLS so older Android is not decoding a muted clip forever. */
+  let idlePaused = false
   let flingerMode = false
   let lastScrollTop = 0
   /** @type {1 | -1 | 0} */
@@ -475,9 +477,15 @@ export function createAutoplayStore() {
     /** @type {string[]} */
     let domBudgetIds = []
 
+    const effectivelySuspended = coordinatorSuspended || idlePaused
+
     if (heroLocked && heroClientId) {
       ringIds = [heroClientId]
       domBudgetIds = [heroClientId]
+      prefetchPrevId = null
+      prefetchNextId = null
+    } else if (idlePaused) {
+      nextActive = null
       prefetchPrevId = null
       prefetchNextId = null
     } else if (!coordinatorSuspended) {
@@ -493,7 +501,7 @@ export function createAutoplayStore() {
         }
       }
       domBudgetIds = buildDomBudgetIds(orderedIds, ringIds, nextActive, scrollDirection)
-    } else if (coordinatorSuspended) {
+    } else {
       ringIds = nextActive ? [nextActive] : []
       domBudgetIds = nextActive ? [nextActive] : []
       if (nextActive) {
@@ -541,7 +549,7 @@ export function createAutoplayStore() {
       nextActive &&
       prevActiveId !== nextActive &&
       !heroLocked &&
-      !coordinatorSuspended
+      !effectivelySuspended
     ) {
       if (warmRingHandoff) {
         reportCoordDebug(
@@ -554,7 +562,7 @@ export function createAutoplayStore() {
           const resetEpoch = softResetEpoch
           reportCoordDebug(`softReset epoch=${resetEpoch} handoff#=${handoffCount} → clear active`)
           queueMicrotask(() => {
-            if (heroLocked || coordinatorSuspended) return
+            if (heroLocked || coordinatorSuspended || idlePaused) return
             activeId = null
             reportCoordDebug(`softReset epoch=${resetEpoch} active cleared`)
             schedule()
@@ -587,7 +595,7 @@ export function createAutoplayStore() {
       flingerMode,
       heroLocked,
       heroClientId,
-      coordinatorSuspended,
+      coordinatorSuspended: effectivelySuspended,
       tileRatios: Object.freeze({ ...ratios }),
     })
 
@@ -672,7 +680,7 @@ export function createAutoplayStore() {
       else if (st < lastScrollTop) scrollDirection = -1
       lastScrollTop = st
     }
-    if (!heroLocked && !coordinatorSuspended) {
+    if (!heroLocked && !coordinatorSuspended && !idlePaused) {
       flingerMode = true
       if (flingerIdleTimer) window.clearTimeout(flingerIdleTimer)
       flingerIdleTimer = window.setTimeout(() => {
@@ -761,6 +769,7 @@ export function createAutoplayStore() {
     /** Hero flyout: collapse ring to hero tile only - max one decoder for flyout perf. */
     enterHeroLock(id) {
       if (!id) return
+      idlePaused = false
       heroLocked = true
       heroClientId = id
       flingerMode = false
@@ -786,6 +795,32 @@ export function createAutoplayStore() {
     releaseStalledActive(id) {
       if (!id || activeId !== id) return
       activeId = null
+      schedule()
+    },
+    /**
+     * Idle on the feed (no pointer/scroll): drop the HLS ring. Hero lock wins so lightbox
+     * playback is not killed while someone is watching.
+     * @param {boolean} paused
+     */
+    setIdlePaused(paused) {
+      if (heroLocked && paused) return
+      const next = Boolean(paused)
+      if (idlePaused === next) return
+      idlePaused = next
+      if (next && activeId) {
+        try {
+          const prevGetEl = entries.get(activeId)
+          const prevEl = prevGetEl?.()
+          const video = prevEl?.querySelector?.('video')
+          if (video) {
+            video.pause()
+            video.muted = true
+          }
+        } catch {
+          // ignore
+        }
+        activeId = null
+      }
       schedule()
     },
     /**

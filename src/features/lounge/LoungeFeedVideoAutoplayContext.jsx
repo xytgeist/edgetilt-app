@@ -20,6 +20,7 @@ import {
 } from '../../utils/loungeFeedVideoDebugPref.js'
 import LoungeFeedVideoAutoplayDebugHud from './LoungeFeedVideoAutoplayDebugHud.jsx'
 import { detectAppleWebKitInlineStream } from '../../utils/loungeAppleWebKit.js'
+import { subscribeLoungeVideoIdlePause } from './loungeMarketPollActivity.js'
 
 const LoungeFeedVideoAutoplayContext = createContext(null)
 
@@ -87,6 +88,12 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
   useEffect(() => {
     store.setScrollRootRef(scrollRootRef)
   }, [store, scrollRootRef])
+
+  useEffect(() => {
+    return subscribeLoungeVideoIdlePause((idle) => {
+      store.setIdlePaused(idle)
+    })
+  }, [store])
 
   const iosSharedFeedSoundMode = useMemo(
     () =>

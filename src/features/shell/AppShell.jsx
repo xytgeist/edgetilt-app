@@ -31,6 +31,7 @@ import {
 } from '../offers/offerStorageKeys'
 import {
   hasSeenPwaNotifPrompt,
+  isAndroidDevice,
   isInstalledPwaNotifPromptEligible,
   isPwaNotifPromptAuthEvent,
   markPwaNotifPromptSeen,
@@ -336,7 +337,13 @@ export default function AppShell({
     readAppConsoleLogHudEnabled,
     () => false,
   )
-  const COMMUNITY_FEED_PAGE_SIZE = 28
+  const COMMUNITY_FEED_PAGE_SIZE =
+    isAndroidDevice() &&
+    (typeof navigator === 'undefined' ||
+      !Number.isFinite(Number(navigator.deviceMemory)) ||
+      Number(navigator.deviceMemory) <= 4)
+      ? 12
+      : 28
   const [tab, setTab] = useState('home')
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)

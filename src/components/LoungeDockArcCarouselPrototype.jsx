@@ -62,8 +62,6 @@ const REPOSITION_POINTER_GUARD_MS = 1000
 const POINTER_GUARD_WATCHDOG_MS = 1500
 /** Slide panels that must stay tappable (not awayFromFeed / tool screens). */
 const SLIDE_PANEL_CHROME = new Set(['search', 'notifications', 'chat', 'settings'])
-/** Coalesce body MutationObserver → collision measure (avoids heat on Stable close / toast DOM churn). */
-const FAB_COLLISION_MO_DEBOUNCE_MS = 100
 /** Hold on the menu button to unlock position, then drag; release to lock at the new spot. */
 const FAB_REPOSITION_LONG_PRESS_MS = 450
 /** Backdrop: past this movement = pan/scroll (close menu, release capture); below = tap (close only, block click-through). */
@@ -532,9 +530,6 @@ export default function LoungeDockArcCarouselPrototype({
     measureCollisionRef.current = measureCollision
 
     let scrollRaf = 0
-    let moRaf = 0
-    let moDebounceTimer = 0
-    let observeDebounceTimer = 0
     const measureCollisionOnScroll = () => {
       if (scrollRaf) return
       scrollRaf = requestAnimationFrame(() => {
@@ -552,33 +547,6 @@ export default function LoungeDockArcCarouselPrototype({
     }
     observeObstacles()
 
-    const scheduleObstacleRefresh = () => {
-      if (observeDebounceTimer) return
-      observeDebounceTimer = window.setTimeout(() => {
-        observeDebounceTimer = 0
-        observeObstacles()
-      }, FAB_COLLISION_MO_DEBOUNCE_MS)
-    }
-
-    const scheduleMeasureFromMutation = () => {
-      scheduleObstacleRefresh()
-      if (moRaf) return
-      moRaf = requestAnimationFrame(() => {
-        moRaf = 0
-        if (moDebounceTimer) window.clearTimeout(moDebounceTimer)
-        moDebounceTimer = window.setTimeout(() => {
-          moDebounceTimer = 0
-          measureCollision()
-        }, FAB_COLLISION_MO_DEBOUNCE_MS)
-      })
-    }
-
-    const mo =
-      typeof MutationObserver !== 'undefined'
-        ? new MutationObserver(scheduleMeasureFromMutation)
-        : null
-    mo?.observe(document.body, { childList: true, subtree: true })
-
     window.addEventListener('resize', measureCollision)
     window.addEventListener('scroll', measureCollisionOnScroll, true)
     const vv = window.visualViewport
@@ -587,11 +555,7 @@ export default function LoungeDockArcCarouselPrototype({
 
     return () => {
       if (scrollRaf) cancelAnimationFrame(scrollRaf)
-      if (moRaf) cancelAnimationFrame(moRaf)
-      if (moDebounceTimer) window.clearTimeout(moDebounceTimer)
-      if (observeDebounceTimer) window.clearTimeout(observeDebounceTimer)
       ro?.disconnect()
-      mo?.disconnect()
       window.removeEventListener('resize', measureCollision)
       window.removeEventListener('scroll', measureCollisionOnScroll, true)
       vv?.removeEventListener('resize', measureCollision)

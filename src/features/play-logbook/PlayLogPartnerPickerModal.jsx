@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import {
   fetchEdgeUserDirectoryPickerData,
@@ -44,6 +45,7 @@ function filterPartnerProfiles(rows, query) {
  *   mode?: 'network' | 'directory',
  *   hideGuests?: boolean,
  *   title?: string,
+ *   confirmOnSelect?: boolean, tap a row confirms and closes (poker swap picker)
  * }} props
  */
 export default function PlayLogPartnerPickerModal({
@@ -57,6 +59,7 @@ export default function PlayLogPartnerPickerModal({
   mode = 'network',
   hideGuests = false,
   title,
+  confirmOnSelect = false,
 }) {
   const isDirectory = mode === 'directory'
   const guestsEnabled = !hideGuests && !isDirectory
@@ -162,6 +165,11 @@ export default function PlayLogPartnerPickerModal({
   const addProfileToStaged = profile => {
     const uid = String(profile?.user_id || '').trim()
     if (!uid || usedUserIds.has(uid) || stagedUserIds.has(uid)) return
+    if (confirmOnSelect) {
+      onConfirm({ profiles: [profile], guestLabels: [] })
+      onClose()
+      return
+    }
     setStagedProfiles(prev => [...prev, profile])
     clearSearchForNextPartner()
   }
@@ -315,7 +323,9 @@ export default function PlayLogPartnerPickerModal({
               ) : showFollow ? (
                 <span className="block text-zinc-500 text-xs mt-0.5">Follows you · tap to add</span>
               ) : (
-                <span className="block text-zinc-500 text-xs mt-0.5">Tap to add</span>
+                <span className="block text-zinc-500 text-xs mt-0.5">
+                  {confirmOnSelect ? 'Tap to select' : 'Tap to add'}
+                </span>
               )}
             </span>
           </button>
@@ -332,15 +342,13 @@ export default function PlayLogPartnerPickerModal({
             >
               {followBusyId === uid ? '…' : 'Follow'}
             </button>
-          ) : (
-            <div className="w-[4.75rem] shrink-0" aria-hidden />
-          )}
+          ) : null}
         </div>
       </li>
     )
   }
 
-  return (
+  return createPortal(
     <div
       data-partner-picker
       className="fixed inset-0 flex items-end justify-center bg-black/70 backdrop-blur-sm"
@@ -352,7 +360,7 @@ export default function PlayLogPartnerPickerModal({
     >
       <div
         data-partner-picker-sheet
-        className={`flex w-full max-w-lg ${PANEL_HEIGHT_CLASS} shrink-0 flex-col rounded-t-3xl border border-zinc-700/60 border-b-0 bg-zinc-900 shadow-2xl`}
+        className={`flex w-full min-w-0 max-w-lg ${PANEL_HEIGHT_CLASS} shrink-0 flex-col overflow-x-hidden rounded-t-3xl border border-zinc-700/60 border-b-0 bg-zinc-900 shadow-2xl pl-[max(0px,env(safe-area-inset-left,0px))] pr-[max(0px,env(safe-area-inset-right,0px))]`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="shrink-0 border-b border-zinc-800/80 px-4 pt-4 pb-3">
@@ -466,7 +474,7 @@ export default function PlayLogPartnerPickerModal({
           ) : null}
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 pb-2">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-2">
           {loading ? (
             <div className="flex h-full min-h-[12rem] items-center justify-center">
               <p className="text-zinc-500 text-sm text-center">Loading…</p>
@@ -494,7 +502,7 @@ export default function PlayLogPartnerPickerModal({
             <>
               {showSavedGuestsSection ? (
                 <div className="pt-1 pb-2">
-                  <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  <p className="pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                     Guests
                   </p>
                   <ul className="divide-y divide-zinc-800/70">
@@ -541,7 +549,7 @@ export default function PlayLogPartnerPickerModal({
 
               {showNetworkSection && filteredRows.length > 0 ? (
                 <div className={showSavedGuestsSection ? 'pt-2 border-t border-zinc-800/80' : 'pt-1'}>
-                  <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  <p className="pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                     Your network
                   </p>
                   <ul className="divide-y divide-zinc-800/70">
@@ -554,7 +562,7 @@ export default function PlayLogPartnerPickerModal({
                 <>
                   {filteredConnections.length > 0 ? (
                     <div className="pt-1">
-                      <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                      <p className="pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                         Connections
                       </p>
                       <ul className="divide-y divide-zinc-800/70">
@@ -570,7 +578,7 @@ export default function PlayLogPartnerPickerModal({
                           : 'pt-1'
                       }
                     >
-                      <p className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                      <p className="pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                         Everyone
                       </p>
                       <ul className="divide-y divide-zinc-800/70">
@@ -588,21 +596,26 @@ export default function PlayLogPartnerPickerModal({
           <p className="shrink-0 px-4 pb-1 text-center text-xs text-red-400">{err}</p>
         ) : null}
 
-        <footer className="shrink-0 border-t border-zinc-800/80 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
-          <button
-            type="button"
-            onClick={finish}
-            disabled={stagedCount === 0 || loading}
-            className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-40"
-          >
-            {stagedCount === 0
-              ? 'Done'
-              : stagedCount === 1
-                ? `Done · 1 ${doneNoun}`
-                : `Done · ${stagedCount} ${doneNounPlural}`}
-          </button>
-        </footer>
+        {confirmOnSelect ? (
+          <div className="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom,0px))]" />
+        ) : (
+          <footer className="shrink-0 border-t border-zinc-800/80 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
+            <button
+              type="button"
+              onClick={finish}
+              disabled={stagedCount === 0 || loading}
+              className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-40"
+            >
+              {stagedCount === 0
+                ? 'Done'
+                : stagedCount === 1
+                  ? `Done · 1 ${doneNoun}`
+                  : `Done · ${stagedCount} ${doneNounPlural}`}
+            </button>
+          </footer>
+        )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

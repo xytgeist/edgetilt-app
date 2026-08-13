@@ -694,6 +694,7 @@ export default function PokerTournamentSwapsSection({
         mode="directory"
         hideGuests
         title="Add Edge user"
+        confirmOnSelect
       />
     </div>
   )

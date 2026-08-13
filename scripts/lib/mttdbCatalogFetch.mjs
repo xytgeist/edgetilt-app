@@ -8,6 +8,7 @@ import { isoDateLocal } from './pokerTournamentCatalog.mjs'
 import { inferTournamentGameVariantFromText } from './pokerTournamentGameVariant.mjs'
 import { resolveCatalogCurrency } from './pokerTournamentCurrency.mjs'
 
+export const MTTDB_ORIGIN = 'https://mttdb.com'
 export const MTTDB_LIVE_LOBBY_URL = 'https://mttdb.com/live-poker/tournaments/'
 export const MTTDB_ONLINE_LOBBY_URL = 'https://mttdb.com/online-poker/'
 export const MTTDB_FETCH_UA =
@@ -19,6 +20,106 @@ export const MTTDB_ONLINE_HORIZON_DAYS = 7
 
 /** MTTDB online start_date values are UTC (no tz field on row). */
 export const MTTDB_ONLINE_TIMEZONE = 'UTC'
+
+const MTTDB_FETCH_RETRIES = 3
+const MTTDB_RETRY_BASE_MS = 800
+
+function mttdbBrowserHeaders(extra = {}) {
+  return {
+    'User-Agent': MTTDB_FETCH_UA,
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache',
+    Pragma: 'no-cache',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-User': '?1',
+    ...extra,
+  }
+}
+
+function mergeSetCookie(existing, setCookieHeader) {
+  /** @type {Map<string, string>} */
+  const jar = new Map()
+  for (const part of String(existing || '')
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    const eq = part.indexOf('=')
+    if (eq > 0) jar.set(part.slice(0, eq), part.slice(eq + 1))
+  }
+  const raw = setCookieHeader
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : []
+  for (const line of list) {
+    const first = String(line).split(';')[0] || ''
+    const eq = first.indexOf('=')
+    if (eq > 0) jar.set(first.slice(0, eq).trim(), first.slice(eq + 1).trim())
+  }
+  return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Fetch MTTDB lobby HTML with browser-like headers, PHPSESSID warm-up, and 403/429 retries.
+ * GitHub Actions egress is often CF-blocked; warm-up + retries help some challenges, not hard IP bans.
+ * @param {string} url
+ * @param {{ fetchImpl?: typeof fetch, label?: string }} [opts]
+ */
+export async function fetchMttdbLobbyHtml(url, opts = {}) {
+  const fetchImpl = opts.fetchImpl || fetch
+  const label = opts.label || 'lobby'
+
+  let cookie = ''
+  try {
+    const warm = await fetchImpl(`${MTTDB_ORIGIN}/`, {
+      headers: mttdbBrowserHeaders({ 'Sec-Fetch-Site': 'none' }),
+      redirect: 'follow',
+    })
+    cookie = mergeSetCookie(cookie, warm.headers.getSetCookie?.() || warm.headers.get('set-cookie'))
+  } catch {
+    // Warm-up is best-effort … continue to the lobby URL.
+  }
+
+  let lastStatus = 0
+  let lastSnippet = ''
+  for (let attempt = 1; attempt <= MTTDB_FETCH_RETRIES; attempt++) {
+    const headers = mttdbBrowserHeaders({
+      Referer: `${MTTDB_ORIGIN}/`,
+      ...(cookie ? { Cookie: cookie } : {}),
+    })
+    const res = await fetchImpl(url, { headers, redirect: 'follow' })
+    cookie = mergeSetCookie(cookie, res.headers.getSetCookie?.() || res.headers.get('set-cookie'))
+    const html = await res.text()
+    lastStatus = res.status
+    lastSnippet = html.replace(/\s+/g, ' ').slice(0, 160)
+
+    const challenge = /just a moment|cf-browser-verification|attention required|enable javascript/i.test(html)
+    if (res.ok && !challenge && html.includes('{"id":')) return html
+
+    if (attempt < MTTDB_FETCH_RETRIES && (res.status === 403 || res.status === 429 || challenge || !res.ok)) {
+      await sleep(MTTDB_RETRY_BASE_MS * attempt)
+      continue
+    }
+
+    if (!res.ok) {
+      throw new Error(`MTTDB ${label} fetch failed: HTTP ${res.status}`)
+    }
+    if (challenge) {
+      throw new Error(`MTTDB ${label} fetch failed: Cloudflare challenge (${lastStatus || 'ok'})`)
+    }
+    if (!html.includes('{"id":')) {
+      throw new Error(`MTTDB ${label} fetch failed: no embedded tournaments (${lastSnippet || 'empty body'})`)
+    }
+    return html
+  }
+
+  throw new Error(`MTTDB ${label} fetch failed: HTTP ${lastStatus || 'unknown'}`)
+}
 
 /**
  * Extract tournament JSON objects embedded in lobby HTML.
@@ -155,9 +256,7 @@ export async function fetchMttdbLiveCatalogOneOffs(opts) {
   horizon.setDate(horizon.getDate() + MTTDB_LIVE_HORIZON_DAYS)
   const horizonIso = isoDateLocal(horizon)
 
-  const res = await fetchImpl(MTTDB_LIVE_LOBBY_URL, { headers: { 'User-Agent': MTTDB_FETCH_UA } })
-  if (!res.ok) throw new Error(`MTTDB live lobby fetch failed: HTTP ${res.status}`)
-  const html = await res.text()
+  const html = await fetchMttdbLobbyHtml(MTTDB_LIVE_LOBBY_URL, { fetchImpl, label: 'live lobby' })
   const parsed = parseMttdbEmbeddedTournaments(html, { kind: 'live' })
 
   /** @type {object[]} */
@@ -242,9 +341,7 @@ export async function fetchMttdbOnlineCatalogOneOffs(opts) {
   horizon.setDate(horizon.getDate() + MTTDB_ONLINE_HORIZON_DAYS)
   const horizonIso = isoDateLocal(horizon)
 
-  const res = await fetchImpl(MTTDB_ONLINE_LOBBY_URL, { headers: { 'User-Agent': MTTDB_FETCH_UA } })
-  if (!res.ok) throw new Error(`MTTDB online lobby fetch failed: HTTP ${res.status}`)
-  const html = await res.text()
+  const html = await fetchMttdbLobbyHtml(MTTDB_ONLINE_LOBBY_URL, { fetchImpl, label: 'online lobby' })
   const parsed = parseMttdbEmbeddedTournaments(html, { kind: 'online' })
 
   /** @type {object[]} */

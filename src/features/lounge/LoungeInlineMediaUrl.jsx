@@ -670,6 +670,22 @@ export function LoungeImageLightbox({
       setAspectByIndex((prev) => (prev[openIdx] == null ? { ...prev, [openIdx]: tileAspect } : prev))
     }
 
+    // Cover the feed tile this layout pass … do not wait on rAF or the flyout
+    // paints at the top of the screen (fixed, unsized) before expand starts.
+    flyout.style.visibility = 'visible'
+    flyout.style.position = 'fixed'
+    flyout.style.top = `${from.top}px`
+    flyout.style.left = `${from.left}px`
+    flyout.style.width = `${from.width}px`
+    flyout.style.height = `${from.height}px`
+    flyout.style.zIndex = String(zStack.overlay + 1)
+    flyout.style.transformOrigin = '0 0'
+    flyout.style.transform = 'none'
+    flyout.style.transition = 'none'
+    flyout.style.borderRadius = '0px'
+    flyout.style.opacity = '1'
+    flyout.style.overflow = 'hidden'
+
     let cancelled = false
     const scrimRaf = requestAnimationFrame(() => {
       if (!cancelled) setScrimOpacity(1)
@@ -697,19 +713,6 @@ export function LoungeImageLightbox({
         landSlideIndexRef.current = openIdx
         setLandFrame(target)
 
-        flyout.style.visibility = 'visible'
-        flyout.style.position = 'fixed'
-        flyout.style.top = `${from.top}px`
-        flyout.style.left = `${from.left}px`
-        flyout.style.width = `${from.width}px`
-        flyout.style.height = `${from.height}px`
-        flyout.style.zIndex = String(zStack.overlay + 1)
-        flyout.style.transformOrigin = '0 0'
-        flyout.style.transform = 'none'
-        flyout.style.transition = 'none'
-        // Square immediately … keeping 12px through expand looks fine until land, then pops square.
-        flyout.style.borderRadius = '0px'
-        flyout.style.opacity = '1'
         void flyout.offsetWidth
 
         runHeroExpandAnimation(flyout, from, target, {
@@ -814,10 +817,23 @@ export function LoungeImageLightbox({
         data-lounge-image-lightbox-flyout
         className="overflow-hidden bg-transparent"
         style={{
-          visibility: motionActive ? 'visible' : 'hidden',
           pointerEvents: 'none',
           zIndex: zStack.overlay + 1,
           position: 'fixed',
+          transformOrigin: '0 0',
+          // Opening: first paint already covers the feed tile. Unsized `fixed`
+          // otherwise flashes the photo at the top of the screen for 1-2 frames.
+          visibility: phase === 'opening' && !openFromRectRef.current ? 'hidden' : motionActive ? 'visible' : 'hidden',
+          ...(phase === 'opening' && openFromRectRef.current
+            ? {
+                top: openFromRectRef.current.top,
+                left: openFromRectRef.current.left,
+                width: openFromRectRef.current.width,
+                height: openFromRectRef.current.height,
+              }
+            : phase === 'opening'
+              ? { top: 0, left: 0, width: 0, height: 0 }
+              : null),
         }}
       >
         <img

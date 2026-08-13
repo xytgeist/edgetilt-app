@@ -162,6 +162,28 @@ export function useLoungeLightboxImageZoom({ containerRef, imageRef, resetKey })
     [applyGesture],
   )
 
+  // Swipe-dismiss capture retargets pointerup to the chrome shell, so this hook's
+  // element listeners never see the end of a scale-1 finger. Stale pointers then
+  // make the next one-finger drag look like a pinch (scale in/out).
+  useEffect(() => {
+    const onLost = (e) => {
+      if (
+        !pointersRef.current.has(e.pointerId) &&
+        panRef.current?.pointerId !== e.pointerId &&
+        !pinchRef.current
+      ) {
+        return
+      }
+      finishPointer(e)
+    }
+    window.addEventListener('pointerup', onLost)
+    window.addEventListener('pointercancel', onLost)
+    return () => {
+      window.removeEventListener('pointerup', onLost)
+      window.removeEventListener('pointercancel', onLost)
+    }
+  }, [finishPointer])
+
   const onPointerUp = useCallback(
     (e) => {
       const tracked = pointersRef.current.has(e.pointerId)

@@ -85,16 +85,46 @@ export function heroRectUsableForShrinkBack(rect) {
 }
 
 /**
+ * True when full-viewport-width media still fits between chrome insets (short / landscape).
+ * Tall media that would shrink with side gutters should go edge-to-edge instead.
+ * @param {number} aspect width/height
+ * @param {{ top?: number, bottom?: number } | null | undefined} pad
+ * @param {number} [vw]
+ * @param {number} [vh]
+ */
+export function mediaFitsChromeBand(aspect, pad, vw, vh) {
+  if (!(Number.isFinite(aspect) && aspect > 0)) return false
+  const top = Math.max(0, Number(pad?.top) || 0)
+  const bottom = Math.max(0, Number(pad?.bottom) || 0)
+  if (top <= 0 && bottom <= 0) return false
+  const viewW =
+    Number.isFinite(vw) && vw > 0
+      ? vw
+      : typeof window !== 'undefined'
+        ? (window.visualViewport?.width ?? window.innerWidth)
+        : 390
+  const viewH =
+    Number.isFinite(vh) && vh > 0
+      ? vh
+      : typeof window !== 'undefined'
+        ? (window.visualViewport?.height ?? window.innerHeight)
+        : 800
+  const bandH = viewH - top - bottom
+  if (!(bandH > 0)) return false
+  return viewW / aspect <= bandH + 0.5
+}
+
+/**
  * Target hero frame: object-contain media centered in the viewport (or a chrome band).
  * @param {{ width: number, height: number }} fromRect
  * @param {{ displayW?: number, displayH?: number, insetTop?: number, insetBottom?: number }} [opts]
- *   `insetTop` / `insetBottom` - reserve chrome band (top buttons / footer) so FLIP lands
- *   where the open media will sit after media-band padding (avoids center → band jump).
+ *   `insetTop` / `insetBottom` - chrome band only when full-width media still fits there;
+ *   otherwise edge-to-edge in the full viewport (tall media may run under pills).
  */
 export function computeHeroTargetRect(fromRect, opts = {}) {
   const { displayW, displayH } = opts
-  const insetTop = Math.max(0, Number(opts.insetTop) || 0)
-  const insetBottom = Math.max(0, Number(opts.insetBottom) || 0)
+  const insetTopReq = Math.max(0, Number(opts.insetTop) || 0)
+  const insetBottomReq = Math.max(0, Number(opts.insetBottom) || 0)
   const vv = typeof window !== 'undefined' ? window.visualViewport : null
   const vw = vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 390)
   const vh = vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
@@ -105,6 +135,10 @@ export function computeHeroTargetRect(fromRect, opts = {}) {
   if (Number.isFinite(dw) && Number.isFinite(dh) && dw >= 2 && dh >= 2) {
     aspect = dw / dh
   }
+
+  const useBand = mediaFitsChromeBand(aspect, { top: insetTopReq, bottom: insetBottomReq }, vw, vh)
+  const insetTop = useBand ? insetTopReq : 0
+  const insetBottom = useBand ? insetBottomReq : 0
 
   const maxW = Math.max(120, vw)
   const maxH = Math.max(120, vh - insetTop - insetBottom)

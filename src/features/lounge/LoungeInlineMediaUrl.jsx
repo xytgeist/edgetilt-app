@@ -14,6 +14,7 @@ import {
   HERO_CHROME_FADE_MS,
   HERO_EXPAND_MS,
   heroRectUsableForShrinkBack,
+  mediaFitsChromeBand,
   readElementViewportRect,
   resolveLoungeHeroStackZIndexes,
   runHeroExpandAnimation,
@@ -211,7 +212,6 @@ export function LoungeImageLightbox({
   // Opening slide: height <= width → full author chrome for the session. Taller → pills only.
   const showAuthorMeta = lockedAspect == null || lockedAspect >= 1
   const chromeOpts = useMemo(() => ({ showAuthorMeta }), [showAuthorMeta])
-  const mediaBandPad = showAuthorMeta ? bandByMode.full : bandByMode.compact
 
   const noteSlideAspectAt = useCallback((img, slideIndex) => {
     const next = readImageAspectRatio(img)
@@ -228,6 +228,25 @@ export function LoungeImageLightbox({
     if (primary.top > 0 || primary.bottom > 0) return primary
     return showAuthorMeta ? bandByMode.compact : bandByMode.full
   }, [showAuthorMeta, bandByMode])
+
+  /**
+   * Chrome-band padding only when this slide is still short enough at full width.
+   * Tall slides stay edge-to-edge (media may run under the pills).
+   */
+  const bandPadIfFits = useCallback(
+    (slideIndex) => {
+      const pad = bandPadForSlide()
+      if (!(pad.top > 0 || pad.bottom > 0)) return null
+      const aspect = aspectByIndex[slideIndex] ?? lockedAspect
+      if (aspect == null) return null
+      const vv = typeof window !== 'undefined' ? window.visualViewport : null
+      const vw = vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0)
+      const vh = vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0)
+      if (!mediaFitsChromeBand(aspect, pad, vw, vh)) return null
+      return pad
+    },
+    [aspectByIndex, lockedAspect, bandPadForSlide],
+  )
 
   const syncMediaBandPad = useCallback(() => {
     const next = measureImageLightboxMediaBand(
@@ -975,11 +994,11 @@ export function LoungeImageLightbox({
             <div
               ref={mediaContainerRef}
               className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
-              style={
-                !carouselMode && (mediaBandPad.top > 0 || mediaBandPad.bottom > 0)
-                  ? { paddingTop: mediaBandPad.top, paddingBottom: mediaBandPad.bottom }
-                  : undefined
-              }
+              style={(() => {
+                if (carouselMode) return undefined
+                const pad = bandPadIfFits(idx)
+                return pad ? { paddingTop: pad.top, paddingBottom: pad.bottom } : undefined
+              })()}
             >
               {carouselMode ? (
                 <div
@@ -988,7 +1007,7 @@ export function LoungeImageLightbox({
                   className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {list.map((slideUrl, i) => {
-                    const slidePad = bandPadForSlide()
+                    const slidePad = bandPadIfFits(i)
                     // Opening/open: land/current first; ±1 only after neighborLoadReady. Never all N.
                     const loadSlide =
                       phase === 'opening'
@@ -1003,7 +1022,7 @@ export function LoungeImageLightbox({
                       key={`${slideUrl}-${i}`}
                       className="relative z-[1] box-border flex h-full w-full shrink-0 snap-start snap-always items-center justify-center"
                       style={
-                        slidePad.top > 0 || slidePad.bottom > 0
+                        slidePad
                           ? { paddingTop: slidePad.top, paddingBottom: slidePad.bottom }
                           : undefined
                       }

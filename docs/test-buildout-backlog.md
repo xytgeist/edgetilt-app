@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Image lightbox edge-to-edge tall media:** chrome-band centering only when full-width still fits between top/footer chrome; taller slides go viewport edge-to-edge (may run under pills).
 - 2026-08-12: **Image lightbox ambient restored:** OOM “fixes” had gated blur fill on CF resize (off on Free zone) so ambient never painted. Restored fly-in + swipe crossfade ambient (`feed`-tier srcs) … real crash was `LOUNGE_LIKE_CHIP_RED`, not ambient.
 - 2026-08-12: **Image lightbox blank-screen (`LOUNGE_LIKE_CHIP_RED`):** Sentry [JAVASCRIPT-REACT-6T](https://intro-app-inc.sentry.io/issues/JAVASCRIPT-REACT-6T) … liked frost pills used undeclared `LOUNGE_LIKE_CHIP_RED` (from cc734362). Hardcoded `text-[#fd262d]` @ **`1c2b23ef`**.
 - 2026-08-12: **Image lightbox fat-carousel open crash (chunkyunc):** misdiagnosed as ambient/OOM; actual crash was undeclared `LOUNGE_LIKE_CHIP_RED`. Partial guards (CF resize opt-in, slide virtualize) remain; ambient gate reverted.

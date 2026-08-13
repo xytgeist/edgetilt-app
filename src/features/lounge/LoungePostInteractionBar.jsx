@@ -110,7 +110,7 @@ export default function LoungePostInteractionBar({
     ? 'text-zinc-500'
     : ui.liked
       ? overlayIdle
-        ? `text-[${LOUNGE_LIKE_CHIP_RED}]` // match hydrated chip heart (#fd262d)
+        ? 'text-[#fd262d]' // match LoungeFlameIcon hydrated chip heart
         : 'text-lv-red'
       : overlayIdle
         ? 'text-white'

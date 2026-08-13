@@ -1400,19 +1400,6 @@ html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text
 [data-lounge-lightbox-pill-row] [data-lounge-pill-count] {
   font-size: var(--lounge-lightbox-pill-count) !important;
 }
-/*
- * Counted ovals: continuous-corner feel (curve runs farther along the top than a circular stadium).
- * Elliptical radii work everywhere; Chromium can upgrade to corner-shape: squircle.
- */
-[data-lounge-lightbox-pill-row] .lounge-lightbox-pill-oval {
-  border-radius: 1.65rem / 1.25rem;
-}
-@supports (corner-shape: squircle) {
-  [data-lounge-lightbox-pill-row] .lounge-lightbox-pill-oval {
-    border-radius: 1.25rem;
-    corner-shape: squircle;
-  }
-}
 /* Keep white-frost pill/top shells in light mode (global remaps must not flatten them). */
 html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .bg-white\/25,
 html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .bg-white\/25,

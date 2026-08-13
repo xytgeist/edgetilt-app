@@ -188,7 +188,7 @@ export default function LoungePostInteractionBar({
   const pillOverlayFrost =
     'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const pillOverlayH = 'h-10'
-  const pillOverlayCountedStat = `lounge-lightbox-pill-oval inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 ${pillOverlayFrost}`
+  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 rounded-full ${pillOverlayFrost}`
   const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls

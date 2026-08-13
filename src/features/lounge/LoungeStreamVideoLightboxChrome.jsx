@@ -160,6 +160,8 @@ export default function LoungeStreamVideoLightboxChrome({
       >
         <LoungeExpandableRichCaption
           text={caption}
+          collapsedLines={3}
+          expandedMaxLines={8}
           captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
         />
       </div>
@@ -167,6 +169,8 @@ export default function LoungeStreamVideoLightboxChrome({
       <div className={`w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}>
         <LoungeExpandableRichCaption
           text={caption}
+          collapsedLines={3}
+          expandedMaxLines={8}
           captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
         />
       </div>

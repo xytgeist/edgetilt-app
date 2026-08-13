@@ -111,6 +111,11 @@ export function LoungeImageLightbox({
   }, [url, urls])
 
   const [idx, setIdx] = useState(0)
+  /** Dual ambient layers crossfade on scroll (DOM opacity); pair indices update at slide boundaries. */
+  const [ambientPair, setAmbientPair] = useState({ a: 0, b: 0 })
+  const ambientAWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const ambientBWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const ambientPairRef = useRef({ a: 0, b: 0 })
   const [prevList, setPrevList] = useState(null)
   const [prevInitialIndex, setPrevInitialIndex] = useState(null)
   if (prevList !== list || prevInitialIndex !== initialIndex) {
@@ -127,11 +132,6 @@ export function LoungeImageLightbox({
   const currentDisplaySrc = loungeFeedImageDeliveryUrl(current, 'lightbox')
   const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'feed')
   const multi = list.length > 1
-  /** Dual ambient layers crossfade on scroll (DOM opacity); pair indices update at slide boundaries. */
-  const [ambientPair, setAmbientPair] = useState({ a: 0, b: 0 })
-  const ambientAWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
-  const ambientBWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
-  const ambientPairRef = useRef({ a: 0, b: 0 })
 
   const zStack = useMemo(
     () => resolveLoungeHeroStackZIndexes(lightboxPortalClass),

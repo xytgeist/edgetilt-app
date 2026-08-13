@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-13: **Image lightbox chrome fades in with fly-in:** Back / ⋯ / footer pills fade with the scrim over the expand (X-style) instead of popping after land. Sharp media stays covered until land so the growing flyout does not double-paint. **`LoungeImageLightbox`**.
 - 2026-08-13: **Image lightbox fly-home no longer blocks feed scroll:** Closing used to keep `body overflow:hidden` plus a full-viewport portal hit target until WAAPI unmount (~500ms after the ease-out already looked parked). Close now restores overflow and `pointer-events: none` on the portal as soon as shrink starts. **`LoungeImageLightbox`**.
 - 2026-08-13: **+Guest swap card scrolls into view:** Adding a Guest (or Edge user) draft on Start/Log used to expand below the sticky **Start Session** footer with no motion. The new card now smooth-scrolls the sheet scroller so the expansion is visible. **`PokerTournamentSwapsSection`**.
 - 2026-08-13: **Swap Edge-user picker tap-to-select + inset:** Picker was trapped in the Start Session scroll body (`fixed` + `-webkit-overflow-scrolling`) so Start Session header/footer showed through and the list clipped. Now portals to `document.body`. Tap a connection selects them and returns to the form (no Done / green Start Session on that screen). **`PlayLogPartnerPickerModal`** `confirmOnSelect` … Logbook multi-select + Done unchanged.

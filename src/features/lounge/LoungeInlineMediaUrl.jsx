@@ -352,6 +352,7 @@ export function LoungeImageLightbox({
   const carouselMode = multi && !isZoomed && !isPinching && (phase === 'open' || phase === 'opening')
   const showMediaLayer = phase === 'opening' || phase === 'open'
   const mediaInteractive = phase === 'open'
+  const chromeInteractive = phase === 'open' && chromeVisible
 
   const onCarouselIndexChange = useCallback((i) => {
     setIdx((prev) => (prev === i ? prev : i))
@@ -698,7 +699,9 @@ export function LoungeImageLightbox({
 
     let cancelled = false
     const scrimRaf = requestAnimationFrame(() => {
-      if (!cancelled) setScrimOpacity(1)
+      if (cancelled) return
+      setScrimOpacity(1)
+      setChromeVisible(true)
     })
 
     // Double rAF: let chrome (and optional aspect-seeded footer) commit, then measure band + expand.
@@ -894,11 +897,10 @@ export function LoungeImageLightbox({
         <div
           className={[swipeClassName, isZoomed || isPinching ? 'touch-none' : ''].filter(Boolean).join(' ')}
           style={{
-            zIndex: zStack.overlay,
+            // Above the flyout while opening so viewport chrome fades in over the growing image
+            // (X-style). Sharp media stays hidden until land so it does not double-paint.
+            zIndex: phase === 'opening' ? zStack.overlay + 2 : zStack.overlay,
             pointerEvents: mediaInteractive ? undefined : 'none',
-            // Pre-mount sharp media during expand for decode/layout, but stay invisible until land
-            // … otherwise the full hero paints behind the growing flyout (double image).
-            visibility: phase === 'opening' ? 'hidden' : 'visible',
           }}
           aria-hidden={phase === 'opening' ? true : undefined}
           // Capture so caption/cashtag stopPropagation cannot block dismiss (Fat Cat-style posts).
@@ -911,14 +913,14 @@ export function LoungeImageLightbox({
             className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between"
             style={{
               opacity: chromeVisible ? 1 - dismissProgress : 0,
-              transition: `opacity ${HERO_CHROME_FADE_MS}ms ease-out`,
+              transition: `opacity ${phase === 'opening' ? HERO_EXPAND_MS : HERO_CHROME_FADE_MS}ms ease-out`,
             }}
             aria-hidden={chromeVisible ? undefined : true}
           >
             <div className="media-lightbox-status-bar-blend" aria-hidden />
             <div
               ref={topChromeRef}
-              className={`${chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+              className={`${chromeInteractive ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
               data-lounge-lightbox-top-chrome
               data-lounge-lightbox-no-swipe
             >
@@ -948,7 +950,7 @@ export function LoungeImageLightbox({
               >
                 <div
                   ref={footerChromeRef}
-                  className={chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'}
+                  className={chromeInteractive ? 'pointer-events-auto' : 'pointer-events-none'}
                   data-lounge-image-lightbox-footer-chrome
                 >
                   {lightboxChromeContent}
@@ -970,7 +972,7 @@ export function LoungeImageLightbox({
               className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
               style={{
                 opacity: chromeVisible ? 1 - dismissProgress : 0,
-                transition: chromeVisible ? `opacity ${HERO_CHROME_FADE_MS}ms ease-out` : 'none',
+                transition: `opacity ${phase === 'opening' ? HERO_EXPAND_MS : HERO_CHROME_FADE_MS}ms ease-out`,
               }}
             >
               {idx + 1} / {list.length}
@@ -983,6 +985,8 @@ export function LoungeImageLightbox({
             onPointerUp={zoomPointerUp}
             onPointerCancel={zoomPointerCancel}
             className="relative z-0 flex min-h-0 flex-1 flex-col"
+            style={{ visibility: phase === 'opening' ? 'hidden' : 'visible' }}
+            aria-hidden={phase === 'opening' ? true : undefined}
           >
             <div
               ref={mediaContainerRef}

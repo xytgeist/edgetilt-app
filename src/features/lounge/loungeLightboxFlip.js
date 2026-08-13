@@ -8,7 +8,7 @@ export const HERO_SHRINK_MS = 500
 export const HERO_MOTION_CURVE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 export const HERO_MOTION_TRANSITION = `${HERO_EXPAND_MS}ms ${HERO_MOTION_CURVE}`
 export const HERO_SHRINK_TRANSITION = `${HERO_SHRINK_MS}ms ${HERO_MOTION_CURVE}`
-/** Lightbox chrome fades in only after the flyout lands. */
+/** Chrome tap-toggle / post-land fade. Open fly-in uses HERO_EXPAND_MS so controls are present before land. */
 export const HERO_CHROME_FADE_MS = 220
 /** Default hero stack when no parent `lightboxPortalClass` is passed. */
 export const HERO_STACK_BASE_Z_INDEX = 102

@@ -40,6 +40,32 @@ function normalizeUrlList(urls) {
 }
 
 /**
+ * After a carousel snap, keep the ambient layer that already shows `index` visible.
+ * Forcing layer A to opacity 1 while its src is still the previous slide flashes the
+ * blur fill (and can look like the sharp image flashed) after the pager settles.
+ */
+function settleLoungeLightboxAmbient(index, pairRef, aWrap, bWrap, setPair) {
+  const pair = pairRef.current
+  const readOp = (el, fallback) => {
+    if (!el) return fallback
+    const v = Number.parseFloat(el.style.opacity)
+    return Number.isFinite(v) ? v : fallback
+  }
+  const aOp = readOp(aWrap, 1)
+  const bOp = readOp(bWrap, 0)
+  const aHas = pair.a === index
+  const bHas = pair.b === index
+  // Prefer the layer that already paints this slide. If both do, keep whichever is on-screen
+  // … flipping to A while it is still decoding the new src is the post-snap flash.
+  const showB = bHas && (!aHas || bOp >= aOp)
+  if (aWrap) aWrap.style.opacity = showB ? '0' : '1'
+  if (bWrap) bWrap.style.opacity = showB ? '1' : '0'
+  if (pair.a === index && pair.b === index) return
+  pairRef.current = { a: index, b: index }
+  setPair({ a: index, b: index })
+}
+
+/**
  * CF Image Resizing miss → disable resize for the session and retry this img once with the
  * stored R2 URL. Do not cascade every slide onto multi‑MB originals in the same tick.
  */
@@ -396,7 +422,17 @@ export function LoungeImageLightbox({
       const p = Math.max(0, Math.min(maxP, el.scrollLeft / w))
       const i0 = Math.max(0, Math.min(maxP, Math.floor(p + 1e-4)))
       const i1 = Math.max(0, Math.min(maxP, Math.ceil(p - 1e-4)))
-      const t = i0 === i1 ? 0 : Math.max(0, Math.min(1, p - i0))
+      if (i0 === i1) {
+        settleLoungeLightboxAmbient(
+          i0,
+          ambientPairRef,
+          ambientAWrapRef.current,
+          ambientBWrapRef.current,
+          setAmbientPair,
+        )
+        return
+      }
+      const t = Math.max(0, Math.min(1, p - i0))
       if (ambientPairRef.current.a !== i0 || ambientPairRef.current.b !== i1) {
         ambientPairRef.current = { a: i0, b: i1 }
         setAmbientPair({ a: i0, b: i1 })
@@ -424,10 +460,13 @@ export function LoungeImageLightbox({
     const w = el?.clientWidth || 0
     const scrollIdx = w && el ? Math.round(el.scrollLeft / w) : idx
     if (scrollIdx !== idx) return
-    ambientPairRef.current = { a: idx, b: idx }
-    setAmbientPair((prev) => (prev.a === idx && prev.b === idx ? prev : { a: idx, b: idx }))
-    if (ambientAWrapRef.current) ambientAWrapRef.current.style.opacity = '1'
-    if (ambientBWrapRef.current) ambientBWrapRef.current.style.opacity = '0'
+    settleLoungeLightboxAmbient(
+      idx,
+      ambientPairRef,
+      ambientAWrapRef.current,
+      ambientBWrapRef.current,
+      setAmbientPair,
+    )
   }, [carouselMode, idx])
 
   const resolveCloseOrigin = useCallback(() => {
@@ -1042,7 +1081,9 @@ export function LoungeImageLightbox({
                                 ? 'relative z-[1] h-full w-full select-none object-contain'
                                 : 'relative z-[1] max-h-full max-w-full select-none object-contain'
                             }
-                            loading={i === idx ? 'eager' : 'lazy'}
+                            // Eager for every mounted slide. Toggling lazy→eager on snap
+                            // retriggers decode and flashes the image after it has already settled.
+                            loading="eager"
                             decoding="async"
                             draggable={false}
                             onLoad={(e) => noteSlideAspectAt(e.currentTarget, i)}

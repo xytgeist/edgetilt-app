@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-13: **Image lightbox carousel snap flash:** After a swipe the incoming slide could flash once it settled. Cause was `loading` flipping lazy→eager (re-decode) plus ambient snapping to layer A while that layer still had the previous src. Mounted slides stay eager; settle keeps the ambient layer that already shows the landed slide. **`LoungeImageLightbox`**.
 - 2026-08-13: **Image lightbox light-mode frost stays white during fly-in:** Chrome fade used wrapper `opacity`, which flattens `backdrop-filter` to a dark sample so chips started charcoal and snapped to white frost at land. Light mode keeps that layer fully opaque once visible (scrim still fades). Dark fly-in fade unchanged. **`LoungeImageLightbox`**.
 - 2026-08-13: **Image lightbox chrome fades in with fly-in:** Back / ⋯ / footer pills fade with the scrim over the expand (X-style) instead of popping after land. Sharp media stays covered until land so the growing flyout does not double-paint. **`LoungeImageLightbox`**.
 - 2026-08-13: **Image lightbox fly-home no longer blocks feed scroll:** Closing used to keep `body overflow:hidden` plus a full-viewport portal hit target until WAAPI unmount (~500ms after the ease-out already looked parked). Close now restores overflow and `pointer-events: none` on the portal as soon as shrink starts. **`LoungeImageLightbox`**.

@@ -5701,6 +5701,25 @@ function PokerSessionCoreFields({
             onChange={(id) => setField('online_site_pick', id)}
             options={pokerOnlineSiteSelectOptions()}
           />
+        ) : form.venue_kind === 'club' ? (
+          <MenuSelect
+            label="Club"
+            value={form.club_app_pick || ''}
+            onChange={(id) => setField('club_app_pick', id)}
+            options={pokerClubAppSelectOptions()}
+          />
+        ) : form.venue_kind === 'live' ? (
+          <CasinoAutocomplete
+            value={form.venue_name}
+            onChange={(v) => setField('venue_name', v)}
+            supabaseClient={supabaseClient}
+            nearbyCasinos={nearbyCasinos}
+            customVenues={customVenues}
+            onSaveCustomVenue={onSaveCustomVenue}
+            gpsLoading={gpsLoading}
+            placeholder="Wynn, Aria, home game…"
+            insetLabel="Location"
+          />
         ) : null}
 
         {showSoftTournamentPicker ? (
@@ -5721,27 +5740,6 @@ function PokerSessionCoreFields({
               </p>
             ) : null}
           </div>
-        ) : null}
-
-        {form.venue_kind === 'club' ? (
-          <MenuSelect
-            label="Club"
-            value={form.club_app_pick || ''}
-            onChange={(id) => setField('club_app_pick', id)}
-            options={pokerClubAppSelectOptions()}
-          />
-        ) : form.venue_kind === 'live' ? (
-          <CasinoAutocomplete
-            value={form.venue_name}
-            onChange={(v) => setField('venue_name', v)}
-            supabaseClient={supabaseClient}
-            nearbyCasinos={nearbyCasinos}
-            customVenues={customVenues}
-            onSaveCustomVenue={onSaveCustomVenue}
-            gpsLoading={gpsLoading}
-            placeholder="Wynn, Aria, home game…"
-            insetLabel="Location"
-          />
         ) : null}
       </div>
 

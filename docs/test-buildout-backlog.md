@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-13: **Tournament form Location above Tournament:** Start/Log/Edit Event block is venue first (Live Location / Online Site / Club) then the tournament picker. Shared `PokerSessionCoreFields`.
 - 2026-08-13: **Live tournament picker always shows nearby + selected venue:** Catalog fetch was a global 200-row page (same starve as GGPoker vs PokerStars), then GPS-only filter + **2h** `starts_at` grace hid in-progress flights (Arizona State Poker Championship Day 1A at Talking Stick dropped after ~12:15p AZ). Live now queries `.in(venue_name)` for GPS-nearby casinos **and** the selected Location (refetch on `venue_name`); pinned rooms keep calendar today+tomorrow with no 2h drop; selected venue is kept even when GPS has not matched it. **`pokerTournamentNearbyEvents.js`** + `PokerSessionCoreFields`. Smoke: Start Session → Tournament → pick Talking Stick (or GPS near Scottsdale) → Day 1A still listed after late morning. Client-only … no catalog ingest.
 - 2026-08-12: **Image lightbox edge-to-edge tall media:** chrome-band centering only when full-width still fits between top/footer chrome; taller slides go viewport edge-to-edge (may run under pills).
 - 2026-08-12: **Image lightbox ambient restored:** OOM “fixes” had gated blur fill on CF resize (off on Free zone) so ambient never painted. Restored fly-in + swipe crossfade ambient (`feed`-tier srcs) … real crash was `LOUNGE_LIKE_CHIP_RED`, not ambient.

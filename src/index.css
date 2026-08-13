@@ -1412,11 +1412,11 @@ html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] [data
   font-size: var(--lounge-lightbox-pill-count) !important;
 }
 /* Keep white-frost pill/top shells in light mode (global remaps must not flatten them). */
-html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .bg-white\/25,
-html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .bg-white\/25,
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] .bg-white\/25,
-html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-lightbox-top-chrome] .bg-white\/25 {
-  background-color: rgba(255, 255, 255, 0.25) !important;
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .bg-white\/15,
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-post-interaction-bar] .bg-white\/15,
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] .bg-white\/15,
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-lightbox-top-chrome] .bg-white\/15 {
+  background-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 /*

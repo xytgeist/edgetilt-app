@@ -483,6 +483,7 @@ export default function PokerBankrollTracker({
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
   const [venueFilter, setVenueFilter] = useState('all') // all | live | online | club
   const [nearbyCasinos, setNearbyCasinos] = useState([])
+  const [casinoCoords, setCasinoCoords] = useState([])
   const [gpsLoading, setGpsLoading] = useState(false)
   const [customVenues, setCustomVenues] = useState([])
   const casinoCoordCacheRef = useRef(null)
@@ -1245,7 +1246,11 @@ export default function PokerBankrollTracker({
       cacheRef: casinoCoordCacheRef,
       userId,
       onLoading: setGpsLoading,
-      onNearby: setNearbyCasinos,
+      onNearby: (top) => {
+        setNearbyCasinos(top)
+        const all = casinoCoordCacheRef.current
+        if (Array.isArray(all) && all.length) setCasinoCoords(all)
+      },
       onNearest,
     })
   }, [supabaseClient, userId])
@@ -4961,6 +4966,7 @@ export default function PokerBankrollTracker({
               setField={setField}
               supabaseClient={supabaseClient}
               nearbyCasinos={nearbyCasinos}
+              casinoCoords={casinoCoords}
               customVenues={customVenues}
               onSaveCustomVenue={saveCustomVenue}
               gpsLoading={gpsLoading}
@@ -5211,6 +5217,7 @@ export default function PokerBankrollTracker({
                 setField={setField}
                 supabaseClient={supabaseClient}
                 nearbyCasinos={nearbyCasinos}
+                casinoCoords={casinoCoords}
                 customVenues={customVenues}
                 onSaveCustomVenue={saveCustomVenue}
                 gpsLoading={gpsLoading}
@@ -5570,6 +5577,7 @@ function PokerSessionCoreFields({
   setField,
   supabaseClient,
   nearbyCasinos,
+  casinoCoords,
   customVenues,
   onSaveCustomVenue,
   gpsLoading,
@@ -5610,6 +5618,7 @@ function PokerSessionCoreFields({
     void loadNearbySoftTournamentEvents(supabaseClient, {
       venueKind: form.venue_kind,
       nearbyCasinos,
+      casinoCoords,
       venueName: form.venue_name,
       onlineSitePick: form.online_site_pick,
     }).then(({ events, error }) => {
@@ -5632,6 +5641,7 @@ function PokerSessionCoreFields({
     form.venue_name,
     form.online_site_pick,
     nearbyCasinos,
+    casinoCoords,
   ])
 
   const softTournamentOptions = useMemo(() => {
@@ -5736,7 +5746,7 @@ function PokerSessionCoreFields({
               <p className="mt-1 text-xs text-zinc-500">
                 {form.venue_kind === 'online' && !form.online_site_pick
                   ? 'Select a site to see upcoming tournaments … Enter manually'
-                  : 'No buy-in tournaments nearby today or tomorrow … Enter manually'}
+                  : 'No buy-in tournaments within 50 miles today or tomorrow … Enter manually'}
               </p>
             ) : null}
           </div>

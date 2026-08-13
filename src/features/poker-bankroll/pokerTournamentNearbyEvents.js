@@ -1,8 +1,9 @@
 /**
  * Live tournament picker: nearby GPS venues + the selected Location always fetch in SQL
  * (not a global 200-row page). Catalog rows stay on the calendar for today+tomorrow …
- * no late-reg / starts_at cutoff (late reg length varies, and people log after it).
- * User soft events: day-of + Day 2 grace (swap clusters), unchanged.
+ * no late-reg / starts_at cutoff. Live list is rooms within 50 miles of the selected
+ * Location (GPS nearby within 50 miles when Location is empty).
+ * User soft events: day-of + Day 2 grace (swap clusters), then the same 50-mile filter.
  */
 
 import { normalizeTournamentVenue } from './pokerTournamentEventKeys.js'
@@ -11,6 +12,7 @@ import {
   pokerOnlineSiteLabelFromId,
   pokerOnlineSiteSelectValue,
 } from './pokerSessionLabels.js'
+import { haversineMiles } from '../../utils/nearbyCasinos.js'
 
 export const POKER_TOURNAMENT_MANUAL_PICK_ID = '__manual__'
 
@@ -24,7 +26,10 @@ export const CATALOG_PICKER_LOOKAHEAD_DAYS = 1
 export const SOFT_EVENT_ACTIVITY_GRACE_MS = 36 * 60 * 60 * 1000
 const FETCH_LIMIT = 200
 /** Nearby / selected venue (or online site) scoped fetch … rooms can have many flights in 2 days. */
-const PINNED_FETCH_LIMIT = 500
+const PINNED_FETCH_LIMIT = 1000
+
+/** Live picker: catalog rows at rooms within this radius of the selected Location (or GPS). */
+export const PICKER_VENUE_RADIUS_MI = 50
 
 /**
  * @param {Date} [now]
@@ -128,6 +133,98 @@ export function catalogRowMatchesPinVenue(venueName, pinKeys) {
 }
 
 /**
+ * @param {Array<{ name?: string, lat?: number, lng?: number }>} casinos
+ * @param {string | null | undefined} venueName
+ */
+export function findCasinoByName(casinos, venueName) {
+  const key = normalizeTournamentVenue(venueName)
+  if (!key) return null
+  const list = casinos || []
+  const exact = list.find((c) => normalizeTournamentVenue(c?.name) === key)
+  if (exact) return exact
+  // Skip short typed fragments ("Talk", "Casino") so GPS nearby stays until Location is a real room.
+  if (key.length < 8) return null
+  const hits = list.filter((c) => {
+    const ck = normalizeTournamentVenue(c?.name)
+    if (!ck) return false
+    return ck.includes(key) || (ck.length >= 4 && key.includes(ck))
+  })
+  if (hits.length === 0) return null
+  hits.sort((a, b) => {
+    const ak = normalizeTournamentVenue(a?.name)
+    const bk = normalizeTournamentVenue(b?.name)
+    const aStarts = ak.startsWith(key)
+    const bStarts = bk.startsWith(key)
+    if (aStarts !== bStarts) return aStarts ? -1 : 1
+    return ak.length - bk.length
+  })
+  return hits[0]
+}
+
+/**
+ * @param {Array<{ name?: string, lat?: number, lng?: number }>} casinos
+ * @param {{ lat?: number, lng?: number }} origin
+ * @param {number} radiusMi
+ * @returns {Array<{ name?: string, lat?: number, lng?: number, distanceMi: number }>}
+ */
+export function casinosWithinRadius(casinos, origin, radiusMi = PICKER_VENUE_RADIUS_MI) {
+  const lat = Number(origin?.lat)
+  const lng = Number(origin?.lng)
+  const radius = Number(radiusMi)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(radius)) return []
+  /** @type {Array<{ name?: string, lat?: number, lng?: number, distanceMi: number }>} */
+  const out = []
+  for (const c of casinos || []) {
+    const clat = Number(c?.lat)
+    const clng = Number(c?.lng)
+    if (!Number.isFinite(clat) || !Number.isFinite(clng)) continue
+    const distanceMi = haversineMiles(lat, lng, clat, clng)
+    if (distanceMi <= radius) out.push({ ...c, distanceMi })
+  }
+  out.sort((a, b) => a.distanceMi - b.distanceMi)
+  return out
+}
+
+/**
+ * Live pin list: rooms within 50 miles of the selected Location.
+ * No Location → GPS nearby rooms within 50 miles of the user.
+ * Selected name with no coords → GPS nearby within 50 miles plus that name.
+ *
+ * @param {{
+ *   casinoCoords?: Array<{ name?: string, lat?: number, lng?: number }>,
+ *   nearbyCasinos?: Array<{ name?: string, distanceMi?: number, lat?: number, lng?: number }>,
+ *   venueName?: string | null,
+ *   radiusMi?: number,
+ * }} [opts]
+ */
+export function resolveLivePickerPinCasinos(opts = {}) {
+  const selected = String(opts.venueName || '').trim()
+  const nearby = opts.nearbyCasinos || []
+  const coords = (opts.casinoCoords && opts.casinoCoords.length > 0) ? opts.casinoCoords : nearby
+  const radiusMi = opts.radiusMi ?? PICKER_VENUE_RADIUS_MI
+  const origin = selected ? findCasinoByName(coords, selected) : null
+  const originLat = Number(origin?.lat)
+  const originLng = Number(origin?.lng)
+  if (origin && Number.isFinite(originLat) && Number.isFinite(originLng)) {
+    const within = casinosWithinRadius(coords, origin, radiusMi)
+    const originKey = normalizeTournamentVenue(origin?.name || selected)
+    const hasOrigin = within.some((c) => normalizeTournamentVenue(c?.name) === originKey)
+    if (!hasOrigin) {
+      return [{ name: origin?.name || selected, lat: originLat, lng: originLng, distanceMi: 0 }, ...within]
+    }
+    return within
+  }
+  const gpsNearby = nearby.filter((c) => {
+    const dist = Number(c?.distanceMi)
+    return Number.isFinite(dist) && dist <= radiusMi
+  })
+  if (selected) {
+    return [{ name: selected, distanceMi: 0 }, ...gpsNearby]
+  }
+  return gpsNearby
+}
+
+/**
  * @param {string} isoDate YYYY-MM-DD
  */
 export function formatPickerEventDateLabel(isoDate) {
@@ -222,7 +319,7 @@ export function formatSoftTournamentOptionLabel(event, distanceMi, todayIso) {
   if (name && venue && normalizeTournamentVenue(name) !== normalizeTournamentVenue(venue)) {
     bits.push(venue)
   }
-  if (distanceMi != null && Number.isFinite(distanceMi)) {
+  if (distanceMi != null && Number.isFinite(distanceMi) && distanceMi >= 0.05) {
     bits.push(distanceMi < 10 ? `${distanceMi.toFixed(1)} mi` : `${Math.round(distanceMi)} mi`)
   }
   return bits.join(' · ')
@@ -233,9 +330,24 @@ const PICKER_SELECT_COLS =
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {Array<{ name?: string, lat?: number, lng?: number }> | null | undefined} cached
+ */
+async function loadCasinoCoords(supabase, cached) {
+  if (Array.isArray(cached) && cached.length > 0) return cached
+  const { data } = await supabase
+    .from('casinos')
+    .select('id, name, lat, lng')
+    .not('lat', 'is', null)
+    .not('lng', 'is', null)
+  return data || []
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {{
  *   venueKind?: string | null,
  *   nearbyCasinos?: Array<{ name?: string, distanceMi?: number }>,
+ *   casinoCoords?: Array<{ name?: string, lat?: number, lng?: number }>,
  *   venueName?: string | null,
  *   onlineSitePick?: string | null,
  * }} [opts]
@@ -254,9 +366,20 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
   const onlineSitePick = String(opts.onlineSitePick || '').trim()
   const onlineSiteLabel =
     venueKind === 'online' && onlineSitePick ? pokerOnlineSiteLabelFromId(onlineSitePick) : ''
+  let casinoCoords = opts.casinoCoords
+  let pinCasinos = []
+  if (venueKind === 'live') {
+    casinoCoords = await loadCasinoCoords(supabase, opts.casinoCoords)
+    pinCasinos = resolveLivePickerPinCasinos({
+      casinoCoords,
+      nearbyCasinos: opts.nearbyCasinos,
+      venueName: opts.venueName,
+    })
+  }
   const livePinNames =
-    venueKind === 'live' ? collectLivePinVenueNames(opts.nearbyCasinos, opts.venueName) : []
+    venueKind === 'live' ? collectLivePinVenueNames(pinCasinos, opts.venueName) : []
   const scopedCatalog = Boolean(onlineSiteLabel) || livePinNames.length > 0
+  const decorateOpts = { ...opts, casinoCoords, pinCasinos }
 
   // Live nearby + selected Location (and Online selected site) filter in SQL.
   // A global 200-row cap starves rooms that are not on the first page (GGPoker / Strip dailies).
@@ -320,7 +443,7 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
     }
   }
 
-  return decorateSoftTournamentEvents([...byId.values()], opts, today, now)
+  return decorateSoftTournamentEvents([...byId.values()], decorateOpts, today, now)
 }
 
 /**
@@ -378,12 +501,20 @@ function decorateSoftTournamentEvents(data, opts = {}, todayIso, now = new Date(
   const useOnlineSite = venueKind === 'online'
   const onlineSitePick = String(opts.onlineSitePick || '').trim()
   const onlineSiteLabel = onlineSitePick ? pokerOnlineSiteLabelFromId(onlineSitePick) : ''
-  const nearbyCasinos = opts.nearbyCasinos || []
-  const gpsReady = useDistance && nearbyCasinos.length > 0
-  const distMap = useDistance ? buildVenueDistanceMap(nearbyCasinos) : new Map()
+  const pinCasinos = useDistance
+    ? (Array.isArray(opts.pinCasinos)
+      ? opts.pinCasinos
+      : resolveLivePickerPinCasinos({
+          casinoCoords: opts.casinoCoords,
+          nearbyCasinos: opts.nearbyCasinos,
+          venueName: opts.venueName,
+        }))
+    : []
+  const distMap = useDistance ? buildVenueDistanceMap(pinCasinos) : new Map()
   const livePinKeys = useDistance
-    ? pinVenueKeySet(collectLivePinVenueNames(nearbyCasinos, opts.venueName))
+    ? pinVenueKeySet(collectLivePinVenueNames(pinCasinos, opts.venueName))
     : new Set()
+  const radiusActive = useDistance && livePinKeys.size > 0
 
   const rows = (data || [])
     .map((row) => {
@@ -410,15 +541,12 @@ function decorateSoftTournamentEvents(data, opts = {}, todayIso, now = new Date(
         return false
       }
       const rowIsPinned = catalogRowMatchesPinVenue(row.venue_name, livePinKeys)
-      // GPS-ready still keeps the selected Location even when it is not in the nearby list.
-      if (
-        String(row.source || '') === 'catalog' &&
-        gpsReady &&
-        row.distanceMi == null &&
-        !rowIsPinned
-      ) {
-        return false
-      }
+      const inRadius =
+        rowIsPinned ||
+        (row.distanceMi != null &&
+          Number.isFinite(row.distanceMi) &&
+          row.distanceMi <= PICKER_VENUE_RADIUS_MI)
+      if (radiusActive && !inRadius) return false
       if (String(row.source || '') === 'catalog') {
         return isCatalogRowInBuyInWindow(row, now)
       }

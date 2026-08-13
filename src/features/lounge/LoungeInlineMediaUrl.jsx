@@ -538,7 +538,8 @@ export function LoungeImageLightbox({
     allowSwipeOnVideo: false,
     enabled: phase === 'open' && !isZoomed && !isPinching,
     verticalDismissOnly: multi,
-    className: 'relative flex min-h-0 flex-1 flex-col',
+    // Full shell (chrome + media) so caption-heavy posts still dismiss like Stream.
+    className: 'absolute inset-0 flex flex-col bg-transparent',
   })
 
   const {
@@ -555,38 +556,6 @@ export function LoungeImageLightbox({
     onPointerUp: zoomPointerUp,
     onPointerCancel: zoomPointerCancel,
   } = zoomPointerHandlers
-
-  const onMediaPointerDown = useCallback(
-    (e) => {
-      if (zoomPointerDown(e)) return
-      swipePointerDown?.(e)
-    },
-    [zoomPointerDown, swipePointerDown],
-  )
-
-  const onMediaPointerMove = useCallback(
-    (e) => {
-      zoomPointerMove(e)
-      swipePointerMove?.(e)
-    },
-    [zoomPointerMove, swipePointerMove],
-  )
-
-  const onMediaPointerUp = useCallback(
-    (e) => {
-      zoomPointerUp(e)
-      swipePointerUp?.(e)
-    },
-    [zoomPointerUp, swipePointerUp],
-  )
-
-  const onMediaPointerCancel = useCallback(
-    (e) => {
-      zoomPointerCancel(e)
-      swipePointerCancel?.(e)
-    },
-    [zoomPointerCancel, swipePointerCancel],
-  )
 
   const lightboxMenuContent = useMemo(() => {
     if (typeof renderMediaLightboxMenu === 'function') return renderMediaLightboxMenu()
@@ -897,7 +866,7 @@ export function LoungeImageLightbox({
           )}
         </div>
         <div
-          className="absolute inset-0 flex flex-col bg-transparent"
+          className={[swipeClassName, isZoomed || isPinching ? 'touch-none' : ''].filter(Boolean).join(' ')}
           style={{
             zIndex: zStack.overlay,
             pointerEvents: mediaInteractive ? undefined : 'none',
@@ -906,6 +875,11 @@ export function LoungeImageLightbox({
             visibility: phase === 'opening' ? 'hidden' : 'visible',
           }}
           aria-hidden={phase === 'opening' ? true : undefined}
+          // Capture so caption/cashtag stopPropagation cannot block dismiss (Fat Cat-style posts).
+          onPointerDownCapture={swipePointerDown}
+          onPointerMove={swipePointerMove}
+          onPointerUp={swipePointerUp}
+          onPointerCancel={swipePointerCancel}
         >
           <div
             className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between"
@@ -944,7 +918,6 @@ export function LoungeImageLightbox({
               <div
                 className={`pointer-events-none w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8`}
                 data-lounge-image-lightbox-footer
-                data-lounge-lightbox-no-swipe
                 onClick={(e) => e.stopPropagation()}
               >
                 <div
@@ -979,17 +952,11 @@ export function LoungeImageLightbox({
           ) : null}
           <div
             onClick={(e) => e.stopPropagation()}
-            onPointerDown={onMediaPointerDown}
-            onPointerMove={onMediaPointerMove}
-            onPointerUp={onMediaPointerUp}
-            onPointerCancel={onMediaPointerCancel}
-            className={[
-              'relative z-0 flex min-h-0 flex-1 flex-col',
-              swipeClassName,
-              isZoomed || isPinching ? 'touch-none' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
+            onPointerDown={zoomPointerDown}
+            onPointerMove={zoomPointerMove}
+            onPointerUp={zoomPointerUp}
+            onPointerCancel={zoomPointerCancel}
+            className="relative z-0 flex min-h-0 flex-1 flex-col"
           >
             <div
               ref={mediaContainerRef}

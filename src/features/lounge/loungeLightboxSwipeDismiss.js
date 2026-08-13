@@ -8,7 +8,11 @@ const SNAP_BACK_MS = 220
 
 function shouldIgnoreSwipeTarget(target, { allowSwipeOnVideo = false } = {}) {
   if (!(target instanceof Element)) return true
-  const blockers = ['button', 'a', 'input', 'textarea', 'select', 'iframe', '[data-lounge-lightbox-no-swipe]']
+  // Explicit no-swipe wins (e.g. expanded caption scroll box inside caption).
+  if (target.closest('[data-lounge-lightbox-no-swipe]')) return true
+  // Caption (incl. cashtag/mention buttons): allow vertical dismiss; tap still activates controls.
+  if (target.closest('[data-lounge-lightbox-caption]')) return false
+  const blockers = ['button', 'a', 'input', 'textarea', 'select', 'iframe']
   if (!allowSwipeOnVideo) blockers.push('video')
   return Boolean(target.closest(blockers.join(', ')))
 }
@@ -124,6 +128,20 @@ export function useLoungeLightboxSwipeDismiss({
       if (!enabled) return
       if (dragRef.current?.settling) return
       if (e.button !== 0 && e.pointerType === 'mouse') return
+      // Second finger (pinch zoom) … drop dismiss tracking so zoom can own the gesture.
+      if (dragRef.current && dragRef.current.pointerId !== e.pointerId) {
+        const prev = dragRef.current
+        if (prev.captured && prev.el) {
+          try {
+            prev.el.releasePointerCapture(prev.pointerId)
+          } catch {
+            // ignore
+          }
+        }
+        abandonDragQuietly()
+        setDragging(false)
+        return
+      }
       if (shouldIgnoreSwipeTarget(e.target, { allowSwipeOnVideo })) return
 
       const fromCarousel =
@@ -143,6 +161,9 @@ export function useLoungeLightboxSwipeDismiss({
         settling: false,
         didPaint: false,
         el,
+        /** Skip chrome-toggle tap when the gesture began on expandable caption. */
+        skipTap:
+          e.target instanceof Element && Boolean(e.target.closest('[data-lounge-lightbox-caption]')),
       }
 
       if (!fromCarousel) {
@@ -153,7 +174,7 @@ export function useLoungeLightboxSwipeDismiss({
         }
       }
     },
-    [allowSwipeOnVideo, enabled, verticalDismissOnly],
+    [allowSwipeOnVideo, enabled, verticalDismissOnly, abandonDragQuietly],
   )
 
   const onPointerMove = useCallback(
@@ -269,7 +290,7 @@ export function useLoungeLightboxSwipeDismiss({
         return
       }
 
-      if (onTap && Math.abs(dx) <= TAP_SLOP_PX && Math.abs(dy) <= TAP_SLOP_PX) {
+      if (onTap && !drag.skipTap && Math.abs(dx) <= TAP_SLOP_PX && Math.abs(dy) <= TAP_SLOP_PX) {
         clearSurfaceVisual(drag.el)
         resetDrag(false)
         onTap(e)
@@ -349,11 +370,12 @@ export function useLoungeLightboxSwipeDismiss({
 
   // Parent `touch-pan-y` ∩ child carousel `pan-x` resolves to none and kills side-swipe.
   // Multi-image (verticalDismissOnly): leave touch-action auto until vertical dismiss locks.
+  // Single-image: touch-none (Stream-style) so iOS/Android do not steal vertical pans from dismiss.
   const touchClass = dragging || allowSwipeOnVideo
     ? 'touch-none'
     : verticalDismissOnly
       ? 'touch-auto'
-      : 'touch-pan-y'
+      : 'touch-none'
   const mergedClass = [className, touchClass].filter(Boolean).join(' ')
 
   return {

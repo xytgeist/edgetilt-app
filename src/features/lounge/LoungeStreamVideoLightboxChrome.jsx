@@ -143,7 +143,7 @@ export default function LoungeStreamVideoLightboxChrome({
   const captionBlock = caption ? (
     <div
       className={`w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}
-      data-lounge-lightbox-no-swipe=""
+      data-lounge-lightbox-caption=""
       onClick={(e) => e.stopPropagation()}
     >
       <LoungeExpandableRichCaption

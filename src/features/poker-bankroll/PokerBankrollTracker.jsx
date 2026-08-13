@@ -5603,12 +5603,14 @@ function PokerSessionCoreFields({
       setSoftEventsReady(true)
       return undefined
     }
-    setSoftEvents([])
+    // Keep the last list while refetching so nearby flights do not blink away
+    // when Location text changes.
     setSoftEventsReady(false)
     const reqId = ++softEventsReqRef.current
     void loadNearbySoftTournamentEvents(supabaseClient, {
       venueKind: form.venue_kind,
       nearbyCasinos,
+      venueName: form.venue_name,
       onlineSitePick: form.online_site_pick,
     }).then(({ events, error }) => {
       if (reqId !== softEventsReqRef.current) return
@@ -5623,7 +5625,14 @@ function PokerSessionCoreFields({
     return () => {
       softEventsReqRef.current += 1
     }
-  }, [showSoftTournamentPicker, supabaseClient, form.venue_kind, form.online_site_pick, nearbyCasinos])
+  }, [
+    showSoftTournamentPicker,
+    supabaseClient,
+    form.venue_kind,
+    form.venue_name,
+    form.online_site_pick,
+    nearbyCasinos,
+  ])
 
   const softTournamentOptions = useMemo(() => {
     const opts = softTournamentPickerOptions(softEvents)

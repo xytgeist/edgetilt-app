@@ -1,6 +1,7 @@
 /**
- * Live tournament picker: actionable buy-in window (today + ~24h) near GPS-matched venues.
- * Catalog rows may exist further out in DB; only near-term rows are shown here.
+ * Live tournament picker: nearby GPS venues + the selected Location always fetch in SQL
+ * (not a global 200-row page). Pinned venues keep calendar today+tomorrow even after start
+ * (late reg / clocking in). Unpinned global fallback keeps the ~24h buy-in + 2h grace window.
  * User soft events: day-of + Day 2 grace (swap clusters), unchanged.
  */
 
@@ -22,12 +23,14 @@ export const CATALOG_PICKER_LOOKAHEAD_DAYS = 1
 /** When starts_at is set, show flights starting within this window from now. */
 export const CATALOG_BUY_IN_WINDOW_MS = 24 * 60 * 60 * 1000
 
-/** Still list a catalog row briefly after start (late reg / clocking in). */
+/** Still list a catalog row briefly after start (late reg / clocking in). Unpinned fallback only. */
 export const CATALOG_LATE_REG_GRACE_MS = 2 * 60 * 60 * 1000
 
 /** Keep older user soft events if anyone logged/swapped against them this recently. */
 export const SOFT_EVENT_ACTIVITY_GRACE_MS = 36 * 60 * 60 * 1000
 const FETCH_LIMIT = 200
+/** Nearby / selected venue (or online site) scoped fetch … rooms can have many flights in 2 days. */
+const PINNED_FETCH_LIMIT = 500
 
 /**
  * @param {Date} [now]
@@ -69,9 +72,17 @@ export function catalogPickerDateWindow(now = new Date()) {
 /**
  * @param {object} row
  * @param {Date} [now]
+ * @param {{ pinVenue?: boolean }} [opts] pinVenue: GPS-nearby or selected Location / online site.
+ *   Calendar today+tomorrow; do not drop after `starts_at`.
  */
-export function isCatalogRowInBuyInWindow(row, now = new Date()) {
+export function isCatalogRowInBuyInWindow(row, now = new Date(), opts = {}) {
   if (String(row?.source || '') !== 'catalog') return true
+  const pinVenue = Boolean(opts.pinVenue)
+  if (pinVenue) {
+    const { from, to } = catalogPickerDateWindow(now)
+    const d = String(row?.event_date || '').slice(0, 10)
+    return d >= from && d <= to
+  }
   const startsAtRaw = row?.starts_at
   if (startsAtRaw) {
     const startsAt = new Date(startsAtRaw)
@@ -85,6 +96,57 @@ export function isCatalogRowInBuyInWindow(row, now = new Date()) {
   const { from, to } = catalogPickerDateWindow(now)
   const d = String(row?.event_date || '').slice(0, 10)
   return d >= from && d <= to
+}
+
+/**
+ * Unique live catalog pin names: selected Location first, then GPS-nearby casinos.
+ * @param {Array<{ name?: string }> | null | undefined} nearbyCasinos
+ * @param {string | null | undefined} venueName
+ * @returns {string[]}
+ */
+export function collectLivePinVenueNames(nearbyCasinos, venueName) {
+  const names = []
+  const seen = new Set()
+  const add = (raw) => {
+    const trimmed = String(raw || '').trim()
+    if (!trimmed) return
+    const key = normalizeTournamentVenue(trimmed)
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    names.push(trimmed)
+  }
+  add(venueName)
+  for (const c of nearbyCasinos || []) add(c?.name)
+  return names
+}
+
+/**
+ * @param {string[]} pinNames
+ * @returns {Set<string>}
+ */
+export function pinVenueKeySet(pinNames) {
+  const set = new Set()
+  for (const n of pinNames || []) {
+    const key = normalizeTournamentVenue(n)
+    if (key) set.add(key)
+  }
+  return set
+}
+
+/**
+ * Exact or loose contains match (e.g. "Park MGM" vs "Park MGM Las Vegas").
+ * @param {string | null | undefined} venueName
+ * @param {Set<string>} pinKeys
+ */
+export function catalogRowMatchesPinVenue(venueName, pinKeys) {
+  const key = normalizeTournamentVenue(venueName)
+  if (!key || !pinKeys?.size) return false
+  if (pinKeys.has(key)) return true
+  for (const pin of pinKeys) {
+    if (pin.length >= 4 && key.includes(pin)) return true
+    if (key.length >= 4 && pin.includes(key)) return true
+  }
+  return false
 }
 
 /**
@@ -196,6 +258,7 @@ const PICKER_SELECT_COLS =
  * @param {{
  *   venueKind?: string | null,
  *   nearbyCasinos?: Array<{ name?: string, distanceMi?: number }>,
+ *   venueName?: string | null,
  *   onlineSitePick?: string | null,
  * }} [opts]
  * @returns {Promise<{
@@ -213,8 +276,13 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
   const onlineSitePick = String(opts.onlineSitePick || '').trim()
   const onlineSiteLabel =
     venueKind === 'online' && onlineSitePick ? pokerOnlineSiteLabelFromId(onlineSitePick) : ''
+  const livePinNames =
+    venueKind === 'live' ? collectLivePinVenueNames(opts.nearbyCasinos, opts.venueName) : []
+  const livePinKeys = pinVenueKeySet(livePinNames)
+  const scopedCatalog = Boolean(onlineSiteLabel) || livePinNames.length > 0
 
-  // Online: filter by site in SQL. A global 200-row cap was GGPoker-heavy and hid PokerStars etc.
+  // Live nearby + selected Location (and Online selected site) filter in SQL.
+  // A global 200-row cap starves rooms that are not on the first page (GGPoker / Strip dailies).
   let catalogQuery = supabase
     .from('poker_tournament_events')
     .select(PICKER_SELECT_COLS)
@@ -222,9 +290,11 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
     .gte('event_date', catalogWindow.from)
     .lte('event_date', catalogWindow.to)
     .order('event_date', { ascending: true })
-    .limit(FETCH_LIMIT)
+    .limit(scopedCatalog ? PINNED_FETCH_LIMIT : FETCH_LIMIT)
   if (onlineSiteLabel) {
     catalogQuery = catalogQuery.eq('venue_name', onlineSiteLabel)
+  } else if (livePinNames.length > 0) {
+    catalogQuery = catalogQuery.in('venue_name', livePinNames)
   }
 
   const [catalogRes, userTodayRes, userActivityRes] = await Promise.all([
@@ -261,7 +331,10 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
   /** @type {Map<string, object>} */
   const byId = new Map()
   for (const row of catalogRes.data || []) {
-    if (row?.id && isCatalogRowInBuyInWindow(row, now)) byId.set(String(row.id), row)
+    if (!row?.id) continue
+    const pinVenue =
+      Boolean(onlineSiteLabel) || catalogRowMatchesPinVenue(row.venue_name, livePinKeys)
+    if (isCatalogRowInBuyInWindow(row, now, { pinVenue })) byId.set(String(row.id), row)
   }
   for (const row of userTodayRes.data || []) {
     if (row?.id) byId.set(String(row.id), row)
@@ -315,7 +388,12 @@ async function loadLegacyPickerEvents(supabase, opts, today, activitySinceIso) {
 
 /**
  * @param {object[]} data
- * @param {{ venueKind?: string | null, nearbyCasinos?: Array<{ name?: string, distanceMi?: number }> }} opts
+ * @param {{
+ *   venueKind?: string | null,
+ *   nearbyCasinos?: Array<{ name?: string, distanceMi?: number }>,
+ *   venueName?: string | null,
+ *   onlineSitePick?: string | null,
+ * }} opts
  * @param {string} todayIso
  * @param {Date} [now]
  */
@@ -328,6 +406,9 @@ function decorateSoftTournamentEvents(data, opts = {}, todayIso, now = new Date(
   const nearbyCasinos = opts.nearbyCasinos || []
   const gpsReady = useDistance && nearbyCasinos.length > 0
   const distMap = useDistance ? buildVenueDistanceMap(nearbyCasinos) : new Map()
+  const livePinKeys = useDistance
+    ? pinVenueKeySet(collectLivePinVenueNames(nearbyCasinos, opts.venueName))
+    : new Set()
 
   const rows = (data || [])
     .map((row) => {
@@ -342,20 +423,29 @@ function decorateSoftTournamentEvents(data, opts = {}, todayIso, now = new Date(
       if (String(row.source || '') === 'catalog' && useOnlineSite) {
         if (!onlineSitePick) return false
         const siteId = pokerOnlineSiteSelectValue(row.venue_name)
-        if (siteId && siteId === onlineSitePick) return isCatalogRowInBuyInWindow(row, now)
+        if (siteId && siteId === onlineSitePick) {
+          return isCatalogRowInBuyInWindow(row, now, { pinVenue: true })
+        }
         if (
           onlineSiteLabel &&
           normalizeTournamentVenue(row.venue_name) === normalizeTournamentVenue(onlineSiteLabel)
         ) {
-          return isCatalogRowInBuyInWindow(row, now)
+          return isCatalogRowInBuyInWindow(row, now, { pinVenue: true })
         }
         return false
       }
-      if (String(row.source || '') === 'catalog' && gpsReady && row.distanceMi == null) {
+      const rowIsPinned = catalogRowMatchesPinVenue(row.venue_name, livePinKeys)
+      // GPS-ready still keeps the selected Location even when it is not in the nearby list.
+      if (
+        String(row.source || '') === 'catalog' &&
+        gpsReady &&
+        row.distanceMi == null &&
+        !rowIsPinned
+      ) {
         return false
       }
       if (String(row.source || '') === 'catalog') {
-        return isCatalogRowInBuyInWindow(row, now)
+        return isCatalogRowInBuyInWindow(row, now, { pinVenue: rowIsPinned })
       }
       if (useOnlineSite) {
         if (!onlineSitePick) return false

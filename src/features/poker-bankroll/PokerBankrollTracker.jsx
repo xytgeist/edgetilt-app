@@ -142,6 +142,7 @@ import {
 } from './pokerBankrollMath.js'
 import {
   readStoredPokerBankrollScope,
+  resolveBankrollScopeForSessionWrite,
   resolvePokerBankrollScopeToRestore,
   writeStoredPokerBankrollScope,
 } from './pokerBankrollScopeStorage.js'
@@ -394,6 +395,12 @@ export default function PokerBankrollTracker({
   const [commitSyncId, setCommitSyncId] = useState(/** @type {string | null} */ (null))
   /** @type {'personal' | string} personal or deal id */
   const [bankrollScope, setBankrollScope] = useState('personal')
+  /**
+   * deal_id pinned when Start / Log / Import opens (null = personal).
+   * undefined = no sheet capture; fall back to live carousel scope.
+   * @type {string | null | undefined}
+   */
+  const [sessionWriteDealId, setSessionWriteDealId] = useState(undefined)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -711,6 +718,7 @@ export default function PokerBankrollTracker({
     pendingRestoreScopeRef.current = null
     autoFocusedPendingOfferIdRef.current = null
     setBankrollScope('personal')
+    setSessionWriteDealId(undefined)
   }, [userId])
 
   useEffect(() => {
@@ -790,9 +798,11 @@ export default function PokerBankrollTracker({
       setScopeCarouselSyncReady(false)
       return undefined
     }
+    // Only gate the first restore scroll. Re-gating on every bankrollScope change
+    // disabled swipe→Personal for 300ms and left Start Session stuck on the stake.
     const t = window.setTimeout(() => setScopeCarouselSyncReady(true), 300)
     return () => window.clearTimeout(t)
-  }, [scopeHydrated, bankrollScope])
+  }, [scopeHydrated])
 
   useEffect(() => {
     if (!openStableDealId) return
@@ -1317,7 +1327,22 @@ export default function PokerBankrollTracker({
   }
 
   function scopeDealIdForWrite() {
+    if (
+      sessionWriteDealId !== undefined &&
+      (sheet === 'start' || sheet === 'session' || sheet === 'import')
+    ) {
+      return sessionWriteDealId
+    }
     return isOnStake ? bankrollScope : null
+  }
+
+  function labelForSessionWriteScope() {
+    if (!sessionWriteDealId) return 'Poker bankroll'
+    const deal =
+      stakeeDeals.find((d) => d.id === sessionWriteDealId) ??
+      stakeeDealsById[sessionWriteDealId] ??
+      null
+    return deal?.label?.trim() || 'On stake'
   }
 
   useEffect(() => {
@@ -2103,21 +2128,19 @@ export default function PokerBankrollTracker({
 
   /**
    * Prefer the visually centered hero card when Start/Log is tapped mid-swipe
-   * (scroll→scope debounce can lag ~80ms and leave bankrollScope on Personal).
-   * Do not demote an already-selected stake to Personal from a stale scrollLeft=0 read
-   * before the carousel has scrolled to the restored stake card.
+   * (scroll→scope debounce can lag ~80ms). Only ignore a Personal visual during
+   * restore/programmatic scroll, when scrollLeft=0 can still be the last stake.
    */
   function resolveDealForSessionPrefill() {
     const visualId = String(heroCarouselRef.current?.getVisibleSlideId?.() || '').trim()
-    let scopeId = bankrollScope
-    if (
-      visualId &&
-      visualId !== bankrollScope &&
-      !(visualId === 'personal' && bankrollScope !== 'personal')
-    ) {
-      scopeId = visualId
-      selectBankrollScope(visualId)
-    }
+    const carouselSettled =
+      scopeCarouselSyncReady && heroCarouselRef.current?.isIgnoringScroll?.() !== true
+    const scopeId = resolveBankrollScopeForSessionWrite({
+      visualId,
+      bankrollScope,
+      carouselSettled,
+    })
+    if (scopeId !== bankrollScope) selectBankrollScope(scopeId)
     if (!scopeId || scopeId === 'personal') return null
     return (
       stakeeDeals.find((d) => d.id === scopeId) ?? stakeeDealsById[scopeId] ?? null
@@ -2151,6 +2174,7 @@ export default function PokerBankrollTracker({
       setError('You already have a session in progress.')
       return
     }
+    setSessionWriteDealId(dealForPrefill?.id ?? null)
     const scopeToStore = dealForPrefill?.id || 'personal'
     if (userId) writeStoredPokerBankrollScope(userId, scopeToStore)
     setNearbyCasinos([])
@@ -2206,6 +2230,7 @@ export default function PokerBankrollTracker({
     setNearbyCasinos([])
     setDraftSwaps([])
     setIncomingAcceptSwap(swap)
+    setSessionWriteDealId(resolveDealForSessionPrefill()?.id ?? null)
     setForm(nextForm)
     setError('')
     setSheet('start')
@@ -2224,6 +2249,7 @@ export default function PokerBankrollTracker({
       setError(blockedError)
       return
     }
+    setSessionWriteDealId(dealForPrefill?.id ?? null)
     setEditingId(null)
     setEditingPrevWl(0)
     setNearbyCasinos([])
@@ -2901,6 +2927,7 @@ export default function PokerBankrollTracker({
     setIncomingAcceptSwap(null)
     setIncomingBindPicker(null)
     setDetailSessionId(null)
+    setSessionWriteDealId(undefined)
     setSheet(null)
   }
 
@@ -4906,8 +4933,18 @@ export default function PokerBankrollTracker({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <div className="text-lg font-bold text-white">
-                {editingId ? 'Edit session' : 'Log previous session'}
+              <div>
+                <div className="text-lg font-bold text-white">
+                  {editingId ? 'Edit session' : 'Log previous session'}
+                </div>
+                {!editingId ? (
+                  <div
+                    data-poker-session-write-scope={sessionWriteDealId || 'personal'}
+                    className="mt-0.5 text-[11px] font-semibold text-zinc-500"
+                  >
+                    On {labelForSessionWriteScope()}
+                  </div>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -5149,7 +5186,15 @@ export default function PokerBankrollTracker({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex shrink-0 items-center justify-between">
-              <div className="text-lg font-bold text-white">Start Session</div>
+              <div>
+                <div className="text-lg font-bold text-white">Start Session</div>
+                <div
+                  data-poker-session-write-scope={sessionWriteDealId || 'personal'}
+                  className="mt-0.5 text-[11px] font-semibold text-zinc-500"
+                >
+                  On {labelForSessionWriteScope()}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={dismissSheet}

@@ -88,3 +88,27 @@ export function resolvePokerBankrollScopeToRestore(
   }
   return 'personal'
 }
+
+/**
+ * Which hero card Start Session / Log past should write to.
+ * Prefer the centered carousel card. During restore, a scrollLeft=0 read can
+ * look like Personal while bankrollScope is still the last stake ... keep the
+ * stake in that window only so tournament packages do not flash Cash defaults.
+ *
+ * After the carousel has settled, Personal wins if that card is centered so a
+ * personal tournament is not lumped onto the active stake.
+ *
+ * @param {{ visualId?: string | null, bankrollScope?: string | null, carouselSettled?: boolean }} args
+ * @returns {'personal' | string}
+ */
+export function resolveBankrollScopeForSessionWrite({
+  visualId,
+  bankrollScope,
+  carouselSettled = true,
+} = {}) {
+  const scope = String(bankrollScope || '').trim() || 'personal'
+  const visual = String(visualId || '').trim()
+  if (!visual || visual === scope) return scope
+  if (!carouselSettled && visual === 'personal' && scope !== 'personal') return scope
+  return visual
+}

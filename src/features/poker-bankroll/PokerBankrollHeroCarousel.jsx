@@ -37,14 +37,18 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
     const left = scroller.scrollLeft + PEEK_PX + 24
     let bestIdx = 0
     let bestDist = Infinity
+    let measured = 0
     slideRefs.current.forEach((el, idx) => {
       if (!el) return
+      measured += 1
       const dist = Math.abs(el.offsetLeft - left)
       if (dist < bestDist) {
         bestDist = dist
         bestIdx = idx
       }
     })
+    // Unmounted refs used to fall through to slide 0 (Personal) and steal stake writes.
+    if (measured === 0) return activeId
     return slides[bestIdx]?.id || activeId
   }, [slides, activeId])
 
@@ -57,6 +61,8 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
         if (centered) visibleIdRef.current = centered
         return visibleIdRef.current || activeId
       },
+      /** True while programmatic restore/snap scroll is ignoring user scroll→scope. */
+      isIgnoringScroll: () => ignoreScrollRef.current === true,
     }),
     [readCenteredSlideId, activeId],
   )

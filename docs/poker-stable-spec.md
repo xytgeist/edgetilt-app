@@ -500,7 +500,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 **Proposed UX:** Session detail or edit flow → **Move to stake** (or **Move to personal**). When the player has **multiple** pending/active stakes, show a **stake picker dropdown** before confirm.
 
-**Today:** `poker_bankroll_sessions.deal_id` sets scope; stake roll and personal bankroll deltas apply on create/edit/delete. No **re-parent** flow between personal (`deal_id` null) and a stake deal.
+**Today:** `poker_bankroll_sessions.deal_id` sets scope; stake roll and personal bankroll deltas apply on create/edit/delete. Start/Log pin `deal_id` from the centered Bankroll hero card at sheet open (personal = `null`). No **re-parent** flow between personal (`deal_id` null) and a stake deal.
 
 **Open questions:**
 
@@ -515,6 +515,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-13:** **Personal Start Session no longer inherits the active stake (client):** centered hero card wins after carousel settle; `deal_id` is pinned at sheet open. Tournament on Poker bankroll stays `deal_id` null. **`resolveBankrollScopeForSessionWrite`**, **`PokerBankrollTracker.jsx`**.
 - **2026-08-07:** **Closed stakes Realized backing (client):** archive card / modal include action-weighted **makeup** on underwater settles so overall losers show negative Realized backing (not $0 / prior profit-only). **`settlementBackerCredit`** in **`pokerStableDealHistory.js`**.
 - **2026-08-07:** **Session-complete refresh while on Stable (client + Edge):** if a backer is already in Stable Manager and taps a session-logged Alert/push, horse cards silent-reload (`lounge-push-opened` / `lounge-activity-navigate`). **`session_complete`** / **`stakee_accepted`** URLs include **`stableDeal`** for carousel focus (still no auto Overview unless **`stableCommit`** / **`stableSettlement`**). **`PokerStableScreen.jsx`**, **`loungeActivityInAppNavigate.js`**, **`lounge-send-activity-push`** (redeploy Edge).
 - **2026-08-06:** **Pending-play sessions (test + prod):** migration **60806020000** — stakee logs sessions on pending stakes after player-side accept; backers blind until their slice accept; decline/revoke with no remaining open slices **detaches** sessions to personal; session delete writes **session_deleted** ledger audit (P/L). Client: unblock Start/Log, dynamic pending copy, accepted/pending backing split on hero, Stable session load scoped to accepted slices.

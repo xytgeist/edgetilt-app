@@ -176,7 +176,7 @@ export default function LoungeStreamVideoLightboxChrome({
   return (
     <div
       data-lounge-stream-lightbox-chrome
-      className="pointer-events-none flex w-full flex-col gap-2 landscape:flex-row landscape:items-end landscape:justify-between landscape:gap-4"
+      className="pointer-events-none flex w-full flex-col gap-3.5 landscape:flex-row landscape:items-end landscape:justify-between landscape:gap-4"
     >
       {/* X-style: author row, then full-width caption under avatar (not indented beside it). */}
       <div className="pointer-events-auto flex min-w-0 flex-1 flex-col gap-1.5 pr-1 landscape:pr-0">

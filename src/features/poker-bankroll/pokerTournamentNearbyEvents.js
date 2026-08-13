@@ -1,7 +1,7 @@
 /**
  * Live tournament picker: nearby GPS venues + the selected Location always fetch in SQL
- * (not a global 200-row page). Pinned venues keep calendar today+tomorrow even after start
- * (late reg / clocking in). Unpinned global fallback keeps the ~24h buy-in + 2h grace window.
+ * (not a global 200-row page). Catalog rows stay on the calendar for today+tomorrow …
+ * no late-reg / starts_at cutoff (late reg length varies, and people log after it).
  * User soft events: day-of + Day 2 grace (swap clusters), unchanged.
  */
 
@@ -15,16 +15,10 @@ import {
 export const POKER_TOURNAMENT_MANUAL_PICK_ID = '__manual__'
 
 /**
- * Picker only: catalog rows through tomorrow (calendar fallback when starts_at is null).
- * Seeding can store weeks ahead; display stays buy-in-now/near-term.
+ * Picker only: catalog rows through tomorrow.
+ * Seeding can store weeks ahead; display stays calendar today+tomorrow.
  */
 export const CATALOG_PICKER_LOOKAHEAD_DAYS = 1
-
-/** When starts_at is set, show flights starting within this window from now. */
-export const CATALOG_BUY_IN_WINDOW_MS = 24 * 60 * 60 * 1000
-
-/** Still list a catalog row briefly after start (late reg / clocking in). Unpinned fallback only. */
-export const CATALOG_LATE_REG_GRACE_MS = 2 * 60 * 60 * 1000
 
 /** Keep older user soft events if anyone logged/swapped against them this recently. */
 export const SOFT_EVENT_ACTIVITY_GRACE_MS = 36 * 60 * 60 * 1000
@@ -57,7 +51,7 @@ export function softEventDateWindow(now = new Date()) {
 }
 
 /**
- * Catalog rows eligible for the picker: today through tomorrow (~24h buy-in window).
+ * Catalog rows eligible for the picker: today through tomorrow.
  * @param {Date} [now]
  * @returns {{ from: string, to: string, today: string }}
  */
@@ -70,29 +64,13 @@ export function catalogPickerDateWindow(now = new Date()) {
 }
 
 /**
+ * Catalog picker window: calendar today through tomorrow. Do not drop after `starts_at` …
+ * late reg is not a reliable cutoff.
  * @param {object} row
  * @param {Date} [now]
- * @param {{ pinVenue?: boolean }} [opts] pinVenue: GPS-nearby or selected Location / online site.
- *   Calendar today+tomorrow; do not drop after `starts_at`.
  */
-export function isCatalogRowInBuyInWindow(row, now = new Date(), opts = {}) {
+export function isCatalogRowInBuyInWindow(row, now = new Date()) {
   if (String(row?.source || '') !== 'catalog') return true
-  const pinVenue = Boolean(opts.pinVenue)
-  if (pinVenue) {
-    const { from, to } = catalogPickerDateWindow(now)
-    const d = String(row?.event_date || '').slice(0, 10)
-    return d >= from && d <= to
-  }
-  const startsAtRaw = row?.starts_at
-  if (startsAtRaw) {
-    const startsAt = new Date(startsAtRaw)
-    if (!Number.isNaN(startsAt.getTime())) {
-      const t = startsAt.getTime()
-      const earliest = now.getTime() - CATALOG_LATE_REG_GRACE_MS
-      const latest = now.getTime() + CATALOG_BUY_IN_WINDOW_MS
-      return t >= earliest && t <= latest
-    }
-  }
   const { from, to } = catalogPickerDateWindow(now)
   const d = String(row?.event_date || '').slice(0, 10)
   return d >= from && d <= to
@@ -278,7 +256,6 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
     venueKind === 'online' && onlineSitePick ? pokerOnlineSiteLabelFromId(onlineSitePick) : ''
   const livePinNames =
     venueKind === 'live' ? collectLivePinVenueNames(opts.nearbyCasinos, opts.venueName) : []
-  const livePinKeys = pinVenueKeySet(livePinNames)
   const scopedCatalog = Boolean(onlineSiteLabel) || livePinNames.length > 0
 
   // Live nearby + selected Location (and Online selected site) filter in SQL.
@@ -332,9 +309,7 @@ export async function loadNearbySoftTournamentEvents(supabase, opts = {}) {
   const byId = new Map()
   for (const row of catalogRes.data || []) {
     if (!row?.id) continue
-    const pinVenue =
-      Boolean(onlineSiteLabel) || catalogRowMatchesPinVenue(row.venue_name, livePinKeys)
-    if (isCatalogRowInBuyInWindow(row, now, { pinVenue })) byId.set(String(row.id), row)
+    if (isCatalogRowInBuyInWindow(row, now)) byId.set(String(row.id), row)
   }
   for (const row of userTodayRes.data || []) {
     if (row?.id) byId.set(String(row.id), row)
@@ -424,13 +399,13 @@ function decorateSoftTournamentEvents(data, opts = {}, todayIso, now = new Date(
         if (!onlineSitePick) return false
         const siteId = pokerOnlineSiteSelectValue(row.venue_name)
         if (siteId && siteId === onlineSitePick) {
-          return isCatalogRowInBuyInWindow(row, now, { pinVenue: true })
+          return isCatalogRowInBuyInWindow(row, now)
         }
         if (
           onlineSiteLabel &&
           normalizeTournamentVenue(row.venue_name) === normalizeTournamentVenue(onlineSiteLabel)
         ) {
-          return isCatalogRowInBuyInWindow(row, now, { pinVenue: true })
+          return isCatalogRowInBuyInWindow(row, now)
         }
         return false
       }
@@ -445,7 +420,7 @@ function decorateSoftTournamentEvents(data, opts = {}, todayIso, now = new Date(
         return false
       }
       if (String(row.source || '') === 'catalog') {
-        return isCatalogRowInBuyInWindow(row, now, { pinVenue: rowIsPinned })
+        return isCatalogRowInBuyInWindow(row, now)
       }
       if (useOnlineSite) {
         if (!onlineSitePick) return false

@@ -5736,7 +5736,7 @@ function PokerSessionCoreFields({
               <p className="mt-1 text-xs text-zinc-500">
                 {form.venue_kind === 'online' && !form.online_site_pick
                   ? 'Select a site to see upcoming tournaments … Enter manually'
-                  : 'No buy-in tournaments nearby in the next 24 hours … Enter manually'}
+                  : 'No buy-in tournaments nearby today or tomorrow … Enter manually'}
               </p>
             ) : null}
           </div>

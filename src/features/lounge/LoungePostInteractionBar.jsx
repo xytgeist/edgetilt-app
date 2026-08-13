@@ -181,12 +181,13 @@ export default function LoungePostInteractionBar({
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   /**
    * Lightbox overlay: white frost; height matches top chrome circles (`h-10`).
-   * Content-sized pills (X-style) … not stretched to fill the row.
+   * Comment / repost / like share one fixed oval width (X-style … count length does not resize).
+   * Bookmark / share stay circles.
    */
   const pillOverlayFrost =
     'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const pillOverlayH = 'h-10'
-  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-auto shrink-0 items-center justify-center gap-1 rounded-full px-2.5 ${pillOverlayFrost}`
+  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 rounded-full ${pillOverlayFrost}`
   const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls

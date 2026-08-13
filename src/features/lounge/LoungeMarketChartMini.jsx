@@ -86,6 +86,8 @@ export default function LoungeMarketChartMini({
   const chartRef = useRef(null)
   const tapRef = useRef(/** @type {{ x: number, y: number, pointerId: number } | null} */ (null))
   const [wideName, setWideName] = useState(false)
+  /** Off-screen Scott / cashtag rows skip lightweight-charts until they near the viewport. */
+  const [chartReady, setChartReady] = useState(false)
 
   const isRolling = embed?.kind === 'rolling'
   const rollingPayload = isRolling ? pickRollingMarketPayload(embed, rollingLive) : null
@@ -163,6 +165,32 @@ export default function LoungeMarketChartMini({
   }, [displayName, wideName])
 
   useEffect(() => {
+    const card = cardRef.current
+    if (!card) return undefined
+    if (typeof IntersectionObserver === 'undefined') {
+      setChartReady(true)
+      return undefined
+    }
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+    const rect = card.getBoundingClientRect()
+    if (rect.bottom > -320 && rect.top < vh + 320) {
+      setChartReady(true)
+      return undefined
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return
+        setChartReady(true)
+        io.disconnect()
+      },
+      { root: null, rootMargin: '320px 0px', threshold: 0.01 },
+    )
+    io.observe(card)
+    return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!chartReady) return undefined
     const el = hostRef.current
     if (!el) return undefined
     const chart = createChart(el, {
@@ -250,6 +278,7 @@ export default function LoungeMarketChartMini({
       chartRef.current = null
     }
   }, [
+    chartReady,
     embed?.symbol,
     embed?.kind,
     seriesBars,
@@ -298,6 +327,8 @@ export default function LoungeMarketChartMini({
       src={logoUrl}
       alt=""
       className="h-9 w-9 shrink-0 rounded-full border border-zinc-700/50 object-cover"
+      loading="lazy"
+      decoding="async"
     />
   ) : (
     <div

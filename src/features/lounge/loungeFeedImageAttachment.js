@@ -10,6 +10,13 @@ export const LOUNGE_FEED_ATTACHMENT_TALL_HW_RATIO = 1.35
 /** Shared row height for multi-image feed carousels (width follows aspect ratio). */
 export const LOUNGE_FEED_CAROUSEL_ROW_HEIGHT_CLASS = 'h-[min(55vh,420px)]'
 
+/**
+ * First N Lounge feed rows may eager-decode slide 0 (LCP). Every other row stays
+ * `loading="lazy"` … Chrome Android otherwise starts full-res R2 originals for the
+ * whole first page (28 rows) and older phones hitch on scroll/tap before any lightbox.
+ */
+export const LOUNGE_FEED_PRIORITY_IMAGE_ROWS = 2
+
 /** Hard cap for carousel row height — keep in sync with `min(55vh, 420px)`. */
 export const LOUNGE_FEED_CAROUSEL_MAX_ROW_HEIGHT_PX = 420
 

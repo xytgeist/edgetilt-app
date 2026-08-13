@@ -141,6 +141,8 @@ function LoungePostArticle({
   onLinkPreviewOpen: onLinkPreviewOpenProp,
   /** Tap a market mini chart → full-screen modal. */
   onOpenMarketChart,
+  /** First feed rows only: eager-decode slide 0. Default lazy for the rest of the page. */
+  priorityMedia = false,
   /** Active fan sub grants for viewer (`get_my_creator_fan_entitlements` object). */
   fanEntitlements = null,
   /** Open subscribe flow for a creator (feed locked posts). */
@@ -600,6 +602,7 @@ function LoungePostArticle({
               feedAutoplayRowId={post.id}
               feedAutoplaySlot="comment"
               firstMarginTopClass={rc?.body ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS}
+              priority={priorityMedia}
               {...mediaLightboxProps}
             />
           </>
@@ -623,6 +626,7 @@ function LoungePostArticle({
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }
+              priority={priorityMedia}
               {...mediaLightboxProps}
             />
               </>
@@ -651,6 +655,7 @@ function LoungePostArticle({
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }
+              priority={priorityMedia}
               {...mediaLightboxProps}
             />
             {quoteRepostOriginalUnavailable(post) ? (
@@ -707,6 +712,7 @@ function LoungePostArticle({
                 variant="embed"
                 feedAutoplayRowId={post.id}
                 firstMarginTopClass="mt-2"
+                priority={priorityMedia}
                 {...mediaLightboxProps}
               />
             </div>
@@ -738,6 +744,7 @@ function LoungePostArticle({
                   ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
                   : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
               }
+              priority={priorityMedia}
               {...mediaLightboxProps}
             />
               </>

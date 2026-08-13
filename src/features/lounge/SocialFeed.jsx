@@ -259,6 +259,7 @@ import { useMentionState } from './loungeMentionAutocomplete'
 import LoungeComposerMarketChartStrip from './LoungeComposerMarketChartStrip.jsx'
 import LoungeMentionDropdown from './LoungeMentionDropdown'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
+import { LOUNGE_FEED_PRIORITY_IMAGE_ROWS } from './loungeFeedImageAttachment.js'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
 import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
@@ -16237,7 +16238,7 @@ export default function SocialFeed({
           )
         ) : (
           <>
-            {communityPosts.map((post) => {
+            {communityPosts.map((post, feedRowIndex) => {
               const fanOnlyRowTint = showLoungeFanOnlyPostUnlockedTint(post, loungeFanLockCtx)
               const fanOnlyFeedLocked = isLoungeFanOnlyDirectFeedRowLocked(post, loungeFanLockCtx)
               return (
@@ -16351,6 +16352,7 @@ export default function SocialFeed({
                   onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
                   onOpenGuideCard={openLoungeGuideCard}
                   onOpenMarketChart={openMarketChartModal}
+                  priorityMedia={feedRowIndex < LOUNGE_FEED_PRIORITY_IMAGE_ROWS}
                   fanEntitlements={viewerFanEntitlements}
                   onSubscribeToCreatorFan={loungeReadOnly ? undefined : openFeedFanSubscribe}
                   fanSubscribeBusy={feedFanSubscribeBusy}
@@ -16923,6 +16925,7 @@ export default function SocialFeed({
                       lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       streamLightboxHost={loungePostDetail}
                       streamLightboxSurface={loungeDetailStreamLightboxSurface}
+                      priority
                     />
                   </div>
 
@@ -17022,6 +17025,7 @@ export default function SocialFeed({
                       lightboxPortalClass={loungeDetailMediaLightboxPortalClass}
                       streamLightboxHost={loungePostDetail}
                       streamLightboxSurface={loungeDetailStreamLightboxSurface}
+                      priority
                     />
                     {/* AP Guide embed card - detail view */}
                     {loungePostDetail.is_ap_guide_post && loungePostDetail.game_slug ? (

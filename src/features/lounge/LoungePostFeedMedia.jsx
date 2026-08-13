@@ -70,6 +70,8 @@ export function LoungeImageCarousel({
   onSlideMediaLayout,
   /** When true, `detail` multi-image carousels break out like feed rows (comment avatar column). */
   captionColumnMedia = false,
+  /** LCP / above-the-fold only. Default lazy so a 28-row page does not decode every original. */
+  priority = false,
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const deliveryVariant = variant === 'composer' ? 'composer' : variant
@@ -381,9 +383,9 @@ export function LoungeImageCarousel({
                     src={displaySrc}
                     alt=""
                     className={slideImgClass}
-                    loading={i === 0 ? 'eager' : 'lazy'}
+                    loading={priority && i === 0 ? 'eager' : 'lazy'}
                     decoding="async"
-                    fetchPriority={i === 0 ? 'high' : undefined}
+                    fetchPriority={priority && i === 0 ? 'high' : undefined}
                     onLoad={onImgLoad}
                     onError={(e) => {
                       const el = e.currentTarget
@@ -406,9 +408,9 @@ export function LoungeImageCarousel({
                   src={displaySrc}
                   alt=""
                   className={slideImgClass}
-                  loading={i === 0 ? 'eager' : 'lazy'}
+                  loading={priority && i === 0 ? 'eager' : 'lazy'}
                   decoding="async"
-                  fetchPriority={i === 0 ? 'high' : undefined}
+                  fetchPriority={priority && i === 0 ? 'high' : undefined}
                   onLoad={onImgLoad}
                   onError={(e) => {
                     const el = e.currentTarget
@@ -577,6 +579,8 @@ export function LoungePostFeedImagesAndGif({
   feedAutoplayScope,
   /** Comment / reply rows beside avatar — enables full-bleed carousel for `detail` variant. */
   captionColumnMedia = false,
+  /** First visible feed rows only. See {@link LoungeImageCarousel} `priority`. */
+  priority = false,
 }) {
   const streamLightbox = useLoungeStreamLightbox()
   const lightboxHost = streamLightboxHost ?? post
@@ -702,6 +706,7 @@ export function LoungePostFeedImagesAndGif({
         enableLightbox={enableLightbox}
         visibilityResetRootRef={visibilityResetRootRef}
         captionColumnMedia={captionColumnMedia}
+        priority={priority}
         {...imageLightboxProps}
       />
     )

@@ -138,32 +138,72 @@ export default function LoungeStreamVideoLightboxChrome({
     )
   }
 
+  const captionBlock = caption ? (
+    typeof onCaptionClick === 'function' ? (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          if (e.target instanceof Element && e.target.closest('button, a')) return
+          e.stopPropagation()
+          if (openProfileGateIfNeeded?.()) return
+          onCaptionClick()
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' && e.key !== ' ') return
+          if (e.target instanceof Element && e.target.closest('button, a')) return
+          e.preventDefault()
+          if (openProfileGateIfNeeded?.()) return
+          onCaptionClick()
+        }}
+        className={`w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS} touch-manipulation cursor-pointer hover:opacity-90 [-webkit-tap-highlight-color:transparent]`}
+      >
+        <LoungeExpandableRichCaption
+          text={caption}
+          captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
+        />
+      </div>
+    ) : (
+      <div className={`w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}>
+        <LoungeExpandableRichCaption
+          text={caption}
+          captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
+        />
+      </div>
+    )
+  ) : null
+
   return (
     <div
       data-lounge-stream-lightbox-chrome
-      className="pointer-events-none flex w-full flex-col gap-2 landscape:flex-row landscape:items-center landscape:justify-between landscape:gap-4"
+      className="pointer-events-none flex w-full flex-col gap-2 landscape:flex-row landscape:items-end landscape:justify-between landscape:gap-4"
     >
-      <div className="pointer-events-auto flex min-w-0 flex-1 items-start gap-2.5 pr-1 landscape:pr-0">
-        <button
-          type="button"
-          onClick={openProfile}
-          className={`${LOUNGE_FEED_AVATAR_CLASS} shrink-0 overflow-hidden rounded-full bg-zinc-900 touch-manipulation [-webkit-tap-highlight-color:transparent]`}
-          aria-label={`Open ${displayName} profile`}
-        >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span
-              className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarToneClass?.(
-                userId || displayName,
-              )}`}
-            >
-              {avatarText?.(author)}
-            </span>
-          )}
-        </button>
-        <div className="min-w-0 flex-1 pt-0.5">
-          <button type="button" onClick={openProfile} className="block max-w-full text-left touch-manipulation">
+      {/* X-style: author row, then full-width caption under avatar (not indented beside it). */}
+      <div className="pointer-events-auto flex min-w-0 flex-1 flex-col gap-1.5 pr-1 landscape:pr-0">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <button
+            type="button"
+            onClick={openProfile}
+            className={`${LOUNGE_FEED_AVATAR_CLASS} shrink-0 overflow-hidden rounded-full bg-zinc-900 touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+            aria-label={`Open ${displayName} profile`}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span
+                className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarToneClass?.(
+                  userId || displayName,
+                )}`}
+              >
+                {avatarText?.(author)}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={openProfile}
+            className="min-w-0 flex-1 pt-0.5 text-left touch-manipulation"
+          >
             <div className="flex min-w-0 flex-col gap-0">
               <div className={LOUNGE_FEED_META_ROW_CLASS}>
                 <LoungeFeedAuthorMetaBadges
@@ -180,50 +220,17 @@ export default function LoungeStreamVideoLightboxChrome({
               ) : null}
             </div>
           </button>
-          {caption ? (
-            typeof onCaptionClick === 'function' ? (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  if (e.target instanceof Element && e.target.closest('button, a')) return
-                  e.stopPropagation()
-                  if (openProfileGateIfNeeded?.()) return
-                  onCaptionClick()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter' && e.key !== ' ') return
-                  if (e.target instanceof Element && e.target.closest('button, a')) return
-                  e.preventDefault()
-                  if (openProfileGateIfNeeded?.()) return
-                  onCaptionClick()
-                }}
-                className={`mt-1 w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS} touch-manipulation cursor-pointer hover:opacity-90 [-webkit-tap-highlight-color:transparent]`}
-              >
-                <LoungeExpandableRichCaption
-                  text={caption}
-                  captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
-                />
-              </div>
-            ) : (
-              <div className={`mt-1 text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}>
-                <LoungeExpandableRichCaption
-                  text={caption}
-                  captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
-                />
-              </div>
-            )
-          ) : null}
+          <div className="shrink-0 self-start pt-0.5 landscape:hidden">
+            <LoungeStreamLightboxFollowButton
+              author={author}
+              viewerUserId={viewerUserId}
+              viewerFollowingUserIds={viewerFollowingUserIds}
+              onFollowUser={onFollowUser}
+              placement="authorRow"
+            />
+          </div>
         </div>
-        <div className="shrink-0 self-start pt-0.5 landscape:hidden">
-          <LoungeStreamLightboxFollowButton
-            author={author}
-            viewerUserId={viewerUserId}
-            viewerFollowingUserIds={viewerFollowingUserIds}
-            onFollowUser={onFollowUser}
-            placement="authorRow"
-          />
-        </div>
+        {captionBlock}
       </div>
       {interactionBar ? (
         <div

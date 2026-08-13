@@ -9,6 +9,7 @@ import { bodyTextWithLinkPreview } from '../../utils/linkifyText.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
+import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import LoungePostOriginalUnavailableEmbed from './LoungePostOriginalUnavailableEmbed.jsx'
 import LoungePostCategoryPillRow from './LoungePostCategoryPillRow.jsx'
@@ -356,7 +357,7 @@ function LoungePostArticle({
   const repostIcon = (
     <svg className="h-3.5 w-3.5 shrink-0 text-emerald-500/90" viewBox="0 0 20 20" fill="none" aria-hidden>
       <path
-        d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+        d={LOUNGE_REPOST_ARROWS_D}
         stroke="currentColor"
         strokeWidth="1.35"
         strokeLinecap="round"

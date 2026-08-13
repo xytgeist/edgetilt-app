@@ -7,6 +7,7 @@ import {
   LOUNGE_COMMENT_BUBBLE_D,
   LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS,
 } from './loungeCommentGlyph.js'
+import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import { formatCompactStatCount, fullStatCountTitle } from '../../utils/formatCompactStatCount.js'
 
 /**
@@ -187,7 +188,7 @@ export default function LoungePostInteractionBar({
   const pillOverlayFrost =
     'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const pillOverlayH = 'h-10'
-  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 rounded-full ${pillOverlayFrost}`
+  const pillOverlayCountedStat = `lounge-lightbox-pill-oval inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 ${pillOverlayFrost}`
   const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls
@@ -282,7 +283,7 @@ export default function LoungePostInteractionBar({
             >
               <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                 <path
-                  d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                  d={LOUNGE_REPOST_ARROWS_D}
                   stroke="currentColor"
                   strokeWidth="1.35"
                   strokeLinecap="round"
@@ -305,7 +306,7 @@ export default function LoungePostInteractionBar({
             >
               <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                 <path
-                  d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                  d={LOUNGE_REPOST_ARROWS_D}
                   stroke="currentColor"
                   strokeWidth="1.35"
                   strokeLinecap="round"
@@ -388,7 +389,7 @@ export default function LoungePostInteractionBar({
             >
               <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                 <path
-                  d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                  d={LOUNGE_REPOST_ARROWS_D}
                   stroke="currentColor"
                   strokeWidth="1.35"
                   strokeLinecap="round"
@@ -445,7 +446,7 @@ export default function LoungePostInteractionBar({
               >
                 <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <path
-                    d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                    d={LOUNGE_REPOST_ARROWS_D}
                     stroke="currentColor"
                     strokeWidth="1.35"
                     strokeLinecap="round"
@@ -469,7 +470,7 @@ export default function LoungePostInteractionBar({
               >
                 <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                   <path
-                    d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                    d={LOUNGE_REPOST_ARROWS_D}
                     stroke="currentColor"
                     strokeWidth="1.35"
                     strokeLinecap="round"
@@ -543,7 +544,7 @@ export default function LoungePostInteractionBar({
             >
               <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                 <path
-                  d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                  d={LOUNGE_REPOST_ARROWS_D}
                   stroke="currentColor"
                   strokeWidth="1.35"
                   strokeLinecap="round"
@@ -656,7 +657,7 @@ export default function LoungePostInteractionBar({
         glyph={
           <svg className={`block shrink-0 ${iconSz} ${repostClass}`} viewBox="0 0 20 20" fill="none" aria-hidden>
             <path
-              d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+              d={LOUNGE_REPOST_ARROWS_D}
               stroke="currentColor"
               strokeWidth="1.35"
               strokeLinecap="round"

@@ -8,12 +8,10 @@ import {
   LOUNGE_COMMENT_BUBBLE_D,
   LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS,
 } from './loungeCommentGlyph.js'
+import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import { loungeActivityNotificationBadgeKind } from '../../utils/loungeActivityApi.js'
 
 const BOOKMARK_RIBBON_D = 'M6.5 4.75h7a1 1 0 011 1v9.5L10 12.75 5.5 15.25v-9.5a1 1 0 011-1z'
-
-const REPOST_ARROWS_D =
-  'M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2'
 
 function glyphClass(slot) {
   if (slot === 'avatar') {
@@ -122,7 +120,7 @@ function IconRepost({ slot }) {
     <IconShell slot={slot}>
       <svg className={`${cls} text-emerald-400`} viewBox="0 0 20 20" fill="none" aria-hidden>
         <path
-          d={REPOST_ARROWS_D}
+          d={LOUNGE_REPOST_ARROWS_D}
           stroke="currentColor"
           strokeWidth="1.35"
           strokeLinecap="round"

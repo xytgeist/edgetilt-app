@@ -302,6 +302,7 @@ import {
   LOUNGE_COMMENT_BUBBLE_D,
   LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS,
 } from './loungeCommentGlyph.js'
+import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import LoungeFlameIcon from './LoungeFlameIcon.jsx'
 import { LoungeInteractionGlyphRail } from './LoungeInteractionGlyphRail.jsx'
 import {
@@ -17232,7 +17233,7 @@ export default function SocialFeed({
                                     >
                                       <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                                         <path
-                                          d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                                          d={LOUNGE_REPOST_ARROWS_D}
                                           stroke="currentColor"
                                           strokeWidth="1.35"
                                           strokeLinecap="round"
@@ -17255,7 +17256,7 @@ export default function SocialFeed({
                                     >
                                       <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                                         <path
-                                          d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                                          d={LOUNGE_REPOST_ARROWS_D}
                                           stroke="currentColor"
                                           strokeWidth="1.35"
                                           strokeLinecap="round"
@@ -17326,7 +17327,7 @@ export default function SocialFeed({
                                   >
                                     <svg className="h-4 w-4 shrink-0 text-emerald-400/90" viewBox="0 0 20 20" fill="none" aria-hidden>
                                       <path
-                                        d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                                        d={LOUNGE_REPOST_ARROWS_D}
                                         stroke="currentColor"
                                         strokeWidth="1.35"
                                         strokeLinecap="round"
@@ -17384,7 +17385,7 @@ export default function SocialFeed({
                             aria-hidden
                           >
                             <path
-                              d="M6 6h8l-1.75-1.75M14 14H6l1.75 1.75M14 6l2 2-2 2M6 14l-2-2 2-2"
+                              d={LOUNGE_REPOST_ARROWS_D}
                               stroke="currentColor"
                               strokeWidth="1.35"
                               strokeLinecap="round"

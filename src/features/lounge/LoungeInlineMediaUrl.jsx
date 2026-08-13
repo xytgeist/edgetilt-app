@@ -92,12 +92,12 @@ export function LoungeImageLightbox({
   renderMediaLightboxMenu,
   /**
    * `(chromeOpts?: { showAuthorMeta?: boolean }) => ReactNode` - Follow left of ⋯.
-   * Compact (tall) slides pass `showAuthorMeta: false` so Follow stays available.
+   * Compact (opening slide taller than wide) passes `showAuthorMeta: false` so Follow stays available.
    */
   renderMediaLightboxTopBarExtra,
   /**
    * `(dismissLightbox, chromeOpts?: { showAuthorMeta?: boolean }) => ReactNode` - Stream hero chrome.
-   * Tall slides (`natural height > width`) omit avatar / name / handle / caption.
+   * Opening-slide aspect locks chrome for the session (`natural height > width` → pills only).
    */
   renderMediaLightboxChrome,
   /** `(dismissLightbox) => ReactNode` - legacy pill row only (used if chrome is omitted). */
@@ -165,19 +165,20 @@ export function LoungeImageLightbox({
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
   const landSlideIndexRef = useRef(Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0))))
+  /** Opening slide locks chrome mode for the whole lightbox session (no per-slide flip). */
+  const chromeLockIndexRef = useRef(landSlideIndexRef.current)
   /** Per-slide natural width/height. `>= 1` → square/landscape (full chrome). */
   const [aspectByIndex, setAspectByIndex] = useState(/** @type {Record<number, number>} */ ({}))
-  const imageAspect = aspectByIndex[idx] ?? null
+  const lockedAspect = aspectByIndex[chromeLockIndexRef.current] ?? null
   /**
-   * Chrome-band pads cached per footer mode so each carousel slide can keep its own
-   * vertical centering without jumping when idx / chrome mode changes after snap.
+   * Chrome-band pads cached per footer mode. Carousel slides all share the locked mode’s pad.
    */
   const [bandByMode, setBandByMode] = useState({
     full: { top: 0, bottom: 0 },
     compact: { top: 0, bottom: 0 },
   })
-  // height <= width (square / landscape): full author chrome. Taller: pills only.
-  const showAuthorMeta = imageAspect == null || imageAspect >= 1
+  // Opening slide: height <= width → full author chrome for the session. Taller → pills only.
+  const showAuthorMeta = lockedAspect == null || lockedAspect >= 1
   const chromeOpts = useMemo(() => ({ showAuthorMeta }), [showAuthorMeta])
   const mediaBandPad = showAuthorMeta ? bandByMode.full : bandByMode.compact
 
@@ -191,17 +192,11 @@ export function LoungeImageLightbox({
     })
   }, [])
 
-  const bandPadForSlide = useCallback(
-    (slideIndex) => {
-      const a = aspectByIndex[slideIndex]
-      const full = a == null || a >= 1
-      const primary = full ? bandByMode.full : bandByMode.compact
-      if (primary.top > 0 || primary.bottom > 0) return primary
-      const fallback = full ? bandByMode.compact : bandByMode.full
-      return fallback
-    },
-    [aspectByIndex, bandByMode],
-  )
+  const bandPadForSlide = useCallback(() => {
+    const primary = showAuthorMeta ? bandByMode.full : bandByMode.compact
+    if (primary.top > 0 || primary.bottom > 0) return primary
+    return showAuthorMeta ? bandByMode.compact : bandByMode.full
+  }, [showAuthorMeta, bandByMode])
 
   const syncMediaBandPad = useCallback(() => {
     const next = measureImageLightboxMediaBand(
@@ -867,7 +862,7 @@ export function LoungeImageLightbox({
                   className="relative z-[1] flex h-full w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-x] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {list.map((slideUrl, i) => {
-                    const slidePad = bandPadForSlide(i)
+                    const slidePad = bandPadForSlide()
                     return (
                     <div
                       key={`${slideUrl}-${i}`}

@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-13: **+Guest swap card scrolls into view:** Adding a Guest (or Edge user) draft on Start/Log used to expand below the sticky **Start Session** footer with no motion. The new card now smooth-scrolls the sheet scroller so the expansion is visible. **`PokerTournamentSwapsSection`**.
 - 2026-08-13: **Swap Edge-user picker tap-to-select + inset:** Picker was trapped in the Start Session scroll body (`fixed` + `-webkit-overflow-scrolling`) so Start Session header/footer showed through and the list clipped. Now portals to `document.body`. Tap a connection selects them and returns to the form (no Done / green Start Session on that screen). **`PlayLogPartnerPickerModal`** `confirmOnSelect` … Logbook multi-select + Done unchanged.
 - 2026-08-13: **Tournament picker 50-mile radius:** Live catalog rows are rooms within **50 miles** of the selected Location (haversine on `casinos` lat/lng). Empty Location falls back to GPS nearby within 50 miles. Distance labels are from the selected room. **`PICKER_VENUE_RADIUS_MI`**. Online unchanged.
 - 2026-08-13: **Tournament picker ignores late reg:** Catalog flights stay listed for **calendar today+tomorrow** regardless of `starts_at`. Late reg length varies (6h–10h+) and people log after it, so the old 2h grace / now+24h `starts_at` window is gone. **`isCatalogRowInBuyInWindow`**.

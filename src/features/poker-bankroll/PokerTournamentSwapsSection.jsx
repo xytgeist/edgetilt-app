@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import PlayLogPartnerPickerModal from '../play-logbook/PlayLogPartnerPickerModal.jsx'
 import { fmtPoker$ } from './pokerBankrollMath.js'
 import {
@@ -31,6 +31,41 @@ import {
 
 const FIELD =
   'w-full h-11 min-h-11 rounded-2xl bg-zinc-800 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
+
+/**
+ * Scroll the nearest overflow parent so `el` is fully in view (Start Session sticky footer
+ * sits outside the scroller, so this is what "slides the form up").
+ * @param {HTMLElement | null} el
+ */
+function revealExpandedInOverflowParent(el) {
+  if (!el) return
+  let parent = el.parentElement
+  while (parent && parent !== document.body) {
+    const style = window.getComputedStyle(parent)
+    const oy = style.overflowY
+    const canScroll =
+      (oy === 'auto' || oy === 'scroll' || oy === 'overlay') &&
+      parent.scrollHeight > parent.clientHeight + 1
+    if (canScroll) {
+      const parentRect = parent.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      const pad = 16
+      let delta = 0
+      if (elRect.bottom > parentRect.bottom - pad) {
+        delta = elRect.bottom - (parentRect.bottom - pad)
+      }
+      if (elRect.top - delta < parentRect.top + pad) {
+        delta = elRect.top - (parentRect.top + pad)
+      }
+      if (Math.abs(delta) > 1) {
+        parent.scrollTo({ top: parent.scrollTop + delta, behavior: 'smooth' })
+      }
+      return
+    }
+    parent = parent.parentElement
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+}
 
 /**
  * Draft + saved swaps editor for tournament start / log / active / edit flows.
@@ -86,6 +121,24 @@ export default function PokerTournamentSwapsSection({
   const [manualTheirPrize, setManualTheirPrize] = useState({})
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
+  const lastDraftCardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const prevDraftCountRef = useRef(draftSwaps.length)
+
+  useLayoutEffect(() => {
+    const prev = prevDraftCountRef.current
+    prevDraftCountRef.current = draftSwaps.length
+    if (draftSwaps.length <= prev) return
+    let inner = 0
+    const outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => {
+        revealExpandedInOverflowParent(lastDraftCardRef.current)
+      })
+    })
+    return () => {
+      window.cancelAnimationFrame(outer)
+      window.cancelAnimationFrame(inner)
+    }
+  }, [draftSwaps.length])
 
   const usedUserIds = useMemo(() => {
     const s = new Set()
@@ -369,7 +422,8 @@ export default function PokerTournamentSwapsSection({
             </div>
           </div>
         ) : null}
-        {draftSwaps.map((draft) => {
+        {draftSwaps.map((draft, index) => {
+          const isLastDraft = index === draftSwaps.length - 1
           const label =
             draft.counterparty_kind === 'guest'
               ? draft.counterparty_guest_label || 'Guest'
@@ -406,6 +460,7 @@ export default function PokerTournamentSwapsSection({
           return (
             <div
               key={draft.localId}
+              ref={isLastDraft ? lastDraftCardRef : undefined}
               className="rounded-2xl border border-zinc-700/80 bg-zinc-900/70 p-3"
             >
               <div className="mb-2 flex items-start justify-between gap-2">

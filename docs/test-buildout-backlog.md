@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-13: **Closed-stake Realized backing periodic settle was roll not profit:** Archive / Closed card treated every settle as a close once the deal was settled (`{ isClose: false }` lost to `deal.status`). A $3,800 periodic showed as $103,800 (100k + 3.8k). Explicit false now keeps the profit-credit path. Close makeup line unchanged. **`settlementBackerCredit`**.
 - 2026-08-13: **Image lightbox carousel snap flash:** After a swipe the incoming slide could flash once it settled. Cause was `loading` flipping lazy→eager (re-decode) plus ambient snapping to layer A while that layer still had the previous src. Mounted slides stay eager; settle keeps the ambient layer that already shows the landed slide. **`LoungeImageLightbox`**.
 - 2026-08-13: **Image lightbox light-mode frost stays white during fly-in:** Chrome fade used wrapper `opacity`, which flattens `backdrop-filter` to a dark sample so chips started charcoal and snapped to white frost at land. Light mode keeps that layer fully opaque once visible (scrim still fades). Dark fly-in fade unchanged. **`LoungeImageLightbox`**.
 - 2026-08-13: **Image lightbox chrome fades in with fly-in:** Back / ⋯ / footer pills fade with the scrim over the expand (X-style) instead of popping after land. Sharp media stays covered until land so the growing flyout does not double-paint. **`LoungeImageLightbox`**.

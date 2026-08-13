@@ -119,9 +119,12 @@ export function viewerBackingSlice(slices = [], viewerUserId) {
  */
 export function settlementBackerCredit(st, deal, slice, line = null, opts = {}) {
   if (!st || !slice) return 0
+  // Honor an explicit flag. `false || deal.status === 'settled'` used to ignore
+  // `{ isClose: false }` on archived deals, so periodic profit was reported as
+  // roll-at-settle (baseline + profit) instead of the profit credit.
   const isClose =
     opts.isClose === true ||
-    (deal?.status === 'settled' || deal?.status === 'closed')
+    (opts.isClose !== false && (deal?.status === 'settled' || deal?.status === 'closed'))
   if (isClose) {
     const action = (Number(slice.action_pct) || 0) / 100
     const roll = Number(st.roll_at_settle)

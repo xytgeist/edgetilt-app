@@ -47,8 +47,21 @@ function loungeCfMediaAllowedOrigins() {
   return out
 }
 
+/**
+ * Runtime kill-switch when `/cdn-cgi/image/…` 404s (Image Resizing not enabled on the
+ * media zone). Opt-in via `VITE_LOUNGE_CF_IMAGE_RESIZE=true` … default off so feed/lightbox
+ * use stored R2 URLs instead of guaranteed-broken resize URLs.
+ */
+let loungeCfImageResizeRuntimeDisabled = false
+
 export function loungeCfImageResizeEnabled() {
-  return String(import.meta.env.VITE_LOUNGE_CF_IMAGE_RESIZE || 'true').trim().toLowerCase() !== 'false'
+  if (loungeCfImageResizeRuntimeDisabled) return false
+  return String(import.meta.env.VITE_LOUNGE_CF_IMAGE_RESIZE || 'false').trim().toLowerCase() === 'true'
+}
+
+/** Call from img onError when a `/cdn-cgi/image/` delivery URL fails. */
+export function markLoungeCfImageResizeUnavailable() {
+  loungeCfImageResizeRuntimeDisabled = true
 }
 
 /** True when URL is on a known Lounge R2 public domain (prod or media-test). */

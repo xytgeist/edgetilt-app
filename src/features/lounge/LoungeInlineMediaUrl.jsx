@@ -20,7 +20,11 @@ import {
   runHeroShrinkAnimation,
   snapFlyoutToHeroOpen,
 } from './loungeLightboxFlip.js'
-import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
+import {
+  loungeCfImageResizeEnabled,
+  loungeFeedImageDeliveryUrl,
+  markLoungeCfImageResizeUnavailable,
+} from '../../utils/loungeCfImageMedia.js'
 import {
   loungeFeedAttachmentFrameClassName,
   loungeFeedAttachmentImgClassName,
@@ -35,14 +39,25 @@ function normalizeUrlList(urls) {
   return urls.map((u) => String(u ?? '').trim()).filter(Boolean)
 }
 
-/** When Cloudflare Image Resizing 404s, fall back once to the stored R2 URL. */
+/**
+ * CF Image Resizing miss → disable resize for the session and retry this img once with the
+ * stored R2 URL. Do not cascade every slide onto multi‑MB originals in the same tick.
+ */
 function onLoungeLightboxImgError(e, storedUrl) {
   const el = e?.currentTarget
   if (!(el instanceof HTMLImageElement)) return
   const raw = String(storedUrl || '').trim()
   if (!raw || el.dataset.loungeImgFallback === '1') return
   el.dataset.loungeImgFallback = '1'
+  const failed = String(el.currentSrc || el.src || '')
+  if (!failed.includes('/cdn-cgi/image/')) return
+  markLoungeCfImageResizeUnavailable()
   el.src = raw
+}
+
+/** True when ambient can use a *resized* source (blur + full original OOMs fat carousels). */
+function canUseLightboxAmbient() {
+  return loungeCfImageResizeEnabled()
 }
 
 /**
@@ -169,6 +184,8 @@ export function LoungeImageLightbox({
   const [chromeVisible, setChromeVisible] = useState(!wantsFlipOpen)
   const [scrimOpacity, setScrimOpacity] = useState(wantsFlipOpen ? 0 : 1)
   const [dismissProgress, setDismissProgress] = useState(0)
+  /** After land, wait before decoding ±1 neighbors (fat originals OOM if all fire on open). */
+  const [neighborLoadReady, setNeighborLoadReady] = useState(false)
 
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
@@ -231,13 +248,22 @@ export function LoungeImageLightbox({
     })
   }, [showAuthorMeta])
 
-  // Warm current ±1 only (full-carousel eager decode OOMs fat PNG/webp carousels on mobile).
   useEffect(() => {
-    if (!list.length) return undefined
+    if (phase !== 'open') {
+      setNeighborLoadReady(false)
+      return undefined
+    }
+    const t = window.setTimeout(() => setNeighborLoadReady(true), 450)
+    return () => window.clearTimeout(t)
+  }, [phase])
+
+  // Warm neighbors only after open settle (current slide is already in the carousel/flyout).
+  useEffect(() => {
+    if (phase !== 'open' || !neighborLoadReady || !list.length) return undefined
     let cancelled = false
     const n = list.length
     const center = Math.max(0, Math.min(idx, n - 1))
-    const indexes = new Set([center, center - 1, center + 1].filter((i) => i >= 0 && i < n))
+    const indexes = new Set([center - 1, center + 1].filter((i) => i >= 0 && i < n))
     indexes.forEach((i) => {
       const url = list[i]
       const img = new Image()
@@ -248,22 +274,22 @@ export function LoungeImageLightbox({
       }
       img.onerror = () => {
         if (cancelled || img.dataset.loungeImgFallback === '1') return
+        const failed = String(img.src || '')
+        if (!failed.includes('/cdn-cgi/image/')) return
         img.dataset.loungeImgFallback = '1'
+        markLoungeCfImageResizeUnavailable()
         img.src = url
       }
+      if (!canUseLightboxAmbient()) return
       const ambientImg = new Image()
       ambientImg.decoding = 'async'
       ambientImg.src = loungeFeedImageDeliveryUrl(url, 'ambient')
-      ambientImg.onerror = () => {
-        if (ambientImg.dataset.loungeImgFallback === '1') return
-        ambientImg.dataset.loungeImgFallback = '1'
-        // Last resort: still avoid full original for blur fill … skip if resize fails.
-      }
+      // No raw fallback for ambient … blur + multi‑MB originals kill mobile tabs.
     })
     return () => {
       cancelled = true
     }
-  }, [list, listKey, idx, noteSlideAspectAt])
+  }, [phase, neighborLoadReady, list, listKey, idx, noteSlideAspectAt])
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -841,22 +867,25 @@ export function LoungeImageLightbox({
           }}
           aria-hidden
         >
-          {carouselMode && multi ? (
-            <>
-              <div ref={ambientAWrapRef} className="absolute inset-0">
-                <MediaLightboxAmbientBackdrop
-                  src={loungeFeedImageDeliveryUrl(list[ambientPair.a] || current, 'ambient')}
-                />
-              </div>
-              <div ref={ambientBWrapRef} className="absolute inset-0">
-                <MediaLightboxAmbientBackdrop
-                  src={loungeFeedImageDeliveryUrl(list[ambientPair.b] || current, 'ambient')}
-                />
-              </div>
-            </>
-          ) : (
-            <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
-          )}
+          {/* Ambient only after land + when CF resize can supply a small source (raw+blur OOMs). */}
+          {phase === 'open' && canUseLightboxAmbient() ? (
+            carouselMode && multi ? (
+              <>
+                <div ref={ambientAWrapRef} className="absolute inset-0">
+                  <MediaLightboxAmbientBackdrop
+                    src={loungeFeedImageDeliveryUrl(list[ambientPair.a] || current, 'ambient')}
+                  />
+                </div>
+                <div ref={ambientBWrapRef} className="absolute inset-0">
+                  <MediaLightboxAmbientBackdrop
+                    src={loungeFeedImageDeliveryUrl(list[ambientPair.b] || current, 'ambient')}
+                  />
+                </div>
+              </>
+            ) : (
+              <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
+            )
+          ) : null}
         </div>
         <div
           className="absolute inset-0 flex flex-col bg-transparent"
@@ -970,6 +999,15 @@ export function LoungeImageLightbox({
                 >
                   {list.map((slideUrl, i) => {
                     const slidePad = bandPadForSlide()
+                    // Opening/open: land/current first; ±1 only after neighborLoadReady. Never all N.
+                    const loadSlide =
+                      phase === 'opening'
+                        ? i === landSlideIndexRef.current
+                        : phase === 'open' &&
+                          (i === idx || (neighborLoadReady && Math.abs(i - idx) <= 1))
+                    const slideSrc = loadSlide
+                      ? loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')
+                      : undefined
                     return (
                     <div
                       key={`${slideUrl}-${i}`}
@@ -986,21 +1024,32 @@ export function LoungeImageLightbox({
                           i === landSlideIndexRef.current && heroShellStyle ? heroShellStyle : undefined
                         }
                       >
-                        <img
-                          ref={i === idx ? mediaImageRef : undefined}
-                          src={loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')}
-                          alt=""
-                          className={
-                            i === landSlideIndexRef.current && heroShellStyle
-                              ? 'relative z-[1] h-full w-full select-none object-contain'
-                              : 'relative z-[1] max-h-full max-w-full select-none object-contain'
-                          }
-                          loading={Math.abs(i - idx) <= 1 ? 'eager' : 'lazy'}
-                          decoding="async"
-                          draggable={false}
-                          onLoad={(e) => noteSlideAspectAt(e.currentTarget, i)}
-                          onError={(e) => onLoungeLightboxImgError(e, slideUrl)}
-                        />
+                        {slideSrc ? (
+                          <img
+                            ref={i === idx ? mediaImageRef : undefined}
+                            src={slideSrc}
+                            alt=""
+                            className={
+                              i === landSlideIndexRef.current && heroShellStyle
+                                ? 'relative z-[1] h-full w-full select-none object-contain'
+                                : 'relative z-[1] max-h-full max-w-full select-none object-contain'
+                            }
+                            loading={i === idx ? 'eager' : 'lazy'}
+                            decoding="async"
+                            draggable={false}
+                            onLoad={(e) => noteSlideAspectAt(e.currentTarget, i)}
+                            onError={(e) => onLoungeLightboxImgError(e, slideUrl)}
+                          />
+                        ) : (
+                          <div
+                            className={
+                              i === landSlideIndexRef.current && heroShellStyle
+                                ? 'relative z-[1] h-full w-full'
+                                : 'relative z-[1] max-h-full max-w-full'
+                            }
+                            aria-hidden
+                          />
+                        )}
                       </div>
                     </div>
                     )

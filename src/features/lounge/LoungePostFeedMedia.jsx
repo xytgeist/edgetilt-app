@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { feedPostImageUrls, feedPostStreamPosterUrl, feedPostStreamVideoDisplayDimensions, feedPostStreamVideoUid } from '../../utils/communityFeedPost'
-import { loungeFeedImageDeliveryUrl } from '../../utils/loungeCfImageMedia.js'
+import {
+  loungeFeedImageDeliveryUrl,
+  markLoungeCfImageResizeUnavailable,
+} from '../../utils/loungeCfImageMedia.js'
 import {
   loungeFeedAttachmentFrameClassName,
   loungeFeedAttachmentImgClassName,
@@ -382,6 +385,15 @@ export function LoungeImageCarousel({
                     decoding="async"
                     fetchPriority={i === 0 ? 'high' : undefined}
                     onLoad={onImgLoad}
+                    onError={(e) => {
+                      const el = e.currentTarget
+                      if (!(el instanceof HTMLImageElement) || el.dataset.loungeImgFallback === '1') return
+                      const failed = String(el.currentSrc || el.src || '')
+                      if (!failed.includes('/cdn-cgi/image/')) return
+                      el.dataset.loungeImgFallback = '1'
+                      markLoungeCfImageResizeUnavailable()
+                      el.src = url
+                    }}
                   />
                 </div>
               </div>
@@ -398,6 +410,15 @@ export function LoungeImageCarousel({
                   decoding="async"
                   fetchPriority={i === 0 ? 'high' : undefined}
                   onLoad={onImgLoad}
+                  onError={(e) => {
+                    const el = e.currentTarget
+                    if (!(el instanceof HTMLImageElement) || el.dataset.loungeImgFallback === '1') return
+                    const failed = String(el.currentSrc || el.src || '')
+                    if (!failed.includes('/cdn-cgi/image/')) return
+                    el.dataset.loungeImgFallback = '1'
+                    markLoungeCfImageResizeUnavailable()
+                    el.src = url
+                  }}
                 />
               </div>
             )}

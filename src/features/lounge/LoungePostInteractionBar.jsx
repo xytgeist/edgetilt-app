@@ -266,6 +266,7 @@ export default function LoungePostInteractionBar({
         <div
           ref={repostMenuPortalRef}
           role="menu"
+          data-lounge-repost-menu=""
           className={`fixed min-w-[11.5rem] -translate-x-1/2 -translate-y-full rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm ${repostMenuPortalClass}`}
           style={{ top: repostMenuFixed.top, left: repostMenuFixed.left }}
         >
@@ -373,6 +374,7 @@ export default function LoungePostInteractionBar({
           <div
             ref={repostMenuPortalRef}
             role="menu"
+            data-lounge-repost-menu=""
             className={`fixed min-w-[11.5rem] -translate-x-1/2 -translate-y-full rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm ${repostMenuPortalClass}`}
             style={{ top: repostMenuFixed.top, left: repostMenuFixed.left }}
           >
@@ -427,6 +429,7 @@ export default function LoungePostInteractionBar({
     !isFeed && repostMenuOpen && !ro ? (
       <div
         role="menu"
+        data-lounge-repost-menu=""
         className="absolute bottom-full left-1/2 z-[30] mb-1 min-w-[11.5rem] -translate-x-1/2 rounded-xl border border-zinc-700/90 bg-zinc-900/95 py-0.5 shadow-xl backdrop-blur-sm"
       >
         {ui.reposted ? (

@@ -1358,6 +1358,26 @@ html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [da
 html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] .text-zinc-100 {
   color: #ffffff !important;
 }
+/*
+ * Repost/quote flyout sits inside the interaction bar, so lightbox white-glyph rules
+ * were bleaching "Undo repost" / "Quote". Use a light panel + dark labels over media.
+ */
+[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] [data-lounge-repost-menu] {
+  background-color: rgba(250, 250, 250, 0.96) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] [data-lounge-repost-menu] .text-zinc-100,
+html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] [data-lounge-repost-menu] .text-zinc-100,
+html.light [data-lounge-image-lightbox] [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] [data-lounge-repost-menu] .text-zinc-100,
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-stream-lightbox-chrome] [data-lounge-post-interaction-bar] [data-lounge-repost-menu] .text-zinc-100 {
+  color: #18181b !important;
+}
+[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] [data-lounge-repost-menu] .hover\:bg-zinc-800:hover {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+html.light [data-lounge-repost-menu] .text-zinc-100 {
+  color: #18181b !important;
+}
 /* Lightbox frost pills: keep hydrated green/rose (do not remap to dull zinc greens / neon lv-red). */
 [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\],
 html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\] {

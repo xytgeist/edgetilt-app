@@ -34,11 +34,11 @@ export function LoungeInteractionGlyphRail({
     railAlign === 'start' ? `${statClass} w-full min-w-0 justify-start`.trim() : statClass
 
   if (pillOverlay) {
-    // Fluid oval: grows with row; icon + count centered as one group.
+    // Content-sized pill: icon + count as one tight group (no stretch-to-fill).
     const countEl = showCount ? (
       <span
         data-lounge-pill-count=""
-        className={`shrink-0 font-medium tabular-nums leading-none ${countClass}`}
+        className={`shrink-0 font-semibold tabular-nums leading-none ${countClass}`}
         title={fullStatCountTitle(countValue)}
       >
         {formatCompactStatCount(countValue)}
@@ -47,7 +47,7 @@ export function LoungeInteractionGlyphRail({
     return (
       <div
         ref={railRef}
-        className={`relative flex min-w-0 flex-[1.35] items-center self-center overflow-visible ${outerJustify}`}
+        className={`relative flex shrink-0 items-center self-center overflow-visible ${outerJustify}`}
         style={railMinH != null ? { minHeight: railMinH } : undefined}
       >
         <LoungeFeedStatSlot
@@ -57,7 +57,7 @@ export function LoungeInteractionGlyphRail({
           onClick={onClick}
           className={statClassMerged}
         >
-          <span className="inline-flex w-full items-center justify-center gap-[0.2em]">
+          <span className="inline-flex items-center justify-center gap-1">
             {glyph}
             {countEl}
           </span>

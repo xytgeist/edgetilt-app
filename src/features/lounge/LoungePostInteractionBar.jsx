@@ -181,12 +181,12 @@ export default function LoungePostInteractionBar({
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   /**
    * Lightbox overlay: white frost; height matches top chrome circles (`h-10`).
-   * Comment / repost / like share remaining width; bookmark / share stay square.
+   * Content-sized pills (X-style) … not stretched to fill the row.
    */
   const pillOverlayFrost =
     'bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   const pillOverlayH = 'h-10'
-  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-full min-w-0 items-center justify-center rounded-full ${pillOverlayFrost}`
+  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-auto shrink-0 items-center justify-center gap-1 rounded-full px-2.5 ${pillOverlayFrost}`
   const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls
@@ -246,7 +246,7 @@ export default function LoungePostInteractionBar({
   }
 
   const rowClass = pillOverlay
-    ? `flex w-full min-w-0 flex-nowrap items-center gap-[clamp(0.2rem,1.2vw,0.5rem)] text-[length:clamp(0.75rem,3.6vw,0.9375rem)] ${rootClassName}`.trim()
+    ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 ${rootClassName}`.trim()
     : isFeed
       ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
       : isComment

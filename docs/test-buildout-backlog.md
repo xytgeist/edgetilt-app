@@ -960,8 +960,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Image lightbox ambient restored:** OOM “fixes” had gated blur fill on CF resize (off on Free zone) so ambient never painted. Restored fly-in + swipe crossfade ambient (`feed`-tier srcs) … real crash was `LOUNGE_LIKE_CHIP_RED`, not ambient.
 - 2026-08-12: **Image lightbox blank-screen (`LOUNGE_LIKE_CHIP_RED`):** Sentry [JAVASCRIPT-REACT-6T](https://intro-app-inc.sentry.io/issues/JAVASCRIPT-REACT-6T) … liked frost pills used undeclared `LOUNGE_LIKE_CHIP_RED` (from cc734362). Hardcoded `text-[#fd262d]` @ **`1c2b23ef`**.
-- 2026-08-12: **Image lightbox fat-carousel open crash (chunkyunc):** root cause … `/cdn-cgi/image/` 404 on media zones + lightbox falling back to raw ~3.6MB × all slides (+ ambient blur). Fix: CF resize **opt-in** (`VITE_LOUNGE_CF_IMAGE_RESIZE=true`, matches Free-zone docs); virtualize slide `src` (land/current then ±1 after 450ms); ambient only after land and only when resize is on; no ambient raw fallback.
+- 2026-08-12: **Image lightbox fat-carousel open crash (chunkyunc):** misdiagnosed as ambient/OOM; actual crash was undeclared `LOUNGE_LIKE_CHIP_RED`. Partial guards (CF resize opt-in, slide virtualize) remain; ambient gate reverted.
 - 2026-08-12: **Image lightbox heavy-carousel crash guard:** neighbor-only preload; `ambient` delivery tier (480w) for blur fill; CF resize `onError` → raw URL; list sync by content key (avoids OOM on fat multi-image posts like chunkyunc 8/9).
 - 2026-08-12: **Image lightbox ambient carousel crossfade:** dual ambient layers track scroll progress (DOM opacity) so backdrop blends with the incoming slide instead of waiting for snap settle.
 - 2026-08-12: **Image lightbox tall chrome no reflow:** reverted same day (reserved empty author space broke layout); back to compact unmount + per-mode band pads.

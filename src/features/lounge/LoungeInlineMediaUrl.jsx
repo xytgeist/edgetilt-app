@@ -21,7 +21,6 @@ import {
   snapFlyoutToHeroOpen,
 } from './loungeLightboxFlip.js'
 import {
-  loungeCfImageResizeEnabled,
   loungeFeedImageDeliveryUrl,
   markLoungeCfImageResizeUnavailable,
 } from '../../utils/loungeCfImageMedia.js'
@@ -53,11 +52,6 @@ function onLoungeLightboxImgError(e, storedUrl) {
   if (!failed.includes('/cdn-cgi/image/')) return
   markLoungeCfImageResizeUnavailable()
   el.src = raw
-}
-
-/** True when ambient can use a *resized* source (blur + full original OOMs fat carousels). */
-function canUseLightboxAmbient() {
-  return loungeCfImageResizeEnabled()
 }
 
 /**
@@ -156,7 +150,8 @@ export function LoungeImageLightbox({
 
   const current = list[idx] || ''
   const currentDisplaySrc = loungeFeedImageDeliveryUrl(current, 'lightbox')
-  const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'ambient')
+  /** Feed-tier for blur fill (same as the working swipe crossfade … not gated on CF resize). */
+  const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'feed')
   const multi = list.length > 1
 
   const zStack = useMemo(
@@ -257,7 +252,7 @@ export function LoungeImageLightbox({
     return () => window.clearTimeout(t)
   }, [phase])
 
-  // Warm neighbors only after open settle (current slide is already in the carousel/flyout).
+  // Warm neighbor lightbox decode + ambient (feed-tier) after open settle.
   useEffect(() => {
     if (phase !== 'open' || !neighborLoadReady || !list.length) return undefined
     let cancelled = false
@@ -280,11 +275,9 @@ export function LoungeImageLightbox({
         markLoungeCfImageResizeUnavailable()
         img.src = url
       }
-      if (!canUseLightboxAmbient()) return
       const ambientImg = new Image()
       ambientImg.decoding = 'async'
-      ambientImg.src = loungeFeedImageDeliveryUrl(url, 'ambient')
-      // No raw fallback for ambient … blur + multi‑MB originals kill mobile tabs.
+      ambientImg.src = loungeFeedImageDeliveryUrl(url, 'feed')
     })
     return () => {
       cancelled = true
@@ -867,25 +860,22 @@ export function LoungeImageLightbox({
           }}
           aria-hidden
         >
-          {/* Ambient only after land + when CF resize can supply a small source (raw+blur OOMs). */}
-          {phase === 'open' && canUseLightboxAmbient() ? (
-            carouselMode && multi ? (
-              <>
-                <div ref={ambientAWrapRef} className="absolute inset-0">
-                  <MediaLightboxAmbientBackdrop
-                    src={loungeFeedImageDeliveryUrl(list[ambientPair.a] || current, 'ambient')}
-                  />
-                </div>
-                <div ref={ambientBWrapRef} className="absolute inset-0">
-                  <MediaLightboxAmbientBackdrop
-                    src={loungeFeedImageDeliveryUrl(list[ambientPair.b] || current, 'ambient')}
-                  />
-                </div>
-              </>
-            ) : (
-              <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
-            )
-          ) : null}
+          {carouselMode && multi ? (
+            <>
+              <div ref={ambientAWrapRef} className="absolute inset-0">
+                <MediaLightboxAmbientBackdrop
+                  src={loungeFeedImageDeliveryUrl(list[ambientPair.a] || current, 'feed')}
+                />
+              </div>
+              <div ref={ambientBWrapRef} className="absolute inset-0">
+                <MediaLightboxAmbientBackdrop
+                  src={loungeFeedImageDeliveryUrl(list[ambientPair.b] || current, 'feed')}
+                />
+              </div>
+            </>
+          ) : (
+            <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
+          )}
         </div>
         <div
           className="absolute inset-0 flex flex-col bg-transparent"

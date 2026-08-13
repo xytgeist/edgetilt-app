@@ -45,7 +45,6 @@
     { "source": "/poker", "destination": "/poker.html" },
     { "source": "/poker/bankroll", "destination": "/poker-bankroll.html" },
     { "source": "/poker/stable", "destination": "/poker-stable.html" },
-    { "source": "/patches", "destination": "/patches.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -627,10 +627,21 @@ export function LoungeImageLightbox({
     }
   }, [phase])
 
+  // Unlock as soon as fly-home starts. The portal stays painted until WAAPI ends, but
+  // body overflow:hidden (and the full-screen hit target) must not keep eating feed scroll
+  // after the image already looks parked (ease-out lands visually before HERO_SHRINK_MS).
+  const lockPageScroll = Boolean(current) && phase !== 'closing'
   useEffect(() => {
-    if (!current) return
+    if (!lockPageScroll) return undefined
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [lockPageScroll])
+
+  useEffect(() => {
+    if (!current) return undefined
     const onKey = (e) => {
       if (e.key === 'Escape') requestClose()
       if (phaseRef.current === 'open' && list.length > 1) {
@@ -646,7 +657,6 @@ export function LoungeImageLightbox({
     }
     window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = prev
       window.removeEventListener('keydown', onKey)
     }
   }, [current, requestClose, list.length, goPrev, goNext])
@@ -788,14 +798,14 @@ export function LoungeImageLightbox({
       data-lounge-image-lightbox
       data-lounge-image-lightbox-phase={phase}
       data-lounge-image-lightbox-chrome={showAuthorMeta ? 'full' : 'compact'}
-      className={`fixed inset-0 ${lightboxPortalClass}`}
+      className={`fixed inset-0 ${lightboxPortalClass}${phase === 'closing' ? ' pointer-events-none' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={multi ? `Image ${idx + 1} of ${list.length}` : 'Full image'}
     >
       <div
         data-lounge-image-lightbox-scrim
-        className="absolute inset-0 bg-black"
+        className="pointer-events-none absolute inset-0 bg-black"
         style={{
           zIndex: zStack.scrim,
           opacity: effectiveScrim,

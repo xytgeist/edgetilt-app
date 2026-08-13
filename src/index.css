@@ -946,7 +946,8 @@ html.light [data-lounge-post-interaction-bar] .text-zinc-100 {
 }
 html.light [data-lounge-post-interaction-bar] .text-emerald-400,
 html.light [data-lounge-post-interaction-bar] .text-emerald-400\/90 {
-  color: #047857 !important;
+  /* Normal green on light surfaces (was forest #047857 … too dark for glyphs). */
+  color: #16a34a !important;
 }
 
 /* Subs-only unlocked post row — left tint (dark: cyan; light: blue below). */

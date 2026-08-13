@@ -180,7 +180,7 @@ export default function LoungeStreamVideoLightboxChrome({
     >
       {/* X-style: author row, then full-width caption under avatar (not indented beside it). */}
       <div className="pointer-events-auto flex min-w-0 flex-1 flex-col gap-1.5 pr-1 landscape:pr-0">
-        <div className="flex min-w-0 items-start gap-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
           <button
             type="button"
             onClick={openProfile}
@@ -202,7 +202,7 @@ export default function LoungeStreamVideoLightboxChrome({
           <button
             type="button"
             onClick={openProfile}
-            className="min-w-0 flex-1 pt-0.5 text-left touch-manipulation"
+            className="min-w-0 flex-1 text-left touch-manipulation"
           >
             <div className="flex min-w-0 flex-col gap-0">
               <div className={LOUNGE_FEED_META_ROW_CLASS}>
@@ -220,7 +220,7 @@ export default function LoungeStreamVideoLightboxChrome({
               ) : null}
             </div>
           </button>
-          <div className="shrink-0 self-start pt-0.5 landscape:hidden">
+          <div className="shrink-0 landscape:hidden">
             <LoungeStreamLightboxFollowButton
               author={author}
               viewerUserId={viewerUserId}

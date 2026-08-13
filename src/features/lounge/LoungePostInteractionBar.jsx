@@ -179,15 +179,16 @@ export default function LoungePostInteractionBar({
   const statSheetBookmark =
     'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 hover:bg-zinc-900/80 touch-manipulation [-webkit-tap-highlight-color:transparent]'
   /**
-   * Lightbox overlay: white frost; height matches top chrome circles (`h-10`).
-   * Comment / repost / like share one fixed oval width (X-style … count length does not resize).
+   * Lightbox overlay: white frost. Size via `[data-lounge-lightbox-pill-row]` CSS vars
+   * (cqi clamp) so skinny Android fits all four pills; tops out near former h-10 / 5.5rem.
+   * Comment / repost / like share one oval width (count length does not resize the pill).
    * Bookmark / share stay circles.
    */
   const pillOverlayFrost =
     'bg-white/15 text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 touch-manipulation [-webkit-tap-highlight-color:transparent]'
-  const pillOverlayH = 'h-10'
-  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-[5.5rem] shrink-0 items-center justify-center gap-1 overflow-visible rounded-full ${pillOverlayFrost}`
-  const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-10 shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
+  const pillOverlayH = 'h-[var(--lounge-lightbox-pill-h)]'
+  const pillOverlayCountedStat = `inline-flex ${pillOverlayH} w-[var(--lounge-lightbox-pill-counted-w)] shrink-0 items-center justify-center gap-1 overflow-visible rounded-full ${pillOverlayFrost}`
+  const pillOverlayCircleStat = `inline-flex ${pillOverlayH} w-[var(--lounge-lightbox-pill-circle-w)] shrink-0 items-center justify-center rounded-full ${pillOverlayFrost}`
   const pickStat = (feedCls, sheetCls, overlayCls) =>
     pillOverlay ? overlayCls : statsCompact ? feedCls : sheetCls
   const statCommentCls = pickStat(statFeedComment, statSheetComment, pillOverlayCountedStat)
@@ -246,7 +247,7 @@ export default function LoungePostInteractionBar({
   }
 
   const rowClass = pillOverlay
-    ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-2 ${rootClassName}`.trim()
+    ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-[var(--lounge-lightbox-pill-gap)] ${rootClassName}`.trim()
     : isFeed
       ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
       : isComment

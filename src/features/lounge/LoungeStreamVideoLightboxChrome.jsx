@@ -130,7 +130,7 @@ export default function LoungeStreamVideoLightboxChrome({
         className="pointer-events-none flex w-full flex-col"
       >
         <div
-          className="pointer-events-auto shrink-0 [&_[data-lounge-post-interaction-bar]]:w-auto"
+          className="pointer-events-auto w-full min-w-0 shrink-0"
           data-lounge-lightbox-no-swipe
           onClick={(e) => e.stopPropagation()}
         >

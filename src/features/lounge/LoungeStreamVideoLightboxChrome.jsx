@@ -94,9 +94,11 @@ export default function LoungeStreamVideoLightboxChrome({
   onHashtagClick,
   onCashtagClick,
   onLinkClick,
-  onCaptionClick,
+  /** @deprecated Lightbox captions expand in-place; detail open is no longer wired from caption taps. */
+  onCaptionClick: _onCaptionClick,
   showAuthorMeta = true,
 }) {
+  void _onCaptionClick
   const author = displayEntity || post
   const userId = author?.user_id
   const profile = author?.author_profile
@@ -139,42 +141,19 @@ export default function LoungeStreamVideoLightboxChrome({
   }
 
   const captionBlock = caption ? (
-    typeof onCaptionClick === 'function' ? (
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={(e) => {
-          if (e.target instanceof Element && e.target.closest('button, a')) return
-          e.stopPropagation()
-          if (openProfileGateIfNeeded?.()) return
-          onCaptionClick()
-        }}
-        onKeyDown={(e) => {
-          if (e.key !== 'Enter' && e.key !== ' ') return
-          if (e.target instanceof Element && e.target.closest('button, a')) return
-          e.preventDefault()
-          if (openProfileGateIfNeeded?.()) return
-          onCaptionClick()
-        }}
-        className={`w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS} touch-manipulation cursor-pointer hover:opacity-90 [-webkit-tap-highlight-color:transparent]`}
-      >
-        <LoungeExpandableRichCaption
-          text={caption}
-          collapsedLines={3}
-          expandedMaxLines={8}
-          captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
-        />
-      </div>
-    ) : (
-      <div className={`w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}>
-        <LoungeExpandableRichCaption
-          text={caption}
-          collapsedLines={3}
-          expandedMaxLines={8}
-          captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
-        />
-      </div>
-    )
+    <div
+      className={`w-full text-left text-[14px] leading-snug ${LOUNGE_LIGHTBOX_CAPTION_CLASS}`}
+      data-lounge-lightbox-no-swipe=""
+      onClick={(e) => e.stopPropagation()}
+    >
+      <LoungeExpandableRichCaption
+        text={caption}
+        collapsedLines={3}
+        expandedMaxLines={8}
+        expandOnTap
+        captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
+      />
+    </div>
   ) : null
 
   return (

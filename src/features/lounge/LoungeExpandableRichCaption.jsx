@@ -7,8 +7,8 @@ import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
  * Rich caption with optional collapse at {@link LOUNGE_CAPTION_DISPLAY_MAX} chars /
  * {@link LOUNGE_CAPTION_DISPLAY_MAX_LINES} lines + inline Show more.
  *
- * Lightbox: pass `collapsedLines` + `expandedMaxLines` for CSS visual-line clamp then a
- * fixed-height scroll box (newline truncate is not enough for wrapped prose).
+ * Lightbox: pass `collapsedLines` + `expandedMaxLines` (+ `expandOnTap`) for CSS visual-line
+ * clamp with ellipsis; tap the caption to expand into a fixed-height scroll box.
  *
  * @param {{
  *   text: string,
@@ -18,6 +18,7 @@ import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
  *   displayMaxLines?: number,
  *   collapsedLines?: number,
  *   expandedMaxLines?: number,
+ *   expandOnTap?: boolean,
  *   startExpanded?: boolean,
  *   captionOpts?: object,
  * }} props
@@ -30,6 +31,7 @@ export default function LoungeExpandableRichCaption({
   displayMaxLines = LOUNGE_CAPTION_DISPLAY_MAX_LINES,
   collapsedLines,
   expandedMaxLines,
+  expandOnTap = false,
   startExpanded = false,
   captionOpts = {},
 }) {
@@ -83,7 +85,7 @@ export default function LoungeExpandableRichCaption({
   if (useCssClamp) {
     const rich = renderRichCaption(source, mergedCaptionOpts)
     if (!rich) return null
-    const showMore = cssOverflows && !expanded
+    const canTapExpand = expandOnTap && cssOverflows && !expanded
     const clampClass =
       !expanded && collapsedLines === 3
         ? 'line-clamp-3'
@@ -97,6 +99,7 @@ export default function LoungeExpandableRichCaption({
     const bodyClass = [
       'min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere]',
       clampClass,
+      canTapExpand ? 'cursor-pointer touch-manipulation [-webkit-tap-highlight-color:transparent]' : '',
       expanded && scrollExpanded
         ? 'block overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]'
         : '',
@@ -109,8 +112,29 @@ export default function LoungeExpandableRichCaption({
         ? { maxHeight: `calc(${expandedMaxLines} * 1.375em)` }
         : undefined
 
+    const onActivateExpand = (e) => {
+      if (!canTapExpand) return
+      if (e.target instanceof Element && e.target.closest('a, button')) return
+      e.stopPropagation()
+      e.preventDefault()
+      setExpanded(true)
+    }
+
     return (
-      <span className={`min-w-0 max-w-full ${className}`.trim()}>
+      <span
+        className={`min-w-0 max-w-full ${className}`.trim()}
+        role={canTapExpand ? 'button' : undefined}
+        tabIndex={canTapExpand ? 0 : undefined}
+        onClick={onActivateExpand}
+        onKeyDown={
+          canTapExpand
+            ? (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                onActivateExpand(e)
+              }
+            : undefined
+        }
+      >
         <span
           ref={clampRef}
           className={bodyClass}
@@ -122,20 +146,6 @@ export default function LoungeExpandableRichCaption({
         >
           {rich}
         </span>
-        {showMore ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              setExpanded(true)
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className={`mt-0.5 block ${moreClassName}`}
-          >
-            Show more
-          </button>
-        ) : null}
       </span>
     )
   }

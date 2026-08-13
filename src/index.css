@@ -1379,10 +1379,13 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-
 html.light [data-lounge-repost-menu] .text-zinc-100 {
   color: #18181b !important;
 }
-/* Lightbox frost pills: keep hydrated green/rose (do not remap to dull zinc greens / neon lv-red). */
-[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\],
-html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\] {
+/* Lightbox frost pills: hydrated green/red (do not remap to forest money-green / neon lv-red). */
+[data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\] {
   color: #4ade80 !important;
+}
+html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\] {
+  /* Light mode: normal green-600 (mint #4ade80 reads odd on light frost). */
+  color: #16a34a !important;
 }
 [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\],
 html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\] {

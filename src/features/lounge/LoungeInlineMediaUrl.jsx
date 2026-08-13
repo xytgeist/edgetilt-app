@@ -910,6 +910,8 @@ export function LoungeImageLightbox({
           onPointerCancel={swipePointerCancel}
         >
           <div
+            data-lounge-lightbox-chrome-layer
+            {...(chromeVisible ? { 'data-lounge-lightbox-chrome-visible': '' } : {})}
             className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between"
             style={{
               opacity: chromeVisible ? 1 - dismissProgress : 0,

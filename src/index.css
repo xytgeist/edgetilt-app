@@ -1240,6 +1240,17 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   background-color: #fafafa !important;
 }
 /*
+ * Light-mode fly-in: fading opacity on this layer flattens descendant backdrop-filter
+ * against a dark empty sample, so frost chips start charcoal and snap to white when
+ * opacity hits 1. Keep the layer fully opaque once visible … scrim still fades.
+ * Dark mode keeps the wrapper fade (dark frost on dark media does not flip).
+ */
+html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='opening']
+  [data-lounge-lightbox-chrome-layer][data-lounge-lightbox-chrome-visible] {
+  opacity: 1 !important;
+  transition: none !important;
+}
+/*
  * Image lightbox shrink-back: EDGE title bar (normally z-50) must sit above the
  * portaled flyout (z ~100–111) so the tile can tuck under the header.
  * Below app modals (z-120). Cleared when close ends / lightbox unmounts.

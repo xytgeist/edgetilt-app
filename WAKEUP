@@ -7,7 +7,7 @@
 ## What you do (quick)
 
 1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — smoke backer close settle commit on edgetilt.com.*).
+2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — pick up from WAKEUP Aug 13 handoff.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -20,6 +20,7 @@ The agent should treat the following as **standing instructions for this session
 
 - **Names:** You are **Theo** (human-style assistant name). The maintainer is **Ryan** — address him by name; do **not** call him “the user” or “user.” You are Ryan's teammate and friend. Ryan is the CEO and you are the CTO of a company building **Edge** / **EdgeTilt**, a social platform for risk takers (AP slots, poker, table games, day traders, investors, crypto, sports bettors, etc.). Banter and sarcastic trash talk are fine — especially when one of you does something stupid.
 - **Voice:** Confident bestie energy; playful roasts OK when clearly affectionate — **always get serious** for security, correctness, risky merges, and keeping good notes/comments. Full wording: **`AGENTS.md`** → *People & naming* (`AGENT_RULE_RYAN_VOICE`).
+- **Punctuation:** Never use em dashes (`—`). Prefer ellipses (`...`) for prose breaks. Cursor: **`.cursor/rules/no-em-dashes.mdc`**.
 - **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
 - **Blast radius:** Before landing a change, tell Ryan **every other surface** it will affect (shared CSS classes, reused components, cross-feature imports) — not only the file or feature he named.
 - **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
@@ -30,7 +31,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`4fb513ab`** (2026-08-05)
+**Branch:** `main` / `test` aligned at **`2ca2e9d1`** (2026-08-13)
 
 **Supabase (do not swap these):**
 
@@ -39,82 +40,77 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Poker Stable backer closed-horse + settle commit UX shipped to prod. Next: Ryan smoke on **edgetilt.com** (close settle inline Commit on horse Overview, archive revoked/closed carousel cards, no duplicate deal rows after revoke + Create Stake). Clean up Edge Lord test ghost deals if still in carousel._
+**Goal:** _Lounge image lightbox polish shipped to prod (swipe dismiss + Android frost pills). `/patches` killed on prod. Poker catalog refill done manually after GHA 403. Next: optional harden catalog cron egress; otherwise pick Ryan's next product focus._
 
-**Start by reading:** `AGENTS.md`, then **`docs/poker-stable-spec.md`** (Update log **2026-08-04**–**2026-08-05**), **`docs/test-buildout-backlog.md`** Update log (**2026-08-05**), **`docs/production-rollout-checklist.md`** (Poker Stable backer carousel row @ **`4fb513ab`**).
+**Start by reading:** `AGENTS.md`, then this **Pick up here (2026-08-13)** section, **`docs/test-buildout-backlog.md`** Update log (**2026-08-12**–**2026-08-13**), **`docs/frontend-architecture.md`** → **`lounge/`** (image lightbox).
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. archive ghost `$25/50 Test 3` carousel card on prod; smoke inline Commit after Lvslotgod close settle]_
+- Session focus: _[e.g. poker catalog Actions 403 long-term fix; Lounge lightbox follow-ups]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see WAKEUP Pick up here Aug 5 + poker-stable-spec Update log"]_
+- Context: _[e.g. "see WAKEUP Pick up here Aug 13"]_
 
 ---
 
-## Pick up here (Aug 2026 ... session 2026-08-05)
+## Pick up here (Aug 2026 ... session 2026-08-13)
 
-### Latest commits (`main` / `test` @ **`4fb513ab`**)
+**Computer switch handoff.** Tips **`main`** / **`test`** @ **`2ca2e9d1`**. Clone/pull on the new machine, paste **Copy into chat** above, continue from **On deck**.
+
+### Latest commits (`main` / `test` @ **`2ca2e9d1`**)
 
 | Commit | What |
 | --- | --- |
-| **`4fb513ab`** | Inline backer settle **Commit** on horse deal **Overview** (`PokerStableCommitSyncPanel`); carousel **Review stake** opens deal detail, not stacked modal |
-| **`d85883de`** | Backer **Create Stake after revoke** reopens same deal row (no duplicate); label disambiguation (`· Aug 3`); optimistic archive patch |
-| **`1b4b953e`** | Backer archive on **revoked** stakes (declined slices); **`PokerStableClosedHorseSheet`** Review + **Delete** |
-| **`db01df4b`** | TDZ hotfix: `closedUnarchived` before use in horse carousel |
-| **`b652f3b2`** | Backer closed-horse carousel, at-risk ROI, stakee commit-before-archive |
-| **`e7314b94`** | Stakee settle/commit deep links → Bankroll; closed stake hero polish |
+| **`2ca2e9d1`** | Remove **`edgetilt.com/patches`** merch wall (HTML, assets, Vercel rewrite, sitemap, build script) |
+| **`db41ae5b`** | Harden MTTDB lobby fetch (session warm-up, browser headers, 403/429 retries) |
+| **`1e0e5445`** | Scale lightbox frost pills on skinny Android (`cqi` clamp + compact `w-full`) |
+| **`c3ec7bcd`** | Image lightbox swipe dismiss on full chrome+media shell (caption-heavy / tall posts) |
+| **`3532854a`** | Lightbox captions: tap expand 3→8 lines; no Show more / no detail nav |
+| Earlier same arc | Ambient backdrop restore, tall edge-to-edge media, frost 15%, like chip `text-lv-red`, caption clamp |
 
-Promote tip for this Stable bundle: **`4fb513ab`**. Client + SQL on **main** / **test**; Vercel **`edgetilt.com`** after deploy.
+Promote tip: **`2ca2e9d1`** (already on **main** + **test**). Vercel **`edgetilt.com`** / **`lvslotpro.com`** after deploy.
 
-### Shipped this session: Poker Stable backer closed horse + settle commit (test + **prod**)
+### Shipped this session (Lounge image lightbox + ops)
 
 | Area | Detail |
 | --- | --- |
-| **SQL (test + prod)** | **`20260805120000`** slice **`stable_archived_at`** + archive RPC; **`20260805130000`** archive includes **declined** slices on terminal deals (revoke path); **`20260805140000`** backer may delete slices on **revoked** deals for re-offer |
-| **Duplicate deal bug (root cause)** | NOT UI double-render. **Create Stake after revoke** did a fresh **INSERT** (only blocked pending/active). Fix: **`requestBackingDeal`** reopens matching **revoked** deal (same label + guest/player), wipes slices, **`pending`**. Old ghost rows remain in DB until archived |
-| **Closed horse carousel** | Revoked/closed/settled stakes stay in **Active horses** until backer **Archive stake** (slice-level **`stable_archived_at`**, parity with stakee Bankroll ARCHIVE) |
-| **Review flows** | Carousel **Review** on revoked/declined → **`PokerStableClosedHorseSheet`** (Archive + Delete). Closed horse with player close settle → **Review stake** opens **`PokerStableDealDetailSheet`** Overview with inline **Commit** block |
-| **Settle commit UX** | **`PokerStableCommitSyncPanel`** on deal **Overview** tab (roll, baseline, Stable backing bankroll on commit, **Commit**). Global **`PokerStableCommitSyncModal`** kept for Alerts/push deep links only (**`AppShell`**) |
-| **Label disambiguation** | Duplicate stake labels show created date (**`$25/50 Test 3 · Aug 3`**) in carousel + Closed stakes list |
-| **Canonical docs** | **`docs/poker-stable-spec.md`** Update log; backlog Update log **2026-08-05**; prod checklist row added |
-
-### Prod data cleanup (Edge Lord test stakes ... Ryan manual)
-
-Ryan was smoke-testing guest-player Create Stake deals on **edgetilt.com**. Before the revoke re-offer fix, duplicate rows existed for same label (e.g. two **`$25/50 Test 3`**):
-
-| Deal | State |
-| --- | --- |
-| First Test 3 | Revoked + **archived** → **Closed stakes** |
-| Second Test 3 (`c6219bf2-…`) | Revoked, **not archived** → still in carousel until **Review → Archive/Delete** |
-
-Same pattern possible for Test 6 (case mismatch labels). After **`d85883de`**, revoke + Create Stake with same label should **reuse** one row going forward.
-
-### On deck (ordered)
-
-1. **Prod smoke (edgetilt.com):** Backer **Create Stake** → player accepts → session → player **close settle** → backer carousel **Needs attn** → **Review stake** → Overview shows inline **Close settlement** + **Commit** (no second modal) → **Archive stake** moves card to Closed stakes.
-2. **Prod smoke:** Revoke stake → **Create Stake** same label → confirm **one** deal row (no ghost duplicate).
-3. **Prod smoke:** Archive **revoked** stake (was failing **"Stake cannot be archived yet"** before **`20260805130000`**).
-4. **Ryan cleanup:** Archive remaining unarchived revoked test carousel cards (especially second Test 3) or one-time SQL if Ryan asks.
-5. **Poker Stable smoke checklist** (`/?tab=stable-smoke`) still open for full E2E sign-off.
-6. **Phase 1b (not built):** guest syndicate co-backer claim on backer Create Stake — spec only.
+| **Swipe dismiss** | Handlers on full lightbox shell with **capture**; caption allows dismiss (`data-lounge-lightbox-caption`); single-image **`touch-none`** (Stream-style). Fixed Fat Cat (short + long caption/cashtags) + Dean tall portrait on Android/prod |
+| **Frost pills (Android)** | Fixed `h-10` / `5.5rem` overflowed skinny viewports. Now CSS vars from row **`cqi`**; compact chrome **`w-full`**. Ryan sign-off: swipe + buttons **fixed on Android** |
+| **Caption** | 3-line clamp → tap expands 8-line scroll; no Show more; no navigate-to-detail |
+| **Ambient / tall media** | Ambient not gated on CF Image Resizing (Free zone `/cdn-cgi/image/` 404). Tall slides edge-to-edge; short band-centered |
+| **`/patches`** | Removed from prod + test (SEO docs + backlog updated) |
+| **Poker catalog (prod)** | Scheduled Actions failed **HTTP 403** on MTTDB (CF blocks GHA egress). Manual **`npm run poker:catalog:sync:production`** from Ryan's machine: **2382** upserted (MTTDB online **586** / live **542**, ClubWPT **58**, CoinPoker **114**). Cron still **`0 6 */3 * *`** (~every 3 days UTC) |
 
 ### Key files (grep anchors)
 
 | Topic | Files |
 | --- | --- |
-| Inline settle commit | **`PokerStableCommitSyncPanel.jsx`**, **`PokerStableDealDetailSheet.jsx`**, **`PokerStableCommitSyncModal.jsx`** (Alerts only) |
-| Closed horse carousel | **`PokerStableHorseCarousel.jsx`**, **`PokerStableClosedHorseHeroBanner.jsx`**, **`PokerStableClosedHorseSheet.jsx`**, **`pokerStableBackerMath.js`** (`partitionBackerDeals`, `backerStableShowsClosedCarouselCard`) |
-| Revoke re-offer | **`pokerStableApi.js`** (`requestBackingDeal`), migration **`20260805140000`** |
-| Archive RPC | migration **`20260805130000`**, **`20260805120000`** |
-| Stable screen | **`PokerStableScreen.jsx`** |
-| Spec | **`docs/poker-stable-spec.md`** |
+| Image lightbox shell / FLIP | **`LoungeInlineMediaUrl.jsx`**, **`loungeLightboxFlip.js`** |
+| Swipe dismiss | **`loungeLightboxSwipeDismiss.js`** |
+| Pinch zoom | **`loungeLightboxImageZoom.js`** |
+| Frost pills / chrome | **`LoungePostInteractionBar.jsx`**, **`LoungeStreamVideoLightboxChrome.jsx`**, **`src/index.css`** (`[data-lounge-lightbox-pill-row]`) |
+| Caption expand | **`LoungeExpandableRichCaption.jsx`** |
+| MTTDB scrape | **`scripts/lib/mttdbCatalogFetch.mjs`**, **`scripts/sync-poker-tournament-catalog.mjs`**, **`.github/workflows/poker-catalog-sync-production.yml`** |
+| Stream iOS playback (untouched this arc; still sacred) | **`docs/lounge-stream-ios-playback.md`**, **`.cursor/rules/lounge-stream-ios-playback.mdc`** |
 
-### Architecture reminders (backer vs stakee)
+### Do not regress
 
-- **Player stake** = Poker Bankroll carousel; **Stable** = backer backing bankroll manager.
-- Backer archive is **slice-level** (`stable_archived_at`), not deal-level like stakee (`stakee_bankroll_archived_at`).
-- Stakee re-offer on revoked uses SQL **`poker_stable_apply_stakee_terms`**; backer re-offer now mirrors via client **`requestBackingDeal`** + slice delete RLS.
-- **`partitionBackerDeals`**: each deal ID is either carousel **or** Closed stakes history, never both ... duplicate labels were **two deal rows**, not a partition bug.
+- Like chip color must stay a real Tailwind token (**`text-lv-red`**), not arbitrary hex missing from bundle
+- Ambient backdrop must **not** be gated on CF Image Resizing
+- Tall media edge-to-edge; short band-centered
+- Caption: ellipsis + tap-to-expand, not detail navigation
+- Positive platform guards only (`IS_IOS` / `IS_ANDROID`, never `!IS_ANDROID`)
+
+### On deck (ordered)
+
+1. **Poker catalog cron 403 (optional long-term):** Actions egress still may hard-fail even with warm-up/retries. Options: re-run sync from residential IP when red; self-hosted runner; proxy secret; accept manual refill. Do **not** mark sync green on regional JSON alone (false-green already fixed).
+2. **Ryan's next product focus** ... lightbox arc is closed unless new bugs appear.
+3. Older open items still in backlog (Poker Stable smoke checklist, Twilio From on prod, guest syndicate Phase 1b, etc.) ... see **`docs/test-buildout-backlog.md`**.
+
+### Infra notes (still true)
+
+- **CF Image Resizing** off on Free zone for `media.lvslotpro.com` / media-test ... client resize opt-in **`VITE_LOUNGE_CF_IMAGE_RESIZE=true`** only
+- **Prod = prod** for guides ingest / Edge / SQL ... need Ryan's explicit ask
+- Root **`.tmp-*`** scratch cleaned (2026-08-13); prefer **`scripts/.tmp-*`** or delete after use
 
 ### AP guides (ongoing workflow)
 
@@ -128,8 +124,8 @@ Same pattern possible for Test 6 (case mismatch labels). After **`d85883de`**, r
 - Feed UI +EV badge (caption prefix only today)
 - Stream + still images in one carousel (upload order) ... **not scheduled**
 - Reuters wire (needs LSEG/API license)
-- Poker Online soft-event catalog (MTTDB or similar)
 - Twilio **From number** for guest SMS on prod (email works via Resend)
+- Poker catalog GHA MTTDB scrape may keep 403'ing until egress changes
 
 ---
 

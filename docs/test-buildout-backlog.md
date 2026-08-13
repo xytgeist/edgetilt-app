@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-12: **Image lightbox ambient carousel crossfade:** dual ambient layers track scroll progress (DOM opacity) so backdrop blends with the incoming slide instead of waiting for snap settle.
 - 2026-08-12: **Image lightbox tall chrome no reflow:** reverted same day (reserved empty author space broke layout); back to compact unmount + per-mode band pads.
 - 2026-08-12: **Image lightbox carousel band + ambient:** per-slide chrome-band padding (full/compact cache) + eager decode of all slides so swipe settle does not jump; ambient backdrop renders under flyout during expand (not only after land).
 - 2026-08-12: **Image lightbox FLIP lands in chrome band:** expand target uses measured `insetTop`/`insetBottom` (same media-band pad as open) so fly-in does not center then jump.

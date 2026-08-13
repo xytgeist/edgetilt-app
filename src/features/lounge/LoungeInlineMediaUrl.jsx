@@ -117,13 +117,21 @@ export function LoungeImageLightbox({
     setPrevList(list)
     setPrevInitialIndex(initialIndex)
     const n = list.length
-    setIdx(n === 0 ? 0 : Math.max(0, Math.min(initialIndex, n - 1)))
+    const nextIdx = n === 0 ? 0 : Math.max(0, Math.min(initialIndex, n - 1))
+    setIdx(nextIdx)
+    setAmbientPair({ a: nextIdx, b: nextIdx })
+    ambientPairRef.current = { a: nextIdx, b: nextIdx }
   }
 
   const current = list[idx] || ''
   const currentDisplaySrc = loungeFeedImageDeliveryUrl(current, 'lightbox')
   const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'feed')
   const multi = list.length > 1
+  /** Dual ambient layers crossfade on scroll (DOM opacity); pair indices update at slide boundaries. */
+  const [ambientPair, setAmbientPair] = useState({ a: 0, b: 0 })
+  const ambientAWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const ambientBWrapRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const ambientPairRef = useRef({ a: 0, b: 0 })
 
   const zStack = useMemo(
     () => resolveLoungeHeroStackZIndexes(lightboxPortalClass),
@@ -213,6 +221,7 @@ export function LoungeImageLightbox({
   }, [showAuthorMeta])
 
   // Decode every slide up front so swipe targets are sized before snap (avoids post-land jump).
+  // Also warm feed-tier URLs for ambient crossfade during carousel swipe.
   useEffect(() => {
     let cancelled = false
     list.forEach((url, i) => {
@@ -222,6 +231,9 @@ export function LoungeImageLightbox({
       img.onload = () => {
         if (!cancelled) noteSlideAspectAt(img, i)
       }
+      const ambientImg = new Image()
+      ambientImg.decoding = 'async'
+      ambientImg.src = loungeFeedImageDeliveryUrl(url, 'feed')
     })
     return () => {
       cancelled = true
@@ -299,6 +311,60 @@ export function LoungeImageLightbox({
     const id = requestAnimationFrame(apply)
     return () => cancelAnimationFrame(id)
   }, [carouselMode, list.length])
+
+  // Crossfade ambient with carousel scroll (opacity via DOM … no per-frame React). Pair srcs update at boundaries.
+  useLayoutEffect(() => {
+    if (!carouselMode || list.length <= 1) return
+    if (ambientAWrapRef.current) ambientAWrapRef.current.style.opacity = '1'
+    if (ambientBWrapRef.current) ambientBWrapRef.current.style.opacity = '0'
+  }, [carouselMode, list.length])
+
+  useEffect(() => {
+    if (!carouselMode || list.length <= 1) return undefined
+    const el = carouselScrollRef.current
+    if (!el) return undefined
+    let raf = 0
+    const apply = () => {
+      raf = 0
+      const w = el.clientWidth
+      if (!w) return
+      const maxP = list.length - 1
+      const p = Math.max(0, Math.min(maxP, el.scrollLeft / w))
+      const i0 = Math.max(0, Math.min(maxP, Math.floor(p + 1e-4)))
+      const i1 = Math.max(0, Math.min(maxP, Math.ceil(p - 1e-4)))
+      const t = i0 === i1 ? 0 : Math.max(0, Math.min(1, p - i0))
+      if (ambientPairRef.current.a !== i0 || ambientPairRef.current.b !== i1) {
+        ambientPairRef.current = { a: i0, b: i1 }
+        setAmbientPair({ a: i0, b: i1 })
+      }
+      if (ambientAWrapRef.current) ambientAWrapRef.current.style.opacity = String(1 - t)
+      if (ambientBWrapRef.current) ambientBWrapRef.current.style.opacity = String(t)
+    }
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(apply)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    apply()
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [carouselMode, list])
+
+  // When scroll position already matches idx (snap settle / open), lock ambient to that slide.
+  // Skip while chevrons set idx early mid-scroll … scroll listener owns the crossfade.
+  useEffect(() => {
+    if (!carouselMode) return
+    const el = carouselScrollRef.current
+    const w = el?.clientWidth || 0
+    const scrollIdx = w && el ? Math.round(el.scrollLeft / w) : idx
+    if (scrollIdx !== idx) return
+    ambientPairRef.current = { a: idx, b: idx }
+    setAmbientPair((prev) => (prev.a === idx && prev.b === idx ? prev : { a: idx, b: idx }))
+    if (ambientAWrapRef.current) ambientAWrapRef.current.style.opacity = '1'
+    if (ambientBWrapRef.current) ambientBWrapRef.current.style.opacity = '0'
+  }, [carouselMode, idx])
 
   const resolveCloseOrigin = useCallback(() => {
     const getter = getOriginRectRef.current
@@ -749,7 +815,22 @@ export function LoungeImageLightbox({
           }}
           aria-hidden
         >
-          <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
+          {carouselMode && multi ? (
+            <>
+              <div ref={ambientAWrapRef} className="absolute inset-0">
+                <MediaLightboxAmbientBackdrop
+                  src={loungeFeedImageDeliveryUrl(list[ambientPair.a] || current, 'feed')}
+                />
+              </div>
+              <div ref={ambientBWrapRef} className="absolute inset-0">
+                <MediaLightboxAmbientBackdrop
+                  src={loungeFeedImageDeliveryUrl(list[ambientPair.b] || current, 'feed')}
+                />
+              </div>
+            </>
+          ) : (
+            <MediaLightboxAmbientBackdrop src={ambientDisplaySrc} />
+          )}
         </div>
         <div
           className="absolute inset-0 flex flex-col bg-transparent"

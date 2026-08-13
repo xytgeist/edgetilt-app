@@ -10,28 +10,28 @@ const LOUNGE_LIGHTBOX_CAPTION_CLASS = 'text-[#fff]'
 
 /** Top-bar icon buttons - white frost glass (no stroke / rim shadow). */
 export const LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS =
-  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 [-webkit-tap-highlight-color:transparent]'
+  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 [-webkit-tap-highlight-color:transparent]'
 
 /** Image/GIF lightbox top chrome - same size as Stream top circles (`h-10`). */
 export const LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS =
-  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/25 text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 [-webkit-tap-highlight-color:transparent]'
+  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 [-webkit-tap-highlight-color:transparent]'
 
 export const LOUNGE_IMAGE_LIGHTBOX_NAV_BTN_CLASS =
   `${LOUNGE_IMAGE_LIGHTBOX_TOP_BTN_CLASS} media-lightbox-nav-btn`
 
 export const LOUNGE_IMAGE_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
-  'media-lightbox-nav-btn flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/25 px-4 text-[13px] font-bold text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 [-webkit-tap-highlight-color:transparent]'
+  'media-lightbox-nav-btn flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 px-4 text-[13px] font-bold text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 [-webkit-tap-highlight-color:transparent]'
 
 /** Horizontal inset for hero / image lightbox chrome (10% side margins in landscape). */
 export const LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD = 'px-3 landscape:px-[10vw]'
 
 /** Top-bar Follow pill - same height as mute / ⋯ controls. */
 export const LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
-  'flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/25 px-3.5 text-[13px] font-bold text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 [-webkit-tap-highlight-color:transparent]'
+  'flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 px-3.5 text-[13px] font-bold text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 [-webkit-tap-highlight-color:transparent]'
 
 /** Portrait author-row Follow - aligned with display name / handle. */
 export const LOUNGE_HERO_LIGHTBOX_AUTHOR_FOLLOW_BTN_CLASS =
-  'shrink-0 rounded-full bg-white/25 px-3.5 py-1.5 text-[13px] font-bold text-white shadow-none backdrop-blur-xl hover:bg-white/35 active:bg-white/40 touch-manipulation [-webkit-tap-highlight-color:transparent]'
+  'shrink-0 rounded-full bg-white/15 px-3.5 py-1.5 text-[13px] font-bold text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 touch-manipulation [-webkit-tap-highlight-color:transparent]'
 
 export function LoungeStreamLightboxFollowButton({
   author,

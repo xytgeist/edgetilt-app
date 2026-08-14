@@ -69,6 +69,85 @@ function settleLoungeLightboxAmbient(index, pairRef, aWrap, bWrap, setPair) {
  * CF Image Resizing miss → disable resize for the session and retry this img once with the
  * stored R2 URL. Do not cascade every slide onto multi‑MB originals in the same tick.
  */
+/**
+ * Feed 960 stays mounted. Lightbox 2048 sits on top at opacity 0 until it can paint.
+ * Never swap `src` on the visible img … that is the carousel-settle flash after CF resize.
+ */
+function LoungeLightboxStackedPhoto({
+  storedUrl,
+  loadSharp,
+  className,
+  imgRef,
+  onAspect,
+  fetchPriority,
+}) {
+  const feedSrc = loungeFeedImageDeliveryUrl(storedUrl, 'feed')
+  const sharpSrc = loungeFeedImageDeliveryUrl(storedUrl, 'lightbox')
+  const [sharpOn, setSharpOn] = useState(false)
+  const sharpElRef = useRef(/** @type {HTMLImageElement | null} */ (null))
+
+  const revealSharp = useCallback(() => {
+    setSharpOn(true)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!loadSharp) {
+      setSharpOn(false)
+      return
+    }
+    const el = sharpElRef.current
+    // Cached 2048: show before paint so swipe-back does not flash opacity 0→1.
+    if (el && el.complete && el.naturalWidth > 0) setSharpOn(true)
+  }, [loadSharp, sharpSrc])
+
+  const setSharpNode = useCallback(
+    (node) => {
+      sharpElRef.current = node
+      if (typeof imgRef === 'function') imgRef(node)
+      else if (imgRef) imgRef.current = node
+    },
+    [imgRef],
+  )
+
+  return (
+    <>
+      <img
+        src={feedSrc}
+        alt=""
+        className={className}
+        loading="eager"
+        decoding="async"
+        draggable={false}
+        onLoad={(e) => onAspect?.(e.currentTarget)}
+        onError={(e) => onLoungeLightboxImgError(e, storedUrl)}
+      />
+      {loadSharp ? (
+        <img
+          ref={setSharpNode}
+          src={sharpSrc}
+          alt=""
+          className={`${className} pointer-events-none absolute inset-0`}
+          style={{ opacity: sharpOn ? 1 : 0 }}
+          loading="eager"
+          fetchPriority={fetchPriority}
+          decoding="async"
+          draggable={false}
+          onLoad={(e) => {
+            onAspect?.(e.currentTarget)
+            const el = e.currentTarget
+            if (typeof el.decode === 'function') {
+              el.decode().then(revealSharp).catch(revealSharp)
+            } else {
+              revealSharp()
+            }
+          }}
+          onError={(e) => onLoungeLightboxImgError(e, storedUrl)}
+        />
+      ) : null}
+    </>
+  )
+}
+
 function onLoungeLightboxImgError(e, storedUrl) {
   const el = e?.currentTarget
   if (!(el instanceof HTMLImageElement)) return
@@ -176,7 +255,6 @@ export function LoungeImageLightbox({
   }
 
   const current = list[idx] || ''
-  const currentDisplaySrc = loungeFeedImageDeliveryUrl(current, 'lightbox')
   /** Feed-tier for blur fill (same as the working swipe crossfade … not gated on CF resize). */
   const ambientDisplaySrc = loungeFeedImageDeliveryUrl(current, 'feed')
   const multi = list.length > 1
@@ -208,13 +286,6 @@ export function LoungeImageLightbox({
   const [dismissProgress, setDismissProgress] = useState(0)
   /** After land, wait before decoding ±1 neighbors (fat originals OOM if all fire on open). */
   const [neighborLoadReady, setNeighborLoadReady] = useState(false)
-  /** Per stored URL: lightbox 2048 has decoded. Until then the open layer stays on feed 960. */
-  const [sharpReadyUrls, setSharpReadyUrls] = useState(/** @type {Record<string, true>} */ ({}))
-  const markSharpReady = useCallback((stored) => {
-    const key = String(stored || '')
-    if (!key) return
-    setSharpReadyUrls((prev) => (prev[key] ? prev : { ...prev, [key]: true }))
-  }, [])
 
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
@@ -296,31 +367,6 @@ export function LoungeImageLightbox({
   }, [showAuthorMeta])
 
   useEffect(() => {
-    const stored = current
-    if (!stored) return undefined
-    let cancelled = false
-    const img = new Image()
-    img.decoding = 'async'
-    const mark = () => {
-      if (cancelled) return
-      const go = () => {
-        if (!cancelled) markSharpReady(stored)
-      }
-      if (typeof img.decode === 'function') {
-        img.decode().then(go).catch(go)
-        return
-      }
-      go()
-    }
-    img.onload = mark
-    img.src = loungeFeedImageDeliveryUrl(stored, 'lightbox')
-    if (img.complete && img.naturalWidth > 0) mark()
-    return () => {
-      cancelled = true
-    }
-  }, [current, markSharpReady])
-
-  useEffect(() => {
     if (phase !== 'open') {
       setNeighborLoadReady(false)
       return undefined
@@ -342,10 +388,7 @@ export function LoungeImageLightbox({
       img.decoding = 'async'
       img.src = loungeFeedImageDeliveryUrl(url, 'lightbox')
       img.onload = () => {
-        if (!cancelled) {
-          noteSlideAspectAt(img, i)
-          markSharpReady(url)
-        }
+        if (!cancelled) noteSlideAspectAt(img, i)
       }
       img.onerror = () => {
         if (cancelled || img.dataset.loungeImgFallback === '1') return
@@ -362,7 +405,7 @@ export function LoungeImageLightbox({
     return () => {
       cancelled = true
     }
-  }, [phase, neighborLoadReady, list, listKey, idx, noteSlideAspectAt, markSharpReady])
+  }, [phase, neighborLoadReady, list, listKey, idx, noteSlideAspectAt])
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -1093,18 +1136,18 @@ export function LoungeImageLightbox({
                 >
                   {list.map((slideUrl, i) => {
                     const slidePad = bandPadIfFits(i)
-                    // Opening/open: land/current first; ±1 only after neighborLoadReady. Never all N.
-                    const loadSlide =
+                    const near = Math.abs(i - idx) <= 1
+                    // Feed 960 on current ±1 as soon as open (do not wait for settle / 2048).
+                    // Sharp 2048 stacks on top once decoded … never swap the visible src.
+                    const loadFeed =
                       phase === 'opening'
                         ? i === landSlideIndexRef.current
-                        : phase === 'open' &&
-                          (i === idx || (neighborLoadReady && Math.abs(i - idx) <= 1))
-                    const slideSrc = loadSlide
-                      ? loungeFeedImageDeliveryUrl(
-                          slideUrl,
-                          sharpReadyUrls[slideUrl] ? 'lightbox' : 'feed',
-                        )
-                      : undefined
+                        : phase === 'open' && (i === idx || near)
+                    const loadSharp = loadFeed
+                    const imgClass =
+                      i === landSlideIndexRef.current && heroShellStyle
+                        ? 'relative z-[1] h-full w-full select-none object-contain'
+                        : 'relative z-[1] max-h-full max-w-full select-none object-contain'
                     return (
                     <div
                       key={`${slideUrl}-${i}`}
@@ -1121,24 +1164,14 @@ export function LoungeImageLightbox({
                           i === landSlideIndexRef.current && heroShellStyle ? heroShellStyle : undefined
                         }
                       >
-                        {slideSrc ? (
-                          <img
-                            ref={i === idx ? mediaImageRef : undefined}
-                            src={slideSrc}
-                            alt=""
-                            className={
-                              i === landSlideIndexRef.current && heroShellStyle
-                                ? 'relative z-[1] h-full w-full select-none object-contain'
-                                : 'relative z-[1] max-h-full max-w-full select-none object-contain'
-                            }
-                            // Eager for every mounted slide. Toggling lazy→eager on snap
-                            // retriggers decode and flashes the image after it has already settled.
-                            loading="eager"
-                            fetchPriority={i === landSlideIndexRef.current ? 'high' : 'auto'}
-                            decoding="async"
-                            draggable={false}
-                            onLoad={(e) => noteSlideAspectAt(e.currentTarget, i)}
-                            onError={(e) => onLoungeLightboxImgError(e, slideUrl)}
+                        {loadFeed ? (
+                          <LoungeLightboxStackedPhoto
+                            storedUrl={slideUrl}
+                            loadSharp={loadSharp}
+                            className={imgClass}
+                            imgRef={i === idx ? mediaImageRef : undefined}
+                            onAspect={(img) => noteSlideAspectAt(img, i)}
+                            fetchPriority={i === landSlideIndexRef.current || i === idx ? 'high' : 'auto'}
                           />
                         ) : (
                           <div
@@ -1164,22 +1197,17 @@ export function LoungeImageLightbox({
                   }
                   style={{ ...(heroShellStyle || null), ...mediaTransformStyle }}
                 >
-                  <img
-                    ref={mediaImageRef}
-                    key={current}
-                    src={sharpReadyUrls[current] ? currentDisplaySrc : ambientDisplaySrc}
-                    alt=""
+                  <LoungeLightboxStackedPhoto
+                    storedUrl={current}
+                    loadSharp
                     className={
                       heroShellStyle
                         ? 'relative z-[1] h-full w-full select-none object-contain'
                         : 'relative z-[1] max-h-full max-w-full select-none object-contain'
                     }
-                    loading="eager"
+                    imgRef={mediaImageRef}
+                    onAspect={(img) => noteSlideAspectAt(img, idx)}
                     fetchPriority="high"
-                    decoding="async"
-                    draggable={false}
-                    onLoad={(e) => noteSlideAspectAt(e.currentTarget, idx)}
-                    onError={(e) => onLoungeLightboxImgError(e, current)}
                   />
                 </div>
               )}

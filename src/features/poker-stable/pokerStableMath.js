@@ -371,6 +371,11 @@ export function isOngoingDealType(dealType) {
   return dealType === 'cash_backing' || dealType === 'tournament_package'
 }
 
+/** One-session stake created from Start Session + Backer. */
+export function isPieceDealType(dealType) {
+  return dealType === 'cash_piece' || dealType === 'tournament_piece'
+}
+
 /**
  * Start Session / Log past should open as Tournament for these stake types.
  * @param {string | { deal_type?: string | null } | null | undefined} dealOrType

@@ -189,7 +189,7 @@ Same bankroll rules as cash backing close, one payout when manifest is complete:
 - Session cards: gross + player stake value; swaps (if any) adjust player net only.
 - Then merge sessions to personal history with badges.
 
-**Tournament piece** (single session): swap-shaped piece on one session ... not ongoing stake roll; close at result. Swap integration **v2b**.
+**Tournament piece** (single session): swap-shaped piece on one session ... not ongoing stake roll; close at result. **Start Session + Backer** on personal bankroll creates `cash_piece` / `tournament_piece` and auto-closes on End Session (test, 2026-08-14). Swap integration still **v2b**.
 
 ### Swap overlay (cross-feature)
 
@@ -247,7 +247,7 @@ Migration: **`20260802220000_poker_stable_backer_bankroll.sql`**. Math: **`poker
 | **Bones (shipped)** | 1:1 request/accept, On Stake roll, session sync |
 | **v2 foundation (in build)** | Schema: types, slices, baseline, top-ups, settlements, payment claims; migrate entry; cash backing create/settle/ledger UI |
 | **v2a** | **Bankroll & session attribution** (this spec §): periodic settle + close transfers, session merge, dual-line cards, Option B metrics, swap overlay on player net only |
-| **v2b** | Tournament piece on session (swap integration); tournament package manifest |
+| **v2b** | Piece swap integration + tournament package manifest. **Shipped (test):** personal Start Session **+ Backer** → `cash_piece` / `tournament_piece`, close on End Session |
 | **v2c** | Notifications (`activity_events` + guest email/SMS) — **Phase 0–1 shipped (2026-08-04):** commit sync, backer→player offer, terms lifecycle, player→guest backer claim. **Phase 1b planned:** backer Create Stake → guest syndicate co-backer claim + Edge co-backer invite copy fix. See § Notifications. |
 
 ---

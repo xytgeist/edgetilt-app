@@ -1,5 +1,5 @@
 import { pokerSessionWinLoss } from '../poker-bankroll/pokerBankrollMath.js'
-import { roundMoney, stableNum, sumSliceActionPct } from './pokerStableMath.js'
+import { isPieceDealType, roundMoney, stableNum, sumSliceActionPct } from './pokerStableMath.js'
 
 /**
  * Poker Stable API. Graceful when migration not yet applied on the env.
@@ -563,6 +563,7 @@ export async function createBackingDeal(supabase, args) {
     venueKind = 'live',
     slices = [],
     activate = false,
+    linkedSessionId = null,
   } = args
 
   const { dealMarkupRate, slices: pricedSlices } = normalizeDealPricing(dealType, slices)
@@ -610,6 +611,7 @@ export async function createBackingDeal(supabase, args) {
       manifest_edit_mode: manifestEditMode,
       venue_kind: venueKind,
       markup_rate: dealMarkupRate,
+      linked_session_id: linkedSessionId || null,
       responded_at: activate ? new Date().toISOString() : null,
     })
     .select(DEAL_SELECT)
@@ -648,6 +650,63 @@ export async function createBackingDeal(supabase, args) {
   }
 
   return { deal, error: null }
+}
+
+/**
+ * Player-initiated one-session stake (Start Session + Backer).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {object} args
+ */
+export async function createPieceDealForSession(supabase, args) {
+  const {
+    sessionType,
+    venueKind = 'live',
+    label,
+    baselineBankroll,
+    slices = [],
+    linkedSessionId = null,
+  } = args
+  const dealType = sessionType === 'tournament' ? 'tournament_piece' : 'cash_piece'
+  const activate = slices.length > 0 && slices.every((s) => s.counterpartyKind === 'guest')
+  return createBackingDeal(supabase, {
+    dealType,
+    venueKind,
+    label,
+    baselineBankroll,
+    startingRoll: baselineBankroll,
+    slices,
+    activate,
+    linkedSessionId,
+  })
+}
+
+/**
+ * If a piece deal is live and its linked session already ended, close + archive.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} dealId
+ */
+export async function maybeCloseCompletedPieceDeal(supabase, dealId) {
+  if (!dealId) return { closed: false, error: null }
+  const { data: deal, error: dErr } = await supabase
+    .from('poker_stable_deals')
+    .select('id, deal_type, status, linked_session_id')
+    .eq('id', dealId)
+    .maybeSingle()
+  if (dErr) return { closed: false, error: dErr }
+  if (!deal || !isPieceDealType(deal.deal_type) || deal.status !== 'active' || !deal.linked_session_id) {
+    return { closed: false, error: null }
+  }
+  const { data: session, error: sErr } = await supabase
+    .from('poker_bankroll_sessions')
+    .select('id, status')
+    .eq('id', deal.linked_session_id)
+    .maybeSingle()
+  if (sErr) return { closed: false, error: sErr }
+  if (session?.status !== 'completed') return { closed: false, error: null }
+  const closed = await closeBackingDeal(supabase, { dealId })
+  if (closed.error) return { closed: false, error: closed.error }
+  const { error: archErr } = await archiveStakeeBankrollDeal(supabase, dealId)
+  return { closed: true, error: archErr }
 }
 
 function sliceRowsFromTerms(dealId, slices) {
@@ -1266,6 +1325,8 @@ export async function acceptSliceAsStaker(supabase, sliceId, stakerUserId) {
       const { error: pErr } = await bootstrapDealBankrollProfile(supabase, data.deal_id, roll)
       if (pErr) return { slice: data, error: pErr }
     }
+    const { error: pieceCloseErr } = await maybeCloseCompletedPieceDeal(supabase, data.deal_id)
+    if (pieceCloseErr) return { slice: data, error: pieceCloseErr }
   }
   return { slice: data, error: null }
 }

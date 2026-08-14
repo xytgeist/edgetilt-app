@@ -24,7 +24,9 @@ import PokerBankrollTrendTab from './PokerBankrollTrendTab.jsx'
 import PokerCashGamePicker from './PokerCashGamePicker.jsx'
 import PokerFieldMenu from './PokerFieldMenu.jsx'
 import PokerLocationsTab from './PokerLocationsTab.jsx'
+import PokerSessionBackerSection from './PokerSessionBackerSection.jsx'
 import PokerSessionDetailSheet from './PokerSessionDetailSheet.jsx'
+import { parseDraftBackersForCreate } from './pokerSessionBackerDrafts.js'
 import PokerStakeArchiveDetailModal from './PokerStakeArchiveDetailModal.jsx'
 import { tryAutoLinkGuestStakeeOffers } from './pokerGuestStakeeAutoLink.js'
 import { notifyPokerOfferAttentionChanged } from '../poker-stable/pokerPendingOfferAttention.js'
@@ -85,6 +87,7 @@ import {
 import {
   archiveStakeeBankrollDeal,
   cancelStakeDeal,
+  createPieceDealForSession,
   deleteDeclinedStakeDeal,
   closeBackingDeal,
   deleteStakeSessionWithAudit,
@@ -99,8 +102,10 @@ import {
   loadDealReductions,
   loadMyStableDeals,
   loadPendingCommits,
+  maybeCloseCompletedPieceDeal,
   nudgeBackerSliceAcceptance,
   notifyStableSessionComplete,
+  notifyStableStakeGuests,
   periodicSettleBackingDeal,
   reassignGuestSliceToUser,
   stakeeAcceptBackerOffer,
@@ -122,6 +127,7 @@ import {
   buildStakeDealHistoryEvents,
 } from '../poker-stable/pokerStableDealHistory.js'
 import {
+  isPieceDealType,
   playerSelfOwnedActionPct,
   stakeDealIsLiveForStakee,
   stakeDealPlayerSideAccepted,
@@ -455,6 +461,7 @@ export default function PokerBankrollTracker({
   const [carouselCoachDealId, setCarouselCoachDealId] = useState(/** @type {string | null} */ (null))
   /** @type {object[]} */
   const [draftSwaps, setDraftSwaps] = useState([])
+  const [draftBackers, setDraftBackers] = useState([])
   /**
    * Incoming swap Accept with no matching session yet → Start Session prefill,
    * then bind on submit (counterparty path; not a new creator draft).
@@ -2189,6 +2196,7 @@ export default function PokerBankrollTracker({
     if (userId) writeStoredPokerBankrollScope(userId, scopeToStore)
     setNearbyCasinos([])
     setDraftSwaps([])
+    setDraftBackers([])
     setIncomingAcceptSwap(null)
     const prefillSessions = dealForPrefill?.id
       ? sessions.filter((s) => s.deal_id === dealForPrefill.id)
@@ -2239,6 +2247,7 @@ export default function PokerBankrollTracker({
     }
     setNearbyCasinos([])
     setDraftSwaps([])
+    setDraftBackers([])
     setIncomingAcceptSwap(swap)
     setSessionWriteDealId(resolveDealForSessionPrefill()?.id ?? null)
     setForm(nextForm)
@@ -2264,6 +2273,7 @@ export default function PokerBankrollTracker({
     setEditingPrevWl(0)
     setNearbyCasinos([])
     setDraftSwaps([])
+    setDraftBackers([])
     const prefillSessions = dealForPrefill?.id
       ? sessions.filter((s) => s.deal_id === dealForPrefill.id)
       : sessions.filter((s) => isPersonalHistorySession(s, stakeeDealsById))
@@ -2585,7 +2595,27 @@ export default function PokerBankrollTracker({
     }
     setSaving(true)
     setError('')
+    /** @type {object | null} */
+    let pieceDeal = null
     try {
+      if (!payload.deal_id && draftBackers.length) {
+        const parsed = parseDraftBackersForCreate(draftBackers, userId)
+        if (parsed.error) throw parsed.error
+        const baseline = buyIn + (Number(rebuyAmt) || 0) + (Number(addonAmt) || 0)
+        const createdDeal = await createPieceDealForSession(supabaseClient, {
+          sessionType: form.session_type,
+          venueKind: form.venue_kind,
+          label:
+            form.session_type === 'tournament'
+              ? form.tournament_name.trim() || 'Tournament session'
+              : cashGameLabel || 'Cash session',
+          baselineBankroll: baseline > 0 ? baseline : buyIn,
+          slices: parsed.slices,
+        })
+        if (createdDeal.error) throw createdDeal.error
+        pieceDeal = createdDeal.deal
+        payload.deal_id = pieceDeal.id
+      }
       const { data: created, error: iErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .insert(payload)
@@ -2610,6 +2640,14 @@ export default function PokerBankrollTracker({
       if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
         await attachDraftSwapsToSession(sessionRow, draftSwaps)
       }
+      if (pieceDeal?.id) {
+        const { error: linkErr } = await supabaseClient
+          .from('poker_stable_deals')
+          .update({ linked_session_id: sessionRow.id })
+          .eq('id', pieceDeal.id)
+        if (linkErr) throw linkErr
+        void notifyStableStakeGuests(supabaseClient, pieceDeal.id, { kind: 'offer' })
+      }
       if (userId) {
         writeStoredPokerBankrollScope(
           userId,
@@ -2617,10 +2655,18 @@ export default function PokerBankrollTracker({
         )
       }
       setIncomingAcceptSwap(null)
+      setDraftBackers([])
       setSheet(null)
       triggerTapHapticLight()
       await loadData()
     } catch (e) {
+      if (pieceDeal?.id) {
+        try {
+          await cancelStakeDeal(supabaseClient, pieceDeal.id)
+        } catch {
+          /* keep the start error */
+        }
+      }
       setError(e?.message || 'Could not start session.')
     } finally {
       setSaving(false)
@@ -2752,6 +2798,15 @@ export default function PokerBankrollTracker({
           console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
         }
         swapNotifyIds = [...(syncA.swapIds || []), ...(syncB.swapIds || [])]
+      }
+      if (activeSession.deal_id) {
+        const { error: pieceErr } = await maybeCloseCompletedPieceDeal(
+          supabaseClient,
+          activeSession.deal_id,
+        )
+        if (pieceErr) {
+          console.warn('[poker-bankroll] piece auto-close failed', pieceErr.message)
+        }
       }
       const dealIdForNotify = activeSession.deal_id || null
       const sessionIdForNotify = activeSession.id
@@ -3263,6 +3318,14 @@ export default function PokerBankrollTracker({
     setSaving(true)
     setError('')
     try {
+      const pieceDeal = stakeeDealsById[activeSession.deal_id]
+      if (
+        isPieceDealType(pieceDeal?.deal_type) &&
+        pieceDeal.linked_session_id === activeSession.id
+      ) {
+        const { error: cancelErr } = await cancelStakeDeal(supabaseClient, pieceDeal.id)
+        if (cancelErr) throw cancelErr
+      }
       const { error: dErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .delete()
@@ -5287,6 +5350,14 @@ export default function PokerBankrollTracker({
                 gpsLoading={gpsLoading}
                 cashGamePresets={cashGamePresets}
                 showCashDetails={form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
+              />
+
+              <PokerSessionBackerSection
+                supabaseClient={supabaseClient}
+                userId={userId}
+                enabled={!sessionWriteDealId}
+                draftBackers={draftBackers}
+                onDraftBackersChange={setDraftBackers}
               />
 
               <PokerTournamentSwapsSection

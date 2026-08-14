@@ -189,7 +189,7 @@ Same bankroll rules as cash backing close, one payout when manifest is complete:
 - Session cards: gross + player stake value; swaps (if any) adjust player net only.
 - Then merge sessions to personal history with badges.
 
-**Tournament piece** (single session): swap-shaped piece on one session ... not ongoing stake roll; close at result. **Start Session + Backer** on personal bankroll creates `cash_piece` / `tournament_piece`. The player never gets a carousel card; live UI is the normal session-in-progress card. Player terms are live immediately (Edge backers still Accept to get a Stable card). End Session recaps then archives. A session can have backers and swaps together. Swap integration still **v2b**.
+**Tournament piece** (single session): swap-shaped piece on one session ... not ongoing stake roll; close at result. **Start Session + Backer** on personal bankroll creates `cash_piece` / `tournament_piece`. Start Session lists **Swaps** (green) above **Backers** (cyan) on tournaments. Backers copy is “Single session stake … closes when you end it.” The player never gets a carousel card; live UI is the normal session-in-progress card. Player terms are live immediately (Edge backers still Accept to get a Stable card). End Session recaps then archives. A session can have backers and swaps together. Swap integration still **v2b**.
 
 ### Swap overlay (cross-feature)
 

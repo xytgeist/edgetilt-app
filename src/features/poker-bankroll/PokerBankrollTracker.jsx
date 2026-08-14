@@ -5524,14 +5524,6 @@ export default function PokerBankrollTracker({
                 showCashDetails={form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
               />
 
-              <PokerSessionBackerSection
-                supabaseClient={supabaseClient}
-                userId={userId}
-                enabled={!sessionWriteDealId}
-                draftBackers={draftBackers}
-                onDraftBackersChange={setDraftBackers}
-              />
-
               <PokerTournamentSwapsSection
                 supabaseClient={supabaseClient}
                 userId={userId}
@@ -5549,6 +5541,14 @@ export default function PokerBankrollTracker({
                     : undefined
                 }
                 decliningIncoming={saving}
+              />
+
+              <PokerSessionBackerSection
+                supabaseClient={supabaseClient}
+                userId={userId}
+                enabled={!sessionWriteDealId}
+                draftBackers={draftBackers}
+                onDraftBackersChange={setDraftBackers}
               />
 
               {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}

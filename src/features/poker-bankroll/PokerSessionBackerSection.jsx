@@ -103,47 +103,44 @@ export default function PokerSessionBackerSection({
 
   return (
     <div
-      className="mb-4 mt-1 rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-3 shadow-[inset_0_1px_0_0_rgba(52,211,153,0.12)]"
+      className="mb-4 mt-1 rounded-2xl border border-cyan-500/40 bg-cyan-950/30 p-3 shadow-[inset_0_1px_0_0_rgba(34,211,238,0.12)]"
       data-poker-session-backers="featured"
       ref={listRef}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-sm font-black uppercase tracking-wide text-emerald-300">
+            <div className="text-sm font-black uppercase tracking-wide text-cyan-300">
               Backers
             </div>
-            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+            <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-200">
               This session
             </span>
           </div>
-          <p className="mt-1 text-[12px] font-semibold leading-snug text-emerald-100/80">
-            Stake this session only ... closes when you end it
+          <p className="mt-1 text-[12px] font-semibold leading-snug text-cyan-100/80">
+            Single session stake ... closes when you end it
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="rounded-xl bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white touch-manipulation active:bg-emerald-500"
+            className="rounded-xl bg-cyan-600 px-2.5 py-1.5 text-xs font-bold text-white touch-manipulation active:bg-cyan-500"
           >
             + Edge user
           </button>
           <button
             type="button"
             onClick={addGuest}
-            className="rounded-xl border border-emerald-400/45 bg-emerald-950/50 px-2.5 py-1.5 text-xs font-bold text-emerald-100 touch-manipulation active:bg-emerald-900/60"
+            className="rounded-xl border border-cyan-400/45 bg-cyan-950/50 px-2.5 py-1.5 text-xs font-bold text-cyan-100 touch-manipulation active:bg-cyan-900/60"
           >
             + Guest
           </button>
         </div>
       </div>
-      <p className="mb-2 text-[11px] leading-snug text-emerald-100/55">
-        Same terms as a cash or tournament package stake, for this session only.
-      </p>
 
       {!draftBackers.length ? (
-        <p className="mb-1 text-sm font-medium text-emerald-100/70">
+        <p className="mb-1 text-sm font-medium text-cyan-100/70">
           No backers yet ... add someone above.
         </p>
       ) : null}
@@ -152,10 +149,13 @@ export default function PokerSessionBackerSection({
         {draftBackers.map((row) => (
           <div
             key={row.key}
-            className="rounded-2xl border border-emerald-500/25 bg-black/20 p-3"
+            className="rounded-2xl border border-cyan-500/25 bg-black/20 p-3"
           >
             <div className="mb-2 flex items-start justify-between gap-2">
-              <div className="min-w-0 text-sm font-semibold text-white">
+              <div
+                data-poker-session-backer-name
+                className="min-w-0 text-sm font-semibold text-white"
+              >
                 {row.isGuest
                   ? row.guestLabel.trim() || 'Guest backer'
                   : row.displayName || (row.handle ? `@${row.handle}` : 'Backer')}
@@ -188,7 +188,7 @@ export default function PokerSessionBackerSection({
             ) : null}
             <div className="grid grid-cols-2 gap-2">
               <label className="min-w-0">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-emerald-200/80">
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-cyan-200/80">
                   Action %
                 </span>
                 <input
@@ -200,7 +200,7 @@ export default function PokerSessionBackerSection({
                 />
               </label>
               <label className="min-w-0">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-emerald-200/80">
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-cyan-200/80">
                   Your profit %
                 </span>
                 <input

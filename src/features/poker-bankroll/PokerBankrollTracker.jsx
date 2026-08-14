@@ -304,6 +304,40 @@ function emptyForm() {
   }
 }
 
+/** Soft multi-live: warn+confirm at this many already live; hard-block at HARD. */
+const MULTI_LIVE_SOFT_CAP = 3
+const MULTI_LIVE_HARD_CAP = 4
+
+/**
+ * Gate Start Session when the user already has concurrent live sessions.
+ * @param {number} activeCount
+ * @param {(opts: object) => Promise<boolean>} [showGlobalConfirm]
+ * @returns {Promise<{ ok: boolean, message?: string }>}
+ */
+async function confirmOrBlockMultiLiveStart(activeCount, showGlobalConfirm) {
+  const n = Number(activeCount) || 0
+  if (n >= MULTI_LIVE_HARD_CAP) {
+    return {
+      ok: false,
+      message: `You already have ${n} sessions in progress. End one before starting another.`,
+    }
+  }
+  if (n >= MULTI_LIVE_SOFT_CAP) {
+    const message = `You already have ${n} sessions in progress. Start another anyway?`
+    const ok =
+      typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: 'Another session?',
+            message,
+            confirmLabel: 'Start another',
+            cancelLabel: 'Cancel',
+          })
+        : window.confirm(message)
+    return ok ? { ok: true } : { ok: false }
+  }
+  return { ok: true }
+}
+
 /** Prefill Start Session / Log past from personal defaults or active stake deal. */
 function defaultNewSessionForm(activeDeal, scopedSessions, completedSessions) {
   const base = emptyForm()
@@ -482,6 +516,8 @@ export default function PokerBankrollTracker({
   const [incomingAcceptSwap, setIncomingAcceptSwap] = useState(null)
   /** @type {null | { swap: object, candidates: object[] }} */
   const [incomingBindPicker, setIncomingBindPicker] = useState(null)
+  /** @type {null | { swap: object, candidates: object[], forceBind?: boolean }} */
+  const [incomingApplyPicker, setIncomingApplyPicker] = useState(null)
   /** @type {object[]} */
   const [tournamentSwaps, setTournamentSwaps] = useState([])
   /** Inline Mark settled on completed session cards. */
@@ -501,8 +537,15 @@ export default function PokerBankrollTracker({
   const [endNotes, setEndNotes] = useState('')
   const [endBounties, setEndBounties] = useState('')
   const [endFinishPlace, setEndFinishPlace] = useState('')
-  const [elapsed, setElapsed] = useState(0)
+  /** Shared clock tick for multi-live elapsed labels (ms). */
+  const [liveClockMs, setLiveClockMs] = useState(() => Date.now())
+  /** Session targeted by pause / rebuy / end / swaps sheets. */
+  const [actionSessionId, setActionSessionId] = useState(/** @type {string | null} */ (null))
   const [pauseBusy, setPauseBusy] = useState(false)
+  /** Incoming Accept with no auto-match … Apply / Start new. */
+  const [incomingFallthrough, setIncomingFallthrough] = useState(
+    /** @type {null | { swap: object }} */ (null),
+  )
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
   const [venueFilter, setVenueFilter] = useState('all') // all | live | online | club
   const [nearbyCasinos, setNearbyCasinos] = useState([])
@@ -648,22 +691,44 @@ export default function PokerBankrollTracker({
       : 0
   const hasBankrollProfile = isOnStake ? dealProfile != null : profile != null
 
-  const activeSession = useMemo(
-    () => scopedSessions.find((s) => s.status === 'active') ?? null,
-    [scopedSessions],
+  const activeSessionsInScope = useMemo(() => {
+    return scopedSessions
+      .filter((s) => s.status === 'active')
+      .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime())
+  }, [scopedSessions])
+  const allActiveSessions = useMemo(
+    () => sessions.filter((s) => s.status === 'active'),
+    [sessions],
   )
+  const allActiveSessionCount = allActiveSessions.length
+  const liveScopeIds = useMemo(() => {
+    /** @type {Set<string>} */
+    const ids = new Set()
+    for (const s of allActiveSessions) {
+      ids.add(s.deal_id || 'personal')
+    }
+    return ids
+  }, [allActiveSessions])
+  const actionSession = useMemo(() => {
+    if (!actionSessionId) return null
+    return sessions.find((s) => s.id === actionSessionId) ?? null
+  }, [sessions, actionSessionId])
   /** Editing the live in-progress session (not a completed log). */
-  const editingActiveSession = Boolean(editingId && activeSession?.id === editingId)
+  const editingActiveSession = Boolean(
+    editingId && sessions.some((s) => s.id === editingId && s.status === 'active'),
+  )
   const completedSessions = useMemo(
     () => scopedSessions.filter((s) => s.status !== 'active'),
     [scopedSessions],
   )
-  const activeSessionSwaps = useMemo(
+  const actionSessionSwaps = useMemo(
     () =>
-      tournamentSwaps.filter((s) =>
-        swapBelongsOnSession(s, activeSession, sessions, swapEventsById, userId),
-      ),
-    [tournamentSwaps, activeSession, sessions, swapEventsById, userId],
+      actionSession
+        ? tournamentSwaps.filter((s) =>
+            swapBelongsOnSession(s, actionSession, sessions, swapEventsById, userId),
+          )
+        : [],
+    [tournamentSwaps, actionSession, sessions, swapEventsById, userId],
   )
   const editingSessionSwaps = useMemo(
     () =>
@@ -724,8 +789,8 @@ export default function PokerBankrollTracker({
    */
   const swapCapDeal = useMemo(() => {
     if (sheet === 'sessionDetail' && detailDeal) return detailDeal
-    if (sheet === 'swaps' && activeSession?.deal_id) {
-      return stakeeDealsById[activeSession.deal_id] ?? null
+    if (sheet === 'swaps' && actionSession?.deal_id) {
+      return stakeeDealsById[actionSession.deal_id] ?? null
     }
     if (
       (sheet === 'start' || sheet === 'session' || sheet === 'import') &&
@@ -741,7 +806,7 @@ export default function PokerBankrollTracker({
   }, [
     sheet,
     detailDeal,
-    activeSession?.deal_id,
+    actionSession?.deal_id,
     sessionWriteDealId,
     editingId,
     sessions,
@@ -773,7 +838,7 @@ export default function PokerBankrollTracker({
     [scopedSessions, form.venue_kind],
   )
   const seriesAnchorSession = useMemo(() => {
-    if (activeSession?.session_type === 'tournament') return activeSession
+    if (sheet === 'swaps' && actionSession?.session_type === 'tournament') return actionSession
     if (form.session_type !== 'tournament') return null
     const buyIn = parseMoneyInputNumber(form.buy_in)
     return {
@@ -792,7 +857,7 @@ export default function PokerBankrollTracker({
       reentries: form.reentries !== '' ? parseInt(form.reentries, 10) || 0 : 0,
       status: 'active',
     }
-  }, [activeSession, form, editingId])
+  }, [sheet, actionSession, form, editingId])
   const seriesPriorBullets = useMemo(
     () =>
       seriesAnchorSession
@@ -1451,18 +1516,14 @@ export default function PokerBankrollTracker({
   }
 
   useEffect(() => {
-    if (!activeSession) {
-      setElapsed(0)
-      return undefined
-    }
-    const tick = () => {
-      setElapsed(pokerSessionElapsedSeconds(activeSession))
-    }
+    if (allActiveSessionCount === 0) return undefined
+    const tick = () => setLiveClockMs(Date.now())
     tick()
-    if (pokerSessionIsPaused(activeSession)) return undefined
+    const anyRunning = allActiveSessions.some((s) => !pokerSessionIsPaused(s))
+    if (!anyRunning) return undefined
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
-  }, [activeSession])
+  }, [allActiveSessionCount, allActiveSessions])
 
   const metricCompleted = useMemo(
     () => metricSessions.filter((s) => s.status !== 'active'),
@@ -2272,15 +2333,16 @@ export default function PokerBankrollTracker({
     return ''
   }
 
-  function openStartSession() {
+  async function openStartSession() {
     const dealForPrefill = resolveDealForSessionPrefill()
     const blockedError = sessionPrefillBlockedError(dealForPrefill)
     if (blockedError) {
       setError(blockedError)
       return
     }
-    if (activeSession) {
-      setError('You already have a session in progress.')
+    const cap = await confirmOrBlockMultiLiveStart(allActiveSessionCount, showGlobalConfirm)
+    if (!cap.ok) {
+      if (cap.message) setError(cap.message)
       return
     }
     setSessionWriteDealId(dealForPrefill?.id ?? null)
@@ -2309,9 +2371,10 @@ export default function PokerBankrollTracker({
   }
 
   /** Start Session prefilled from an incoming soft-event swap (no matching session yet). */
-  function openStartForIncomingSwap(swap) {
-    if (activeSession) {
-      setError('You already have a session in progress.')
+  async function openStartForIncomingSwap(swap) {
+    const cap = await confirmOrBlockMultiLiveStart(allActiveSessionCount, showGlobalConfirm)
+    if (!cap.ok) {
+      if (cap.message) setError(cap.message)
       return
     }
     const event = swap?.tournament_event_id
@@ -2384,7 +2447,10 @@ export default function PokerBankrollTracker({
     }
   }
 
-  function openEndSession() {
+  function openEndSession(session) {
+    const target = session || actionSession
+    if (!target || target.status !== 'active') return
+    setActionSessionId(target.id)
     setEndCashOut('')
     setEndNotes('')
     setEndBounties('')
@@ -2394,8 +2460,10 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
-  function openActiveSwaps() {
-    if (!activeSession || activeSession.session_type !== 'tournament') return
+  function openActiveSwaps(session) {
+    const target = session || actionSession
+    if (!target || target.session_type !== 'tournament' || target.status !== 'active') return
+    setActionSessionId(target.id)
     setDraftSwaps([])
     setError('')
     setSheet('swaps')
@@ -2479,12 +2547,28 @@ export default function PokerBankrollTracker({
     return true
   }
 
-  async function bindIncomingSwapToSession(swap, session) {
+  async function bindIncomingSwapToSession(swap, session, opts = {}) {
     if (!supabaseClient || !userId || !swap?.id || !session?.id) return
-    if (!confirmIncomingBindSession(swap, session)) return
+    const forceBind = Boolean(opts.forceBind)
+    if (forceBind) {
+      const swapEvent = swapEventForIncomingSwap(swap)
+      const eventLabel = formatTournamentEventLabel(swapEvent) || 'this swap event'
+      const sessionLabel =
+        String(session.tournament_name || '').trim() ||
+        pokerSessionMetaLine(session) ||
+        'your session'
+      const ok = window.confirm(
+        `Attach this swap (${eventLabel}) to "${sessionLabel}" even though venue, date, buy-in, or game may not match?\n\nOK = attach · Cancel = stop`,
+      )
+      if (!ok) return
+    } else if (!confirmIncomingBindSession(swap, session)) {
+      return
+    }
     setSaving(true)
     setError('')
     setIncomingBindPicker(null)
+    setIncomingApplyPicker(null)
+    setIncomingFallthrough(null)
     try {
       const swapEvent = swapEventForIncomingSwap(swap)
       const { error } = await acceptCounterpartySessionBind(
@@ -2497,6 +2581,7 @@ export default function PokerBankrollTracker({
           swapEventId: swap.tournament_event_id,
           sessions,
           eventsById: swapEventsById,
+          forceBind,
         },
       )
       if (error) throw error
@@ -2522,20 +2607,19 @@ export default function PokerBankrollTracker({
       await bindIncomingSwapToSession(swap, candidates[0])
       return
     }
-    if (activeSession) {
-      const eventLabel = formatTournamentEventLabel(swapEventsById[swap.tournament_event_id])
-      setError(
-        `Your active session doesn't match ${eventLabel}. End it (or switch) before accepting this swap.`,
-      )
+    if (activeSessionsInScope.length === 0 && allActiveSessionCount === 0) {
+      await openStartForIncomingSwap(swap)
       return
     }
-    openStartForIncomingSwap(swap)
+    setIncomingFallthrough({ swap })
   }
 
-  function openRebuy(kind = 'rebuy') {
-    if (!activeSession) return
+  function openRebuy(session, kind = 'rebuy') {
+    const target = session || actionSession
+    if (!target || target.status !== 'active') return
+    setActionSessionId(target.id)
     const nextKind = kind === 'addon' ? 'addon' : 'rebuy'
-    const suggested = suggestedLiveRebuyAmount(activeSession, nextKind)
+    const suggested = suggestedLiveRebuyAmount(target, nextKind)
     setRebuyKind(nextKind)
     setRebuyAmount(
       suggested != null ? formatMoneyInputValue(String(suggested)) : '',
@@ -2546,10 +2630,10 @@ export default function PokerBankrollTracker({
   }
 
   async function saveRebuy() {
-    if (!supabaseClient || !userId || !activeSession) return
+    if (!supabaseClient || !userId || !actionSession) return
     const add = parseMoneyInputNumber(rebuyAmount)
     const isAddon = rebuyKind === 'addon'
-    const isTourney = activeSession.session_type === 'tournament'
+    const isTourney = actionSession.session_type === 'tournament'
     if (!Number.isFinite(add) || add <= 0) {
       setError(
         isAddon
@@ -2563,17 +2647,17 @@ export default function PokerBankrollTracker({
     /** @type {Record<string, number>} */
     let patch
     if (isTourney && isAddon) {
-      patch = { addon_amount: (Number(activeSession.addon_amount) || 0) + add }
+      patch = { addon_amount: (Number(actionSession.addon_amount) || 0) + add }
     } else if (isTourney) {
       patch = {
-        rebuy_amount: (Number(activeSession.rebuy_amount) || 0) + add,
-        reentries: (Number(activeSession.reentries) || 0) + 1,
+        rebuy_amount: (Number(actionSession.rebuy_amount) || 0) + add,
+        reentries: (Number(actionSession.reentries) || 0) + 1,
       }
     } else {
       // Cash: keep folding re-buys into buy_in (bring-in total).
       patch = {
-        buy_in: (Number(activeSession.buy_in) || 0) + add,
-        reentries: (Number(activeSession.reentries) || 0) + 1,
+        buy_in: (Number(actionSession.buy_in) || 0) + add,
+        reentries: (Number(actionSession.reentries) || 0) + 1,
       }
     }
     setSaving(true)
@@ -2582,12 +2666,12 @@ export default function PokerBankrollTracker({
       const { error: uErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .update(patch)
-        .eq('id', activeSession.id)
+        .eq('id', actionSession.id)
         .eq('user_id', userId)
         .eq('status', 'active')
       if (uErr) throw uErr
       if (isTourney) {
-        const next = { ...activeSession, ...patch }
+        const next = { ...actionSession, ...patch }
         await refreshSeriesSwapBullets(supabaseClient, next, {
           sessions: sessions.map((s) => (s.id === next.id ? next : s)),
           eventsById: swapEventsById,
@@ -2595,6 +2679,7 @@ export default function PokerBankrollTracker({
         })
       }
       setSheet(null)
+      setActionSessionId(null)
       triggerTapHapticLight()
       await loadData()
     } catch (e) {
@@ -2606,8 +2691,9 @@ export default function PokerBankrollTracker({
 
   async function startLiveSession() {
     if (!supabaseClient || !userId) return
-    if (activeSession) {
-      setError('You already have a session in progress.')
+    const cap = await confirmOrBlockMultiLiveStart(allActiveSessionCount, showGlobalConfirm)
+    if (!cap.ok) {
+      if (cap.message) setError(cap.message)
       return
     }
     const buyIn = parseMoneyInputNumber(form.buy_in)
@@ -2805,37 +2891,38 @@ export default function PokerBankrollTracker({
     }
   }
 
-  async function toggleActiveSessionPause() {
-    if (!supabaseClient || !userId || !activeSession || pauseBusy) return
+  async function toggleSessionPause(session) {
+    const target = session || actionSession
+    if (!supabaseClient || !userId || !target || pauseBusy) return
     const now = Date.now()
-    const wasPaused = pokerSessionIsPaused(activeSession)
+    const wasPaused = pokerSessionIsPaused(target)
     const patch = wasPaused
       ? {
           paused_at: null,
-          paused_seconds: Math.round(pokerSessionPausedMs(activeSession, now) / 1000),
+          paused_seconds: Math.round(pokerSessionPausedMs(target, now) / 1000),
         }
       : { paused_at: new Date(now).toISOString() }
     const prev = {
-      paused_at: activeSession.paused_at ?? null,
-      paused_seconds: Number(activeSession.paused_seconds) || 0,
+      paused_at: target.paused_at ?? null,
+      paused_seconds: Number(target.paused_seconds) || 0,
     }
     setPauseBusy(true)
     setError('')
     setSessions((rows) =>
-      rows.map((s) => (s.id === activeSession.id ? { ...s, ...patch } : s)),
+      rows.map((s) => (s.id === target.id ? { ...s, ...patch } : s)),
     )
     triggerTapHapticLight()
     try {
       const { error: uErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .update(patch)
-        .eq('id', activeSession.id)
+        .eq('id', target.id)
         .eq('user_id', userId)
         .eq('status', 'active')
       if (uErr) throw uErr
     } catch (e) {
       setSessions((rows) =>
-        rows.map((s) => (s.id === activeSession.id ? { ...s, ...prev } : s)),
+        rows.map((s) => (s.id === target.id ? { ...s, ...prev } : s)),
       )
       setError(e?.message || 'Could not update the session clock.')
     } finally {
@@ -2844,30 +2931,32 @@ export default function PokerBankrollTracker({
   }
 
   async function endLiveSession() {
-    if (!supabaseClient || !userId || !activeSession) return
+    if (!supabaseClient || !userId || !actionSession) return
+    const live = actionSession
+    const liveSwaps = actionSessionSwaps
     const cashOut = parseMoneyInputNumber(endCashOut)
     if (!Number.isFinite(cashOut) || cashOut < 0) {
       setError('Enter cash out (what you walked with).')
       return
     }
     const bounties =
-      activeSession.session_type === 'tournament' && endBounties !== ''
+      live.session_type === 'tournament' && endBounties !== ''
         ? parseMoneyInputNumber(endBounties) || 0
         : 0
-    const wl = cashOut + bounties - pokerSessionTotalCost(activeSession)
+    const wl = cashOut + bounties - pokerSessionTotalCost(live)
     if (
-      activeSession.session_type === 'tournament' &&
-      activeSessionSwaps.length > 0 &&
-      !confirmEndSessionSwapEventAlignment(activeSession, activeSessionSwaps)
+      live.session_type === 'tournament' &&
+      liveSwaps.length > 0 &&
+      !confirmEndSessionSwapEventAlignment(live, liveSwaps)
     ) {
       return
     }
     setSaving(true)
     setError('')
     try {
-      let sessionRow = activeSession
-      if (activeSession.session_type === 'tournament') {
-        sessionRow = await linkTournamentEventForSession(activeSession)
+      let sessionRow = live
+      if (live.session_type === 'tournament') {
+        sessionRow = await linkTournamentEventForSession(live)
       }
       const endedAt = Date.now()
       const { error: uErr } = await supabaseClient
@@ -2876,37 +2965,37 @@ export default function PokerBankrollTracker({
           status: 'completed',
           end_at: new Date(endedAt).toISOString(),
           paused_at: null,
-          paused_seconds: Math.round(pokerSessionPausedMs(activeSession, endedAt) / 1000),
+          paused_seconds: Math.round(pokerSessionPausedMs(live, endedAt) / 1000),
           cash_out: cashOut,
           bounty_winnings:
-            activeSession.session_type === 'tournament' && endBounties !== ''
+            live.session_type === 'tournament' && endBounties !== ''
               ? parseMoneyInputNumber(endBounties)
               : null,
           finish_place:
-            activeSession.session_type === 'tournament' && endFinishPlace !== ''
+            live.session_type === 'tournament' && endFinishPlace !== ''
               ? parseInt(endFinishPlace, 10)
               : null,
           notes: endNotes.trim() || null,
         })
-        .eq('id', activeSession.id)
+        .eq('id', live.id)
         .eq('user_id', userId)
       if (uErr) throw uErr
-      await applyBankrollDelta(wl, { sessionDealId: activeSession.deal_id })
+      await applyBankrollDelta(wl, { sessionDealId: live.deal_id })
       /** @type {string[]} */
       let swapNotifyIds = []
-      if (activeSession.session_type === 'tournament') {
+      if (live.session_type === 'tournament') {
         const ended = {
           ...sessionRow,
           status: 'completed',
           cash_out: cashOut,
           bounty_winnings:
-            activeSession.session_type === 'tournament' && endBounties !== ''
+            live.session_type === 'tournament' && endBounties !== ''
               ? parseMoneyInputNumber(endBounties)
               : null,
         }
         const syncA = await syncCreatorResultsForSession(
           supabaseClient,
-          activeSession.id,
+          live.id,
           ended,
           { sessions, eventsById: swapEventsById, userId },
         )
@@ -2915,7 +3004,7 @@ export default function PokerBankrollTracker({
         }
         const syncB = await syncCounterpartyResultsForSession(
           supabaseClient,
-          activeSession.id,
+          live.id,
           ended,
           { sessions, eventsById: swapEventsById, userId },
         )
@@ -2924,30 +3013,30 @@ export default function PokerBankrollTracker({
         }
         swapNotifyIds = [...(syncA.swapIds || []), ...(syncB.swapIds || [])]
       }
-      if (activeSession.deal_id) {
+      if (live.deal_id) {
         const { error: pieceErr } = await maybeCloseCompletedPieceDeal(
           supabaseClient,
-          activeSession.deal_id,
+          live.deal_id,
         )
         if (pieceErr) {
           console.warn('[poker-bankroll] piece auto-close failed', pieceErr.message)
         }
       }
-      const dealIdForNotify = activeSession.deal_id || null
-      const sessionIdForNotify = activeSession.id
+      const dealIdForNotify = live.deal_id || null
+      const sessionIdForNotify = live.id
       const endedRow = {
         ...sessionRow,
         status: 'completed',
         end_at: new Date(endedAt).toISOString(),
         paused_at: null,
-        paused_seconds: Math.round(pokerSessionPausedMs(activeSession, endedAt) / 1000),
+        paused_seconds: Math.round(pokerSessionPausedMs(live, endedAt) / 1000),
         cash_out: cashOut,
         bounty_winnings:
-          activeSession.session_type === 'tournament' && endBounties !== ''
+          live.session_type === 'tournament' && endBounties !== ''
             ? parseMoneyInputNumber(endBounties)
             : null,
         finish_place:
-          activeSession.session_type === 'tournament' && endFinishPlace !== ''
+          live.session_type === 'tournament' && endFinishPlace !== ''
             ? parseInt(endFinishPlace, 10)
             : null,
         notes: endNotes.trim() || null,
@@ -2968,6 +3057,7 @@ export default function PokerBankrollTracker({
       } else {
         setSheet(null)
       }
+      setActionSessionId(null)
       triggerTapHapticLight()
       setSaving(false)
       void (async () => {
@@ -3189,6 +3279,9 @@ export default function PokerBankrollTracker({
     setError('')
     setIncomingAcceptSwap(null)
     setIncomingBindPicker(null)
+    setIncomingFallthrough(null)
+    setIncomingApplyPicker(null)
+    setActionSessionId(null)
     setDetailSessionId(null)
     setSessionRecapMode(false)
     setSessionWriteDealId(undefined)
@@ -3473,15 +3566,15 @@ export default function PokerBankrollTracker({
 
   /** Discard an in-progress session from End Session (no bankroll delta yet). */
   async function deleteActiveSession() {
-    if (!activeSession || !supabaseClient || !userId) return
+    if (!actionSession || !supabaseClient || !userId) return
     if (!window.confirm('Delete this session? It will not be saved to your history.')) return
     setSaving(true)
     setError('')
     try {
-      const pieceDeal = stakeeDealsById[activeSession.deal_id]
+      const pieceDeal = stakeeDealsById[actionSession.deal_id]
       if (
         isPieceDealType(pieceDeal?.deal_type) &&
-        pieceDeal.linked_session_id === activeSession.id
+        pieceDeal.linked_session_id === actionSession.id
       ) {
         const { error: cancelErr } = await cancelStakeDeal(supabaseClient, pieceDeal.id)
         if (cancelErr) throw cancelErr
@@ -3489,10 +3582,11 @@ export default function PokerBankrollTracker({
       const { error: dErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .delete()
-        .eq('id', activeSession.id)
+        .eq('id', actionSession.id)
         .eq('user_id', userId)
       if (dErr) throw dErr
       setSheet(null)
+      setActionSessionId(null)
       triggerTapHapticLight()
       await loadData()
     } catch (e) {
@@ -3718,6 +3812,16 @@ export default function PokerBankrollTracker({
                             ? hero.deal?.label?.trim() || 'Cash backing'
                             : 'Poker bankroll'}
                         </div>
+                        {liveScopeIds.has(scopeId) && scopeId !== bankrollScope ? (
+                          <span
+                            data-poker-hero-live-dot
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300"
+                            title="Session in progress"
+                          >
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                            Live
+                          </span>
+                        ) : null}
                         {!onStake && hasAnyStakeDeals ? (
                           <button
                             type="button"
@@ -4081,53 +4185,24 @@ export default function PokerBankrollTracker({
               }}
             />
 
-            {activeSession ? (
-              <div
-                data-session-card
-                data-poker-live-session-card
-                data-poker-session-paused={pokerSessionIsPaused(activeSession) ? '' : undefined}
-                data-elevated-card="accent"
-                role="button"
-                tabIndex={0}
-                onClick={() => openSessionDetail(activeSession)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    openSessionDetail(activeSession)
-                  }
-                }}
-                className="mb-4 cursor-pointer rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5 touch-manipulation active:bg-emerald-950/80"
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      pokerSessionIsPaused(activeSession)
-                        ? 'bg-amber-400'
-                        : 'animate-pulse bg-emerald-400'
-                    }`}
-                  />
-                  <span
-                    className={`text-xs font-bold uppercase tracking-wide ${
-                      pokerSessionIsPaused(activeSession) ? 'text-amber-300' : 'text-emerald-300'
-                    }`}
-                  >
-                    {pokerSessionIsPaused(activeSession) ? 'Session paused' : 'Session in progress'}
-                  </span>
-                </div>
-                <div className="min-w-0 text-lg font-bold leading-tight text-white">
-                  {pokerSessionStakesLabel(activeSession)}
-                </div>
-                {(() => {
-                  const elapsedLabel = fmtPokerDuration(elapsed)
+            {activeSessionsInScope.length > 0 ? (
+              <div className="mb-4 space-y-3">
+                {activeSessionsInScope.map((liveSession) => {
+                  const sessionPaused = pokerSessionIsPaused(liveSession)
+                  const elapsedSecs = pokerSessionElapsedSeconds(liveSession, liveClockMs)
+                  const elapsedLabel = fmtPokerDuration(elapsedSecs)
                   const elapsedChars = elapsedLabel.replace(/\s/g, '').length
-                  // Match title (text-lg); only step down for long labels so it clears Swap.
                   const timerTextClass =
                     elapsedChars <= 6 ? 'text-lg' : elapsedChars <= 8 ? 'text-base' : 'text-sm'
                   const chip =
                     'box-border h-9 w-[5.5rem] rounded-xl text-xs font-bold touch-manipulation'
                   const stopCardClick = (e) => e.stopPropagation()
-                  const isCash = activeSession.session_type === 'cash'
-                  const sessionPaused = pokerSessionIsPaused(activeSession)
+                  const isCash = liveSession.session_type === 'cash'
+                  const liveSwaps = swapsBySessionId[liveSession.id] || []
+                  const priorBullets =
+                    liveSession.session_type === 'tournament'
+                      ? priorSeriesBulletCount(liveSession, sessions, swapEventsById)
+                      : 0
                   const liveClock = (
                     <LiveSessionClock
                       elapsedLabel={elapsedLabel}
@@ -4135,143 +4210,195 @@ export default function PokerBankrollTracker({
                       isPaused={sessionPaused}
                       pauseBusy={pauseBusy}
                       maxWidthClass={isCash ? 'max-w-[calc(100%-6rem)]' : 'max-w-[calc(100%-12rem)]'}
-                      onTogglePause={toggleActiveSessionPause}
+                      onTogglePause={() => void toggleSessionPause(liveSession)}
                     />
                   )
-
-                  if (isCash) {
-                    return (
-                      <div className="relative mt-2 min-h-[5rem]">
-                        <div className="min-w-0 pr-[6.25rem]">
-                          <div className="truncate text-sm text-zinc-400">
-                            {pokerSessionMetaLine(activeSession)}
-                          </div>
-                          <div className="mt-0.5 truncate text-sm text-zinc-400">
-                            {pokerSessionInForLine(activeSession)}
-                          </div>
-                        </div>
-                        {liveClock}
-                        <div
-                          className="absolute bottom-0 right-0"
-                          onClick={stopCardClick}
-                          onKeyDown={stopCardClick}
-                        >
-                          <button
-                            type="button"
-                            onClick={openEndSession}
-                            data-poker-session-end-btn
-                            className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
-                          >
-                            End Session
-                          </button>
-                        </div>
-                        <div
-                          className="absolute right-0 top-0"
-                          onClick={stopCardClick}
-                          onKeyDown={stopCardClick}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => openRebuy('rebuy')}
-                            className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
-                          >
-                            Re-buy
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  }
-
                   return (
-                    <div className="relative mt-2 min-h-[5rem]">
-                      <div className="min-w-0 pr-[6.25rem]">
-                        <div className="truncate text-sm text-zinc-400">
-                          {pokerSessionMetaLine(activeSession)}
-                        </div>
-                        <div className="mt-0.5 truncate text-sm text-zinc-400">
-                          {pokerSessionInForLine(activeSession)}
-                        </div>
-                        {seriesPriorBullets > 0 ? (
-                          <div className="mt-0.5 truncate text-[11px] text-zinc-500">
-                            {seriesPriorBullets} earlier bullet
-                            {seriesPriorBullets === 1 ? '' : 's'} in this event
+                    <div
+                      key={liveSession.id}
+                      data-session-card
+                      data-poker-live-session-card
+                      data-poker-session-paused={sessionPaused ? '' : undefined}
+                      data-elevated-card="accent"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSessionDetail(liveSession)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          openSessionDetail(liveSession)
+                        }
+                      }}
+                      className="cursor-pointer rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5 touch-manipulation active:bg-emerald-950/80"
+                    >
+                      <div className="mb-3 flex items-center gap-2">
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            sessionPaused ? 'bg-amber-400' : 'animate-pulse bg-emerald-400'
+                          }`}
+                        />
+                        <span
+                          className={`text-xs font-bold uppercase tracking-wide ${
+                            sessionPaused ? 'text-amber-300' : 'text-emerald-300'
+                          }`}
+                        >
+                          {sessionPaused ? 'Session paused' : 'Session in progress'}
+                        </span>
+                      </div>
+                      <div className="min-w-0 text-lg font-bold leading-tight text-white">
+                        {pokerSessionStakesLabel(liveSession)}
+                      </div>
+                      {isCash ? (
+                        <div className="relative mt-2 min-h-[5rem]">
+                          <div className="min-w-0 pr-[6.25rem]">
+                            <div className="truncate text-sm text-zinc-400">
+                              {pokerSessionMetaLine(liveSession)}
+                            </div>
+                            <div className="mt-0.5 truncate text-sm text-zinc-400">
+                              {pokerSessionInForLine(liveSession)}
+                            </div>
                           </div>
-                        ) : null}
-                      </div>
-                      {liveClock}
-                      <div
-                        className="absolute right-0 top-0 grid grid-cols-2 gap-1.5"
-                        onClick={stopCardClick}
-                        onKeyDown={stopCardClick}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => openRebuy('rebuy')}
-                          className={`${chip} col-start-2 border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
-                        >
-                          Re-enter
-                        </button>
-                        <button
-                          type="button"
-                          onClick={openActiveSwaps}
-                          data-poker-session-swap-btn
-                          className={`${chip} border border-cyan-400/40 bg-cyan-950/50 text-cyan-100 active:bg-cyan-900/60`}
-                        >
-                          Swap{activeSessionSwaps.length ? ` (${activeSessionSwaps.length})` : ''}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={openEndSession}
-                          data-poker-session-end-btn
-                          className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
-                        >
-                          End Session
-                        </button>
-                      </div>
+                          {liveClock}
+                          <div
+                            className="absolute bottom-0 right-0"
+                            onClick={stopCardClick}
+                            onKeyDown={stopCardClick}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openEndSession(liveSession)}
+                              data-poker-session-end-btn
+                              className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
+                            >
+                              End Session
+                            </button>
+                          </div>
+                          <div
+                            className="absolute right-0 top-0"
+                            onClick={stopCardClick}
+                            onKeyDown={stopCardClick}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openRebuy(liveSession, 'rebuy')}
+                              className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
+                            >
+                              Re-buy
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative mt-2 min-h-[5rem]">
+                          <div className="min-w-0 pr-[6.25rem]">
+                            <div className="truncate text-sm text-zinc-400">
+                              {pokerSessionMetaLine(liveSession)}
+                            </div>
+                            <div className="mt-0.5 truncate text-sm text-zinc-400">
+                              {pokerSessionInForLine(liveSession)}
+                            </div>
+                            {priorBullets > 0 ? (
+                              <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+                                {priorBullets} earlier bullet
+                                {priorBullets === 1 ? '' : 's'} in this event
+                              </div>
+                            ) : null}
+                          </div>
+                          {liveClock}
+                          <div
+                            className="absolute right-0 top-0 grid grid-cols-2 gap-1.5"
+                            onClick={stopCardClick}
+                            onKeyDown={stopCardClick}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openRebuy(liveSession, 'rebuy')}
+                              className={`${chip} col-start-2 border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
+                            >
+                              Re-enter
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openActiveSwaps(liveSession)}
+                              data-poker-session-swap-btn
+                              className={`${chip} border border-cyan-400/40 bg-cyan-950/50 text-cyan-100 active:bg-cyan-900/60`}
+                            >
+                              Swap{liveSwaps.length ? ` (${liveSwaps.length})` : ''}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openEndSession(liveSession)}
+                              data-poker-session-end-btn
+                              className={`${chip} border border-emerald-500 bg-emerald-500 text-white active:bg-emerald-600`}
+                            >
+                              End Session
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
-                })()}
+                })}
               </div>
-            ) : (
-              !loading && (
-                <div className="mb-4 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={openStartSession}
-                    data-start-session-btn
-                    data-start-session-locked={
-                      (isOnStake && stakeScopeSessionBlocked)
-                        ? 'true'
-                        : undefined
-                    }
-                    className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
-                      (isOnStake && stakeScopeSessionBlocked)
-                        ? 'cursor-not-allowed opacity-45'
-                        : ''
-                    }`}
-                  >
-                    + Start Session
-                  </button>
+            ) : null}
+
+            {!loading && allActiveSessionCount < MULTI_LIVE_HARD_CAP ? (
+              <div className="mb-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => void openStartSession()}
+                  data-start-session-btn
+                  data-start-session-locked={
+                    isOnStake && stakeScopeSessionBlocked ? 'true' : undefined
+                  }
+                  className={`w-full rounded-3xl bg-emerald-600 py-4 text-base font-bold text-white touch-manipulation active:bg-emerald-500 ${
+                    isOnStake && stakeScopeSessionBlocked
+                      ? 'cursor-not-allowed opacity-45'
+                      : ''
+                  }`}
+                >
+                  + Start Session
+                </button>
+                {activeSessionsInScope.length === 0 ? (
                   <button
                     type="button"
                     onClick={openLogPast}
                     data-log-past-session-btn
                     data-log-past-session-locked={
-                      (isOnStake && stakeScopeSessionBlocked)
-                        ? 'true'
-                        : undefined
+                      isOnStake && stakeScopeSessionBlocked ? 'true' : undefined
                     }
                     className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
-                      (isOnStake && stakeScopeSessionBlocked)
+                      isOnStake && stakeScopeSessionBlocked
                         ? 'cursor-not-allowed opacity-45'
                         : ''
                     }`}
                   >
                     Log previous session(s)
                   </button>
-                </div>
-              )
-            )}
+                ) : null}
+              </div>
+            ) : null}
+
+            {!loading &&
+            allActiveSessionCount >= MULTI_LIVE_HARD_CAP &&
+            activeSessionsInScope.length === 0 ? (
+              <div className="mb-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={openLogPast}
+                  data-log-past-session-btn
+                  data-log-past-session-locked={
+                    isOnStake && stakeScopeSessionBlocked ? 'true' : undefined
+                  }
+                  className={`w-full rounded-2xl py-3 text-sm font-semibold text-zinc-400 touch-manipulation active:text-zinc-200 ${
+                    isOnStake && stakeScopeSessionBlocked
+                      ? 'cursor-not-allowed opacity-45'
+                      : ''
+                  }`}
+                >
+                  Log previous session(s)
+                </button>
+              </div>
+            ) : null}
 
             {pendingCounterpartySwaps.length > 0 ? (
               <div
@@ -4284,7 +4411,8 @@ export default function PokerBankrollTracker({
                 </div>
                 <p className="mb-3 text-[11px] text-zinc-400">
                   Accept attaches to a matching session (same venue, date, buy-in, and game, including
-                  manual entry), or opens Start with the swap ready.
+                  manual entry). If nothing matches, you can apply to a live session or start a new
+                  one.
                 </p>
                 <ul className="space-y-2">
                   {pendingCounterpartySwaps.map((swap) => {
@@ -5162,6 +5290,139 @@ export default function PokerBankrollTracker({
         </div>
       ) : null}
 
+      {incomingFallthrough?.swap ? (
+        <div
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          onClick={() => !saving && setIncomingFallthrough(null)}
+        >
+          <div
+            data-poker-incoming-swap-fallthrough
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-lg font-bold text-white">Accept swap</div>
+              <button
+                type="button"
+                onClick={() => setIncomingFallthrough(null)}
+                disabled={saving}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation disabled:opacity-50"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-4 text-sm text-zinc-500">
+              No matching session found for{' '}
+              <span className="font-semibold text-zinc-300">
+                {formatTournamentEventLabel(
+                  swapEventsById[incomingFallthrough.swap.tournament_event_id],
+                ) || 'this event'}
+              </span>
+              . Apply it to a live session anyway, or start a new one.
+            </p>
+            {activeSessionsInScope.length > 0 ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  const swap = incomingFallthrough.swap
+                  const lives = activeSessionsInScope
+                  if (lives.length === 1) {
+                    void bindIncomingSwapToSession(swap, lives[0], { forceBind: true })
+                    return
+                  }
+                  setIncomingFallthrough(null)
+                  setIncomingApplyPicker({ swap, candidates: lives, forceBind: true })
+                }}
+                className="mb-2 w-full rounded-2xl bg-cyan-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-cyan-500 disabled:opacity-50"
+              >
+                Apply to current session
+                {activeSessionsInScope.length > 1 ? '…' : ''}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                const swap = incomingFallthrough.swap
+                setIncomingFallthrough(null)
+                void openStartForIncomingSwap(swap)
+              }}
+              className="mb-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+            >
+              Start new session
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => setIncomingFallthrough(null)}
+              className="w-full rounded-2xl border border-zinc-700 py-3 text-sm font-semibold text-zinc-300 touch-manipulation disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {incomingApplyPicker?.swap && incomingApplyPicker.candidates?.length > 0 ? (
+        <div
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          onClick={() => !saving && setIncomingApplyPicker(null)}
+        >
+          <div
+            data-poker-incoming-apply-picker
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="text-lg font-bold text-white">Apply swap to session</div>
+              <button
+                type="button"
+                onClick={() => setIncomingApplyPicker(null)}
+                disabled={saving}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation disabled:opacity-50"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-3 text-sm text-zinc-500">
+              Pick which live session should take this swap. Venue, date, buy-in, or game may not
+              match.
+            </p>
+            <ul className="space-y-2">
+              {incomingApplyPicker.candidates.map((session) => (
+                <li key={session.id}>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() =>
+                      void bindIncomingSwapToSession(incomingApplyPicker.swap, session, {
+                        forceBind: true,
+                      })
+                    }
+                    className="w-full rounded-2xl border border-zinc-700/80 bg-zinc-900/70 px-3 py-2.5 text-left touch-manipulation active:border-cyan-500/50 disabled:opacity-50"
+                  >
+                    <div className="truncate text-sm font-semibold text-white">
+                      {pokerSessionMetaLine(session)}
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+                      {pokerSessionStakesLabel(session)}
+                      {session.tournament_name
+                        ? ` · ${String(session.tournament_name).trim()}`
+                        : ''}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
+          </div>
+        </div>
+      ) : null}
+
       {proposeAfterDecline ? (
         <PokerStableProposeAfterDeclineModal
           counterpartLabel={proposeAfterDecline.counterpartLabel}
@@ -5226,7 +5487,11 @@ export default function PokerBankrollTracker({
         <PokerSessionDetailSheet
           session={detailSession}
           isActive={detailSession.status === 'active'}
-          elapsedSeconds={detailSession.id === activeSession?.id ? elapsed : 0}
+          elapsedSeconds={
+            detailSession.status === 'active'
+              ? pokerSessionElapsedSeconds(detailSession, liveClockMs)
+              : 0
+          }
           stakeLabel={isPieceDealType(detailDeal?.deal_type) ? '' : detailStakeLabel}
           deal={detailDeal}
           slices={detailSlices}
@@ -5252,16 +5517,19 @@ export default function PokerBankrollTracker({
           onSavedSwapsMutated={() => void loadData()}
           onMarkSwapSettled={(swap) => void markSessionCardSwapSettled(swap)}
           onEndSession={() => {
+            const s = detailSession
             setDetailSessionId(null)
-            openEndSession()
+            openEndSession(s)
           }}
           onOpenSwaps={() => {
+            const s = detailSession
             setDetailSessionId(null)
-            openActiveSwaps()
+            openActiveSwaps(s)
           }}
           onRebuy={() => {
+            const s = detailSession
             setDetailSessionId(null)
-            openRebuy('rebuy')
+            openRebuy(s, 'rebuy')
           }}
         />
       ) : null}
@@ -5679,7 +5947,7 @@ export default function PokerBankrollTracker({
         </div>
       ) : null}
 
-      {sheet === 'swaps' && activeSession ? (
+      {sheet === 'swaps' && actionSession ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
           onClick={() => !saving && dismissSheet()}
@@ -5709,14 +5977,14 @@ export default function PokerBankrollTracker({
               showOwnershipSummary
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
-              savedSwaps={activeSessionSwaps}
+              savedSwaps={actionSessionSwaps}
               profilesById={swapProfilesById}
               onSavedSwapsMutated={() => void loadData()}
               showGlobalConfirm={showGlobalConfirm}
               compact
               onSendDraft={(draft) => {
-                if (!activeSession) return
-                void sendDraftSwapsForSession(activeSession, [draft])
+                if (!actionSession) return
+                void sendDraftSwapsForSession(actionSession, [draft])
               }}
               sendingDrafts={saving}
             />
@@ -5726,8 +5994,8 @@ export default function PokerBankrollTracker({
                 type="button"
                 disabled={saving}
                 onClick={() => {
-                  if (!activeSession) return
-                  void sendDraftSwapsForSession(activeSession, draftSwaps)
+                  if (!actionSession) return
+                  void sendDraftSwapsForSession(actionSession, draftSwaps)
                 }}
                 className="mt-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation disabled:opacity-50"
               >
@@ -5745,7 +6013,7 @@ export default function PokerBankrollTracker({
         </div>
       ) : null}
 
-      {sheet === 'rebuy' && activeSession ? (
+      {sheet === 'rebuy' && actionSession ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
           onClick={() => !saving && dismissSheet()}
@@ -5759,7 +6027,7 @@ export default function PokerBankrollTracker({
               <div className="text-lg font-bold text-white">
                 {rebuyKind === 'addon'
                   ? 'Add-on'
-                  : activeSession.session_type === 'tournament'
+                  : actionSession.session_type === 'tournament'
                     ? 'Re-enter'
                     : 'Re-buy'}
               </div>
@@ -5775,7 +6043,7 @@ export default function PokerBankrollTracker({
             <p className="mb-3 text-sm text-zinc-400">
               Adds to your total in for this session. Currently in for{' '}
               <span className="font-semibold text-zinc-200">
-                {fmtPoker$(pokerSessionTotalCost(activeSession))}
+                {fmtPoker$(pokerSessionTotalCost(actionSession))}
               </span>
               .
             </p>
@@ -5784,7 +6052,7 @@ export default function PokerBankrollTracker({
                 label={
                   rebuyKind === 'addon'
                     ? 'Add-on amount'
-                    : activeSession.session_type === 'tournament'
+                    : actionSession.session_type === 'tournament'
                       ? 'Re-entry amount'
                       : 'Re-buy amount'
                 }
@@ -5803,7 +6071,7 @@ export default function PokerBankrollTracker({
                 ? 'Saving…'
                 : rebuyKind === 'addon'
                   ? 'Add add-on'
-                  : activeSession.session_type === 'tournament'
+                  : actionSession.session_type === 'tournament'
                     ? 'Add re-entry'
                     : 'Add re-buy'}
             </button>
@@ -5811,7 +6079,7 @@ export default function PokerBankrollTracker({
         </div>
       ) : null}
 
-      {sheet === 'end' && activeSession ? (
+      {sheet === 'end' && actionSession ? (
         <div
           className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
           onClick={() => !saving && dismissSheet()}
@@ -5837,14 +6105,14 @@ export default function PokerBankrollTracker({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-semibold text-white">
-                    {pokerSessionStakesLabel(activeSession)}
+                    {pokerSessionStakesLabel(actionSession)}
                   </div>
                   <div className="mt-0.5 text-xs text-zinc-400">
-                    {pokerSessionInForLine(activeSession)}
+                    {pokerSessionInForLine(actionSession)}
                   </div>
                 </div>
                 <div className="shrink-0 text-lg font-black tabular-nums text-emerald-300">
-                  {fmtPokerDuration(elapsed)}
+                  {fmtPokerDuration(pokerSessionElapsedSeconds(actionSession, liveClockMs))}
                 </div>
               </div>
             </div>
@@ -5853,7 +6121,7 @@ export default function PokerBankrollTracker({
               <MoneyInput label="Cash out" value={endCashOut} onChange={setEndCashOut} colorize />
             </div>
 
-            {activeSession.session_type === 'tournament' ? (
+            {actionSession.session_type === 'tournament' ? (
               <div className="mb-3 grid min-w-0 grid-cols-2 gap-2">
                 <NumInput label="Finish place" value={endFinishPlace} onChange={setEndFinishPlace} />
                 <MoneyInput
@@ -5879,10 +6147,10 @@ export default function PokerBankrollTracker({
               const cashOut = parseMoneyInputNumber(endCashOut)
               if (!Number.isFinite(cashOut)) return null
               const bounties =
-                activeSession.session_type === 'tournament' && endBounties !== ''
+                actionSession.session_type === 'tournament' && endBounties !== ''
                   ? parseMoneyInputNumber(endBounties) || 0
                   : 0
-              const wl = cashOut + bounties - pokerSessionTotalCost(activeSession)
+              const wl = cashOut + bounties - pokerSessionTotalCost(actionSession)
               return (
                 <p
                   className={`mb-3 text-center text-sm font-semibold tabular-nums ${

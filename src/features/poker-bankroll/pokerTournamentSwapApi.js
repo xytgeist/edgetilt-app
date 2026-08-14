@@ -678,7 +678,7 @@ export function counterpartySessionNeedsSwapEventRelink(session, swap) {
  * @param {string} swapId
  * @param {string} sessionId
  * @param {object} session
- * @param {{ swapEvent?: object | null, swapEventId?: string | null }} [opts]
+ * @param {{ swapEvent?: object | null, swapEventId?: string | null, sessions?: object[], eventsById?: Record<string, object>, forceBind?: boolean }} [opts]
  */
 export async function acceptCounterpartySessionBind(
   supabase,
@@ -699,7 +699,7 @@ export async function acceptCounterpartySessionBind(
   if (swapEventId && counterpartySessionNeedsSwapEventRelink(session, { tournament_event_id: swapEventId })) {
     const swapFingerprint = swapEvent?.fingerprint_key || null
     const sessionFp = sessionTournamentFingerprintKey(session)
-    if (swapFingerprint && sessionFp !== swapFingerprint && !seriesMatch) {
+    if (swapFingerprint && sessionFp !== swapFingerprint && !seriesMatch && !opts.forceBind) {
       return { error: new Error('Session does not match this swap tournament.') }
     }
     if (!seriesMatch) {

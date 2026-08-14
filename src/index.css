@@ -7258,6 +7258,45 @@ html.light [data-poker-bankroll] [data-poker-stake-notice] {
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card] [data-poker-bankroll-hero-title] {
   color: #18181b !important;
 }
+html.light [data-poker-bankroll] [data-poker-hero-live-dot] {
+  background-color: rgb(16 185 129 / 0.18) !important;
+  color: #047857 !important;
+}
+html.light [data-poker-incoming-swap-fallthrough],
+html.light [data-poker-incoming-apply-picker],
+html.light [data-poker-incoming-bind-picker] {
+  background-color: #fafafa !important;
+  color: #18181b !important;
+}
+html.light [data-poker-incoming-swap-fallthrough] .text-white,
+html.light [data-poker-incoming-apply-picker] .text-white,
+html.light [data-poker-incoming-bind-picker] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-incoming-swap-fallthrough] .text-zinc-500,
+html.light [data-poker-incoming-apply-picker] .text-zinc-500,
+html.light [data-poker-incoming-bind-picker] .text-zinc-500,
+html.light [data-poker-incoming-swap-fallthrough] .text-zinc-300,
+html.light [data-poker-incoming-apply-picker] .text-zinc-300 {
+  color: #52525b !important;
+}
+html.light [data-poker-incoming-swap-fallthrough] .bg-zinc-800,
+html.light [data-poker-incoming-apply-picker] .bg-zinc-800,
+html.light [data-poker-incoming-bind-picker] .bg-zinc-800 {
+  background-color: #e4e4e7 !important;
+  color: #52525b !important;
+}
+html.light [data-poker-incoming-apply-picker] .bg-zinc-900\/70,
+html.light [data-poker-incoming-bind-picker] .bg-zinc-900\/70 {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-incoming-swap-fallthrough] .bg-emerald-600,
+html.light [data-poker-incoming-swap-fallthrough] .bg-cyan-600,
+html.light [data-poker-incoming-apply-picker] .bg-emerald-600,
+html.light [data-poker-incoming-apply-picker] .bg-cyan-600 {
+  color: #fff !important;
+}
 html.light [data-poker-bankroll] [data-poker-bankroll-hero-card][data-stake-hero-tone='emerald'] [data-poker-bankroll-hero-title] {
   color: #15803d !important;
 }

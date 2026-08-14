@@ -191,6 +191,20 @@ Same bankroll rules as cash backing close, one payout when manifest is complete:
 
 **Tournament piece** (single session): swap-shaped piece on one session ... not ongoing stake roll; close at result. **Start Session + Backer** on personal bankroll creates `cash_piece` / `tournament_piece`. Start Session lists **Swaps** (green) above **Backers** (cyan) on tournaments. Backers copy is “Single session stake … closes when you end it.” The player never gets a carousel card; live UI is the normal session-in-progress card. Player terms are live immediately (Edge backers still Accept to get a Stable card). End Session recaps then archives. A session can have backers and swaps together. Swap integration still **v2b**.
 
+### Multi-live sessions
+
+Players may run **multiple concurrent** `status = 'active'` sessions (personal and/or stake scopes mixed).
+
+| Rule | Detail |
+| --- | --- |
+| UI | Stacked in-progress cards under the current hero; `+ Start Session` stays below the stack. |
+| Soft cap | Soft at **3** live (warn + confirm); hard block at **4+**. Count is global across personal + all deals. |
+| Actions | Pause / Re-buy / Re-enter / Swap / End target a **session id** (`actionSession`), not a singleton. |
+| Cross-scope | Live on another hero shows a quiet **Live** pill on that carousel card. |
+| Incoming swap fallthrough | Auto-match / picker first. If nothing matches → **Apply to current session** (mismatch confirm, `forceBind`) and/or **Start new session**. |
+
+No DB unique-active constraint ... enforcement is client soft/hard caps only.
+
 ### Swap overlay (cross-feature)
 
 | Question | Answer |
@@ -517,6 +531,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-14:** **Multi-live sessions (client):** Concurrent in-progress sessions allowed (mixed personal + stake). Soft cap 3 (confirm) / hard 4. Stacked live cards; Start stays available; pause/rebuy/end/swaps are session-id targeted. Carousel **Live** pill on other heroes. Incoming swap no-match fallthrough: Apply to current (force bind) or Start new. **`PokerBankrollTracker`**, **`pokerTournamentSwapApi` (`forceBind`)**.
 - **2026-08-13:** **Closed-stake Realized backing no longer treats periodic profit as capital return (client):** `{ isClose: false }` was ignored when `deal.status` was settled/closed (`false || settled` → close path), so a $3,800 periodic settle showed as roll-at-settle (e.g. $103,800). Explicit false now stays on the profit-credit path. **`settlementBackerCredit`**.
 - **2026-08-13:** **Personal Start Session no longer inherits the active stake (client):** centered hero card wins after carousel settle; `deal_id` is pinned at sheet open. Tournament on Poker bankroll stays `deal_id` null. **`resolveBankrollScopeForSessionWrite`**, **`PokerBankrollTracker.jsx`**.
 - **2026-08-07:** **Closed stakes Realized backing (client):** archive card / modal include action-weighted **makeup** on underwater settles so overall losers show negative Realized backing (not $0 / prior profit-only). **`settlementBackerCredit`** in **`pokerStableDealHistory.js`**.

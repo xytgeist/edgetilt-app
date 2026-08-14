@@ -228,7 +228,6 @@ import {
 } from './pokerTournamentSwapApi.js'
 import { eventDisplayNamesDiffer } from './pokerTournamentEventKeys.js'
 import {
-  defaultExcludePriorBullets,
   priorSeriesBulletCount,
   swapBelongsOnSession,
 } from './pokerTournamentSeries.js'
@@ -862,13 +861,6 @@ export default function PokerBankrollTracker({
     () =>
       seriesAnchorSession
         ? priorSeriesBulletCount(seriesAnchorSession, sessions, swapEventsById)
-        : 0,
-    [seriesAnchorSession, sessions, swapEventsById],
-  )
-  const swapPriorExcludeCount = useMemo(
-    () =>
-      seriesAnchorSession
-        ? defaultExcludePriorBullets(seriesAnchorSession, sessions, swapEventsById, false)
         : 0,
     [seriesAnchorSession, sessions, swapEventsById],
   )
@@ -5635,7 +5627,6 @@ export default function PokerBankrollTracker({
               supabaseClient={supabaseClient}
               userId={userId}
               enabled={form.session_type === 'tournament' && !editingActiveSession}
-              priorExcludeCount={swapPriorExcludeCount}
               maxSwapGivePct={swapSelfOwnedPct}
               showOwnershipSummary={false}
               draftSwaps={draftSwaps}
@@ -5897,7 +5888,6 @@ export default function PokerBankrollTracker({
                 supabaseClient={supabaseClient}
                 userId={userId}
                 enabled={form.session_type === 'tournament'}
-                priorExcludeCount={swapPriorExcludeCount}
                 maxSwapGivePct={swapSelfOwnedPct}
                 draftSwaps={draftSwaps}
                 onDraftSwapsChange={setDraftSwaps}
@@ -5972,7 +5962,6 @@ export default function PokerBankrollTracker({
               supabaseClient={supabaseClient}
               userId={userId}
               enabled
-              priorExcludeCount={swapPriorExcludeCount}
               maxSwapGivePct={swapSelfOwnedPct}
               showOwnershipSummary
               draftSwaps={draftSwaps}

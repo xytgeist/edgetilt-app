@@ -52,18 +52,6 @@ const SWAP_TERM_OPTIONS = [
   },
 ]
 
-function includePreviousTerm(priorExcludeCount) {
-  const n = Math.max(0, Number(priorExcludeCount) || 0)
-  return {
-    key: 'include_previous_bullets',
-    label: 'Include previous bullets',
-    hint:
-      n > 0
-        ? `Default is this bullet forward. Check to also count ${n} already-fired bullet${n === 1 ? '' : 's'}.`
-        : 'Default is this bullet forward. Check to also count already-fired bullets in this event.',
-  }
-}
-
 function SwapTermChecks({ value, onChange, compact = false, extraOptions = [] }) {
   const options = [...SWAP_TERM_OPTIONS, ...extraOptions]
   return (
@@ -176,7 +164,6 @@ export default function PokerTournamentSwapsSection({
   maxSwapGivePct = 100,
   showOwnershipSummary = false,
   showGlobalConfirm = null,
-  priorExcludeCount = 0,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   /** swapId → show manual payout fields */
@@ -621,9 +608,6 @@ export default function PokerTournamentSwapsSection({
                 compact={compact}
                 value={draft}
                 onChange={(patch) => updateDraft(draft.localId, patch)}
-                extraOptions={
-                  priorExcludeCount > 0 ? [includePreviousTerm(priorExcludeCount)] : []
-                }
               />
               {!pctOk ? (
                 <p className="mt-1 text-[11px] text-rose-400">Percents must be 0–100.</p>

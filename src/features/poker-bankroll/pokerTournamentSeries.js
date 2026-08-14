@@ -244,18 +244,12 @@ export function seriesTotalBulletCount(anchor, sessions, eventsById = {}) {
 
 /**
  * Already-fired bullets that a new swap should skip (current bullet stays in).
+ * Always this-bullet-forward … no include-previous option.
  * @param {object | null | undefined} anchor
  * @param {object[]} sessions
  * @param {Record<string, object>} [eventsById]
- * @param {boolean} [includePrevious]
  */
-export function defaultExcludePriorBullets(
-  anchor,
-  sessions,
-  eventsById = {},
-  includePrevious = false,
-) {
-  if (includePrevious) return 0
+export function defaultExcludePriorBullets(anchor, sessions, eventsById = {}) {
   const priorOther = priorSeriesBulletCount(anchor, sessions, eventsById)
   const firedThis = sessionSeriesBulletCount(anchor, eventsById)
   const priorThis = Math.max(0, firedThis - 1)

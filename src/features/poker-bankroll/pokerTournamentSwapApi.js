@@ -219,7 +219,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
         both_must_cash: Boolean(draft.both_must_cash),
         final_bullet_only: Boolean(draft.final_bullet_only),
         final_table_only: Boolean(draft.final_table_only),
-        include_previous_bullets: Boolean(draft.include_previous_bullets),
+        include_previous_bullets: false,
       },
     }
   }
@@ -249,7 +249,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
       both_must_cash: Boolean(draft.both_must_cash),
       final_bullet_only: Boolean(draft.final_bullet_only),
       final_table_only: Boolean(draft.final_table_only),
-      include_previous_bullets: Boolean(draft.include_previous_bullets),
+      include_previous_bullets: false,
     },
   }
 }
@@ -282,9 +282,8 @@ export async function persistDraftSwapsForSession(
   for (const draft of drafts) {
     const built = draftSwapToInsertFields(draft, userId)
     if (built.error) return { swaps: [], error: new Error(built.error) }
-    const includePrev = Boolean(draft.include_previous_bullets)
     const exclude = creatorSession
-      ? defaultExcludePriorBullets(creatorSession, sessions, eventsById, includePrev)
+      ? defaultExcludePriorBullets(creatorSession, sessions, eventsById)
       : 0
     rows.push({
       ...built.row,
@@ -301,7 +300,7 @@ export async function persistDraftSwapsForSession(
         seriesTotal ||
         snap?.bullets ||
         (creatorSession ? 1 + (Number(creatorSession.reentries) || 0) : null),
-      include_previous_bullets: includePrev,
+      include_previous_bullets: false,
       creator_exclude_prior_bullets: exclude,
       creator_result_ready: Boolean(snap) && seriesResultReadyAfterSession(creatorSession, eventsById),
     })
@@ -715,7 +714,7 @@ export async function acceptCounterpartySessionBind(
   const snap = sessionResultSnapshot(boundSession)
   const ready = Boolean(snap) && seriesResultReadyAfterSession(boundSession, eventsById)
   const seriesTotal = seriesTotalBulletCount(boundSession, sessions, eventsById)
-  const exclude = defaultExcludePriorBullets(boundSession, sessions, eventsById, false)
+  const exclude = defaultExcludePriorBullets(boundSession, sessions, eventsById)
   const patch = {
     counterparty_session_id: sessionId,
     counterparty_session_accepted_at: new Date().toISOString(),

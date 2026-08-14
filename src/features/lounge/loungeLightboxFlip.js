@@ -79,9 +79,11 @@ export function readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH
  * Klipy / uploaded GIF (and Klipy animated webp). Stills on R2 stay false.
  * @param {string} [url]
  */
-export function isLoungeLightboxGifUrl(url) {
+export function isLoungeLightboxGifUrl(url, knownGifUrl) {
   const raw = String(url || '').trim()
   if (!raw) return false
+  const known = String(knownGifUrl || '').trim()
+  if (known && raw === known) return true
   try {
     const parsed = new URL(raw)
     if (/\.gif$/i.test(parsed.pathname)) return true

@@ -128,7 +128,7 @@ function LoungeLightboxStackedPhoto({
           ref={setSharpNode}
           src={sharpSrc}
           alt=""
-          className={`${className} pointer-events-none absolute inset-0`}
+          className="pointer-events-none absolute inset-0 z-[1] h-full w-full select-none object-contain"
           style={{ opacity: sharpOn ? 1 : 0 }}
           loading="eager"
           fetchPriority={fetchPriority}
@@ -213,6 +213,8 @@ export function LoungeImageLightbox({
   onClose,
   fromRect = null,
   getOriginRect = null,
+  /** Stored `gif_url` when this lightbox includes a Klipy/external GIF (host may not say klipy). */
+  gifUrl = '',
   /** Tailwind z-index on the portaled shell (default below profile sheet `z-[101]`). */
   lightboxPortalClass = 'z-[100]',
   /** `() => ReactNode` - top-right ⋯ menu (no autoplay toggle for images). */
@@ -798,7 +800,7 @@ export function LoungeImageLightbox({
     const tileAspect = from.width / Math.max(from.height, 1)
     const openIdx = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
     const openUrl = list[openIdx] || ''
-    const openingGif = isLoungeLightboxGifUrl(openUrl)
+    const openingGif = isLoungeLightboxGifUrl(openUrl, gifUrl)
     const feedProbe = new Image()
     feedProbe.src = loungeFeedImageDeliveryUrl(openUrl, 'feed')
     const feedAspect =
@@ -895,7 +897,7 @@ export function LoungeImageLightbox({
         // ignore
       }
     }
-  }, [phase, zStack.overlay, initialIndex, list.length])
+  }, [phase, zStack.overlay, initialIndex, list.length, gifUrl])
 
   useEffect(
     () => () => {
@@ -986,7 +988,7 @@ export function LoungeImageLightbox({
         <img
           src={ambientDisplaySrc}
           alt=""
-          className={`h-full w-full select-none ${isLoungeLightboxGifUrl(current) ? 'object-contain' : 'object-cover'}`}
+          className="h-full w-full select-none object-cover"
           draggable={false}
           decoding="async"
           onError={(e) => onLoungeLightboxImgError(e, current)}
@@ -1236,6 +1238,7 @@ export function LoungeInlineMediaUrl({
   variant = 'feed',
   marginTopClass = 'mt-2',
   enableLightbox = true,
+  knownGifUrl = '',
   lightboxPortalClass = 'z-[100]',
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
@@ -1284,7 +1287,7 @@ export function LoungeInlineMediaUrl({
     const img = originImgRef.current
     const stored = String(url).trim()
     const fromRect =
-      isLoungeLightboxGifUrl(stored) && img instanceof HTMLImageElement
+      isLoungeLightboxGifUrl(stored, knownGifUrl) && img instanceof HTMLImageElement
         ? readContainedImageViewportRect(img)
         : img instanceof HTMLElement
           ? readElementViewportRect(img)
@@ -1294,18 +1297,18 @@ export function LoungeInlineMediaUrl({
       index: 0,
       fromRect: heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
     })
-  }, [url])
+  }, [url, knownGifUrl])
 
   const getOriginRect = useCallback((_index) => {
     const img = originImgRef.current
     if (!(img instanceof HTMLElement)) return null
     const stored = String(url).trim()
-    if (isLoungeLightboxGifUrl(stored) && img instanceof HTMLImageElement) {
+    if (isLoungeLightboxGifUrl(stored, knownGifUrl) && img instanceof HTMLImageElement) {
       return readContainedImageViewportRect(img)
     }
     const rect = readElementViewportRect(img)
     return heroRectUsableForShrinkBack(rect) ? rect : null
-  }, [url])
+  }, [url, knownGifUrl])
 
   const framed = (
     <div className={frameClass}>
@@ -1360,6 +1363,7 @@ export function LoungeInlineMediaUrl({
           urls={lightbox.urls}
           initialIndex={lightbox.index}
           fromRect={lightbox.fromRect}
+          gifUrl={knownGifUrl}
           getOriginRect={getOriginRect}
           onClose={() => setLightbox(null)}
           lightboxPortalClass={lightboxPortalClass}
@@ -1408,6 +1412,7 @@ export function LoungePostMediaPair({
         />
         <LoungeInlineMediaUrl
           url={g}
+          knownGifUrl={g}
           variant={variant}
           marginTopClass="mt-2"
           enableLightbox={enableLightbox}
@@ -1424,6 +1429,7 @@ export function LoungePostMediaPair({
   return (
     <LoungeInlineMediaUrl
       url={single}
+      knownGifUrl={!m && g ? g : ''}
       variant={variant}
       marginTopClass={firstMarginTopClass}
       enableLightbox={enableLightbox}

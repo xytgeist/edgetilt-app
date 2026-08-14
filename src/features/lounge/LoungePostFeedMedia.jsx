@@ -77,6 +77,8 @@ export function LoungeImageCarousel({
   captionColumnMedia = false,
   /** LCP / above-the-fold only. Default lazy so a 28-row page does not decode every original. */
   priority = false,
+  /** Post `gif_url` when the last slide is a Klipy/external GIF. */
+  gifUrl = '',
 }) {
   const list = Array.isArray(urls) ? urls.map((u) => String(u || '').trim()).filter(Boolean) : []
   const deliveryVariant = variant === 'composer' ? 'composer' : variant
@@ -94,12 +96,12 @@ export function LoungeImageCarousel({
     const img = originImgRefs.current[index]
     if (!(img instanceof HTMLElement)) return null
     const url = list[index] || ''
-    if (isLoungeLightboxGifUrl(url) && img instanceof HTMLImageElement) {
+    if (isLoungeLightboxGifUrl(url, gifUrl) && img instanceof HTMLImageElement) {
       return readContainedImageViewportRect(img)
     }
     const rect = readElementViewportRect(img)
     return heroRectUsableForShrinkBack(rect) ? rect : null
-  }, [list])
+  }, [list, gifUrl])
 
   const openLightboxAt = useCallback(
     (i) => {
@@ -479,6 +481,7 @@ export function LoungeImageCarousel({
           urls={lightbox.urls}
           initialIndex={lightbox.index}
           fromRect={lightbox.fromRect}
+          gifUrl={gifUrl}
           getOriginRect={getLightboxOriginRect}
           onClose={() => setLightbox(null)}
           lightboxPortalClass={lightboxPortalClass}
@@ -712,6 +715,7 @@ export function LoungePostFeedImagesAndGif({
         variant={variant}
         firstMarginTopClass={firstMarginTopClass}
         regionAriaLabel={gif ? 'Post images and GIF' : 'Post images'}
+        gifUrl={gif}
         enableLightbox={enableLightbox}
         visibilityResetRootRef={visibilityResetRootRef}
         captionColumnMedia={captionColumnMedia}

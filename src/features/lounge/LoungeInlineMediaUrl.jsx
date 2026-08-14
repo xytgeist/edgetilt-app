@@ -82,6 +82,49 @@ function onLoungeLightboxImgError(e, storedUrl) {
 }
 
 /**
+ * Hidden `visibility` images often have not decoded when the flyout lifts, so land
+ * flashes empty then pops the 2048. Wait for a paintable bitmap (or a short timeout).
+ * @param {HTMLImageElement | null | undefined} img
+ * @param {number} [timeoutMs]
+ * @returns {Promise<void>}
+ */
+function whenLightboxHeroImageReady(img, timeoutMs = 500) {
+  return new Promise((resolve) => {
+    let settled = false
+    const done = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+    const timeoutId = window.setTimeout(done, timeoutMs)
+    const finish = () => {
+      window.clearTimeout(timeoutId)
+      if (img && typeof img.decode === 'function') {
+        img.decode().then(done).catch(done)
+        return
+      }
+      done()
+    }
+    if (!(img instanceof HTMLImageElement)) {
+      window.clearTimeout(timeoutId)
+      done()
+      return
+    }
+    if (img.complete && img.naturalWidth > 0) {
+      finish()
+      return
+    }
+    const onStop = () => {
+      img.removeEventListener('load', onStop)
+      img.removeEventListener('error', onStop)
+      finish()
+    }
+    img.addEventListener('load', onStop)
+    img.addEventListener('error', onStop)
+  })
+}
+
+/**
  * @param {HTMLImageElement | null | undefined} img
  * @returns {number | null} width/height, or null if unknown
  */
@@ -713,11 +756,20 @@ export function LoungeImageLightbox({
       return undefined
     }
 
-    // Seed aspect from the tile so footer chrome (full vs compact) matches before we measure.
+    // Prefer the already-decoded feed bitmap's natural aspect (same photo as 2048).
+    // Tile box is a fallback … a late 2048 onLoad used to flip chrome/pad at land.
     const tileAspect = from.width / Math.max(from.height, 1)
     const openIdx = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
-    if (Number.isFinite(tileAspect) && tileAspect > 0) {
-      setAspectByIndex((prev) => (prev[openIdx] == null ? { ...prev, [openIdx]: tileAspect } : prev))
+    const feedProbe = new Image()
+    feedProbe.src = loungeFeedImageDeliveryUrl(list[openIdx] || '', 'feed')
+    const feedAspect =
+      feedProbe.complete && feedProbe.naturalWidth > 0 && feedProbe.naturalHeight > 0
+        ? feedProbe.naturalWidth / feedProbe.naturalHeight
+        : null
+    const seedAspect =
+      feedAspect && Number.isFinite(feedAspect) && feedAspect > 0 ? feedAspect : tileAspect
+    if (Number.isFinite(seedAspect) && seedAspect > 0) {
+      setAspectByIndex((prev) => (prev[openIdx] == null ? { ...prev, [openIdx]: seedAspect } : prev))
     }
 
     // Cover the feed tile this layout pass … do not wait on rAF or the flyout
@@ -776,17 +828,23 @@ export function LoungeImageLightbox({
           onDone: () => {
             if (cancelled) return
             snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
-            // Open media was painting under the flyout during expand … lift cover in the same frame.
-            // Drop landFrame with open … fixed land shell blocks native carousel pan-x.
-            flushSync(() => {
-              setPhase('open')
-              setLandFrame(null)
-              setChromeVisible(true)
-              setScrimOpacity(1)
+            // Stay covered until the 2048 can paint. Lifting onto an undecoded
+            // hidden layer is the end-of-expand flash after CF resize.
+            void whenLightboxHeroImageReady(mediaImageRef.current).then(() => {
+              if (cancelled) return
+              flushSync(() => {
+                setPhase('open')
+                setChromeVisible(true)
+                setScrimOpacity(1)
+              })
+              flyout.style.visibility = 'hidden'
+              flyout.style.pointerEvents = 'none'
+              clearFlyoutHeroInlineStyles(flyout)
+              // Drop landFrame after the cover lifts … same-frame drop + src swap was a geometry pop.
+              requestAnimationFrame(() => {
+                if (!cancelled) setLandFrame(null)
+              })
             })
-            flyout.style.visibility = 'hidden'
-            flyout.style.pointerEvents = 'none'
-            clearFlyoutHeroInlineStyles(flyout)
           },
         })
       })
@@ -1028,7 +1086,10 @@ export function LoungeImageLightbox({
             onPointerUp={zoomPointerUp}
             onPointerCancel={zoomPointerCancel}
             className="relative z-0 flex min-h-0 flex-1 flex-col"
-            style={{ visibility: phase === 'opening' ? 'hidden' : 'visible' }}
+            style={{
+              // Opacity 0 (not visibility:hidden) so the 2048 can decode during fly-in.
+              opacity: phase === 'opening' ? 0 : 1,
+            }}
             aria-hidden={phase === 'opening' ? true : undefined}
           >
             <div
@@ -1086,6 +1147,7 @@ export function LoungeImageLightbox({
                             // Eager for every mounted slide. Toggling lazy→eager on snap
                             // retriggers decode and flashes the image after it has already settled.
                             loading="eager"
+                            fetchPriority={i === landSlideIndexRef.current ? 'high' : 'auto'}
                             decoding="async"
                             draggable={false}
                             onLoad={(e) => noteSlideAspectAt(e.currentTarget, i)}
@@ -1126,6 +1188,7 @@ export function LoungeImageLightbox({
                         : 'relative z-[1] max-h-full max-w-full select-none object-contain'
                     }
                     loading="eager"
+                    fetchPriority="high"
                     decoding="async"
                     draggable={false}
                     onLoad={(e) => noteSlideAspectAt(e.currentTarget, idx)}

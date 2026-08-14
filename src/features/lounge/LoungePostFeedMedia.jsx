@@ -543,7 +543,7 @@ function LoungePostPendingStreamPublishTile({ pendingKey, posterSrc, firstMargin
 
   return (
     <div className={`${firstMarginTopClass} ${LOUNGE_FEED_ATTACHMENT_COLUMN_SHELL_CLASS}`}>
-      <div className="relative block w-fit max-w-full overflow-hidden rounded-xl border border-zinc-700/60 bg-black">
+      <div className="relative block w-fit max-w-full overflow-hidden rounded-xl bg-black">
         {posterSrc ? (
           <>
             <img

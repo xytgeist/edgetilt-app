@@ -94,14 +94,6 @@ const roundingByVariant = {
   composer: 'rounded-xl',
 }
 
-const borderByVariant = {
-  feed: 'border-zinc-700/60',
-  detail: 'border-zinc-700/60',
-  commentInline: 'border-zinc-700/50',
-  embed: 'border-zinc-600/40',
-  composer: 'border-zinc-700/60',
-}
-
 /** Poster `<img>` can be 0×0 before decode; keep a floor so the tile (and absolute `<video>`) never collapses. */
 const posterFrameMinHByVariant = {
   feed: 'min-h-[min(48vw,19.5rem)] sm:min-h-[19.5rem]',
@@ -3110,7 +3102,6 @@ export default function LoungePostStreamVideo({
     : videoClassByVariant[variant] || videoClassByVariant.feed
   const slideMaxW = slideMaxWByVariant[variant] || slideMaxWByVariant.feed
   const rounding = roundingByVariant[variant] || roundingByVariant.feed
-  const border = borderByVariant[variant] || borderByVariant.feed
   /** iOS: in-flow poster `<img>` sizes the frame; `<video>` stays absolute until fade. Use whenever we have a CF thumbnail URL (feed, embed, and detail - not only lazy feed). */
   const usePosterFrame = Boolean(id && poster)
   const posterFrameMinH = posterFrameMinHByVariant[variant] || posterFrameMinHByVariant.feed
@@ -3274,7 +3265,7 @@ export default function LoungePostStreamVideo({
         {...(videoDebugEnabled && feedAutoplayClientId
           ? { 'data-lounge-autoplay-id': feedAutoplayClientId }
           : {})}
-        className={`${tileWidthClass} cursor-pointer overflow-hidden ${rounding} border ${border} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
+        className={`${tileWidthClass} cursor-pointer overflow-hidden ${rounding} bg-black touch-manipulation [-webkit-tap-highlight-color:transparent] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500/50`}
           aria-label={
             showOpen
               ? !feedAutoplayEnabled

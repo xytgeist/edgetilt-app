@@ -275,6 +275,7 @@ export function LoungeImageLightbox({
     heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
   )
   const targetRectRef = useRef(null)
+  const closeHeroFrameRef = useRef(null)
   const flyoutRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const expandAnimRef = useRef(/** @type {Animation | null} */ (null))
   const shrinkAnimRef = useRef(/** @type {Animation | null} */ (null))
@@ -591,9 +592,11 @@ export function LoungeImageLightbox({
     const origin = resolveCloseOrigin()
     const mediaEl = mediaImageRef.current
     const heroFrame =
-      mediaEl instanceof HTMLElement
-        ? readElementViewportRect(mediaEl)
-        : targetRectRef.current
+      mediaEl instanceof HTMLImageElement
+        ? readContainedImageViewportRect(mediaEl) || readElementViewportRect(mediaEl)
+        : mediaEl instanceof HTMLElement
+          ? readElementViewportRect(mediaEl)
+          : targetRectRef.current
 
     if (!heroRectUsableForShrinkBack(origin) || !heroRectUsableForShrinkBack(heroFrame)) {
       finishClose()
@@ -601,11 +604,16 @@ export function LoungeImageLightbox({
     }
 
     closingRef.current = true
-    setChromeVisible(false)
-    setDismissProgress(0)
+    closeHeroFrameRef.current = heroFrame
     // Keep scrim at full opacity for this paint, then fade with shrink (video hero pattern).
-    setScrimOpacity(1)
-    setPhase('closing')
+    // flushSync so the flyout style below is not wiped by a later closing render
+    // (unsized `fixed` + `h-full` img = one full-screen flash, then shrink).
+    flushSync(() => {
+      setChromeVisible(false)
+      setDismissProgress(0)
+      setScrimOpacity(1)
+      setPhase('closing')
+    })
 
     const flyout = flyoutRef.current
     if (!flyout) {
@@ -1018,7 +1026,14 @@ export function LoungeImageLightbox({
               }
             : phase === 'opening'
               ? { top: 0, left: 0, width: 0, height: 0 }
-              : null),
+              : phase === 'closing' && closeHeroFrameRef.current
+                ? {
+                    top: closeHeroFrameRef.current.top,
+                    left: closeHeroFrameRef.current.left,
+                    width: closeHeroFrameRef.current.width,
+                    height: closeHeroFrameRef.current.height,
+                  }
+                : null),
         }}
       >
         {/* Feed-tier src … same file as the tile. Lightbox 2048 is a new URL after CF resize

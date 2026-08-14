@@ -187,6 +187,7 @@ import {
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
 import {
+  computeSessionAttribution,
   isPersonalHistorySession,
   isPersonalMetricSession,
   playerStakeSessionValue,
@@ -438,6 +439,8 @@ export default function PokerBankrollTracker({
   const [proposeAfterDecline, setProposeAfterDecline] = useState(null)
   /** Read-only session detail before edit. */
   const [detailSessionId, setDetailSessionId] = useState(null)
+  /** End Session recap for a personal piece session (Continue only). */
+  const [sessionRecapMode, setSessionRecapMode] = useState(false)
   const [stableSaving, setStableSaving] = useState(false)
   /** After + Stake, scroll carousel to this deal id once reload completes. */
   const pendingCarouselDealIdRef = useRef(null)
@@ -669,8 +672,8 @@ export default function PokerBankrollTracker({
   )
   /** Max % of net the player can swap after stable backing sold action. */
   const swapSelfOwnedPct = useMemo(
-    () => playerSelfOwnedActionPct(stakeeDeals, slicesByDeal),
-    [stakeeDeals, slicesByDeal],
+    () => playerSelfOwnedActionPct(Object.values(stakeeDealsById), slicesByDeal),
+    [stakeeDealsById, slicesByDeal],
   )
   /** Session id → non-cancelled swaps linked as creator or counterparty. */
   const swapsBySessionId = useMemo(() => {
@@ -986,6 +989,7 @@ export default function PokerBankrollTracker({
       } else {
         const mine = (dealsRes.deals || []).filter((d) => d.stakee_user_id === userId)
         const carouselDeals = mine.filter((d) => {
+          if (isPieceDealType(d.deal_type)) return false
           if (d.status === 'active' || d.status === 'pending' || d.status === 'revoked') return true
           if (
             (d.status === 'settled' || d.status === 'closed' || d.status === 'declined') &&
@@ -2651,7 +2655,7 @@ export default function PokerBankrollTracker({
       if (userId) {
         writeStoredPokerBankrollScope(
           userId,
-          payload.deal_id ? String(payload.deal_id) : 'personal',
+          pieceDeal?.id ? 'personal' : payload.deal_id ? String(payload.deal_id) : 'personal',
         )
       }
       setIncomingAcceptSwap(null)
@@ -2810,8 +2814,39 @@ export default function PokerBankrollTracker({
       }
       const dealIdForNotify = activeSession.deal_id || null
       const sessionIdForNotify = activeSession.id
-      // Close the sheet before Edge notify / full reload ... those can stall on auth locks.
-      setSheet(null)
+      const endedRow = {
+        ...sessionRow,
+        status: 'completed',
+        end_at: new Date(endedAt).toISOString(),
+        paused_at: null,
+        paused_seconds: Math.round(pokerSessionPausedMs(activeSession, endedAt) / 1000),
+        cash_out: cashOut,
+        bounty_winnings:
+          activeSession.session_type === 'tournament' && endBounties !== ''
+            ? parseMoneyInputNumber(endBounties)
+            : null,
+        finish_place:
+          activeSession.session_type === 'tournament' && endFinishPlace !== ''
+            ? parseInt(endFinishPlace, 10)
+            : null,
+        notes: endNotes.trim() || null,
+      }
+      setSessions((prev) => {
+        const has = prev.some((s) => s.id === endedRow.id)
+        return has
+          ? prev.map((s) => (s.id === endedRow.id ? { ...s, ...endedRow } : s))
+          : [endedRow, ...prev]
+      })
+      const pieceDeal = dealIdForNotify ? stakeeDealsById[dealIdForNotify] : null
+      const showRecap = isPieceDealType(pieceDeal?.deal_type)
+      // Recap before Edge notify / full reload ... those can stall on auth locks.
+      if (showRecap) {
+        setSessionRecapMode(true)
+        setDetailSessionId(endedRow.id)
+        setSheet('sessionDetail')
+      } else {
+        setSheet(null)
+      }
       triggerTapHapticLight()
       setSaving(false)
       void (async () => {
@@ -2836,6 +2871,7 @@ export default function PokerBankrollTracker({
 
   function openSessionDetail(session) {
     if (!session?.id) return
+    setSessionRecapMode(false)
     setDetailSessionId(session.id)
     setError('')
     setSheet('sessionDetail')
@@ -3033,6 +3069,7 @@ export default function PokerBankrollTracker({
     setIncomingAcceptSwap(null)
     setIncomingBindPicker(null)
     setDetailSessionId(null)
+    setSessionRecapMode(false)
     setSessionWriteDealId(undefined)
     setSheet(null)
   }
@@ -4251,6 +4288,7 @@ export default function PokerBankrollTracker({
                   const sessionDeal = session.deal_id
                     ? stakeeDealsById[session.deal_id] ?? null
                     : null
+                  const isPieceSession = isPieceDealType(sessionDeal?.deal_type)
                   const isMergedStakeSession =
                     !isOnStake && sessionDeal?.status === 'settled'
                   const sessionDealSlices = session.deal_id
@@ -4263,7 +4301,7 @@ export default function PokerBankrollTracker({
                     sessionDeal &&
                     sessionPlayerShareInMakeup(sessionDeal, session, sessionDealSessions)
                   const playerShare =
-                    (isOnStake || isMergedStakeSession) &&
+                    (isOnStake || isMergedStakeSession || isPieceSession) &&
                     sessionDeal &&
                     !playerShareInMakeup
                       ? playerStakeSessionValue(
@@ -4290,6 +4328,23 @@ export default function PokerBankrollTracker({
                   const hourly = displayWl != null && hrs >= 0.02 ? displayWl / hrs : null
                   const bbh = pokerSessionBbPerHour(session)
                   const sessionSwaps = swapsBySessionId[session.id] || []
+                  const pieceBackerParties = isPieceSession
+                    ? computeSessionAttribution(
+                        session,
+                        sessionDeal,
+                        sessionDealSlices,
+                        stableProfilesById,
+                        0,
+                        sessionDealSessions,
+                      ).parties.filter((p) => p.role === 'backer')
+                    : []
+                  const piecePendingBackers = isPieceSession
+                    ? sessionDealSlices.filter(
+                        (s) =>
+                          s.status === 'pending' &&
+                          !pieceBackerParties.some((p) => p.sliceId === s.id),
+                      )
+                    : []
                   return (
                     <li key={session.id}>
                       {/* div+role=button … Settle is a real <button>; nested buttons are invalid HTML */}
@@ -4389,6 +4444,77 @@ export default function PokerBankrollTracker({
                             {hourly != null ? ` · ${fmtPoker$(hourly)}/h` : ''}
                             {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
                           </span>
+                          {isPieceSession &&
+                          (pieceBackerParties.length > 0 || piecePendingBackers.length > 0) ? (
+                            <>
+                              <span
+                                data-poker-session-backer-line
+                                className="mt-1.5 block text-[11px] font-medium text-emerald-300/90"
+                              >
+                                Backers
+                              </span>
+                              {pieceBackerParties.map((party) => {
+                                const amtTone =
+                                  party.amount < -0.005
+                                    ? 'loss'
+                                    : party.amount > 0.005
+                                      ? 'gain'
+                                      : 'flat'
+                                return (
+                                  <div
+                                    key={party.key}
+                                    className="mt-0.5 flex items-center gap-3 -ml-12"
+                                  >
+                                    <div className="flex w-9 shrink-0 justify-center" />
+                                    <span
+                                      data-poker-session-backer-line
+                                      className="min-w-0 flex-1 truncate text-[11px] text-emerald-300/90"
+                                    >
+                                      {party.label}
+                                      {party.detail ? ` · ${party.detail}` : ''}
+                                      {session.status !== 'active' &&
+                                      Math.abs(party.amount) >= 0.005 ? (
+                                        <>
+                                          {' · '}
+                                          <span
+                                            data-poker-session-swap-amt={amtTone}
+                                            className={
+                                              amtTone === 'loss'
+                                                ? 'text-rose-400'
+                                                : amtTone === 'gain'
+                                                  ? 'text-emerald-400'
+                                                  : 'text-inherit'
+                                            }
+                                          >
+                                            {fmtPoker$(party.amount)}
+                                          </span>
+                                        </>
+                                      ) : null}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                              {piecePendingBackers.map((slice) => (
+                                <div
+                                  key={slice.id}
+                                  className="mt-0.5 flex items-center gap-3 -ml-12"
+                                >
+                                  <div className="flex w-9 shrink-0 justify-center" />
+                                  <span
+                                    data-poker-session-backer-line
+                                    className="min-w-0 flex-1 truncate text-[11px] text-emerald-300/90"
+                                  >
+                                    {sliceCounterpartyDisplayName(
+                                      slice,
+                                      stableProfilesById,
+                                    )}
+                                    {slice.action_pct != null ? ` · ${slice.action_pct}%` : ''}
+                                    {' · waiting'}
+                                  </span>
+                                </div>
+                              ))}
+                            </>
+                          ) : null}
                           {sessionSwaps.length > 0 ? (
                             <>
                               <span
@@ -4481,7 +4607,7 @@ export default function PokerBankrollTracker({
                               })}
                             </>
                           ) : null}
-                          {isMergedStakeSession ? (
+                          {isMergedStakeSession && !isPieceSession ? (
                             <div className="mt-1.5 flex justify-end">
                               <span
                                 data-poker-session-stake-badge
@@ -4967,7 +5093,7 @@ export default function PokerBankrollTracker({
           session={detailSession}
           isActive={detailSession.status === 'active'}
           elapsedSeconds={detailSession.id === activeSession?.id ? elapsed : 0}
-          stakeLabel={detailStakeLabel}
+          stakeLabel={isPieceDealType(detailDeal?.deal_type) ? '' : detailStakeLabel}
           deal={detailDeal}
           slices={detailSlices}
           stableProfilesById={stableProfilesById}
@@ -4977,6 +5103,7 @@ export default function PokerBankrollTracker({
           swapProfilesById={swapProfilesById}
           maxSwapGivePct={swapSelfOwnedPct}
           sessionCardSwapBusyId={sessionCardSwapBusyId}
+          recapMode={sessionRecapMode}
           stakeSessions={
             detailDeal?.id
               ? scopedSessions.filter((s) => s.deal_id === detailDeal.id)
@@ -4984,6 +5111,7 @@ export default function PokerBankrollTracker({
           }
           onClose={dismissSheet}
           onEdit={() => {
+            setSessionRecapMode(false)
             openEdit(detailSession)
             setDetailSessionId(null)
           }}

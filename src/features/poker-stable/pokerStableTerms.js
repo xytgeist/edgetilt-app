@@ -10,6 +10,7 @@ import {
   dealHasAcceptedBackerSlice,
   dealTypeLabel,
   isOngoingDealType,
+  isPieceDealType,
   roundMoney,
   stakeDealIsLiveForStakee,
 } from './pokerStableMath.js'
@@ -668,6 +669,7 @@ export function stakeeCanSettleStake(deal, _slices = [], { userId, hasProposal =
 /** Player or active Edge backer may record top-up / reduce / settle on an active stake. */
 export function userCanRecordDealEvent(deal, slices = [], userId) {
   if (!deal || !userId || deal.status !== 'active') return false
+  if (isPieceDealType(deal.deal_type)) return false
   if (deal.stakee_user_id === userId) return true
   return (slices || []).some(
     (s) =>
@@ -739,8 +741,9 @@ export function dealCanPeriodicSettle(deal, dealRoll = null) {
   return !dealIsInMakeup(deal, dealRoll)
 }
 
-/** Cash backing tracks makeup vs baseline; tournament packages do not. */
+/** Cash backing tracks makeup vs baseline; tournament packages and pieces do not. */
 export function dealHasMakeup(deal) {
+  if (isPieceDealType(deal?.deal_type)) return false
   return deal?.deal_type !== 'tournament_package'
 }
 

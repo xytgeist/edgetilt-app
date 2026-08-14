@@ -7095,6 +7095,9 @@ html.light [data-poker-bankroll] .text-emerald-200 {
 html.light [data-poker-bankroll] [data-poker-session-swap-line] {
   color: #0e7490 !important; /* cyan-700 — match Swaps heading */
 }
+html.light [data-poker-bankroll] [data-poker-session-backer-line] {
+  color: #047857 !important; /* emerald-700 ... match Backers heading */
+}
 /* Amount alone: red/green regardless of line tone */
 html.light [data-poker-bankroll] [data-poker-session-swap-amt='loss'] {
   color: var(--poker-loss) !important;

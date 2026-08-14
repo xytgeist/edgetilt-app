@@ -667,17 +667,33 @@ export async function createPieceDealForSession(supabase, args) {
     linkedSessionId = null,
   } = args
   const dealType = sessionType === 'tournament' ? 'tournament_piece' : 'cash_piece'
-  const activate = slices.length > 0 && slices.every((s) => s.counterpartyKind === 'guest')
-  return createBackingDeal(supabase, {
+  // Player session is live immediately. Guest slices activate on insert; Edge slices
+  // stay pending until Accept so the backer still gets an offer → live Stable card.
+  const created = await createBackingDeal(supabase, {
     dealType,
     venueKind,
     label,
     baselineBankroll,
     startingRoll: baselineBankroll,
     slices,
-    activate,
+    activate: false,
     linkedSessionId,
   })
+  if (created.error || !created.deal) return created
+  const now = new Date().toISOString()
+  const { data: activated, error: actErr } = await supabase
+    .from('poker_stable_deals')
+    .update({ status: 'active', responded_at: now })
+    .eq('id', created.deal.id)
+    .select(DEAL_SELECT)
+    .single()
+  if (actErr) return { deal: created.deal, error: actErr }
+  const roll = roundMoney(activated?.starting_roll ?? baselineBankroll)
+  const { error: pErr } = await bootstrapDealBankrollProfile(supabase, created.deal.id, roll)
+  return {
+    deal: activated || { ...created.deal, status: 'active', responded_at: now },
+    error: pErr,
+  }
 }
 
 /**
@@ -703,6 +719,12 @@ export async function maybeCloseCompletedPieceDeal(supabase, dealId) {
     .maybeSingle()
   if (sErr) return { closed: false, error: sErr }
   if (session?.status !== 'completed') return { closed: false, error: null }
+  const { error: pendErr } = await supabase
+    .from('poker_stable_deal_slices')
+    .update({ status: 'active', responded_at: new Date().toISOString() })
+    .eq('deal_id', dealId)
+    .eq('status', 'pending')
+  if (pendErr) return { closed: false, error: pendErr }
   const closed = await closeBackingDeal(supabase, { dealId })
   if (closed.error) return { closed: false, error: closed.error }
   const { error: archErr } = await archiveStakeeBankrollDeal(supabase, dealId)

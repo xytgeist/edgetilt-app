@@ -4,6 +4,7 @@
 import { pokerSessionWinLoss } from './pokerBankrollMath.js'
 import { sessionSwapSettlementDelta } from './pokerTournamentSwapMath.js'
 import {
+  isPieceDealType,
   roundMoney,
   stableNum,
   stakeDealIsLiveForStakee,
@@ -62,14 +63,27 @@ function computePlayerSliceStakeValue(gross, activeSlices, unsoldPct) {
   return roundMoney(playerTotal)
 }
 
+/** Slices that count toward player/backer session terms. */
+export function slicesCountedForSessionTerms(deal, slices = []) {
+  const list = slices || []
+  if (isPieceDealType(deal?.deal_type)) {
+    return list.filter(
+      (s) => s.status === 'active' || s.status === 'pending' || s.status === 'settled',
+    )
+  }
+  return list.filter((s) => s.status === 'active')
+}
+
 /**
- * Personal play history: own sessions + merged stake sessions after close.
+ * Personal play history: own sessions + piece sessions (live + completed) + merged package stakes.
  * @param {object | null | undefined} session
  * @param {Record<string, object>} [dealsById]
  */
 export function isPersonalHistorySession(session, dealsById = {}) {
   if (!session?.deal_id) return true
-  return dealsById[session.deal_id]?.status === 'settled'
+  const deal = dealsById[session.deal_id]
+  if (isPieceDealType(deal?.deal_type)) return true
+  return deal?.status === 'settled'
 }
 
 /**
@@ -83,6 +97,7 @@ export function isPersonalMetricSession(session, dealsById = {}, slicesByDeal = 
   const deal = dealsById[session.deal_id]
   if (!deal) return false
   if (deal.status === 'settled') return true
+  if (isPieceDealType(deal.deal_type)) return true
   return stakeDealIsLiveForStakee(deal, slicesByDeal[session.deal_id] || [])
 }
 
@@ -153,15 +168,15 @@ export function playerStakeSessionValue(session, deal, slices = [], sessions = [
   if (gross == null) return null
   if (!session?.deal_id || !deal) return roundMoney(gross)
 
-  const activeSlices = (slices || []).filter((s) => s.status === 'active')
-  const soldPct = sumSliceActionPct(activeSlices)
+  const termSlices = slicesCountedForSessionTerms(deal, slices)
+  const soldPct = sumSliceActionPct(termSlices)
   const unsoldPct = Math.max(0, 100 - soldPct)
 
   if (sessionPlayerShareInMakeup(deal, session, sessions)) {
     return roundMoney(0)
   }
 
-  return computePlayerSliceStakeValue(gross, activeSlices, unsoldPct)
+  return computePlayerSliceStakeValue(gross, termSlices, unsoldPct)
 }
 
 /**
@@ -232,7 +247,7 @@ export function computeSessionAttribution(
     }
   }
 
-  const activeSlices = (slices || []).filter((s) => s.status === 'active')
+  const activeSlices = slicesCountedForSessionTerms(deal, slices)
   const soldPct = sumSliceActionPct(activeSlices)
   const unsoldPct = Math.max(0, 100 - soldPct)
   const inMakeup = sessionPlayerShareInMakeup(deal, session, sessions)

@@ -41,6 +41,8 @@ function revealExpandedInOverflowParent(el) {
 
 /**
  * Personal Start Session: one-session stake drafts (cash_piece / tournament_piece).
+ * `enabled` hides this Start Session block only (e.g. already writing onto a package
+ * stake). It does not hide other stake carousel cards.
  */
 export default function PokerSessionBackerSection({
   supabaseClient,

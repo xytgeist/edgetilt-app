@@ -1,6 +1,7 @@
 import { DollarSign, Trophy } from 'lucide-react'
 import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
 import { POKER_SHEET_PANEL_CLASS } from './pokerBankrollTrackerSheet.js'
+import { isPieceDealType } from '../poker-stable/pokerStableMath.js'
 import {
   computeSessionAttribution,
   sessionAttributionAmountClass,
@@ -107,6 +108,7 @@ export default function PokerSessionDetailSheet({
   swapProfilesById = {},
   maxSwapGivePct = 100,
   sessionCardSwapBusyId = null,
+  recapMode = false,
   stakeSessions = [],
   onClose,
   onEdit,
@@ -133,8 +135,12 @@ export default function PokerSessionDetailSheet({
   const hrs = isActive ? elapsedSeconds / 3600 : pokerSessionDurationHours(session)
   const hourly = playerNet != null && hrs >= 0.02 ? playerNet / hrs : null
   const bbh = pokerSessionTotalCost(session) ? pokerSessionBbPerHour(session) : null
+  const isPieceSession = isPieceDealType(deal?.deal_type)
+  const partyLines = isPieceSession
+    ? attribution.parties.filter((p) => p.role !== 'stake_roll')
+    : attribution.parties
   const showPartyBreakdown =
-    !isActive && attribution.onStake && attribution.parties.length > 1
+    !isActive && attribution.onStake && partyLines.length > 0
   const showYourNet =
     !isActive &&
     playerNet != null &&
@@ -297,7 +303,7 @@ export default function PokerSessionDetailSheet({
                     By party
                   </div>
                   <div className="space-y-0.5">
-                    {attribution.parties.map((party) => (
+                    {partyLines.map((party) => (
                       <PartyLine
                         key={party.key}
                         label={party.label}
@@ -308,8 +314,9 @@ export default function PokerSessionDetailSheet({
                     ))}
                   </div>
                   <p className="mt-2 text-[11px] leading-snug text-zinc-500">
-                    Includes your share of on-stake sessions; personal bankroll updates when you
-                    settle with backers.
+                    {isPieceSession
+                      ? 'Your share after this session\'s backer splits. Swaps (if any) settle separately.'
+                      : 'Includes your share of on-stake sessions; personal bankroll updates when you settle with backers.'}
                   </p>
                 </div>
               ) : null}
@@ -479,6 +486,15 @@ export default function PokerSessionDetailSheet({
             className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500"
           >
             End session
+          </button>
+        ) : recapMode ? (
+          <button
+            type="button"
+            onClick={() => onClose?.()}
+            data-poker-session-recap-continue-btn
+            className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500"
+          >
+            Continue
           </button>
         ) : (
           <button

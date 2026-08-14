@@ -111,11 +111,8 @@ export default function PokerSessionBackerSection({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-sm font-black uppercase tracking-wide text-cyan-300">
-              Backers
+              Sell action
             </div>
-            <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-200">
-              This session
-            </span>
           </div>
           <p className="mt-1 text-[12px] font-semibold leading-snug text-cyan-100/80">
             Single session stake ... closes when you end it

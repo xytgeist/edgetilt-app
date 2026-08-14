@@ -227,6 +227,7 @@ import { eventDisplayNamesDiffer } from './pokerTournamentEventKeys.js'
 import {
   formatSwapIouLine,
   formatSwapSettledParenAmount,
+  formatSwapTermLine,
   formatSwapWaitingStatus,
   sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
@@ -4581,6 +4582,9 @@ export default function PokerBankrollTracker({
                                       {swap.pct_creator_gives != null &&
                                       swap.pct_counterparty_gives != null
                                         ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
+                                        : ''}
+                                      {formatSwapTermLine(swap)
+                                        ? ` · ${formatSwapTermLine(swap)}`
                                         : ''}
                                       {showSettledAmt ? (
                                         <>

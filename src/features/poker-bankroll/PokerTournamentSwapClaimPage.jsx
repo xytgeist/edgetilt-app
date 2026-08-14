@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fmtPoker$ } from './pokerBankrollMath.js'
-import { formatSwapIouLine } from './pokerTournamentSwapMath.js'
+import { formatSwapIouLine, formatSwapTermLine } from './pokerTournamentSwapMath.js'
 
 /**
  * Public guest claim page: /poker-swap-claim?token=…
@@ -17,6 +17,7 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
   const [error, setError] = useState('')
   const [buyIn, setBuyIn] = useState('')
   const [prize, setPrize] = useState('')
+  const [finishPlace, setFinishPlace] = useState('')
   const [markPaid, setMarkPaid] = useState(false)
   const [saving, setSaving] = useState(false)
   const [doneMsg, setDoneMsg] = useState('')
@@ -67,6 +68,12 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
       setError('Enter your buy-in and prize (cash).')
       return
     }
+    const placeRaw = String(finishPlace || '').trim()
+    const place = placeRaw === '' ? null : parseInt(placeRaw, 10)
+    if (preview?.final_table_only && (!Number.isFinite(place) || place < 1)) {
+      setError('Enter your finish place for this final-table swap.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -77,6 +84,7 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
           p_buy_in: b,
           p_prize: p,
           p_mark_paid: markPaid,
+          p_finish_place: Number.isFinite(place) && place > 0 ? place : null,
         },
       )
       if (err) throw err
@@ -134,6 +142,9 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
             <div className="mt-1 text-lg font-bold text-white">
               {preview.pct_creator_gives}% ↔ {preview.pct_counterparty_gives}%
             </div>
+            {formatSwapTermLine(preview) ? (
+              <div className="mt-1 text-sm text-emerald-300/90">{formatSwapTermLine(preview)}</div>
+            ) : null}
             {preview.event_label ? (
               <div className="mt-1 text-sm text-zinc-400">{preview.event_label}</div>
             ) : null}
@@ -179,6 +190,19 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
                     onChange={(e) => setPrize(e.target.value)}
                   />
                 </label>
+                {preview.final_table_only ? (
+                  <label className="mt-3 block">
+                    <span className="mb-1 block text-xs font-semibold uppercase text-zinc-500">
+                      Your finish place
+                    </span>
+                    <input
+                      className="h-12 w-full rounded-2xl bg-zinc-800 px-4 text-white outline-none focus:ring-2 focus:ring-emerald-500/40"
+                      inputMode="numeric"
+                      value={finishPlace}
+                      onChange={(e) => setFinishPlace(e.target.value)}
+                    />
+                  </label>
+                ) : null}
                 <label className="mt-3 flex items-center gap-2 text-sm text-zinc-300">
                   <input
                     type="checkbox"

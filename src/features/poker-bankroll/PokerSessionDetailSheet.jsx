@@ -27,6 +27,7 @@ import {
   formatSwapIouLine,
   formatSwapPaidLine,
   formatSwapSettledParenAmount,
+  formatSwapTermLine,
   formatSwapWaitingStatus,
   sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
@@ -377,6 +378,7 @@ export default function PokerSessionDetailSheet({
                               {swap.pct_creator_gives != null && swap.pct_counterparty_gives != null
                                 ? `${swap.pct_creator_gives}% ↔ ${swap.pct_counterparty_gives}%`
                                 : null}
+                              {formatSwapTermLine(swap) ? ` · ${formatSwapTermLine(swap)}` : ''}
                               {statusLine ? ` · ${statusLine}` : null}
                             </div>
                           </div>

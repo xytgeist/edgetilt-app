@@ -25,7 +25,44 @@ export function sessionResultSnapshot(session) {
   if (!session || session.cash_out == null || session.cash_out === '') return null
   const buyIn = pokerSessionTotalCost(session)
   const prize = (Number(session.cash_out) || 0) + (Number(session.bounty_winnings) || 0)
-  return { buyIn, prize }
+  const finishRaw = session.finish_place
+  const finishPlace =
+    finishRaw != null && finishRaw !== '' ? parseInt(String(finishRaw), 10) : null
+  return {
+    buyIn,
+    prize,
+    faceBuyIn: Number(session.buy_in) || buyIn,
+    cashed: Number(session.cash_out) > 0,
+    finishPlace: Number.isFinite(finishPlace) && finishPlace > 0 ? finishPlace : null,
+    tableSize: session.table_size || null,
+  }
+}
+
+/** Result columns written onto a swap from a completed session. */
+export function sessionSwapResultPatch(session, side) {
+  const snap = sessionResultSnapshot(session)
+  if (!snap) return null
+  if (side === 'creator') {
+    return {
+      creator_buy_in: snap.buyIn,
+      creator_prize: snap.prize,
+      creator_cashed: snap.cashed,
+      creator_finish_place: snap.finishPlace,
+      creator_table_size: snap.tableSize,
+      creator_face_buy_in: snap.faceBuyIn,
+      creator_result_ready: true,
+    }
+  }
+  return {
+    counterparty_buy_in: snap.buyIn,
+    counterparty_prize: snap.prize,
+    counterparty_cashed: snap.cashed,
+    counterparty_finish_place: snap.finishPlace,
+    counterparty_table_size: snap.tableSize,
+    counterparty_face_buy_in: snap.faceBuyIn,
+    counterparty_result_source: 'session',
+    counterparty_result_ready: true,
+  }
 }
 
 /**
@@ -167,6 +204,9 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
         counterparty_user_id: draft.counterparty_user_id,
         pct_creator_gives: pctYou,
         pct_counterparty_gives: pctThem,
+        both_must_cash: Boolean(draft.both_must_cash),
+        final_bullet_only: Boolean(draft.final_bullet_only),
+        final_table_only: Boolean(draft.final_table_only),
       },
     }
   }
@@ -193,6 +233,9 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
       counterparty_guest_email: email || null,
       pct_creator_gives: pctYou,
       pct_counterparty_gives: pctThem,
+      both_must_cash: Boolean(draft.both_must_cash),
+      final_bullet_only: Boolean(draft.final_bullet_only),
+      final_table_only: Boolean(draft.final_table_only),
     },
   }
 }
@@ -225,6 +268,11 @@ export async function persistDraftSwapsForSession(
       tournament_event_id: tournamentEventId,
       creator_buy_in: snap?.buyIn ?? (creatorSession ? pokerSessionTotalCost(creatorSession) : null),
       creator_prize: snap?.prize ?? null,
+      creator_cashed: snap?.cashed ?? null,
+      creator_finish_place: snap?.finishPlace ?? null,
+      creator_table_size: creatorSession?.table_size || null,
+      creator_face_buy_in:
+        snap?.faceBuyIn ?? (creatorSession ? Number(creatorSession.buy_in) || null : null),
       creator_result_ready: Boolean(snap),
     })
   }
@@ -255,11 +303,7 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session)
   for (const swap of swaps || []) {
     const { error: uErr } = await supabase
       .from('poker_tournament_swaps')
-      .update({
-        creator_buy_in: snap.buyIn,
-        creator_prize: snap.prize,
-        creator_result_ready: true,
-      })
+      .update(sessionSwapResultPatch(session, 'creator'))
       .eq('id', swap.id)
     if (uErr) return { error: uErr, swapIds }
     const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
@@ -291,12 +335,7 @@ export async function syncCounterpartyResultsForSession(supabase, sessionId, ses
     if (!swap.counterparty_session_accepted_at) continue
     const { error: uErr } = await supabase
       .from('poker_tournament_swaps')
-      .update({
-        counterparty_buy_in: snap.buyIn,
-        counterparty_prize: snap.prize,
-        counterparty_result_source: 'session',
-        counterparty_result_ready: true,
-      })
+      .update(sessionSwapResultPatch(session, 'counterparty'))
       .eq('id', swap.id)
     if (uErr) return { error: uErr, swapIds }
     const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
@@ -316,17 +355,26 @@ export async function syncCounterpartyResultsForSession(supabase, sessionId, ses
  * @param {number} buyIn
  * @param {number} prize
  */
-export async function setSwapSideManualResult(supabase, swapId, side, buyIn, prize) {
+export async function setSwapSideManualResult(supabase, swapId, side, buyIn, prize, extra = {}) {
+  const finishRaw = extra.finishPlace
+  const finishPlace =
+    finishRaw != null && finishRaw !== '' ? parseInt(String(finishRaw), 10) : null
+  const place = Number.isFinite(finishPlace) && finishPlace > 0 ? finishPlace : null
+  const cashed = prize > 0
   const patch =
     side === 'creator'
       ? {
           creator_buy_in: buyIn,
           creator_prize: prize,
+          creator_cashed: cashed,
+          creator_finish_place: place,
           creator_result_ready: true,
         }
       : {
           counterparty_buy_in: buyIn,
           counterparty_prize: prize,
+          counterparty_cashed: cashed,
+          counterparty_finish_place: place,
           counterparty_result_source: 'manual',
           counterparty_result_ready: true,
         }
@@ -727,6 +775,9 @@ export function emptyDraftSwap() {
     counterparty_guest_email: '',
     pct_you_give: '5',
     pct_they_give: '5',
+    both_must_cash: false,
+    final_bullet_only: false,
+    final_table_only: false,
   }
 }
 

@@ -7812,6 +7812,13 @@ html.light [data-poker-tournament-swaps] button.border-zinc-600 {
   color: #18181b !important;
   border-color: #d4d4d8 !important;
 }
+html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] .text-emerald-100,
+html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] .text-zinc-200 {
+  color: #065f46 !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] input[type='checkbox'] {
+  accent-color: #047857;
+}
 html.light [data-poker-tournament-swaps] .bg-emerald-600 {
   background-color: #059669 !important;
   color: #ffffff !important;

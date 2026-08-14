@@ -1,7 +1,68 @@
 /**
  * Bilateral tournament swap settlement on positive net only
  * (bust / no cash ⇒ that side owes $0).
+ *
+ * Optional terms (all combinable):
+ * - bothMustCash: void unless both cashed (main prize / cash_out > 0)
+ * - finalBulletOnly: profit uses one face buy-in each (no extra-bullet cost)
+ * - finalTableOnly: void unless either finish is a final table (9, or 6 if 6-max)
  */
+
+/** @param {string | null | undefined} tableSize */
+export function swapFinalTableSize(tableSize) {
+  return tableSize === '6max' ? 6 : 9
+}
+
+/**
+ * @param {number | null | undefined} finishPlace
+ * @param {string | null | undefined} tableSize
+ */
+export function swapMadeFinalTable(finishPlace, tableSize) {
+  const place = Number(finishPlace)
+  if (!Number.isFinite(place) || place < 1) return false
+  return place <= swapFinalTableSize(tableSize)
+}
+
+/**
+ * @param {object | null | undefined} swap
+ * @returns {string[]}
+ */
+export function swapTermLabels(swap) {
+  const labels = []
+  if (swap?.both_must_cash) labels.push('Both must cash')
+  if (swap?.final_bullet_only) labels.push('Final bullet only')
+  if (swap?.final_table_only) labels.push('Final table only')
+  return labels
+}
+
+/** @param {object | null | undefined} swap */
+export function formatSwapTermLine(swap) {
+  const labels = swapTermLabels(swap)
+  return labels.length ? labels.join(' · ') : ''
+}
+
+/** @param {object} swap */
+export function settlementArgsFromSwap(swap) {
+  return {
+    creatorPrize: swap.creator_prize,
+    creatorBuyIn: swap.creator_buy_in,
+    counterpartyPrize: swap.counterparty_prize,
+    counterpartyBuyIn: swap.counterparty_buy_in,
+    pctCreatorGives: swap.pct_creator_gives,
+    pctCounterpartyGives: swap.pct_counterparty_gives,
+    bothMustCash: swap.both_must_cash,
+    finalBulletOnly: swap.final_bullet_only,
+    finalTableOnly: swap.final_table_only,
+    creatorCashed: swap.creator_cashed,
+    counterpartyCashed: swap.counterparty_cashed,
+    creatorFinishPlace: swap.creator_finish_place,
+    counterpartyFinishPlace: swap.counterparty_finish_place,
+    creatorTableSize: swap.creator_table_size,
+    counterpartyTableSize: swap.counterparty_table_size,
+    creatorFaceBuyIn: swap.creator_face_buy_in,
+    counterpartyFaceBuyIn: swap.counterparty_face_buy_in,
+  }
+}
 
 /**
  * @param {{
@@ -11,20 +72,83 @@
  *   counterpartyBuyIn?: number | null,
  *   pctCreatorGives?: number | null,
  *   pctCounterpartyGives?: number | null,
+ *   bothMustCash?: boolean,
+ *   finalBulletOnly?: boolean,
+ *   finalTableOnly?: boolean,
+ *   creatorCashed?: boolean | null,
+ *   counterpartyCashed?: boolean | null,
+ *   creatorFinishPlace?: number | null,
+ *   counterpartyFinishPlace?: number | null,
+ *   creatorTableSize?: string | null,
+ *   counterpartyTableSize?: string | null,
+ *   creatorFaceBuyIn?: number | null,
+ *   counterpartyFaceBuyIn?: number | null,
  * }} args
  * @returns {{
  *   creatorNet: number,
  *   counterpartyNet: number,
  *   creatorOwes: number,
  *   counterpartyOwes: number,
- *   settlementAmount: number,
+ *   settlementAmount: number | null,
+ *   activated: boolean,
+ *   pending: boolean,
  * }}
  */
-/** settlementAmount: positive => counterparty owes creator */
+/** settlementAmount: positive => counterparty owes creator; null when pending */
 export function computeTournamentSwapSettlement(args) {
-  const creatorNet = (Number(args.creatorPrize) || 0) - (Number(args.creatorBuyIn) || 0)
-  const counterpartyNet =
-    (Number(args.counterpartyPrize) || 0) - (Number(args.counterpartyBuyIn) || 0)
+  const bothMustCash = Boolean(args.bothMustCash)
+  const finalBulletOnly = Boolean(args.finalBulletOnly)
+  const finalTableOnly = Boolean(args.finalTableOnly)
+  const creatorCashed =
+    args.creatorCashed != null
+      ? Boolean(args.creatorCashed)
+      : (Number(args.creatorPrize) || 0) > 0
+  const counterpartyCashed =
+    args.counterpartyCashed != null
+      ? Boolean(args.counterpartyCashed)
+      : (Number(args.counterpartyPrize) || 0) > 0
+
+  let activated = true
+  let pending = false
+
+  if (bothMustCash && (!creatorCashed || !counterpartyCashed)) {
+    activated = false
+  }
+
+  if (activated && finalTableOnly) {
+    const creatorFt = swapMadeFinalTable(args.creatorFinishPlace, args.creatorTableSize)
+    const counterpartyFt = swapMadeFinalTable(
+      args.counterpartyFinishPlace,
+      args.counterpartyTableSize,
+    )
+    if (creatorFt || counterpartyFt) {
+      activated = true
+    } else if (args.creatorFinishPlace == null || args.counterpartyFinishPlace == null) {
+      pending = true
+      activated = false
+    } else {
+      activated = false
+    }
+  }
+
+  const zero = {
+    creatorNet: 0,
+    counterpartyNet: 0,
+    creatorOwes: 0,
+    counterpartyOwes: 0,
+    settlementAmount: pending ? null : 0,
+    activated,
+    pending,
+  }
+  if (pending || !activated) return zero
+
+  const creatorFace = Number(args.creatorFaceBuyIn) || Number(args.creatorBuyIn) || 0
+  const counterpartyFace =
+    Number(args.counterpartyFaceBuyIn) || Number(args.counterpartyBuyIn) || 0
+  const creatorBuy = finalBulletOnly ? creatorFace : Number(args.creatorBuyIn) || 0
+  const counterpartyBuy = finalBulletOnly ? counterpartyFace : Number(args.counterpartyBuyIn) || 0
+  const creatorNet = (Number(args.creatorPrize) || 0) - creatorBuy
+  const counterpartyNet = (Number(args.counterpartyPrize) || 0) - counterpartyBuy
   const pctYou = Number(args.pctCreatorGives) || 0
   const pctThem = Number(args.pctCounterpartyGives) || 0
   const creatorOwes = (Math.max(0, creatorNet) * pctYou) / 100
@@ -36,6 +160,8 @@ export function computeTournamentSwapSettlement(args) {
     creatorOwes: Math.round(creatorOwes * 100) / 100,
     counterpartyOwes: Math.round(counterpartyOwes * 100) / 100,
     settlementAmount,
+    activated: true,
+    pending: false,
   }
 }
 
@@ -167,7 +293,17 @@ export function formatSwapWaitingStatus(swap, viewerRole, otherLabel) {
   const label = String(otherLabel || 'them').trim() || 'them'
   const creatorReady = Boolean(swap?.creator_result_ready)
   const cpReady = Boolean(swap?.counterparty_result_ready)
-  if (creatorReady && cpReady) return 'Both results in'
+  if (creatorReady && cpReady) {
+    if (
+      swap?.final_table_only &&
+      (swap.creator_finish_place == null || swap.counterparty_finish_place == null) &&
+      !swapMadeFinalTable(swap.creator_finish_place, swap.creator_table_size) &&
+      !swapMadeFinalTable(swap.counterparty_finish_place, swap.counterparty_table_size)
+    ) {
+      return 'Need finish places (final-table swap)'
+    }
+    return 'Both results in'
+  }
 
   const accepted = Boolean(swap?.counterparty_session_accepted_at)
   const isGuest = swap?.counterparty_kind === 'guest'

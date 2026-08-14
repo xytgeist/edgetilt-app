@@ -24,13 +24,63 @@ import {
   formatSwapIouLine,
   formatSwapSettledAmountLine,
   formatSwapSideResultLine,
+  formatSwapTermLine,
   formatSwapWaitingStatus,
   parseSwapPct,
+  settlementArgsFromSwap,
   swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
 const FIELD =
   'w-full h-11 min-h-11 rounded-2xl bg-zinc-800 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
+
+const SWAP_TERM_OPTIONS = [
+  {
+    key: 'both_must_cash',
+    label: 'Both must cash',
+    hint: 'Void unless both players cash. Neither owes the other.',
+  },
+  {
+    key: 'final_bullet_only',
+    label: 'Final bullet only',
+    hint: 'Only the last entry counts. No face-value swap on extra bullets.',
+  },
+  {
+    key: 'final_table_only',
+    label: 'Final table only',
+    hint: 'Activates if either player makes the final 9 (or 6 if 6-max).',
+  },
+]
+
+function SwapTermChecks({ value, onChange, compact = false }) {
+  return (
+    <div data-poker-swap-term-checks className="mt-2 space-y-1.5">
+      {SWAP_TERM_OPTIONS.map((opt) => (
+        <label
+          key={opt.key}
+          className="flex cursor-pointer items-start gap-2.5 touch-manipulation"
+        >
+          <input
+            type="checkbox"
+            checked={Boolean(value?.[opt.key])}
+            onChange={(e) => onChange({ [opt.key]: e.target.checked })}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/40"
+          />
+          <span>
+            <span
+              className={`block text-xs font-semibold ${compact ? 'text-zinc-200' : 'text-emerald-100'}`}
+            >
+              {opt.label}
+            </span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
+              {opt.hint}
+            </span>
+          </span>
+        </label>
+      ))}
+    </div>
+  )
+}
 
 /**
  * Scroll the nearest overflow parent so `el` is fully in view (Start Session sticky footer
@@ -119,6 +169,7 @@ export default function PokerTournamentSwapsSection({
   const [manualOpen, setManualOpen] = useState({})
   const [manualTheirBuyIn, setManualTheirBuyIn] = useState({})
   const [manualTheirPrize, setManualTheirPrize] = useState({})
+  const [manualTheirPlace, setManualTheirPlace] = useState({})
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
   const lastDraftCardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
@@ -285,6 +336,12 @@ export default function PokerTournamentSwapsSection({
       setLocalError('Enter their buy-in and prize (cash out).')
       return
     }
+    const placeRaw = String(manualTheirPlace[swap.id] ?? '').trim()
+    const finishPlace = placeRaw === '' ? null : parseInt(placeRaw, 10)
+    if (swap.final_table_only && (!Number.isFinite(finishPlace) || finishPlace < 1)) {
+      setLocalError('Enter their finish place for this final-table swap.')
+      return
+    }
     setBusyId(swap.id)
     setLocalError('')
     try {
@@ -294,6 +351,7 @@ export default function PokerTournamentSwapsSection({
         side,
         buyIn,
         prize,
+        { finishPlace },
       )
       if (error) throw error
       onSavedSwapsMutated?.()
@@ -365,8 +423,7 @@ export default function PokerTournamentSwapsSection({
       <p
         className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
       >
-        Bilateral % of net (prize − buy-in). Busts owe $0 from that side. Settlement when both
-        results are in.
+        Bilateral % of net (prize − buy-in). Busts owe $0 from that side. Optional terms stack.
       </p>
 
       {showOwnershipSummary ? (
@@ -408,6 +465,9 @@ export default function PokerTournamentSwapsSection({
               <p className="text-[11px] leading-snug text-zinc-400">
                 You give {Number.isFinite(incomingYouPct) ? incomingYouPct : '?'}% · they give{' '}
                 {Number.isFinite(incomingTheyPct) ? incomingTheyPct : '?'}%
+                {formatSwapTermLine(incomingAcceptSwap)
+                  ? ` · ${formatSwapTermLine(incomingAcceptSwap)}`
+                  : ''}
               </p>
               {typeof onDeclineIncomingAccept === 'function' ? (
                 <button
@@ -542,6 +602,11 @@ export default function PokerTournamentSwapsSection({
                   />
                 </label>
               </div>
+              <SwapTermChecks
+                compact={compact}
+                value={draft}
+                onChange={(patch) => updateDraft(draft.localId, patch)}
+              />
               {!pctOk ? (
                 <p className="mt-1 text-[11px] text-rose-400">Percents must be 0–100.</p>
               ) : null}
@@ -571,19 +636,15 @@ export default function PokerTournamentSwapsSection({
           const cpReady = Boolean(swap.counterparty_result_ready)
           const bothReady = creatorReady && cpReady
           const settlementPreview = bothReady
-            ? computeTournamentSwapSettlement({
-                creatorPrize: swap.creator_prize,
-                creatorBuyIn: swap.creator_buy_in,
-                counterpartyPrize: swap.counterparty_prize,
-                counterpartyBuyIn: swap.counterparty_buy_in,
-                pctCreatorGives: swap.pct_creator_gives,
-                pctCounterpartyGives: swap.pct_counterparty_gives,
-              })
+            ? computeTournamentSwapSettlement(settlementArgsFromSwap(swap))
             : null
+          const termLine = formatSwapTermLine(swap)
           const primaryStatus =
             swap.status === 'settled'
               ? formatSwapIouLine(swap.settlement_amount, role, other, fmtPoker$)
-              : bothReady
+              : bothReady && settlementPreview?.pending
+                ? formatSwapWaitingStatus(swap, role, other)
+                : bothReady
                 ? formatSwapIouLine(
                     settlementPreview?.settlementAmount,
                     role,
@@ -620,6 +681,7 @@ export default function PokerTournamentSwapsSection({
                   <div className="truncate text-sm font-semibold text-white">{other}</div>
                   <div className="text-[11px] text-zinc-400">
                     {swap.pct_creator_gives}% ↔ {swap.pct_counterparty_gives}% · {swap.status}
+                    {termLine ? ` · ${termLine}` : ''}
                   </div>
                 </div>
                 {canCancel ? (
@@ -718,6 +780,20 @@ export default function PokerTournamentSwapsSection({
                               }))
                             }
                           />
+                          {swap.final_table_only ? (
+                            <input
+                              className={`${FIELD} col-span-2`}
+                              placeholder="Their finish place"
+                              inputMode="numeric"
+                              value={manualTheirPlace[swap.id] ?? ''}
+                              onChange={(e) =>
+                                setManualTheirPlace((m) => ({
+                                  ...m,
+                                  [swap.id]: e.target.value,
+                                }))
+                              }
+                            />
+                          ) : null}
                           <button
                             type="button"
                             disabled={busyId === swap.id}

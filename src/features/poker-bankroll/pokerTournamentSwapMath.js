@@ -37,6 +37,7 @@ export function swapTermLabels(swap) {
   if (swap?.both_must_cash) labels.push('Both must cash')
   if (swap?.final_bullet_only) labels.push('Final bullet only')
   if (swap?.final_table_only) labels.push('Final table only')
+  if (swap?.include_previous_bullets) labels.push('Include previous bullets')
   return labels
 }
 
@@ -68,6 +69,9 @@ export function settlementArgsFromSwap(swap) {
     counterpartyFaceBuyIn: swap.counterparty_face_buy_in,
     creatorBullets: swap.creator_bullets,
     counterpartyBullets: swap.counterparty_bullets,
+    includePreviousBullets: swap.include_previous_bullets,
+    creatorExcludePriorBullets: swap.creator_exclude_prior_bullets,
+    counterpartyExcludePriorBullets: swap.counterparty_exclude_prior_bullets,
   }
 }
 
@@ -187,22 +191,32 @@ export function computeTournamentSwapSettlement(args) {
   const creatorPrize = Number(args.creatorPrize) || 0
   const counterpartyPrize = Number(args.counterpartyPrize) || 0
 
+  const creatorExclude = args.includePreviousBullets
+    ? 0
+    : Math.max(0, Number(args.creatorExcludePriorBullets) || 0)
+  const counterpartyExclude = Math.max(0, Number(args.counterpartyExcludePriorBullets) || 0)
   const creatorBullets = finalBulletOnly
     ? 1
-    : swapBulletCount({
-        bullets: args.creatorBullets,
-        reentries: args.creatorReentries,
-        totalBuyIn: args.creatorBuyIn,
-        faceBuyIn: face,
-      })
+    : Math.max(
+        1,
+        swapBulletCount({
+          bullets: args.creatorBullets,
+          reentries: args.creatorReentries,
+          totalBuyIn: args.creatorBuyIn,
+          faceBuyIn: face,
+        }) - creatorExclude,
+      )
   const counterpartyBullets = finalBulletOnly
     ? 1
-    : swapBulletCount({
-        bullets: args.counterpartyBullets,
-        reentries: args.counterpartyReentries,
-        totalBuyIn: args.counterpartyBuyIn,
-        faceBuyIn: face,
-      })
+    : Math.max(
+        1,
+        swapBulletCount({
+          bullets: args.counterpartyBullets,
+          reentries: args.counterpartyReentries,
+          totalBuyIn: args.counterpartyBuyIn,
+          faceBuyIn: face,
+        }) - counterpartyExclude,
+      )
   const extraCreator = Math.max(0, creatorBullets - counterpartyBullets)
   const extraCounterparty = Math.max(0, counterpartyBullets - creatorBullets)
   const faceOnCreatorExtras = (pctYou / 100) * extraCreator * face
@@ -397,7 +411,7 @@ export function formatSwapWaitingStatus(swap, viewerRole, otherLabel) {
     if (isGuest && viewerRole === 'creator' && !cpReady) {
       return 'Awaiting results (upon completed sessions) · or enter theirs below'
     }
-    return 'Awaiting results (upon completed sessions)'
+    return 'Awaiting results (upon completed sessions) · later flights still count'
   }
   return 'Both results in'
 }

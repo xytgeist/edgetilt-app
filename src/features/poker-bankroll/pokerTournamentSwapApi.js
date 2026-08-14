@@ -3,6 +3,15 @@ import {
   eventDisplayNamesDiffer,
   pickCanonicalEventDisplayName,
 } from './pokerTournamentEventKeys.js'
+import {
+  aggregateSeriesSwapResult,
+  defaultExcludePriorBullets,
+  seriesResultReadyAfterSession,
+  seriesSessionsFor,
+  seriesTotalBulletCount,
+  sessionInSameSeriesAsEvent,
+  swapBelongsOnSession,
+} from './pokerTournamentSeries.js'
 import { localYmd, pokerSessionTotalCost } from './pokerBankrollMath.js'
 import { parseSwapPct } from './pokerTournamentSwapMath.js'
 import { parseGuestNotifyContact } from '../../utils/guestNotifyContact.js'
@@ -210,6 +219,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
         both_must_cash: Boolean(draft.both_must_cash),
         final_bullet_only: Boolean(draft.final_bullet_only),
         final_table_only: Boolean(draft.final_table_only),
+        include_previous_bullets: Boolean(draft.include_previous_bullets),
       },
     }
   }
@@ -239,6 +249,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
       both_must_cash: Boolean(draft.both_must_cash),
       final_bullet_only: Boolean(draft.final_bullet_only),
       final_table_only: Boolean(draft.final_table_only),
+      include_previous_bullets: Boolean(draft.include_previous_bullets),
     },
   }
 }
@@ -258,13 +269,23 @@ export async function persistDraftSwapsForSession(
   drafts,
   tournamentEventId,
   creatorSession = null,
+  opts = {},
 ) {
   if (!drafts?.length) return { swaps: [], error: null }
+  const sessions = opts.sessions || (creatorSession ? [creatorSession] : [])
+  const eventsById = opts.eventsById || {}
   const snap = creatorSession ? sessionResultSnapshot(creatorSession) : null
+  const seriesTotal = creatorSession
+    ? seriesTotalBulletCount(creatorSession, sessions, eventsById)
+    : 0
   const rows = []
   for (const draft of drafts) {
     const built = draftSwapToInsertFields(draft, userId)
     if (built.error) return { swaps: [], error: new Error(built.error) }
+    const includePrev = Boolean(draft.include_previous_bullets)
+    const exclude = creatorSession
+      ? defaultExcludePriorBullets(creatorSession, sessions, eventsById, includePrev)
+      : 0
     rows.push({
       ...built.row,
       creator_session_id: sessionId,
@@ -277,9 +298,12 @@ export async function persistDraftSwapsForSession(
       creator_face_buy_in:
         snap?.faceBuyIn ?? (creatorSession ? Number(creatorSession.buy_in) || null : null),
       creator_bullets:
-        snap?.bullets ??
+        seriesTotal ||
+        snap?.bullets ||
         (creatorSession ? 1 + (Number(creatorSession.reentries) || 0) : null),
-      creator_result_ready: Boolean(snap),
+      include_previous_bullets: includePrev,
+      creator_exclude_prior_bullets: exclude,
+      creator_result_ready: Boolean(snap) && seriesResultReadyAfterSession(creatorSession, eventsById),
     })
   }
   const { data, error } = await supabase
@@ -296,26 +320,54 @@ export async function persistDraftSwapsForSession(
  * @param {string} sessionId
  * @param {object} session
  */
-export async function syncCreatorResultsForSession(supabase, sessionId, session) {
-  const snap = sessionResultSnapshot(session)
-  if (!snap) return { error: null, swapIds: [] }
+export async function syncCreatorResultsForSession(supabase, sessionId, session, opts = {}) {
+  const sessions = opts.sessions || [session]
+  const eventsById = opts.eventsById || {}
+  const userId = session?.user_id || opts.userId || ''
   const { data: swaps, error } = await supabase
     .from('poker_tournament_swaps')
-    .select('id, status')
-    .eq('creator_session_id', sessionId)
+    .select('*')
     .eq('status', 'active')
+    .eq('creator_user_id', userId || session?.user_id)
   if (error) return { error, swapIds: [] }
+  const seriesSwaps = (swaps || []).filter(
+    (swap) =>
+      swap.creator_session_id === sessionId ||
+      swapBelongsOnSession(swap, session, sessions, eventsById, userId),
+  )
+  if (!seriesSwaps.length) return { error: null, swapIds: [] }
+
+  const series = seriesSessionsFor(session, sessions, eventsById)
+  const withEnded = series.some((s) => s.id === session.id)
+    ? series.map((s) => (s.id === session.id ? session : s))
+    : [...series, session]
+  const agg = aggregateSeriesSwapResult(withEnded)
+  const totalBullets = seriesTotalBulletCount(session, withEnded, eventsById)
+  const ready = seriesResultReadyAfterSession(session, eventsById)
+  const patch = {
+    creator_buy_in: agg.buyIn || (session ? pokerSessionTotalCost(session) : null),
+    creator_prize: agg.prize,
+    creator_cashed: agg.cashed,
+    creator_finish_place: agg.finishPlace,
+    creator_table_size: agg.tableSize || session?.table_size || null,
+    creator_face_buy_in: agg.faceBuyIn || Number(session?.buy_in) || null,
+    creator_bullets: totalBullets || 1 + (Number(session?.reentries) || 0),
+  }
+  if (ready) patch.creator_result_ready = true
+
   const swapIds = []
-  for (const swap of swaps || []) {
+  for (const swap of seriesSwaps) {
     const { error: uErr } = await supabase
       .from('poker_tournament_swaps')
-      .update(sessionSwapResultPatch(session, 'creator'))
+      .update(patch)
       .eq('id', swap.id)
     if (uErr) return { error: uErr, swapIds }
-    const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
-      p_swap_id: swap.id,
-    })
-    if (sErr) return { error: sErr, swapIds }
+    if (ready) {
+      const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
+        p_swap_id: swap.id,
+      })
+      if (sErr) return { error: sErr, swapIds }
+    }
     swapIds.push(swap.id)
   }
   return { error: null, swapIds }
@@ -327,27 +379,57 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session)
  * @param {string} sessionId
  * @param {object} session
  */
-export async function syncCounterpartyResultsForSession(supabase, sessionId, session) {
-  const snap = sessionResultSnapshot(session)
-  if (!snap) return { error: null, swapIds: [] }
+export async function syncCounterpartyResultsForSession(supabase, sessionId, session, opts = {}) {
+  const sessions = opts.sessions || [session]
+  const eventsById = opts.eventsById || {}
+  const userId = session?.user_id || opts.userId || ''
   const { data: swaps, error } = await supabase
     .from('poker_tournament_swaps')
-    .select('id, status, counterparty_session_accepted_at')
-    .eq('counterparty_session_id', sessionId)
+    .select('*')
     .eq('status', 'active')
+    .eq('counterparty_user_id', userId || session?.user_id)
   if (error) return { error, swapIds: [] }
+  const seriesSwaps = (swaps || []).filter((swap) => {
+    if (!swap.counterparty_session_accepted_at) return false
+    return (
+      swap.counterparty_session_id === sessionId ||
+      swapBelongsOnSession(swap, session, sessions, eventsById, userId)
+    )
+  })
+  if (!seriesSwaps.length) return { error: null, swapIds: [] }
+
+  const series = seriesSessionsFor(session, sessions, eventsById)
+  const withEnded = series.some((s) => s.id === session.id)
+    ? series.map((s) => (s.id === session.id ? session : s))
+    : [...series, session]
+  const agg = aggregateSeriesSwapResult(withEnded)
+  const totalBullets = seriesTotalBulletCount(session, withEnded, eventsById)
+  const ready = seriesResultReadyAfterSession(session, eventsById)
+  const patch = {
+    counterparty_buy_in: agg.buyIn || (session ? pokerSessionTotalCost(session) : null),
+    counterparty_prize: agg.prize,
+    counterparty_cashed: agg.cashed,
+    counterparty_finish_place: agg.finishPlace,
+    counterparty_table_size: agg.tableSize || session?.table_size || null,
+    counterparty_face_buy_in: agg.faceBuyIn || Number(session?.buy_in) || null,
+    counterparty_bullets: totalBullets || 1 + (Number(session?.reentries) || 0),
+    counterparty_result_source: 'session',
+  }
+  if (ready) patch.counterparty_result_ready = true
+
   const swapIds = []
-  for (const swap of swaps || []) {
-    if (!swap.counterparty_session_accepted_at) continue
+  for (const swap of seriesSwaps) {
     const { error: uErr } = await supabase
       .from('poker_tournament_swaps')
-      .update(sessionSwapResultPatch(session, 'counterparty'))
+      .update(patch)
       .eq('id', swap.id)
     if (uErr) return { error: uErr, swapIds }
-    const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
-      p_swap_id: swap.id,
-    })
-    if (sErr) return { error: sErr, swapIds }
+    if (ready) {
+      const { error: sErr } = await supabase.rpc('poker_tournament_swap_try_settle', {
+        p_swap_id: swap.id,
+      })
+      if (sErr) return { error: sErr, swapIds }
+    }
     swapIds.push(swap.id)
   }
   return { error: null, swapIds }
@@ -505,13 +587,16 @@ function sortCounterpartyBindCandidates(candidates) {
  * @param {object} swap
  * @param {object | null | undefined} swapEvent
  */
-export function sessionMatchesSwapEvent(session, swap, swapEvent) {
+export function sessionMatchesSwapEvent(session, swap, swapEvent, opts = {}) {
   const swapEventId = swap?.tournament_event_id || null
   if (swapEventId && session.tournament_event_id === swapEventId) return true
   const swapFingerprint = swapEvent?.fingerprint_key || null
-  if (!swapFingerprint) return false
   const sessionFp = sessionTournamentFingerprintKey(session)
-  return Boolean(sessionFp && sessionFp === swapFingerprint)
+  if (swapFingerprint && sessionFp && sessionFp === swapFingerprint) return true
+  if (swapEvent && sessionInSameSeriesAsEvent(session, swapEvent, opts.eventsById || {})) {
+    return true
+  }
+  return false
 }
 
 /**
@@ -521,9 +606,9 @@ export function sessionMatchesSwapEvent(session, swap, swapEvent) {
  * @param {object | null | undefined} swapEvent
  * @returns {{ swapEvent: object, swapLabel: string } | null}
  */
-export function sessionSwapEventMismatch(session, swap, swapEvent) {
+export function sessionSwapEventMismatch(session, swap, swapEvent, opts = {}) {
   if (!swap?.tournament_event_id || !swapEvent) return null
-  if (sessionMatchesSwapEvent(session, swap, swapEvent)) return null
+  if (sessionMatchesSwapEvent(session, swap, swapEvent, opts)) return null
   return {
     swapEvent,
     swapLabel: formatTournamentEventLabel(swapEvent),
@@ -536,7 +621,7 @@ export function sessionSwapEventMismatch(session, swap, swapEvent) {
  * @param {object[]} sessions
  * @param {object | null | undefined} [swapEvent]
  */
-export function findCounterpartyBindCandidates(swap, sessions, swapEvent = null) {
+export function findCounterpartyBindCandidates(swap, sessions, swapEvent = null, opts = {}) {
   const list = Array.isArray(sessions) ? sessions : []
   const tourneys = list.filter(
     (s) => s?.session_type === 'tournament' && (s.status === 'active' || s.status === 'completed'),
@@ -544,8 +629,8 @@ export function findCounterpartyBindCandidates(swap, sessions, swapEvent = null)
   const eventId = swap?.tournament_event_id || null
   const ev = swapEvent || null
 
-  if (eventId || ev?.fingerprint_key) {
-    const matched = tourneys.filter((s) => sessionMatchesSwapEvent(s, swap, ev))
+  if (eventId || ev?.fingerprint_key || ev?.display_name) {
+    const matched = tourneys.filter((s) => sessionMatchesSwapEvent(s, swap, ev, opts))
     if (matched.length) return sortCounterpartyBindCandidates(matched)
   }
 
@@ -569,8 +654,8 @@ export function findCounterpartyBindCandidates(swap, sessions, swapEvent = null)
  * @param {object[]} sessions
  * @param {object | null | undefined} [swapEvent]
  */
-export function findCounterpartyBindSession(swap, sessions, swapEvent = null) {
-  const candidates = findCounterpartyBindCandidates(swap, sessions, swapEvent)
+export function findCounterpartyBindSession(swap, sessions, swapEvent = null, opts = {}) {
+  const candidates = findCounterpartyBindCandidates(swap, sessions, swapEvent, opts)
   if (candidates.length === 1) return candidates[0]
   return null
 }
@@ -606,42 +691,89 @@ export async function acceptCounterpartySessionBind(
   const swapEventId = opts.swapEventId || swapEvent?.id || null
   let boundSession = session
 
+  const eventsById = opts.eventsById || {}
+  const sessions = opts.sessions || [session]
+  const seriesMatch = swapEvent
+    ? sessionInSameSeriesAsEvent(session, swapEvent, eventsById)
+    : false
   if (swapEventId && counterpartySessionNeedsSwapEventRelink(session, { tournament_event_id: swapEventId })) {
     const swapFingerprint = swapEvent?.fingerprint_key || null
     const sessionFp = sessionTournamentFingerprintKey(session)
-    if (swapFingerprint && sessionFp !== swapFingerprint) {
+    if (swapFingerprint && sessionFp !== swapFingerprint && !seriesMatch) {
       return { error: new Error('Session does not match this swap tournament.') }
     }
-    const { error: linkErr } = await supabase
-      .from('poker_bankroll_sessions')
-      .update({ tournament_event_id: swapEventId })
-      .eq('id', sessionId)
-    if (linkErr) return { error: linkErr }
-    boundSession = { ...session, tournament_event_id: swapEventId }
+    if (!seriesMatch) {
+      const { error: linkErr } = await supabase
+        .from('poker_bankroll_sessions')
+        .update({ tournament_event_id: swapEventId })
+        .eq('id', sessionId)
+      if (linkErr) return { error: linkErr }
+      boundSession = { ...session, tournament_event_id: swapEventId }
+    }
   }
 
   const snap = sessionResultSnapshot(boundSession)
+  const ready = Boolean(snap) && seriesResultReadyAfterSession(boundSession, eventsById)
+  const seriesTotal = seriesTotalBulletCount(boundSession, sessions, eventsById)
+  const exclude = defaultExcludePriorBullets(boundSession, sessions, eventsById, false)
   const patch = {
     counterparty_session_id: sessionId,
     counterparty_session_accepted_at: new Date().toISOString(),
+    counterparty_exclude_prior_bullets: exclude,
+    counterparty_bullets: seriesTotal || (snap?.bullets ?? 1 + (Number(boundSession.reentries) || 0)),
   }
   if (snap) {
     patch.counterparty_buy_in = snap.buyIn
     patch.counterparty_prize = snap.prize
     patch.counterparty_result_source = 'session'
-    patch.counterparty_result_ready = true
+    if (ready) patch.counterparty_result_ready = true
   }
   const { error: uErr } = await supabase
     .from('poker_tournament_swaps')
     .update(patch)
     .eq('id', swapId)
   if (uErr) return { error: uErr }
-  if (snap) {
+  if (ready) {
     const { data, error } = await supabase.rpc('poker_tournament_swap_try_settle', {
       p_swap_id: swapId,
     })
     if (error) return { error }
     return { swap: data, error: null }
+  }
+  return { error: null }
+}
+
+/**
+ * Keep series swap bullet totals current while a later flight is live.
+ * Does not mark results ready or settle.
+ */
+export async function refreshSeriesSwapBullets(supabase, session, opts = {}) {
+  if (!supabase || !session?.id || session.session_type !== 'tournament') {
+    return { error: null }
+  }
+  const sessions = opts.sessions || [session]
+  const eventsById = opts.eventsById || {}
+  const userId = session.user_id || opts.userId || ''
+  if (!userId) return { error: null }
+  const total = seriesTotalBulletCount(session, sessions, eventsById)
+  if (!total) return { error: null }
+  const { data: swaps, error } = await supabase
+    .from('poker_tournament_swaps')
+    .select('id, creator_user_id, counterparty_user_id, creator_session_id, counterparty_session_id, tournament_event_id, status')
+    .eq('status', 'active')
+    .or(`creator_user_id.eq.${userId},counterparty_user_id.eq.${userId}`)
+  if (error) return { error }
+  for (const swap of swaps || []) {
+    if (!swapBelongsOnSession(swap, session, sessions, eventsById, userId)) continue
+    const patch =
+      swap.creator_user_id === userId
+        ? { creator_bullets: total }
+        : { counterparty_bullets: total }
+    const { error: uErr } = await supabase
+      .from('poker_tournament_swaps')
+      .update(patch)
+      .eq('id', swap.id)
+    if (uErr) return { error: uErr }
   }
   return { error: null }
 }
@@ -784,6 +916,7 @@ export function emptyDraftSwap() {
     both_must_cash: false,
     final_bullet_only: false,
     final_table_only: false,
+    include_previous_bullets: false,
   }
 }
 

@@ -52,10 +52,23 @@ const SWAP_TERM_OPTIONS = [
   },
 ]
 
-function SwapTermChecks({ value, onChange, compact = false }) {
+function includePreviousTerm(priorExcludeCount) {
+  const n = Math.max(0, Number(priorExcludeCount) || 0)
+  return {
+    key: 'include_previous_bullets',
+    label: 'Include previous bullets',
+    hint:
+      n > 0
+        ? `Default is this bullet forward. Check to also count ${n} already-fired bullet${n === 1 ? '' : 's'}.`
+        : 'Default is this bullet forward. Check to also count already-fired bullets in this event.',
+  }
+}
+
+function SwapTermChecks({ value, onChange, compact = false, extraOptions = [] }) {
+  const options = [...SWAP_TERM_OPTIONS, ...extraOptions]
   return (
     <div data-poker-swap-term-checks className="mt-2 space-y-1.5">
-      {SWAP_TERM_OPTIONS.map((opt) => (
+      {options.map((opt) => (
         <label
           key={opt.key}
           className="flex cursor-pointer items-start gap-2.5 touch-manipulation"
@@ -163,6 +176,7 @@ export default function PokerTournamentSwapsSection({
   maxSwapGivePct = 100,
   showOwnershipSummary = false,
   showGlobalConfirm = null,
+  priorExcludeCount = 0,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   /** swapId → show manual payout fields */
@@ -423,7 +437,7 @@ export default function PokerTournamentSwapsSection({
       <p
         className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
       >
-        Default: extra bullets at face, then % of prize after that face.
+        Default: this bullet forward, extra bullets at face, then % of prize after that face.
         Optional terms stack. Final bullet only skips extras.
       </p>
 
@@ -607,6 +621,9 @@ export default function PokerTournamentSwapsSection({
                 compact={compact}
                 value={draft}
                 onChange={(patch) => updateDraft(draft.localId, patch)}
+                extraOptions={
+                  priorExcludeCount > 0 ? [includePreviousTerm(priorExcludeCount)] : []
+                }
               />
               {!pctOk ? (
                 <p className="mt-1 text-[11px] text-rose-400">Percents must be 0–100.</p>

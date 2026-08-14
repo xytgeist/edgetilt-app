@@ -218,6 +218,7 @@ import {
   notifyTournamentSwap,
   notifyTournamentSwapResults,
   persistDraftSwapsForSession,
+  refreshSeriesSwapBullets,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
   swapViewerRole,
@@ -226,6 +227,11 @@ import {
   sessionSwapEventMismatch,
 } from './pokerTournamentSwapApi.js'
 import { eventDisplayNamesDiffer } from './pokerTournamentEventKeys.js'
+import {
+  defaultExcludePriorBullets,
+  priorSeriesBulletCount,
+  swapBelongsOnSession,
+} from './pokerTournamentSeries.js'
 import {
   formatSwapIouLine,
   formatSwapSettledParenAmount,
@@ -654,24 +660,23 @@ export default function PokerBankrollTracker({
   )
   const activeSessionSwaps = useMemo(
     () =>
-      tournamentSwaps.filter(
-        (s) =>
-          s.status !== 'cancelled' &&
-          (s.creator_session_id === activeSession?.id ||
-            s.counterparty_session_id === activeSession?.id),
+      tournamentSwaps.filter((s) =>
+        swapBelongsOnSession(s, activeSession, sessions, swapEventsById, userId),
       ),
-    [tournamentSwaps, activeSession?.id],
+    [tournamentSwaps, activeSession, sessions, swapEventsById, userId],
   )
   const editingSessionSwaps = useMemo(
     () =>
       editingId
-        ? tournamentSwaps.filter(
-            (s) =>
-              s.status !== 'cancelled' &&
-              (s.creator_session_id === editingId || s.counterparty_session_id === editingId),
-          )
+        ? tournamentSwaps.filter((s) => {
+            const row = sessions.find((x) => x.id === editingId)
+            return row
+              ? swapBelongsOnSession(s, row, sessions, swapEventsById, userId)
+              : s.status !== 'cancelled' &&
+                (s.creator_session_id === editingId || s.counterparty_session_id === editingId)
+          })
         : [],
-    [tournamentSwaps, editingId],
+    [tournamentSwaps, editingId, sessions, swapEventsById, userId],
   )
   /** Session id → non-cancelled swaps linked as creator or counterparty. */
   const swapsBySessionId = useMemo(() => {
@@ -684,9 +689,14 @@ export default function PokerBankrollTracker({
         if (!map[sid]) map[sid] = []
         if (!map[sid].some((s) => s.id === swap.id)) map[sid].push(swap)
       }
+      for (const session of sessions) {
+        if (!swapBelongsOnSession(swap, session, sessions, swapEventsById, userId)) continue
+        if (!map[session.id]) map[session.id] = []
+        if (!map[session.id].some((s) => s.id === swap.id)) map[session.id].push(swap)
+      }
     }
     return map
-  }, [tournamentSwaps])
+  }, [tournamentSwaps, sessions, swapEventsById, userId])
   const detailSession = useMemo(
     () => (detailSessionId ? sessions.find((s) => s.id === detailSessionId) ?? null : null),
     [sessions, detailSessionId],
@@ -761,6 +771,41 @@ export default function PokerBankrollTracker({
   const cashGamePresets = useMemo(
     () => buildCashGamePresetsFromSessions(scopedSessions, form.venue_kind),
     [scopedSessions, form.venue_kind],
+  )
+  const seriesAnchorSession = useMemo(() => {
+    if (activeSession?.session_type === 'tournament') return activeSession
+    if (form.session_type !== 'tournament') return null
+    const buyIn = parseMoneyInputNumber(form.buy_in)
+    return {
+      id: editingId || null,
+      session_type: 'tournament',
+      venue_name: form.venue_name,
+      buy_in: Number.isFinite(buyIn) ? buyIn : 0,
+      game_variant: pokerGameVariantToStored(
+        'tournament',
+        form.game_variant,
+        form.game_custom_name,
+      ),
+      currency: form.currency,
+      tournament_name: form.tournament_name,
+      start_at: new Date().toISOString(),
+      reentries: form.reentries !== '' ? parseInt(form.reentries, 10) || 0 : 0,
+      status: 'active',
+    }
+  }, [activeSession, form, editingId])
+  const seriesPriorBullets = useMemo(
+    () =>
+      seriesAnchorSession
+        ? priorSeriesBulletCount(seriesAnchorSession, sessions, swapEventsById)
+        : 0,
+    [seriesAnchorSession, sessions, swapEventsById],
+  )
+  const swapPriorExcludeCount = useMemo(
+    () =>
+      seriesAnchorSession
+        ? defaultExcludePriorBullets(seriesAnchorSession, sessions, swapEventsById, false)
+        : 0,
+    [seriesAnchorSession, sessions, swapEventsById],
   )
 
   useEffect(() => {
@@ -1152,6 +1197,9 @@ export default function PokerBankrollTracker({
         if (pErr) console.warn('[poker-bankroll] swap profiles failed', pErr.message)
         setSwapProfilesById(byId)
 
+        for (const sess of sessRes.data || []) {
+          if (sess?.tournament_event_id) eventIds.push(sess.tournament_event_id)
+        }
         const uniqueEventIds = [...new Set(eventIds)]
         if (uniqueEventIds.length === 0) {
           setSwapEventsById({})
@@ -2127,7 +2175,9 @@ export default function PokerBankrollTracker({
       const swapEvent = swap?.tournament_event_id
         ? swapEventsById[swap.tournament_event_id] || null
         : null
-      const mismatch = sessionSwapEventMismatch(session, swap, swapEvent)
+      const mismatch = sessionSwapEventMismatch(session, swap, swapEvent, {
+        eventsById: swapEventsById,
+      })
       if (!mismatch) continue
       const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
       const ok = window.confirm(
@@ -2152,6 +2202,7 @@ export default function PokerBankrollTracker({
       drafts,
       tournamentEventId,
       linked,
+      { sessions, eventsById: swapEventsById },
     )
     if (swapErr) {
       if (!isMissingTournamentSwapTableError(swapErr)) {
@@ -2441,7 +2492,12 @@ export default function PokerBankrollTracker({
         swap.id,
         session.id,
         session,
-        { swapEvent, swapEventId: swap.tournament_event_id },
+        {
+          swapEvent,
+          swapEventId: swap.tournament_event_id,
+          sessions,
+          eventsById: swapEventsById,
+        },
       )
       if (error) throw error
       await loadData()
@@ -2455,7 +2511,9 @@ export default function PokerBankrollTracker({
   async function acceptIncomingSwap(swap) {
     if (!supabaseClient || !userId || !swap?.id) return
     const swapEvent = swapEventForIncomingSwap(swap)
-    const candidates = findCounterpartyBindCandidates(swap, scopedSessions, swapEvent)
+    const candidates = findCounterpartyBindCandidates(swap, sessions, swapEvent, {
+      eventsById: swapEventsById,
+    })
     if (candidates.length > 1) {
       setIncomingBindPicker({ swap, candidates })
       return
@@ -2528,6 +2586,14 @@ export default function PokerBankrollTracker({
         .eq('user_id', userId)
         .eq('status', 'active')
       if (uErr) throw uErr
+      if (isTourney) {
+        const next = { ...activeSession, ...patch }
+        await refreshSeriesSwapBullets(supabaseClient, next, {
+          sessions: sessions.map((s) => (s.id === next.id ? next : s)),
+          eventsById: swapEventsById,
+          userId,
+        })
+      }
       setSheet(null)
       triggerTapHapticLight()
       await loadData()
@@ -2678,12 +2744,24 @@ export default function PokerBankrollTracker({
           incomingAcceptSwap.id,
           sessionRow.id,
           sessionRow,
-          { swapEvent, swapEventId: incomingAcceptSwap.tournament_event_id },
+          {
+            swapEvent,
+            swapEventId: incomingAcceptSwap.tournament_event_id,
+            sessions: [...sessions, sessionRow],
+            eventsById: swapEventsById,
+          },
         )
         if (bindErr) throw bindErr
       }
       if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
         await attachDraftSwapsToSession(sessionRow, draftSwaps)
+      }
+      if (payload.session_type === 'tournament') {
+        await refreshSeriesSwapBullets(supabaseClient, sessionRow, {
+          sessions: [...sessions, sessionRow],
+          eventsById: swapEventsById,
+          userId,
+        })
       }
       if (pieceDeal?.id) {
         const { error: linkErr } = await supabaseClient
@@ -2830,6 +2908,7 @@ export default function PokerBankrollTracker({
           supabaseClient,
           activeSession.id,
           ended,
+          { sessions, eventsById: swapEventsById, userId },
         )
         if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
           console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
@@ -2838,6 +2917,7 @@ export default function PokerBankrollTracker({
           supabaseClient,
           activeSession.id,
           ended,
+          { sessions, eventsById: swapEventsById, userId },
         )
         if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
           console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
@@ -3311,6 +3391,7 @@ export default function PokerBankrollTracker({
               supabaseClient,
               editingId,
               sessionRow,
+              { sessions, eventsById: swapEventsById, userId },
             )
             if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
               console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
@@ -3319,6 +3400,7 @@ export default function PokerBankrollTracker({
               supabaseClient,
               editingId,
               sessionRow,
+              { sessions, eventsById: swapEventsById, userId },
             )
             if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
               console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
@@ -4109,6 +4191,12 @@ export default function PokerBankrollTracker({
                         <div className="mt-0.5 truncate text-sm text-zinc-400">
                           {pokerSessionInForLine(activeSession)}
                         </div>
+                        {seriesPriorBullets > 0 ? (
+                          <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+                            {seriesPriorBullets} earlier bullet
+                            {seriesPriorBullets === 1 ? '' : 's'} in this event
+                          </div>
+                        ) : null}
                       </div>
                       {liveClock}
                       <div
@@ -4206,7 +4294,9 @@ export default function PokerBankrollTracker({
                     )
                     const swapEvent = swapEventForIncomingSwap(swap)
                     const canBind =
-                      findCounterpartyBindCandidates(swap, scopedSessions, swapEvent).length >= 1
+                      findCounterpartyBindCandidates(swap, sessions, swapEvent, {
+                        eventsById: swapEventsById,
+                      }).length >= 1
                     return (
                       <li
                         key={swap.id}
@@ -5277,6 +5367,7 @@ export default function PokerBankrollTracker({
               supabaseClient={supabaseClient}
               userId={userId}
               enabled={form.session_type === 'tournament' && !editingActiveSession}
+              priorExcludeCount={swapPriorExcludeCount}
               maxSwapGivePct={swapSelfOwnedPct}
               showOwnershipSummary={false}
               draftSwaps={draftSwaps}
@@ -5524,10 +5615,21 @@ export default function PokerBankrollTracker({
                 showCashDetails={form.cash_game_pick === POKER_CASH_NEW_GAME_ID}
               />
 
+              {form.session_type === 'tournament' && seriesPriorBullets > 0 ? (
+                <p
+                  data-poker-series-prior-bullets
+                  className="mb-3 text-[12px] leading-snug text-emerald-200/80"
+                >
+                  {seriesPriorBullets} bullet{seriesPriorBullets === 1 ? '' : 's'} already
+                  logged in this event. New swaps default to this bullet forward.
+                </p>
+              ) : null}
+
               <PokerTournamentSwapsSection
                 supabaseClient={supabaseClient}
                 userId={userId}
                 enabled={form.session_type === 'tournament'}
+                priorExcludeCount={swapPriorExcludeCount}
                 maxSwapGivePct={swapSelfOwnedPct}
                 draftSwaps={draftSwaps}
                 onDraftSwapsChange={setDraftSwaps}
@@ -5602,6 +5704,7 @@ export default function PokerBankrollTracker({
               supabaseClient={supabaseClient}
               userId={userId}
               enabled
+              priorExcludeCount={swapPriorExcludeCount}
               maxSwapGivePct={swapSelfOwnedPct}
               showOwnershipSummary
               draftSwaps={draftSwaps}

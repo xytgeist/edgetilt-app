@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-14: **Multi-flight tournament series + swap watermark:** Day 1A/B/C stay separate sessions. Same event (venue + buy-in + stripped name, 21-day window) shares a running bullet total for swaps only. New swaps default to this bullet forward; **Include previous bullets** pulls earlier ones in. A 1B swap keeps picking up 1C. Day 1 bust does not settle. SQL **`20260814170000`** on **test**. Do not promote **`main`** until that migration is on prod.
 - 2026-08-14: **Promoted Aug 14 poker SQL to prod:** applied **`20260814120000`** → **`20260814130000`** → **`20260814140000`** → **`20260814150000`** → **`20260814160000`** on **`jtjgtucumuoswnbauxry`** (tracked in `schema_migrations`). Then **`test` → `main`**.
 - 2026-08-14: **Swap % is of prize, not prize minus buy-in:** Extra-bullet face math unchanged. Casher share no longer subtracts one face buy-in before %. SQL **`20260814160000`** on **test**. Do not promote **`main`** until that migration is on prod.
 - 2026-08-14: **Start Session Backers / Swaps chrome:** Tournament Start lists Swaps (green) above Backers (cyan). Backers copy is “Single session stake …”; dropped the “Same terms as…” line. Light mode `+ Edge user` stays white on the filled chip. **`PokerSessionBackerSection`**.

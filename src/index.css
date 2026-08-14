@@ -4946,6 +4946,10 @@ html.light [data-poker-bankroll-sheet] .text-rose-400 {
 }
 
 /* Featured Swaps card on Start/Log/Edit (dark uses emerald Tailwind classes as-is). */
+html.light [data-poker-bankroll-sheet] [data-poker-series-prior-bullets] {
+  color: #047857 !important;
+}
+
 html.light [data-poker-bankroll-sheet] [data-poker-tournament-swaps='featured'] {
   background-color: #ecfdf5 !important;
   border-color: #059669 !important;

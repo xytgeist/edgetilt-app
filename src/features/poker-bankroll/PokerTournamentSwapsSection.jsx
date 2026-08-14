@@ -631,21 +631,17 @@ export default function PokerTournamentSwapsSection({
       <p
         className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
       >
-        <span className="inline-flex items-center gap-1 align-middle">
-          <span className={compact ? 'font-semibold text-zinc-400' : 'font-semibold text-emerald-100/80'}>
-            Default
-          </span>
-          <button
-            type="button"
-            data-poker-swap-info-btn
-            onClick={() => setDefaultInfoOpen(true)}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:text-zinc-300"
-            aria-label="About default swap"
-          >
-            <Info className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-          </button>
-        </span>
-        {': this bullet forward, extra bullets at face, then % of prize after that face. Optional terms stack. Final bullet only skips extras.'}
+        Default: this bullet forward, extra bullets at face, then % of prize after that face.
+        Optional terms stack. Final bullet only skips extras.
+        <button
+          type="button"
+          data-poker-swap-info-btn
+          onClick={() => setDefaultInfoOpen(true)}
+          className="ml-1 inline-flex h-4 w-4 shrink-0 translate-y-[1px] items-center justify-center rounded-full text-zinc-500 touch-manipulation active:text-zinc-300"
+          aria-label="About default swap"
+        >
+          <Info className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+        </button>
       </p>
       {defaultInfoOpen && typeof document !== 'undefined'
         ? createPortal(

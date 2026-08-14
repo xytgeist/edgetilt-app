@@ -7870,6 +7870,41 @@ html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] .text-zin
 html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] input[type='checkbox'] {
   accent-color: #047857;
 }
+html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] button {
+  background-color: #ffffff !important;
+  border-color: #a1a1aa !important;
+  color: #52525b !important;
+}
+html.light [data-poker-swap-term-info-modal] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+  color: #18181b !important;
+}
+html.light [data-poker-swap-term-info-modal] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-swap-term-info-modal] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-poker-swap-term-info-modal] .text-zinc-400,
+html.light [data-poker-swap-term-info-modal] .text-zinc-500 {
+  color: #52525b !important;
+}
+html.light [data-poker-swap-term-info-modal] .bg-zinc-800\/60 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-poker-swap-term-info-modal] .border-zinc-700\/60 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-swap-term-info-modal] button.bg-zinc-800 {
+  background-color: #e4e4e7 !important;
+  color: #52525b !important;
+}
+html.light [data-poker-swap-term-info-modal] button.bg-emerald-600,
+html.light [data-poker-swap-term-info-modal] button.bg-emerald-600.text-white {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
 html.light [data-poker-tournament-swaps] .bg-emerald-600 {
   background-color: #059669 !important;
   color: #ffffff !important;

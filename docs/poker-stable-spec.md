@@ -531,6 +531,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-14:** **Swap-term info modals (client):** Each draft checkbox has a small info button with the rule and Player A / Player B examples using a $1,000 buy-in, 10% swap, and $10,000 cash-out where applicable. Copy explicitly treats cash-out as prize, not profit after buy-in. **`PokerTournamentSwapsSection`**.
 - **2026-08-14:** **Swaps always this-bullet-forward:** Removed **Include previous bullets**. New swaps always exclude already-fired series bullets (current bullet stays in). Column kept for old rows. **`PokerTournamentSwapsSection`**, **`pokerTournamentSwapApi`**, **`pokerTournamentSwapMath`**.
 - **2026-08-14:** **Multi-live sessions (client):** Concurrent in-progress sessions allowed (mixed personal + stake). Soft cap 3 (confirm) / hard 4. Stacked live cards; Start stays available; pause/rebuy/end/swaps are session-id targeted. Carousel **Live** pill on other heroes. Incoming swap no-match fallthrough: Apply to current (force bind) or Start new. **`PokerBankrollTracker`**, **`pokerTournamentSwapApi` (`forceBind`)**.
 - **2026-08-13:** **Closed-stake Realized backing no longer treats periodic profit as capital return (client):** `{ isClose: false }` was ignored when `deal.status` was settled/closed (`false || settled` → close path), so a $3,800 periodic settle showed as roll-at-settle (e.g. $103,800). Explicit false now stays on the profit-credit path. **`settlementBackerCredit`**.

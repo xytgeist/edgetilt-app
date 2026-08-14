@@ -1,4 +1,6 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Info } from 'lucide-react'
 import PlayLogPartnerPickerModal from '../play-logbook/PlayLogPartnerPickerModal.jsx'
 import { fmtPoker$ } from './pokerBankrollMath.js'
 import {
@@ -39,46 +41,216 @@ const SWAP_TERM_OPTIONS = [
     key: 'both_must_cash',
     label: 'Both must cash',
     hint: 'Void unless both players cash. Neither owes the other.',
+    description:
+      'The swap only activates when both players cash. If either player does not cash, the entire swap is void.',
+    examples: [
+      {
+        title: 'Player A cashes · Player B busts',
+        lines: [
+          'Player A cashes out for $10,000. Player B cashes out for $0.',
+          'Because both players did not cash, the swap is void. Neither player owes anything.',
+        ],
+      },
+      {
+        title: 'Both players cash for different amounts',
+        lines: [
+          'Player A cashes out for $10,000 and owes Player B 10% = $1,000.',
+          'Player B cashes out for $5,000 and owes Player A 10% = $500.',
+          'After netting, Player A owes Player B $500.',
+        ],
+      },
+      {
+        title: 'Both players cash for $10,000',
+        lines: [
+          'Each player owes the other 10% of $10,000 = $1,000.',
+          'The two amounts cancel out, so neither player owes anything.',
+        ],
+      },
+    ],
   },
   {
     key: 'final_bullet_only',
     label: 'Final bullet only',
     hint: 'Only the last entry counts. Partner does not cover extra bullets at face.',
+    description:
+      'Earlier bullets are ignored. Each player is treated as having one final bullet, so there is no extra-bullet face-value adjustment.',
+    examples: [
+      {
+        title: 'One bullet each',
+        lines: [
+          'Player A cashes out for $10,000. Player B cashes out for $0.',
+          'Player A owes Player B 10% of $10,000 = $1,000.',
+        ],
+      },
+      {
+        title: 'Player A fired two bullets',
+        lines: [
+          'Player A fired two $1,000 bullets and cashes out for $0. Player B fired one bullet and cashes out for $10,000.',
+          'Player A’s earlier bullet is ignored. Player B owes Player A 10% of $10,000 = $1,000.',
+        ],
+      },
+      {
+        title: 'Both players fired multiple bullets',
+        lines: [
+          'Player A fired three bullets and cashes out for $10,000. Player B fired two bullets and cashes out for $0.',
+          'Only each player’s final bullet counts. Player A owes Player B $1,000.',
+        ],
+      },
+    ],
   },
   {
     key: 'final_table_only',
     label: 'Final table only',
     hint: 'Activates if either player makes the final 9 (or 6 if 6-max).',
+    description:
+      'The swap activates only if Player A or Player B reaches the final table. Final table means 9th or better, or 6th or better in a 6-max tournament.',
+    examples: [
+      {
+        title: 'Player A makes the final table',
+        lines: [
+          'Player A finishes 8th and cashes out for $10,000. Player B finishes 50th and cashes out for $0.',
+          'The swap activates. Player A owes Player B 10% of $10,000 = $1,000.',
+        ],
+      },
+      {
+        title: 'Neither player makes the final table',
+        lines: [
+          'Player A finishes 12th and cashes out for $10,000. Player B finishes 50th and cashes out for $0.',
+          'Neither player made the final 9, so the swap is void. Neither player owes anything.',
+        ],
+      },
+      {
+        title: 'Player B makes the final table',
+        lines: [
+          'Player A finishes 50th and cashes out for $0. Player B finishes 9th and cashes out for $10,000.',
+          'The swap activates. Player B owes Player A $1,000.',
+        ],
+      },
+    ],
   },
 ]
 
-function SwapTermChecks({ value, onChange, compact = false, extraOptions = [] }) {
-  const options = [...SWAP_TERM_OPTIONS, ...extraOptions]
+function SwapTermChecks({ value, onChange, compact = false }) {
+  const inputIdPrefix = useId()
+  const [infoOption, setInfoOption] = useState(null)
   return (
-    <div data-poker-swap-term-checks className="mt-2 space-y-1.5">
-      {options.map((opt) => (
-        <label
-          key={opt.key}
-          className="flex cursor-pointer items-start gap-2.5 touch-manipulation"
-        >
-          <input
-            type="checkbox"
-            checked={Boolean(value?.[opt.key])}
-            onChange={(e) => onChange({ [opt.key]: e.target.checked })}
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/40"
-          />
-          <span>
-            <span
-              className={`block text-xs font-semibold ${compact ? 'text-zinc-200' : 'text-emerald-100'}`}
+    <>
+      <div data-poker-swap-term-checks className="mt-2 space-y-1.5">
+        {SWAP_TERM_OPTIONS.map((opt) => {
+          const inputId = `${inputIdPrefix}-${opt.key}`
+          return (
+            <div key={opt.key} className="flex items-start gap-2.5">
+              <input
+                id={inputId}
+                type="checkbox"
+                checked={Boolean(value?.[opt.key])}
+                onChange={(e) => onChange({ [opt.key]: e.target.checked })}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/40"
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <label
+                    htmlFor={inputId}
+                    className={`cursor-pointer text-xs font-semibold touch-manipulation ${
+                      compact ? 'text-zinc-200' : 'text-emerald-100'
+                    }`}
+                  >
+                    {opt.label}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setInfoOption(opt)}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-zinc-600/80 text-zinc-500 touch-manipulation active:border-zinc-400 active:text-zinc-300"
+                    aria-label={`About ${opt.label}`}
+                  >
+                    <Info className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                  </button>
+                </div>
+                <div className="mt-0.5 text-[11px] leading-snug text-zinc-500">
+                  {opt.hint}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {infoOption && typeof document !== 'undefined'
+        ? createPortal(
+            <SwapTermInfoModal option={infoOption} onClose={() => setInfoOption(null)} />,
+            document.body,
+          )
+        : null}
+    </>
+  )
+}
+
+function SwapTermInfoModal({ option, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-[130] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div
+        data-poker-swap-term-info-modal
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="poker-swap-term-info-title"
+        className="max-h-[min(82dvh,44rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 pb-6 pt-5"
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <div
+              id="poker-swap-term-info-title"
+              className="text-base font-bold leading-tight text-white"
             >
-              {opt.label}
-            </span>
-            <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">
-              {opt.hint}
-            </span>
-          </span>
-        </label>
-      ))}
+              {option.label}
+            </div>
+            <div className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-300">
+              $1,000 buy-in · 10% swap
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400 touch-manipulation active:bg-zinc-700"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <p className="text-sm leading-relaxed text-zinc-300">{option.description}</p>
+        <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+          “Cash out” means the recorded prize amount, not profit after subtracting the $1,000
+          buy-in.
+        </p>
+        <div className="mt-4 space-y-3">
+          {option.examples.map((example) => (
+            <div
+              key={example.title}
+              className="rounded-2xl border border-zinc-700/60 bg-zinc-800/60 p-3.5"
+            >
+              <div className="text-xs font-bold text-white">{example.title}</div>
+              <ul className="mt-2 space-y-1.5">
+                {example.lines.map((line) => (
+                  <li key={line} className="flex gap-2 text-xs leading-relaxed text-zinc-400">
+                    <span className="text-emerald-400">•</span>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 w-full rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white touch-manipulation active:bg-emerald-500"
+        >
+          Got it
+        </button>
+      </div>
     </div>
   )
 }

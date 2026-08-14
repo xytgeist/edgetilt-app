@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-14: **Swap-term info modals:** Small info button beside **Both must cash**, **Final bullet only**, and **Final table only** opens rule + math examples using Player A / Player B, $1,000 buy-in, 10%, and $10,000 cash-out where applicable. Smoke all three in dark + light from Start Session and live Swap sheet.
 - 2026-08-14: **Swaps always this-bullet-forward:** Dropped **Include previous bullets**. New swaps always skip already-fired series bullets; current bullet counts. No SQL. Smoke: Day 1B with prior bullets → new swap has no include checkbox; exclude watermark set; settle uses this-bullet-forward.
 - 2026-08-14: **Multi-live sessions:** Players can stack multiple in-progress cards (personal + stake mix). Soft cap 3 (confirm) / hard block at 4+. Pause/rebuy/end/swaps target a session id. Carousel shows **Live** on other heroes with actives. Incoming Accept with no match → Apply to current (mismatch confirm) or Start new. No SQL. Smoke: two personal lives; personal + stake; soft/hard cap; swap fallthrough Apply + Start new; matched Accept still auto-binds.
 - 2026-08-14: **Multi-flight tournament series + swap watermark:** Day 1A/B/C stay separate sessions. Same event (venue + buy-in + stripped name, 21-day window) shares a running bullet total for swaps only. Swaps are this bullet forward (already-fired excluded). A 1B swap keeps picking up 1C. Day 1 bust does not settle. SQL **`20260814170000`** on **test + prod**.

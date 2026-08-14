@@ -148,6 +148,7 @@ import {
   pokerSessionPausedMs,
   pokerSessionTotalCost,
   pokerSessionWinLoss,
+  suggestedLiveRebuyAmount,
 } from './pokerBankrollMath.js'
 import {
   readStoredPokerBankrollScope,
@@ -2475,8 +2476,12 @@ export default function PokerBankrollTracker({
 
   function openRebuy(kind = 'rebuy') {
     if (!activeSession) return
-    setRebuyKind(kind === 'addon' ? 'addon' : 'rebuy')
-    setRebuyAmount('')
+    const nextKind = kind === 'addon' ? 'addon' : 'rebuy'
+    const suggested = suggestedLiveRebuyAmount(activeSession, nextKind)
+    setRebuyKind(nextKind)
+    setRebuyAmount(
+      suggested != null ? formatMoneyInputValue(String(suggested)) : '',
+    )
     setError('')
     setSheet('rebuy')
     triggerTapHapticLight()

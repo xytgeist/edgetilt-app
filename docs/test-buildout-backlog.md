@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-14: **Live Re-enter prefills the amount:** Tournament Re-enter opens with last per-bullet re-entry, or buy-in if they have not re-entered yet. Cash re-buy / add-on stay empty. **`suggestedLiveRebuyAmount`**.
 - 2026-08-14: **Personal session swap cap is not global sold action:** Swap % used every live stake/piece on the account, so a personal tourney looked 100% sold. Cap is now this session’s deal only (or 100% on personal with no piece). **`PokerBankrollTracker`**.
 - 2026-08-14: **Default swap math is extra bullets at face:** Unchecked swaps no longer use prize − total fees. Partner covers busted extras at face; a casher subtracts one buy-in plus that face before %. Both cash → extras only reduce the extra-firer's profit (no double-count). SQL **`20260814150000`** on **test**. Do not promote **`main`** until that migration is on prod.
 - 2026-08-14: **Tournament swap term checkboxes:** Draft swaps can stack **Both must cash**, **Final bullet only**, and **Final table only**. Settle RPC + JS math match; guest claim asks for finish place when FT-only. Unchecked swaps keep today’s profit-after-total-buy-in math. SQL **`20260814140000`** on **test**. Do not promote **`main`** until that migration is on prod. **`PokerTournamentSwapsSection`**.

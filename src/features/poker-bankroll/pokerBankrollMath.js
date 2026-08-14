@@ -102,6 +102,27 @@ export function pokerSessionTotalCost(session) {
   return buyIn + rebuy + addon
 }
 
+/**
+ * Default $ for the live Re-enter sheet. Uses the last per-bullet re-entry
+ * when they have already re-entered, otherwise the session buy-in.
+ * Cash re-buy and add-on stay empty (`rebuy_amount` / `buy_in` are totals).
+ *
+ * @param {object | null | undefined} session
+ * @param {'rebuy' | 'addon'} [kind]
+ * @returns {number | null}
+ */
+export function suggestedLiveRebuyAmount(session, kind = 'rebuy') {
+  if (!session || kind === 'addon') return null
+  if (session.session_type !== 'tournament') return null
+  const reentries = Number(session.reentries) || 0
+  const rebuyTotal = Number(session.rebuy_amount) || 0
+  if (reentries > 0 && rebuyTotal > 0) {
+    return Math.round((rebuyTotal / reentries) * 100) / 100
+  }
+  const buyIn = Number(session.buy_in) || 0
+  return buyIn > 0 ? Math.round(buyIn * 100) / 100 : null
+}
+
 /** @param {{ buy_in?: number | string, rebuy_amount?: number | string | null, addon_amount?: number | string | null, cash_out?: number | string | null, bounty_winnings?: number | string | null }} session */
 export function pokerSessionWinLoss(session) {
   if (session?.cash_out == null || session.cash_out === '') return null

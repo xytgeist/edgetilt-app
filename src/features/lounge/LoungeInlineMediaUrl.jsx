@@ -85,6 +85,7 @@ function LoungeLightboxStackedPhoto({
 }) {
   const feedSrc = loungeFeedImageDeliveryUrl(storedUrl, 'feed')
   const sharpSrc = loungeFeedImageDeliveryUrl(storedUrl, 'lightbox')
+  const sharpIsSeparate = Boolean(loadSharp && sharpSrc && sharpSrc !== feedSrc)
   const [sharpOn, setSharpOn] = useState(false)
   const sharpElRef = useRef(/** @type {HTMLImageElement | null} */ (null))
 
@@ -93,14 +94,14 @@ function LoungeLightboxStackedPhoto({
   }, [])
 
   useLayoutEffect(() => {
-    if (!loadSharp) {
+    if (!sharpIsSeparate) {
       setSharpOn(false)
       return
     }
     const el = sharpElRef.current
     // Cached 2048: show before paint so swipe-back does not flash opacity 0→1.
     if (el && el.complete && el.naturalWidth > 0) setSharpOn(true)
-  }, [loadSharp, sharpSrc])
+  }, [sharpIsSeparate, sharpSrc])
 
   const setSharpNode = useCallback(
     (node) => {
@@ -114,6 +115,7 @@ function LoungeLightboxStackedPhoto({
   return (
     <>
       <img
+        ref={sharpIsSeparate ? undefined : imgRef}
         src={feedSrc}
         alt=""
         className={className}
@@ -123,9 +125,10 @@ function LoungeLightboxStackedPhoto({
         onLoad={(e) => onAspect?.(e.currentTarget)}
         onError={(e) => onLoungeLightboxImgError(e, storedUrl)}
       />
-      {loadSharp ? (
+      {sharpIsSeparate ? (
         <img
           ref={setSharpNode}
+          data-lounge-lightbox-sharp=""
           src={sharpSrc}
           alt=""
           className="pointer-events-none absolute inset-0 z-[1] h-full w-full select-none object-contain"
@@ -844,6 +847,11 @@ export function LoungeImageLightbox({
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (cancelled) return
+        const scroller = carouselScrollRef.current
+        if (scroller && list.length > 1) {
+          const slideW = scroller.clientWidth
+          if (slideW) scroller.scrollLeft = openIdx * slideW
+        }
         const band = measureImageLightboxMediaBand(
           mediaContainerRef.current,
           topChromeRef.current,
@@ -872,29 +880,25 @@ export function LoungeImageLightbox({
         const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
         setBandByMode((prev) => ({ ...prev, [mode]: band }))
 
-        const parkedRect =
-          openingGif && parkedImg instanceof HTMLImageElement
-            ? readContainedImageViewportRect(parkedImg) || readElementViewportRect(parkedImg)
-            : null
-        const target =
-          openingGif && heroRectUsableForShrinkBack(parkedRect)
-            ? parkedRect
-            : computeHeroTargetRect(from, {
-                displayW:
-                  openingGif && parkedNaturalW > 0
-                    ? parkedNaturalW
-                    : openingGif && gifAspect > 0
-                      ? gifAspect
-                      : from.width,
-                displayH:
-                  openingGif && parkedNaturalH > 0
-                    ? parkedNaturalH
-                    : openingGif && gifAspect > 0
-                      ? 1
-                      : from.height,
-                insetTop: band.top,
-                insetBottom: band.bottom,
-              })
+        // Never use the parked <img> box as the fly-in target in a carousel.
+        // Slide 2 is laid out to the right while scrollLeft is still 0, so that
+        // rect is off the right edge … expand/shrink then start from there.
+        const target = computeHeroTargetRect(from, {
+          displayW:
+            openingGif && parkedNaturalW > 0
+              ? parkedNaturalW
+              : openingGif && gifAspect > 0
+                ? gifAspect
+                : from.width,
+          displayH:
+            openingGif && parkedNaturalH > 0
+              ? parkedNaturalH
+              : openingGif && gifAspect > 0
+                ? 1
+                : from.height,
+          insetTop: band.top,
+          insetBottom: band.bottom,
+        })
         targetRectRef.current = target
         landSlideIndexRef.current = openIdx
         setLandFrame(target)

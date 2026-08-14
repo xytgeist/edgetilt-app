@@ -1455,9 +1455,14 @@ html.light [data-lounge-image-lightbox] .media-lightbox-ambient-bg {
   display: block;
   z-index: 0;
 }
-/* Sharp lightbox image must sit above ambient blur (Android was painting ambient over carousel slides). */
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel],
-html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] img {
+/* Sharp lightbox image must sit above ambient blur (Android was painting ambient over carousel slides).
+   Do not force `position:relative` on the stacked 2048 overlay … that lined it up beside the 960
+   (Klipy GIFs use the same URL for both, so it looked like the GIF tiled). */
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] {
+  position: relative;
+  z-index: 1;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-carousel] img:not([data-lounge-lightbox-sharp]) {
   position: relative;
   z-index: 1;
 }

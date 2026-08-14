@@ -39,8 +39,8 @@ function filterPartnerProfiles(rows, query) {
  *   onClose: () => void,
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   userId: string,
- *   usedUserIds: Set<string>,
- *   usedGuestLabels?: Set<string>,
+ *   usedUserIds: Set<string> | string[],
+ *   usedGuestLabels?: Set<string> | string[],
  *   onConfirm: (payload: { profiles: object[], guestLabels: string[] }) => void,
  *   mode?: 'network' | 'directory',
  *   hideGuests?: boolean,
@@ -63,6 +63,15 @@ export default function PlayLogPartnerPickerModal({
 }) {
   const isDirectory = mode === 'directory'
   const guestsEnabled = !hideGuests && !isDirectory
+  const usedUserIdSet = useMemo(
+    () => (usedUserIds instanceof Set ? usedUserIds : new Set(usedUserIds || [])),
+    [usedUserIds],
+  )
+  const usedGuestLabelSet = useMemo(
+    () =>
+      usedGuestLabels instanceof Set ? usedGuestLabels : new Set(usedGuestLabels || []),
+    [usedGuestLabels],
+  )
   const [search, setSearch] = useState('')
   /** @type {[object[], Function]} */
   const [stagedProfiles, setStagedProfiles] = useState([])
@@ -164,7 +173,7 @@ export default function PlayLogPartnerPickerModal({
 
   const addProfileToStaged = profile => {
     const uid = String(profile?.user_id || '').trim()
-    if (!uid || usedUserIds.has(uid) || stagedUserIds.has(uid)) return
+    if (!uid || usedUserIdSet.has(uid) || stagedUserIds.has(uid)) return
     if (confirmOnSelect) {
       onConfirm({ profiles: [profile], guestLabels: [] })
       onClose()
@@ -184,7 +193,7 @@ export default function PlayLogPartnerPickerModal({
   const guestProposalStaged = useMemo(() => {
     if (!searchTrimmed) return false
     const key = searchTrimmed.toLowerCase()
-    return stagedGuests.some(g => g.toLowerCase() === key) || usedGuestLabels.has(key)
+    return stagedGuests.some(g => g.toLowerCase() === key) || usedGuestLabelSet.has(key)
   }, [searchTrimmed, stagedGuests, usedGuestLabels])
 
   const filteredSavedGuests = useMemo(() => {
@@ -198,7 +207,7 @@ export default function PlayLogPartnerPickerModal({
     if (!trimmed) return
     const key = trimmed.toLowerCase()
     if (stagedGuests.some(g => g.toLowerCase() === key)) return
-    if (usedGuestLabels.has(key)) return
+    if (usedGuestLabelSet.has(key)) return
     setStagedGuests(prev => [...prev, trimmed])
     addSavedGuestLabel(userId, trimmed)
     void refreshSavedGuests()
@@ -287,7 +296,7 @@ export default function PlayLogPartnerPickerModal({
    */
   const renderProfileRow = (profile) => {
     const uid = String(profile.user_id)
-    const onPlayAlready = usedUserIds.has(uid)
+    const onPlayAlready = usedUserIdSet.has(uid)
     const picked = stagedUserIds.has(uid)
     const disabled = onPlayAlready || picked
     const followingThem = viewerFollowingIds.has(uid)
@@ -508,7 +517,7 @@ export default function PlayLogPartnerPickerModal({
                   <ul className="divide-y divide-zinc-800/70">
                     {filteredSavedGuests.map((guest) => {
                       const key = guest.label.toLowerCase()
-                      const onPlay = usedGuestLabels.has(key)
+                      const onPlay = usedGuestLabelSet.has(key)
                       const picked = stagedGuests.some((l) => l.toLowerCase() === key)
                       const disabled = onPlay || picked
                       return (

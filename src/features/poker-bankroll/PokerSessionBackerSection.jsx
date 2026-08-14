@@ -224,7 +224,7 @@ export default function PokerSessionBackerSection({
         onClose={() => setPickerOpen(false)}
         supabaseClient={supabaseClient}
         userId={userId}
-        usedUserIds={draftBackerUsedUserIds(draftBackers)}
+        usedUserIds={new Set(draftBackerUsedUserIds(draftBackers))}
         onConfirm={onPickerConfirm}
         mode="directory"
         hideGuests

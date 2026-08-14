@@ -1,6 +1,7 @@
 /**
  * Shared tile ↔ fullscreen FLIP geometry for Stream hero + image lightbox.
  */
+import { isLoungeCfR2MediaUrl, isLoungeSupabaseFeedMediaUrl } from '../../utils/loungeCfImageMedia.js'
 
 export const HERO_EXPAND_MS = 500
 export const HERO_SHRINK_MS = 500
@@ -91,6 +92,10 @@ export function isLoungeLightboxGifUrl(url, knownGifUrl) {
     if (host.includes('klipy')) return true
   } catch {
     if (/\.gif(\?|#|$)/i.test(raw)) return true
+  }
+  // Klipy CDNs often have neither "klipy" nor .gif. Stills live on our R2.
+  if (/^https?:\/\//i.test(raw) && !isLoungeCfR2MediaUrl(raw) && !isLoungeSupabaseFeedMediaUrl(raw)) {
+    return true
   }
   return false
 }

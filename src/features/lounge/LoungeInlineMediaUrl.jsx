@@ -921,7 +921,9 @@ export function LoungeImageLightbox({
             // slide 0 stays position:fixed and the carousel scrolls over it.
             flushSync(() => {
               setPhase('open')
-              setLandFrame(null)
+              // Single GIF has no pager. Keep the parked frame so land does not
+              // reflow (carousel must drop this or slide 0 stays position:fixed).
+              if (list.length > 1 || !openingGif) setLandFrame(null)
               setChromeVisible(true)
               setScrimOpacity(1)
             })
@@ -1416,7 +1418,7 @@ export function LoungeInlineMediaUrl({
           urls={lightbox.urls}
           initialIndex={lightbox.index}
           fromRect={lightbox.fromRect}
-          gifUrl={knownGifUrl}
+          gifUrl={knownGifUrl || (isLoungeLightboxGifUrl(url) ? url : '')}
           getOriginRect={getOriginRect}
           onClose={() => setLightbox(null)}
           lightboxPortalClass={lightboxPortalClass}

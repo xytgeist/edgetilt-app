@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-14: **Single GIF lightbox resize:** Solo Klipy URLs were not flagged (no `.gif` / “klipy” in the host) and land dropped the parked frame, so they flew full-bleed then reflowed. External non-R2 URLs count as GIFs; single GIF keeps `landFrame`. Carousel still drops it. **`LoungeImageLightbox`**.
 - 2026-08-14: **Image lightbox fly-home flash:** `setPhase('closing')` re-rendered the flyout without a box. Unsized `fixed` + `h-full` img is the viewport, so close flashed full-screen then shrank. Closing keeps the parked frame in React style. **`LoungeImageLightbox`**.
 - 2026-08-14: **GIF lightbox carousel:** Fly-in used the tile box because `displayW: aspect` is `< 2` and was ignored, so it went full-bleed then reset. GIFs now pass `aspect` + `forceBand` into `computeHeroTargetRect` (park in the chrome band). Natural size comes from the opening slide, not `querySelector('img')` (that was slide 1). Light-mode tile/right-edge shrink fixes kept.
 - 2026-08-14: **Image lightbox fly-in after CF resize:** Flyout uses feed 960. Open slides keep that 960 mounted and stack 2048 at opacity 0 until decoded … swapping `src` 960→2048 on snap was the carousel-settle flash. `landFrame` drops in the same turn as `open`. **`LoungeImageLightbox`**. Stream video untouched.

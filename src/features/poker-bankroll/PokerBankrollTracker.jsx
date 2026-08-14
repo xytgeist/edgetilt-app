@@ -5612,12 +5612,12 @@ function LiveSessionClock({
 }) {
   return (
     <div
-      className={`absolute bottom-0 left-0 flex items-center gap-1.5 ${maxWidthClass} overflow-hidden`}
+      className={`absolute bottom-0 left-0 flex min-w-0 items-center gap-1.5 ${maxWidthClass}`}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
       <span
-        className={`font-black tabular-nums whitespace-nowrap ${
+        className={`min-w-0 truncate font-black tabular-nums ${
           isPaused ? 'text-amber-200' : 'text-emerald-200'
         } ${timerTextClass}`}
       >

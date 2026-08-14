@@ -5,7 +5,8 @@ export function fmtPokerDuration(totalSeconds) {
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   if (h === 0) return `${m}m`
-  return `${h}h ${m}m`
+  // Compact after 1h so the live card clock never grows past ~3h + 2m digits.
+  return `${h}h${String(m).padStart(2, '0')}m`
 }
 
 /** @param {number | null | undefined} n */

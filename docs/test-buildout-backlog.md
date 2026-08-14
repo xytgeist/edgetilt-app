@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-14: **Poker duration label compact after 1h:** `fmtPokerDuration` is `16s` / `21m` / `10h45m` (padded minutes, no seconds after 1m). Live clock truncates before the pause chip so Swap / End Session stay clear. Hours/hourly already use play time only (`paused_seconds` subtracted; live session not in hero until End).
 - 2026-08-14: **Poker live session pause:** Session-in-progress card has a play/pause control next to the timer. Clock stops; hours exclude pause time (`paused_at` + `paused_seconds`). SQL **`20260814120000`** on **test**. Do not promote **`main`** until that migration is on prod. **`PokerBankrollTracker`**.
 - 2026-08-14: **Lounge Stream tiles drop the zinc border:** Feed / detail / embed / comment / composer Stream tiles (and pending-publish placeholders) no longer draw `border-zinc-700/60`. Photo/GIF frames unchanged. **`LoungePostStreamVideo`**.
 - 2026-08-14: **Single GIF lightbox resize:** Solo Klipy URLs were not flagged (no `.gif` / “klipy” in the host) and land dropped the parked frame, so they flew full-bleed then reflowed. External non-R2 URLs count as GIFs; single GIF keeps `landFrame`. Carousel still drops it. **`LoungeImageLightbox`**.

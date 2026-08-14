@@ -7870,7 +7870,7 @@ html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] .text-zin
 html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] input[type='checkbox'] {
   accent-color: #047857;
 }
-html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] button {
+html.light [data-poker-tournament-swaps] [data-poker-swap-info-btn] {
   background-color: transparent !important;
   color: #52525b !important;
 }

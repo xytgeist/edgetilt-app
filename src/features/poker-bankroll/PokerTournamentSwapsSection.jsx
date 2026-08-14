@@ -36,6 +36,39 @@ import {
 const FIELD =
   'w-full h-11 min-h-11 rounded-2xl bg-zinc-800 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-cyan-500/40'
 
+const DEFAULT_SWAP_INFO = {
+  key: 'default',
+  label: 'Default swap',
+  description:
+    'With no optional terms checked, the swap covers this bullet and later bullets in the series. Extra bullets are swapped at face. When someone fires more bullets and busts, their partner covers 10% × each extra × face. Percentage is of prize after subtracting live extra-bullet face (and any face owed on the partner’s busted extras). The first buy-in is not subtracted from prize.',
+  examples: [
+    {
+      title: 'One bullet each',
+      lines: [
+        'Player A cashes out for $10,000. Player B cashes out for $0.',
+        'Player A owes Player B 10% of $10,000 = $1,000.',
+      ],
+    },
+    {
+      title: 'Player A fires an extra bullet and busts',
+      lines: [
+        'Player A fires two $1,000 bullets and cashes out for $0. Player B fires one bullet and cashes out for $10,000.',
+        'Player B covers 10% of Player A’s extra bullet face = $100.',
+        'Player B’s prize for the % swap is $10,000 − $100 = $9,900, so Player B also owes 10% of $9,900 = $990.',
+        'Total: Player B owes Player A $1,090.',
+      ],
+    },
+    {
+      title: 'Player A fires an extra bullet and cashes',
+      lines: [
+        'Player A fires two $1,000 bullets and cashes out for $10,000. Player B fires one bullet and cashes out for $0.',
+        'Because Player A cashed, there is no separate face IOU for the extra. It only reduces Player A’s prize for the % swap: $10,000 − $100 = $9,900.',
+        'Player A owes Player B 10% of $9,900 = $990.',
+      ],
+    },
+  ],
+}
+
 const SWAP_TERM_OPTIONS = [
   {
     key: 'both_must_cash',
@@ -159,6 +192,7 @@ function SwapTermChecks({ value, onChange, compact = false }) {
                   </label>
                   <button
                     type="button"
+                    data-poker-swap-info-btn
                     onClick={() => setInfoOption(opt)}
                     className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:text-zinc-300"
                     aria-label={`About ${opt.label}`}
@@ -345,6 +379,7 @@ export default function PokerTournamentSwapsSection({
   const [manualTheirPlace, setManualTheirPlace] = useState({})
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
+  const [defaultInfoOpen, setDefaultInfoOpen] = useState(false)
   const lastDraftCardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const prevDraftCountRef = useRef(draftSwaps.length)
 
@@ -596,9 +631,31 @@ export default function PokerTournamentSwapsSection({
       <p
         className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
       >
-        Default: this bullet forward, extra bullets at face, then % of prize after that face.
-        Optional terms stack. Final bullet only skips extras.
+        <span className="inline-flex items-center gap-1 align-middle">
+          <span className={compact ? 'font-semibold text-zinc-400' : 'font-semibold text-emerald-100/80'}>
+            Default
+          </span>
+          <button
+            type="button"
+            data-poker-swap-info-btn
+            onClick={() => setDefaultInfoOpen(true)}
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:text-zinc-300"
+            aria-label="About default swap"
+          >
+            <Info className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+          </button>
+        </span>
+        {': this bullet forward, extra bullets at face, then % of prize after that face. Optional terms stack. Final bullet only skips extras.'}
       </p>
+      {defaultInfoOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <SwapTermInfoModal
+              option={DEFAULT_SWAP_INFO}
+              onClose={() => setDefaultInfoOpen(false)}
+            />,
+            document.body,
+          )
+        : null}
 
       {showOwnershipSummary ? (
         <PokerSwapOwnershipSummary

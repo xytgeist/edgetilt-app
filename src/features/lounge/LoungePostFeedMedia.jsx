@@ -28,7 +28,12 @@ import LoungePostVideoInlineProgress, {
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
-import { heroRectUsableForShrinkBack, readElementViewportRect } from './loungeLightboxFlip.js'
+import {
+  heroRectUsableForShrinkBack,
+  isLoungeLightboxGifUrl,
+  readContainedImageViewportRect,
+  readElementViewportRect,
+} from './loungeLightboxFlip.js'
 
 /** Match `LoungeInlineMediaUrl`: border wraps intrinsic image size (`w-auto`), not a fixed slide width. */
 const imgClassByVariant = {
@@ -88,9 +93,13 @@ export function LoungeImageCarousel({
   const getLightboxOriginRect = useCallback((index) => {
     const img = originImgRefs.current[index]
     if (!(img instanceof HTMLElement)) return null
+    const url = list[index] || ''
+    if (isLoungeLightboxGifUrl(url) && img instanceof HTMLImageElement) {
+      return readContainedImageViewportRect(img)
+    }
     const rect = readElementViewportRect(img)
     return heroRectUsableForShrinkBack(rect) ? rect : null
-  }, [])
+  }, [list])
 
   const openLightboxAt = useCallback(
     (i) => {

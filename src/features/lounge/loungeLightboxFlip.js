@@ -75,6 +75,56 @@ export function readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH
   return shellRect
 }
 
+/**
+ * Klipy / uploaded GIF (and Klipy animated webp). Stills on R2 stay false.
+ * @param {string} [url]
+ */
+export function isLoungeLightboxGifUrl(url) {
+  const raw = String(url || '').trim()
+  if (!raw) return false
+  try {
+    const parsed = new URL(raw)
+    if (/\.gif$/i.test(parsed.pathname)) return true
+    const host = parsed.hostname.toLowerCase()
+    if (host.includes('klipy')) return true
+  } catch {
+    if (/\.gif(\?|#|$)/i.test(raw)) return true
+  }
+  return false
+}
+
+/**
+ * Painted object-contain pixels inside an img box (carousel cell can be wider than the GIF).
+ * @param {HTMLImageElement | null | undefined} img
+ * @returns {{ top: number, left: number, width: number, height: number } | null}
+ */
+export function readContainedImageViewportRect(img) {
+  if (!(img instanceof HTMLImageElement)) return null
+  const box = readElementViewportRect(img)
+  const nw = img.naturalWidth
+  const nh = img.naturalHeight
+  if (!(box.width >= 8 && box.height >= 8)) {
+    return heroRectUsableForShrinkBack(box) ? box : null
+  }
+  if (!(nw > 0 && nh > 0)) {
+    return heroRectUsableForShrinkBack(box) ? box : null
+  }
+  const aspect = nw / nh
+  let w = box.width
+  let h = w / aspect
+  if (h > box.height) {
+    h = box.height
+    w = h * aspect
+  }
+  const rect = {
+    top: box.top + (box.height - h) / 2,
+    left: box.left + (box.width - w) / 2,
+    width: w,
+    height: h,
+  }
+  return heroRectUsableForShrinkBack(rect) ? rect : heroRectUsableForShrinkBack(box) ? box : null
+}
+
 /** @returns {boolean} */
 export function heroRectUsableForShrinkBack(rect) {
   if (!rect) return false

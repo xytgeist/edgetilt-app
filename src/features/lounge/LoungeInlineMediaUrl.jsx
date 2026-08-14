@@ -14,7 +14,9 @@ import {
   HERO_CHROME_FADE_MS,
   HERO_EXPAND_MS,
   heroRectUsableForShrinkBack,
+  isLoungeLightboxGifUrl,
   mediaFitsChromeBand,
+  readContainedImageViewportRect,
   readElementViewportRect,
   resolveLoungeHeroStackZIndexes,
   runHeroExpandAnimation,
@@ -795,8 +797,10 @@ export function LoungeImageLightbox({
     // Tile box is a fallback … a late 2048 onLoad used to flip chrome/pad at land.
     const tileAspect = from.width / Math.max(from.height, 1)
     const openIdx = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
+    const openUrl = list[openIdx] || ''
+    const openingGif = isLoungeLightboxGifUrl(openUrl)
     const feedProbe = new Image()
-    feedProbe.src = loungeFeedImageDeliveryUrl(list[openIdx] || '', 'feed')
+    feedProbe.src = loungeFeedImageDeliveryUrl(openUrl, 'feed')
     const feedAspect =
       feedProbe.complete && feedProbe.naturalWidth > 0 && feedProbe.naturalHeight > 0
         ? feedProbe.naturalWidth / feedProbe.naturalHeight
@@ -839,12 +843,13 @@ export function LoungeImageLightbox({
           topChromeRef.current,
           footerChromeRef.current,
         )
-        const mode = tileAspect >= 1 || !Number.isFinite(tileAspect) ? 'full' : 'compact'
+        const modeAspect = openingGif ? seedAspect : tileAspect
+        const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
         setBandByMode((prev) => ({ ...prev, [mode]: band }))
 
         const target = computeHeroTargetRect(from, {
-          displayW: from.width,
-          displayH: from.height,
+          displayW: openingGif && seedAspect > 0 ? seedAspect : from.width,
+          displayH: openingGif && seedAspect > 0 ? 1 : from.height,
           insetTop: band.top,
           insetBottom: band.bottom,
         })
@@ -981,7 +986,7 @@ export function LoungeImageLightbox({
         <img
           src={ambientDisplaySrc}
           alt=""
-          className="h-full w-full select-none object-cover"
+          className={`h-full w-full select-none ${isLoungeLightboxGifUrl(current) ? 'object-contain' : 'object-cover'}`}
           draggable={false}
           decoding="async"
           onError={(e) => onLoungeLightboxImgError(e, current)}
@@ -1277,9 +1282,15 @@ export function LoungeInlineMediaUrl({
 
   const openLightbox = useCallback(() => {
     const img = originImgRef.current
-    const fromRect = img instanceof HTMLElement ? readElementViewportRect(img) : null
+    const stored = String(url).trim()
+    const fromRect =
+      isLoungeLightboxGifUrl(stored) && img instanceof HTMLImageElement
+        ? readContainedImageViewportRect(img)
+        : img instanceof HTMLElement
+          ? readElementViewportRect(img)
+          : null
     setLightbox({
-      urls: [String(url).trim()],
+      urls: [stored],
       index: 0,
       fromRect: heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
     })
@@ -1288,9 +1299,13 @@ export function LoungeInlineMediaUrl({
   const getOriginRect = useCallback((_index) => {
     const img = originImgRef.current
     if (!(img instanceof HTMLElement)) return null
+    const stored = String(url).trim()
+    if (isLoungeLightboxGifUrl(stored) && img instanceof HTMLImageElement) {
+      return readContainedImageViewportRect(img)
+    }
     const rect = readElementViewportRect(img)
     return heroRectUsableForShrinkBack(rect) ? rect : null
-  }, [])
+  }, [url])
 
   const framed = (
     <div className={frameClass}>

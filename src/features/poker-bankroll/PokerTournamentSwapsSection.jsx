@@ -75,7 +75,7 @@ const SWAP_TERM_OPTIONS = [
     label: 'Both must cash',
     hint: 'Void unless both players cash. Neither owes the other.',
     description:
-      'The swap only activates when both players cash. If either player does not cash, the entire swap is void.',
+      'The swap only activates when both players cash. If either player does not cash, the entire swap is void ... including any extra-bullet face coverage. When both do cash and one player fired more bullets, extras still reduce that player’s prize for the % swap (same as default), but there is no separate face IOU.',
     examples: [
       {
         title: 'Player A cashes · Player B busts',
@@ -85,7 +85,7 @@ const SWAP_TERM_OPTIONS = [
         ],
       },
       {
-        title: 'Both players cash for different amounts',
+        title: 'Both cash · same number of buy-ins',
         lines: [
           'Player A cashes out for $10,000 and owes Player B 10% = $1,000.',
           'Player B cashes out for $5,000 and owes Player A 10% = $500.',
@@ -93,7 +93,16 @@ const SWAP_TERM_OPTIONS = [
         ],
       },
       {
-        title: 'Both players cash for $10,000',
+        title: 'Both cash · different number of buy-ins',
+        lines: [
+          'Player A fires two $1,000 bullets and cashes out for $10,000. Player B fires one bullet and cashes out for $5,000.',
+          'Player A’s extra reduces Player A’s prize for the % swap: $10,000 − $100 = $9,900. Player A owes 10% of $9,900 = $990.',
+          'Player B owes 10% of $5,000 = $500.',
+          'After netting, Player A owes Player B $490.',
+        ],
+      },
+      {
+        title: 'Both cash for $10,000 · same buy-ins',
         lines: [
           'Each player owes the other 10% of $10,000 = $1,000.',
           'The two amounts cancel out, so neither player owes anything.',

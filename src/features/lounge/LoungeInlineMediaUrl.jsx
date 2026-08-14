@@ -857,10 +857,13 @@ export function LoungeImageLightbox({
           topChromeRef.current,
           footerChromeRef.current,
         )
+        const slideRoot = carouselScrollRef.current?.children?.[openIdx]
         const parkedImg =
           mediaImageRef.current instanceof HTMLImageElement
             ? mediaImageRef.current
-            : mediaContainerRef.current?.querySelector('img')
+            : slideRoot instanceof HTMLElement
+              ? slideRoot.querySelector('img')
+              : null
         const parkedNaturalW =
           parkedImg instanceof HTMLImageElement ? parkedImg.naturalWidth : 0
         const parkedNaturalH =
@@ -868,7 +871,9 @@ export function LoungeImageLightbox({
         const gifAspect =
           openingGif && parkedNaturalW > 0 && parkedNaturalH > 0
             ? parkedNaturalW / parkedNaturalH
-            : seedAspect
+            : openingGif
+              ? seedAspect
+              : tileAspect
         if (openingGif && Number.isFinite(gifAspect) && gifAspect > 0) {
           setAspectByIndex((prev) =>
             prev[openIdx] != null && Math.abs(prev[openIdx] - gifAspect) < 0.0001
@@ -880,24 +885,13 @@ export function LoungeImageLightbox({
         const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
         setBandByMode((prev) => ({ ...prev, [mode]: band }))
 
-        // Never use the parked <img> box as the fly-in target in a carousel.
-        // Slide 2 is laid out to the right while scrollLeft is still 0, so that
-        // rect is off the right edge … expand/shrink then start from there.
         const target = computeHeroTargetRect(from, {
-          displayW:
-            openingGif && parkedNaturalW > 0
-              ? parkedNaturalW
-              : openingGif && gifAspect > 0
-                ? gifAspect
-                : from.width,
-          displayH:
-            openingGif && parkedNaturalH > 0
-              ? parkedNaturalH
-              : openingGif && gifAspect > 0
-                ? 1
-                : from.height,
+          aspect: openingGif && gifAspect > 0 ? gifAspect : undefined,
+          displayW: openingGif ? undefined : from.width,
+          displayH: openingGif ? undefined : from.height,
           insetTop: band.top,
           insetBottom: band.bottom,
+          forceBand: openingGif,
         })
         targetRectRef.current = target
         landSlideIndexRef.current = openIdx

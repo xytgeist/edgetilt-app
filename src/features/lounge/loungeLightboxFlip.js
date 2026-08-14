@@ -184,9 +184,10 @@ export function mediaFitsChromeBand(aspect, pad, vw, vh) {
 /**
  * Target hero frame: object-contain media centered in the viewport (or a chrome band).
  * @param {{ width: number, height: number }} fromRect
- * @param {{ displayW?: number, displayH?: number, insetTop?: number, insetBottom?: number }} [opts]
+ * @param {{ displayW?: number, displayH?: number, aspect?: number, insetTop?: number, insetBottom?: number, forceBand?: boolean }} [opts]
  *   `insetTop` / `insetBottom` - chrome band only when full-width media still fits there;
  *   otherwise edge-to-edge in the full viewport (tall media may run under pills).
+ *   `forceBand` - always park in the chrome band (GIFs). `aspect` wins over the tile box.
  */
 export function computeHeroTargetRect(fromRect, opts = {}) {
   const { displayW, displayH } = opts
@@ -197,13 +198,18 @@ export function computeHeroTargetRect(fromRect, opts = {}) {
   const vh = vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
 
   let aspect = fromRect.width / Math.max(fromRect.height, 1)
+  const aspectOpt = Number(opts.aspect)
   const dw = Number(displayW)
   const dh = Number(displayH)
-  if (Number.isFinite(dw) && Number.isFinite(dh) && dw >= 2 && dh >= 2) {
+  if (Number.isFinite(aspectOpt) && aspectOpt > 0) {
+    aspect = aspectOpt
+  } else if (Number.isFinite(dw) && Number.isFinite(dh) && dw >= 2 && dh >= 2) {
     aspect = dw / dh
   }
 
-  const useBand = mediaFitsChromeBand(aspect, { top: insetTopReq, bottom: insetBottomReq }, vw, vh)
+  const useBand = opts.forceBand
+    ? insetTopReq > 0 || insetBottomReq > 0
+    : mediaFitsChromeBand(aspect, { top: insetTopReq, bottom: insetBottomReq }, vw, vh)
   const insetTop = useBand ? insetTopReq : 0
   const insetBottom = useBand ? insetBottomReq : 0
 

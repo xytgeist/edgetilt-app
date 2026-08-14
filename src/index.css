@@ -5014,6 +5014,10 @@ html.light [data-poker-session-detail] [data-poker-session-active-badge] {
 html.light [data-poker-session-detail] [data-poker-session-active-dot] {
   background-color: #2563eb !important;
 }
+html.light [data-poker-session-detail] [data-poker-session-paused-badge] {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
 html.light [data-poker-session-detail] [data-poker-session-type-icon='cash'] {
   background-color: #f4f4f5 !important;
   color: #52525b !important;
@@ -7516,6 +7520,18 @@ html.light [data-session-card] .text-zinc-400 {
 }
 html.light [data-session-card] .text-emerald-200 {
   color: #047857 !important;
+}
+html.light [data-session-card] .text-amber-300,
+html.light [data-session-card] .text-amber-200 {
+  color: #b45309 !important;
+}
+html.light [data-session-card] [data-poker-session-pause-btn] {
+  background-color: rgba(5, 150, 105, 0.12) !important;
+  color: #047857 !important;
+}
+html.light [data-session-card][data-poker-session-paused] [data-poker-session-pause-btn] {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+  color: #b45309 !important;
 }
 
 /* Live session action chips (light only). */

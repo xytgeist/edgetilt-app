@@ -28,30 +28,62 @@ export function pokerPlTone(n) {
   return Number(n) > 0 ? 'gain' : 'loss'
 }
 
+/** @param {object | null | undefined} session */
+export function pokerSessionIsPaused(session) {
+  return Boolean(session?.paused_at) && session.status === 'active' && !session.end_at
+}
+
+/**
+ * Completed pause seconds plus the open pause (if any).
+ * @param {object | null | undefined} session
+ * @param {number} [nowMs]
+ */
+export function pokerSessionPausedMs(session, nowMs = Date.now()) {
+  const stored = Math.max(0, Number(session?.paused_seconds) || 0) * 1000
+  if (!session?.paused_at) return stored
+  const pauseStart = new Date(session.paused_at).getTime()
+  if (Number.isNaN(pauseStart)) return stored
+  const openEnd = session.end_at ? new Date(session.end_at).getTime() : nowMs
+  if (Number.isNaN(openEnd)) return stored
+  return stored + Math.max(0, openEnd - pauseStart)
+}
+
+/**
+ * Played seconds (wall clock minus pauses).
+ * @param {object | null | undefined} session
+ * @param {number} [nowMs]
+ */
+export function pokerSessionElapsedSeconds(session, nowMs = Date.now()) {
+  if (!session?.start_at) return 0
+  const start = new Date(session.start_at).getTime()
+  if (Number.isNaN(start)) return 0
+  const end = session.end_at ? new Date(session.end_at).getTime() : nowMs
+  if (Number.isNaN(end)) return 0
+  return Math.max(0, Math.floor((end - start - pokerSessionPausedMs(session, nowMs)) / 1000))
+}
+
 /**
  * Hours played for a session.
- * Active sessions (no end_at) use a live clock. Completed tournaments without
- * end_at (e.g. Hendon Mob cashes) assume 8 hours. Other completed rows with no
- * end_at contribute 0 so we never treat "years since 2009" as play time.
+ * Active sessions (no end_at) use a live clock minus pauses. Completed
+ * tournaments without end_at (e.g. Hendon Mob cashes) assume 8 hours. Other
+ * completed rows with no end_at contribute 0 so we never treat "years since
+ * 2009" as play time.
  *
  * @param {{
  *   start_at?: string,
  *   end_at?: string | null,
  *   status?: string | null,
  *   session_type?: string | null,
+ *   paused_at?: string | null,
+ *   paused_seconds?: number | string | null,
  * }} session
  */
 export function pokerSessionDurationHours(session) {
   if (!session?.start_at) return 0
   const start = new Date(session.start_at)
   if (Number.isNaN(start.getTime())) return 0
-  if (session.end_at) {
-    const end = new Date(session.end_at)
-    if (Number.isNaN(end.getTime())) return 0
-    return Math.max(0, (end - start) / 3_600_000)
-  }
-  if (session.status === 'active') {
-    return Math.max(0, (Date.now() - start.getTime()) / 3_600_000)
+  if (session.end_at || session.status === 'active') {
+    return pokerSessionElapsedSeconds(session) / 3600
   }
   // Hendon Mob / cashes-only imports often have no duration column.
   if (session.session_type === 'tournament') return 8

@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-14: **Poker live session pause:** Session-in-progress card has a play/pause control next to the timer. Clock stops; hours exclude pause time (`paused_at` + `paused_seconds`). SQL **`20260814120000`** on **test**. Do not promote **`main`** until that migration is on prod. **`PokerBankrollTracker`**.
 - 2026-08-14: **Lounge Stream tiles drop the zinc border:** Feed / detail / embed / comment / composer Stream tiles (and pending-publish placeholders) no longer draw `border-zinc-700/60`. Photo/GIF frames unchanged. **`LoungePostStreamVideo`**.
 - 2026-08-14: **Single GIF lightbox resize:** Solo Klipy URLs were not flagged (no `.gif` / “klipy” in the host) and land dropped the parked frame, so they flew full-bleed then reflowed. External non-R2 URLs count as GIFs; single GIF keeps `landFrame`. Carousel still drops it. **`LoungeImageLightbox`**.
 - 2026-08-14: **Image lightbox fly-home flash:** `setPhase('closing')` re-rendered the flyout without a box. Unsized `fixed` + `h-full` img is the viewport, so close flashed full-screen then shrank. Closing keeps the parked frame in React style. **`LoungeImageLightbox`**.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { DollarSign, FileText, Info, MessageCircle, Trophy } from 'lucide-react'
+import { DollarSign, FileText, Info, MessageCircle, Pause, Play, Trophy } from 'lucide-react'
 import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
@@ -136,7 +136,10 @@ import {
   parseDurationHoursField,
   pokerSessionBbPerHour,
   pokerSessionDurationHours,
+  pokerSessionElapsedSeconds,
   pokerSessionHourly,
+  pokerSessionIsPaused,
+  pokerSessionPausedMs,
   pokerSessionTotalCost,
   pokerSessionWinLoss,
 } from './pokerBankrollMath.js'
@@ -480,6 +483,7 @@ export default function PokerBankrollTracker({
   const [endBounties, setEndBounties] = useState('')
   const [endFinishPlace, setEndFinishPlace] = useState('')
   const [elapsed, setElapsed] = useState(0)
+  const [pauseBusy, setPauseBusy] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all') // all | cash | tournament
   const [venueFilter, setVenueFilter] = useState('all') // all | live | online | club
   const [nearbyCasinos, setNearbyCasinos] = useState([])
@@ -1356,9 +1360,10 @@ export default function PokerBankrollTracker({
       return undefined
     }
     const tick = () => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - new Date(activeSession.start_at).getTime()) / 1000)))
+      setElapsed(pokerSessionElapsedSeconds(activeSession))
     }
     tick()
+    if (pokerSessionIsPaused(activeSession)) return undefined
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
   }, [activeSession])
@@ -2631,6 +2636,44 @@ export default function PokerBankrollTracker({
     }
   }
 
+  async function toggleActiveSessionPause() {
+    if (!supabaseClient || !userId || !activeSession || pauseBusy) return
+    const now = Date.now()
+    const wasPaused = pokerSessionIsPaused(activeSession)
+    const patch = wasPaused
+      ? {
+          paused_at: null,
+          paused_seconds: Math.round(pokerSessionPausedMs(activeSession, now) / 1000),
+        }
+      : { paused_at: new Date(now).toISOString() }
+    const prev = {
+      paused_at: activeSession.paused_at ?? null,
+      paused_seconds: Number(activeSession.paused_seconds) || 0,
+    }
+    setPauseBusy(true)
+    setError('')
+    setSessions((rows) =>
+      rows.map((s) => (s.id === activeSession.id ? { ...s, ...patch } : s)),
+    )
+    triggerTapHapticLight()
+    try {
+      const { error: uErr } = await supabaseClient
+        .from('poker_bankroll_sessions')
+        .update(patch)
+        .eq('id', activeSession.id)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+      if (uErr) throw uErr
+    } catch (e) {
+      setSessions((rows) =>
+        rows.map((s) => (s.id === activeSession.id ? { ...s, ...prev } : s)),
+      )
+      setError(e?.message || 'Could not update the session clock.')
+    } finally {
+      setPauseBusy(false)
+    }
+  }
+
   async function endLiveSession() {
     if (!supabaseClient || !userId || !activeSession) return
     const cashOut = parseMoneyInputNumber(endCashOut)
@@ -2657,11 +2700,14 @@ export default function PokerBankrollTracker({
       if (activeSession.session_type === 'tournament') {
         sessionRow = await linkTournamentEventForSession(activeSession)
       }
+      const endedAt = Date.now()
       const { error: uErr } = await supabaseClient
         .from('poker_bankroll_sessions')
         .update({
           status: 'completed',
-          end_at: new Date().toISOString(),
+          end_at: new Date(endedAt).toISOString(),
+          paused_at: null,
+          paused_seconds: Math.round(pokerSessionPausedMs(activeSession, endedAt) / 1000),
           cash_out: cashOut,
           bounty_winnings:
             activeSession.session_type === 'tournament' && endBounties !== ''
@@ -3059,6 +3105,10 @@ export default function PokerBankrollTracker({
           ? parseInt(form.reentries, 10)
           : null,
       notes: form.notes.trim() || null,
+    }
+    if (!editingActiveSession) {
+      payload.paused_at = null
+      payload.paused_seconds = 0
     }
     if (payload.deal_id === undefined) delete payload.deal_id
     // Edit without a soft pick: don't wipe an existing link by sending null.
@@ -3812,6 +3862,7 @@ export default function PokerBankrollTracker({
               <div
                 data-session-card
                 data-poker-live-session-card
+                data-poker-session-paused={pokerSessionIsPaused(activeSession) ? '' : undefined}
                 data-elevated-card="accent"
                 role="button"
                 tabIndex={0}
@@ -3825,9 +3876,19 @@ export default function PokerBankrollTracker({
                 className="mb-4 cursor-pointer rounded-3xl border border-emerald-500/30 bg-emerald-950/60 p-5 touch-manipulation active:bg-emerald-950/80"
               >
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                  <span className="text-xs font-bold uppercase tracking-wide text-emerald-300">
-                    Session in progress
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      pokerSessionIsPaused(activeSession)
+                        ? 'bg-amber-400'
+                        : 'animate-pulse bg-emerald-400'
+                    }`}
+                  />
+                  <span
+                    className={`text-xs font-bold uppercase tracking-wide ${
+                      pokerSessionIsPaused(activeSession) ? 'text-amber-300' : 'text-emerald-300'
+                    }`}
+                  >
+                    {pokerSessionIsPaused(activeSession) ? 'Session paused' : 'Session in progress'}
                   </span>
                 </div>
                 <div className="min-w-0 text-lg font-bold leading-tight text-white">
@@ -3843,6 +3904,17 @@ export default function PokerBankrollTracker({
                     'box-border h-9 w-[5.5rem] rounded-xl text-xs font-bold touch-manipulation'
                   const stopCardClick = (e) => e.stopPropagation()
                   const isCash = activeSession.session_type === 'cash'
+                  const sessionPaused = pokerSessionIsPaused(activeSession)
+                  const liveClock = (
+                    <LiveSessionClock
+                      elapsedLabel={elapsedLabel}
+                      timerTextClass={timerTextClass}
+                      isPaused={sessionPaused}
+                      pauseBusy={pauseBusy}
+                      maxWidthClass={isCash ? 'max-w-[calc(100%-6rem)]' : 'max-w-[calc(100%-12rem)]'}
+                      onTogglePause={toggleActiveSessionPause}
+                    />
+                  )
 
                   if (isCash) {
                     return (
@@ -3855,11 +3927,7 @@ export default function PokerBankrollTracker({
                             {pokerSessionInForLine(activeSession)}
                           </div>
                         </div>
-                        <div
-                          className={`absolute bottom-0 left-0 max-w-[calc(100%-6rem)] overflow-hidden font-black tabular-nums whitespace-nowrap text-emerald-200 ${timerTextClass}`}
-                        >
-                          {elapsedLabel}
-                        </div>
+                        {liveClock}
                         <div
                           className="absolute bottom-0 right-0"
                           onClick={stopCardClick}
@@ -3901,11 +3969,7 @@ export default function PokerBankrollTracker({
                           {pokerSessionInForLine(activeSession)}
                         </div>
                       </div>
-                      <div
-                        className={`absolute bottom-0 left-0 max-w-[calc(100%-12rem)] overflow-hidden font-black tabular-nums whitespace-nowrap text-emerald-200 ${timerTextClass}`}
-                      >
-                        {elapsedLabel}
-                      </div>
+                      {liveClock}
                       <div
                         className="absolute right-0 top-0 grid grid-cols-2 gap-1.5"
                         onClick={stopCardClick}
@@ -5535,6 +5599,49 @@ export default function PokerBankrollTracker({
         </div>
       ) : null}
     </>
+  )
+}
+
+function LiveSessionClock({
+  elapsedLabel,
+  timerTextClass,
+  isPaused,
+  pauseBusy,
+  maxWidthClass,
+  onTogglePause,
+}) {
+  return (
+    <div
+      className={`absolute bottom-0 left-0 flex items-center gap-1.5 ${maxWidthClass} overflow-hidden`}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      <span
+        className={`font-black tabular-nums whitespace-nowrap ${
+          isPaused ? 'text-amber-200' : 'text-emerald-200'
+        } ${timerTextClass}`}
+      >
+        {elapsedLabel}
+      </span>
+      <button
+        type="button"
+        data-poker-session-pause-btn
+        disabled={pauseBusy}
+        onClick={onTogglePause}
+        aria-label={isPaused ? 'Resume session clock' : 'Pause session clock'}
+        className={`grid h-9 w-9 shrink-0 place-items-center rounded-full touch-manipulation ${
+          isPaused
+            ? 'bg-amber-500/20 text-amber-200 active:bg-amber-500/30'
+            : 'bg-emerald-500/15 text-emerald-200 active:bg-emerald-500/25'
+        } disabled:opacity-50`}
+      >
+        {isPaused ? (
+          <Play className="h-3.5 w-3.5 translate-x-px" strokeWidth={2.5} fill="currentColor" />
+        ) : (
+          <Pause className="h-3.5 w-3.5" strokeWidth={2.5} fill="currentColor" />
+        )}
+      </button>
+    </div>
   )
 }
 

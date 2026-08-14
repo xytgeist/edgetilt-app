@@ -163,16 +163,26 @@ export default function PokerSessionDetailSheet({
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               {isActive ? (
-                <span
-                  data-poker-session-active-badge
-                  className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-300"
-                >
+                session.paused_at ? (
                   <span
-                    data-poker-session-active-dot
-                    className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400"
-                  />
-                  In progress
-                </span>
+                    data-poker-session-paused-badge
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    Paused
+                  </span>
+                ) : (
+                  <span
+                    data-poker-session-active-badge
+                    className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-300"
+                  >
+                    <span
+                      data-poker-session-active-dot
+                      className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400"
+                    />
+                    In progress
+                  </span>
+                )
               ) : (
                 <span className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400">
                   Completed

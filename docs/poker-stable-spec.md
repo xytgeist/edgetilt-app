@@ -199,7 +199,7 @@ Same bankroll rules as cash backing close, one payout when manifest is complete:
 | Do swaps affect stake settle / backer share? | **No** |
 | Where do swap settlements post? | **Player personal** bankroll on **Mark settled** (`poker_tournament_swap_mark_paid` … creator `+settlement_amount`, counterparty `−settlement_amount`; idempotent via `settlement_bankroll_posted`). Session “Your net” can show the IOU earlier; cash hits `poker_bankroll_profiles` only when marked paid. |
 | Cap on swap % | Player may swap only on **self-owned action** (`100% − sum of active backing sold action%`) ... see `playerSelfOwnedActionPct` in `pokerStableMath.js` |
-| Optional swap terms (combinable) | **Both must cash** voids unless both cashed (main `cash_out` > 0). **Final bullet only** uses one face buy-in each (no extra-bullet face). **Final table only** activates if either finish is top 9 (or 6 if 6-max); waits for finish places if still unknown. Unchecked = existing profit-after-total-buy-in math. SQL **`20260814140000`**. |
+| Optional swap terms (combinable) | **Default (no boxes):** extra bullets at face. Partner covers `pct × extra × face` when the extra-firer busts. A casher subtracts one face buy-in plus live extra-bullet face from prize before %. If both cash, extras only reduce the extra-firer's profit (no second face IOU). **Both must cash** voids unless both cashed. **Final bullet only** skips extras. **Final table only** activates if either finish is top 9 (or 6 if 6-max). SQL **`20260814140000`** + **`20260814150000`**. |
 
 Related: `docs/poker-stable-spec.md` (this section), swap notify/claim in **`poker-tournament-swap-notify`**, `sessionSwapSettlementDelta` in `pokerTournamentSwapMath.js`.
 

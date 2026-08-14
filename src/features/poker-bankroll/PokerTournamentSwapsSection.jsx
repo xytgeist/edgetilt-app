@@ -43,7 +43,7 @@ const SWAP_TERM_OPTIONS = [
   {
     key: 'final_bullet_only',
     label: 'Final bullet only',
-    hint: 'Only the last entry counts. No face-value swap on extra bullets.',
+    hint: 'Only the last entry counts. Partner does not cover extra bullets at face.',
   },
   {
     key: 'final_table_only',
@@ -423,7 +423,8 @@ export default function PokerTournamentSwapsSection({
       <p
         className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
       >
-        Bilateral % of net (prize − buy-in). Busts owe $0 from that side. Optional terms stack.
+        Default: extra bullets at face, then % of prize after one buy-in and that face.
+        Optional terms stack. Final bullet only skips extras.
       </p>
 
       {showOwnershipSummary ? (

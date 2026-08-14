@@ -1,10 +1,14 @@
 /**
- * Bilateral tournament swap settlement on positive net only
- * (bust / no cash ⇒ that side owes $0).
+ * Bilateral tournament swap settlement.
+ *
+ * Default (no term boxes): extra bullets are swapped at face. The player with
+ * fewer bullets covers `pct * extra * face` when the extra-firer busts. A casher
+ * subtracts one face buy-in plus any live extra-bullet face from prize before %.
+ * If both cash, extras only reduce the extra-firer's profit (no second face IOU).
  *
  * Optional terms (all combinable):
  * - bothMustCash: void unless both cashed (main prize / cash_out > 0)
- * - finalBulletOnly: profit uses one face buy-in each (no extra-bullet cost)
+ * - finalBulletOnly: one face buy-in each ... no extra-bullet face
  * - finalTableOnly: void unless either finish is a final table (9, or 6 if 6-max)
  */
 
@@ -61,7 +65,32 @@ export function settlementArgsFromSwap(swap) {
     counterpartyTableSize: swap.counterparty_table_size,
     creatorFaceBuyIn: swap.creator_face_buy_in,
     counterpartyFaceBuyIn: swap.counterparty_face_buy_in,
+    creatorBullets: swap.creator_bullets,
+    counterpartyBullets: swap.counterparty_bullets,
   }
+}
+
+/**
+ * Bullet count for swap extras. Prefer logged re-entries, then stored bullets,
+ * then total / face (add-ons can skew that last fallback).
+ * @param {{
+ *   bullets?: number | null,
+ *   reentries?: number | null,
+ *   totalBuyIn?: number | null,
+ *   faceBuyIn?: number | null,
+ * }} args
+ */
+export function swapBulletCount(args = {}) {
+  const explicit = Number(args.bullets)
+  if (Number.isFinite(explicit) && explicit >= 1) return Math.round(explicit)
+  const reentries = Number(args.reentries)
+  if (Number.isFinite(reentries) && reentries >= 0) return 1 + Math.round(reentries)
+  const face = Number(args.faceBuyIn) || 0
+  const total = Number(args.totalBuyIn) || 0
+  if (face > 0.005 && total > 0.005) {
+    return Math.max(1, Math.round(total / face))
+  }
+  return 1
 }
 
 /**
@@ -83,6 +112,10 @@ export function settlementArgsFromSwap(swap) {
  *   counterpartyTableSize?: string | null,
  *   creatorFaceBuyIn?: number | null,
  *   counterpartyFaceBuyIn?: number | null,
+ *   creatorBullets?: number | null,
+ *   counterpartyBullets?: number | null,
+ *   creatorReentries?: number | null,
+ *   counterpartyReentries?: number | null,
  * }} args
  * @returns {{
  *   creatorNet: number,
@@ -142,21 +175,58 @@ export function computeTournamentSwapSettlement(args) {
   }
   if (pending || !activated) return zero
 
-  const creatorFace = Number(args.creatorFaceBuyIn) || Number(args.creatorBuyIn) || 0
-  const counterpartyFace =
-    Number(args.counterpartyFaceBuyIn) || Number(args.counterpartyBuyIn) || 0
-  const creatorBuy = finalBulletOnly ? creatorFace : Number(args.creatorBuyIn) || 0
-  const counterpartyBuy = finalBulletOnly ? counterpartyFace : Number(args.counterpartyBuyIn) || 0
-  const creatorNet = (Number(args.creatorPrize) || 0) - creatorBuy
-  const counterpartyNet = (Number(args.counterpartyPrize) || 0) - counterpartyBuy
+  const face =
+    Number(args.creatorFaceBuyIn) ||
+    Number(args.counterpartyFaceBuyIn) ||
+    Number(args.creatorBuyIn) ||
+    Number(args.counterpartyBuyIn) ||
+    0
   const pctYou = Number(args.pctCreatorGives) || 0
   const pctThem = Number(args.pctCounterpartyGives) || 0
-  const creatorOwes = (Math.max(0, creatorNet) * pctYou) / 100
-  const counterpartyOwes = (Math.max(0, counterpartyNet) * pctThem) / 100
+  const creatorPrize = Number(args.creatorPrize) || 0
+  const counterpartyPrize = Number(args.counterpartyPrize) || 0
+
+  const creatorBullets = finalBulletOnly
+    ? 1
+    : swapBulletCount({
+        bullets: args.creatorBullets,
+        reentries: args.creatorReentries,
+        totalBuyIn: args.creatorBuyIn,
+        faceBuyIn: face,
+      })
+  const counterpartyBullets = finalBulletOnly
+    ? 1
+    : swapBulletCount({
+        bullets: args.counterpartyBullets,
+        reentries: args.counterpartyReentries,
+        totalBuyIn: args.counterpartyBuyIn,
+        faceBuyIn: face,
+      })
+  const extraCreator = Math.max(0, creatorBullets - counterpartyBullets)
+  const extraCounterparty = Math.max(0, counterpartyBullets - creatorBullets)
+  const faceOnCreatorExtras = (pctYou / 100) * extraCreator * face
+  const faceOnCounterpartyExtras = (pctThem / 100) * extraCounterparty * face
+  // Partner covers busted extras at face. If the extra-firer cashed, extras only
+  // reduce that casher's profit ... do not also collect a second face IOU.
+  const creatorPaysFace = !counterpartyCashed ? faceOnCounterpartyExtras : 0
+  const counterpartyPaysFace = !creatorCashed ? faceOnCreatorExtras : 0
+
+  const creatorNet = creatorCashed
+    ? creatorPrize - face - faceOnCreatorExtras - creatorPaysFace
+    : 0
+  const counterpartyNet = counterpartyCashed
+    ? counterpartyPrize - face - faceOnCounterpartyExtras - counterpartyPaysFace
+    : 0
+  const creatorOwesProfit = creatorCashed ? (Math.max(0, creatorNet) * pctYou) / 100 : 0
+  const counterpartyOwesProfit = counterpartyCashed
+    ? (Math.max(0, counterpartyNet) * pctThem) / 100
+    : 0
+  const creatorOwes = creatorOwesProfit + creatorPaysFace
+  const counterpartyOwes = counterpartyOwesProfit + counterpartyPaysFace
   const settlementAmount = Math.round((counterpartyOwes - creatorOwes) * 100) / 100
   return {
-    creatorNet,
-    counterpartyNet,
+    creatorNet: Math.round(creatorNet * 100) / 100,
+    counterpartyNet: Math.round(counterpartyNet * 100) / 100,
     creatorOwes: Math.round(creatorOwes * 100) / 100,
     counterpartyOwes: Math.round(counterpartyOwes * 100) / 100,
     settlementAmount,

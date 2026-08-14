@@ -35,6 +35,7 @@ export function sessionResultSnapshot(session) {
     cashed: Number(session.cash_out) > 0,
     finishPlace: Number.isFinite(finishPlace) && finishPlace > 0 ? finishPlace : null,
     tableSize: session.table_size || null,
+    bullets: 1 + (Number(session.reentries) || 0),
   }
 }
 
@@ -50,6 +51,7 @@ export function sessionSwapResultPatch(session, side) {
       creator_finish_place: snap.finishPlace,
       creator_table_size: snap.tableSize,
       creator_face_buy_in: snap.faceBuyIn,
+      creator_bullets: snap.bullets,
       creator_result_ready: true,
     }
   }
@@ -60,6 +62,7 @@ export function sessionSwapResultPatch(session, side) {
     counterparty_finish_place: snap.finishPlace,
     counterparty_table_size: snap.tableSize,
     counterparty_face_buy_in: snap.faceBuyIn,
+    counterparty_bullets: snap.bullets,
     counterparty_result_source: 'session',
     counterparty_result_ready: true,
   }
@@ -273,6 +276,9 @@ export async function persistDraftSwapsForSession(
       creator_table_size: creatorSession?.table_size || null,
       creator_face_buy_in:
         snap?.faceBuyIn ?? (creatorSession ? Number(creatorSession.buy_in) || null : null),
+      creator_bullets:
+        snap?.bullets ??
+        (creatorSession ? 1 + (Number(creatorSession.reentries) || 0) : null),
       creator_result_ready: Boolean(snap),
     })
   }

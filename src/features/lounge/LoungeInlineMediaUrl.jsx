@@ -888,8 +888,10 @@ export function LoungeImageLightbox({
               : null),
         }}
       >
+        {/* Feed-tier src … same file as the tile. Lightbox 2048 is a new URL after CF resize
+            and was decoding mid-flight (blank / pop / aspect hitch). Sharp layer stays hidden until land. */}
         <img
-          src={currentDisplaySrc}
+          src={ambientDisplaySrc}
           alt=""
           className="h-full w-full select-none object-cover"
           draggable={false}

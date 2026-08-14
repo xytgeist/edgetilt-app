@@ -194,6 +194,7 @@ import {
   resolveSessionMetricWinLoss,
   sessionPlayerShareInMakeup,
 } from './pokerSessionAttribution.js'
+import { draftBackerActionSold } from './pokerSessionBackerDrafts.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import {
   applySoftTournamentEventToForm,
@@ -671,11 +672,6 @@ export default function PokerBankrollTracker({
         : [],
     [tournamentSwaps, editingId],
   )
-  /** Max % of net the player can swap after stable backing sold action. */
-  const swapSelfOwnedPct = useMemo(
-    () => playerSelfOwnedActionPct(Object.values(stakeeDealsById), slicesByDeal),
-    [stakeeDealsById, slicesByDeal],
-  )
   /** Session id → non-cancelled swaps linked as creator or counterparty. */
   const swapsBySessionId = useMemo(() => {
     /** @type {Record<string, object[]>} */
@@ -711,6 +707,45 @@ export default function PokerBankrollTracker({
     if (!detailSession?.deal_id) return []
     return slicesByDeal[detailSession.deal_id] || []
   }, [detailSession, slicesByDeal])
+  /**
+   * Swap cap for the session being written / viewed ... not every live stake on the account.
+   * Personal with no piece backers is 100%. Package / piece uses that deal only.
+   */
+  const swapCapDeal = useMemo(() => {
+    if (sheet === 'sessionDetail' && detailDeal) return detailDeal
+    if (sheet === 'swaps' && activeSession?.deal_id) {
+      return stakeeDealsById[activeSession.deal_id] ?? null
+    }
+    if (
+      (sheet === 'start' || sheet === 'session' || sheet === 'import') &&
+      sessionWriteDealId
+    ) {
+      return stakeeDealsById[sessionWriteDealId] ?? null
+    }
+    if (sheet === 'session' && editingId) {
+      const row = sessions.find((s) => s.id === editingId)
+      if (row?.deal_id) return stakeeDealsById[row.deal_id] ?? null
+    }
+    return null
+  }, [
+    sheet,
+    detailDeal,
+    activeSession?.deal_id,
+    sessionWriteDealId,
+    editingId,
+    sessions,
+    stakeeDealsById,
+  ])
+  const swapSelfOwnedPct = useMemo(() => {
+    const fromDeal = swapCapDeal
+      ? playerSelfOwnedActionPct([swapCapDeal], slicesByDeal)
+      : 100
+    const draftSold =
+      (sheet === 'start' || sheet === 'session') && !sessionWriteDealId
+        ? draftBackerActionSold(draftBackers)
+        : 0
+    return Math.max(0, Math.round((fromDeal - draftSold) * 1000) / 1000)
+  }, [swapCapDeal, slicesByDeal, sheet, sessionWriteDealId, draftBackers])
   const pendingCounterpartySwaps = useMemo(
     () =>
       tournamentSwaps.filter(

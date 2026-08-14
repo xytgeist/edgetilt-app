@@ -82,49 +82,6 @@ function onLoungeLightboxImgError(e, storedUrl) {
 }
 
 /**
- * Hidden `visibility` images often have not decoded when the flyout lifts, so land
- * flashes empty then pops the 2048. Wait for a paintable bitmap (or a short timeout).
- * @param {HTMLImageElement | null | undefined} img
- * @param {number} [timeoutMs]
- * @returns {Promise<void>}
- */
-function whenLightboxHeroImageReady(img, timeoutMs = 500) {
-  return new Promise((resolve) => {
-    let settled = false
-    const done = () => {
-      if (settled) return
-      settled = true
-      resolve()
-    }
-    const timeoutId = window.setTimeout(done, timeoutMs)
-    const finish = () => {
-      window.clearTimeout(timeoutId)
-      if (img && typeof img.decode === 'function') {
-        img.decode().then(done).catch(done)
-        return
-      }
-      done()
-    }
-    if (!(img instanceof HTMLImageElement)) {
-      window.clearTimeout(timeoutId)
-      done()
-      return
-    }
-    if (img.complete && img.naturalWidth > 0) {
-      finish()
-      return
-    }
-    const onStop = () => {
-      img.removeEventListener('load', onStop)
-      img.removeEventListener('error', onStop)
-      finish()
-    }
-    img.addEventListener('load', onStop)
-    img.addEventListener('error', onStop)
-  })
-}
-
-/**
  * @param {HTMLImageElement | null | undefined} img
  * @returns {number | null} width/height, or null if unknown
  */
@@ -251,6 +208,13 @@ export function LoungeImageLightbox({
   const [dismissProgress, setDismissProgress] = useState(0)
   /** After land, wait before decoding ±1 neighbors (fat originals OOM if all fire on open). */
   const [neighborLoadReady, setNeighborLoadReady] = useState(false)
+  /** Per stored URL: lightbox 2048 has decoded. Until then the open layer stays on feed 960. */
+  const [sharpReadyUrls, setSharpReadyUrls] = useState(/** @type {Record<string, true>} */ ({}))
+  const markSharpReady = useCallback((stored) => {
+    const key = String(stored || '')
+    if (!key) return
+    setSharpReadyUrls((prev) => (prev[key] ? prev : { ...prev, [key]: true }))
+  }, [])
 
   const mediaContainerRef = useRef(null)
   const mediaImageRef = useRef(null)
@@ -332,6 +296,31 @@ export function LoungeImageLightbox({
   }, [showAuthorMeta])
 
   useEffect(() => {
+    const stored = current
+    if (!stored) return undefined
+    let cancelled = false
+    const img = new Image()
+    img.decoding = 'async'
+    const mark = () => {
+      if (cancelled) return
+      const go = () => {
+        if (!cancelled) markSharpReady(stored)
+      }
+      if (typeof img.decode === 'function') {
+        img.decode().then(go).catch(go)
+        return
+      }
+      go()
+    }
+    img.onload = mark
+    img.src = loungeFeedImageDeliveryUrl(stored, 'lightbox')
+    if (img.complete && img.naturalWidth > 0) mark()
+    return () => {
+      cancelled = true
+    }
+  }, [current, markSharpReady])
+
+  useEffect(() => {
     if (phase !== 'open') {
       setNeighborLoadReady(false)
       return undefined
@@ -353,7 +342,10 @@ export function LoungeImageLightbox({
       img.decoding = 'async'
       img.src = loungeFeedImageDeliveryUrl(url, 'lightbox')
       img.onload = () => {
-        if (!cancelled) noteSlideAspectAt(img, i)
+        if (!cancelled) {
+          noteSlideAspectAt(img, i)
+          markSharpReady(url)
+        }
       }
       img.onerror = () => {
         if (cancelled || img.dataset.loungeImgFallback === '1') return
@@ -370,7 +362,7 @@ export function LoungeImageLightbox({
     return () => {
       cancelled = true
     }
-  }, [phase, neighborLoadReady, list, listKey, idx, noteSlideAspectAt])
+  }, [phase, neighborLoadReady, list, listKey, idx, noteSlideAspectAt, markSharpReady])
 
   const scrollToSlide = useCallback(
     (targetIdx, behavior = 'smooth') => {
@@ -828,23 +820,18 @@ export function LoungeImageLightbox({
           onDone: () => {
             if (cancelled) return
             snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
-            // Stay covered until the 2048 can paint. Lifting onto an undecoded
-            // hidden layer is the end-of-expand flash after CF resize.
-            void whenLightboxHeroImageReady(mediaImageRef.current).then(() => {
-              if (cancelled) return
-              flushSync(() => {
-                setPhase('open')
-                setChromeVisible(true)
-                setScrimOpacity(1)
-              })
-              flyout.style.visibility = 'hidden'
-              flyout.style.pointerEvents = 'none'
-              clearFlyoutHeroInlineStyles(flyout)
-              // Drop landFrame after the cover lifts … same-frame drop + src swap was a geometry pop.
-              requestAnimationFrame(() => {
-                if (!cancelled) setLandFrame(null)
-              })
+            // Drop landFrame in this turn. setPhase('open') re-runs this effect and
+            // sets cancelled … a later rAF then never clears the fixed shell, so
+            // slide 0 stays position:fixed and the carousel scrolls over it.
+            flushSync(() => {
+              setPhase('open')
+              setLandFrame(null)
+              setChromeVisible(true)
+              setScrimOpacity(1)
             })
+            flyout.style.visibility = 'hidden'
+            flyout.style.pointerEvents = 'none'
+            clearFlyoutHeroInlineStyles(flyout)
           },
         })
       })
@@ -1086,10 +1073,7 @@ export function LoungeImageLightbox({
             onPointerUp={zoomPointerUp}
             onPointerCancel={zoomPointerCancel}
             className="relative z-0 flex min-h-0 flex-1 flex-col"
-            style={{
-              // Opacity 0 (not visibility:hidden) so the 2048 can decode during fly-in.
-              opacity: phase === 'opening' ? 0 : 1,
-            }}
+            style={{ visibility: phase === 'opening' ? 'hidden' : 'visible' }}
             aria-hidden={phase === 'opening' ? true : undefined}
           >
             <div
@@ -1116,7 +1100,10 @@ export function LoungeImageLightbox({
                         : phase === 'open' &&
                           (i === idx || (neighborLoadReady && Math.abs(i - idx) <= 1))
                     const slideSrc = loadSlide
-                      ? loungeFeedImageDeliveryUrl(slideUrl, 'lightbox')
+                      ? loungeFeedImageDeliveryUrl(
+                          slideUrl,
+                          sharpReadyUrls[slideUrl] ? 'lightbox' : 'feed',
+                        )
                       : undefined
                     return (
                     <div
@@ -1180,7 +1167,7 @@ export function LoungeImageLightbox({
                   <img
                     ref={mediaImageRef}
                     key={current}
-                    src={currentDisplaySrc}
+                    src={sharpReadyUrls[current] ? currentDisplaySrc : ambientDisplaySrc}
                     alt=""
                     className={
                       heroShellStyle

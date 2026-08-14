@@ -423,7 +423,7 @@ export default function PokerTournamentSwapsSection({
       <p
         className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
       >
-        Default: extra bullets at face, then % of prize after one buy-in and that face.
+        Default: extra bullets at face, then % of prize after that face.
         Optional terms stack. Final bullet only skips extras.
       </p>
 

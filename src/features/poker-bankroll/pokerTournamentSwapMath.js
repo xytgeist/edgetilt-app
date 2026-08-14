@@ -2,9 +2,10 @@
  * Bilateral tournament swap settlement.
  *
  * Default (no term boxes): extra bullets are swapped at face. The player with
- * fewer bullets covers `pct * extra * face` when the extra-firer busts. A casher
- * subtracts one face buy-in plus any live extra-bullet face from prize before %.
- * If both cash, extras only reduce the extra-firer's profit (no second face IOU).
+ * fewer bullets covers `pct * extra * face` when the extra-firer busts. % is of
+ * prize (minus live extra-bullet face, and any face owed on the partner's busted
+ * extras). Do not subtract the first buy-in from prize.
+ * If both cash, extras only reduce the extra-firer's prize (no second face IOU).
  *
  * Optional terms (all combinable):
  * - bothMustCash: void unless both cashed (main prize / cash_out > 0)
@@ -207,15 +208,15 @@ export function computeTournamentSwapSettlement(args) {
   const faceOnCreatorExtras = (pctYou / 100) * extraCreator * face
   const faceOnCounterpartyExtras = (pctThem / 100) * extraCounterparty * face
   // Partner covers busted extras at face. If the extra-firer cashed, extras only
-  // reduce that casher's profit ... do not also collect a second face IOU.
+  // reduce that casher's prize ... do not also collect a second face IOU.
   const creatorPaysFace = !counterpartyCashed ? faceOnCounterpartyExtras : 0
   const counterpartyPaysFace = !creatorCashed ? faceOnCreatorExtras : 0
 
   const creatorNet = creatorCashed
-    ? creatorPrize - face - faceOnCreatorExtras - creatorPaysFace
+    ? creatorPrize - faceOnCreatorExtras - creatorPaysFace
     : 0
   const counterpartyNet = counterpartyCashed
-    ? counterpartyPrize - face - faceOnCounterpartyExtras - counterpartyPaysFace
+    ? counterpartyPrize - faceOnCounterpartyExtras - counterpartyPaysFace
     : 0
   const creatorOwesProfit = creatorCashed ? (Math.max(0, creatorNet) * pctYou) / 100 : 0
   const counterpartyOwesProfit = counterpartyCashed
@@ -416,10 +417,11 @@ export function formatSwapSideResultLine(swap, side, label, fmt$) {
   const pct =
     side === 'creator' ? Number(swap?.pct_creator_gives) : Number(swap?.pct_counterparty_gives)
   if (!Number.isFinite(buyIn) && !Number.isFinite(prize)) return null
-  const net = (Number.isFinite(prize) ? prize : 0) - (Number.isFinite(buyIn) ? buyIn : 0)
-  const share = Math.round((Math.max(0, net) * (Number.isFinite(pct) ? pct : 0)) / 100 * 100) / 100
+  const prizeAmt = Number.isFinite(prize) ? prize : 0
+  const share =
+    Math.round((Math.max(0, prizeAmt) * (Number.isFinite(pct) ? pct : 0)) / 100 * 100) / 100
   const who = String(label || (side === 'creator' ? 'Them' : 'Them')).trim() || 'Them'
-  return `${who}: net ${fmt$(net)} · ${fmt$(share)} toward swap`
+  return `${who}: ${fmt$(prizeAmt)} · ${fmt$(share)} toward swap`
 }
 
 /** @param {unknown} pct */

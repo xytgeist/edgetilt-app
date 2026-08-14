@@ -101,7 +101,7 @@ const SWAP_TERM_OPTIONS = [
   {
     key: 'final_table_only',
     label: 'Final table only',
-    hint: 'Activates if either player makes the final 9 (or 6 if 6-max).',
+    hint: 'Activates only if either player makes the final 9 (or 6 if 6-max).',
     description:
       'The swap activates only if Player A or Player B reaches the final table. Final table means 9th or better, or 6th or better in a 6-max tournament.',
     examples: [
@@ -160,7 +160,7 @@ function SwapTermChecks({ value, onChange, compact = false }) {
                   <button
                     type="button"
                     onClick={() => setInfoOption(opt)}
-                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-zinc-600/80 text-zinc-500 touch-manipulation active:border-zinc-400 active:text-zinc-300"
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:text-zinc-300"
                     aria-label={`About ${opt.label}`}
                   >
                     <Info className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />

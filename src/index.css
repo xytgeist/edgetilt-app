@@ -7871,8 +7871,7 @@ html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] input[typ
   accent-color: #047857;
 }
 html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] button {
-  background-color: #ffffff !important;
-  border-color: #a1a1aa !important;
+  background-color: transparent !important;
   color: #52525b !important;
 }
 html.light [data-poker-swap-term-info-modal] {

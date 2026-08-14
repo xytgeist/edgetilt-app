@@ -800,7 +800,9 @@ export function LoungeImageLightbox({
     const tileAspect = from.width / Math.max(from.height, 1)
     const openIdx = Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0)))
     const openUrl = list[openIdx] || ''
-    const openingGif = isLoungeLightboxGifUrl(openUrl, gifUrl)
+    const openingGif =
+      isLoungeLightboxGifUrl(openUrl, gifUrl) ||
+      (Boolean(gifUrl) && openIdx === list.length - 1)
     const feedProbe = new Image()
     feedProbe.src = loungeFeedImageDeliveryUrl(openUrl, 'feed')
     const feedAspect =
@@ -809,7 +811,9 @@ export function LoungeImageLightbox({
         : null
     const seedAspect =
       feedAspect && Number.isFinite(feedAspect) && feedAspect > 0 ? feedAspect : tileAspect
-    if (Number.isFinite(seedAspect) && seedAspect > 0) {
+    // GIFs: never lock chrome/pad to the carousel cell aspect. That makes fly-in
+    // go full-bleed, then the real frame contain-sizes after land.
+    if (!openingGif && Number.isFinite(seedAspect) && seedAspect > 0) {
       setAspectByIndex((prev) => (prev[openIdx] == null ? { ...prev, [openIdx]: seedAspect } : prev))
     }
 
@@ -845,16 +849,52 @@ export function LoungeImageLightbox({
           topChromeRef.current,
           footerChromeRef.current,
         )
-        const modeAspect = openingGif ? seedAspect : tileAspect
+        const parkedImg =
+          mediaImageRef.current instanceof HTMLImageElement
+            ? mediaImageRef.current
+            : mediaContainerRef.current?.querySelector('img')
+        const parkedNaturalW =
+          parkedImg instanceof HTMLImageElement ? parkedImg.naturalWidth : 0
+        const parkedNaturalH =
+          parkedImg instanceof HTMLImageElement ? parkedImg.naturalHeight : 0
+        const gifAspect =
+          openingGif && parkedNaturalW > 0 && parkedNaturalH > 0
+            ? parkedNaturalW / parkedNaturalH
+            : seedAspect
+        if (openingGif && Number.isFinite(gifAspect) && gifAspect > 0) {
+          setAspectByIndex((prev) =>
+            prev[openIdx] != null && Math.abs(prev[openIdx] - gifAspect) < 0.0001
+              ? prev
+              : { ...prev, [openIdx]: gifAspect },
+          )
+        }
+        const modeAspect = openingGif ? gifAspect : tileAspect
         const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
         setBandByMode((prev) => ({ ...prev, [mode]: band }))
 
-        const target = computeHeroTargetRect(from, {
-          displayW: openingGif && seedAspect > 0 ? seedAspect : from.width,
-          displayH: openingGif && seedAspect > 0 ? 1 : from.height,
-          insetTop: band.top,
-          insetBottom: band.bottom,
-        })
+        const parkedRect =
+          openingGif && parkedImg instanceof HTMLImageElement
+            ? readContainedImageViewportRect(parkedImg) || readElementViewportRect(parkedImg)
+            : null
+        const target =
+          openingGif && heroRectUsableForShrinkBack(parkedRect)
+            ? parkedRect
+            : computeHeroTargetRect(from, {
+                displayW:
+                  openingGif && parkedNaturalW > 0
+                    ? parkedNaturalW
+                    : openingGif && gifAspect > 0
+                      ? gifAspect
+                      : from.width,
+                displayH:
+                  openingGif && parkedNaturalH > 0
+                    ? parkedNaturalH
+                    : openingGif && gifAspect > 0
+                      ? 1
+                      : from.height,
+                insetTop: band.top,
+                insetBottom: band.bottom,
+              })
         targetRectRef.current = target
         landSlideIndexRef.current = openIdx
         setLandFrame(target)

@@ -96,7 +96,9 @@ export function LoungeImageCarousel({
     const img = originImgRefs.current[index]
     if (!(img instanceof HTMLElement)) return null
     const url = list[index] || ''
-    if (isLoungeLightboxGifUrl(url, gifUrl) && img instanceof HTMLImageElement) {
+    const isGif =
+      isLoungeLightboxGifUrl(url, gifUrl) || (Boolean(gifUrl) && index === list.length - 1)
+    if (isGif && img instanceof HTMLImageElement) {
       return readContainedImageViewportRect(img)
     }
     const rect = readElementViewportRect(img)

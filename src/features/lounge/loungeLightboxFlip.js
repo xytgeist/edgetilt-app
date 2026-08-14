@@ -83,7 +83,7 @@ export function isLoungeLightboxGifUrl(url, knownGifUrl) {
   const raw = String(url || '').trim()
   if (!raw) return false
   const known = String(knownGifUrl || '').trim()
-  if (known && raw === known) return true
+  if (known && sameLoungeMediaUrl(raw, known)) return true
   try {
     const parsed = new URL(raw)
     if (/\.gif$/i.test(parsed.pathname)) return true
@@ -93,6 +93,21 @@ export function isLoungeLightboxGifUrl(url, knownGifUrl) {
     if (/\.gif(\?|#|$)/i.test(raw)) return true
   }
   return false
+}
+
+/** Compare stored vs slide URLs without query/hash noise. */
+export function sameLoungeMediaUrl(a, b) {
+  const left = String(a || '').trim()
+  const right = String(b || '').trim()
+  if (!left || !right) return false
+  if (left === right) return true
+  try {
+    const ua = new URL(left)
+    const ub = new URL(right)
+    return ua.origin + ua.pathname === ub.origin + ub.pathname
+  } catch {
+    return false
+  }
 }
 
 /**

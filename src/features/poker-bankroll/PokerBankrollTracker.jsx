@@ -536,6 +536,7 @@ export default function PokerBankrollTracker({
   const [endNotes, setEndNotes] = useState('')
   const [endBounties, setEndBounties] = useState('')
   const [endFinishPlace, setEndFinishPlace] = useState('')
+  const [endSwapDecisionOpen, setEndSwapDecisionOpen] = useState(false)
   /** Shared clock tick for multi-live elapsed labels (ms). */
   const [liveClockMs, setLiveClockMs] = useState(() => Date.now())
   /** Session targeted by pause / rebuy / end / swaps sheets. */
@@ -2447,6 +2448,7 @@ export default function PokerBankrollTracker({
     setEndNotes('')
     setEndBounties('')
     setEndFinishPlace('')
+    setEndSwapDecisionOpen(false)
     setError('')
     setSheet('end')
     triggerTapHapticLight()
@@ -2922,10 +2924,14 @@ export default function PokerBankrollTracker({
     }
   }
 
-  async function endLiveSession() {
+  /**
+   * @param {boolean | null} swapResultReady
+   * `true` closes this player's side of every active series swap; `false` keeps them open.
+   */
+  async function endLiveSession(swapResultReady = null) {
     if (!supabaseClient || !userId || !actionSession) return
     const live = actionSession
-    const liveSwaps = actionSessionSwaps
+    const liveSwaps = actionSessionSwaps.filter((swap) => swap.status === 'active')
     const cashOut = parseMoneyInputNumber(endCashOut)
     if (!Number.isFinite(cashOut) || cashOut < 0) {
       setError('Enter cash out (what you walked with).')
@@ -2943,6 +2949,11 @@ export default function PokerBankrollTracker({
     ) {
       return
     }
+    if (live.session_type === 'tournament' && liveSwaps.length > 0 && swapResultReady == null) {
+      setEndSwapDecisionOpen(true)
+      return
+    }
+    setEndSwapDecisionOpen(false)
     setSaving(true)
     setError('')
     try {
@@ -2989,7 +3000,12 @@ export default function PokerBankrollTracker({
           supabaseClient,
           live.id,
           ended,
-          { sessions, eventsById: swapEventsById, userId },
+          {
+            sessions,
+            eventsById: swapEventsById,
+            userId,
+            resultReady: liveSwaps.length > 0 ? swapResultReady : undefined,
+          },
         )
         if (syncA.error && !isMissingTournamentSwapTableError(syncA.error)) {
           console.warn('[poker-bankroll] swap creator sync failed', syncA.error.message)
@@ -2998,12 +3014,19 @@ export default function PokerBankrollTracker({
           supabaseClient,
           live.id,
           ended,
-          { sessions, eventsById: swapEventsById, userId },
+          {
+            sessions,
+            eventsById: swapEventsById,
+            userId,
+            resultReady: liveSwaps.length > 0 ? swapResultReady : undefined,
+          },
         )
         if (syncB.error && !isMissingTournamentSwapTableError(syncB.error)) {
           console.warn('[poker-bankroll] swap counterparty sync failed', syncB.error.message)
         }
-        swapNotifyIds = [...(syncA.swapIds || []), ...(syncB.swapIds || [])]
+        if (swapResultReady !== false) {
+          swapNotifyIds = [...(syncA.swapIds || []), ...(syncB.swapIds || [])]
+        }
       }
       if (live.deal_id) {
         const { error: pieceErr } = await maybeCloseCompletedPieceDeal(
@@ -6169,6 +6192,67 @@ export default function PokerBankrollTracker({
             >
               Delete session
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {endSwapDecisionOpen && actionSession ? (
+        <div
+          className="fixed inset-0 z-[130] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEndSwapDecisionOpen(false)
+          }}
+        >
+          <div
+            data-poker-end-swap-decision
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="poker-end-swap-decision-title"
+            className="w-full max-w-md rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 pb-5 pt-5"
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3
+                  id="poker-end-swap-decision-title"
+                  className="text-base font-bold leading-tight text-white"
+                >
+                  Are you buying in again later?
+                </h3>
+                <p className="mt-1 text-xs font-semibold text-emerald-300">
+                  This session will end either way.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEndSwapDecisionOpen(false)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs text-zinc-400 touch-manipulation active:bg-zinc-700"
+                aria-label="Go back"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm leading-relaxed text-zinc-300">
+              Keep the swap open if this is one flight or bullet and you may play this
+              tournament again. Close it if your run in this tournament is over.
+            </p>
+            <div className="mt-5 space-y-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void endLiveSession(false)}
+                className="w-full rounded-2xl bg-emerald-600 py-3.5 text-sm font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+              >
+                Keep swap open
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void endLiveSession(true)}
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 py-3 text-sm font-semibold text-zinc-200 touch-manipulation active:bg-zinc-700 disabled:opacity-50"
+              >
+                Close swap
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

@@ -323,6 +323,7 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session,
   const sessions = opts.sessions || [session]
   const eventsById = opts.eventsById || {}
   const userId = session?.user_id || opts.userId || ''
+  const hasResultReadyOverride = typeof opts.resultReady === 'boolean'
   const { data: swaps, error } = await supabase
     .from('poker_tournament_swaps')
     .select('*')
@@ -342,7 +343,9 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session,
     : [...series, session]
   const agg = aggregateSeriesSwapResult(withEnded)
   const totalBullets = seriesTotalBulletCount(session, withEnded, eventsById)
-  const ready = seriesResultReadyAfterSession(session, eventsById)
+  const ready = hasResultReadyOverride
+    ? opts.resultReady
+    : seriesResultReadyAfterSession(session, eventsById)
   const patch = {
     creator_buy_in: agg.buyIn || (session ? pokerSessionTotalCost(session) : null),
     creator_prize: agg.prize,
@@ -352,7 +355,8 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session,
     creator_face_buy_in: agg.faceBuyIn || Number(session?.buy_in) || null,
     creator_bullets: totalBullets || 1 + (Number(session?.reentries) || 0),
   }
-  if (ready) patch.creator_result_ready = true
+  if (hasResultReadyOverride) patch.creator_result_ready = ready
+  else if (ready) patch.creator_result_ready = true
 
   const swapIds = []
   for (const swap of seriesSwaps) {
@@ -382,6 +386,7 @@ export async function syncCounterpartyResultsForSession(supabase, sessionId, ses
   const sessions = opts.sessions || [session]
   const eventsById = opts.eventsById || {}
   const userId = session?.user_id || opts.userId || ''
+  const hasResultReadyOverride = typeof opts.resultReady === 'boolean'
   const { data: swaps, error } = await supabase
     .from('poker_tournament_swaps')
     .select('*')
@@ -403,7 +408,9 @@ export async function syncCounterpartyResultsForSession(supabase, sessionId, ses
     : [...series, session]
   const agg = aggregateSeriesSwapResult(withEnded)
   const totalBullets = seriesTotalBulletCount(session, withEnded, eventsById)
-  const ready = seriesResultReadyAfterSession(session, eventsById)
+  const ready = hasResultReadyOverride
+    ? opts.resultReady
+    : seriesResultReadyAfterSession(session, eventsById)
   const patch = {
     counterparty_buy_in: agg.buyIn || (session ? pokerSessionTotalCost(session) : null),
     counterparty_prize: agg.prize,
@@ -414,7 +421,8 @@ export async function syncCounterpartyResultsForSession(supabase, sessionId, ses
     counterparty_bullets: totalBullets || 1 + (Number(session?.reentries) || 0),
     counterparty_result_source: 'session',
   }
-  if (ready) patch.counterparty_result_ready = true
+  if (hasResultReadyOverride) patch.counterparty_result_ready = ready
+  else if (ready) patch.counterparty_result_ready = true
 
   const swapIds = []
   for (const swap of seriesSwaps) {

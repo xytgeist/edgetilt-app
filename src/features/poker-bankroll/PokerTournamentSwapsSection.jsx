@@ -245,6 +245,33 @@ function SwapTermChecks({ value, onChange, compact = false }) {
   return (
     <>
       <div data-poker-swap-term-checks className="mt-2 space-y-1.5">
+        <div data-poker-swap-base-term className="pl-[1.625rem]">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`text-xs font-semibold ${
+                compact ? 'text-zinc-200' : 'text-emerald-100'
+              }`}
+            >
+              Default
+            </span>
+            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-300">
+              Always on
+            </span>
+            <button
+              type="button"
+              data-poker-swap-info-btn
+              onClick={() => setInfoOption(DEFAULT_SWAP_INFO)}
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-zinc-500 touch-manipulation active:text-zinc-300"
+              aria-label="About default swap"
+            >
+              <Info className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+            </button>
+          </div>
+          <div className="mt-0.5 text-[11px] leading-snug text-zinc-500">
+            This bullet forward, extra bullets at face, then % of prize. Optional terms below
+            stack on this.
+          </div>
+        </div>
         {SWAP_TERM_OPTIONS.map((opt) => {
           const inputId = `${inputIdPrefix}-${opt.key}`
           const checked = Boolean(value?.[opt.key])
@@ -500,7 +527,6 @@ export default function PokerTournamentSwapsSection({
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
   const [localNotice, setLocalNotice] = useState('')
-  const [defaultInfoOpen, setDefaultInfoOpen] = useState(false)
   const lastDraftCardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const prevDraftCountRef = useRef(draftSwaps.length)
 
@@ -798,34 +824,6 @@ export default function PokerTournamentSwapsSection({
           </button>
         </div>
       </div>
-      <p
-        className={`mb-2 text-[11px] leading-snug ${compact ? 'text-zinc-500' : 'text-emerald-100/55'}`}
-      >
-        Default: this bullet forward, extra bullets at face, then % of prize after that face.
-        Optional terms stack.{' '}
-        <span className="whitespace-nowrap">
-          Final bullet only skips extras.
-          <button
-            type="button"
-            data-poker-swap-info-btn
-            onClick={() => setDefaultInfoOpen(true)}
-            className="ml-1 inline-flex h-4 w-4 shrink-0 translate-y-[1px] items-center justify-center rounded-full text-zinc-500 touch-manipulation active:text-zinc-300"
-            aria-label="About default swap"
-          >
-            <Info className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
-          </button>
-        </span>
-      </p>
-      {defaultInfoOpen && typeof document !== 'undefined'
-        ? createPortal(
-            <SwapTermInfoModal
-              option={DEFAULT_SWAP_INFO}
-              onClose={() => setDefaultInfoOpen(false)}
-            />,
-            document.body,
-          )
-        : null}
-
       {showOwnershipSummary ? (
         <PokerSwapOwnershipSummary
           maxSwapGivePct={maxSwapGivePct}

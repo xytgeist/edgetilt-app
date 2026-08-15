@@ -111,6 +111,40 @@ const SWAP_TERM_OPTIONS = [
     ],
   },
   {
+    key: 'min_cash',
+    label: 'Min cash',
+    hint: 'Activates only if either player cashes for at least this amount.',
+    hasAmountField: true,
+    amountKey: 'min_cash_threshold',
+    amountPlaceholder: '50000',
+    description:
+      'The swap only activates if Player A or Player B cashes for at least the threshold amount (recorded prize / cash-out). If neither player reaches that amount, the entire swap is void.',
+    examples: [
+      {
+        title: 'Threshold $50,000 · one big cash',
+        lines: [
+          'Players agree on Min cash $50,000 with a 10% swap.',
+          'Player A cashes out for $80,000. Player B cashes out for $0.',
+          'Because Player A hit the threshold, the swap activates. Player A owes Player B 10% of $80,000 = $8,000.',
+        ],
+      },
+      {
+        title: 'Threshold $50,000 · neither hits it',
+        lines: [
+          'Player A cashes out for $12,000. Player B cashes out for $8,000.',
+          'Neither cash reached $50,000, so the swap is void. Neither player owes anything.',
+        ],
+      },
+      {
+        title: 'Threshold $50,000 · exact hit',
+        lines: [
+          'Player A cashes out for exactly $50,000. Player B busts.',
+          'At or above the threshold counts. The swap activates. Player A owes Player B $5,000.',
+        ],
+      },
+    ],
+  },
+  {
     key: 'final_bullet_only',
     label: 'Final bullet only',
     hint: 'Only the last entry counts. Partner does not cover extra bullets at face.',
@@ -180,16 +214,24 @@ function SwapTermChecks({ value, onChange, compact = false }) {
       <div data-poker-swap-term-checks className="mt-2 space-y-1.5">
         {SWAP_TERM_OPTIONS.map((opt) => {
           const inputId = `${inputIdPrefix}-${opt.key}`
+          const checked = Boolean(value?.[opt.key])
+          const amountId = `${inputId}-amount`
           return (
             <div key={opt.key} className="flex items-start gap-2.5">
               <input
                 id={inputId}
                 type="checkbox"
-                checked={Boolean(value?.[opt.key])}
-                onChange={(e) => onChange({ [opt.key]: e.target.checked })}
+                checked={checked}
+                onChange={(e) => {
+                  const next = { [opt.key]: e.target.checked }
+                  if (opt.hasAmountField && !e.target.checked) {
+                    next[opt.amountKey] = ''
+                  }
+                  onChange(next)
+                }}
                 className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/40"
               />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <label
                     htmlFor={inputId}
@@ -212,6 +254,22 @@ function SwapTermChecks({ value, onChange, compact = false }) {
                 <div className="mt-0.5 text-[11px] leading-snug text-zinc-500">
                   {opt.hint}
                 </div>
+                {opt.hasAmountField && checked ? (
+                  <label htmlFor={amountId} className="mt-1.5 block">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Threshold ($)
+                    </span>
+                    <input
+                      id={amountId}
+                      data-poker-swap-min-cash-input
+                      className={FIELD}
+                      inputMode="decimal"
+                      placeholder={opt.amountPlaceholder || '50000'}
+                      value={value?.[opt.amountKey] ?? ''}
+                      onChange={(e) => onChange({ [opt.amountKey]: e.target.value })}
+                    />
+                  </label>
+                ) : null}
               </div>
             </div>
           )
@@ -749,12 +807,20 @@ export default function PokerTournamentSwapsSection({
             })
           const edgeUserOk =
             draft.counterparty_kind !== 'user' || Boolean(draft.counterparty_user_id)
+          const minCashOk =
+            !draft.min_cash ||
+            (() => {
+              const raw = String(draft.min_cash_threshold ?? '').replace(/[$,\s]/g, '')
+              const n = Number(raw)
+              return Number.isFinite(n) && n > 0
+            })()
           const canSend =
             typeof onSendDraft === 'function' &&
             pctOk &&
             guestLabelOk &&
             guestContactOk &&
             edgeUserOk &&
+            minCashOk &&
             !mySideOver
           return (
             <div

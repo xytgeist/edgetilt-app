@@ -9,6 +9,7 @@
  *
  * Optional terms (all combinable):
  * - bothMustCash: void unless both cashed (main prize / cash_out > 0)
+ * - minCashThreshold: void unless either prize >= threshold
  * - finalBulletOnly: one face buy-in each ... no extra-bullet face
  * - finalTableOnly: void unless either finish is a final table (9, or 6 if 6-max)
  */
@@ -35,6 +36,10 @@ export function swapMadeFinalTable(finishPlace, tableSize) {
 export function swapTermLabels(swap) {
   const labels = []
   if (swap?.both_must_cash) labels.push('Both must cash')
+  const minCash = Number(swap?.min_cash_threshold)
+  if (Number.isFinite(minCash) && minCash > 0) {
+    labels.push(`Min cash $${minCash % 1 === 0 ? minCash.toFixed(0) : minCash.toFixed(2)}`)
+  }
   if (swap?.final_bullet_only) labels.push('Final bullet only')
   if (swap?.final_table_only) labels.push('Final table only')
   return labels
@@ -58,6 +63,7 @@ export function settlementArgsFromSwap(swap) {
     bothMustCash: swap.both_must_cash,
     finalBulletOnly: swap.final_bullet_only,
     finalTableOnly: swap.final_table_only,
+    minCashThreshold: swap.min_cash_threshold,
     creatorCashed: swap.creator_cashed,
     counterpartyCashed: swap.counterparty_cashed,
     creatorFinishPlace: swap.creator_finish_place,
@@ -107,6 +113,7 @@ export function swapBulletCount(args = {}) {
  *   bothMustCash?: boolean,
  *   finalBulletOnly?: boolean,
  *   finalTableOnly?: boolean,
+ *   minCashThreshold?: number | null,
  *   creatorCashed?: boolean | null,
  *   counterpartyCashed?: boolean | null,
  *   creatorFinishPlace?: number | null,
@@ -135,6 +142,7 @@ export function computeTournamentSwapSettlement(args) {
   const bothMustCash = Boolean(args.bothMustCash)
   const finalBulletOnly = Boolean(args.finalBulletOnly)
   const finalTableOnly = Boolean(args.finalTableOnly)
+  const minCashThreshold = Number(args.minCashThreshold)
   const creatorCashed =
     args.creatorCashed != null
       ? Boolean(args.creatorCashed)
@@ -143,11 +151,23 @@ export function computeTournamentSwapSettlement(args) {
     args.counterpartyCashed != null
       ? Boolean(args.counterpartyCashed)
       : (Number(args.counterpartyPrize) || 0) > 0
+  const creatorPrize = Number(args.creatorPrize) || 0
+  const counterpartyPrize = Number(args.counterpartyPrize) || 0
 
   let activated = true
   let pending = false
 
   if (bothMustCash && (!creatorCashed || !counterpartyCashed)) {
+    activated = false
+  }
+
+  if (
+    activated &&
+    Number.isFinite(minCashThreshold) &&
+    minCashThreshold > 0 &&
+    creatorPrize < minCashThreshold &&
+    counterpartyPrize < minCashThreshold
+  ) {
     activated = false
   }
 
@@ -186,8 +206,6 @@ export function computeTournamentSwapSettlement(args) {
     0
   const pctYou = Number(args.pctCreatorGives) || 0
   const pctThem = Number(args.pctCounterpartyGives) || 0
-  const creatorPrize = Number(args.creatorPrize) || 0
-  const counterpartyPrize = Number(args.counterpartyPrize) || 0
 
   const creatorExclude = Math.max(0, Number(args.creatorExcludePriorBullets) || 0)
   const counterpartyExclude = Math.max(0, Number(args.counterpartyExcludePriorBullets) || 0)

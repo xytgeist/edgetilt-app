@@ -207,6 +207,15 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
   if (pctYou == null || pctThem == null) {
     return { error: 'Enter valid swap %s (0–100).' }
   }
+  let minCashThreshold = null
+  if (draft.min_cash) {
+    const raw = String(draft.min_cash_threshold ?? '').replace(/[$,\s]/g, '')
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n <= 0) {
+      return { error: 'Enter a min cash amount greater than $0.' }
+    }
+    minCashThreshold = Math.round(n * 100) / 100
+  }
   if (draft.counterparty_kind === 'user') {
     if (!draft.counterparty_user_id) return { error: 'Pick an Edge user for the swap.' }
     return {
@@ -219,6 +228,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
         both_must_cash: Boolean(draft.both_must_cash),
         final_bullet_only: Boolean(draft.final_bullet_only),
         final_table_only: Boolean(draft.final_table_only),
+        min_cash_threshold: minCashThreshold,
         include_previous_bullets: false,
       },
     }
@@ -249,6 +259,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
       both_must_cash: Boolean(draft.both_must_cash),
       final_bullet_only: Boolean(draft.final_bullet_only),
       final_table_only: Boolean(draft.final_table_only),
+      min_cash_threshold: minCashThreshold,
       include_previous_bullets: false,
     },
   }
@@ -923,6 +934,8 @@ export function emptyDraftSwap() {
     both_must_cash: false,
     final_bullet_only: false,
     final_table_only: false,
+    min_cash: false,
+    min_cash_threshold: '',
     include_previous_bullets: false,
   }
 }

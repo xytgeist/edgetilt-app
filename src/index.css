@@ -7944,6 +7944,10 @@ html.light [data-poker-swap-term-info-modal] .text-white {
 html.light [data-poker-swap-term-info-modal] .text-zinc-300 {
   color: #3f3f46 !important;
 }
+html.light [data-poker-swap-term-info-modal] [data-poker-swap-term-info-note],
+html.light [data-poker-swap-term-info-modal] .text-amber-200\/90 {
+  color: #b45309 !important;
+}
 html.light [data-poker-swap-term-info-modal] .text-zinc-400,
 html.light [data-poker-swap-term-info-modal] .text-zinc-500 {
   color: #52525b !important;

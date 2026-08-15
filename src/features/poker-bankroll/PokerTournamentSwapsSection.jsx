@@ -120,6 +120,8 @@ const SWAP_TERM_OPTIONS = [
     amountPlaceholder: '50000',
     description:
       'The swap only activates if Player A or Player B cashes for at least the threshold amount (recorded prize / cash-out). If neither player reaches that amount, the entire swap is void. Once activated, both players still swap their full prizes at the agreed percentages.',
+    note:
+      'This still includes bullet rebates when one player fires more bullets. Check Final bullet only if you want to exclude that.',
     examples: [
       {
         title: 'Threshold $50,000 · one big cash',
@@ -190,6 +192,8 @@ const SWAP_TERM_OPTIONS = [
     hint: 'Activates only if either player makes the final 9 (or 6 if 6-max).',
     description:
       'The swap activates only if Player A or Player B reaches the final table. Final table means 9th or better, or 6th or better in a 6-max tournament. Once activated, both players still swap their full prizes at the agreed percentages, even if only one of them made the final table.',
+    note:
+      'This still includes bullet rebates when one player fires more bullets. Check Final bullet only if you want to exclude that.',
     examples: [
       {
         title: 'Player A makes the final table',
@@ -341,6 +345,14 @@ function SwapTermInfoModal({ option, onClose }) {
           </button>
         </div>
         <p className="text-sm leading-relaxed text-zinc-300">{option.description}</p>
+        {option.note ? (
+          <p
+            data-poker-swap-term-info-note
+            className="mt-2 text-sm leading-relaxed text-amber-200/90"
+          >
+            {option.note}
+          </p>
+        ) : null}
         <p className="mt-2 text-xs leading-relaxed text-zinc-500">
           “Cash out” means the recorded prize amount, not profit after subtracting the $1,000
           buy-in.

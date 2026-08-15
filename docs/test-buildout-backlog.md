@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-15: **Swap term bullet-rebate callout:** Minimum cash threshold and Final table only info modals note in amber that bullet rebates still apply, and to check Final bullet only to exclude them. Light mode scoped. No SQL.
 - 2026-08-15: **Final table only both-cash example:** Info modal mirrors the Minimum cash threshold case … one player makes the final table for $50,000, the other misses but cashes for $30,000; swap activates and both prizes still % swap (10% nets to $2,000). No SQL.
 - 2026-08-15: **Minimum cash threshold copy:** Checkbox + term line + info modal use **Minimum cash threshold**. Info example covers $50k vs $30k (swap activates; both prizes still % swap; net after 10% is $2,000 owed). No SQL.
 - 2026-08-15: **Start / Log Past show carried tournament swaps:** Unsaved Start Session and new Log Past forms use the form series anchor (venue + buy-in + game + stripped name + form date within 21 days, soft-event id when picked) to list series-matched swaps. Start shows active carried swaps only; Cancel refreshes via `onSavedSwapsMutated`. New Log Past shows all non-cancelled series swaps. Soft-event UUID differences stay expected. No SQL.

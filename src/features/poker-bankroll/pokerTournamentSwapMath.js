@@ -38,7 +38,9 @@ export function swapTermLabels(swap) {
   if (swap?.both_must_cash) labels.push('Both must cash')
   const minCash = Number(swap?.min_cash_threshold)
   if (Number.isFinite(minCash) && minCash > 0) {
-    labels.push(`Min cash $${minCash % 1 === 0 ? minCash.toFixed(0) : minCash.toFixed(2)}`)
+    labels.push(
+      `Minimum cash threshold $${minCash % 1 === 0 ? minCash.toFixed(0) : minCash.toFixed(2)}`,
+    )
   }
   if (swap?.final_bullet_only) labels.push('Final bullet only')
   if (swap?.final_table_only) labels.push('Final table only')

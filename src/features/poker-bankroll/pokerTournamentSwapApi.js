@@ -212,7 +212,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
     const raw = String(draft.min_cash_threshold ?? '').replace(/[$,\s]/g, '')
     const n = Number(raw)
     if (!Number.isFinite(n) || n <= 0) {
-      return { error: 'Enter a min cash amount greater than $0.' }
+      return { error: 'Enter a minimum cash threshold greater than $0.' }
     }
     minCashThreshold = Math.round(n * 100) / 100
   }

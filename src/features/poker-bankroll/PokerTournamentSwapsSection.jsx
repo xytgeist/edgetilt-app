@@ -113,20 +113,29 @@ const SWAP_TERM_OPTIONS = [
   },
   {
     key: 'min_cash',
-    label: 'Min cash',
+    label: 'Minimum cash threshold',
     hint: 'Activates only if either player cashes for at least this amount.',
     hasAmountField: true,
     amountKey: 'min_cash_threshold',
     amountPlaceholder: '50000',
     description:
-      'The swap only activates if Player A or Player B cashes for at least the threshold amount (recorded prize / cash-out). If neither player reaches that amount, the entire swap is void.',
+      'The swap only activates if Player A or Player B cashes for at least the threshold amount (recorded prize / cash-out). If neither player reaches that amount, the entire swap is void. Once activated, both players still swap their full prizes at the agreed percentages.',
     examples: [
       {
         title: 'Threshold $50,000 · one big cash',
         lines: [
-          'Players agree on Min cash $50,000 with a 10% swap.',
+          'Players agree on Minimum cash threshold $50,000 with a 10% swap.',
           'Player A cashes out for $80,000. Player B cashes out for $0.',
           'Because Player A hit the threshold, the swap activates. Player A owes Player B 10% of $80,000 = $8,000.',
+        ],
+      },
+      {
+        title: 'Threshold $50,000 · both cash, only one hits it',
+        lines: [
+          'Player A cashes out for $50,000. Player B cashes out for $30,000.',
+          'Player A hit the threshold, so the swap activates even though Player B cashed for less than $50,000.',
+          'Player A owes Player B 10% of $50,000 = $5,000. Player B owes Player A 10% of $30,000 = $3,000.',
+          'After netting, Player A owes Player B $2,000.',
         ],
       },
       {

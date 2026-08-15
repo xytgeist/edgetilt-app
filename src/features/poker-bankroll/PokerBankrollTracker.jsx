@@ -4224,7 +4224,9 @@ export default function PokerBankrollTracker({
                       timerTextClass={timerTextClass}
                       isPaused={sessionPaused}
                       pauseBusy={pauseBusy}
-                      maxWidthClass={isCash ? 'max-w-[calc(100%-6rem)]' : 'max-w-[calc(100%-12rem)]'}
+                      maxWidthClass={
+                        isCash ? 'max-w-[calc(100%-6rem)]' : 'max-w-[calc(100%-17.5rem)]'
+                      }
                       onTogglePause={() => void toggleSessionPause(liveSession)}
                     />
                   )
@@ -4303,12 +4305,8 @@ export default function PokerBankrollTracker({
                           </div>
                         </div>
                       ) : (
-                        <div
-                          className={`relative mt-2 ${
-                            priorBullets > 0 ? 'min-h-[6.5rem]' : 'min-h-[5rem]'
-                          }`}
-                        >
-                          <div className="min-w-0 pr-[6.25rem]">
+                        <div className="relative mt-2 min-h-[5rem] pb-10">
+                          <div className="min-w-0">
                             <div className="truncate text-sm text-zinc-400">
                               {pokerSessionMetaLine(liveSession)}
                             </div>
@@ -4324,14 +4322,14 @@ export default function PokerBankrollTracker({
                           </div>
                           {liveClock}
                           <div
-                            className="absolute right-0 top-0 grid grid-cols-2 gap-1.5"
+                            className="absolute bottom-0 right-0 flex gap-1.5"
                             onClick={stopCardClick}
                             onKeyDown={stopCardClick}
                           >
                             <button
                               type="button"
                               onClick={() => openRebuy(liveSession, 'rebuy')}
-                              className={`${chip} col-start-2 border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
+                              className={`${chip} border border-emerald-400/40 bg-emerald-950/80 text-emerald-200 active:bg-emerald-900`}
                             >
                               Re-enter
                             </button>

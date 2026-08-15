@@ -407,6 +407,7 @@ export function formatSwapWaitingStatus(swap, viewerRole, otherLabel) {
   const accepted = Boolean(swap?.counterparty_session_accepted_at)
   const isGuest = swap?.counterparty_kind === 'guest'
   const selfReady = viewerRole === 'creator' ? creatorReady : cpReady
+  const otherReady = viewerRole === 'creator' ? cpReady : creatorReady
 
   // Edge user / guest hasn’t joined the swap yet (Incoming Accept or claim link).
   if (!cpReady && !accepted) {
@@ -418,6 +419,13 @@ export function formatSwapWaitingStatus(swap, viewerRole, otherLabel) {
     }
     if (viewerRole === 'creator') return `Waiting on ${label} to accept`
     return 'Waiting on you to accept this swap'
+  }
+
+  if (!selfReady && otherReady) {
+    return 'Their result is in · your side is open for later flights'
+  }
+  if (selfReady && !otherReady) {
+    return `Your result is in · waiting on ${label}`
   }
 
   // Joined / claimed path — results still missing (soft copy; not a do-it-now nudge).

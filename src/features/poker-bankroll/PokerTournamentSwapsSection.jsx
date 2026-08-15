@@ -14,6 +14,7 @@ import {
 import PokerSwapOwnershipSummary from './PokerSwapOwnershipSummary.jsx'
 import {
   cancelTournamentSwap,
+  closeSwapSideResult,
   emptyDraftSwap,
   markSwapPaid,
   setSwapSideManualResult,
@@ -411,6 +412,7 @@ function revealExpandedInOverflowParent(el) {
  *   sendingDrafts?: boolean,
  *   maxSwapGivePct?: number,
  *   showOwnershipSummary?: boolean,
+ *   allowCloseOwnResult?: boolean,
  *   showGlobalConfirm?: (opts: {
  *     title: string,
  *     message?: string,
@@ -436,6 +438,7 @@ export default function PokerTournamentSwapsSection({
   sendingDrafts = false,
   maxSwapGivePct = 100,
   showOwnershipSummary = false,
+  allowCloseOwnResult = false,
   showGlobalConfirm = null,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -446,6 +449,7 @@ export default function PokerTournamentSwapsSection({
   const [manualTheirPlace, setManualTheirPlace] = useState({})
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
+  const [localNotice, setLocalNotice] = useState('')
   const [defaultInfoOpen, setDefaultInfoOpen] = useState(false)
   const lastDraftCardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const prevDraftCountRef = useRef(draftSwaps.length)
@@ -619,8 +623,9 @@ export default function PokerTournamentSwapsSection({
     }
     setBusyId(swap.id)
     setLocalError('')
+    setLocalNotice('')
     try {
-      const { error } = await setSwapSideManualResult(
+      const { swap: savedSwap, error } = await setSwapSideManualResult(
         supabaseClient,
         swap.id,
         side,
@@ -629,9 +634,57 @@ export default function PokerTournamentSwapsSection({
         { finishPlace },
       )
       if (error) throw error
+      const selfReady =
+        role === 'creator'
+          ? Boolean(savedSwap?.creator_result_ready)
+          : Boolean(savedSwap?.counterparty_result_ready)
+      setLocalNotice(
+        selfReady
+          ? 'Their result was saved.'
+          : 'Their result was saved. Your side is still open for later flights.',
+      )
       onSavedSwapsMutated?.()
     } catch (e) {
       setLocalError(e?.message || 'Could not save manual result.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function onCloseOwnResult(swap) {
+    if (!supabaseClient) return
+    const role = swapViewerRole(swap, userId) || 'creator'
+    const ok =
+      typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: 'Close your swap result?',
+            message:
+              'This ends your side of this tournament swap. Any later flight will not count toward this swap.',
+            confirmLabel: 'Close my side',
+            cancelLabel: 'Keep open',
+          })
+        : window.confirm(
+            'Close your side of this tournament swap? Any later flight will not count toward this swap.',
+          )
+    if (!ok) return
+    setBusyId(swap.id)
+    setLocalError('')
+    setLocalNotice('')
+    try {
+      const { swap: closedSwap, error } = await closeSwapSideResult(
+        supabaseClient,
+        swap.id,
+        role,
+      )
+      if (error) throw error
+      setLocalNotice(
+        closedSwap?.status === 'settled'
+          ? 'Both results are in. The swap has been settled.'
+          : 'Your result is closed. The swap will settle when both sides are ready.',
+      )
+      onSavedSwapsMutated?.()
+    } catch (e) {
+      setLocalError(e?.message || 'Could not close your swap result.')
     } finally {
       setBusyId('')
     }
@@ -1113,12 +1166,35 @@ export default function PokerTournamentSwapsSection({
                   </div>
                 )
               })()}
+              {allowCloseOwnResult &&
+              swap.status === 'active' &&
+              (role === 'creator' ? cpReady && !creatorReady : creatorReady && !cpReady) ? (
+                <div
+                  data-poker-swap-close-own
+                  className="mt-2 rounded-2xl border border-amber-500/25 bg-amber-950/20 p-2.5"
+                >
+                  <p className="text-[11px] leading-snug text-amber-200/80">
+                    Their result is in. Your side is still open for another flight.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busyId === swap.id}
+                    onClick={() => void onCloseOwnResult(swap)}
+                    className="mt-2 w-full rounded-xl border border-amber-500/35 px-3 py-2 text-xs font-semibold text-amber-100 touch-manipulation active:bg-amber-950/50 disabled:opacity-50"
+                  >
+                    Close my side
+                  </button>
+                </div>
+              ) : null}
             </div>
           )
         })}
       </div>
 
       {localError ? <p className="mt-2 text-center text-sm text-rose-400">{localError}</p> : null}
+      {localNotice ? (
+        <p className="mt-2 text-center text-sm text-emerald-300">{localNotice}</p>
+      ) : null}
 
       <PlayLogPartnerPickerModal
         open={pickerOpen}

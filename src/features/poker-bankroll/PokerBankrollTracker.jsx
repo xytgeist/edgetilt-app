@@ -5770,6 +5770,7 @@ export default function PokerBankrollTracker({
               savedSwaps={editingSessionSwaps}
               profilesById={swapProfilesById}
               onSavedSwapsMutated={() => void loadData()}
+              allowCloseOwnResult={Boolean(editingId && !editingActiveSession)}
               showGlobalConfirm={showGlobalConfirm}
               onSendDraft={
                 editingId

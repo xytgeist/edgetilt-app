@@ -497,6 +497,41 @@ export async function setSwapSideManualResult(supabase, swapId, side, buyIn, pri
 }
 
 /**
+ * Close the viewer's stored result after a completed Day 1 session was
+ * intentionally left open for later flights, then try settlement.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} swapId
+ * @param {'creator' | 'counterparty'} side
+ */
+export async function closeSwapSideResult(supabase, swapId, side) {
+  const patch =
+    side === 'creator'
+      ? { creator_result_ready: true }
+      : { counterparty_result_ready: true }
+  const buyInColumn = side === 'creator' ? 'creator_buy_in' : 'counterparty_buy_in'
+  const prizeColumn = side === 'creator' ? 'creator_prize' : 'counterparty_prize'
+  const { error: updateError } = await supabase
+    .from('poker_tournament_swaps')
+    .update(patch)
+    .eq('id', swapId)
+    .not(buyInColumn, 'is', null)
+    .not(prizeColumn, 'is', null)
+  if (updateError) return { error: updateError }
+  const { data, error } = await supabase.rpc('poker_tournament_swap_try_settle', {
+    p_swap_id: swapId,
+  })
+  if (error) return { error }
+  const ready =
+    side === 'creator'
+      ? Boolean(data?.creator_result_ready)
+      : Boolean(data?.counterparty_result_ready)
+  if (!ready) {
+    return { error: new Error('Save your completed session result before closing this swap.') }
+  }
+  return { swap: data, error: null }
+}
+
+/**
  * Creator manually enters counterparty prize (guest never claimed / no app).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId

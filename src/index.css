@@ -7921,6 +7921,18 @@ html.light [data-poker-tournament-swaps] [data-poker-swap-info-btn] {
   background-color: transparent !important;
   color: #52525b !important;
 }
+html.light [data-poker-tournament-swaps] [data-poker-swap-close-own] {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-close-own] .text-amber-200\/80 {
+  color: #92400e !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-close-own] button {
+  background-color: #ffffff !important;
+  border-color: #f59e0b !important;
+  color: #78350f !important;
+}
 html.light [data-poker-swap-term-info-modal] {
   background-color: #ffffff !important;
   border-color: #d4d4d8 !important;

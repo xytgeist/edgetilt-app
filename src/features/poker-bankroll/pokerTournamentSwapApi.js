@@ -15,6 +15,7 @@ import {
 import { localYmd, pokerSessionTotalCost } from './pokerBankrollMath.js'
 import { parseSwapPct } from './pokerTournamentSwapMath.js'
 import { parseGuestNotifyContact } from '../../utils/guestNotifyContact.js'
+import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 
 export function isMissingTournamentSwapTableError(err) {
   const msg = String(err?.message || err?.details || '')
@@ -209,8 +210,7 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
   }
   let minCashThreshold = null
   if (draft.min_cash) {
-    const raw = String(draft.min_cash_threshold ?? '').replace(/[$,\s]/g, '')
-    const n = Number(raw)
+    const n = parseMoneyInputNumber(draft.min_cash_threshold)
     if (!Number.isFinite(n) || n <= 0) {
       return { error: 'Enter a minimum cash threshold greater than $0.' }
     }

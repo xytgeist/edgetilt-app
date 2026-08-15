@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Info } from 'lucide-react'
 import PlayLogPartnerPickerModal from '../play-logbook/PlayLogPartnerPickerModal.jsx'
 import { fmtPoker$ } from './pokerBankrollMath.js'
+import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import {
   guestNotifyContactFieldErrors,
   guestNotifyContactFieldsValid,
@@ -117,7 +118,7 @@ const SWAP_TERM_OPTIONS = [
     hint: 'Activates only if either player cashes for at least this amount.',
     hasAmountField: true,
     amountKey: 'min_cash_threshold',
-    amountPlaceholder: '50000',
+    amountPlaceholder: '50,000',
     description:
       'The swap only activates if Player A or Player B cashes for at least the threshold amount (recorded prize / cash-out). If neither player reaches that amount, the entire swap is void. Once activated, both players still swap their full prizes at the agreed percentages.',
     note: (
@@ -314,20 +315,28 @@ function SwapTermChecks({ value, onChange, compact = false }) {
                 {opt.hasAmountField && checked ? (
                   <label htmlFor={amountId} className="mt-1.5 block">
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                      Threshold ($)
+                      Threshold
                     </span>
-                    <input
-                      id={amountId}
-                      data-poker-swap-min-cash-input
-                      className={FIELD}
-                      inputMode="decimal"
-                      placeholder={opt.amountPlaceholder || '50000'}
-                      value={value?.[opt.amountKey] ?? ''}
-                      onChange={(e) => onChange({ [opt.amountKey]: e.target.value })}
-                    />
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">
+                        $
+                      </span>
+                      <input
+                        id={amountId}
+                        data-poker-swap-min-cash-input
+                        className={`${FIELD} pl-7`}
+                        inputMode="decimal"
+                        placeholder={opt.amountPlaceholder || '50,000'}
+                        value={formatMoneyInputValue(value?.[opt.amountKey] ?? '')}
+                        onChange={(e) =>
+                          onChange({
+                            [opt.amountKey]: formatMoneyInputValue(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
                     {(() => {
-                      const raw = String(value?.[opt.amountKey] ?? '').replace(/[$,\s]/g, '')
-                      const n = Number(raw)
+                      const n = parseMoneyInputNumber(value?.[opt.amountKey])
                       if (Number.isFinite(n) && n > 0) return null
                       return (
                         <span className="mt-1 block text-[11px] leading-snug text-rose-400">
@@ -908,8 +917,7 @@ export default function PokerTournamentSwapsSection({
           const minCashOk =
             !draft.min_cash ||
             (() => {
-              const raw = String(draft.min_cash_threshold ?? '').replace(/[$,\s]/g, '')
-              const n = Number(raw)
+              const n = parseMoneyInputNumber(draft.min_cash_threshold)
               return Number.isFinite(n) && n > 0
             })()
           const canSend =

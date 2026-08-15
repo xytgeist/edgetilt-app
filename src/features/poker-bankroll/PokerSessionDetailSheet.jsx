@@ -685,10 +685,12 @@ export default function PokerSessionDetailSheet({
                       )
                     })}
                   </ul>
-                  <p className="mt-2 text-[11px] leading-snug text-zinc-500">
-                    Swaps are peer deals separate from stake backing; cash settles to your personal
-                    bankroll when you mark them paid, not on stake settle with backers.
-                  </p>
+                  {deal ? (
+                    <p className="mt-2 text-[11px] leading-snug text-zinc-500">
+                      Swaps are peer deals separate from stake backing; cash settles to your personal
+                      bankroll when you mark them paid, not on stake settle with backers.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 

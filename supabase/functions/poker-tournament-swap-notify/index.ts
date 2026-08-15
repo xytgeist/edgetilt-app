@@ -252,14 +252,19 @@ function formatResultDetail(swap: SwapRow, actorRole: 'creator' | 'counterparty'
 async function createGuestClaimUrl(
   admin: ReturnType<typeof createBillingAdmin>,
   swapId: string,
+  guestEmail?: string | null,
 ): Promise<string> {
   const raw = randomToken()
   const tokenHash = await sha256Hex(raw)
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  const email = String(guestEmail || '')
+    .trim()
+    .toLowerCase()
   const { error: tokErr } = await admin.from('poker_tournament_swap_claim_tokens').insert({
     swap_id: swapId,
     token_hash: tokenHash,
     expires_at: expiresAt,
+    guest_email: email && isValidEmail(email) ? email : null,
   })
   if (tokErr) throw new Error(tokErr.message)
   return `${resolvePublicAppOrigin()}/poker-swap-claim?token=${raw}`
@@ -356,10 +361,10 @@ Deno.serve(async (req) => {
             return jsonResponse({ ok: true, kind, channels, notified: false })
           }
 
-          const claimUrl = await createGuestClaimUrl(admin, swapId)
+          const claimUrl = await createGuestClaimUrl(admin, swapId, email)
           const cta = swap.counterparty_result_ready
             ? 'View swap details'
-            : 'Enter your cash result'
+            : 'Review tournament swap'
           const text = `${subject}. ${cta}: ${claimUrl}`
           const appUrl = resolvePublicAppOrigin()
           const bodyHtml = [
@@ -456,7 +461,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ ok: true, kind, channels, notified: false })
       }
 
-      const claimUrl = await createGuestClaimUrl(admin, swapId)
+      const claimUrl = await createGuestClaimUrl(admin, swapId, email)
       const offerEmail = formatGuestOfferEmail({
         actorName: guestActorName,
         guestName: String(swap.counterparty_guest_label || ''),

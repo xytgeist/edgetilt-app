@@ -4,6 +4,11 @@ import {
   stableClaimSignupEmailRedirectUrl,
   stashPokerStableClaimToken,
 } from '../poker-stable/pokerStableBackerClaimNav.js'
+import {
+  parsePokerSwapClaimFromLocation,
+  stashPokerSwapClaimToken,
+  swapClaimSignupEmailRedirectUrl,
+} from './pokerTournamentSwapNav.js'
 
 export const POKER_STAKE_CLAIM_RETURN_PATH = '/poker-stake-claim'
 const STAKE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stake_claim_return_token'
@@ -119,6 +124,14 @@ export function authRedirectBaseForCurrentLocation() {
   if (stableClaim?.token) {
     stashPokerStableClaimToken(stableClaim.token)
     return stableClaimSignupEmailRedirectUrl()
+  }
+  const swapClaim = parsePokerSwapClaimFromLocation(
+    window.location.pathname || '/',
+    window.location.search || '',
+  )
+  if (swapClaim?.token) {
+    stashPokerSwapClaimToken(swapClaim.token)
+    return swapClaimSignupEmailRedirectUrl()
   }
   return `${origin}/`
 }

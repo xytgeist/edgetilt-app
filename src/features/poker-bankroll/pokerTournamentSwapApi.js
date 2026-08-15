@@ -884,6 +884,34 @@ export async function markSwapPaid(supabase, swapId, _role, paid) {
 }
 
 /**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} token
+ */
+export async function guestSwapClaimPreview(supabase, token) {
+  const { data, error } = await supabase.rpc('poker_tournament_swap_claim_preview', {
+    p_token: token,
+  })
+  return { preview: data, error }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} token
+ */
+export async function guestSwapClaimLink(supabase, token) {
+  const { data, error } = await supabase.rpc('poker_tournament_swap_claim_link', {
+    p_token: token,
+  })
+  return { result: data, error }
+}
+
+/** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
+export async function guestSwapClaimByEmail(supabase) {
+  const { data, error } = await supabase.rpc('poker_tournament_swap_claim_by_email')
+  return { result: data, error }
+}
+
+/**
  * Notify guest (Twilio SMS + email) or Edge user (in-app + push) via Edge Function.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId

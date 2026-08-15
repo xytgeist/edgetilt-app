@@ -411,6 +411,9 @@ export default function PokerBankrollTracker({
   /** Deep link: switch to On Stake for this deal (Stable → Bankroll). */
   openStableDealId = null,
   onOpenStableDealConsumed = null,
+  /** Deep link: focus Incoming tournament swap after guest claim link. */
+  openTournamentSwapId = null,
+  onOpenTournamentSwapConsumed = null,
   /** Guest stakee first-run onboarding from claim / email confirm. */
   stakeOnboardingDealId = null,
   onStakeOnboardingConsumed = null,
@@ -1027,6 +1030,33 @@ export default function PokerBankrollTracker({
     setBankrollScope(openStableDealId)
     onOpenStableDealConsumed?.()
   }, [openStableDealId, stakeeDeals, onOpenStableDealConsumed])
+
+  useEffect(() => {
+    if (!openTournamentSwapId || loading || !userId) return
+    const match = pendingCounterpartySwaps.find((s) => s.id === openTournamentSwapId)
+    if (!match && tournamentSwaps.some((s) => s.id === openTournamentSwapId)) {
+      // Linked but already accepted / not pending … still clear the deep link.
+      onOpenTournamentSwapConsumed?.()
+      return
+    }
+    if (!match) return
+    pendingRestoreScopeRef.current = 'personal'
+    setBankrollScope('personal')
+    setScopeHydrated(true)
+    const t = window.setTimeout(() => {
+      const el = document.querySelector('[data-poker-incoming-swaps]')
+      el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+      onOpenTournamentSwapConsumed?.()
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [
+    openTournamentSwapId,
+    loading,
+    userId,
+    pendingCounterpartySwaps,
+    tournamentSwaps,
+    onOpenTournamentSwapConsumed,
+  ])
 
   const activeStakeOnboardingDealId = stakeOnboardingDealId || readPokerStakeOnboardingDeal()
   const onboardingDeal = useMemo(() => {
@@ -4512,7 +4542,12 @@ export default function PokerBankrollTracker({
                     return (
                       <li
                         key={swap.id}
-                        className="flex items-center justify-between gap-2 rounded-2xl bg-zinc-900/60 px-3 py-2"
+                        data-poker-incoming-swap-id={swap.id}
+                        className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2 ${
+                          openTournamentSwapId === swap.id
+                            ? 'bg-cyan-900/50 ring-2 ring-cyan-400/50'
+                            : 'bg-zinc-900/60'
+                        }`}
                       >
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-white">{other}</div>

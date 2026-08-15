@@ -348,6 +348,7 @@ export default function AppShell({
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
+  const [pendingTournamentSwapId, setPendingTournamentSwapId] = useState(null)
   /** Alert tap for rewritten withdrawn invite (deal row already gone). */
   const [pendingStableOfferWithdrawn, setPendingStableOfferWithdrawn] = useState(false)
   const clearPendingPokerStableDealId = useCallback(() => setPendingPokerStableDealId(null), [])
@@ -1256,6 +1257,8 @@ export default function AppShell({
           if (pokerSession) setPendingPokerSessionId(pokerSession)
           const stableDeal = (params.get('stableDeal') || '').trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const tournamentSwap = (params.get('tournamentSwap') || '').trim()
+          if (tournamentSwap) setPendingTournamentSwapId(tournamentSwap)
           const onboardingDealId = consumeStakeOnboardingFromSearch(window.location.search || '')
           if (onboardingDealId) setStakeOnboardingDealId(onboardingDealId)
           const stableCommit = (params.get('stableCommit') || params.get('stableSettlement') || '').trim()
@@ -1400,6 +1403,10 @@ export default function AppShell({
             data.stableDealId || msgUrl.searchParams.get('stableDeal') || '',
           ).trim()
           if (stableDeal) setPendingPokerStableDealId(stableDeal)
+          const tournamentSwap = String(
+            data.tournamentSwapId || msgUrl.searchParams.get('tournamentSwap') || '',
+          ).trim()
+          if (tournamentSwap) setPendingTournamentSwapId(tournamentSwap)
           const onboardingDealId = consumeStakeOnboardingFromSearch(msgUrl.search || '')
           if (onboardingDealId) setStakeOnboardingDealId(onboardingDealId)
           const stableCommit = String(
@@ -2640,6 +2647,8 @@ export default function AppShell({
           onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
           openStableDealId={pendingPokerStableDealId}
           onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
+          openTournamentSwapId={pendingTournamentSwapId}
+          onOpenTournamentSwapConsumed={() => setPendingTournamentSwapId(null)}
           stakeOnboardingDealId={stakeOnboardingDealId}
           onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
           highlightPendingOffer={pulseBankrollOffer}

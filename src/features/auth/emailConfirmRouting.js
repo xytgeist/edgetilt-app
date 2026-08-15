@@ -24,12 +24,15 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
   search,
   parsePokerStakeClaimFromLocation,
   parsePokerStableClaimFromLocation,
+  parsePokerSwapClaimFromLocation,
   readStashedPokerStakeClaimToken,
   readStashedPokerStableClaimToken,
+  readStashedPokerSwapClaimToken,
   navigateToStakeClaimPage,
-  navigateToStableClaimPage,
+  navigateToSwapClaimPage,
   tryAutoLinkGuestStakeeOffers,
   tryAutoLinkGuestBackerOffers,
+  tryAutoLinkGuestSwapOffers,
   tryOpenPendingBackerSliceOnboarding,
   resumeStableBackerClaimAfterConfirm,
   recoverStaleStableBackerClaim,
@@ -37,8 +40,10 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
 }) {
   const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
   const stableClaimReturn = parsePokerStableClaimFromLocation(pathname, search)
+  const swapClaimReturn = parsePokerSwapClaimFromLocation?.(pathname, search) || null
   const stashedClaimToken = readStashedPokerStakeClaimToken()
   const stashedStableClaimToken = readStashedPokerStableClaimToken()
+  const stashedSwapClaimToken = readStashedPokerSwapClaimToken?.() || null
   const stableClaimFlowPending = isPokerStableClaimFlowPending()
 
   if (stakeClaimReturn) {
@@ -49,10 +54,16 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
     replaceUrlPreservingQuery(`${pathname}${search}`)
     return true
   }
+  if (swapClaimReturn) {
+    replaceUrlPreservingQuery(`${pathname}${search}`)
+    return true
+  }
 
   const onHomeAfterConfirm = pathname === '/' || pathname === ''
   if (onHomeAfterConfirm) {
     await waitForSupabaseSession(supabase)
+    const linkedSwap = await tryAutoLinkGuestSwapOffers?.(supabase)
+    if (linkedSwap) return true
     const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
     if (linkedStakee) return true
     const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
@@ -69,6 +80,11 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
     const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stashedStableClaimToken)
     if (resumed) return true
   }
+  if (stashedSwapClaimToken) {
+    replaceUrlPreservingQuery(pathname || '/')
+    navigateToSwapClaimPage?.(stashedSwapClaimToken)
+    return true
+  }
 
   if (onHomeAfterConfirm) {
     const opened = await tryOpenPendingBackerSliceOnboarding(supabase, { force: true })
@@ -81,6 +97,8 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
 
   if (!onHomeAfterConfirm) {
     await waitForSupabaseSession(supabase)
+    const linkedSwap = await tryAutoLinkGuestSwapOffers?.(supabase)
+    if (linkedSwap) return true
     const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
     if (linkedStakee) return true
     const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)

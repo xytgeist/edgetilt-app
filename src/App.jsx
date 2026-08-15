@@ -50,7 +50,14 @@ import {
   restoreSupabaseSession,
 } from './utils/supabaseSessionRestore.js'
 import { parseMonitorPathname } from './features/ops/opsMonitorNavigation.js'
-import { parsePokerSwapClaimFromLocation } from './features/poker-bankroll/pokerTournamentSwapNav.js'
+import {
+  navigateAfterSwapClaim,
+  navigateToSwapClaimPage,
+  parsePokerSwapClaimFromLocation,
+  readStashedPokerSwapClaimToken,
+  stashPokerSwapClaimToken,
+  swapClaimSignupEmailRedirectUrl,
+} from './features/poker-bankroll/pokerTournamentSwapNav.js'
 import {
   authRedirectBaseForCurrentLocation,
   navigateAfterStakeClaim,
@@ -61,6 +68,7 @@ import {
   stashPokerStakeClaimToken,
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { tryAutoLinkGuestStakeeOffers } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
+import { tryAutoLinkGuestSwapOffers } from './features/poker-bankroll/pokerGuestSwapAutoLink.js'
 import {
   markPokerStableClaimFlowPending,
   navigateAfterStableClaim,
@@ -289,12 +297,16 @@ function App() {
             search,
             parsePokerStakeClaimFromLocation,
             parsePokerStableClaimFromLocation,
+            parsePokerSwapClaimFromLocation,
             readStashedPokerStakeClaimToken,
             readStashedPokerStableClaimToken,
+            readStashedPokerSwapClaimToken,
             navigateToStakeClaimPage,
             navigateToStableClaimPage,
+            navigateToSwapClaimPage,
             tryAutoLinkGuestStakeeOffers,
             tryAutoLinkGuestBackerOffers,
+            tryAutoLinkGuestSwapOffers,
             tryOpenPendingBackerSliceOnboarding,
             resumeStableBackerClaimAfterConfirm,
             recoverStaleStableBackerClaim,
@@ -334,12 +346,16 @@ function App() {
                 search,
                 parsePokerStakeClaimFromLocation,
                 parsePokerStableClaimFromLocation,
+                parsePokerSwapClaimFromLocation,
                 readStashedPokerStakeClaimToken,
                 readStashedPokerStableClaimToken,
+                readStashedPokerSwapClaimToken,
                 navigateToStakeClaimPage,
                 navigateToStableClaimPage,
+                navigateToSwapClaimPage,
                 tryAutoLinkGuestStakeeOffers,
                 tryAutoLinkGuestBackerOffers,
+                tryAutoLinkGuestSwapOffers,
                 tryOpenPendingBackerSliceOnboarding,
                 resumeStableBackerClaimAfterConfirm,
                 recoverStaleStableBackerClaim,
@@ -361,6 +377,8 @@ function App() {
   useEffect(() => {
     if (!user?.id || isChecking || currentView !== 'app') return
     void (async () => {
+      const linkedSwap = await tryAutoLinkGuestSwapOffers(supabase)
+      if (linkedSwap) return
       const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
       if (linkedBacker) return
       const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
@@ -379,7 +397,12 @@ function App() {
         const stakeToken = readStashedPokerStakeClaimToken()
         if (stakeToken) {
           navigateToStakeClaimPage(stakeToken)
+          return
         }
+      }
+      const swapToken = readStashedPokerSwapClaimToken()
+      if (swapToken) {
+        navigateToSwapClaimPage(swapToken)
       }
     })()
   }, [user?.id, isChecking, currentView])
@@ -831,24 +854,32 @@ function App() {
       window.location.pathname || '/',
       window.location.search || '',
     )
+    const swapClaimCtx = parsePokerSwapClaimFromLocation(
+      window.location.pathname || '/',
+      window.location.search || '',
+    )
     const signupFromStakeClaim = Boolean(claimCtx)
     const signupFromStableClaim = Boolean(stableClaimCtx)
+    const signupFromSwapClaim = Boolean(swapClaimCtx)
     if (claimCtx?.token) stashPokerStakeClaimToken(claimCtx.token)
     if (stableClaimCtx?.token) {
       stashPokerStableClaimToken(stableClaimCtx.token)
       markPokerStableClaimFlowPending()
     }
+    if (swapClaimCtx?.token) stashPokerSwapClaimToken(swapClaimCtx.token)
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: {
-        // Stake claim: confirm via Site URL (always allow-listed); token in sessionStorage.
+        // Stake/stable/swap claim: confirm via Site URL (always allow-listed); token in sessionStorage.
         // Other signups: carry ?ref= on redirect when stamped.
         emailRedirectTo: signupFromStakeClaim
           ? stakeClaimSignupEmailRedirectUrl()
           : signupFromStableClaim
             ? stableClaimSignupEmailRedirectUrl()
-            : authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
+            : signupFromSwapClaim
+              ? swapClaimSignupEmailRedirectUrl()
+              : authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
         data: affiliateCode ? { affiliate_code: affiliateCode } : undefined,
       },
     })
@@ -1263,6 +1294,9 @@ function App() {
             token={claim?.token || ''}
             userId={user?.id ?? null}
             onOpenAuth={() => openAuthPanel('create')}
+            onDone={(redirect) => {
+              navigateAfterSwapClaim(redirect)
+            }}
           />
         </Suspense>
         {renderAuthModal('← Cancel')}

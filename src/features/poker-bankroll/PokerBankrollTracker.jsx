@@ -870,7 +870,11 @@ export default function PokerBankrollTracker({
       ),
       currency: form.currency,
       tournament_name: form.tournament_name,
-      start_at: new Date().toISOString(),
+      tournament_event_id: isSoftTournamentEventPick(form.tournament_event_pick)
+        ? form.tournament_event_pick
+        : null,
+      // Prefer the form date so Day 1C / past-log series windows match prior flights.
+      start_at: localDateTimeToIso(form.date, form.start_time || '12:00'),
       reentries: form.reentries !== '' ? parseInt(form.reentries, 10) || 0 : 0,
       status: 'active',
     }
@@ -882,22 +886,27 @@ export default function PokerBankrollTracker({
         : 0,
     [seriesAnchorSession, sessions, swapEventsById],
   )
-  const startSessionCarriedSwaps = useMemo(() => {
-    if (sheet !== 'start' || !seriesAnchorSession) return []
-    return tournamentSwaps.filter(
-      (swap) =>
-        swap.status === 'active' &&
-        swap.id !== incomingAcceptSwap?.id &&
-        swapBelongsOnSession(
-          swap,
-          seriesAnchorSession,
-          sessions,
-          swapEventsById,
-          userId,
-        ),
-    )
+  /** Unsaved Start / new Log Past … series-matched swaps from earlier flights. */
+  const formSeriesCarriedSwaps = useMemo(() => {
+    if (!seriesAnchorSession) return []
+    const onStart = sheet === 'start'
+    const onNewLogPast = sheet === 'session' && !editingId
+    if (!onStart && !onNewLogPast) return []
+    return tournamentSwaps.filter((swap) => {
+      if (swap.id === incomingAcceptSwap?.id) return false
+      // Start Session only needs still-open carried deals; Log Past can show settled too.
+      if (onStart && swap.status !== 'active') return false
+      return swapBelongsOnSession(
+        swap,
+        seriesAnchorSession,
+        sessions,
+        swapEventsById,
+        userId,
+      )
+    })
   }, [
     sheet,
+    editingId,
     seriesAnchorSession,
     tournamentSwaps,
     incomingAcceptSwap?.id,
@@ -5790,7 +5799,7 @@ export default function PokerBankrollTracker({
               showOwnershipSummary={false}
               draftSwaps={draftSwaps}
               onDraftSwapsChange={setDraftSwaps}
-              savedSwaps={editingSessionSwaps}
+              savedSwaps={editingId ? editingSessionSwaps : formSeriesCarriedSwaps}
               profilesById={swapProfilesById}
               onSavedSwapsMutated={() => void loadData()}
               allowCloseOwnResult={Boolean(editingId && !editingActiveSession)}
@@ -6051,8 +6060,9 @@ export default function PokerBankrollTracker({
                 maxSwapGivePct={swapSelfOwnedPct}
                 draftSwaps={draftSwaps}
                 onDraftSwapsChange={setDraftSwaps}
-                savedSwaps={startSessionCarriedSwaps}
+                savedSwaps={formSeriesCarriedSwaps}
                 profilesById={swapProfilesById}
+                onSavedSwapsMutated={() => void loadData()}
                 showGlobalConfirm={showGlobalConfirm}
                 incomingAcceptSwap={incomingAcceptSwap}
                 onDeclineIncomingAccept={

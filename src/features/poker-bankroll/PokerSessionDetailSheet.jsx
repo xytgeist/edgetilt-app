@@ -12,6 +12,7 @@ import {
   pokerSessionBbPerHour,
   pokerSessionDurationHours,
   pokerSessionTotalCost,
+  pokerSessionWinLoss,
 } from './pokerBankrollMath.js'
 import {
   pokerSessionMetaLine,
@@ -23,6 +24,12 @@ import {
   swapOtherPartyLabel,
   swapViewerRole,
 } from './pokerTournamentSwapApi.js'
+import {
+  aggregateSeriesHistoryDetail,
+  dedupeSwapsById,
+  seriesHistoryContextLine,
+  sortHistorySessionsNewestFirst,
+} from './pokerTournamentHistoryGroups.js'
 import {
   computeTournamentSwapSettlement,
   formatSwapIouLine,
@@ -179,8 +186,13 @@ function SwapSettlementBreakdown({ swap, role, other, statusLine }) {
 /**
  * Read-only session detail sheet. Edit opens separately from the parent.
  */
+/**
+ * Read-only session detail sheet. Edit opens separately from the parent.
+ * Multi-flight series groups show aggregate totals + per-flight Edit rows.
+ */
 export default function PokerSessionDetailSheet({
   session,
+  seriesSessions = null,
   isActive = false,
   elapsedSeconds = 0,
   stakeLabel = '',
@@ -195,6 +207,7 @@ export default function PokerSessionDetailSheet({
   sessionCardSwapBusyId = null,
   recapMode = false,
   stakeSessions = [],
+  eventsById = {},
   onClose,
   onEdit,
   onSavedSwapsMutated,
@@ -205,39 +218,158 @@ export default function PokerSessionDetailSheet({
 }) {
   if (!session) return null
 
-  const isTourney = session.session_type === 'tournament'
-  const swapDelta = sessionSwapSettlementDelta(sessionSwaps, session.id, userId)
-  const attribution = computeSessionAttribution(
-    session,
-    deal,
-    slices,
-    stableProfilesById,
-    swapDelta,
-    stakeSessions,
+  const flightSessions = sortHistorySessionsNewestFirst(
+    Array.isArray(seriesSessions) && seriesSessions.length > 0 ? seriesSessions : [session],
   )
-  const grossWl = attribution.gross
-  const playerNet = attribution.playerNetValue
-  const hrs = isActive ? elapsedSeconds / 3600 : pokerSessionDurationHours(session)
+  const isSeriesGroup = !isActive && flightSessions.length > 1
+  const uniqueSwaps = dedupeSwapsById(sessionSwaps)
+  const seriesAgg = isSeriesGroup
+    ? aggregateSeriesHistoryDetail(flightSessions, eventsById)
+    : null
+  const seriesContext = isSeriesGroup
+    ? seriesHistoryContextLine(flightSessions, eventsById)
+    : ''
+
+  const isTourney = session.session_type === 'tournament'
+
+  const flightAttributions = flightSessions.map((flight) => {
+    const flightSwapDelta = sessionSwapSettlementDelta(uniqueSwaps, flight.id, userId)
+    return computeSessionAttribution(
+      flight,
+      deal,
+      slices,
+      stableProfilesById,
+      flightSwapDelta,
+      stakeSessions,
+    )
+  })
+
+  const singleAttribution =
+    flightAttributions[0] ||
+    computeSessionAttribution(
+      session,
+      deal,
+      slices,
+      stableProfilesById,
+      sessionSwapSettlementDelta(uniqueSwaps, session.id, userId),
+      stakeSessions,
+    )
+
+  let grossWl = singleAttribution.gross
+  let playerNet = singleAttribution.playerNetValue
+  let swapDelta = sessionSwapSettlementDelta(uniqueSwaps, session.id, userId)
+  /** @type {Map<string, object>} */
+  const partyMap = new Map()
+
+  if (isSeriesGroup) {
+    let grossTotal = 0
+    let grossCounted = 0
+    let netTotal = 0
+    let netCounted = 0
+    let swapTotal = 0
+    for (let i = 0; i < flightSessions.length; i += 1) {
+      const attr = flightAttributions[i]
+      if (attr.gross != null) {
+        grossTotal += attr.gross
+        grossCounted += 1
+      }
+      if (attr.playerNetValue != null) {
+        netTotal += attr.playerNetValue
+        netCounted += 1
+      }
+      swapTotal += sessionSwapSettlementDelta(uniqueSwaps, flightSessions[i].id, userId)
+      for (const party of attr.parties || []) {
+        if (party.role === 'stake_roll') continue
+        const key = party.sliceId || `${party.role}:${party.label}`
+        const prev = partyMap.get(key)
+        if (!prev) partyMap.set(key, { ...party })
+        else {
+          partyMap.set(key, {
+            ...prev,
+            amount: Math.round((prev.amount + party.amount) * 100) / 100,
+          })
+        }
+      }
+    }
+    grossWl = grossCounted > 0 ? Math.round(grossTotal * 100) / 100 : null
+    playerNet = netCounted > 0 ? Math.round(netTotal * 100) / 100 : null
+    swapDelta = Math.round(swapTotal * 100) / 100
+  }
+
+  const hrs = isActive
+    ? elapsedSeconds / 3600
+    : isSeriesGroup
+      ? seriesAgg?.hours || 0
+      : pokerSessionDurationHours(session)
   const hourly = playerNet != null && hrs >= 0.02 ? playerNet / hrs : null
-  const bbh = pokerSessionTotalCost(session) ? pokerSessionBbPerHour(session) : null
+  const bbh =
+    !isSeriesGroup && pokerSessionTotalCost(session) ? pokerSessionBbPerHour(session) : null
   const isPieceSession = isPieceDealType(deal?.deal_type)
-  const partyLines = isPieceSession
-    ? attribution.parties.filter((p) => p.role !== 'stake_roll')
-    : attribution.parties
+  const partyLines = isSeriesGroup
+    ? [...partyMap.values()]
+    : isPieceSession
+      ? singleAttribution.parties.filter((p) => p.role !== 'stake_roll')
+      : singleAttribution.parties
   const showPartyBreakdown =
-    !isActive && attribution.onStake && partyLines.length > 0
+    !isActive &&
+    (isSeriesGroup
+      ? partyLines.length > 0 && Boolean(deal)
+      : singleAttribution.onStake && partyLines.length > 0)
   const showYourNet =
     !isActive &&
     playerNet != null &&
-    (attribution.onStake || sessionSwaps.length > 0 || Math.abs(playerNet - grossWl) >= 0.005)
+    (Boolean(deal) || uniqueSwaps.length > 0 || Math.abs(playerNet - (grossWl || 0)) >= 0.005)
   const start = new Date(session.start_at)
-  const startDate = start.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
-  const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const oldest = flightSessions[flightSessions.length - 1]
+  const startDate = isSeriesGroup
+    ? (() => {
+        const newestLabel = start.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+        if (!oldest?.start_at) return newestLabel
+        const oldestLabel = new Date(oldest.start_at).toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })
+        return oldestLabel === newestLabel ? newestLabel : `${oldestLabel} → ${newestLabel}`
+      })()
+    : start.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+  const startTime = isSeriesGroup
+    ? seriesContext || `${flightSessions.length} sessions`
+    : start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const investedLine = isSeriesGroup
+    ? `In for ${fmtPoker$(seriesAgg?.invested || 0)}${
+        seriesAgg?.reentries
+          ? ` · ${seriesAgg.reentries} re-buy${seriesAgg.reentries === 1 ? '' : 's'}`
+          : ''
+      }`
+    : pokerSessionInForLine(session)
+  const cashOutValue = isSeriesGroup
+    ? seriesAgg?.cashOut != null
+      ? fmtPoker$(seriesAgg.cashOut)
+      : null
+    : session.cash_out != null
+      ? fmtPoker$(session.cash_out)
+      : null
+  const finishValue = isSeriesGroup
+    ? seriesAgg?.finishPlace != null
+      ? `#${seriesAgg.finishPlace}${
+          seriesAgg.fieldSize ? ` of ${seriesAgg.fieldSize}` : ''
+        }`
+      : null
+    : session.finish_place != null
+      ? `#${session.finish_place}${session.field_size ? ` of ${session.field_size}` : ''}`
+      : null
 
   return (
     <div
@@ -247,6 +379,7 @@ export default function PokerSessionDetailSheet({
       <div
         data-poker-bankroll-sheet
         data-poker-session-detail
+        data-poker-session-detail-series={isSeriesGroup ? 'true' : undefined}
         className={POKER_SHEET_PANEL_CLASS}
         onClick={(e) => e.stopPropagation()}
       >
@@ -276,7 +409,7 @@ export default function PokerSessionDetailSheet({
                 )
               ) : (
                 <span className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400">
-                  Completed
+                  {isSeriesGroup ? 'Completed series' : 'Completed'}
                 </span>
               )}
               {stakeLabel ? (
@@ -320,7 +453,11 @@ export default function PokerSessionDetailSheet({
 
         <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-1">
           <DetailRow label="Date" value={startDate} valueClassName="text-zinc-300" />
-          <DetailRow label="Start" value={startTime} valueClassName="text-zinc-300" />
+          <DetailRow
+            label={isSeriesGroup ? 'Flights' : 'Start'}
+            value={startTime}
+            valueClassName="text-zinc-300"
+          />
           <DetailRow
             label="Duration"
             value={
@@ -332,17 +469,9 @@ export default function PokerSessionDetailSheet({
             }
             valueClassName="text-zinc-300"
           />
-          <DetailRow
-            label="Invested"
-            value={pokerSessionInForLine(session)}
-            valueClassName="text-zinc-300"
-          />
-          {!isActive && session.cash_out != null ? (
-            <DetailRow
-              label="Cash out"
-              value={fmtPoker$(session.cash_out)}
-              valueClassName="text-zinc-300"
-            />
+          <DetailRow label="Invested" value={investedLine} valueClassName="text-zinc-300" />
+          {!isActive && cashOutValue != null ? (
+            <DetailRow label="Cash out" value={cashOutValue} valueClassName="text-zinc-300" />
           ) : null}
           {hourly != null ? (
             <DetailRow label="Hourly" value={`${fmtPoker$(hourly)}/h`} valueClassName="text-zinc-300" />
@@ -350,16 +479,71 @@ export default function PokerSessionDetailSheet({
           {bbh != null ? (
             <DetailRow label="BB / hour" value={`${bbh.toFixed(1)} BB/h`} valueClassName="text-zinc-300" />
           ) : null}
-          {isTourney && session.finish_place != null ? (
-            <DetailRow
-              label="Finish"
-              value={`#${session.finish_place}${
-                session.field_size ? ` of ${session.field_size}` : ''
-              }`}
-              valueClassName="text-zinc-300"
-            />
+          {isTourney && finishValue ? (
+            <DetailRow label="Finish" value={finishValue} valueClassName="text-zinc-300" />
           ) : null}
         </div>
+
+        {isSeriesGroup ? (
+          <div
+            data-poker-session-flights
+            className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4"
+          >
+            <div
+              data-poker-session-section-heading
+              className="mb-2 text-xs font-semibold uppercase tracking-wide text-cyan-400/90"
+            >
+              Flights / bullets
+            </div>
+            <ul className="space-y-2">
+              {flightSessions.map((flight) => {
+                const flightWl = pokerSessionWinLoss(flight)
+                const flightDate = new Date(flight.start_at).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })
+                return (
+                  <li
+                    key={flight.id}
+                    data-poker-session-flight-row
+                    className="rounded-xl border border-zinc-800/80 bg-black/15 p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-zinc-200">
+                          {pokerSessionStakesLabel(flight)}
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-zinc-500">
+                          {flightDate}
+                          {' · '}
+                          {pokerSessionInForLine(flight)}
+                          {flight.cash_out != null ? ` · out ${fmtPoker$(flight.cash_out)}` : ''}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <ResultMoney
+                          amount={flightWl}
+                          className="text-sm font-bold tabular-nums"
+                        />
+                        {!recapMode ? (
+                          <button
+                            type="button"
+                            onClick={() => onEdit?.(flight)}
+                            data-poker-session-flight-edit-btn
+                            className="rounded-lg bg-zinc-700 px-2.5 py-1 text-[10px] font-bold text-white touch-manipulation active:bg-zinc-600"
+                          >
+                            Edit
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -400,13 +584,13 @@ export default function PokerSessionDetailSheet({
                   </div>
                   <p className="mt-2 text-[11px] leading-snug text-zinc-500">
                     {isPieceSession
-                      ? 'Your share after this session\'s backer splits. Swaps (if any) settle separately.'
+                      ? "Your share after this session's backer splits. Swaps (if any) settle separately."
                       : 'Includes your share of on-stake sessions; personal bankroll updates when you settle with backers.'}
                   </p>
                 </div>
               ) : null}
 
-              {sessionSwaps.length > 0 ? (
+              {uniqueSwaps.length > 0 ? (
                 <div className="mt-3 border-t border-zinc-800/80 pt-3">
                   <div
                     data-poker-session-section-heading
@@ -415,7 +599,7 @@ export default function PokerSessionDetailSheet({
                     Swaps
                   </div>
                   <ul className="space-y-2">
-                    {sessionSwaps.map((swap) => {
+                    {uniqueSwaps.map((swap) => {
                       const role = swapViewerRole(swap, userId) || 'creator'
                       const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
                       const paid = swapIsMarkedPaid(swap)
@@ -514,7 +698,7 @@ export default function PokerSessionDetailSheet({
                     <span className="text-sm font-semibold text-zinc-300">Your net</span>
                     <ResultMoney amount={playerNet} />
                   </div>
-                  {!attribution.onStake && sessionSwaps.length > 0 ? (
+                  {!deal && uniqueSwaps.length > 0 ? (
                     <div className="mt-1 text-right text-[11px] tabular-nums text-zinc-500">
                       {fmtPoker$(grossWl)} table {swapDelta >= 0 ? '+' : '−'}{' '}
                       {fmtPoker$(Math.abs(swapDelta))} swaps = {fmtPoker$(playerNet)}
@@ -536,7 +720,7 @@ export default function PokerSessionDetailSheet({
               showOwnershipSummary
               draftSwaps={[]}
               onDraftSwapsChange={() => {}}
-              savedSwaps={sessionSwaps}
+              savedSwaps={uniqueSwaps}
               profilesById={swapProfilesById}
               onSavedSwapsMutated={onSavedSwapsMutated}
               compact
@@ -544,7 +728,7 @@ export default function PokerSessionDetailSheet({
           </div>
         ) : null}
 
-        {session.notes ? (
+        {session.notes && !isSeriesGroup ? (
           <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Notes
@@ -578,7 +762,7 @@ export default function PokerSessionDetailSheet({
             )}
             <button
               type="button"
-              onClick={() => onEdit?.()}
+              onClick={() => onEdit?.(session)}
               data-poker-session-edit-btn
               className="rounded-2xl bg-zinc-700 py-3 text-sm font-bold text-white touch-manipulation active:bg-zinc-600"
             >
@@ -605,10 +789,14 @@ export default function PokerSessionDetailSheet({
           >
             Continue
           </button>
+        ) : isSeriesGroup ? (
+          <p className="text-center text-[11px] leading-snug text-zinc-500">
+            Edit each flight above. Sessions stay separate for bankroll accounting.
+          </p>
         ) : (
           <button
             type="button"
-            onClick={() => onEdit?.()}
+            onClick={() => onEdit?.(session)}
             data-poker-session-edit-btn
             className="w-full rounded-2xl bg-zinc-700 py-3.5 text-base font-bold text-white touch-manipulation active:bg-zinc-600"
           >

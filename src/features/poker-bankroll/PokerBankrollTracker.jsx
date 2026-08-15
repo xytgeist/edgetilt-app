@@ -232,11 +232,17 @@ import {
   swapBelongsOnSession,
 } from './pokerTournamentSeries.js'
 import {
+  aggregateSeriesHistoryDetail,
+  groupCompletedSessionsForHistory,
+  seriesHistoryContextLine,
+  sumSeriesMetricWinLoss,
+  uniqueSwapsForSeriesSessions,
+} from './pokerTournamentHistoryGroups.js'
+import {
   formatSwapIouLine,
   formatSwapSettledParenAmount,
   formatSwapTermLine,
   formatSwapWaitingStatus,
-  sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
 
@@ -481,6 +487,10 @@ export default function PokerBankrollTracker({
   const [proposeAfterDecline, setProposeAfterDecline] = useState(null)
   /** Read-only session detail before edit. */
   const [detailSessionId, setDetailSessionId] = useState(null)
+  /** When opening a multi-flight history card, the grouped completed session ids. */
+  const [detailSeriesSessionIds, setDetailSeriesSessionIds] = useState(
+    /** @type {string[] | null} */ (null),
+  )
   /** End Session recap for a personal piece session (Continue only). */
   const [sessionRecapMode, setSessionRecapMode] = useState(false)
   const [stableSaving, setStableSaving] = useState(false)
@@ -766,9 +776,16 @@ export default function PokerBankrollTracker({
     () => (detailSessionId ? sessions.find((s) => s.id === detailSessionId) ?? null : null),
     [sessions, detailSessionId],
   )
+  const detailSeriesSessions = useMemo(() => {
+    if (!detailSeriesSessionIds?.length) {
+      return detailSession ? [detailSession] : []
+    }
+    const byId = new Map(sessions.map((s) => [s.id, s]))
+    return detailSeriesSessionIds.map((id) => byId.get(id)).filter(Boolean)
+  }, [detailSeriesSessionIds, sessions, detailSession])
   const detailSessionSwaps = useMemo(
-    () => (detailSession ? swapsBySessionId[detailSession.id] || [] : []),
-    [detailSession, swapsBySessionId],
+    () => uniqueSwapsForSeriesSessions(detailSeriesSessions, swapsBySessionId),
+    [detailSeriesSessions, swapsBySessionId],
   )
   const detailStakeLabel = useMemo(() => {
     if (!detailSession?.deal_id) return ''
@@ -1588,12 +1605,7 @@ export default function PokerBankrollTracker({
   }, [isOnStake, stakeeDealsById, dealSettlementsByDeal, slicesByDeal, completedSessions])
 
   const historyFeed = useMemo(() => {
-    const sessionItems = filtered.map((session) => ({
-      kind: 'session',
-      id: session.id,
-      at: session.end_at || session.start_at,
-      session,
-    }))
+    const sessionItems = groupCompletedSessionsForHistory(filtered, swapEventsById)
     const historyEvents = isOnStake ? stakeHistoryEvents : personalSettlementEvents
     if (!historyEvents.length) {
       return sessionItems.sort(
@@ -1609,7 +1621,7 @@ export default function PokerBankrollTracker({
     return [...sessionItems, ...eventItems].sort(
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
     )
-  }, [filtered, isOnStake, stakeHistoryEvents, personalSettlementEvents])
+  }, [filtered, isOnStake, stakeHistoryEvents, personalSettlementEvents, swapEventsById])
 
   /** Bankroll-card stats follow All/Cash/Tourney + Any/Live/Online filters. */
   const stats = useMemo(() => {
@@ -3095,10 +3107,15 @@ export default function PokerBankrollTracker({
     }
   }
 
-  function openSessionDetail(session) {
+  function openSessionDetail(session, seriesSessions = null) {
     if (!session?.id) return
     setSessionRecapMode(false)
     setDetailSessionId(session.id)
+    const group =
+      Array.isArray(seriesSessions) && seriesSessions.length > 1
+        ? seriesSessions
+        : null
+    setDetailSeriesSessionIds(group ? group.map((s) => s.id) : null)
     setError('')
     setSheet('sessionDetail')
     triggerTapHapticLight()
@@ -3298,6 +3315,7 @@ export default function PokerBankrollTracker({
     setIncomingApplyPicker(null)
     setActionSessionId(null)
     setDetailSessionId(null)
+    setDetailSeriesSessionIds(null)
     setSessionRecapMode(false)
     setSessionWriteDealId(undefined)
     setSheet(null)
@@ -4558,7 +4576,20 @@ export default function PokerBankrollTracker({
                   }
 
                   const session = item.session
-                  const baseWl = pokerSessionWinLoss(session)
+                  const seriesSessions =
+                    Array.isArray(item.sessions) && item.sessions.length > 0
+                      ? item.sessions
+                      : [session]
+                  const isSeriesGroup = seriesSessions.length > 1
+                  const seriesAgg = isSeriesGroup
+                    ? aggregateSeriesHistoryDetail(seriesSessions, swapEventsById)
+                    : null
+                  const seriesContext = isSeriesGroup
+                    ? seriesHistoryContextLine(seriesSessions, swapEventsById)
+                    : ''
+                  const baseWl = isSeriesGroup
+                    ? seriesAgg?.gross ?? null
+                    : pokerSessionWinLoss(session)
                   const sessionDeal = session.deal_id
                     ? stakeeDealsById[session.deal_id] ?? null
                     : null
@@ -4571,46 +4602,99 @@ export default function PokerBankrollTracker({
                   const sessionDealSessions = session.deal_id
                     ? scopedSessions.filter((s) => s.deal_id === session.deal_id)
                     : []
+                  const metricOpts = {
+                    stakeScope: isOnStake,
+                    dealsById: stakeeDealsById,
+                    slicesByDeal,
+                    sessions: sessionDealSessions,
+                  }
                   const playerShareInMakeup =
                     sessionDeal &&
                     sessionPlayerShareInMakeup(sessionDeal, session, sessionDealSessions)
-                  const playerShare =
-                    (isOnStake || isMergedStakeSession || isPieceSession) &&
-                    sessionDeal &&
-                    !playerShareInMakeup
-                      ? playerStakeSessionValue(
-                          session,
-                          sessionDeal,
-                          sessionDealSlices,
-                          sessionDealSessions,
-                        )
-                      : null
-                  const wl = resolveSessionMetricWinLoss(
-                    session,
-                    tournamentSwaps,
-                    userId,
-                    {
-                      stakeScope: isOnStake,
-                      dealsById: stakeeDealsById,
-                      slicesByDeal,
-                      sessions: sessionDealSessions,
-                    },
-                  )
-                  const displayWl =
-                    isOnStake || isMergedStakeSession ? baseWl : wl
-                  const hrs = pokerSessionDurationHours(session)
-                  const hourly = displayWl != null && hrs >= 0.02 ? displayWl / hrs : null
-                  const bbh = pokerSessionBbPerHour(session)
-                  const sessionSwaps = swapsBySessionId[session.id] || []
-                  const pieceBackerParties = isPieceSession
-                    ? computeSessionAttribution(
+                  const playerShare = (() => {
+                    if (
+                      !(isOnStake || isMergedStakeSession || isPieceSession) ||
+                      !sessionDeal ||
+                      playerShareInMakeup
+                    ) {
+                      return null
+                    }
+                    if (!isSeriesGroup) {
+                      return playerStakeSessionValue(
                         session,
                         sessionDeal,
                         sessionDealSlices,
-                        stableProfilesById,
-                        0,
                         sessionDealSessions,
-                      ).parties.filter((p) => p.role === 'backer')
+                      )
+                    }
+                    let total = 0
+                    let counted = 0
+                    for (const row of seriesSessions) {
+                      const share = playerStakeSessionValue(
+                        row,
+                        sessionDeal,
+                        sessionDealSlices,
+                        sessionDealSessions,
+                      )
+                      if (share == null) continue
+                      total += share
+                      counted += 1
+                    }
+                    return counted > 0 ? Math.round(total * 100) / 100 : null
+                  })()
+                  const wl = isSeriesGroup
+                    ? sumSeriesMetricWinLoss(
+                        seriesSessions,
+                        tournamentSwaps,
+                        userId,
+                        metricOpts,
+                        resolveSessionMetricWinLoss,
+                      )
+                    : resolveSessionMetricWinLoss(
+                        session,
+                        tournamentSwaps,
+                        userId,
+                        metricOpts,
+                      )
+                  const displayWl =
+                    isOnStake || isMergedStakeSession ? baseWl : wl
+                  const hrs = isSeriesGroup
+                    ? seriesAgg?.hours || 0
+                    : pokerSessionDurationHours(session)
+                  const hourly = displayWl != null && hrs >= 0.02 ? displayWl / hrs : null
+                  const bbh = !isSeriesGroup ? pokerSessionBbPerHour(session) : null
+                  const sessionSwaps = uniqueSwapsForSeriesSessions(
+                    seriesSessions,
+                    swapsBySessionId,
+                  )
+                  const pieceBackerParties = isPieceSession
+                    ? (() => {
+                        /** @type {Map<string, object>} */
+                        const byKey = new Map()
+                        for (const row of seriesSessions) {
+                          const parties = computeSessionAttribution(
+                            row,
+                            sessionDeal,
+                            sessionDealSlices,
+                            stableProfilesById,
+                            0,
+                            sessionDealSessions,
+                          ).parties.filter((p) => p.role === 'backer')
+                          for (const party of parties) {
+                            const key = party.sliceId || party.key
+                            const prev = byKey.get(key)
+                            if (!prev) {
+                              byKey.set(key, { ...party })
+                            } else {
+                              byKey.set(key, {
+                                ...prev,
+                                amount: Math.round((prev.amount + party.amount) * 100) / 100,
+                              })
+                            }
+                          }
+                        }
+                        return [...byKey.values()]
+                      })()
                     : []
                   const piecePendingBackers = isPieceSession
                     ? sessionDealSlices.filter(
@@ -4620,19 +4704,20 @@ export default function PokerBankrollTracker({
                       )
                     : []
                   return (
-                    <li key={session.id}>
+                    <li key={item.id}>
                       {/* div+role=button … Settle is a real <button>; nested buttons are invalid HTML */}
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => openSessionDetail(session)}
+                        onClick={() => openSessionDetail(session, seriesSessions)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault()
-                            openSessionDetail(session)
+                            openSessionDetail(session, seriesSessions)
                           }
                         }}
                         data-elevated-card="surface"
+                        data-poker-history-series={isSeriesGroup ? 'true' : undefined}
                         className="flex w-full cursor-pointer items-start gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 px-3 py-3 text-left touch-manipulation active:bg-zinc-800/80"
                       >
                         <span
@@ -4715,9 +4800,31 @@ export default function PokerBankrollTracker({
                               day: 'numeric',
                               year: 'numeric',
                             })}
+                            {isSeriesGroup && seriesSessions[seriesSessions.length - 1]?.start_at
+                              ? (() => {
+                                  const oldest = seriesSessions[seriesSessions.length - 1]
+                                  const newestDay = new Date(session.start_at).toLocaleDateString(
+                                    'en-US',
+                                    { month: 'short', day: 'numeric' },
+                                  )
+                                  const oldestDay = new Date(oldest.start_at).toLocaleDateString(
+                                    'en-US',
+                                    { month: 'short', day: 'numeric' },
+                                  )
+                                  return oldestDay !== newestDay ? ` · from ${oldestDay}` : ''
+                                })()
+                              : ''}
                             {hourly != null ? ` · ${fmtPoker$(hourly)}/h` : ''}
                             {bbh != null ? ` · ${bbh.toFixed(1)} BB/h` : ''}
                           </span>
+                          {seriesContext ? (
+                            <span
+                              data-poker-history-series-meta
+                              className="mt-0.5 block truncate text-[11px] text-zinc-500"
+                            >
+                              {seriesContext}
+                            </span>
+                          ) : null}
                           {isPieceSession &&
                           (pieceBackerParties.length > 0 || piecePendingBackers.length > 0) ? (
                             <>
@@ -5501,6 +5608,7 @@ export default function PokerBankrollTracker({
       {sheet === 'sessionDetail' && detailSession ? (
         <PokerSessionDetailSheet
           session={detailSession}
+          seriesSessions={detailSeriesSessions}
           isActive={detailSession.status === 'active'}
           elapsedSeconds={
             detailSession.status === 'active'
@@ -5523,27 +5631,32 @@ export default function PokerBankrollTracker({
               ? scopedSessions.filter((s) => s.deal_id === detailDeal.id)
               : []
           }
+          eventsById={swapEventsById}
           onClose={dismissSheet}
-          onEdit={() => {
+          onEdit={(targetSession) => {
             setSessionRecapMode(false)
-            openEdit(detailSession)
+            openEdit(targetSession || detailSession)
             setDetailSessionId(null)
+            setDetailSeriesSessionIds(null)
           }}
           onSavedSwapsMutated={() => void loadData()}
           onMarkSwapSettled={(swap) => void markSessionCardSwapSettled(swap)}
           onEndSession={() => {
             const s = detailSession
             setDetailSessionId(null)
+            setDetailSeriesSessionIds(null)
             openEndSession(s)
           }}
           onOpenSwaps={() => {
             const s = detailSession
             setDetailSessionId(null)
+            setDetailSeriesSessionIds(null)
             openActiveSwaps(s)
           }}
           onRebuy={() => {
             const s = detailSession
             setDetailSessionId(null)
+            setDetailSeriesSessionIds(null)
             openRebuy(s, 'rebuy')
           }}
         />

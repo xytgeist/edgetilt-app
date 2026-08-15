@@ -5962,8 +5962,14 @@ export default function PokerBankrollTracker({
 
             <button
               type="button"
-              disabled={saving}
-              onClick={() => void saveSession()}
+              disabled={saving || Boolean(draftSwapsBlockReason)}
+              onClick={() => {
+                if (draftSwapsBlockReason) {
+                  setError(draftSwapsBlockReason)
+                  return
+                }
+                void saveSession()
+              }}
               className="mb-2 w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
             >
               {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save session'}

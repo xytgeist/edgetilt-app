@@ -189,13 +189,22 @@ const SWAP_TERM_OPTIONS = [
     label: 'Final table only',
     hint: 'Activates only if either player makes the final 9 (or 6 if 6-max).',
     description:
-      'The swap activates only if Player A or Player B reaches the final table. Final table means 9th or better, or 6th or better in a 6-max tournament.',
+      'The swap activates only if Player A or Player B reaches the final table. Final table means 9th or better, or 6th or better in a 6-max tournament. Once activated, both players still swap their full prizes at the agreed percentages, even if only one of them made the final table.',
     examples: [
       {
         title: 'Player A makes the final table',
         lines: [
           'Player A finishes 8th and cashes out for $10,000. Player B finishes 50th and cashes out for $0.',
           'The swap activates. Player A owes Player B 10% of $10,000 = $1,000.',
+        ],
+      },
+      {
+        title: 'One makes the final table · both cash',
+        lines: [
+          'Player A finishes 8th and cashes out for $50,000. Player B finishes 40th and cashes out for $30,000.',
+          'Player A made the final table, so the swap activates even though Player B did not.',
+          'Player A owes Player B 10% of $50,000 = $5,000. Player B owes Player A 10% of $30,000 = $3,000.',
+          'After netting, Player A owes Player B $2,000.',
         ],
       },
       {

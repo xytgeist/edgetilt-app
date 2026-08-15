@@ -120,8 +120,13 @@ const SWAP_TERM_OPTIONS = [
     amountPlaceholder: '50000',
     description:
       'The swap only activates if Player A or Player B cashes for at least the threshold amount (recorded prize / cash-out). If neither player reaches that amount, the entire swap is void. Once activated, both players still swap their full prizes at the agreed percentages.',
-    note:
-      'This still includes bullet rebates when one player fires more bullets. Check Final bullet only if you want to exclude that.',
+    note: (
+      <>
+        This still includes bullet rebates when one player fires more bullets. Check{' '}
+        <strong className="font-bold text-amber-100">Final bullet only</strong> if you want to
+        exclude that.
+      </>
+    ),
     examples: [
       {
         title: 'Threshold $50,000 · one big cash',
@@ -192,8 +197,13 @@ const SWAP_TERM_OPTIONS = [
     hint: 'Activates only if either player makes the final 9 (or 6 if 6-max).',
     description:
       'The swap activates only if Player A or Player B reaches the final table. Final table means 9th or better, or 6th or better in a 6-max tournament. Once activated, both players still swap their full prizes at the agreed percentages, even if only one of them made the final table.',
-    note:
-      'This still includes bullet rebates when one player fires more bullets. Check Final bullet only if you want to exclude that.',
+    note: (
+      <>
+        This still includes bullet rebates when one player fires more bullets. Check{' '}
+        <strong className="font-bold text-amber-100">Final bullet only</strong> if you want to
+        exclude that.
+      </>
+    ),
     examples: [
       {
         title: 'Player A makes the final table',
@@ -291,6 +301,16 @@ function SwapTermChecks({ value, onChange, compact = false }) {
                       value={value?.[opt.amountKey] ?? ''}
                       onChange={(e) => onChange({ [opt.amountKey]: e.target.value })}
                     />
+                    {(() => {
+                      const raw = String(value?.[opt.amountKey] ?? '').replace(/[$,\s]/g, '')
+                      const n = Number(raw)
+                      if (Number.isFinite(n) && n > 0) return null
+                      return (
+                        <span className="mt-1 block text-[11px] leading-snug text-rose-400">
+                          Enter a minimum cash threshold greater than $0.
+                        </span>
+                      )
+                    })()}
                   </label>
                 ) : null}
               </div>

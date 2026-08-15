@@ -218,6 +218,7 @@ import {
   notifyTournamentSwap,
   notifyTournamentSwapResults,
   persistDraftSwapsForSession,
+  draftSwapsReadyError,
   refreshSeriesSwapBullets,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
@@ -914,6 +915,10 @@ export default function PokerBankrollTracker({
     swapEventsById,
     userId,
   ])
+  const draftSwapsBlockReason = useMemo(() => {
+    if (form.session_type !== 'tournament' || !draftSwaps.length || !userId) return null
+    return draftSwapsReadyError(draftSwaps, userId)
+  }, [form.session_type, draftSwaps, userId])
 
   useEffect(() => {
     setScopeHydrated(false)
@@ -2303,10 +2308,10 @@ export default function PokerBankrollTracker({
       { sessions, eventsById: swapEventsById },
     )
     if (swapErr) {
-      if (!isMissingTournamentSwapTableError(swapErr)) {
-        setError(swapErr.message || 'Could not save swaps.')
-      }
-      return
+      if (isMissingTournamentSwapTableError(swapErr)) return
+      throw swapErr instanceof Error
+        ? swapErr
+        : new Error(swapErr.message || 'Could not save swaps.')
     }
     for (const swap of swaps || []) {
       const { error: nErr } = await notifyTournamentSwap(supabaseClient, swap.id)
@@ -2771,6 +2776,13 @@ export default function PokerBankrollTracker({
     } else if (form.game_variant === 'custom' && !String(form.game_custom_name || '').trim()) {
       setError('Enter a name for your custom game.')
       return
+    }
+    if (form.session_type === 'tournament' && draftSwaps.length > 0) {
+      const draftErr = draftSwapsReadyError(draftSwaps, userId)
+      if (draftErr) {
+        setError(draftErr)
+        return
+      }
     }
     const now = new Date()
     const payload = {
@@ -3396,6 +3408,13 @@ export default function PokerBankrollTracker({
     } else if (form.game_variant === 'custom' && !String(form.game_custom_name || '').trim()) {
       setError('Enter a name for your custom game.')
       return
+    }
+    if (form.session_type === 'tournament' && draftSwaps.length > 0) {
+      const draftErr = draftSwapsReadyError(draftSwaps, userId)
+      if (draftErr) {
+        setError(draftErr)
+        return
+      }
     }
     const durationHrs = parseDurationHoursField(form.duration_hours)
     if (!editingActiveSession && durationHrs <= 0) {
@@ -6092,8 +6111,14 @@ export default function PokerBankrollTracker({
             >
               <button
                 type="button"
-                disabled={saving}
-                onClick={() => void startLiveSession()}
+                disabled={saving || Boolean(draftSwapsBlockReason)}
+                onClick={() => {
+                  if (draftSwapsBlockReason) {
+                    setError(draftSwapsBlockReason)
+                    return
+                  }
+                  void startLiveSession()
+                }}
                 className="w-full rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
               >
                 {saving

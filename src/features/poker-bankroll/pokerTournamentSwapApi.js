@@ -265,6 +265,20 @@ export function draftSwapToInsertFields(draft, creatorUserId) {
   }
 }
 
+/** @param {object} draft @param {string} creatorUserId */
+export function draftSwapReadyError(draft, creatorUserId) {
+  return draftSwapToInsertFields(draft, creatorUserId).error || null
+}
+
+/** @param {object[]} drafts @param {string} creatorUserId */
+export function draftSwapsReadyError(drafts, creatorUserId) {
+  for (const draft of drafts || []) {
+    const error = draftSwapReadyError(draft, creatorUserId)
+    if (error) return error
+  }
+  return null
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} userId

@@ -24,11 +24,13 @@ import {
   swapViewerRole,
 } from './pokerTournamentSwapApi.js'
 import {
+  computeTournamentSwapSettlement,
   formatSwapIouLine,
   formatSwapPaidLine,
   formatSwapSettledParenAmount,
   formatSwapTermLine,
   formatSwapWaitingStatus,
+  settlementArgsFromSwap,
   sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
@@ -88,6 +90,88 @@ function PartyLine({ label, detail, amount, emphasize = false }) {
         amount={amount}
         className={`shrink-0 tabular-nums ${emphasize ? 'text-base font-bold' : 'text-sm font-semibold'}`}
       />
+    </div>
+  )
+}
+
+function swapGiveFormula(base, pct, total) {
+  const safeBase = Math.max(0, Number(base) || 0)
+  const safePct = Number(pct) || 0
+  const safeTotal = Math.max(0, Number(total) || 0)
+  const percentageShare = (safeBase * safePct) / 100
+  const bulletCoverage = Math.max(0, safeTotal - percentageShare)
+  return `${safePct}% × ${fmtPoker$(safeBase)}${
+    bulletCoverage >= 0.005 ? ` + ${fmtPoker$(bulletCoverage)} bullet coverage` : ''
+  } = ${fmtPoker$(safeTotal)}`
+}
+
+function SwapSettlementBreakdown({ swap, role, other, statusLine }) {
+  const calculation = computeTournamentSwapSettlement(settlementArgsFromSwap(swap))
+  const viewerIsCreator = role === 'creator'
+  const viewerPrize = Number(
+    viewerIsCreator ? swap.creator_prize : swap.counterparty_prize,
+  ) || 0
+  const otherPrize = Number(
+    viewerIsCreator ? swap.counterparty_prize : swap.creator_prize,
+  ) || 0
+  const viewerInvested = Number(
+    viewerIsCreator ? swap.creator_buy_in : swap.counterparty_buy_in,
+  ) || 0
+  const otherInvested = Number(
+    viewerIsCreator ? swap.counterparty_buy_in : swap.creator_buy_in,
+  ) || 0
+  const viewerPct = Number(
+    viewerIsCreator ? swap.pct_creator_gives : swap.pct_counterparty_gives,
+  ) || 0
+  const otherPct = Number(
+    viewerIsCreator ? swap.pct_counterparty_gives : swap.pct_creator_gives,
+  ) || 0
+  const viewerBase = viewerIsCreator ? calculation.creatorNet : calculation.counterpartyNet
+  const otherBase = viewerIsCreator ? calculation.counterpartyNet : calculation.creatorNet
+  const viewerGives = viewerIsCreator ? calculation.creatorOwes : calculation.counterpartyOwes
+  const otherGives = viewerIsCreator ? calculation.counterpartyOwes : calculation.creatorOwes
+
+  return (
+    <div
+      data-poker-session-swap-breakdown
+      className="mt-2 rounded-xl border border-zinc-800/80 bg-black/15 p-3 text-[11px]"
+    >
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5">
+        <span className="font-medium text-zinc-400">Your result</span>
+        <span className="text-right tabular-nums text-zinc-300">
+          {fmtPoker$(viewerPrize)} cash · {fmtPoker$(viewerInvested)} invested
+        </span>
+        <span className="truncate font-medium text-zinc-400">{other}'s result</span>
+        <span className="text-right tabular-nums text-zinc-300">
+          {fmtPoker$(otherPrize)} cash · {fmtPoker$(otherInvested)} invested
+        </span>
+      </div>
+
+      {calculation.activated ? (
+        <div className="mt-2 space-y-1.5 border-t border-zinc-800/80 pt-2">
+          <div className="flex items-start justify-between gap-3">
+            <span className="shrink-0 text-zinc-500">You give</span>
+            <span className="text-right tabular-nums text-zinc-300">
+              {swapGiveFormula(viewerBase, viewerPct, viewerGives)}
+            </span>
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <span className="shrink-0 text-zinc-500">{other} gives</span>
+            <span className="text-right tabular-nums text-zinc-300">
+              {swapGiveFormula(otherBase, otherPct, otherGives)}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-2 border-t border-zinc-800/80 pt-2 text-zinc-500">
+          Swap condition was not met, so nothing is owed.
+        </p>
+      )}
+
+      <div className="mt-2 flex items-start justify-between gap-3 border-t border-zinc-800/80 pt-2 font-semibold">
+        <span className="text-zinc-400">Net settlement</span>
+        <span className="text-right text-zinc-200">{statusLine}</span>
+      </div>
     </div>
   )
 }
@@ -356,48 +440,63 @@ export default function PokerSessionDetailSheet({
                       return (
                         <li
                           key={swap.id}
-                          className="flex items-start justify-between gap-2 text-sm"
+                          className="text-sm"
                           data-poker-session-swap-line={paid ? 'settled' : 'waiting'}
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="truncate font-medium text-zinc-200">{other}</span>
-                              {canMarkSettled ? (
-                                <button
-                                  type="button"
-                                  disabled={sessionCardSwapBusyId === swap.id}
-                                  data-poker-session-swap-settle-btn
-                                  onClick={() => onMarkSwapSettled?.(swap)}
-                                  className="shrink-0 rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white touch-manipulation disabled:opacity-50"
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="truncate font-medium text-zinc-200">{other}</span>
+                                {canMarkSettled ? (
+                                  <button
+                                    type="button"
+                                    disabled={sessionCardSwapBusyId === swap.id}
+                                    data-poker-session-swap-settle-btn
+                                    onClick={() => onMarkSwapSettled?.(swap)}
+                                    className="shrink-0 rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white touch-manipulation disabled:opacity-50"
+                                  >
+                                    {sessionCardSwapBusyId === swap.id ? '…' : 'Mark settled'}
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div className="mt-0.5 text-xs text-zinc-500">
+                                {swap.pct_creator_gives != null &&
+                                swap.pct_counterparty_gives != null
+                                  ? `${swap.pct_creator_gives}% ↔ ${swap.pct_counterparty_gives}%`
+                                  : null}
+                                {formatSwapTermLine(swap)
+                                  ? ` · ${formatSwapTermLine(swap)}`
+                                  : ''}
+                                {swap.status !== 'settled' && statusLine
+                                  ? ` · ${statusLine}`
+                                  : null}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                              {paid && swap.status === 'settled' ? (
+                                <span
+                                  data-poker-session-swap-amt={amtTone}
+                                  className={`text-sm font-bold tabular-nums ${
+                                    amtTone === 'loss'
+                                      ? 'text-rose-400'
+                                      : amtTone === 'gain'
+                                        ? 'text-emerald-400'
+                                        : 'text-zinc-400'
+                                  }`}
                                 >
-                                  {sessionCardSwapBusyId === swap.id ? '…' : 'Mark settled'}
-                                </button>
+                                  {formatSwapSettledParenAmount(signed, fmtPoker$)}
+                                </span>
                               ) : null}
                             </div>
-                            <div className="mt-0.5 text-xs text-zinc-500">
-                              {swap.pct_creator_gives != null && swap.pct_counterparty_gives != null
-                                ? `${swap.pct_creator_gives}% ↔ ${swap.pct_counterparty_gives}%`
-                                : null}
-                              {formatSwapTermLine(swap) ? ` · ${formatSwapTermLine(swap)}` : ''}
-                              {statusLine ? ` · ${statusLine}` : null}
-                            </div>
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
-                            {paid && swap.status === 'settled' ? (
-                              <span
-                                data-poker-session-swap-amt={amtTone}
-                                className={`text-sm font-bold tabular-nums ${
-                                  amtTone === 'loss'
-                                    ? 'text-rose-400'
-                                    : amtTone === 'gain'
-                                      ? 'text-emerald-400'
-                                      : 'text-zinc-400'
-                                }`}
-                              >
-                                {formatSwapSettledParenAmount(signed, fmtPoker$)}
-                              </span>
-                            ) : null}
-                          </div>
+                          {swap.status === 'settled' && statusLine ? (
+                            <SwapSettlementBreakdown
+                              swap={swap}
+                              role={role}
+                              other={other}
+                              statusLine={statusLine}
+                            />
+                          ) : null}
                         </li>
                       )
                     })}
@@ -410,9 +509,17 @@ export default function PokerSessionDetailSheet({
               ) : null}
 
               {showYourNet ? (
-                <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-zinc-800/80 pt-3">
-                  <span className="text-sm font-semibold text-zinc-300">Your net</span>
-                  <ResultMoney amount={playerNet} />
+                <div className="mt-3 border-t border-zinc-800/80 pt-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-semibold text-zinc-300">Your net</span>
+                    <ResultMoney amount={playerNet} />
+                  </div>
+                  {!attribution.onStake && sessionSwaps.length > 0 ? (
+                    <div className="mt-1 text-right text-[11px] tabular-nums text-zinc-500">
+                      {fmtPoker$(grossWl)} table {swapDelta >= 0 ? '+' : '−'}{' '}
+                      {fmtPoker$(Math.abs(swapDelta))} swaps = {fmtPoker$(playerNet)}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </>

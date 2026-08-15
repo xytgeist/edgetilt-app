@@ -5126,6 +5126,10 @@ html.light [data-poker-session-detail] [data-poker-session-swap-amt='gain'] {
 html.light [data-poker-session-detail] [data-poker-session-swap-amt='loss'] {
   color: var(--poker-loss) !important;
 }
+html.light [data-poker-session-detail] [data-poker-session-swap-breakdown] {
+  background-color: #fafafa !important;
+  border-color: #e4e4e7 !important;
+}
 html.light [data-poker-session-detail] .text-zinc-200 {
   color: #3f3f46 !important;
 }

@@ -245,7 +245,7 @@ function SwapTermChecks({ value, onChange, compact = false }) {
   return (
     <>
       <div data-poker-swap-term-checks className="mt-2 space-y-1.5">
-        <div data-poker-swap-base-term className="pl-[1.625rem]">
+        <div data-poker-swap-base-term>
           <div className="flex items-center gap-1.5">
             <span
               className={`text-xs font-semibold ${
@@ -253,9 +253,6 @@ function SwapTermChecks({ value, onChange, compact = false }) {
               }`}
             >
               Default
-            </span>
-            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-emerald-300">
-              Always on
             </span>
             <button
               type="button"

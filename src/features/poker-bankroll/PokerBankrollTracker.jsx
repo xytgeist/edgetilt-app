@@ -4303,7 +4303,11 @@ export default function PokerBankrollTracker({
                           </div>
                         </div>
                       ) : (
-                        <div className="relative mt-2 min-h-[5rem]">
+                        <div
+                          className={`relative mt-2 ${
+                            priorBullets > 0 ? 'min-h-[6.5rem]' : 'min-h-[5rem]'
+                          }`}
+                        >
                           <div className="min-w-0 pr-[6.25rem]">
                             <div className="truncate text-sm text-zinc-400">
                               {pokerSessionMetaLine(liveSession)}
@@ -4312,7 +4316,7 @@ export default function PokerBankrollTracker({
                               {pokerSessionInForLine(liveSession)}
                             </div>
                             {priorBullets > 0 ? (
-                              <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+                              <div className="mt-0.5 truncate text-[11px] leading-4 text-zinc-500">
                                 {priorBullets} earlier bullet
                                 {priorBullets === 1 ? '' : 's'} in this event
                               </div>

@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-14: **MTTDB catalog override — Arizona State Poker Championship:** MTTDB lists `$1,000+$110=$1,110`; room is `$1,100`. Sync now forces buy-in **1100** + `$1,100` title via **`mttdbCatalogOverrides.mjs`** (name rule + Day 1A–1D external ids). Needs **`main`** for prod cron. Prod catalog/sessions already patched manually.
 - 2026-08-14: **Swap-term info modals:** Small info button beside **Both must cash**, **Final bullet only**, and **Final table only** opens rule + math examples using Player A / Player B, $1,000 buy-in, 10%, and $10,000 cash-out where applicable. Smoke all three in dark + light from Start Session and live Swap sheet.
 - 2026-08-14: **Swaps always this-bullet-forward:** Dropped **Include previous bullets**. New swaps always skip already-fired series bullets; current bullet counts. No SQL. Smoke: Day 1B with prior bullets → new swap has no include checkbox; exclude watermark set; settle uses this-bullet-forward.
 - 2026-08-14: **Multi-live sessions:** Players can stack multiple in-progress cards (personal + stake mix). Soft cap 3 (confirm) / hard block at 4+. Pause/rebuy/end/swaps target a session id. Carousel shows **Live** on other heroes with actives. Incoming Accept with no match → Apply to current (mismatch confirm) or Start new. No SQL. Smoke: two personal lives; personal + stake; soft/hard cap; swap fallthrough Apply + Start new; matched Accept still auto-binds.

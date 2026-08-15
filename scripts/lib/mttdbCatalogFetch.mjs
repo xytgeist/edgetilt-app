@@ -7,6 +7,7 @@
 import { isoDateLocal } from './pokerTournamentCatalog.mjs'
 import { inferTournamentGameVariantFromText } from './pokerTournamentGameVariant.mjs'
 import { resolveCatalogCurrency } from './pokerTournamentCurrency.mjs'
+import { applyMttdbCatalogOverrides } from './mttdbCatalogOverrides.mjs'
 
 export const MTTDB_ORIGIN = 'https://mttdb.com'
 export const MTTDB_LIVE_LOBBY_URL = 'https://mttdb.com/live-poker/tournaments/'
@@ -225,7 +226,7 @@ export function mttdbRowToCatalogOneOff(row, venueName) {
   const timezone = String(row.venue_tz_name || 'America/Los_Angeles').trim()
   const name = String(row.name || '').trim()
 
-  return {
+  return applyMttdbCatalogOverrides({
     external_id: `mttdb:live:${row.id}`,
     venue_name: venueName,
     event_date: eventDate,
@@ -239,7 +240,7 @@ export function mttdbRowToCatalogOneOff(row, venueName) {
     display_name: name,
     timezone,
     catalog_scope: 'live',
-  }
+  })
 }
 
 /**
@@ -310,7 +311,7 @@ export function mttdbOnlineRowToCatalogOneOff(row, siteLabel) {
 
   const name = String(row.name || '').trim()
 
-  return {
+  return applyMttdbCatalogOverrides({
     external_id: `mttdb:online:${row.id}`,
     venue_name: siteLabel,
     event_date: eventDate,
@@ -324,7 +325,7 @@ export function mttdbOnlineRowToCatalogOneOff(row, siteLabel) {
     display_name: name,
     timezone: MTTDB_ONLINE_TIMEZONE,
     catalog_scope: 'online',
-  }
+  })
 }
 
 /**

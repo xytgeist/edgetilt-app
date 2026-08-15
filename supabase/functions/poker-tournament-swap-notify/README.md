@@ -1,8 +1,8 @@
 # `poker-tournament-swap-notify`
 
-Creates a guest claim token (when email is present) and sends **Resend email** for a tournament swap. Guest email is optional on create ... notify is skipped when unset. **Guest SMS is disabled** (carrier TFV). Offer copy looks like: `{Display Name} swapping 5% - 5% with you in event: {Tournament} from EdgeTilt.com`. Edge counterparties get in-app/push to Poker Bankroll.
+Creates a guest claim token (when email is present) and sends **Resend email** for a tournament swap. Guest email is optional on create ... notify is skipped when unset. **Guest SMS is disabled** (carrier TFV). The offer email greets the guest, lists the tournament, both swap percentages, and optional terms, then links to the public review/result page. Edge counterparties get in-app/push to Poker Bankroll.
 
-Guest **HTML email** uses the shared branded shell (`_shared/transactionalEmail.ts`): EDGE logo header, white card, cyan CTA (claim link), fallback URL block, and `EdgeTilt · edgetilt.com` footer. Logo defaults to `https://edgetilt.com/edge-email-header-dark.jpg` (override with `TRANSACTIONAL_EMAIL_LOGO_ORIGIN`).
+Guest **HTML email** uses the same invitation structure as Poker Stable: EDGE logo header, white card, greeting + offer details, italic free-account prompt, cyan review CTA, and `EdgeTilt · edgetilt.com` footer. Logo defaults to `https://edgetilt.com/edge-email-header-dark.jpg` (override with `TRANSACTIONAL_EMAIL_LOGO_ORIGIN`).
 
 ## Secrets
 

@@ -8,10 +8,18 @@ import { formatSwapIouLine, formatSwapTermLine } from './pokerTournamentSwapMath
  * @param {{
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient | null,
  *   token: string,
+ *   userId?: string | null,
+ *   onOpenAuth?: () => void,
  *   onDone?: () => void,
  * }} props
  */
-export default function PokerTournamentSwapClaimPage({ supabaseClient, token, onDone }) {
+export default function PokerTournamentSwapClaimPage({
+  supabaseClient,
+  token,
+  userId = null,
+  onOpenAuth,
+  onDone,
+}) {
   const [loading, setLoading] = useState(true)
   const [preview, setPreview] = useState(null)
   const [error, setError] = useState('')
@@ -124,8 +132,15 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400/90">
             EdgeTilt
           </div>
-          <h1 className="mt-2 text-2xl font-black tracking-tight">Tournament swap</h1>
-          <p className="mt-1 text-sm text-zinc-400">Enter your result to settle the deal.</p>
+          <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-cyan-300/90">
+            Swap invitation
+          </p>
+          <h1 className="mt-2 text-2xl font-black tracking-tight">Review your tournament swap</h1>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+            {preview
+              ? `${preview.creator_label} invited you to a tournament swap on EdgeTilt. Review the terms, then enter your result to settle the deal.`
+              : 'Review the terms, then enter your result to settle the deal.'}
+          </p>
         </div>
 
         {loading ? (
@@ -135,7 +150,27 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
             {error}
           </p>
         ) : preview ? (
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-5">
+          <>
+            {!userId ? (
+              <div
+                data-poker-swap-account-cta
+                className="mb-4 rounded-3xl border border-cyan-500/30 bg-cyan-950/30 p-5"
+              >
+                <h2 className="text-lg font-black text-white">Keep your poker in one place</h2>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+                  Create a free Edge account to manage future swaps, sessions, and tournament
+                  results in Poker Bankroll. You can still settle this invite below as a guest.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onOpenAuth?.()}
+                  className="mt-4 w-full rounded-2xl bg-cyan-600 py-3.5 text-base font-bold text-white touch-manipulation"
+                >
+                  Create free account or sign in
+                </button>
+              </div>
+            ) : null}
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-5">
             <div className="text-sm text-zinc-400">
               {preview.creator_label} swapped with {preview.guest_label || 'you'}
             </div>
@@ -223,7 +258,8 @@ export default function PokerTournamentSwapClaimPage({ supabaseClient, token, on
                 </button>
               </>
             )}
-          </div>
+            </div>
+          </>
         ) : null}
         </div>
       </div>

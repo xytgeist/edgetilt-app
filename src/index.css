@@ -5604,6 +5604,18 @@ html.light [data-poker-swap-claim] .text-emerald-300 {
 html.light [data-poker-swap-claim] .text-emerald-400\/90 {
   color: #059669 !important;
 }
+html.light [data-poker-swap-claim] .text-cyan-300\/90 {
+  color: #0891b2 !important;
+}
+html.light [data-poker-swap-account-cta] {
+  background-color: #ecfeff !important;
+  border-color: #a5f3fc !important;
+}
+html.light [data-poker-swap-claim] .bg-cyan-600,
+html.light [data-poker-swap-claim] .bg-cyan-600.text-white {
+  background-color: #0891b2 !important;
+  color: #ffffff !important;
+}
 html.light [data-poker-swap-claim] .bg-emerald-600,
 html.light [data-poker-swap-claim] .bg-emerald-600.text-white {
   color: #ffffff !important;

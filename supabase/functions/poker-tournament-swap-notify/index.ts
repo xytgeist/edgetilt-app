@@ -77,6 +77,60 @@ function formatGuestOfferLine(
   return `${actorName} swapping ${pct} with you${eventBit} from EdgeTilt.com`
 }
 
+function formatGuestOfferTerms(swap: SwapRow): string {
+  const terms: string[] = []
+  if (swap.both_must_cash) terms.push('Both must cash')
+  const minCash = Number(swap.min_cash_threshold)
+  if (Number.isFinite(minCash) && minCash > 0) {
+    terms.push(`Minimum cash threshold ${fmtMoney(minCash)}`)
+  }
+  if (swap.final_bullet_only) terms.push('Final bullet only')
+  if (swap.final_table_only) terms.push('Final table only')
+  return terms.length ? terms.join(', ') : 'Standard swap terms'
+}
+
+function formatGuestOfferEmail(args: {
+  actorName: string
+  guestName: string
+  eventLabel: string
+  swap: SwapRow
+  claimUrl: string
+}): { subject: string; text: string; html: string } {
+  const guestName = args.guestName.trim() || 'there'
+  const tournamentLine = `Tournament: ${args.eventLabel || 'Tournament event'}`
+  const receiveLine = `Your share of ${args.actorName}'s result: ${args.swap.pct_creator_gives}%`
+  const giveLine = `${args.actorName}'s share of your result: ${args.swap.pct_counterparty_gives}%`
+  const termsLine = `Terms: ${formatGuestOfferTerms(args.swap)}`
+  const detailLines = [tournamentLine, receiveLine, giveLine, termsLine]
+  const signupLine =
+    'Create a free account to manage future swaps, sessions, and tournament results in Poker Bankroll.'
+  const subject = `${args.actorName} invited you to a tournament swap`
+  const text = `Hi ${guestName},\n\n${args.actorName} invited you to a tournament swap on EdgeTilt.com.\n\n${detailLines.join('\n')}\n\nOpen your invitation to review the swap and enter your result:\n${args.claimUrl}\n\n${signupLine}`
+
+  const safeActor = escapeHtml(args.actorName)
+  const safeGuest = escapeHtml(guestName)
+  const safeUrl = escapeHtml(args.claimUrl)
+  const detailsHtml = detailLines.map((line) => escapeHtml(line)).join('<br>')
+  const bodyHtml = [
+    transactionalEmailParagraph(`Hi ${safeGuest},`),
+    transactionalEmailParagraph(
+      `${safeActor} invited you to a tournament swap on <a href="${safeUrl}" style="color:#0891b2;">EdgeTilt.com</a>.`,
+    ),
+    transactionalEmailParagraph(detailsHtml, { marginBottom: '0' }),
+  ].join('')
+  const html = wrapTransactionalEmailHtml({
+    title: subject,
+    headline: 'Tournament swap invitation',
+    bodyHtml,
+    appUrl: args.claimUrl,
+    cta: { label: 'Review tournament swap', href: args.claimUrl },
+    footerNoteHtml: `<em>${escapeHtml(signupLine)}</em>`,
+    ctaAfterFooterNote: true,
+    footerNoteMarginTop: '24px',
+  })
+  return { subject, text, html }
+}
+
 function normalizePhone(raw: string): string | null {
   const digits = String(raw || '').replace(/[^\d+]/g, '')
   if (digits.length < 8) return null
@@ -160,6 +214,10 @@ type SwapRow = {
   counterparty_result_ready: boolean
   settlement_amount: number | null
   counterparty_session_accepted_at: string | null
+  both_must_cash: boolean
+  final_bullet_only: boolean
+  final_table_only: boolean
+  min_cash_threshold: number | null
 }
 
 /** Detail line without actor name (recipient POV). */
@@ -399,33 +457,27 @@ Deno.serve(async (req) => {
       }
 
       const claimUrl = await createGuestClaimUrl(admin, swapId)
-      const text = `${offerLine}\nAccept / enter your result: ${claimUrl}`
-      const appUrl = resolvePublicAppOrigin()
-      const bodyHtml = [
-        transactionalEmailParagraph(escapeHtml(offerLine)),
-        transactionalEmailFallbackLink(claimUrl),
-      ].join('')
-      const html = wrapTransactionalEmailHtml({
-        title: `${guestActorName} swapping ${pctLine} with you`,
-        headline: 'Tournament swap invite',
-        bodyHtml,
-        appUrl,
-        cta: { label: 'Accept / enter your result', href: claimUrl },
+      const offerEmail = formatGuestOfferEmail({
+        actorName: guestActorName,
+        guestName: String(swap.counterparty_guest_label || ''),
+        eventLabel,
+        swap,
+        claimUrl,
       })
 
       if (hasEmail) {
         channels.email = await sendResendEmail(
           email,
-          `${guestActorName} swapping ${pctLine} with you`,
-          html,
-          text,
+          offerEmail.subject,
+          offerEmail.html,
+          offerEmail.text,
         )
       } else {
         channels.email = { skipped: true, reason: 'no guest email' }
       }
 
       if (hasPhone && phone) {
-        channels.sms = await sendTwilioSms(phone, text)
+        channels.sms = await sendTwilioSms(phone, `${offerLine}\nReview your swap: ${claimUrl}`)
       } else {
         channels.sms = { skipped: true, reason: 'no guest phone' }
       }

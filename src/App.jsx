@@ -1250,18 +1250,23 @@ function App() {
           )
         : null
     return (
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-zinc-950 text-zinc-400 flex items-center justify-center">
-            Loading…
-          </div>
-        }
-      >
-        <PokerTournamentSwapClaimPage
-          supabaseClient={supabase}
-          token={claim?.token || ''}
-        />
-      </Suspense>
+      <>
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-zinc-950 text-zinc-400 flex items-center justify-center">
+              Loading…
+            </div>
+          }
+        >
+          <PokerTournamentSwapClaimPage
+            supabaseClient={supabase}
+            token={claim?.token || ''}
+            userId={user?.id ?? null}
+            onOpenAuth={() => openAuthPanel('create')}
+          />
+        </Suspense>
+        {renderAuthModal('← Cancel')}
+      </>
     )
   }
 

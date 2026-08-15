@@ -882,6 +882,29 @@ export default function PokerBankrollTracker({
         : 0,
     [seriesAnchorSession, sessions, swapEventsById],
   )
+  const startSessionCarriedSwaps = useMemo(() => {
+    if (sheet !== 'start' || !seriesAnchorSession) return []
+    return tournamentSwaps.filter(
+      (swap) =>
+        swap.status === 'active' &&
+        swap.id !== incomingAcceptSwap?.id &&
+        swapBelongsOnSession(
+          swap,
+          seriesAnchorSession,
+          sessions,
+          swapEventsById,
+          userId,
+        ),
+    )
+  }, [
+    sheet,
+    seriesAnchorSession,
+    tournamentSwaps,
+    incomingAcceptSwap?.id,
+    sessions,
+    swapEventsById,
+    userId,
+  ])
 
   useEffect(() => {
     setScopeHydrated(false)
@@ -6028,7 +6051,7 @@ export default function PokerBankrollTracker({
                 maxSwapGivePct={swapSelfOwnedPct}
                 draftSwaps={draftSwaps}
                 onDraftSwapsChange={setDraftSwaps}
-                savedSwaps={[]}
+                savedSwaps={startSessionCarriedSwaps}
                 profilesById={swapProfilesById}
                 showGlobalConfirm={showGlobalConfirm}
                 incomingAcceptSwap={incomingAcceptSwap}

@@ -87,6 +87,7 @@ import {
 export default function PokerStableScreen({
   supabaseClient,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
   openStableDealId = null,
   onOpenStableDealConsumed = null,
@@ -946,6 +947,7 @@ export default function PokerStableScreen({
     <>
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >

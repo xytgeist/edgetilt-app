@@ -75,7 +75,7 @@ export async function fetchNearbyCasinos(supabaseClient, { cacheRef, userId, onL
 export async function fetchActiveBankrollSession(supabaseClient) {
   const { data, error } = await supabaseClient
     .from('bankroll_sessions')
-    .select('id, casino_name, status, start_at')
+    .select('id, casino_name, game_type, status, start_at')
     .eq('status', 'active')
     .maybeSingle()
   if (error) throw error

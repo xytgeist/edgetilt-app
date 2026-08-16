@@ -93,6 +93,8 @@ import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import AttentionDot from '../../components/AttentionDot.jsx'
 import TitleBarQuickLinks from '../../components/TitleBarQuickLinks.jsx'
 import TitleBarCloseButton from '../../components/TitleBarCloseButton.jsx'
+import LiveSessionTitleChip from '../../components/LiveSessionTitleChip.jsx'
+import { useActiveLiveSessions } from './useActiveLiveSessions.js'
 import { usePokerPendingOfferAttention } from '../poker/usePokerPendingOfferAttention.js'
 import {
   canOpenCalculator,
@@ -428,6 +430,13 @@ export default function AppShell({
     supabaseClient,
     userId: chatCallViewerUserId,
     enabled: browseMode === 'member' && Boolean(chatCallViewerUserId),
+  })
+  const {
+    slots: liveSlotsSession,
+    poker: livePokerSession,
+    hasLive: hasLiveBankrollSession,
+  } = useActiveLiveSessions(supabaseClient, {
+    enabled: browseMode === 'member' && authSessionReady && Boolean(chatCallViewerUserId),
   })
 
   useEffect(() => {
@@ -2040,6 +2049,47 @@ export default function AppShell({
     starterUnlockedCalculatorKeys,
   ])
 
+  const openLiveSlotsBankroll = useCallback(() => {
+    setMenuOpen(false)
+    setActiveCalculator(null)
+    if (!authSessionReady) return
+    if (browseMode !== 'member') {
+      onRequireAuth?.()
+      return
+    }
+    armShellNavGhostClickGuard()
+    setTab('bankroll')
+  }, [authSessionReady, browseMode, onRequireAuth])
+
+  const openLivePokerBankroll = useCallback(
+    (sessionId) => {
+      setMenuOpen(false)
+      setActiveCalculator(null)
+      if (!authSessionReady) return
+      if (browseMode !== 'member') {
+        onRequireAuth?.()
+        return
+      }
+      const sid = String(sessionId || '').trim()
+      if (sid) setPendingPokerSessionId(sid)
+      armShellNavGhostClickGuard()
+      setTab('poker-bankroll')
+    },
+    [authSessionReady, browseMode, onRequireAuth],
+  )
+
+  const renderTitleBarCenterSlot = () => {
+    if (!hasLiveBankrollSession) return null
+    return (
+      <LiveSessionTitleChip
+        slots={liveSlotsSession}
+        poker={livePokerSession}
+        onOpenSlots={openLiveSlotsBankroll}
+        onOpenPoker={openLivePokerBankroll}
+      />
+    )
+  }
+
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return
     if (!['bankroll', 'logbook', 'guides', 'calculators'].includes(tab)) return
@@ -2332,6 +2382,7 @@ export default function AppShell({
             loadMoreCommunityFeed={loadMoreCommunityFeed}
             hydrateCommunityPosts={hydrateCommunityPosts}
             titleBarNavSlot={renderTitleBarNavSlot()}
+            titleBarCenterSlot={renderTitleBarCenterSlot()}
             hasActiveSubscription={hasActiveSubscription}
             hasSlotsEdgeStarter={hasSlotsEdgeStarter}
             hasSlotsEdgePro={hasSlotsEdgePro}
@@ -2403,6 +2454,7 @@ export default function AppShell({
             browseMode={browseMode}
             onRequireAuth={() => onRequireAuth?.()}
             titleBarNavSlot={renderTitleBarNavSlot()}
+            titleBarCenterSlot={renderTitleBarCenterSlot()}
             initialPeerUserId={pendingChatPeerUserId}
             onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
             initialRoomId={pendingChatRoomId}
@@ -2438,6 +2490,7 @@ export default function AppShell({
       visibleTab = (
         <SlotsScreen
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           browseMode={browseMode}
           onOpenAuth={() => onOpenAuth?.('login')}
           onOpenTool={openSlotsTool}
@@ -2452,6 +2505,7 @@ export default function AppShell({
       visibleTab = (
         <PokerScreen
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           browseMode={browseMode}
           onOpenAuth={() => onOpenAuth?.('login')}
           onOpenTool={openPokerTool}
@@ -2480,13 +2534,15 @@ export default function AppShell({
           playLogsRemaining={playLogsRemaining}
           freemiumUsageLoading={freemiumUsageLoading}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           supabaseClient={supabaseClient}
         />
       )
     } else if (tab === 'dashboard') {
       visibleTab = (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="text-white text-2xl font-black tracking-tight">Edge</div>
@@ -2604,6 +2660,7 @@ export default function AppShell({
           playLogsRemaining={playLogsRemaining}
           freemiumUsageLoading={freemiumUsageLoading}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           openCardSlug={guideOpenCardSlug}
           onOpenCardSlugConsumed={clearGuideOpenCardSlug}
@@ -2620,6 +2677,7 @@ export default function AppShell({
           hasSlotsEdge={hasActiveSubscription || isStaff}
           onRequireSubscribe={() => onRequireSubscribe?.('slots-edge')}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           isAdmin={isAdmin}
         />
@@ -2634,6 +2692,7 @@ export default function AppShell({
           onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
           onBankrollSessionCreated={refreshFreemiumUsage}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
         />
       )
@@ -2642,6 +2701,7 @@ export default function AppShell({
         <PokerBankrollTracker
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
           openSessionId={pendingPokerSessionId}
           onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
@@ -2671,6 +2731,7 @@ export default function AppShell({
         <PokerStableScreen
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
           openStableDealId={pendingPokerStableDealId}
           onOpenStableDealConsumed={clearPendingPokerStableDealId}
@@ -2711,6 +2772,7 @@ export default function AppShell({
           onRequireSubscribeForPlayLog={() => onRequireSubscribe?.('slots-edge')}
           onPlayLogCreated={refreshFreemiumUsage}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           highlightEntryId={pendingPlayLogEntryId}
           onHighlightEntryConsumed={() => setPendingPlayLogEntryId(null)}
@@ -2725,6 +2787,7 @@ export default function AppShell({
           canUseVisionExtract={Boolean(hasSlotsEdgeStarter || hasActiveSubscription)}
           onRequireSubscribe={(slug) => onRequireSubscribe?.(slug || 'slots-edge-starter')}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
         />
       )
@@ -2733,6 +2796,7 @@ export default function AppShell({
         <LocalIntel
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
         />
       )
@@ -2741,6 +2805,7 @@ export default function AppShell({
         <EdgeMonitorScreen
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           onBack={() => setTab('home')}
           onOpenBotPortal={() => {
             setTab('bots')
@@ -2748,7 +2813,8 @@ export default function AppShell({
           }}
         />
       ) : (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
           <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
             Edge Monitor is admin-only.
           </div>
@@ -2759,10 +2825,12 @@ export default function AppShell({
         <BotManagementScreen
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           onBack={() => setTab('home')}
         />
       ) : (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
           <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
             Bot Portal is admin-only.
           </div>
@@ -2773,10 +2841,12 @@ export default function AppShell({
         <AffiliateAdminScreen
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           onBack={() => setTab('home')}
         />
       ) : (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
           <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
             Affiliates admin is admin-only.
           </div>
@@ -2788,6 +2858,7 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           isAdmin={isAdmin}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
         />
       )
     } else if (tab === 'creator') {
@@ -2795,12 +2866,14 @@ export default function AppShell({
         <CreatorAffiliateScreen
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()}
           onBack={() => setTab('home')}
         />
       )
     } else if (tab === 'team') {
       visibleTab = (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
           <div className="mb-6">
             <div className="text-white text-2xl font-black tracking-tight">Team / Deals</div>
             <div className="text-zinc-400 text-sm mt-0.5">Bring our team in (skeleton)</div>

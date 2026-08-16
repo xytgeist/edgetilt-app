@@ -13,6 +13,7 @@ import ChatComposer from './ChatComposer.jsx'
  * @param {{
  *   onBack: () => void,
  *   titleBarNavSlot?: import('react').ReactNode,
+ *   titleBarCenterSlot?: import('react').ReactNode,
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   viewerUserId?: string,
  *   viewerDisplayName?: string,
@@ -21,6 +22,7 @@ import ChatComposer from './ChatComposer.jsx'
 export default function ChatIosPrototype({
   onBack,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   supabaseClient,
   viewerUserId = '',
   viewerDisplayName = '',
@@ -28,7 +30,9 @@ export default function ChatIosPrototype({
   const titleBarRef = useRef(null)
   const [titleBarHeight, setTitleBarHeight] = useState(56)
   const quickLinkIds = useQuickLinkIds()
-  const logoClassName = edgeLogoTitleBarClassName(quickLinkIds.length)
+  const logoClassName = edgeLogoTitleBarClassName(quickLinkIds.length, {
+    liveSessionChipVisible: Boolean(titleBarCenterSlot),
+  })
 
   useLayoutEffect(() => {
     const bar = titleBarRef.current
@@ -66,6 +70,7 @@ export default function ChatIosPrototype({
             </svg>
           </button>
           <EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />
+          {titleBarCenterSlot}
           <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-2">
             <TitleBarStatusLine />
             {titleBarNavSlot}

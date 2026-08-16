@@ -155,6 +155,7 @@ export default function PlayLogbook({
   supabaseClient,
   isAdmin = false,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
   highlightEntryId = null,
   onHighlightEntryConsumed = null,
@@ -964,6 +965,7 @@ export default function PlayLogbook({
     <>
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
+      titleBarCenterSlot={titleBarCenterSlot}
       titleBarToolCloseVisible={titleBarToolCloseVisible}
       contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
     >

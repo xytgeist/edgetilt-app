@@ -683,6 +683,7 @@ export default function SocialFeed({
   hydrateCommunityPosts = async (rows) => rows ?? [],
   /** Optional shell UI (e.g. hamburger) rendered on the right side of the fixed title bar. */
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   /** Shell subscription + staff (topic channels); merged in-feed with profile role where useful. */
   hasActiveSubscription = false,
   hasSlotsEdgeStarter = false,
@@ -1359,7 +1360,9 @@ export default function SocialFeed({
   const [loungeTitleBarHeight, setLoungeTitleBarHeight] = useState(0)
   const [loungeTitleReveal, setLoungeTitleReveal] = useState(1)
   const quickLinkIds = useQuickLinkIds()
-  const loungeTitleLogoClassName = edgeLogoTitleBarClassName(quickLinkIds.length)
+  const loungeTitleLogoClassName = edgeLogoTitleBarClassName(quickLinkIds.length, {
+    liveSessionChipVisible: Boolean(titleBarCenterSlot),
+  })
   const [loungeFeedViewportTopPx, setLoungeFeedViewportTopPx] = useState(0)
   /** True when feed scroll auto-collapsed the composer; cleared on explicit open / post / discard. */
   const composerFoldedFromFeedScrollRef = useRef(false)
@@ -15405,6 +15408,7 @@ export default function SocialFeed({
       communityPosts={communityPosts}
       viewportTitleTopPx={loungeFeedViewportTopPx}
       titleBarNavSlot={isActivePage ? titleBarNavSlot : null}
+      titleBarCenterSlot={isActivePage ? titleBarCenterSlot : null}
       communityFeedLoading={communityFeedLoading}
       onHome={onLoungeDockHome}
       onSearch={onLoungeDockSearch}
@@ -15549,6 +15553,7 @@ export default function SocialFeed({
           <PwaInstallTitleBarRow
             rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
             logo={<EdgeLogoWithEasterEgg className={loungeTitleLogoClassName} />}
+            centerSlot={titleBarCenterSlot}
             navSlot={
               <>
                 <TitleBarStatusLine

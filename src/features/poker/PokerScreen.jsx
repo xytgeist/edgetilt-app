@@ -28,6 +28,7 @@ const POKER_TOOLS = [
  */
 export default function PokerScreen({
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   browseMode = 'member',
   onOpenAuth,
   onOpenTool,
@@ -45,6 +46,7 @@ export default function PokerScreen({
   return (
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
+      titleBarCenterSlot={titleBarCenterSlot}
       contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
     >
       <div className="mb-6">

@@ -8,6 +8,7 @@ import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
+import { notifyLiveBankrollSessionsChanged } from '../shell/liveBankrollSessions.js'
 import BankrollSparkline from '../../components/BankrollSparkline.jsx'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { recordAppSessionRecorded } from '../../utils/appSectionVisitTracking.js'
@@ -404,6 +405,7 @@ function stakeOfferStatusTone(status) {
 export default function PokerBankrollTracker({
   supabaseClient,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
   /** Deep link: open session details sheet for this id (swap result notify). */
   openSessionId = null,
@@ -2947,6 +2949,7 @@ export default function PokerBankrollTracker({
       setDraftBackers([])
       setSheet(null)
       triggerTapHapticLight()
+      notifyLiveBankrollSessionsChanged()
       await loadData()
     } catch (e) {
       if (pieceDeal?.id) {
@@ -3000,6 +3003,7 @@ export default function PokerBankrollTracker({
         .eq('user_id', userId)
         .eq('status', 'active')
       if (uErr) throw uErr
+      notifyLiveBankrollSessionsChanged()
     } catch (e) {
       setSessions((rows) =>
         rows.map((s) => (s.id === target.id ? { ...s, ...prev } : s)),
@@ -3160,6 +3164,7 @@ export default function PokerBankrollTracker({
       }
       setActionSessionId(null)
       triggerTapHapticLight()
+      notifyLiveBankrollSessionsChanged()
       setSaving(false)
       void (async () => {
         try {
@@ -3702,6 +3707,7 @@ export default function PokerBankrollTracker({
       setSheet(null)
       setActionSessionId(null)
       triggerTapHapticLight()
+      notifyLiveBankrollSessionsChanged()
       await loadData()
     } catch (e) {
       setError(e?.message || 'Delete failed.')
@@ -3769,6 +3775,7 @@ export default function PokerBankrollTracker({
     <>
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         contentClassName="px-3 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >

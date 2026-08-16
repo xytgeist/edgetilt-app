@@ -1463,6 +1463,7 @@ export default function GuidesScreen({
   playLogsRemaining = null,
   freemiumUsageLoading = false,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   /** When set, scroll to and expand this guide card slug (used by Lounge guide embed tap). */
   openCardSlug = null,
   /** Clear parent deep-link slug after apply so leaving/re-entering Guides does not re-expand. */
@@ -1871,6 +1872,7 @@ export default function GuidesScreen({
     <>
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         scrollRootRef={guidesScrollRootRef}
         contentClassName="px-3 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"

@@ -39,6 +39,7 @@ import { isChatMediaPickerActive } from './chatMediaPickerRegistry.js'
  *   browseMode?: string,
  *   onRequireAuth?: () => void,
  *   titleBarNavSlot?: import('react').ReactNode,
+ *   titleBarCenterSlot?: import('react').ReactNode,
  *   initialPeerUserId?: string | null,
  *   onInitialPeerConsumed?: () => void,
  *   initialRoomId?: string | null,
@@ -61,6 +62,7 @@ export default function ChatTab({
   browseMode = 'member',
   onRequireAuth,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   initialPeerUserId = null,
   onInitialPeerConsumed,
   initialRoomId = null,
@@ -803,6 +805,7 @@ export default function ChatTab({
     return (
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div className="mt-16 flex flex-col items-center gap-4 text-center">
@@ -901,6 +904,7 @@ export default function ChatTab({
     <div ref={inboxRootRef} data-chat-feature className="select-none">
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
+      titleBarCenterSlot={titleBarCenterSlot}
       fillViewport
       contentClassName="px-0 pb-0"
     >

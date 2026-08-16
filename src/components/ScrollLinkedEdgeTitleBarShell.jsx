@@ -28,6 +28,8 @@ const defaultShellContentClassName = 'px-3 pb-[calc(6rem+env(safe-area-inset-bot
 
 export default function ScrollLinkedEdgeTitleBarShell({
   titleBarNavSlot = null,
+  /** Optional center control (e.g. live session chip). */
+  titleBarCenterSlot = null,
   /** Slot tool × in nav cluster - reserve logo width (matches `titleBarLayout.toolCloseVisible`). */
   titleBarToolCloseVisible = false,
   /** Publish scroll-linked reveal for the portaled lounge dock on other tabs. */
@@ -54,6 +56,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
   const quickLinkIds = useQuickLinkIds()
   const logoClassName = edgeLogoTitleBarClassName(quickLinkIds.length, {
     toolCloseVisible: titleBarToolCloseVisible,
+    liveSessionChipVisible: Boolean(titleBarCenterSlot),
   })
 
   useLayoutEffect(() => {
@@ -181,6 +184,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
         <PwaInstallTitleBarRow
           rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
           logo={<EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />}
+          centerSlot={titleBarCenterSlot}
           navSlot={
             <>
               <TitleBarStatusLine />

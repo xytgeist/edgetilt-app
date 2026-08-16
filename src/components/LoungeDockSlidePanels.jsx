@@ -126,6 +126,7 @@ export default function LoungeDockSlidePanels({
   /** Matches `SocialFeed` `loungeFeedViewportTopPx` (title `top` under shell padding). */
   viewportTitleTopPx = 0,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   communityFeedLoading = false,
   onHome,
   onSearch,
@@ -254,7 +255,10 @@ export default function LoungeDockSlidePanels({
   const panelTitleRevealRef = useRef(1)
   const [panelTitleReveal, setPanelTitleReveal] = useState(1)
   const quickLinkIds = useQuickLinkIds()
-  const panelTitleLogoClassName = edgeLogoTitleBarClassName(quickLinkIds.length, { panelCloseVisible: true })
+  const panelTitleLogoClassName = edgeLogoTitleBarClassName(quickLinkIds.length, {
+    panelCloseVisible: true,
+    liveSessionChipVisible: Boolean(titleBarCenterSlot),
+  })
   const panelScrollPrevTopRef = useRef(0)
   const panelScrollVisualRafRef = useRef(0)
 
@@ -1055,6 +1059,7 @@ export default function LoungeDockSlidePanels({
         <PwaInstallTitleBarRow
           rowClassName="px-3 py-2"
           logo={<EdgeLogoWithEasterEgg className={panelTitleLogoClassName} />}
+          centerSlot={titleBarCenterSlot}
           navSlot={
             <>
               <TitleBarStatusLine

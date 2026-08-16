@@ -44,6 +44,7 @@ export default function OffersCalendar({
   hasSlotsEdge = true,
   onRequireSubscribe,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   isAdmin = false,
   titleBarToolCloseVisible = false,
 }) {
@@ -1000,6 +1001,7 @@ export default function OffersCalendar({
     <>
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         fullWidth={weekLayoutFullBleed}
         contentClassName={

@@ -13,6 +13,7 @@ import BankrollLocationsTab from './BankrollLocationsTab.jsx'
 import BankrollImportSheet from './BankrollImportSheet.jsx'
 import BankrollSessionHistoryRow from './BankrollSessionHistoryRow.jsx'
 import { fetchNearbyCasinos } from '../../utils/nearbyCasinos.js'
+import { notifyLiveBankrollSessionsChanged } from '../shell/liveBankrollSessions.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ function stepDurationHoursField(raw, delta) {
 export default function BankrollTracker({
   supabaseClient,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
   canCreateBankrollSession = true,
   bankrollSessionsRemaining = null,
@@ -308,6 +310,7 @@ export default function BankrollTracker({
       setSessions(prev => [data, ...prev])
       setSheet(null); setStartCasino(''); setStartAmount(''); setStartGameType('slots')
       triggerTapHapticLight()
+      notifyLiveBankrollSessionsChanged()
       onBankrollSessionCreated?.()
     } catch (e) {
       setError(e.message || 'Could not start session.')
@@ -342,6 +345,7 @@ export default function BankrollTracker({
       setProfile(updatedProfile)
       setSheet(null); setEndAmount(''); setSessionNotes('')
       triggerTapHapticLight()
+      notifyLiveBankrollSessionsChanged()
     } catch (e) {
       setError(e.message || 'Could not end session.')
     } finally {
@@ -663,6 +667,7 @@ export default function BankrollTracker({
     <>
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >

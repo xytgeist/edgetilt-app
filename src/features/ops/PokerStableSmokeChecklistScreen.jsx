@@ -41,6 +41,7 @@ export default function PokerStableSmokeChecklistScreen({
   supabaseClient,
   isAdmin = false,
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
 }) {
   const hostAllowed = isSmokeChecklistHostAllowed()
   const [loading, setLoading] = useState(true)
@@ -212,6 +213,7 @@ export default function PokerStableSmokeChecklistScreen({
     return (
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div className="rounded-2xl bg-zinc-900 p-5 text-sm leading-relaxed text-zinc-400">
@@ -225,6 +227,7 @@ export default function PokerStableSmokeChecklistScreen({
     return (
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
+        titleBarCenterSlot={titleBarCenterSlot}
         contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
       >
         <div className="rounded-2xl bg-zinc-900 p-5 text-sm leading-relaxed text-zinc-400">
@@ -238,6 +241,7 @@ export default function PokerStableSmokeChecklistScreen({
   return (
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
+      titleBarCenterSlot={titleBarCenterSlot}
       contentClassName="px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
     >
       <div data-stable-smoke-checklist className="mx-auto max-w-2xl">

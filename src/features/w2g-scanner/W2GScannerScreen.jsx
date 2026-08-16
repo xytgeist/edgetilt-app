@@ -91,6 +91,7 @@ function canvasToJpegBlob(canvas, quality = 0.92) {
  */
 export default function W2GScannerScreen({
   titleBarNavSlot = null,
+  titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
   supabaseClient = null,
   onOpenAuth = null,
@@ -1399,6 +1400,7 @@ export default function W2GScannerScreen({
     <>
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
+      titleBarCenterSlot={titleBarCenterSlot}
       titleBarToolCloseVisible={titleBarToolCloseVisible}
       contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
     >

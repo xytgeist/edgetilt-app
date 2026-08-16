@@ -125,9 +125,16 @@ function PwaInstallHelpDropPanel({
 }
 
 /**
- * Title bar row: logo | install chip | nav - install help panel overlays feed below the row.
+ * Title bar row: logo | optional center (live session / install) | nav.
+ * Live session chip wins the center when present; install chip stays as a
+ * secondary center sibling when both are visible and space allows.
  */
-export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'px-3 py-2' }) {
+export default function PwaInstallTitleBarRow({
+  logo,
+  navSlot,
+  centerSlot = null,
+  rowClassName = 'px-3 py-2',
+}) {
   const deferredPromptRef = useRef(null)
   const [visible, setVisible] = useState(() => shouldShowPwaInstallBanner())
   const [panelOpen, setPanelOpen] = useState(false)
@@ -211,26 +218,40 @@ export default function PwaInstallTitleBarRow({ logo, navSlot, rowClassName = 'p
     </button>
   )
 
-  if (!visible) {
-    return (
-      <div className={`flex items-center justify-between gap-3 ${rowClassName}`}>
-        {logo}
-        <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">{navSlot}</div>
-      </div>
-    )
-  }
+  const hasCenter = Boolean(centerSlot) || visible
+  const centerContent = centerSlot ? (
+    <div className="flex max-w-full min-w-0 items-center justify-center gap-1.5">
+      {centerSlot}
+      {visible ? (
+        <span className="hidden min-[520px]:inline-flex shrink-0">{installChip}</span>
+      ) : null}
+    </div>
+  ) : visible ? (
+    installChip
+  ) : null
+
+  const row = hasCenter ? (
+    <div
+      className={`grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`}
+      data-pwa-install-title-row
+      data-title-bar-has-center={centerSlot ? 'live' : 'install'}
+    >
+      <div className="min-w-0 justify-self-start">{logo}</div>
+      <div className="min-w-0 justify-self-center">{centerContent}</div>
+      <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">{navSlot}</div>
+    </div>
+  ) : (
+    <div className={`flex items-center justify-between gap-3 ${rowClassName}`}>
+      {logo}
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">{navSlot}</div>
+    </div>
+  )
+
+  if (!visible) return row
 
   return (
     <div className="relative" data-pwa-install-title-row-wrap>
-      <div
-        className={`grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`}
-        data-pwa-install-title-row
-      >
-        <div className="min-w-0 justify-self-start">{logo}</div>
-        {installChip}
-        <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">{navSlot}</div>
-      </div>
-
+      {row}
       <PwaInstallHelpDropPanel
         open={panelOpen}
         onClose={() => setPanelOpen(false)}

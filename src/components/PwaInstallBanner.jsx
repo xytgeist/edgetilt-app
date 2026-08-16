@@ -126,8 +126,7 @@ function PwaInstallHelpDropPanel({
 
 /**
  * Title bar row: logo | optional center (live session / install) | nav.
- * Live session chip wins the center when present; install chip stays as a
- * secondary center sibling when both are visible and space allows.
+ * Live session chip temporarily replaces the How to Install chip while active.
  */
 export default function PwaInstallTitleBarRow({
   logo,
@@ -142,6 +141,9 @@ export default function PwaInstallTitleBarRow({
   const safari = isSafariBrowser()
   const steps = pwaInstallBannerSteps(safari)
   const showIosSetupImage = isIosDevice()
+  const liveSessionActive = Boolean(centerSlot)
+  /** Install chip only when there is no live-session center control. */
+  const showInstallChip = visible && !liveSessionActive
 
   useEffect(() => {
     const syncVisible = () => {
@@ -173,6 +175,10 @@ export default function PwaInstallTitleBarRow({
       window.removeEventListener('appinstalled', onAppInstalled)
     }
   }, [])
+
+  useEffect(() => {
+    if (liveSessionActive && panelOpen) setPanelOpen(false)
+  }, [liveSessionActive, panelOpen])
 
   const onNativeInstall = useCallback(async () => {
     const deferred = deferredPromptRef.current
@@ -218,23 +224,14 @@ export default function PwaInstallTitleBarRow({
     </button>
   )
 
-  const hasCenter = Boolean(centerSlot) || visible
-  const centerContent = centerSlot ? (
-    <div className="flex max-w-full min-w-0 items-center justify-center gap-1.5">
-      {centerSlot}
-      {visible ? (
-        <span className="hidden min-[520px]:inline-flex shrink-0">{installChip}</span>
-      ) : null}
-    </div>
-  ) : visible ? (
-    installChip
-  ) : null
+  const hasCenter = liveSessionActive || showInstallChip
+  const centerContent = liveSessionActive ? centerSlot : showInstallChip ? installChip : null
 
   const row = hasCenter ? (
     <div
       className={`grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`}
       data-pwa-install-title-row
-      data-title-bar-has-center={centerSlot ? 'live' : 'install'}
+      data-title-bar-has-center={liveSessionActive ? 'live' : 'install'}
     >
       <div className="min-w-0 justify-self-start">{logo}</div>
       <div className="min-w-0 justify-self-center">{centerContent}</div>
@@ -247,7 +244,7 @@ export default function PwaInstallTitleBarRow({
     </div>
   )
 
-  if (!visible) return row
+  if (!showInstallChip) return row
 
   return (
     <div className="relative" data-pwa-install-title-row-wrap>

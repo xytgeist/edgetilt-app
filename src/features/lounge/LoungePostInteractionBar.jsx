@@ -91,9 +91,7 @@ export default function LoungePostInteractionBar({
   const commentClass = ro
     ? 'text-zinc-500'
     : ui.commented
-      ? overlayIdle
-        ? 'text-white'
-        : 'text-zinc-100'
+      ? 'text-blue-400'
       : overlayIdle
         ? 'text-white'
         : 'text-zinc-500'

@@ -932,17 +932,15 @@ html.light .text-fuchsia-300 { color: var(--color-fuchsia-700); }
 /*
  * Interaction bar (data-lounge-post-interaction-bar):
  * - Idle glyphs: zinc-500 in our inverted scale = #71717a, reads too dark on white →
- *   bump to a lighter neutral (#a1a1aa). Also soften active commented state
- *   (zinc-100 = #18181b ≈ near-black in light mode → dark-gray instead).
+ *   bump to a lighter neutral (#a1a1aa).
+ * - Active comment participation: blue, alongside repost green / like red / bookmark yellow.
  * - Bookmarked: lv-yellow (#ffea00) is blinding on white bg → warm amber.
  */
 html.light [data-lounge-post-interaction-bar] .text-zinc-500 {
   color: #a1a1aa;
 }
-/* Active/commented: filled glyph carries the "you commented" signal; slightly darker
-   than idle (#a1a1aa) so the fill reads as engaged without going near-black. */
-html.light [data-lounge-post-interaction-bar] .text-zinc-100 {
-  color: #71717a;
+html.light [data-lounge-post-interaction-bar] .text-blue-400 {
+  color: #2563eb !important;
 }
 html.light [data-lounge-post-interaction-bar] .text-emerald-400,
 html.light [data-lounge-post-interaction-bar] .text-emerald-400\/90 {

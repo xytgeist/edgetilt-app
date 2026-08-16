@@ -5805,7 +5805,6 @@ export default function SocialFeed({
           .from('feed_comments')
           .select('post_id')
           .eq('user_id', uid)
-          .is('parent_id', null)
           .is('hidden_at', null)
           .in('post_id', ids),
         supabaseClient
@@ -17324,7 +17323,7 @@ export default function SocialFeed({
                 const commentCount = baseComments
                 const likeCount = baseLikes
                 const repostCount = baseReposts
-                const commentClass = loungeReadOnly ? 'text-zinc-500' : ui.commented ? 'text-zinc-100' : 'text-zinc-500'
+                const commentClass = loungeReadOnly ? 'text-zinc-500' : ui.commented ? 'text-blue-400' : 'text-zinc-500'
                 const repostClass = loungeReadOnly ? 'text-zinc-500' : ui.reposted ? 'text-emerald-400' : 'text-zinc-500'
                 const likeClass = loungeReadOnly ? 'text-zinc-500' : ui.liked ? 'text-lv-red' : 'text-zinc-500'
                 const bookmarkClass = loungeReadOnly ? 'text-zinc-600' : isBookmarked ? 'text-lv-yellow' : 'text-zinc-500'

@@ -929,14 +929,70 @@ export function coercePokerGameForSessionType(sessionType, gameVariant) {
   return 'nlh'
 }
 
+/**
+ * Format a face buy-in the same way stakes / event labels do (`$1100`, `$12.50`).
+ * @param {unknown} buyIn
+ * @returns {string}
+ */
+export function formatPokerBuyInDollar(buyIn) {
+  const bi = Number(buyIn)
+  if (!Number.isFinite(bi)) return ''
+  return `$${bi % 1 === 0 ? bi.toFixed(0) : bi.toFixed(2)}`
+}
+
+function parsePokerMoneyToken(raw) {
+  const n = Number(String(raw || '').replace(/,/g, '').trim())
+  return Number.isFinite(n) ? n : null
+}
+
+function pokerMoneyAmountsMatch(a, b) {
+  return Math.abs(Number(a) - Number(b)) < 0.005
+}
+
+/**
+ * True when a tournament/event display name already leads with a `$` money blob that
+ * encodes `buyIn` … `$1,100`, `$1100`, `$1,000+$110`, `$1,000+$110=$1,110`.
+ * Used so cards do not show `$1100 · $1,100 Arizona State…`.
+ * @param {string | null | undefined} name
+ * @param {unknown} buyIn
+ */
+export function tournamentNameLeadsWithMatchingBuyIn(name, buyIn) {
+  const target = Number(buyIn)
+  if (!Number.isFinite(target)) return false
+  const raw = String(name || '').trim()
+  if (!raw.startsWith('$')) return false
+  const m = raw.match(
+    /^(\$\s*[\d,]+(?:\.\d+)?(?:\s*\+\s*\$?\s*[\d,]+(?:\.\d+)?)*(?:\s*=\s*\$?\s*[\d,]+(?:\.\d+)?)?)(?=\s|$|[^0-9.,+$=])/,
+  )
+  if (!m) return false
+  const blob = m[1]
+  const eqIdx = blob.indexOf('=')
+  const left = eqIdx >= 0 ? blob.slice(0, eqIdx) : blob
+  const right = eqIdx >= 0 ? blob.slice(eqIdx + 1) : ''
+  const leftAmounts = [...left.matchAll(/[\d,]+(?:\.\d+)?/g)]
+    .map((x) => parsePokerMoneyToken(x[0]))
+    .filter((n) => n != null)
+  /** @type {number[]} */
+  const candidates = [...leftAmounts]
+  if (leftAmounts.length > 1) {
+    candidates.push(leftAmounts.reduce((sum, n) => sum + n, 0))
+  }
+  if (right) {
+    const total = parsePokerMoneyToken(right.replace(/[^0-9,.]/g, ''))
+    if (total != null) candidates.push(total)
+  }
+  return candidates.some((c) => pokerMoneyAmountsMatch(c, target))
+}
+
 /** Compact stakes line for list cards. */
 export function pokerSessionStakesLabel(session) {
   if (!session) return 'Session'
   if (session.session_type === 'tournament') {
     const bi = Number(session.buy_in)
-    const biStr = Number.isFinite(bi) ? `$${bi % 1 === 0 ? bi.toFixed(0) : bi.toFixed(2)}` : ''
+    const biStr = formatPokerBuyInDollar(bi)
     const name = String(session.tournament_name || '').trim()
     const game = gameLabel(session.game_variant)
+    if (name && biStr && tournamentNameLeadsWithMatchingBuyIn(name, bi)) return name
     if (name && biStr) return `${biStr} · ${name}`
     if (name) return name
     if (biStr && game) return `${biStr} · ${game}`

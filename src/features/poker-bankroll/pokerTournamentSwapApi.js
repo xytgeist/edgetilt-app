@@ -14,6 +14,10 @@ import {
 } from './pokerTournamentSeries.js'
 import { localYmd, pokerSessionTotalCost } from './pokerBankrollMath.js'
 import { parseSwapPct } from './pokerTournamentSwapMath.js'
+import {
+  formatPokerBuyInDollar,
+  tournamentNameLeadsWithMatchingBuyIn,
+} from './pokerSessionLabels.js'
 import { parseGuestNotifyContact } from '../../utils/guestNotifyContact.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 
@@ -1126,8 +1130,9 @@ export function formatTournamentEventLabel(ev) {
   const name = String(ev.display_name || '').trim()
   const venue = String(ev.venue_name || '').trim()
   const bi = Number(ev.buy_in)
-  const biStr = Number.isFinite(bi) ? `$${bi % 1 === 0 ? bi.toFixed(0) : bi.toFixed(2)}` : ''
+  const biStr = formatPokerBuyInDollar(bi)
   const date = ev.event_date ? String(ev.event_date).slice(0, 10) : ''
+  if (name && biStr && tournamentNameLeadsWithMatchingBuyIn(name, bi)) return name
   if (name && biStr) return `${biStr} · ${name}`
   if (name) return name
   if (venue && biStr) return date ? `${biStr} · ${venue} · ${date}` : `${biStr} · ${venue}`

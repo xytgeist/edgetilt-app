@@ -184,11 +184,8 @@ function SwapSettlementBreakdown({ swap, role, other, statusLine }) {
 }
 
 /**
- * Read-only session detail sheet. Edit opens separately from the parent.
- */
-/**
- * Read-only session detail sheet. Edit opens separately from the parent.
- * Multi-flight series groups show aggregate totals + per-flight Edit rows.
+ * Read-only session detail sheet. Edit / delete open or run from the parent.
+ * Multi-flight series groups show aggregate totals + per-flight Edit rows + Delete event.
  */
 export default function PokerSessionDetailSheet({
   session,
@@ -210,6 +207,8 @@ export default function PokerSessionDetailSheet({
   eventsById = {},
   onClose,
   onEdit,
+  onDelete,
+  deleteBusy = false,
   onSavedSwapsMutated,
   onMarkSwapSettled,
   onEndSession,
@@ -791,19 +790,38 @@ export default function PokerSessionDetailSheet({
           >
             Continue
           </button>
-        ) : isSeriesGroup ? (
-          <p className="text-center text-[11px] leading-snug text-zinc-500">
-            Edit each flight above. Sessions stay separate for bankroll accounting.
-          </p>
         ) : (
-          <button
-            type="button"
-            onClick={() => onEdit?.(session)}
-            data-poker-session-edit-btn
-            className="w-full rounded-2xl bg-zinc-700 py-3.5 text-base font-bold text-white touch-manipulation active:bg-zinc-600"
-          >
-            Edit session
-          </button>
+          <div className="space-y-2">
+            {isSeriesGroup ? (
+              <p className="text-center text-[11px] leading-snug text-zinc-500">
+                Edit each flight above. Sessions stay separate for bankroll accounting.
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onEdit?.(session)}
+                data-poker-session-edit-btn
+                className="w-full rounded-2xl bg-zinc-700 py-3.5 text-base font-bold text-white touch-manipulation active:bg-zinc-600"
+              >
+                Edit session
+              </button>
+            )}
+            {onDelete ? (
+              <button
+                type="button"
+                disabled={deleteBusy}
+                onClick={() => void onDelete?.(flightSessions)}
+                data-poker-session-delete-btn
+                className="w-full rounded-2xl border border-rose-500/40 py-3 text-sm font-semibold text-rose-300 touch-manipulation disabled:opacity-50"
+              >
+                {deleteBusy
+                  ? 'Deleting…'
+                  : isSeriesGroup
+                    ? 'Delete event'
+                    : 'Delete session'}
+              </button>
+            ) : null}
+          </div>
         )}
       </div>
     </div>

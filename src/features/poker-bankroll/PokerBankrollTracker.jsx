@@ -3683,6 +3683,75 @@ export default function PokerBankrollTracker({
     }
   }
 
+  /**
+   * Delete one completed session or a full history series group from the detail sheet.
+   * @param {object[]} sessionList
+   */
+  async function deleteCompletedSessionsFromDetail(sessionList) {
+    if (!supabaseClient || !userId || saving) return
+    const rows = (Array.isArray(sessionList) ? sessionList : []).filter((s) => s?.id)
+    if (!rows.length) return
+
+    const swapCount = uniqueSwapsForSeriesSessions(rows, swapsBySessionId).length
+    const isSeries = rows.length > 1
+    let title = isSeries ? 'Delete this event?' : 'Delete this poker session?'
+    let message = isSeries
+      ? `This removes all ${rows.length} sessions in the event from your history.`
+      : 'It will be removed from your history.'
+    if (swapCount > 1) {
+      title = 'Delete this event?'
+      message = `You have ${swapCount} swaps attached to this event. Delete all ${
+        isSeries ? `${rows.length} sessions` : 'of this session'
+      }?`
+    } else if (swapCount === 1) {
+      message = isSeries
+        ? `This event has a swap attached. Delete all ${rows.length} sessions?`
+        : 'This session has a swap attached. Delete it from your history?'
+    }
+
+    const ok =
+      typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title,
+            message,
+            confirmLabel: isSeries || swapCount > 1 ? 'Delete all' : 'Delete',
+            cancelLabel: 'Cancel',
+          })
+        : window.confirm(`${title}\n\n${message}`)
+    if (!ok) return
+
+    setSaving(true)
+    setError('')
+    try {
+      for (const row of rows) {
+        const stakeDealId = row.deal_id || null
+        if (stakeDealId) {
+          const { error: dErr } = await deleteStakeSessionWithAudit(supabaseClient, row.id)
+          if (dErr) throw dErr
+        } else {
+          const wl = pokerSessionWinLoss(row)
+          const { error: dErr } = await supabaseClient
+            .from('poker_bankroll_sessions')
+            .delete()
+            .eq('id', row.id)
+            .eq('user_id', userId)
+          if (dErr) throw dErr
+          if (wl != null) await applyBankrollDelta(-wl)
+        }
+      }
+      setDetailSessionId(null)
+      setDetailSeriesSessionIds(null)
+      setSessionRecapMode(false)
+      setSheet(null)
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Delete failed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   /** Discard an in-progress session from End Session (no bankroll delta yet). */
   async function deleteActiveSession() {
     if (!actionSession || !supabaseClient || !userId) return
@@ -5732,6 +5801,8 @@ export default function PokerBankrollTracker({
             setDetailSessionId(null)
             setDetailSeriesSessionIds(null)
           }}
+          onDelete={(sessionList) => void deleteCompletedSessionsFromDetail(sessionList)}
+          deleteBusy={saving}
           onSavedSwapsMutated={() => void loadData()}
           onMarkSwapSettled={(swap) => void markSessionCardSwapSettled(swap)}
           onEndSession={() => {

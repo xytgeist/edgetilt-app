@@ -5178,6 +5178,14 @@ html.light [data-poker-session-detail] [data-poker-session-edit-btn].text-white 
 html.light [data-poker-session-detail] [data-poker-session-edit-btn]:active {
   background-color: #27272a !important;
 }
+html.light [data-poker-session-detail] [data-poker-session-delete-btn] {
+  border-color: rgb(251 113 133 / 0.55) !important;
+  color: rgb(190 18 60) !important;
+  background-color: transparent !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-delete-btn]:active {
+  background-color: rgb(255 241 242) !important;
+}
 html.light [data-poker-session-detail] [data-poker-session-swap-btn] {
   background-color: #ffffff !important;
   border-color: #2563eb !important;

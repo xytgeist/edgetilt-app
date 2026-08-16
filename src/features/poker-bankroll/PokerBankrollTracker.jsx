@@ -221,9 +221,9 @@ import {
   persistDraftSwapsForSession,
   draftSwapsReadyError,
   refreshSeriesSwapBullets,
+  swapForViewerBook,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
-  swapTermsAwaitingReaccept,
   swapViewerRole,
   syncCounterpartyResultsForSession,
   syncCreatorResultsForSession,
@@ -1456,7 +1456,7 @@ export default function PokerBankrollTracker({
             if (payload.eventType === 'DELETE') {
               return prev.filter((s) => s.id !== row.id)
             }
-            const nextRow = payload.new
+            const nextRow = swapForViewerBook(payload.new, userId)
             if (!nextRow) return prev
             const idx = prev.findIndex((s) => s.id === nextRow.id)
             if (idx < 0) return [nextRow, ...prev]
@@ -5099,7 +5099,6 @@ export default function PokerBankrollTracker({
                                 const canMarkSettled =
                                   swap.status === 'settled' &&
                                   !paid &&
-                                  !swapTermsAwaitingReaccept(swap) &&
                                   Math.abs(Number(swap.settlement_amount) || 0) >= 0.005
                                 const amtTone =
                                   signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'

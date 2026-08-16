@@ -4,6 +4,7 @@
  * body.kind:
  *   - offer (default): creator invites counterparty (guest claim link / Edge in-app)
  *   - result: either party logged a session result → payout expected
+ *   - revision: either Edge user changed only their own bookkeeping terms
  *
  * Channels:
  *   - guest → Twilio SMS and/or Resend email
@@ -291,7 +292,12 @@ Deno.serve(async (req) => {
     }
     const swapId = String(body.swap_id || '').trim()
     if (!swapId) return jsonResponse({ error: 'swap_id is required.' }, 400)
-    const kind = String(body.kind || 'offer').trim().toLowerCase() === 'result' ? 'result' : 'offer'
+    const requestedKind = String(body.kind || 'offer').trim().toLowerCase()
+    const kind = requestedKind === 'result'
+      ? 'result'
+      : requestedKind === 'revision'
+        ? 'revision'
+        : 'offer'
 
     const { data: swapRaw, error: swapErr } = await admin
       .from('poker_tournament_swaps')
@@ -337,6 +343,30 @@ Deno.serve(async (req) => {
 
     const pctLine = `${swap.pct_creator_gives}% - ${swap.pct_counterparty_gives}%`
     const channels: Record<string, unknown> = {}
+
+    // ── Local-books revision notify ──────────────────────────────────────────
+    if (kind === 'revision') {
+      const recipientId = String(
+        isCreator ? swap.counterparty_user_id || '' : swap.creator_user_id || '',
+      ).trim()
+      if (!recipientId || recipientId === uid) {
+        return jsonResponse({ ok: true, kind, channels, notified: false })
+      }
+      const { data: activityRow, error: actErr } = await admin
+        .from('activity_events')
+        .insert({
+          recipient_user_id: recipientId,
+          actor_user_id: uid,
+          event_type: 'poker_tournament_swap_result',
+          detail_text: 'updated their tournament swap books',
+          poker_tournament_swap_id: swapId,
+        })
+        .select('id')
+        .maybeSingle()
+      if (actErr) throw new Error(actErr.message)
+      channels.in_app = { ok: true, activity_event_id: activityRow?.id || null }
+      return jsonResponse({ ok: true, kind, channels })
+    }
 
     // ── Result notify (session end) ──────────────────────────────────────────
     if (kind === 'result') {

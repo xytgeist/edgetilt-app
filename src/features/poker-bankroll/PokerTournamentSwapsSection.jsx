@@ -14,7 +14,6 @@ import {
 } from './pokerSwapOwnershipSummary.js'
 import PokerSwapOwnershipSummary from './PokerSwapOwnershipSummary.jsx'
 import {
-  acceptRevisedSwapTerms,
   cancelTournamentSwap,
   closeSwapSideResult,
   emptyDraftSwap,
@@ -23,7 +22,7 @@ import {
   setSwapSideManualResult,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
-  swapTermsAwaitingReaccept,
+  resolveOtherSwapRevision,
   swapTermsFormValues,
   swapViewerRole,
   updateTournamentSwapTerms,
@@ -706,7 +705,7 @@ export default function PokerTournamentSwapsSection({
     setTermsForm(null)
   }
 
-  /** Creator revises % / terms. Edge-user counterparties must re-accept before cash posts. */
+  /** Revise only the viewer's local books, then notify the other Edge user. */
   async function onSaveTerms(swap) {
     if (!supabaseClient || !termsForm) return
     setBusyId(swap.id)
@@ -715,15 +714,15 @@ export default function PokerTournamentSwapsSection({
     try {
       const { error } = await updateTournamentSwapTerms(supabaseClient, swap.id, termsForm)
       if (error) throw error
-      const isEdgeUser = swap.counterparty_kind === 'user' && swap.counterparty_user_id
-      if (isEdgeUser) {
+      const hasOtherEdgeUser = swap.counterparty_kind === 'user' && swap.counterparty_user_id
+      if (hasOtherEdgeUser) {
         // Fire and forget ... the row is already saved; notify latency should not block UI.
-        void notifyTournamentSwap(supabaseClient, swap.id, { kind: 'offer' }).catch(() => {})
+        void notifyTournamentSwap(supabaseClient, swap.id, { kind: 'revision' }).catch(() => {})
       }
       setLocalNotice(
-        isEdgeUser
-          ? `Terms updated. ${swapOtherPartyLabel(swap, profilesById, userId)} has to accept the change.`
-          : 'Terms updated.',
+        hasOtherEdgeUser
+          ? `Your books are updated. ${swapOtherPartyLabel(swap, profilesById, userId)} was notified.`
+          : 'Your books are updated.',
       )
       closeTermsEditor()
       onSavedSwapsMutated?.()
@@ -734,14 +733,14 @@ export default function PokerTournamentSwapsSection({
     }
   }
 
-  /** Reverse the settled cash posted to both bankrolls so the swap can be edited again. */
+  /** Reverse only the viewer's settled bankroll entry so their books can be edited. */
   async function onUnmarkPaid(swap) {
     if (!supabaseClient) return
     const amount = Math.abs(Number(swap.settlement_amount) || 0)
-    const posted = amount >= 0.005 && Boolean(swap.settlement_bankroll_posted)
+    const posted = amount >= 0.005 && Boolean(swap._viewer_bankroll_posted)
     const message = posted
-      ? `This reverses the ${fmtPoker$(amount)} already posted to both bankrolls so the swap can be corrected.`
-      : 'This reopens the swap so terms can be corrected.'
+      ? `This reverses the ${fmtPoker$(amount)} posted to your bankroll so you can correct your books.`
+      : 'This reopens the swap in your books so you can correct it.'
     const ok =
       typeof showGlobalConfirm === 'function'
         ? await showGlobalConfirm({
@@ -760,8 +759,8 @@ export default function PokerTournamentSwapsSection({
       if (error) throw error
       setLocalNotice(
         posted
-          ? 'Settled cash reversed on both bankrolls. You can edit the swap now.'
-          : 'Swap reopened. You can edit it now.',
+          ? 'The settled entry was reversed in your bankroll. You can edit your books now.'
+          : 'The swap is unsettled in your books. You can edit it now.',
       )
       onSavedSwapsMutated?.()
     } catch (e) {
@@ -771,18 +770,26 @@ export default function PokerTournamentSwapsSection({
     }
   }
 
-  async function onAcceptRevisedTerms(swap) {
+  async function onResolveOtherRevision(swap, useTheirTerms) {
     if (!supabaseClient) return
     setBusyId(swap.id)
     setLocalError('')
     setLocalNotice('')
     try {
-      const { error } = await acceptRevisedSwapTerms(supabaseClient, swap.id)
+      const { error } = await resolveOtherSwapRevision(
+        supabaseClient,
+        swap.id,
+        useTheirTerms,
+      )
       if (error) throw error
-      setLocalNotice('Revised terms accepted.')
+      setLocalNotice(
+        useTheirTerms
+          ? 'Your books now use their terms.'
+          : 'Your books are unchanged.',
+      )
       onSavedSwapsMutated?.()
     } catch (e) {
-      setLocalError(e?.message || 'Could not accept the revised terms.')
+      setLocalError(e?.message || 'Could not resolve the bookkeeping notice.')
     } finally {
       setBusyId('')
     }
@@ -1172,15 +1179,30 @@ export default function PokerTournamentSwapsSection({
               ? formatSwapSideResultLine(swap, otherSide, other, fmtPoker$)
               : null
           const paid = swapIsMarkedPaid(swap)
-          const awaitingReaccept = swapTermsAwaitingReaccept(swap)
-          const canEditTerms = role === 'creator' && !paid
+          const canEditTerms = !paid
           const termsEditorOpen = editingTermsId === swap.id
+          const otherRevisionPending = Boolean(swap._other_book_revision_pending)
+          const otherBookTerms = swap._other_book_terms || {}
+          const otherBookYouGive =
+            role === 'creator'
+              ? otherBookTerms.pct_creator_gives
+              : otherBookTerms.pct_counterparty_gives
+          const otherBookTheyGive =
+            role === 'creator'
+              ? otherBookTerms.pct_counterparty_gives
+              : otherBookTerms.pct_creator_gives
           const signed = swapViewerSettlementDelta(swap, role)
           const statusLine =
             swap.status === 'settled' && paid
               ? formatSwapSettledAmountLine(signed, fmtPoker$)
               : primaryStatus
-          const canCancel = !paid
+          // Cancel still removes the shared swap, so protect a settlement already posted
+          // in either player's books even though Edit / Mark Unsettled are viewer-local.
+          const canCancel =
+            !swap.creator_marked_paid &&
+            !swap.counterparty_marked_paid &&
+            !swap.creator_bankroll_posted &&
+            !swap.counterparty_bankroll_posted
           const statusTone =
             swap.status === 'settled' && paid
               ? signed < -0.005
@@ -1273,9 +1295,10 @@ export default function PokerTournamentSwapsSection({
                     <p className="text-[11px] text-rose-400">Percents must be 0–100.</p>
                   ) : null}
                   <p className="text-[11px] leading-snug text-zinc-500">
+                    This changes only your books.
                     {swap.counterparty_kind === 'user'
-                      ? `${other} has to accept the change before either of you can mark cash settled.`
-                      : 'Guest swaps apply the change right away.'}
+                      ? ` ${other} will be notified and can choose whether to match it.`
+                      : ''}
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -1302,46 +1325,47 @@ export default function PokerTournamentSwapsSection({
               {otherResultLine && !bothReady ? (
                 <div className="mt-0.5 text-[11px] text-zinc-400">{otherResultLine}</div>
               ) : null}
-              {awaitingReaccept ? (
+              {otherRevisionPending ? (
                 <div
                   data-poker-swap-revised-terms
-                  className="mt-2 rounded-2xl border border-amber-500/30 bg-amber-950/25 p-2.5"
+                  className="mt-2 rounded-2xl border border-cyan-500/25 bg-cyan-950/20 p-2.5"
                 >
-                  <p className="text-[11px] font-semibold leading-snug text-amber-100">
-                    {role === 'creator'
-                      ? `Waiting for ${other} to accept the revised terms.`
-                      : `${other} revised these terms to ${swap.pct_counterparty_gives}% from you ↔ ${swap.pct_creator_gives}% from them.`}
+                  <p className="text-[11px] font-semibold leading-snug text-cyan-100">
+                    {other} updated their books
                   </p>
-                  <p className="mt-1 text-[11px] leading-snug text-amber-200/70">
-                    Cash cannot be marked settled until it is accepted.
+                  <p className="mt-1 text-[11px] leading-snug text-cyan-200/70">
+                    Their split now shows you give {otherBookYouGive}% and they give{' '}
+                    {otherBookTheyGive}%. Your books have not changed.
                   </p>
-                  {role === 'counterparty' ? (
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        disabled={busyId === swap.id}
-                        data-poker-swap-accept-terms-btn
-                        onClick={() => void onAcceptRevisedTerms(swap)}
-                        className="flex-1 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
-                      >
-                        Accept terms
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busyId === swap.id}
-                        onClick={() => void onCancelSwap(swap)}
-                        className="rounded-xl border border-rose-500/40 px-3 py-2 text-xs font-semibold text-rose-300 touch-manipulation disabled:opacity-50"
-                      >
-                        Decline
-                      </button>
-                    </div>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === swap.id || paid}
+                      data-poker-swap-use-their-terms-btn
+                      onClick={() => void onResolveOtherRevision(swap, true)}
+                      className="flex-1 rounded-xl bg-cyan-700 py-2 text-xs font-bold text-white touch-manipulation active:bg-cyan-600 disabled:opacity-50"
+                    >
+                      Use their terms
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === swap.id}
+                      onClick={() => void onResolveOtherRevision(swap, false)}
+                      className="rounded-xl border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-300 touch-manipulation disabled:opacity-50"
+                    >
+                      Keep mine
+                    </button>
+                  </div>
+                  {paid ? (
+                    <p className="mt-1.5 text-[10px] leading-snug text-zinc-500">
+                      Mark Unsettled first if you want to use their terms.
+                    </p>
                   ) : null}
                 </div>
               ) : null}
 
               {swap.status === 'settled' &&
               !paid &&
-              !awaitingReaccept &&
               Math.abs(Number(swap.settlement_amount) || 0) >= 0.005 ? (
                 <button
                   type="button"

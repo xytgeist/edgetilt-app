@@ -22,7 +22,6 @@ import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import {
   swapIsMarkedPaid,
   swapOtherPartyLabel,
-  swapTermsAwaitingReaccept,
   swapViewerRole,
 } from './pokerTournamentSwapApi.js'
 import {
@@ -632,7 +631,6 @@ export default function PokerSessionDetailSheet({
                       const canMarkSettled =
                         swap.status === 'settled' &&
                         !paid &&
-                        !swapTermsAwaitingReaccept(swap) &&
                         Math.abs(Number(swap.settlement_amount) || 0) >= 0.005
                       const amtTone =
                         signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'

@@ -10,32 +10,26 @@ import { pokerSessionStakesLabel } from '../poker-bankroll/pokerSessionLabels.js
 const POKER_ACTIVE_SELECT =
   'id, session_type, venue_name, venue_kind, game_variant, tournament_name, buy_in, small_blind, big_blind, third_blind, limit_type, deal_id, paused_at, paused_seconds, start_at, end_at, status'
 
-/**
- * @param {string} name
- * @param {number} [max=18]
+/*
+ * Labels are NOT abbreviated here ... the chip truncates with CSS so the pill
+ * always shows as many characters as the title-bar gap allows.
  */
-export function abbreviateLiveSessionLabel(name, max = 18) {
-  const s = String(name || '').trim()
-  if (!s) return ''
-  if (s.length <= max) return s
-  return `${s.slice(0, Math.max(1, max - 1)).trimEnd()}…`
-}
 
 /**
  * @param {{ casino_name?: string | null, game_type?: string | null } | null} session
  */
 export function slotsLiveSessionLabel(session) {
-  const casino = abbreviateLiveSessionLabel(session?.casino_name || 'Slots', 16)
+  const casino = String(session?.casino_name || '').trim() || 'Slots'
   const gt = String(session?.game_type || '').toLowerCase()
   if (gt === 'tables' && casino.length <= 12) return `${casino} · Tables`
-  return casino || 'Slots'
+  return casino
 }
 
 /**
  * @param {object | null} session
  */
 export function pokerLiveSessionLabel(session) {
-  return abbreviateLiveSessionLabel(pokerSessionStakesLabel(session), 18) || 'Poker'
+  return String(pokerSessionStakesLabel(session) || '').trim() || 'Poker'
 }
 
 /**

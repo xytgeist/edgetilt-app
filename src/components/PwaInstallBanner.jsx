@@ -227,8 +227,9 @@ export default function PwaInstallTitleBarRow({
   const hasCenter = liveSessionActive || showInstallChip
   const centerContent = liveSessionActive ? centerSlot : showInstallChip ? installChip : null
 
-  // Live chip: logo | flexible middle | mandatory nav. Shortcuts yield via container queries.
-  // Install chip keeps a lighter center-biased layout (no shortcut cascade needed).
+  // Live chip: logo | flexible middle | full nav. The pill takes whatever gap is
+  // left and truncates ... shortcuts and hamburger always stay visible.
+  // Install chip keeps its center-biased layout.
   const row = hasCenter ? (
     <div
       className={
@@ -249,9 +250,7 @@ export default function PwaInstallTitleBarRow({
       >
         {centerContent}
       </div>
-      <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end" data-title-bar-nav>
-        {navSlot}
-      </div>
+      <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end">{navSlot}</div>
     </div>
   ) : (
     <div className={`flex items-center justify-between gap-3 ${rowClassName}`}>

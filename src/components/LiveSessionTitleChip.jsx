@@ -52,8 +52,9 @@ export default function LiveSessionTitleChip({
 
   if (!slots && !poker) return null
 
+  /* Hug the label, cap at the title-bar gap, truncate past it (no fixed max). */
   const chipClass =
-    'flex w-full max-w-full min-w-0 items-center gap-1 rounded-xl border px-2 py-1.5 text-[11px] font-semibold leading-snug shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent]'
+    'flex w-fit max-w-full min-w-0 items-center gap-1 rounded-xl border px-2 py-1.5 text-[11px] font-semibold leading-snug shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent]'
 
   if (onlySlots) {
     return (

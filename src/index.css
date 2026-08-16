@@ -7976,7 +7976,7 @@ html.light [data-poker-tournament-swaps] [data-poker-swap-close-own] button {
   border-color: #f59e0b !important;
   color: #78350f !important;
 }
-/* Saved-swap Edit terms / Unmark settled / revised-terms re-accept */
+/* Saved-swap Edit terms / Mark Unsettled / revised-terms re-accept */
 html.light [data-poker-tournament-swaps] [data-poker-swap-edit-terms-btn],
 html.light [data-poker-tournament-swaps] [data-poker-swap-unmark-paid-btn] {
   background-color: #ffffff !important;

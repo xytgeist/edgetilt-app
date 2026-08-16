@@ -745,12 +745,12 @@ export default function PokerTournamentSwapsSection({
     const ok =
       typeof showGlobalConfirm === 'function'
         ? await showGlobalConfirm({
-            title: 'Unmark settled?',
+            title: 'Mark Unsettled?',
             message,
-            confirmLabel: 'Unmark settled',
+            confirmLabel: 'Mark Unsettled',
             cancelLabel: 'Keep settled',
           })
-        : window.confirm(`Unmark settled? ${message}`)
+        : window.confirm(`Mark Unsettled? ${message}`)
     if (!ok) return
     setBusyId(swap.id)
     setLocalError('')
@@ -765,7 +765,7 @@ export default function PokerTournamentSwapsSection({
       )
       onSavedSwapsMutated?.()
     } catch (e) {
-      setLocalError(e?.message || 'Could not unmark settled.')
+      setLocalError(e?.message || 'Could not mark unsettled.')
     } finally {
       setBusyId('')
     }
@@ -1361,7 +1361,7 @@ export default function PokerTournamentSwapsSection({
                   onClick={() => void onUnmarkPaid(swap)}
                   className="mt-2 rounded-xl border border-zinc-600/80 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800 disabled:opacity-50"
                 >
-                  {busyId === swap.id ? 'Working…' : 'Unmark settled to edit'}
+                  {busyId === swap.id ? 'Working…' : 'Mark Unsettled'}
                 </button>
               ) : null}
 

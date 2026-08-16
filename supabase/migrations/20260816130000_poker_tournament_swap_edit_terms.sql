@@ -73,7 +73,7 @@ begin
   if coalesce(v_row.settlement_bankroll_posted, false)
      or v_row.creator_marked_paid
      or v_row.counterparty_marked_paid then
-    raise exception 'Unmark settled before changing swap terms';
+    raise exception 'Mark Unsettled before changing swap terms';
   end if;
 
   if p_pct_creator_gives is null or p_pct_counterparty_gives is null then

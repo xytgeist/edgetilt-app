@@ -7976,6 +7976,41 @@ html.light [data-poker-tournament-swaps] [data-poker-swap-close-own] button {
   border-color: #f59e0b !important;
   color: #78350f !important;
 }
+/* Saved-swap Edit terms / Unmark settled / revised-terms re-accept */
+html.light [data-poker-tournament-swaps] [data-poker-swap-edit-terms-btn],
+html.light [data-poker-tournament-swaps] [data-poker-swap-unmark-paid-btn] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-terms-editor] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light
+  [data-poker-tournament-swaps]
+  [data-poker-swap-terms-editor]
+  input:not([type='checkbox']) {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-revised-terms] {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-revised-terms] .text-amber-100 {
+  color: #92400e !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-revised-terms] .text-amber-200\/70 {
+  color: #b45309 !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-revised-terms] .text-rose-300 {
+  color: #be123c !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-revised-terms] .border-rose-500\/40 {
+  border-color: #fda4af !important;
+}
 html.light [data-poker-swap-term-info-modal] {
   background-color: #ffffff !important;
   border-color: #d4d4d8 !important;

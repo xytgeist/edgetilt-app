@@ -869,6 +869,76 @@ export function swapIsMarkedPaid(swap) {
 }
 
 /**
+ * Terms fields from a saved swap row, shaped like a draft for the form controls.
+ * @param {object} swap
+ */
+export function swapTermsFormValues(swap) {
+  return {
+    pct_you_give: String(Number(swap?.pct_creator_gives ?? 0)),
+    pct_they_give: String(Number(swap?.pct_counterparty_gives ?? 0)),
+    both_must_cash: Boolean(swap?.both_must_cash),
+    final_bullet_only: Boolean(swap?.final_bullet_only),
+    final_table_only: Boolean(swap?.final_table_only),
+    min_cash: swap?.min_cash_threshold != null,
+    min_cash_threshold:
+      swap?.min_cash_threshold != null ? String(Number(swap.min_cash_threshold)) : '',
+  }
+}
+
+/** True when terms were revised and the counterparty has not accepted the new ones yet. */
+export function swapTermsAwaitingReaccept(swap) {
+  if (!swap?.terms_revised_at) return false
+  if (!swap.terms_reaccepted_at) return true
+  return new Date(swap.terms_reaccepted_at).getTime() < new Date(swap.terms_revised_at).getTime()
+}
+
+/**
+ * Creator revises % / optional terms on an unpaid swap. Counterparty must re-accept.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} swapId
+ * @param {object} form Draft-shaped terms (pct_you_give, pct_they_give, term flags)
+ */
+export async function updateTournamentSwapTerms(supabase, swapId, form) {
+  const pctCreator = parseSwapPct(form?.pct_you_give)
+  const pctCounterparty = parseSwapPct(form?.pct_they_give)
+  if (pctCreator == null || pctCounterparty == null) {
+    return { swap: null, error: new Error('Enter valid swap %s (0–100).') }
+  }
+  let minCash = null
+  if (form?.min_cash) {
+    const n = parseMoneyInputNumber(form.min_cash_threshold)
+    if (!Number.isFinite(n) || n <= 0) {
+      return { swap: null, error: new Error('Enter a minimum cash threshold greater than $0.') }
+    }
+    minCash = Math.round(n * 100) / 100
+  }
+  const { data, error } = await supabase.rpc('poker_tournament_swap_update_terms', {
+    p_swap_id: swapId,
+    p_pct_creator_gives: pctCreator,
+    p_pct_counterparty_gives: pctCounterparty,
+    p_both_must_cash: Boolean(form?.both_must_cash),
+    p_final_bullet_only: Boolean(form?.final_bullet_only),
+    p_final_table_only: Boolean(form?.final_table_only),
+    p_min_cash_threshold: minCash,
+  })
+  if (error) return { swap: null, error }
+  return { swap: data || null, error: null }
+}
+
+/**
+ * Counterparty accepts revised terms so cash can be marked settled again.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} swapId
+ */
+export async function acceptRevisedSwapTerms(supabase, swapId) {
+  const { data, error } = await supabase.rpc('poker_tournament_swap_accept_revised_terms', {
+    p_swap_id: swapId,
+  })
+  if (error) return { swap: null, error }
+  return { swap: data || null, error: null }
+}
+
+/**
  * Mark cash settled and post settlement_amount to personal bankrolls (both parties).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId

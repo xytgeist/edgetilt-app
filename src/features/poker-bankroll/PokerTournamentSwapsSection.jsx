@@ -14,14 +14,19 @@ import {
 } from './pokerSwapOwnershipSummary.js'
 import PokerSwapOwnershipSummary from './PokerSwapOwnershipSummary.jsx'
 import {
+  acceptRevisedSwapTerms,
   cancelTournamentSwap,
   closeSwapSideResult,
   emptyDraftSwap,
   markSwapPaid,
+  notifyTournamentSwap,
   setSwapSideManualResult,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
+  swapTermsAwaitingReaccept,
+  swapTermsFormValues,
   swapViewerRole,
+  updateTournamentSwapTerms,
 } from './pokerTournamentSwapApi.js'
 import {
   computeTournamentSwapSettlement,
@@ -533,6 +538,9 @@ export default function PokerTournamentSwapsSection({
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
   const [localNotice, setLocalNotice] = useState('')
+  /** Saved swap id whose % / terms are open for editing. */
+  const [editingTermsId, setEditingTermsId] = useState('')
+  const [termsForm, setTermsForm] = useState(/** @type {object | null} */ (null))
   const lastDraftCardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const prevDraftCountRef = useRef(draftSwaps.length)
 
@@ -681,6 +689,100 @@ export default function PokerTournamentSwapsSection({
       onSavedSwapsMutated?.()
     } catch (e) {
       setLocalError(e?.message || 'Could not cancel swap.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  function openTermsEditor(swap) {
+    setLocalError('')
+    setLocalNotice('')
+    setEditingTermsId(swap.id)
+    setTermsForm(swapTermsFormValues(swap))
+  }
+
+  function closeTermsEditor() {
+    setEditingTermsId('')
+    setTermsForm(null)
+  }
+
+  /** Creator revises % / terms. Edge-user counterparties must re-accept before cash posts. */
+  async function onSaveTerms(swap) {
+    if (!supabaseClient || !termsForm) return
+    setBusyId(swap.id)
+    setLocalError('')
+    setLocalNotice('')
+    try {
+      const { error } = await updateTournamentSwapTerms(supabaseClient, swap.id, termsForm)
+      if (error) throw error
+      const isEdgeUser = swap.counterparty_kind === 'user' && swap.counterparty_user_id
+      if (isEdgeUser) {
+        // Fire and forget ... the row is already saved; notify latency should not block UI.
+        void notifyTournamentSwap(supabaseClient, swap.id, { kind: 'offer' }).catch(() => {})
+      }
+      setLocalNotice(
+        isEdgeUser
+          ? `Terms updated. ${swapOtherPartyLabel(swap, profilesById, userId)} has to accept the change.`
+          : 'Terms updated.',
+      )
+      closeTermsEditor()
+      onSavedSwapsMutated?.()
+    } catch (e) {
+      setLocalError(e?.message || 'Could not update swap terms.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  /** Reverse the settled cash posted to both bankrolls so the swap can be edited again. */
+  async function onUnmarkPaid(swap) {
+    if (!supabaseClient) return
+    const amount = Math.abs(Number(swap.settlement_amount) || 0)
+    const posted = amount >= 0.005 && Boolean(swap.settlement_bankroll_posted)
+    const message = posted
+      ? `This reverses the ${fmtPoker$(amount)} already posted to both bankrolls so the swap can be corrected.`
+      : 'This reopens the swap so terms can be corrected.'
+    const ok =
+      typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: 'Unmark settled?',
+            message,
+            confirmLabel: 'Unmark settled',
+            cancelLabel: 'Keep settled',
+          })
+        : window.confirm(`Unmark settled? ${message}`)
+    if (!ok) return
+    setBusyId(swap.id)
+    setLocalError('')
+    setLocalNotice('')
+    try {
+      const { error } = await markSwapPaid(supabaseClient, swap.id, null, false)
+      if (error) throw error
+      setLocalNotice(
+        posted
+          ? 'Settled cash reversed on both bankrolls. You can edit the swap now.'
+          : 'Swap reopened. You can edit it now.',
+      )
+      onSavedSwapsMutated?.()
+    } catch (e) {
+      setLocalError(e?.message || 'Could not unmark settled.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function onAcceptRevisedTerms(swap) {
+    if (!supabaseClient) return
+    setBusyId(swap.id)
+    setLocalError('')
+    setLocalNotice('')
+    try {
+      const { error } = await acceptRevisedSwapTerms(supabaseClient, swap.id)
+      if (error) throw error
+      setLocalNotice('Revised terms accepted.')
+      onSavedSwapsMutated?.()
+    } catch (e) {
+      setLocalError(e?.message || 'Could not accept the revised terms.')
     } finally {
       setBusyId('')
     }
@@ -1070,6 +1172,9 @@ export default function PokerTournamentSwapsSection({
               ? formatSwapSideResultLine(swap, otherSide, other, fmtPoker$)
               : null
           const paid = swapIsMarkedPaid(swap)
+          const awaitingReaccept = swapTermsAwaitingReaccept(swap)
+          const canEditTerms = role === 'creator' && !paid
+          const termsEditorOpen = editingTermsId === swap.id
           const signed = swapViewerSettlementDelta(swap, role)
           const statusLine =
             swap.status === 'settled' && paid
@@ -1095,25 +1200,148 @@ export default function PokerTournamentSwapsSection({
                     {termLine ? ` · ${termLine}` : ''}
                   </div>
                 </div>
-                {canCancel ? (
-                  <button
-                    type="button"
-                    disabled={busyId === swap.id}
-                    onClick={() => void onCancelSwap(swap)}
-                    className="shrink-0 rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-400 touch-manipulation hover:text-rose-300 active:text-rose-200 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 items-center gap-1">
+                  {canEditTerms ? (
+                    <button
+                      type="button"
+                      disabled={busyId === swap.id}
+                      data-poker-swap-edit-terms-btn
+                      onClick={() =>
+                        termsEditorOpen ? closeTermsEditor() : openTermsEditor(swap)
+                      }
+                      className="rounded-lg border border-zinc-600/80 px-2 py-1 text-[11px] font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800 disabled:opacity-50"
+                    >
+                      {termsEditorOpen ? 'Close' : 'Edit'}
+                    </button>
+                  ) : null}
+                  {canCancel ? (
+                    <button
+                      type="button"
+                      disabled={busyId === swap.id}
+                      onClick={() => void onCancelSwap(swap)}
+                      className="rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-400 touch-manipulation hover:text-rose-300 active:text-rose-200 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
               </div>
+
+              {termsEditorOpen && termsForm ? (
+                <div
+                  data-poker-swap-terms-editor
+                  className="mb-2 space-y-2 rounded-2xl border border-zinc-700/60 bg-black/25 p-2.5"
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    Edit terms
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="mb-1 block text-[10px] font-semibold uppercase text-zinc-500">
+                        You give %
+                      </span>
+                      <input
+                        className={FIELD}
+                        inputMode="decimal"
+                        value={termsForm.pct_you_give}
+                        onChange={(e) =>
+                          setTermsForm((f) => ({ ...f, pct_you_give: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[10px] font-semibold uppercase text-zinc-500">
+                        They give %
+                      </span>
+                      <input
+                        className={FIELD}
+                        inputMode="decimal"
+                        value={termsForm.pct_they_give}
+                        onChange={(e) =>
+                          setTermsForm((f) => ({ ...f, pct_they_give: e.target.value }))
+                        }
+                      />
+                    </label>
+                  </div>
+                  <SwapTermChecks
+                    compact={compact}
+                    value={termsForm}
+                    onChange={(patch) => setTermsForm((f) => ({ ...f, ...patch }))}
+                  />
+                  {parseSwapPct(termsForm.pct_you_give) == null ||
+                  parseSwapPct(termsForm.pct_they_give) == null ? (
+                    <p className="text-[11px] text-rose-400">Percents must be 0–100.</p>
+                  ) : null}
+                  <p className="text-[11px] leading-snug text-zinc-500">
+                    {swap.counterparty_kind === 'user'
+                      ? `${other} has to accept the change before either of you can mark cash settled.`
+                      : 'Guest swaps apply the change right away.'}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === swap.id}
+                      onClick={() => void onSaveTerms(swap)}
+                      className="flex-1 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {busyId === swap.id ? 'Saving…' : 'Save terms'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeTermsEditor}
+                      className="rounded-xl border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {statusLine ? (
                 <div className={`text-sm ${statusTone}`}>{statusLine}</div>
               ) : null}
               {otherResultLine && !bothReady ? (
                 <div className="mt-0.5 text-[11px] text-zinc-400">{otherResultLine}</div>
               ) : null}
+              {awaitingReaccept ? (
+                <div
+                  data-poker-swap-revised-terms
+                  className="mt-2 rounded-2xl border border-amber-500/30 bg-amber-950/25 p-2.5"
+                >
+                  <p className="text-[11px] font-semibold leading-snug text-amber-100">
+                    {role === 'creator'
+                      ? `Waiting for ${other} to accept the revised terms.`
+                      : `${other} revised these terms to ${swap.pct_counterparty_gives}% from you ↔ ${swap.pct_creator_gives}% from them.`}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug text-amber-200/70">
+                    Cash cannot be marked settled until it is accepted.
+                  </p>
+                  {role === 'counterparty' ? (
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        disabled={busyId === swap.id}
+                        data-poker-swap-accept-terms-btn
+                        onClick={() => void onAcceptRevisedTerms(swap)}
+                        className="flex-1 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white touch-manipulation active:bg-emerald-500 disabled:opacity-50"
+                      >
+                        Accept terms
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === swap.id}
+                        onClick={() => void onCancelSwap(swap)}
+                        className="rounded-xl border border-rose-500/40 px-3 py-2 text-xs font-semibold text-rose-300 touch-manipulation disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               {swap.status === 'settled' &&
               !paid &&
+              !awaitingReaccept &&
               Math.abs(Number(swap.settlement_amount) || 0) >= 0.005 ? (
                 <button
                   type="button"
@@ -1122,6 +1350,18 @@ export default function PokerTournamentSwapsSection({
                   className="mt-2 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white touch-manipulation disabled:opacity-50"
                 >
                   Mark settled
+                </button>
+              ) : null}
+
+              {paid ? (
+                <button
+                  type="button"
+                  disabled={busyId === swap.id}
+                  data-poker-swap-unmark-paid-btn
+                  onClick={() => void onUnmarkPaid(swap)}
+                  className="mt-2 rounded-xl border border-zinc-600/80 px-3 py-1.5 text-[11px] font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800 disabled:opacity-50"
+                >
+                  {busyId === swap.id ? 'Working…' : 'Unmark settled to edit'}
                 </button>
               ) : null}
 

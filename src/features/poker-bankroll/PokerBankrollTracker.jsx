@@ -223,6 +223,7 @@ import {
   refreshSeriesSwapBullets,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
+  swapTermsAwaitingReaccept,
   swapViewerRole,
   syncCounterpartyResultsForSession,
   syncCreatorResultsForSession,
@@ -5098,6 +5099,7 @@ export default function PokerBankrollTracker({
                                 const canMarkSettled =
                                   swap.status === 'settled' &&
                                   !paid &&
+                                  !swapTermsAwaitingReaccept(swap) &&
                                   Math.abs(Number(swap.settlement_amount) || 0) >= 0.005
                                 const amtTone =
                                   signed < -0.005 ? 'loss' : signed > 0.005 ? 'gain' : 'flat'
@@ -5814,6 +5816,7 @@ export default function PokerBankrollTracker({
           onDelete={(sessionList) => void deleteCompletedSessionsFromDetail(sessionList)}
           deleteBusy={saving}
           onSavedSwapsMutated={() => void loadData()}
+          showGlobalConfirm={showGlobalConfirm}
           onMarkSwapSettled={(swap) => void markSessionCardSwapSettled(swap)}
           onEndSession={() => {
             const s = detailSession

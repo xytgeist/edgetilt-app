@@ -1238,12 +1238,14 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   background-color: #fafafa !important;
 }
 /*
- * Light-mode fly-in: fading opacity on this layer flattens descendant backdrop-filter
- * against a dark empty sample, so frost chips start charcoal and snap to white when
- * opacity hits 1. Keep the layer fully opaque once visible … scrim still fades.
- * Dark mode keeps the wrapper fade (dark frost on dark media does not flip).
+ * Fly-in, both modes: fading opacity on this layer makes it an isolated group, which flattens
+ * descendant backdrop-filter against an empty sample … frost chips read charcoal, then snap to
+ * their real blur on the frame opacity reaches 1 (i.e. exactly at land). Keep the layer fully
+ * opaque once visible … the scrim still fades, and tap-toggle / swipe-dismiss fades are
+ * unchanged. Dark mode was exempt on the theory that dark frost over dark media does not
+ * flip; bright photos flip there too, so parity it is.
  */
-html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='opening']
+[data-lounge-image-lightbox][data-lounge-image-lightbox-phase='opening']
   [data-lounge-lightbox-chrome-layer][data-lounge-lightbox-chrome-visible] {
   opacity: 1 !important;
   transition: none !important;
@@ -1407,7 +1409,7 @@ html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text
 }
 html.light [data-lounge-image-lightbox] [data-lounge-lightbox-pill-row] svg,
 html.light [data-lounge-image-lightbox] [data-lounge-lightbox-pill-row] [data-lounge-pill-count] {
-  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.32));
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
 }
 [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-lv-red,
 [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\],

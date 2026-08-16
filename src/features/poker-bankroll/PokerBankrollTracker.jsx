@@ -92,6 +92,7 @@ import {
   deleteDeclinedStakeDeal,
   closeBackingDeal,
   deleteStakeSessionWithAudit,
+  hideStakeeArchivedBankrollDeal,
   isBackerInitiatedBackingDeal,
   loadLedgerEntries,
   isMissingStableTableError,
@@ -659,6 +660,7 @@ export default function PokerBankrollTracker({
         (d) =>
           d.stakee_user_id === userId &&
           d.stakee_bankroll_archived_at &&
+          !d.stakee_bankroll_hidden_at &&
           (d.status === 'settled' ||
             d.status === 'closed' ||
             d.status === 'declined' ||
@@ -2157,6 +2159,71 @@ export default function PokerBankrollTracker({
       await loadData()
     } catch (e) {
       setError(e?.message || 'Could not archive stake.')
+    } finally {
+      setStableSaving(false)
+    }
+  }
+
+  async function handleDeleteArchivedStakeeDeal(dealId) {
+    if (!supabaseClient || !dealId || !userId) return
+    const deal = stakeeDealsById[dealId] ?? null
+    if (!deal?.stakee_bankroll_archived_at || deal.stakee_bankroll_hidden_at) return
+    const label = deal.label?.trim() || dealTypeLabel(deal.deal_type)
+    const confirmDelete =
+      typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: `Delete ${label}?`,
+            message:
+              'This removes the stake from your Bankroll Archive. Shared backer history and settled bankroll balances stay intact.',
+            confirmLabel: 'Delete stake',
+            cancelLabel: 'Cancel',
+          })
+        : window.confirm(
+            `Delete ${label}?\n\nThis removes the stake from your Bankroll Archive. Shared backer history and settled bankroll balances stay intact.`,
+          )
+    if (!confirmDelete) return
+
+    const mergedSessions = sessions.filter(
+      (session) =>
+        session.deal_id === dealId &&
+        isPersonalHistorySession(session, stakeeDealsById),
+    )
+    let hidePersonalSessions = false
+    if (mergedSessions.length > 0) {
+      const sessionWord = mergedSessions.length === 1 ? 'session' : 'sessions'
+      hidePersonalSessions =
+        typeof showGlobalConfirm === 'function'
+          ? await showGlobalConfirm({
+              title: `Also delete ${mergedSessions.length} merged ${sessionWord}?`,
+              message:
+                'Delete them from your personal bankroll history and metrics too? This does not erase the shared stake audit or change your settled bankroll balance.',
+              confirmLabel: 'Delete sessions',
+              cancelLabel: 'Keep sessions',
+            })
+          : window.confirm(
+              `Also delete ${mergedSessions.length} merged ${sessionWord} from your personal bankroll history and metrics?\n\nOK = Delete sessions · Cancel = Keep sessions`,
+            )
+    }
+
+    setStableSaving(true)
+    setError('')
+    try {
+      const { error } = await hideStakeeArchivedBankrollDeal(supabaseClient, dealId, {
+        hidePersonalSessions,
+      })
+      if (error) throw error
+      setArchiveDetailDealId(null)
+      showStakeNotice(
+        hidePersonalSessions
+          ? `Stake and ${mergedSessions.length} merged ${mergedSessions.length === 1 ? 'session' : 'sessions'} deleted from your bankroll history.`
+          : mergedSessions.length > 0
+            ? 'Archived stake deleted. Merged sessions kept in personal history.'
+            : 'Archived stake deleted.',
+      )
+      triggerTapHapticLight()
+      await loadData()
+    } catch (e) {
+      setError(e?.message || 'Could not delete archived stake.')
     } finally {
       setStableSaving(false)
     }
@@ -5398,6 +5465,8 @@ export default function PokerBankrollTracker({
           perspective="player"
           viewerUserId={userId}
           onClose={() => setArchiveDetailDealId(null)}
+          onDelete={() => void handleDeleteArchivedStakeeDeal(archiveDetailDealId)}
+          deleteBusy={stableSaving}
         />
       ) : null}
 

@@ -474,7 +474,7 @@ When a backer exits after accept, the player stake card must **not disappear** .
 
 **Delete stake** (separate rule): only on **`pending`** / **`active`** deals **before any Edge backer has accepted** (`stakeDealCanBeCancelled`). Unrelated to post-accept revoke.
 
-**Archive (closed stakes):** Bankroll **ARCHIVE** pill lists `settled` / `closed` deals; tap opens read-only modal with sessions + offer/accept/decline/revoke/top-up/settle/close lines (`buildFullStakeArchiveTimeline`).
+**Archive (closed stakes):** Bankroll **ARCHIVE** pill lists `settled` / `closed` deals; tap opens read-only modal with sessions + offer/accept/decline/revoke/top-up/settle/close lines (`buildFullStakeArchiveTimeline`). Stakee **Delete archived stake** is a viewer-only soft delete (`stakee_bankroll_hidden_at`) ... it never deletes the shared deal, backer history, or settled bankroll entries. A second prompt offers to also hide the deal's merged sessions from the stakee's personal history and metrics (`stakee_personal_history_hidden_at`); choosing **Keep sessions** leaves them visible.
 
 ---
 
@@ -533,6 +533,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-08-16:** **Stakee delete from Bankroll Archive (test):** migration **`20260816160000`** adds stakee-only archive/history visibility timestamps + `poker_stable_stakee_hide_archived_deal`. Archive detail now offers **Delete archived stake**, then asks whether merged stake sessions should also leave personal history/metrics. Shared deal/session audit, backer history, and settled bankroll balances remain intact.
 - **2026-08-14:** **Tournament history groups multi-flight series (client):** Completed same-series flights collapse to one history card (aggregate invested/result/hours, deduped swaps). Detail lists each flight with Edit. Group key is series identity + ownership scope, not soft-event UUID. DB stays one row per flight. **`pokerTournamentHistoryGroups.js`**, **`PokerBankrollTracker`**, **`PokerSessionDetailSheet`**.
 - **2026-08-14:** **Swap-term info modals (client):** Each draft checkbox has a small info button with the rule and Player A / Player B examples using a $1,000 buy-in, 10% swap, and $10,000 cash-out where applicable. Copy explicitly treats cash-out as prize, not profit after buy-in. **`PokerTournamentSwapsSection`**.
 - **2026-08-14:** **Swaps always this-bullet-forward:** Removed **Include previous bullets**. New swaps always exclude already-fired series bullets (current bullet stays in). Column kept for old rows. **`PokerTournamentSwapsSection`**, **`pokerTournamentSwapApi`**, **`pokerTournamentSwapMath`**.

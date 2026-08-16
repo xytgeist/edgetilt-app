@@ -82,6 +82,7 @@ export function slicesCountedForSessionTerms(deal, slices = []) {
 export function isPersonalHistorySession(session, dealsById = {}) {
   if (!session?.deal_id) return true
   const deal = dealsById[session.deal_id]
+  if (deal?.stakee_personal_history_hidden_at) return false
   if (isPieceDealType(deal?.deal_type)) return true
   return deal?.status === 'settled'
 }
@@ -96,6 +97,7 @@ export function isPersonalMetricSession(session, dealsById = {}, slicesByDeal = 
   if (!session?.deal_id) return true
   const deal = dealsById[session.deal_id]
   if (!deal) return false
+  if (deal.stakee_personal_history_hidden_at) return false
   if (deal.status === 'settled') return true
   if (isPieceDealType(deal.deal_type)) return true
   return stakeDealIsLiveForStakee(deal, slicesByDeal[session.deal_id] || [])

@@ -1396,6 +1396,19 @@ html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text
   /* Light mode: normal green-600 (mint #4ade80 reads odd on light frost). */
   color: #16a34a !important;
 }
+/*
+ * Image lightbox, light mode: pills are 15% white frost over an unpredictable photo, and
+ * compact (pills-only) chrome has no dark footer band. Green-600 loses to bright media, so
+ * go green-700 and give every pill glyph/count a hairline dark halo. Same specificity as the
+ * media-lightbox rule above … source order wins. Stream keeps its dark-band colors.
+ */
+html.light [data-lounge-image-lightbox] [data-lounge-post-interaction-bar] .text-\[\#4ade80\] {
+  color: #15803d !important;
+}
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-pill-row] svg,
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-pill-row] [data-lounge-pill-count] {
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.32));
+}
 [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-lv-red,
 [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-\[\#fd262d\],
 html.light [data-lounge-media-lightbox] [data-lounge-post-interaction-bar] .text-lv-red,

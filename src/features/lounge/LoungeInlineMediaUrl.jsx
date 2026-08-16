@@ -36,6 +36,13 @@ import {
 } from './loungeFeedImageAttachment.js'
 import MediaLightboxAmbientBackdrop from '../../components/MediaLightboxAmbientBackdrop.jsx'
 
+/**
+ * Land cross-fade for the FLIP flyout. Cutting it at `phase: opening → open` swaps what the
+ * `backdrop-filter` pills sample in one frame (sharp object-cover photo → contained media +
+ * light-mode ambient blur + opaque shell), which reads as the chrome "flipping" on land.
+ */
+const HERO_LAND_FADE_MS = 140
+
 function normalizeUrlList(urls) {
   if (!Array.isArray(urls)) return []
   return urls.map((u) => String(u ?? '').trim()).filter(Boolean)
@@ -281,6 +288,8 @@ export function LoungeImageLightbox({
   const shrinkAnimRef = useRef(/** @type {Animation | null} */ (null))
   const expandTimerRef = useRef(0)
   const shrinkTimerRef = useRef(0)
+  const landFadeAnimRef = useRef(/** @type {Animation | null} */ (null))
+  const landFadeTimerRef = useRef(0)
   const closingRef = useRef(false)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
@@ -292,6 +301,8 @@ export function LoungeImageLightbox({
   const [chromeVisible, setChromeVisible] = useState(!wantsFlipOpen)
   const [scrimOpacity, setScrimOpacity] = useState(wantsFlipOpen ? 0 : 1)
   const [dismissProgress, setDismissProgress] = useState(0)
+  /** Flyout still painting (fading out) after land … keeps the media/chrome layer above it. */
+  const [landFadeActive, setLandFadeActive] = useState(false)
   /** After land, wait before decoding ±1 neighbors (fat originals OOM if all fire on open). */
   const [neighborLoadReady, setNeighborLoadReady] = useState(false)
 
@@ -574,6 +585,46 @@ export function LoungeImageLightbox({
     onCloseRef.current?.()
   }, [])
 
+  /** Stop a land cross-fade without touching flyout geometry … close reuses the same node. */
+  const cancelLandFade = useCallback(() => {
+    if (landFadeTimerRef.current) {
+      window.clearTimeout(landFadeTimerRef.current)
+      landFadeTimerRef.current = 0
+    }
+    landFadeAnimRef.current?.cancel()
+    landFadeAnimRef.current = null
+  }, [])
+
+  /** Fade the landed flyout out so the pills' blurred backdrop re-samples over frames, not in one. */
+  const startLandFade = useCallback(
+    (flyout) => {
+      cancelLandFade()
+      const finish = () => {
+        cancelLandFade()
+        // Close already re-armed the flyout … leave its styles alone.
+        if (!closingRef.current && phaseRef.current !== 'closing') {
+          flyout.style.visibility = 'hidden'
+          flyout.style.pointerEvents = 'none'
+          clearFlyoutHeroInlineStyles(flyout)
+        }
+        setLandFadeActive(false)
+      }
+      if (typeof flyout.animate !== 'function') {
+        finish()
+        return
+      }
+      const anim = flyout.animate([{ opacity: 1 }, { opacity: 0 }], {
+        duration: HERO_LAND_FADE_MS,
+        easing: 'linear',
+        fill: 'forwards',
+      })
+      landFadeAnimRef.current = anim
+      anim.onfinish = finish
+      landFadeTimerRef.current = window.setTimeout(finish, HERO_LAND_FADE_MS + 120)
+    },
+    [cancelLandFade],
+  )
+
   const requestClose = useCallback(() => {
     if (closingRef.current) return
     if (phaseRef.current === 'opening') {
@@ -605,6 +656,9 @@ export function LoungeImageLightbox({
 
     closingRef.current = true
     closeHeroFrameRef.current = heroFrame
+    // Drop a still-running land fade first … its `fill: forwards` opacity would win over the
+    // inline `opacity: 1` the shrink needs below.
+    cancelLandFade()
     // Keep scrim at full opacity for this paint, then fade with shrink (video hero pattern).
     // flushSync so the flyout style below is not wiped by a later closing render
     // (unsized `fixed` + `h-full` img = one full-screen flash, then shrink).
@@ -612,6 +666,7 @@ export function LoungeImageLightbox({
       setChromeVisible(false)
       setDismissProgress(0)
       setScrimOpacity(1)
+      setLandFadeActive(false)
       setPhase('closing')
     })
 
@@ -651,7 +706,7 @@ export function LoungeImageLightbox({
         setScrimOpacity(0)
       })
     })
-  }, [finishClose, resolveCloseOrigin, zStack.overlay])
+  }, [cancelLandFade, finishClose, resolveCloseOrigin, zStack.overlay])
 
   const onDismissProgress = useCallback((detail) => {
     if (phaseRef.current !== 'open') return
@@ -916,6 +971,8 @@ export function LoungeImageLightbox({
           onDone: () => {
             if (cancelled) return
             snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
+            flyout.style.opacity = '1'
+            flyout.style.pointerEvents = 'none'
             // Drop landFrame in this turn. setPhase('open') re-runs this effect and
             // sets cancelled … a later rAF then never clears the fixed shell, so
             // slide 0 stays position:fixed and the carousel scrolls over it.
@@ -926,10 +983,9 @@ export function LoungeImageLightbox({
               if (list.length > 1 || !openingGif) setLandFrame(null)
               setChromeVisible(true)
               setScrimOpacity(1)
+              setLandFadeActive(true)
             })
-            flyout.style.visibility = 'hidden'
-            flyout.style.pointerEvents = 'none'
-            clearFlyoutHeroInlineStyles(flyout)
+            startLandFade(flyout)
           },
         })
       })
@@ -944,16 +1000,20 @@ export function LoungeImageLightbox({
       } catch {
         // ignore
       }
+      // Do not cancel the land fade here … this cleanup runs on the `phase → open`
+      // re-render that starts it.
     }
-  }, [phase, zStack.overlay, initialIndex, list.length, gifUrl])
+  }, [phase, zStack.overlay, initialIndex, list.length, gifUrl, startLandFade])
 
   useEffect(
     () => () => {
       expandAnimRef.current?.cancel()
       shrinkAnimRef.current?.cancel()
+      landFadeAnimRef.current?.cancel()
       try {
         window.clearTimeout(expandTimerRef.current)
         window.clearTimeout(shrinkTimerRef.current)
+        window.clearTimeout(landFadeTimerRef.current)
       } catch {
         // ignore
       }
@@ -1018,7 +1078,12 @@ export function LoungeImageLightbox({
           transformOrigin: '0 0',
           // Opening: first paint already covers the feed tile. Unsized `fixed`
           // otherwise flashes the photo at the top of the screen for 1-2 frames.
-          visibility: phase === 'opening' && !openFromRectRef.current ? 'hidden' : motionActive ? 'visible' : 'hidden',
+          visibility:
+            phase === 'opening' && !openFromRectRef.current
+              ? 'hidden'
+              : motionActive || landFadeActive
+                ? 'visible'
+                : 'hidden',
           ...(phase === 'opening' && openFromRectRef.current
             ? {
                 top: openFromRectRef.current.top,
@@ -1035,7 +1100,17 @@ export function LoungeImageLightbox({
                     width: closeHeroFrameRef.current.width,
                     height: closeHeroFrameRef.current.height,
                   }
-                : null),
+                : // Land fade: React owns the parked rect. Dropping these keys on the
+                  // `phase → open` commit would clear the imperative land geometry and
+                  // collapse the still-painting flyout.
+                  landFadeActive && targetRectRef.current
+                  ? {
+                      top: targetRectRef.current.top,
+                      left: targetRectRef.current.left,
+                      width: targetRectRef.current.width,
+                      height: targetRectRef.current.height,
+                    }
+                  : null),
         }}
       >
         {/* Feed-tier src … same file as the tile. Lightbox 2048 is a new URL after CF resize
@@ -1090,7 +1165,8 @@ export function LoungeImageLightbox({
           style={{
             // Above the flyout while opening so viewport chrome fades in over the growing image
             // (X-style). Sharp media stays hidden until land so it does not double-paint.
-            zIndex: phase === 'opening' ? zStack.overlay + 2 : zStack.overlay,
+            // Stay above it through the land fade too, or the fading flyout paints over the pills.
+            zIndex: phase === 'opening' || landFadeActive ? zStack.overlay + 2 : zStack.overlay,
             pointerEvents: mediaInteractive ? undefined : 'none',
           }}
           aria-hidden={phase === 'opening' ? true : undefined}

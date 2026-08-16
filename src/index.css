@@ -8247,6 +8247,10 @@ html.light [data-quick-link-modal] .bg-zinc-800\/80 {
 html.light [data-quick-link-bar] .text-cyan-300\/95 {
   color: #0891b2 !important;
 }
+/* Poker Bankroll Club: dark keeps mint hub tint; light uses solid emerald (not lime). */
+html.light [data-quick-link-bar] .text-\[\#6ee7b7\] {
+  color: #059669 !important;
+}
 
 /* ── Chat reaction pill ────────────────────────────────────────────────────
  * Single combined pill: all emoji types + total count.

@@ -1,5 +1,16 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
+function LiveSessionDot({ className, paused = false }) {
+  return (
+    <span
+      data-live-session-dot
+      data-live-session-dot-paused={paused ? 'true' : undefined}
+      className={`h-1.5 w-1.5 shrink-0 rounded-full ${paused ? '' : 'animate-pulse'} ${className}`}
+      aria-hidden
+    />
+  )
+}
+
 /**
  * Center title-bar control for active slots / poker live sessions.
  *
@@ -54,7 +65,7 @@ export default function LiveSessionTitleChip({
         className={`${chipClass} border-emerald-500/45 bg-emerald-950/70 text-emerald-100 hover:border-emerald-400/55 hover:bg-emerald-900/70 active:bg-emerald-900/90`}
         aria-label={`Live slots session ${slots.label}. Open Slots Bankroll.`}
       >
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden />
+        <LiveSessionDot className="bg-emerald-400" />
         <span className="min-w-0 truncate">{slots.label}</span>
       </button>
     )
@@ -75,9 +86,9 @@ export default function LiveSessionTitleChip({
         }`}
         aria-label={`Live poker session ${poker.label}${poker.paused ? ', paused' : ''}. Open Poker Bankroll.`}
       >
-        <span
-          className={`h-1.5 w-1.5 shrink-0 rounded-full ${poker.paused ? 'bg-amber-400' : 'bg-teal-400'}`}
-          aria-hidden
+        <LiveSessionDot
+          paused={Boolean(poker.paused)}
+          className={poker.paused ? 'bg-amber-400' : 'bg-teal-400'}
         />
         <span className="min-w-0 truncate">
           {poker.paused ? `⏸ ${poker.label}` : poker.label}
@@ -98,7 +109,7 @@ export default function LiveSessionTitleChip({
           className={`${chipClass} max-w-[6.75rem] border-emerald-500/45 bg-emerald-950/70 text-emerald-100`}
           aria-label={`Live slots session ${slots.label}. Open Slots Bankroll.`}
         >
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden />
+          <LiveSessionDot className="bg-emerald-400" />
           <span className="min-w-0 truncate">{slots.label}</span>
         </button>
         <button
@@ -114,9 +125,9 @@ export default function LiveSessionTitleChip({
           }`}
           aria-label={`Live poker session ${poker.label}${poker.paused ? ', paused' : ''}. Open Poker Bankroll.`}
         >
-          <span
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${poker.paused ? 'bg-amber-400' : 'bg-teal-400'}`}
-            aria-hidden
+          <LiveSessionDot
+            paused={Boolean(poker.paused)}
+            className={poker.paused ? 'bg-amber-400' : 'bg-teal-400'}
           />
           <span className="min-w-0 truncate">{poker.paused ? 'Paused' : poker.label}</span>
         </button>
@@ -133,7 +144,7 @@ export default function LiveSessionTitleChip({
           className={`${chipClass} border-cyan-500/45 bg-cyan-950/70 text-cyan-100`}
           aria-label="Two live sessions. Choose Slots or Poker Bankroll."
         >
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" aria-hidden />
+          <LiveSessionDot className="bg-cyan-400" />
           <span className="whitespace-nowrap">2 live</span>
         </button>
         {pickerOpen ? (
@@ -152,7 +163,7 @@ export default function LiveSessionTitleChip({
                 onOpenSlots?.()
               }}
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+              <LiveSessionDot className="bg-emerald-400" />
               <span className="min-w-0 truncate">Slots · {slots.label}</span>
             </button>
             <button
@@ -164,9 +175,9 @@ export default function LiveSessionTitleChip({
                 onOpenPoker?.(poker.id)
               }}
             >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${poker.paused ? 'bg-amber-400' : 'bg-teal-400'}`}
-                aria-hidden
+              <LiveSessionDot
+                paused={Boolean(poker.paused)}
+                className={poker.paused ? 'bg-amber-400' : 'bg-teal-400'}
               />
               <span className="min-w-0 truncate">
                 Poker · {poker.paused ? `Paused · ${poker.label}` : poker.label}

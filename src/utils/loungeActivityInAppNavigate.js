@@ -173,6 +173,8 @@ export function navigateFromLoungeActivityPayload(payload) {
     missedCallId: null,
     playLogEntryId: null,
     pokerSessionId: null,
+    postId: null,
+    commentId: null,
     guideSlug: null,
     stableDealId: null,
     stableCommitId: null,
@@ -207,6 +209,8 @@ export function navigateFromLoungeActivityPayload(payload) {
     missedCallId: (parsed.searchParams.get('missedCall') || '').trim() || null,
     playLogEntryId: (parsed.searchParams.get('playLogEntry') || '').trim() || null,
     pokerSessionId: (parsed.searchParams.get('pokerSession') || '').trim() || null,
+    postId: (parsed.searchParams.get('post') || '').trim() || null,
+    commentId: (parsed.searchParams.get('comment') || '').trim() || null,
     guideSlug: (parsed.searchParams.get('guide') || '').trim() || null,
     stableDealId: (parsed.searchParams.get('stableDeal') || '').trim() || null,
     stableCommitId:

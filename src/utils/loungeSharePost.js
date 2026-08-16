@@ -81,11 +81,13 @@ export function buildLoungeProfileShareUrl(profileOrHandleOrUserId) {
   return ''
 }
 
+/** Drops `post=` and the push-only `comment=` drill target once post detail has opened. */
 export function stripLoungePostQueryParam() {
   if (typeof window === 'undefined') return
   const u = new URL(window.location.href)
-  if (!u.searchParams.has('post')) return
+  if (!u.searchParams.has('post') && !u.searchParams.has('comment')) return
   u.searchParams.delete('post')
+  u.searchParams.delete('comment')
   const qs = u.searchParams.toString()
   const next = `${u.pathname}${qs ? `?${qs}` : ''}${u.hash}`
   window.history.replaceState(window.history.state ?? {}, '', next)

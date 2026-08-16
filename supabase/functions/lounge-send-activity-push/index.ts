@@ -349,6 +349,20 @@ function pokerStableTabForRecipient(
   return 'poker-stable'
 }
 
+/**
+ * Event types whose `comment_id` is the thing the recipient wants to see, so the deep link
+ * opens post detail drilled to that comment instead of the post root.
+ */
+function pushDrillsToComment(eventType: string): boolean {
+  return (
+    eventType === 'comment_on_post' ||
+    eventType === 'reply_to_comment' ||
+    eventType === 'mention_in_comment' ||
+    eventType === 'like' ||
+    eventType === 'bookmark'
+  )
+}
+
 function buildTargetUrl(
   event: Pick<
     ActivityEventRow,
@@ -458,6 +472,10 @@ function buildTargetUrl(
     params.set('lounge', 'notifications')
   } else if (event.post_id) {
     params.set('post', event.post_id)
+    // Drill straight to the comment the alert is about (mirrors client loungeActivityOpenPostTarget).
+    if (event.comment_id && pushDrillsToComment(event.event_type)) {
+      params.set('comment', event.comment_id)
+    }
   } else {
     params.set('lounge', 'notifications')
   }

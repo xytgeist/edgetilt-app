@@ -1141,6 +1141,8 @@ export default function SocialFeed({
   const loungeDetailCommentsEffectPostIdRef = useRef(/** @type {null | string} */ (null))
   /** Post id whose comments finished loading - Strict Mode retry when unset after cancel. */
   const loungeDetailCommentsLoadedPostIdRef = useRef(/** @type {null | string} */ (null))
+  /** Bumped to re-run the comments load for a post that is already open (notification / push re-entry). */
+  const [loungeDetailCommentsReloadKey, setLoungeDetailCommentsReloadKey] = useState(0)
   const [loungeDetailCommentEditImageUrls, setLoungeDetailCommentEditImageUrls] = useState([])
   const [loungeDetailCommentEditImageItems, setLoungeDetailCommentEditImageItems] = useState([])
   const [loungeDetailCommentEditMediaUrl, setLoungeDetailCommentEditMediaUrl] = useState('')
@@ -7613,6 +7615,7 @@ export default function SocialFeed({
       cancelled = true
     }
   }, [
+    loungeDetailCommentsReloadKey,
     loungePostDetail?.id,
     loungeReadOnly,
     profileModalOpen,
@@ -7620,6 +7623,18 @@ export default function SocialFeed({
     supabaseClient,
     expandAndFocusLoungeDetailCommentComposer,
   ])
+
+  /**
+   * Re-entering an already-open post from an alert / push must refetch comments ... the load effect
+   * is keyed on post id, so the notifying reply would otherwise never appear.
+   */
+  const reloadLoungeDetailCommentsForPost = useCallback((postId) => {
+    const id = String(postId || '').trim()
+    if (!id || loungeDetailCommentsLoadedPostIdRef.current !== id) return
+    loungeDetailCommentsLoadedPostIdRef.current = null
+    loungeDetailCommentsEffectPostIdRef.current = null
+    setLoungeDetailCommentsReloadKey((k) => k + 1)
+  }, [])
 
   /** Post detail: who the viewer follows among comment authors (session may resolve after open). */
   useEffect(() => {
@@ -8510,7 +8525,7 @@ export default function SocialFeed({
   }, [])
 
   const onLoungeOpenPostFromNotifications = useCallback(
-    async ({ postId, commentId, focusComposer = false }) => {
+    async ({ postId, commentId, focusComposer = false, captureNavReturn = true }) => {
       if (!postId) return
       let postRow = communityPosts.find((p) => p.id === postId)
       if (!postRow) {
@@ -8551,7 +8566,8 @@ export default function SocialFeed({
         }
       }
       if (!postRow) return
-      pushLoungeNavReturnContextRef.current()
+      if (captureNavReturn) pushLoungeNavReturnContextRef.current()
+      reloadLoungeDetailCommentsForPost(postRow.id)
       if (commentId) {
         await openDirectCommentPostDetail(postRow, commentId, { focusComposer })
       } else {
@@ -8566,6 +8582,7 @@ export default function SocialFeed({
       hydrateCommunityPosts,
       openDirectCommentPostDetail,
       openLoungePostDetail,
+      reloadLoungeDetailCommentsForPost,
       setCommunityPosts,
       supabaseClient,
     ],
@@ -8753,6 +8770,10 @@ export default function SocialFeed({
       const params = new URLSearchParams(window.location.search || '')
       const raw = (params.get('post') || '').trim()
       if (!isLoungePostShareId(raw)) return
+      /** Push deep links add `comment=` so a reply alert opens drilled into the thread, not the post root. */
+      const commentTarget = (params.get('comment') || '').trim()
+      const drillCommentId =
+        composerUserId && isLoungePostShareId(commentTarget) ? commentTarget : ''
       await new Promise((resolve) => {
         window.requestAnimationFrame(() => resolve(undefined))
       })
@@ -8782,7 +8803,12 @@ export default function SocialFeed({
       }
       if (cancelled) return
       setCommunityPosts((prev) => (prev.some((p) => p.id === postRow.id) ? prev : [postRow, ...prev]))
-      openLoungePostDetail(postRow, { fromPublicLink: true })
+      if (drillCommentId) {
+        reloadLoungeDetailCommentsForPost(postRow.id)
+        await openDirectCommentPostDetail(postRow, drillCommentId)
+      } else {
+        openLoungePostDetail(postRow, { fromPublicLink: true })
+      }
       stripLoungePostQueryParam()
     }
     void run()
@@ -8792,7 +8818,16 @@ export default function SocialFeed({
       cancelled = true
       window.removeEventListener('popstate', onPop)
     }
-  }, [communityPosts, hydrateCommunityPosts, openLoungePostDetail, setCommunityPosts, supabaseClient])
+  }, [
+    communityPosts,
+    composerUserId,
+    hydrateCommunityPosts,
+    openDirectCommentPostDetail,
+    openLoungePostDetail,
+    reloadLoungeDetailCommentsForPost,
+    setCommunityPosts,
+    supabaseClient,
+  ])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -15018,12 +15053,22 @@ export default function SocialFeed({
     const postId = String(requestOpenPost?.postId || '').trim()
     if (!postId) return
     const returnChatRoomId = String(requestOpenPost?.returnChatRoomId || '').trim()
+    const commentId = String(requestOpenPost?.commentId || '').trim()
     onRequestOpenPostConsumed?.()
     if (returnChatRoomId) {
       loungePostReturnChatRoomIdRef.current = returnChatRoomId
     }
+    // Alert / push target: same open path as an Alerts row so a reply lands drilled into the thread.
+    if (requestOpenPost?.fromActivity) {
+      void onLoungeOpenPostFromNotifications({
+        postId,
+        commentId: commentId || null,
+        captureNavReturn: false,
+      })
+      return
+    }
     void openLoungePostById(postId, { skipNavCapture: true })
-  }, [requestOpenPost, openLoungePostById, onRequestOpenPostConsumed])
+  }, [requestOpenPost, openLoungePostById, onLoungeOpenPostFromNotifications, onRequestOpenPostConsumed])
 
   const openCaptionLink = useCallback(
     (href, e) => {

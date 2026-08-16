@@ -291,6 +291,10 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     (!missedCallId && chatCallId ? chatCallId : null) ||
     (eventType === 'chat_call_invite' && chatCallId ? chatCallId : null)
   const roomId = params.get('room') || null
+  // Lounge post/comment target travels in the message too ... an already-open client may never
+  // reload the URL, and iOS can drop the query string entirely on wake.
+  const postId = params.get('post') || null
+  const commentId = params.get('comment') || null
   return {
     type: 'app-navigate',
     url: relativeUrl,
@@ -300,6 +304,8 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     callId,
     missedCallId,
     roomId,
+    postId,
+    commentId,
     eventType,
     chatCallId,
     markActivityRead: Boolean(activityEventId || activityBatchId),

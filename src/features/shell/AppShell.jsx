@@ -383,7 +383,11 @@ export default function AppShell({
   /** Signed-in uid for app-wide call ring (ChatCallProvider lives above ChatTab). */
   const [chatCallViewerUserId, setChatCallViewerUserId] = useState('')
   const [pendingLoungeProfileUserId, setPendingLoungeProfileUserId] = useState(null)
-  const [pendingLoungePostOpen, setPendingLoungePostOpen] = useState(/** @type {{ postId: string, returnChatRoomId?: string | null } | null} */ (null))
+  const [pendingLoungePostOpen, setPendingLoungePostOpen] = useState(
+    /** @type {{ postId: string, commentId?: string | null, fromActivity?: boolean, returnChatRoomId?: string | null } | null} */ (
+      null
+    ),
+  )
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
@@ -457,6 +461,8 @@ export default function AppShell({
   const [communityFeedCursor, setCommunityFeedCursor] = useState(null)
   /** Set when the feed query fails (e.g. missing column); avoids showing “no posts” when posts exist but select failed. */
   const [communityFeedQueryErr, setCommunityFeedQueryErr] = useState('')
+  /** Declared here so activity/push handlers defined above `loadCommunityFeed` can silent-refresh the feed. */
+  const loadCommunityFeedRef = useRef(/** @type {((opts?: object) => Promise<void>) | null} */ (null))
   const [loungeFeedScope, setLoungeFeedScope] = useState(LOUNGE_FEED_SCOPE_ALL)
   const loungeFeedScopeRef = useRef(loungeFeedScope)
   loungeFeedScopeRef.current = loungeFeedScope
@@ -559,6 +565,30 @@ export default function AppShell({
     }
   }, [pendingStableCommitId, supabaseClient, chatCallViewerUserId])
 
+  /**
+   * Lounge alert / push landing on the feed: pull a fresh head so the notifying reply is actually
+   * in the timeline, and hand the post + comment target to SocialFeed (same open path as Alerts rows).
+   */
+  const openLoungeActivityPostTarget = useCallback(({ postId, commentId } = {}) => {
+    if (browseMode === 'anonymous') return
+    void loadCommunityFeedRef.current?.({ silent: true })
+    const id = String(postId || '').trim()
+    if (!id) return
+    // When the target is already in the URL, the Lounge `post=` deep-link effect owns the open ...
+    // handing it over again would re-open the post and wipe the comment drill path.
+    try {
+      const urlPostId = new URLSearchParams(window.location.search || '').get('post')
+      if (String(urlPostId || '').trim() === id) return
+    } catch {
+      // ignore malformed url
+    }
+    setPendingLoungePostOpen({
+      postId: id,
+      commentId: String(commentId || '').trim() || null,
+      fromActivity: true,
+    })
+  }, [browseMode])
+
   const applyLoungeActivityNavigate = useCallback(
     (payload, { markActivityRead = true } = {}) => {
       const {
@@ -570,6 +600,8 @@ export default function AppShell({
         missedCallId,
         playLogEntryId,
         pokerSessionId,
+        postId,
+        commentId,
         guideSlug,
         stableDealId,
         stableCommitId,
@@ -670,6 +702,7 @@ export default function AppShell({
       } else {
         setTab('home')
         setMenuOpen(false)
+        openLoungeActivityPostTarget({ postId, commentId })
       }
 
       if (markActivityRead && (activityEventId || activityBatchId)) {
@@ -681,7 +714,7 @@ export default function AppShell({
         )
       }
     },
-    [browseMode, openStableCommitDeepLinkIfPending],
+    [browseMode, openLoungeActivityPostTarget, openStableCommitDeepLinkIfPending],
   )
 
   const openLoungeActivityInAppToast = useCallback(
@@ -1047,7 +1080,6 @@ export default function AppShell({
     loungeFeedScopeRef.current = LOUNGE_FEED_SCOPE_ALL
   }, [browseMode, loungeFeedScope])
 
-  const loadCommunityFeedRef = useRef(loadCommunityFeed)
   loadCommunityFeedRef.current = loadCommunityFeed
 
   const loadMoreCommunityFeed = useCallback(async () => {
@@ -1554,6 +1586,18 @@ export default function AppShell({
       if (targetTab === 'home' || !targetTab) {
         setTab('home')
         setMenuOpen(false)
+        let postId = String(data.postId || '').trim()
+        let commentId = String(data.commentId || '').trim()
+        if (!postId) {
+          try {
+            const msgUrl = new URL(data.url || '', window.location.origin)
+            postId = String(msgUrl.searchParams.get('post') || '').trim()
+            commentId = String(msgUrl.searchParams.get('comment') || '').trim()
+          } catch {
+            // ignore malformed url
+          }
+        }
+        openLoungeActivityPostTarget({ postId, commentId })
         const activityEventId = data.activityEventId || null
         const activityBatchId = data.activityBatchId || null
         if (data.markActivityRead || activityEventId || activityBatchId) {
@@ -1619,7 +1663,12 @@ export default function AppShell({
       document.removeEventListener('visibilitychange', onResume)
       window.removeEventListener('pageshow', onResume)
     }
-  }, [browseMode, showLoungeActivityInAppToast, openStableCommitDeepLinkIfPending])
+  }, [
+    browseMode,
+    openLoungeActivityPostTarget,
+    showLoungeActivityInAppToast,
+    openStableCommitDeepLinkIfPending,
+  ])
 
   // After sign-in / provider mount, drain any SW stash left from a notification tap.
   useEffect(() => {

@@ -3739,10 +3739,20 @@ export default function PokerBankrollTracker({
           if (wl != null) await applyBankrollDelta(-wl)
         }
       }
-      setDetailSessionId(null)
-      setDetailSeriesSessionIds(null)
-      setSessionRecapMode(false)
-      setSheet(null)
+      // Deleting one flight of a series keeps the sheet open on what is left.
+      const removedIds = new Set(rows.map((row) => String(row.id)))
+      const remainingIds = (detailSeriesSessionIds || [])
+        .map(String)
+        .filter((id) => !removedIds.has(id))
+      if (remainingIds.length > 0) {
+        setDetailSeriesSessionIds(remainingIds.length > 1 ? remainingIds : null)
+        setDetailSessionId(remainingIds[0])
+      } else {
+        setDetailSessionId(null)
+        setDetailSeriesSessionIds(null)
+        setSessionRecapMode(false)
+        setSheet(null)
+      }
       triggerTapHapticLight()
       await loadData()
     } catch (e) {

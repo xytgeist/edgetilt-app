@@ -526,14 +526,27 @@ export default function PokerSessionDetailSheet({
                           className="text-sm font-bold tabular-nums"
                         />
                         {!recapMode ? (
-                          <button
-                            type="button"
-                            onClick={() => onEdit?.(flight)}
-                            data-poker-session-flight-edit-btn
-                            className="rounded-lg bg-zinc-700 px-2.5 py-1 text-[10px] font-bold text-white touch-manipulation active:bg-zinc-600"
-                          >
-                            Edit
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => onEdit?.(flight)}
+                              data-poker-session-flight-edit-btn
+                              className="rounded-lg bg-zinc-700 px-2.5 py-1 text-[10px] font-bold text-white touch-manipulation active:bg-zinc-600"
+                            >
+                              Edit
+                            </button>
+                            {onDelete ? (
+                              <button
+                                type="button"
+                                disabled={deleteBusy}
+                                onClick={() => void onDelete?.([flight])}
+                                data-poker-session-flight-delete-btn
+                                className="rounded-lg border border-rose-500/40 px-2.5 py-1 text-[10px] font-bold text-rose-300 touch-manipulation disabled:opacity-50"
+                              >
+                                Delete
+                              </button>
+                            ) : null}
+                          </div>
                         ) : null}
                       </div>
                     </div>
@@ -794,7 +807,7 @@ export default function PokerSessionDetailSheet({
           <div className="space-y-2">
             {isSeriesGroup ? (
               <p className="text-center text-[11px] leading-snug text-zinc-500">
-                Edit each flight above. Sessions stay separate for bankroll accounting.
+                Edit or delete each flight above. Sessions stay separate for bankroll accounting.
               </p>
             ) : (
               <button

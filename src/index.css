@@ -5178,13 +5178,20 @@ html.light [data-poker-session-detail] [data-poker-session-edit-btn].text-white 
 html.light [data-poker-session-detail] [data-poker-session-edit-btn]:active {
   background-color: #27272a !important;
 }
-html.light [data-poker-session-detail] [data-poker-session-delete-btn] {
+html.light [data-poker-session-detail] [data-poker-session-delete-btn],
+html.light [data-poker-session-detail] [data-poker-session-flight-delete-btn] {
   border-color: rgb(251 113 133 / 0.55) !important;
   color: rgb(190 18 60) !important;
   background-color: transparent !important;
 }
-html.light [data-poker-session-detail] [data-poker-session-delete-btn]:active {
+html.light [data-poker-session-detail] [data-poker-session-delete-btn]:active,
+html.light [data-poker-session-detail] [data-poker-session-flight-delete-btn]:active {
   background-color: rgb(255 241 242) !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-flight-edit-btn] {
+  background-color: #3f3f46 !important;
+  border-color: #3f3f46 !important;
+  color: #ffffff !important;
 }
 html.light [data-poker-session-detail] [data-poker-session-swap-btn] {
   background-color: #ffffff !important;

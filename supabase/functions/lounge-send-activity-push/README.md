@@ -56,7 +56,7 @@ Like/bookmark pushes are **debounced 10 seconds** and **grouped** (`@a and 4 oth
 Tap targets (URL + push JSON fields):
 
 - **Follow** → `/?tab=home&u=<handle>` (+ optional **`activityEventId`**)
-- **Post activity** → `/?tab=home&post=<uuid>` (+ **`activityEventId`** or batched **`activityBatchId`**)
+- **Post activity** → `/?tab=home&post=<uuid>` (+ **`comment=<uuid>`** when the alert is about a specific comment/reply/mention/like/bookmark on a comment; + **`activityEventId`** or batched **`activityBatchId`**)
 - **DM (batched)** → `/?tab=chat&room=<uuid>` (+ **`activityBatchId`**)
 - Fallback → `/?tab=home&lounge=notifications`
 

@@ -142,6 +142,7 @@ import {
   persistLoungeFailedReplyDraft,
   clearLoungeFailedReplyDraft,
 } from './loungeStorage'
+import { classifyLoungeFeedLoadError } from './loungeFeedLoadError.js'
 import { isPokerStakeOnboardingActive } from '../poker-bankroll/pokerStakeeOnboarding.js'
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
 import LoungeSlotsMenuHintOverlay from './LoungeSlotsMenuHintOverlay.jsx'
@@ -1588,6 +1589,38 @@ export default function SocialFeed({
   )
 
   const loungeStaffToolsEnabled = Boolean(isStaff || loungeViewerIsStaff)
+
+  const [loungeViewerOnline, setLoungeViewerOnline] = useState(() =>
+    typeof navigator === 'undefined' ? true : navigator.onLine !== false,
+  )
+  useEffect(() => {
+    const sync = () => setLoungeViewerOnline(navigator.onLine !== false)
+    sync()
+    window.addEventListener('online', sync)
+    window.addEventListener('offline', sync)
+    return () => {
+      window.removeEventListener('online', sync)
+      window.removeEventListener('offline', sync)
+    }
+  }, [])
+
+  const loungeFeedLoadError = useMemo(
+    () => classifyLoungeFeedLoadError(communityFeedQueryErr, { online: loungeViewerOnline }),
+    [communityFeedQueryErr, loungeViewerOnline],
+  )
+
+  /** Feed died while offline ... reload it once the connection is back so members never see a dead shell. */
+  const loungeFeedRetryOnReconnectRef = useRef(false)
+  useEffect(() => {
+    if (!loungeViewerOnline) {
+      if (communityFeedQueryErr) loungeFeedRetryOnReconnectRef.current = true
+      return
+    }
+    if (!loungeFeedRetryOnReconnectRef.current) return
+    loungeFeedRetryOnReconnectRef.current = false
+    if (!communityFeedQueryErr) return
+    void loadCommunityFeed?.()
+  }, [communityFeedQueryErr, loadCommunityFeed, loungeViewerOnline])
 
   const loungeComposerCaptionMax = useMemo(
     () =>
@@ -16345,24 +16378,44 @@ export default function SocialFeed({
           <div className="px-3 py-4 text-zinc-400 text-[17px]">Loading lounge…</div>
         ) : communityPosts.length === 0 ? (
           communityFeedQueryErr ? (
-            <div className="px-3 py-5 text-[17px] leading-relaxed">
-              <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 break-words whitespace-pre-wrap">
-                Could not load the lounge feed: {communityFeedQueryErr}
+            <div data-lounge-feed-error className="px-3 py-5 text-[17px] leading-relaxed">
+              <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-3 text-rose-200">
+                <p className="font-semibold">{loungeFeedLoadError.title}</p>
+                <p className="mt-1 text-[15px] text-rose-200/85">{loungeFeedLoadError.body}</p>
+                <button
+                  type="button"
+                  data-lounge-feed-error-retry
+                  onClick={() => {
+                    triggerTapHapticLight()
+                    void loadCommunityFeed?.()
+                  }}
+                  className="mt-3 min-h-9 touch-manipulation rounded-full bg-cyan-600 px-4 text-[14px] font-bold text-white active:bg-cyan-700 [-webkit-tap-highlight-color:transparent]"
+                >
+                  Retry
+                </button>
               </div>
-              {/media_url|gif_url|schema cache|column/i.test(communityFeedQueryErr) ? (
-                <p className="mt-3 text-zinc-400">
-                  If you recently added GIFs or media on posts, apply{' '}
-                  <code className="text-fuchsia-200/90">supabase/lounge_feed_post_media.sql</code> and{' '}
-                  <code className="text-fuchsia-200/90">supabase/lounge_feed_post_gif_url.sql</code> in the Supabase SQL
-                  editor so the <code className="text-fuchsia-200/90">media_url</code> and{' '}
-                  <code className="text-fuchsia-200/90">gif_url</code> columns exist, then refresh.
-                </p>
-              ) : (
-                <p className="mt-3 text-zinc-400">
-                  Check the browser network tab for the <code className="text-fuchsia-200/90">community_feed_posts</code>{' '}
-                  request, fix the Supabase schema or RLS issue, then pull to refresh.
-                </p>
-              )}
+              {loungeStaffToolsEnabled ? (
+                <div
+                  data-lounge-feed-error-staff
+                  className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-[13px] leading-snug text-zinc-400"
+                >
+                  <p className="font-semibold text-zinc-300">Staff diagnostic</p>
+                  <p className="mt-1 break-words whitespace-pre-wrap">{communityFeedQueryErr}</p>
+                  {/media_url|gif_url|schema cache|column/i.test(communityFeedQueryErr) ? (
+                    <p className="mt-2">
+                      Missing feed media column ... apply{' '}
+                      <code className="text-fuchsia-200/90">supabase/lounge_feed_post_media.sql</code> and{' '}
+                      <code className="text-fuchsia-200/90">supabase/lounge_feed_post_gif_url.sql</code> in the Supabase
+                      SQL editor, then refresh.
+                    </p>
+                  ) : (
+                    <p className="mt-2">
+                      Check the <code className="text-fuchsia-200/90">community_feed_posts</code> request in the network
+                      tab for a schema or RLS failure.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : loungeFeedCategoryExcludedSlugs?.length > 0 ? (
             <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">

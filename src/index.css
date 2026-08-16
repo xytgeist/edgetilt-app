@@ -3870,6 +3870,28 @@ html.light [data-lounge-reply-failure-toast] {
   color: #9f1239 !important;
   box-shadow: 0 10px 36px rgba(136, 19, 55, 0.14) !important;
 }
+/* Feed load failure card (offline / network / server) + staff diagnostic */
+html.light [data-lounge-feed-error] .bg-rose-950\/25 {
+  background-color: rgba(255, 241, 242, 0.92) !important;
+}
+html.light [data-lounge-feed-error] .border-rose-500\/45 {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+html.light [data-lounge-feed-error] .text-rose-200,
+html.light [data-lounge-feed-error] .text-rose-200\/85 {
+  color: #9f1239 !important;
+}
+html.light [data-lounge-feed-error] [data-lounge-feed-error-staff] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #52525b !important;
+}
+html.light [data-lounge-feed-error] [data-lounge-feed-error-staff] .text-zinc-300 {
+  color: #27272a !important;
+}
+html.light [data-lounge-feed-error] [data-lounge-feed-error-staff] code {
+  color: #a21caf !important;
+}
 html.light [data-in-app-toast] .in-app-toast-activity-icon {
   background-color: rgba(244, 244, 245, 0.9) !important;
   box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.08);

@@ -2,8 +2,13 @@
  * MTTDB live + online lobby scrape → catalog one_off rows.
  * Live: https://mttdb.com/live-poker/tournaments/
  * Online: https://mttdb.com/online-poker/
+ *
+ * Cloudflare sits in front of mttdb.com (the scrape source), not Supabase.
+ * Sync = scrape MTTDB HTML → parse embedded tournaments → upsert into Supabase.
+ * A CF JS challenge blocks step 1; the DB upsert never sees the 403.
  */
 
+import { chromium } from 'playwright'
 import { isoDateLocal } from './pokerTournamentCatalog.mjs'
 import { inferTournamentGameVariantFromText } from './pokerTournamentGameVariant.mjs'
 import { resolveCatalogCurrency } from './pokerTournamentCurrency.mjs'
@@ -24,6 +29,10 @@ export const MTTDB_ONLINE_TIMEZONE = 'UTC'
 
 const MTTDB_FETCH_RETRIES = 3
 const MTTDB_RETRY_BASE_MS = 800
+const MTTDB_PLAYWRIGHT_TIMEOUT_MS = 90_000
+
+/** @type {Promise<import('playwright').Browser> | null} */
+let mttdbBrowserPromise = null
 
 function mttdbBrowserHeaders(extra = {}) {
   return {
@@ -65,15 +74,104 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function looksLikeCloudflareChallenge(html) {
+  return /just a moment|cf-browser-verification|attention required|enable javascript/i.test(
+    String(html || ''),
+  )
+}
+
+function htmlHasEmbeddedTournaments(html) {
+  return String(html || '').includes('{"id":')
+}
+
+async function launchMttdbBrowser() {
+  if (!mttdbBrowserPromise) {
+    mttdbBrowserPromise = (async () => {
+      try {
+        return await chromium.launch({ headless: true, channel: 'chrome' })
+      } catch {
+        return await chromium.launch({ headless: true })
+      }
+    })().catch((err) => {
+      mttdbBrowserPromise = null
+      throw err
+    })
+  }
+  return mttdbBrowserPromise
+}
+
 /**
- * Fetch MTTDB lobby HTML with browser-like headers, PHPSESSID warm-up, and 403/429 retries.
- * GitHub Actions egress is often CF-blocked; warm-up + retries help some challenges, not hard IP bans.
+ * Real Chromium clears Cloudflare's JS challenge; plain fetch cannot.
+ * Browser is reused for live + online in the same sync process.
  * @param {string} url
- * @param {{ fetchImpl?: typeof fetch, label?: string }} [opts]
+ * @param {{ label?: string }} [opts]
+ */
+/** Close shared Chromium so the sync process can exit. */
+export async function closeMttdbBrowser() {
+  const pending = mttdbBrowserPromise
+  mttdbBrowserPromise = null
+  if (!pending) return
+  try {
+    const browser = await pending
+    await browser.close()
+  } catch {
+    // Best-effort teardown.
+  }
+}
+
+export async function fetchMttdbLobbyHtmlViaPlaywright(url, opts = {}) {
+  const label = opts.label || 'lobby'
+  const browser = await launchMttdbBrowser()
+  const context = await browser.newContext({
+    userAgent: MTTDB_FETCH_UA,
+    locale: 'en-US',
+    viewport: { width: 1280, height: 900 },
+  })
+  const page = await context.newPage()
+  try {
+    await page.goto(MTTDB_ORIGIN + '/', {
+      waitUntil: 'domcontentloaded',
+      timeout: MTTDB_PLAYWRIGHT_TIMEOUT_MS,
+    })
+    await page.goto(url, {
+      waitUntil: 'domcontentloaded',
+      timeout: MTTDB_PLAYWRIGHT_TIMEOUT_MS,
+    })
+
+    const deadline = Date.now() + MTTDB_PLAYWRIGHT_TIMEOUT_MS
+    let html = ''
+    while (Date.now() < deadline) {
+      html = await page.content()
+      if (htmlHasEmbeddedTournaments(html) && !looksLikeCloudflareChallenge(html)) {
+        return html
+      }
+      await sleep(750)
+    }
+
+    if (looksLikeCloudflareChallenge(html)) {
+      throw new Error(`MTTDB ${label} fetch failed: Cloudflare challenge (playwright)`)
+    }
+    if (!htmlHasEmbeddedTournaments(html)) {
+      const snippet = html.replace(/\s+/g, ' ').slice(0, 160)
+      throw new Error(`MTTDB ${label} fetch failed: no embedded tournaments (${snippet || 'empty body'})`)
+    }
+    return html
+  } finally {
+    await page.close().catch(() => {})
+    await context.close().catch(() => {})
+  }
+}
+
+/**
+ * Fetch MTTDB lobby HTML with browser-like headers, then Playwright if Cloudflare challenges.
+ * CF protects mttdb.com … not Supabase. Plain fetch often gets HTTP 403 / Just a moment…
+ * @param {string} url
+ * @param {{ fetchImpl?: typeof fetch, label?: string, allowPlaywright?: boolean }} [opts]
  */
 export async function fetchMttdbLobbyHtml(url, opts = {}) {
   const fetchImpl = opts.fetchImpl || fetch
   const label = opts.label || 'lobby'
+  const allowPlaywright = opts.allowPlaywright !== false
 
   let cookie = ''
   try {
@@ -88,6 +186,7 @@ export async function fetchMttdbLobbyHtml(url, opts = {}) {
 
   let lastStatus = 0
   let lastSnippet = ''
+  let sawChallenge = false
   for (let attempt = 1; attempt <= MTTDB_FETCH_RETRIES; attempt++) {
     const headers = mttdbBrowserHeaders({
       Referer: `${MTTDB_ORIGIN}/`,
@@ -98,28 +197,32 @@ export async function fetchMttdbLobbyHtml(url, opts = {}) {
     const html = await res.text()
     lastStatus = res.status
     lastSnippet = html.replace(/\s+/g, ' ').slice(0, 160)
+    const challenge = looksLikeCloudflareChallenge(html)
+    if (challenge) sawChallenge = true
 
-    const challenge = /just a moment|cf-browser-verification|attention required|enable javascript/i.test(html)
-    if (res.ok && !challenge && html.includes('{"id":')) return html
+    if (res.ok && !challenge && htmlHasEmbeddedTournaments(html)) return html
 
     if (attempt < MTTDB_FETCH_RETRIES && (res.status === 403 || res.status === 429 || challenge || !res.ok)) {
       await sleep(MTTDB_RETRY_BASE_MS * attempt)
       continue
     }
-
-    if (!res.ok) {
-      throw new Error(`MTTDB ${label} fetch failed: HTTP ${res.status}`)
-    }
-    if (challenge) {
-      throw new Error(`MTTDB ${label} fetch failed: Cloudflare challenge (${lastStatus || 'ok'})`)
-    }
-    if (!html.includes('{"id":')) {
-      throw new Error(`MTTDB ${label} fetch failed: no embedded tournaments (${lastSnippet || 'empty body'})`)
-    }
-    return html
+    break
   }
 
-  throw new Error(`MTTDB ${label} fetch failed: HTTP ${lastStatus || 'unknown'}`)
+  if (allowPlaywright) {
+    console.warn(
+      `[mttdb] plain fetch blocked (${sawChallenge ? 'Cloudflare challenge' : `HTTP ${lastStatus || 'unknown'}`}); trying Playwright for ${label}…`,
+    )
+    return fetchMttdbLobbyHtmlViaPlaywright(url, { label })
+  }
+
+  if (sawChallenge) {
+    throw new Error(`MTTDB ${label} fetch failed: Cloudflare challenge (${lastStatus || 'ok'})`)
+  }
+  if (lastStatus && lastStatus !== 200) {
+    throw new Error(`MTTDB ${label} fetch failed: HTTP ${lastStatus}`)
+  }
+  throw new Error(`MTTDB ${label} fetch failed: no embedded tournaments (${lastSnippet || 'empty body'})`)
 }
 
 /**

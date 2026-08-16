@@ -20,7 +20,11 @@ import {
   parseBuyInFromText,
   repoRootFromCatalogLib,
 } from './lib/pokerTournamentCatalog.mjs'
-import { fetchMttdbLiveCatalogOneOffs, fetchMttdbOnlineCatalogOneOffs } from './lib/mttdbCatalogFetch.mjs'
+import {
+  closeMttdbBrowser,
+  fetchMttdbLiveCatalogOneOffs,
+  fetchMttdbOnlineCatalogOneOffs,
+} from './lib/mttdbCatalogFetch.mjs'
 import {
   fetchClubwptCatalogOneOffs,
   fetchClubwptGoldCatalogOneOffs,
@@ -429,7 +433,12 @@ function mttdbFetchProblems(fetch, onlineRowCount) {
   return problems
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+main()
+  .catch((err) => {
+    console.error(err)
+    process.exitCode = 1
+  })
+  .finally(async () => {
+    await closeMttdbBrowser()
+    process.exit(process.exitCode || 0)
+  })

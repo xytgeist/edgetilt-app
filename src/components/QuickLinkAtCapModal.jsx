@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+import { Z_APP_MODAL } from '../constants/appZIndex.js'
 import { QUICK_LINK_BY_ID } from '../features/shell/quickLinkDestinations.js'
 import { QUICK_LINK_MAX } from '../features/shell/quickLinkDestinations.js'
 import { setQuickLinkEnabled } from '../features/shell/quickLinksStore.js'
@@ -19,21 +21,27 @@ export default function QuickLinkAtCapModal({
   onEnabled,
 }) {
   if (!open || !pendingId) return null
+  /** Nothing left to resolve ... never leave an unkillable sheet over the hub. */
+  if (activeIds.includes(pendingId)) return null
   const pending = QUICK_LINK_BY_ID[pendingId]
   const pendingLabel = pending?.label || pendingId
 
   const toggleOff = (id) => {
     setQuickLinkEnabled(id, false)
     const result = setQuickLinkEnabled(pendingId, true)
-    if (result.ok) {
-      onEnabled?.(pendingId)
-      onClose()
-    }
+    if (result.ok) onEnabled?.(pendingId)
+    onClose()
   }
 
-  return (
+  /*
+   * Portal to body: hub pin lives inside a `relative z-[2]` card, which traps a
+   * plain fixed overlay in that stacking context (title bar z-50 and the Lounge
+   * dock then paint over it and swallow taps ... Cancel became unreachable).
+   */
+  return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      className="fixed inset-0 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      style={{ zIndex: Z_APP_MODAL }}
       onClick={onClose}
       role="presentation"
     >
@@ -82,6 +90,7 @@ export default function QuickLinkAtCapModal({
           Cancel
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

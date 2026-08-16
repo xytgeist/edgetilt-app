@@ -2161,7 +2161,12 @@ html.light .text-cyan-200\/90,
 html.light .text-cyan-200\/95 { color: #93c5fd !important; }
 html.light .text-cyan-300,
 html.light .text-cyan-300\/95 { color: #2563eb !important; }
-html.light .text-cyan-400 { color: #2563eb !important; }
+html.light .text-cyan-400,
+html.light .text-cyan-400\/90 { color: #2563eb !important; }
+/* Feed thread badge: regular blue in light (opacity cyan variant was skipping the remap). */
+html.light [data-lounge-thread-parts-label] {
+  color: #2563eb !important;
+}
 html.light .text-cyan-500 { color: #1d4ed8 !important; }
 html.light .text-cyan-600 { color: #1d4ed8 !important; }
 html.light .text-\[\#06cefc\] { color: #3b82f6 !important; }
@@ -2795,22 +2800,6 @@ html.light [data-lounge-market-chart-mini] [data-mini-range-bar] {
 
 html.light [data-lounge-market-chart-compare] {
   color: var(--color-zinc-600) !important;
-}
-
-/* Lounge feed caption Show more expand control (dark: cyan, light: blue) */
-.lounge-caption-more {
-  font-weight: 500;
-  color: rgb(34 211 238 / 0.92);
-}
-.lounge-caption-more:hover {
-  color: rgb(103 232 249);
-}
-
-html.light .lounge-caption-more {
-  color: #2563eb !important;
-}
-html.light .lounge-caption-more:hover {
-  color: #1d4ed8 !important;
 }
 
 /* Lounge post / composer $TICKER cashtags (positive day change) */

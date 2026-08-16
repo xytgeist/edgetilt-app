@@ -727,6 +727,7 @@ function LoungePostArticle({
               : null}
             {loungePostIsThreadRoot(post) && !isLoungeFanOnlyPostLocked(post, fanLockCtx) ? (
               <div
+                data-lounge-thread-parts-label=""
                 className={`${showPostCaption(post) ? 'mt-1' : LOUNGE_FEED_CAPTION_TOP_CLASS} text-left text-[13px] font-semibold text-cyan-400/90`}
               >
                 Thread · {loungePostThreadPartCount(post)} parts

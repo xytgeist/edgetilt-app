@@ -155,12 +155,14 @@ export function LoungeCommentCard({
   )
 
   const menuIsOwn = Boolean(viewerUserId && comment.user_id === viewerUserId)
+  const commentPublishPending = comment?._authorPendingPublish === true
   const commentDeletePending = Boolean(busyDeletingCommentId && busyDeletingCommentId === comment.id)
   const commentEditSavePending = Boolean(
     commentEditSavePendingCommentId && commentEditSavePendingCommentId === comment.id,
   )
   const showCommentMenu = Boolean(
     !loungeReadOnly &&
+      !commentPublishPending &&
       viewerUserId &&
       (typeof onCommentMenuEdit === 'function' ||
         typeof onCommentMenuDelete === 'function' ||
@@ -283,6 +285,9 @@ export function LoungeCommentCard({
 
   const commentBodyColumn = (
       <div className="min-w-0 flex-1">
+        {commentPublishPending ? (
+          <LoungeFeedPendingStatusRow className="mb-1">Sending reply…</LoungeFeedPendingStatusRow>
+        ) : null}
         {commentDeletePending ? (
           <LoungeFeedPendingStatusRow className="mb-1">Deleting reply…</LoungeFeedPendingStatusRow>
         ) : null}
@@ -329,7 +334,7 @@ export function LoungeCommentCard({
         {showDetailTimestamp && detailTimestampLabel && !bodyEditing ? (
           <div className="mt-2 text-[14px] leading-tight text-zinc-500">{detailTimestampLabel}</div>
         ) : null}
-        {bodyEditing || hideInteractionBar || typeof interactionStateFor !== 'function' ? null : interactionBarPost ? (
+        {bodyEditing || commentPublishPending || hideInteractionBar || typeof interactionStateFor !== 'function' ? null : interactionBarPost ? (
           <LoungePostInteractionBar
             post={interactionBarPost}
             variant="comment"
@@ -394,7 +399,7 @@ export function LoungeCommentCard({
     </div>
   )
 
-  if (navigable && onOpenCommentThread) {
+  if (navigable && onOpenCommentThread && !commentPublishPending) {
     const openRow = () => onOpenCommentThread(comment)
     return (
       <article

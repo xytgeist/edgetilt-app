@@ -27,6 +27,53 @@ function formatFeedCommentPersistenceError(message, fallback = 'Could not post r
   return msg || fallback
 }
 
+const COMMENT_INSERT_MAX_ATTEMPTS = 4
+const COMMENT_INSERT_RETRY_DELAYS_MS = [350, 900, 1800]
+
+export function createLoungeCommentMutationId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // UUID v4 fallback for older embedded webviews.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const n = Math.floor(Math.random() * 16)
+    const value = ch === 'x' ? n : (n & 0x3) | 0x8
+    return value.toString(16)
+  })
+}
+
+export function loungeCommentInsertErrorIsRetryable(error) {
+  if (!error) return false
+  const status = Number(error.status || error.statusCode || 0)
+  const code = String(error.code || '').trim().toUpperCase()
+  const message = String(error.message || error.details || error).toLowerCase()
+  if (status === 408 || status === 425 || status === 429 || status >= 500) return true
+  if (/^PGRST00[0-3]$/.test(code)) return true
+  if (/network|failed to fetch|fetch failed|load failed|timeout|timed out|temporar|connection|gateway|service unavailable/.test(message)) {
+    return true
+  }
+  // Supabase fetch failures sometimes arrive without a status or Postgres code.
+  return !status && !code
+}
+
+function waitForCommentRetry(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+        reject(new DOMException('Aborted', 'AbortError'))
+      },
+      { once: true },
+    )
+  })
+}
+
 /**
  * Uploads media and inserts `feed_comments`.
  *
@@ -222,23 +269,70 @@ export async function executeLoungeCommentSubmission({
             ? feedCommentInsertPayload({ body, mediaUrl: gifOnlyUrl })
             : feedCommentInsertPayload({ body })
 
+    const commentMutationId =
+      String(snapshot.clientMutationId || '').trim() || createLoungeCommentMutationId()
     const insertRow = {
+      id: commentMutationId,
       post_id: postId,
       user_id: userId,
       ...mediaPart,
     }
     if (parentId) insertRow.parent_id = parentId
 
-    const { data, error } = await supabaseClient
-      .from('feed_comments')
-      .insert(insertRow)
-      .select(
-        'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview',
-      )
-      .single()
+    let data = null
+    let finalInsertError = null
+    for (let attempt = 1; attempt <= COMMENT_INSERT_MAX_ATTEMPTS; attempt += 1) {
+      throwIfAborted()
+      const result = await supabaseClient
+        .from('feed_comments')
+        .insert(insertRow)
+        .select(
+          'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview',
+        )
+        .single()
+      data = result.data
+      finalInsertError = result.error
+      if (!finalInsertError) break
 
-    if (error) {
-      throw new Error(formatFeedCommentPersistenceError(error.message))
+      // A prior attempt may have committed while its response was lost. The stable client
+      // UUID turns the duplicate into a successful recovery instead of a second reply.
+      if (String(finalInsertError.code || '') === '23505') {
+        const existing = await supabaseClient
+          .from('feed_comments')
+          .select(
+            'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview',
+          )
+          .eq('id', commentMutationId)
+          .eq('user_id', userId)
+          .maybeSingle()
+        if (existing.data?.id) {
+          data = existing.data
+          finalInsertError = null
+          break
+        }
+      }
+
+      if (
+        attempt >= COMMENT_INSERT_MAX_ATTEMPTS ||
+        !loungeCommentInsertErrorIsRetryable(finalInsertError)
+      ) {
+        break
+      }
+      report(
+        0.92,
+        `Retrying reply (${attempt + 1}/${COMMENT_INSERT_MAX_ATTEMPTS})`,
+        '',
+      )
+      await waitForCommentRetry(COMMENT_INSERT_RETRY_DELAYS_MS[attempt - 1] || 1800, signal)
+    }
+
+    if (finalInsertError || !data?.id) {
+      throw new Error(
+        formatFeedCommentPersistenceError(
+          finalInsertError?.message,
+          'Could not post reply after multiple attempts.',
+        ),
+      )
     }
 
     insertSucceeded = true

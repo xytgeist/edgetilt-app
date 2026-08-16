@@ -3864,6 +3864,12 @@ html.light [data-in-app-toast].in-app-toast-status-pill--cyan {
 html.light [data-in-app-toast].in-app-toast-status-pill--emerald {
   color: #047857 !important;
 }
+html.light [data-lounge-reply-failure-toast] {
+  background: rgba(255, 241, 242, 0.94) !important;
+  border-color: rgba(244, 63, 94, 0.22) !important;
+  color: #9f1239 !important;
+  box-shadow: 0 10px 36px rgba(136, 19, 55, 0.14) !important;
+}
 html.light [data-in-app-toast] .in-app-toast-activity-icon {
   background-color: rgba(244, 244, 245, 0.9) !important;
   box-shadow: inset 0 0 0 1px rgba(24, 24, 27, 0.08);

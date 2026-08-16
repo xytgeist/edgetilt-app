@@ -263,6 +263,89 @@ export function clearLoungeComposerDraft() {
   }
 }
 
+const LOUNGE_FAILED_REPLY_DRAFTS_KEY = 'lounge_failed_reply_drafts_v1'
+const LOUNGE_FAILED_REPLY_DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function failedReplyDraftKey(userId, postId) {
+  const uid = String(userId || '').trim()
+  const pid = String(postId || '').trim()
+  return uid && pid ? `${uid}:${pid}` : ''
+}
+
+function readFailedReplyDraftMap() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOUNGE_FAILED_REPLY_DRAFTS_KEY) || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+export function readLoungeFailedReplyDraft(userId, postId) {
+  const key = failedReplyDraftKey(userId, postId)
+  if (!key) return null
+  const map = readFailedReplyDraftMap()
+  const draft = map[key]
+  if (!draft || typeof draft !== 'object') return null
+  const savedAt = Number(draft.savedAt || 0)
+  if (!savedAt || Date.now() - savedAt > LOUNGE_FAILED_REPLY_DRAFT_TTL_MS) {
+    clearLoungeFailedReplyDraft(userId, postId)
+    return null
+  }
+  const body = typeof draft.body === 'string' ? draft.body.slice(0, LOUNGE_CAPTION_MAX) : ''
+  if (!body.trim()) return null
+  return {
+    body,
+    parentId: typeof draft.parentId === 'string' ? draft.parentId : null,
+    pathIds: Array.isArray(draft.pathIds) ? draft.pathIds.map(String).filter(Boolean) : [],
+    savedAt,
+  }
+}
+
+export function persistLoungeFailedReplyDraft({
+  userId,
+  postId,
+  body,
+  parentId = null,
+  pathIds = [],
+}) {
+  if (typeof window === 'undefined') return
+  const key = failedReplyDraftKey(userId, postId)
+  const caption = String(body || '').slice(0, LOUNGE_CAPTION_MAX)
+  if (!key || !caption.trim()) return
+  try {
+    const map = readFailedReplyDraftMap()
+    map[key] = {
+      body: caption,
+      parentId: parentId ? String(parentId) : null,
+      pathIds: Array.isArray(pathIds) ? pathIds.map(String).filter(Boolean) : [],
+      savedAt: Date.now(),
+    }
+    window.localStorage.setItem(LOUNGE_FAILED_REPLY_DRAFTS_KEY, JSON.stringify(map))
+  } catch {
+    // Quota or private mode ... keep the in-memory toast copy.
+  }
+}
+
+export function clearLoungeFailedReplyDraft(userId, postId) {
+  if (typeof window === 'undefined') return
+  const key = failedReplyDraftKey(userId, postId)
+  if (!key) return
+  try {
+    const map = readFailedReplyDraftMap()
+    if (!Object.prototype.hasOwnProperty.call(map, key)) return
+    delete map[key]
+    if (Object.keys(map).length === 0) {
+      window.localStorage.removeItem(LOUNGE_FAILED_REPLY_DRAFTS_KEY)
+    } else {
+      window.localStorage.setItem(LOUNGE_FAILED_REPLY_DRAFTS_KEY, JSON.stringify(map))
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export const LOUNGE_COMPOSER_LAST_CATEGORY_PILLS_KEY = 'loungeComposerLastCategoryPills:v1'
 
 export function readLoungeComposerLastCategoryPills() {

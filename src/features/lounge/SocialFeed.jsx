@@ -138,6 +138,9 @@ import {
   readLoungeWelcomeAck,
   readLoungeSlotsMenuHintAck,
   readLoungeFabHintAck,
+  readLoungeFailedReplyDraft,
+  persistLoungeFailedReplyDraft,
+  clearLoungeFailedReplyDraft,
 } from './loungeStorage'
 import { isPokerStakeOnboardingActive } from '../poker-bankroll/pokerStakeeOnboarding.js'
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
@@ -217,6 +220,7 @@ import {
 } from './loungePendingPostPublish.js'
 import { LoungePendingPublishActionsProvider } from './LoungePendingPublishActionsContext.jsx'
 import {
+  createLoungeCommentMutationId,
   executeLoungeCommentSubmission,
   executeLoungeCommentUpdate,
 } from './loungeCommentSubmitJob.js'
@@ -477,6 +481,23 @@ const LOUNGE_DETAIL_COMMENT_PLACEHOLDER = "Post your reply (or don't, nerd)"
 
 const FEED_COMMENT_SELECT_COLS =
   'id,body,created_at,user_id,parent_id,comment_count,like_count,repost_count,bookmark_count,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,edited_at,link_preview,is_thread_part,thread_part_index'
+
+function releaseOptimisticReplyImagePreviews(snapshot) {
+  const urls = Array.isArray(snapshot?.imagePreviewBlobUrls)
+    ? snapshot.imagePreviewBlobUrls
+    : []
+  window.setTimeout(() => {
+    for (const raw of urls) {
+      const url = String(raw || '')
+      if (!url.startsWith('blob:')) continue
+      try {
+        URL.revokeObjectURL(url)
+      } catch {
+        // ignore
+      }
+    }
+  }, 0)
+}
 
 function loungeDetailShowsCaption(row) {
   if (!row) return false
@@ -1031,6 +1052,8 @@ export default function SocialFeed({
   const quoteRepostQueuedToastTimerRef = useRef(0)
   const [loungeDetailCommentQueuedToast, setLoungeDetailCommentQueuedToast] = useState(false)
   const loungeDetailCommentQueuedToastTimerRef = useRef(0)
+  const [loungeReplyFailureToast, setLoungeReplyFailureToast] = useState(null)
+  const loungeReplyFailureToastTimerRef = useRef(0)
   /** Transient copy/share feedback (permalink flow). */
   const [loungeShareFlash, setLoungeShareFlash] = useState('')
   const [quoteRepostImageItems, setQuoteRepostImageItems] = useState([])
@@ -2816,6 +2839,35 @@ export default function SocialFeed({
     setLoungePostUploadFailedOpen(true)
   }, [])
 
+  const showLoungeReplyFailure = useCallback((snapshot, message) => {
+    const body = String(snapshot?.body || '')
+    persistLoungeFailedReplyDraft({
+      userId: snapshot?.userId,
+      postId: snapshot?.postId,
+      body,
+      parentId: snapshot?.parentId ?? null,
+      pathIds: snapshot?.commentDetailPathIds,
+    })
+    try {
+      window.clearTimeout(loungeReplyFailureToastTimerRef.current)
+    } catch {
+      // ignore
+    }
+    setLoungeReplyFailureToast({
+      post: snapshot?.postSnapshot || null,
+      postId: String(snapshot?.postId || ''),
+      body,
+      pathIds: Array.isArray(snapshot?.commentDetailPathIds)
+        ? snapshot.commentDetailPathIds.map(String).filter(Boolean)
+        : [],
+      message: String(message || 'Could not post reply after multiple attempts.'),
+    })
+    loungeReplyFailureToastTimerRef.current = window.setTimeout(() => {
+      loungeReplyFailureToastTimerRef.current = 0
+      setLoungeReplyFailureToast(null)
+    }, 12_000)
+  }, [])
+
   /** Only the active (non-queued) submit should pin the shared snapshot ref before drain starts. */
   const shouldAssignLoungePostSnapshotRef = useCallback(
     () =>
@@ -4527,6 +4579,7 @@ export default function SocialFeed({
     setLoungeDetailCommentErr('')
     setLoungeDetailCommentImageItems((prev) => {
       for (const it of prev) {
+        if (skipRevoke.has(it.preview)) continue
         try {
           URL.revokeObjectURL(it.preview)
         } catch {
@@ -6625,6 +6678,12 @@ export default function SocialFeed({
         // ignore
       }
       loungeDetailCommentQueuedToastTimerRef.current = 0
+      try {
+        window.clearTimeout(loungeReplyFailureToastTimerRef.current)
+      } catch {
+        // ignore
+      }
+      loungeReplyFailureToastTimerRef.current = 0
     }
   }, [])
 
@@ -7042,15 +7101,18 @@ export default function SocialFeed({
         : null
 
     const snapshot = {
+      clientMutationId: createLoungeCommentMutationId(),
       body,
       gifOnlyUrl,
       imageFiles: loungeDetailCommentImageItems.map((it) => it.file),
+      imagePreviewBlobUrls: loungeDetailCommentImageItems.map((it) => it.preview).filter(Boolean),
       videoFile: hasVideo && slotNow?.file ? slotNow.file : null,
       streamVideoUid: uid,
       sessionStreamPosterBlobUrl: sessionPosterBlob,
       postId: loungePostDetail.id,
       parentId,
       userId: composerUserId,
+      postSnapshot: loungePostDetail,
       awaitingDetailCommentVideoPrepJobId: awaiting,
       videoPrepSpec: specForSnap,
       /** Screen to return to after post (comment detail vs OP post detail). */
@@ -7076,11 +7138,14 @@ export default function SocialFeed({
       preserveDetailCommentVideoPrep: preserveVideoPrep,
       pendingSnapshot: snapshot,
     })
-    if (loungeSubmissionUsesInlineVideoPostProgress(snapshot)) {
-      const pendingPublishKey = createLoungePendingPublishKey('pending-comment')
-      snapshot._pendingPublishKey = pendingPublishKey
-      prependAuthorPendingVideoComment(snapshot, pendingPublishKey)
-    }
+    const pendingPublishKey = createLoungePendingPublishKey('pending-comment')
+    snapshot._pendingPublishKey = pendingPublishKey
+    prependAuthorPendingVideoComment(snapshot, pendingPublishKey)
+    setLoungeDetailViewerPinnedCommentIds((ids) =>
+      ids[0] === pendingPublishKey
+        ? ids
+        : [pendingPublishKey, ...ids.filter((id) => id !== pendingPublishKey)],
+    )
     enqueueAndRunLoungeSubmitRef.current('comment', snapshot)
 
     const commentMediaOrPrepPending =
@@ -7109,8 +7174,9 @@ export default function SocialFeed({
     loungeDetailCommentImageItems,
     loungeDetailCommentMediaUrl,
     loungeDetailCommentVideoPostBlocked,
-    loungePostDetail?.id,
+    loungePostDetail,
     loungeReadOnly,
+    prependAuthorPendingVideoComment,
   ])
 
   const beginLoungeDetailCommentEdit = useCallback(
@@ -7909,7 +7975,10 @@ export default function SocialFeed({
       if (loungeFanOnlyPostDetailOpenBlocked(post, loungeFanLockCtx)) {
         return
       }
-      if (performance.now() < loungeFeedNavClickSuppressUntilRef.current) return
+      if (
+        performance.now() < loungeFeedNavClickSuppressUntilRef.current &&
+        !opts?.fromReplyFailureToast
+      ) return
       pauseAllLoungeStreamInlineVideos()
       if (loungeReadOnly && !opts?.fromPublicLink) {
         onRequireAuth?.()
@@ -7952,6 +8021,9 @@ export default function SocialFeed({
       setLoungeDetailEditMarketSymbols([])
       setLoungePostDetailMenuOpen(false)
       setLoungeDetailRepostMenuOpen(false)
+      const failedReplyDraft = composerUserId
+        ? readLoungeFailedReplyDraft(composerUserId, post.id)
+        : null
       const directOpen =
         loungePostDetailDirectCommentOpenRef.current?.postId === String(post.id)
           ? loungePostDetailDirectCommentOpenRef.current
@@ -7966,7 +8038,8 @@ export default function SocialFeed({
         loungePostDetailPendingCommentIdRef.current = opts?.focusCommentId
           ? String(opts.focusCommentId)
           : null
-        loungePostDetailPendingCommentComposerRef.current = opts?.focusCommentComposer === true
+        loungePostDetailPendingCommentComposerRef.current =
+          opts?.focusCommentComposer === true || Boolean(failedReplyDraft)
         if (opts?.focusCommentId) {
           loungeCommentDetailDirectEntryAnimateRef.current = true
         }
@@ -7976,9 +8049,13 @@ export default function SocialFeed({
         setLoungeCommentDetailPathIds(path)
         loungeCommentDetailDirectEntryDepthRef.current = path.length
       }
-      setLoungeDetailCommentDraft('')
+      if (failedReplyDraft?.pathIds?.length) {
+        setLoungeCommentDetailPathIds(failedReplyDraft.pathIds)
+        loungeCommentDetailDirectEntryDepthRef.current = failedReplyDraft.pathIds.length
+      }
+      setLoungeDetailCommentDraft(failedReplyDraft?.body || '')
       setLoungeDetailCommentErr('')
-      setLoungeDetailCommentComposerExpanded(false)
+      setLoungeDetailCommentComposerExpanded(Boolean(failedReplyDraft))
       setLoungeDetailCommentEditingId(null)
       setLoungeDetailCommentEditDraft('')
       setLoungeDetailCommentEditBusy(false)
@@ -8060,6 +8137,27 @@ export default function SocialFeed({
     },
     [cancelLoungeDetailEditMediaPrep, composerUserId, loungeFanLockCtx, loungeReadOnly, onRequireAuth, profileModalOpen, profileOverlayStack.length, refreshLoungePostInteractions, supabaseClient]
   )
+
+  const openLoungeReplyFailureToast = useCallback(() => {
+    if (!loungeReplyFailureToast?.postId) return
+    const post =
+      loungeReplyFailureToast.post ||
+      (loungePostDetail?.id === loungeReplyFailureToast.postId ? loungePostDetail : null) ||
+      communityPosts.find((row) => row?.id === loungeReplyFailureToast.postId)
+    if (!post?.id) return
+    try {
+      window.clearTimeout(loungeReplyFailureToastTimerRef.current)
+    } catch {
+      // ignore
+    }
+    loungeReplyFailureToastTimerRef.current = 0
+    setLoungeReplyFailureToast(null)
+    openLoungePostDetail(post, {
+      fromReplyFailureToast: true,
+      focusCommentComposer: true,
+      restoreCommentPathIds: loungeReplyFailureToast.pathIds,
+    })
+  }, [communityPosts, loungePostDetail, loungeReplyFailureToast, openLoungePostDetail])
 
   /**
    * Profile / repost / deep link: prefetch comments + drill path so first paint is Reply view,
@@ -11708,6 +11806,7 @@ export default function SocialFeed({
         const data = await executeLoungeCommentSubmission({
           supabaseClient,
           snapshot: {
+            clientMutationId: snap.clientMutationId,
             body: snap.body,
             gifOnlyUrl: snap.gifOnlyUrl,
             imageFiles: snap.imageFiles,
@@ -11748,7 +11847,7 @@ export default function SocialFeed({
           .eq('user_id', snap.userId)
           .maybeSingle()
         const row = { ...data, author_profile: pr.data || composerUserProfile || null }
-        if (inlineVideoProgress && pendingPublishKey) {
+        if (pendingPublishKey) {
           setLoungeDetailComments((prev) => {
             const withoutPending = prev.filter(
               (r) => r.id !== pendingPublishKey && r._pendingPublishKey !== pendingPublishKey,
@@ -11794,10 +11893,16 @@ export default function SocialFeed({
           })
         }
         if (row.id) {
-          setLoungeDetailViewerPinnedCommentIds((ids) =>
-            ids[0] === row.id ? ids : [row.id, ...ids.filter((id) => id !== row.id)],
-          )
+          setLoungeDetailViewerPinnedCommentIds((ids) => {
+            const withoutPending = ids.filter((id) => id !== pendingPublishKey && id !== row.id)
+            return [row.id, ...withoutPending]
+          })
+          clearLoungeFailedReplyDraft(snap.userId, snap.postId)
+          if (pendingPublishKey && !inlineVideoProgress) {
+            clearLoungePendingPostProgress(pendingPublishKey)
+          }
         }
+        releaseOptimisticReplyImagePreviews(snap)
         const { data: countRow } = await supabaseClient
           .from('community_feed_posts')
           .select('comment_count')
@@ -11828,9 +11933,10 @@ export default function SocialFeed({
         }
       } catch (e) {
         if (e?.name === 'AbortError') return
-        if (inlineVideoProgress && pendingPublishKey) {
+        if (pendingPublishKey) {
           removeAuthorPendingVideoComment(pendingPublishKey, snap.parentId)
         }
+        releaseOptimisticReplyImagePreviews(snap)
         const failUid = String(snap.streamVideoUid || '').trim()
         const hadSessionPoster =
           typeof snap.sessionStreamPosterBlobUrl === 'string' &&
@@ -11838,26 +11944,9 @@ export default function SocialFeed({
         if (failUid && hadSessionPoster) {
           releaseLoungeStreamSessionPoster(failUid)
         }
-        const curSnap = loungeDetailCommentSnapshotRef.current
-        if (curSnap?.awaitingDetailCommentVideoPrepJobId != null) {
-          loungeDetailCommentSnapshotRef.current = { ...curSnap, awaitingDetailCommentVideoPrepJobId: null }
-        }
-        if (String(snap.streamVideoUid || '').trim()) {
-          loungeDetailCommentSnapshotRef.current = snap
-        }
-        if (Array.isArray(snap.commentDetailPathIds) && snap.commentDetailPathIds.length > 0) {
-          setLoungeCommentDetailPathIds((prev) =>
-            prev.length > 0 ? prev : snap.commentDetailPathIds,
-          )
-        }
         const msg = (e instanceof Error ? e.message : String(e || '')).trim() || 'Could not post reply.'
-        setLoungeDetailCommentErr(msg)
-        setLoungePostUploadFailureDetails({
-          kind: 'comment',
-          phase: loungePostUploadLastPhaseRef.current || '(no step recorded)',
-          message: msg,
-        })
-        setLoungePostUploadFailedOpen(true)
+        loungeDetailCommentSnapshotRef.current = null
+        showLoungeReplyFailure(snap, msg)
       } finally {
         loungeDetailCommentAbortRef.current = null
         loungeDetailCommentJobRunningRef.current = false
@@ -11872,6 +11961,7 @@ export default function SocialFeed({
       patchPostAggregate,
       scheduleLoungePostDetailTitleAfterReply,
       scrollLoungePostDetailToFocusedComment,
+      showLoungeReplyFailure,
       supabaseClient,
       bumpLoungeSubmitInFlight,
     ],
@@ -12538,6 +12628,7 @@ export default function SocialFeed({
           const data = await executeLoungeCommentSubmission({
             supabaseClient,
             snapshot: {
+              clientMutationId: snap.clientMutationId,
               body: snap.body,
               gifOnlyUrl: snap.gifOnlyUrl,
               imageFiles: snap.imageFiles,
@@ -12556,17 +12647,35 @@ export default function SocialFeed({
             .eq('user_id', snap.userId)
             .maybeSingle()
           const row = { ...data, author_profile: pr.data || composerUserProfile || null }
+          const pendingPublishKey = String(snap._pendingPublishKey || '').trim()
           if (row.id) {
-            setLoungeDetailViewerPinnedCommentIds((ids) =>
-              ids[0] === row.id ? ids : [row.id, ...ids.filter((id) => id !== row.id)],
-            )
+            setLoungeDetailViewerPinnedCommentIds((ids) => {
+              const withoutPending = ids.filter((id) => id !== pendingPublishKey && id !== row.id)
+              return [row.id, ...withoutPending]
+            })
+            clearLoungeFailedReplyDraft(snap.userId, snap.postId)
+            if (pendingPublishKey) clearLoungePendingPostProgress(pendingPublishKey)
           }
           setLoungeDetailComments((c) => {
-            const withNew = c.some((r) => r.id === row.id) ? c : [...c, row]
+            const withoutPending = pendingPublishKey
+              ? c.filter(
+                  (r) =>
+                    r.id !== pendingPublishKey &&
+                    r._pendingPublishKey !== pendingPublishKey,
+                )
+              : c
+            const withNew = withoutPending.some((r) => r.id === row.id)
+              ? withoutPending.map((r) => (r.id === row.id ? { ...r, ...row } : r))
+              : [...withoutPending, row]
             return snap.parentId
-              ? bumpFeedCommentAncestorCountsInList(withNew, snap.parentId, 1)
+              ? bumpFeedCommentAncestorCountsInList(
+                  withNew,
+                  snap.parentId,
+                  pendingPublishKey ? 0 : 1,
+                )
               : withNew
           })
+          releaseOptimisticReplyImagePreviews(snap)
           const { data: countRow } = await supabaseClient
             .from('community_feed_posts')
             .select('comment_count')
@@ -12695,6 +12804,16 @@ export default function SocialFeed({
           } else {
             deferOrShowFastLaneFailure(failKind, snapshot, 'Publishing', msg)
           }
+        } else if (type === 'comment') {
+          const pendingPublishKey = String(snapshot?._pendingPublishKey || '').trim()
+          if (pendingPublishKey) {
+            removeAuthorPendingVideoComment(pendingPublishKey, snapshot?.parentId)
+            setLoungeDetailViewerPinnedCommentIds((ids) =>
+              ids.filter((id) => id !== pendingPublishKey),
+            )
+          }
+          releaseOptimisticReplyImagePreviews(snapshot)
+          showLoungeReplyFailure(snapshot, msg)
         } else {
           deferOrShowFastLaneFailure(failKind, snapshot, 'Publishing', msg)
         }
@@ -12729,11 +12848,13 @@ export default function SocialFeed({
       patchPostAggregate,
       persistThreadSubmissionSnapshotAsDraft,
       rateLimitMessage,
+      removeAuthorPendingVideoComment,
       refreshLoungeDraftCount,
       refreshLoungePostInteractions,
       restoreThreadAfterUploadFailure,
       scheduleLoungePostDetailTitleAfterReply,
       scrollLoungePostDetailToFocusedComment,
+      showLoungeReplyFailure,
       supabaseClient,
     ],
   )
@@ -15498,6 +15619,25 @@ export default function SocialFeed({
         posts={loungeMarketFeedPosts}
         feedActive={isActivePage}
       >
+      {loungeReplyFailureToast ? (
+        <button
+          type="button"
+          data-lounge-reply-failure-toast
+          onClick={openLoungeReplyFailureToast}
+          className={`fixed left-1/2 z-[121] w-[min(calc(100vw-1.5rem),22rem)] -translate-x-1/2 touch-manipulation rounded-2xl border border-rose-400/25 bg-rose-950/90 px-3 py-2 text-left text-[11px] font-semibold leading-snug text-rose-50 shadow-[0_8px_32px_rgba(0,0,0,0.36)] backdrop-blur-xl active:scale-[0.99] ${
+            loungeReplyFailureToast.post ? '' : 'cursor-default opacity-90'
+          }`}
+          style={{
+            top:
+              quoteRepostQueuedToast || loungeDetailCommentQueuedToast
+                ? IN_APP_TOAST_STACKED_TOP
+                : IN_APP_TOAST_TOP,
+          }}
+          title={loungeReplyFailureToast.message}
+        >
+          Reply couldn&apos;t send after multiple attempts. Tap to restore it.
+        </button>
+      ) : null}
       {quoteRepostQueuedToast ? (
         <div
           role="status"

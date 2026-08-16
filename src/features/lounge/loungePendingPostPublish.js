@@ -796,6 +796,10 @@ export function buildAuthorPendingVideoComment({
 }) {
   const now = new Date().toISOString()
   const uid = String(snapshot?.streamVideoUid || '').trim()
+  const gifUrl = String(snapshot?.gifOnlyUrl || '').trim()
+  const imageUrls = Array.isArray(snapshot?.imagePreviewBlobUrls)
+    ? snapshot.imagePreviewBlobUrls.map(String).filter(Boolean)
+    : []
   return {
     id: pendingKey,
     body: String(snapshot?.body || ''),
@@ -804,6 +808,9 @@ export function buildAuthorPendingVideoComment({
     user_id: userId,
     created_at: now,
     stream_video_uid: uid || null,
+    media_url: gifUrl || null,
+    gif_url: gifUrl || null,
+    image_urls: imageUrls,
     _authorPendingPublish: true,
     _pendingPublishKey: pendingKey,
     _sessionStreamPosterBlob: sessionPosterBlobFromSnapshot(snapshot),

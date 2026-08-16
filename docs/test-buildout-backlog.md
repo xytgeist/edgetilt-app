@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-16: **Prod promote @ `12bb2a9e`:** `test` → **`main`** (Vercel). Frontend only … tournament stakes label drops redundant buy-in when the name already leads with matching `$` money. No SQL / Edge.
 - 2026-08-16: **Tournament stakes label drops redundant buy-in:** `pokerSessionStakesLabel` + `formatTournamentEventLabel` skip the leading `$buyIn ·` when the tournament/event name already starts with a matching `$` money blob (`$1,100`, `$1100`, `$1,000+$110`, `$1,000+$110=$1,110` via `tournamentNameLeadsWithMatchingBuyIn`). So `$1100 · $1,100 Arizona State…` becomes `$1,100 Arizona State…`; names without a matching money prefix still show `$10000 · WSOP Main Event`. Covers live cards, history, locations/trend, header chip abbreviate, swap event labels. No SQL.
 - 2026-08-16: **Prod promote @ `b7764933`:** `test` → **`main`** (Vercel). Frontend only … drop caption Show more + Thread · N parts blue in light. No SQL / Edge.
 - 2026-08-16: **Feed captions drop Show more; thread parts label blue in light:** Char/line-truncated Lounge captions (`LoungeExpandableRichCaption`) now end with `…` only … no Show more control. Open the post for the full caption (lightbox CSS-clamp tap-expand unchanged). Thread · N parts feed badge gets `data-lounge-thread-parts-label` + light-mode `#2563eb` (was electric cyan because `text-cyan-400/90` skipped the global cyan→blue remap); also remapped `text-cyan-400/90` globally in light. No SQL.

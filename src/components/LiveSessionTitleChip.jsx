@@ -53,7 +53,7 @@ export default function LiveSessionTitleChip({
   if (!slots && !poker) return null
 
   const chipClass =
-    'flex max-w-[min(11.5rem,42vw)] min-w-0 shrink-0 items-center gap-1 rounded-xl border px-2 py-1.5 text-[11px] font-semibold leading-snug shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent]'
+    'flex w-full max-w-full min-w-0 items-center gap-1 rounded-xl border px-2 py-1.5 text-[11px] font-semibold leading-snug shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent]'
 
   if (onlySlots) {
     return (
@@ -99,14 +99,14 @@ export default function LiveSessionTitleChip({
 
   // Both live: dual mini chips when space allows; otherwise compact picker.
   return (
-    <div ref={rootRef} className="relative min-w-0 max-w-[min(14rem,48vw)]" data-live-session-dual>
-      <div className="hidden min-[380px]:flex items-center gap-1">
+    <div ref={rootRef} className="relative min-w-0 w-full max-w-full" data-live-session-dual>
+      <div className="hidden min-[380px]:flex w-full min-w-0 items-center justify-center gap-1">
         <button
           type="button"
           data-live-session-chip
           data-live-session-kind="slots"
           onClick={() => onOpenSlots?.()}
-          className={`${chipClass} max-w-[6.75rem] border-emerald-500/45 bg-emerald-950/70 text-emerald-100`}
+          className={`${chipClass} max-w-[calc(50%-0.125rem)] min-w-0 border-emerald-500/45 bg-emerald-950/70 text-emerald-100`}
           aria-label={`Live slots session ${slots.label}. Open Slots Bankroll.`}
         >
           <LiveSessionDot className="bg-emerald-400" />
@@ -118,7 +118,7 @@ export default function LiveSessionTitleChip({
           data-live-session-kind="poker"
           data-live-session-paused={poker.paused ? 'true' : undefined}
           onClick={() => onOpenPoker?.(poker.id)}
-          className={`${chipClass} max-w-[6.75rem] ${
+          className={`${chipClass} max-w-[calc(50%-0.125rem)] min-w-0 ${
             poker.paused
               ? 'border-amber-500/40 bg-amber-950/55 text-amber-100/90'
               : 'border-teal-500/45 bg-teal-950/70 text-teal-100'
@@ -133,7 +133,7 @@ export default function LiveSessionTitleChip({
         </button>
       </div>
 
-      <div className="min-[380px]:hidden">
+      <div className="min-[380px]:hidden w-full min-w-0">
         <button
           type="button"
           data-live-session-chip
@@ -141,7 +141,7 @@ export default function LiveSessionTitleChip({
           aria-expanded={pickerOpen}
           aria-controls={menuId}
           onClick={() => setPickerOpen((v) => !v)}
-          className={`${chipClass} border-cyan-500/45 bg-cyan-950/70 text-cyan-100`}
+          className={`${chipClass} min-w-0 border-cyan-500/45 bg-cyan-950/70 text-cyan-100`}
           aria-label="Two live sessions. Choose Slots or Poker Bankroll."
         >
           <LiveSessionDot className="bg-cyan-400" />

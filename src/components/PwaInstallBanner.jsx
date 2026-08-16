@@ -227,20 +227,36 @@ export default function PwaInstallTitleBarRow({
   const hasCenter = liveSessionActive || showInstallChip
   const centerContent = liveSessionActive ? centerSlot : showInstallChip ? installChip : null
 
+  // Live chip: logo | flexible middle | mandatory nav. Shortcuts yield via container queries.
+  // Install chip keeps a lighter center-biased layout (no shortcut cascade needed).
   const row = hasCenter ? (
     <div
-      className={`grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`}
+      className={
+        liveSessionActive
+          ? `grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 ${rowClassName}`
+          : `grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`
+      }
       data-pwa-install-title-row
       data-title-bar-has-center={liveSessionActive ? 'live' : 'install'}
     >
       <div className="min-w-0 justify-self-start">{logo}</div>
-      <div className="min-w-0 justify-self-center">{centerContent}</div>
-      <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">{navSlot}</div>
+      <div
+        className={
+          liveSessionActive
+            ? 'flex min-w-0 justify-center px-0.5'
+            : 'min-w-0 justify-self-center'
+        }
+      >
+        {centerContent}
+      </div>
+      <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end" data-title-bar-nav>
+        {navSlot}
+      </div>
     </div>
   ) : (
     <div className={`flex items-center justify-between gap-3 ${rowClassName}`}>
       {logo}
-      <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">{navSlot}</div>
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">{navSlot}</div>
     </div>
   )
 

@@ -59,7 +59,7 @@ export default function TitleBarQuickLinks({
 
   return (
     <div className="flex items-center gap-1.5 shrink-0" data-quick-link-bar>
-      {ids.map(id => {
+      {ids.map((id, index) => {
         const dest = QUICK_LINK_BY_ID[id]
         if (!dest) return null
         const Icon = ICONS[id]
@@ -80,6 +80,7 @@ export default function TitleBarQuickLinks({
             type="button"
             title={locked ? 'Subscribe to unlock' : dest.label}
             aria-label={dest.label}
+            data-quick-link-slot={String(index)}
             onClick={() => onNavigate(id)}
             className="lounge-title-nav-btn relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
           >

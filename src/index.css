@@ -8947,6 +8947,41 @@ html.light [data-live-session-picker] [role='menuitem']:hover {
   background: rgb(244 244 245) !important;
 }
 
+/*
+ * Live title-bar priority cascade:
+ * logo + live pill + hamburger (+ tool close) never overlap.
+ * Shortcuts yield first (slot 1, then whole bar). Available again via hamburger.
+ * Scoped to live center only … install-chip mode keeps its own layout.
+ */
+[data-pwa-install-title-row][data-title-bar-has-center='live'] {
+  container-type: inline-size;
+  container-name: title-bar-live;
+}
+
+@container title-bar-live (max-width: 28rem) {
+  [data-quick-link-slot='1'] {
+    display: none !important;
+  }
+}
+
+@container title-bar-live (max-width: 23.5rem) {
+  [data-quick-link-bar] {
+    display: none !important;
+  }
+}
+
+@container title-bar-live (max-width: 32rem) {
+  [data-title-bar-nav]:has([data-title-bar-close]) [data-quick-link-slot='1'] {
+    display: none !important;
+  }
+}
+
+@container title-bar-live (max-width: 27rem) {
+  [data-title-bar-nav]:has([data-title-bar-close]) [data-quick-link-bar] {
+    display: none !important;
+  }
+}
+
 html.light [data-pwa-install-title-chip]:hover {
   border-color: rgb(14 116 144) !important;
   background: rgb(236 254 255) !important;

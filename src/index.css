@@ -8376,6 +8376,16 @@ html.light [data-chat-feature] .text-emerald-400 {
  * Applied via className so that CSS cascade handles the theme switch;
  * inline styles in the component only carry dynamic values (e.g. height).
  * ─────────────────────────────────────────────────────────────────────── */
+[data-chat-feature] [data-chat-day-pill] {
+  background: rgba(24, 24, 27, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+html.light [data-chat-feature] [data-chat-day-pill] {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #52525b !important;
+}
+
 .chat-header-glass {
   background: rgba(24, 24, 27, 0.25);
   backdrop-filter: blur(20px) saturate(160%);

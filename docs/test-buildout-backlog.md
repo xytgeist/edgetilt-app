@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-18: **Chat day/date pills:** Timeline inserts a small centered pill on local calendar-day change (`Today` / `Yesterday` / weekday this week / `Aug 17` / `Aug 17, 2025`). Sender grouping resets across the day break. Light + dark scoped under `[data-chat-feature] [data-chat-day-pill]`. No SQL. Smoke: open a DM with messages from two days … pill between them; same-day thread has one pill at the top.
 - 2026-08-18: **Lounge caption kept spaces before `:/`:** Display typography in `loungeCaption.jsx` was collapsing spaces before `:;'"`, so `163rd :/` rendered as `163rd:/` and multi-spaces before those marks vanished. Storage was fine (`whitespace-pre-wrap`). Collapse now only runs for `.,!?) ]}`. Smoke: post `163rd :/` and `hello    world` … frowny and multi-spaces survive in the feed.
 - 2026-08-18: **Live pill is player-only:** Title-bar poker live chip was picking up active stake sessions via backer SELECT RLS (`poker_stable_user_can_access_deal`). `fetchActivePokerBankrollSessions` now filters `user_id =` signed-in player; Stable history/Trend/Locations backer reads unchanged. Smoke: backer with a live horse → no header pill; same account as stakee with own live session → pill still shows.
 - 2026-08-16: **Prod promote @ `93fa50a8`:** `test` → **`main`** (Vercel). Frontend only … Poker Bankroll title-bar shortcut Club icon uses solid emerald in light (`#059669`), not lime mint. **No SQL / Edge.**

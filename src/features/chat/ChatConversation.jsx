@@ -29,7 +29,12 @@ import {
   chatRoomReadReceipts,
 } from './chatApi.js'
 import { findLastOwnMessageId, getMessageReceiptStatus } from './chatReceiptStatus.js'
-import { compareChatMessagesChronological, sortChatMessagesChronological } from './chatMessageTimeline.js'
+import {
+  chatMessageLocalDayKey,
+  compareChatMessagesChronological,
+  formatChatDayPillLabel,
+  sortChatMessagesChronological,
+} from './chatMessageTimeline.js'
 import {
   probeVideoFileDisplaySize,
   captureVideoFilePosterObjectUrl,
@@ -2557,25 +2562,46 @@ export default function ChatConversation({
                 return allItems.map((item, idx) => {
                   const prev = idx > 0 ? allItems[idx - 1] : null
                   const next = idx < allItems.length - 1 ? allItems[idx + 1] : null
-                  const isGroupStart = !prev || prev.sender_id !== item.sender_id
+                  const itemDay = chatMessageLocalDayKey(item.created_at)
+                  const prevDay = prev ? chatMessageLocalDayKey(prev.created_at) : ''
+                  const showDayPill = Boolean(itemDay) && itemDay !== prevDay
+                  const isGroupStart = showDayPill || !prev || prev.sender_id !== item.sender_id
                   const isGroupEnd   = !next || next.sender_id !== item.sender_id
-                  const topMargin = idx === 0 ? 0 : isGroupStart ? 12 : 2
+                  const topMargin = showDayPill ? 0 : idx === 0 ? 0 : isGroupStart ? 12 : 2
+                  const dayPill = showDayPill ? (
+                    <div
+                      className={`flex justify-center ${idx === 0 ? 'mb-2.5' : 'mb-2.5 mt-3'}`}
+                      data-chat-day-pill-row
+                    >
+                      <span
+                        data-chat-day-pill
+                        className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums tracking-wide text-zinc-400"
+                      >
+                        {formatChatDayPillLabel(item.created_at)}
+                      </span>
+                    </div>
+                  ) : null
 
                   if (item._isPrepJob) {
                     return (
-                      <div key={item._key} style={{ marginTop: topMargin }}>
-                        <ChatVideoPrepBubble
-                          job={item._job}
-                          onCancel={() => cancelVideoPrepJob(item._job.jobId)}
-                          onRetry={() => retryVideoPrepJob(item._job.jobId)}
-                        />
+                      <div key={item._key}>
+                        {dayPill}
+                        <div style={{ marginTop: topMargin }}>
+                          <ChatVideoPrepBubble
+                            job={item._job}
+                            onCancel={() => cancelVideoPrepJob(item._job.jobId)}
+                            onRetry={() => retryVideoPrepJob(item._job.jobId)}
+                          />
+                        </div>
                       </div>
                     )
                   }
 
                   const msg = item
                   return (
-                    <div key={msg._key || msg.id} style={{ marginTop: topMargin }}>
+                    <div key={msg._key || msg.id}>
+                      {dayPill}
+                      <div style={{ marginTop: topMargin }}>
                       <ChatBubble
                         message={msg}
                         highlighted={highlightMessageId === msg.id}
@@ -2619,6 +2645,7 @@ export default function ChatConversation({
                           showOnThisMessage: msg.id === lastOwnMessageId,
                         })}
                       />
+                      </div>
                     </div>
                   )
                 })

@@ -64,9 +64,13 @@ function peelLeadingAttachedPunctuation(fragment) {
   return { punct: m[1], rest: s.slice(m[0].length) }
 }
 
-/** Collapse errant space before punctuation in plain caption text. */
+/**
+ * Collapse errant space before sentence / closer punctuation in plain caption text.
+ * Do NOT include `:` / `;` / quotes — those are intentional for emoticons (`:/`, `;)`)
+ * and quoted phrases (`said "hi"`).
+ */
 function normalizePlainCaptionTypography(fragment) {
-  return String(fragment ?? '').replace(/(\S)\s+([,.!?;:'")])/g, '$1$2')
+  return String(fragment ?? '').replace(/(\S)\s+([,.!?)\]}])/g, '$1$2')
 }
 
 function wrapRichTokenWithAttachedPunctuation(tokenEl, punct, key) {

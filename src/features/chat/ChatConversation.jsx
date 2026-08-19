@@ -245,6 +245,9 @@ export default function ChatConversation({
 
   // DOM refs
   const listRef = useRef(null)
+  const headerNameAnchorRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const inViewDateRafRef = useRef(0)
+  const [inViewDateLabel, setInViewDateLabel] = useState('')
   const atBottomRef = useRef(true)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const typingRef = useRef(null)
@@ -848,6 +851,7 @@ export default function ChatConversation({
     setNewMsgCount(0)
     setScrolledUpCount(0)
     setReplyTarget(null)
+    setInViewDateLabel('')
   }, [room.id])
 
   // ── Load older messages (prepend) ─────────────────────────────────────────
@@ -1416,12 +1420,40 @@ export default function ChatConversation({
 
   // ── Scroll helpers ────────────────────────────────────────────────────────
 
+  const syncInViewDatePill = useCallback(() => {
+    const list = listRef.current
+    if (!list) return
+    const nameBottom = headerNameAnchorRef.current?.getBoundingClientRect().bottom
+    const probeY = Number.isFinite(nameBottom)
+      ? nameBottom + 8
+      : list.getBoundingClientRect().top + 80
+    const nodes = list.querySelectorAll('[data-chat-message-created]')
+    let iso = ''
+    for (const node of nodes) {
+      if (node.getBoundingClientRect().bottom > probeY) {
+        iso = node.getAttribute('data-chat-message-created') || ''
+        break
+      }
+    }
+    const next = formatChatHeaderDatePillLabel(iso)
+    setInViewDateLabel((prev) => (prev === next ? prev : next))
+  }, [])
+
+  const scheduleInViewDatePill = useCallback(() => {
+    if (inViewDateRafRef.current) return
+    inViewDateRafRef.current = window.requestAnimationFrame(() => {
+      inViewDateRafRef.current = 0
+      syncInViewDatePill()
+    })
+  }, [syncInViewDatePill])
+
   const handleScroll = useCallback(() => {
     const el = listRef.current
     if (!el) return
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
     atBottomRef.current = atBottom
     setIsAtBottom(atBottom)
+    scheduleInViewDatePill()
     // Trigger older-message load when within 200px of the top
     if (el.scrollTop < 200) void loadMore()
     if (atBottom) {
@@ -1431,7 +1463,17 @@ export default function ChatConversation({
     } else {
       setScrolledUpCount(measureScrolledUpCount())
     }
-  }, [loadMore, scheduleMarkLastRead, measureScrolledUpCount])
+  }, [loadMore, scheduleMarkLastRead, measureScrolledUpCount, scheduleInViewDatePill])
+
+  useLayoutEffect(() => {
+    scheduleInViewDatePill()
+  }, [messages, videoPrepJobs, scheduleInViewDatePill])
+
+  useEffect(() => {
+    return () => {
+      if (inViewDateRafRef.current) window.cancelAnimationFrame(inViewDateRafRef.current)
+    }
+  }, [])
 
   useLayoutEffect(() => {
     if (atBottomRef.current) {
@@ -2291,14 +2333,8 @@ export default function ChatConversation({
     isClassicGroupRoom && roomOpenCall?.id && chatCall && !alreadyInRoomCall && !chatCall.activeCall,
   )
 
-  const lastActivityAt =
-    activeRoom.last_message_at ||
-    (messages.length ? messages[messages.length - 1]?.created_at : null)
-  const headerDatePillLabel = formatChatHeaderDatePillLabel(lastActivityAt)
   const listPaddingTop = useRichHeader
-    ? headerDatePillLabel
-      ? 'calc(env(safe-area-inset-top, 0px) + 12.75rem)'
-      : 'calc(env(safe-area-inset-top, 0px) + 11rem)'
+    ? 'calc(env(safe-area-inset-top, 0px) + 12.5rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
   const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
   const roomCallStatusLabel =
@@ -2352,6 +2388,7 @@ export default function ChatConversation({
         <div className="pointer-events-auto mx-auto flex w-full max-w-[min(100%,280px)] flex-col items-center">
           {useRichHeader ? (
             <>
+              <div ref={headerNameAnchorRef} className="flex w-full flex-col items-center">
               {isGroupRoom ? (
                 <ChatGroupHeaderStack
                   groupAvatarUrl={activeRoom.avatar_url}
@@ -2398,12 +2435,13 @@ export default function ChatConversation({
                   <span className="text-[15px] font-normal text-zinc-300">›</span>
                 </button>
               ) : null}
-              {headerDatePillLabel ? (
+              </div>
+              {inViewDateLabel ? (
                 <span
                   data-chat-day-pill
                   className="mt-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums tracking-wide text-zinc-400"
                 >
-                  {headerDatePillLabel}
+                  {inViewDateLabel}
                 </span>
               ) : null}
               {groupHeaderErr ? (
@@ -2581,7 +2619,11 @@ export default function ChatConversation({
 
                   if (item._isPrepJob) {
                     return (
-                      <div key={item._key} style={{ marginTop: topMargin }}>
+                      <div
+                        key={item._key}
+                        style={{ marginTop: topMargin }}
+                        data-chat-message-created={item.created_at || ''}
+                      >
                         <ChatVideoPrepBubble
                           job={item._job}
                           onCancel={() => cancelVideoPrepJob(item._job.jobId)}

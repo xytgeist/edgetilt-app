@@ -549,7 +549,7 @@ export default function ChatBubble({
         }]
       : []
     return (
-      <div data-chat-message-id={message.id}>
+      <div data-chat-message-id={message.id} data-chat-message-created={message.created_at || ''}>
         <ChatCallRecordingCard
           message={message}
           isMine={isMine}
@@ -580,7 +580,7 @@ export default function ChatBubble({
     )
   if (isCallSummary) {
     return (
-      <div data-chat-message-id={message.id}>
+      <div data-chat-message-id={message.id} data-chat-message-created={message.created_at || ''}>
         <ChatCallSummaryCard message={message} />
       </div>
     )
@@ -589,6 +589,7 @@ export default function ChatBubble({
   return (
     <div
       data-chat-message-id={message.id}
+      data-chat-message-created={message.created_at || ''}
       className="relative select-none"
       style={{
         WebkitTouchCallout: 'none',

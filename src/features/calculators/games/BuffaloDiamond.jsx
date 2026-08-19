@@ -40,6 +40,7 @@ import {
   tiersForVariant,
   resolveTierForVariant,
   tierDisplayForVariant,
+  profileMeterFloor,
 } from './buffaloDiamondCalc.js'
 
 export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLogbook = null, logPlayLocked = false, onRequireSubscribe = null, playLogsRemaining = null, freemiumUsageLoading = false }) {
@@ -97,6 +98,9 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
     const level = betLevelByKey(betLevelKey)
     queueMicrotask(() => {
       setTierDecimals({ ...level.decimals })
+      setGreenMeter((v) => clampMeter(v, level.resets.green, BUFFALO_DIAMOND_TIERS[0].meterMax))
+      setBlueMeter((v) => clampMeter(v, level.resets.blue, BUFFALO_DIAMOND_TIERS[1].meterMax))
+      setGoldMeter((v) => clampMeter(v, level.resets.gold, BUFFALO_DIAMOND_TIERS[2].meterMax))
     })
   }, [betLevelKey])
 
@@ -110,10 +114,10 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
     return Object.fromEntries(
       BUFFALO_DIAMOND_TIERS.map((tier) => [
         tier.key,
-        clampMeter(raw[tier.key], tier.meterMin, tier.meterMax),
+        clampMeter(raw[tier.key], profileMeterFloor(profile, tier.key), tier.meterMax),
       ]),
     )
-  }, [greenMeter, blueMeter, goldMeter])
+  }, [greenMeter, blueMeter, goldMeter, profile])
 
   const breakevenMap = useMemo(() => coupledBreakevenMap(profile), [profile])
 
@@ -381,7 +385,8 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
         <div className="mb-6 space-y-0 rounded-3xl bg-gray-900 p-4">
           {tierAnalysis.map((row, i) => {
             const { tier, current, playLine } = row
-            const bePct = markerPercent(tier.meterMin, tier.meterMax, playLine)
+            const floor = profileMeterFloor(profile, tier.key)
+            const bePct = markerPercent(floor, tier.meterMax, playLine)
             return (
               <div key={tier.key} className={i > 0 ? '-mt-1.5' : ''}>
                 <div className="mb-0 flex items-baseline justify-between leading-none">
@@ -408,12 +413,13 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
                 </div>
                 <input
                   type="range"
-                  min={tier.meterMin}
+                  min={profileMeterFloor(profile, tier.key)}
                   max={tier.meterMax}
                   value={current}
                   onChange={(e) => {
                     const setter = meterSetters[tier.key]
-                    setter(clampMeter(Number(e.target.value), tier.meterMin, tier.meterMax))
+                    const floor = profileMeterFloor(profile, tier.key)
+                    setter(clampMeter(Number(e.target.value), floor, tier.meterMax))
                   }}
                   className={`range-touch-target relative z-10 w-full ${tier.sliderAccent}`}
                 />

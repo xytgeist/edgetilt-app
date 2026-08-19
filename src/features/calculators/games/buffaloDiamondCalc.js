@@ -144,12 +144,25 @@ export const METER_RESET = 7
 export const REFERENCE_OVERALL_RTP = 87
 export const DEFAULT_OVERALL_RTP = REFERENCE_OVERALL_RTP
 
-/** @type {Record<TierKey, number>} */
+/** $0.75 floor defaults (see per-bet `resets` on {@link BUFFALO_DIAMOND_BET_LEVELS}). */
 export const DEFAULT_METER_RESETS = { green: 7, blue: 8, gold: 10 }
+
+/**
+ * Post-hit meter floor for a tier at the active bet profile (FG slider min + coupled BE).
+ * @param {{ resets?: Record<TierKey, number> }} profile
+ * @param {TierKey} tierKey
+ */
+export function profileMeterFloor(profile, tierKey) {
+  const floor = profile?.resets?.[tierKey]
+  if (Number.isFinite(floor)) return floor
+  const tier = BUFFALO_DIAMOND_TIERS.find((t) => t.key === tierKey)
+  return tier?.meterMin ?? METER_RESET
+}
 
 /**
  * Bet-level profiles: linear between $0.75 and $4.00 anchors at {@link REFERENCE_OVERALL_RTP}% overall RTP.
  * `baseGamePct` on each row is the main+1× grind return at that reference overall RTP.
+ * `resets` = observed post-hit FG floors (Buffalo Diamond original; Extreme TBD per bet).
  *
  * @type {BuffaloDiamondBetLevel[]}
  */
@@ -176,7 +189,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$1.60',
     baseGamePct: 61.74,
     decimals: { green: 0.009529, blue: 0.004463, gold: 0.002162 },
-    resets: { green: 7, blue: 8, gold: 10 },
+    resets: { green: 8, blue: 10, gold: 15 },
   },
   {
     key: '225',
@@ -192,7 +205,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$2.50',
     baseGamePct: 53.32,
     decimals: { green: 0.013647, blue: 0.006689, gold: 0.00302 },
-    resets: { green: 7, blue: 8, gold: 10 },
+    resets: { green: 8, blue: 10, gold: 18 },
   },
   {
     key: '375',
@@ -208,7 +221,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$4.00',
     baseGamePct: 39.28,
     decimals: { green: 0.02051, blue: 0.0104, gold: 0.00445 },
-    resets: { green: 7, blue: 8, gold: 10 },
+    resets: { green: 10, blue: 15, gold: 35 },
   },
   {
     key: '500',
@@ -224,7 +237,8 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$6.00',
     baseGamePct: 20.56,
     decimals: { green: 0.029661, blue: 0.015348, gold: 0.006356 },
-    resets: { green: 7, blue: 8, gold: 10 },
+    // $6 not on original Diamond floor chart — linear extrap from $2.50 → $4.00; verify on glass.
+    resets: { green: 13, blue: 22, gold: 58 },
   },
   {
     key: '700',

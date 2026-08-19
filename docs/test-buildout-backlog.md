@@ -1004,6 +1004,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-19: **Buffalo Diamond Extreme $7 resets:** **10 / 18 / 28** FG floors on bet key **`700`** (2× / 3× / 4× Purple). Other Extreme bet rows still TBD.
 - 2026-08-19: **Buffalo Diamond per-bet meter resets:** Original (non-Extreme) post-hit FG floors from floor chart — $0.75 **7/8/10**, $1.60 **8/10/15**, $2.50 **8/10/18**, $4 **10/15/35**; $6 extrapolated pending glass verify. Sliders + coupled ▼ now use `profile.resets` as min (not flat 7). Extreme bet rows unchanged until Ryan confirms. **`buffaloDiamondCalc.js`**, **`BuffaloDiamond.jsx`**. No SQL.
 - 2026-08-19: **Scott Sharpe soccer team labels (test Edge live):** `shortDisplayName` fix @ **`2eb3ae29`**; **`lounge-odds-poll`** + **`lounge-odds-ingest`** redeployed on **`kcosfvmreeiosdjdzycb`**. Smoke: Bot portal → **Post Coffee & Covers** (force) or wait for next MLS thread part … matchups show city names (e.g. Los Angeles vs Charlotte), not **FC vs FC**. Prod redeploy on promote.
 - 2026-08-19: **Scott Sharpe soccer team labels:** `shortDisplayName` was last-word-only, so MLS names like Los Angeles FC / Orlando City SC rendered as **FC vs SC**. Now strips club suffix/prefix (FC, SC, CF, United, Union) and keeps the city/club name; US sports mascots unchanged (Chiefs, Lakers). Shared helper in **`loungeBotOddsCaption.ts`**; Coffee & Covers + alert formatters import it. **Redeploy `lounge-odds-ingest` + `lounge-odds-poll` on test (+ prod on promote).** No SQL.

@@ -246,7 +246,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$7.00',
     baseGamePct: 11.2,
     decimals: { green: 0.034236, blue: 0.017822, gold: 0.00731 },
-    resets: { green: 7, blue: 8, gold: 10 },
+    resets: { green: 10, blue: 18, gold: 28 },
   },
 ]
 

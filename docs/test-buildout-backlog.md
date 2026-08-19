@@ -1004,6 +1004,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-19: **Buffalo Diamond calc temporarily disabled:** Hub card grayed out + guide **Open calculator** disabled for **`buffalo-diamond`** (covers Diamond + Extreme variant toggle) until meter reset tables are verified. **`TEMPORARILY_DISABLED_CALCULATOR_KEYS`** in **`calculatorAccess.js`** … remove key to re-enable. No SQL.
 - 2026-08-19: **Prod promote @ `7ec1bfe1`:** `test` → **`main`** (Vercel). Frontend: Buffalo Diamond per-bet reset floors + Extreme **$7 → 10/18/28**; Scott Sharpe soccer team labels (code only on `main` … **redeploy `lounge-odds-ingest` + `lounge-odds-poll` on prod** for Scott fix to go live). **No SQL.**
 - 2026-08-19: **Buffalo Diamond Extreme $7 resets:** **10 / 18 / 28** FG floors on bet key **`700`** (2× / 3× / 4× Purple). Other Extreme bet rows still TBD.
 - 2026-08-19: **Buffalo Diamond per-bet meter resets:** Original (non-Extreme) post-hit FG floors from floor chart — $0.75 **7/8/10**, $1.60 **8/10/15**, $2.50 **8/10/18**, $4 **10/15/35**; $6 extrapolated pending glass verify. Sliders + coupled ▼ now use `profile.resets` as min (not flat 7). Extreme bet rows unchanged until Ryan confirms. **`buffaloDiamondCalc.js`**, **`BuffaloDiamond.jsx`**. No SQL.

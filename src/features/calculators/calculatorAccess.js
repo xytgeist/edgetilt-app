@@ -46,6 +46,23 @@ export const SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS = new Set(
   /** @type {CalculatorKey[]} */ (['buffalo-diamond']),
 )
 
+/**
+ * Calculators hidden from the hub / guide launch until floor data is verified.
+ * Remove keys here when ready to re-enable.
+ */
+export const TEMPORARILY_DISABLED_CALCULATOR_KEYS = new Set(
+  /** @type {CalculatorKey[]} */ (['buffalo-diamond']),
+)
+
+export const CALCULATOR_TEMPORARILY_DISABLED_MESSAGE =
+  'Temporarily unavailable while meter reset values are verified'
+
+/** @param {string | null | undefined} key */
+export function calculatorTemporarilyDisabled(key) {
+  const calcKey = String(key || '').trim().toLowerCase()
+  return TEMPORARILY_DISABLED_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))
+}
+
 function codeDefaultCalculatorRequiresSlotsEdge(key) {
   if (!key || !CALCULATOR_KEYS.includes(/** @type {CalculatorKey} */ (key))) return true
   if (SUBSCRIBER_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (key))) return true
@@ -80,8 +97,9 @@ export function canOpenCalculator(
     gatesMap = null,
   } = {},
 ) {
-  if (isStaff || hasSlotsEdge) return true
   const calcKey = String(key || '').trim().toLowerCase()
+  if (calculatorTemporarilyDisabled(calcKey)) return false
+  if (isStaff || hasSlotsEdge) return true
   if (FREE_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))) return true
   if (SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS.has(/** @type {CalculatorKey} */ (calcKey))) return false
   if (

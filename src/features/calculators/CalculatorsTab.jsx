@@ -9,6 +9,8 @@ import {
   calculatorRequiresSlotsEdge,
   canOpenCalculator,
   showCalculatorLock,
+  calculatorTemporarilyDisabled,
+  CALCULATOR_TEMPORARILY_DISABLED_MESSAGE,
 } from './calculatorAccess.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 
@@ -46,6 +48,7 @@ function CalculatorsHome({
   const [gateBusyKey, setGateBusyKey] = useState(null)
 
   const handleSelect = (key) => {
+    if (calculatorTemporarilyDisabled(key)) return
     if (browseMode !== 'member') {
       onOpenAuth?.()
       return
@@ -84,7 +87,8 @@ function CalculatorsHome({
       ) : null}
 
       {CALCULATOR_CATALOG.map((calc) => {
-        const locked = showCalculatorLock(calc.key, access)
+        const maintenance = calculatorTemporarilyDisabled(calc.key)
+        const locked = !maintenance && showCalculatorLock(calc.key, access)
         const adminLocked = calculatorRequiresSlotsEdge(calc.key, gatesMap)
         return (
           <div key={calc.key} className="relative">
@@ -106,15 +110,23 @@ function CalculatorsHome({
             ) : null}
             <button
               type="button"
+              disabled={maintenance}
+              aria-disabled={maintenance}
               title={
-                locked
+                maintenance
+                  ? CALCULATOR_TEMPORARILY_DISABLED_MESSAGE
+                  : locked
                   ? showUpgradePill
                     ? 'Upgrade to Slots Edge Pro to unlock this calculator'
                     : 'Subscribe to unlock Slots Edge'
                   : undefined
               }
               onClick={() => handleSelect(calc.key)}
-              className={`calc-list-btn ${calc.buttonClassName}`}
+              className={`calc-list-btn ${calc.buttonClassName}${
+                maintenance
+                  ? ' pointer-events-none cursor-not-allowed opacity-45 grayscale saturate-0'
+                  : ''
+              }`}
             >
               {calc.iconWrapClassName?.includes('relative') ? (
                 <div className={calc.iconWrapClassName}>
@@ -135,7 +147,7 @@ function CalculatorsHome({
                   ) : null}
                 </div>
                 <p className={calc.subtitleClassName} title={calc.subtitleTitle || undefined}>
-                  {calc.subtitle}
+                  {maintenance ? CALCULATOR_TEMPORARILY_DISABLED_MESSAGE : calc.subtitle}
                 </p>
               </div>
             </button>
@@ -244,7 +256,7 @@ export default function CalculatorsTab({
           />
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
-      {activeCalculator === 'buffalo-diamond' ? (
+      {activeCalculator === 'buffalo-diamond' && !calculatorTemporarilyDisabled('buffalo-diamond') ? (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} titleBarCenterSlot={titleBarCenterSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+env(safe-area-inset-bottom,0px))]">
           <BuffaloDiamond
             onBack={() => setActiveCalculator(null)}

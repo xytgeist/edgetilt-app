@@ -74,6 +74,10 @@ import {
 } from './guideAccess.js'
 import { fetchGuideContentBySlug } from './guideContentApi.js'
 import { resolveCalculatorKeyFromMachine } from './guideCalculatorKey.js'
+import {
+  calculatorTemporarilyDisabled,
+  CALCULATOR_TEMPORARILY_DISABLED_MESSAGE,
+} from '../calculators/calculatorAccess.js'
 import { resolveGuideAccent } from '../../utils/guideCardAccent.js'
 import { LOG_PLAY_LOGBOOK_BTN_CLASS } from '../calculators/CalculatorLogPlayButton.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
@@ -2175,13 +2179,27 @@ export default function GuidesScreen({
                         {calcKey ? (
                           <button
                             type="button"
+                            disabled={calculatorTemporarilyDisabled(calcKey)}
+                            aria-disabled={calculatorTemporarilyDisabled(calcKey)}
+                            title={
+                              calculatorTemporarilyDisabled(calcKey)
+                                ? CALCULATOR_TEMPORARILY_DISABLED_MESSAGE
+                                : undefined
+                            }
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (calculatorTemporarilyDisabled(calcKey)) return
                               onOpenCalculator(calcKey)
                             }}
-                            className="flex-1 min-h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold touch-manipulation"
+                            className={`flex-1 min-h-11 rounded-2xl text-white text-sm font-bold touch-manipulation ${
+                              calculatorTemporarilyDisabled(calcKey)
+                                ? 'cursor-not-allowed bg-zinc-700 text-zinc-400 opacity-60'
+                                : 'bg-emerald-600 hover:bg-emerald-500'
+                            }`}
                           >
-                            Open calculator
+                            {calculatorTemporarilyDisabled(calcKey)
+                              ? 'Calculator unavailable'
+                              : 'Open calculator'}
                           </button>
                         ) : onOpenLogbook ? (
                           <button

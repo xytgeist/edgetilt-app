@@ -99,6 +99,7 @@ import { usePokerPendingOfferAttention } from '../poker/usePokerPendingOfferAtte
 import {
   canOpenCalculator,
   calculatorsTabFullyGated,
+  calculatorTemporarilyDisabled,
 } from '../calculators/calculatorAccess.js'
 import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAccess.js'
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
@@ -1716,6 +1717,10 @@ export default function AppShell({
       setMenuOpen(false)
       return
     }
+    if (calculatorTemporarilyDisabled(key)) {
+      setMenuOpen(false)
+      return
+    }
     if (
       !canOpenCalculator(key, {
         isStaff,
@@ -1902,6 +1907,13 @@ export default function AppShell({
 
   const showNavSubscriberLocks =
     browseMode === 'member' && !isStaff && !hasActiveSubscription
+
+  useEffect(() => {
+    if (!activeCalculator) return
+    if (calculatorTemporarilyDisabled(activeCalculator)) {
+      setActiveCalculator(null)
+    }
+  }, [activeCalculator])
 
   useEffect(() => {
     if (isStaff || hasActiveSubscription) return

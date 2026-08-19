@@ -41,6 +41,50 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ---
 
+## Planned (Native shells / app stores)
+
+**When:** Ryan back in Vegas (target **2026-08-19** or **2026-08-20**). Next **major** push after current web work.
+
+**Why (iOS is the real unlock):** in-app voice/video calls, OS notifications, unmuted Lounge feed autoplay, and “download from the store” habit. iPhone PWA is the broken surface. Android Chrome / PWA already does most of this.
+
+**Architecture (Ryan 2026-08-18):** thin native **WebView shells** that load the **live site** (`edgetilt.com` / test origin). Do **not** bake `dist/` into the IPA/APK. Web updates (Lounge, Chat, Bankroll, CSS, copy) stay `test` → `main` … users do **not** redownload. Store build only when native bridges / entitlements / icons / splash / WebView policy change.
+
+**Native vs web**
+
+- **Web (Vercel):** anything that does not need a new JS↔native method.
+- **Store binary:** CallKit / audio session / background call, APNs, iOS unmuted-autoplay WebView flag, permissions plist, store chrome. A web change that *calls a new bridge the old binary does not have* stays broken until they update from the store.
+- **Cache:** native UA should skip or bust the service worker on boot so `push-sw.js` does not look like a “forced redownload.”
+
+**Billing (digital subs … Slots Edge etc.)**
+
+- Free account create: no store fee.
+- Web subscribers who **log into** the store app: no store fee (consume in app, pay on web).
+- Stripe Checkout **inside** the in-app WebView: **not** a loophole … review can treat it as IAP bypass. Hide / route those CTAs on native UA.
+- **iOS US:** offer **IAP + Safari link-out** (system browser, not WKWebView). Same entitlements either path. May **upcharge IAP** to cover Apple’s cut (15% Small Business / year-2 sub; 30% standard year 1). US Safari link-out is **0% to Apple today** (Epic … in court; Apple asked for 15% on link-outs). Not a reader app. Counsel before submit. Other storefronts ≠ US.
+- **Android (US/UK/EEA billing choice, 2026-06-30+):** must offer Play Billing **and** web/alt. Google still takes a **service fee on web-from-the-app** (~10% on subs) plus no 5% billing fee; Play Billing is ~15% (10+5). Pure Chrome/PWA web (never through Play): $0. Upcharge Play Billing if wanted … spread is small vs Apple.
+
+**Priority**
+
+1. **iOS native shell first** (calls, push, unmuted feed, store habit).
+2. Android stay on **PWA**. Optional later: **Trusted Web Activity** (Play listing that is just the site) … not a fat Kotlin shell in the same sprint. Android store is distribution/psychology, not a usability rescue.
+
+### iOS shell
+
+- [ ] **Thin WKWebView** loads prod/test origin (configurable). No bundled `dist/`.
+- [ ] **Bridges v1:** push (APNs), call audio session / background, unmuted media autoplay policy, camera/mic entitlements.
+- [ ] **Native UA:** hide in-WebView Stripe / subscribe CTAs; SW skip or cache-bust on boot.
+- [ ] **Billing v1 (US):** StoreKit IAP **and** Safari link-out; same entitlements either path; IAP price can sit above web to cover Apple’s cut. Counsel + App Review notes before submit.
+- [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
+
+### Android (later / cheap)
+
+- [ ] Keep **PWA** as the Android product path.
+- [ ] **Optional TWA** (Bubblewrap / Play listing → `edgetilt.com`) when we want a store badge without a real shell.
+- [ ] **Do not** build a fat native Android shell unless calls/push/autoplay prove broken on Chrome PWA after iOS ships.
+- [ ] If a Play binary ever sells digital goods: enroll **billing choice**, choice screen, assume ~10% on web-from-Play and ~15% on Play Billing (subs / first $1M).
+
+---
+
 ## Planned (Lounge bots)
 
 **Two tracks (Ryan 2026-07-03):**
@@ -960,6 +1004,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-18: **Native shells / app stores (planned):** Next major push when Ryan is back in Vegas (~Aug 19–20). Thin WebView shells load the live site (web deploys, no store redownload). **iOS first** (calls, APNs, unmuted autoplay, store habit). Android stays PWA; optional TWA later, no fat Kotlin shell in the same sprint. Billing: no Stripe-in-WebView; US iOS = IAP + Safari link-out (may upcharge IAP); Android Play still takes ~10% on web-from-app. See **Planned (Native shells / app stores)**.
 - 2026-08-18: **Chat day/date pill under room name:** Small `Tue, Aug 18` pill under the floating name bubble tracks the **topmost in-view message** (below the name chrome). Hidden when that message is **today**. Scroll updates it without jumping list pad. Light + dark via `[data-chat-day-pill]`. No SQL. Smoke: scroll a multi-day thread … pill changes with the messages on screen; at today’s tail the pill disappears.
 - 2026-08-18: **Lounge caption kept spaces before `:/`:** Display typography in `loungeCaption.jsx` was collapsing spaces before `:;'"`, so `163rd :/` rendered as `163rd:/` and multi-spaces before those marks vanished. Storage was fine (`whitespace-pre-wrap`). Collapse now only runs for `.,!?) ]}`. Smoke: post `163rd :/` and `hello    world` … frowny and multi-spaces survive in the feed.
 - 2026-08-18: **Live pill is player-only:** Title-bar poker live chip was picking up active stake sessions via backer SELECT RLS (`poker_stable_user_can_access_deal`). `fetchActivePokerBankrollSessions` now filters `user_id =` signed-in player; Stable history/Trend/Locations backer reads unchanged. Smoke: backer with a live horse → no header pill; same account as stakee with own live session → pill still shows.

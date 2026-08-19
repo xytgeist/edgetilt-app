@@ -2291,8 +2291,14 @@ export default function ChatConversation({
     isClassicGroupRoom && roomOpenCall?.id && chatCall && !alreadyInRoomCall && !chatCall.activeCall,
   )
 
+  const lastActivityAt =
+    activeRoom.last_message_at ||
+    (messages.length ? messages[messages.length - 1]?.created_at : null)
+  const headerDatePillLabel = formatChatHeaderDatePillLabel(lastActivityAt)
   const listPaddingTop = useRichHeader
-    ? 'calc(env(safe-area-inset-top, 0px) + 12.75rem)'
+    ? headerDatePillLabel
+      ? 'calc(env(safe-area-inset-top, 0px) + 12.75rem)'
+      : 'calc(env(safe-area-inset-top, 0px) + 11rem)'
     : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
   const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
   const roomCallStatusLabel =
@@ -2392,12 +2398,14 @@ export default function ChatConversation({
                   <span className="text-[15px] font-normal text-zinc-300">›</span>
                 </button>
               ) : null}
-              <span
-                data-chat-day-pill
-                className="mt-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums tracking-wide text-zinc-400"
-              >
-                {formatChatHeaderDatePillLabel()}
-              </span>
+              {headerDatePillLabel ? (
+                <span
+                  data-chat-day-pill
+                  className="mt-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums tracking-wide text-zinc-400"
+                >
+                  {headerDatePillLabel}
+                </span>
+              ) : null}
               {groupHeaderErr ? (
                 <p className="mt-1 max-w-[300px] px-2 text-center text-[11px] leading-snug text-amber-400/90">
                   {groupHeaderErr}

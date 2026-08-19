@@ -14,12 +14,29 @@ export function sortChatMessagesChronological(messages) {
   return [...messages].sort(compareChatMessagesChronological)
 }
 
-/** Compact weekday + date for the pill under the room-name bubble (`Tue, Aug 18`). */
-export function formatChatHeaderDatePillLabel(now = new Date()) {
-  if (Number.isNaN(now.getTime())) return ''
-  return now.toLocaleDateString(undefined, {
+function startOfLocalDayMs(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+}
+
+/**
+ * Weekday + date for the pill under the room-name bubble.
+ * Empty when `iso` is today (or missing) ... today is implied.
+ */
+export function formatChatHeaderDatePillLabel(iso, now = new Date()) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime()) || Number.isNaN(now.getTime())) return ''
+  if (startOfLocalDayMs(d) >= startOfLocalDayMs(now)) return ''
+  if (d.getFullYear() === now.getFullYear()) {
+    return d.toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+  return d.toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+    year: 'numeric',
   })
 }

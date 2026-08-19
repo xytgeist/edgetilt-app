@@ -34,12 +34,17 @@ export function pokerLiveSessionLabel(session) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} userId Owner only … backers can RLS-read stake sessions for Stable,
+ *   but the title-bar live pill is for the player who is actually in session.
  */
-export async function fetchActivePokerBankrollSessions(supabase) {
+export async function fetchActivePokerBankrollSessions(supabase, userId) {
+  const uid = String(userId || '').trim()
+  if (!uid) return []
   const { data, error } = await supabase
     .from('poker_bankroll_sessions')
     .select(POKER_ACTIVE_SELECT)
     .eq('status', 'active')
+    .eq('user_id', uid)
     .order('start_at', { ascending: false })
     .limit(8)
   if (error) throw error
@@ -48,13 +53,14 @@ export async function fetchActivePokerBankrollSessions(supabase) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ userId?: string | null }} [opts]
  * @returns {Promise<{
  *   slots: { kind: 'slots', id: string, label: string, paused: false, startAt: string | null } | null,
  *   poker: { kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null } | null,
  *   pokerCount: number,
  * }>}
  */
-export async function fetchActiveLiveSessions(supabase) {
+export async function fetchActiveLiveSessions(supabase, { userId = null } = {}) {
   /** @type {{ kind: 'slots', id: string, label: string, paused: false, startAt: string | null } | null} */
   let slots = null
   /** @type {{ kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null } | null} */
@@ -63,7 +69,7 @@ export async function fetchActiveLiveSessions(supabase) {
 
   const [slotsRow, pokerRows] = await Promise.all([
     fetchActiveBankrollSession(supabase).catch(() => null),
-    fetchActivePokerBankrollSessions(supabase).catch(() => []),
+    fetchActivePokerBankrollSessions(supabase, userId).catch(() => []),
   ])
 
   if (slotsRow?.id) {

@@ -6,10 +6,11 @@ import {
 
 /**
  * Active slots + poker live sessions for the EDGE title-bar chip.
+ * Poker lives are scoped to `userId` (player in session), not backer-visible stake rows.
  * @param {import('@supabase/supabase-js').SupabaseClient | null | undefined} supabase
- * @param {{ enabled?: boolean }} [opts]
+ * @param {{ enabled?: boolean, userId?: string | null }} [opts]
  */
-export function useActiveLiveSessions(supabase, { enabled = true } = {}) {
+export function useActiveLiveSessions(supabase, { enabled = true, userId = null } = {}) {
   const [slots, setSlots] = useState(null)
   const [poker, setPoker] = useState(null)
   const [pokerCount, setPokerCount] = useState(0)
@@ -26,7 +27,7 @@ export function useActiveLiveSessions(supabase, { enabled = true } = {}) {
     }
     setLoading(true)
     try {
-      const next = await fetchActiveLiveSessions(supabase)
+      const next = await fetchActiveLiveSessions(supabase, { userId })
       setSlots(next.slots)
       setPoker(next.poker)
       setPokerCount(next.pokerCount)
@@ -36,7 +37,7 @@ export function useActiveLiveSessions(supabase, { enabled = true } = {}) {
     } finally {
       setLoading(false)
     }
-  }, [supabase, enabled])
+  }, [supabase, enabled, userId])
 
   useEffect(() => {
     if (!supabase || !enabled) {

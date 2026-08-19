@@ -960,6 +960,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-18: **Live pill is player-only:** Title-bar poker live chip was picking up active stake sessions via backer SELECT RLS (`poker_stable_user_can_access_deal`). `fetchActivePokerBankrollSessions` now filters `user_id =` signed-in player; Stable history/Trend/Locations backer reads unchanged. Smoke: backer with a live horse → no header pill; same account as stakee with own live session → pill still shows.
 - 2026-08-16: **Prod promote @ `93fa50a8`:** `test` → **`main`** (Vercel). Frontend only … Poker Bankroll title-bar shortcut Club icon uses solid emerald in light (`#059669`), not lime mint. **No SQL / Edge.**
 - 2026-08-16: **Prod promote @ `147f8769`:** `test` → **`main`** (Vercel). Frontend only … live pill sizes to the title-bar gap (no shortcut hiding, no JS label caps) and the Shortcut limit sheet portals above the dock. **No SQL / Edge.** Smoke on edgetilt.com: live session with 2 pinned shortcuts (long tournament name shows more characters, nothing overlaps); Poker hub → pin a third tool → Cancel closes the sheet.
 - 2026-08-16: **Prod promote @ `e90a116b`:** `test` → **`main`** (Vercel). SQL **`20260816160000`** on **`jtjgtucumuoswnbauxry`** (stakee archive hide + optional personal-history hide). **No Edge.** Smoke: Archive → Delete archived stake → Keep / Delete sessions.

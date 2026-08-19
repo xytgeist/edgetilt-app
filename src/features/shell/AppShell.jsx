@@ -441,6 +441,7 @@ export default function AppShell({
     hasLive: hasLiveBankrollSession,
   } = useActiveLiveSessions(supabaseClient, {
     enabled: browseMode === 'member' && authSessionReady && Boolean(chatCallViewerUserId),
+    userId: chatCallViewerUserId,
   })
 
   useEffect(() => {

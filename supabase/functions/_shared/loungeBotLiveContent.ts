@@ -9,6 +9,7 @@ import {
   formatOddsPickLine,
   formatPlusEvConsensusBullet,
   formatScottEvDetailLine,
+  shortDisplayName,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
@@ -135,12 +136,6 @@ export function filterInProgressOddsEvents(
   })
 }
 
-function shortName(name: string): string {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length <= 1) return parts[0] || ''
-  return parts[parts.length - 1]!
-}
-
 export function formatLiveScoreLine(
   homeTeam: string,
   awayTeam: string,
@@ -148,7 +143,7 @@ export function formatLiveScoreLine(
 ): string {
   const home = String(homeTeam || '').trim()
   const away = String(awayTeam || '').trim()
-  if (!scores?.length) return `${shortName(away)} @ ${shortName(home)}`
+  if (!scores?.length) return `${shortDisplayName(away)} @ ${shortDisplayName(home)}`
 
   let homeScore: string | null = null
   let awayScore: string | null = null
@@ -163,7 +158,7 @@ export function formatLiveScoreLine(
   if (homeScore != null && awayScore != null) {
     return formatCompactScoreLine(home, away, homeScore, awayScore)
   }
-  return `${shortName(away)} @ ${shortName(home)}`
+  return `${shortDisplayName(away)} @ ${shortDisplayName(home)}`
 }
 
 /** e.g. "Lakers 88-82 Warriors" — higher-scoring team listed first. */
@@ -173,8 +168,8 @@ export function formatCompactScoreLine(
   homeScore: string | number,
   awayScore: string | number,
 ): string {
-  const home = shortName(homeTeam)
-  const away = shortName(awayTeam)
+  const home = shortDisplayName(homeTeam)
+  const away = shortDisplayName(awayTeam)
   const h = Number(homeScore)
   const a = Number(awayScore)
   if (Number.isFinite(h) && Number.isFinite(a) && a > h) {
@@ -279,7 +274,7 @@ export function buildInGameEdgeCaption(
   pick: OddsPick,
   opts: { categoryLabel?: string; scoreLine?: string; periodLabel?: string; contextNote?: string },
 ): string {
-  const matchup = opts.scoreLine || `${shortName(pick.awayTeam)} vs ${shortName(pick.homeTeam)}`
+  const matchup = opts.scoreLine || `${shortDisplayName(pick.awayTeam)} vs ${shortDisplayName(pick.homeTeam)}`
   const pickLine = formatOddsPickLine(pick)
   const period = opts.periodLabel?.trim()
   const header = period ? `🔴 LIVE In-Game Edge • ${period}` : '🔴 LIVE In-Game Edge'
@@ -322,8 +317,8 @@ export function buildPeriodReportCaption(
     contextNote?: string
   },
 ): string {
-  const away = shortName(String(event.away_team || 'Away'))
-  const home = shortName(String(event.home_team || 'Home'))
+  const away = shortDisplayName(String(event.away_team || 'Away'))
+  const home = shortDisplayName(String(event.home_team || 'Home'))
   const matchup = opts.scoreLine || `${away} vs ${home}`
   const header = `📊 ${opts.periodLabel} - ${matchup}`
 

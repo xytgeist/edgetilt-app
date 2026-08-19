@@ -9,6 +9,7 @@ import {
   formatAmericanOdds,
   formatBookDisplayName,
   formatScottSportContextLines,
+  shortDisplayName,
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
 import {
@@ -63,16 +64,10 @@ function outcomeLinePoint(out: Outcome): number | null {
   return Number.isFinite(point) ? point : null
 }
 
-function shortName(name: string): string {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length <= 1) return parts[0] || ''
-  return parts[parts.length - 1]!
-}
-
 function formatPickNameLabel(name: string): string {
   const n = String(name || '').trim()
   if (/^draw$|^tie$/i.test(n)) return 'Draw'
-  return shortName(n)
+  return shortDisplayName(n)
 }
 
 function joinCaptionLines(lines: string[]): string {

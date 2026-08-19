@@ -12,7 +12,7 @@ import {
   type LineMovementAlert,
   type LineMovementConfig,
 } from './loungeBotLineMovement.ts'
-import { formatAmericanOdds, joinScottAlertCaption, type OddsEvent } from './loungeBotOddsCaption.ts'
+import { formatAmericanOdds, joinScottAlertCaption, shortDisplayName, type OddsEvent } from './loungeBotOddsCaption.ts'
 import { hasDedupePublishedToday, ptTodayDate, type OddsBotRow, type OddsCfgRow } from './loungeBotOddsRun.ts'
 import {
   countScheduledKindToday,
@@ -35,12 +35,6 @@ export type SharpReportCandidate = {
   movementScore: number
   /** @deprecated use coverageRank */
   popularityRank: number
-}
-
-function shortName(name: string): string {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length <= 1) return parts[0] || ''
-  return parts[parts.length - 1]!
 }
 
 function formatSpreadPoint(point: number): string {
@@ -97,7 +91,7 @@ export function pickBestSharpReportCandidate(
 }
 
 export function buildSharpReportMovementLine(alert: LineMovementAlert): string {
-  const team = shortName(alert.outcomeName)
+  const team = shortDisplayName(alert.outcomeName)
   const books = booksPhrase(alert.leadingBooks)
 
   if (alert.marketKey === 'spreads' && alert.oldPoint != null && alert.newPoint != null) {
@@ -120,7 +114,7 @@ export function buildSharpReportAnalysis(
   alert: LineMovementAlert,
   snapshotAgeMs: number,
 ): string {
-  const team = shortName(alert.outcomeName)
+  const team = shortDisplayName(alert.outcomeName)
   const lookback = lookbackPhrase(snapshotAgeMs)
 
   if (alert.kind === 'rlm') {

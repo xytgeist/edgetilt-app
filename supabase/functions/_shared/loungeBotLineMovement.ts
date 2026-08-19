@@ -6,6 +6,7 @@ import {
   formatAmericanOdds,
   formatBookDisplayName,
   formatScottSportContextLines,
+  shortDisplayName,
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
 
@@ -111,11 +112,6 @@ export function lineAlertMovementScore(
   return Math.abs(alert.pointDelta) * 10 + Math.abs(alert.priceDelta)
 }
 
-function shortName(name: string): string {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
-  return parts.length <= 1 ? (parts[0] || '') : parts[parts.length - 1]!
-}
-
 function formatSpreadLine(point: number, price: number): string {
   const pt = point > 0 ? `+${point}` : String(point)
   const juice = formatAmericanOdds(price)
@@ -130,7 +126,7 @@ function formatMarketMoveLabel(
   oldPrice: number,
   newPrice: number,
 ): string {
-  const label = shortName(outcomeName)
+  const label = shortDisplayName(outcomeName)
   if (marketKey === 'spreads') {
     const from = oldPoint != null ? formatSpreadLine(oldPoint, oldPrice) : formatAmericanOdds(oldPrice)
     const to = newPoint != null ? formatSpreadLine(newPoint, newPrice) : formatAmericanOdds(newPrice)
@@ -271,7 +267,7 @@ function classifyMovement(
 }
 
 function movementMeaning(kind: LineMovementKind, marketKey: string, outcomeName: string, priceDelta: number, pointDelta: number): string {
-  const label = shortName(outcomeName)
+  const label = shortDisplayName(outcomeName)
   if (kind === 'rlm') {
     return `Public side and sharp money diverging ... spread moved one way while ML moved the other.`
   }
@@ -417,11 +413,11 @@ function shouldSkipWeakH2hDogLengthening(alert: LineMovementAlert): boolean {
 function combinedH2hMeaning(alerts: LineMovementAlert[]): string {
   const shortening = alerts.find((a) => a.priceDelta < 0)
   if (shortening) {
-    return `Favorite shortening hard — sharp money on ${shortName(shortening.outcomeName)}.`
+    return `Favorite shortening hard — sharp money on ${shortDisplayName(shortening.outcomeName)}.`
   }
   if (alerts.length >= 2) {
     const [a, b] = alerts
-    return `Multi-sided ML steam — ${shortName(a!.outcomeName)} and ${shortName(b!.outcomeName)} both adjusting.`
+    return `Multi-sided ML steam — ${shortDisplayName(a!.outcomeName)} and ${shortDisplayName(b!.outcomeName)} both adjusting.`
   }
   return alerts[0]?.meaning || 'Significant ML move across books.'
 }

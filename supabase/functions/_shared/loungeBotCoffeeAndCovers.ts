@@ -12,6 +12,7 @@ import {
   formatAmericanOdds,
   formatBookDisplayName,
   formatOddsCommenceTimeShort,
+  shortDisplayName,
   type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
@@ -238,12 +239,6 @@ export type CoffeeAndCoversResult = {
   onTapPicks: OnTapPick[]
   gameCount: number
   hasCovers: boolean
-}
-
-function shortDisplayName(name: string): string {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (parts.length <= 1) return parts[0] || ''
-  return parts[parts.length - 1]!
 }
 
 function americanToImplied(price: number): number {

@@ -338,10 +338,57 @@ export function formatBookDisplayName(title: string, key?: string): string {
   return 'Book'
 }
 
-/** Last word for long player/team names (Mochizuki, Sinner, Chiefs). */
+const CLUB_SUFFIXES = new Set(['fc', 'sc', 'cf', 'afc', 'cfc', 'united', 'union'])
+const CLUB_PREFIXES = new Set(['fc', 'sc', 'cf', 'afc', 'cfc'])
+
+function normalizeClubToken(token: string): string {
+  return String(token || '').toLowerCase().replace(/\./g, '')
+}
+
+function isClubSuffix(token: string): boolean {
+  return CLUB_SUFFIXES.has(normalizeClubToken(token))
+}
+
+function isClubPrefix(token: string): boolean {
+  return CLUB_PREFIXES.has(normalizeClubToken(token))
+}
+
+/** Last word for US sports mascots; soccer-aware when club suffix/prefix is present. */
 export function shortDisplayName(name: string): string {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  const raw = String(name || '').trim()
+  if (!raw) return ''
+  const original = raw.split(/\s+/).filter(Boolean)
+  let parts = [...original]
   if (parts.length <= 1) return parts[0] || ''
+
+  let strippedClub = false
+  while (parts.length > 1 && isClubSuffix(parts[parts.length - 1]!)) {
+    parts = parts.slice(0, -1)
+    strippedClub = true
+  }
+  while (parts.length > 1 && isClubPrefix(parts[0]!)) {
+    parts = parts.slice(1)
+    strippedClub = true
+  }
+
+  if (parts.length === 0) return original[original.length - 1]!
+  if (parts.length === 1) return parts[0]!
+
+  if (strippedClub) {
+    return parts.join(' ')
+  }
+
+  const firstNorm = normalizeClubToken(parts[0]!)
+  if (firstNorm === 'real') {
+    const rest = parts.slice(1)
+    return rest.length ? rest.join(' ') : parts.join(' ')
+  }
+
+  const lastNorm = normalizeClubToken(parts[parts.length - 1]!)
+  if (lastNorm === 'city' && parts.length >= 2) {
+    return parts.slice(-2).join(' ')
+  }
+
   return parts[parts.length - 1]!
 }
 

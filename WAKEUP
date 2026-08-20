@@ -31,7 +31,7 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`2ca2e9d1`** (2026-08-13)
+**Branch:** `main` / `test` aligned at **`ae7616d0`** (2026-08-19)
 
 **Supabase (do not swap these):**
 
@@ -40,92 +40,93 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _Lounge image lightbox polish shipped to prod (swipe dismiss + Android frost pills). `/patches` killed on prod. Poker catalog refill done manually after GHA 403. Next: optional harden catalog cron egress; otherwise pick Ryan's next product focus._
+**Goal:** _At home on the main PC: set up a **self-hosted GitHub Actions runner** so poker catalog sync scrapes MTTDB from residential egress (not `ubuntu-latest`). Catalog was manually refilled 2026-08-19 after GHA failed again. Buffalo Diamond calc stays grayed out until resets verified._
 
-**Start by reading:** `AGENTS.md`, then this **Pick up here (2026-08-13)** section, **`docs/test-buildout-backlog.md`** Update log (**2026-08-12**–**2026-08-13**), **`docs/frontend-architecture.md`** → **`lounge/`** (image lightbox).
+**Start by reading:** `AGENTS.md`, then this **Pick up here (2026-08-19)** section, **`docs/test-buildout-backlog.md`** Update log (**2026-08-19** poker catalog + Buffalo Diamond lines).
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[e.g. poker catalog Actions 403 long-term fix; Lounge lightbox follow-ups]_
+- Session focus: _[poker catalog self-hosted runner on main home PC]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see WAKEUP Pick up here Aug 13"]_
+- Context: _[e.g. "see WAKEUP Pick up here Aug 19"]_
 
 ---
 
-## Pick up here (Aug 2026 ... session 2026-08-13)
+## Pick up here (Aug 2026 ... session 2026-08-19)
 
-**Computer switch handoff.** Tips **`main`** / **`test`** @ **`2ca2e9d1`**. Clone/pull on the new machine, paste **Copy into chat** above, continue from **On deck**.
+**Computer switch handoff (home main PC).** Tips **`main`** / **`test`** @ **`ae7616d0`**. Pull on the main machine, paste **Copy into chat** above, continue from **On deck #1 (self-hosted runner)**.
 
-### Latest commits (`main` / `test` @ **`2ca2e9d1`**)
+### Latest commits (`main` / `test` @ **`ae7616d0`**)
 
 | Commit | What |
 | --- | --- |
-| **`2ca2e9d1`** | Remove **`edgetilt.com/patches`** merch wall (HTML, assets, Vercel rewrite, sitemap, build script) |
-| **`db41ae5b`** | Harden MTTDB lobby fetch (session warm-up, browser headers, 403/429 retries) |
-| **`1e0e5445`** | Scale lightbox frost pills on skinny Android (`cqi` clamp + compact `w-full`) |
-| **`c3ec7bcd`** | Image lightbox swipe dismiss on full chrome+media shell (caption-heavy / tall posts) |
-| **`3532854a`** | Lightbox captions: tap expand 3→8 lines; no Show more / no detail nav |
-| Earlier same arc | Ambient backdrop restore, tall edge-to-edge media, frost 15%, like chip `text-lv-red`, caption clamp |
+| **`ae7616d0`** | Disable Buffalo Diamond calc (hub + guides) until meter resets verified |
+| **`7ec1bfe1`** | Prior prod tip: Diamond reset floors + Extreme $7 + Scott soccer labels (code) |
+| Earlier Aug 19 | Scott Sharpe soccer shortDisplayName fix; Diamond/Extreme reset calibration |
 
-Promote tip: **`2ca2e9d1`** (already on **main** + **test**). Vercel **`edgetilt.com`** / **`lvslotpro.com`** after deploy.
-
-### Shipped this session (Lounge image lightbox + ops)
+### Shipped / ops this arc (need home follow-up)
 
 | Area | Detail |
 | --- | --- |
-| **Swipe dismiss** | Handlers on full lightbox shell with **capture**; caption allows dismiss (`data-lounge-lightbox-caption`); single-image **`touch-none`** (Stream-style). Fixed Fat Cat (short + long caption/cashtags) + Dean tall portrait on Android/prod |
-| **Frost pills (Android)** | Fixed `h-10` / `5.5rem` overflowed skinny viewports. Now CSS vars from row **`cqi`**; compact chrome **`w-full`**. Ryan sign-off: swipe + buttons **fixed on Android** |
-| **Caption** | 3-line clamp → tap expands 8-line scroll; no Show more; no navigate-to-detail |
-| **Ambient / tall media** | Ambient not gated on CF Image Resizing (Free zone `/cdn-cgi/image/` 404). Tall slides edge-to-edge; short band-centered |
-| **`/patches`** | Removed from prod + test (SEO docs + backlog updated) |
-| **Poker catalog (prod)** | Scheduled Actions failed **HTTP 403** on MTTDB (CF blocks GHA egress). Manual **`npm run poker:catalog:sync:production`** from Ryan's machine: **2382** upserted (MTTDB online **586** / live **542**, ClubWPT **58**, CoinPoker **114**). Cron still **`0 6 */3 * *`** (~every 3 days UTC) |
+| **Buffalo Diamond** | Temporarily disabled via **`TEMPORARILY_DISABLED_CALCULATOR_KEYS`** (`buffalo-diamond` covers Diamond + Extreme). Re-enable by removing that key when resets are squared away. On **prod + test** @ **`ae7616d0`**. |
+| **Poker catalog (prod)** | GHA cron failed **2/2** on MTTDB: shell HTML without embedded lobby JSON (CF bot score on Actions IPs). Manual local **`npm run poker:catalog:sync:production`** (2026-08-19 evening): **2273** upserted (MTTDB live **535** / online **582**, ClubWPT **70**). Catalog healthy again until next cron. |
+| **Diagnosis** | Wrong **where** the job runs (`ubuntu-latest`), not a broken parser. Same script from residential egress works. |
+
+### On deck #1 ... Poker catalog self-hosted runner (DO THIS AT HOME)
+
+**Decision (Ryan + Theo 2026-08-19):** Stop relying on GitHub-hosted runners for MTTDB scrape. Schedule stays in GitHub; **job must execute on residential egress**.
+
+**Recommended:** self-hosted Actions runner on the **main home PC** (always-on / usually-on preferred).
+
+#### Ryan steps on the main PC
+
+1. Pull repo (`test` or `main` @ **`ae7616d0`+**). Confirm **Node 22** installed.
+2. GitHub → this repo → **Settings → Actions → Runners → New self-hosted runner** → **Windows**.
+3. Download/configure in a durable folder (e.g. `C:\actionsgetilt-actions-runner`). Complete the token configure step GitHub shows.
+4. Install as a **Windows service** so it survives reboot; leave service running.
+5. Confirm runner shows **Idle** (green) in GitHub Settings → Runners.
+
+#### Theo / repo steps (after runner is Idle)
+
+1. Patch **`.github/workflows/poker-catalog-sync-production.yml`**: change `runs-on: ubuntu-latest` → `runs-on: [self-hosted, Windows, X64]` (match labels on the registered runner).
+2. Commit + push **`test`**, then Ryan asks for **`main`** promote so the workflow file is live on the default branch Actions uses.
+3. Smoke: **Actions → Poker catalog sync (production) → Run workflow**. Expect MTTDB online/live ≫ 0 (like the manual 582/535), not the shell-HTML failure.
+4. Cron (`0 6 */3 * *` UTC) keeps firing from GitHub’s scheduler; execution is on the home PC. PC must be **on + online + runner service up** at cron time (or job waits/misses).
+
+**Secrets:** keep using repo secrets `SUPABASE_URL_PRODUCTION` + `SUPABASE_SERVICE_ROLE_KEY_PRODUCTION` (no need to put prod keys in Task Scheduler).
+
+**Fallback if runner is a pain:** Windows Task Scheduler every ~3 days → `git pull` + `npm ci` + `npm run poker:catalog:sync:production` with local **`.env.supabase.production`**. Worse for secrets/ops visibility; fine as interim.
+
+**Do not:** mark sync green on regional JSON alone; re-run the same job on `ubuntu-latest` and expect CF to relent; put prod service-role in chat.
 
 ### Key files (grep anchors)
 
 | Topic | Files |
 | --- | --- |
-| Image lightbox shell / FLIP | **`LoungeInlineMediaUrl.jsx`**, **`loungeLightboxFlip.js`** |
-| Swipe dismiss | **`loungeLightboxSwipeDismiss.js`** |
-| Pinch zoom | **`loungeLightboxImageZoom.js`** |
-| Frost pills / chrome | **`LoungePostInteractionBar.jsx`**, **`LoungeStreamVideoLightboxChrome.jsx`**, **`src/index.css`** (`[data-lounge-lightbox-pill-row]`) |
-| Caption expand | **`LoungeExpandableRichCaption.jsx`** |
-| MTTDB scrape | **`scripts/lib/mttdbCatalogFetch.mjs`**, **`scripts/sync-poker-tournament-catalog.mjs`**, **`.github/workflows/poker-catalog-sync-production.yml`** |
-| Stream iOS playback (untouched this arc; still sacred) | **`docs/lounge-stream-ios-playback.md`**, **`.cursor/rules/lounge-stream-ios-playback.mdc`** |
+| Catalog sync workflow | **`.github/workflows/poker-catalog-sync-production.yml`** |
+| MTTDB scrape | **`scripts/lib/mttdbCatalogFetch.mjs`**, **`scripts/sync-poker-tournament-catalog.mjs`** |
+| Buffalo Diamond disable | **`src/features/calculators/calculatorAccess.js`** (`TEMPORARILY_DISABLED_CALCULATOR_KEYS`) |
+| Edge Monitor heartbeat | **`docs/edge-monitor-roadmap.md`** (poker catalog stale >4 days) |
 
-### Do not regress
+### Also parked (still true)
 
-- Like chip color must stay a real Tailwind token (**`text-lv-red`**), not arbitrary hex missing from bundle
-- Ambient backdrop must **not** be gated on CF Image Resizing
-- Tall media edge-to-edge; short band-centered
-- Caption: ellipsis + tap-to-expand, not detail navigation
-- Positive platform guards only (`IS_IOS` / `IS_ANDROID`, never `!IS_ANDROID`)
-
-### On deck (ordered)
-
-1. **Poker catalog cron 403 (optional long-term):** Actions egress still may hard-fail even with warm-up/retries. Options: re-run sync from residential IP when red; self-hosted runner; proxy secret; accept manual refill. Do **not** mark sync green on regional JSON alone (false-green already fixed).
-2. **Ryan's next product focus** ... lightbox arc is closed unless new bugs appear.
-3. Older open items still in backlog (Poker Stable smoke checklist, Twilio From on prod, guest syndicate Phase 1b, etc.) ... see **`docs/test-buildout-backlog.md`**.
+- Buffalo Diamond / Extreme meter reset tables still incomplete (calc grayed out on purpose)
+- Scott Sharpe soccer fix is on **`main`** code; **prod Edge** `lounge-odds-ingest` + `lounge-odds-poll` may still need redeploy if not done after **`7ec1bfe1`**
+- Twilio **From number** for guest SMS on prod
+- Poker Stable smoke checklist / older backlog items
+- Thread compose iOS keyboard overlap; feed +EV badge; Reuters wire license
 
 ### Infra notes (still true)
 
-- **CF Image Resizing** off on Free zone for `media.lvslotpro.com` / media-test ... client resize opt-in **`VITE_LOUNGE_CF_IMAGE_RESIZE=true`** only
 - **Prod = prod** for guides ingest / Edge / SQL ... need Ryan's explicit ask
-- Root **`.tmp-*`** scratch cleaned (2026-08-13); prefer **`scripts/.tmp-*`** or delete after use
+- MTTDB is behind Cloudflare; GHA datacenter egress will keep failing until runner/proxy change
+- Prefer **`scripts/.tmp-*`** for scratch; do not commit **`scripts/tmp-debug-egress.mjs`**
 
 ### AP guides (ongoing workflow)
 
 **Source of truth:** Supabase **`guides.content_markdown`** + R2 heroes. **Editor:** **`/slot-guide-form`** on **`edgetilt.com`**.
 
 **Prod = prod for agents:** Never ingest/batch-run to **`jtjgtucumuoswnbauxry`** unless Ryan names the slug/batch.
-
-### Parked (still true)
-
-- Thread compose iOS keyboard / options bar overlap after media pick
-- Feed UI +EV badge (caption prefix only today)
-- Stream + still images in one carousel (upload order) ... **not scheduled**
-- Reuters wire (needs LSEG/API license)
-- Twilio **From number** for guest SMS on prod (email works via Resend)
-- Poker catalog GHA MTTDB scrape may keep 403'ing until egress changes
 
 ---
 

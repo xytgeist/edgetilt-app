@@ -49,6 +49,13 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Architecture (Ryan 2026-08-18):** thin native **WebView shells** that load the **live site** (`edgetilt.com` / test origin). Do **not** bake `dist/` into the IPA/APK. Web updates (Lounge, Chat, Bankroll, CSS, copy) stay `test` → `main` … users do **not** redownload. Store build only when native bridges / entitlements / icons / splash / WebView policy change.
 
+**Stack decision (Ryan 2026-08-20):** **raw iOS `WKWebView`** shell (hand-written JS↔Swift bridges). **Not Capacitor / Cordova / React Native.** Same live-site UX either way; raw keeps CallKit / audio / APNs ownership direct and matches “thin shell, no bundled `dist/`.” Capacitor only speeds commodity plugin wiring for us ... it does not improve member UX. Scaffold / Xcode / TestFlight work happens on a **Mac**; Windows stays web + backend.
+
+**v1 vs v1.1 (Ryan 2026-08-20):**
+
+- **v1 (ship):** WKWebView → live site, native UA, unmuted Lounge autoplay, APNs end-to-end + deep links, Safari subscribe link-out (hide Stripe-in-WebView), foreground-solid call audio session (LiveKit UI stays web). ~4–5 focused weeks → submit.
+- **v1.1:** CallKit / background ring polish, optional StoreKit IAP (+ upcharge), optional Android TWA. Not blocking v1.
+
 **Native vs web**
 
 - **Web (Vercel):** anything that does not need a new JS↔native method.
@@ -60,7 +67,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - Free account create: no store fee.
 - Web subscribers who **log into** the store app: no store fee (consume in app, pay on web).
 - Stripe Checkout **inside** the in-app WebView: **not** a loophole … review can treat it as IAP bypass. Hide / route those CTAs on native UA.
-- **iOS US:** offer **IAP + Safari link-out** (system browser, not WKWebView). Same entitlements either path. May **upcharge IAP** to cover Apple’s cut (15% Small Business / year-2 sub; 30% standard year 1). US Safari link-out is **0% to Apple today** (Epic … in court; Apple asked for 15% on link-outs). Not a reader app. Counsel before submit. Other storefronts ≠ US.
+- **iOS US:** offer **IAP + Safari link-out** (system browser, not WKWebView). Same entitlements either path. May **upcharge IAP** to cover Apple’s cut (15% Small Business / year-2 sub; 30% standard year 1). US Safari link-out is **0% to Apple today** (Epic … in court; Apple asked for 15% on link-outs). Not a reader app. Counsel before submit. Other storefronts ≠ US. **v1 may ship Safari link-out only** and add StoreKit in v1.1.
 - **Android (US/UK/EEA billing choice, 2026-06-30+):** must offer Play Billing **and** web/alt. Google still takes a **service fee on web-from-the-app** (~10% on subs) plus no 5% billing fee; Play Billing is ~15% (10+5). Pure Chrome/PWA web (never through Play): $0. Upcharge Play Billing if wanted … spread is small vs Apple.
 
 **Priority**
@@ -70,10 +77,10 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### iOS shell
 
-- [ ] **Thin WKWebView** loads prod/test origin (configurable). No bundled `dist/`.
-- [ ] **Bridges v1:** push (APNs), call audio session / background, unmuted media autoplay policy, camera/mic entitlements.
+- [ ] **Thin raw `WKWebView`** (no Capacitor) loads prod/test origin (configurable). No bundled `dist/`. Repo home TBD (`ios/` monorepo folder vs sibling) when Mac sprint starts.
+- [ ] **Bridges v1:** push (APNs), call audio session (foreground-solid; CallKit → v1.1), unmuted media autoplay policy, camera/mic entitlements, open-in-Safari.
 - [ ] **Native UA:** hide in-WebView Stripe / subscribe CTAs; SW skip or cache-bust on boot.
-- [ ] **Billing v1 (US):** StoreKit IAP **and** Safari link-out; same entitlements either path; IAP price can sit above web to cover Apple’s cut. Counsel + App Review notes before submit.
+- [ ] **Billing v1 (US):** Safari link-out required; StoreKit IAP optional in v1 / preferred in v1.1. Counsel + App Review notes before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
 
 ### Android (later / cheap)
@@ -1004,6 +1011,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-20: **iOS shell stack locked: raw `WKWebView`:** Not Capacitor. Thin live-site shell + hand-written bridges; UX-first (CallKit/APNs ownership). **v1** = autoplay + APNs + Safari billing + foreground call audio; **v1.1** = CallKit + optional IAP. Scaffold on Mac. See **Planned (Native shells / app stores)**.
 - 2026-08-19: **Poker catalog → self-hosted runner (home handoff):** Prod GHA cron failed **2/2** on MTTDB (CF blocks `ubuntu-latest`; shell HTML, embedded lobby JSON missing). Manual residential sync restored prod: **2273** upserted (live **535** / online **582** / ClubWPT **70**). **Decision:** schedule stays in GitHub; job must run on **residential egress**. Next on **main home PC:** register Windows **self-hosted Actions runner** (service), then change **`.github/workflows/poker-catalog-sync-production.yml`** `runs-on` from `ubuntu-latest` → `[self-hosted, Windows, X64]`, promote workflow to **`main`**, smoke **Run workflow**. Continuity: root **`WAKEUP`** Pick up here **2026-08-19**. Do not expect cloud retries to fix CF.
 - 2026-08-19: **Buffalo Diamond calc temporarily disabled:** Hub card grayed out + guide **Open calculator** disabled for **`buffalo-diamond`** (covers Diamond + Extreme variant toggle) until meter reset tables are verified. **`TEMPORARILY_DISABLED_CALCULATOR_KEYS`** in **`calculatorAccess.js`** … remove key to re-enable. No SQL. On **prod** @ **`ae7616d0`**.
 - 2026-08-19: **Prod promote @ `7ec1bfe1`:** `test` → **`main`** (Vercel). Frontend: Buffalo Diamond per-bet reset floors + Extreme **$7 → 10/18/28**; Scott Sharpe soccer team labels (code only on `main` … **redeploy `lounge-odds-ingest` + `lounge-odds-poll` on prod** for Scott fix to go live). **No SQL.**

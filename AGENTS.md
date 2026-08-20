@@ -201,7 +201,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 | **Lounge bots (Scott Share / odds, wire, X editorial)** | **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-crypto-news.md`**, **`docs/lounge-bot-editorial-queue.md`**; portal **`/?tab=bots`** (**`BotReplyOnPostPanel`**, **`BotProfileEditor`**, **`BotComposeImagePicker`**, X **Transform a post**); Edge **`lounge-odds-ingest`**, **`lounge-odds-poll`**, **`lounge-news-poll`**, **`lounge-x-ingest`**; migrations through **`20260707000000`** on test + prod (**`schema_migrations`** tracked Jul 7); X manual transform works without bearer |
 | Freemium product rules (shipped) | **`docs/access-tiers.md`** |
 | Multi-product entitlements (planned) | **`docs/entitlements-matrix.md`** |
-| **Native shells / app stores (planned)** | Backlog **Planned (Native shells / app stores)** … thin live-site WebView, **iOS first**, Android PWA + optional TWA, billing notes (no Stripe-in-WebView) |
+| **Native shells / app stores (planned)** | Backlog **Planned (Native shells / app stores)** … **raw iOS `WKWebView`** (not Capacitor) live-site shell, **iOS first**, Android PWA + optional TWA, billing notes (no Stripe-in-WebView); v1 vs v1.1 cut in backlog |
 | Creator affiliates | **`docs/affiliates.md`** |
 | Tier testing SQL (`profiles.role`, `has_active_subscription`) | **`docs/test-user-roles.md`** |
 | **Test:** SQL apply order, Edge deploy list, smoke sign-offs, shipped facts | **`docs/test-buildout-backlog.md`** (sections + **Update log** tail) |

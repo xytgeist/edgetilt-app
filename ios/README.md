@@ -10,6 +10,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - Bundle ID: `com.edgetilt.app`
 - Shell version / UA token: `EdgeiOS/0.1.0` (see `AppConfig.swift`)
 - Bridge: `window.EdgeNative` … contract **`docs/ios-native-bridge.md`**
+- **App icon:** `AppIcon-1024.png` generated from live web pack **`public/EdgeIconBlack/`** (same as `public/apple-touch-icon.png`). Upscaled 310→1024, flattened onto black (no alpha) for App Store rules. Swap with a true 1024 master when you have one.
 
 ## Open / build
 

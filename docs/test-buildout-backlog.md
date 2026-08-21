@@ -79,10 +79,10 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### iOS shell
 
-- [ ] **Thin raw `WKWebView`** (no Capacitor) loads prod/test origin (configurable). No bundled `dist/`. Prefer repo **`ios/`** monorepo folder.
-- [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land.
+- [x] **Thin raw `WKWebView`** (no Capacitor) loads prod/test origin (configurable). No bundled `dist/`. Repo **`ios/`** (2026-08-20). Schemes **EdgeTilt Test** / **EdgeTilt Prod**.
+- [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land. (`getInfo` + `openInSafari` native; rest stub.)
 - [ ] **Bridges v1:** push (APNs), call audio session (foreground-solid; CallKit → v1.1), unmuted media autoplay policy, camera/mic entitlements, open-in-Safari.
-- [ ] **Native UA:** hide in-WebView Stripe / subscribe CTAs; SW skip or cache-bust on boot.
+- [ ] **Native UA:** hide in-WebView Stripe / subscribe CTAs; SW skip or cache-bust on boot. (UA token **`EdgeiOS/0.1.0`** shipping in shell; web gating still TODO.)
 - [ ] **Billing v1 (US):** Safari link-out required; StoreKit IAP optional in v1 / preferred in v1.1. Counsel + App Review notes before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
 
@@ -1014,6 +1014,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-20: **iOS `ios/` WKWebView scaffold:** Raw shell under **`ios/`** (XcodeGen `project.yml` → `EdgeTilt.xcodeproj`). Schemes **EdgeTilt Test** → `lvslotpro.com`, **EdgeTilt Prod** → `edgetilt.com`. UA **`EdgeiOS/0.1.0`**. `window.EdgeNative` with **`getInfo`** + **`openInSafari`**; other methods stub-reject. Simulator build OK (iPhone 17). Contract: **`docs/ios-native-bridge.md`**. Open: `ios/README.md`.
 - 2026-08-20: **Dual-machine + bridge contract stub:** **`docs/ios-native-bridge.md`** (JS↔Swift method table stub + Mac/Windows ownership rules). **`WAKEUP`** Dual-agent ruleset; **`AGENTS.md`** `AGENT_RULE_DUAL_MACHINE_IOS`; Cursor **`.cursor/rules/dual-machine-ios-shell.mdc`**. Windows = web while Mac builds shell; pull/`test` push + `WAKEUP` notes are the chat bridge.
 - 2026-08-20: **WAKEUP dual-machine / Mac iOS handoff:** Root **`WAKEUP`** rewritten for Mac Cursor (raw WKWebView scaffold checklist, v1/v1.1, parallel Windows web + catalog runner). Pull on Mac before pasting Copy into chat.
 - 2026-08-20: **iOS shell stack locked: raw `WKWebView`:** Not Capacitor. Thin live-site shell + hand-written bridges; UX-first (CallKit/APNs ownership). **v1** = autoplay + APNs + Safari billing + foreground call audio; **v1.1** = CallKit + optional IAP. Scaffold on Mac. See **Planned (Native shells / app stores)**.

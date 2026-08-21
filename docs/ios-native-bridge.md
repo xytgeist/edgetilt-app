@@ -1,9 +1,10 @@
 # iOS native bridge contract (stub)
 
-**Status:** stub … names and shapes for dual-machine work. Expand as Mac scaffolds `ios/` and Windows lands web callers.  
+**Status:** scaffold landed under **`ios/`** (2026-08-20). `getInfo` + `openInSafari` implemented natively; remaining methods stub-reject. Expand as push/audio land.  
 **Stack:** raw **`WKWebView`** live-site shell (not Capacitor). Product web stays on Vercel; IPA is a thin loader + bridges.  
 **Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)**.  
-**Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).
+**Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).  
+**Open project:** `ios/README.md` … `open ios/EdgeTilt.xcodeproj`, scheme **EdgeTilt Test**.
 
 ---
 
@@ -19,8 +20,8 @@
 
 | Signal | Spec (v1 target) |
 | --- | --- |
-| **UA substring** | `EdgeiOS/<semver>` (exact string locked when shell scaffolds) |
-| **Global** | `window.EdgeNative` present after native inject / page start |
+| **UA substring** | **`EdgeiOS/0.1.0`** (token format `EdgeiOS/<semver>`; bump with `AppConfig.shellVersion` in `ios/`) |
+| **Global** | `window.EdgeNative` injected at document start |
 | **Helper (planned)** | `src/utils/edgeNative.js` (or similar) … `isEdgeiOSShell()`, `edgeNativeInvoke(method, payload)` |
 
 **Do not** treat generic iOS Safari / PWA as the store shell. Positive checks only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
@@ -41,12 +42,12 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 
 | Method | Direction | Payload (draft) | Result (draft) | Owner first | Status |
 | --- | --- | --- | --- | --- | --- |
-| `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', ua }` | Mac | stub |
-| `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | stub |
-| `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | stub |
-| `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | stub |
-| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | stub |
-| `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean }` | Mac (boot) | stub |
+| `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', ua }` | Mac | **native** (`ios/` scaffold) |
+| `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | **native** (`ios/` scaffold) |
+| `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | stub (rejects) |
+| `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | stub (rejects) |
+| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | stub (rejects) |
+| `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean }` | Mac (boot) | stub (rejects) |
 
 **Web-owned (no Swift required for first cut):**
 
@@ -78,10 +79,10 @@ Two Cursor chats = **two Theos, no shared memory**. Continuity = **git + this do
 
 ### Ownership (default)
 
-| Lane | Machine | Owns (edit freely) | Hands off |
-| --- | --- | --- | --- |
-| **Mac / iOS shell** | Mac Cursor | `ios/` (when created), this bridge doc’s **native** columns, Xcode/project, shell-only docs | `src/**` feature work, web CSS, Edge Functions, SQL, poker catalog workflow |
-| **Windows / web** | Windows Cursor | `src/**`, `supabase/**`, web docs, catalog runner / GHA web side | `ios/**`, Xcode project, native-only plist / signing |
+| Lane | Owns (edit freely) | Hands off |
+| --- | --- | --- |
+| **Mac / iOS shell** | **`ios/`**, this bridge doc’s **native** columns, Xcode/project, shell-only docs | `src/**` feature work, web CSS, Edge Functions, SQL, poker catalog workflow |
+| **Windows / web** | `src/**`, `supabase/**`, web docs, catalog runner / GHA web side | **`ios/**`**, Xcode project, native-only plist / signing |
 
 **Shared (coordinate first):** this file, **`WAKEUP`**, **`docs/test-buildout-backlog.md`** Planned native section, UA string / scheme constants that both sides import.
 

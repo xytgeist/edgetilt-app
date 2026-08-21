@@ -13,7 +13,7 @@ Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circ
 
 ## Planned: iOS store shell (live site in WKWebView)
 
-Thin native shell loads **`lvslotpro.com`** / **`edgetilt.com`** (no baked `dist/`). **Bridge contract + dual-machine rules:** **`docs/ios-native-bridge.md`**. Product plan: backlog **Planned (Native shells / app stores)**. Web feature work stays under **`src/features/`**; native code will live under **`ios/`** when scaffolded.
+Thin native shell under **`ios/`** loads **`lvslotpro.com`** / **`edgetilt.com`** (no baked `dist/`). Open **`ios/EdgeTilt.xcodeproj`** (scheme **EdgeTilt Test**). **Bridge contract + dual-machine rules:** **`docs/ios-native-bridge.md`**. Web feature work stays under **`src/features/`**; do not edit `ios/` from the Windows lane.
 
 ## Brand palette (Tailwind + CSS)
 

@@ -48,6 +48,13 @@ ap-guide-workspace/
 supabase/.temp/
 supabase/.branches/
 
+# iOS / Xcode
+ios/EdgeTilt.xcodeproj/xcuserdata/
+ios/EdgeTilt.xcodeproj/project.xcworkspace/xcuserdata/
+**/xcuserdata/
+DerivedData/
+*.xcuserstate
+
 # Cursor chat export state (stale � scripts removed 2026-05-25)
 .cursor/chat-export-state-*.json
 

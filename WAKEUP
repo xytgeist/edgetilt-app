@@ -79,7 +79,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`10d4cfd5`+** | WKWebView lock + dual-machine docs; bridge stub landing |
+| **`test`** | *(after this push)* | **`ios/`** WKWebView scaffold + bridge docs |
 | **`main`** | **`ae7616d0`** | Prod Vercel; Buffalo Diamond still disabled |
 
 ### Decisions locked (do not reopen without Ryan)
@@ -91,7 +91,16 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 | **Why raw** | UX-first: CallKit / APNs / audio ownership stays direct. Capacitor only speeds commodity plugins for *us*, not member UX |
 | **Android** | Stay **PWA**. Optional **TWA** later for Play badge only. **No** fat Kotlin shell this sprint. TWA is **not** $0 Google on digital goods (Play policy applies); pure Chrome/PWA web checkout stays $0 |
 | **Parallel work** | Mac = native shell; Windows = web + catalog runner. Contract: **`docs/ios-native-bridge.md`** |
-| **Repo home** | Prefer **`ios/`** monorepo folder (confirm when scaffold starts) |
+| **Repo home** | **`ios/`** monorepo (scaffolded 2026-08-20) |
+| **UA token** | **`EdgeiOS/0.1.0`** (`AppConfig.shellVersion`) |
+
+### Mac session note (2026-08-20 scaffold)
+
+**Done:** `ios/` raw WKWebView app … schemes **EdgeTilt Test** → `lvslotpro.com`, **EdgeTilt Prod** → `edgetilt.com`. UA `EdgeiOS/0.1.0`. Bridge `getInfo` + `openInSafari` live; other methods reject until implemented. Simulator **BUILD SUCCEEDED** (iPhone 17).
+
+**Next (Mac):** Run in Simulator (open `ios/EdgeTilt.xcodeproj` → EdgeTilt Test ▶). Then splash/icon stubs, physical device signing when ready. Week 2 = autoplay harden + Windows UA detection helpers.
+
+**Windows Theo:** web lane only. When detecting shell, match UA `EdgeiOS/` / `window.EdgeNative`. Do not edit `ios/`.
 
 ### v1 vs v1.1 (iOS)
 
@@ -133,13 +142,11 @@ Open that folder in **Cursor**. Confirm tip ≥ **`b363e60b`**.
 
 ### C. First implementation goal (when Ryan says go)
 
-Scaffold **raw WKWebView** iOS app (repo home TBD: prefer **`ios/`** monorepo folder unless Ryan wants a sibling repo):
+**Scaffolded 2026-08-20** under **`ios/`**. Open **`ios/EdgeTilt.xcodeproj`**, scheme **EdgeTilt Test**, Run on Simulator.
 
-1. Xcode project: single WKWebView controller loads configurable base URL.
-2. Build configs / scheme flags: **test** → `https://lvslotpro.com`, **prod** → `https://edgetilt.com`.
-3. Custom native UA string (detectable by web later).
-4. Run on **Simulator**; then a physical iPhone when provisioning allows.
-5. Commit + push **`test`**. Do **not** push **`main`** unless Ryan asks.
+Regenerate project after `project.yml` edits: `cd ios && xcodegen generate`.
+
+Remaining Week 1 polish: splash/icon assets, TestFlight signing, physical device.
 
 **Do not:** Capacitor, bundle Vite `dist/`, start Android TWA, invent a second product codebase.
 

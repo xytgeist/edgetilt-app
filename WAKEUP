@@ -79,7 +79,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | *(after this push)* | **`ios/`** WKWebView scaffold + bridge docs |
+| **`test`** | **`51f33270`** | **`ios/`** WKWebView scaffold + bridge docs |
 | **`main`** | **`ae7616d0`** | Prod Vercel; Buffalo Diamond still disabled |
 
 ### Decisions locked (do not reopen without Ryan)

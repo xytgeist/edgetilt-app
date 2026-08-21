@@ -51,6 +51,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **Stack decision (Ryan 2026-08-20):** **raw iOS `WKWebView`** shell (hand-written JS↔Swift bridges). **Not Capacitor / Cordova / React Native.** Same live-site UX either way; raw keeps CallKit / audio / APNs ownership direct and matches “thin shell, no bundled `dist/`.” Capacitor only speeds commodity plugin wiring for us ... it does not improve member UX. Scaffold / Xcode / TestFlight work happens on a **Mac**; Windows stays web + backend.
 
+**Dual-machine (Ryan 2026-08-20):** Mac Cursor = shell; Windows Cursor = web bugs/features (+ catalog runner). Two Theos, no shared memory. **Rules + bridge method stub:** **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). Also **`WAKEUP`** Dual-agent ruleset + **`AGENTS.md`**.
+
 **v1 vs v1.1 (Ryan 2026-08-20):**
 
 - **v1 (ship):** WKWebView → live site, native UA, unmuted Lounge autoplay, APNs end-to-end + deep links, Safari subscribe link-out (hide Stripe-in-WebView), foreground-solid call audio session (LiveKit UI stays web). ~4–5 focused weeks → submit.
@@ -77,7 +79,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 ### iOS shell
 
-- [ ] **Thin raw `WKWebView`** (no Capacitor) loads prod/test origin (configurable). No bundled `dist/`. Repo home TBD (`ios/` monorepo folder vs sibling) when Mac sprint starts.
+- [ ] **Thin raw `WKWebView`** (no Capacitor) loads prod/test origin (configurable). No bundled `dist/`. Prefer repo **`ios/`** monorepo folder.
+- [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land.
 - [ ] **Bridges v1:** push (APNs), call audio session (foreground-solid; CallKit → v1.1), unmuted media autoplay policy, camera/mic entitlements, open-in-Safari.
 - [ ] **Native UA:** hide in-WebView Stripe / subscribe CTAs; SW skip or cache-bust on boot.
 - [ ] **Billing v1 (US):** Safari link-out required; StoreKit IAP optional in v1 / preferred in v1.1. Counsel + App Review notes before submit.
@@ -1011,6 +1014,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-20: **Dual-machine + bridge contract stub:** **`docs/ios-native-bridge.md`** (JS↔Swift method table stub + Mac/Windows ownership rules). **`WAKEUP`** Dual-agent ruleset; **`AGENTS.md`** `AGENT_RULE_DUAL_MACHINE_IOS`; Cursor **`.cursor/rules/dual-machine-ios-shell.mdc`**. Windows = web while Mac builds shell; pull/`test` push + `WAKEUP` notes are the chat bridge.
 - 2026-08-20: **WAKEUP dual-machine / Mac iOS handoff:** Root **`WAKEUP`** rewritten for Mac Cursor (raw WKWebView scaffold checklist, v1/v1.1, parallel Windows web + catalog runner). Pull on Mac before pasting Copy into chat.
 - 2026-08-20: **iOS shell stack locked: raw `WKWebView`:** Not Capacitor. Thin live-site shell + hand-written bridges; UX-first (CallKit/APNs ownership). **v1** = autoplay + APNs + Safari billing + foreground call audio; **v1.1** = CallKit + optional IAP. Scaffold on Mac. See **Planned (Native shells / app stores)**.
 - 2026-08-19: **Poker catalog → self-hosted runner (home handoff):** Prod GHA cron failed **2/2** on MTTDB (CF blocks `ubuntu-latest`; shell HTML, embedded lobby JSON missing). Manual residential sync restored prod: **2273** upserted (live **535** / online **582** / ClubWPT **70**). **Decision:** schedule stays in GitHub; job must run on **residential egress**. Next on **main home PC:** register Windows **self-hosted Actions runner** (service), then change **`.github/workflows/poker-catalog-sync-production.yml`** `runs-on` from `ubuntu-latest` → `[self-hosted, Windows, X64]`, promote workflow to **`main`**, smoke **Run workflow**. Continuity: root **`WAKEUP`** Pick up here **2026-08-19**. Do not expect cloud retries to fix CF.

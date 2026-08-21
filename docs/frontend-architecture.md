@@ -11,6 +11,10 @@ How the React app is organized after the **feature-module split** (2026). Use th
 
 Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circular dependency story and keeps the entry file small (~hundreds of lines instead of thousands).
 
+## Planned: iOS store shell (live site in WKWebView)
+
+Thin native shell loads **`lvslotpro.com`** / **`edgetilt.com`** (no baked `dist/`). **Bridge contract + dual-machine rules:** **`docs/ios-native-bridge.md`**. Product plan: backlog **Planned (Native shells / app stores)**. Web feature work stays under **`src/features/`**; native code will live under **`ios/`** when scaffolded.
+
 ## Brand palette (Tailwind + CSS)
 
 Canonical **`src/index.css`**: **`lv-*`** Tailwind colors (**`lv-red`**, **`lv-orange`**, **`lv-yellow`**, **`lv-blue`**, **`lv-green`**, **`lv-purple`**) plus **`--lv-*`** CSS variables on **`:root`**. The **`cyan-*`** utility scale is overridden so existing **`cyan-*`** classes align with electric blue (**`#06cefc`**). Violet accents map toward vivid purple (**`#9d00ff`**). Dock FAB accents live in **`loungeDockFabGlow.js`**; carousel glyphs use **`LOUNGE_DOCK_CYAN`** in **`loungeDockArcCarouselItems.jsx`**.

@@ -1,0 +1,24 @@
+---
+description: Dual-machine Mac iOS shell + Windows web ownership and bridge contract
+alwaysApply: true
+---
+
+# Dual-machine iOS shell sprint
+
+Ryan runs **two Cursor chats** (Mac + Windows) with **no shared memory**. Continuity = git on **`test`** + **`WAKEUP`** + **`docs/ios-native-bridge.md`**.
+
+## Ownership
+
+- **Mac:** `ios/` (when present), Xcode, native `EdgeNative` handlers. Do **not** freestyle `src/**` web features.
+- **Windows:** `src/**`, web bugs/features, catalog runner / GHA web side. Do **not** edit `ios/**`.
+- **Conflict:** Mac wins `ios/`; Windows wins `src/`.
+
+## Bridge
+
+Before adding or renaming `window.EdgeNative.*` on either side, update **`docs/ios-native-bridge.md`**. Stub one side first. Full rules: that doc + **`WAKEUP`** Dual-agent ruleset + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).
+
+## Ritual
+
+`git pull` at session start → work in lane → commit/push **`test`** → short **`WAKEUP`** note. No `main` / prod without Ryan’s ask.
+
+`AGENT_RULE_DUAL_MACHINE_IOS` — searchability token.

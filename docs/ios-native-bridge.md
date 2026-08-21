@@ -1,0 +1,106 @@
+# iOS native bridge contract (stub)
+
+**Status:** stub … names and shapes for dual-machine work. Expand as Mac scaffolds `ios/` and Windows lands web callers.  
+**Stack:** raw **`WKWebView`** live-site shell (not Capacitor). Product web stays on Vercel; IPA is a thin loader + bridges.  
+**Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)**.  
+**Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).
+
+---
+
+## Goals
+
+1. One **named** JS ↔ Swift surface so Mac and Windows Theos do not invent parallel APIs.
+2. Web remains usable in Safari / PWA when native is absent (feature-detect, never require the shell).
+3. New bridge methods that old binaries lack stay **safe no-ops** or gated until users update from the store.
+
+---
+
+## Detection (web)
+
+| Signal | Spec (v1 target) |
+| --- | --- |
+| **UA substring** | `EdgeiOS/<semver>` (exact string locked when shell scaffolds) |
+| **Global** | `window.EdgeNative` present after native inject / page start |
+| **Helper (planned)** | `src/utils/edgeNative.js` (or similar) … `isEdgeiOSShell()`, `edgeNativeInvoke(method, payload)` |
+
+**Do not** treat generic iOS Safari / PWA as the store shell. Positive checks only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
+
+---
+
+## Namespace
+
+- **JS → native:** `window.EdgeNative.<method>(…)` returning `Promise` where async (Swift fulfills via `WKScriptMessage` / reply handler).
+- **Native → JS (rare):** `window.EdgeNativeEvents` or `CustomEvent` on `window` … prefer pull (web asks) unless push/token refresh forces push.
+- **Names:** camelCase methods. No Capacitor-style `Plugins.*`.
+
+---
+
+## Method table (v1 stub)
+
+Statuses: **stub** = agreed name, not implemented; **native** / **web** filled in as each side lands.
+
+| Method | Direction | Payload (draft) | Result (draft) | Owner first | Status |
+| --- | --- | --- | --- | --- | --- |
+| `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', ua }` | Mac | stub |
+| `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | stub |
+| `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | stub |
+| `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | stub |
+| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | stub |
+| `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean }` | Mac (boot) | stub |
+
+**Web-owned (no Swift required for first cut):**
+
+| Behavior | Web ownership | Notes |
+| --- | --- | --- |
+| Hide Stripe Checkout / subscribe CTAs in WebView | Windows | Gate on EdgeiOS UA / `isEdgeiOSShell()`; route to Safari via `openInSafari` |
+| Deep link handling after APNs | Both | Native opens URL; web already has `?tab=` / lounge routes |
+| Lounge unmuted autoplay | Mac config + Windows playback paths | WKWebView media policy on native; web keeps existing autoplay store |
+
+**v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
+
+---
+
+## Change protocol (both agents)
+
+1. **Propose** the method row here (or in chat + land in this file same day) **before** coding both sides.
+2. Prefer **stub on one side first** (usually Mac injects empty `EdgeNative` with `getInfo`; Windows feature-detects).
+3. Same arc when possible: Mac lands handler + Windows lands caller in commits that reference each other in messages / `WAKEUP`.
+4. **Never** rename a shipped method without a version field on `getInfo` and a web fallback.
+5. Update this table status when something moves stub → implemented.
+
+`AGENT_RULE_IOS_BRIDGE_CONTRACT` — searchability token.
+
+---
+
+## Dual-machine agent ruleset
+
+Two Cursor chats = **two Theos, no shared memory**. Continuity = **git + this doc + `WAKEUP` + backlog Update log**.
+
+### Ownership (default)
+
+| Lane | Machine | Owns (edit freely) | Hands off |
+| --- | --- | --- | --- |
+| **Mac / iOS shell** | Mac Cursor | `ios/` (when created), this bridge doc’s **native** columns, Xcode/project, shell-only docs | `src/**` feature work, web CSS, Edge Functions, SQL, poker catalog workflow |
+| **Windows / web** | Windows Cursor | `src/**`, `supabase/**`, web docs, catalog runner / GHA web side | `ios/**`, Xcode project, native-only plist / signing |
+
+**Shared (coordinate first):** this file, **`WAKEUP`**, **`docs/test-buildout-backlog.md`** Planned native section, UA string / scheme constants that both sides import.
+
+Conflict rule: **Mac wins `ios/`**; **Windows wins `src/`**. Do not “helpfully” edit the other lane the same day.
+
+### Session ritual
+
+| When | Do |
+| --- | --- |
+| **Start** | `git checkout test` → `git pull`. Skim **`WAKEUP`** Pick up here + this file if touching shell/bridge. |
+| **During** | Stay in lane. New bridge method → update this table **before** freestyle. |
+| **End (meaningful work)** | Commit + push **`test`**. 2–5 lines in **`WAKEUP`** (done / next / bridge notes). Backlog Update log if a decision or ship fact. |
+| **Never** | Push **`main`** / prod Supabase / prod Edge without Ryan’s explicit ask. |
+
+### Parallel safety
+
+- Same **`test`** branch is OK for this sprint if ownership holds.
+- Long risky Windows refactors: optional feature branch off `test`; tell Mac via `WAKEUP`.
+- Do **not** Capacitor, bake `dist/` into the IPA, or start Android TWA in the iOS shell lane.
+- Prefer **`scripts/.tmp-*`** scratch; never commit secrets / `.env*`.
+
+`AGENT_RULE_DUAL_MACHINE_IOS` — searchability token.

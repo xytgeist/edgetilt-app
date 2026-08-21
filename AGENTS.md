@@ -70,6 +70,20 @@ Follow normal git safety (no secrets, no force-push). Cursor rule: **`.cursor/ru
 
 ---
 
+## CRITICAL — DUAL-MACHINE (Mac iOS shell + Windows web)
+
+> During the iOS shell sprint, Ryan runs **two Cursor chats** (Mac + Windows). They do **not** share memory. Continuity = **`git pull`/`push` on `test`** + **`WAKEUP`** + **`docs/ios-native-bridge.md`**.
+
+**Ownership:** Mac → `ios/` + native bridge handlers. Windows → `src/**` + web/catalog. Conflict → Mac wins `ios/`, Windows wins `src/`. Do not edit the other lane the same day.
+
+**Bridge:** Agree / update method rows in **`docs/ios-native-bridge.md`** before freestyling `window.EdgeNative.*` on both sides. Stub one side first.
+
+**Session ritual:** pull → work in lane → push `test` → short `WAKEUP` note. Full ruleset: **`docs/ios-native-bridge.md`** + **`WAKEUP`** Dual-agent ruleset. Cursor: **`.cursor/rules/dual-machine-ios-shell.mdc`**.
+
+`AGENT_RULE_DUAL_MACHINE_IOS` — searchability token.
+
+---
+
 ## CRITICAL — READ BEFORE EDITING ANY EXISTING CODE
 
 > **DO NOT UNDER ANY CIRCUMSTANCES EDIT (ALREADY WRITTEN) CODE BEFORE PROPERLY CHECKING THAT IT WILL NOT NEGATIVELY IMPACT OR BREAK ANY OTHER CODE IN THE PROJECT.**
@@ -142,6 +156,7 @@ Future sessions have **no memory** of this chat. Treat the repo as the **source 
 | 5 | `docs/production-rollout-checklist.md` | Promoting test work to production (SQL, functions, smoke) |
 | 6 | `docs/edgetilt-production-cutover.md` | **One-time** prod/test Supabase + domain cutover (`edgetilt.com` / `lvslotpro.com`) |
 | 6b | `docs/seo-edgetilt-slots.md` | Brand SEO for **edge tilt / advantage play slots** … `/advantage-play-slots`, `/slots` (+ tools), `/guides`, `/poker`, sitemap, Search Console |
+| 6c | `docs/ios-native-bridge.md` | **iOS WKWebView shell:** JS↔Swift bridge contract stub + **dual-machine agent rules** (Mac vs Windows) |
 | 6 | `docs/access-tiers.md` | **Freemium spec (shipped):** no account vs free vs **Slots Edge** / staff — per-surface read/write matrix |
 | 7 | `docs/entitlements-matrix.md` | **Multi-product paywalls (planned + partial):** Edge Pro, creator fan subs, add-ons, stacking, **`get_my_entitlements()`** target, rollout phases |
 | 8 | `docs/affiliates.md` | **Creator affiliates:** in-house v1 (packages, `?ref=` + promo, ledger, admin/creator portals, Connect) |
@@ -159,6 +174,7 @@ Do this **in the same change or PR** as the code (or immediately after), not “
 | File layout, new feature folder, imports/barrels | `docs/frontend-architecture.md`; if top-level story changes, first paragraph of `README.md` |
 | Lounge/feed behavior, phases, or scope | `docs/social-feed-roadmap.md` and, if it affects test validation, `docs/test-buildout-backlog.md` |
 | Lounge Stream **iOS playback / hero / HLS recovery** | **`docs/lounge-stream-ios-playback.md`** (+ backlog Update log); Cursor rule **`.cursor/rules/lounge-stream-ios-playback.mdc`** |
+| **iOS WKWebView shell / `EdgeNative` bridge / dual-machine rules** | **`docs/ios-native-bridge.md`** + backlog **Planned (Native shells)** + **`WAKEUP`** Dual-agent ruleset |
 | Something shipped or verified on **test** | `docs/test-buildout-backlog.md` (correct section + **Update log** at bottom with date and fact) |
 | Production promotion steps or post-deploy smoke | `docs/production-rollout-checklist.md` |
 | **DB capability** (e.g. moderator `UPDATE` including `pinned`) **without** matching UI | `docs/test-buildout-backlog.md`: open checkbox + how to test (seed SQL, SQL editor, future UI). Do not assume the next agent reads chat exports. |
@@ -201,7 +217,7 @@ Do **not** duplicate long implementation notes here (they drift). Read these whe
 | **Lounge bots (Scott Share / odds, wire, X editorial)** | **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-crypto-news.md`**, **`docs/lounge-bot-editorial-queue.md`**; portal **`/?tab=bots`** (**`BotReplyOnPostPanel`**, **`BotProfileEditor`**, **`BotComposeImagePicker`**, X **Transform a post**); Edge **`lounge-odds-ingest`**, **`lounge-odds-poll`**, **`lounge-news-poll`**, **`lounge-x-ingest`**; migrations through **`20260707000000`** on test + prod (**`schema_migrations`** tracked Jul 7); X manual transform works without bearer |
 | Freemium product rules (shipped) | **`docs/access-tiers.md`** |
 | Multi-product entitlements (planned) | **`docs/entitlements-matrix.md`** |
-| **Native shells / app stores (planned)** | Backlog **Planned (Native shells / app stores)** … **raw iOS `WKWebView`** (not Capacitor) live-site shell, **iOS first**, Android PWA + optional TWA, billing notes (no Stripe-in-WebView); v1 vs v1.1 cut in backlog |
+| **Native shells / app stores (planned)** | Backlog **Planned (Native shells / app stores)** … **raw iOS `WKWebView`** (not Capacitor) live-site shell, **iOS first**, Android PWA + optional TWA, billing notes (no Stripe-in-WebView); v1 vs v1.1 cut in backlog. **Bridge + dual-machine:** **`docs/ios-native-bridge.md`** |
 | Creator affiliates | **`docs/affiliates.md`** |
 | Tier testing SQL (`profiles.role`, `has_active_subscription`) | **`docs/test-user-roles.md`** |
 | **Test:** SQL apply order, Edge deploy list, smoke sign-offs, shipped facts | **`docs/test-buildout-backlog.md`** (sections + **Update log** tail) |

@@ -44,9 +44,9 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Mac):** _Scaffold / build raw iOS **`WKWebView`** shell (not Capacitor). Thin live-site loader for test + prod. Week 1 = open Edge in-app on Simulator / device._
 
-**Goal (Windows, parallel OK):** _Web app buildout + **self-hosted GitHub Actions runner** for poker catalog (MTTDB residential egress). Pull often; don’t edit the same files as Mac the same day without syncing._
+**Goal (Windows, parallel OK):** _Web app bugs/features + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here (2026-08-20)** section, backlog **Planned (Native shells / app stores)** + Update log **2026-08-20** WKWebView lock.
+**Start by reading:** `AGENTS.md`, this **Pick up here (2026-08-20)** section (incl. **Dual-agent ruleset**), **`docs/ios-native-bridge.md`**, backlog **Planned (Native shells / app stores)** + Update log **2026-08-20**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -58,13 +58,28 @@ The agent should treat the following as **standing instructions for this session
 
 ## Pick up here (Aug 2026 ... session 2026-08-20)
 
-**Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory** ... this file + backlog are the bridge. Same git repo; both push **`test`**; **`git pull`** at session start.
+**Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory** ... this file + backlog + **`docs/ios-native-bridge.md`** are the bridge. Same git repo; both push **`test`**; **`git pull`** at session start.
+
+### Dual-agent ruleset (BOTH Theos ... follow every session)
+
+Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). Short form:
+
+| Lane | Owns | Hands off |
+| --- | --- | --- |
+| **Mac** | `ios/` (scaffold), native bridge handlers, Xcode | `src/**` features, Edge/SQL, poker catalog GHA |
+| **Windows** | `src/**`, web bugs/features, catalog runner | `ios/**`, Xcode / signing |
+
+1. **Start:** `git pull` on `test`. Skim this Pick up here. If shell/bridge work → skim **`docs/ios-native-bridge.md`**.
+2. **Same-day file ownership:** do not edit the other lane’s files. Conflict → Mac wins `ios/`, Windows wins `src/`.
+3. **Bridge:** new `window.EdgeNative.*` names go in the bridge contract **before** coding both sides. Stub one side first.
+4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
+5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
 ### Latest tips
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`b363e60b`+** | Includes WKWebView stack lock docs |
+| **`test`** | **`10d4cfd5`+** | WKWebView lock + dual-machine docs; bridge stub landing |
 | **`main`** | **`ae7616d0`** | Prod Vercel; Buffalo Diamond still disabled |
 
 ### Decisions locked (do not reopen without Ryan)
@@ -75,7 +90,8 @@ The agent should treat the following as **standing instructions for this session
 | **Architecture** | Thin shell loads **live site** (`lvslotpro.com` test / `edgetilt.com` prod). **Do not** bake `dist/` into the IPA |
 | **Why raw** | UX-first: CallKit / APNs / audio ownership stays direct. Capacitor only speeds commodity plugins for *us*, not member UX |
 | **Android** | Stay **PWA**. Optional **TWA** later for Play badge only. **No** fat Kotlin shell this sprint. TWA is **not** $0 Google on digital goods (Play policy applies); pure Chrome/PWA web checkout stays $0 |
-| **Parallel work** | Mac = native shell; Windows = web + catalog runner. Shared seam = JS↔native bridge contract ... agree method names before freestyling both sides |
+| **Parallel work** | Mac = native shell; Windows = web + catalog runner. Contract: **`docs/ios-native-bridge.md`** |
+| **Repo home** | Prefer **`ios/`** monorepo folder (confirm when scaffold starts) |
 
 ### v1 vs v1.1 (iOS)
 
@@ -137,11 +153,13 @@ Scaffold **raw WKWebView** iOS app (repo home TBD: prefer **`ios/`** monorepo fo
 | 4 | Call audio session (foreground) + harden |
 | 5 | Freeze + App Review notes / submit |
 
-Bridge coordination with Windows Theo: when adding `window.EdgeNative.*`, land matching web stubs / backends in the same arc (or stub first on one side).
+Bridge coordination with Windows Theo: **`docs/ios-native-bridge.md`**. When adding `window.EdgeNative.*`, update that table first; stub one side before freestyle.
 
 ---
 
 ## Windows home PC ... still on deck (parallel)
+
+**Windows Theo:** you own the **webapp** while Mac builds the shell. Follow **Dual-agent ruleset** above. Do not edit `ios/` once it exists. New native-facing web work (UA detect, hide Stripe-in-WebView, `openInSafari` callers) must match the bridge contract.
 
 ### Poker catalog self-hosted runner
 

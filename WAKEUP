@@ -6,8 +6,8 @@
 
 ## What you do (quick)
 
-1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal).
-2. **Optional:** Type a short hello in your own words on the first line (e.g. *Good morning Theo — pick up from WAKEUP Aug 13 handoff.*).
+1. **Skim** the bracketed lines in **Copy into chat** below (branch, Supabase, goal, **which machine**).
+2. **Optional:** Type a short hello on the first line (e.g. *Good morning Theo — Mac machine, pick up from WAKEUP Aug 20.*).
 3. **Copy** from **“The agent should treat…”** through the last line you need, then **paste into chat**.
 
 That is the whole ritual: **you set the rails; Theo reads `AGENTS.md` and the docs you name.**
@@ -31,7 +31,9 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
-**Branch:** `main` / `test` aligned at **`ae7616d0`** (2026-08-19)
+**Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
+
+**Branch:** `test` tip **`b363e60b`+** (2026-08-20). `main` @ **`ae7616d0`** (one docs commit behind `test` until next promote). Always `git pull` before work ... dual-machine.
 
 **Supabase (do not swap these):**
 
@@ -40,93 +42,130 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal:** _At home on the main PC: set up a **self-hosted GitHub Actions runner** so poker catalog sync scrapes MTTDB from residential egress (not `ubuntu-latest`). Catalog was manually refilled 2026-08-19 after GHA failed again. Buffalo Diamond calc stays grayed out until resets verified._
+**Goal (Mac):** _Scaffold / build raw iOS **`WKWebView`** shell (not Capacitor). Thin live-site loader for test + prod. Week 1 = open Edge in-app on Simulator / device._
 
-**Start by reading:** `AGENTS.md`, then this **Pick up here (2026-08-19)** section, **`docs/test-buildout-backlog.md`** Update log (**2026-08-19** poker catalog + Buffalo Diamond lines).
+**Goal (Windows, parallel OK):** _Web app buildout + **self-hosted GitHub Actions runner** for poker catalog (MTTDB residential egress). Pull often; don’t edit the same files as Mac the same day without syncing._
+
+**Start by reading:** `AGENTS.md`, this **Pick up here (2026-08-20)** section, backlog **Planned (Native shells / app stores)** + Update log **2026-08-20** WKWebView lock.
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[poker catalog self-hosted runner on main home PC]_
+- Session focus: _[Mac iOS WKWebView scaffold | Windows catalog runner | Windows web feature]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see WAKEUP Pick up here Aug 19"]_
+- Context: _[e.g. "see WAKEUP Pick up here Aug 20 Mac"]_
 
 ---
 
-## Pick up here (Aug 2026 ... session 2026-08-19)
+## Pick up here (Aug 2026 ... session 2026-08-20)
 
-**Computer switch handoff (home main PC).** Tips **`main`** / **`test`** @ **`ae7616d0`**. Pull on the main machine, paste **Copy into chat** above, continue from **On deck #1 (self-hosted runner)**.
+**Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory** ... this file + backlog are the bridge. Same git repo; both push **`test`**; **`git pull`** at session start.
 
-### Latest commits (`main` / `test` @ **`ae7616d0`**)
+### Latest tips
 
-| Commit | What |
+| Branch | Tip | Note |
+| --- | --- | --- |
+| **`test`** | **`b363e60b`+** | Includes WKWebView stack lock docs |
+| **`main`** | **`ae7616d0`** | Prod Vercel; Buffalo Diamond still disabled |
+
+### Decisions locked (do not reopen without Ryan)
+
+| Topic | Decision |
 | --- | --- |
-| **`ae7616d0`** | Disable Buffalo Diamond calc (hub + guides) until meter resets verified |
-| **`7ec1bfe1`** | Prior prod tip: Diamond reset floors + Extreme $7 + Scott soccer labels (code) |
-| Earlier Aug 19 | Scott Sharpe soccer shortDisplayName fix; Diamond/Extreme reset calibration |
+| **iOS shell** | **Raw `WKWebView`** ... **not** Capacitor / Cordova / React Native |
+| **Architecture** | Thin shell loads **live site** (`lvslotpro.com` test / `edgetilt.com` prod). **Do not** bake `dist/` into the IPA |
+| **Why raw** | UX-first: CallKit / APNs / audio ownership stays direct. Capacitor only speeds commodity plugins for *us*, not member UX |
+| **Android** | Stay **PWA**. Optional **TWA** later for Play badge only. **No** fat Kotlin shell this sprint. TWA is **not** $0 Google on digital goods (Play policy applies); pure Chrome/PWA web checkout stays $0 |
+| **Parallel work** | Mac = native shell; Windows = web + catalog runner. Shared seam = JS↔native bridge contract ... agree method names before freestyling both sides |
 
-### Shipped / ops this arc (need home follow-up)
+### v1 vs v1.1 (iOS)
 
-| Area | Detail |
+**v1 (ship … ~4–5 focused weeks):**
+- WKWebView → live site (test + prod URL configs)
+- Native UA (`EdgeiOS/…`); SW skip/bust on boot
+- Unmuted Lounge autoplay WebView policy
+- APNs end-to-end + notification deep links
+- Hide Stripe-in-WebView; **Safari link-out** for subscribe (StoreKit IAP can wait)
+- Foreground-solid call **audio session** (LiveKit UI stays web; **CallKit → v1.1**)
+
+**v1.1:** CallKit / background ring, optional StoreKit IAP (+ upcharge), optional Android TWA.
+
+Canonical detail: **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)**.
+
+---
+
+## Mac machine ... first-run checklist (for Mac Theo)
+
+Ryan is rusty on Mac. Be patient; use **Terminal** (Spotlight → Terminal) or Cursor’s integrated terminal.
+
+### A. Clone / open repo
+
+```bash
+git clone https://github.com/xytgeist/edgetilt-app.git
+cd edgetilt-app
+git checkout test
+git pull
+```
+
+Open that folder in **Cursor**. Confirm tip ≥ **`b363e60b`**.
+
+### B. Toolchain
+
+1. **Node 22** (match Windows / CI). Then `npm ci` if doing web work on Mac.
+2. **Xcode** from Mac App Store (large download). Open once; accept license.
+3. If prompted: `xcode-select --install` (Command Line Tools ... compilers/git bits, not the Terminal app).
+4. Apple Developer account ready when signing / TestFlight starts (not blocking empty Simulator shell).
+
+### C. First implementation goal (when Ryan says go)
+
+Scaffold **raw WKWebView** iOS app (repo home TBD: prefer **`ios/`** monorepo folder unless Ryan wants a sibling repo):
+
+1. Xcode project: single WKWebView controller loads configurable base URL.
+2. Build configs / scheme flags: **test** → `https://lvslotpro.com`, **prod** → `https://edgetilt.com`.
+3. Custom native UA string (detectable by web later).
+4. Run on **Simulator**; then a physical iPhone when provisioning allows.
+5. Commit + push **`test`**. Do **not** push **`main`** unless Ryan asks.
+
+**Do not:** Capacitor, bundle Vite `dist/`, start Android TWA, invent a second product codebase.
+
+### D. Week-shaped plan (reminder)
+
+| Week | Focus |
 | --- | --- |
-| **Buffalo Diamond** | Temporarily disabled via **`TEMPORARILY_DISABLED_CALCULATOR_KEYS`** (`buffalo-diamond` covers Diamond + Extreme). Re-enable by removing that key when resets are squared away. On **prod + test** @ **`ae7616d0`**. |
-| **Poker catalog (prod)** | GHA cron failed **2/2** on MTTDB: shell HTML without embedded lobby JSON (CF bot score on Actions IPs). Manual local **`npm run poker:catalog:sync:production`** (2026-08-19 evening): **2273** upserted (MTTDB live **535** / online **582**, ClubWPT **70**). Catalog healthy again until next cron. |
-| **Diagnosis** | Wrong **where** the job runs (`ubuntu-latest`), not a broken parser. Same script from residential egress works. |
+| 1 | Shell + rails (URL, UA, splash/icon stubs, TestFlight-ready project) |
+| 2 | Bridges scaffold + unmuted autoplay + web UA detection stubs |
+| 3 | APNs end-to-end |
+| 4 | Call audio session (foreground) + harden |
+| 5 | Freeze + App Review notes / submit |
 
-### On deck #1 ... Poker catalog self-hosted runner (DO THIS AT HOME)
+Bridge coordination with Windows Theo: when adding `window.EdgeNative.*`, land matching web stubs / backends in the same arc (or stub first on one side).
 
-**Decision (Ryan + Theo 2026-08-19):** Stop relying on GitHub-hosted runners for MTTDB scrape. Schedule stays in GitHub; **job must execute on residential egress**.
+---
 
-**Recommended:** self-hosted Actions runner on the **main home PC** (always-on / usually-on preferred).
+## Windows home PC ... still on deck (parallel)
 
-#### Ryan steps on the main PC
+### Poker catalog self-hosted runner
 
-1. Pull repo (`test` or `main` @ **`ae7616d0`+**). Confirm **Node 22** installed.
-2. GitHub → this repo → **Settings → Actions → Runners → New self-hosted runner** → **Windows**.
-3. Download/configure in a durable folder (e.g. `C:\actionsgetilt-actions-runner`). Complete the token configure step GitHub shows.
-4. Install as a **Windows service** so it survives reboot; leave service running.
-5. Confirm runner shows **Idle** (green) in GitHub Settings → Runners.
+**Why:** GHA `ubuntu-latest` blocked by Cloudflare on MTTDB; residential egress works. Manual refill 2026-08-19 restored prod catalog.
 
-#### Theo / repo steps (after runner is Idle)
+1. Register **Windows** self-hosted Actions runner (service) on this PC.
+2. Patch **`.github/workflows/poker-catalog-sync-production.yml`**: `runs-on: [self-hosted, Windows, X64]`.
+3. Push **`test`**, Ryan promotes workflow to **`main`**, smoke **Run workflow**.
 
-1. Patch **`.github/workflows/poker-catalog-sync-production.yml`**: change `runs-on: ubuntu-latest` → `runs-on: [self-hosted, Windows, X64]` (match labels on the registered runner).
-2. Commit + push **`test`**, then Ryan asks for **`main`** promote so the workflow file is live on the default branch Actions uses.
-3. Smoke: **Actions → Poker catalog sync (production) → Run workflow**. Expect MTTDB online/live ≫ 0 (like the manual 582/535), not the shell-HTML failure.
-4. Cron (`0 6 */3 * *` UTC) keeps firing from GitHub’s scheduler; execution is on the home PC. PC must be **on + online + runner service up** at cron time (or job waits/misses).
+### Also parked
 
-**Secrets:** keep using repo secrets `SUPABASE_URL_PRODUCTION` + `SUPABASE_SERVICE_ROLE_KEY_PRODUCTION` (no need to put prod keys in Task Scheduler).
+- Buffalo Diamond still grayed out (`TEMPORARILY_DISABLED_CALCULATOR_KEYS`) until meter resets verified
+- Scott Sharpe soccer fix on **`main`** code; confirm prod Edge `lounge-odds-ingest` + `lounge-odds-poll` redeployed if not done
+- Twilio From number for guest SMS on prod
+- Thread compose iOS keyboard overlap; feed +EV badge; Reuters wire
 
-**Fallback if runner is a pain:** Windows Task Scheduler every ~3 days → `git pull` + `npm ci` + `npm run poker:catalog:sync:production` with local **`.env.supabase.production`**. Worse for secrets/ops visibility; fine as interim.
+### Infra notes
 
-**Do not:** mark sync green on regional JSON alone; re-run the same job on `ubuntu-latest` and expect CF to relent; put prod service-role in chat.
+- **Prod = prod** for guides ingest / Edge / SQL ... Ryan’s explicit ask only
+- Prefer **`scripts/.tmp-*`** scratch; never commit secrets / `.env*`
 
-### Key files (grep anchors)
+### AP guides
 
-| Topic | Files |
-| --- | --- |
-| Catalog sync workflow | **`.github/workflows/poker-catalog-sync-production.yml`** |
-| MTTDB scrape | **`scripts/lib/mttdbCatalogFetch.mjs`**, **`scripts/sync-poker-tournament-catalog.mjs`** |
-| Buffalo Diamond disable | **`src/features/calculators/calculatorAccess.js`** (`TEMPORARILY_DISABLED_CALCULATOR_KEYS`) |
-| Edge Monitor heartbeat | **`docs/edge-monitor-roadmap.md`** (poker catalog stale >4 days) |
-
-### Also parked (still true)
-
-- Buffalo Diamond / Extreme meter reset tables still incomplete (calc grayed out on purpose)
-- Scott Sharpe soccer fix is on **`main`** code; **prod Edge** `lounge-odds-ingest` + `lounge-odds-poll` may still need redeploy if not done after **`7ec1bfe1`**
-- Twilio **From number** for guest SMS on prod
-- Poker Stable smoke checklist / older backlog items
-- Thread compose iOS keyboard overlap; feed +EV badge; Reuters wire license
-
-### Infra notes (still true)
-
-- **Prod = prod** for guides ingest / Edge / SQL ... need Ryan's explicit ask
-- MTTDB is behind Cloudflare; GHA datacenter egress will keep failing until runner/proxy change
-- Prefer **`scripts/.tmp-*`** for scratch; do not commit **`scripts/tmp-debug-egress.mjs`**
-
-### AP guides (ongoing workflow)
-
-**Source of truth:** Supabase **`guides.content_markdown`** + R2 heroes. **Editor:** **`/slot-guide-form`** on **`edgetilt.com`**.
-
-**Prod = prod for agents:** Never ingest/batch-run to **`jtjgtucumuoswnbauxry`** unless Ryan names the slug/batch.
+**Source of truth:** Supabase **`guides.content_markdown`** + R2. Editor: **`/slot-guide-form`** on **`edgetilt.com`**. Never prod-ingest unless Ryan names slug/batch.
 
 ---
 
@@ -150,6 +189,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 | Task | Model |
 | --- | --- |
 | Bot portal UI, Lounge CSS, small Edge Function tweak | Grok / Composer |
+| iOS WKWebView / Swift bridges / APNs | Grok / Composer; **Opus** if CallKit / signing cursed |
 | Poker Stable settle / RLS / commit sync | Grok first; **Opus** if RPC/RLS cursed |
 | Scott odds / live poll / cron / SQL chain | Grok first; **Opus** if cron/RLS/Edge auth is cursed |
 | Freemium / RLS / entitlements design | **Opus** or Sonnet |

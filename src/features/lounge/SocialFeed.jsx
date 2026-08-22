@@ -339,6 +339,7 @@ import {
   LOUNGE_PROFILE_POST_INITIAL_LIMIT,
   LOUNGE_PROFILE_POST_PAGE_SIZE,
   mergeLoungeProfilePosts,
+  removeLoungeProfilePostFromPosts,
 } from './loungeProfileScreenLoad.js'
 import ProfileAvatarCropModal from './ProfileAvatarCropModal'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
@@ -3939,9 +3940,32 @@ export default function SocialFeed({
       if (!key) return
       clearLoungePendingPostProgress(key)
       setCommunityPosts((prev) => prev.filter((p) => p.id !== key && p._pendingPublishKey !== key))
+      // Profile timelines are separate from the home feed list.
+      setProfileModalPosts((prev) =>
+        prev.filter((p) => p.id !== key && p._pendingPublishKey !== key),
+      )
+      setProfileOverlayStack((prev) =>
+        prev.map((layer) => ({
+          ...layer,
+          posts: (layer.posts || []).filter((p) => p.id !== key && p._pendingPublishKey !== key),
+        })),
+      )
     },
     [setCommunityPosts],
   )
+
+  /** Profile timelines are separate from `loadCommunityFeed` ... drop deleted ids locally. */
+  const removeLoungePostFromProfileTimelines = useCallback((postId) => {
+    const id = String(postId || '').trim()
+    if (!id) return
+    setProfileModalPosts((prev) => removeLoungeProfilePostFromPosts(prev, id))
+    setProfileOverlayStack((prev) =>
+      prev.map((layer) => ({
+        ...layer,
+        posts: removeLoungeProfilePostFromPosts(layer.posts, id),
+      })),
+    )
+  }, [])
 
   const prependAuthorPendingVideoPost = useCallback(
     (snapshot, pendingKey) => {
@@ -9466,6 +9490,7 @@ export default function SocialFeed({
         }
         return
       }
+      removeLoungePostFromProfileTimelines(postId)
       closeLoungePostDetail()
       await loadCommunityFeed({ silent: true })
     } finally {
@@ -9478,6 +9503,7 @@ export default function SocialFeed({
     discardOptimisticVideoFeedPost,
     loadCommunityFeed,
     loungePostDetail,
+    removeLoungePostFromProfileTimelines,
     showGlobalConfirm,
     supabaseClient,
   ])
@@ -9516,13 +9542,23 @@ export default function SocialFeed({
         }
         return
       }
+      removeLoungePostFromProfileTimelines(postId)
       closeLoungePostDetail()
       await loadCommunityFeed({ silent: true })
     } finally {
       loungePostDeleteInflightRef.current = false
       setLoungeDetailDeleteBusy(false)
     }
-  }, [closeLoungePostDetail, composerUserId, loadCommunityFeed, loungePostDetail, loungeViewerIsStaff, showGlobalConfirm, supabaseClient])
+  }, [
+    closeLoungePostDetail,
+    composerUserId,
+    loadCommunityFeed,
+    loungePostDetail,
+    loungeViewerIsStaff,
+    removeLoungePostFromProfileTimelines,
+    showGlobalConfirm,
+    supabaseClient,
+  ])
 
   const deleteLoungePostFromFeed = useCallback(
     async (post) => {
@@ -9561,6 +9597,7 @@ export default function SocialFeed({
           }
           return
         }
+        removeLoungePostFromProfileTimelines(post.id)
         if (loungePostDetail?.id === post.id) closeLoungePostDetail()
         await loadCommunityFeed({ silent: true })
       } finally {
@@ -9574,6 +9611,7 @@ export default function SocialFeed({
       discardOptimisticVideoFeedPost,
       loadCommunityFeed,
       loungePostDetail,
+      removeLoungePostFromProfileTimelines,
       showGlobalConfirm,
       supabaseClient,
     ],
@@ -9616,6 +9654,7 @@ export default function SocialFeed({
           }
           return
         }
+        removeLoungePostFromProfileTimelines(post.id)
         if (loungePostDetail?.id === post.id) closeLoungePostDetail()
         await loadCommunityFeed({ silent: true })
       } finally {
@@ -9630,6 +9669,7 @@ export default function SocialFeed({
       loadCommunityFeed,
       loungePostDetail,
       loungeViewerIsStaff,
+      removeLoungePostFromProfileTimelines,
       showGlobalConfirm,
       supabaseClient,
     ]

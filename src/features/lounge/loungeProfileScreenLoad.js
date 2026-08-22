@@ -56,6 +56,13 @@ export function applyLoungeProfilePinToPosts(posts, postId, profilePinnedAt) {
   return sortLoungeProfilePosts(next)
 }
 
+/** Drop a post from a profile timeline list (delete / discard). */
+export function removeLoungeProfilePostFromPosts(posts, postId) {
+  const id = String(postId || '').trim()
+  if (!id) return Array.isArray(posts) ? posts : []
+  return (Array.isArray(posts) ? posts : []).filter((p) => String(p?.id || '') !== id)
+}
+
 function profilePostsQuery(supabaseClient, userId, select = PROFILE_POST_SELECT) {
   let q = supabaseClient
     .from('community_feed_posts')

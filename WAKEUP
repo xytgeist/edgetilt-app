@@ -119,10 +119,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 **Fixed (2026-08-23 Windows):** Lounge **Search → profile → Message** left search on top of Chat. Cleared `profileReturnDockPanelRef` + dock before close in `openChatWithUserFromProfile`; `finalizeProfileModalClose` only restores dock when `isActivePage`. Smoke: Search → profile → Message → Chat clean; Search → profile → back still returns to search.
 
 **Also (gap checklist):**
-1. `src/utils/edgeNative.js` (`isEdgeiOSShell`, `edgeNativeInvoke`)
+1. ~~`src/utils/edgeNative.js`~~ **done**
 2. Stripe / fan / affiliate Connect → `openInSafari` (never in-WebView Checkout)
-3. Skip `push-sw` register + hide A2HS / **How to Install** title-bar chip on EdgeiOS (`shouldShowPwaInstallBanner`)
-4. Lounge cold-boot / resume **Lottie**: treat shell as installed + fix DotLottie in WKWebView (Ryan: does not play in native app)
+3. Skip `push-sw` register + ~~hide A2HS / **How to Install** title-bar chip~~ **done**
+4. ~~Lounge cold-boot / resume **Lottie**~~ **done** (eligible + direct-canvas in shell) … device smoke
 5. Lounge unmuted autoplay when shell detected
 See backlog **Native gap checklist**.
 

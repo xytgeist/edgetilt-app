@@ -3,6 +3,7 @@ import { DotLottie } from '@lottiefiles/dotlottie-web'
 import wasmUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url'
 import edgeSplashDark from '../assets/lottie/edge-splash-v2.json'
 import edgeSplashLight from '../assets/lottie/edge-splash-v2-light.json'
+import { isEdgeiOSShell } from '../utils/edgeNative.js'
 
 DotLottie.setWasmUrl(wasmUrl)
 
@@ -106,10 +107,12 @@ function measureSplashCanvas(canvas) {
  *   1. overlay div    - bg-black, opacity driven by direct DOM ref (not React state).
  *                       Shows through the transparent D-hole pixels in the canvas.
  *                       Fades 1→0 during frames 157–190 to reveal the feed behind.
- *   2. canvas         - DotLottie renders here via OffscreenCanvas so the WASM path
- *                       calls set_background(0,0,0,0) → true transparent D-hole pixels.
- *                       Canvas size is measured after visualViewport height stabilizes
- *                       (iOS URL bar / dvh) so the bitmap is not vertically stretched.
+ *   2. canvas         - DotLottie renders here. Prefer OffscreenCanvas blit on Safari/PWA
+ *                       so WASM set_background(0,0,0,0) yields a transparent D-hole.
+ *                       EdgeiOS WKWebView uses the visible canvas directly (Offscreen path
+ *                       was a no-play / stall risk). Canvas size is measured after
+ *                       visualViewport height stabilizes (iOS URL bar / dvh) so the bitmap
+ *                       is not vertically stretched.
  *   3. preFrameCover  - always bg-black. Hides the blank canvas while WASM boots.
  *                       Removed after 3 drawn frames + rAF so the GPU has composited
  *                       canvas content before the cover lifts (avoids pre-play flash).
@@ -160,14 +163,29 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
         return
       }
 
-      // OffscreenCanvas forces the dotlottie-web WASM rendering path which calls
-      // set_background(0,0,0,0) → genuinely transparent clear color → D-hole pixels
-      // in the visible canvas are transparent, letting the overlay show through.
-      const offscreen = new OffscreenCanvas(canvas.width, canvas.height)
-      const ctx = canvas.getContext('2d')
+      // OffscreenCanvas + blit: transparent D-hole on Safari/PWA (WASM set_background).
+      // EdgeiOS WKWebView: render on the visible canvas (Offscreen path stalled / no-play).
+      const preferDirectCanvas = isEdgeiOSShell() || typeof OffscreenCanvas !== 'function'
+      let offscreen = null
+      let blitFromOffscreen = false
+      let renderTarget = canvas
+
+      if (!preferDirectCanvas) {
+        try {
+          offscreen = new OffscreenCanvas(canvas.width, canvas.height)
+          renderTarget = offscreen
+          blitFromOffscreen = true
+        } catch {
+          offscreen = null
+          blitFromOffscreen = false
+          renderTarget = canvas
+        }
+      }
+
+      const ctx = blitFromOffscreen ? canvas.getContext('2d') : null
 
       player = new DotLottie({
-        canvas: offscreen,
+        canvas: renderTarget,
         data: isDarkEffect ? EDGE_SPLASH_DATA_DARK : EDGE_SPLASH_DATA_LIGHT,
         autoplay: true,
         loop: false,
@@ -192,8 +210,10 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
           onStartRef.current?.()
         }
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(offscreen, 0, 0)
+        if (blitFromOffscreen && ctx && offscreen) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(offscreen, 0, 0)
+        }
 
         drawnFrameCount += 1
         if (preFrameCoverRef.current && drawnFrameCount >= PRE_FRAME_COVER_MIN_DRAWN_FRAMES) {
@@ -264,7 +284,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
         aria-hidden
       />
 
-      {/* 2. Canvas - Lottie renders here via OffscreenCanvas.
+      {/* 2. Canvas - Lottie (Offscreen blit on PWA; direct canvas on EdgeiOS).
                Shifted up slightly to visually center under the status bar (light + dark). */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ top: `${CANVAS_OFFSET_Y}px` }} aria-hidden />
 

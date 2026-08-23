@@ -22,7 +22,7 @@
 | --- | --- |
 | **UA substring** | **`EdgeiOS/0.1.0`** (token format `EdgeiOS/<semver>`; bump with `AppConfig.shellVersion` in `ios/`) |
 | **Global** | `window.EdgeNative` injected at document start |
-| **Helper (planned)** | `src/utils/edgeNative.js` (or similar) … `isEdgeiOSShell()`, `edgeNativeInvoke(method, payload)` |
+| **Helper** | **`src/utils/edgeNative.js`** … `isEdgeiOSShell()`, `readEdgeiOSShellVersion()`, `edgeNativeInvoke(method, payload)` |
 
 **Do not** treat generic iOS Safari / PWA as the store shell. Positive checks only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
 

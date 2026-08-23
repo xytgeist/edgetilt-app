@@ -2,6 +2,7 @@ import {
   OFFERS_IOS_PWA_ENABLE_PENDING_KEY_PREFIX,
   OFFERS_IOS_PWA_NOTIF_PROMPT_KEY_PREFIX,
 } from '../features/offers/offerStorageKeys'
+import { isEdgeiOSShell } from './edgeNative.js'
 
 export function isIosDevice() {
   if (typeof window === 'undefined') return false
@@ -199,7 +200,8 @@ export function pwaInstallBannerSteps(isSafariBrowserFlag = isSafariBrowser()) {
   return desktopPwaInstallBannerSteps()
 }
 
-/** Show install chip whenever the app is open in a browser tab, not the installed PWA. */
+/** Show install chip in browser tabs only ... never in installed PWA or EdgeiOS shell. */
 export function shouldShowPwaInstallBanner() {
+  if (isEdgeiOSShell()) return false
   return !isStandalonePwa()
 }

@@ -1,4 +1,5 @@
 import { readLoungeComposerDraft } from '../features/lounge/loungeStorage.js'
+import { isEdgeiOSShell } from './edgeNative.js'
 import { isStandalonePwa } from './pwaNotificationPrompt.js'
 
 /** Splash already shown for this tab boot cycle (cleared after long background). */
@@ -8,7 +9,7 @@ export const LOUNGE_COLD_BOOT_BG_AT_KEY = 'loungeColdBootBgAt:v1'
 
 export const LOUNGE_COLD_BOOT_RESUME_AFTER_MS = 60 * 60 * 1000
 
-/** Dispatched when a long-background resume splash starts (PWA Home). Listeners refresh feed under the Lottie. */
+/** Dispatched when a long-background resume splash starts (PWA Home / EdgeiOS shell). Listeners refresh feed under the Lottie. */
 export const LOUNGE_COLD_BOOT_RESUME_EVENT = 'lounge:cold-boot-resume'
 
 /** Member + anonymous: min covers draw phase; dismiss when Lottie completes (fly-through is the transition). */
@@ -18,6 +19,11 @@ export const LOUNGE_COLD_BOOT_MEMBER_MAX_MS = 7000
 /** Anonymous uses the same play-gated max as members (full splash). Min kept lower for legacy callers. */
 export const LOUNGE_COLD_BOOT_ANON_MIN_MS = 380
 export const LOUNGE_COLD_BOOT_ANON_MAX_MS = LOUNGE_COLD_BOOT_MEMBER_MAX_MS
+
+/** Home Screen PWA or EdgeiOS WKWebView shell ... not a plain browser tab. */
+function isLoungeColdBootInstalledSurface() {
+  return isStandalonePwa() || isEdgeiOSShell()
+}
 
 /** @returns {boolean} */
 export function readLoungeComposerDraftPendingWork() {
@@ -112,7 +118,7 @@ export function dispatchLoungeColdBootResumeRefresh() {
  */
 export function shouldShowLoungeColdBootSplash({ tab, pendingWork = false }) {
   if (typeof window === 'undefined') return false
-  if (!isStandalonePwa()) return false
+  if (!isLoungeColdBootInstalledSurface()) return false
   if (tab !== 'home') return false
   if (!isLoungeColdBootHomeIntent()) return false
   if (pendingWork || readLoungeComposerDraftPendingWork()) return false
@@ -126,7 +132,7 @@ export function shouldShowLoungeColdBootSplash({ tab, pendingWork = false }) {
  */
 export function shouldShowLoungeColdBootResumeSplash({ tab, pendingWork = false }) {
   if (typeof window === 'undefined') return false
-  if (!isStandalonePwa()) return false
+  if (!isLoungeColdBootInstalledSurface()) return false
   if (tab !== 'home') return false
   if (!isLoungeColdBootHomeIntent()) return false
   if (pendingWork || readLoungeComposerDraftPendingWork()) return false

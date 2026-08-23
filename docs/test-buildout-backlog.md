@@ -84,7 +84,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **SW bust on boot + bridge (2026-08-23):** clear service worker registrations / caches before first load; `EdgeNative.bustServiceWorker` implemented. Camera / mic / photo / location usage strings + WK media-capture grant.
 - [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land. (`getInfo` + `openInSafari` + `bustServiceWorker` native; push + audio session still stub.)
 - [ ] **Bridges v1 remaining:** push (APNs `requestPushPermission` / `getPushToken`), call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), unmuted media autoplay **web unlock** under shell.
-- [ ] **Native UA web gates (Windows):** hide in-WebView Stripe / subscribe CTAs → `openInSafari`; skip `push-sw` register; hide A2HS / install-for-push chrome. (UA token **`EdgeiOS/0.1.0`** shipping in shell; **`src/utils/edgeNative.js` still TODO.**)
+- [ ] **Native UA web gates (Windows):** hide in-WebView Stripe / subscribe CTAs → `openInSafari`; skip `push-sw` register; ~~hide A2HS / install-for-push chrome~~ (How to Install chip done). UA token **`EdgeiOS/0.1.0`**; **`src/utils/edgeNative.js`** landed.
 - [ ] **Billing v1 (US):** Safari link-out required; StoreKit IAP optional in v1 / preferred in v1.1. Counsel + App Review notes before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
 
@@ -93,11 +93,11 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows** = `src/**` / `public/**`. Contract: **`docs/ios-native-bridge.md`**.
 
 **P0 Windows**
-- [ ] `src/utils/edgeNative.js` … `isEdgeiOSShell()`, `edgeNativeInvoke` (positive UA / `window.EdgeNative` only)
+- [x] `src/utils/edgeNative.js` … `isEdgeiOSShell()`, `edgeNativeInvoke` (positive UA / `window.EdgeNative` only)
 - [ ] Stripe / fan / affiliate Connect: never `location.assign` checkout in shell → `openInSafari`
 - [ ] Skip `push-sw.js` registration when EdgeiOS; hide A2HS / Offers “install for push” UX
-- [ ] **How to Install title-bar chip:** `shouldShowPwaInstallBanner()` is `!isStandalonePwa()` today (`PwaInstallBanner.jsx` / `pwaNotificationPrompt.js`) … shell is not “standalone PWA,” so the pill wrongly shows. Return false when `isEdgeiOSShell()`.
-- [ ] **Lounge cold-boot / resume Lottie:** `shouldShowLoungeColdBootSplash` / resume require `isStandalonePwa()` (`loungeColdBootSplash.js`); DotLottie WASM + OffscreenCanvas in `LoungeAppSplash.jsx`. Shell should treat EdgeiOS as installed (eligible) **and** verify WASM/OffscreenCanvas plays in WKWebView (Ryan: Lottie does not play in the native app, 2026-08-23).
+- [x] **How to Install title-bar chip:** `shouldShowPwaInstallBanner()` returns false when `isEdgeiOSShell()` (`PwaInstallBanner.jsx` / `pwaNotificationPrompt.js`)
+- [x] **Lounge cold-boot / resume Lottie:** EdgeiOS treated as installed surface (`loungeColdBootSplash.js`); DotLottie uses **direct canvas** in shell (OffscreenCanvas blit kept for Safari/PWA). Smoke on device after `test` deploy.
 - [ ] Lounge unmuted autoplay when `isEdgeiOSShell()` (do not leave Apple-WebKit mute path on)
 - [ ] Centralize external opens (`_blank`, OAuth returns) for WKWebView
 
@@ -1051,6 +1051,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-23: **EdgeiOS How to Install + Lottie (Windows):** Landed **`src/utils/edgeNative.js`**. `shouldShowPwaInstallBanner` hides title-bar install chip in shell. Cold-boot/resume splash treats EdgeiOS as installed; `LoungeAppSplash` uses direct canvas in shell (Offscreen blit stays for PWA). Device smoke after `test` deploy.
 - 2026-08-23: **Lounge Search → profile → Message covers Chat (fixed):** Profile-from-search restored `returnDockPanel=search` after leave-home cleared the dock; search portaled over keep-alive Chat. Fix @ **`425d54fd`**: clear return path + dock in `openChatWithUserFromProfile`; `finalizeProfileModalClose` restores dock only when `isActivePage`. Smoke: Message → Chat clean; profile back from search still returns to search.
 - 2026-08-23: **iOS shell safe-area fix (post-detail back):** Removed WebView `.ignoresSafeArea()` so content lays out below notch/home indicator. WKWebView + `env(safe-area-inset-top)`≈0 was burying Lounge post-detail ← under status chrome. **Also logged:** device hard power-off while leaving post detail ... re-test after rebuild; if repro, Jetsam/Console. No `src/**`.
 - 2026-08-23: **Native gap checklist +shell UX:** (1) **How to Install** title-bar chip must not show in EdgeiOS shell (`shouldShowPwaInstallBanner` / `PwaInstallBanner.jsx`). (2) Lounge cold-boot **Lottie** does not play in native app … eligibility today requires `isStandalonePwa()` (`loungeColdBootSplash.js`) + DotLottie WASM/`LoungeAppSplash.jsx` needs WKWebView verify. Both = **Windows P0**. No code this line.

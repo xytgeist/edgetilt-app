@@ -80,6 +80,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 ### iOS shell
 
 - [x] **Thin raw `WKWebView`** (no Capacitor) loads prod/test origin (configurable). No bundled `dist/`. Repo **`ios/`** (2026-08-20). Schemes **EdgeTilt Test** / **EdgeTilt Prod**.
+- [x] **Mac device Run smoke (2026-08-23):** M4 Max + **Xcode 27 beta**; iPhone Air **iOS 27** Developer Mode; Personal Team install; Trust developer; Edge Test scheme loads **`lvslotpro.com`** in-app. (App Store Xcode 26 alone cannot DDI/debug iOS 27.)
 - [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land. (`getInfo` + `openInSafari` native; rest stub.)
 - [ ] **Bridges v1:** push (APNs), call audio session (foreground-solid; CallKit → v1.1), unmuted media autoplay policy, camera/mic entitlements, open-in-Safari.
 - [ ] **Native UA:** hide in-WebView Stripe / subscribe CTAs; SW skip or cache-bust on boot. (UA token **`EdgeiOS/0.1.0`** shipping in shell; web gating still TODO.)
@@ -1014,6 +1015,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-23: **iOS shell device Run green (Mac):** Apple Silicon M4 Max + **Xcode 27 beta 5**; iPhone Air iOS 27 beta … Developer Mode, Personal Team (`DEVELOPMENT_TEAM` in `ios/project.yml`), Trust developer profile. **EdgeTilt Test** installs and loads **`lvslotpro.com`**. Simulator already green on Xcode 26. Next: Web Inspector UA/`EdgeNative` smoke; week-2 autoplay + SW bust + Windows Stripe-hide. See **`WAKEUP`** Mac session **2026-08-23**.
 - 2026-08-23: **Prod promote @ `c262fbdd`:** `test` → **`main`** (Vercel). Frontend: profile timeline removes deleted Lounge posts. Also ships iOS `ios/` WKWebView scaffold + dual-machine docs in repo (no App Store binary; no SQL / Edge). Smoke on edgetilt.com: profile → delete own post → card disappears with spinner.
 - 2026-08-22: **Profile delete UI stale:** Deleting a Lounge post from the profile screen removed the DB row + refreshed home feed, but **`profileModalPosts` / overlay stack** were not filtered … spinner cleared and the card stayed. Fix @ **`4556dd84`**: `removeLoungePostFromProfileTimelines` + **`removeLoungeProfilePostFromPosts`**; optimistic discard also clears profile lists.
 - 2026-08-22: **WAKEUP Apple Silicon Mac handoff:** Ryan moving iOS shell off 2019 Intel MBP (no Tahoe; cannot device-debug iPhone Air iOS 27). Continuity tip **`a2b6cc0a`**: scaffold + EdgeIconBlack App Icon. Next = clone `test` on new Mac, Xcode, Simulator then physical device. See **`WAKEUP`** Pick up here **2026-08-22**.

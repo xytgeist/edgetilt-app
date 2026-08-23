@@ -14,19 +14,22 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 
 ## Open / build
 
+**Xcode:** App Store **Xcode 26** is enough for Simulator. **Physical device on iOS 27** needs **Xcode 27 beta** (`Xcode-beta.app`). Open the beta for device Run.
+
 ```bash
 cd ios
 xcodegen generate   # regenerates EdgeTilt.xcodeproj from project.yml
-open EdgeTilt.xcodeproj
+open -a Xcode-beta EdgeTilt.xcodeproj   # or Xcode.app for Simulator-only
 ```
 
 Or from repo root after generate:
 
 ```bash
+export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer   # device / iOS 27
 xcodebuild -project ios/EdgeTilt.xcodeproj -scheme "EdgeTilt Test" -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
-Pick **EdgeTilt Test** in Xcode and Run (▶) on a Simulator.
+Pick **EdgeTilt Test** in Xcode and Run (▶) on a Simulator or a paired iPhone (Developer Mode on; Trust developer under **Settings → General → VPN & Device Management**).
 
 ## Dual-machine
 

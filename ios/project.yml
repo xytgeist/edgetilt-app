@@ -22,6 +22,8 @@ settings:
     INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     CODE_SIGN_STYLE: Automatic
+    # Personal Team (Ryan) for device Run; swap to org Team ID at App Store enroll.
+    DEVELOPMENT_TEAM: 8932AKQW4W
     ENABLE_PREVIEWS: NO
 
 configs:

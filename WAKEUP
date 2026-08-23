@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` tip **`a2b6cc0a`+** (2026-08-22). `main` @ **`ae7616d0`** (docs + `ios/` behind until next promote). Always `git pull` before work ... dual-machine.
+**Branch:** `test` tip **device-Run green** (2026-08-23). `main` @ **`c262fbdd`**. Always `git pull` before work ... dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -79,8 +79,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`399076a5`** | WAKEUP Apple Silicon handoff; code tip ≥ **`a2b6cc0a`** (`ios/` + icon) |
-| **`main`** | **`ae7616d0`** | Prod Vercel; Buffalo Diamond still disabled |
+| **`test`** | **`b55ff3b6`+** | Mac device Run green (iPhone Air); tip moves with this handoff commit |
+| **`main`** | **`c262fbdd`** | Prod Vercel (profile delete + `ios/` scaffold in tree; no store binary) |
 
 ### Decisions locked (do not reopen without Ryan)
 
@@ -94,23 +94,21 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 | **Repo home** | **`ios/`** monorepo (scaffolded 2026-08-20) |
 | **UA token** | **`EdgeiOS/0.1.0`** (`AppConfig.shellVersion`) |
 
-### Mac session note (2026-08-22 ... Apple Silicon Mac handoff)
+### Mac session note (2026-08-23 ... Apple Silicon device Run green)
 
-**Hardware:** Ryan is moving iOS shell work to a **new Apple Silicon Mac** (M4 Max 14" Pro path). The old **2019 15" Intel MacBook Pro** (`MacBookPro15,1`) **cannot** install macOS Tahoe and **cannot** pair Ryan’s **iPhone Air (iOS 27)** for device Run (Xcode 26.3 / Sequoia ceiling; `connected (no DDI)`). Simulator still worked on Intel; **physical device needs the new Mac**.
+**Hardware:** M4 Max 14" MacBook Pro. iPhone Air on **iOS 27.0 beta**.
 
-**Done (on `test` @ `a2b6cc0a`):**
-- `ios/` raw WKWebView app (XcodeGen `project.yml` → `EdgeTilt.xcodeproj`)
-- Schemes **EdgeTilt Test** → `lvslotpro.com`, **EdgeTilt Prod** → `edgetilt.com`
-- UA **`EdgeiOS/0.1.0`**; bridge **`getInfo`** + **`openInSafari`** (others stub-reject)
-- App Icon from live web pack **`public/EdgeIconBlack/`** (1024, no alpha)
-- Simulator **BUILD SUCCEEDED** on Intel Mac (iPhone 17)
+**Toolchain:** App Store **Xcode 26.6** is fine for Simulator (iOS 26). **Physical iOS 27** needs **Xcode 27 beta** (`/Applications/Xcode-beta.app`, currently beta 5 `27A5237l`). Prefer `xcode-select` / open **Xcode-beta** for device work.
 
-**Next (new Mac Theo):**
-1. Clone / `git checkout test` / `git pull` (tip ≥ **`a2b6cc0a`**)
-2. Install **Xcode** (App Store) + open **`ios/EdgeTilt.xcodeproj`**
-3. Scheme **EdgeTilt Test** → Run on **Simulator**, then **physical iPhone** (USB once for wireless; Developer Mode; signing Team)
-4. Smoke: Edge loads in-app; Safari console / native path shows `EdgeiOS/` + `window.EdgeNative`
-5. Week 2 lane: autoplay harden + coordinate Windows UA / Stripe-hide stubs via bridge doc
+**Done (2026-08-23):**
+- Simulator **EdgeTilt Test** BUILD SUCCEEDED + launched (iPhone 17)
+- Physical **iPhone Air**: Developer Mode on; Personal Team signing; Trust developer profile; **Edge loads `lvslotpro.com` in-app**
+- `DEVELOPMENT_TEAM` pinned in `ios/project.yml` + `project.pbxproj` (Personal Team; swap at org enroll)
+
+**Next (Mac Theo):**
+1. Smoke: UA shows `EdgeiOS/`; `window.EdgeNative.getInfo` works (Safari Web Inspector → device)
+2. Week 2 lane: unmuted autoplay WKWebView policy; SW bust on boot; coordinate Windows Stripe-hide / UA gate via **`docs/ios-native-bridge.md`**
+3. Later: APNs, Safari subscribe link-out, foreground call audio … then org Apple Developer enroll for TestFlight
 
 **Windows Theo:** web lane only. Match UA `EdgeiOS/` / `window.EdgeNative`. Do not edit `ios/`.
 

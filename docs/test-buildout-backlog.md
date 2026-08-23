@@ -104,9 +104,14 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 **P0 Mac**
 - [x] `bustServiceWorker` boot + bridge; media autoplay WebView policy (already open)
 - [x] Info.plist camera / mic / photo / location + WK capture grant
+- [x] **Safe area / post-detail back hit target (2026-08-23):** shell no longer `.ignoresSafeArea()` on the WebView … WKWebView was drawing under the notch while `env(safe-area-inset-top)` stayed ~0, so Lounge post-detail ← sat under Dynamic Island / status chrome. Rebuild IPA to verify.
+- [ ] **Hard crash investigating:** Ryan … opening Lounge post detail then trying to leave crashed the **phone** (device powered off), not just the app. After safe-area rebuild, repro; if still happens capture Console / Jetsam. Suspect WebKit/GPU memory under Stream + detail, not only layout.
 - [ ] APNs: `requestPushPermission` + `getPushToken` + token storage / Edge send path (coord Windows DB)
 - [ ] `setAudioSession` for LiveKit enter/exit
 - [ ] OAuth-in-shell smoke; Safari / ASWebAuthentication if broken
+
+**P1 Windows (safe-area defense)**
+- [ ] Post-detail title row (`SocialFeed.jsx` absolute bar, `LOUNGE_FEED_TITLE_BAR_ROW_CLASS`) should include `pt`/`safe-area-inset-top` on the **button row** itself (absolute `top-0` ignores panel padding). Matters once shell returns to edge-to-edge with real `env()` insets.
 
 **P1 polish**
 - [ ] APNs deep links → existing `?tab=` / `post=` / `comment=` / `call=` parsers
@@ -1046,6 +1051,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-23: **iOS shell safe-area fix (post-detail back):** Removed WebView `.ignoresSafeArea()` so content lays out below notch/home indicator. WKWebView + `env(safe-area-inset-top)`≈0 was burying Lounge post-detail ← under status chrome. **Also logged:** device hard power-off while leaving post detail ... re-test after rebuild; if repro, Jetsam/Console. No `src/**`.
 - 2026-08-23: **Native gap checklist +shell UX:** (1) **How to Install** title-bar chip must not show in EdgeiOS shell (`shouldShowPwaInstallBanner` / `PwaInstallBanner.jsx`). (2) Lounge cold-boot **Lottie** does not play in native app … eligibility today requires `isStandalonePwa()` (`loungeColdBootSplash.js`) + DotLottie WASM/`LoungeAppSplash.jsx` needs WKWebView verify. Both = **Windows P0**. No code this line.
 - 2026-08-23: **iOS shell P0 Mac slice + gap checklist:** SW registrations/caches cleared before first load; `EdgeNative.bustServiceWorker` live; camera/mic/photo/location usage strings + WK media-capture grant. Backlog **Native gap checklist** + bridge doc status updated. **Windows next:** `edgeNative.js`, Stripe→Safari, skip push-sw / A2HS, Lounge unmuted under shell. No SQL / Edge.
 - 2026-08-23: **iOS shell device Run green (Mac):** Apple Silicon M4 Max + **Xcode 27 beta 5**; iPhone Air iOS 27 beta … Developer Mode, Personal Team (`DEVELOPMENT_TEAM` in `ios/project.yml`), Trust developer profile. **EdgeTilt Test** installs and loads **`lvslotpro.com`**. Simulator already green on Xcode 26. Next: Web Inspector UA/`EdgeNative` smoke; week-2 autoplay + SW bust + Windows Stripe-hide. See **`WAKEUP`** Mac session **2026-08-23**.

@@ -106,6 +106,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 - `DEVELOPMENT_TEAM` pinned in `ios/project.yml` + `project.pbxproj` (Personal Team; swap at org enroll)
 - **SW bust** on boot + `EdgeNative.bustServiceWorker`; camera/mic/photo/location plist; WK media-capture grant
 - Backlog **Native gap checklist** (P0/P1/later, Mac vs Windows)
+- **Safe area:** WebView respects safe area (no `.ignoresSafeArea`) so post-detail back isn’t under the island; rebuild to verify
+- **Open:** hard device power-off leaving post detail ... repro after rebuild
 
 **Next (Mac Theo):**
 1. Smoke: UA shows `EdgeiOS/`; `window.EdgeNative.getInfo` + `bustServiceWorker` (Safari Web Inspector → device)

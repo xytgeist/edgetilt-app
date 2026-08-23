@@ -5,7 +5,8 @@ struct EdgeTiltApp: App {
   var body: some Scene {
     WindowGroup {
       ShellRootView()
-        .ignoresSafeArea()
+        .background(Color.black)
+        .preferredColorScheme(.dark)
     }
   }
 }

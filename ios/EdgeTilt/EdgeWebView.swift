@@ -9,7 +9,8 @@ struct EdgeWebView: UIViewRepresentable {
   }
 
   func makeUIView(context: Context) -> WKWebView {
-    let webView = WKWebView(frame: .zero, configuration: context.coordinator.makeConfiguration())
+    let config = context.coordinator.makeConfiguration()
+    let webView = WKWebView(frame: .zero, configuration: config)
     webView.navigationDelegate = context.coordinator
     webView.uiDelegate = context.coordinator
     webView.scrollView.contentInsetAdjustmentBehavior = .never
@@ -17,7 +18,14 @@ struct EdgeWebView: UIViewRepresentable {
     webView.backgroundColor = .black
     webView.scrollView.backgroundColor = .black
     context.coordinator.attach(webView: webView)
-    webView.load(URLRequest(url: url))
+
+    // Bust sticky push-sw / caches before first paint so shell ≠ trapped PWA.
+    let store = config.websiteDataStore
+    EdgeWebsiteDataHygiene.clearServiceWorkersAndCaches(from: store) {
+      DispatchQueue.main.async {
+        webView.load(URLRequest(url: self.url))
+      }
+    }
     return webView
   }
 

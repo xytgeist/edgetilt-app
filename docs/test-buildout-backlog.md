@@ -81,11 +81,40 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 - [x] **Thin raw `WKWebView`** (no Capacitor) loads prod/test origin (configurable). No bundled `dist/`. Repo **`ios/`** (2026-08-20). Schemes **EdgeTilt Test** / **EdgeTilt Prod**.
 - [x] **Mac device Run smoke (2026-08-23):** M4 Max + **Xcode 27 beta**; iPhone Air **iOS 27** Developer Mode; Personal Team install; Trust developer; Edge Test scheme loads **`lvslotpro.com`** in-app. (App Store Xcode 26 alone cannot DDI/debug iOS 27.)
-- [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land. (`getInfo` + `openInSafari` native; rest stub.)
-- [ ] **Bridges v1:** push (APNs), call audio session (foreground-solid; CallKit → v1.1), unmuted media autoplay policy, camera/mic entitlements, open-in-Safari.
-- [ ] **Native UA:** hide in-WebView Stripe / subscribe CTAs; SW skip or cache-bust on boot. (UA token **`EdgeiOS/0.1.0`** shipping in shell; web gating still TODO.)
+- [x] **SW bust on boot + bridge (2026-08-23):** clear service worker registrations / caches before first load; `EdgeNative.bustServiceWorker` implemented. Camera / mic / photo / location usage strings + WK media-capture grant.
+- [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land. (`getInfo` + `openInSafari` + `bustServiceWorker` native; push + audio session still stub.)
+- [ ] **Bridges v1 remaining:** push (APNs `requestPushPermission` / `getPushToken`), call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), unmuted media autoplay **web unlock** under shell.
+- [ ] **Native UA web gates (Windows):** hide in-WebView Stripe / subscribe CTAs → `openInSafari`; skip `push-sw` register; hide A2HS / install-for-push chrome. (UA token **`EdgeiOS/0.1.0`** shipping in shell; **`src/utils/edgeNative.js` still TODO.**)
 - [ ] **Billing v1 (US):** Safari link-out required; StoreKit IAP optional in v1 / preferred in v1.1. Counsel + App Review notes before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
+
+### Native gap checklist (audit 2026-08-23)
+
+Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows** = `src/**` / `public/**`. Contract: **`docs/ios-native-bridge.md`**.
+
+**P0 Windows**
+- [ ] `src/utils/edgeNative.js` … `isEdgeiOSShell()`, `edgeNativeInvoke` (positive UA / `window.EdgeNative` only)
+- [ ] Stripe / fan / affiliate Connect: never `location.assign` checkout in shell → `openInSafari`
+- [ ] Skip `push-sw.js` registration when EdgeiOS; hide A2HS / Offers “install for push” UX
+- [ ] Lounge unmuted autoplay when `isEdgeiOSShell()` (do not leave Apple-WebKit mute path on)
+- [ ] Centralize external opens (`_blank`, OAuth returns) for WKWebView
+
+**P0 Mac**
+- [x] `bustServiceWorker` boot + bridge; media autoplay WebView policy (already open)
+- [x] Info.plist camera / mic / photo / location + WK capture grant
+- [ ] APNs: `requestPushPermission` + `getPushToken` + token storage / Edge send path (coord Windows DB)
+- [ ] `setAudioSession` for LiveKit enter/exit
+- [ ] OAuth-in-shell smoke; Safari / ASWebAuthentication if broken
+
+**P1 polish**
+- [ ] APNs deep links → existing `?tab=` / `post=` / `comment=` / `call=` parsers
+- [ ] Safe area / status bar vs `env(safe-area-*)`; update/cold-boot copy; geolocation smoke; keyboard compose pass
+- [ ] Call speaker/earpiece routing under shell
+
+**Later (v1.1+)**
+- [ ] CallKit / background ring; StoreKit IAP; native haptics; Android TWA
+
+Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.jsx`, `useWebPushNotifications.js`, `OffersCalendar.jsx`, `stripeBillingApi.js`, `creatorFanSubsApi.js`, `affiliatePortalApi.js`, Lounge Stream / autoplay stack.
 
 ### Android (later / cheap)
 
@@ -1015,6 +1044,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-23: **iOS shell P0 Mac slice + gap checklist:** SW registrations/caches cleared before first load; `EdgeNative.bustServiceWorker` live; camera/mic/photo/location usage strings + WK media-capture grant. Backlog **Native gap checklist** + bridge doc status updated. **Windows next:** `edgeNative.js`, Stripe→Safari, skip push-sw / A2HS, Lounge unmuted under shell. No SQL / Edge.
 - 2026-08-23: **iOS shell device Run green (Mac):** Apple Silicon M4 Max + **Xcode 27 beta 5**; iPhone Air iOS 27 beta … Developer Mode, Personal Team (`DEVELOPMENT_TEAM` in `ios/project.yml`), Trust developer profile. **EdgeTilt Test** installs and loads **`lvslotpro.com`**. Simulator already green on Xcode 26. Next: Web Inspector UA/`EdgeNative` smoke; week-2 autoplay + SW bust + Windows Stripe-hide. See **`WAKEUP`** Mac session **2026-08-23**.
 - 2026-08-23: **Prod promote @ `c262fbdd`:** `test` → **`main`** (Vercel). Frontend: profile timeline removes deleted Lounge posts. Also ships iOS `ios/` WKWebView scaffold + dual-machine docs in repo (no App Store binary; no SQL / Edge). Smoke on edgetilt.com: profile → delete own post → card disappears with spinner.
 - 2026-08-22: **Profile delete UI stale:** Deleting a Lounge post from the profile screen removed the DB row + refreshed home feed, but **`profileModalPosts` / overlay stack** were not filtered … spinner cleared and the card stayed. Fix @ **`4556dd84`**: `removeLoungePostFromProfileTimelines` + **`removeLoungeProfilePostFromPosts`**; optimistic discard also clears profile lists.

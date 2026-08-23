@@ -45,5 +45,15 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Edge accesses your photo library so you can attach images and videos in Lounge and Chat.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Edge can save images you capture or download to your photo library when you choose.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.</string>
 </dict>
 </plist>

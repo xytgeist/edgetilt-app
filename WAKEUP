@@ -104,13 +104,20 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 - Simulator **EdgeTilt Test** BUILD SUCCEEDED + launched (iPhone 17)
 - Physical **iPhone Air**: Developer Mode on; Personal Team signing; Trust developer profile; **Edge loads `lvslotpro.com` in-app**
 - `DEVELOPMENT_TEAM` pinned in `ios/project.yml` + `project.pbxproj` (Personal Team; swap at org enroll)
+- **SW bust** on boot + `EdgeNative.bustServiceWorker`; camera/mic/photo/location plist; WK media-capture grant
+- Backlog **Native gap checklist** (P0/P1/later, Mac vs Windows)
 
 **Next (Mac Theo):**
-1. Smoke: UA shows `EdgeiOS/`; `window.EdgeNative.getInfo` works (Safari Web Inspector → device)
-2. Week 2 lane: unmuted autoplay WKWebView policy; SW bust on boot; coordinate Windows Stripe-hide / UA gate via **`docs/ios-native-bridge.md`**
-3. Later: APNs, Safari subscribe link-out, foreground call audio … then org Apple Developer enroll for TestFlight
+1. Smoke: UA shows `EdgeiOS/`; `window.EdgeNative.getInfo` + `bustServiceWorker` (Safari Web Inspector → device)
+2. APNs (`requestPushPermission` / `getPushToken`) + `setAudioSession` for calls
+3. OAuth-in-shell smoke; org Apple Developer enroll when TestFlight
 
-**Windows Theo:** web lane only. Match UA `EdgeiOS/` / `window.EdgeNative`. Do not edit `ios/`.
+**Windows Theo (P0 from gap checklist):** do **not** edit `ios/`. Pull `test`. Implement:
+1. `src/utils/edgeNative.js` (`isEdgeiOSShell`, `edgeNativeInvoke`)
+2. Stripe / fan / affiliate Connect → `openInSafari` (never in-WebView Checkout)
+3. Skip `push-sw` register + hide A2HS / install-for-push on EdgeiOS
+4. Lounge unmuted autoplay when shell detected
+See backlog **Native gap checklist**.
 
 ### v1 vs v1.1 (iOS)
 

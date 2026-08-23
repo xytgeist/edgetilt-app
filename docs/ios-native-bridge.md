@@ -1,10 +1,10 @@
 # iOS native bridge contract (stub)
 
-**Status:** scaffold landed under **`ios/`** (2026-08-20). `getInfo` + `openInSafari` implemented natively; remaining methods stub-reject. Expand as push/audio land.  
+**Status:** scaffold + device Run green (2026-08-23). `getInfo` + `openInSafari` + **`bustServiceWorker`** (boot + bridge) implemented; camera/mic/photo/location usage strings + WK media-capture grant. Remaining stubs: `requestPushPermission`, `getPushToken`, `setAudioSession`.  
 **Stack:** raw **`WKWebView`** live-site shell (not Capacitor). Product web stays on Vercel; IPA is a thin loader + bridges.  
-**Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)**.  
+**Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)** (+ **Native gap checklist**).  
 **Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).  
-**Open project:** `ios/README.md` … `open ios/EdgeTilt.xcodeproj`, scheme **EdgeTilt Test**.
+**Open project:** `ios/README.md` … prefer **Xcode-beta** for iOS 27 devices.
 
 ---
 
@@ -47,7 +47,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | stub (rejects) |
 | `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | stub (rejects) |
 | `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | stub (rejects) |
-| `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean }` | Mac (boot) | stub (rejects) |
+| `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean, unregistered?: number, cacheKeysDeleted?: number }` | Mac (boot) | **native** (boot clear + bridge; 2026-08-23) |
 
 **Web-owned (no Swift required for first cut):**
 

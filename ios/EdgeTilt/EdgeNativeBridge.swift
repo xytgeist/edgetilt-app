@@ -73,8 +73,30 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
           completion(.success(["ok": ok]))
         }
       }
+    case "bustServiceWorker":
+      bustServiceWorker(completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
+    }
+  }
+
+  private func bustServiceWorker(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+    guard let webView else {
+      completion(.success(["ok": false]))
+      return
+    }
+    DispatchQueue.main.async {
+      webView.evaluateJavaScript(EdgeWebsiteDataHygiene.unregisterScript) { result, error in
+        if let error {
+          completion(.failure(error))
+          return
+        }
+        if let dict = result as? [String: Any] {
+          completion(.success(dict))
+        } else {
+          completion(.success(["ok": true]))
+        }
+      }
     }
   }
 
@@ -96,7 +118,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     }
   }
 
-  // MARK: - Navigation / UA
+  // MARK: - Navigation / UA / media capture
 
   func webView(
     _ webView: WKWebView,
@@ -104,6 +126,17 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
   ) {
     decisionHandler(.allow)
+  }
+
+  @available(iOS 15.0, *)
+  func webView(
+    _ webView: WKWebView,
+    requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+    initiatedByFrame frame: WKFrameInfo,
+    type: WKMediaCaptureType,
+    decisionHandler: @escaping (WKPermissionDecision) -> Void
+  ) {
+    decisionHandler(.grant)
   }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -165,7 +198,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         return Promise.reject(new Error('not implemented'));
       },
       bustServiceWorker: function () {
-        return Promise.reject(new Error('not implemented'));
+        return call('bustServiceWorker', null);
       },
       _resolve: function (id, value) {
         var entry = pending[id];

@@ -13,17 +13,19 @@
 		B5EBE7D022CBA3E1F5983A48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A039684E44413435F9C5696A /* Assets.xcassets */; };
 		BB702B52C0AE20A07AE04E78 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226468E06E598019B8166B33 /* AppConfig.swift */; };
 		C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */; };
+		EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeNativeBridge.swift; sourceTree = "<group>"; };
 		226468E06E598019B8166B33 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
-		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		636A0FF8CC23E17E467905A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A039684E44413435F9C5696A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A6599ECB5DCF6CEC356D7960 /* EdgeTiltApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeTiltApp.swift; sourceTree = "<group>"; };
 		B884711901FA09324B73CC22 /* EdgeWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebView.swift; sourceTree = "<group>"; };
 		C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellRootView.swift; sourceTree = "<group>"; };
+		EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebsiteDataHygiene.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -42,6 +44,7 @@
 				A039684E44413435F9C5696A /* Assets.xcassets */,
 				12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */,
 				A6599ECB5DCF6CEC356D7960 /* EdgeTiltApp.swift */,
+				EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */,
 				B884711901FA09324B73CC22 /* EdgeWebView.swift */,
 				636A0FF8CC23E17E467905A0 /* Info.plist */,
 				C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */,
@@ -88,6 +91,7 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					91193AAD51A0876C7ED2EDB0 = {
+						DevelopmentTeam = 8932AKQW4W;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -131,6 +135,7 @@
 				8082591BEFAB79FE461FFDD5 /* EdgeNativeBridge.swift in Sources */,
 				68F8BF1FBC1EB0AFD22AFBE2 /* EdgeTiltApp.swift in Sources */,
 				32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */,
+				EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */,
 				C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

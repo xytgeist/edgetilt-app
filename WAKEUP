@@ -79,8 +79,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`0ff8d22e`** | Windows: Search→Message→Chat bug handoff in WAKEUP |
-| **`main`** | **`c262fbdd`** | Prod Vercel (profile delete + `ios/` scaffold in tree; no store binary) |
+| **`test`** | **(push after Search→Message fix)** | Windows: Search→Message→Chat overlay fixed |
+| **`main`** | **`b55ff3b6`** | Prod Vercel (profile delete + `ios/` scaffold in tree; no store binary) |
 
 ### Decisions locked (do not reopen without Ryan)
 
@@ -114,13 +114,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 2. APNs (`requestPushPermission` / `getPushToken`) + `setAudioSession` for calls
 3. OAuth-in-shell smoke; org Apple Developer enroll when TestFlight
 
-**Windows Theo (P0):** do **not** edit `ios/`. Pull `test`. Implement:
+**Windows Theo (P0):** do **not** edit `ios/`. Pull `test`.
 
-**Bug (Mac repro 2026-08-23 … hand to Windows):** Lounge **Search → profile → Message** leaves **search on top of Chat**.
-- Repro: FAB → Search → query → tap profile result → **Message**. Chat tab opens under search.
-- Root cause: `openChatWithUserFromProfile` (`SocialFeed.jsx`) closes profile then `AppShell` `setTab('chat')`, but profile-from-search stashed `profileReturnDockPanelRef = 'search'`. `finalizeProfileModalClose` **restores search** after leave-home cleared the dock. Search is **portaled to `document.body`** when `!isActivePage` (~18378–18381), so it paints over keep-alive Chat.
-- Fix: in `openChatWithUserFromProfile`, clear return path + dismiss dock **before** close/navigate … `profileReturnDockPanelRef.current = null`, `setLoungeDockPanel(null)` (same spirit as `dismissLoungeStackForDockNav`). Optional belt: do not restore dock panels in `finalizeProfileModalClose` when `!isActivePage`.
-- Smoke: Search → profile → Message → Chat visible, search gone; Search → profile → back still returns to search.
+**Fixed (2026-08-23 Windows):** Lounge **Search → profile → Message** left search on top of Chat. Cleared `profileReturnDockPanelRef` + dock before close in `openChatWithUserFromProfile`; `finalizeProfileModalClose` only restores dock when `isActivePage`. Smoke: Search → profile → Message → Chat clean; Search → profile → back still returns to search.
 
 **Also (gap checklist):**
 1. `src/utils/edgeNative.js` (`isEdgeiOSShell`, `edgeNativeInvoke`)

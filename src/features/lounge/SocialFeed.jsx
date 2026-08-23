@@ -8744,6 +8744,12 @@ export default function SocialFeed({
         return
       }
       if (openProfileGateIfNeeded()) return
+      // Leaving Lounge for Chat must not restore Search/Notifications over the chat tab
+      // (profile-from-search stashes returnDockPanel; finalize would re-open it after leave-home cleared the dock).
+      profileReturnDockPanelRef.current = null
+      loungeNavSearchReturnPendingRef.current = false
+      setChatDockInitialPeerUserId(null)
+      setLoungeDockPanel(null)
       closeProfileModalRef.current()
       // If AppShell provides a top-level chat tab handler, prefer it; otherwise fall back to dock panel.
       if (typeof onOpenChatWithUser === 'function') {
@@ -14251,14 +14257,19 @@ export default function SocialFeed({
     }
     const returnPanel = profileReturnDockPanelRef.current
     profileReturnDockPanelRef.current = null
-    if (returnPanel === 'notifications' || returnPanel === 'search' || returnPanel === 'settings') {
+    // Only restore dock panels while Lounge is the active tab. When Message navigates to Chat,
+    // search is portaled to document.body if reopened and paints over keep-alive Chat.
+    if (
+      isActivePage &&
+      (returnPanel === 'notifications' || returnPanel === 'search' || returnPanel === 'settings')
+    ) {
       setLoungeDockPanel(returnPanel)
     }
     setProfileModalStartEditing(false)
     setProfileModalFollowListTab(null)
     setProfileModalHighlightFollowerIds([])
     setProfileModalOpenFanPortal(false)
-  }, [])
+  }, [isActivePage])
 
   const closeProfileModal = useCallback(() => {
     const reduce =

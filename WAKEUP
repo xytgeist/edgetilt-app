@@ -115,8 +115,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 **Windows Theo (P0 from gap checklist):** do **not** edit `ios/`. Pull `test`. Implement:
 1. `src/utils/edgeNative.js` (`isEdgeiOSShell`, `edgeNativeInvoke`)
 2. Stripe / fan / affiliate Connect → `openInSafari` (never in-WebView Checkout)
-3. Skip `push-sw` register + hide A2HS / install-for-push on EdgeiOS
-4. Lounge unmuted autoplay when shell detected
+3. Skip `push-sw` register + hide A2HS / **How to Install** title-bar chip on EdgeiOS (`shouldShowPwaInstallBanner`)
+4. Lounge cold-boot / resume **Lottie**: treat shell as installed + fix DotLottie in WKWebView (Ryan: does not play in native app)
+5. Lounge unmuted autoplay when shell detected
 See backlog **Native gap checklist**.
 
 ### v1 vs v1.1 (iOS)

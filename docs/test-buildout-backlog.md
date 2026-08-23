@@ -96,6 +96,8 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [ ] `src/utils/edgeNative.js` … `isEdgeiOSShell()`, `edgeNativeInvoke` (positive UA / `window.EdgeNative` only)
 - [ ] Stripe / fan / affiliate Connect: never `location.assign` checkout in shell → `openInSafari`
 - [ ] Skip `push-sw.js` registration when EdgeiOS; hide A2HS / Offers “install for push” UX
+- [ ] **How to Install title-bar chip:** `shouldShowPwaInstallBanner()` is `!isStandalonePwa()` today (`PwaInstallBanner.jsx` / `pwaNotificationPrompt.js`) … shell is not “standalone PWA,” so the pill wrongly shows. Return false when `isEdgeiOSShell()`.
+- [ ] **Lounge cold-boot / resume Lottie:** `shouldShowLoungeColdBootSplash` / resume require `isStandalonePwa()` (`loungeColdBootSplash.js`); DotLottie WASM + OffscreenCanvas in `LoungeAppSplash.jsx`. Shell should treat EdgeiOS as installed (eligible) **and** verify WASM/OffscreenCanvas plays in WKWebView (Ryan: Lottie does not play in the native app, 2026-08-23).
 - [ ] Lounge unmuted autoplay when `isEdgeiOSShell()` (do not leave Apple-WebKit mute path on)
 - [ ] Centralize external opens (`_blank`, OAuth returns) for WKWebView
 
@@ -1044,6 +1046,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-23: **Native gap checklist +shell UX:** (1) **How to Install** title-bar chip must not show in EdgeiOS shell (`shouldShowPwaInstallBanner` / `PwaInstallBanner.jsx`). (2) Lounge cold-boot **Lottie** does not play in native app … eligibility today requires `isStandalonePwa()` (`loungeColdBootSplash.js`) + DotLottie WASM/`LoungeAppSplash.jsx` needs WKWebView verify. Both = **Windows P0**. No code this line.
 - 2026-08-23: **iOS shell P0 Mac slice + gap checklist:** SW registrations/caches cleared before first load; `EdgeNative.bustServiceWorker` live; camera/mic/photo/location usage strings + WK media-capture grant. Backlog **Native gap checklist** + bridge doc status updated. **Windows next:** `edgeNative.js`, Stripe→Safari, skip push-sw / A2HS, Lounge unmuted under shell. No SQL / Edge.
 - 2026-08-23: **iOS shell device Run green (Mac):** Apple Silicon M4 Max + **Xcode 27 beta 5**; iPhone Air iOS 27 beta … Developer Mode, Personal Team (`DEVELOPMENT_TEAM` in `ios/project.yml`), Trust developer profile. **EdgeTilt Test** installs and loads **`lvslotpro.com`**. Simulator already green on Xcode 26. Next: Web Inspector UA/`EdgeNative` smoke; week-2 autoplay + SW bust + Windows Stripe-hide. See **`WAKEUP`** Mac session **2026-08-23**.
 - 2026-08-23: **Prod promote @ `c262fbdd`:** `test` → **`main`** (Vercel). Frontend: profile timeline removes deleted Lounge posts. Also ships iOS `ios/` WKWebView scaffold + dual-machine docs in repo (no App Store binary; no SQL / Edge). Smoke on edgetilt.com: profile → delete own post → card disappears with spinner.

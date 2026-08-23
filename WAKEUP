@@ -79,7 +79,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`e16b56f6`** | Mac device Run green (iPhone Air); Xcode 27 beta note |
+| **`test`** | **`0afa6da4`** | SW bust + gap checklist; device Run green |
 | **`main`** | **`c262fbdd`** | Prod Vercel (profile delete + `ios/` scaffold in tree; no store binary) |
 
 ### Decisions locked (do not reopen without Ryan)

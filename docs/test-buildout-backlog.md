@@ -1014,6 +1014,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-23: **Prod promote @ `c262fbdd`:** `test` → **`main`** (Vercel). Frontend: profile timeline removes deleted Lounge posts. Also ships iOS `ios/` WKWebView scaffold + dual-machine docs in repo (no App Store binary; no SQL / Edge). Smoke on edgetilt.com: profile → delete own post → card disappears with spinner.
 - 2026-08-22: **Profile delete UI stale:** Deleting a Lounge post from the profile screen removed the DB row + refreshed home feed, but **`profileModalPosts` / overlay stack** were not filtered … spinner cleared and the card stayed. Fix @ **`4556dd84`**: `removeLoungePostFromProfileTimelines` + **`removeLoungeProfilePostFromPosts`**; optimistic discard also clears profile lists.
 - 2026-08-22: **WAKEUP Apple Silicon Mac handoff:** Ryan moving iOS shell off 2019 Intel MBP (no Tahoe; cannot device-debug iPhone Air iOS 27). Continuity tip **`a2b6cc0a`**: scaffold + EdgeIconBlack App Icon. Next = clone `test` on new Mac, Xcode, Simulator then physical device. See **`WAKEUP`** Pick up here **2026-08-22**.
 - 2026-08-20: **iOS App Icon:** `ios/.../AppIcon-1024.png` from live **`public/EdgeIconBlack/`** (same as `apple-touch-icon`; 310→1024, no alpha). Commit **`a2b6cc0a`**.

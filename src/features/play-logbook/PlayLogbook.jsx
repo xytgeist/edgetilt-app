@@ -967,7 +967,7 @@ export default function PlayLogbook({
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
       titleBarToolCloseVisible={titleBarToolCloseVisible}
-      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
       <div data-play-logbook>
         <div className="mb-5">
@@ -1277,7 +1277,7 @@ export default function PlayLogbook({
             data-bankroll-sheet
             className={
               sheet === 'logPlay'
-                ? `${APP_MODAL_SHEET_PANEL_CLASS} !overflow-y-hidden flex flex-col !pb-0 !max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-3rem))]`
+                ? `${APP_MODAL_SHEET_PANEL_CLASS} !overflow-y-hidden flex flex-col !pb-0 !max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-3rem))]`
                 : sheet === 'entryDetail'
                   ? `${APP_MODAL_SHEET_PANEL_CLASS} !overflow-y-hidden flex flex-col !pb-0`
                   : APP_MODAL_SHEET_PANEL_CLASS
@@ -1388,7 +1388,7 @@ export default function PlayLogbook({
                   </div>
                   {error ? <p className="text-red-400 text-sm pb-3">{error}</p> : null}
                 </div>
-                <div className="shrink-0 pt-3 pb-[calc(1rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+                <div className="shrink-0 pt-3 pb-[calc(1rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
                   <button
                     type="button"
                     onClick={saveEntry}
@@ -1509,7 +1509,7 @@ export default function PlayLogbook({
                       </p>
                     ) : null}
                   </div>
-                  <div className="shrink-0 flex gap-2 pt-3 pb-[calc(1rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+                  <div className="shrink-0 flex gap-2 pt-3 pb-[calc(1rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
                     {canEdit ? (
                       <button
                         type="button"

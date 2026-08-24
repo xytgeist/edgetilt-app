@@ -1053,7 +1053,7 @@ export function ChatCallProvider({
         </Suspense>
       ) : null}
       {error ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))+5rem)] z-[131] flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))+5rem)] z-[131] flex justify-center px-4">
           <div
             className="max-w-sm rounded-xl border border-rose-500/40 bg-zinc-950/95 px-3 py-2 text-center text-[13px] text-rose-200 shadow-lg"
             role="status"

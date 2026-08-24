@@ -186,7 +186,7 @@ export default function LocalIntel({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
-        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <Header title="Local Intel" subtitle="City + casino updates (skeleton)" />
 
@@ -234,7 +234,7 @@ export default function LocalIntel({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
-        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <Header
           title={city?.name || 'City'}
@@ -363,7 +363,7 @@ export default function LocalIntel({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
-        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <Header
           title={casino?.name || 'Casino'}

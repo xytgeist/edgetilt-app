@@ -1045,7 +1045,7 @@ export default function SlotGuideFormApp() {
   return (
     <>
     {filePickerPortal}
-    <div className="bg-gray-950 text-white px-4 py-8 pb-[max(6rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+    <div className="bg-gray-950 text-white px-4 py-8 pb-[max(6rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
       {/* Two-column on large screens: form left, card preview right */}
       <div className="max-w-7xl mx-auto">
       <div className={`flex gap-8 items-start ${showPreview ? 'lg:grid lg:grid-cols-[1fr_360px]' : ''}`}>

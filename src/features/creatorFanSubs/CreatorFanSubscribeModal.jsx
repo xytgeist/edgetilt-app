@@ -167,7 +167,7 @@ export default function CreatorFanSubscribeModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] sm:pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+      className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] sm:pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       style={{ zIndex: Z_APP_MODAL }}
     >
       <button
@@ -183,11 +183,11 @@ export default function CreatorFanSubscribeModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="creator-fan-subscribe-title"
-        className="relative z-10 flex max-h-[min(90dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))-0.5rem))] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:max-w-xl sm:rounded-[1.75rem]"
+        className="relative z-10 flex max-h-[min(90dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-0.5rem))] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:max-w-xl sm:rounded-[1.75rem]"
       >
         <header
           data-creator-fan-subscribe-header
-          className="shrink-0 bg-orange-600 px-4 pb-4 pt-[max(0.75rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] text-white sm:pt-4"
+          className="shrink-0 bg-orange-600 px-4 pb-4 pt-[max(0.75rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] text-white sm:pt-4"
         >
           <div className="grid h-11 grid-cols-[2.75rem_1fr_2.75rem] items-center">
             <button
@@ -286,7 +286,7 @@ export default function CreatorFanSubscribeModal({
             {error ? <p className="mt-4 text-[13px] text-red-300/95">{error}</p> : null}
           </div>
 
-          <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-5 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-4">
+          <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-5 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4">
             {!alreadySubscribed ? (
               <>
                 <button

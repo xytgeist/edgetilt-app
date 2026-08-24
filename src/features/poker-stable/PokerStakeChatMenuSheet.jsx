@@ -85,7 +85,7 @@ export default function PokerStakeChatMenuSheet({
     >
       <div
         data-poker-stake-chat-menu
-        className="relative z-10 w-full max-w-lg overflow-hidden rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900 px-4 pt-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+        className="relative z-10 w-full max-w-lg overflow-hidden rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900 px-4 pt-4 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-zinc-600/70" aria-hidden />

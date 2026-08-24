@@ -11,11 +11,11 @@ export const IN_APP_TOAST_SHELL_WIDTH = 'w-max max-w-[min(75vw,calc(100vw-1.5rem
 /** Max width for short billing/access notices (legacy 20rem). */
 export const IN_APP_TOAST_ACCESS_WIDTH = 'w-[min(calc(100vw-1.5rem),16rem)]'
 
-export const IN_APP_TOAST_TOP = 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))'
+export const IN_APP_TOAST_TOP = 'max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))'
 
 /** Stacked toast offset when one toast is already visible (legacy 4.25rem / 3.25rem). */
 export const IN_APP_TOAST_STACKED_TOP =
-  'max(3.4rem, calc(0.5rem + 2.6rem + max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))))'
+  'max(3.4rem, calc(0.5rem + 2.6rem + max(env(safe-area-inset-top,0px),var(--edge-sat,0px))))'
 
 /** Vertical stack step for admin multi-toast previews (title + up to 3 body lines + gap). */
 export const IN_APP_TOAST_STACK_STEP_REM = 4.5

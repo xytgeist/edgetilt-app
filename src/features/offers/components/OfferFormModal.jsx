@@ -458,11 +458,11 @@ export default function OfferFormModal({
   if (!showForm) return null
 
   return (
-    <div data-offer-form className="fixed inset-0 z-[70] flex bg-black/55 px-3 pt-[calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))+12px)] backdrop-blur-[2px]">
+    <div data-offer-form className="fixed inset-0 z-[70] flex bg-black/55 px-3 pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+12px)] backdrop-blur-[2px]">
       <div className="mx-auto flex w-full max-w-lg flex-1 items-end">
         <div
           className="relative w-full overflow-hidden rounded-t-[36px] bg-[#181b22] shadow-[0_6px_16px_rgba(0,0,0,0.12)]"
-          style={{ height: 'calc(100dvh - (max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 12px))' }}
+          style={{ height: 'calc(100dvh - (max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 12px))' }}
         >
           {/* Transparent control layer above scroll content */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-4 pb-5 pt-4">
@@ -524,7 +524,7 @@ export default function OfferFormModal({
             }}
           >
             {/* Body */}
-            <div className="px-4 pb-[calc(max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))+24px)] pt-[86px]">
+            <div className="px-4 pb-[calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))+24px)] pt-[86px]">
               <div className="flex flex-col gap-6">
           {!completingReviewItemId && !editingId && (
             <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/35 via-slate-900/95 to-zinc-900/95 p-3 shadow-[0_2px_8px_rgba(0,0,0,0.16)]">

@@ -8,7 +8,7 @@ export default function LegalAcceptanceModal({
   onOpenLegalDocument,
 }) {
   return (
-    <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+    <div className="fixed inset-0 z-[210] flex items-center justify-center p-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
       <div className="absolute inset-0 bg-black/80" aria-hidden />
       <div
         role="dialog"

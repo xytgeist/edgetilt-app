@@ -116,7 +116,7 @@ function measureSplashCanvas(canvas) {
  *   3. preFrameCover  - always bg-black. Hides the blank canvas while WASM boots.
  *                       Removed after 3 drawn frames + rAF so the GPU has composited
  *                       canvas content before the cover lifts (avoids pre-play flash).
- *   4. statusBar strip - height max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)), always bg-black. Sits in
+ *   4. statusBar strip - height max(env(safe-area-inset-top,0px),var(--edge-sat,0px)), always bg-black. Sits in
  *                       the exact pixels iOS samples for its translucent status bar tint,
  *                       keeping the status bar dark for the full duration of the splash.
  *   5. bottomCover strip - masks the viewport band below the shifted canvas so the feed
@@ -314,19 +314,19 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
         ref={bottomCoverRef}
         className="absolute bottom-0 left-0 right-0 pointer-events-none"
         style={{
-          height: `calc(${-CANVAS_OFFSET_Y}px + max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))`,
+          height: `calc(${-CANVAS_OFFSET_Y}px + max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))`,
           backgroundColor: splashBg,
         }}
         aria-hidden
       />
 
-      {/* 5. Status bar strip - covers only max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)).
+      {/* 5. Status bar strip - covers only max(env(safe-area-inset-top,0px),var(--edge-sat,0px)).
                Matches the Lottie opener color so the iOS translucent status bar
                tint is consistent with the animation background. */}
       <div
         ref={statusBarRef}
         className="absolute top-0 left-0 right-0 pointer-events-none"
-        style={{ height: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))', backgroundColor: splashBg }}
+        style={{ height: 'max(env(safe-area-inset-top,0px),var(--edge-sat,0px))', backgroundColor: splashBg }}
         aria-hidden
       />
     </div>

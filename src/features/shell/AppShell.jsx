@@ -2028,7 +2028,7 @@ export default function AppShell({
       <div className="relative z-[55] shrink-0">
       {menuOpen ? (
         <div
-          className="lounge-title-nav-menu absolute right-0 top-full z-[55] mt-1 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+          className="lounge-title-nav-menu absolute right-0 top-full z-[55] mt-1 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
           role="menu"
         >
           {renderNavMenuItems()}
@@ -2604,7 +2604,7 @@ export default function AppShell({
     } else if (tab === 'dashboard') {
       visibleTab = (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="text-white text-2xl font-black tracking-tight">Edge</div>
@@ -2876,7 +2876,7 @@ export default function AppShell({
         />
       ) : (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
             Edge Monitor is admin-only.
           </div>
@@ -2892,7 +2892,7 @@ export default function AppShell({
         />
       ) : (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
             Bot Portal is admin-only.
           </div>
@@ -2908,7 +2908,7 @@ export default function AppShell({
         />
       ) : (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <div className="rounded-2xl bg-zinc-900 p-5 text-zinc-400 text-sm leading-relaxed">
             Affiliates admin is admin-only.
           </div>
@@ -2935,7 +2935,7 @@ export default function AppShell({
     } else if (tab === 'team') {
       visibleTab = (
         <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+          titleBarCenterSlot={renderTitleBarCenterSlot()} contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <div className="mb-6">
             <div className="text-white text-2xl font-black tracking-tight">Team / Deals</div>
             <div className="text-zinc-400 text-sm mt-0.5">Bring our team in (skeleton)</div>
@@ -2982,7 +2982,7 @@ export default function AppShell({
           role="status"
           aria-live="polite"
           data-access-notice
-          className="pointer-events-none fixed inset-x-0 top-0 z-[94] flex justify-center px-3 pt-[max(0.5rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]"
+          className="pointer-events-none fixed inset-x-0 top-0 z-[94] flex justify-center px-3 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]"
         >
           <div className={`${IN_APP_TOAST_ACCESS_BANNER} ${IN_APP_TOAST_ACCESS_WIDTH}`}>
             <p className={IN_APP_TOAST_ACCESS_BANNER_TEXT}>

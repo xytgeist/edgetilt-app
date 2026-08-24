@@ -3924,7 +3924,7 @@ export default function PokerBankrollTracker({
         titleBarNavSlot={titleBarNavSlot}
         titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
-        contentClassName="px-3 pt-4 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+        contentClassName="px-3 pt-4 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <div data-poker-bankroll>
 
@@ -5600,7 +5600,7 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-incoming-bind-picker
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-4`}
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -5661,7 +5661,7 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-incoming-swap-fallthrough
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-4`}
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -5737,7 +5737,7 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-incoming-apply-picker
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-4`}
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -5914,7 +5914,7 @@ export default function PokerBankrollTracker({
         >
           <div
             data-poker-bankroll-sheet
-            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-4`}
+            className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

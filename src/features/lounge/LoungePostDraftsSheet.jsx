@@ -28,7 +28,7 @@ export default function LoungePostDraftsSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[96] flex flex-col bg-zinc-950/98 pt-[max(0px,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-[max(0px,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+      className="fixed inset-0 z-[96] flex flex-col bg-zinc-950/98 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(0px,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="lounge-drafts-sheet-title"

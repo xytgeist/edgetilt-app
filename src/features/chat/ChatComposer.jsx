@@ -746,7 +746,7 @@ export default function ChatComposer({
       className={
         footerHost
           ? 'shrink-0'
-          : 'shrink-0 px-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]'
+          : 'shrink-0 px-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
       }
       style={footerHost ? undefined : { paddingTop: 6 }}
     >

@@ -152,7 +152,7 @@ export default function PokerTournamentSwapClaimPage({
           className={`mx-auto w-full max-w-md px-4 pt-8 ${
             showGuestAuthDock || showSignedInRetryDock
               ? 'pb-4'
-              : 'pb-[max(2.5rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]'
+              : 'pb-[max(2.5rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
           }`}
         >
           <div className="mb-5 text-center">
@@ -203,7 +203,7 @@ export default function PokerTournamentSwapClaimPage({
       {showGuestAuthDock ? (
         <div
           data-poker-swap-claim-cta
-          className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-4 pt-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-4 pt-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         >
           <div className="mx-auto w-full max-w-md">
             <p className="text-sm leading-snug text-zinc-300">
@@ -225,7 +225,7 @@ export default function PokerTournamentSwapClaimPage({
       {showSignedInRetryDock ? (
         <div
           data-poker-swap-claim-cta
-          className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-4 pt-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-4 pt-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         >
           <div className="mx-auto w-full max-w-md">
             <p className="text-center text-sm text-rose-400">{error}</p>

@@ -162,7 +162,7 @@ export default function ChatDmInfoSheet({
     onClose()
   }
 
-  const scrollTopInset = 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 3.75rem)'
+  const scrollTopInset = 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 3.75rem)'
 
   return (
     <>
@@ -172,7 +172,7 @@ export default function ChatDmInfoSheet({
           <div
             ref={topChromeRef}
             className="pointer-events-none absolute inset-x-0 top-0 z-20"
-            style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.5rem)' }}
+            style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.5rem)' }}
           >
             <div className="relative flex items-center justify-between gap-2 px-3 pb-3">
               <button

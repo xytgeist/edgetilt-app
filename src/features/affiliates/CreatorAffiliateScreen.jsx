@@ -28,7 +28,7 @@ export default function CreatorAffiliateScreen({
   return (
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
-      contentClassName="px-3 py-4 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] max-w-3xl mx-auto"
+      contentClassName="px-3 py-4 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] max-w-3xl mx-auto"
     >
       <CreatorAffiliatePortal
         supabaseClient={supabaseClient}

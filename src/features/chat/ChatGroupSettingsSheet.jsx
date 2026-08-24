@@ -357,7 +357,7 @@ export default function ChatGroupSettingsSheet({
     ? `Until ${new Date(room.muted_until).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`
     : 'Off'
 
-  const scrollTopInset = 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 3.75rem)'
+  const scrollTopInset = 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 3.75rem)'
 
   const settingsPortal = open ? createPortal(
     <div className="fixed inset-0 z-[95] flex flex-col bg-zinc-950" data-chat-feature>
@@ -366,7 +366,7 @@ export default function ChatGroupSettingsSheet({
       <div
         ref={topChromeRef}
         className="pointer-events-none absolute inset-x-0 top-0 z-20"
-        style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.5rem)' }}
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.5rem)' }}
       >
         <div className="relative flex items-center justify-between gap-2 px-3 pb-3">
           <button
@@ -1034,7 +1034,7 @@ function BottomSheet({ children, onDismiss, zIndex = 97 }) {
   return (
     <div
       className="fixed inset-0 flex items-end justify-center bg-black/60"
-      style={{ zIndex, paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)) + 1.5rem)' }}
+      style={{ zIndex, paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.5rem)' }}
       onClick={onDismiss}
     >
       <div

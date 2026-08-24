@@ -1008,8 +1008,8 @@ export default function OffersCalendar({
         fullWidth={weekLayoutFullBleed}
         contentClassName={
           weekLayoutFullBleed
-            ? 'px-3 pt-3 pb-[calc(5rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]'
-            : 'px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]'
+            ? 'px-3 pt-3 pb-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+            : 'px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
         }
       >
 

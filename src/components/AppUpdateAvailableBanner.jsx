@@ -39,7 +39,7 @@ export default function AppUpdateAvailableBanner() {
       role="status"
       aria-live="polite"
       data-app-update-banner
-      className="pointer-events-none fixed inset-x-0 top-0 z-[94] flex justify-center px-3 pt-[max(0.5rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[94] flex justify-center px-3 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]"
     >
       <div className="pointer-events-auto w-[min(calc(100vw-1.5rem),28rem)] rounded-2xl border border-cyan-500/45 bg-zinc-950/95 px-3 py-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md">
         <div className="text-cyan-100 text-[12px] font-semibold leading-snug">Update available</div>

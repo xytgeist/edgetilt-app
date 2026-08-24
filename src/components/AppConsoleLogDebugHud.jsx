@@ -74,7 +74,7 @@ export default function AppConsoleLogDebugHud() {
   }, [])
 
   const hudBottomStyle = {
-    bottom: 'max(0.75rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))',
+    bottom: 'max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))',
   }
 
   if (!portalReady || typeof document === 'undefined') return null

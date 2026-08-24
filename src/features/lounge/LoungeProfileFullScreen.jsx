@@ -2300,7 +2300,7 @@ export default function LoungeProfileFullScreen({
             pointerEvents: profileDockReveal > 0.12 ? 'auto' : 'none',
           }}
         >
-          <div className="flex items-start justify-between gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-1 sm:px-3">
+          <div className="flex items-start justify-between gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-1 sm:px-3">
             <button
               type="button"
               onClick={showOwnEditControls ? () => exitOwnProfileEditing() : onClose}
@@ -2448,7 +2448,7 @@ export default function LoungeProfileFullScreen({
           style={{
             paddingBottom: `max(${
               !showOwnEditControls && profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
-            }, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))`,
+            },max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))`,
           }}
         >
           <div className="relative z-10 w-full shrink-0">

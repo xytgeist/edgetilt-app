@@ -233,7 +233,7 @@ export default function LoungeProfileFollowList({
       aria-modal="true"
       aria-label={tab === 'following' ? 'Following' : 'Followers'}
     >
-      <header className="shrink-0 border-b border-zinc-800/90 bg-zinc-950/95 pt-[max(0.5rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] backdrop-blur-md">
+      <header className="shrink-0 border-b border-zinc-800/90 bg-zinc-950/95 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md">
         <div className="flex items-center gap-2 px-3 py-2">
           <button
             type="button"
@@ -271,7 +271,7 @@ export default function LoungeProfileFollowList({
 
       <div
         ref={listScrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         {loading ? (
           <div className="px-4 py-10 text-center text-[15px] text-zinc-500">Loading…</div>

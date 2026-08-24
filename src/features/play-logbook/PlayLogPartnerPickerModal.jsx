@@ -15,7 +15,7 @@ import {
 } from './playLogSavedGuests.js'
 
 const PANEL_HEIGHT_CLASS =
-  'h-[min(88dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-1rem))]'
+  'h-[min(88dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-1rem))]'
 
 /** @param {Array<{ user_id?: string, handle?: string, display_name?: string }>} rows @param {string} query */
 function filterPartnerProfiles(rows, query) {
@@ -369,7 +369,7 @@ export default function PlayLogPartnerPickerModal({
     >
       <div
         data-partner-picker-sheet
-        className={`flex w-full min-w-0 max-w-lg ${PANEL_HEIGHT_CLASS} shrink-0 flex-col overflow-x-hidden rounded-t-3xl border border-zinc-700/60 border-b-0 bg-zinc-900 shadow-2xl pl-[max(0px,max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px)))] pr-[max(0px,max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px)))]`}
+        className={`flex w-full min-w-0 max-w-lg ${PANEL_HEIGHT_CLASS} shrink-0 flex-col overflow-x-hidden rounded-t-3xl border border-zinc-700/60 border-b-0 bg-zinc-900 shadow-2xl pl-[max(0px,max(env(safe-area-inset-left,0px),var(--edge-sal,0px)))] pr-[max(0px,max(env(safe-area-inset-right,0px),var(--edge-sar,0px)))]`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="shrink-0 border-b border-zinc-800/80 px-4 pt-4 pb-3">
@@ -606,9 +606,9 @@ export default function PlayLogPartnerPickerModal({
         ) : null}
 
         {confirmOnSelect ? (
-          <div className="shrink-0 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]" />
+          <div className="shrink-0 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]" />
         ) : (
-          <footer className="shrink-0 border-t border-zinc-800/80 px-4 pt-3 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+          <footer className="shrink-0 border-t border-zinc-800/80 px-4 pt-3 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
             <button
               type="button"
               onClick={finish}

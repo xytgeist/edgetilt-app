@@ -15744,7 +15744,7 @@ export default function SocialFeed({
 
   return (
     <div
-      className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-0`}
+      className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-0`}
     >
       <LoungeStreamLightboxProvider ctx={loungeStreamLightboxCtx}>
       <LoungePendingPublishActionsProvider cancelPendingPublish={cancelAuthorPendingVideoPublish}>
@@ -16467,7 +16467,7 @@ export default function SocialFeed({
           pullAriaRef={pullAriaRef}
           pullPostsWrapRef={pullPostsWrapRef}
         >
-        <div className="border-b border-zinc-800 pb-[calc(1rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+        <div className="border-b border-zinc-800 pb-[calc(1rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
         {loungeManageErr ? (
           <div className="px-3 pt-3">
             <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
@@ -16694,7 +16694,7 @@ export default function SocialFeed({
             }}
           />
           <div
-            className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 pt-[max(0px,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md ${
+            className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md ${
               LOUNGE_IOS && loungeDetailCommentFieldFocused
                 ? 'transform-none'
                 : `transition-transform duration-300 ease-out motion-reduce:transition-none ${
@@ -16707,7 +16707,7 @@ export default function SocialFeed({
           >
             <div
               ref={loungePostDetailTitleBarRef}
-              className="absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform"
+              className="absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform"
               style={{
                 transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
                 pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
@@ -18300,7 +18300,7 @@ export default function SocialFeed({
 
       {loungeDetailCommentDiscardPromptOpen ? (
         <div
-          className={`fixed inset-0 flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6 ${
+          className={`fixed inset-0 flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6 ${
             loungePostDetailAboveProfile ? 'z-[106]' : loungePostDetailOpenedOverSearch ? 'z-[101]' : 'z-[99]'
           }`}
           role="dialog"
@@ -18461,7 +18461,7 @@ export default function SocialFeed({
               setQuoteRepostErr('')
             }}
           />
-          <div className="pointer-events-none relative z-10 mx-auto w-full max-w-md pb-[max(1.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))+28px)]">
+          <div className="pointer-events-none relative z-10 mx-auto w-full max-w-md pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))+28px)]">
             <div
               data-lounge-quote-repost-sheet=""
               className="pointer-events-auto rounded-t-2xl border border-zinc-700/80 bg-black px-4 pb-6 pt-5 shadow-2xl"
@@ -18527,7 +18527,7 @@ export default function SocialFeed({
           aria-modal="true"
           aria-labelledby="quote-repost-sheet-title"
         >
-          <header className="lounge-quote-repost-header relative z-[1] flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-[max(0.625rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]">
+          <header className="lounge-quote-repost-header relative z-[1] flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-[max(0.625rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]">
             <button
               type="button"
               disabled={quoteRepostBusy}
@@ -19166,7 +19166,7 @@ export default function SocialFeed({
       {loungePostUploadBar ? (
         <div
           ref={loungeUploadBarRef}
-          className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
+          className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
         >
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">

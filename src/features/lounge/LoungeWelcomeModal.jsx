@@ -15,7 +15,7 @@ export default function LoungeWelcomeModal({ open, onAcknowledge, onOpenGuidelin
 
   return createPortal(
     <div
-      className="fixed inset-0 flex items-end justify-center bg-black/55 p-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] backdrop-blur-[2px] sm:items-center"
+      className="fixed inset-0 flex items-end justify-center bg-black/55 p-4 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] backdrop-blur-[2px] sm:items-center"
       style={{ zIndex: Z_APP_MODAL }}
       role="dialog"
       aria-modal="true"
@@ -51,7 +51,7 @@ export default function LoungeWelcomeModal({ open, onAcknowledge, onOpenGuidelin
           </a>
         </div>
 
-        <div className="shrink-0 border-t border-zinc-800 px-5 py-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] sm:pb-4">
+        <div className="shrink-0 border-t border-zinc-800 px-5 py-4 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:pb-4">
           <button
             type="button"
             onClick={() => onAcknowledge?.()}

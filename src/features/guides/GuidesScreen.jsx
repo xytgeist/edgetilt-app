@@ -1904,7 +1904,7 @@ export default function GuidesScreen({
         titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
         scrollRootRef={guidesScrollRootRef}
-        contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+        contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <h1 className="sr-only">AP Guides</h1>
         {isAdmin && !gatesDbReady ? (

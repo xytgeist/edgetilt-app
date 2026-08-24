@@ -873,7 +873,7 @@ export default function LoungeVideoCropModal({
 
   return createPortal(
     <div
-      className={`fixed inset-0 ${shellClassName} flex items-end justify-center overscroll-none bg-black/55 px-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-10 backdrop-blur-[2px] sm:items-center sm:p-6`}
+      className={`fixed inset-0 ${shellClassName} flex items-end justify-center overscroll-none bg-black/55 px-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-10 backdrop-blur-[2px] sm:items-center sm:p-6`}
       role="dialog"
       aria-modal="true"
       aria-label="Trim and crop video"

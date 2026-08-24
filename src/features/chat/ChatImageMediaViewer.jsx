@@ -129,7 +129,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
         data-chat-image-lightbox-header
         className="pointer-events-none absolute inset-x-0 top-0 z-[12] bg-gradient-to-b from-black/85 via-black/45 to-transparent"
       >
-        <div className="pointer-events-auto flex items-center px-4 pb-8 pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]">
+        <div className="pointer-events-auto flex items-center px-4 pb-8 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]">
           <button
             type="button"
             onClick={onClose}
@@ -148,7 +148,7 @@ export default function ChatImageMediaViewer({ urls, initialIndex = 0, onClose }
           data-chat-image-lightbox-footer
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[12]"
         >
-          <div className="pointer-events-auto flex justify-center gap-1.5 py-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+          <div className="pointer-events-auto flex justify-center gap-1.5 py-4 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
             {items.map((_, i) => (
               <button
                 key={i}

@@ -19,7 +19,7 @@ export default function IosPwaInstallHelpDialog({
       onClick={() => onClose?.()}
     >
       <div
-        className="flex max-h-[min(90dvh,calc(100dvh-max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))-1rem))] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl"
+        className="flex max-h-[min(90dvh,calc(100dvh-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-1rem))] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
@@ -38,7 +38,7 @@ export default function IosPwaInstallHelpDialog({
             />
           </div>
         </div>
-        <div className="shrink-0 border-t border-zinc-700/80 p-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+        <div className="shrink-0 border-t border-zinc-700/80 p-4 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <button
             type="button"
             onClick={() => onClose?.()}

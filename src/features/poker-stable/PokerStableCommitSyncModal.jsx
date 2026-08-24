@@ -20,7 +20,7 @@ export default function PokerStableCommitSyncModal({
     >
       <div
         data-poker-stable-commit-sync-modal
-        className="relative z-10 w-full max-w-lg max-h-[min(90dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-2rem))] overflow-y-auto rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 py-5 shadow-xl"
+        className="relative z-10 w-full max-w-lg max-h-[min(90dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-2rem))] overflow-y-auto rounded-3xl border border-zinc-700/50 bg-zinc-900 px-5 py-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3">

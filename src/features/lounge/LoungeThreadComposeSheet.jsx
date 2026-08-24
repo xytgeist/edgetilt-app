@@ -472,7 +472,7 @@ export default function LoungeThreadComposeSheet({
       aria-modal="true"
       aria-labelledby="lounge-thread-compose-title"
     >
-      <header className="lounge-thread-compose-header-glass relative z-[1] flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-[max(0.625rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]">
+      <header className="lounge-thread-compose-header-glass relative z-[1] flex shrink-0 items-center gap-2 px-3 pb-2.5 pt-[max(0.625rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]">
         <button
           type="button"
           disabled={submitting}

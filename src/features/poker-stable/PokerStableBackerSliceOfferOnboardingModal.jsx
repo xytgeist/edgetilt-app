@@ -32,7 +32,7 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
     >
       <div
         data-poker-stake-offer-onboarding
-        className="relative z-10 flex w-full max-w-lg min-h-0 max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-4.5rem))] flex-col overflow-hidden rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900"
+        className="relative z-10 flex w-full max-w-lg min-h-0 max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-4.5rem))] flex-col overflow-hidden rounded-t-3xl border-t border-zinc-700/50 bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-4 [-webkit-overflow-scrolling:touch]">
@@ -61,7 +61,7 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
 
         <div
           data-poker-stake-offer-cta
-          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900 px-5 pt-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900 px-5 pt-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         >
           {declineConfirm ? (
             <div className="rounded-2xl border border-rose-500/40 bg-rose-950/40 p-4 text-sm text-rose-100">

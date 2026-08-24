@@ -56,7 +56,7 @@ export default function ChatIosPrototype({
       <header
         ref={titleBarRef}
         className="relative z-20 shrink-0 border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)]"
-        style={{ paddingTop: 'max(0px, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))' }}
+        style={{ paddingTop: 'max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))' }}
       >
         <div className={`flex items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
           <button
@@ -88,7 +88,7 @@ export default function ChatIosPrototype({
       {/* Composer pinned to layout bottom (not absolute over scroll) */}
       <footer
         className="relative z-20 shrink-0 bg-zinc-950"
-        style={{ paddingBottom: 'max(0.75rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))' }}
+        style={{ paddingBottom: 'max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))' }}
       >
         <ChatComposer
           supabaseClient={supabaseClient}

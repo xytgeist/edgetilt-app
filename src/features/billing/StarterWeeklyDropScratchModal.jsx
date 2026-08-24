@@ -331,7 +331,7 @@ export default function StarterWeeklyDropScratchModal({
 
   return (
     <div
-      className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] sm:pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+      className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] sm:pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       style={{ zIndex: Z_APP_MODAL + 5 }}
       data-starter-weekly-drop-modal
     >
@@ -394,7 +394,7 @@ export default function StarterWeeklyDropScratchModal({
           </div>
         </div>
 
-        <div className="starter-weekly-drop-body px-5 pb-[max(1.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] sm:px-6 sm:pb-6">
+        <div className="starter-weekly-drop-body px-5 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:px-6 sm:pb-6">
           {loading ? <p className="py-10 text-center text-sm text-zinc-400">Loading your drop…</p> : null}
           {error ? (
             <p className="py-6 text-center text-sm text-red-300" role="alert">

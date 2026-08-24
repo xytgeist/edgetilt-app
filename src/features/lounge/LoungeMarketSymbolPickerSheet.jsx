@@ -215,7 +215,7 @@ export default function LoungeMarketSymbolPickerSheet({
 
         {err ? <div className="px-4 pb-2 text-sm text-rose-300">{err}</div> : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           {loading ? <div className="px-3 py-6 text-center text-sm text-zinc-500">Searching…</div> : null}
           {!loading && debounced && results.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-zinc-500">No matches.</div>

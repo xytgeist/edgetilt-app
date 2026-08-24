@@ -10,7 +10,7 @@ export default function PokerStableProposeAfterDeclineModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[130] flex items-center justify-center overflow-x-hidden bg-black/70 backdrop-blur-sm p-4 pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+      className="fixed inset-0 z-[130] flex items-center justify-center overflow-x-hidden bg-black/70 backdrop-blur-sm p-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="poker-stable-propose-after-decline-title"

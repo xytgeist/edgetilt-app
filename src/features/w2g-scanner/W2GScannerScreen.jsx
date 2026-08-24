@@ -1402,7 +1402,7 @@ export default function W2GScannerScreen({
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
       titleBarToolCloseVisible={titleBarToolCloseVisible}
-      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
       <div data-w2g-scanner className="space-y-5">
         <div>
@@ -2166,7 +2166,7 @@ export default function W2GScannerScreen({
 
           {verifyImageExpanded && verifyImageUrl ? (
             <div
-              className="fixed inset-0 flex items-center justify-center bg-black/92 px-3 py-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
+              className="fixed inset-0 flex items-center justify-center bg-black/92 px-3 py-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
               style={{ zIndex: Z_APP_ALERT + 10 }}
               role="dialog"
               aria-modal="true"
@@ -2177,7 +2177,7 @@ export default function W2GScannerScreen({
               <button
                 type="button"
                 onClick={() => setVerifyImageExpanded(false)}
-                className="absolute right-3 top-[max(0.75rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-800/90 text-white touch-manipulation"
+                className="absolute right-3 top-[max(0.75rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-800/90 text-white touch-manipulation"
                 aria-label="Close enlarged image"
               >
                 <X size={20} aria-hidden />

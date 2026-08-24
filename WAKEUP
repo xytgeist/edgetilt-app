@@ -120,11 +120,11 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Also (gap checklist):**
 1. ~~`src/utils/edgeNative.js`~~ **done**
-2. Stripe / fan / affiliate Connect → `openInSafari` (never in-WebView Checkout)
+2. ~~Stripe / fan / affiliate Connect → `openInSafari`~~ **done** (`openExternalBillingUrl`)
 3. Skip `push-sw` register + ~~hide A2HS / **How to Install** title-bar chip~~ **done**
 4. ~~Lounge cold-boot / resume **Lottie**~~ **done** (eligible + direct-canvas in shell) … device smoke
 5. Lounge unmuted autoplay when shell detected
-See backlog **Native gap checklist**.
+See backlog **Native gap checklist**. IAP note: Safari-only for v1; StoreKit dual-path parked as **v1.1** in bridge doc.
 
 ### v1 vs v1.1 (iOS)
 

@@ -1,3 +1,5 @@
+import { openExternalBillingUrl } from '../../utils/edgeNative.js'
+
 /**
  * @param {Response | undefined} response
  */
@@ -48,7 +50,7 @@ export async function startEdgeCheckout(supabaseClient, productSlug, options = {
   if (!data?.url) {
     throw new Error('Checkout URL missing from server response.')
   }
-  window.location.assign(data.url)
+  await openExternalBillingUrl(data.url)
   return data
 }
 
@@ -67,7 +69,7 @@ export async function openBillingPortal(supabaseClient) {
   if (!data?.url) {
     throw new Error('Portal URL missing from server response.')
   }
-  window.location.assign(data.url)
+  await openExternalBillingUrl(data.url)
 }
 
 /**

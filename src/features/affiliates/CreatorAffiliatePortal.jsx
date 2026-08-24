@@ -8,6 +8,7 @@ import {
   upsertMyTaxProfile,
 } from './affiliatePortalApi.js'
 import { buildAffiliateTaxAttestationPdf, tinLast4FromFull } from './affiliateTaxPdf.js'
+import { openExternalBillingUrl } from '../../utils/edgeNative.js'
 
 function moneyCard(label, cents) {
   return (
@@ -304,7 +305,7 @@ export default function CreatorAffiliatePortal({
     try {
       const res = await startAffiliateConnectOnboarding(supabaseClient)
       if (res?.url) {
-        window.location.assign(res.url)
+        await openExternalBillingUrl(res.url)
         return
       }
       setLocalError('Connect onboarding URL missing.')

@@ -53,3 +53,28 @@ export async function edgeNativeInvoke(method, payload = {}) {
 
   return fn.call(bridge, payload)
 }
+
+/**
+ * Open a Stripe Checkout / Customer Portal / Connect onboarding URL.
+ * EdgeiOS shell → system Safari (`openInSafari`). Everywhere else → same-tab assign.
+ * Never load Stripe-hosted checkout inside the WKWebView.
+ *
+ * @param {string} url
+ * @returns {Promise<{ ok: boolean, via: 'safari' | 'assign' }>}
+ */
+export async function openExternalBillingUrl(url) {
+  const href = String(url || '').trim()
+  if (!href) throw new Error('openExternalBillingUrl: url required')
+  if (typeof window === 'undefined') return { ok: false, via: 'assign' }
+
+  if (isEdgeiOSShell()) {
+    const result = await edgeNativeInvoke('openInSafari', { url: href })
+    if (result && result.ok === false) {
+      throw new Error('Could not open Safari for billing.')
+    }
+    return { ok: true, via: 'safari' }
+  }
+
+  window.location.assign(href)
+  return { ok: true, via: 'assign' }
+}

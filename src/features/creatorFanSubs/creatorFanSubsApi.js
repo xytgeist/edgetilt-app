@@ -2,6 +2,7 @@ import {
   BOT_IMPERSONATE_OPEN_DOCK_KEY,
   BOT_IMPERSONATE_SETTINGS_FOCUS_KEY,
 } from '../bots/botPortalApi.js'
+import { openExternalBillingUrl } from '../../utils/edgeNative.js'
 
 /**
  * @param {Response | undefined} response
@@ -80,7 +81,7 @@ export async function startCreatorFanConnectOnboarding(supabaseClient) {
   if (data?.error) throw new Error(String(data.error))
   if (!data?.url) throw new Error('Connect URL missing from server.')
   stashCreatorFanConnectReturnNavigation()
-  window.location.assign(data.url)
+  await openExternalBillingUrl(data.url)
 }
 
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient */
@@ -110,7 +111,7 @@ export async function startCreatorFanCheckout(supabaseClient, creatorUserId) {
   }
   if (data?.error) throw new Error(String(data.error))
   if (!data?.url) throw new Error('Checkout URL missing.')
-  window.location.assign(data.url)
+  await openExternalBillingUrl(data.url)
 }
 
 /**
@@ -135,7 +136,7 @@ export async function openCreatorFanBillingPortal(supabaseClient, creatorUserId)
   if (!data?.url) {
     throw new Error('Portal URL missing from server response.')
   }
-  window.location.assign(data.url)
+  await openExternalBillingUrl(data.url)
 }
 
 /**

@@ -2,6 +2,8 @@
  * Admin bot management portal API.
  */
 
+import { openExternalBillingUrl } from '../../utils/edgeNative.js'
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} functionName
@@ -291,7 +293,7 @@ export async function staffBotFanConnectOnboard(supabaseClient, botUserId) {
   })
   if (error) throw error
   if (!data?.url) throw new Error('Connect URL missing from server.')
-  window.location.assign(data.url)
+  await openExternalBillingUrl(data.url)
 }
 
 /**

@@ -22,7 +22,7 @@
 | --- | --- |
 | **UA substring** | **`EdgeiOS/0.1.0`** (token format `EdgeiOS/<semver>`; bump with `AppConfig.shellVersion` in `ios/`) |
 | **Global** | `window.EdgeNative` injected at document start |
-| **Helper** | **`src/utils/edgeNative.js`** … `isEdgeiOSShell()`, `readEdgeiOSShellVersion()`, `edgeNativeInvoke(method, payload)` |
+| **Helper** | **`src/utils/edgeNative.js`** … `isEdgeiOSShell()`, `readEdgeiOSShellVersion()`, `edgeNativeInvoke(method, payload)`, **`openExternalBillingUrl(url)`** (shell → `openInSafari`; else `location.assign`) |
 
 **Do not** treat generic iOS Safari / PWA as the store shell. Positive checks only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
 
@@ -53,11 +53,17 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 
 | Behavior | Web ownership | Notes |
 | --- | --- | --- |
-| Hide Stripe Checkout / subscribe CTAs in WebView | Windows | Gate on EdgeiOS UA / `isEdgeiOSShell()`; route to Safari via `openInSafari` |
+| Hide Stripe Checkout / subscribe CTAs in WebView | Windows | **Done (2026-08-24):** `openExternalBillingUrl` on Edge checkout / portal, fan Connect / checkout / portal, affiliate Connect, staff bot fan Connect. Shell → Safari; web → assign. |
 | Deep link handling after APNs | Both | Native opens URL; web already has `?tab=` / lounge routes |
 | Lounge unmuted autoplay | Mac config + Windows playback paths | WKWebView media policy on native; web keeps existing autoplay store |
 
 **v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
+
+### StoreKit IAP (v1.1 note)
+
+v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connect onboarding). That is enough for a clean US App Review story if CTAs never open Stripe inside WKWebView.
+
+**v1.1 (optional, safer dual-path):** StoreKit 2 products that grant the **same** `get_my_entitlements()` / fan-sub rows as Stripe webhooks. Web keeps Stripe; shell can offer IAP beside “Continue in Safari.” May **upcharge IAP** for Apple’s cut. Do not invent a second entitlement system. Counsel + App Review notes before submit.
 
 ---
 

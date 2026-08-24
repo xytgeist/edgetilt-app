@@ -19,6 +19,12 @@ struct EdgeWebView: UIViewRepresentable {
     webView.isOpaque = false
     webView.backgroundColor = .black
     webView.scrollView.backgroundColor = .black
+    #if DEBUG
+    // Required on iOS 16.4+ for Mac Safari → Develop → [device] to list this WKWebView.
+    if #available(iOS 16.4, *) {
+      webView.isInspectable = true
+    }
+    #endif
     context.coordinator.bridge.attach(webView: webView)
     context.coordinator.attach(webView: webView)
 

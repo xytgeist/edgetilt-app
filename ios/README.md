@@ -33,6 +33,15 @@ xcodebuild -project ios/EdgeTilt.xcodeproj -scheme "EdgeTilt Test" -destination 
 
 Pick **EdgeTilt Test** in Xcode and Run (▶) on a Simulator or a paired iPhone (Developer Mode on; Trust developer under **Settings → General → VPN & Device Management**).
 
+### Safari Web Inspector (device WKWebView)
+
+1. iPhone: **Settings → Apps → Safari → Advanced → Web Inspector** → On  
+2. Mac Safari: enable the **Develop** menu  
+3. Run **EdgeTilt Test** from Xcode (Debug). Debug builds set `webView.isInspectable = true` (required iOS 16.4+)  
+4. Safari → **Develop → [your iPhone] →** `lvslotpro.com` / EdgeTilt page  
+
+If you only see **No Inspectable Applications**, the shell isn’t running in Debug, or you’re on an old IPA without `isInspectable`. Rebuild ▶ and keep the app foregrounded.
+
 ## Dual-machine
 
 Mac owns this folder. Windows owns `src/**`. See **`docs/ios-native-bridge.md`**.

@@ -321,6 +321,13 @@ export function LoungeImageLightbox({
   const [landFrame, setLandFrame] = useState(
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
+  /**
+   * While invert-FLIP GIF expand runs, React must keep the flyout box at the land rect
+   * (not the tile). Otherwise a re-render resets width/height to `fromRect` mid-flight.
+   */
+  const expandLayoutRectRef = useRef(
+    /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
+  )
   const landSlideIndexRef = useRef(Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0))))
   /** Opening slide locks chrome mode for the whole lightbox session (no per-slide flip). */
   const chromeLockIndexRef = useRef(landSlideIndexRef.current)
@@ -983,6 +990,9 @@ export function LoungeImageLightbox({
         })
         targetRectRef.current = target
         landSlideIndexRef.current = openIdx
+        // GIFs: invert FLIP … box is already the land frame so object-contain never
+        // full-bleeds then snaps. React must pin the same box across re-renders.
+        if (openingGif) expandLayoutRectRef.current = target
         setLandFrame(target)
 
         void flyout.offsetWidth
@@ -993,6 +1003,7 @@ export function LoungeImageLightbox({
           // Cover the pre-mounted open media layer for the whole expand.
           flyoutZIndex: zStack.overlay + 1,
           borderRadiusPx: 0,
+          layoutAtToRect: openingGif,
           onDone: () => {
             if (cancelled) return
             snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
@@ -1003,11 +1014,15 @@ export function LoungeImageLightbox({
             // slide 0 stays position:fixed and the carousel scrolls over it.
             flushSync(() => {
               setPhase('open')
-              // Drop parked frame for everyone (incl. single GIF). GIFs always get
-              // chrome-band pad in open layout, so flex+pad matches forceBand land
-              // without a full-bleed → contain resize. Carousel must clear or slide 0
-              // stays position:fixed while the pager scrolls under it.
-              setLandFrame(null)
+              // Single GIF: keep parked frame so land does not reflow into a second
+              // geometry (pad math can differ a few px from forceBand). Multi must
+              // drop it or the land slide stays position:fixed over the pager.
+              if (list.length > 1 || !openingGif) {
+                expandLayoutRectRef.current = null
+                setLandFrame(null)
+              } else {
+                expandLayoutRectRef.current = null
+              }
               setChromeVisible(true)
               setScrimOpacity(1)
               setLandFadeActive(true)
@@ -1111,12 +1126,12 @@ export function LoungeImageLightbox({
               : motionActive || landFadeActive
                 ? 'visible'
                 : 'hidden',
-          ...(phase === 'opening' && openFromRectRef.current
+          ...(phase === 'opening' && (expandLayoutRectRef.current || openFromRectRef.current)
             ? {
-                top: openFromRectRef.current.top,
-                left: openFromRectRef.current.left,
-                width: openFromRectRef.current.width,
-                height: openFromRectRef.current.height,
+                top: (expandLayoutRectRef.current || openFromRectRef.current).top,
+                left: (expandLayoutRectRef.current || openFromRectRef.current).left,
+                width: (expandLayoutRectRef.current || openFromRectRef.current).width,
+                height: (expandLayoutRectRef.current || openFromRectRef.current).height,
               }
             : phase === 'opening'
               ? { top: 0, left: 0, width: 0, height: 0 }
@@ -1141,11 +1156,17 @@ export function LoungeImageLightbox({
         }}
       >
         {/* Feed-tier src … same file as the tile. Lightbox 2048 is a new URL after CF resize
-            and was decoding mid-flight (blank / pop / aspect hitch). Sharp layer stays hidden until land. */}
+            and was decoding mid-flight (blank / pop / aspect hitch). Sharp layer stays hidden until land.
+            GIFs use object-contain so invert-FLIP land framing matches open media. */}
         <img
           src={ambientDisplaySrc}
           alt=""
-          className="h-full w-full select-none object-cover"
+          className={
+            isLoungeLightboxGifUrl(current, gifUrl) ||
+            (Boolean(gifUrl) && list.length === 1)
+              ? 'h-full w-full select-none object-contain'
+              : 'h-full w-full select-none object-cover'
+          }
           draggable={false}
           decoding="async"
           onError={(e) => onLoungeLightboxImgError(e, current)}

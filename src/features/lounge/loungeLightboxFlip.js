@@ -352,7 +352,12 @@ export function runHeroShrinkAnimation(
 
 /**
  * Imperative hero expand - WAAPI avoids iOS skipping CSS transform transitions on reparent.
- * @param {{ borderRadiusPx?: number }} [opts] Image lightbox passes `0` so corners square as soon as fly-in starts (avoids a full-size round→square pop).
+ * @param {{ borderRadiusPx?: number, layoutAtToRect?: boolean }} [opts]
+ *   Image lightbox passes `0` so corners square as soon as fly-in starts (avoids a full-size
+ *   round→square pop). `layoutAtToRect` - classic invert FLIP: box is already the land frame
+ *   (object-contain GIFs) and transform starts mapped onto the tile, then eases to identity.
+ *   Forward FLIP (default) lays out at the tile and scales up … tall GIFs with object-cover
+ *   read as full-bleed then snap when open media contain-sizes.
  */
 export function runHeroExpandAnimation(
   flyout,
@@ -365,6 +370,7 @@ export function runHeroExpandAnimation(
     onDebug,
     flyoutZIndex = HERO_STACK_BASE_Z_INDEX,
     borderRadiusPx = 12,
+    layoutAtToRect = false,
   },
 ) {
   if (!flyout || !fromRect || !toRect) {
@@ -380,22 +386,31 @@ export function runHeroExpandAnimation(
   }
 
   const radius = `${Math.max(0, Number(borderRadiusPx) || 0)}px`
+  const layoutRect = layoutAtToRect ? toRect : fromRect
 
   clearFlyoutHeroMotionStyles(flyout)
   flyout.style.position = 'fixed'
-  flyout.style.top = `${fromRect.top}px`
-  flyout.style.left = `${fromRect.left}px`
-  flyout.style.width = `${fromRect.width}px`
-  flyout.style.height = `${fromRect.height}px`
+  flyout.style.top = `${layoutRect.top}px`
+  flyout.style.left = `${layoutRect.left}px`
+  flyout.style.width = `${layoutRect.width}px`
+  flyout.style.height = `${layoutRect.height}px`
   flyout.style.zIndex = String(flyoutZIndex)
   flyout.style.transformOrigin = '0 0'
   flyout.style.transition = 'none'
   flyout.style.borderRadius = radius
 
-  const toTransform = computeHeroExpandTransform(fromRect, toRect)
+  const startTransform = layoutAtToRect
+    ? computeHeroShrinkTransform(fromRect, toRect)
+    : 'none'
+  const endTransform = layoutAtToRect
+    ? 'none'
+    : computeHeroExpandTransform(fromRect, toRect)
+
+  flyout.style.transform = startTransform
   void flyout.offsetWidth
 
   if (typeof flyout.animate !== 'function') {
+    flyout.style.transform = endTransform
     onDebug?.('expand no waapi')
     onDone('no-waapi')
     return
@@ -415,8 +430,8 @@ export function runHeroExpandAnimation(
 
   const anim = flyout.animate(
     [
-      { transform: 'none', borderRadius: radius },
-      { transform: toTransform, borderRadius: radius },
+      { transform: startTransform, borderRadius: radius },
+      { transform: endTransform, borderRadius: radius },
     ],
     {
       duration: HERO_EXPAND_MS,

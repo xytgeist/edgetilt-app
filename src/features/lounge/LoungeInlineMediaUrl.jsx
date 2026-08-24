@@ -321,13 +321,6 @@ export function LoungeImageLightbox({
   const [landFrame, setLandFrame] = useState(
     /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
   )
-  /**
-   * While invert-FLIP GIF expand runs, React must keep the flyout box at the land rect
-   * (not the tile). Otherwise a re-render resets width/height to `fromRect` mid-flight.
-   */
-  const expandLayoutRectRef = useRef(
-    /** @type {{ top: number, left: number, width: number, height: number } | null} */ (null),
-  )
   const landSlideIndexRef = useRef(Math.max(0, Math.min(initialIndex, Math.max(list.length - 1, 0))))
   /** Opening slide locks chrome mode for the whole lightbox session (no per-slide flip). */
   const chromeLockIndexRef = useRef(landSlideIndexRef.current)
@@ -384,8 +377,7 @@ export function LoungeImageLightbox({
 
   /**
    * Chrome-band padding when this slide is short enough at full width.
-   * Tall stills stay edge-to-edge (may run under the pills). GIFs always use the band so
-   * they stay centered between chrome and match the forceBand FLIP land.
+   * Tall stills stay edge-to-edge (may run under the pills). GIFs always use the band.
    */
   const bandPadIfFits = useCallback(
     (slideIndex) => {
@@ -938,11 +930,10 @@ export function LoungeImageLightbox({
       setChromeVisible(true)
     })
 
-    const runExpandToTarget = (fromRect, target, openIdxForLand, isGif) => {
+    const runExpandToTarget = (fromRect, target, openIdxForLand) => {
       if (cancelled || !target) return
       targetRectRef.current = target
       landSlideIndexRef.current = openIdxForLand
-      if (isGif) expandLayoutRectRef.current = target
       setLandFrame(target)
       void flyout.offsetWidth
       runHeroExpandAnimation(flyout, fromRect, target, {
@@ -950,8 +941,6 @@ export function LoungeImageLightbox({
         finishTimerRef: expandTimerRef,
         flyoutZIndex: zStack.overlay + 1,
         borderRadiusPx: 0,
-        // GIFs: invert FLIP so the flyout box is already the measured land frame.
-        layoutAtToRect: isGif,
         onDone: () => {
           if (cancelled) return
           snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
@@ -959,9 +948,7 @@ export function LoungeImageLightbox({
           flyout.style.pointerEvents = 'none'
           flushSync(() => {
             setPhase('open')
-            // Measured land frame matches open media … safe to drop for everyone.
-            // Multi still must clear or the land slide stays position:fixed over the pager.
-            expandLayoutRectRef.current = null
+            // Drop landFrame so multi-slide pager is not stuck under a fixed land slide.
             setLandFrame(null)
             setChromeVisible(true)
             setScrimOpacity(1)
@@ -972,10 +959,8 @@ export function LoungeImageLightbox({
       })
     }
 
-    // Double rAF: let chrome commit, then measure band + expand.
-    // Tall GIFs: seed pad/aspect, wait another frame, then FLIP to the *real* open-media
-    // box (not computeHeroTargetRect). Computed targets were flying full-bleed then
-    // snapping when flex+pad laid out the true size.
+    // Double rAF: chrome commit, then measure band + expand.
+    // GIFs: seed pad/aspect, wait for open media to lay out, FLIP to that painted box.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (cancelled) return
@@ -984,15 +969,11 @@ export function LoungeImageLightbox({
           const slideW = scroller.clientWidth
           if (slideW) scroller.scrollLeft = openIdx * slideW
         }
-        const bandRaw = measureImageLightboxMediaBand(
+        let band = measureImageLightboxMediaBand(
           mediaContainerRef.current,
           topChromeRef.current,
           footerChromeRef.current,
         )
-        // Opening media used to be visibility:hidden (0×0 shell on some WebKits). Prefer a
-        // viewport-relative chrome band when the shell measure is empty so GIF pad/FLIP
-        // do not target full-bleed height.
-        let band = bandRaw
         if (
           openingGif &&
           !(band.top > 0 || band.bottom > 0) &&
@@ -1049,11 +1030,10 @@ export function LoungeImageLightbox({
             insetTop: band.top,
             insetBottom: band.bottom,
           })
-          runExpandToTarget(from, target, openIdx, false)
+          runExpandToTarget(from, target, openIdx)
           return
         }
 
-        // Let aspect + band pad commit, then read the painted open-media rect.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             if (cancelled) return
@@ -1077,7 +1057,7 @@ export function LoungeImageLightbox({
                     insetBottom: band.bottom,
                     forceBand: true,
                   })
-            runExpandToTarget(from, target, openIdx, true)
+            runExpandToTarget(from, target, openIdx)
           })
         })
       })
@@ -1176,12 +1156,12 @@ export function LoungeImageLightbox({
               : motionActive || landFadeActive
                 ? 'visible'
                 : 'hidden',
-          ...(phase === 'opening' && (expandLayoutRectRef.current || openFromRectRef.current)
+          ...(phase === 'opening' && openFromRectRef.current
             ? {
-                top: (expandLayoutRectRef.current || openFromRectRef.current).top,
-                left: (expandLayoutRectRef.current || openFromRectRef.current).left,
-                width: (expandLayoutRectRef.current || openFromRectRef.current).width,
-                height: (expandLayoutRectRef.current || openFromRectRef.current).height,
+                top: openFromRectRef.current.top,
+                left: openFromRectRef.current.left,
+                width: openFromRectRef.current.width,
+                height: openFromRectRef.current.height,
               }
             : phase === 'opening'
               ? { top: 0, left: 0, width: 0, height: 0 }
@@ -1206,8 +1186,7 @@ export function LoungeImageLightbox({
         }}
       >
         {/* Feed-tier src … same file as the tile. Lightbox 2048 is a new URL after CF resize
-            and was decoding mid-flight (blank / pop / aspect hitch). Sharp layer stays hidden until land.
-            GIFs use object-contain so invert-FLIP land framing matches open media. */}
+            and was decoding mid-flight (blank / pop / aspect hitch). Sharp layer stays hidden until land. */}
         <img
           src={ambientDisplaySrc}
           alt=""

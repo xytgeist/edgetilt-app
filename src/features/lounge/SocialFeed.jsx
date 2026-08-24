@@ -8744,10 +8744,13 @@ export default function SocialFeed({
         return
       }
       if (openProfileGateIfNeeded()) return
-      // Leaving Lounge for Chat must not restore Search/Notifications over the chat tab
-      // (profile-from-search stashes returnDockPanel; finalize would re-open it after leave-home cleared the dock).
+      // Leaving Lounge for Chat must not restore Search/Notifications over the chat tab.
+      // Profile-from-search pushes a loungeNavReturnStack frame; finalize would restore it
+      // after leave-home cleared the dock (and a stale close-timer could still see isActivePage).
       profileReturnDockPanelRef.current = null
       loungeNavSearchReturnPendingRef.current = false
+      loungeSkipNavPopOnCloseRef.current = true
+      loungeNavReturnStackRef.current.length = 0
       setChatDockInitialPeerUserId(null)
       setLoungeDockPanel(null)
       closeProfileModalRef.current()
@@ -14234,11 +14237,14 @@ export default function SocialFeed({
     setProfileModalVisible(true)
     setLoungeProfileDockReveal(1)
     setProfileStackAboveStreamLightbox(false)
-    if (loungeNavRestoringRef.current) {
+    const skipNavRestore = loungeSkipNavPopOnCloseRef.current
+    if (skipNavRestore) loungeSkipNavPopOnCloseRef.current = false
+    if (skipNavRestore || loungeNavRestoringRef.current) {
       setProfileModalStartEditing(false)
       setProfileModalFollowListTab(null)
       setProfileModalHighlightFollowerIds([])
       setProfileModalOpenFanPortal(false)
+      profileReturnDockPanelRef.current = null
       return
     }
     if (loungeNavSearchReturnPendingRef.current) {
@@ -14249,7 +14255,18 @@ export default function SocialFeed({
       return
     }
     const navFrame = popLoungeNavReturnFrame(loungeNavReturnStackRef.current)
+    // Only restore while Lounge is the active tab. Message → Chat flips tab first; a stale
+    // close-timer can still hold an old finalize closure with isActivePage true, so also
+    // require live isActivePage here and discard the frame when leaving Lounge.
     if (navFrame) {
+      if (!isActivePage) {
+        setProfileModalStartEditing(false)
+        setProfileModalFollowListTab(null)
+        setProfileModalHighlightFollowerIds([])
+        setProfileModalOpenFanPortal(false)
+        profileReturnDockPanelRef.current = null
+        return
+      }
       requestAnimationFrame(() => {
         void restoreLoungeNavFrameRef.current(navFrame)
       })
@@ -14276,7 +14293,7 @@ export default function SocialFeed({
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
     if (reduce) {
-      finalizeProfileModalClose()
+      finalizeProfileModalCloseRef.current()
       return
     }
     const prevTid = profileModalCloseFallbackTimerRef.current
@@ -14285,9 +14302,10 @@ export default function SocialFeed({
     setProfileModalVisible(false)
     profileModalCloseFallbackTimerRef.current = window.setTimeout(() => {
       profileModalCloseFallbackTimerRef.current = 0
-      if (!profileModalVisibleRef.current) finalizeProfileModalClose()
+      // Always call the latest finalize (avoid stale isActivePage from this closure).
+      if (!profileModalVisibleRef.current) finalizeProfileModalCloseRef.current()
     }, 400)
-  }, [finalizeProfileModalClose])
+  }, [])
 
   useEffect(() => {
     closeProfileModalRef.current = closeProfileModal

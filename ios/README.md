@@ -10,7 +10,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - Bundle ID: `com.edgetilt.app`
 - Shell version / UA token: `EdgeiOS/0.1.0` (see `AppConfig.swift`)
 - Bridge: `window.EdgeNative` … contract **`docs/ios-native-bridge.md`**
-- **Safe area:** WebView is **edge-to-edge** (`.ignoresSafeArea()`). Native injects `--edge-sat|sar|sab|sal` on inset changes; web uses `max(env(safe-area-inset-*), var(--edge-*))` so PWA unchanged and shell never double-pads. See `EdgeSafeAreaInsets.swift` + `src/utils/edgeSafeAreaCss.js`.
+- **Safe area:** WebView is **edge-to-edge** (`.ignoresSafeArea()`). Native injects `--edge-sat|sar|sab|sal` from **window / SwiftUI geometry** insets (not `webView.safeAreaInsets`, which SwiftUI zeroes under ignoresSafeArea). Web uses `max(env(safe-area-inset-*), var(--edge-*))`. See `EdgeSafeAreaInsets.swift` + `src/utils/edgeSafeAreaCss.js`.
 - **App icon:** `AppIcon-1024.png` generated from live web pack **`public/EdgeIconBlack/`** (same as `public/apple-touch-icon.png`). Upscaled 310→1024, flattened onto black (no alpha) for App Store rules. Swap with a true 1024 master when you have one.
 - **Push (APNs):** bridge `requestPushPermission` / `getPushToken` are implemented. Personal Team builds omit `CODE_SIGN_ENTITLEMENTS` (Apple’s free profile has no Push). After **org Apple Developer** enroll: add Push Notifications capability, set `CODE_SIGN_ENTITLEMENTS: EdgeTilt/EdgeTilt.entitlements` in `project.yml`, `xcodegen generate`, rebuild. Token → Edge send path still needs Windows DB/Edge work.
 

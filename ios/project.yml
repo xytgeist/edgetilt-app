@@ -43,6 +43,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.edgetilt.app
         PRODUCT_NAME: EdgeTilt
+        # Push entitlements (`EdgeTilt.entitlements`) require a paid Apple Developer / org team
+        # with Push Notifications capability. Personal Team device Run omits CODE_SIGN_ENTITLEMENTS;
+        # bridge still implements requestPushPermission / getPushToken (token stays null until APNs enabled).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO

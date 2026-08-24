@@ -79,7 +79,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`a74d2561`** | Docs handoff; web gates landed through **`6a3155e2`** (Stripe→Safari, skip push-sw, Lounge unmuted) |
+| **`test`** | _(after Mac push)_ | APNs bridge + setAudioSession; media policy confirmed |
 | **`main`** | **`c262fbdd`** / **`b55ff3b6`** | Prod Vercel (older; do not promote without Ryan ask) |
 
 ### Decisions locked (do not reopen without Ryan)
@@ -119,13 +119,17 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 3. Lounge feed unmuted handoff under shell (`6a3155e2`) … web only
 4. Earlier: `edgeNative.js`, How to Install hide, Lottie in shell
 
-**Mac do now:**
-1. `git pull` … tip ≥ **`6a3155e2`**. Wait for Vercel `lvslotpro.com` if smoking live site.
-2. Confirm WK config still `mediaTypesRequiringUserActionForPlayback = []` + inline playback (no new Swift unless drifted).
-3. **Device smoke:** Lounge unmute → scroll handoff stays audible; Subscribe/portal opens Safari; no A2HS/push-sw nag in shell.
-4. Then resume Mac P0: APNs + `setAudioSession` + OAuth-in-shell + hard-crash repro.
+**Mac done (2026-08-24):**
+- Confirmed WK `mediaTypesRequiringUserActionForPlayback = []` + inline playback (no drift)
+- `setAudioSession` + `requestPushPermission` / `getPushToken` (token real only after org Push entitlement)
+- BUILD SUCCEEDED (generic iOS) without `aps-environment` on Personal Team
 
-**Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens). Do **not** edit `ios/`.
+**Mac do now (Ryan + Theo):**
+1. Wait for Vercel `lvslotpro.com` ≥ web tip; rebuild IPA from tip; **device smoke:** unmute handoff, Subscribe→Safari, no A2HS/push-sw nag
+2. OAuth-in-shell smoke; hard-crash repro leaving post detail
+3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token
+
+**Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 
 **Fixed (2026-08-23 Windows):** Lounge **Search → profile → Message** left search on top of Chat. Cleared `profileReturnDockPanelRef` + dock before close in `openChatWithUserFromProfile`; `finalizeProfileModalClose` only restores dock when `isActivePage`. Smoke: Search → profile → Message → Chat clean; Search → profile → back still returns to search.
 

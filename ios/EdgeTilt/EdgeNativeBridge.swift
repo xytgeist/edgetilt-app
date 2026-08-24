@@ -75,6 +75,20 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       }
     case "bustServiceWorker":
       bustServiceWorker(completion: completion)
+    case "requestPushPermission":
+      EdgePushManager.shared.requestPermission(completion: completion)
+    case "getPushToken":
+      completion(.success(EdgePushManager.shared.currentTokenPayload()))
+    case "setAudioSession":
+      let mode = (payload?["mode"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      DispatchQueue.main.async {
+        do {
+          try EdgeAudioSession.apply(mode: mode)
+          completion(.success(["ok": true]))
+        } catch {
+          completion(.failure(error))
+        }
+      }
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -189,13 +203,13 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       getInfo: function () { return call('getInfo', null); },
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
       requestPushPermission: function () {
-        return Promise.reject(new Error('not implemented'));
+        return call('requestPushPermission', null);
       },
       getPushToken: function () {
-        return Promise.reject(new Error('not implemented'));
+        return call('getPushToken', null);
       },
-      setAudioSession: function () {
-        return Promise.reject(new Error('not implemented'));
+      setAudioSession: function (payload) {
+        return call('setAudioSession', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

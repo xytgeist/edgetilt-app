@@ -105,10 +105,10 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] `bustServiceWorker` boot + bridge; media autoplay WebView policy (already open)
 - [x] Info.plist camera / mic / photo / location + WK capture grant
 - [x] **Safe area / post-detail back hit target (2026-08-23):** shell no longer `.ignoresSafeArea()` on the WebView … WKWebView was drawing under the notch while `env(safe-area-inset-top)` stayed ~0, so Lounge post-detail ← sat under Dynamic Island / status chrome. Rebuild IPA to verify.
-- [ ] **Device smoke after Windows 2026-08-24 web gates** (`test` ≥ **`6a3155e2`**, Vercel live): (1) Lounge unmute → scroll → next clips audible; (2) Stripe Checkout/portal → system Safari; (3) no A2HS / web-push nag in shell. Confirm `mediaTypesRequiringUserActionForPlayback = []` still in IPA. See **`docs/ios-native-bridge.md`** → Windows → Mac handoff.
+- [ ] **Device smoke after Windows 2026-08-24 web gates** (`test` ≥ **`6a3155e2`**, Vercel live): (1) Lounge unmute → scroll → next clips audible; (2) Stripe Checkout/portal → system Safari; (3) no A2HS / web-push nag in shell. Confirm `mediaTypesRequiringUserActionForPlayback = []` still in IPA. See **`docs/ios-native-bridge.md`** → Windows → Mac handoff. *(Mac confirmed media policy still open 2026-08-24; smoke awaits Ryan + Vercel.)*
 - [ ] **Hard crash investigating:** Ryan … opening Lounge post detail then trying to leave crashed the **phone** (device powered off), not just the app. After safe-area rebuild, repro; if still happens capture Console / Jetsam. Suspect WebKit/GPU memory under Stream + detail, not only layout.
-- [ ] APNs: `requestPushPermission` + `getPushToken` + token storage / Edge send path (coord Windows DB)
-- [ ] `setAudioSession` for LiveKit enter/exit
+- [x] APNs bridge: `requestPushPermission` + `getPushToken` + AppDelegate register (2026-08-24). Token null until org Push entitlement; Edge send path still Windows.
+- [x] `setAudioSession` for LiveKit enter/exit (`playback` / `voiceChat` / `default`)
 - [ ] OAuth-in-shell smoke; Safari / ASWebAuthentication if broken
 
 **P1 Windows (safe-area defense)**
@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **Mac APNs bridge + `setAudioSession`:** Native `requestPushPermission` / `getPushToken` / `setAudioSession` live in `ios/`. Media policy confirmed still open. Personal Team cannot sign Push entitlements … `EdgeTilt.entitlements` staged, enable `CODE_SIGN_ENTITLEMENTS` after org enroll. Device smoke of Windows web gates + OAuth + hard-crash still open. No `src/**`.
 - 2026-08-24: **Mac Theo handoff docs:** `WAKEUP` tip → **`6a3155e2`**; bridge doc § **Windows → Mac handoff (2026-08-24)** lists shipped web gates + Mac smoke (unmuted handoff, Stripe→Safari, no A2HS) + remaining APNs/`setAudioSession`. Backlog **P0 Mac** smoke checkbox. No app code.
 - 2026-08-24: **EdgeiOS Lounge feed unmuted handoff (Windows):** `appleWebKitBlocksFeedSoundHandoff()` … Safari/PWA still block feed-wide sound; EdgeiOS uses coordinated Tap-for-sound + handoff like Android (`LoungeFeedVideoAutoplayContext`, `LoungePostStreamVideo`). MSE/`detectAppleWebKitInlineStream` unchanged. Native already `mediaTypesRequiringUserActionForPlayback = []`. **Smoke on device:** unmute one tile → scroll → next clips stay audible. No SQL / Edge.
 - 2026-08-24: **EdgeiOS skip web push / install-for-push (Windows):** `useWebPushNotifications` treats shell as unsupported (no `push-sw.js` register / VAPID). `iosPwaInstallRequired` + `isInstalledPwaNotifPromptEligible` false in shell so Settings/Offers do not push A2HS. Lounge hint + Offers copy mention native push later. Safari/PWA web push unchanged. No SQL / Edge.

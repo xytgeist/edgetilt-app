@@ -55,5 +55,9 @@
 	<string>Edge can save images you capture or download to your photo library when you choose.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

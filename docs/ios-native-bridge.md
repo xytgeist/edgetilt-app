@@ -1,6 +1,6 @@
 # iOS native bridge contract (stub)
 
-**Status:** scaffold + device Run green (2026-08-23). Web gates for Stripe / push-sw / Lounge unmuted handoff landed on Windows **`test` ≥ `6a3155e2`** (2026-08-24). `getInfo` + `openInSafari` + **`bustServiceWorker`** (boot + bridge) implemented; camera/mic/photo/location usage strings + WK media-capture grant. Remaining stubs: `requestPushPermission`, `getPushToken`, `setAudioSession`. **Mac next:** device smoke of web gates + APNs / audio session … see § Windows → Mac handoff.  
+**Status:** scaffold + device Run green (2026-08-23). Web gates for Stripe / push-sw / Lounge unmuted handoff landed on Windows **`test` ≥ `6a3155e2`** (2026-08-24). `getInfo` + `openInSafari` + **`bustServiceWorker`** (boot + bridge) implemented; camera/mic/photo/location usage strings + WK media-capture grant. **`setAudioSession`** live (2026-08-24). **`requestPushPermission` / `getPushToken`** live in Swift (permission + token storage); APNs entitlement deferred until org team (Personal Team cannot provision Push). **Mac next:** device smoke of web gates + OAuth-in-shell + hard-crash repro … see § Windows → Mac handoff.  
 **Stack:** raw **`WKWebView`** live-site shell (not Capacitor). Product web stays on Vercel; IPA is a thin loader + bridges.  
 **Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)** (+ **Native gap checklist**).  
 **Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).  
@@ -44,9 +44,9 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | --- | --- | --- | --- | --- | --- |
 | `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', ua }` | Mac | **native** (`ios/` scaffold) |
 | `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | **native** (`ios/` scaffold) |
-| `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | stub (rejects) |
-| `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | stub (rejects) |
-| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | stub (rejects) |
+| `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** (UNUserNotificationCenter; 2026-08-24) |
+| `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (device token hex when registered; null until org Push entitlement) |
+| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | **native** (AVAudioSession; 2026-08-24) |
 | `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean, unregistered?: number, cacheKeysDeleted?: number }` | Mac (boot) | **native** (boot clear + bridge; 2026-08-23) |
 
 **Web-owned (no Swift required for first cut):**
@@ -89,7 +89,14 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
    If either drifted, restore + rebuild. Do **not** edit `src/**`.
 2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** unmute one feed tile → scroll → next clips stay **audible**. Fail → verify step 1 + Web Inspector; note in `WAKEUP` / backlog. Do not invent Safari unmute hacks in `ios/`.
 3. **Stripe→Safari smoke:** one Checkout or portal CTA → leaves WebView into Safari.
-4. **Continue Mac P0:** APNs (`requestPushPermission` / `getPushToken`), `setAudioSession`, OAuth-in-shell, hard-crash repro after safe-area rebuild.
+4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). Remaining: OAuth-in-shell smoke, hard-crash repro after safe-area rebuild, device smoke of Windows web gates.
+
+### Mac slice (2026-08-24)
+
+- Confirmed `allowsInlineMediaPlayback = true` + `mediaTypesRequiringUserActionForPlayback = []` (no drift).
+- Implemented `setAudioSession` (`playback` / `voiceChat` / `default`).
+- Implemented `requestPushPermission` + `getPushToken` + `AppDelegate` register hooks. **`EdgeTilt.entitlements`** kept in tree but **not** wired in `project.yml` yet … Personal Team provisioning rejects `aps-environment`. Flip `CODE_SIGN_ENTITLEMENTS` on after org enroll + Push capability.
+- No `src/**` edits.
 
 Canonical checklist: backlog **Native gap checklist** → **P0 Mac**. Session notes: root **`WAKEUP`**.
 

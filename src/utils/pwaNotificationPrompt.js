@@ -39,6 +39,7 @@ export function isStandalonePwa() {
 
 /** Installed PWA (Add to Home Screen / Install app) — eligible for one-time push opt-in prompt. */
 export function isInstalledPwaNotifPromptEligible() {
+  if (isEdgeiOSShell()) return false
   return isStandalonePwa()
 }
 
@@ -123,7 +124,12 @@ export function iosPwaInstallHelpMessage(isSafariBrowserFlag) {
     : `On iPhone, push alerts only work from the Home Screen app.\n\nTo enable alerts:\n1) Open Safari (blame Apple 🤷‍♂️)\n2) Go to ${host}\n3) Tap Share → Add to Home Screen\n4) Open Edge from the Home Screen icon\n5) Turn on Push notifications in Settings`
 }
 
+/**
+ * True when iOS Safari/browser tab needs Add to Home Screen before web push works.
+ * False in installed PWA and EdgeiOS shell (native APNs path … do not show A2HS install-for-push UX).
+ */
 export function iosPwaInstallRequired() {
+  if (isEdgeiOSShell()) return false
   return isIosDevice() && !isStandalonePwa()
 }
 

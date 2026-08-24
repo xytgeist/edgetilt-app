@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import useWebPushNotifications from '../../offers/hooks/useWebPushNotifications.js'
+import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import {
   consumePwaNotifEnablePending,
   iosPwaInstallRequired,
@@ -48,6 +49,9 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
 
   const pushStatusHint = useMemo(() => {
     if (!viewerUserId) return 'Sign in to enable push on this device.'
+    if (isEdgeiOSShell()) {
+      return 'Native push for the Edge app is coming soon (web push is not used in the shell).'
+    }
     if (iosPwaInstallRequired()) {
       return 'Add Edge to your Home Screen, then open from the icon to enable push here.'
     }

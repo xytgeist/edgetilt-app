@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { writePushOptInIntent } from '../../../utils/pushOptInIntent.js'
+
+const EDGE_IOS_PUSH_STATUS =
+  'Push for the Edge app will use native notifications (coming soon). Web push is not used in the shell.'
 
 /** Registration that owns our push-sw.js worker (avoid mixing with unrelated SW registrations). */
 async function getPushServiceWorkerRegistration() {
@@ -135,7 +139,18 @@ export default function useWebPushNotifications({ supabaseClient }) {
   }, [verifyOrRepairServerRegistration])
 
   useEffect(() => {
-    const supported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+    if (typeof window !== 'undefined' && isEdgeiOSShell()) {
+      setIsSupported(false)
+      setIsSubscribed(false)
+      setIsServerRegistered(false)
+      setStatusMessage(EDGE_IOS_PUSH_STATUS)
+      return
+    }
+    const supported =
+      typeof window !== 'undefined' &&
+      'serviceWorker' in navigator &&
+      'PushManager' in window &&
+      'Notification' in window
     setIsSupported(supported)
     if (!supported) {
       setStatusMessage('Push notifications are not supported on this browser.')
@@ -210,6 +225,10 @@ export default function useWebPushNotifications({ supabaseClient }) {
    */
   const enable = useCallback(async (opts = {}) => {
     const silent = opts?.silent === true
+    if (isEdgeiOSShell()) {
+      setStatusMessage(EDGE_IOS_PUSH_STATUS)
+      return false
+    }
     if (!isSupported) return false
     setIsBusy(true)
     setStatusMessage('')

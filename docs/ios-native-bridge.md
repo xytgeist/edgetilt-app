@@ -56,6 +56,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | Hide Stripe Checkout / subscribe CTAs in WebView | Windows | **Done (2026-08-24):** `openExternalBillingUrl` on Edge checkout / portal, fan Connect / checkout / portal, affiliate Connect, staff bot fan Connect. Shell → Safari; web → assign. |
 | Deep link handling after APNs | Both | Native opens URL; web already has `?tab=` / lounge routes |
 | Lounge unmuted autoplay | Mac config + Windows playback paths | WKWebView media policy on native; web keeps existing autoplay store |
+| Skip web push SW in shell | Windows | **Done (2026-08-24):** `useWebPushNotifications` unsupported under `isEdgeiOSShell()`; no `push-sw` register. A2HS / install-for-push gated via `iosPwaInstallRequired`. APNs still Mac. |
 
 **v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
 

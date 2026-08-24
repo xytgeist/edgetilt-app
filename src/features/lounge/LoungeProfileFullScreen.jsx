@@ -2455,18 +2455,24 @@ export default function LoungeProfileFullScreen({
           ref={profileBodyScrollRef}
           className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain [-webkit-overflow-scrolling:touch]"
           style={{
-            // Keep banner / feed below the status bar (edge-to-edge WKWebView has 0 env inset).
-            paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
             paddingBottom: `max(${
               !showOwnEditControls && profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
             },max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))`,
           }}
         >
-          <div className="relative z-10 w-full shrink-0">
-            <div className="relative h-28 w-full shrink-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 sm:h-36">
+          <div
+            className="relative z-10 w-full shrink-0"
+            style={{
+              // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.
+              paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
+            }}
+          >
+            <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
               {profile?.banner_url ? (
-                <img src={profile.banner_url} alt="" className="relative z-0 h-full w-full object-cover" />
+                <img src={profile.banner_url} alt="" className="h-full w-full object-cover" />
               ) : null}
+            </div>
+            <div className="relative h-28 w-full sm:h-36">
               {isOwnProfile ? (
                 <>
                   <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onPickBanner} />

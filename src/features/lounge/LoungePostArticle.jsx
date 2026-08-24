@@ -393,8 +393,12 @@ function LoungePostArticle({
       }
       if (openProfileGateIfNeeded?.()) return
       if (isCommentRepost) {
-        onOpenCommentDetail?.(rc)
-        e.stopPropagation()
+        if (onOpenCommentDetail) {
+          onOpenCommentDetail(rc)
+          e.stopPropagation()
+          return
+        }
+        // Profile (or other hosts) may only wire article-level open; do not swallow the tap.
         return
       }
       if (isPlainPostRepost) {

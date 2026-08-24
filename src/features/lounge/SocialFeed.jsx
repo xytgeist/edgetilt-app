@@ -15352,6 +15352,9 @@ export default function SocialFeed({
       onPostBodyClick: openLoungePostDetail,
       onStreamLightboxOpenDetail: openLoungeStreamLightboxDetail,
       onOpenCommentRepost: openCommentRepostDetail,
+      /** Caption / comment-bar on comment-repost cards (same as main feed). Without this,
+       *  `onCaptionAreaClick` no-ops + stopPropagation and profile article never opens. */
+      onOpenCommentDetail: (rc, opts) => void openCommentRepostDetail(rc, opts),
       onOpenProfileReply: (comment, post, opts) => {
         if (!post?.id || !comment?.id) return
         void openDirectCommentPostDetail(post, comment.id, {

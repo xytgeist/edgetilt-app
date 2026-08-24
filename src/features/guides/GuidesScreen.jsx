@@ -83,6 +83,7 @@ import { LOG_PLAY_LOGBOOK_BTN_CLASS } from '../calculators/CalculatorLogPlayButt
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
 import { useGuideFavorites } from './guideFavoritesStore.js'
+import { LOUNGE_CAPTION_MAX, loungeCaptionMaxForProfile } from '../../utils/loungeCommentLimits.js'
 
 /** Collapsed cards rendered at once; more load via scroll sentinel. */
 const GUIDES_LIST_PAGE_SIZE = 24
@@ -926,6 +927,7 @@ async function mergeGuideAccentColors(supabaseClient, rows) {
 
 function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, onRequireAuth }) {
   const [caption, setCaption] = useState('')
+  const [captionMax, setCaptionMax] = useState(LOUNGE_CAPTION_MAX)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [authPromptOpen, setAuthPromptOpen] = useState(false)
@@ -971,17 +973,34 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
   }
 
   useEffect(() => {
-    if (open) {
-      setCaption('')
-      setErr('')
-      setAuthPromptOpen(false)
-      setProfileGateOpen(false)
-      setProfileGateErr('')
-      setProfileGateAvatarFile(null)
-      setProfileGateAvatarCropFile(null)
-      setProfileGateAvatarPreview('')
+    if (!open) return
+    setCaption('')
+    setErr('')
+    setAuthPromptOpen(false)
+    setProfileGateOpen(false)
+    setProfileGateErr('')
+    setProfileGateAvatarFile(null)
+    setProfileGateAvatarCropFile(null)
+    setProfileGateAvatarPreview('')
+    setCaptionMax(LOUNGE_CAPTION_MAX)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession()
+        if (cancelled || !session?.user?.id) return
+        const { data: ownProfile } = await fetchOwnProfile(supabaseClient, session.user.id)
+        if (cancelled) return
+        setCaptionMax(loungeCaptionMaxForProfile(ownProfile))
+      } catch {
+        if (!cancelled) setCaptionMax(LOUNGE_CAPTION_MAX)
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [open, guideRow?.id])
+  }, [open, guideRow?.id, supabaseClient])
 
   if (!open || !guideRow) return null
 
@@ -990,10 +1009,6 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
     setErr('')
     const cleanedCaption = String(forcedCaption ?? caption).trim()
     if (!cleanedCaption) return
-    if (cleanedCaption.length > 280) {
-      setErr('Caption must be 280 characters or fewer.')
-      return
-    }
     setBusy(true)
     try {
       const {
@@ -1008,6 +1023,13 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
       const { data: ownProfile, error: profileErr } = await fetchOwnProfile(supabaseClient, session.user.id)
       if (profileErr) {
         setErr(`Could not verify profile: ${profileErr.message || 'Unknown error.'}`)
+        setBusy(false)
+        return
+      }
+      const effectiveMax = loungeCaptionMaxForProfile(ownProfile)
+      setCaptionMax(effectiveMax)
+      if (cleanedCaption.length > effectiveMax) {
+        setErr(`Caption must be ${effectiveMax} characters or fewer.`)
         setBusy(false)
         return
       }
@@ -1031,6 +1053,7 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
       const { error } = await supabaseClient.from('community_feed_posts').insert(
         communityFeedPostInsertPayload({
           caption: cleanedCaption,
+          captionMax: effectiveMax,
           gameTitle,
           gameSlug: gameSlug || null,
           categoryPills: ['ap_slots'],
@@ -1205,10 +1228,12 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
                 onChange={(e) => setCaption(e.target.value)}
                 rows={6}
                 className="mt-1 w-full rounded-2xl bg-zinc-950 border border-zinc-700 px-4 py-3 text-white text-[16px] leading-snug placeholder:text-[16px] focus:outline-none focus:ring-2 focus:ring-cyan-500/40 resize-y min-h-[10rem] touch-manipulation"
-                maxLength={280}
+                maxLength={captionMax}
                 placeholder="Ask your question or share a quick read..."
               />
-              <div className="mt-1 text-right text-[16px] tabular-nums text-zinc-500">{caption.length}/280</div>
+              <div className="mt-1 text-right text-[16px] tabular-nums text-zinc-500">
+                {caption.length}/{captionMax}
+              </div>
             </label>
             {err ? (
               <div className="rounded-2xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-rose-200 text-[16px] leading-relaxed">

@@ -183,6 +183,8 @@ function attachCategoryPills(out, categoryPills) {
  */
 export function communityFeedPostInsertPayload({
   caption,
+  /** Soft truncate ceiling (defaults to free-tier 500; pass subscriber/staff max when known). */
+  captionMax = LOUNGE_CAPTION_MAX,
   gameTitle = '',
   gameSlug = null,
   /** Staff-only: lounge may set true so the post is created already pinned. */
@@ -217,7 +219,7 @@ export function communityFeedPostInsertPayload({
   /** When null, post stays author-only until staged publish sets a timestamp. */
   feedVisibleAt,
 }) {
-  const cap = normalizeFeedCaption(caption)
+  const cap = normalizeFeedCaption(caption, captionMax)
   const gt = String(gameTitle ?? '').trim()
   const out = attachCategoryPills(
     {

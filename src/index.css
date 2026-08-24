@@ -1878,24 +1878,26 @@ html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
 }
 
 /*
- * Profile banner back / ⋯ / Cancel — light mode only.
- * Dark keeps bg-black/32 frost over banners. In light, that reads as charcoal discs
- * (text-white is not remapped when a bg-* class is present). Match soft glass + dark glyphs.
+ * Profile banner back / ⋯ / Cancel — match Lounge lightbox frost (bg-white/15 + blur).
+ * Light: same frost language as chat lightbox nav (readable dark glyphs; no dark scrim here).
+ * Dark: shared white frost + white glyphs (unchanged from lightbox top circles).
  */
 html.light [data-lounge-profile-banner-chrome] {
-  background: rgba(255, 255, 255, 0.78) !important;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1) !important;
-  color: #18181b !important;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #3f3f46 !important;
+  border: 1px solid rgba(255, 255, 255, 0.38) !important;
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
   text-shadow: none !important;
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(28px) saturate(165%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(165%) !important;
 }
 html.light [data-lounge-profile-banner-chrome]:hover {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.32) !important;
 }
 html.light [data-lounge-profile-banner-chrome]:active {
-  background: rgba(244, 244, 245, 0.95) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
 }
 html.light [data-lounge-profile-banner-chrome] span,
 html.light [data-lounge-profile-banner-chrome] svg {

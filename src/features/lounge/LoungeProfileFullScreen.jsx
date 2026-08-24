@@ -96,16 +96,13 @@ import ProfileFanSubPillButton from './ProfileFanSubPillButton.jsx'
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
 const PROFILE_BANNER_CHROME_BTN_CLASS =
-  'grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50'
+  'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]'
 
 const PROFILE_BANNER_CHROME_CANCEL_CLASS =
-  'pointer-events-auto rounded-full bg-black/32 px-3.5 py-1.5 text-[14px] font-semibold text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50 [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
-
-const PROFILE_BANNER_CHROME_DOTS_CLASS =
-  'block pb-0.5 text-2xl font-bold leading-none tracking-tight -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
+  'pointer-events-auto flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 px-4 text-[14px] font-semibold text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]'
 
 const PROFILE_BANNER_CHROME_BACK_CLASS =
-  'block leading-none text-2xl -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
+  'block leading-none text-[22px] -translate-y-px'
 
 function ProfileHeaderBadges({ role, isOg }) {
   const hasStaff = loungeFeedAuthorHasStaffBadge(role)
@@ -2303,7 +2300,13 @@ export default function LoungeProfileFullScreen({
             pointerEvents: profileDockReveal > 0.12 ? 'auto' : 'none',
           }}
         >
-          <div className="flex items-start justify-between gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-1 sm:px-3">
+          <div
+            className="flex items-start justify-between gap-2 px-2 pb-1 sm:px-3"
+            style={{
+              // Inline … arbitrary Tailwind max(env, var(--edge-sat)) has broken before.
+              paddingTop: 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
+            }}
+          >
             <button
               type="button"
               onClick={showOwnEditControls ? () => exitOwnProfileEditing() : onClose}
@@ -2452,6 +2455,8 @@ export default function LoungeProfileFullScreen({
           ref={profileBodyScrollRef}
           className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain [-webkit-overflow-scrolling:touch]"
           style={{
+            // Keep banner / feed below the status bar (edge-to-edge WKWebView has 0 env inset).
+            paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
             paddingBottom: `max(${
               !showOwnEditControls && profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
             },max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))`,

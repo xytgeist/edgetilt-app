@@ -43,14 +43,30 @@ export default function LoungePostRowMenu({
   feedVideoAutoplayEnabled = false,
   onFeedVideoAutoplayChange,
   menuButtonClassName = 'flex h-6 w-6 touch-manipulation items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800/90 hover:text-zinc-100 [-webkit-tap-highlight-color:transparent]',
+  /** Optional class for the ⋯ glyph (e.g. larger dots in a title bar). */
+  menuDotsClassName = 'h-[14px] w-[14px]',
+  /** Controlled open (e.g. post detail Back closes the menu first). */
+  open: openProp,
+  onOpenChange,
 }) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const controlled = openProp != null
+  const open = controlled ? Boolean(openProp) : internalOpen
+  const setOpen = useCallback(
+    (updater) => {
+      const prev = controlled ? Boolean(openProp) : internalOpen
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      if (!controlled) setInternalOpen(next)
+      onOpenChange?.(next)
+    },
+    [controlled, internalOpen, onOpenChange, openProp],
+  )
   const wrapRef = useRef(null)
   const buttonRef = useRef(null)
   const panelRef = useRef(null)
   const [fixedStyle, setFixedStyle] = useState({ top: 0, right: 0 })
 
-  const close = useCallback(() => setOpen(false), [])
+  const close = useCallback(() => setOpen(false), [setOpen])
 
   const updateFixedPosition = useCallback(() => {
     const btn = buttonRef.current
@@ -283,7 +299,7 @@ export default function LoungePostRowMenu({
         }}
         className={menuButtonClassName}
       >
-        <svg className="h-[14px] w-[14px]" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+        <svg className={menuDotsClassName} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
           <circle cx="4" cy="10" r="1.35" />
           <circle cx="10" cy="10" r="1.35" />
           <circle cx="16" cy="10" r="1.35" />

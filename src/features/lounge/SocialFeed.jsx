@@ -267,6 +267,7 @@ import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFee
 import { LOUNGE_FEED_PRIORITY_IMAGE_ROWS } from './loungeFeedImageAttachment.js'
 import LoungeFeedStatSlot from './LoungeFeedStatSlot'
 import LoungePostArticle from './LoungePostArticle'
+import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
 import { bodyTextWithLinkPreview } from '../../utils/linkifyText.jsx'
 import {
@@ -1293,7 +1294,6 @@ export default function SocialFeed({
   const loungePostDetailOpenFallbackTimerRef = useRef(0)
   /** If `transitionend` never runs, still tear down the full-screen detail shell (otherwise feed stays dead). */
   const loungePostDetailCloseFallbackTimerRef = useRef(0)
-  const loungePostDetailMenuWrapRef = useRef(null)
   const loadMoreSentinelRef = useRef(null)
   const pullRefreshZoneRef = useRef(null)
   const pullPostsWrapRef = useRef(null)
@@ -9699,21 +9699,6 @@ export default function SocialFeed({
   }, [loungePostDetailVisible])
 
   useEffect(() => {
-    if (!loungePostDetailMenuOpen) return
-    const onDown = (e) => {
-      const el = loungePostDetailMenuWrapRef.current
-      if (el && e.target instanceof Node && el.contains(e.target)) return
-      setLoungePostDetailMenuOpen(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('touchstart', onDown, { passive: true })
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('touchstart', onDown)
-    }
-  }, [loungePostDetailMenuOpen])
-
-  useEffect(() => {
     if (!composerUserId) {
       closeLoungePostDetail()
     }
@@ -16743,110 +16728,58 @@ export default function SocialFeed({
                 {loungeCommentDetailPathIds.length > 0 ? 'Reply' : 'Post'}
               </h2>
               {loungeDetailShowPostMenu ? (
-                <div ref={loungePostDetailMenuWrapRef} className={`relative flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} justify-end`}>
-                  <button
-                    type="button"
-                    aria-haspopup="menu"
-                    aria-expanded={loungePostDetailMenuOpen}
-                    aria-label="Post options"
-                    onClick={() => setLoungePostDetailMenuOpen((o) => !o)}
-                    className={`flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]`}
-                  >
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                      <circle cx="4" cy="10" r="1.65" />
-                      <circle cx="10" cy="10" r="1.65" />
-                      <circle cx="16" cy="10" r="1.65" />
-                    </svg>
-                  </button>
-                  {loungePostDetailMenuOpen ? (
-                    <div
-                      role="menu"
-                      className="absolute right-0 top-full z-[20] mt-1 min-w-[11rem] rounded-xl border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="block w-full px-4 py-3 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                        onClick={() => {
-                          setLoungePostDetailMenuOpen(false)
-                          handleShareLoungePost(loungePostDetail)
-                        }}
-                      >
-                        Share
-                      </button>
-                      {loungeDetailIsOwn && isLoungePostWithinAuthorEditWindow(loungePostDetail.created_at) ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="block w-full px-4 py-3 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                          onClick={() => {
-                            setLoungePostDetailMenuOpen(false)
-                            setLoungeDetailEditErr('')
-                            setLoungeManageErr('')
-                            cancelLoungeDetailEditMediaPrep()
-                            setLoungeDetailEditImageItems([])
-                            setLoungeDetailEditVideoSlot(null)
-                            try {
-                              clearHiddenFileInputs(
-                                loungeDetailEditImageInputRef.current,
-                                loungeDetailEditVideoInputRef.current,
-                              )
-                            } catch {
-                              // ignore
-                            }
-                            setLoungeDetailDraftCaption(feedPostDisplayCaption(loungePostDetail))
-                            const seed = feedPostAuthorEditMediaSeed(loungePostDetail)
-                            setLoungeDetailEditImageUrls(seed.imageUrls)
-                            setLoungeDetailEditMediaUrl(String(seed.gifUrl || '').trim())
-                            setLoungeDetailEditKeepStreamUid(feedPostStreamVideoUid(loungePostDetail) || null)
-                            setLoungeDetailEditCategoryPills(displayPostCategoryPills(loungePostDetail))
-                            setLoungeDetailEditing(true)
-                          }}
-                        >
-                          Edit
-                        </button>
-                      ) : null}
-                      {loungeDetailIsOwn ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="block w-full px-4 py-3 text-left text-[15px] font-medium text-rose-300 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-                          disabled={loungeDetailDeleteBusy}
-                          onClick={() => {
-                            setLoungePostDetailMenuOpen(false)
-                            void performLoungePostDeleteFromDetail()
-                          }}
-                        >
-                          Delete
-                        </button>
-                      ) : null}
-                      {loungeViewerIsStaff && !loungeDetailIsOwn ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="block w-full px-4 py-3 text-left text-[15px] font-medium text-rose-300 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-                          disabled={loungeDetailDeleteBusy}
-                          onClick={() => {
-                            setLoungePostDetailMenuOpen(false)
-                            void performLoungeStaffDeleteFromDetail()
-                          }}
-                        >
-                          Delete post
-                        </button>
-                      ) : null}
-                      {loungeViewerIsStaff ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="block w-full px-4 py-3 text-left text-[15px] font-medium text-fuchsia-200 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-                          disabled={loungePinBusy}
-                          onClick={() => void setLoungePostPinned(loungePostDetail.id, !loungePostDetail.pinned)}
-                        >
-                          {loungePostDetail.pinned ? 'Unpin from top' : 'Pin to top'}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
+                <div className={`relative flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} justify-end`}>
+                  <LoungePostRowMenu
+                    open={loungePostDetailMenuOpen}
+                    onOpenChange={setLoungePostDetailMenuOpen}
+                    positionScrollRootRef={loungePostDetailScrollRef}
+                    menuButtonClassName={`flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]`}
+                    menuDotsClassName="h-5 w-5"
+                    isOwn={loungeDetailIsOwn}
+                    showEdit={
+                      loungeDetailIsOwn && isLoungePostWithinAuthorEditWindow(loungePostDetail.created_at)
+                    }
+                    deleteBusy={loungeDetailDeleteBusy}
+                    onShare={() => handleShareLoungePost(loungePostDetail)}
+                    onEdit={() => {
+                      setLoungeDetailEditErr('')
+                      setLoungeManageErr('')
+                      cancelLoungeDetailEditMediaPrep()
+                      setLoungeDetailEditImageItems([])
+                      setLoungeDetailEditVideoSlot(null)
+                      try {
+                        clearHiddenFileInputs(
+                          loungeDetailEditImageInputRef.current,
+                          loungeDetailEditVideoInputRef.current,
+                        )
+                      } catch {
+                        // ignore
+                      }
+                      setLoungeDetailDraftCaption(feedPostDisplayCaption(loungePostDetail))
+                      const seed = feedPostAuthorEditMediaSeed(loungePostDetail)
+                      setLoungeDetailEditImageUrls(seed.imageUrls)
+                      setLoungeDetailEditMediaUrl(String(seed.gifUrl || '').trim())
+                      setLoungeDetailEditKeepStreamUid(feedPostStreamVideoUid(loungePostDetail) || null)
+                      setLoungeDetailEditCategoryPills(displayPostCategoryPills(loungePostDetail))
+                      setLoungeDetailEditing(true)
+                    }}
+                    onDelete={() => {
+                      void performLoungePostDeleteFromDetail()
+                    }}
+                    showStaffDelete={loungeViewerIsStaff && !loungeDetailIsOwn}
+                    staffDeleteBusy={loungeDetailDeleteBusy}
+                    onStaffDelete={() => {
+                      void performLoungeStaffDeleteFromDetail()
+                    }}
+                    showPin={loungeViewerIsStaff}
+                    pinned={Boolean(loungePostDetail.pinned)}
+                    pinBusy={loungePinBusy}
+                    onPinToggle={() =>
+                      void setLoungePostPinned(loungePostDetail.id, !loungePostDetail.pinned)
+                    }
+                    onBlock={() => onPostMenuBlockFromFeed(loungePostDetail)}
+                    onReport={() => onPostMenuReportFromFeed(loungePostDetail)}
+                  />
                 </div>
               ) : (
                 <div className={LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} aria-hidden />

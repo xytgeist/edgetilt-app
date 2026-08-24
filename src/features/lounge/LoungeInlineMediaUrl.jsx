@@ -335,7 +335,17 @@ export function LoungeImageLightbox({
     compact: { top: 0, bottom: 0 },
   })
   // Opening slide: height <= width → full author chrome for the session. Taller → pills only.
-  const showAuthorMeta = lockedAspect == null || lockedAspect >= 1
+  // Before natural aspect lands, use the feed tile aspect so tall GIFs paint compact chrome
+  // before band measure (otherwise fly-in parks against full meta, then chrome shrinks).
+  const showAuthorMeta = (() => {
+    if (lockedAspect != null) return lockedAspect >= 1
+    const from = openFromRectRef.current
+    if (from && from.width >= 8 && from.height >= 8) {
+      const a = from.width / Math.max(from.height, 1)
+      if (Number.isFinite(a) && a > 0) return a >= 1
+    }
+    return true
+  })()
   const chromeOpts = useMemo(() => ({ showAuthorMeta }), [showAuthorMeta])
 
   const noteSlideAspectAt = useCallback((img, slideIndex) => {
@@ -354,14 +364,27 @@ export function LoungeImageLightbox({
     return showAuthorMeta ? bandByMode.compact : bandByMode.full
   }, [showAuthorMeta, bandByMode])
 
+  const slideIsLightboxGif = useCallback(
+    (slideIndex) => {
+      const url = list[slideIndex] || ''
+      return (
+        isLoungeLightboxGifUrl(url, gifUrl) ||
+        (Boolean(gifUrl) && slideIndex === list.length - 1)
+      )
+    },
+    [list, gifUrl],
+  )
+
   /**
-   * Chrome-band padding only when this slide is still short enough at full width.
-   * Tall slides stay edge-to-edge (media may run under the pills).
+   * Chrome-band padding when this slide is short enough at full width.
+   * Tall stills stay edge-to-edge (may run under the pills). GIFs always use the band so
+   * they stay centered between chrome and match the forceBand FLIP land.
    */
   const bandPadIfFits = useCallback(
     (slideIndex) => {
       const pad = bandPadForSlide()
       if (!(pad.top > 0 || pad.bottom > 0)) return null
+      if (slideIsLightboxGif(slideIndex)) return pad
       const aspect = aspectByIndex[slideIndex] ?? lockedAspect
       if (aspect == null) return null
       const vv = typeof window !== 'undefined' ? window.visualViewport : null
@@ -370,7 +393,7 @@ export function LoungeImageLightbox({
       if (!mediaFitsChromeBand(aspect, pad, vw, vh)) return null
       return pad
     },
-    [aspectByIndex, lockedAspect, bandPadForSlide],
+    [aspectByIndex, lockedAspect, bandPadForSlide, slideIsLightboxGif],
   )
 
   const syncMediaBandPad = useCallback(() => {
@@ -980,9 +1003,11 @@ export function LoungeImageLightbox({
             // slide 0 stays position:fixed and the carousel scrolls over it.
             flushSync(() => {
               setPhase('open')
-              // Single GIF has no pager. Keep the parked frame so land does not
-              // reflow (carousel must drop this or slide 0 stays position:fixed).
-              if (list.length > 1 || !openingGif) setLandFrame(null)
+              // Drop parked frame for everyone (incl. single GIF). GIFs always get
+              // chrome-band pad in open layout, so flex+pad matches forceBand land
+              // without a full-bleed → contain resize. Carousel must clear or slide 0
+              // stays position:fixed while the pager scrolls under it.
+              setLandFrame(null)
               setChromeVisible(true)
               setScrimOpacity(1)
               setLandFadeActive(true)

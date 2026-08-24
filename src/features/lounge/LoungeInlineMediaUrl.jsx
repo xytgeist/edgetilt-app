@@ -938,7 +938,44 @@ export function LoungeImageLightbox({
       setChromeVisible(true)
     })
 
-    // Double rAF: let chrome (and optional aspect-seeded footer) commit, then measure band + expand.
+    const runExpandToTarget = (fromRect, target, openIdxForLand, isGif) => {
+      if (cancelled || !target) return
+      targetRectRef.current = target
+      landSlideIndexRef.current = openIdxForLand
+      if (isGif) expandLayoutRectRef.current = target
+      setLandFrame(target)
+      void flyout.offsetWidth
+      runHeroExpandAnimation(flyout, fromRect, target, {
+        animRef: expandAnimRef,
+        finishTimerRef: expandTimerRef,
+        flyoutZIndex: zStack.overlay + 1,
+        borderRadiusPx: 0,
+        // GIFs: invert FLIP so the flyout box is already the measured land frame.
+        layoutAtToRect: isGif,
+        onDone: () => {
+          if (cancelled) return
+          snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
+          flyout.style.opacity = '1'
+          flyout.style.pointerEvents = 'none'
+          flushSync(() => {
+            setPhase('open')
+            // Measured land frame matches open media … safe to drop for everyone.
+            // Multi still must clear or the land slide stays position:fixed over the pager.
+            expandLayoutRectRef.current = null
+            setLandFrame(null)
+            setChromeVisible(true)
+            setScrimOpacity(1)
+            setLandFadeActive(true)
+          })
+          startLandFade(flyout)
+        },
+      })
+    }
+
+    // Double rAF: let chrome commit, then measure band + expand.
+    // Tall GIFs: seed pad/aspect, wait another frame, then FLIP to the *real* open-media
+    // box (not computeHeroTargetRect). Computed targets were flying full-bleed then
+    // snapping when flex+pad laid out the true size.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (cancelled) return
@@ -947,11 +984,36 @@ export function LoungeImageLightbox({
           const slideW = scroller.clientWidth
           if (slideW) scroller.scrollLeft = openIdx * slideW
         }
-        const band = measureImageLightboxMediaBand(
+        const bandRaw = measureImageLightboxMediaBand(
           mediaContainerRef.current,
           topChromeRef.current,
           footerChromeRef.current,
         )
+        // Opening media used to be visibility:hidden (0×0 shell on some WebKits). Prefer a
+        // viewport-relative chrome band when the shell measure is empty so GIF pad/FLIP
+        // do not target full-bleed height.
+        let band = bandRaw
+        if (
+          openingGif &&
+          !(band.top > 0 || band.bottom > 0) &&
+          topChromeRef.current instanceof HTMLElement
+        ) {
+          const vv = window.visualViewport
+          const shellTop = vv?.offsetTop ?? 0
+          const shellBottom = shellTop + (vv?.height ?? window.innerHeight)
+          const top = Math.max(
+            0,
+            Math.round(topChromeRef.current.getBoundingClientRect().bottom - shellTop),
+          )
+          let bottom = 0
+          if (footerChromeRef.current instanceof HTMLElement) {
+            bottom = Math.max(
+              0,
+              Math.round(shellBottom - footerChromeRef.current.getBoundingClientRect().top),
+            )
+          }
+          if (top > 0 || bottom > 0) band = { top, bottom }
+        }
         const slideRoot = carouselScrollRef.current?.children?.[openIdx]
         const parkedImg =
           mediaImageRef.current instanceof HTMLImageElement
@@ -980,55 +1042,43 @@ export function LoungeImageLightbox({
         const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
         setBandByMode((prev) => ({ ...prev, [mode]: band }))
 
-        const target = computeHeroTargetRect(from, {
-          aspect: openingGif && gifAspect > 0 ? gifAspect : undefined,
-          displayW: openingGif ? undefined : from.width,
-          displayH: openingGif ? undefined : from.height,
-          insetTop: band.top,
-          insetBottom: band.bottom,
-          forceBand: openingGif,
-        })
-        targetRectRef.current = target
-        landSlideIndexRef.current = openIdx
-        // GIFs: invert FLIP … box is already the land frame so object-contain never
-        // full-bleeds then snaps. React must pin the same box across re-renders.
-        if (openingGif) expandLayoutRectRef.current = target
-        setLandFrame(target)
+        if (!openingGif) {
+          const target = computeHeroTargetRect(from, {
+            displayW: from.width,
+            displayH: from.height,
+            insetTop: band.top,
+            insetBottom: band.bottom,
+          })
+          runExpandToTarget(from, target, openIdx, false)
+          return
+        }
 
-        void flyout.offsetWidth
-
-        runHeroExpandAnimation(flyout, from, target, {
-          animRef: expandAnimRef,
-          finishTimerRef: expandTimerRef,
-          // Cover the pre-mounted open media layer for the whole expand.
-          flyoutZIndex: zStack.overlay + 1,
-          borderRadiusPx: 0,
-          layoutAtToRect: openingGif,
-          onDone: () => {
+        // Let aspect + band pad commit, then read the painted open-media rect.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
             if (cancelled) return
-            snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
-            flyout.style.opacity = '1'
-            flyout.style.pointerEvents = 'none'
-            // Drop landFrame in this turn. setPhase('open') re-runs this effect and
-            // sets cancelled … a later rAF then never clears the fixed shell, so
-            // slide 0 stays position:fixed and the carousel scrolls over it.
-            flushSync(() => {
-              setPhase('open')
-              // Single GIF: keep parked frame so land does not reflow into a second
-              // geometry (pad math can differ a few px from forceBand). Multi must
-              // drop it or the land slide stays position:fixed over the pager.
-              if (list.length > 1 || !openingGif) {
-                expandLayoutRectRef.current = null
-                setLandFrame(null)
-              } else {
-                expandLayoutRectRef.current = null
-              }
-              setChromeVisible(true)
-              setScrimOpacity(1)
-              setLandFadeActive(true)
-            })
-            startLandFade(flyout)
-          },
+            const slideEl = carouselScrollRef.current?.children?.[openIdx]
+            const liveImg =
+              mediaImageRef.current instanceof HTMLImageElement
+                ? mediaImageRef.current
+                : slideEl instanceof HTMLElement
+                  ? slideEl.querySelector('img')
+                  : parkedImg
+            const painted =
+              liveImg instanceof HTMLImageElement
+                ? readContainedImageViewportRect(liveImg)
+                : null
+            const target =
+              heroRectUsableForShrinkBack(painted)
+                ? painted
+                : computeHeroTargetRect(from, {
+                    aspect: gifAspect > 0 ? gifAspect : undefined,
+                    insetTop: band.top,
+                    insetBottom: band.bottom,
+                    forceBand: true,
+                  })
+            runExpandToTarget(from, target, openIdx, true)
+          })
         })
       })
     })
@@ -1303,7 +1353,12 @@ export function LoungeImageLightbox({
             onPointerUp={zoomPointerUp}
             onPointerCancel={zoomPointerCancel}
             className="relative z-0 flex min-h-0 flex-1 flex-col"
-            style={{ visibility: phase === 'opening' ? 'hidden' : 'visible' }}
+            style={{
+              // Opacity (not visibility) so open media still lays out during FLIP open.
+              // Tall GIFs measure this box as the expand target so fly-in matches land.
+              opacity: phase === 'opening' ? 0 : 1,
+              pointerEvents: phase === 'opening' ? 'none' : undefined,
+            }}
             aria-hidden={phase === 'opening' ? true : undefined}
           >
             <div

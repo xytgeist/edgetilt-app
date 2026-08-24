@@ -1879,16 +1879,28 @@ html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
 
 /*
  * Profile banner back / ⋯ / Cancel — match Lounge lightbox frost (bg-white/15 + blur).
- * Light: same frost language as chat lightbox nav (readable dark glyphs; no dark scrim here).
- * Dark: shared white frost + white glyphs (unchanged from lightbox top circles).
+ * Glyph color is CSS-owned (no text-white utility) so light mode stays black at rest and on scroll.
  */
+[data-lounge-profile-banner-chrome] {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  border: none;
+  box-shadow: none;
+}
+[data-lounge-profile-banner-chrome] span,
+[data-lounge-profile-banner-chrome] svg,
+[data-lounge-profile-banner-chrome] svg * {
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+  fill: currentColor;
+}
 html.light [data-lounge-profile-banner-chrome] {
   background: rgba(255, 255, 255, 0.22) !important;
-  color: #3f3f46 !important;
-  border: 1px solid rgba(255, 255, 255, 0.38) !important;
-  box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+  color: #18181b !important;
+  -webkit-text-fill-color: #18181b !important;
+  border: none !important;
+  border-width: 0 !important;
+  box-shadow: none !important;
   text-shadow: none !important;
   backdrop-filter: blur(28px) saturate(165%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(165%) !important;
@@ -1900,10 +1912,12 @@ html.light [data-lounge-profile-banner-chrome]:active {
   background: rgba(255, 255, 255, 0.4) !important;
 }
 html.light [data-lounge-profile-banner-chrome] span,
-html.light [data-lounge-profile-banner-chrome] svg {
-  color: inherit !important;
+html.light [data-lounge-profile-banner-chrome] svg,
+html.light [data-lounge-profile-banner-chrome] svg * {
+  color: #18181b !important;
+  -webkit-text-fill-color: #18181b !important;
+  fill: #18181b !important;
   text-shadow: none !important;
-  fill: currentColor;
 }
 
 /*

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import {
+  LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS,
   LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD,
   LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
+  LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS,
 } from './LoungeStreamVideoLightboxChrome.jsx'
 import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
@@ -1186,34 +1188,35 @@ export function LoungeImageLightbox({
             }}
             aria-hidden={chromeVisible ? undefined : true}
           >
-            <div className="media-lightbox-status-bar-blend" aria-hidden />
             <div
               ref={topChromeRef}
-              className={`${chromeInteractive ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+              className={`${chromeInteractive ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,env(safe-area-inset-top))]`}
               data-lounge-lightbox-top-chrome
               data-lounge-lightbox-no-swipe
             >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  requestClose()
-                }}
-                aria-label="Back"
-                className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
-              >
-                <span className="text-[22px] leading-none" aria-hidden>
-                  ←
-                </span>
-              </button>
-              <div className="ml-auto flex items-center gap-1" data-lounge-lightbox-no-swipe>
-                {lightboxTopBarExtraContent ? <div>{lightboxTopBarExtraContent}</div> : null}
-                {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    requestClose()
+                  }}
+                  aria-label="Back"
+                  className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
+                >
+                  <span className="text-[22px] leading-none" aria-hidden>
+                    ←
+                  </span>
+                </button>
+                <div className="ml-auto flex items-center gap-1" data-lounge-lightbox-no-swipe>
+                  {lightboxTopBarExtraContent ? <div>{lightboxTopBarExtraContent}</div> : null}
+                  {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
+                </div>
               </div>
             </div>
             {lightboxChromeContent ? (
               <div
-                className={`pointer-events-none w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8`}
+                className={`pointer-events-none w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8`}
                 data-lounge-image-lightbox-footer
                 onClick={(e) => e.stopPropagation()}
               >

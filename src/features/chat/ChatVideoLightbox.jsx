@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cfStreamManifestUrl } from '../../utils/loungeVideoUpload'
 import {
+  LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS,
   LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD,
   LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
+  LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS,
 } from '../lounge/LoungeStreamVideoLightboxChrome.jsx'
 import { useLoungeLightboxSwipeDismiss } from '../lounge/loungeLightboxSwipeDismiss.js'
 import { useLoungeStreamHlsAttachment } from '../lounge/useLoungeStreamHlsAttachment.js'
@@ -137,25 +139,28 @@ export default function ChatVideoLightbox({
     >
       <div className="pointer-events-none absolute inset-0 z-[3] flex flex-col justify-between">
         <div
-          className={`pointer-events-auto flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+          className={`pointer-events-auto w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+          data-lounge-lightbox-top-chrome
           data-lounge-lightbox-no-swipe
         >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleClose()
-            }}
-            aria-label="Back"
-            className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
-          >
-            <span className="text-[22px] leading-none" aria-hidden>
-              ←
-            </span>
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleClose()
+              }}
+              aria-label="Back"
+              className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
+            >
+              <span className="text-[22px] leading-none" aria-hidden>
+                ←
+              </span>
+            </button>
+          </div>
         </div>
         <div
-          className={`pointer-events-auto w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
+          className={`pointer-events-auto w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
           data-lounge-lightbox-no-swipe
         >
           <LoungeStreamVideoPlaybackControls

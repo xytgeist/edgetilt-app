@@ -47,7 +47,7 @@ import {
   snapFlyoutToHeroTile,
 } from './loungeLightboxFlip.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
-import { LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD } from './LoungeStreamVideoLightboxChrome.jsx'
+import { LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS, LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD, LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS } from './LoungeStreamVideoLightboxChrome.jsx'
 import LoungePostVideoInlineProgress, {
   LoungePendingPublishDevelopReveal,
   useLoungePendingPublishDisplay,
@@ -3476,53 +3476,56 @@ export default function LoungePostStreamVideo({
                 ) : null}
                 <div className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between">
                   <div
-                    className={`flex shrink-0 items-center justify-between gap-2 ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] ${
+                    className={`w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,env(safe-area-inset-top))] ${
                       heroChromeVisible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
                     }`}
                     style={heroChromeFadeStyle}
+                    data-lounge-lightbox-top-chrome
                     data-lounge-lightbox-no-swipe
                     onPointerDownCapture={() => bumpHeroChrome()}
                   >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        closeLightbox()
-                      }}
-                      aria-label="Back"
-                      className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
-                    >
-                      <span className="text-[22px] leading-none" aria-hidden>
-                        ←
-                      </span>
-                    </button>
-                    <div
-                      className="ml-auto flex items-center gap-1"
-                      data-lounge-lightbox-no-swipe
-                      onPointerDownCapture={() => bumpHeroChrome()}
-                    >
+                    <div className="flex items-center justify-between gap-2">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          onHeroSoundToggle()
+                          closeLightbox()
                         }}
-                        aria-label={heroSoundUnmuted ? 'Mute video' : 'Unmute video'}
+                        aria-label="Back"
                         className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
                       >
-                        {heroSoundUnmuted ? (
-                          <SoundOnGlyph className="h-5 w-5 opacity-90" />
-                        ) : (
-                          <MutedGlyph className="h-5 w-5 opacity-90" />
-                        )}
+                        <span className="text-[22px] leading-none" aria-hidden>
+                          ←
+                        </span>
                       </button>
-                      {lightboxTopBarExtraContent ? <div>{lightboxTopBarExtraContent}</div> : null}
-                      {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
+                      <div
+                        className="ml-auto flex items-center gap-1"
+                        data-lounge-lightbox-no-swipe
+                        onPointerDownCapture={() => bumpHeroChrome()}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onHeroSoundToggle()
+                          }}
+                          aria-label={heroSoundUnmuted ? 'Mute video' : 'Unmute video'}
+                          className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
+                        >
+                          {heroSoundUnmuted ? (
+                            <SoundOnGlyph className="h-5 w-5 opacity-90" />
+                          ) : (
+                            <MutedGlyph className="h-5 w-5 opacity-90" />
+                          )}
+                        </button>
+                        {lightboxTopBarExtraContent ? <div>{lightboxTopBarExtraContent}</div> : null}
+                        {lightboxMenuContent ? <div>{lightboxMenuContent}</div> : null}
+                      </div>
                     </div>
                   </div>
                   {lightboxChromeContent ? (
                     <div
-                      className={`pointer-events-none w-full bg-gradient-to-t from-black/85 via-black/45 to-transparent ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8 ${
+                      className={`pointer-events-none w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8 ${
                         heroChromeVisible ? 'opacity-100' : 'opacity-0'
                       }`}
                       style={heroChromeFadeStyle}

@@ -25,6 +25,12 @@ export const LOUNGE_IMAGE_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
 /** Horizontal inset for hero / image lightbox chrome (10% side margins in landscape). */
 export const LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD = 'px-3 landscape:px-[10vw]'
 
+/** Top/bottom scrims so frost buttons stay readable on very light (or busy) media. */
+export const LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS =
+  'bg-gradient-to-b from-black/85 via-black/45 to-transparent'
+export const LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS =
+  'bg-gradient-to-t from-black/85 via-black/45 to-transparent'
+
 /** Top-bar Follow pill - same height as mute / ⋯ controls. */
 export const LOUNGE_HERO_LIGHTBOX_TOP_FOLLOW_BTN_CLASS =
   'flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 px-3.5 text-[13px] font-bold text-white shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 [-webkit-tap-highlight-color:transparent]'

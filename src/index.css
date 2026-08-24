@@ -1356,33 +1356,32 @@ html.light [data-lounge-image-lightbox] [data-lounge-lightbox-image-pager] {
   color: #ffffff !important;
 }
 /*
- * Light-mode image lightboxes - fade #fff into #fafafa under the iOS status bar.
- * Solid white for one safe-area band, then linear fade over the next (2× inset tall).
+ * Light-mode image lightboxes previously faded white under the status bar.
+ * That fought frost chrome on bright slides ... top/bottom dark scrims handle contrast now.
  */
 .media-lightbox-status-bar-blend {
   display: none;
-}
-html.light [data-chat-image-lightbox] .media-lightbox-status-bar-blend,
-html.light [data-lounge-image-lightbox] .media-lightbox-status-bar-blend {
-  display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(env(safe-area-inset-top, 0px) * 2);
-  pointer-events: none;
-  z-index: 0;
-  background: linear-gradient(
-    to bottom,
-    #ffffff 0%,
-    #ffffff 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
 }
 /*
  * Image lightbox footer now matches Stream (dark gradient + light glyphs).
  * Do not remap interaction colors to dark-on-light here … Stream chrome is dark-banded.
  */
+html.light [data-lounge-image-lightbox] [data-lounge-lightbox-top-chrome] {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.5) 45%,
+    transparent 100%
+  ) !important;
+}
+html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) [data-lounge-lightbox-top-chrome] {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.5) 45%,
+    transparent 100%
+  ) !important;
+}
 html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-footer] {
   background: linear-gradient(
     to top,

@@ -189,26 +189,48 @@ function readImageAspectRatio(img) {
 /**
  * Pad the media shell so flex-centering sits in the band between top chrome bottom
  * and the top of footer chrome (avatar row, or interaction pills when compact).
+ * Falls back to the visual viewport when the media shell has no box yet (opening
+ * used to `visibility:hidden` the shell … some WebKits report 0×0, so FLIP got
+ * insets 0 and flew full-bleed before open pad landed).
  * @param {HTMLElement | null | undefined} shell
  * @param {HTMLElement | null | undefined} topChrome
  * @param {HTMLElement | null | undefined} footerChrome
  * @returns {{ top: number, bottom: number }}
  */
 function measureImageLightboxMediaBand(shell, topChrome, footerChrome) {
-  if (!(shell instanceof HTMLElement) || !(topChrome instanceof HTMLElement)) {
+  if (!(topChrome instanceof HTMLElement)) {
     return { top: 0, bottom: 0 }
   }
-  const shellRect = shell.getBoundingClientRect()
-  if (!(shellRect.width > 0 && shellRect.height > 0)) return { top: 0, bottom: 0 }
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null
+  const fallbackTop = vv?.offsetTop ?? 0
+  const fallbackH =
+    (vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0)) || 0
+  const fallbackW =
+    (vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0)) || 0
+  let shellTop = fallbackTop
+  let shellBottom = fallbackTop + fallbackH
+  let shellH = fallbackH
+  if (shell instanceof HTMLElement) {
+    const shellRect = shell.getBoundingClientRect()
+    if (shellRect.width > 0 && shellRect.height > 0) {
+      shellTop = shellRect.top
+      shellBottom = shellRect.bottom
+      shellH = shellRect.height
+    } else if (!(fallbackW > 0 && fallbackH > 0)) {
+      return { top: 0, bottom: 0 }
+    }
+  } else if (!(fallbackW > 0 && fallbackH > 0)) {
+    return { top: 0, bottom: 0 }
+  }
   const topRect = topChrome.getBoundingClientRect()
-  const top = Math.max(0, Math.round(topRect.bottom - shellRect.top))
+  const top = Math.max(0, Math.round(topRect.bottom - shellTop))
   let bottom = 0
   if (footerChrome instanceof HTMLElement) {
     const footRect = footerChrome.getBoundingClientRect()
-    bottom = Math.max(0, Math.round(shellRect.bottom - footRect.top))
+    bottom = Math.max(0, Math.round(shellBottom - footRect.top))
   }
   // Keep a usable band if chrome measurement glitches (e.g. display:none mid-unmount).
-  if (top + bottom >= shellRect.height - 8) return { top: 0, bottom: 0 }
+  if (shellH > 0 && top + bottom >= shellH - 8) return { top: 0, bottom: 0 }
   return { top, bottom }
 }
 
@@ -932,89 +954,99 @@ export function LoungeImageLightbox({
     })
 
     // Double rAF: let chrome (and optional aspect-seeded footer) commit, then measure band + expand.
+    // Tall GIFs must park in a non-zero chrome band … a 0-inset measure flies full-bleed then
+    // open pad shrinks (the “zoom then resize” pop). Retry a few frames if band is still empty.
+    const startExpand = (attempt = 0) => {
+      if (cancelled) return
+      const scroller = carouselScrollRef.current
+      if (scroller && list.length > 1) {
+        const slideW = scroller.clientWidth
+        if (slideW) scroller.scrollLeft = openIdx * slideW
+      }
+      const band = measureImageLightboxMediaBand(
+        mediaContainerRef.current,
+        topChromeRef.current,
+        footerChromeRef.current,
+      )
+      if (openingGif && !(band.top > 0 || band.bottom > 0) && attempt < 6) {
+        requestAnimationFrame(() => startExpand(attempt + 1))
+        return
+      }
+      const slideRoot = carouselScrollRef.current?.children?.[openIdx]
+      const parkedImg =
+        mediaImageRef.current instanceof HTMLImageElement
+          ? mediaImageRef.current
+          : slideRoot instanceof HTMLElement
+            ? slideRoot.querySelector('img')
+            : null
+      const parkedNaturalW =
+        parkedImg instanceof HTMLImageElement ? parkedImg.naturalWidth : 0
+      const parkedNaturalH =
+        parkedImg instanceof HTMLImageElement ? parkedImg.naturalHeight : 0
+      const gifAspect =
+        openingGif && parkedNaturalW > 0 && parkedNaturalH > 0
+          ? parkedNaturalW / parkedNaturalH
+          : openingGif
+            ? seedAspect
+            : tileAspect
+      if (openingGif && Number.isFinite(gifAspect) && gifAspect > 0) {
+        setAspectByIndex((prev) =>
+          prev[openIdx] != null && Math.abs(prev[openIdx] - gifAspect) < 0.0001
+            ? prev
+            : { ...prev, [openIdx]: gifAspect },
+        )
+      }
+      const modeAspect = openingGif ? gifAspect : tileAspect
+      const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
+      setBandByMode((prev) => ({ ...prev, [mode]: band }))
+
+      const target = computeHeroTargetRect(from, {
+        aspect: openingGif && gifAspect > 0 ? gifAspect : undefined,
+        displayW: openingGif ? undefined : from.width,
+        displayH: openingGif ? undefined : from.height,
+        insetTop: band.top,
+        insetBottom: band.bottom,
+        forceBand: openingGif,
+      })
+      targetRectRef.current = target
+      landSlideIndexRef.current = openIdx
+      setLandFrame(target)
+
+      void flyout.offsetWidth
+
+      runHeroExpandAnimation(flyout, from, target, {
+        animRef: expandAnimRef,
+        finishTimerRef: expandTimerRef,
+        // Cover the pre-mounted open media layer for the whole expand.
+        flyoutZIndex: zStack.overlay + 1,
+        borderRadiusPx: 0,
+        onDone: () => {
+          if (cancelled) return
+          snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
+          flyout.style.opacity = '1'
+          flyout.style.pointerEvents = 'none'
+          // Drop landFrame in this turn. setPhase('open') re-runs this effect and
+          // sets cancelled … a later rAF then never clears the fixed shell, so
+          // slide 0 stays position:fixed and the carousel scrolls over it.
+          flushSync(() => {
+            setPhase('open')
+            // Drop parked frame for everyone (incl. single GIF). GIFs always get
+            // chrome-band pad in open layout, so flex+pad matches forceBand land
+            // without a full-bleed → contain resize. Carousel must clear or slide 0
+            // stays position:fixed while the pager scrolls under it.
+            setLandFrame(null)
+            setChromeVisible(true)
+            setScrimOpacity(1)
+            setLandFadeActive(true)
+          })
+          startLandFade(flyout)
+        },
+      })
+    }
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (cancelled) return
-        const scroller = carouselScrollRef.current
-        if (scroller && list.length > 1) {
-          const slideW = scroller.clientWidth
-          if (slideW) scroller.scrollLeft = openIdx * slideW
-        }
-        const band = measureImageLightboxMediaBand(
-          mediaContainerRef.current,
-          topChromeRef.current,
-          footerChromeRef.current,
-        )
-        const slideRoot = carouselScrollRef.current?.children?.[openIdx]
-        const parkedImg =
-          mediaImageRef.current instanceof HTMLImageElement
-            ? mediaImageRef.current
-            : slideRoot instanceof HTMLElement
-              ? slideRoot.querySelector('img')
-              : null
-        const parkedNaturalW =
-          parkedImg instanceof HTMLImageElement ? parkedImg.naturalWidth : 0
-        const parkedNaturalH =
-          parkedImg instanceof HTMLImageElement ? parkedImg.naturalHeight : 0
-        const gifAspect =
-          openingGif && parkedNaturalW > 0 && parkedNaturalH > 0
-            ? parkedNaturalW / parkedNaturalH
-            : openingGif
-              ? seedAspect
-              : tileAspect
-        if (openingGif && Number.isFinite(gifAspect) && gifAspect > 0) {
-          setAspectByIndex((prev) =>
-            prev[openIdx] != null && Math.abs(prev[openIdx] - gifAspect) < 0.0001
-              ? prev
-              : { ...prev, [openIdx]: gifAspect },
-          )
-        }
-        const modeAspect = openingGif ? gifAspect : tileAspect
-        const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
-        setBandByMode((prev) => ({ ...prev, [mode]: band }))
-
-        const target = computeHeroTargetRect(from, {
-          aspect: openingGif && gifAspect > 0 ? gifAspect : undefined,
-          displayW: openingGif ? undefined : from.width,
-          displayH: openingGif ? undefined : from.height,
-          insetTop: band.top,
-          insetBottom: band.bottom,
-          forceBand: openingGif,
-        })
-        targetRectRef.current = target
-        landSlideIndexRef.current = openIdx
-        setLandFrame(target)
-
-        void flyout.offsetWidth
-
-        runHeroExpandAnimation(flyout, from, target, {
-          animRef: expandAnimRef,
-          finishTimerRef: expandTimerRef,
-          // Cover the pre-mounted open media layer for the whole expand.
-          flyoutZIndex: zStack.overlay + 1,
-          borderRadiusPx: 0,
-          onDone: () => {
-            if (cancelled) return
-            snapFlyoutToHeroOpen(flyout, target, zStack.overlay + 1)
-            flyout.style.opacity = '1'
-            flyout.style.pointerEvents = 'none'
-            // Drop landFrame in this turn. setPhase('open') re-runs this effect and
-            // sets cancelled … a later rAF then never clears the fixed shell, so
-            // slide 0 stays position:fixed and the carousel scrolls over it.
-            flushSync(() => {
-              setPhase('open')
-              // Drop parked frame for everyone (incl. single GIF). GIFs always get
-              // chrome-band pad in open layout, so flex+pad matches forceBand land
-              // without a full-bleed → contain resize. Carousel must clear or slide 0
-              // stays position:fixed while the pager scrolls under it.
-              setLandFrame(null)
-              setChromeVisible(true)
-              setScrimOpacity(1)
-              setLandFadeActive(true)
-            })
-            startLandFade(flyout)
-          },
-        })
+        startExpand(0)
       })
     })
 
@@ -1145,7 +1177,12 @@ export function LoungeImageLightbox({
         <img
           src={ambientDisplaySrc}
           alt=""
-          className="h-full w-full select-none object-cover"
+          className={
+            isLoungeLightboxGifUrl(current, gifUrl) ||
+            (Boolean(gifUrl) && list.length === 1)
+              ? 'h-full w-full select-none object-contain'
+              : 'h-full w-full select-none object-cover'
+          }
           draggable={false}
           decoding="async"
           onError={(e) => onLoungeLightboxImgError(e, current)}
@@ -1282,7 +1319,12 @@ export function LoungeImageLightbox({
             onPointerUp={zoomPointerUp}
             onPointerCancel={zoomPointerCancel}
             className="relative z-0 flex min-h-0 flex-1 flex-col"
-            style={{ visibility: phase === 'opening' ? 'hidden' : 'visible' }}
+            style={{
+              // Opacity (not visibility) so the shell still has a measurable box during
+              // FLIP open … visibility:hidden can report 0×0 and force a full-bleed target.
+              opacity: phase === 'opening' ? 0 : 1,
+              pointerEvents: phase === 'opening' ? 'none' : undefined,
+            }}
             aria-hidden={phase === 'opening' ? true : undefined}
           >
             <div

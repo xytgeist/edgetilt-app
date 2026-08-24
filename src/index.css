@@ -1332,19 +1332,17 @@ html.light [data-lounge-post-row-menu] [role='menuitem']:hover,
 html.light [data-lounge-post-row-menu] [role='menuitem']:active {
   background: rgb(244 244 245) !important;
 }
+/* Icons inherit menuitem label color (do not mute svg separately). */
 html.light [data-lounge-post-row-menu] [role='menuitem'] svg {
-  color: rgb(113 113 122) !important;
+  color: inherit !important;
 }
-html.light [data-lounge-post-row-menu] [role='menuitem'].text-rose-300,
-html.light [data-lounge-post-row-menu] [role='menuitem'].text-rose-300 svg {
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-rose-300 {
   color: rgb(225 29 72) !important;
 }
-html.light [data-lounge-post-row-menu] [role='menuitem'].text-fuchsia-200,
-html.light [data-lounge-post-row-menu] [role='menuitem'].text-fuchsia-200 svg {
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-fuchsia-200 {
   color: rgb(192 38 211) !important;
 }
-html.light [data-lounge-post-row-menu] [role='menuitem'].text-sky-200,
-html.light [data-lounge-post-row-menu] [role='menuitem'].text-sky-200 svg {
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-sky-200 {
   color: rgb(2 132 199) !important;
 }
 html.light [data-lounge-post-row-menu] [role='separator'],

@@ -4,7 +4,8 @@ import { Ban, Flag, Pencil, Pin, Share2, Trash2 } from 'lucide-react'
 
 const MENU_ITEM_CLASS =
   'flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-[15px] font-medium touch-manipulation hover:bg-zinc-800/90 active:bg-zinc-800 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]'
-const MENU_ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-zinc-400'
+/** Size only ... stroke follows the menuitem `text-*` via currentColor. */
+const MENU_ICON_CLASS = 'h-[18px] w-[18px] shrink-0'
 
 /**
  * ⋮ overflow on a feed/profile post card (Edit/Delete for own, Block/Report for others).
@@ -183,7 +184,7 @@ export default function LoungePostRowMenu({
             onPinToggle?.()
           }}
         >
-          <Pin className={`${MENU_ICON_CLASS} text-fuchsia-300/90`} strokeWidth={1.75} aria-hidden />
+          <Pin className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
           {pinned ? 'Unpin from Lounge' : 'Pin to Lounge'}
         </button>
       ) : null}
@@ -199,7 +200,7 @@ export default function LoungePostRowMenu({
             onProfilePinToggle?.()
           }}
         >
-          <Pin className={`${MENU_ICON_CLASS} text-sky-300/90`} strokeWidth={1.75} aria-hidden />
+          <Pin className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
           {profilePinned ? 'Unpin from profile' : 'Pin to profile'}
         </button>
       ) : null}
@@ -231,7 +232,7 @@ export default function LoungePostRowMenu({
               onDelete?.()
             }}
           >
-            <Trash2 className={`${MENU_ICON_CLASS} text-rose-300/90`} strokeWidth={1.75} aria-hidden />
+            <Trash2 className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
             Delete
           </button>
         </>
@@ -249,7 +250,7 @@ export default function LoungePostRowMenu({
                 onStaffDelete?.()
               }}
             >
-              <Trash2 className={`${MENU_ICON_CLASS} text-rose-300/90`} strokeWidth={1.75} aria-hidden />
+              <Trash2 className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
               Delete post
             </button>
           ) : null}

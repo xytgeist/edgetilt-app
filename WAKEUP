@@ -79,8 +79,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`425d54fd`** | Windows: Search→Message→Chat overlay fixed |
-| **`main`** | **`b55ff3b6`** | Prod Vercel (profile delete + `ios/` scaffold in tree; no store binary) |
+| **`test`** | **`6a3155e2`** | Windows EdgeiOS web gates: Stripe→Safari, skip push-sw/A2HS, Lounge unmuted handoff |
+| **`main`** | **`c262fbdd`** / **`b55ff3b6`** | Prod Vercel (older; do not promote without Ryan ask) |
 
 ### Decisions locked (do not reopen without Ryan)
 
@@ -109,24 +109,25 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 - **Safe area:** WebView respects safe area (no `.ignoresSafeArea`) so post-detail back isn’t under the island; rebuild to verify
 - **Open:** hard device power-off leaving post detail ... repro after rebuild
 
-**Next (Mac Theo):**
-1. Smoke: UA shows `EdgeiOS/`; `window.EdgeNative.getInfo` + `bustServiceWorker` (Safari Web Inspector → device)
-2. APNs (`requestPushPermission` / `getPushToken`) + `setAudioSession` for calls
-3. OAuth-in-shell smoke; org Apple Developer enroll when TestFlight
+**Next (Mac Theo) … read this first after `git pull`:**
 
-**Windows Theo (P0):** do **not** edit `ios/`. Pull `test`.
+Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handoff (2026-08-24)**.
+
+**Windows already shipped on `test` (no Mac code for these):**
+1. Stripe / Connect → `openInSafari` (`83f447a4`)
+2. Skip `push-sw` + install-for-push UX (`02915d1b`)
+3. Lounge feed unmuted handoff under shell (`6a3155e2`) … web only
+4. Earlier: `edgeNative.js`, How to Install hide, Lottie in shell
+
+**Mac do now:**
+1. `git pull` … tip ≥ **`6a3155e2`**. Wait for Vercel `lvslotpro.com` if smoking live site.
+2. Confirm WK config still `mediaTypesRequiringUserActionForPlayback = []` + inline playback (no new Swift unless drifted).
+3. **Device smoke:** Lounge unmute → scroll handoff stays audible; Subscribe/portal opens Safari; no A2HS/push-sw nag in shell.
+4. Then resume Mac P0: APNs + `setAudioSession` + OAuth-in-shell + hard-crash repro.
+
+**Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens). Do **not** edit `ios/`.
 
 **Fixed (2026-08-23 Windows):** Lounge **Search → profile → Message** left search on top of Chat. Cleared `profileReturnDockPanelRef` + dock before close in `openChatWithUserFromProfile`; `finalizeProfileModalClose` only restores dock when `isActivePage`. Smoke: Search → profile → Message → Chat clean; Search → profile → back still returns to search.
-
-**Also (gap checklist):**
-1. ~~`src/utils/edgeNative.js`~~ **done**
-2. ~~Stripe / fan / affiliate Connect → `openInSafari`~~ **done** (`openExternalBillingUrl`)
-3. ~~Skip `push-sw` register + hide A2HS / **How to Install** / install-for-push~~ **done**
-4. ~~Lounge cold-boot / resume **Lottie**~~ **done** (eligible + direct-canvas in shell) … device smoke
-5. ~~Lounge unmuted autoplay when shell detected~~ **done** (web) … **device smoke** on EdgeiOS
-See backlog **Native gap checklist**. IAP note: Safari-only for v1; StoreKit dual-path parked as **v1.1** in bridge doc.
-
-**Mac help for unmuted autoplay:** no new Swift required if `mediaTypesRequiringUserActionForPlayback = []` is still in the IPA. Smoke on device after Vercel `test` deploy; if handoff stays silent, Mac verifies WebView media config + rebuild.
 
 ### v1 vs v1.1 (iOS)
 

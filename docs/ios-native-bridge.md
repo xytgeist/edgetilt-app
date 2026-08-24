@@ -1,6 +1,6 @@
 # iOS native bridge contract (stub)
 
-**Status:** scaffold + device Run green (2026-08-23). `getInfo` + `openInSafari` + **`bustServiceWorker`** (boot + bridge) implemented; camera/mic/photo/location usage strings + WK media-capture grant. Remaining stubs: `requestPushPermission`, `getPushToken`, `setAudioSession`.  
+**Status:** scaffold + device Run green (2026-08-23). Web gates for Stripe / push-sw / Lounge unmuted handoff landed on Windows **`test` ≥ `6a3155e2`** (2026-08-24). `getInfo` + `openInSafari` + **`bustServiceWorker`** (boot + bridge) implemented; camera/mic/photo/location usage strings + WK media-capture grant. Remaining stubs: `requestPushPermission`, `getPushToken`, `setAudioSession`. **Mac next:** device smoke of web gates + APNs / audio session … see § Windows → Mac handoff.  
 **Stack:** raw **`WKWebView`** live-site shell (not Capacitor). Product web stays on Vercel; IPA is a thin loader + bridges.  
 **Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)** (+ **Native gap checklist**).  
 **Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).  
@@ -65,6 +65,33 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connect onboarding). That is enough for a clean US App Review story if CTAs never open Stripe inside WKWebView.
 
 **v1.1 (optional, safer dual-path):** StoreKit 2 products that grant the **same** `get_my_entitlements()` / fan-sub rows as Stripe webhooks. Web keeps Stripe; shell can offer IAP beside “Continue in Safari.” May **upcharge IAP** for Apple’s cut. Do not invent a second entitlement system. Counsel + App Review notes before submit.
+
+---
+
+## Windows → Mac handoff (2026-08-24)
+
+**`test` tip:** **`6a3155e2`** (and parents **`02915d1b`**, **`83f447a4`**). Mac: `git pull` on `test`. Wait for Vercel **`lvslotpro.com`** to pick up the tip before device smoke (web gates live on the site the shell loads).
+
+### Already done (Windows … do not re-implement)
+
+| Item | What shipped | Mac action |
+| --- | --- | --- |
+| Stripe / fan / affiliate / bot Connect | `openExternalBillingUrl` → `EdgeNative.openInSafari` in shell | **Smoke:** Subscribe / Manage billing / Connect opens **system Safari**, not Checkout inside WKWebView |
+| Skip web push + A2HS | No `push-sw.js` register; `iosPwaInstallRequired` false in shell; How to Install chip already hidden | **Smoke:** Settings Notifications / Offers do **not** nag Add to Home Screen. Push toggle copy says native coming later |
+| Lounge unmuted feed handoff | `appleWebKitBlocksFeedSoundHandoff()` … EdgeiOS uses Android-style coordinated sound; Safari/PWA unchanged | **Smoke** (below). **No new Swift** if media policy still open |
+| Install chip + Lottie | Prior commits | Device smoke optional |
+
+### Mac must do next (smoke + remaining P0)
+
+1. **Pull `test` ≥ `6a3155e2`.** Confirm IPA still has in `EdgeNativeBridge.makeConfiguration()`:
+   - `allowsInlineMediaPlayback = true`
+   - `mediaTypesRequiringUserActionForPlayback = []`
+   If either drifted, restore + rebuild. Do **not** edit `src/**`.
+2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** unmute one feed tile → scroll → next clips stay **audible**. Fail → verify step 1 + Web Inspector; note in `WAKEUP` / backlog. Do not invent Safari unmute hacks in `ios/`.
+3. **Stripe→Safari smoke:** one Checkout or portal CTA → leaves WebView into Safari.
+4. **Continue Mac P0:** APNs (`requestPushPermission` / `getPushToken`), `setAudioSession`, OAuth-in-shell, hard-crash repro after safe-area rebuild.
+
+Canonical checklist: backlog **Native gap checklist** → **P0 Mac**. Session notes: root **`WAKEUP`**.
 
 ---
 

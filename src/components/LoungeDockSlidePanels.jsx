@@ -55,6 +55,7 @@ import { loungeDockFabScrollBottomInsetPx } from '../utils/loungeDockFabPosition
 import {
   loungeTitleRevealAfterScrollStep,
   loungeTitleRevealClampScrollDelta,
+  loungeTitleBarHideTranslateYPx,
 } from '../utils/loungeTitleRevealScroll.js'
 import { renderPlainTextWithSearchHighlight } from '../utils/loungeSearchHighlight.jsx'
 import {
@@ -806,7 +807,9 @@ export default function LoungeDockSlidePanels({
 
   const panelTitleBarChromePx = panelTitleBarHeight > 0 ? panelTitleBarHeight : 56
   const scrollBottomInsetPx = loungeDockFabScrollBottomInsetPx()
-  const titleHidePx = panelTitleBarHeight > 0 ? panelTitleBarHeight : 56
+  const titleHidePx = Math.abs(
+    loungeTitleBarHideTranslateYPx(0, panelTitleBarHeight, viewportTitleTopPx),
+  )
   const scrollPaddingTopPx = viewportTitleTopPx + panelTitleBarChromePx
 
   useLayoutEffect(() => {

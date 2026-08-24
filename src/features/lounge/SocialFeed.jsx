@@ -394,6 +394,7 @@ import {
   loungeTitleRevealClampScrollDelta,
   loungeTitleBarHideTranslateYPx,
 } from '../../utils/loungeTitleRevealScroll.js'
+import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
 import LoungeDockSlidePanels from '../../components/LoungeDockSlidePanels.jsx'
 import LoungePostCommentThread from './LoungePostCommentThread.jsx'
 import {
@@ -15662,7 +15663,7 @@ export default function SocialFeed({
       restorePanelScrollTop={dockPanelScrollRestore}
       onPanelScrollRestored={onDockPanelScrollRestored}
       communityPosts={communityPosts}
-      viewportTitleTopPx={loungeFeedViewportTopPx}
+      viewportTitleTopPx={Math.max(loungeFeedViewportTopPx, readCssSafeAreaTopPx())}
       titleBarNavSlot={isActivePage ? titleBarNavSlot : null}
       titleBarCenterSlot={isActivePage ? titleBarCenterSlot : null}
       communityFeedLoading={communityFeedLoading}

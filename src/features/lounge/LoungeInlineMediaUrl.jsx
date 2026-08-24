@@ -1190,7 +1190,7 @@ export function LoungeImageLightbox({
           >
             <div
               ref={topChromeRef}
-              className={`${chromeInteractive ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+              className={`${chromeInteractive ? 'pointer-events-auto' : 'pointer-events-none'} relative z-[1] w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]`}
               data-lounge-lightbox-top-chrome
               data-lounge-lightbox-no-swipe
             >
@@ -1216,7 +1216,7 @@ export function LoungeImageLightbox({
             </div>
             {lightboxChromeContent ? (
               <div
-                className={`pointer-events-none w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8`}
+                className={`pointer-events-none w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-8`}
                 data-lounge-image-lightbox-footer
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1241,7 +1241,7 @@ export function LoungeImageLightbox({
           {multi && !lightboxChromeContent ? (
             <div
               data-lounge-lightbox-image-pager
-              className="pointer-events-none absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
+              className="pointer-events-none absolute bottom-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] left-1/2 z-[2] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-[12px] font-medium tabular-nums text-zinc-200 backdrop-blur-[2px]"
               style={{
                 opacity: chromeVisible ? 1 - dismissProgress : 0,
                 transition: `opacity ${phase === 'opening' ? HERO_EXPAND_MS : HERO_CHROME_FADE_MS}ms ease-out`,

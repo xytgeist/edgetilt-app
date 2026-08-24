@@ -806,7 +806,7 @@ export default function ChatTab({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarCenterSlot={titleBarCenterSlot}
-        contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
       >
         <div className="mt-16 flex flex-col items-center gap-4 text-center">
           <div className="text-4xl">💬</div>
@@ -1152,7 +1152,7 @@ export default function ChatTab({
       </div>
 
       {/* Room / topic list — only this region scrolls */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[calc(6rem+env(safe-area-inset-bottom,0px))] [-webkit-overflow-scrolling:touch]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] [-webkit-overflow-scrolling:touch]">
       {tab === 'topics' ? (
         <div className="px-3 py-4 space-y-2">
           <p className="mb-3 text-[13px] leading-relaxed text-zinc-500">

@@ -214,7 +214,7 @@ export default function PokerStableSmokeChecklistScreen({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarCenterSlot={titleBarCenterSlot}
-        contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
       >
         <div className="rounded-2xl bg-zinc-900 p-5 text-sm leading-relaxed text-zinc-400">
           Poker Stable smoke checklist is admin-only.
@@ -228,7 +228,7 @@ export default function PokerStableSmokeChecklistScreen({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarCenterSlot={titleBarCenterSlot}
-        contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+        contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
       >
         <div className="rounded-2xl bg-zinc-900 p-5 text-sm leading-relaxed text-zinc-400">
           Smoke checklist is for test only ... open on{' '}
@@ -242,7 +242,7 @@ export default function PokerStableSmokeChecklistScreen({
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
-      contentClassName="px-3 py-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+      contentClassName="px-3 py-4 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
     >
       <div data-stable-smoke-checklist className="mx-auto max-w-2xl">
         <SlotsToolPageHeader
@@ -381,7 +381,7 @@ export default function PokerStableSmokeChecklistScreen({
           </p>
         ) : null}
 
-        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-10 mt-6 flex flex-col gap-2 sm:flex-row">
+        <div className="sticky bottom-[calc(4.5rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] z-10 mt-6 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             disabled={saving || loading || anyItemUploading}

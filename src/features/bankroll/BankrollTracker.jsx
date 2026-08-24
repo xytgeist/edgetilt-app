@@ -669,7 +669,7 @@ export default function BankrollTracker({
         titleBarNavSlot={titleBarNavSlot}
         titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
-        contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+        contentClassName="px-3 pt-2 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
       >
 
         <div data-slots-bankroll>
@@ -1583,7 +1583,7 @@ export default function BankrollTracker({
 
       {/* ── Bulk-select action bar ─────────────────────────────────────── */}
       {selectMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-[50] bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+        <div className="fixed bottom-0 left-0 right-0 z-[50] bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 px-5 pt-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
           <div className="max-w-lg mx-auto flex items-center gap-3">
             <button
               onClick={toggleSelectAll}

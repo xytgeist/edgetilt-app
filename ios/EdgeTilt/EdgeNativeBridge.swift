@@ -5,6 +5,8 @@ import WebKit
 final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
   private weak var webView: WKWebView?
   private let messageHandlerName = "edgeNative"
+  /// Fired after each main-frame navigation finish (safe-area re-inject, etc.).
+  var onDidFinishNavigation: (() -> Void)?
 
   func attach(webView: WKWebView) {
     self.webView = webView
@@ -159,6 +161,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     applyCustomUserAgent(to: webView)
+    onDidFinishNavigation?()
   }
 
   private func applyCustomUserAgent(to webView: WKWebView) {

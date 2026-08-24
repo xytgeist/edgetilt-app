@@ -141,7 +141,7 @@ export default function ChatDmHeaderChrome({
                 className="chat-menu-glass fixed w-[220px] overflow-hidden rounded-2xl"
                 style={{
                   zIndex: menuZIndex,
-                  top: 'calc(env(safe-area-inset-top, 0px) + 60px)',
+                  top: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 60px)',
                   right: '16px',
                 }}
                 onClick={(e) => e.stopPropagation()}

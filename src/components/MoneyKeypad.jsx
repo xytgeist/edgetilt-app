@@ -143,7 +143,7 @@ export default function MoneyKeypad({ value, onChange, onClose, allowNegative = 
         </div>
 
         {/* iOS safe-area spacer */}
-        <div style={{ backgroundColor: C.bg, paddingBottom: 'env(safe-area-inset-bottom)' }} />
+        <div style={{ backgroundColor: C.bg, paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))' }} />
       </div>
     </>,
     document.body,

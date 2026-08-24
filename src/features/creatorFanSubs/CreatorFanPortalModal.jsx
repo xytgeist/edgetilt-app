@@ -166,7 +166,7 @@ export default function CreatorFanPortalModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,env(safe-area-inset-top))] sm:pb-[max(1rem,env(safe-area-inset-bottom))]"
+      className="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] sm:pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
       style={{ zIndex: Z_APP_MODAL }}
       data-creator-fan-portal
     >
@@ -183,7 +183,7 @@ export default function CreatorFanPortalModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="creator-fan-portal-title"
-        className="relative flex h-[min(94dvh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-8px))] w-full max-w-[min(100%,40rem)] flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-zinc-950 shadow-2xl sm:max-w-2xl sm:rounded-2xl lg:max-w-3xl"
+        className="relative flex h-[min(94dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))-8px))] w-full max-w-[min(100%,40rem)] flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-zinc-950 shadow-2xl sm:max-w-2xl sm:rounded-2xl lg:max-w-3xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-zinc-800/90 px-4 py-3">
           <div>

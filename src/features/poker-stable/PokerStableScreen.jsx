@@ -949,7 +949,7 @@ export default function PokerStableScreen({
         titleBarNavSlot={titleBarNavSlot}
         titleBarCenterSlot={titleBarCenterSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
-        contentClassName="px-3 pt-2 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+        contentClassName="px-3 pt-2 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
       >
         <div data-poker-stable>
         {schemaMissing ? (

@@ -267,7 +267,7 @@ function MarketChartFloatingIndicatorLegend({ rows, mutedClass }) {
   return (
     <div
       className="pointer-events-none absolute left-2 top-2 z-10 max-w-[min(calc(100%-1rem),14rem)] rounded-md border border-zinc-700/70 bg-zinc-950/85 px-2 py-1.5 backdrop-blur-[2px]"
-      style={{ marginLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))' }}
+      style={{ marginLeft: 'max(0.5rem, max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px)))' }}
       aria-label="Indicator legend"
     >
       <div className={`mb-1 text-[9px] font-semibold uppercase tracking-wide ${mutedClass}`}>Legend</div>
@@ -476,7 +476,7 @@ function MarketChartInsertPostConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-end justify-center bg-black/55 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6"
+      className="fixed inset-0 z-[110] flex items-end justify-center bg-black/55 px-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="market-chart-insert-post-title"
@@ -2368,9 +2368,9 @@ export default function LoungeMarketChartModal({
               <div
                 className={`flex shrink-0 items-center gap-3 border-b px-3 py-2 ${borderClass}`}
                 style={{
-                  paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
-                  paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
-                  paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
+                  paddingTop: 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
+                  paddingLeft: 'max(0.75rem, max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px)))',
+                  paddingRight: 'max(0.75rem, max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px)))',
                 }}
               >
                 <MarketEmbedLogo
@@ -2409,7 +2409,7 @@ export default function LoungeMarketChartModal({
               {list.length > 1 ? (
                 <div
                   className={`flex shrink-0 gap-2 overflow-x-auto border-b px-3 py-1.5 ${borderClass}`}
-                  style={{ paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))' }}
+                  style={{ paddingLeft: 'max(0.75rem, max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px)))' }}
                 >
                   {list.map((embed, i) => (
                     <button
@@ -2477,9 +2477,9 @@ export default function LoungeMarketChartModal({
                   <div
                     className={`relative flex w-full shrink-0 items-center gap-4 border-t ${borderClass} bg-zinc-950/90 px-4 py-2 backdrop-blur-[2px]`}
                     style={{
-                      paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
-                      paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
-                      paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
+                      paddingLeft: 'max(1rem, max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px)))',
+                      paddingRight: 'max(1rem, max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px)))',
+                      paddingBottom: 'max(0.5rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))',
                     }}
                   >
                       {annotateMode ? (
@@ -2990,7 +2990,7 @@ export default function LoungeMarketChartModal({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" ref={postsScrollRef}>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]" ref={postsScrollRef}>
           {postsLoading ? (
             <div className={`py-8 text-center text-sm ${mutedClass}`}>Loading posts…</div>
           ) : postsErr ? (

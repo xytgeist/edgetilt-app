@@ -610,7 +610,7 @@ export default function SubscribeModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[210] flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,env(safe-area-inset-top))] sm:pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="fixed inset-0 z-[210] flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] sm:pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
       <button
         type="button"
         className="absolute inset-0 cursor-default bg-black/75 backdrop-blur-[3px] [-webkit-tap-highlight-color:transparent]"
@@ -667,7 +667,7 @@ export default function SubscribeModal({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-7 sm:pb-6">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] sm:px-7 sm:pb-6">
           {hasSlotsEdgeLifetime ? (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5">
               <p className="text-sm leading-relaxed text-zinc-300">

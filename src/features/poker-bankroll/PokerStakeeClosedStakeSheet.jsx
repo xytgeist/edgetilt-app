@@ -101,7 +101,7 @@ export default function PokerStakeeClosedStakeSheet({
 
         <div
           data-poker-stakee-closed-sheet-footer
-          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900 px-0 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900 px-0 pt-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
         >
           <button
             type="button"

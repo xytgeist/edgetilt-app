@@ -27,7 +27,7 @@ const PORTFOLIO_TABS = [
 
 /** Cap only … Overview hugs content; Ledger/Trend reuse measured Overview height. */
 const PORTFOLIO_DETAIL_SHEET_MAX_H =
-  'max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
+  'max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-0.75rem))] overflow-hidden rounded-b-none !pb-[max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))]'
 
 function fmtPct(n) {
   if (n == null || !Number.isFinite(n)) return '—'

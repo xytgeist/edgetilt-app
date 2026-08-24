@@ -86,7 +86,7 @@ export default function ChatGroupMemberProfileSheet({
       <div className="fixed inset-0 z-[97] flex flex-col bg-zinc-950" data-chat-feature>
         <div
           className="flex shrink-0 items-center gap-3 border-b border-zinc-800/60 px-3 pb-3"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+          style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.5rem)' }}
         >
           <button
             type="button"

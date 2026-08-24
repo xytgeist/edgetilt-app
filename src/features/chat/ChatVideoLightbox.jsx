@@ -139,7 +139,7 @@ export default function ChatVideoLightbox({
     >
       <div className="pointer-events-none absolute inset-0 z-[3] flex flex-col justify-between">
         <div
-          className={`pointer-events-auto w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,env(safe-area-inset-top))]`}
+          className={`pointer-events-auto w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]`}
           data-lounge-lightbox-top-chrome
           data-lounge-lightbox-no-swipe
         >
@@ -160,7 +160,7 @@ export default function ChatVideoLightbox({
           </div>
         </div>
         <div
-          className={`pointer-events-auto w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8`}
+          className={`pointer-events-auto w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-8`}
           data-lounge-lightbox-no-swipe
         >
           <LoungeStreamVideoPlaybackControls

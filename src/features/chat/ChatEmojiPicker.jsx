@@ -98,8 +98,8 @@ export default function ChatEmojiPicker({ onSelect, onClose, zIndex = 115 }) {
       <div
         className="chat-sheet-glass flex flex-col rounded-t-2xl shadow-2xl overflow-hidden"
         style={{
-          height: 'min(70dvh, calc(100dvh - env(safe-area-inset-top) - 3rem))',
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          height: 'min(70dvh, calc(100dvh - max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) - 3rem))',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))',
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"

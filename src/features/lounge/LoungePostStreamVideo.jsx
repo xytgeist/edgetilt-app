@@ -3476,7 +3476,7 @@ export default function LoungePostStreamVideo({
                 ) : null}
                 <div className="pointer-events-none absolute inset-0 z-[1] flex flex-col justify-between">
                   <div
-                    className={`w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,env(safe-area-inset-top))] ${
+                    className={`w-full shrink-0 ${LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-8 pt-[max(0.75rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] ${
                       heroChromeVisible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
                     }`}
                     style={heroChromeFadeStyle}
@@ -3525,7 +3525,7 @@ export default function LoungePostStreamVideo({
                   </div>
                   {lightboxChromeContent ? (
                     <div
-                      className={`pointer-events-none w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-8 ${
+                      className={`pointer-events-none w-full ${LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS} ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.35rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-8 ${
                         heroChromeVisible ? 'opacity-100' : 'opacity-0'
                       }`}
                       style={heroChromeFadeStyle}
@@ -3544,7 +3544,7 @@ export default function LoungePostStreamVideo({
                     </div>
                   ) : (
                     <div
-                      className={`pointer-events-auto w-full ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,env(safe-area-inset-bottom))] ${
+                      className={`pointer-events-auto w-full ${LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD} pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] ${
                         heroChromeVisible ? 'opacity-100' : 'opacity-0'
                       }`}
                       style={heroChromeFadeStyle}

@@ -17,14 +17,14 @@ import {
  *
  * @param {React.ReactNode} titleBarNavSlot - hamburger / shell menu (right).
  * @param {React.ReactNode} children - scrollable body (placed inside padded column).
- * @param {string} [contentClassName] - inner wrapper classes. Default adds horizontal padding + bottom inset for FAB / thumb clearance **including** `env(safe-area-inset-bottom)` inside the scroller (no dead strip under the scroll viewport).
+ * @param {string} [contentClassName] - inner wrapper classes. Default adds horizontal padding + bottom inset for FAB / thumb clearance **including** `max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))` inside the scroller (no dead strip under the scroll viewport).
  * @param {boolean} [fullWidth=false] - use full viewport width for column + fixed bar (e.g. Offers week landscape).
  * @param {boolean} [fillViewport=false] - pin title bar + fill remaining height; outer body does not scroll.
  *   Put your own `overflow-y-auto` region inside children (e.g. chat inbox list under sticky tabs).
  * @param {boolean} [stableLayoutViewport=false] - pin height to layout `100vh` / `innerHeight` instead of `dvh`.
  *   Use on admin surfaces with native file pickers (Chrome/Windows can shrink `dvh` to ~half).
  */
-const defaultShellContentClassName = 'px-3 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'
+const defaultShellContentClassName = 'px-3 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]'
 
 export default function ScrollLinkedEdgeTitleBarShell({
   titleBarNavSlot = null,
@@ -169,7 +169,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
     <div
       data-edge-scroll-shell
       {...(stableLayoutViewport ? { 'data-stable-layout-viewport': '' } : {})}
-      className={`mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,env(safe-area-inset-top))]`}
+      className={`mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))]`}
     >
       <div
         ref={titleBarRef}

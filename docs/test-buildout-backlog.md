@@ -104,7 +104,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 **P0 Mac**
 - [x] `bustServiceWorker` boot + bridge; media autoplay WebView policy (already open)
 - [x] Info.plist camera / mic / photo / location + WK capture grant
-- [x] **Safe area / post-detail back hit target (2026-08-23):** shell no longer `.ignoresSafeArea()` on the WebView … WKWebView was drawing under the notch while `env(safe-area-inset-top)` stayed ~0, so Lounge post-detail ← sat under Dynamic Island / status chrome. Rebuild IPA to verify.
+- [x] **Safe area edge-to-edge + inset inject (2026-08-24):** WebView `.ignoresSafeArea()` again; native pushes `--edge-sat|sar|sab|sal` on safe-area changes; web uses `max(env(...), var(--edge-*))` (~210 call sites). Removes letterbox bars; PWA path unchanged (no double-pad). Smoke: feed title / post-detail ← / FAB vs home indicator.
 - [ ] **Device smoke after Windows 2026-08-24 web gates** (`test` ≥ **`6a3155e2`**, Vercel live): (1) Lounge unmute → scroll → next clips audible; (2) Stripe Checkout/portal → system Safari; (3) no A2HS / web-push nag in shell. Confirm `mediaTypesRequiringUserActionForPlayback = []` still in IPA. See **`docs/ios-native-bridge.md`** → Windows → Mac handoff. *(Mac confirmed media policy still open 2026-08-24; smoke awaits Ryan + Vercel.)*
 - [ ] **Hard crash investigating:** Ryan … opening Lounge post detail then trying to leave crashed the **phone** (device powered off), not just the app. After safe-area rebuild, repro; if still happens capture Console / Jetsam. Suspect WebKit/GPU memory under Stream + detail, not only layout.
 - [x] APNs bridge: `requestPushPermission` + `getPushToken` + AppDelegate register (2026-08-24). Token null until org Push entitlement; Edge send path still Windows.
@@ -112,7 +112,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [ ] OAuth-in-shell smoke; Safari / ASWebAuthentication if broken
 
 **P1 Windows (safe-area defense)**
-- [ ] Post-detail title row (`SocialFeed.jsx` absolute bar, `LOUNGE_FEED_TITLE_BAR_ROW_CLASS`) should include `pt`/`safe-area-inset-top` on the **button row** itself (absolute `top-0` ignores panel padding). Matters once shell returns to edge-to-edge with real `env()` insets.
+- [x] Post-detail absolute title bar now includes safe-area `pt` (2026-08-24); parent panel `pt` alone does not move `absolute top-0` chrome. Re-smoke ← under Island after shell rebuild.
 
 **P1 polish**
 - [ ] APNs deep links → existing `?tab=` / `post=` / `comment=` / `call=` parsers
@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **iOS shell edge-to-edge safe area:** Restored WebView `.ignoresSafeArea()`; native injects `--edge-sat|sar|sab|sal` on inset changes (`EdgeSafeAreaInsets.swift`). Web (~85 files) uses `max(env(safe-area-inset-*), var(--edge-*))` so PWA unchanged and shell never double-pads. Post-detail absolute title bar also gets safe-area `pt` (absolute ignores parent padding). BUILD SUCCEEDED. Smoke: no letterbox bars; post-detail ← clear of Island; FAB above home indicator.
 - 2026-08-24: **Post ⋯ menu polish (Block/Report icons):** `LoungePostRowMenu` matches profile overflow … lucide icons (Ban/Flag/Share/Edit/Delete/Pin), denser rows, frosted `rounded-2xl` panel. Light mode: `html.light [data-lounge-post-row-menu]` surface. Blast radius: feed + profile + media/Stream lightbox ⋯ menus. No SQL / Edge.
 - 2026-08-24: **Profile comment-repost tap opens detail:** Profile `profilePostCardProps` lacked `onOpenCommentDetail` (main feed had it). Caption taps no-oped + `stopPropagation`, so only thin padding hit the article handler. Wired alias to `openCommentRepostDetail`; caption no longer swallows when handler missing. Smoke: Queen Edge (or any) profile → Posts → reposted reply body → detail. No SQL / Edge.
 - 2026-08-24: **Search → profile → Message → Chat overlay (fix 2):** Prior fix only cleared `profileReturnDockPanelRef`; Search still restored from **`loungeNavReturnStack`** on profile finalize (and close timer could hold stale `isActivePage`). Message now sets `loungeSkipNavPopOnCloseRef`, clears the nav stack, and finalize skips restore when inactive / skip flag; close timer calls `finalizeProfileModalCloseRef`. Smoke: Search → profile → Message → Chat clean. No SQL / Edge.

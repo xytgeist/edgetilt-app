@@ -692,7 +692,7 @@ function LocationDetailModal({ location, onClose, onOpenSession }) {
     >
       <div
         data-poker-bankroll-sheet
-        className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y no-scrollbar px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] pt-4`}
+        className={`${APP_MODAL_SHEET_PANEL_CLASS} max-w-[100vw] min-w-0 overflow-x-hidden overscroll-x-none touch-pan-y no-scrollbar px-4 pb-[calc(1.25rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-4`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-3">

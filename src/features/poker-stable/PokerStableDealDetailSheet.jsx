@@ -75,11 +75,11 @@ const DEAL_TABS = [
  * panel paints flush to the screen edge without growing the sheet taller.
  */
 const DEAL_DETAIL_SHEET_HEIGHT_FIXED =
-  'h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-hidden !overflow-y-hidden rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
+  'h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-0.75rem))] !max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-0.75rem))] overflow-hidden !overflow-y-hidden rounded-b-none !pb-[max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))]'
 
 /** Player Bankroll Terms (manageOnly): height follows content, capped so tall manage content still scrolls. */
 const DEAL_DETAIL_SHEET_HEIGHT_HUG =
-  'h-auto max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] !max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top,0px)-0.75rem))] overflow-y-auto overscroll-contain rounded-b-none !pb-[env(safe-area-inset-bottom,0px)]'
+  'h-auto max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-0.75rem))] !max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-0.75rem))] overflow-y-auto overscroll-contain rounded-b-none !pb-[max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))]'
 
 /**
  * Deal detail: overview/history/analytics tabs + manage (top-up, settle, ledger).

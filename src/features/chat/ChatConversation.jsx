@@ -2334,8 +2334,8 @@ export default function ChatConversation({
   )
 
   const listPaddingTop = useRichHeader
-    ? 'calc(env(safe-area-inset-top, 0px) + 12.5rem)'
-    : 'calc(env(safe-area-inset-top, 0px) + 4.5rem)'
+    ? 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 12.5rem)'
+    : 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 4.5rem)'
   const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
   const roomCallStatusLabel =
     roomOpenCall?.status === 'ringing'
@@ -2365,14 +2365,14 @@ export default function ChatConversation({
       {/* Absolute side controls so avatar/title stay true screen-center. */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 z-20 px-3 pb-4 pt-2"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.5rem)' }}
       >
         {/* Back button */}
         <button
           type="button"
           onClick={onBack}
           aria-label="Back to conversations"
-          className="chat-header-glass pointer-events-auto absolute left-3 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-10 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
+          className="chat-header-glass pointer-events-auto absolute left-3 top-[calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))+0.5rem)] z-10 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
@@ -2459,7 +2459,7 @@ export default function ChatConversation({
 
         {/* Call controls (right) — overlay so they do not shift the centered avatar */}
         {(chatCall && (isDmRoom || isClassicGroupRoom)) ? (
-          <div className="pointer-events-auto absolute right-3 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-10 flex items-center gap-1.5">
+          <div className="pointer-events-auto absolute right-3 top-[calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))+0.5rem)] z-10 flex items-center gap-1.5">
             {isDmRoom ? (
               <>
                 <button

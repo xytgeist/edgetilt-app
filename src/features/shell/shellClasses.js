@@ -1,6 +1,6 @@
 // Mobile-first: min 16px text (iOS won’t auto-zoom), ~48px min tap height, notched device padding
 export const mobileShell =
-  'min-h-dvh bg-zinc-950 flex items-center justify-center overflow-y-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]'
+  'min-h-dvh bg-zinc-950 flex items-center justify-center overflow-y-auto px-4 pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-[max(1.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]'
 export const inputBase =
   'w-full min-h-12 text-base text-zinc-100 bg-zinc-800 rounded-2xl border-0 px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-orange-500/50 touch-manipulation'
 export const btnPrimary =

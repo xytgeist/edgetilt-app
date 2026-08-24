@@ -5,7 +5,7 @@ import { linkBtn } from '../shell/shellClasses'
  */
 export default function AuthModalShell({ onClose, cancelLabel, children }) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center overflow-x-hidden bg-black/70 backdrop-blur-sm md:items-center md:p-4 md:pt-[max(1rem,env(safe-area-inset-top))] md:pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="fixed inset-0 z-[200] flex items-end justify-center overflow-x-hidden bg-black/70 backdrop-blur-sm md:items-center md:p-4 md:pt-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] md:pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
       <button
         type="button"
         className="absolute inset-0 cursor-default [-webkit-tap-highlight-color:transparent]"
@@ -16,7 +16,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative z-10 w-full max-w-lg min-h-0 max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-bottom,0px)))] overflow-y-auto overscroll-contain rounded-t-3xl border border-zinc-600/80 border-b-0 bg-gray-900 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl md:rounded-3xl md:border-b-zinc-600/80 md:p-8 md:pt-6"
+        className="relative z-10 w-full max-w-lg min-h-0 max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))))] overflow-y-auto overscroll-contain rounded-t-3xl border border-zinc-600/80 border-b-0 bg-gray-900 px-5 pt-3 pb-[max(1.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] shadow-2xl md:rounded-3xl md:border-b-zinc-600/80 md:p-8 md:pt-6"
         data-auth-modal
         onClick={(e) => e.stopPropagation()}
       >

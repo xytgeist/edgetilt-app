@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A3440AB6B3037B0FEACE28C /* EdgeSafeAreaInsets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */; };
 		32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B884711901FA09324B73CC22 /* EdgeWebView.swift */; };
 		56164041B61C9D93975189F6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */; };
 		68F8BF1FBC1EB0AFD22AFBE2 /* EdgeTiltApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6599ECB5DCF6CEC356D7960 /* EdgeTiltApp.swift */; };
@@ -22,6 +23,7 @@
 /* Begin PBXFileReference section */
 		12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeNativeBridge.swift; sourceTree = "<group>"; };
 		15C1B2458EAAC3EEFB381F8B /* EdgeTilt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EdgeTilt.entitlements; sourceTree = "<group>"; };
+		1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSafeAreaInsets.swift; sourceTree = "<group>"; };
 		226468E06E598019B8166B33 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		636A0FF8CC23E17E467905A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -53,6 +55,7 @@
 				A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */,
 				12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */,
 				80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */,
+				1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */,
 				15C1B2458EAAC3EEFB381F8B /* EdgeTilt.entitlements */,
 				A6599ECB5DCF6CEC356D7960 /* EdgeTiltApp.swift */,
 				EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */,
@@ -147,6 +150,7 @@
 				9980D8DAF4E53F6C0DF750A5 /* EdgeAudioSession.swift in Sources */,
 				8082591BEFAB79FE461FFDD5 /* EdgeNativeBridge.swift in Sources */,
 				BD77B93B3B8FE0B930A6B235 /* EdgePushManager.swift in Sources */,
+				0A3440AB6B3037B0FEACE28C /* EdgeSafeAreaInsets.swift in Sources */,
 				68F8BF1FBC1EB0AFD22AFBE2 /* EdgeTiltApp.swift in Sources */,
 				32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */,
 				EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */,

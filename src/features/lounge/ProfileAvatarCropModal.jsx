@@ -241,7 +241,7 @@ export default function ProfileAvatarCropModal({ open, file, onCancel, onApply, 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[220] flex flex-col bg-black/88 backdrop-blur-[2px] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] overscroll-none"
+      className="fixed inset-0 z-[220] flex flex-col bg-black/88 backdrop-blur-[2px] px-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] pt-[max(0.75rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] overscroll-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby="avatar-crop-title"

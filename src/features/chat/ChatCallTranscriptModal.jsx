@@ -143,7 +143,7 @@ export default function ChatCallTranscriptModal({
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
       <div
         className="relative mx-auto flex h-[min(88dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-zinc-700/80 bg-zinc-950 shadow-2xl sm:rounded-3xl"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-3">

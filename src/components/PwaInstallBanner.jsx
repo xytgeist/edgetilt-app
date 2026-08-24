@@ -49,7 +49,7 @@ function PwaInstallHelpDropPanel({
     <div
       id="pwa-install-drop-panel"
       data-pwa-install-drop-panel
-      className="pwa-install-drop-panel absolute left-0 right-0 top-full z-[60] flex max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-2.5rem))] w-full flex-col overflow-hidden border-t border-b border-zinc-800/90 bg-zinc-950/98 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/92"
+      className="pwa-install-drop-panel absolute left-0 right-0 top-full z-[60] flex max-h-[min(85dvh,calc(100dvh-max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))-2.5rem))] w-full flex-col overflow-hidden border-t border-b border-zinc-800/90 bg-zinc-950/98 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/92"
       role="region"
       aria-labelledby="pwa-install-drop-title"
     >
@@ -111,7 +111,7 @@ function PwaInstallHelpDropPanel({
         ) : null}
       </div>
 
-      <div className="shrink-0 border-t border-zinc-800/90 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-zinc-800/90 px-3 py-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]">
         <button
           type="button"
           onClick={onClose}

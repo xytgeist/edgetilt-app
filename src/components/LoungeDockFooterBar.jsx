@@ -239,8 +239,8 @@ export default function LoungeDockFooterBar({
 
   /** Sheet / legacy: single shell with bottom safe-area padding inside the bar. */
   const outerClassSingle = isSheet
-    ? 'pointer-events-none absolute bottom-0 left-0 right-0 z-[40] w-full border-t border-zinc-800/95 bg-zinc-950/95 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-1px_0_rgba(0,0,0,0.22)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 will-change-transform'
-    : 'pointer-events-none fixed bottom-0 left-1/2 z-[56] w-full max-w-2xl border-t border-zinc-800/95 bg-zinc-950/95 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-1px_0_rgba(0,0,0,0.22)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 will-change-transform'
+    ? 'pointer-events-none absolute bottom-0 left-0 right-0 z-[40] w-full border-t border-zinc-800/95 bg-zinc-950/95 pb-[max(0.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] shadow-[0_-1px_0_rgba(0,0,0,0.22)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 will-change-transform'
+    : 'pointer-events-none fixed bottom-0 left-1/2 z-[56] w-full max-w-2xl border-t border-zinc-800/95 bg-zinc-950/95 pb-[max(0.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] shadow-[0_-1px_0_rgba(0,0,0,0.22)] backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 will-change-transform'
 
   const transform =
     isSheet || useMatchedChrome
@@ -255,7 +255,7 @@ export default function LoungeDockFooterBar({
     return (
       <div
         ref={measureRef}
-        className={`pointer-events-none fixed inset-x-0 bottom-0 z-[56] will-change-transform ${chromeBarClass} pb-[max(0.25rem,env(safe-area-inset-bottom))]`}
+        className={`pointer-events-none fixed inset-x-0 bottom-0 z-[56] will-change-transform ${chromeBarClass} pb-[max(0.25rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]`}
         style={outerStyle}
       >
         <div className="mx-auto flex w-full max-w-2xl shrink-0 items-center justify-center gap-2 px-3 pb-0.5 pt-2" style={{ height: dockChromePx, boxSizing: 'border-box' }}>

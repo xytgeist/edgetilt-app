@@ -174,7 +174,7 @@ export default function ChatMessageReactionsSheet({
           <div
             className="chat-sheet-glass flex max-h-[min(70dvh,520px)] flex-col rounded-t-2xl shadow-2xl"
             style={{
-              paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+              paddingBottom: 'max(0.75rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))',
               transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
               transition: dragging ? 'none' : 'transform 0.22s ease',
             }}

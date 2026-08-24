@@ -11,7 +11,7 @@ export function readLoungeIosSafeBottomPx() {
   if (typeof document === 'undefined') return 10
   const probe = document.createElement('div')
   probe.style.cssText =
-    'position:fixed;visibility:hidden;padding-bottom:max(0.625rem, env(safe-area-inset-bottom))'
+    'position:fixed;visibility:hidden;padding-bottom:max(0.625rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))'
   document.body.appendChild(probe)
   const px = parseFloat(getComputedStyle(probe).paddingBottom)
   document.body.removeChild(probe)
@@ -22,7 +22,7 @@ export function readLoungeIosSafeBottomPx() {
 export function loungeComposerFooterPaddingBottom(overlapPx, safeBottomPx, { ios = LOUNGE_IOS } = {}) {
   if (ios) return `${Math.round(Math.max(overlapPx, safeBottomPx))}px`
   if (overlapPx > 0.5) return `${Math.round(overlapPx)}px`
-  return 'max(0.625rem, env(safe-area-inset-bottom))'
+  return 'max(0.625rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))'
 }
 
 export function useLoungeIosSafeBottomPx(active = LOUNGE_IOS) {

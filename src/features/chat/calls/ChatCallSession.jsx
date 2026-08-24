@@ -419,7 +419,7 @@ function CallStartAudioGate() {
     room,
     props: {
       className:
-        'pointer-events-auto fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+6.5rem)] z-[132] mx-auto block max-w-xs rounded-full bg-[#25d366] px-4 py-3 text-center text-[14px] font-semibold text-white shadow-lg touch-manipulation',
+        'pointer-events-auto fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))+6.5rem)] z-[132] mx-auto block max-w-xs rounded-full bg-[#25d366] px-4 py-3 text-center text-[14px] font-semibold text-white shadow-lg touch-manipulation',
       type: 'button',
       'data-chat-call-interactive': '',
     },
@@ -969,7 +969,7 @@ function CallChrome({
 
       <div
         className="relative z-[1] flex shrink-0 items-start justify-between px-3 pb-2"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.5rem)' }}
       >
         <button
           type="button"
@@ -1038,7 +1038,7 @@ function CallChrome({
 
       <div
         className="relative z-[1] flex shrink-0 justify-center px-4 pt-2"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)) + 1rem)' }}
       >
         {controlPill}
       </div>

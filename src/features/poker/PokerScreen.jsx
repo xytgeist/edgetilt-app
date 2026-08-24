@@ -47,7 +47,7 @@ export default function PokerScreen({
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
-      contentClassName="px-3 py-6 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]"
     >
       <div className="mb-6">
         <div className="text-white text-2xl font-black tracking-tight">Poker</div>

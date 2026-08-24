@@ -18,7 +18,7 @@ export default function LoungeComposerAudienceSheet({ open, onClose, onSelect })
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-[max(1rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] backdrop-blur-[2px]"
       data-lounge-composer-audience-modal
       role="dialog"
       aria-modal="true"

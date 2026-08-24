@@ -26,7 +26,7 @@ export default function LegalDocumentScreen({ slug, onBack, onGotIt }) {
       data-legal-document
       data-edge-scroll-shell
     >
-      <header className="shrink-0 border-b border-zinc-800/90 bg-zinc-950/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md">
+      <header className="shrink-0 border-b border-zinc-800/90 bg-zinc-950/95 px-4 pb-3 pt-[max(0.75rem,max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))] backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <button
             type="button"
@@ -46,7 +46,7 @@ export default function LegalDocumentScreen({ slug, onBack, onGotIt }) {
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
         <article
           className={`legal-prose mx-auto max-w-2xl px-4 py-6 ${
-            showGotItFooter ? 'pb-6' : 'pb-[calc(2rem+env(safe-area-inset-bottom,0px))]'
+            showGotItFooter ? 'pb-6' : 'pb-[calc(2rem+max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))]'
           }`}
         >
           {doc.intro ? <p className="legal-prose-lead">{doc.intro}</p> : null}
@@ -62,7 +62,7 @@ export default function LegalDocumentScreen({ slug, onBack, onGotIt }) {
       </div>
 
       {showGotItFooter ? (
-        <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950/95 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+        <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950/95 px-4 py-4 pb-[max(1rem,max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)))] backdrop-blur-md">
           <div className="mx-auto max-w-2xl">
             <button
               type="button"

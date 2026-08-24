@@ -31,7 +31,7 @@ function AuxSheetShell({ open, title, onBack, children, zIndex = 96 }) {
     <div className="fixed inset-0 flex flex-col bg-zinc-950" style={{ zIndex }} data-chat-feature>
       <div
         className="flex shrink-0 items-center gap-2 border-b border-zinc-800/80 px-3 pb-3"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.5rem)' }}
       >
         <button
           type="button"

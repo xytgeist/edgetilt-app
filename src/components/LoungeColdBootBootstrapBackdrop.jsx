@@ -7,8 +7,8 @@ export default function LoungeColdBootBootstrapBackdrop() {
     <div
       className="fixed inset-0 z-[120] bg-zinc-950"
       style={{
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))',
       }}
       aria-hidden
     />

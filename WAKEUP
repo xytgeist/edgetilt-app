@@ -79,7 +79,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`9ec4c51c`** | Lightbox top dark scrim (match bottom) for light full-bleed media |
+| **`test`** | _(after push)_ | Edge-to-edge safe area inject + web max(env, var) |
 | **`main`** | **`c262fbdd`** / **`b55ff3b6`** | Prod Vercel (older; do not promote without Ryan ask) |
 
 ### Decisions locked (do not reopen without Ryan)
@@ -122,10 +122,11 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 **Mac done (2026-08-24):**
 - Confirmed WK `mediaTypesRequiringUserActionForPlayback = []` + inline playback (no drift)
 - `setAudioSession` + `requestPushPermission` / `getPushToken` (token real only after org Push entitlement)
-- BUILD SUCCEEDED (generic iOS) without `aps-environment` on Personal Team
+- **Edge-to-edge safe area:** `.ignoresSafeArea()` + `--edge-sat|…` inject; web `max(env(), var(--edge-*))`; post-detail absolute title bar `pt` safe-area
+- BUILD SUCCEEDED
 
 **Mac do now (Ryan + Theo):**
-1. Wait for Vercel `lvslotpro.com` ≥ web tip; rebuild IPA from tip; **device smoke:** unmute handoff, Subscribe→Safari, no A2HS/push-sw nag
+1. Pull tip; wait for Vercel if smoking live web gates; rebuild IPA; **device smoke:** no black bars; post-detail ← clear of Island; unmute / Safari / no A2HS
 2. OAuth-in-shell smoke; hard-crash repro leaving post detail
 3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token
 

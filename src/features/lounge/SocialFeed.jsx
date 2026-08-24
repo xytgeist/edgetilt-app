@@ -1393,8 +1393,6 @@ export default function SocialFeed({
     liveSessionChipVisible: Boolean(titleBarCenterSlot),
   })
   const [loungeFeedViewportTopPx, setLoungeFeedViewportTopPx] = useState(0)
-  /** True when feed scroll auto-collapsed the composer; cleared on explicit open / post / discard. */
-  const composerFoldedFromFeedScrollRef = useRef(false)
   const composerDraftFlushRef = useRef({
     postText: '',
     composerExpanded: false,
@@ -2254,7 +2252,6 @@ export default function SocialFeed({
         return false
       }
       composerImageItemsRef.current = next
-      composerFoldedFromFeedScrollRef.current = false
       composerFoldRevealRef.current = 1
       flushSync(() => {
         setComposerImageItems(next)
@@ -2455,20 +2452,13 @@ export default function SocialFeed({
     const el = loungeFeedScrollRef.current
     if (!el || typeof window === 'undefined') return
     loungeScrollPrevTopRef.current = el.scrollTop
-    /** Scroll px to move composer fold ~1.0; tuned so fold tracks finger distance. */
-    const composerCouplingPx = 240
-    /** When feed-folded, allow smooth reopen while scrollTop is within this distance of the top. */
-    const composerUnfoldBandPx = 168
-    const minScrollStepPx = 0.35
     const queueScrollVisualFlush = () => {
       if (loungeScrollVisualRafRef.current) return
       loungeScrollVisualRafRef.current = window.requestAnimationFrame(() => {
         loungeScrollVisualRafRef.current = 0
         setLoungeTitleReveal(loungeTitleRevealRef.current)
-        setComposerFoldReveal(composerFoldRevealRef.current)
       })
     }
-    const scrollDownPx = 14
     const onScroll = () => {
       const st = el.scrollTop
       const prev = loungeScrollPrevTopRef.current
@@ -2481,59 +2471,8 @@ export default function SocialFeed({
         effectiveDelta: eff,
         revealRef: loungeTitleRevealRef,
       })
-      let scrollVisualDirty = titleStep.changed
-
-      if (composerExpandedRef.current && eff > minScrollStepPx) {
-        if (st > scrollDownPx || composerFoldRevealRef.current < 0.998) {
-          const next = Math.max(0, composerFoldRevealRef.current - eff / composerCouplingPx)
-          if (next !== composerFoldRevealRef.current) {
-            composerFoldRevealRef.current = next
-            scrollVisualDirty = true
-          }
-        }
-        if (composerFoldRevealRef.current < 0.04 && composerExpandedRef.current) {
-          composerExpandedRef.current = false
-          setComposerExpanded(false)
-          composerFoldRevealRef.current = 0
-          setComposerFoldReveal(0)
-          composerFoldedFromFeedScrollRef.current = true
-          scrollVisualDirty = true
-        }
-      } else if (
-        composerExpandedRef.current &&
-        composerFoldRevealRef.current < 0.995 &&
-        st <= composerUnfoldBandPx &&
-        eff < -minScrollStepPx
-      ) {
-        const next = Math.min(1, composerFoldRevealRef.current + (-eff) / composerCouplingPx)
-        if (next !== composerFoldRevealRef.current) {
-          composerFoldRevealRef.current = next
-          scrollVisualDirty = true
-        }
-      } else if (
-        !composerExpandedRef.current &&
-        composerFoldedFromFeedScrollRef.current &&
-        st <= composerUnfoldBandPx
-      ) {
-        if (eff < -minScrollStepPx) {
-          if (!composerExpandedRef.current) {
-            setComposerExpanded(true)
-            composerExpandedRef.current = true
-            composerFoldRevealRef.current = Math.max(composerFoldRevealRef.current, 0.06)
-            scrollVisualDirty = true
-          }
-          const next = Math.min(1, composerFoldRevealRef.current + (-eff) / composerCouplingPx)
-          if (next !== composerFoldRevealRef.current) {
-            composerFoldRevealRef.current = next
-            scrollVisualDirty = true
-          }
-          if (composerFoldRevealRef.current > 0.96) {
-            composerFoldedFromFeedScrollRef.current = false
-          }
-        }
-      }
-
-      if (scrollVisualDirty) queueScrollVisualFlush()
+      // Composer stays expanded while scrolling (no scroll-linked fold/re-expand … that felt jumpy).
+      if (titleStep.changed) queueScrollVisualFlush()
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => {
@@ -3540,7 +3479,6 @@ export default function SocialFeed({
         composerExpandedRef.current = false
         composerFoldRevealRef.current = 0
         setComposerFoldReveal(0)
-        composerFoldedFromFeedScrollRef.current = false
         setComposerExpanded(false)
         setLoungeDraftsSheetOpen(false)
         setThreadComposeSessionKey((k) => k + 1)
@@ -3569,7 +3507,6 @@ export default function SocialFeed({
       composerExpandedRef.current = true
       composerFoldRevealRef.current = 1
       setComposerFoldReveal(1)
-      composerFoldedFromFeedScrollRef.current = false
       setComposerExpanded(true)
       setComposerFocusToken((t) => t + 1)
       persistLoungeComposerDraft(
@@ -4307,7 +4244,6 @@ export default function SocialFeed({
       composerExpandedRef.current = false
       composerFoldRevealRef.current = 0
       setComposerFoldReveal(0)
-      composerFoldedFromFeedScrollRef.current = false
       setComposerExpanded(false)
       persistLoungeComposerDraft('', false, false, '')
     },
@@ -8686,7 +8622,6 @@ export default function SocialFeed({
       setChatDockInitialPeerUserId(null)
       loungeTitleRevealRef.current = 1
       setLoungeTitleReveal(1)
-      composerFoldedFromFeedScrollRef.current = false
       composerFoldRevealRef.current = 1
       setComposerFoldReveal(1)
       composerExpandedRef.current = true
@@ -10829,7 +10764,6 @@ export default function SocialFeed({
     })
     setComposerMediaUrl('')
     setComposerMarketSymbols([])
-    composerFoldedFromFeedScrollRef.current = false
     composerFoldRevealRef.current = 0
     setComposerFoldReveal(0)
     composerExpandedRef.current = false
@@ -11066,7 +11000,6 @@ export default function SocialFeed({
         composerExpandedRef.current = true
         composerFoldRevealRef.current = 1
         setComposerFoldReveal(1)
-        composerFoldedFromFeedScrollRef.current = false
       }
     },
     [startComposerVideoPrepFromSpec, startThreadComposePartVideoPrepFromSpec],
@@ -13274,7 +13207,6 @@ export default function SocialFeed({
       composerExpandedRef.current = true
       composerFoldRevealRef.current = 1
       setComposerFoldReveal(1)
-      composerFoldedFromFeedScrollRef.current = false
       setComposerExpanded(true)
       setComposerFocusToken((t) => t + 1)
       void saveComposerAsServerDraft({ silent: true, background: true })
@@ -13517,7 +13449,6 @@ export default function SocialFeed({
       setComposerMediaUrl('')
       setThreadComposeActivePartIndex(initialFocusPartIndex)
       setFeedComposerCaptionImmediate('')
-      composerFoldedFromFeedScrollRef.current = false
       composerFoldRevealRef.current = 0
       setComposerFoldReveal(0)
       composerExpandedRef.current = false
@@ -13569,7 +13500,6 @@ export default function SocialFeed({
     setFeedComposerCaptionImmediate('')
     setPostErr('')
     clearLoungeComposerDraft()
-    composerFoldedFromFeedScrollRef.current = false
     composerFoldRevealRef.current = 0
     setComposerFoldReveal(0)
     composerExpandedRef.current = false
@@ -15959,7 +15889,6 @@ export default function SocialFeed({
                 cancelComposerMediaPrep()
                 setComposerMediaUrl('')
                 setPostErr('')
-                composerFoldedFromFeedScrollRef.current = false
                 composerFoldRevealRef.current = 0
                 setComposerFoldReveal(0)
                 composerExpandedRef.current = false
@@ -16210,7 +16139,6 @@ export default function SocialFeed({
               <button
                 type="button"
                 onClick={() => {
-                  composerFoldedFromFeedScrollRef.current = false
                   composerFoldRevealRef.current = 1
                   flushSync(() => {
                     setComposerFoldReveal(1)
@@ -16404,7 +16332,6 @@ export default function SocialFeed({
                     setComposerMediaUrl('')
                     setPostErr('')
                     setLoungeComposerActiveDraftId(null)
-                    composerFoldedFromFeedScrollRef.current = false
                     composerFoldRevealRef.current = 0
                     setComposerFoldReveal(0)
                     composerExpandedRef.current = false

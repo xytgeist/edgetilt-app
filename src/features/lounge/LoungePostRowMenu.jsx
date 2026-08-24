@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Ban, Flag, Pencil, Pin, Share2, Trash2 } from 'lucide-react'
+
+const MENU_ITEM_CLASS =
+  'flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-[15px] font-medium touch-manipulation hover:bg-zinc-800/90 active:bg-zinc-800 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]'
+const MENU_ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-zinc-400'
 
 /**
  * ⋮ overflow on a feed/profile post card (Edit/Delete for own, Block/Report for others).
@@ -102,156 +107,166 @@ export default function LoungePostRowMenu({
     <div
       ref={panelRef}
       role="menu"
-      className="fixed z-[200] min-w-[10.5rem] rounded-xl border border-zinc-700 bg-zinc-900 py-0.5 shadow-xl"
+      data-lounge-post-row-menu
+      className="fixed z-[200] min-w-[12.5rem] overflow-hidden rounded-2xl border border-zinc-700/90 bg-zinc-900/98 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl"
       style={{ top: fixedStyle.top, right: fixedStyle.right }}
     >
-          {showAutoplayToggle && typeof onFeedVideoAutoplayChange === 'function' ? (
+      {showAutoplayToggle && typeof onFeedVideoAutoplayChange === 'function' ? (
+        <button
+          type="button"
+          role="menuitem"
+          className={`${MENU_ITEM_CLASS} text-zinc-100`}
+          onClick={(e) => {
+            e.stopPropagation()
+            close()
+            onFeedVideoAutoplayChange(!feedVideoAutoplayEnabled)
+          }}
+        >
+          <span className="min-w-0 flex-1">Autoplay while scrolling</span>
+          <span
+            aria-hidden
+            className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
+              feedVideoAutoplayEnabled ? 'bg-cyan-500' : 'bg-zinc-600'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                feedVideoAutoplayEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+              }`}
+            />
+          </span>
+        </button>
+      ) : null}
+      {showAutoplayToggle && typeof onFeedVideoAutoplayChange === 'function' ? (
+        <div className="my-1 border-t border-zinc-700/80" role="separator" />
+      ) : null}
+      {typeof onShare === 'function' ? (
+        <button
+          type="button"
+          role="menuitem"
+          className={`${MENU_ITEM_CLASS} text-zinc-100`}
+          onClick={(e) => {
+            e.stopPropagation()
+            close()
+            onShare()
+          }}
+        >
+          <Share2 className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
+          Share
+        </button>
+      ) : null}
+      {showPin ? (
+        <button
+          type="button"
+          role="menuitem"
+          className={`${MENU_ITEM_CLASS} text-fuchsia-200`}
+          disabled={pinBusy}
+          onClick={(e) => {
+            e.stopPropagation()
+            close()
+            onPinToggle?.()
+          }}
+        >
+          <Pin className={`${MENU_ICON_CLASS} text-fuchsia-300/90`} strokeWidth={1.75} aria-hidden />
+          {pinned ? 'Unpin from Lounge' : 'Pin to Lounge'}
+        </button>
+      ) : null}
+      {showProfilePin ? (
+        <button
+          type="button"
+          role="menuitem"
+          className={`${MENU_ITEM_CLASS} text-sky-200`}
+          disabled={profilePinBusy}
+          onClick={(e) => {
+            e.stopPropagation()
+            close()
+            onProfilePinToggle?.()
+          }}
+        >
+          <Pin className={`${MENU_ICON_CLASS} text-sky-300/90`} strokeWidth={1.75} aria-hidden />
+          {profilePinned ? 'Unpin from profile' : 'Pin to profile'}
+        </button>
+      ) : null}
+      {isOwn ? (
+        <>
+          {showEdit ? (
             <button
               type="button"
               role="menuitem"
-              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+              className={`${MENU_ITEM_CLASS} text-zinc-100`}
               onClick={(e) => {
                 e.stopPropagation()
                 close()
-                onFeedVideoAutoplayChange(!feedVideoAutoplayEnabled)
+                onEdit?.()
               }}
             >
-              <span>Autoplay while scrolling</span>
-              <span
-                aria-hidden
-                className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
-                  feedVideoAutoplayEnabled ? 'bg-cyan-500' : 'bg-zinc-600'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    feedVideoAutoplayEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
-                  }`}
-                />
-              </span>
+              <Pencil className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
+              Edit
             </button>
           ) : null}
-          {showAutoplayToggle && typeof onFeedVideoAutoplayChange === 'function' ? (
-            <div className="my-0.5 border-t border-zinc-700/80" role="separator" />
-          ) : null}
-          {typeof onShare === 'function' ? (
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM_CLASS} text-rose-300`}
+            disabled={deleteBusy}
+            onClick={(e) => {
+              e.stopPropagation()
+              close()
+              onDelete?.()
+            }}
+          >
+            <Trash2 className={`${MENU_ICON_CLASS} text-rose-300/90`} strokeWidth={1.75} aria-hidden />
+            Delete
+          </button>
+        </>
+      ) : (
+        <>
+          {showStaffDelete ? (
             <button
               type="button"
               role="menuitem"
-              className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
+              className={`${MENU_ITEM_CLASS} text-rose-300`}
+              disabled={staffDeleteBusy}
               onClick={(e) => {
                 e.stopPropagation()
                 close()
-                onShare()
+                onStaffDelete?.()
               }}
             >
-              Share
+              <Trash2 className={`${MENU_ICON_CLASS} text-rose-300/90`} strokeWidth={1.75} aria-hidden />
+              Delete post
             </button>
           ) : null}
-          {showPin ? (
-            <button
-              type="button"
-              role="menuitem"
-              className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-fuchsia-200 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-              disabled={pinBusy}
-              onClick={(e) => {
-                e.stopPropagation()
-                close()
-                onPinToggle?.()
-              }}
-            >
-              {pinned ? 'Unpin from Lounge' : 'Pin to Lounge'}
-            </button>
-          ) : null}
-          {showProfilePin ? (
-            <button
-              type="button"
-              role="menuitem"
-              className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-sky-200 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-              disabled={profilePinBusy}
-              onClick={(e) => {
-                e.stopPropagation()
-                close()
-                onProfilePinToggle?.()
-              }}
-            >
-              {profilePinned ? 'Unpin from profile' : 'Pin to profile'}
-            </button>
-          ) : null}
-          {isOwn ? (
-            <>
-              {showEdit ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    close()
-                    onEdit?.()
-                  }}
-                >
-                  Edit
-                </button>
-              ) : null}
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-rose-300 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-                disabled={deleteBusy}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  close()
-                  onDelete?.()
-                }}
-              >
-                Delete
-              </button>
-            </>
-          ) : (
-            <>
-              {showStaffDelete ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-rose-300 hover:bg-zinc-800 touch-manipulation disabled:opacity-50"
-                  disabled={staffDeleteBusy}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    close()
-                    onStaffDelete?.()
-                  }}
-                >
-                  Delete post
-                </button>
-              ) : null}
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  close()
-                  onBlock?.()
-                }}
-              >
-                Block
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-1.5 text-left text-[15px] font-medium text-zinc-100 hover:bg-zinc-800 touch-manipulation"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  close()
-                  onReport?.()
-                }}
-              >
-                Report
-              </button>
-            </>
-          )}
-        </div>
+          {showStaffDelete ? <div className="my-1 border-t border-zinc-700/80" role="separator" /> : null}
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM_CLASS} text-zinc-100`}
+            onClick={(e) => {
+              e.stopPropagation()
+              close()
+              onBlock?.()
+            }}
+          >
+            <Ban className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
+            Block
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM_CLASS} text-zinc-100`}
+            onClick={(e) => {
+              e.stopPropagation()
+              close()
+              onReport?.()
+            }}
+          >
+            <Flag className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
+            Report
+          </button>
+        </>
+      )}
+    </div>
   ) : null
 
   return (

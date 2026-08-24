@@ -1317,6 +1317,40 @@ html.light [data-chat-image-lightbox] [data-chat-image-lightbox-footer] {
   width: 1.375rem !important;
   height: 1.375rem !important;
 }
+/* Portaled post ⋯ panel (feed + lightbox) - light mode surface (sits on document.body) */
+html.light [data-lounge-post-row-menu] {
+  border-color: rgb(228 228 231) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow:
+    0 12px 40px rgba(24, 24, 27, 0.12),
+    0 0 0 1px rgba(24, 24, 27, 0.04) !important;
+}
+html.light [data-lounge-post-row-menu] [role='menuitem'] {
+  color: rgb(39 39 42) !important;
+}
+html.light [data-lounge-post-row-menu] [role='menuitem']:hover,
+html.light [data-lounge-post-row-menu] [role='menuitem']:active {
+  background: rgb(244 244 245) !important;
+}
+html.light [data-lounge-post-row-menu] [role='menuitem'] svg {
+  color: rgb(113 113 122) !important;
+}
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-rose-300,
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-rose-300 svg {
+  color: rgb(225 29 72) !important;
+}
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-fuchsia-200,
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-fuchsia-200 svg {
+  color: rgb(192 38 211) !important;
+}
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-sky-200,
+html.light [data-lounge-post-row-menu] [role='menuitem'].text-sky-200 svg {
+  color: rgb(2 132 199) !important;
+}
+html.light [data-lounge-post-row-menu] [role='separator'],
+html.light [data-lounge-post-row-menu] .border-t {
+  border-color: rgb(228 228 231) !important;
+}
 /* Pager stays light-on-dark like the chrome pills (do not remap to zinc in light mode). */
 html.light [data-lounge-image-lightbox] [data-lounge-lightbox-image-pager] {
   color: #ffffff !important;

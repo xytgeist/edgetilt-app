@@ -110,6 +110,7 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
   /** Initial cold boot (killed app / fresh tab). */
   useEffect(() => {
     if (tab !== 'home') return
+    if (cycleDoneRef.current) return
     if (
       shouldShowLoungeColdBootSplash({
         tab,

@@ -195,7 +195,13 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
         renderConfig: { autoResize: false },
       })
 
-      const done = () => onCompleteRef.current?.()
+      let completeReported = false
+      const done = () => {
+        if (completeReported) return
+        completeReported = true
+        window.clearTimeout(fallback)
+        onCompleteRef.current?.()
+      }
       fallback = window.setTimeout(done, SPLASH_MAX_MS)
 
       const fadeOpacity = (currentFrame, start, end) => {
@@ -239,10 +245,15 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
           bottomCoverRef.current.style.display = 'none'
           bottomCoverRef.current = null
         }
+
+        // EdgeiOS / some WebKit builds may not fire `complete` (or may loop). Treat
+        // fly-through end as done so the splash cannot cycle forever.
+        if (currentFrame >= FLY_THROUGH_END) {
+          done()
+        }
       })
 
       player.addEventListener('complete', () => {
-        window.clearTimeout(fallback)
         if (bottomCoverRef.current) {
           bottomCoverRef.current.style.display = 'none'
           bottomCoverRef.current = null

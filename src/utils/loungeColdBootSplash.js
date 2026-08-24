@@ -20,6 +20,12 @@ export const LOUNGE_COLD_BOOT_MEMBER_MAX_MS = 7000
 export const LOUNGE_COLD_BOOT_ANON_MIN_MS = 380
 export const LOUNGE_COLD_BOOT_ANON_MAX_MS = LOUNGE_COLD_BOOT_MEMBER_MAX_MS
 
+/**
+ * In-memory cycle flag … survives sessionStorage failures / quirks in WKWebView so the
+ * splash cannot re-arm forever after dismiss (`AGENT_RULE_CROSS_IMPACT_CHECK`).
+ */
+let memoryColdBootSplashCycleDone = false
+
 /** Home Screen PWA or EdgeiOS WKWebView shell ... not a plain browser tab. */
 function isLoungeColdBootInstalledSurface() {
   return isStandalonePwa() || isEdgeiOSShell()
@@ -47,6 +53,7 @@ export function isLoungeColdBootHomeIntent() {
 
 /** @returns {boolean} */
 export function readLoungeColdBootSplashCycleDone() {
+  if (memoryColdBootSplashCycleDone) return true
   if (typeof window === 'undefined') return false
   try {
     return window.sessionStorage.getItem(LOUNGE_COLD_BOOT_SPLASH_CYCLE_KEY) === '1'
@@ -56,15 +63,17 @@ export function readLoungeColdBootSplashCycleDone() {
 }
 
 export function markLoungeColdBootSplashCycleDone() {
+  memoryColdBootSplashCycleDone = true
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.setItem(LOUNGE_COLD_BOOT_SPLASH_CYCLE_KEY, '1')
   } catch {
-    // ignore
+    // ignore … memory flag still blocks re-arm
   }
 }
 
 export function clearLoungeColdBootSplashCycle() {
+  memoryColdBootSplashCycleDone = false
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.removeItem(LOUNGE_COLD_BOOT_SPLASH_CYCLE_KEY)

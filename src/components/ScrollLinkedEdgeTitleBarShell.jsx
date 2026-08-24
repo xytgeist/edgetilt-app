@@ -10,6 +10,7 @@ import {
   lockStableLayoutViewportHeight,
   unlockStableLayoutViewportHeight,
 } from '../utils/stableLayoutViewport.js'
+import { loungeTitleBarHideTranslateYPx } from '../utils/loungeTitleRevealScroll.js'
 
 /**
  * Fixed EDGE title bar + scroll-linked hide/show - same chrome and tuning as
@@ -177,7 +178,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
         className={`fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`}
         style={{
           top: feedViewportTopPx,
-          transform: `translate3d(-50%, ${-(1 - titleReveal) * (titleBarHeight > 0 ? titleBarHeight : 56)}px, 0)`,
+          transform: `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
           pointerEvents: titleReveal > 0.12 ? 'auto' : 'none',
         }}
       >

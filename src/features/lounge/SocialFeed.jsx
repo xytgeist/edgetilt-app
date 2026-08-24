@@ -392,6 +392,7 @@ import {
 import {
   loungeTitleRevealAfterScrollStep,
   loungeTitleRevealClampScrollDelta,
+  loungeTitleBarHideTranslateYPx,
 } from '../../utils/loungeTitleRevealScroll.js'
 import LoungeDockSlidePanels from '../../components/LoungeDockSlidePanels.jsx'
 import LoungePostCommentThread from './LoungePostCommentThread.jsx'
@@ -15820,7 +15821,7 @@ export default function SocialFeed({
           className="fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"
           style={{
             top: loungeFeedViewportTopPx,
-            transform: `translate3d(-50%, ${-(1 - loungeTitleReveal) * (loungeTitleBarHeight > 0 ? loungeTitleBarHeight : 56)}px, 0)`,
+            transform: `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
           }}
         >

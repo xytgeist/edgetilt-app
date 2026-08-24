@@ -1878,6 +1878,33 @@ html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
 }
 
 /*
+ * Profile banner back / ⋯ / Cancel — light mode only.
+ * Dark keeps bg-black/32 frost over banners. In light, that reads as charcoal discs
+ * (text-white is not remapped when a bg-* class is present). Match soft glass + dark glyphs.
+ */
+html.light [data-lounge-profile-banner-chrome] {
+  background: rgba(255, 255, 255, 0.78) !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1) !important;
+  color: #18181b !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  text-shadow: none !important;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+}
+html.light [data-lounge-profile-banner-chrome]:hover {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+html.light [data-lounge-profile-banner-chrome]:active {
+  background: rgba(244, 244, 245, 0.95) !important;
+}
+html.light [data-lounge-profile-banner-chrome] span,
+html.light [data-lounge-profile-banner-chrome] svg {
+  color: inherit !important;
+  text-shadow: none !important;
+  fill: currentColor;
+}
+
+/*
  * Lounge profile social actions — light mode colored states only (per-button data hooks; dark unchanged).
  */
 html.light [data-lounge-profile-follow-btn][data-following='true'] {

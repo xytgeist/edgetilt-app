@@ -98,6 +98,9 @@ const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 const PROFILE_BANNER_CHROME_BTN_CLASS =
   'grid h-9 w-9 place-items-center rounded-full bg-black/32 text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50'
 
+const PROFILE_BANNER_CHROME_CANCEL_CLASS =
+  'pointer-events-auto rounded-full bg-black/32 px-3.5 py-1.5 text-[14px] font-semibold text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50 [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
+
 const PROFILE_BANNER_CHROME_DOTS_CLASS =
   'block pb-0.5 text-2xl font-bold leading-none tracking-tight -translate-y-px [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
 
@@ -2304,9 +2307,10 @@ export default function LoungeProfileFullScreen({
             <button
               type="button"
               onClick={showOwnEditControls ? () => exitOwnProfileEditing() : onClose}
+              data-lounge-profile-banner-chrome=""
               className={
                 showOwnEditControls
-                  ? 'pointer-events-auto rounded-full bg-black/32 px-3.5 py-1.5 text-[14px] font-semibold text-white shadow-[0_1px_10px_rgba(0,0,0,0.35)] backdrop-blur-sm touch-manipulation outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent] hover:bg-black/44 active:bg-black/50 [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_8px_rgba(0,0,0,0.55)]'
+                  ? PROFILE_BANNER_CHROME_CANCEL_CLASS
                   : `${PROFILE_BANNER_CHROME_BTN_CLASS} pointer-events-auto`
               }
               aria-label={showOwnEditControls ? 'Cancel editing' : 'Back'}
@@ -2328,6 +2332,7 @@ export default function LoungeProfileFullScreen({
                   aria-expanded={ownProfileMenuOpen}
                   aria-haspopup="menu"
                   aria-label="Profile options"
+                  data-lounge-profile-banner-chrome=""
                   className={PROFILE_BANNER_CHROME_BTN_CLASS}
                 >
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
@@ -2373,6 +2378,7 @@ export default function LoungeProfileFullScreen({
                   aria-expanded={otherProfileMenuOpen}
                   aria-haspopup="menu"
                   aria-label="Profile options"
+                  data-lounge-profile-banner-chrome=""
                   className={PROFILE_BANNER_CHROME_BTN_CLASS}
                 >
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>

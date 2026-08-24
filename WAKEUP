@@ -123,8 +123,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 2. ~~Stripe / fan / affiliate Connect → `openInSafari`~~ **done** (`openExternalBillingUrl`)
 3. ~~Skip `push-sw` register + hide A2HS / **How to Install** / install-for-push~~ **done**
 4. ~~Lounge cold-boot / resume **Lottie**~~ **done** (eligible + direct-canvas in shell) … device smoke
-5. Lounge unmuted autoplay when shell detected
+5. ~~Lounge unmuted autoplay when shell detected~~ **done** (web) … **device smoke** on EdgeiOS
 See backlog **Native gap checklist**. IAP note: Safari-only for v1; StoreKit dual-path parked as **v1.1** in bridge doc.
+
+**Mac help for unmuted autoplay:** no new Swift required if `mediaTypesRequiringUserActionForPlayback = []` is still in the IPA. Smoke on device after Vercel `test` deploy; if handoff stays silent, Mac verifies WebView media config + rebuild.
 
 ### v1 vs v1.1 (iOS)
 

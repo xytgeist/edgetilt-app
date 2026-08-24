@@ -19,7 +19,7 @@ import {
   syncLoungeFeedVideoDebugFromUrl,
 } from '../../utils/loungeFeedVideoDebugPref.js'
 import LoungeFeedVideoAutoplayDebugHud from './LoungeFeedVideoAutoplayDebugHud.jsx'
-import { detectAppleWebKitInlineStream } from '../../utils/loungeAppleWebKit.js'
+import { appleWebKitBlocksFeedSoundHandoff } from '../../utils/loungeAppleWebKit.js'
 
 const LoungeFeedVideoAutoplayContext = createContext(null)
 
@@ -90,21 +90,21 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
 
   const iosSharedFeedSoundMode = useMemo(
     () =>
-      detectAppleWebKitInlineStream() &&
+      appleWebKitBlocksFeedSoundHandoff() &&
       feedInlineSoundUnmuted &&
       !feedInlineSoundExplicitlyMuted,
     [feedInlineSoundUnmuted, feedInlineSoundExplicitlyMuted],
   )
 
   /**
-   * Feed-wide sound gesture chain (Android/desktop only).
-   * Apple WebKit uses per-tile unmute in LoungePostStreamVideo - handoff unmute is blocked there.
+   * Feed-wide sound gesture chain (Android/desktop + EdgeiOS shell).
+   * Safari/PWA Apple WebKit still blocks handoff unmute ... per-tile unmute only there.
    */
   useEffect(() => {
     const wanted = feedInlineSoundUnmuted && !feedInlineSoundExplicitlyMuted
-    const appleWebKit = detectAppleWebKitInlineStream()
-    store.setFeedSoundWanted(wanted && !appleWebKit)
-    if (!wanted || appleWebKit) {
+    const blocksHandoff = appleWebKitBlocksFeedSoundHandoff()
+    store.setFeedSoundWanted(wanted && !blocksHandoff)
+    if (!wanted || blocksHandoff) {
       store.setFeedSoundTouchActive(false)
       return undefined
     }

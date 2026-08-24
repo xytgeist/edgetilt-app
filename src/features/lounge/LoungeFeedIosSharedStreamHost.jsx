@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 import { cfStreamManifestUrl } from '../../utils/loungeVideoUpload'
-import { detectAppleWebKitInlineStream } from '../../utils/loungeAppleWebKit.js'
+import { appleWebKitBlocksFeedSoundHandoff } from '../../utils/loungeAppleWebKit.js'
 import { useLoungeStreamHlsAttachment } from './useLoungeStreamHlsAttachment.js'
 import {
   getIosSharedStreamHostSnapshot,
@@ -25,7 +25,7 @@ export default function LoungeFeedIosSharedStreamHost({
   feedInlineSoundExplicitlyMuted,
 }) {
   const enabled =
-    detectAppleWebKitInlineStream() &&
+    appleWebKitBlocksFeedSoundHandoff() &&
     feedInlineSoundUnmuted &&
     !feedInlineSoundExplicitlyMuted
 

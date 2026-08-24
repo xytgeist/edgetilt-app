@@ -83,7 +83,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Mac device Run smoke (2026-08-23):** M4 Max + **Xcode 27 beta**; iPhone Air **iOS 27** Developer Mode; Personal Team install; Trust developer; Edge Test scheme loads **`lvslotpro.com`** in-app. (App Store Xcode 26 alone cannot DDI/debug iOS 27.)
 - [x] **SW bust on boot + bridge (2026-08-23):** clear service worker registrations / caches before first load; `EdgeNative.bustServiceWorker` implemented. Camera / mic / photo / location usage strings + WK media-capture grant.
 - [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land. (`getInfo` + `openInSafari` + `bustServiceWorker` native; push + audio session still stub.)
-- [ ] **Bridges v1 remaining:** push (APNs `requestPushPermission` / `getPushToken`), call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), unmuted media autoplay **web unlock** under shell.
+- [ ] **Bridges v1 remaining:** push (APNs `requestPushPermission` / `getPushToken`), call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), ~~unmuted media autoplay **web unlock** under shell~~ **done (Windows 2026-08-24)** … device smoke.
 - [ ] **Native UA web gates (Windows):** ~~hide in-WebView Stripe / subscribe CTAs → `openInSafari`~~ **done** (`openExternalBillingUrl`); ~~skip `push-sw` register~~ **done**; ~~hide A2HS / install-for-push chrome~~ (How to Install chip + `iosPwaInstallRequired` + web push hook). UA token **`EdgeiOS/0.1.0`**; **`src/utils/edgeNative.js`** landed.
 - [x] **Billing v1 (US) Safari link-out:** Stripe Checkout / portal / Connect never `location.assign` inside EdgeiOS … `openExternalBillingUrl` → `openInSafari`. StoreKit IAP deferred to v1.1. Counsel + App Review notes still before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
@@ -98,7 +98,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] Skip `push-sw.js` registration when EdgeiOS; hide A2HS / Offers “install for push” UX (`useWebPushNotifications` unsupported in shell; `iosPwaInstallRequired` / `isInstalledPwaNotifPromptEligible` false in shell)
 - [x] **How to Install title-bar chip:** `shouldShowPwaInstallBanner()` returns false when `isEdgeiOSShell()` (`PwaInstallBanner.jsx` / `pwaNotificationPrompt.js`)
 - [x] **Lounge cold-boot / resume Lottie:** EdgeiOS treated as installed surface (`loungeColdBootSplash.js`); DotLottie uses **direct canvas** in shell (OffscreenCanvas blit kept for Safari/PWA). Smoke on device after `test` deploy.
-- [ ] Lounge unmuted autoplay when `isEdgeiOSShell()` (do not leave Apple-WebKit mute path on)
+- [x] Lounge unmuted autoplay when `isEdgeiOSShell()` … `appleWebKitBlocksFeedSoundHandoff()` excludes shell; feed-wide coordinated sound like Android. Safari/PWA unchanged. Device smoke on EdgeiOS after `test` deploy.
 - [ ] Centralize external opens (`_blank`, OAuth returns) for WKWebView
 
 **P0 Mac**
@@ -1052,6 +1052,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **EdgeiOS Lounge feed unmuted handoff (Windows):** `appleWebKitBlocksFeedSoundHandoff()` … Safari/PWA still block feed-wide sound; EdgeiOS uses coordinated Tap-for-sound + handoff like Android (`LoungeFeedVideoAutoplayContext`, `LoungePostStreamVideo`). MSE/`detectAppleWebKitInlineStream` unchanged. Native already `mediaTypesRequiringUserActionForPlayback = []`. **Smoke on device:** unmute one tile → scroll → next clips stay audible. No SQL / Edge.
 - 2026-08-24: **EdgeiOS skip web push / install-for-push (Windows):** `useWebPushNotifications` treats shell as unsupported (no `push-sw.js` register / VAPID). `iosPwaInstallRequired` + `isInstalledPwaNotifPromptEligible` false in shell so Settings/Offers do not push A2HS. Lounge hint + Offers copy mention native push later. Safari/PWA web push unchanged. No SQL / Edge.
 - 2026-08-24: **Stripe → Safari in EdgeiOS (Windows):** `openExternalBillingUrl` in **`src/utils/edgeNative.js`** … shell calls `openInSafari`, web keeps `location.assign`. Wired: Edge checkout/portal (`stripeBillingApi`), fan Connect/checkout/portal (`creatorFanSubsApi`), affiliate Connect (`CreatorAffiliatePortal`), staff bot fan Connect (`botPortalApi`). In-app nav (`/?tab=…`) unchanged. **IAP:** Safari-only for v1; StoreKit dual-path note in **`docs/ios-native-bridge.md`** § StoreKit IAP + backlog Later. Gap checklist Stripe row checked. No SQL / Edge.
 - 2026-08-23: **EdgeiOS How to Install + Lottie (Windows):** Landed **`src/utils/edgeNative.js`**. `shouldShowPwaInstallBanner` hides title-bar install chip in shell. Cold-boot/resume splash treats EdgeiOS as installed; `LoungeAppSplash` uses direct canvas in shell (Offscreen blit stays for PWA). Device smoke after `test` deploy.

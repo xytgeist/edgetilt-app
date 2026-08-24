@@ -11,7 +11,7 @@ import {
 } from './loungeFeedImageAttachment.js'
 import { useLoungeFeedVideoAutoplay } from './LoungeFeedVideoAutoplayContext.jsx'
 import { useLoungeStreamHlsAttachment } from './useLoungeStreamHlsAttachment.js'
-import { detectAppleWebKitInlineStream } from '../../utils/loungeAppleWebKit.js'
+import { appleWebKitBlocksFeedSoundHandoff, detectAppleWebKitInlineStream } from '../../utils/loungeAppleWebKit.js'
 import {
   LOUNGE_VIDEO_SOUND_OFF_RATIO,
   LOUNGE_VIDEO_SOUND_ON_RATIO,
@@ -423,6 +423,7 @@ export default function LoungePostStreamVideo({
   /** Hero opened with `<video>` present but HLS not decoded yet - kick attach after open. */
   const heroHlsKickRef = useRef(false)
   const appleWebKitInlineStreamRef = useRef(detectAppleWebKitInlineStream())
+  const appleWebKitBlocksFeedSoundHandoffRef = useRef(appleWebKitBlocksFeedSoundHandoff())
   const [lightboxOpen, setLightboxOpen] = useState(false)
   /** @type {'idle' | 'opening' | 'open' | 'closing'} */
   const [heroPhase, setHeroPhase] = useState('idle')
@@ -635,9 +636,9 @@ export default function LoungePostStreamVideo({
   )
   isActiveRef.current =
     feedAutoplayEnabled && !coordinatorSuspended && (!coordinatorActive || isActive)
-  /** Feed-wide Tap for sound on Android/desktop; per-tile only on Apple WebKit (iOS blocks handoff unmute). */
+  /** Feed-wide Tap for sound on Android/desktop/EdgeiOS; per-tile only on Safari/PWA Apple WebKit. */
   const coordinatedInlineSound =
-    coordinatorActive && !appleWebKitInlineStreamRef.current
+    coordinatorActive && !appleWebKitBlocksFeedSoundHandoffRef.current
   const [localStripSoundUnmuted, setLocalStripSoundUnmuted] = useState(false)
   const [localStripSoundExplicitlyMuted, setLocalStripSoundExplicitlyMuted] = useState(false)
   const localStripSoundUnmutedRef = useRef(false)
@@ -850,7 +851,7 @@ export default function LoungePostStreamVideo({
         return
       }
       if (!video.muted) return
-      if (appleWebKitInlineStreamRef.current && !fromUserGesture) {
+      if (appleWebKitBlocksFeedSoundHandoffRef.current && !fromUserGesture) {
         if (ratio < LOUNGE_VIDEO_SOUND_ON_RATIO) return
         if (iosFeedSoundHandoffDomUnmuteUsedRef.current) return
       }
@@ -862,7 +863,7 @@ export default function LoungePostStreamVideo({
       } catch {
         return
       }
-      if (appleWebKitInlineStreamRef.current && !fromUserGesture && !video.muted) {
+      if (appleWebKitBlocksFeedSoundHandoffRef.current && !fromUserGesture && !video.muted) {
         iosFeedSoundHandoffDomUnmuteUsedRef.current = true
       }
     },
@@ -888,7 +889,7 @@ export default function LoungePostStreamVideo({
       feedSoundAudibleRef.current = true
     }
     if (!v.muted) {
-      if (appleWebKitInlineStreamRef.current && !v.paused) {
+      if (appleWebKitBlocksFeedSoundHandoffRef.current && !v.paused) {
         iosFeedSoundGestureUnlockedRef.current = true
       }
       return
@@ -901,7 +902,7 @@ export default function LoungePostStreamVideo({
       }
     }
 
-    if (appleWebKitInlineStreamRef.current) {
+    if (appleWebKitBlocksFeedSoundHandoffRef.current) {
       if (!v.paused) {
         try {
           v.muted = false
@@ -950,7 +951,7 @@ export default function LoungePostStreamVideo({
   }, [coordinatedInlineSound, isFeedSoundTouchActive, tryCoordinatedDomUnmute])
 
   const shouldSkipIosFeedAutoMute = useCallback(() => {
-    if (!appleWebKitInlineStreamRef.current) return false
+    if (!appleWebKitBlocksFeedSoundHandoffRef.current) return false
     if (!feedInlineSoundUnmutedRef.current || feedInlineSoundExplicitlyMutedRef.current) return false
     if (isFeedSoundTouchActive()) return true
     if (iosFeedSoundGestureUnlockedRef.current) return true
@@ -1019,7 +1020,7 @@ export default function LoungePostStreamVideo({
       feedSoundAudibleRef.current = true
     }
     if (!feedSoundAudibleRef.current) return
-    if (appleWebKitInlineStreamRef.current) return
+    if (appleWebKitBlocksFeedSoundHandoffRef.current) return
     tryCoordinatedDomUnmute(v)
   }, [coordinatedInlineSound, tryCoordinatedDomUnmute])
 
@@ -1212,7 +1213,7 @@ export default function LoungePostStreamVideo({
     const applyAudibleAfterPlay = () => {
       if (!v || v.paused) return
       if (coordinatedInlineSound && isActiveRef.current) {
-        if (!appleWebKitInlineStreamRef.current) {
+        if (!appleWebKitBlocksFeedSoundHandoffRef.current) {
           tryCoordinatedDomUnmute(v)
         }
         return
@@ -2616,7 +2617,7 @@ export default function LoungePostStreamVideo({
         const v = videoRef.current
         if (!v) return
         try {
-          if (!v.paused && appleWebKitInlineStreamRef.current) {
+          if (!v.paused && appleWebKitBlocksFeedSoundHandoffRef.current) {
             try {
               v.muted = false
             } catch {

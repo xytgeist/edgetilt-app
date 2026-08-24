@@ -221,6 +221,7 @@ export default function LoungeChatPanel({
                       groupAvatarUrl={r.avatar_url}
                       members={groupHeaderByRoomId[r.id] || []}
                       size={40}
+                      compact
                     />
                   ) : (
                     <div className={`grid h-10 w-10 place-items-center rounded-full text-[16px] font-bold ${

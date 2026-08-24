@@ -1745,6 +1745,7 @@ function ChatRoomListRow({
                 groupAvatarUrl={room.avatar_url}
                 members={groupHeaderMembers}
                 size={44}
+                compact
               />
             ) : (
               <div className={`grid h-11 w-11 place-items-center rounded-full text-[18px] ${

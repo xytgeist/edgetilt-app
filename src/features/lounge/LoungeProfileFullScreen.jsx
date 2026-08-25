@@ -789,6 +789,8 @@ export default function LoungeProfileFullScreen({
   const [profileTabsStickyTopPxState, setProfileTabsStickyTopPxState] = useState(
     PROFILE_COLLAPSED_CHROME_ROW_PX,
   )
+  /** Latest tabs sticky top … re-applied after paint so React reveal setState cannot clobber it. */
+  const profileTabsTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
   const profileDockScrollPrevTopRef = useRef(0)
   const profileDockRevealRef = useRef(1)
   const profileDockScrollRafRef = useRef(0)
@@ -1712,9 +1714,14 @@ export default function LoungeProfileFullScreen({
         buttonHidePx = 0
       }
     } else if (feedLatched || pastBanner) {
-      // Buttons track dock (slide away on scroll-down). Title is binary … no half-pop.
-      titleHidePx = revealNow >= 0.97 ? 0 : Math.round(iosWebTitleH)
       buttonHidePx = Math.round(dockHideNow)
+      if (scrollDelta > 0.5) {
+        // Scroll-down: park the title fully away (no half-pop). Buttons still slide with dock.
+        titleHidePx = dockHideNow > 0.5 ? Math.round(iosWebTitleH) : 0
+      } else {
+        // Scroll-up / idle: title rides dock with the buttons so tabs push down 1:1.
+        titleHidePx = Math.round(dockHideNow)
+      }
     } else {
       // Fresh open on banner: floating buttons leave with the page; no white plate.
       titleHidePx = Math.round(iosWebTitleH)
@@ -1806,6 +1813,7 @@ export default function LoungeProfileFullScreen({
         tabsEl.removeAttribute('data-lounge-profile-ios-web-tabs')
       }
       tabsEl.style.top = `${tabsTop}px`
+      profileTabsTopPxRef.current = tabsTop
       setProfileTabsStickyTopPxState((prev) => (prev === tabsTop ? prev : tabsTop))
     }
     const avatar = profileAvatarMotionRef.current
@@ -2102,6 +2110,15 @@ export default function LoungeProfileFullScreen({
       applyProfileCollapseVisuals(el.scrollTop)
     }
   }, [open, panelVisible, onDockRevealChange, applyProfileCollapseVisuals])
+
+  // Reveal setState re-renders can clobber tabs `style.top` with a stale value for a frame.
+  // Re-apply the latest measured top after every commit so tabs ride the title plate.
+  useLayoutEffect(() => {
+    if (!open || !panelVisible) return
+    const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
+    if (!tabsEl) return
+    tabsEl.style.top = `${profileTabsTopPxRef.current}px`
+  })
 
   useLayoutEffect(() => {
     if (!open || !panelVisible) return

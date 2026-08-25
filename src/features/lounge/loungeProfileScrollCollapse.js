@@ -8,9 +8,9 @@
  *
  * Motion:
  * - Banner rises until its bottom sits ~10px below the back/⋯ buttons, then sticks.
- * - Avatar scrolls 1:1 with the page (same as the display name) … no counter-scroll.
- * - Shrink is bottom-anchored so the avatar↔name gap stays roughly constant.
- * - Shrink ease-in over the full pin distance.
+ * - Avatar rises slower than the page (partial counter-scroll lag) while shrinking.
+ * - Shrink is ease-in over the full pin distance so it feels slower early on.
+ * - After pin, lag offset freezes so the avatar then scrolls 1:1 under the banner.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
@@ -42,11 +42,12 @@ export const PROFILE_AVATAR_MIN_SCALE = 0.78
 export const PROFILE_AVATAR_RING_PX = 4
 
 /**
- * Counter-scroll lag during pin/shrink.
- * Kept at 0 so the avatar bottom stays locked to the display-name distance (1:1 scroll).
- * Non-zero values break that gap (avatar rises slower than the name).
+ * Fraction of scroll that is counteracted on the avatar during the pin/shrink window.
+ * 0 = full-speed with the page; 1 = screen-pinned.
+ * Net upward speed ≈ (1 - lag) × scroll speed (~55% at 0.45).
+ * Keep this well below ~0.85 on long chrome pin ranges or the avatar reads as stuck.
  */
-export const PROFILE_AVATAR_SCROLL_LAG = 0
+export const PROFILE_AVATAR_SCROLL_LAG = 0.45
 
 /**
  * Ease-in power for avatar scale over the pin window.
@@ -80,7 +81,7 @@ export function profileBannerPinScrollRangePx(bannerHeightPx, pinnedVisiblePx) {
 /**
  * Pinned banner visible height so that, with avatar scroll lag, the banner bottom
  * meets the avatar ring top at the same scrollTop the sticky pin finishes.
- * (Unused for the chrome+10 / name-gap pin model; kept for clear-line experiments.)
+ * (Unused for the chrome+10 pin target; kept for clear-line experiments.)
  *
  * @param {number} bannerHeightPx
  * @param {number} avatarRingTopPx ring top from scrollport top at scrollTop 0 (no transform)
@@ -93,7 +94,7 @@ export function profileBannerPinnedVisibleForLagClear(
 ) {
   const h = Math.max(0, Number(bannerHeightPx) || 0)
   const R0 = Math.max(0, Number(avatarRingTopPx) || 0)
-  const lag = Math.max(0.01, Math.min(1, Number(scrollLag) || 0.01))
+  const lag = Math.max(0.01, Math.min(1, Number(scrollLag) || PROFILE_AVATAR_SCROLL_LAG))
   if (h <= 0) return Math.round(R0)
   const p = (R0 - h * (1 - lag)) / lag
   return Math.max(0, Math.min(Math.round(h), Math.round(p)))
@@ -129,7 +130,7 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const reduce = Boolean(opts.reduceMotion)
   const lag = Math.max(
     0,
-    Math.min(1, opts.scrollLag != null ? Number(opts.scrollLag) : PROFILE_AVATAR_SCROLL_LAG),
+    Math.min(1, Number(opts.scrollLag) || PROFILE_AVATAR_SCROLL_LAG),
   )
   const shrinkPower = Math.max(
     1,
@@ -143,13 +144,13 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
   const minScale = PROFILE_AVATAR_MIN_SCALE
-  // Ease-in shrink over the chrome pin window … stays larger longer.
+  // Ease-in shrink over the full (now longer) chrome pin window … stays larger longer.
   const shrinkT = reduce ? pinRaw : Math.pow(pinRaw, shrinkPower)
   const avatarScale = 1 - shrinkT * (1 - minScale)
 
   /**
-   * Default lag is 0: avatar co-scrolls with the display name.
-   * Non-zero lag (opts / constant) is optional and breaks the name gap.
+   * Partial counter-scroll during pin: avatar rises slower than the page.
+   * After pin: freeze the lag offset so further scroll is 1:1 under the banner.
    */
   let avatarTranslateY = 0
   if (!reduce && lag > 0) {
@@ -166,7 +167,7 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     avatarScale,
     avatarTranslateY,
     avatarOpacity: 1,
-    /** Raise banner over avatar once the pin line is reached. */
+    /** Raise banner over avatar once the pin/clear line is reached. */
     avatarUnderBanner: y > pinRange + 2,
   }
 }

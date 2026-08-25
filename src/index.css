@@ -1913,16 +1913,16 @@ html.light [data-lounge-profile-compact-name] span {
     0 1px 2px rgba(0, 0, 0, 0.55),
     0 0 10px rgba(0, 0, 0, 0.28);
 }
-/* iOS Safari / PWA / Android … centered compact title on the opaque plate. */
+/* iOS Safari / PWA / Android … centered compact title on the opaque plate.
+ * Avoid `-webkit-text-fill-color` here … it kills `text-shadow` on WebKit. */
 [data-lounge-profile-compact-ios-web] {
   color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
 }
 [data-lounge-profile-compact-ios-web],
 [data-lounge-profile-compact-ios-web] span {
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 0 8px rgba(0, 0, 0, 0.22);
+    0 1px 2px rgba(0, 0, 0, 0.65),
+    0 0 12px rgba(0, 0, 0, 0.35);
 }
 html.light [data-lounge-profile-compact-ios-web] {
   color: #18181b !important;
@@ -1931,11 +1931,18 @@ html.light [data-lounge-profile-compact-ios-web] {
 html.light [data-lounge-profile-compact-ios-web] span {
   color: inherit !important;
   -webkit-text-fill-color: inherit !important;
-  text-shadow: none;
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.7),
+    0 1px 2px rgba(24, 24, 27, 0.12);
 }
 html.light [data-lounge-profile-compact-ios-web] span:last-child {
   color: rgba(24, 24, 27, 0.62) !important;
   -webkit-text-fill-color: rgba(24, 24, 27, 0.62) !important;
+}
+/* Generic compact-name white fill must not blank ios-web shadow on dark plates. */
+html.light [data-lounge-profile-compact-ios-web],
+html.light [data-lounge-profile-compact-ios-web] span {
+  /* keep light rules above; dark ios-web is not under html.light */
 }
 [data-lounge-profile-tabs] {
   /* Sticky tabs under collapsed chrome … solid fallback for weak backdrop-filter. */

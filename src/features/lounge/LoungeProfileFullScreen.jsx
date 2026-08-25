@@ -3010,11 +3010,11 @@ export default function LoungeProfileFullScreen({
                 className="pointer-events-none absolute inset-x-12 bottom-0 flex h-12 min-w-0 flex-col items-center justify-center text-center text-white opacity-0 sm:inset-x-16"
                 style={{ transform: `translate3d(0, ${PROFILE_COMPACT_NAME_SLIDE_PX}px, 0)` }}
               >
-                <span className="min-w-0 max-w-full truncate text-[16px] font-bold leading-tight sm:text-[17px]">
+                <span className="min-w-0 max-w-full truncate text-[18px] font-bold leading-tight sm:text-[19px]">
                   {displayName}
                 </span>
                 <span
-                  className="min-w-0 max-w-full truncate text-[13px] font-normal leading-tight text-white/90"
+                  className="min-w-0 max-w-full truncate text-[14px] font-normal leading-tight text-white/90"
                   title={fullStatCountTitle(compactPostsCount)}
                 >
                   {compactPostsLabel}

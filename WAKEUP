@@ -87,12 +87,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 **Shipped on `test` (Ryan signed: tab slide, native scroll, FAB overlay close):**
 - **Profile tabs:** Posts/Replies/Likes/Bookmarks slide left/right under a pinned banner + tab bar. Sheet does not remount. Idle-prefetch Replies (and Likes/Bookmarks on own profile). One **native** profile scroller (`overflow: clip` on the tab pane ... do **not** revive the JS header-then-feed lock). Files: `LoungeProfileFullScreen.jsx`, `index.css`.
 - **FAB Settings / Search / Notifications:** Open on top of the current stack. Profile and post detail stay mounted. Close drops the panel. Home / compose / chat still dump the stack. Do **not** park sheets at z-40 (replays post-detail slide). Files: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `appZIndex.js`.
-- **Post-detail:** Light canvas `#fff` (Ryan sign-off). IPA sat on the title bar only (no double Island pad).
+- **Post-detail:** Light canvas `#fff` (Ryan sign-off). IPA sat on the title bar only (no double Island pad). **Device sign-off 2026-08-25:** matches Safari/PWA … do not restack panel `pt` + title `pt`.
 - **Editor:** `@theme` is Tailwind v4 (workspace CSS custom data). Splash empty-ruleset warning gone.
+- **IPA safe area (Ryan device sign-off 2026-08-25):** No black letterbox bars. Post-detail ← clear of Island. FAB vs home indicator. Feed title chrome. Keep `.ignoresSafeArea()` + `--edge-sat|…` inject.
 
-**Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park.
+**Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat.
 
-**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. Mac IPA still needs device smoke for safe-area / web gates (see Mac do now below). No SQL in this slice.
+**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. IPA remaining: unmute / Stripe→Safari / no A2HS, OAuth-in-shell, hard-crash leaving post detail (see Mac do now). No SQL in this slice.
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
@@ -139,9 +140,12 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - **Edge-to-edge safe area:** `.ignoresSafeArea()` + `--edge-sat|…` inject; web `max(env(), var(--edge-*))`; post-detail absolute title bar `pt` safe-area
 - BUILD SUCCEEDED
 
+**Mac signed (2026-08-25, Ryan on device):**
+- Post-detail Island pad: title bar only, matches Safari/PWA
+- Safe area: no letterbox; post-detail ← clear of Island; FAB vs home indicator; feed title chrome
+
 **Mac do now (Ryan + Theo):**
-1. Pull tip; **IPA post-detail:** panel no longer double-pads sat (title bar only). Smoke vs Safari/PWA Image 1.
-2. Pull tip; wait for Vercel if smoking live web gates; rebuild IPA; **device smoke:** no black bars; post-detail ← clear of Island; unmute / Safari / no A2HS
+1. Remaining web-gate smoke (wait for Vercel if live): Lounge unmute → scroll → next clips audible; Stripe Checkout/portal → system Safari; no A2HS / web-push nag
 2. OAuth-in-shell smoke; hard-crash repro leaving post detail
 3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token
 

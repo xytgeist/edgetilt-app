@@ -104,15 +104,15 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 **P0 Mac**
 - [x] `bustServiceWorker` boot + bridge; media autoplay WebView policy (already open)
 - [x] Info.plist camera / mic / photo / location + WK capture grant
-- [x] **Safe area edge-to-edge + inset inject (2026-08-24):** WebView `.ignoresSafeArea()` again; native pushes `--edge-sat|sar|sab|sal` on safe-area changes; web uses `max(env(...), var(--edge-*))` (~210 call sites). Removes letterbox bars; PWA path unchanged (no double-pad). Smoke: feed title / post-detail ← / FAB vs home indicator.
-- [ ] **Device smoke after Windows 2026-08-24 web gates** (`test` ≥ **`6a3155e2`**, Vercel live): (1) Lounge unmute → scroll → next clips audible; (2) Stripe Checkout/portal → system Safari; (3) no A2HS / web-push nag in shell. Confirm `mediaTypesRequiringUserActionForPlayback = []` still in IPA. See **`docs/ios-native-bridge.md`** → Windows → Mac handoff. *(Mac confirmed media policy still open 2026-08-24; smoke awaits Ryan + Vercel.)*
+- [x] **Safe area edge-to-edge + inset inject (2026-08-24):** WebView `.ignoresSafeArea()` again; native pushes `--edge-sat|sar|sab|sal` on safe-area changes; web uses `max(env(...), var(--edge-*))` (~210 call sites). Removes letterbox bars; PWA path unchanged (no double-pad). **Ryan device sign-off 2026-08-25:** no letterbox; post-detail ← clear of Island; FAB vs home indicator; feed title chrome.
+- [ ] **Device smoke after Windows 2026-08-24 web gates** (`test` ≥ **`6a3155e2`**, Vercel live): (1) Lounge unmute → scroll → next clips audible; (2) Stripe Checkout/portal → system Safari; (3) no A2HS / web-push nag in shell. Confirm `mediaTypesRequiringUserActionForPlayback = []` still in IPA. See **`docs/ios-native-bridge.md`** → Windows → Mac handoff. *(Safe-area / Island / FAB / feed chrome signed 2026-08-25. Unmute / Safari / A2HS still open.)*
 - [ ] **Hard crash investigating:** Ryan … opening Lounge post detail then trying to leave crashed the **phone** (device powered off), not just the app. After safe-area rebuild, repro; if still happens capture Console / Jetsam. Suspect WebKit/GPU memory under Stream + detail, not only layout.
 - [x] APNs bridge: `requestPushPermission` + `getPushToken` + AppDelegate register (2026-08-24). Token null until org Push entitlement; Edge send path still Windows.
 - [x] `setAudioSession` for LiveKit enter/exit (`playback` / `voiceChat` / `default`)
 - [ ] OAuth-in-shell smoke; Safari / ASWebAuthentication if broken
 
 **P1 Windows (safe-area defense)**
-- [x] Post-detail absolute title bar now includes safe-area `pt` (2026-08-24); parent panel `pt` alone does not move `absolute top-0` chrome. Re-smoke ← under Island after shell rebuild.
+- [x] Post-detail absolute title bar now includes safe-area `pt` (2026-08-24); parent panel `pt` alone does not move `absolute top-0` chrome. **Ryan device sign-off 2026-08-25:** title bar only, no extra Island gap vs Safari/PWA (do not restack panel `pt` + title `pt`).
 
 **P1 polish**
 - [ ] APNs deep links → existing `?tab=` / `post=` / `comment=` / `call=` parsers
@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **IPA device sign-off (Ryan):** Post-detail Island pad is title bar only (matches Safari/PWA). Safe area: no letterbox bars; post-detail ← clear of Island; FAB vs home indicator; feed title chrome. Remaining IPA smoke: unmute handoff, Stripe→Safari, no A2HS, OAuth-in-shell, hard-crash leaving post detail.
 - 2026-08-25: **Continuity + prod promote:** Session wrap in **`WAKEUP`** Pick up here (2026-08-25), **`docs/frontend-architecture.md`** (`lounge/` profile tabs), **`docs/social-feed-roadmap.md`** (FAB overlay + profile tabs). Web-only … no SQL / Edge. Ryan asked to promote **`test` → `main`** so prod does not stay backed up.
 - 2026-08-25: **index.css Problems panel:** Empty splash ruleset now has `opacity: 1`. Workspace CSS custom data teaches the editor Tailwind v4 `@theme` (do not “fix” by deleting `@theme`). Files: `index.css`, `.vscode/css-custom-data.json`, `.vscode/settings.json`.
 - 2026-08-25: **Profile tab scroll (native, Ryan sign-off):** One profile scroller again. Tab pane uses `overflow: clip` so it cannot steal the gesture. Header and feed move in one flick. The JS header-then-feed lock was not smooth. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
@@ -1061,7 +1062,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - 2026-08-25: **FAB overlay close:** Do not park profile/detail at z 40 under Settings/Search/Notifications. That restyle replayed the post-detail slide and flashed the profile. Overlay sits on top; the stack stays put. File: `SocialFeed.jsx`.
 - 2026-08-25: **FAB Settings / Search / Notifications overlay:** Those chips open on top of the current stack. Profile and post detail stay mounted. Close drops the panel. An effect that used to unmount Settings over post detail now allows it. Opening a post from search/alerts still brings detail forward. Home / compose / chat still dismiss. Files: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.
 - 2026-08-25: **Post-detail light canvas (Ryan sign-off):** Sheet + title bar + reply footer match `#fff` under `html.light [data-lounge-post-detail-sheet]`. Dark frost/zinc unchanged. Tip **`test` @ `5f309d70`**. Files: `SocialFeed.jsx`, `index.css`.
-- 2026-08-25: **IPA post-detail double sat:** Panel `pt-[sat]` + absolute title `pt-[sat]` + spacer = full measured bar height stacked an extra Island gap on EdgeiOS. Sat stays on the title bar only. Safari/PWA env() path unchanged in intent. File: `SocialFeed.jsx`.
+- 2026-08-25: **IPA post-detail double sat:** Panel `pt-[sat]` + absolute title `pt-[sat]` + spacer = full measured bar height stacked an extra Island gap on EdgeiOS. Sat stays on the title bar only. Safari/PWA env() path unchanged in intent. File: `SocialFeed.jsx`. **Ryan device sign-off 2026-08-25.**
 - 2026-08-24: **iOS/Android profile compact title:** Same name + posts slide-up as IPA/web, centered in the opaque title plate (rides title hide). Light plate uses dark type. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
 - 2026-08-24: **IPA/web profile compact title (X-style):** Left-aligned display name + posts count; slides up from below (no center fade). Collapse-on only (IPA + desktop web). iOS Safari/PWA + Android title chrome unchanged. Files: `LoungeProfileFullScreen.jsx`, `loungeProfileScrollCollapse.js`, `index.css`.
 - 2026-08-24: **Profile lightbox dismiss EDGE flash:** Shrink-back no longer lifts the feed EDGE title bar while a profile sheet is open (same class as post-detail). Prefer detail → profile chrome → feed. Files: `LoungeInlineMediaUrl.jsx`, `index.css`.

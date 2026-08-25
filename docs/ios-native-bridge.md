@@ -1,6 +1,6 @@
 # iOS native bridge contract (stub)
 
-**Status:** scaffold + device Run green (2026-08-23). Web gates for Stripe / push-sw / Lounge unmuted handoff landed on Windows **`test` ≥ `6a3155e2`** (2026-08-24). `getInfo` + `openInSafari` + **`bustServiceWorker`** (boot + bridge) implemented; camera/mic/photo/location usage strings + WK media-capture grant. **`setAudioSession`** live (2026-08-24). **`requestPushPermission` / `getPushToken`** live in Swift (permission + token storage); APNs entitlement deferred until org team (Personal Team cannot provision Push). **Edge-to-edge safe area** (2026-08-24): inject `--edge-sat|…`; web `max(env(), var(--edge-*))`. **Mac next:** device smoke (safe area + web gates) + OAuth-in-shell + hard-crash repro.  
+**Status:** scaffold + device Run green (2026-08-23). Web gates for Stripe / push-sw / Lounge unmuted handoff landed on Windows **`test` ≥ `6a3155e2`** (2026-08-24). `getInfo` + `openInSafari` + **`bustServiceWorker`** (boot + bridge) implemented; camera/mic/photo/location usage strings + WK media-capture grant. **`setAudioSession`** live (2026-08-24). **`requestPushPermission` / `getPushToken`** live in Swift (permission + token storage); APNs entitlement deferred until org team (Personal Team cannot provision Push). **Edge-to-edge safe area** (2026-08-24): inject `--edge-sat|…`; web `max(env(), var(--edge-*))`. **Ryan device sign-off 2026-08-25:** post-detail Island pad (title bar only, matches Safari/PWA) + no letterbox / ← clear of Island / FAB vs home indicator / feed title chrome. **Mac next:** remaining web-gate smoke (unmute / Stripe→Safari / no A2HS) + OAuth-in-shell + hard-crash repro.  
 **Stack:** raw **`WKWebView`** live-site shell (not Capacitor). Product web stays on Vercel; IPA is a thin loader + bridges.  
 **Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)** (+ **Native gap checklist**).  
 **Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).  
@@ -89,7 +89,7 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
    If either drifted, restore + rebuild. Do **not** edit `src/**`.
 2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** unmute one feed tile → scroll → next clips stay **audible**. Fail → verify step 1 + Web Inspector; note in `WAKEUP` / backlog. Do not invent Safari unmute hacks in `ios/`.
 3. **Stripe→Safari smoke:** one Checkout or portal CTA → leaves WebView into Safari.
-4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). Remaining: OAuth-in-shell smoke, hard-crash repro after safe-area rebuild, device smoke of Windows web gates.
+4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). ~~Safe area / Island pad~~ **Ryan device sign-off 2026-08-25.** Remaining: OAuth-in-shell smoke, hard-crash repro leaving post detail, web-gate smoke (unmute / Stripe→Safari / no A2HS).
 
 ### Mac slice (2026-08-24)
 

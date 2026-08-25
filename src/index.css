@@ -1969,11 +1969,17 @@ html.light [data-lounge-profile-sheet][data-lounge-profile-android-perf] [data-l
   box-shadow: none;
 }
 [data-lounge-profile-banner-chrome] span,
-[data-lounge-profile-banner-chrome] svg,
-[data-lounge-profile-banner-chrome] svg * {
+[data-lounge-profile-banner-chrome] svg {
   color: inherit;
   -webkit-text-fill-color: inherit;
-  fill: currentColor;
+}
+[data-lounge-profile-banner-chrome] svg {
+  fill: none;
+  stroke: currentColor;
+}
+[data-lounge-profile-banner-chrome] svg * {
+  fill: none;
+  stroke: inherit;
 }
 html.light [data-lounge-profile-banner-chrome] {
   /* X smoky circle: dark translucent + white icon (not white frost + black glyph). */
@@ -1994,12 +2000,18 @@ html.light [data-lounge-profile-banner-chrome]:active {
   background: rgba(15, 15, 15, 0.66) !important;
 }
 html.light [data-lounge-profile-banner-chrome] span,
-html.light [data-lounge-profile-banner-chrome] svg,
-html.light [data-lounge-profile-banner-chrome] svg * {
+html.light [data-lounge-profile-banner-chrome] svg {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
-  fill: #ffffff !important;
   text-shadow: none !important;
+}
+html.light [data-lounge-profile-banner-chrome] svg {
+  fill: none !important;
+  stroke: currentColor !important;
+}
+html.light [data-lounge-profile-banner-chrome] svg * {
+  fill: none !important;
+  stroke: inherit !important;
 }
 
 /* X-style white avatar ring on light surfaces (dark keeps zinc-950 ring from utility). No drop shadow. */

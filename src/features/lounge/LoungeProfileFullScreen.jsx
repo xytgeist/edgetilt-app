@@ -117,6 +117,7 @@ import {
   ProfileSocialMessageIcon,
 } from './profileSocialActionChrome.jsx'
 import ProfileFanSubPillButton from './ProfileFanSubPillButton.jsx'
+import LoungeBackArrowIcon from './LoungeBackArrowIcon.jsx'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
@@ -129,9 +130,6 @@ const PROFILE_BANNER_CHROME_BTN_CLASS =
 
 const PROFILE_BANNER_CHROME_CANCEL_CLASS =
   'pointer-events-auto flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 px-4 text-[14px] font-semibold shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]'
-
-const PROFILE_BANNER_CHROME_BACK_CLASS =
-  'block leading-none text-[22px] -translate-y-px'
 
 function ProfileHeaderBadges({ role, isOg }) {
   const hasStaff = loungeFeedAuthorHasStaffBadge(role)
@@ -2962,9 +2960,7 @@ export default function LoungeProfileFullScreen({
               {showOwnEditControls ? (
                 'Cancel'
               ) : (
-                <span aria-hidden className={PROFILE_BANNER_CHROME_BACK_CLASS}>
-                  ←
-                </span>
+                <LoungeBackArrowIcon />
               )}
             </button>
             {!showOwnEditControls ? (

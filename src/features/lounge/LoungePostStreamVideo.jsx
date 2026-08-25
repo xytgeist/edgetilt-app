@@ -48,6 +48,7 @@ import {
 } from './loungeLightboxFlip.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS, LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD, LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS } from './LoungeStreamVideoLightboxChrome.jsx'
+import LoungeBackArrowIcon from './LoungeBackArrowIcon.jsx'
 import LoungePostVideoInlineProgress, {
   LoungePendingPublishDevelopReveal,
   useLoungePendingPublishDisplay,
@@ -3494,9 +3495,7 @@ export default function LoungePostStreamVideo({
                         aria-label="Back"
                         className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
                       >
-                        <span className="text-[22px] leading-none" aria-hidden>
-                          ←
-                        </span>
+                        <LoungeBackArrowIcon />
                       </button>
                       <div
                         className="ml-auto flex items-center gap-1"

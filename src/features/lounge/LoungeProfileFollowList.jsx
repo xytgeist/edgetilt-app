@@ -17,6 +17,7 @@ import {
   fetchUsersFollowingViewerAmong,
   fetchViewerFollowingAmong,
 } from './loungeProfileFollowList.js'
+import LoungeBackArrowIcon from './LoungeBackArrowIcon.jsx'
 
 function followListFocusRowId(userId) {
   const id = String(userId || '').trim()
@@ -241,9 +242,7 @@ export default function LoungeProfileFollowList({
             aria-label="Back to profile"
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-zinc-100 touch-manipulation hover:bg-zinc-800/80 [-webkit-tap-highlight-color:transparent]"
           >
-            <span className="text-2xl leading-none" aria-hidden>
-              ←
-            </span>
+            <LoungeBackArrowIcon />
           </button>
           <div className="min-w-0 flex-1 text-center">
             <div className="truncate text-[17px] font-bold text-white">{titleName}</div>

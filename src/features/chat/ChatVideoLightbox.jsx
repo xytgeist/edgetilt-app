@@ -7,6 +7,7 @@ import {
   LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS,
   LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS,
 } from '../lounge/LoungeStreamVideoLightboxChrome.jsx'
+import LoungeBackArrowIcon from '../lounge/LoungeBackArrowIcon.jsx'
 import { useLoungeLightboxSwipeDismiss } from '../lounge/loungeLightboxSwipeDismiss.js'
 import { useLoungeStreamHlsAttachment } from '../lounge/useLoungeStreamHlsAttachment.js'
 import LoungeStreamVideoPlaybackControls from '../lounge/LoungeStreamVideoPlaybackControls.jsx'
@@ -153,9 +154,7 @@ export default function ChatVideoLightbox({
               aria-label="Back"
               className={LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS}
             >
-              <span className="text-[22px] leading-none" aria-hidden>
-                ←
-              </span>
+              <LoungeBackArrowIcon />
             </button>
           </div>
         </div>

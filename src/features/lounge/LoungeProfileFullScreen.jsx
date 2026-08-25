@@ -1557,7 +1557,7 @@ export default function LoungeProfileFullScreen({
     }
     const avatar = profileAvatarMotionRef.current
     if (avatar) {
-      avatar.style.transformOrigin = '50% 0%'
+      avatar.style.transformOrigin = '50% 100%'
       avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
       avatar.style.opacity = String(v.avatarOpacity)
       avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
@@ -2693,7 +2693,7 @@ export default function LoungeProfileFullScreen({
                 <div
                   ref={profileAvatarMotionRef}
                   className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
-                  style={{ transformOrigin: 'center top' }}
+                  style={{ transformOrigin: 'center bottom' }}
                   data-lounge-profile-avatar=""
                 >
                   {profile?.avatar_url ? (

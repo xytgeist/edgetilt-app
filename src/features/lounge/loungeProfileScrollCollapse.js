@@ -72,8 +72,14 @@ export const PROFILE_BANNER_BLUR_MIN_RAMP_PX = 96
  */
 export const PROFILE_IOS_WEB_TITLE_BAR_PX = 48
 
-/** iOS Safari / PWA: how far the title bar + buttons slide up when hiding. */
-export const PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX = 72
+/**
+ * iOS Safari / PWA: scroll distance after the banner clears over which the white
+ * title bar slides in/out (no opacity snap at the banner edge).
+ */
+export const PROFILE_IOS_WEB_FEED_ENTER_PX = 56
+
+/** Hairline kill … nest sticky tabs 1px under the title plate bottom. */
+export const PROFILE_IOS_WEB_TABS_OVERLAP_PX = 1
 
 /**
  * Whether X-style profile header collapse is active on this client.

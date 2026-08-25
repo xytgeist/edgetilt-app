@@ -18,7 +18,8 @@ import {
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
-  PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX,
+  PROFILE_IOS_WEB_FEED_ENTER_PX,
+  PROFILE_IOS_WEB_TABS_OVERLAP_PX,
   PROFILE_IOS_WEB_TITLE_BAR_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
@@ -1659,19 +1660,31 @@ export default function LoungeProfileFullScreen({
     const bannerHApprox = profileBannerShellRef.current
       ? Math.ceil(profileBannerShellRef.current.getBoundingClientRect().height)
       : 0
-    // Solid title bar only once the banner has scrolled away … over the photo, keep floating chrome.
-    const iosWebInFeed =
-      iosWebTitle && bannerHApprox > 0 && scrollYForChrome >= Math.max(24, bannerHApprox - 8)
-    const iosWebHide =
-      (1 - chromeReveal) * (PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX + sat)
     const iosWebTitleH = sat + PROFILE_IOS_WEB_TITLE_BAR_PX
+    // Banner clear → feed chrome: continuous presence (slide), not a boolean snap.
+    const bannerClearY =
+      bannerHApprox > 0 ? Math.max(24, bannerHApprox - 8) : Number.POSITIVE_INFINITY
+    const feedEnter = Math.max(24, PROFILE_IOS_WEB_FEED_ENTER_PX)
+    const feedPresence = iosWebTitle
+      ? Math.max(0, Math.min(1, (scrollYForChrome - bannerClearY) / feedEnter))
+      : 0
+    // Over banner: buttons leave with the page (content-linked). In feed: dock + edge slide.
+    const contentHide = Math.min(iosWebTitleH, scrollYForChrome)
+    const dockHide = (1 - chromeReveal) * iosWebTitleH
+    const edgeHide = (1 - feedPresence) * iosWebTitleH
+    const inFeedChrome = feedPresence > 0.001
+    const iosWebHidePx = Math.round(
+      inFeedChrome ? Math.max(dockHide, edgeHide) : contentHide,
+    )
+    const titleOnScreen = iosWebTitle && iosWebHidePx < iosWebTitleH - 1
 
     const statusPlate = profileIosWebStatusPlateRef.current
     if (statusPlate) {
       if (iosWebTitle) {
         statusPlate.hidden = false
         statusPlate.style.height = `${sat}px`
-        statusPlate.style.opacity = iosWebInFeed ? '1' : '0'
+        // Opaque once feed chrome engages … stays while tabs tuck under status.
+        statusPlate.style.opacity = feedPresence > 0.08 ? '1' : '0'
       } else {
         statusPlate.hidden = true
         statusPlate.style.opacity = '0'
@@ -1682,8 +1695,9 @@ export default function LoungeProfileFullScreen({
       if (iosWebTitle) {
         titleBar.hidden = false
         titleBar.style.height = `${iosWebTitleH}px`
-        titleBar.style.transform = `translate3d(0, ${-iosWebHide}px, 0)`
-        titleBar.style.opacity = iosWebInFeed && chromeReveal > 0.05 ? '1' : '0'
+        // Slide only … no opacity snap when leaving the banner edge.
+        titleBar.style.transform = `translate3d(0, ${-iosWebHidePx}px, 0)`
+        titleBar.style.opacity = inFeedChrome && titleOnScreen ? '1' : '0'
       } else {
         titleBar.hidden = true
         titleBar.style.opacity = '0'
@@ -1696,14 +1710,10 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.transform = ''
         chromeMotion.style.opacity = ''
       } else if (iosWebTitle) {
-        if (iosWebInFeed) {
-          chromeMotion.style.transform = `translate3d(0, ${-iosWebHide}px, 0)`
-          chromeMotion.style.opacity = chromeReveal < 0.08 ? '0' : '1'
-        } else {
-          // Over the banner at rest … floating chrome, no plate.
-          chromeMotion.style.transform = ''
-          chromeMotion.style.opacity = ''
-        }
+        chromeMotion.style.transform = `translate3d(0, ${-iosWebHidePx}px, 0)`
+        chromeMotion.style.opacity = titleOnScreen || (!inFeedChrome && iosWebHidePx < iosWebTitleH - 4)
+          ? '1'
+          : '0'
       } else if (collapseOn) {
         const nudge = profileChromeCenterNudgePxRef.current
         chromeMotion.style.transform =
@@ -1714,17 +1724,20 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.opacity = ''
       }
     }
-    // iOS web/PWA: tabs ride the title-bar bottom (no air gap while it slides in).
+    // iOS web/PWA: tabs ride the title-bar bottom (1px overlap kills hairline gap).
     const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
     if (tabsEl) {
       let tabsTop = collapseOn
         ? profileStickyTopPxRef.current
         : Math.max(0, Math.round(readCssSafeAreaTopPx()))
       if (iosWebTitle) {
-        if (iosWebInFeed) {
-          const titleBottom = iosWebTitleH - iosWebHide
-          // Stay under the status plate until the sliding bar reaches it, then track 1:1.
-          tabsTop = Math.round(Math.max(sat, Math.min(iosWebTitleH, titleBottom)))
+        if (inFeedChrome) {
+          const titleBottom = iosWebTitleH - iosWebHidePx
+          const overlap =
+            titleBottom > sat + PROFILE_IOS_WEB_TABS_OVERLAP_PX
+              ? PROFILE_IOS_WEB_TABS_OVERLAP_PX
+              : 0
+          tabsTop = Math.max(sat, Math.min(iosWebTitleH, titleBottom - overlap))
           tabsEl.setAttribute('data-lounge-profile-ios-web-tabs', '')
         } else {
           tabsTop = Math.round(sat)

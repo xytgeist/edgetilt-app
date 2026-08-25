@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { fetchKlipyGifs } from '../../utils/klipyGifs'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 
@@ -6,9 +7,13 @@ import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 const KLIPY_PICKER_MAX_PAGES = 15
 const SHEET_HEIGHT_CAP_PX = 640
 const SHEET_HEIGHT_RATIO = 0.78
+const SHEET_HEIGHT_RATIO_IPA = 0.94
 
 function measureLayoutSheetHeightPx() {
   if (typeof window === 'undefined') return 480
+  if (isEdgeiOSShell()) {
+    return Math.round(window.innerHeight * SHEET_HEIGHT_RATIO_IPA)
+  }
   return Math.min(Math.round(window.innerHeight * SHEET_HEIGHT_RATIO), SHEET_HEIGHT_CAP_PX)
 }
 
@@ -88,13 +93,22 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   }, [open])
 
   useLayoutEffect(() => {
-    if (!open) return
-    const el = searchInputRef.current
-    if (!el) return
-    try {
-      el.focus({ preventScroll: true })
-    } catch {
-      el.focus()
+    if (!open) return undefined
+    const focusSearch = () => {
+      const el = searchInputRef.current
+      if (!el) return
+      try {
+        el.focus({ preventScroll: true })
+      } catch {
+        el.focus()
+      }
+    }
+    focusSearch()
+    const raf = requestAnimationFrame(focusSearch)
+    const t = window.setTimeout(focusSearch, 50)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(t)
     }
   }, [open])
 
@@ -219,11 +233,11 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   const loadingMore = loading && loadingMode === 'append'
   const showEmpty = !loading && items.length === 0 && !err
 
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed left-0 right-0 z-[101] flex items-end justify-center bg-black/45 px-2 backdrop-blur-[3px]"
+      className="fixed left-0 right-0 z-[220] flex items-end justify-center bg-black/45 px-2"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a GIF"
@@ -231,16 +245,15 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
         top: viewportFrame.top,
         height: viewportFrame.height,
       }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
-      <button
-        type="button"
-        className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
-        aria-label="Close GIF picker"
-        onClick={onClose}
-      />
       <div
-        className="klipy-gif-sheet relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
+        className="klipy-gif-sheet pointer-events-auto relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
         style={{ height: resolvedSheetHeightPx }}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
           <input
@@ -346,6 +359,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
           </a>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -816,6 +816,7 @@ export default function SocialFeed({
     return String(d?.composerMediaUrl || '').trim().slice(0, 2048)
   })
   const [klipyPickerOpen, setKlipyPickerOpen] = useState(false)
+  const klipyPickerOpenRef = useRef(false)
   const [klipyPickerTarget, setKlipyPickerTarget] = useState('composer')
   const [marketPickerOpen, setMarketPickerOpen] = useState(false)
   const [marketPickerTarget, setMarketPickerTarget] = useState(
@@ -1410,6 +1411,7 @@ export default function SocialFeed({
     composerMediaUrl,
   }
   composerExpandedRef.current = composerExpanded
+  klipyPickerOpenRef.current = klipyPickerOpen
 
   /** No composer, server-only counts, gated taps until session is known and user is signed in. */
   const loungeReadOnly = !composerAuthResolved || !composerUserId
@@ -2076,6 +2078,7 @@ export default function SocialFeed({
         return composerFieldRef.current
       }
       const isBlocked = () => {
+        if (klipyPickerOpenRef.current) return true
         if (target === 'detailComment') return !loungePostDetail
         if (target === 'detailEdit') return !loungeDetailEditing
         if (target === 'detailCommentEdit') return !loungeDetailCommentEditingId
@@ -2360,7 +2363,8 @@ export default function SocialFeed({
       threadComposeOpen ||
       !composerExpanded ||
       composerFoldReveal < 0.88 ||
-      loungeDockPanel
+      loungeDockPanel ||
+      klipyPickerOpen
     ) {
       return undefined
     }
@@ -2372,6 +2376,7 @@ export default function SocialFeed({
     composerExpanded,
     composerFoldReveal,
     composerFocusToken,
+    klipyPickerOpen,
     loungeDockPanel,
     scrollLoungeFeedToTopInstant,
     threadComposeOpen,

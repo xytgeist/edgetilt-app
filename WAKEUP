@@ -101,7 +101,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows (2026-08-25 … GIF keyboard):** Do not reopen dismiss-keyboard experiments. Spec (Mac): non-IPA moves focus to Klipy search; IPA sheet is full layout viewport (keyboard overlays, no WK accessory bar). Trim audio mux fix (`d744555b`) stays.
 
-**Mac (2026-08-25 … GIF picker):** Rebuild IPA to hide the accessory bar. Web focus + IPA layout are in `KlipyGifPicker.jsx` (wait for Vercel for the JS).
+**Mac (2026-08-25 … GIF picker):** Rebuild IPA for the accessory bar. Wait for Vercel for tap/focus: picker portals to body, search is tappable, composer does not steal focus, IPA sheet is taller.
 
 ### Decisions locked (do not reopen without Ryan)
 

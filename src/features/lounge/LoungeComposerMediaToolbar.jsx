@@ -1,5 +1,7 @@
 /** Shared image / video / GIF toolbar controls for lounge composers. */
 
+import { dismissLoungeSoftwareKeyboard } from './loungeDockComposeFocus.js'
+
 export function LoungeComposerMediaImageIcon({ className = 'h-8 w-8', filled = true }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -142,15 +144,6 @@ export default function LoungeComposerMediaToolbar({
     : `flex shrink-0 touch-manipulation items-center justify-center rounded-md ${padClass} text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]`
 
   const preventFocusSteal = (e) => e.preventDefault()
-  /** GIF opens a sheet … allow the composer to blur so the software keyboard dismisses. */
-  const dismissSoftwareKeyboard = () => {
-    try {
-      const active = document.activeElement
-      if (active instanceof HTMLElement && typeof active.blur === 'function') active.blur()
-    } catch {
-      // ignore
-    }
-  }
 
   return (
     <div
@@ -180,11 +173,18 @@ export default function LoungeComposerMediaToolbar({
         <button
           type="button"
           disabled={gifDisabled || disabled}
-          onPointerDown={() => {
-            dismissSoftwareKeyboard()
+          onPointerDown={(e) => {
+            if (e.button != null && e.button !== 0) return
+            e.preventDefault()
+            e.stopPropagation()
+            dismissLoungeSoftwareKeyboard()
             onOpenGifPicker?.()
           }}
-          onClick={onOpenGifPicker}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onOpenGifPicker?.()
+          }}
           className={gifBtnClass}
           title="Add GIF"
           aria-label="Add GIF"

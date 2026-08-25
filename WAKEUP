@@ -99,6 +99,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
+**Windows (2026-08-25 … GIF keyboard):** First GIF dismiss (`0191c548`) did not drop iOS keyboard. Follow-up: `inputmode=none` sink held while Klipy is open (not focus-then-immediate-blur). Wait for Vercel `test` after push. Image/video toolbar still keeps the keyboard on purpose.
+
 ### Decisions locked (do not reopen without Ryan)
 
 | Topic | Decision |

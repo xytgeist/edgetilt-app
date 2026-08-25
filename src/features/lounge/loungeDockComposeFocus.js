@@ -84,16 +84,11 @@ export function invokeLoungeComposerCaptionKeyboard(getTextarea, opts = {}) {
   return document.activeElement === el
 }
 
-/** Dismiss the software keyboard before a full-screen picker (e.g. Klipy) opens. */
-export function blurLoungeComposerCaption(getTextarea) {
-  const el = getTextarea?.()
-  if (el) {
-    try {
-      el.blur()
-    } catch {
-      // ignore
-    }
-  }
+/**
+ * iOS will often keep the software keyboard after `contenteditable.blur()`. Park focus on a
+ * read-only `inputmode=none` sink in the same user gesture, then drop it.
+ */
+export function dismissLoungeSoftwareKeyboard() {
   try {
     const active = document.activeElement
     if (
@@ -106,6 +101,43 @@ export function blurLoungeComposerCaption(getTextarea) {
   } catch {
     // ignore
   }
+  if (typeof document === 'undefined') return
+  try {
+    const sink = document.createElement('input')
+    sink.setAttribute('readonly', 'true')
+    sink.setAttribute('inputmode', 'none')
+    sink.setAttribute('aria-hidden', 'true')
+    sink.tabIndex = -1
+    sink.style.cssText =
+      'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;font-size:16px;pointer-events:none'
+    document.body.appendChild(sink)
+    sink.focus()
+    // Do not blur in this turn ... iOS restores the previous contenteditable keyboard if we
+    // focus-then-immediately-blur. The GIF picker sink takes over; this node is removed later.
+    window.setTimeout(() => {
+      try {
+        if (document.activeElement === sink) sink.blur()
+        sink.remove()
+      } catch {
+        // ignore
+      }
+    }, 480)
+  } catch {
+    // ignore
+  }
+}
+
+/** Dismiss the software keyboard before a full-screen picker (e.g. Klipy) opens. */
+export function blurLoungeComposerCaption(getTextarea) {
+  const el = getTextarea?.()
+  if (el) {
+    try {
+      el.blur()
+    } catch {
+      // ignore
+    }
+  }
+  dismissLoungeSoftwareKeyboard()
 }
 
 /** Extra retries after image carousel mounts / previews decode (iOS often blurs again). */

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { fetchKlipyGifs } from '../../utils/klipyGifs'
 
 /** Cap auto-fetched pages (per search / trending session) to limit Klipy + edge invocations if user scrolls endlessly. */
@@ -34,9 +34,11 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   const [hasNext, setHasNext] = useState(false)
   const [sheetHeightPx, setSheetHeightPx] = useState(measureLayoutSheetHeightPx)
   const [viewportFrame, setViewportFrame] = useState(readVisualViewportFrame)
+  const openedAtRef = useRef(0)
   const debounceRef = useRef(0)
   const scrollRef = useRef(null)
   const sentinelRef = useRef(null)
+  const keyboardSinkRef = useRef(null)
   const pageRef = useRef(1)
   const hasNextRef = useRef(false)
   const loadingRef = useRef(false)
@@ -59,7 +61,32 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   }, [loading])
 
   useEffect(() => {
-    if (!open) return
+    if (open) openedAtRef.current = Date.now()
+  }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) return undefined
+    const sink = keyboardSinkRef.current
+    if (!sink) return undefined
+    const hold = () => {
+      const active = document.activeElement
+      if (active === sink) return
+      if (active instanceof HTMLElement && active.dataset.klipyGifSearch === '1') return
+      try {
+        sink.focus()
+      } catch {
+        // ignore
+      }
+    }
+    hold()
+    const timers = [0, 50, 160, 320].map((ms) => window.setTimeout(hold, ms))
+    return () => {
+      for (const id of timers) window.clearTimeout(id)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return undefined
     setSheetHeightPx(measureLayoutSheetHeightPx())
     const syncViewport = () => setViewportFrame(readVisualViewportFrame())
     syncViewport()
@@ -204,11 +231,24 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
         height: viewportFrame.height,
       }}
     >
+      <input
+        ref={keyboardSinkRef}
+        type="text"
+        readOnly
+        inputMode="none"
+        autoComplete="off"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="pointer-events-none absolute h-px w-px opacity-0"
+      />
       <button
         type="button"
         className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
         aria-label="Close GIF picker"
-        onClick={onClose}
+        onClick={() => {
+          if (Date.now() - openedAtRef.current < 450) return
+          onClose()
+        }}
       />
       <div
         className="klipy-gif-sheet relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
@@ -217,6 +257,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
           <input
             type="search"
+            data-klipy-gif-search="1"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search GIFs…"

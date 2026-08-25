@@ -2766,12 +2766,12 @@ export default function LoungeProfileFullScreen({
               </div>
             ) : null}
 
-            {/* ~1/4 avatar overlap on banner at rest (−mt-6 on h-24 ≈ 24/96). */}
-            <div className="pointer-events-none relative z-20 -mt-6 flex flex-wrap items-end justify-between gap-3 sm:-mt-7">
+            {/* ~1/4 avatar overlap on banner at rest (−mt-5 on 4.8rem ≈ 20/77). */}
+            <div className="pointer-events-none relative z-20 -mt-5 flex flex-wrap items-end justify-between gap-3 sm:-mt-5">
               <div className="relative shrink-0 pointer-events-auto">
                 <div
                   ref={profileAvatarMotionRef}
-                  className="relative z-[25] flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]"
+                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
                   style={{ transformOrigin: 'center top' }}
                   data-lounge-profile-avatar=""
                 >

@@ -365,6 +365,80 @@ function profileTabLabel(id) {
   return id
 }
 
+function emptyProfileInteractionTabState() {
+  return {
+    posts: [],
+    loading: false,
+    loadingMore: false,
+    hasMore: false,
+    err: '',
+  }
+}
+
+const PROFILE_TAB_SLIDE_MS = 320
+const PROFILE_TAB_SLIDE_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
+
+function ProfileTabPostList({
+  posts,
+  profileUserId,
+  profileFanLockCtx,
+  postCardPropsForLists,
+  profileBodyScrollRef,
+  profilePostRowPerfStyle,
+}) {
+  return posts.map((post) => {
+    const fanOnlyRowTint = showLoungeFanOnlyPostUnlockedTint(post, profileFanLockCtx)
+    return (
+      <article
+        key={post.id}
+        style={profilePostRowPerfStyle}
+        className={`${LOUNGE_FEED_POST_ROW_CLASS} cursor-pointer${fanOnlyRowTint ? ' relative overflow-hidden' : ''}`}
+        onClick={(e) => {
+          const t = e.target
+          if (!(t instanceof Element)) return
+          const origHost = t.closest('[data-lounge-original-embed]')
+          if (origHost && post.reposted_post?.id && !post.repost_of_comment_id) {
+            if (!isLoungeFanOnlyPostLocked(post.reposted_post, profileFanLockCtx)) {
+              postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
+            }
+            return
+          }
+          if (
+            t.closest(
+              'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-image-zoom], [data-lounge-video-zoom], [data-lounge-badge-tip], [data-lounge-fan-only-cta]',
+            )
+          )
+            return
+          if (post.repost_of_comment_id && post.reposted_comment?.post_id) {
+            postCardPropsForLists.onOpenCommentRepost?.(post.reposted_comment)
+            return
+          }
+          if (post.is_plain_repost && post.reposted_post?.id) {
+            if (isLoungeFanOnlyPostLocked(post.reposted_post, profileFanLockCtx)) {
+              postCardPropsForLists.onPostBodyClick?.(post)
+            } else {
+              postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
+            }
+            return
+          }
+          postCardPropsForLists.onPostBodyClick?.(post)
+        }}
+      >
+        {fanOnlyRowTint ? <LoungeFanOnlyPostRowTint /> : null}
+        <div className={fanOnlyRowTint ? 'relative z-[1]' : undefined}>
+          <LoungePostArticle
+            post={post}
+            suppressAvatarProfileNavigation
+            profileOwnerUserId={profileUserId}
+            {...postCardPropsForLists}
+            repostMenuScrollRootRef={profileBodyScrollRef}
+          />
+        </div>
+      </article>
+    )
+  })
+}
+
 /** Clicks on these targets keep their own action (avatars → profile, @links). */
 const PROFILE_REPLY_ROW_SKIP_CLICK =
   'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-badge-tip], [data-lounge-post-interaction-bar], [data-lounge-image-zoom], [data-lounge-video-zoom]'
@@ -703,18 +777,24 @@ export default function LoungeProfileFullScreen({
   const [adminCompBusy, setAdminCompBusy] = useState(false)
   const [adminCompErr, setAdminCompErr] = useState('')
   const [targetSlotsEntitlements, setTargetSlotsEntitlements] = useState(/** @type {Record<string, boolean> | null} */ (null))
-  const [interactionPosts, setInteractionPosts] = useState([])
-  const [interactionLoading, setInteractionLoading] = useState(false)
-  const [interactionLoadingMore, setInteractionLoadingMore] = useState(false)
-  const [interactionHasMore, setInteractionHasMore] = useState(false)
-  const [interactionErr, setInteractionErr] = useState('')
+  const [likesTab, setLikesTab] = useState(emptyProfileInteractionTabState)
+  const [bookmarksTab, setBookmarksTab] = useState(emptyProfileInteractionTabState)
   const [profileReplies, setProfileReplies] = useState([])
   const [profileRepliesLoading, setProfileRepliesLoading] = useState(false)
   const [profileRepliesLoadingMore, setProfileRepliesLoadingMore] = useState(false)
   const [profileRepliesHasMore, setProfileRepliesHasMore] = useState(false)
   const [profileRepliesErr, setProfileRepliesErr] = useState('')
   const profileRepliesFetchOffsetRef = useRef(0)
-  const interactionFetchOffsetRef = useRef(0)
+  const profileRepliesFetchedRef = useRef(false)
+  const profileRepliesInFlightRef = useRef(false)
+  const likesFetchOffsetRef = useRef(0)
+  const likesFetchedRef = useRef(false)
+  const likesInFlightRef = useRef(false)
+  const bookmarksFetchOffsetRef = useRef(0)
+  const bookmarksFetchedRef = useRef(false)
+  const bookmarksInFlightRef = useRef(false)
+  const profileUserIdRef = useRef(profileUserId)
+  profileUserIdRef.current = profileUserId
   const profileLoadMoreSentinelRef = useRef(null)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
@@ -808,6 +888,7 @@ export default function LoungeProfileFullScreen({
   /** Latest tabs sticky top … re-applied after paint so React reveal setState cannot clobber it. */
   const profileTabsTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
   const profileTabsElRef = useRef(/** @type {HTMLElement | null} */ (null))
+  const profileTabsAnchorRef = useRef(/** @type {HTMLElement | null} */ (null))
   const profileDockScrollPrevTopRef = useRef(0)
   const profileDockRevealRef = useRef(1)
   const profileDockScrollRafRef = useRef(0)
@@ -875,6 +956,35 @@ export default function LoungeProfileFullScreen({
   const locationDisplay = normalizeProfileLocation(profile?.location)
   const profileInterestPills = profileCategoryPills(profile)
   const profileTabsVisible = isOwnProfile ? PROFILE_TAB_IDS : PROFILE_TAB_IDS.slice(0, 2)
+  const profileTabIndex = Math.max(0, profileTabsVisible.indexOf(tab))
+  const profileTabSlideReduce = prefersReducedMotion()
+  const selectProfileTab = useCallback((nextId) => {
+    if (!nextId || nextId === tab) return
+    if (!profileTabsVisible.includes(nextId)) return
+    const el = profileBodyScrollRef.current
+    const tabsEl = profileTabsElRef.current
+    const anchor = profileTabsAnchorRef.current
+    let pinScroll = null
+    if (el && tabsEl) {
+      const tabsRect = tabsEl.getBoundingClientRect()
+      const rootRect = el.getBoundingClientRect()
+      const stickyTop = profileTabsTopPxRef.current
+      if (tabsRect.top <= rootRect.top + stickyTop + 2) {
+        const anchorRect = (anchor || tabsEl).getBoundingClientRect()
+        pinScroll = Math.max(
+          0,
+          Math.round(el.scrollTop + (anchorRect.top - rootRect.top) - stickyTop),
+        )
+      }
+    }
+    setTab(nextId)
+    if (pinScroll == null) return
+    const apply = () => {
+      if (profileBodyScrollRef.current) profileBodyScrollRef.current.scrollTop = pinScroll
+    }
+    apply()
+    requestAnimationFrame(() => requestAnimationFrame(apply))
+  }, [tab, profileTabsVisible])
   const targetProfileRole = String(profile?.role || 'user').trim().toLowerCase()
   const canAdminPromoteModerator =
     Boolean(viewerIsAdmin && !isOwnProfile && onAdminSetProfileRole && targetProfileRole === 'user')
@@ -986,11 +1096,13 @@ export default function LoungeProfileFullScreen({
   const profileAutoplayPostCount =
     tab === 'posts'
       ? posts.length
-      : tab === 'likes' || tab === 'bookmarks'
-        ? interactionPosts.length
-        : tab === 'replies'
-          ? profileReplies.length
-          : 0
+      : tab === 'likes'
+        ? likesTab.posts.length
+        : tab === 'bookmarks'
+          ? bookmarksTab.posts.length
+          : tab === 'replies'
+            ? profileReplies.length
+            : 0
   const profileFabBottomPadPx =
     shellDock && !showOwnEditControls ? LOUNGE_DOCK_FAB_SIZE_PX + 28 : 0
 
@@ -1003,7 +1115,10 @@ export default function LoungeProfileFullScreen({
         ? async (postId) => {
             const r = await base.toggleBookmark(postId)
             if (r?.ok && tab === 'bookmarks' && r.bookmarked === false) {
-              setInteractionPosts((prev) => prev.filter((p) => p.id !== postId))
+              setBookmarksTab((prev) => ({
+                ...prev,
+                posts: prev.posts.filter((p) => p.id !== postId),
+              }))
             }
             return r
           }
@@ -1013,7 +1128,10 @@ export default function LoungeProfileFullScreen({
         ? async (postId, key) => {
             const r = await base.toggleInteraction(postId, key)
             if (r?.ok && tab === 'likes' && key === 'liked' && r.liked === false) {
-              setInteractionPosts((prev) => prev.filter((p) => p.id !== postId))
+              setLikesTab((prev) => ({
+                ...prev,
+                posts: prev.posts.filter((p) => p.id !== postId),
+              }))
             }
             return r
           }
@@ -1115,18 +1233,22 @@ export default function LoungeProfileFullScreen({
     setHandleChangeDialog(null)
     setHandleConflictDialog(null)
     setAvatarCropFile(null)
-    setInteractionPosts([])
-    setInteractionErr('')
-    setInteractionLoading(false)
-    setInteractionLoadingMore(false)
-    setInteractionHasMore(false)
+    setLikesTab(emptyProfileInteractionTabState())
+    setBookmarksTab(emptyProfileInteractionTabState())
     setProfileReplies([])
     setProfileRepliesErr('')
     setProfileRepliesLoading(false)
     setProfileRepliesLoadingMore(false)
     setProfileRepliesHasMore(false)
     profileRepliesFetchOffsetRef.current = 0
-    interactionFetchOffsetRef.current = 0
+    profileRepliesFetchedRef.current = false
+    profileRepliesInFlightRef.current = false
+    likesFetchOffsetRef.current = 0
+    likesFetchedRef.current = false
+    likesInFlightRef.current = false
+    bookmarksFetchOffsetRef.current = 0
+    bookmarksFetchedRef.current = false
+    bookmarksInFlightRef.current = false
   }, [open, profileUserId])
 
   useEffect(() => {
@@ -1160,63 +1282,77 @@ export default function LoungeProfileFullScreen({
   }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location, profile?.category_pills])
 
   useEffect(() => {
-    if (!open || !isOwnProfile || !profileUserId || (tab !== 'likes' && tab !== 'bookmarks')) {
-      setInteractionLoading(false)
-      setInteractionLoadingMore(false)
-      return
-    }
+    if (!open || !isOwnProfile || !profileUserId) return
+    if (tab !== 'likes' && tab !== 'bookmarks') return
+    const isLikes = tab === 'likes'
+    const fetchedRef = isLikes ? likesFetchedRef : bookmarksFetchedRef
+    const inFlightRef = isLikes ? likesInFlightRef : bookmarksInFlightRef
+    const offsetRef = isLikes ? likesFetchOffsetRef : bookmarksFetchOffsetRef
+    const setBucket = isLikes ? setLikesTab : setBookmarksTab
+    if (fetchedRef.current || inFlightRef.current) return
     if (typeof hydratePosts !== 'function') {
-      setInteractionErr('Could not load saved posts.')
-      setInteractionPosts([])
-      setInteractionHasMore(false)
-      setInteractionLoading(false)
+      setBucket({
+        posts: [],
+        loading: false,
+        loadingMore: false,
+        hasMore: false,
+        err: 'Could not load saved posts.',
+      })
       return
     }
-    let cancelled = false
-    setInteractionLoading(true)
-    setInteractionLoadingMore(false)
-    setInteractionErr('')
-    setInteractionHasMore(false)
-    interactionFetchOffsetRef.current = 0
+    const profileAtStart = profileUserId
+    inFlightRef.current = true
+    offsetRef.current = 0
+    setBucket((prev) => ({ ...prev, loading: true, loadingMore: false, err: '', hasMore: false }))
     ;(async () => {
       try {
         const { posts: pagePosts, hasMore, fetchedCount } = await fetchProfileInteractionPostsPage(supabaseClient, {
-          profileUserId,
+          profileUserId: profileAtStart,
           tab,
           offset: 0,
           limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
           hydratePosts,
         })
-        if (cancelled) return
-        setInteractionPosts(pagePosts)
-        setInteractionHasMore(hasMore)
-        interactionFetchOffsetRef.current = fetchedCount || 0
+        if (profileAtStart !== profileUserIdRef.current) return
+        fetchedRef.current = true
+        offsetRef.current = fetchedCount || 0
+        setBucket({
+          posts: pagePosts,
+          loading: false,
+          loadingMore: false,
+          hasMore,
+          err: '',
+        })
         const refreshFn = postCardProps?.refreshPostInteractions
         if (typeof refreshFn === 'function' && pagePosts?.length) {
           void refreshFn([...collectLoungePostInteractionHydrateIds(pagePosts)])
         }
       } catch (e) {
-        if (!cancelled) {
-          setInteractionErr(e?.message || 'Could not load.')
-          setInteractionPosts([])
-          setInteractionHasMore(false)
-        }
+        if (profileAtStart !== profileUserIdRef.current) return
+        setBucket({
+          posts: [],
+          loading: false,
+          loadingMore: false,
+          hasMore: false,
+          err: e?.message || 'Could not load.',
+        })
       } finally {
-        if (!cancelled) setInteractionLoading(false)
+        inFlightRef.current = false
       }
     })()
-    return () => {
-      cancelled = true
-    }
   }, [open, tab, isOwnProfile, profileUserId, supabaseClient, hydratePosts, postCardProps?.refreshPostInteractions])
 
   const loadMoreInteractionPosts = useCallback(async () => {
     if (!open || !isOwnProfile || !profileUserId || (tab !== 'likes' && tab !== 'bookmarks')) return
-    if (!interactionHasMore || interactionLoading || interactionLoadingMore) return
+    const isLikes = tab === 'likes'
+    const bucket = isLikes ? likesTab : bookmarksTab
+    if (!bucket.hasMore || bucket.loading || bucket.loadingMore) return
     if (typeof hydratePosts !== 'function') return
-    setInteractionLoadingMore(true)
+    const offsetRef = isLikes ? likesFetchOffsetRef : bookmarksFetchOffsetRef
+    const setBucket = isLikes ? setLikesTab : setBookmarksTab
+    setBucket((prev) => ({ ...prev, loadingMore: true }))
     try {
-      const offset = interactionFetchOffsetRef.current
+      const offset = offsetRef.current
       const { posts: pagePosts, hasMore, fetchedCount } = await fetchProfileInteractionPostsPage(supabaseClient, {
         profileUserId,
         tab,
@@ -1224,46 +1360,43 @@ export default function LoungeProfileFullScreen({
         limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
         hydratePosts,
       })
-      interactionFetchOffsetRef.current = offset + (fetchedCount || 0)
-      setInteractionPosts((prev) => {
-        const seen = new Set(prev.map((p) => String(p.id)))
-        const merged = [...prev]
+      offsetRef.current = offset + (fetchedCount || 0)
+      setBucket((prev) => {
+        const seen = new Set(prev.posts.map((p) => String(p.id)))
+        const merged = [...prev.posts]
         for (const row of pagePosts || []) {
           if (!row?.id || seen.has(String(row.id))) continue
           seen.add(String(row.id))
           merged.push(row)
         }
-        return merged
+        return { ...prev, posts: merged, hasMore, loadingMore: false }
       })
-      setInteractionHasMore(hasMore)
       const refreshFn = postCardProps?.refreshPostInteractions
       if (typeof refreshFn === 'function' && pagePosts?.length) {
         void refreshFn([...collectLoungePostInteractionHydrateIds(pagePosts)])
       }
     } catch (e) {
-      setInteractionErr(e?.message || 'Could not load more.')
-    } finally {
-      setInteractionLoadingMore(false)
+      setBucket((prev) => ({
+        ...prev,
+        loadingMore: false,
+        err: e?.message || 'Could not load more.',
+      }))
     }
   }, [
     open,
     tab,
     isOwnProfile,
     profileUserId,
-    interactionHasMore,
-    interactionLoading,
-    interactionLoadingMore,
+    likesTab,
+    bookmarksTab,
     supabaseClient,
     hydratePosts,
     postCardProps?.refreshPostInteractions,
   ])
 
   useEffect(() => {
-    if (!open || !profileUserId || tab !== 'replies') {
-      setProfileRepliesLoading(false)
-      setProfileRepliesLoadingMore(false)
-      return
-    }
+    if (!open || !profileUserId || tab !== 'replies') return
+    if (profileRepliesFetchedRef.current || profileRepliesInFlightRef.current) return
     if (typeof hydratePosts !== 'function') {
       setProfileRepliesErr('Could not load replies.')
       setProfileReplies([])
@@ -1271,16 +1404,17 @@ export default function LoungeProfileFullScreen({
       setProfileRepliesLoading(false)
       return
     }
-    let cancelled = false
+    const profileAtStart = profileUserId
+    profileRepliesInFlightRef.current = true
+    profileRepliesFetchOffsetRef.current = 0
     setProfileRepliesLoading(true)
     setProfileRepliesLoadingMore(false)
     setProfileRepliesErr('')
     setProfileRepliesHasMore(false)
-    profileRepliesFetchOffsetRef.current = 0
     ;(async () => {
       try {
         const { items, hasMore, fetchedCount } = await fetchProfileRepliesPage(supabaseClient, {
-          profileUserId,
+          profileUserId: profileAtStart,
           profile,
           offset: 0,
           limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
@@ -1289,24 +1423,21 @@ export default function LoungeProfileFullScreen({
           loungeViewerIsStaff: postCardProps?.loungeViewerIsStaff,
           fanEntitlements: postCardProps?.fanEntitlements,
         })
-        if (!cancelled) {
-          setProfileReplies(items)
-          setProfileRepliesHasMore(hasMore)
-          profileRepliesFetchOffsetRef.current = fetchedCount || 0
-        }
+        if (profileAtStart !== profileUserIdRef.current) return
+        profileRepliesFetchedRef.current = true
+        setProfileReplies(items)
+        setProfileRepliesHasMore(hasMore)
+        profileRepliesFetchOffsetRef.current = fetchedCount || 0
       } catch (e) {
-        if (!cancelled) {
-          setProfileRepliesErr(e?.message || 'Could not load replies.')
-          setProfileReplies([])
-          setProfileRepliesHasMore(false)
-        }
+        if (profileAtStart !== profileUserIdRef.current) return
+        setProfileRepliesErr(e?.message || 'Could not load replies.')
+        setProfileReplies([])
+        setProfileRepliesHasMore(false)
       } finally {
-        if (!cancelled) setProfileRepliesLoading(false)
+        profileRepliesInFlightRef.current = false
+        if (profileAtStart === profileUserIdRef.current) setProfileRepliesLoading(false)
       }
     })()
-    return () => {
-      cancelled = true
-    }
   }, [
     open,
     tab,
@@ -1376,18 +1507,22 @@ export default function LoungeProfileFullScreen({
       ? postsHasMore
       : tab === 'replies'
         ? profileRepliesHasMore
-        : tab === 'likes' || tab === 'bookmarks'
-          ? interactionHasMore
-          : false
+        : tab === 'likes'
+          ? likesTab.hasMore
+          : tab === 'bookmarks'
+            ? bookmarksTab.hasMore
+            : false
 
   const profileTabLoadingMore =
     tab === 'posts'
       ? postsLoadingMore
       : tab === 'replies'
         ? profileRepliesLoadingMore
-        : tab === 'likes' || tab === 'bookmarks'
-          ? interactionLoadingMore
-          : false
+        : tab === 'likes'
+          ? likesTab.loadingMore
+          : tab === 'bookmarks'
+            ? bookmarksTab.loadingMore
+            : false
 
   const loadMoreActiveProfileTab = useCallback(() => {
     if (tab === 'posts') {
@@ -2939,6 +3074,90 @@ export default function LoungeProfileFullScreen({
     setNestedProfileStack((prev) => (prev.length > 0 ? prev.slice(0, -1) : prev))
   }, [])
 
+  const renderProfileTabPane = (id) => {
+    if (id === 'posts') {
+      if (loading) {
+        return <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
+      }
+      if (posts.length === 0) {
+        return <div className="px-3 py-8 text-center text-zinc-500 text-[15px]">No Lounge posts yet.</div>
+      }
+      return (
+        <ProfileTabPostList
+          posts={posts}
+          profileUserId={profileUserId}
+          profileFanLockCtx={profileFanLockCtx}
+          postCardPropsForLists={postCardPropsForLists}
+          profileBodyScrollRef={profileBodyScrollRef}
+          profilePostRowPerfStyle={profilePostRowPerfStyle}
+        />
+      )
+    }
+    if (id === 'replies') {
+      if (profileRepliesErr) {
+        return (
+          <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
+            {profileRepliesErr}
+          </div>
+        )
+      }
+      if (profileRepliesLoading || (!profileRepliesFetchedRef.current && profileReplies.length === 0)) {
+        return <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
+      }
+      if (profileReplies.length === 0) {
+        return (
+          <div className="px-3 py-8 text-center text-zinc-500 text-[15px]">
+            {isOwnProfile ? 'Replies you post will show up here.' : 'No replies yet.'}
+          </div>
+        )
+      }
+      return profileReplies.map((item) => (
+        <ProfileReplyRow
+          key={item.comment.id}
+          item={item}
+          postCardProps={postCardPropsForLists}
+          onOpenProfileReply={postCardPropsForLists?.onOpenProfileReply}
+          profileBodyScrollRef={profileBodyScrollRef}
+          onNavigateToProfile={onNavigateToProfile}
+        />
+      ))
+    }
+    if (id === 'likes' || id === 'bookmarks') {
+      const bucket = id === 'likes' ? likesTab : bookmarksTab
+      const fetched = id === 'likes' ? likesFetchedRef.current : bookmarksFetchedRef.current
+      if (bucket.err) {
+        return (
+          <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
+            {bucket.err}
+          </div>
+        )
+      }
+      if (bucket.loading || (!fetched && bucket.posts.length === 0)) {
+        return <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
+      }
+      if (bucket.posts.length === 0) {
+        return (
+          <div className="px-3 py-8 text-center text-zinc-500 text-[15px]">
+            {id === 'likes'
+              ? 'Posts you like will show up here.'
+              : 'Posts you bookmark will show up here.'}
+          </div>
+        )
+      }
+      return (
+        <ProfileTabPostList
+          posts={bucket.posts}
+          profileUserId={profileUserId}
+          profileFanLockCtx={profileFanLockCtx}
+          postCardPropsForLists={postCardPropsForLists}
+          profileBodyScrollRef={profileBodyScrollRef}
+          profilePostRowPerfStyle={profilePostRowPerfStyle}
+        />
+      )
+    }
+    return null
+  }
+
   const rootShellClass = stackedOverlay
     ? 'absolute inset-0 z-40 bg-zinc-950'
     : stackAboveStreamLightbox
@@ -3590,6 +3809,7 @@ export default function LoungeProfileFullScreen({
 
           {!showOwnEditControls ? (
           <div className="w-full min-w-0">
+            <div ref={profileTabsAnchorRef} className="h-0 w-full" aria-hidden />
             <div
               ref={(node) => {
                 profileTabsElRef.current = node
@@ -3598,14 +3818,16 @@ export default function LoungeProfileFullScreen({
               className="sticky z-20 mt-6 border-b border-zinc-800/90 bg-zinc-950/95 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
               style={{ top: profileTabsStickyTopPxState }}
             >
-              <div className="flex gap-0">
+              <div className="flex gap-0" role="tablist" aria-label="Profile feeds">
                 {profileTabsVisible.map((id) => {
                   const active = tab === id
                   return (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setTab(id)}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => selectProfileTab(id)}
                     data-lounge-profile-tab=""
                     data-active={active ? 'true' : 'false'}
                     className={`relative flex flex-1 touch-manipulation items-center justify-center capitalize [-webkit-tap-highlight-color:transparent] ${profileTabBtnClass} ${
@@ -3649,164 +3871,52 @@ export default function LoungeProfileFullScreen({
                 <LoungeFeedAutoplayPostsKick postCount={profileAutoplayPostCount} />
               {error ? (
                 <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">{error}</div>
-              ) : tab === 'posts' ? (
-                loading ? (
-                  <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
-                ) : posts.length === 0 ? (
-                  <div className="px-3 py-8 text-center text-zinc-500 text-[15px]">No Lounge posts yet.</div>
-                ) : (
-                  posts.map((post) => {
-                    const fanOnlyRowTint = showLoungeFanOnlyPostUnlockedTint(post, profileFanLockCtx)
+              ) : (
+                <div
+                  data-lounge-profile-tab-viewport=""
+                  className="relative overflow-x-hidden"
+                  style={{
+                    minHeight: `max(12rem, calc(100dvh - ${profileTabsStickyTopPxState + 48}px))`,
+                  }}
+                >
+                  {profileTabsVisible.map((id, index) => {
+                    const active = tab === id
+                    const xPct = (index - profileTabIndex) * 100
                     return (
-                    <article
-                      key={post.id}
-                      style={profilePostRowPerfStyle}
-                      className={`${LOUNGE_FEED_POST_ROW_CLASS} cursor-pointer${fanOnlyRowTint ? ' relative overflow-hidden' : ''}`}
-                      onClick={(e) => {
-                        const t = e.target
-                        if (!(t instanceof Element)) return
-                        const origHost = t.closest('[data-lounge-original-embed]')
-                        if (origHost && post.reposted_post?.id && !post.repost_of_comment_id) {
-                          if (!isLoungeFanOnlyPostLocked(post.reposted_post, profileFanLockCtx)) {
-                            postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
-                          }
-                          return
-                        }
-                        if (
-                          t.closest(
-                            'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-image-zoom], [data-lounge-video-zoom], [data-lounge-badge-tip], [data-lounge-fan-only-cta]',
-                          )
-                        )
-                          return
-                        // Plain repost of a comment → open comment detail
-                        if (post.repost_of_comment_id && post.reposted_comment?.post_id) {
-                          postCardPropsForLists.onOpenCommentRepost?.(post.reposted_comment)
-                          return
-                        }
-                        // Plain repost of a post → open original (or repost row when original is locked)
-                        if (post.is_plain_repost && post.reposted_post?.id) {
-                          if (isLoungeFanOnlyPostLocked(post.reposted_post, profileFanLockCtx)) {
-                            postCardPropsForLists.onPostBodyClick?.(post)
-                          } else {
-                            postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
-                          }
-                          return
-                        }
-                        postCardPropsForLists.onPostBodyClick?.(post)
-                      }}
-                    >
-                      {fanOnlyRowTint ? <LoungeFanOnlyPostRowTint /> : null}
-                      <div className={fanOnlyRowTint ? 'relative z-[1]' : undefined}>
-                      <LoungePostArticle
-                        post={post}
-                        suppressAvatarProfileNavigation
-                        profileOwnerUserId={profileUserId}
-                        {...postCardPropsForLists}
-                        repostMenuScrollRootRef={profileBodyScrollRef}
-                      />
+                      <div
+                        key={id}
+                        role="tabpanel"
+                        aria-hidden={!active}
+                        inert={!active ? true : undefined}
+                        data-lounge-profile-tab-pane=""
+                        data-lounge-profile-tab-track=""
+                        data-active={active ? 'true' : 'false'}
+                        className={`w-full will-change-transform ${
+                          active
+                            ? 'relative'
+                            : 'pointer-events-none absolute left-0 right-0 top-0'
+                        }`}
+                        style={{
+                          transform: `translate3d(${xPct}%, 0, 0)`,
+                          transition: profileTabSlideReduce
+                            ? 'none'
+                            : `transform ${PROFILE_TAB_SLIDE_MS}ms ${PROFILE_TAB_SLIDE_EASE}`,
+                        }}
+                      >
+                        {renderProfileTabPane(id)}
+                        {active && profileTabHasMore ? (
+                          <div ref={profileLoadMoreSentinelRef} className="h-2 w-full" aria-hidden />
+                        ) : null}
+                        {active && profileTabLoadingMore ? (
+                          <div className="px-3 py-4 text-center text-[13px] text-zinc-500">
+                            Loading more…
+                          </div>
+                        ) : null}
                       </div>
-                    </article>
                     )
-                  })
-                )
-              ) : tab === 'replies' ? (
-                profileRepliesLoading ? (
-                  <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
-                ) : profileRepliesErr ? (
-                  <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
-                    {profileRepliesErr}
-                  </div>
-                ) : profileReplies.length === 0 ? (
-                  <div className="px-3 py-8 text-center text-zinc-500 text-[15px]">
-                    {isOwnProfile ? 'Replies you post will show up here.' : 'No replies yet.'}
-                  </div>
-                ) : (
-                  profileReplies.map((item) => (
-                    <ProfileReplyRow
-                      key={item.comment.id}
-                      item={item}
-                      postCardProps={postCardPropsForLists}
-                      onOpenProfileReply={postCardPropsForLists?.onOpenProfileReply}
-                      profileBodyScrollRef={profileBodyScrollRef}
-                      onNavigateToProfile={onNavigateToProfile}
-                    />
-                  ))
-                )
-              ) : tab === 'likes' || tab === 'bookmarks' ? (
-                interactionLoading ? (
-                  <div className="px-3 py-6 text-center text-zinc-500 text-[15px]">Loading…</div>
-                ) : interactionErr ? (
-                  <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
-                    {interactionErr}
-                  </div>
-                ) : interactionPosts.length === 0 ? (
-                  <div className="px-3 py-8 text-center text-zinc-500 text-[15px]">
-                    {tab === 'likes'
-                      ? 'Posts you like will show up here.'
-                      : 'Posts you bookmark will show up here.'}
-                  </div>
-                ) : (
-                  interactionPosts.map((post) => {
-                    const fanOnlyRowTint = showLoungeFanOnlyPostUnlockedTint(post, profileFanLockCtx)
-                    return (
-                    <article
-                      key={post.id}
-                      style={profilePostRowPerfStyle}
-                      className={`${LOUNGE_FEED_POST_ROW_CLASS} cursor-pointer${fanOnlyRowTint ? ' relative overflow-hidden' : ''}`}
-                      onClick={(e) => {
-                        const t = e.target
-                        if (!(t instanceof Element)) return
-                        const origHost = t.closest('[data-lounge-original-embed]')
-                        if (origHost && post.reposted_post?.id && !post.repost_of_comment_id) {
-                          if (!isLoungeFanOnlyPostLocked(post.reposted_post, profileFanLockCtx)) {
-                            postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
-                          }
-                          return
-                        }
-                        if (
-                          t.closest(
-                            'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-image-zoom], [data-lounge-video-zoom], [data-lounge-badge-tip], [data-lounge-fan-only-cta]',
-                          )
-                        )
-                          return
-                        // Plain repost of a comment → open comment detail
-                        if (post.repost_of_comment_id && post.reposted_comment?.post_id) {
-                          postCardPropsForLists.onOpenCommentRepost?.(post.reposted_comment)
-                          return
-                        }
-                        // Plain repost of a post → open original (or repost row when original is locked)
-                        if (post.is_plain_repost && post.reposted_post?.id) {
-                          if (isLoungeFanOnlyPostLocked(post.reposted_post, profileFanLockCtx)) {
-                            postCardPropsForLists.onPostBodyClick?.(post)
-                          } else {
-                            postCardPropsForLists.onPostBodyClick?.(post.reposted_post)
-                          }
-                          return
-                        }
-                        postCardPropsForLists.onPostBodyClick?.(post)
-                      }}
-                    >
-                      {fanOnlyRowTint ? <LoungeFanOnlyPostRowTint /> : null}
-                      <div className={fanOnlyRowTint ? 'relative z-[1]' : undefined}>
-                      <LoungePostArticle
-                        post={post}
-                        suppressAvatarProfileNavigation
-                        profileOwnerUserId={profileUserId}
-                        {...postCardPropsForLists}
-                        repostMenuScrollRootRef={profileBodyScrollRef}
-                      />
-                      </div>
-                    </article>
-                    )
-                  })
-                )
-              ) : null}
-              {profileTabHasMore ? (
-                <div ref={profileLoadMoreSentinelRef} className="h-2 w-full" aria-hidden />
-              ) : null}
-              {profileTabLoadingMore ? (
-                <div className="px-3 py-4 text-center text-[13px] text-zinc-500">Loading more…</div>
-              ) : null}
+                  })}
+                </div>
+              )}
               </LoungeFeedVideoAutoplayProvider>
             </div>
           </div>

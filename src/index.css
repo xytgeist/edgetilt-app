@@ -1954,6 +1954,14 @@ html.light [data-lounge-profile-tabs] [data-lounge-profile-tab-underline] {
   /* Blue reads cleaner on light zinc than cyan. */
   background-color: rgb(37 99 235) !important;
 }
+[data-lounge-profile-tab-viewport] {
+  overflow-x: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-lounge-profile-tab-track] {
+    transition: none !important;
+  }
+}
 
 /*
  * iOS Safari / PWA classic profile: opaque title plates (status + button row).

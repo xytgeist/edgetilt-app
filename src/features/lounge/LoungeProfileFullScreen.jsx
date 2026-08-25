@@ -3012,11 +3012,11 @@ export default function LoungeProfileFullScreen({
                 style={{ transform: `translate3d(0, ${PROFILE_COMPACT_NAME_SLIDE_PX}px, 0)` }}
                 aria-hidden
               >
-                <span className="min-w-0 truncate text-[15px] font-bold leading-tight sm:text-[16px]">
+                <span className="min-w-0 truncate text-[16px] font-bold leading-tight sm:text-[17px]">
                   {displayName}
                 </span>
                 <span
-                  className="min-w-0 truncate text-[12px] font-normal leading-tight text-white/90"
+                  className="min-w-0 truncate text-[13px] font-normal leading-tight text-white/90"
                   title={fullStatCountTitle(compactPostsCount)}
                 >
                   {compactPostsLabel}

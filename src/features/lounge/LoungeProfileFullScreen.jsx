@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
+import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import {
   prefersReducedMotion,
   profileBannerPinScrollRangePx,
   profileBannerStickyTopPx,
+  profileChromeCenterNudgePx,
+  profileCollapseShellPreset,
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileTabsStickyTopPx,
@@ -1521,8 +1524,12 @@ export default function LoungeProfileFullScreen({
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
     const pinRange = profileCollapseRangePxRef.current
+    const motion = profileCollapseShellPreset(isEdgeiOSShell())
     const v = profileCollapseVisuals(y, pinRange, {
       reduceMotion: reduce,
+      scrollLag: motion.scrollLag,
+      shrinkEasePower: motion.shrinkEasePower,
+      minScale: motion.minScale,
     })
     const nameOp = forceZero
       ? 0
@@ -1573,12 +1580,14 @@ export default function LoungeProfileFullScreen({
     const scrollEl = profileBodyScrollRef.current
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
     const sat = readCssSafeAreaTopPx()
-    // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the full banner.
+    // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the tuned band.
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
-    const chromeNudge = Math.max(
-      0,
-      Math.round(bannerH / 2 - chromePadTop - 20 + 10),
-    )
+    const isIpa = isEdgeiOSShell()
+    const chromeNudge = profileChromeCenterNudgePx({
+      bannerHeightPx: bannerH,
+      chromePadTopPx: chromePadTop,
+      isIpaShell: isIpa,
+    })
     profileChromeCenterNudgePxRef.current = chromeNudge
 
     const chromeButtonBottom = chromePadTop + chromeNudge + 40

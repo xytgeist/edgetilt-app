@@ -1,7 +1,5 @@
 /** Shared image / video / GIF toolbar controls for lounge composers. */
 
-import { dismissLoungeSoftwareKeyboard } from './loungeDockComposeFocus.js'
-
 export function LoungeComposerMediaImageIcon({ className = 'h-8 w-8', filled = true }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -177,7 +175,6 @@ export default function LoungeComposerMediaToolbar({
             if (e.button != null && e.button !== 0) return
             e.preventDefault()
             e.stopPropagation()
-            dismissLoungeSoftwareKeyboard()
             onOpenGifPicker?.()
           }}
           onClick={(e) => {

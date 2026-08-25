@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { fetchKlipyGifs } from '../../utils/klipyGifs'
+import { dismissLoungeSoftwareKeyboard } from './loungeDockComposeFocus.js'
 
 /** Cap auto-fetched pages (per search / trending session) to limit Klipy + edge invocations if user scrolls endlessly. */
 const KLIPY_PICKER_MAX_PAGES = 15
@@ -11,17 +12,9 @@ function measureLayoutSheetHeightPx() {
   return Math.min(Math.round(window.innerHeight * SHEET_HEIGHT_RATIO), SHEET_HEIGHT_CAP_PX)
 }
 
-function readVisualViewportFrame() {
-  if (typeof window === 'undefined') return { top: 0, height: 640 }
-  const vv = window.visualViewport
-  return {
-    top: vv?.offsetTop ?? 0,
-    height: vv?.height ?? window.innerHeight,
-  }
-}
-
 /**
  * Full-screen-ish sheet: search or trending GIFs via Klipy (Edge Function `klipy-gifs`).
+ * Open focuses search (keyboard stays). GIF grid scroll dismisses the keyboard.
  */
 export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }) {
   const [query, setQuery] = useState('')
@@ -33,12 +26,15 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   const [page, setPage] = useState(1)
   const [hasNext, setHasNext] = useState(false)
   const [sheetHeightPx, setSheetHeightPx] = useState(measureLayoutSheetHeightPx)
-  const [viewportFrame, setViewportFrame] = useState(readVisualViewportFrame)
+  const [overlayHeightPx, setOverlayHeightPx] = useState(() =>
+    typeof window === 'undefined' ? 640 : window.innerHeight,
+  )
   const openedAtRef = useRef(0)
+  const allowScrollDismissRef = useRef(false)
   const debounceRef = useRef(0)
   const scrollRef = useRef(null)
   const sentinelRef = useRef(null)
-  const keyboardSinkRef = useRef(null)
+  const searchRef = useRef(null)
   const pageRef = useRef(1)
   const hasNextRef = useRef(false)
   const loadingRef = useRef(false)
@@ -61,42 +57,61 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   }, [loading])
 
   useEffect(() => {
-    if (open) openedAtRef.current = Date.now()
+    if (!open) {
+      allowScrollDismissRef.current = false
+      return undefined
+    }
+    openedAtRef.current = Date.now()
+    allowScrollDismissRef.current = false
+    const enable = () => {
+      allowScrollDismissRef.current = true
+    }
+    window.addEventListener('pointerup', enable, { once: true })
+    window.addEventListener('touchend', enable, { once: true })
+    const timer = window.setTimeout(enable, 500)
+    return () => {
+      window.removeEventListener('pointerup', enable)
+      window.removeEventListener('touchend', enable)
+      window.clearTimeout(timer)
+    }
   }, [open])
 
   useLayoutEffect(() => {
-    if (!open) return undefined
-    const sink = keyboardSinkRef.current
-    if (!sink) return undefined
-    const hold = () => {
-      const active = document.activeElement
-      if (active === sink) return
-      if (active instanceof HTMLElement && active.dataset.klipyGifSearch === '1') return
+    if (!open) return
+    const el = searchRef.current
+    if (!el) return
+    try {
+      el.focus({ preventScroll: true })
+    } catch {
       try {
-        sink.focus()
+        el.focus()
       } catch {
         // ignore
       }
-    }
-    hold()
-    const timers = [0, 50, 160, 320].map((ms) => window.setTimeout(hold, ms))
-    return () => {
-      for (const id of timers) window.clearTimeout(id)
     }
   }, [open])
 
   useEffect(() => {
     if (!open) return undefined
-    setSheetHeightPx(measureLayoutSheetHeightPx())
-    const syncViewport = () => setViewportFrame(readVisualViewportFrame())
-    syncViewport()
-    const vv = window.visualViewport
-    vv?.addEventListener('resize', syncViewport)
-    vv?.addEventListener('scroll', syncViewport)
-    return () => {
-      vv?.removeEventListener('resize', syncViewport)
-      vv?.removeEventListener('scroll', syncViewport)
+    const sync = () => {
+      setOverlayHeightPx(window.innerHeight)
+      setSheetHeightPx(measureLayoutSheetHeightPx())
     }
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
+  }, [open])
+
+  const dismissSearchKeyboardOnScroll = useCallback(() => {
+    if (!open || !allowScrollDismissRef.current) return
+    const active = document.activeElement
+    if (!(active instanceof HTMLElement) || active.dataset.klipyGifSearch !== '1') return
+    try {
+      active.blur()
+    } catch {
+      // ignore
+    }
+    dismissLoungeSoftwareKeyboard()
   }, [open])
 
   useEffect(() => {
@@ -209,11 +224,6 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
     return () => io.disconnect()
   }, [open, debounced, items.length, hasNext])
 
-  const resolvedSheetHeightPx = useMemo(() => {
-    const visibleCap = Math.max(240, Math.round(viewportFrame.height - 32))
-    return Math.min(sheetHeightPx, visibleCap)
-  }, [sheetHeightPx, viewportFrame.height])
-
   const refreshing = loading && loadingMode === 'refresh'
   const loadingMore = loading && loadingMode === 'append'
   const showEmpty = !loading && items.length === 0 && !err
@@ -222,25 +232,12 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
 
   return (
     <div
-      className="fixed left-0 right-0 z-[101] flex items-end justify-center bg-black/45 px-2 backdrop-blur-[3px]"
+      className="fixed inset-x-0 top-0 z-[101] flex items-end justify-center bg-black/45 px-2 backdrop-blur-[3px]"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a GIF"
-      style={{
-        top: viewportFrame.top,
-        height: viewportFrame.height,
-      }}
+      style={{ height: overlayHeightPx }}
     >
-      <input
-        ref={keyboardSinkRef}
-        type="text"
-        readOnly
-        inputMode="none"
-        autoComplete="off"
-        tabIndex={-1}
-        aria-hidden="true"
-        className="pointer-events-none absolute h-px w-px opacity-0"
-      />
       <button
         type="button"
         className="absolute inset-0 z-0 cursor-default touch-manipulation bg-transparent"
@@ -252,10 +249,11 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
       />
       <div
         className="klipy-gif-sheet relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
-        style={{ height: resolvedSheetHeightPx }}
+        style={{ height: sheetHeightPx }}
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
           <input
+            ref={searchRef}
             type="search"
             data-klipy-gif-search="1"
             value={query}
@@ -265,6 +263,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
+            enterKeyHint="search"
           />
           <button
             type="button"
@@ -275,7 +274,12 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
           </button>
         </div>
         <div className="relative min-h-0 flex-1">
-          <div ref={scrollRef} className="absolute inset-0 overflow-y-auto overscroll-contain px-2 py-2">
+          <div
+            ref={scrollRef}
+            className="absolute inset-0 overflow-y-auto overscroll-contain px-2 py-2"
+            onTouchMove={dismissSearchKeyboardOnScroll}
+            onWheel={dismissSearchKeyboardOnScroll}
+          >
             <div className="min-h-[1.375rem] px-2 pb-1">
               {!debounced ? (
                 <p className="text-[13px] text-zinc-500">Trending - type to search.</p>

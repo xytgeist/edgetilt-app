@@ -2210,10 +2210,9 @@ export default function SocialFeed({
       if (target === 'detailComment') beginLoungeDetailCommentMediaSession()
       klipyPickerOpenRef.current = true
       setKlipyPickerTarget(target)
-      blurLoungeComposerCaptionForTarget(target)
       setKlipyPickerOpen(true)
     },
-    [beginLoungeDetailCommentMediaSession, blurLoungeComposerCaptionForTarget, openProfileGateIfNeeded],
+    [beginLoungeDetailCommentMediaSession, openProfileGateIfNeeded],
   )
 
   const openMarketPicker = useCallback(

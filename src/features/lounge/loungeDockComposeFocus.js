@@ -113,7 +113,8 @@ export function dismissLoungeSoftwareKeyboard() {
     document.body.appendChild(sink)
     sink.focus()
     // Do not blur in this turn ... iOS restores the previous contenteditable keyboard if we
-    // focus-then-immediately-blur. The GIF picker sink takes over; this node is removed later.
+    // focus-then-immediately-blur. Callers that need the keyboard gone (scroll dismiss) hold this
+    // node until the timeout; do not use this on GIF open (search focus should keep the keyboard).
     window.setTimeout(() => {
       try {
         if (document.activeElement === sink) sink.blur()
@@ -127,7 +128,7 @@ export function dismissLoungeSoftwareKeyboard() {
   }
 }
 
-/** Dismiss the software keyboard before a full-screen picker (e.g. Klipy) opens. */
+/** Dismiss the software keyboard (file inputs / scroll-dismiss). GIF open should focus search instead. */
 export function blurLoungeComposerCaption(getTextarea) {
   const el = getTextarea?.()
   if (el) {

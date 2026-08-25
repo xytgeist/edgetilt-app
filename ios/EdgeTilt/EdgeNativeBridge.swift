@@ -83,11 +83,11 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       completion(.success(EdgePushManager.shared.currentTokenPayload()))
     case "setAudioSession":
       let mode = (payload?["mode"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-      DispatchQueue.main.async {
-        do {
-          try EdgeAudioSession.apply(mode: mode)
+      EdgeAudioSession.apply(mode: mode) { result in
+        switch result {
+        case .success:
           completion(.success(["ok": true]))
-        } catch {
+        case .failure(let error):
           completion(.failure(error))
         }
       }

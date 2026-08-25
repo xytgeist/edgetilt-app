@@ -583,7 +583,8 @@ input[list]::-webkit-list-button {
 }
 
 .lounge-cold-boot-splash {
-  /* No entrance animation - container is immediately opaque from mount */
+  /* No entrance animation … opaque from mount, then --out fades it. */
+  opacity: 1;
 }
 
 .lounge-cold-boot-splash--out {

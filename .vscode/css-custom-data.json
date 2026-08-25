@@ -1,0 +1,29 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@theme",
+      "description": "Tailwind CSS v4 theme tokens. Maps CSS variables onto generated utilities (colors, spacing, etc.)."
+    },
+    {
+      "name": "@plugin",
+      "description": "Tailwind CSS v4 plugin load."
+    },
+    {
+      "name": "@source",
+      "description": "Tailwind CSS v4 content source path."
+    },
+    {
+      "name": "@utility",
+      "description": "Tailwind CSS v4 custom utility."
+    },
+    {
+      "name": "@custom-variant",
+      "description": "Tailwind CSS v4 custom variant."
+    },
+    {
+      "name": "@reference",
+      "description": "Tailwind CSS v4 reference import (tokens without CSS output)."
+    }
+  ]
+}

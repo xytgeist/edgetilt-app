@@ -9,7 +9,8 @@
  * Motion phases:
  * 1. Banner slides … avatar shrinks in place (top-tethered) only until the banner
  *    bottom rises above the avatar; then scale freezes.
- * 2. After banner rests … counter-scroll releases so the avatar slides under.
+ * 2. As soon as shrink ends, counter-scroll freezes so the avatar scrolls with
+ *    the page and rides under the sticky banner.
  * 3. Collapsed blur/scrim only after the banner has settled.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
@@ -106,11 +107,6 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const shrinkRaw = profileCollapseProgress(y, shrinkRange)
   const shrinkEase = reduce ? (shrinkRaw >= 0.5 ? 1 : shrinkRaw * 2) : smoothstep01(shrinkRaw)
 
-  // Tuck only after the banner has fully pinned … never during the pin slide.
-  const tuckRaw =
-    y <= pinRange ? 0 : Math.min(1, (y - pinRange) / tuckRange)
-  const tuckEase = reduce ? (tuckRaw >= 0.5 ? 1 : tuckRaw * 2) : smoothstep01(tuckRaw)
-
   const pinStart = PROFILE_PIN_SCRIM_START
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
@@ -119,20 +115,13 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const avatarScale = 1 - shrinkEase * (1 - minScale)
 
   /**
-   * Phase 1 (y ≤ pinRange): counter-scroll by +y so the avatar TOP stays planted
-   * on screen while scale shrinks downward (transform-origin: top).
-   * Phase 2 (after pin): release that counter-scroll so it rises under the banner.
+   * During shrink: counter-scroll by +y so the TOP stays planted while scaling.
+   * The moment shrink ends: freeze translate at +shrinkRange so further scroll
+   * moves the avatar with the page (it rides under the sticky banner naturally).
    */
   let avatarTranslateY = 0
   if (!reduce) {
-    if (y <= pinRange) {
-      avatarTranslateY = y
-    } else {
-      // Release from +pinRange → 0, plus a little extra tuck under the sticky strip.
-      avatarTranslateY = pinRange * (1 - tuckEase) - tuckEase * 28
-    }
-  } else if (y > pinRange) {
-    avatarTranslateY = -tuckEase * 48
+    avatarTranslateY = y <= shrinkRange ? y : shrinkRange
   }
 
   return {
@@ -144,8 +133,9 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     collapsedBarOpacity: pinReveal,
     avatarScale,
     avatarTranslateY,
-    avatarOpacity: 1 - Math.max(0, (tuckEase - 0.45) / 0.55),
-    avatarUnderBanner: tuckEase > 0.06,
+    avatarOpacity: 1,
+    /** Raise banner over avatar once shrink is done and content is scrolling under. */
+    avatarUnderBanner: y > shrinkRange + 2,
   }
 }
 

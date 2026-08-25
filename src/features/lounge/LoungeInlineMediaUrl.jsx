@@ -825,10 +825,19 @@ export function LoungeImageLightbox({
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [])
 
-  // Shrink-back: lift EDGE title bar above the portaled flyout so the tile tucks under the header.
+  // Shrink-back: lift the covering title bar above the flyout so the tile tucks under it.
+  // Prefer post-detail "Post/Reply" chrome when that sheet is open … never the feed EDGE bar
+  // (lifting EDGE flashes it over the detail sheet for a frame).
   useEffect(() => {
-    const bar = document.querySelector('[data-lounge-title-bar]')
-    if (!(bar instanceof HTMLElement)) return undefined
+    const detailBar = document.querySelector('[data-lounge-post-detail-title-bar]')
+    const feedBar = document.querySelector('[data-lounge-title-bar]')
+    const bar =
+      detailBar instanceof HTMLElement
+        ? detailBar
+        : feedBar instanceof HTMLElement
+          ? feedBar
+          : null
+    if (!bar) return undefined
     if (phase === 'closing') {
       bar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
     } else {

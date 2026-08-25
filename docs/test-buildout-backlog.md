@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **iOS Safari/PWA profile title chrome (Ryan sign-off):** Classic scroll (collapse off). Opaque status + title plates; back/menu dock-hide on scroll-down; latched near-top handoff (title slides away, same buttons stay); tabs ride title 1:1 on slide-in. Tip **`test` @ `39cc8ece`**. IPA keeps X-collapse. Files: `LoungeProfileFullScreen.jsx`, `loungeProfileScrollCollapse.js`, `index.css`.
 - 2026-08-24: **Profile banner sticky pin:** Banner uses `position: sticky` with measured negative `top` so it slides up then locks; pinned bottom = chrome height + 10px. Collapse range derived from pin distance. No scroll-away banner.
 - 2026-08-24: **Lounge profile collapse polish (X recording):** Avatar starts on top with ~1/4 banner overlap (`-mt-6`); top-anchored shrink then late tuck under raised banner; blur/scrim only after pin (≥90% progress); light chrome = smoky dark + white icons; action buttons +10px. Helper `loungeProfileScrollCollapse.js`.
 - 2026-08-24: **Lounge profile X-style scroll collapse:** Scroll-linked banner blur/parallax, avatar tuck, pinned chrome + compact name, sticky Posts/Replies tabs under measured chrome height. Uses `max(env, var(--edge-*))` + solid scrim fallbacks for IPA / PWA / Android / web. Helper `loungeProfileScrollCollapse.js`. Edit mode forces collapse off. Smoke: open profile → scroll → banner pins/blurs, name appears in chrome, tabs stick, feed scrolls under.

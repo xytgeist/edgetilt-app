@@ -989,6 +989,8 @@ export default function SocialFeed({
   const loungeSkipNavPopOnCloseRef = useRef(false)
   const loungeNavRestoringRef = useRef(false)
   const loungeNavSearchReturnPendingRef = useRef(false)
+  /** FAB Settings over search/notifications … restore that dock panel on close (profile/detail stay mounted). */
+  const loungeSettingsReturnRef = useRef(null)
   const profileNavSnapshotRef = useRef({ tab: 'posts', scrollTop: 0 })
   const loungeDockPanelScrollRef = useRef(null)
   const restoreLoungeNavFrameRef = useRef(async () => {})
@@ -8571,14 +8573,57 @@ export default function SocialFeed({
     }
   }, [onOpenChatRoomFromDock, ensureLoungeFeedVisible, refreshChatUnreadRoomCount])
 
+  const rememberSurfaceForSettingsReturn = useCallback(() => {
+    if (loungeDockPanel === 'search') {
+      loungeSettingsReturnRef.current = {
+        kind: 'search',
+        query: loungeDockSearchQuery,
+        scrollTop: loungeDockPanelScrollRef.current?.scrollTop ?? 0,
+      }
+      return
+    }
+    if (loungeDockPanel === 'notifications' || loungeDockPanel === 'chat') {
+      loungeSettingsReturnRef.current = {
+        kind: 'dock',
+        panel: loungeDockPanel,
+        scrollTop: loungeDockPanelScrollRef.current?.scrollTop ?? 0,
+      }
+      return
+    }
+    loungeSettingsReturnRef.current = null
+  }, [loungeDockPanel, loungeDockSearchQuery])
+
+  const restoreSurfaceAfterSettingsClose = useCallback(() => {
+    const saved = loungeSettingsReturnRef.current
+    loungeSettingsReturnRef.current = null
+    if (!saved) return
+    if (saved.kind !== 'search' && saved.kind !== 'dock') return
+    requestAnimationFrame(() => {
+      void restoreLoungeNavFrameRef.current(saved)
+    })
+  }, [])
+
   const onLoungeDockSettings = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
       onRequireAuth?.()
       return
     }
-    dismissLoungeStackForDockNavRef.current()
-    setLoungeDockPanel((p) => (p === 'settings' ? null : 'settings'))
-  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
+    if (loungeDockPanel === 'settings') {
+      setLoungeSettingsFocusSection(null)
+      setLoungeDockPanel(null)
+      restoreSurfaceAfterSettingsClose()
+      return
+    }
+    rememberSurfaceForSettingsReturn()
+    setLoungeDockPanel('settings')
+  }, [
+    loungeDockPanel,
+    loungeFeedBrowseMode,
+    loungeReadOnly,
+    onRequireAuth,
+    rememberSurfaceForSettingsReturn,
+    restoreSurfaceAfterSettingsClose,
+  ])
 
   const onLoungeOpenSettingsSection = useCallback(
     (section) => {
@@ -8586,11 +8631,17 @@ export default function SocialFeed({
         onRequireAuth?.()
         return
       }
-      dismissLoungeStackForDockNavRef.current()
+      if (loungeDockPanel !== 'settings') rememberSurfaceForSettingsReturn()
       setLoungeSettingsFocusSection(section)
       setLoungeDockPanel('settings')
     },
-    [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
+    [
+      loungeDockPanel,
+      loungeFeedBrowseMode,
+      loungeReadOnly,
+      onRequireAuth,
+      rememberSurfaceForSettingsReturn,
+    ],
   )
 
   useEffect(() => {
@@ -14757,6 +14808,16 @@ export default function SocialFeed({
           void restoreLoungeNavFrameRef.current(frame)
         })
       }
+      return
+    }
+    if (loungeDockPanel === 'settings') {
+      const saved = loungeSettingsReturnRef.current
+      loungeSettingsReturnRef.current = null
+      if (saved?.kind === 'search' || saved?.kind === 'dock') {
+        void restoreLoungeNavFrameRef.current(saved)
+        return
+      }
+      setLoungeDockPanel(null)
       return
     }
     setLoungeDockPanel(null)

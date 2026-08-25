@@ -754,6 +754,8 @@ export default function LoungeProfileFullScreen({
   const profileAvatarMotionRef = useRef(null)
   const profileDisplayNameRef = useRef(null)
   const profileCompactNameRef = useRef(null)
+  const profileChromeMotionRef = useRef(null)
+  const profileChromeCenterNudgePxRef = useRef(36)
   const profileCollapsedScrimRef = useRef(null)
   const profileNameRevealScrollRef = useRef(80)
   const profileStickyTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
@@ -1546,6 +1548,16 @@ export default function LoungeProfileFullScreen({
     if (collapsedScrim) {
       collapsedScrim.style.opacity = String(v.collapsedBarOpacity)
     }
+    const chromeMotion = profileChromeMotionRef.current
+    if (chromeMotion) {
+      // Rest: back/⋯ sit mid-banner; pinned / edit: top strip under status bar.
+      const nudge =
+        forceZero || showOwnEditControls
+          ? 0
+          : (1 - progress) * profileChromeCenterNudgePxRef.current
+      chromeMotion.style.transform =
+        reduce && !forceZero ? '' : `translate3d(0, ${nudge}px, 0)`
+    }
     const avatar = profileAvatarMotionRef.current
     if (avatar) {
       avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
@@ -1563,6 +1575,13 @@ export default function LoungeProfileFullScreen({
     const banner = profileBannerShellRef.current
     const chromeH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
+    const bannerContentEl = banner?.querySelector?.('[data-lounge-profile-banner-band]')
+    const bannerContentH = bannerContentEl
+      ? Math.ceil(bannerContentEl.getBoundingClientRect().height)
+      : 112
+    // Vertically center h-10 chrome buttons in the banner photo band.
+    profileChromeCenterNudgePxRef.current = Math.max(0, Math.round(bannerContentH / 2 - 20))
+
     const sat = readCssSafeAreaTopPx()
     const pinnedVisible =
       (chromeH > 0 ? chromeH : PROFILE_COLLAPSED_CHROME_ROW_PX + sat)
@@ -2439,13 +2458,17 @@ export default function LoungeProfileFullScreen({
             className="pointer-events-none absolute inset-0 opacity-0"
           />
           <div
-            className="relative flex items-center justify-between gap-2 px-2 pb-1 sm:px-3"
+            className="px-2 pb-1 sm:px-3"
             style={{
               // Inline … arbitrary Tailwind max(env, var(--edge-sat)) has broken before.
               paddingTop: 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
-              minHeight: PROFILE_COLLAPSED_CHROME_ROW_PX,
             }}
           >
+            <div
+              ref={profileChromeMotionRef}
+              className="relative flex min-h-10 items-center justify-between gap-2 will-change-transform"
+              data-lounge-profile-chrome-motion=""
+            >
             <button
               type="button"
               onClick={showOwnEditControls ? () => exitOwnProfileEditing() : onClose}
@@ -2469,13 +2492,10 @@ export default function LoungeProfileFullScreen({
               <div
                 ref={profileCompactNameRef}
                 data-lounge-profile-compact-name=""
-                className="pointer-events-none absolute inset-x-14 min-w-0 truncate text-center text-[15px] font-bold leading-tight text-white opacity-0 sm:inset-x-16 sm:text-[16px]"
-                style={{
-                  top: 'calc(max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))) + 0.55rem)',
-                }}
+                className="pointer-events-none absolute inset-x-14 inset-y-0 flex min-w-0 items-center justify-center truncate text-center text-[15px] font-bold leading-tight text-white opacity-0 sm:inset-x-16 sm:text-[16px]"
                 aria-hidden
               >
-                {displayName}
+                <span className="min-w-0 truncate">{displayName}</span>
               </div>
             ) : null}
             {isOwnProfile ? (
@@ -2602,6 +2622,7 @@ export default function LoungeProfileFullScreen({
             ) : (
               <div className="h-10 w-10 shrink-0" aria-hidden />
             )}
+            </div>
           </div>
         </div>
         {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}
@@ -2641,7 +2662,7 @@ export default function LoungeProfileFullScreen({
                 className="pointer-events-none absolute inset-0 bg-black opacity-[0.12]"
               />
             </div>
-            <div className="relative h-28 w-full sm:h-36">
+            <div className="relative h-28 w-full sm:h-36" data-lounge-profile-banner-band="">
               {isOwnProfile ? (
                 <>
                   <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
@@ -2661,26 +2682,68 @@ export default function LoungeProfileFullScreen({
           </div>
 
           <div className="relative px-4">
-            {/* Action CTAs: vertically centered in the banner band (h-28 / sm:h-36), scroll with content. */}
-            {isOwnProfile &&
-            !showOwnEditControls &&
-            typeof onOpenFanSubscriptionSettings === 'function' &&
-            supabaseClient ? (
-              <div
-                className="pointer-events-auto absolute right-4 top-[calc(-3.5rem+20px)] z-[15] -translate-y-1/2 sm:top-[calc(-4.5rem+20px)]"
-                data-lounge-profile-banner-actions=""
-              >
-                <OwnProfileFanMonetizationCta
-                  supabaseClient={supabaseClient}
-                  onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
-                  onOpenCreatorFanPortal={() => setFanPortalOpen(true)}
-                />
+            {/* ~1/4 avatar overlap on banner at rest (−mt-5 on 4.8rem ≈ 20/77). */}
+            <div className="pointer-events-none relative z-20 -mt-5 flex flex-wrap items-end justify-between gap-3 sm:-mt-5">
+              <div className="relative shrink-0 pointer-events-auto">
+                <div
+                  ref={profileAvatarMotionRef}
+                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
+                  style={{ transformOrigin: 'center top' }}
+                  data-lounge-profile-avatar=""
+                >
+                  {profile?.avatar_url ? (
+                    <img
+                      key={profile.avatar_url}
+                      src={profile.avatar_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span
+                      className={`grid h-full w-full place-items-center font-bold text-white ${profileAvatarToneClass(
+                        profile?.user_id || profile?.handle || 'member'
+                      )}`}
+                    >
+                      {profileAvatarInitials(profile?.display_name, profile?.handle)}
+                    </span>
+                  )}
+                </div>
+                {showOwnEditControls ? (
+                  <>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(ev) => onPickAvatar(ev)}
+                    />
+                    <button
+                      type="button"
+                      disabled={avatarBusy}
+                      onClick={() => avatarInputRef.current?.click()}
+                      aria-label={avatarBusy ? 'Uploading avatar' : 'Change avatar'}
+                      className="absolute bottom-0 right-0 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
+                    >
+                      {avatarBusy ? '…' : 'Avatar'}
+                    </button>
+                  </>
+                ) : null}
               </div>
-            ) : !isOwnProfile && viewerUserId ? (
-              <div
-                className="pointer-events-auto absolute right-4 top-[calc(-3.5rem+20px)] z-[15] flex -translate-y-1/2 flex-wrap items-center justify-end gap-2 sm:top-[calc(-4.5rem+20px)]"
-                data-lounge-profile-banner-actions=""
-              >
+              {isOwnProfile &&
+              !showOwnEditControls &&
+              typeof onOpenFanSubscriptionSettings === 'function' &&
+              supabaseClient ? (
+                <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
+                  <OwnProfileFanMonetizationCta
+                    supabaseClient={supabaseClient}
+                    onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
+                    onOpenCreatorFanPortal={() => setFanPortalOpen(true)}
+                  />
+                </div>
+              ) : !isOwnProfile && viewerUserId ? (
+                <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                   {isFollowing ? (
                     creatorFanOffer && hasCreatorFanSub ? (
                       <ProfileFanSubPillButton
@@ -2763,57 +2826,9 @@ export default function LoungeProfileFullScreen({
                   >
                     <ProfileSocialFollowIcon following={isFollowing} />
                   </button>
-              </div>
-            ) : null}
-
-            {/* ~1/4 avatar overlap on banner at rest (−mt-5 on 4.8rem ≈ 20/77). */}
-            <div className="pointer-events-none relative z-20 -mt-5 flex flex-wrap items-end justify-between gap-3 sm:-mt-5">
-              <div className="relative shrink-0 pointer-events-auto">
-                <div
-                  ref={profileAvatarMotionRef}
-                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
-                  style={{ transformOrigin: 'center top' }}
-                  data-lounge-profile-avatar=""
-                >
-                  {profile?.avatar_url ? (
-                    <img
-                      key={profile.avatar_url}
-                      src={profile.avatar_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span
-                      className={`grid h-full w-full place-items-center font-bold text-white ${profileAvatarToneClass(
-                        profile?.user_id || profile?.handle || 'member'
-                      )}`}
-                    >
-                      {profileAvatarInitials(profile?.display_name, profile?.handle)}
-                    </span>
-                  )}
+                  </div>
                 </div>
-                {showOwnEditControls ? (
-                  <>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={(ev) => onPickAvatar(ev)}
-                    />
-                    <button
-                      type="button"
-                      disabled={avatarBusy}
-                      onClick={() => avatarInputRef.current?.click()}
-                      aria-label={avatarBusy ? 'Uploading avatar' : 'Change avatar'}
-                      className="absolute bottom-0 right-0 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
-                    >
-                      {avatarBusy ? '…' : 'Avatar'}
-                    </button>
-                  </>
-                ) : null}
-              </div>
+              ) : null}
             </div>
 
             <div className="mt-3 space-y-1">

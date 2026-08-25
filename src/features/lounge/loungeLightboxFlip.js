@@ -464,3 +464,42 @@ export function snapFlyoutToHeroOpen(flyout, targetRect, flyoutZIndex = HERO_STA
   flyout.style.transform = 'none'
   flyout.style.borderRadius = '0'
 }
+
+/**
+ * Viewport Y below sticky profile/detail/feed chrome for shrink-back clipping.
+ * Portaled flyouts sit above sheet stacking contexts … clip the full-screen shell so the
+ * tile appears to tuck under sticky tabs/title instead of painting over them.
+ * @returns {number}
+ */
+export function readLightboxCloseChromeClipTopPx() {
+  if (typeof document === 'undefined') return 0
+  /** Only chrome stuck near the top of the viewport (not mid-scroll tab rows). */
+  const nearTopMaxPx = 180
+  let bottom = 0
+  const consider = (el) => {
+    if (!(el instanceof HTMLElement)) return
+    const r = el.getBoundingClientRect()
+    if (r.width < 8 || r.height < 8) return
+    if (r.top > nearTopMaxPx) return
+    try {
+      const st = getComputedStyle(el)
+      if (st.visibility === 'hidden' || st.display === 'none') return
+      if (Number(st.opacity) === 0) return
+    } catch {
+      // ignore
+    }
+    bottom = Math.max(bottom, r.bottom)
+  }
+
+  document.querySelectorAll('[data-lounge-profile-tabs]').forEach(consider)
+  document.querySelectorAll('[data-lounge-profile-top-chrome]').forEach(consider)
+  consider(document.querySelector('[data-lounge-post-detail-title-bar]'))
+
+  const profileSheetOpen = Boolean(document.querySelector('[data-lounge-profile-sheet]'))
+  const detailOpen = Boolean(document.querySelector('[data-lounge-post-detail-title-bar]'))
+  if (!profileSheetOpen && !detailOpen) {
+    consider(document.querySelector('[data-lounge-title-bar]'))
+  }
+
+  return Math.max(0, Math.round(bottom))
+}

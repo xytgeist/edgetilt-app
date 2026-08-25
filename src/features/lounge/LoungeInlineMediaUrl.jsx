@@ -21,6 +21,7 @@ import {
   mediaFitsChromeBand,
   readContainedImageViewportRect,
   readElementViewportRect,
+  readLightboxCloseChromeClipTopPx,
   resolveLoungeHeroStackZIndexes,
   runHeroExpandAnimation,
   runHeroShrinkAnimation,
@@ -287,6 +288,7 @@ export function LoungeImageLightbox({
   const targetRectRef = useRef(null)
   const closeHeroFrameRef = useRef(null)
   const flyoutRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const lightboxShellRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const expandAnimRef = useRef(/** @type {Animation | null} */ (null))
   const shrinkAnimRef = useRef(/** @type {Animation | null} */ (null))
   const expandTimerRef = useRef(0)
@@ -826,13 +828,15 @@ export function LoungeImageLightbox({
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [])
 
-  // Shrink-back: lift the covering title chrome above the flyout so the tile tucks under it.
-  // Prefer post-detail → profile → feed EDGE. Never lift EDGE while a profile sheet is open
-  // (that flashes the Lounge header over the profile for a frame).
+  // Shrink-back: lift covering title chrome above the flyout when it can (feed EDGE /
+  // detail bar are document-level). Profile sheet uses a transform stacking context, so
+  // also clip the full-screen portal below sticky tabs/top chrome … otherwise the
+  // flyout paints over the bars while the tile is tucked under them.
   useEffect(() => {
     const detailBar = document.querySelector('[data-lounge-post-detail-title-bar]')
     const profileBars = document.querySelectorAll('[data-lounge-profile-top-chrome]')
     const profileBar = profileBars.length ? profileBars[profileBars.length - 1] : null
+    const profileTabs = document.querySelectorAll('[data-lounge-profile-tabs]')
     const profileSheetOpen = Boolean(document.querySelector('[data-lounge-profile-sheet]'))
     const feedBar = document.querySelector('[data-lounge-title-bar]')
     const bar =
@@ -845,14 +849,39 @@ export function LoungeImageLightbox({
             : feedBar instanceof HTMLElement
               ? feedBar
               : null
-    if (!bar) return undefined
+
+    const shell = lightboxShellRef.current
+    const clearClip = () => {
+      if (shell) shell.style.clipPath = ''
+    }
+    const clearBarAttr = (el) => {
+      if (el instanceof HTMLElement) el.removeAttribute('data-lounge-title-bar-over-lightbox-close')
+    }
+
     if (phase === 'closing') {
-      bar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
+      if (bar instanceof HTMLElement) {
+        bar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
+      }
+      profileTabs.forEach((el) => {
+        if (el instanceof HTMLElement) {
+          el.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
+        }
+      })
+      const clipTop = readLightboxCloseChromeClipTopPx()
+      if (shell && clipTop > 0) {
+        shell.style.clipPath = `inset(${clipTop}px 0 0 0)`
+      } else {
+        clearClip()
+      }
     } else {
-      bar.removeAttribute('data-lounge-title-bar-over-lightbox-close')
+      clearBarAttr(bar)
+      profileTabs.forEach(clearBarAttr)
+      clearClip()
     }
     return () => {
-      bar.removeAttribute('data-lounge-title-bar-over-lightbox-close')
+      clearBarAttr(bar)
+      profileTabs.forEach(clearBarAttr)
+      clearClip()
     }
   }, [phase])
 
@@ -1128,6 +1157,7 @@ export function LoungeImageLightbox({
 
   return createPortal(
     <div
+      ref={lightboxShellRef}
       data-lounge-media-lightbox
       data-lounge-image-lightbox
       data-lounge-image-lightbox-phase={phase}

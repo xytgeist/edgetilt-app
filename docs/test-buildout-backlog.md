@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **IPA/web profile compact title (X-style):** Left-aligned display name + posts count; slides up from below (no center fade). Collapse-on only (IPA + desktop web). iOS Safari/PWA + Android title chrome unchanged. Files: `LoungeProfileFullScreen.jsx`, `loungeProfileScrollCollapse.js`, `index.css`.
 - 2026-08-24: **Profile lightbox dismiss EDGE flash:** Shrink-back no longer lifts the feed EDGE title bar while a profile sheet is open (same class as post-detail). Prefer detail → profile chrome → feed. Files: `LoungeInlineMediaUrl.jsx`, `index.css`.
 - 2026-08-24: **Android profile chrome buttons:** Restored frosted `backdrop-blur` on back/⋯ (solid dark glass looked wrong). Tabs stay opaque on Android for scroll cost. Tip after this commit.
 - 2026-08-24: **Android profile scroll perf:** Cache safe-area env probe (was DOM-creating every scroll frame). Classic/title-chrome path skips collapse style thrash; diff title/tabs writes; throttle parent FAB dock reveal setState; Android-only opaque chrome (no backdrop-blur). IPA collapse unchanged. Files: `edgeSafeAreaCss.js`, `LoungeProfileFullScreen.jsx`, `index.css`.

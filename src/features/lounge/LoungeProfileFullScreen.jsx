@@ -1868,6 +1868,21 @@ export default function LoungeProfileFullScreen({
         avatar.style.zIndex = v.avatarUnderBanner ? '1' : ''
       }
     }
+    // After avatar transform … Android sticky+transform ignores z-index on flings.
+    // Clip the row to the live banner bottom so nothing can paint over the photo.
+    if (avatarRow) {
+      if (!collapseOn || !v.avatarUnderBanner || !bannerShell) {
+        avatarRow.style.clipPath = ''
+        avatarRow.style.webkitClipPath = ''
+      } else {
+        const br = bannerShell.getBoundingClientRect()
+        const ar = avatarRow.getBoundingClientRect()
+        const clipPx = Math.max(0, Math.ceil(br.bottom - ar.top + 1))
+        const clip = clipPx > 0 ? `inset(${clipPx}px 0 0 0)` : 'none'
+        avatarRow.style.clipPath = clip
+        avatarRow.style.webkitClipPath = clip
+      }
+    }
     const compact = profileCompactNameRef.current
     if (compact) {
       compact.style.opacity = String(nameOp)

@@ -204,14 +204,15 @@ const PROBE_LOGGING = [
  * @param {number} durSec
  * @param {{ forceSsBeforeInput?: boolean }} [opts]
  */
-function buildInputArgs(inputPath, startSec, durSec, opts = {}) {
+function buildInputArgs(inputPath, startSec, opts = {}) {
   const start = Math.max(0, Number(startSec) || 0)
-  const dur = Math.max(0.001, Number(durSec) || 0)
   const movHints = /\.mov$/i.test(inputPath) ? ['-ignore_editlist', '1'] : []
+  // `-t` must NOT sit here. A second `-i` (browser-extracted audio) would steal it as an
+  // input option, so a 1:07 source trimmed 0–60 still muxes the full file.
   if (opts.forceSsBeforeInput || start > 0.05) {
-    return [...movHints, '-ss', String(start), '-i', inputPath, '-t', String(dur)]
+    return [...movHints, '-ss', String(start), '-i', inputPath]
   }
-  return [...movHints, '-i', inputPath, '-t', String(dur)]
+  return [...movHints, '-i', inputPath]
 }
 
 const DECODABLE_AUDIO_CODECS = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac', 'alac', 'mp4a'])
@@ -521,10 +522,12 @@ async function probeFfmpegOutputFileMeta(ffmpeg, outName, signal, opts = {}) {
  * @param {string} vf scale/crop filter chain without leading format=
  * @param {{ videoOnly?: boolean, useMaps?: boolean, audioCopy?: boolean, maps?: string[] }} strategy
  * @param {string} outName
+ * @param {number} durSec output duration cap (`-t` after all inputs)
  */
-function buildOutputArgs(vf, strategy, outName) {
+function buildOutputArgs(vf, strategy, outName, durSec) {
   const videoOnly = Boolean(strategy.videoOnly)
   const videoCopy = Boolean(strategy.videoCopy)
+  const dur = Math.max(0.001, Number(durSec) || 0)
   /** @type {string[]} */
   let maps = []
   if (Array.isArray(strategy.maps) && strategy.maps.length > 0) {
@@ -542,7 +545,7 @@ function buildOutputArgs(vf, strategy, outName) {
   } else {
     audio = ['-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100']
   }
-  const mux = ['-movflags', '+faststart', '-y', outName]
+  const mux = ['-t', String(dur), '-movflags', '+faststart', '-y', outName]
   if (videoCopy) {
     return [...maps, '-c:v', 'copy', ...audio, ...mux]
   }
@@ -889,7 +892,7 @@ async function runWasmEncodeStrategyLoop(ffmpeg, ctx) {
     } catch {
       // ignore
     }
-    const inputPart = buildInputArgs(inputPath, startSec, dur, {
+    const inputPart = buildInputArgs(inputPath, startSec, {
       forceSsBeforeInput: strategy.forceSsBeforeInput,
     })
     /** @type {string[]} */
@@ -897,7 +900,7 @@ async function runWasmEncodeStrategyLoop(ffmpeg, ctx) {
     if (strategy.browserAudioFile) {
       args.push('-i', strategy.browserAudioFile)
     }
-    args.push(...buildOutputArgs(vf, strategy, outName))
+    args.push(...buildOutputArgs(vf, strategy, outName, dur))
     const { code, logs, timedOut, stalled } = await execFfmpegLoggedWithStallWatch(
       ffmpeg,
       args,
@@ -1423,7 +1426,7 @@ async function wasmReencodeToMp4({
       } catch {
         // ignore
       }
-      const inputPart = buildInputArgs(inputPath, start, dur, {
+      const inputPart = buildInputArgs(inputPath, start, {
         forceSsBeforeInput: strategy.forceSsBeforeInput,
       })
       /** @type {string[]} */
@@ -1431,7 +1434,7 @@ async function wasmReencodeToMp4({
       if (strategy.browserAudioFile) {
         args.push('-i', strategy.browserAudioFile)
       }
-      args.push(...buildOutputArgs(vf, strategy, outName))
+      args.push(...buildOutputArgs(vf, strategy, outName, dur))
       const { code, logs, timedOut, stalled } = await execFfmpegLoggedWithStallWatch(
         ffmpeg,
         args,

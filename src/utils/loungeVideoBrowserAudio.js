@@ -7,11 +7,10 @@ import { detectAppleWebKitInlineStream } from './loungeAppleWebKit.js'
 import { isAndroidBrowser } from './loungeVideoUpload.js'
 
 const DESKTOP_EXTRACT_PLAYBACK_RATE = 4
-const APPLE_EXTRACT_PLAYBACK_RATE = 8
 const EXTRACT_TIMEOUT_PAD_MS = 3000
 const PLAY_START_TIMEOUT_MS = 3500
 const PLAYBACK_STALL_MS = 4500
-const MAX_ATTEMPT_MS = 55000
+const MAX_ATTEMPT_MS = 80000
 const MIN_CAPTURE_BYTES_PER_SEC = 4000
 const MIN_CAPTURE_BYTES_FLOOR = 16000
 const MIN_TRIM_VIDEO_BYTES_PER_SEC = 45000
@@ -636,9 +635,9 @@ function buildExtractAttempts(isApple) {
   if (isApple) {
     return [
       {
-        name: 'web-audio-volume0-8x',
+        name: 'web-audio-volume0-1x',
         muted: false,
-        playbackRate: APPLE_EXTRACT_PLAYBACK_RATE,
+        playbackRate: 1,
         silentViaVolume: true,
         silentMonitor: true,
       },
@@ -666,9 +665,9 @@ function buildExtractAttempts(isApple) {
         useCaptureStream: true,
       },
       {
-        name: 'web-audio-volume0-4x',
+        name: 'web-audio-volume0-1x',
         muted: false,
-        playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+        playbackRate: 1,
         silentViaVolume: true,
         silentMonitor: true,
       },
@@ -676,22 +675,21 @@ function buildExtractAttempts(isApple) {
   }
   return [
     {
+      name: 'capture-stream-volume0-1x',
+      muted: false,
+      playbackRate: 1,
+      useCaptureStream: true,
+    },
+    {
       name: 'capture-stream-volume0-4x',
       muted: false,
       playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
       useCaptureStream: true,
     },
     {
-      name: 'web-audio-volume0-8x',
+      name: 'web-audio-volume0-1x',
       muted: false,
-      playbackRate: 8,
-      silentViaVolume: true,
-      silentMonitor: true,
-    },
-    {
-      name: 'web-audio-volume0-4x',
-      muted: false,
-      playbackRate: DESKTOP_EXTRACT_PLAYBACK_RATE,
+      playbackRate: 1,
       silentViaVolume: true,
       silentMonitor: true,
     },

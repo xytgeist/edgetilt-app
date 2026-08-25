@@ -312,33 +312,17 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       } catch (trimErr) {
         const msg = trimErr instanceof Error ? trimErr.message : String(trimErr)
         maybeReportLoungeVideoUploadDebug('encode', `failed android trim: ${msg}`)
-        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile) && !trimForceWasmEncode) {
-          maybeReportLoungeVideoUploadDebug(
-            'encode',
-            'fallback pass-through original (CF Stream transcode)',
-          )
-          recordLoungeVideoPrepOutcome({
-            outcome: 'pass-through',
-            sourceMb: trimSourceMb,
-            outputMb: trimSourceMb,
-            durSec: validatedDurSec,
-            detail: msg.slice(0, 200),
-          })
-          report(0.39, 'Compress skipped', '', 1)
-          uploadFile = spec.sourceFile
-        } else {
-          recordLoungeVideoPrepOutcome({
-            outcome: 'wasm-failed',
-            sourceMb: trimSourceMb,
-            outputMb: 0,
-            durSec: validatedDurSec,
-            detail: msg.slice(0, 200),
-          })
-          if (trimForceWasmEncode) {
-            throw new Error(loungeIphoneScreenRecordingEncodeFailMessage())
-          }
-          throw trimErr
+        recordLoungeVideoPrepOutcome({
+          outcome: 'wasm-failed',
+          sourceMb: trimSourceMb,
+          outputMb: 0,
+          durSec: validatedDurSec,
+          detail: msg.slice(0, 200),
+        })
+        if (trimForceWasmEncode) {
+          throw new Error(loungeIphoneScreenRecordingEncodeFailMessage())
         }
+        throw trimErr
       }
     } else {
       report(0.05, 'Encoding…', '', 1)
@@ -364,33 +348,17 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       } catch (encodeErr) {
         const msg = encodeErr instanceof Error ? encodeErr.message : String(encodeErr)
         maybeReportLoungeVideoUploadDebug('encode', `failed trim: ${msg}`)
-        if (canPassThroughLoungeVideoOnEncodeFail(spec.sourceFile) && !trimForceWasmEncode) {
-          maybeReportLoungeVideoUploadDebug(
-            'encode',
-            'fallback pass-through original (CF Stream transcode)',
-          )
-          recordLoungeVideoPrepOutcome({
-            outcome: 'pass-through',
-            sourceMb: trimSourceMb,
-            outputMb: trimSourceMb,
-            durSec: validatedDurSec,
-            detail: msg.slice(0, 200),
-          })
-          report(0.39, 'Compress skipped', '', 1)
-          uploadFile = spec.sourceFile
-        } else {
-          recordLoungeVideoPrepOutcome({
-            outcome: 'wasm-failed',
-            sourceMb: trimSourceMb,
-            outputMb: 0,
-            durSec: validatedDurSec,
-            detail: msg.slice(0, 200),
-          })
-          if (trimForceWasmEncode) {
-            throw new Error(loungeIphoneScreenRecordingEncodeFailMessage())
-          }
-          throw encodeErr
+        recordLoungeVideoPrepOutcome({
+          outcome: 'wasm-failed',
+          sourceMb: trimSourceMb,
+          outputMb: 0,
+          durSec: validatedDurSec,
+          detail: msg.slice(0, 200),
+        })
+        if (trimForceWasmEncode) {
+          throw new Error(loungeIphoneScreenRecordingEncodeFailMessage())
         }
+        throw encodeErr
       }
     }
   }

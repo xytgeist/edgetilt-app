@@ -1883,6 +1883,19 @@ export default function LoungeProfileFullScreen({
       || showOwnEditControls
 
     if (!chromeDirty && iosWebTitle) {
+      // Still drive compact title slide every frame (titleHide may be stable while frac stays).
+      const compact = profileCompactNameRef.current
+      if (compact) {
+        const titleFrac = Math.max(0, Math.min(1, 1 - titleHidePx / Math.max(1, iosWebTitleH)))
+        const reduceMotion = profileCollapseReduceMotionRef.current
+        if (reduceMotion) {
+          compact.style.opacity = String(titleFrac)
+          compact.style.transform = 'translate3d(0, 0, 0)'
+        } else {
+          compact.style.opacity = titleFrac > 0.02 ? '1' : '0'
+          compact.style.transform = `translate3d(0, ${(1 - titleFrac) * PROFILE_COMPACT_NAME_SLIDE_PX}px, 0)`
+        }
+      }
       return
     }
 
@@ -1924,6 +1937,21 @@ export default function LoungeProfileFullScreen({
         titleBar.hidden = true
         titleBar.style.opacity = '0'
         titleBar.style.transform = ''
+      }
+    }
+
+    if (iosWebTitle) {
+      const compact = profileCompactNameRef.current
+      if (compact) {
+        const titleFrac = Math.max(0, Math.min(1, 1 - titleHidePx / Math.max(1, iosWebTitleH)))
+        const reduceMotion = profileCollapseReduceMotionRef.current
+        if (reduceMotion) {
+          compact.style.opacity = String(titleFrac)
+          compact.style.transform = 'translate3d(0, 0, 0)'
+        } else {
+          compact.style.opacity = titleFrac > 0.02 ? '1' : '0'
+          compact.style.transform = `translate3d(0, ${(1 - titleFrac) * PROFILE_COMPACT_NAME_SLIDE_PX}px, 0)`
+        }
       }
     }
 
@@ -2972,8 +3000,28 @@ export default function LoungeProfileFullScreen({
             aria-hidden
             hidden
             data-lounge-profile-ios-web-title-bar=""
-            className="pointer-events-none absolute inset-x-0 top-0 z-0 opacity-0"
-          />
+            className="pointer-events-none absolute inset-x-0 top-0 z-0 overflow-hidden opacity-0"
+          >
+            {!showOwnEditControls && !profileCollapseEnabled ? (
+              <div
+                ref={profileCompactNameRef}
+                data-lounge-profile-compact-name=""
+                data-lounge-profile-compact-ios-web=""
+                className="pointer-events-none absolute inset-x-12 bottom-0 flex h-12 min-w-0 flex-col items-center justify-center text-center text-white opacity-0 sm:inset-x-16"
+                style={{ transform: `translate3d(0, ${PROFILE_COMPACT_NAME_SLIDE_PX}px, 0)` }}
+              >
+                <span className="min-w-0 max-w-full truncate text-[16px] font-bold leading-tight sm:text-[17px]">
+                  {displayName}
+                </span>
+                <span
+                  className="min-w-0 max-w-full truncate text-[13px] font-normal leading-tight text-white/90"
+                  title={fullStatCountTitle(compactPostsCount)}
+                >
+                  {compactPostsLabel}
+                </span>
+              </div>
+            ) : null}
+          </div>
           <div
             className="relative z-[1] px-2 pb-1 sm:px-3"
             style={{

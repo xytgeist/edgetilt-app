@@ -1676,24 +1676,28 @@ export default function LoungeProfileFullScreen({
     const feedPresence = iosWebTitle
       ? Math.max(0, Math.min(1, (scrollYForChrome - bannerClearY) / feedEnter))
       : 0
-    // Over banner: entire chrome leaves with the page. In feed: dock + edge slide.
     const contentHide = Math.min(iosWebTitleH, scrollYForChrome)
     const dockHide = (1 - chromeReveal) * iosWebTitleH
     const edgeHide = (1 - feedPresence) * iosWebTitleH
     const inFeedChrome = feedPresence > 0.001
-    const iosWebHidePx = Math.round(
-      inFeedChrome ? Math.max(dockHide, edgeHide) : contentHide,
+    // Title plate: dock hide + banner-edge slide. Buttons: dock / content only (stay on edge exit).
+    const titleHidePx = Math.round(
+      inFeedChrome ? Math.max(dockHide, edgeHide) : iosWebTitleH,
     )
-    const chromeVisible = iosWebTitle && iosWebHidePx < iosWebTitleH - 1
+    const buttonHidePx = Math.round(inFeedChrome ? dockHide : contentHide)
+    const titleOnScreen = iosWebTitle && inFeedChrome && titleHidePx < iosWebTitleH - 1
+    const buttonsOnScreen = iosWebTitle && buttonHidePx < iosWebTitleH - 1
 
     const iosWebSlide = profileIosWebSlideRef.current
     if (iosWebSlide) {
+      // Stack stays put … title plate and buttons move independently.
+      iosWebSlide.style.transform = ''
       if (iosWebTitle) {
-        iosWebSlide.style.transform = `translate3d(0, ${-iosWebHidePx}px, 0)`
-        iosWebSlide.setAttribute('data-lounge-profile-ios-web-hide', String(iosWebHidePx))
+        iosWebSlide.setAttribute('data-lounge-profile-ios-web-title-hide', String(titleHidePx))
+        iosWebSlide.setAttribute('data-lounge-profile-ios-web-btn-hide', String(buttonHidePx))
       } else {
-        iosWebSlide.style.transform = ''
-        iosWebSlide.removeAttribute('data-lounge-profile-ios-web-hide')
+        iosWebSlide.removeAttribute('data-lounge-profile-ios-web-title-hide')
+        iosWebSlide.removeAttribute('data-lounge-profile-ios-web-btn-hide')
       }
     }
 
@@ -1702,8 +1706,10 @@ export default function LoungeProfileFullScreen({
       if (iosWebTitle) {
         statusPlate.hidden = false
         statusPlate.style.height = `${sat}px`
-        // Solid once feed chrome is engaging … stay while tabs can tuck under status.
-        statusPlate.style.opacity = inFeedChrome && chromeVisible ? '1' : '0'
+        statusPlate.style.transform = ''
+        // Stay opaque for the whole in-feed stretch so tabs can sit flush under status
+        // when the white title plate has slid away (no air gap).
+        statusPlate.style.opacity = inFeedChrome ? '1' : '0'
       } else {
         statusPlate.hidden = true
         statusPlate.style.opacity = '0'
@@ -1714,9 +1720,8 @@ export default function LoungeProfileFullScreen({
       if (iosWebTitle) {
         titleBar.hidden = false
         titleBar.style.height = `${iosWebTitleH}px`
-        titleBar.style.transform = ''
-        // Slide is on the parent … keep opaque while any of the bar is on-screen.
-        titleBar.style.opacity = inFeedChrome && chromeVisible ? '1' : '0'
+        titleBar.style.transform = `translate3d(0, ${-titleHidePx}px, 0)`
+        titleBar.style.opacity = titleOnScreen ? '1' : '0'
       } else {
         titleBar.hidden = true
         titleBar.style.opacity = '0'
@@ -1729,9 +1734,8 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.transform = ''
         chromeMotion.style.opacity = ''
       } else if (iosWebTitle) {
-        // Parent slide moves back/menu; no second transform here.
-        chromeMotion.style.transform = ''
-        chromeMotion.style.opacity = chromeVisible ? '1' : '0'
+        chromeMotion.style.transform = `translate3d(0, ${-buttonHidePx}px, 0)`
+        chromeMotion.style.opacity = buttonsOnScreen ? '1' : '0'
       } else if (collapseOn) {
         const nudge = profileChromeCenterNudgePxRef.current
         chromeMotion.style.transform =
@@ -1742,7 +1746,7 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.opacity = ''
       }
     }
-    // iOS web/PWA: tabs ride the title-bar bottom (overlap kills hairline gap).
+    // Tabs track the title plate bottom (not the buttons).
     const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
     if (tabsEl) {
       let tabsTop = collapseOn
@@ -1750,7 +1754,7 @@ export default function LoungeProfileFullScreen({
         : Math.max(0, Math.round(readCssSafeAreaTopPx()))
       if (iosWebTitle) {
         if (inFeedChrome) {
-          const titleBottom = iosWebTitleH - iosWebHidePx
+          const titleBottom = iosWebTitleH - titleHidePx
           const overlap =
             titleBottom > sat + PROFILE_IOS_WEB_TABS_OVERLAP_PX
               ? PROFILE_IOS_WEB_TABS_OVERLAP_PX

@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **Android profile chrome buttons:** Restored frosted `backdrop-blur` on back/⋯ (solid dark glass looked wrong). Tabs stay opaque on Android for scroll cost. Tip after this commit.
 - 2026-08-24: **Android profile scroll perf:** Cache safe-area env probe (was DOM-creating every scroll frame). Classic/title-chrome path skips collapse style thrash; diff title/tabs writes; throttle parent FAB dock reveal setState; Android-only opaque chrome (no backdrop-blur). IPA collapse unchanged. Files: `edgeSafeAreaCss.js`, `LoungeProfileFullScreen.jsx`, `index.css`.
 - 2026-08-24: **Android profile = iOS PWA title chrome:** Sticky X-collapse off on Android (same as iOS Safari/PWA). Classic scroll + `profileIosWebTitleChromeEnabled` (opaque plates, dock-hide, near-top handoff, tabs ride title). Scratched Android layout-shrink / transform hacks. IPA keeps collapse. Files: `loungeProfileScrollCollapse.js`, `LoungeProfileFullScreen.jsx`.
 - 2026-08-24: **IPA profile banner frost (Ryan sign-off):** Backdrop-filter overlay (photo stays sharp … no `filter:blur` squeeze/zoom). Banner fill paints 3px past layout bottom to kill sticky/backdrop hairline. Tip **`test` @ `c635940b`**.

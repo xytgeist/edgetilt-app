@@ -1931,14 +1931,9 @@ html.light [data-lounge-profile-tabs][data-lounge-profile-ios-web-tabs] {
 }
 
 /*
- * Android Chrome: backdrop-filter over scrolling feed/banner is expensive.
- * Classic title-chrome path uses opaque solids (same as iOS-web tabs when latched).
+ * Android Chrome: backdrop-filter on sticky tabs over a scrolling feed is expensive.
+ * Buttons keep frosted glass; tabs stay opaque (same as iOS-web when latched).
  */
-[data-lounge-profile-sheet][data-lounge-profile-android-perf] [data-lounge-profile-banner-chrome] {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background-color: rgba(24, 24, 27, 0.72) !important;
-}
 [data-lounge-profile-sheet][data-lounge-profile-android-perf] [data-lounge-profile-tabs] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;

@@ -1902,6 +1902,10 @@ html.light [data-lounge-profile-compact-name] {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+html.light [data-lounge-profile-compact-name] span {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
 [data-lounge-profile-tabs] {
   /* Sticky tabs under collapsed chrome … solid fallback for weak backdrop-filter. */
   background-color: rgba(9, 9, 11, 0.94);

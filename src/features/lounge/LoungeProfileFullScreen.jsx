@@ -13,7 +13,7 @@ import {
   profileChromeCenterNudgePx,
   profileCollapseShellPreset,
   profileCollapseVisuals,
-  profileCompactNameOpacity,
+  profileCompactNameReveal,
   profileLiveBannerBlurProgress,
   profileIosWebTitleChromeEnabled,
   profileScrollCollapseEnabled,
@@ -21,6 +21,7 @@ import {
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
+  PROFILE_COMPACT_NAME_SLIDE_PX,
   PROFILE_IOS_WEB_TABS_OVERLAP_PX,
   PROFILE_IOS_WEB_TITLE_BAR_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
@@ -717,6 +718,8 @@ export default function LoungeProfileFullScreen({
   const profileLoadMoreSentinelRef = useRef(null)
   const [followerCount, setFollowerCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(0)
+  /** Author's visible Lounge posts total for collapsed chrome subtitle. */
+  const [profilePostsTotal, setProfilePostsTotal] = useState(0)
   const [isFollowing, setIsFollowing] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [profileFollowsViewer, setProfileFollowsViewer] = useState(false)
@@ -861,6 +864,12 @@ export default function LoungeProfileFullScreen({
   const profilePostRowPerfStyle = useMemo(() => loungeFeedPostRowPerfStyle(), [])
 
   const displayName = String(profile?.display_name || profile?.handle || 'Member').trim() || 'Member'
+  const compactPostsCount =
+    profilePostsTotal > 0 ? profilePostsTotal : Array.isArray(posts) ? posts.length : 0
+  const compactPostsLabel =
+    compactPostsCount === 1
+      ? `${formatCompactStatCount(1)} post`
+      : `${formatCompactStatCount(compactPostsCount)} posts`
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
   const aboutDisplay = String(profile?.about_me || profile?.bio || '').trim()
   const locationDisplay = normalizeProfileLocation(profile?.location)
@@ -1628,7 +1637,10 @@ export default function LoungeProfileFullScreen({
           avatar.style.marginTop = ''
         }
         const compact = profileCompactNameRef.current
-        if (compact) compact.style.opacity = '0'
+        if (compact) {
+          compact.style.opacity = '0'
+          compact.style.transform = `translate3d(0, ${PROFILE_COMPACT_NAME_SLIDE_PX}px, 0)`
+        }
       }
     } else {
       profileClassicChromeClearedRef.current = false
@@ -1640,9 +1652,9 @@ export default function LoungeProfileFullScreen({
         shrinkEasePower: motion.shrinkEasePower,
         minScale: motion.minScale,
       })
-      const nameOp = forceZero
-        ? 0
-        : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
+      const nameReveal = forceZero
+        ? { progress: 0, opacity: 0, translateYPx: PROFILE_COMPACT_NAME_SLIDE_PX }
+        : profileCompactNameReveal(y, profileNameRevealScrollRef.current)
 
       // Live blur: wait for avatar tuck, ramp until display name enters under the banner.
       // IPA uses scroll-distance ramp (name-gap alone flashed to full).
@@ -1772,7 +1784,13 @@ export default function LoungeProfileFullScreen({
       }
       const compact = profileCompactNameRef.current
       if (compact) {
-        compact.style.opacity = String(nameOp)
+        if (reduce) {
+          compact.style.opacity = String(nameReveal.progress)
+          compact.style.transform = 'translate3d(0, 0, 0)'
+        } else {
+          compact.style.opacity = String(nameReveal.opacity)
+          compact.style.transform = `translate3d(0, ${nameReveal.translateYPx}px, 0)`
+        }
       }
     }
 
@@ -2150,13 +2168,35 @@ export default function LoungeProfileFullScreen({
     }
   }, [profileUserId, supabaseClient, viewerUserId])
 
+  const refreshProfilePostsTotal = useCallback(async () => {
+    const uid = String(profileUserId || '').trim()
+    if (!uid || !supabaseClient) {
+      setProfilePostsTotal(0)
+      return
+    }
+    try {
+      // Match profile Posts list filters (hidden + thread roots excluded).
+      const { count, error } = await supabaseClient
+        .from('community_feed_posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', uid)
+        .is('hidden_at', null)
+        .is('thread_root_id', null)
+      if (error) throw error
+      setProfilePostsTotal(typeof count === 'number' ? count : 0)
+    } catch {
+      setProfilePostsTotal(0)
+    }
+  }, [profileUserId, supabaseClient])
+
   useEffect(() => {
     if (!open || !panelVisible) return
     const raf = window.requestAnimationFrame(() => {
       void refreshSocial()
+      void refreshProfilePostsTotal()
     })
     return () => window.cancelAnimationFrame(raf)
-  }, [open, panelVisible, refreshSocial])
+  }, [open, panelVisible, refreshSocial, refreshProfilePostsTotal])
 
   const reloadCreatorFanSubState = useCallback(async () => {
     if (!open || !panelVisible || !profileUserId || isOwnProfile) {
@@ -2943,7 +2983,7 @@ export default function LoungeProfileFullScreen({
           >
             <div
               ref={profileChromeMotionRef}
-              className="relative flex min-h-10 items-center justify-between gap-2 will-change-transform"
+              className="relative flex min-h-10 items-center justify-between gap-2 overflow-hidden will-change-transform"
               data-lounge-profile-chrome-motion=""
             >
             <button
@@ -2963,14 +3003,24 @@ export default function LoungeProfileFullScreen({
                 <LoungeBackArrowIcon />
               )}
             </button>
-            {!showOwnEditControls ? (
+            {!showOwnEditControls && profileCollapseEnabled ? (
               <div
                 ref={profileCompactNameRef}
                 data-lounge-profile-compact-name=""
-                className="pointer-events-none absolute inset-x-14 inset-y-0 flex min-w-0 items-center justify-center truncate text-center text-[15px] font-bold leading-tight text-white opacity-0 sm:inset-x-16 sm:text-[16px]"
+                data-lounge-profile-compact-collapse=""
+                className="pointer-events-none absolute bottom-0 left-12 right-14 top-0 flex min-w-0 flex-col justify-center text-left text-white opacity-0 sm:left-[3.25rem] sm:right-16"
+                style={{ transform: `translate3d(0, ${PROFILE_COMPACT_NAME_SLIDE_PX}px, 0)` }}
                 aria-hidden
               >
-                <span className="min-w-0 truncate">{displayName}</span>
+                <span className="min-w-0 truncate text-[15px] font-bold leading-tight sm:text-[16px]">
+                  {displayName}
+                </span>
+                <span
+                  className="min-w-0 truncate text-[12px] font-normal leading-tight text-white/90"
+                  title={fullStatCountTitle(compactPostsCount)}
+                >
+                  {compactPostsLabel}
+                </span>
               </div>
             ) : null}
             {isOwnProfile ? (

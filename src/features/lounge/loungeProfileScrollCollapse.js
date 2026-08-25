@@ -10,14 +10,18 @@
  * - Banner pins via `position: sticky`.
  * - Avatar lag + shrink presets differ IPA vs desktop.
  * - Blur: live avatar tuck → ramp until display name enters (scroll-distance ramp on Apple).
+ * - Compact chrome title (IPA / desktop web): left-aligned name + posts, slides up from below.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
 
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 
-/** Extra scroll after collapse before the compact name is fully opaque. */
+/** Extra scroll after collapse before the compact title finishes sliding in. */
 export const PROFILE_COMPACT_NAME_FADE_PX = 36
+
+/** Compact title slide distance (from below into the chrome row). */
+export const PROFILE_COMPACT_NAME_SLIDE_PX = 18
 
 /** Collapsed chrome row under the status bar (back / name / ⋯). */
 export const PROFILE_COLLAPSED_CHROME_ROW_PX = 48
@@ -387,16 +391,33 @@ export function profileBannerBlurStartScrollPx({
 }
 
 /**
- * Compact title opacity once the large display name has crossed under the collapsed bar.
+ * Compact title reveal once the large display name has crossed under the collapsed bar.
+ * IPA / desktop web: slide up from below (no fade). Progress still ramps over
+ * {@link PROFILE_COMPACT_NAME_FADE_PX}.
+ * @param {number} scrollTop
+ * @param {number} nameRevealScrollTop scrollTop when name should start appearing
+ * @returns {{ progress: number, opacity: number, translateYPx: number }}
+ */
+export function profileCompactNameReveal(scrollTop, nameRevealScrollTop) {
+  const y = Number(scrollTop) || 0
+  const start = Math.max(0, Number(nameRevealScrollTop) || 0)
+  if (y <= start) return { progress: 0, opacity: 0, translateYPx: PROFILE_COMPACT_NAME_SLIDE_PX }
+  const t = Math.max(0, Math.min(1, (y - start) / PROFILE_COMPACT_NAME_FADE_PX))
+  return {
+    progress: t,
+    // Visible for the whole slide … motion is translate, not opacity.
+    opacity: t > 0 ? 1 : 0,
+    translateYPx: (1 - t) * PROFILE_COMPACT_NAME_SLIDE_PX,
+  }
+}
+
+/**
+ * @deprecated Prefer {@link profileCompactNameReveal} (slide). Kept for any opacity-only callers.
  * @param {number} scrollTop
  * @param {number} nameRevealScrollTop scrollTop when name should start appearing
  */
 export function profileCompactNameOpacity(scrollTop, nameRevealScrollTop) {
-  const y = Number(scrollTop) || 0
-  const start = Math.max(0, Number(nameRevealScrollTop) || 0)
-  if (y <= start) return 0
-  const t = (y - start) / PROFILE_COMPACT_NAME_FADE_PX
-  return Math.max(0, Math.min(1, t))
+  return profileCompactNameReveal(scrollTop, nameRevealScrollTop).progress
 }
 
 /**

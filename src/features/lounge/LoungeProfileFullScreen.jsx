@@ -3,11 +3,14 @@ import { createPortal } from 'react-dom'
 import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
 import {
   prefersReducedMotion,
+  profileBannerPinScrollRangePx,
+  profileBannerStickyTopPx,
   profileCollapseProgress,
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileTabsStickyTopPx,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
+  PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
@@ -754,6 +757,8 @@ export default function LoungeProfileFullScreen({
   const profileCollapsedScrimRef = useRef(null)
   const profileNameRevealScrollRef = useRef(80)
   const profileStickyTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
+  const profileCollapseRangePxRef = useRef(112)
+  const profileBannerStickyTopPxRef = useRef(0)
   const profileCollapseReduceMotionRef = useRef(false)
   const [profileTabsStickyTopPxState, setProfileTabsStickyTopPxState] = useState(
     PROFILE_COLLAPSED_CHROME_ROW_PX,
@@ -1514,7 +1519,9 @@ export default function LoungeProfileFullScreen({
     const forceZero = Boolean(opts.forceZero) || showOwnEditControls
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
-    const progress = forceZero ? 0 : profileCollapseProgress(y)
+    const progress = forceZero
+      ? 0
+      : profileCollapseProgress(y, profileCollapseRangePxRef.current)
     const v = profileCollapseVisuals(progress, { reduceMotion: reduce })
     const nameOp = forceZero
       ? 0
@@ -1522,13 +1529,14 @@ export default function LoungeProfileFullScreen({
 
     const media = profileBannerMediaRef.current
     if (media) {
-      media.style.transform = `translate3d(0, ${v.bannerTranslateY}px, 0) scale(1.04)`
+      media.style.transform = ''
       media.style.filter = ''
     }
     const bannerShell = profileBannerShellRef.current
     if (bannerShell) {
-      // Raise banner over the avatar row only during the late tuck-under phase.
-      bannerShell.style.zIndex = v.avatarUnderBanner ? '22' : '10'
+      // Sticky pin … raise over avatar only during the late tuck-under phase.
+      bannerShell.style.zIndex = v.avatarUnderBanner ? '22' : '18'
+      bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
     }
     const liveScrim = profileBannerLiveScrimRef.current
     if (liveScrim) {
@@ -1552,12 +1560,24 @@ export default function LoungeProfileFullScreen({
 
   const measureProfileCollapseGeometry = useCallback(() => {
     const bar = profileTopChromeRef.current
+    const banner = profileBannerShellRef.current
     const chromeH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0
+    const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
     const sat = readCssSafeAreaTopPx()
-    const stickyTop =
-      chromeH > 0 ? chromeH : profileTabsStickyTopPx(sat)
-    profileStickyTopPxRef.current = stickyTop
-    setProfileTabsStickyTopPxState((prev) => (prev === stickyTop ? prev : stickyTop))
+    const pinnedVisible =
+      (chromeH > 0 ? chromeH : PROFILE_COLLAPSED_CHROME_ROW_PX + sat)
+      + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
+    const bannerStickyTop = profileBannerStickyTopPx(bannerH, pinnedVisible)
+    const pinRange = profileBannerPinScrollRangePx(bannerH, pinnedVisible)
+
+    profileBannerStickyTopPxRef.current = bannerStickyTop
+    profileCollapseRangePxRef.current = pinRange
+    profileStickyTopPxRef.current = pinnedVisible
+    setProfileTabsStickyTopPxState((prev) => (prev === pinnedVisible ? prev : pinnedVisible))
+
+    if (banner) {
+      banner.style.top = `${bannerStickyTop}px`
+    }
 
     const scrollEl = profileBodyScrollRef.current
     const nameEl = profileDisplayNameRef.current
@@ -1565,8 +1585,8 @@ export default function LoungeProfileFullScreen({
       const scrollRect = scrollEl.getBoundingClientRect()
       const nameRect = nameEl.getBoundingClientRect()
       const nameDocTop = nameRect.top - scrollRect.top + scrollEl.scrollTop
-      // Compact title fades in as the large name crosses under the pinned chrome.
-      profileNameRevealScrollRef.current = Math.max(36, Math.round(nameDocTop - stickyTop + 8))
+      // Compact title fades in as the large name crosses under the pinned banner strip.
+      profileNameRevealScrollRef.current = Math.max(36, Math.round(nameDocTop - pinnedVisible + 8))
     }
   }, [])
 
@@ -2596,11 +2616,13 @@ export default function LoungeProfileFullScreen({
         >
           <div
             ref={profileBannerShellRef}
-            className="relative z-10 w-full shrink-0"
+            className="sticky z-[18] w-full shrink-0"
             data-lounge-profile-banner=""
             style={{
               // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.
+              // Sticky `top` is measured so the pinned strip ends ~10px below chrome buttons.
               paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
+              top: 0,
             }}
           >
             <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">

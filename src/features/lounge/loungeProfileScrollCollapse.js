@@ -3,27 +3,33 @@
  *
  * Cross-platform (IPA WKWebView, iOS/Android PWA, Android Chrome, desktop):
  * - Progress is pure scrollTop math (no shell-only APIs).
- * - Callers apply transforms/opacity/filter; use solid overlay fallback when
- *   `backdrop-filter` is weak (some Android WebViews).
+ * - Banner pins via `position: sticky` (not scroll-away + fake translate).
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  *
  * Motion notes (from X reference recording):
+ * - Banner slides up a short distance then sticks; pinned bottom ≈ chrome
+ *   button bottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX.
  * - Avatar starts ON TOP of the banner with ~1/4 overlap.
- * - Shrink uses top-anchored scale so the avatar crown stays put, then a late
- *   tuck slides it under the pinned banner.
- * - Collapsed blur/scrim only appears once the banner has settled (not mid-scroll).
+ * - Shrink uses top-anchored scale; late tuck slides under the pinned banner.
+ * - Collapsed blur/scrim only appears once the banner has settled.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
-
-/** Scroll distance (px) over which the banner pins and the avatar shrinks/tucks. */
-export const PROFILE_COLLAPSE_RANGE_PX = 112
 
 /** Extra scroll after collapse before the compact name is fully opaque. */
 export const PROFILE_COMPACT_NAME_FADE_PX = 36
 
 /** Collapsed chrome row under the status bar (back / name / ⋯). */
 export const PROFILE_COLLAPSED_CHROME_ROW_PX = 48
+
+/**
+ * Pinned banner bottom sits this many px below the chrome button row bottom.
+ * (X: thin banner strip under back / ⋯.)
+ */
+export const PROFILE_PINNED_BANNER_BELOW_CHROME_PX = 10
+
+/** Fallback scroll range when banner geometry is not measured yet. */
+export const PROFILE_COLLAPSE_RANGE_PX = 112
 
 /**
  * Progress fraction where shrink finishes and tuck-under begins.
@@ -36,6 +42,29 @@ export const PROFILE_AVATAR_TUCK_START = 0.72
  * Before this, banner stays sharp (blur mid-parallax looks wrong).
  */
 export const PROFILE_PIN_SCRIM_START = 0.9
+
+/**
+ * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.
+ * @param {number} bannerHeightPx full in-flow banner height
+ * @param {number} pinnedVisiblePx height that stays on screen when stuck
+ */
+export function profileBannerStickyTopPx(bannerHeightPx, pinnedVisiblePx) {
+  const h = Math.max(0, Math.round(Number(bannerHeightPx) || 0))
+  const visible = Math.max(0, Math.round(Number(pinnedVisiblePx) || 0))
+  if (h <= 0) return 0
+  return visible - h
+}
+
+/**
+ * Scroll distance until the sticky banner finishes pinning.
+ * @param {number} bannerHeightPx
+ * @param {number} pinnedVisiblePx
+ */
+export function profileBannerPinScrollRangePx(bannerHeightPx, pinnedVisiblePx) {
+  const h = Math.max(0, Math.round(Number(bannerHeightPx) || 0))
+  const visible = Math.max(0, Math.round(Number(pinnedVisiblePx) || 0))
+  return Math.max(24, h - visible)
+}
 
 /**
  * @param {number} scrollTop
@@ -68,23 +97,14 @@ export function profileCollapseVisuals(progress, opts = {}) {
   const pinReveal = Math.max(0, Math.min(1, (ease - pinStart) / (1 - pinStart)))
 
   return {
-    /** Banner parallax while collapsing (negative = up). No mid-scroll blur. */
-    bannerTranslateY: reduce ? 0 : -ease * 14,
-    /** Keep banner image sharp until pinned … blur lives on the collapsed chrome. */
+    /** Sticky handles pin … no mid-scroll banner translate. */
+    bannerTranslateY: 0,
     bannerBlurPx: 0,
-    /** Light rest dim only; do not ramp a visible overlay during parallax. */
     bannerScrim: 0.08,
-    /** Fixed collapsed bar backdrop … appears only at pin. */
     collapsedBarOpacity: pinReveal,
-    /** Large avatar scale (1 → ~0.45) with top edge anchored by transform-origin. */
     avatarScale: 1 - shrinkPhase * 0.55,
-    /**
-     * Late tuck under the banner (after shrink). Keep near-zero during shrink so
-     * the crown stays visually planted.
-     */
     avatarTranslateY: -tuckPhase * 40,
     avatarOpacity: 1 - Math.max(0, (tuckPhase - 0.35) / 0.65),
-    /** When true, paint avatar under the banner so the tuck reads correctly. */
     avatarUnderBanner: tuckPhase > 0.08,
   }
 }
@@ -103,11 +123,15 @@ export function profileCompactNameOpacity(scrollTop, nameRevealScrollTop) {
 }
 
 /**
- * Sticky `top` for the tab strip = safe area + collapsed chrome row.
+ * Sticky `top` for the tab strip = pinned banner bottom (chrome + below gap).
  * @param {number} safeTopPx
  */
 export function profileTabsStickyTopPx(safeTopPx) {
-  return Math.max(0, Math.round(Number(safeTopPx) || 0)) + PROFILE_COLLAPSED_CHROME_ROW_PX
+  return (
+    Math.max(0, Math.round(Number(safeTopPx) || 0))
+    + PROFILE_COLLAPSED_CHROME_ROW_PX
+    + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
+  )
 }
 
 export function prefersReducedMotion() {

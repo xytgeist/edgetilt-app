@@ -889,26 +889,6 @@ export default function LoungeProfileFullScreen({
   const profileTabsTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
   const profileTabsElRef = useRef(/** @type {HTMLElement | null} */ (null))
   const profileTabsAnchorRef = useRef(/** @type {HTMLElement | null} */ (null))
-  const profileTabFeedScrollRef = useRef(/** @type {HTMLElement | null} */ (null))
-  const profileFeedScrollUnlockedRef = useRef(false)
-  const syncProfileFeedScrollLockRef = useRef(/** @type {() => void} */ (() => {}))
-  const [profileTabBarHeightPx, setProfileTabBarHeightPx] = useState(48)
-  const syncProfileFeedScrollLock = useCallback(() => {
-    const outer = profileBodyScrollRef.current
-    const inner = profileTabFeedScrollRef.current
-    if (!inner) return
-    if (!outer || showOwnEditControls) {
-      inner.style.overflowY = 'hidden'
-      profileFeedScrollUnlockedRef.current = false
-      return
-    }
-    const max = Math.max(0, outer.scrollHeight - outer.clientHeight)
-    const unlocked = max <= 2 || outer.scrollTop >= max - 2
-    profileFeedScrollUnlockedRef.current = unlocked
-    inner.style.overflowY = unlocked ? 'auto' : 'hidden'
-    if (!unlocked && inner.scrollTop > 0) inner.scrollTop = 0
-  }, [showOwnEditControls])
-  syncProfileFeedScrollLockRef.current = syncProfileFeedScrollLock
   const profileDockScrollPrevTopRef = useRef(0)
   const profileDockRevealRef = useRef(1)
   const profileDockScrollRafRef = useRef(0)
@@ -938,13 +918,9 @@ export default function LoungeProfileFullScreen({
     navRestoreAppliedRef.current = true
     if (navRestore.tab) setTab(navRestore.tab)
     const top = navRestore.scrollTop
-    const feedTop = navRestore.feedScrollTop
     const applyScroll = () => {
       const el = profileBodyScrollRef.current
       if (el && typeof top === 'number') el.scrollTop = top
-      const feed = profileTabFeedScrollRef.current
-      if (feed && typeof feedTop === 'number') feed.scrollTop = feedTop
-      syncProfileFeedScrollLockRef.current()
     }
     applyScroll()
     requestAnimationFrame(() => requestAnimationFrame(applyScroll))
@@ -958,21 +934,12 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     if (!open || !navSnapshotRef) return
     const el = profileBodyScrollRef.current
-    const feed = profileTabFeedScrollRef.current
     const sync = () => {
-      navSnapshotRef.current = {
-        tab,
-        scrollTop: el?.scrollTop ?? 0,
-        feedScrollTop: feed?.scrollTop ?? 0,
-      }
+      navSnapshotRef.current = { tab, scrollTop: el?.scrollTop ?? 0 }
     }
     sync()
     el?.addEventListener('scroll', sync, { passive: true })
-    feed?.addEventListener('scroll', sync, { passive: true })
-    return () => {
-      el?.removeEventListener('scroll', sync)
-      feed?.removeEventListener('scroll', sync)
-    }
+    return () => el?.removeEventListener('scroll', sync)
   }, [navSnapshotRef, open, tab])
 
   const profilePostRowPerfStyle = useMemo(() => loungeFeedPostRowPerfStyle(), [])
@@ -1011,15 +978,9 @@ export default function LoungeProfileFullScreen({
       }
     }
     setTab(nextId)
-    const feed = profileTabFeedScrollRef.current
-    if (feed) feed.scrollTop = 0
-    if (pinScroll == null) {
-      requestAnimationFrame(() => syncProfileFeedScrollLockRef.current())
-      return
-    }
+    if (pinScroll == null) return
     const apply = () => {
       if (profileBodyScrollRef.current) profileBodyScrollRef.current.scrollTop = pinScroll
-      syncProfileFeedScrollLockRef.current()
     }
     apply()
     requestAnimationFrame(() => requestAnimationFrame(apply))
@@ -1629,7 +1590,7 @@ export default function LoungeProfileFullScreen({
 
   useEffect(() => {
     if (!open || !profileTabHasMore || profileTabLoadingMore) return
-    const root = profileTabFeedScrollRef.current || profileBodyScrollRef.current
+    const root = profileBodyScrollRef.current
     const node = profileLoadMoreSentinelRef.current
     if (!root || !node || typeof window === 'undefined' || !('IntersectionObserver' in window)) return
     const observer = new window.IntersectionObserver(
@@ -2548,7 +2509,6 @@ export default function LoungeProfileFullScreen({
       setProfileCollapseEnabled(next)
       measureProfileCollapseGeometry()
       applyProfileCollapseVisuals(profileBodyScrollRef.current?.scrollTop ?? 0)
-      syncProfileFeedScrollLockRef.current()
     }
     window.addEventListener('resize', onResize)
     window.visualViewport?.addEventListener?.('resize', onResize)
@@ -2616,7 +2576,6 @@ export default function LoungeProfileFullScreen({
         queueFlush()
       }
       applyProfileCollapseVisuals(st)
-      syncProfileFeedScrollLockRef.current()
       // apply may latch dock reveal to 0 when clearing the banner … flush parent FAB.
       const after = profileDockRevealRef.current
       if (
@@ -2641,72 +2600,6 @@ export default function LoungeProfileFullScreen({
     onDockRevealChange?.(1)
     applyProfileCollapseVisuals(0, { forceZero: true })
   }, [showOwnEditControls, onDockRevealChange, applyProfileCollapseVisuals])
-
-  useLayoutEffect(() => {
-    if (!open || !panelVisible || showOwnEditControls) return
-    const tabsEl = profileTabsElRef.current
-    if (!tabsEl || typeof ResizeObserver === 'undefined') return
-    const apply = () => {
-      const h = Math.round(tabsEl.getBoundingClientRect().height)
-      if (h > 0) setProfileTabBarHeightPx(h)
-      syncProfileFeedScrollLockRef.current()
-    }
-    apply()
-    const ro = new ResizeObserver(() => apply())
-    ro.observe(tabsEl)
-    return () => ro.disconnect()
-  }, [open, panelVisible, showOwnEditControls, profileTabsVisible.length])
-
-  useEffect(() => {
-    if (!open || !panelVisible || showOwnEditControls) return
-    const inner = profileTabFeedScrollRef.current
-    const outer = profileBodyScrollRef.current
-    if (!inner || !outer) return
-    const onWheel = (e) => {
-      const max = Math.max(0, outer.scrollHeight - outer.clientHeight)
-      if (e.deltaY > 0 && outer.scrollTop < max - 1) {
-        outer.scrollTop += e.deltaY
-        e.preventDefault()
-        syncProfileFeedScrollLockRef.current()
-        return
-      }
-      if (e.deltaY < 0 && inner.scrollTop <= 0) {
-        outer.scrollTop += e.deltaY
-        e.preventDefault()
-        syncProfileFeedScrollLockRef.current()
-      }
-    }
-    let lastTouchY = 0
-    const onTouchStart = (e) => {
-      lastTouchY = e.touches?.[0]?.clientY ?? 0
-    }
-    const onTouchMove = (e) => {
-      const y = e.touches?.[0]?.clientY ?? lastTouchY
-      const dy = y - lastTouchY
-      lastTouchY = y
-      const max = Math.max(0, outer.scrollHeight - outer.clientHeight)
-      if (dy < 0 && outer.scrollTop < max - 1) {
-        outer.scrollTop += -dy
-        e.preventDefault()
-        syncProfileFeedScrollLockRef.current()
-        return
-      }
-      if (dy > 0 && inner.scrollTop <= 0 && outer.scrollTop > 0) {
-        outer.scrollTop -= dy
-        e.preventDefault()
-        syncProfileFeedScrollLockRef.current()
-      }
-    }
-    inner.addEventListener('wheel', onWheel, { passive: false })
-    inner.addEventListener('touchstart', onTouchStart, { passive: true })
-    inner.addEventListener('touchmove', onTouchMove, { passive: false })
-    syncProfileFeedScrollLockRef.current()
-    return () => {
-      inner.removeEventListener('wheel', onWheel)
-      inner.removeEventListener('touchstart', onTouchStart)
-      inner.removeEventListener('touchmove', onTouchMove)
-    }
-  }, [open, panelVisible, showOwnEditControls, tab])
 
   useLayoutEffect(() => {
     const bar = profileTopChromeRef.current
@@ -3583,9 +3476,9 @@ export default function LoungeProfileFullScreen({
           className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain no-scrollbar [-webkit-overflow-scrolling:touch]"
           data-lounge-profile-scroll=""
           style={{
-            paddingBottom: showOwnEditControls
-              ? `max(0.5rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))`
-              : '0px',
+            paddingBottom: `max(${
+              !showOwnEditControls && profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
+            },max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))`,
           }}
         >
           <div
@@ -4009,7 +3902,7 @@ export default function LoungeProfileFullScreen({
               </div>
             </div>
 
-            <div className="min-h-0">
+            <div className="min-h-[12rem] pb-4">
               {adminRoleErr ? (
                 <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">
                   {adminRoleErr}
@@ -4029,20 +3922,7 @@ export default function LoungeProfileFullScreen({
               {error ? (
                 <div className="m-3 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] text-rose-200">{error}</div>
               ) : (
-                <div
-                  ref={profileTabFeedScrollRef}
-                  data-lounge-profile-tab-viewport=""
-                  className="relative overscroll-y-none [-webkit-overflow-scrolling:touch]"
-                  style={{
-                    height: `calc(100dvh - ${profileTabsStickyTopPxState + profileTabBarHeightPx}px)`,
-                    overflowX: 'clip',
-                    overflowY: 'hidden',
-                    paddingBottom: `max(${
-                      profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
-                    },max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))`,
-                    boxSizing: 'border-box',
-                  }}
-                >
+                <div data-lounge-profile-tab-viewport="" className="relative min-h-[12rem]">
                   {profileTabsVisible.map((id, index) => {
                     const active = tab === id
                     const xPct = (index - profileTabIndex) * 100

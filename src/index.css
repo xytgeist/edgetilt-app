@@ -1955,8 +1955,8 @@ html.light [data-lounge-profile-tabs] [data-lounge-profile-tab-underline] {
   background-color: rgb(37 99 235) !important;
 }
 [data-lounge-profile-tab-viewport] {
-  overflow-x: clip;
-  overscroll-behavior-y: none;
+  /* clip, not hidden … hidden on x turns y into a nested scroller. */
+  overflow: clip;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-lounge-profile-tab-track] {

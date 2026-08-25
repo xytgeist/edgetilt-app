@@ -16623,6 +16623,7 @@ export default function SocialFeed({
             }}
           />
           <div
+            data-lounge-post-detail-sheet=""
             className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md ${
               LOUNGE_IOS && loungeDetailCommentFieldFocused
                 ? 'transform-none'

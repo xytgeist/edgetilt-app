@@ -8772,6 +8772,34 @@ html.light.platform-android .lounge-thread-compose-toolbar-glass {
     rgba(250, 250, 250, 0.94);
 }
 
+/*
+ * Post / reply detail light canvas: sheet + title bar are the same white.
+ * Dark keeps zinc-950/94 + frosted title. Do not remap shared bg-zinc-950/* .
+ */
+html.light [data-lounge-post-detail-sheet] {
+  background-color: #fff !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.light [data-lounge-post-detail-sheet] [data-lounge-post-detail-title-bar] {
+  background-color: #fff !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.light [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-glass,
+html.light.platform-android [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-glass {
+  background: #fff;
+}
+html.light [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-gradient {
+  background: linear-gradient(
+    to top,
+    #fff 0%,
+    rgba(255, 255, 255, 0.72) 28%,
+    rgba(255, 255, 255, 0.28) 62%,
+    transparent 100%
+  );
+}
+
 /* Post / comment detail - zinc-neutral glass (panel is zinc-950). */
 .lounge-detail-comment-footer-glass {
   background: rgba(9, 9, 11, 0.58);

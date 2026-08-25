@@ -1208,9 +1208,7 @@ export default function LoungeProfileFullScreen({
   )
 
   useEffect(() => {
-    if (!open || tab !== 'replies') {
-      return
-    }
+    if (!open) return
     if (profileReplies.length === 0) return
     const hydrate = postCardProps?.hydrateCommentInteractionsForIds
     if (typeof hydrate !== 'function') return
@@ -1221,7 +1219,7 @@ export default function LoungeProfileFullScreen({
       }
     }
     void hydrate(ids)
-  }, [open, tab, profileReplies, postCardProps?.hydrateCommentInteractionsForIds])
+  }, [open, profileReplies, postCardProps?.hydrateCommentInteractionsForIds])
 
   useEffect(() => {
     if (!open || !profileUserId) return
@@ -1281,66 +1279,72 @@ export default function LoungeProfileFullScreen({
     setCategoryPillsDraft(profileCategoryPills(profile))
   }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location, profile?.category_pills])
 
-  useEffect(() => {
-    if (!open || !isOwnProfile || !profileUserId) return
-    if (tab !== 'likes' && tab !== 'bookmarks') return
-    const isLikes = tab === 'likes'
-    const fetchedRef = isLikes ? likesFetchedRef : bookmarksFetchedRef
-    const inFlightRef = isLikes ? likesInFlightRef : bookmarksInFlightRef
-    const offsetRef = isLikes ? likesFetchOffsetRef : bookmarksFetchOffsetRef
-    const setBucket = isLikes ? setLikesTab : setBookmarksTab
-    if (fetchedRef.current || inFlightRef.current) return
-    if (typeof hydratePosts !== 'function') {
-      setBucket({
-        posts: [],
-        loading: false,
-        loadingMore: false,
-        hasMore: false,
-        err: 'Could not load saved posts.',
-      })
-      return
-    }
-    const profileAtStart = profileUserId
-    inFlightRef.current = true
-    offsetRef.current = 0
-    setBucket((prev) => ({ ...prev, loading: true, loadingMore: false, err: '', hasMore: false }))
-    ;(async () => {
-      try {
-        const { posts: pagePosts, hasMore, fetchedCount } = await fetchProfileInteractionPostsPage(supabaseClient, {
-          profileUserId: profileAtStart,
-          tab,
-          offset: 0,
-          limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
-          hydratePosts,
-        })
-        if (profileAtStart !== profileUserIdRef.current) return
-        fetchedRef.current = true
-        offsetRef.current = fetchedCount || 0
-        setBucket({
-          posts: pagePosts,
-          loading: false,
-          loadingMore: false,
-          hasMore,
-          err: '',
-        })
-        const refreshFn = postCardProps?.refreshPostInteractions
-        if (typeof refreshFn === 'function' && pagePosts?.length) {
-          void refreshFn([...collectLoungePostInteractionHydrateIds(pagePosts)])
-        }
-      } catch (e) {
-        if (profileAtStart !== profileUserIdRef.current) return
+  const beginProfileInteractionFetch = useCallback(
+    (tabId) => {
+      if (!open || !isOwnProfile || !profileUserId) return
+      if (tabId !== 'likes' && tabId !== 'bookmarks') return
+      const isLikes = tabId === 'likes'
+      const fetchedRef = isLikes ? likesFetchedRef : bookmarksFetchedRef
+      const inFlightRef = isLikes ? likesInFlightRef : bookmarksInFlightRef
+      const offsetRef = isLikes ? likesFetchOffsetRef : bookmarksFetchOffsetRef
+      const setBucket = isLikes ? setLikesTab : setBookmarksTab
+      if (fetchedRef.current || inFlightRef.current) return
+      if (typeof hydratePosts !== 'function') {
         setBucket({
           posts: [],
           loading: false,
           loadingMore: false,
           hasMore: false,
-          err: e?.message || 'Could not load.',
+          err: 'Could not load saved posts.',
         })
-      } finally {
-        inFlightRef.current = false
+        return
       }
-    })()
-  }, [open, tab, isOwnProfile, profileUserId, supabaseClient, hydratePosts, postCardProps?.refreshPostInteractions])
+      const profileAtStart = profileUserId
+      inFlightRef.current = true
+      offsetRef.current = 0
+      setBucket((prev) => ({ ...prev, loading: true, loadingMore: false, err: '', hasMore: false }))
+      ;(async () => {
+        try {
+          const { posts: pagePosts, hasMore, fetchedCount } = await fetchProfileInteractionPostsPage(
+            supabaseClient,
+            {
+              profileUserId: profileAtStart,
+              tab: tabId,
+              offset: 0,
+              limit: LOUNGE_PROFILE_TAB_PAGE_SIZE,
+              hydratePosts,
+            },
+          )
+          if (profileAtStart !== profileUserIdRef.current) return
+          fetchedRef.current = true
+          offsetRef.current = fetchedCount || 0
+          setBucket({
+            posts: pagePosts,
+            loading: false,
+            loadingMore: false,
+            hasMore,
+            err: '',
+          })
+          const refreshFn = postCardProps?.refreshPostInteractions
+          if (typeof refreshFn === 'function' && pagePosts?.length) {
+            void refreshFn([...collectLoungePostInteractionHydrateIds(pagePosts)])
+          }
+        } catch (e) {
+          if (profileAtStart !== profileUserIdRef.current) return
+          setBucket({
+            posts: [],
+            loading: false,
+            loadingMore: false,
+            hasMore: false,
+            err: e?.message || 'Could not load.',
+          })
+        } finally {
+          inFlightRef.current = false
+        }
+      })()
+    },
+    [open, isOwnProfile, profileUserId, supabaseClient, hydratePosts, postCardProps?.refreshPostInteractions],
+  )
 
   const loadMoreInteractionPosts = useCallback(async () => {
     if (!open || !isOwnProfile || !profileUserId || (tab !== 'likes' && tab !== 'bookmarks')) return
@@ -1394,8 +1398,8 @@ export default function LoungeProfileFullScreen({
     postCardProps?.refreshPostInteractions,
   ])
 
-  useEffect(() => {
-    if (!open || !profileUserId || tab !== 'replies') return
+  const beginProfileRepliesFetch = useCallback(() => {
+    if (!open || !profileUserId) return
     if (profileRepliesFetchedRef.current || profileRepliesInFlightRef.current) return
     if (typeof hydratePosts !== 'function') {
       setProfileRepliesErr('Could not load replies.')
@@ -1440,7 +1444,6 @@ export default function LoungeProfileFullScreen({
     })()
   }, [
     open,
-    tab,
     profileUserId,
     supabaseClient,
     hydratePosts,
@@ -1450,6 +1453,53 @@ export default function LoungeProfileFullScreen({
     postCardProps?.loungeViewerIsStaff,
     postCardProps?.fanEntitlements,
   ])
+
+  const beginProfileRepliesFetchRef = useRef(beginProfileRepliesFetch)
+  beginProfileRepliesFetchRef.current = beginProfileRepliesFetch
+  const beginProfileInteractionFetchRef = useRef(beginProfileInteractionFetch)
+  beginProfileInteractionFetchRef.current = beginProfileInteractionFetch
+
+  useEffect(() => {
+    if (!open || !profileUserId) return
+    if (tab === 'replies') beginProfileRepliesFetchRef.current()
+    if (tab === 'likes' || tab === 'bookmarks') beginProfileInteractionFetchRef.current(tab)
+  }, [open, tab, profileUserId])
+
+  useEffect(() => {
+    if (!open || !profileUserId) return
+    let cancelled = false
+    const staggerIds = []
+    const start = () => {
+      if (cancelled) return
+      beginProfileRepliesFetchRef.current()
+      if (!isOwnProfile) return
+      staggerIds.push(
+        window.setTimeout(() => {
+          if (!cancelled) beginProfileInteractionFetchRef.current('likes')
+        }, 70),
+      )
+      staggerIds.push(
+        window.setTimeout(() => {
+          if (!cancelled) beginProfileInteractionFetchRef.current('bookmarks')
+        }, 140),
+      )
+    }
+    let idleId = 0
+    let timeoutId = 0
+    if (typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(start, { timeout: 500 })
+    } else {
+      timeoutId = window.setTimeout(start, 160)
+    }
+    return () => {
+      cancelled = true
+      if (idleId && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId)
+      }
+      if (timeoutId) window.clearTimeout(timeoutId)
+      for (const id of staggerIds) window.clearTimeout(id)
+    }
+  }, [open, profileUserId, isOwnProfile])
 
   const loadMoreProfileReplies = useCallback(async () => {
     if (!open || !profileUserId || tab !== 'replies') return

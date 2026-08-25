@@ -1522,7 +1522,6 @@ export default function LoungeProfileFullScreen({
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
     const pinRange = profileCollapseRangePxRef.current
     const v = profileCollapseVisuals(y, pinRange, { reduceMotion: reduce })
-    const pinProgress = forceZero ? 0 : v.pinProgress
     const nameOp = forceZero
       ? 0
       : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
@@ -1548,11 +1547,9 @@ export default function LoungeProfileFullScreen({
     }
     const chromeMotion = profileChromeMotionRef.current
     if (chromeMotion) {
-      // Rest: back/⋯ sit mid-banner; pinned / edit: top strip under status bar.
+      // Fixed on screen at the banner midpoint … do not ride up with pin progress.
       const nudge =
-        forceZero || showOwnEditControls
-          ? 0
-          : (1 - pinProgress) * profileChromeCenterNudgePxRef.current
+        forceZero || showOwnEditControls ? 0 : profileChromeCenterNudgePxRef.current
       chromeMotion.style.transform =
         reduce && !forceZero ? '' : `translate3d(0, ${nudge}px, 0)`
     }
@@ -1570,22 +1567,21 @@ export default function LoungeProfileFullScreen({
   }, [showOwnEditControls])
 
   const measureProfileCollapseGeometry = useCallback(() => {
-    const bar = profileTopChromeRef.current
     const banner = profileBannerShellRef.current
-    const chromeH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
     const sat = readCssSafeAreaTopPx()
     // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the full banner
     // (status bar through photo bottom). Prior formula used contentH/2 only and sat too low.
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
-    profileChromeCenterNudgePxRef.current = Math.max(
+    const chromeNudge = Math.max(
       0,
       Math.round(bannerH / 2 - chromePadTop - 20 + 10),
     )
+    profileChromeCenterNudgePxRef.current = chromeNudge
 
-    const pinnedVisible =
-      (chromeH > 0 ? chromeH : PROFILE_COLLAPSED_CHROME_ROW_PX + sat)
-      + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
+    // Pinned strip must reach below the fixed chrome buttons (+ 10px).
+    const chromeButtonBottom = chromePadTop + chromeNudge + 40
+    const pinnedVisible = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
     const bannerStickyTop = profileBannerStickyTopPx(bannerH, pinnedVisible)
     const pinRange = profileBannerPinScrollRangePx(bannerH, pinnedVisible)
 

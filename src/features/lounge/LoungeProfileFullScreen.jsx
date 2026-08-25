@@ -1583,7 +1583,7 @@ export default function LoungeProfileFullScreen({
 
     const chromeButtonBottom = chromePadTop + chromeNudge + 40
 
-    // Banner rests ~10px below the back/⋯ buttons, then sticks.
+    // Banner rests ~5px below the back/⋯ buttons, then sticks.
     const pinnedVisible = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
 
     const bannerStickyTop = profileBannerStickyTopPx(bannerH, pinnedVisible)
@@ -2642,7 +2642,7 @@ export default function LoungeProfileFullScreen({
             data-lounge-profile-banner=""
             style={{
               // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.
-              // Sticky `top` is measured so the pinned strip ends ~10px below chrome buttons.
+              // Sticky `top` is measured so the pinned strip ends ~5px below chrome buttons.
               paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
               top: 0,
             }}

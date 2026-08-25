@@ -7,7 +7,7 @@
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  *
  * Motion:
- * - Banner rises until its bottom sits ~10px below the back/⋯ buttons, then sticks.
+ * - Banner rises until its bottom sits ~5px below the back/⋯ buttons, then sticks.
  * - Avatar rises slower than the page (partial counter-scroll lag) while shrinking.
  * - Shrink is ease-in over the full pin distance so it feels slower early on.
  * - After pin, lag offset freezes so the avatar then scrolls 1:1 under the banner.
@@ -24,7 +24,7 @@ export const PROFILE_COLLAPSED_CHROME_ROW_PX = 48
 /**
  * Extra px below the chrome button bottoms where the pinned banner bottom rests.
  */
-export const PROFILE_PINNED_BANNER_BELOW_CHROME_PX = 10
+export const PROFILE_PINNED_BANNER_BELOW_CHROME_PX = 5
 
 /** Fallback scroll range when banner geometry is not measured yet. */
 export const PROFILE_COLLAPSE_RANGE_PX = 112

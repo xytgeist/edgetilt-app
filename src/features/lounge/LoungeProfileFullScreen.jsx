@@ -770,6 +770,10 @@ export default function LoungeProfileFullScreen({
   const profileCollapsedScrimRef = useRef(null)
   const profileIosWebStatusPlateRef = useRef(null)
   const profileIosWebTitleBarRef = useRef(null)
+  /** Whole iOS web chrome stack (plates + back/menu) slides as one unit. */
+  const profileIosWebSlideRef = useRef(null)
+  const profileBannerHeightPxRef = useRef(0)
+  const applyProfileCollapseVisualsRef = useRef(/** @type {null | ((n?: number, o?: object) => void)} */ (null))
   const profileNameRevealScrollRef = useRef(80)
   const profileBannerBlurNameGapAtTuckRef = useRef(/** @type {number | null} */ (null))
   const profileBannerBlurStartScrollRef = useRef(/** @type {number | null} */ (null))
@@ -1657,9 +1661,13 @@ export default function LoungeProfileFullScreen({
     const chromeReveal = Math.max(0, Math.min(1, Number(profileDockRevealRef.current) || 0))
     const sat = Math.max(8, readCssSafeAreaTopPx())
     const scrollYForChrome = Math.max(0, Number(scrollTop) || 0)
-    const bannerHApprox = profileBannerShellRef.current
-      ? Math.ceil(profileBannerShellRef.current.getBoundingClientRect().height)
-      : 0
+    const bannerHApprox = Math.max(
+      0,
+      profileBannerHeightPxRef.current
+        || (profileBannerShellRef.current
+          ? Math.ceil(profileBannerShellRef.current.getBoundingClientRect().height)
+          : 0),
+    )
     const iosWebTitleH = sat + PROFILE_IOS_WEB_TITLE_BAR_PX
     // Banner clear → feed chrome: continuous presence (slide), not a boolean snap.
     const bannerClearY =
@@ -1668,7 +1676,7 @@ export default function LoungeProfileFullScreen({
     const feedPresence = iosWebTitle
       ? Math.max(0, Math.min(1, (scrollYForChrome - bannerClearY) / feedEnter))
       : 0
-    // Over banner: buttons leave with the page (content-linked). In feed: dock + edge slide.
+    // Over banner: entire chrome leaves with the page. In feed: dock + edge slide.
     const contentHide = Math.min(iosWebTitleH, scrollYForChrome)
     const dockHide = (1 - chromeReveal) * iosWebTitleH
     const edgeHide = (1 - feedPresence) * iosWebTitleH
@@ -1676,15 +1684,26 @@ export default function LoungeProfileFullScreen({
     const iosWebHidePx = Math.round(
       inFeedChrome ? Math.max(dockHide, edgeHide) : contentHide,
     )
-    const titleOnScreen = iosWebTitle && iosWebHidePx < iosWebTitleH - 1
+    const chromeVisible = iosWebTitle && iosWebHidePx < iosWebTitleH - 1
+
+    const iosWebSlide = profileIosWebSlideRef.current
+    if (iosWebSlide) {
+      if (iosWebTitle) {
+        iosWebSlide.style.transform = `translate3d(0, ${-iosWebHidePx}px, 0)`
+        iosWebSlide.setAttribute('data-lounge-profile-ios-web-hide', String(iosWebHidePx))
+      } else {
+        iosWebSlide.style.transform = ''
+        iosWebSlide.removeAttribute('data-lounge-profile-ios-web-hide')
+      }
+    }
 
     const statusPlate = profileIosWebStatusPlateRef.current
     if (statusPlate) {
       if (iosWebTitle) {
         statusPlate.hidden = false
         statusPlate.style.height = `${sat}px`
-        // Opaque once feed chrome engages … stays while tabs tuck under status.
-        statusPlate.style.opacity = feedPresence > 0.08 ? '1' : '0'
+        // Solid once feed chrome is engaging … stay while tabs can tuck under status.
+        statusPlate.style.opacity = inFeedChrome && chromeVisible ? '1' : '0'
       } else {
         statusPlate.hidden = true
         statusPlate.style.opacity = '0'
@@ -1695,9 +1714,9 @@ export default function LoungeProfileFullScreen({
       if (iosWebTitle) {
         titleBar.hidden = false
         titleBar.style.height = `${iosWebTitleH}px`
-        // Slide only … no opacity snap when leaving the banner edge.
-        titleBar.style.transform = `translate3d(0, ${-iosWebHidePx}px, 0)`
-        titleBar.style.opacity = inFeedChrome && titleOnScreen ? '1' : '0'
+        titleBar.style.transform = ''
+        // Slide is on the parent … keep opaque while any of the bar is on-screen.
+        titleBar.style.opacity = inFeedChrome && chromeVisible ? '1' : '0'
       } else {
         titleBar.hidden = true
         titleBar.style.opacity = '0'
@@ -1710,10 +1729,9 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.transform = ''
         chromeMotion.style.opacity = ''
       } else if (iosWebTitle) {
-        chromeMotion.style.transform = `translate3d(0, ${-iosWebHidePx}px, 0)`
-        chromeMotion.style.opacity = titleOnScreen || (!inFeedChrome && iosWebHidePx < iosWebTitleH - 4)
-          ? '1'
-          : '0'
+        // Parent slide moves back/menu; no second transform here.
+        chromeMotion.style.transform = ''
+        chromeMotion.style.opacity = chromeVisible ? '1' : '0'
       } else if (collapseOn) {
         const nudge = profileChromeCenterNudgePxRef.current
         chromeMotion.style.transform =
@@ -1724,7 +1742,7 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.opacity = ''
       }
     }
-    // iOS web/PWA: tabs ride the title-bar bottom (1px overlap kills hairline gap).
+    // iOS web/PWA: tabs ride the title-bar bottom (overlap kills hairline gap).
     const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
     if (tabsEl) {
       let tabsTop = collapseOn
@@ -1768,12 +1786,15 @@ export default function LoungeProfileFullScreen({
       compact.style.opacity = String(nameOp)
     }
   }, [showOwnEditControls])
+  applyProfileCollapseVisualsRef.current = applyProfileCollapseVisuals
 
   const measureProfileCollapseGeometry = useCallback(() => {
     const collapseOn = profileCollapseEnabledRef.current
+    const iosWebTitle = profileIosWebTitleChromeEnabled()
     const banner = profileBannerShellRef.current
     const scrollEl = profileBodyScrollRef.current
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
+    profileBannerHeightPxRef.current = bannerH
     const sat = readCssSafeAreaTopPx()
     // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the tuned band.
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
@@ -1802,13 +1823,17 @@ export default function LoungeProfileFullScreen({
     profileBannerStickyTopPxRef.current = bannerStickyTop
     profileCollapseRangePxRef.current = pinRange
     profileStickyTopPxRef.current = pinnedVisible
-    setProfileTabsStickyTopPxState((prev) => {
-      if (!collapseOn) {
-        const classicTop = Math.max(0, Math.round(sat))
-        return prev === classicTop ? prev : classicTop
-      }
-      return prev === pinnedVisible ? prev : pinnedVisible
-    })
+    // iOS web title chrome owns tabs `top` via applyProfileCollapseVisuals.
+    // Do NOT reset to sat here … that fought the title bar and recreated the gap.
+    if (!iosWebTitle) {
+      setProfileTabsStickyTopPxState((prev) => {
+        if (!collapseOn) {
+          const classicTop = Math.max(0, Math.round(sat))
+          return prev === classicTop ? prev : classicTop
+        }
+        return prev === pinnedVisible ? prev : pinnedVisible
+      })
+    }
 
     if (banner) {
       if (collapseOn) {
@@ -1832,6 +1857,8 @@ export default function LoungeProfileFullScreen({
       // Compact title fades in just after the large name crosses under the pinned strip.
       profileNameRevealScrollRef.current = Math.max(36, nameUnderScroll + 8)
     }
+
+    applyProfileCollapseVisualsRef.current?.(scrollEl?.scrollTop ?? 0)
   }, [])
 
   /** After edit mode (keyboard / overflow-hidden), scroll position or iOS visual viewport can leave the banner chrome clipped. */
@@ -2690,7 +2717,12 @@ export default function LoungeProfileFullScreen({
             data-lounge-profile-collapsed-scrim=""
             className="pointer-events-none absolute inset-x-0 top-0 opacity-0"
           />
-          {/* iOS Safari/PWA classic scroll: opaque plates so feed never peeks under status / buttons. */}
+          {/* iOS Safari/PWA: plates + back/menu slide as one stack. */}
+          <div
+            ref={profileIosWebSlideRef}
+            className="will-change-transform"
+            data-lounge-profile-ios-web-slide=""
+          >
           <div
             ref={profileIosWebStatusPlateRef}
             aria-hidden
@@ -2703,7 +2735,7 @@ export default function LoungeProfileFullScreen({
             aria-hidden
             hidden
             data-lounge-profile-ios-web-title-bar=""
-            className="pointer-events-none absolute inset-x-0 top-0 z-0 opacity-0 will-change-transform"
+            className="pointer-events-none absolute inset-x-0 top-0 z-0 opacity-0"
           />
           <div
             className="relative z-[1] px-2 pb-1 sm:px-3"
@@ -2871,6 +2903,7 @@ export default function LoungeProfileFullScreen({
               <div className="h-10 w-10 shrink-0" aria-hidden />
             )}
             </div>
+          </div>
           </div>
         </div>
         {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}

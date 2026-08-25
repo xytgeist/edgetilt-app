@@ -76,10 +76,10 @@ export const PROFILE_IOS_WEB_TITLE_BAR_PX = 48
  * iOS Safari / PWA: scroll distance after the banner clears over which the white
  * title bar slides in/out (no opacity snap at the banner edge).
  */
-export const PROFILE_IOS_WEB_FEED_ENTER_PX = 56
+export const PROFILE_IOS_WEB_FEED_ENTER_PX = 96
 
-/** Hairline kill … nest sticky tabs 1px under the title plate bottom. */
-export const PROFILE_IOS_WEB_TABS_OVERLAP_PX = 1
+/** Nest sticky tabs under the title plate to kill subpixel / light-canvas hairlines. */
+export const PROFILE_IOS_WEB_TABS_OVERLAP_PX = 2
 
 /**
  * Whether X-style profile header collapse is active on this client.

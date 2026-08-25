@@ -1892,6 +1892,13 @@ html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
 html.light [data-lounge-profile-collapsed-scrim] {
   background: rgba(15, 15, 15, 0.12);
 }
+/* Banner frost overlay … photo stays sharp; no filter:blur crop/seam. */
+[data-lounge-profile-banner-blur] {
+  transform: translateZ(0);
+}
+html.light [data-lounge-profile-banner-blur] {
+  /* Tint is set inline from blur progress; keep stacking cheap. */
+}
 html.light [data-lounge-profile-compact-name] {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;

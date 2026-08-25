@@ -48,15 +48,8 @@ export const PROFILE_AVATAR_SCROLL_LAG = 0.45
 /** IPA: ease-in power for avatar scale over the pin window. */
 export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
 
-/** Max `filter: blur()` on the banner media when frost completes. */
+/** Max backdrop blur on the banner frost overlay when collapse frost completes. */
 export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
-
-/**
- * Extra paint outside the banner clip while blurred.
- * CSS blur samples transparent outside the box … clipped soft edges read as a
- * zoom-out / bottom seam. Bleed so the kernel stays on real pixels.
- */
-export const PROFILE_BANNER_MEDIA_BLUR_BLEED_PX = 28
 
 /** Default tuck fraction before blur may begin (non-IPA Apple / desktop). */
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC = 0.9
@@ -345,7 +338,7 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     /** 0..1 while the banner is sliding to its sticky rest. */
     pinProgress: pinRaw,
     bannerTranslateY: 0,
-    /** Media blur is applied live in the profile screen (tuck → name). */
+    /** Banner frost is a backdrop-filter overlay (not filter on the img). */
     bannerBlurPx: 0,
     /** Resting live tint stays light … collapse frost tracks live blur progress. */
     bannerScrim: 0.06,

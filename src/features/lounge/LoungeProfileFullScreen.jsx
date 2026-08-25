@@ -15,7 +15,6 @@ import {
   profileIosWebTitleChromeEnabled,
   profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
-  PROFILE_BANNER_MEDIA_BLUR_BLEED_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
@@ -762,6 +761,7 @@ export default function LoungeProfileFullScreen({
   const profileBannerMediaRef = useRef(null)
   const profileBannerShellRef = useRef(null)
   const profileBannerLiveScrimRef = useRef(null)
+  const profileBannerBlurOverlayRef = useRef(null)
   const profileAvatarMotionRef = useRef(null)
   const profileDisplayNameRef = useRef(null)
   const profileCompactNameRef = useRef(null)
@@ -1611,32 +1611,32 @@ export default function LoungeProfileFullScreen({
     }
     const blurPx = blurT * PROFILE_BANNER_MEDIA_BLUR_MAX_PX
 
+    // Keep the photo sharp … CSS filter:blur on the img squeezes edges / seams.
+    // Frost is a backdrop-filter overlay so crop and scale never change.
     const media = profileBannerMediaRef.current
     if (media) {
-      // No scale() … that read as a zoom. Bleed past the clip instead so blur
-      // does not sample empty pixels (squeeze + bottom fringe).
-      if (blurPx > 0.15) {
-        const bleed = Math.max(
-          PROFILE_BANNER_MEDIA_BLUR_BLEED_PX,
-          Math.ceil(blurPx * 2 + 4),
-        )
-        media.style.top = `-${bleed}px`
-        media.style.right = `-${bleed}px`
-        media.style.bottom = `-${bleed}px`
-        media.style.left = `-${bleed}px`
-        media.style.width = 'auto'
-        media.style.height = 'auto'
-        media.style.transform = ''
-        media.style.filter = `blur(${blurPx.toFixed(2)}px)`
+      media.style.filter = ''
+      media.style.transform = ''
+      media.style.top = ''
+      media.style.right = ''
+      media.style.bottom = ''
+      media.style.left = ''
+      media.style.width = ''
+      media.style.height = ''
+    }
+    const blurOverlay = profileBannerBlurOverlayRef.current
+    if (blurOverlay) {
+      if (collapseOn && blurPx > 0.15) {
+        const tint = 0.04 + blurT * 0.1
+        blurOverlay.style.opacity = '1'
+        blurOverlay.style.background = `rgba(9, 9, 11, ${tint.toFixed(3)})`
+        blurOverlay.style.backdropFilter = `blur(${blurPx.toFixed(2)}px)`
+        blurOverlay.style.webkitBackdropFilter = `blur(${blurPx.toFixed(2)}px)`
       } else {
-        media.style.top = '0'
-        media.style.right = '0'
-        media.style.bottom = '0'
-        media.style.left = '0'
-        media.style.width = ''
-        media.style.height = ''
-        media.style.transform = ''
-        media.style.filter = ''
+        blurOverlay.style.opacity = '0'
+        blurOverlay.style.background = ''
+        blurOverlay.style.backdropFilter = 'none'
+        blurOverlay.style.webkitBackdropFilter = 'none'
       }
     }
     const bannerShell = profileBannerShellRef.current
@@ -3009,10 +3009,10 @@ export default function LoungeProfileFullScreen({
               top: profileCollapseEnabled ? 0 : undefined,
             }}
           >
-            <div className="absolute inset-0 left-0 right-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 [bottom:-1px]">
+            <div className="absolute inset-0 left-0 right-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
               <div
                 ref={profileBannerMediaRef}
-                className="absolute inset-0 min-h-full min-w-full will-change-transform"
+                className="h-full w-full min-w-full will-change-transform"
                 style={{ transformOrigin: 'center top' }}
                 data-lounge-profile-banner-media=""
               >
@@ -3021,6 +3021,7 @@ export default function LoungeProfileFullScreen({
                     src={profile.banner_url}
                     alt=""
                     className="h-full w-full min-w-full object-cover"
+                    draggable={false}
                   />
                 ) : null}
               </div>
@@ -3028,6 +3029,12 @@ export default function LoungeProfileFullScreen({
                 ref={profileBannerLiveScrimRef}
                 aria-hidden
                 className="pointer-events-none absolute inset-0 bg-black opacity-[0.12]"
+              />
+              <div
+                ref={profileBannerBlurOverlayRef}
+                aria-hidden
+                data-lounge-profile-banner-blur=""
+                className="pointer-events-none absolute inset-0 opacity-0"
               />
             </div>
             <div className="relative h-28 w-full sm:h-36" data-lounge-profile-banner-band="">

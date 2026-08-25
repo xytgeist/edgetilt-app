@@ -55,7 +55,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | --- | --- | --- |
 | Hide Stripe Checkout / subscribe CTAs in WebView | Windows | **Done (2026-08-24):** `openExternalBillingUrl` on Edge checkout / portal, fan Connect / checkout / portal, affiliate Connect, staff bot fan Connect. Shell → Safari; web → assign. |
 | Deep link handling after APNs | Both | Native opens URL; web already has `?tab=` / lounge routes |
-| Lounge unmuted autoplay | Mac config + Windows playback paths | **Done (2026-08-24 web + 2026-08-25 audio session):** `appleWebKitBlocksFeedSoundHandoff()`; shell uses feed-wide sound handoff. Native `.playback` on launch / becomeActive (skip voiceChat) + web `ensureEdgeiOSPlaybackAudioSession()` on Tap for sound. Media policy already open. Device smoke remaining. |
+| Lounge unmuted autoplay | Mac config + Windows playback paths | **Ryan sign-off 2026-08-25:** Tap for sound → next clips stay audible (`ff9a8c16`). Safari/PWA still per-tile. |
 | Skip web push SW in shell | Windows | **Done (2026-08-24):** `useWebPushNotifications` unsupported under `isEdgeiOSShell()`; no `push-sw` register. A2HS / install-for-push gated via `iosPwaInstallRequired`. APNs still Mac. |
 
 **v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
@@ -87,9 +87,9 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
    - `allowsInlineMediaPlayback = true`
    - `mediaTypesRequiringUserActionForPlayback = []`
    If either drifted, restore + rebuild. Do **not** edit `src/**`.
-2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** rebuild IPA so launch `.playback` is in the binary; wait for Vercel if smoking the web caller. Unmute one feed tile (silent switch **on**) → scroll → next clips stay **audible**. Fail → verify step 1 + Web Inspector; note in `WAKEUP` / backlog. Do not invent Safari unmute hacks in `ios/`.
+2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** ~~open~~ **Ryan sign-off 2026-08-25** (`ff9a8c16`). Tap for sound → next clips stay audible. Do not invent Safari unmute hacks in `ios/`.
 3. **Stripe→Safari smoke:** one Checkout or portal CTA → leaves WebView into Safari.
-4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). ~~Safe area / Island pad~~ **Ryan device sign-off 2026-08-25.** Remaining: OAuth-in-shell smoke, hard-crash repro leaving post detail, web-gate smoke (unmute / Stripe→Safari / no A2HS).
+4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). ~~Safe area / Island pad / unmute handoff~~ **Ryan device sign-off 2026-08-25.** Remaining: OAuth-in-shell smoke, hard-crash repro leaving post detail, Stripe→Safari / no A2HS.
 
 ### Mac slice (2026-08-24)
 

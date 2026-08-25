@@ -84,10 +84,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Pick up here (2026-08-25 ... IPA feed unmute)
 
-**In progress:** Lounge feed videos stay unmuted after one Tap for sound.
-- Bug: EdgeiOS used Safari sound sync. Next winner was often already playing muted in the prefetch ring, so it never got `muted = false`.
-- Fix: EdgeiOS sound follows Android (`!appleWebKitBlocksFeedSoundHandoff()`). Safari/PWA unchanged.
-- **Next:** wait for Vercel, Tap for sound on one tile, scroll … next clips stay audible. No IPA rebuild needed for this web fix.
+**Ryan signed (device):** Lounge feed stays unmuted after one Tap for sound. `ff9a8c16` … EdgeiOS inherits audible like Android. Do not reopen Safari/PWA gesture-only sound.
 
 **Shipped on `test` (Ryan signed: tab slide, native scroll, FAB overlay close):**
 - **Profile tabs:** Posts/Replies/Likes/Bookmarks slide left/right under a pinned banner + tab bar. Sheet does not remount. Idle-prefetch Replies (and Likes/Bookmarks on own profile). One **native** profile scroller (`overflow: clip` on the tab pane ... do **not** revive the JS header-then-feed lock). Files: `LoungeProfileFullScreen.jsx`, `index.css`.
@@ -96,9 +93,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 - **Editor:** `@theme` is Tailwind v4 (workspace CSS custom data). Splash empty-ruleset warning gone.
 - **IPA safe area (Ryan device sign-off 2026-08-25):** No black letterbox bars. Post-detail ← clear of Island. FAB vs home indicator. Feed title chrome. Keep `.ignoresSafeArea()` + `--edge-sat|…` inject.
 
-**Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat.
+**Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat. Safari/PWA per-tile feed sound (EdgeiOS handoff is signed).
 
-**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. IPA remaining: unmute / Stripe→Safari / no A2HS, OAuth-in-shell, hard-crash leaving post detail (see Mac do now). No SQL in this slice.
+**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. IPA remaining: Stripe→Safari / no A2HS, OAuth-in-shell, hard-crash leaving post detail (see Mac do now). No SQL in this slice.
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
@@ -148,12 +145,12 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 **Mac signed (2026-08-25, Ryan on device):**
 - Post-detail Island pad: title bar only, matches Safari/PWA
 - Safe area: no letterbox; post-detail ← clear of Island; FAB vs home indicator; feed title chrome
+- Lounge unmute handoff: Tap for sound → next clips stay audible (`ff9a8c16`)
 
 **Mac do now (Ryan + Theo):**
-1. Wait for Vercel. **Unmute smoke:** Tap for sound → scroll → next clips stay audible. No IPA rebuild for the handoff fix.
-2. Remaining web-gate smoke: Stripe Checkout/portal → system Safari; no A2HS / web-push nag.
-3. OAuth-in-shell smoke; hard-crash repro leaving post detail.
-4. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token.
+1. Remaining web-gate smoke: Stripe Checkout/portal → system Safari; no A2HS / web-push nag.
+2. OAuth-in-shell smoke; hard-crash repro leaving post detail.
+3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token.
 
 **Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 

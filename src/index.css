@@ -1903,6 +1903,19 @@ html.light [data-lounge-profile-tabs] {
   border-color: rgba(24, 24, 27, 0.12) !important;
 }
 
+/*
+ * iOS Safari / PWA classic profile: opaque title plates (status + button row).
+ * Light matches the Posts/Replies bar so there is no “feed peek” gap.
+ */
+[data-lounge-profile-ios-web-status-plate],
+[data-lounge-profile-ios-web-title-bar] {
+  background-color: rgb(9, 9, 11);
+}
+html.light [data-lounge-profile-ios-web-status-plate],
+html.light [data-lounge-profile-ios-web-title-bar] {
+  background-color: rgb(250, 250, 250);
+}
+
 /* Full-bleed banner … no hairline gap from sheet border / light canvas peeking. */
 [data-lounge-profile-banner] {
   margin-left: 0;

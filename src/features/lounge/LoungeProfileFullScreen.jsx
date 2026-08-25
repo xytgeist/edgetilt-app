@@ -767,6 +767,8 @@ export default function LoungeProfileFullScreen({
   const profileChromeMotionRef = useRef(null)
   const profileChromeCenterNudgePxRef = useRef(36)
   const profileCollapsedScrimRef = useRef(null)
+  const profileIosWebStatusPlateRef = useRef(null)
+  const profileIosWebTitleBarRef = useRef(null)
   const profileNameRevealScrollRef = useRef(80)
   const profileBannerBlurNameGapAtTuckRef = useRef(/** @type {number | null} */ (null))
   const profileBannerBlurStartScrollRef = useRef(/** @type {number | null} */ (null))
@@ -1653,15 +1655,55 @@ export default function LoungeProfileFullScreen({
     const chromeMotion = profileChromeMotionRef.current
     const chromeReveal = Math.max(0, Math.min(1, Number(profileDockRevealRef.current) || 0))
     const sat = Math.max(8, readCssSafeAreaTopPx())
+    const scrollYForChrome = Math.max(0, Number(scrollTop) || 0)
+    const bannerHApprox = profileBannerShellRef.current
+      ? Math.ceil(profileBannerShellRef.current.getBoundingClientRect().height)
+      : 0
+    // Solid title bar only once the banner has scrolled away … over the photo, keep floating chrome.
+    const iosWebInFeed =
+      iosWebTitle && bannerHApprox > 0 && scrollYForChrome >= Math.max(24, bannerHApprox - 8)
+    const iosWebHide =
+      (1 - chromeReveal) * (PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX + sat)
+    const iosWebTitleH = sat + PROFILE_IOS_WEB_TITLE_BAR_PX
+
+    const statusPlate = profileIosWebStatusPlateRef.current
+    if (statusPlate) {
+      if (iosWebTitle) {
+        statusPlate.hidden = false
+        statusPlate.style.height = `${sat}px`
+        statusPlate.style.opacity = iosWebInFeed ? '1' : '0'
+      } else {
+        statusPlate.hidden = true
+        statusPlate.style.opacity = '0'
+      }
+    }
+    const titleBar = profileIosWebTitleBarRef.current
+    if (titleBar) {
+      if (iosWebTitle) {
+        titleBar.hidden = false
+        titleBar.style.height = `${iosWebTitleH}px`
+        titleBar.style.transform = `translate3d(0, ${-iosWebHide}px, 0)`
+        titleBar.style.opacity = iosWebInFeed && chromeReveal > 0.05 ? '1' : '0'
+      } else {
+        titleBar.hidden = true
+        titleBar.style.opacity = '0'
+        titleBar.style.transform = ''
+      }
+    }
+
     if (chromeMotion) {
       if (showOwnEditControls || opts.forceZero) {
         chromeMotion.style.transform = ''
         chromeMotion.style.opacity = ''
       } else if (iosWebTitle) {
-        // Classic iOS web/PWA: title-bar chrome at top … slide away on scroll-down.
-        const hide = (1 - chromeReveal) * (PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX + sat)
-        chromeMotion.style.transform = `translate3d(0, ${-hide}px, 0)`
-        chromeMotion.style.opacity = chromeReveal < 0.08 ? '0' : '1'
+        if (iosWebInFeed) {
+          chromeMotion.style.transform = `translate3d(0, ${-iosWebHide}px, 0)`
+          chromeMotion.style.opacity = chromeReveal < 0.08 ? '0' : '1'
+        } else {
+          // Over the banner at rest … floating chrome, no plate.
+          chromeMotion.style.transform = ''
+          chromeMotion.style.opacity = ''
+        }
       } else if (collapseOn) {
         const nudge = profileChromeCenterNudgePxRef.current
         chromeMotion.style.transform =
@@ -1672,14 +1714,16 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.opacity = ''
       }
     }
-    // iOS web/PWA: Posts/Replies yield space when the title-bar chrome is visible.
+    // iOS web/PWA: tabs sit flush under status plate, or under the full title bar when visible.
     const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
     if (tabsEl) {
       let tabsTop = collapseOn
         ? profileStickyTopPxRef.current
         : Math.max(0, Math.round(readCssSafeAreaTopPx()))
       if (iosWebTitle) {
-        tabsTop = Math.round(sat + chromeReveal * PROFILE_IOS_WEB_TITLE_BAR_PX)
+        tabsTop = iosWebInFeed
+          ? Math.round(sat + chromeReveal * PROFILE_IOS_WEB_TITLE_BAR_PX)
+          : Math.round(sat)
       }
       tabsEl.style.top = `${tabsTop}px`
       setProfileTabsStickyTopPxState((prev) => (prev === tabsTop ? prev : tabsTop))
@@ -2625,8 +2669,23 @@ export default function LoungeProfileFullScreen({
             data-lounge-profile-collapsed-scrim=""
             className="pointer-events-none absolute inset-x-0 top-0 opacity-0"
           />
+          {/* iOS Safari/PWA classic scroll: opaque plates so feed never peeks under status / buttons. */}
           <div
-            className="px-2 pb-1 sm:px-3"
+            ref={profileIosWebStatusPlateRef}
+            aria-hidden
+            hidden
+            data-lounge-profile-ios-web-status-plate=""
+            className="pointer-events-none absolute inset-x-0 top-0 z-0 opacity-0"
+          />
+          <div
+            ref={profileIosWebTitleBarRef}
+            aria-hidden
+            hidden
+            data-lounge-profile-ios-web-title-bar=""
+            className="pointer-events-none absolute inset-x-0 top-0 z-0 opacity-0 will-change-transform"
+          />
+          <div
+            className="relative z-[1] px-2 pb-1 sm:px-3"
             style={{
               // Inline … arbitrary Tailwind max(env, var(--edge-sat)) has broken before.
               paddingTop: 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',

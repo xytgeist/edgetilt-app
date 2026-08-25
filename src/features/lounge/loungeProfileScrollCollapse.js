@@ -67,12 +67,13 @@ export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_IPA = 0.52
 export const PROFILE_BANNER_BLUR_MIN_RAMP_PX = 96
 
 /**
- * iOS Safari / PWA title-bar chrome: sticky tabs clearance when back/menu are visible.
+ * iOS Safari / PWA title-bar chrome: button row height under the status inset.
+ * Tabs stick flush under (status + this) when the bar is visible.
  */
 export const PROFILE_IOS_WEB_TITLE_BAR_PX = 48
 
-/** iOS Safari / PWA: how far back/menu slide up when hiding on scroll-down. */
-export const PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX = 64
+/** iOS Safari / PWA: how far the title bar + buttons slide up when hiding. */
+export const PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX = 72
 
 /**
  * Whether X-style profile header collapse is active on this client.

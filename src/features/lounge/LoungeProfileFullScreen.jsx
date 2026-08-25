@@ -15,8 +15,6 @@ import {
   profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
-  PROFILE_CHROME_HIDE_SLIDE_PX,
-  PROFILE_CHROME_TITLE_BAR_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
@@ -1624,17 +1622,13 @@ export default function LoungeProfileFullScreen({
       liveScrim.style.opacity = collapseOn ? String(v.bannerScrim) : '0.12'
     }
     const collapsedScrim = profileCollapsedScrimRef.current
-    const isIpa = isEdgeiOSShell()
-    const chromeReveal = Math.max(0, Math.min(1, Number(profileDockRevealRef.current) || 0))
-    const pinnedVisible = profileStickyTopPxRef.current
-    const pastPin = y > pinRange + 4
     if (collapsedScrim) {
       if (!collapseOn) {
         collapsedScrim.style.opacity = '0'
         collapsedScrim.style.height = ''
       } else {
         // Thin frost under chrome/name … same timing as media blur (not pin settle).
-        const midFrost = Math.max(
+        const frostH = Math.max(
           48,
           Math.round(
             (Number(profileChromeCenterNudgePxRef.current) || 0)
@@ -1643,52 +1637,23 @@ export default function LoungeProfileFullScreen({
               + 10,
           ),
         )
-        // IPA title-bar mode: frost covers pinned strip + revealed title clearance.
-        const frostH =
-          isIpa && pastPin
-            ? Math.round(pinnedVisible + chromeReveal * PROFILE_CHROME_TITLE_BAR_PX)
-            : midFrost
         collapsedScrim.style.height = `${frostH}px`
         collapsedScrim.style.top = '0'
         collapsedScrim.style.left = '0'
         collapsedScrim.style.right = '0'
         collapsedScrim.style.bottom = 'auto'
-        collapsedScrim.style.opacity = String(
-          isIpa && pastPin ? Math.max(blurT, chromeReveal * 0.85) : blurT,
-        )
+        collapsedScrim.style.opacity = String(blurT)
       }
     }
     const chromeMotion = profileChromeMotionRef.current
     if (chromeMotion) {
-      if (forceZero || showOwnEditControls || !collapseOn) {
-        chromeMotion.style.transform = ''
-        chromeMotion.style.opacity = ''
-      } else if (isIpa) {
-        // Mid-banner during pin → title bar just under pinned banner → slide away on scroll-down.
-        const midNudge = profileChromeCenterNudgePxRef.current
-        const sat = Math.max(8, readCssSafeAreaTopPx())
-        const titleBarY = Math.max(0, Math.round(pinnedVisible - sat + 4))
-        const pinT = pinRange > 0 ? Math.max(0, Math.min(1, y / pinRange)) : 1
-        const baseY = midNudge + (titleBarY - midNudge) * pinT
-        const hide = (1 - chromeReveal) * (PROFILE_CHROME_HIDE_SLIDE_PX + sat)
-        chromeMotion.style.transform = `translate3d(0, ${baseY - hide}px, 0)`
-        chromeMotion.style.opacity = chromeReveal < 0.08 ? '0' : '1'
-      } else {
-        // Android / desktop: stay on mid-banner nudge (signed-off collapse).
-        const nudge = profileChromeCenterNudgePxRef.current
-        chromeMotion.style.transform = `translate3d(0, ${nudge}px, 0)`
-        chromeMotion.style.opacity = ''
-      }
-    }
-    // IPA: Posts/Replies yield space for the title-bar chrome when it slides back in.
-    const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
-    if (tabsEl) {
-      let tabsTop = collapseOn ? pinnedVisible : Math.max(0, Math.round(readCssSafeAreaTopPx()))
-      if (collapseOn && isIpa && pastPin) {
-        tabsTop = pinnedVisible + Math.round(chromeReveal * PROFILE_CHROME_TITLE_BAR_PX)
-      }
-      tabsEl.style.top = `${tabsTop}px`
-      setProfileTabsStickyTopPxState((prev) => (prev === tabsTop ? prev : tabsTop))
+      // Collapse on: fixed at banner midpoint. Classic iOS web: no mid-banner nudge.
+      const nudge =
+        forceZero || showOwnEditControls || !collapseOn
+          ? 0
+          : profileChromeCenterNudgePxRef.current
+      chromeMotion.style.transform =
+        reduce && !forceZero ? '' : `translate3d(0, ${nudge}px, 0)`
     }
     const avatar = profileAvatarMotionRef.current
     if (avatar) {
@@ -2029,6 +1994,7 @@ export default function LoungeProfileFullScreen({
     }
     const onScroll = () => {
       const st = el.scrollTop
+      applyProfileCollapseVisuals(st)
       const prev = profileDockScrollPrevTopRef.current
       const rawDelta = st - prev
       profileDockScrollPrevTopRef.current = st
@@ -2046,8 +2012,6 @@ export default function LoungeProfileFullScreen({
         profileDockRevealRef.current = r
         queueFlush()
       }
-      // Apply after reveal so IPA chrome/tabs track the title-bar hide/show this frame.
-      applyProfileCollapseVisuals(st)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => {

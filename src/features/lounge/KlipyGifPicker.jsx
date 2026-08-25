@@ -94,6 +94,15 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
 
   useLayoutEffect(() => {
     if (!open) return undefined
+    const appRoot = document.getElementById('root')
+    const prevInert = appRoot?.inert
+    if (appRoot) appRoot.inert = true
+    try {
+      const active = document.activeElement
+      if (active instanceof HTMLElement && appRoot?.contains(active)) active.blur()
+    } catch {
+      // ignore
+    }
     const focusSearch = () => {
       const el = searchInputRef.current
       if (!el) return
@@ -109,6 +118,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
     return () => {
       cancelAnimationFrame(raf)
       window.clearTimeout(t)
+      if (appRoot) appRoot.inert = Boolean(prevInert)
     }
   }, [open])
 

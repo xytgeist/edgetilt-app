@@ -126,7 +126,8 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - BUILD SUCCEEDED
 
 **Mac do now (Ryan + Theo):**
-1. Pull tip; wait for Vercel if smoking live web gates; rebuild IPA; **device smoke:** no black bars; post-detail ← clear of Island; unmute / Safari / no A2HS
+1. Pull tip; **IPA post-detail:** panel no longer double-pads sat (title bar only). Smoke vs Safari/PWA Image 1.
+2. Pull tip; wait for Vercel if smoking live web gates; rebuild IPA; **device smoke:** no black bars; post-detail ← clear of Island; unmute / Safari / no A2HS
 2. OAuth-in-shell smoke; hard-crash repro leaving post detail
 3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token
 

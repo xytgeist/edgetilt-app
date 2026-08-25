@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **IPA post-detail double sat:** Panel `pt-[sat]` + absolute title `pt-[sat]` + spacer = full measured bar height stacked an extra Island gap on EdgeiOS. Sat stays on the title bar only. Safari/PWA env() path unchanged in intent. File: `SocialFeed.jsx`.
 - 2026-08-24: **iOS/Android profile compact title:** Same name + posts slide-up as IPA/web, centered in the opaque title plate (rides title hide). Light plate uses dark type. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
 - 2026-08-24: **IPA/web profile compact title (X-style):** Left-aligned display name + posts count; slides up from below (no center fade). Collapse-on only (IPA + desktop web). iOS Safari/PWA + Android title chrome unchanged. Files: `LoungeProfileFullScreen.jsx`, `loungeProfileScrollCollapse.js`, `index.css`.
 - 2026-08-24: **Profile lightbox dismiss EDGE flash:** Shrink-back no longer lifts the feed EDGE title bar while a profile sheet is open (same class as post-detail). Prefer detail → profile chrome → feed. Files: `LoungeInlineMediaUrl.jsx`, `index.css`.

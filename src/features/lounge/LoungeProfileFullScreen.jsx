@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
+import {
+  prefersReducedMotion,
+  profileCollapseProgress,
+  profileCollapseVisuals,
+  profileCompactNameOpacity,
+  profileTabsStickyTopPx,
+  PROFILE_COLLAPSED_CHROME_ROW_PX,
+} from './loungeProfileScrollCollapse.js'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import {
@@ -735,12 +744,26 @@ export default function LoungeProfileFullScreen({
   const otherProfileMenuButtonRef = useRef(null)
   const otherProfileMenuPanelRef = useRef(null)
   const profileTopChromeRef = useRef(null)
-  const [profileTopChromeHeight, setProfileTopChromeHeight] = useState(52)
   const profileBodyScrollRef = useRef(null)
+  const profileBannerMediaRef = useRef(null)
+  const profileBannerLiveScrimRef = useRef(null)
+  const profileAvatarMotionRef = useRef(null)
+  const profileDisplayNameRef = useRef(null)
+  const profileCompactNameRef = useRef(null)
+  const profileCollapsedScrimRef = useRef(null)
+  const profileNameRevealScrollRef = useRef(80)
+  const profileStickyTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
+  const profileCollapseReduceMotionRef = useRef(false)
+  const [profileTabsStickyTopPxState, setProfileTabsStickyTopPxState] = useState(
+    PROFILE_COLLAPSED_CHROME_ROW_PX,
+  )
   const profileDockScrollPrevTopRef = useRef(0)
   const profileDockRevealRef = useRef(1)
   const profileDockScrollRafRef = useRef(0)
-  const [profileDockReveal, setProfileDockReveal] = useState(1)
+  /** FAB dock reveal only (header chrome stays pinned for X-style collapse). */
+  const [, setProfileDockReveal] = useState(1)
+  // LOUNGE_DOCK_FOOTER_BAR_DISABLED — keep setters for commented classic dock restore.
+  // eslint-disable-next-line no-unused-vars -- paired with disabled LoungeDockFooterBar JSX
   const [profileDockFooterMeasured, setProfileDockFooterMeasured] = useState(44)
   const wasOwnProfileEditingRef = useRef(false)
   /** @type {['following' | 'followers'] | null} */
@@ -1486,8 +1509,60 @@ export default function LoungeProfileFullScreen({
     }
   }, [otherProfileMenuOpen, placeOtherProfileMenu])
 
-  const profileTopChromeSlidePx =
-    (1 - profileDockReveal) * (profileTopChromeHeight > 0 ? profileTopChromeHeight : 52)
+  const applyProfileCollapseVisuals = useCallback((scrollTop, opts = {}) => {
+    const forceZero = Boolean(opts.forceZero) || showOwnEditControls
+    const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
+    const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
+    const progress = forceZero ? 0 : profileCollapseProgress(y)
+    const v = profileCollapseVisuals(progress, { reduceMotion: reduce })
+    const nameOp = forceZero
+      ? 0
+      : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
+
+    const media = profileBannerMediaRef.current
+    if (media) {
+      media.style.transform = `translate3d(0, ${v.bannerTranslateY}px, 0) scale(1.06)`
+      media.style.filter = v.bannerBlurPx > 0.4 ? `blur(${v.bannerBlurPx}px)` : ''
+    }
+    const liveScrim = profileBannerLiveScrimRef.current
+    if (liveScrim) {
+      liveScrim.style.opacity = String(v.bannerScrim)
+    }
+    const collapsedScrim = profileCollapsedScrimRef.current
+    if (collapsedScrim) {
+      collapsedScrim.style.opacity = String(v.collapsedBarOpacity)
+    }
+    const avatar = profileAvatarMotionRef.current
+    if (avatar) {
+      avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
+      avatar.style.opacity = String(v.avatarOpacity)
+      avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
+    }
+    const compact = profileCompactNameRef.current
+    if (compact) {
+      compact.style.opacity = String(nameOp)
+    }
+  }, [showOwnEditControls])
+
+  const measureProfileCollapseGeometry = useCallback(() => {
+    const bar = profileTopChromeRef.current
+    const chromeH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0
+    const sat = readCssSafeAreaTopPx()
+    const stickyTop =
+      chromeH > 0 ? chromeH : profileTabsStickyTopPx(sat)
+    profileStickyTopPxRef.current = stickyTop
+    setProfileTabsStickyTopPxState((prev) => (prev === stickyTop ? prev : stickyTop))
+
+    const scrollEl = profileBodyScrollRef.current
+    const nameEl = profileDisplayNameRef.current
+    if (scrollEl && nameEl) {
+      const scrollRect = scrollEl.getBoundingClientRect()
+      const nameRect = nameEl.getBoundingClientRect()
+      const nameDocTop = nameRect.top - scrollRect.top + scrollEl.scrollTop
+      // Compact title fades in as the large name crosses under the pinned chrome.
+      profileNameRevealScrollRef.current = Math.max(36, Math.round(nameDocTop - stickyTop + 8))
+    }
+  }, [])
 
   /** After edit mode (keyboard / overflow-hidden), scroll position or iOS visual viewport can leave the banner chrome clipped. */
   useLayoutEffect(() => {
@@ -1681,14 +1756,47 @@ export default function LoungeProfileFullScreen({
     setProfileDockReveal(1)
     onDockRevealChange?.(1)
     const el = profileBodyScrollRef.current
-    if (el) profileDockScrollPrevTopRef.current = el.scrollTop
-  }, [open, panelVisible, onDockRevealChange])
+    if (el) {
+      profileDockScrollPrevTopRef.current = el.scrollTop
+      applyProfileCollapseVisuals(el.scrollTop)
+    }
+  }, [open, panelVisible, onDockRevealChange, applyProfileCollapseVisuals])
+
+  useLayoutEffect(() => {
+    if (!open || !panelVisible) return
+    profileCollapseReduceMotionRef.current = prefersReducedMotion()
+    measureProfileCollapseGeometry()
+    const el = profileBodyScrollRef.current
+    applyProfileCollapseVisuals(el?.scrollTop ?? 0)
+    const onResize = () => {
+      measureProfileCollapseGeometry()
+      applyProfileCollapseVisuals(profileBodyScrollRef.current?.scrollTop ?? 0)
+    }
+    window.addEventListener('resize', onResize)
+    window.visualViewport?.addEventListener?.('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.visualViewport?.removeEventListener?.('resize', onResize)
+    }
+  }, [
+    open,
+    panelVisible,
+    measureProfileCollapseGeometry,
+    applyProfileCollapseVisuals,
+    displayName,
+    profile?.banner_url,
+    showOwnEditControls,
+  ])
 
   useEffect(() => {
     const el = profileBodyScrollRef.current
     if (!el || typeof window === 'undefined') return
-    if (showOwnEditControls || !open || !panelVisible) return
+    if (showOwnEditControls || !open || !panelVisible) {
+      applyProfileCollapseVisuals(0, { forceZero: true })
+      return
+    }
     profileDockScrollPrevTopRef.current = el.scrollTop
+    applyProfileCollapseVisuals(el.scrollTop)
     const titleRevealPerScrollPx = 220
     const titleHidePerScrollPx = 190
     const maxAbsScrollStepPx = 180
@@ -1704,6 +1812,7 @@ export default function LoungeProfileFullScreen({
     }
     const onScroll = () => {
       const st = el.scrollTop
+      applyProfileCollapseVisuals(st)
       const prev = profileDockScrollPrevTopRef.current
       const rawDelta = st - prev
       profileDockScrollPrevTopRef.current = st
@@ -1727,27 +1836,27 @@ export default function LoungeProfileFullScreen({
       el.removeEventListener('scroll', onScroll)
       if (profileDockScrollRafRef.current) window.cancelAnimationFrame(profileDockScrollRafRef.current)
     }
-  }, [onDockRevealChange, showOwnEditControls, open, panelVisible])
+  }, [onDockRevealChange, showOwnEditControls, open, panelVisible, applyProfileCollapseVisuals])
 
   useEffect(() => {
     if (!showOwnEditControls) return
     profileDockRevealRef.current = 1
     setProfileDockReveal(1)
     onDockRevealChange?.(1)
-  }, [showOwnEditControls, onDockRevealChange])
+    applyProfileCollapseVisuals(0, { forceZero: true })
+  }, [showOwnEditControls, onDockRevealChange, applyProfileCollapseVisuals])
 
   useLayoutEffect(() => {
     const bar = profileTopChromeRef.current
     if (!bar || typeof ResizeObserver === 'undefined') return
     const apply = () => {
-      const h = Math.ceil(bar.getBoundingClientRect().height)
-      if (h > 0) setProfileTopChromeHeight((prev) => (prev === h ? prev : h))
+      measureProfileCollapseGeometry()
     }
     apply()
     const ro = new ResizeObserver(() => apply())
     ro.observe(bar)
     return () => ro.disconnect()
-  }, [open, panelVisible, isOwnProfile])
+  }, [open, panelVisible, isOwnProfile, measureProfileCollapseGeometry])
 
   const toggleFollow = async () => {
     if (!viewerUserId || !profileUserId || isOwnProfile || socialBusy) return
@@ -2294,17 +2403,21 @@ export default function LoungeProfileFullScreen({
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           ref={profileTopChromeRef}
-          className="pointer-events-none absolute inset-x-0 top-0 z-30 will-change-transform"
-          style={{
-            transform: `translate3d(0, ${-profileTopChromeSlidePx}px, 0)`,
-            pointerEvents: profileDockReveal > 0.12 ? 'auto' : 'none',
-          }}
+          className="pointer-events-none absolute inset-x-0 top-0 z-30"
+          data-lounge-profile-top-chrome=""
         >
           <div
-            className="flex items-start justify-between gap-2 px-2 pb-1 sm:px-3"
+            ref={profileCollapsedScrimRef}
+            aria-hidden
+            data-lounge-profile-collapsed-scrim=""
+            className="pointer-events-none absolute inset-0 opacity-0"
+          />
+          <div
+            className="relative flex items-center justify-between gap-2 px-2 pb-1 sm:px-3"
             style={{
               // Inline … arbitrary Tailwind max(env, var(--edge-sat)) has broken before.
               paddingTop: 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
+              minHeight: PROFILE_COLLAPSED_CHROME_ROW_PX,
             }}
           >
             <button
@@ -2326,6 +2439,19 @@ export default function LoungeProfileFullScreen({
                 </span>
               )}
             </button>
+            {!showOwnEditControls ? (
+              <div
+                ref={profileCompactNameRef}
+                data-lounge-profile-compact-name=""
+                className="pointer-events-none absolute inset-x-14 min-w-0 truncate text-center text-[15px] font-bold leading-tight text-white opacity-0 sm:inset-x-16 sm:text-[16px]"
+                style={{
+                  top: 'calc(max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))) + 0.55rem)',
+                }}
+                aria-hidden
+              >
+                {displayName}
+              </div>
+            ) : null}
             {isOwnProfile ? (
               <div ref={ownProfileBannerMenuRef} className="pointer-events-auto shrink-0">
                 <button
@@ -2447,7 +2573,9 @@ export default function LoungeProfileFullScreen({
                     )
                   : null}
               </div>
-            ) : null}
+            ) : (
+              <div className="h-10 w-10 shrink-0" aria-hidden />
+            )}
           </div>
         </div>
         {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}
@@ -2461,16 +2589,28 @@ export default function LoungeProfileFullScreen({
           }}
         >
           <div
-            className="relative z-10 w-full shrink-0"
+            className="relative z-[18] w-full shrink-0"
+            data-lounge-profile-banner=""
             style={{
               // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.
               paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
             }}
           >
             <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
-              {profile?.banner_url ? (
-                <img src={profile.banner_url} alt="" className="h-full w-full object-cover" />
-              ) : null}
+              <div
+                ref={profileBannerMediaRef}
+                className="h-full w-full will-change-transform"
+                style={{ transformOrigin: 'center top' }}
+              >
+                {profile?.banner_url ? (
+                  <img src={profile.banner_url} alt="" className="h-full w-full object-cover" />
+                ) : null}
+              </div>
+              <div
+                ref={profileBannerLiveScrimRef}
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-black opacity-[0.12]"
+              />
             </div>
             <div className="relative h-28 w-full sm:h-36">
               {isOwnProfile ? (
@@ -2492,9 +2632,13 @@ export default function LoungeProfileFullScreen({
           </div>
 
           <div className="relative px-4">
-            <div className="pointer-events-none relative z-20 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
+            <div className="pointer-events-none relative z-10 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
               <div className="relative shrink-0 pointer-events-auto">
-                <div className="flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]">
+                <div
+                  ref={profileAvatarMotionRef}
+                  className="flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg will-change-transform sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]"
+                  style={{ transformOrigin: 'center bottom' }}
+                >
                   {profile?.avatar_url ? (
                     <img
                       key={profile.avatar_url}
@@ -2538,7 +2682,7 @@ export default function LoungeProfileFullScreen({
               !showOwnEditControls &&
               typeof onOpenFanSubscriptionSettings === 'function' &&
               supabaseClient ? (
-                <div className="pointer-events-auto mb-1 shrink-0">
+                <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
                   <OwnProfileFanMonetizationCta
                     supabaseClient={supabaseClient}
                     onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
@@ -2546,7 +2690,7 @@ export default function LoungeProfileFullScreen({
                   />
                 </div>
               ) : !isOwnProfile && viewerUserId ? (
-                <div className="pointer-events-auto mb-1 shrink-0">
+                <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                   {isFollowing ? (
                     creatorFanOffer && hasCreatorFanSub ? (
@@ -2700,7 +2844,7 @@ export default function LoungeProfileFullScreen({
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap items-baseline gap-x-1">
+                  <div ref={profileDisplayNameRef} className="flex flex-wrap items-baseline gap-x-1">
                     <span className="text-xl font-bold leading-none text-white sm:text-2xl">{displayName}</span>
                     <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} />
                   </div>
@@ -2791,7 +2935,11 @@ export default function LoungeProfileFullScreen({
 
           {!showOwnEditControls ? (
           <div className="w-full min-w-0">
-            <div className="mt-6 border-b border-zinc-800">
+            <div
+              data-lounge-profile-tabs=""
+              className="sticky z-20 mt-6 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
+              style={{ top: profileTabsStickyTopPxState }}
+            >
               <div className="flex gap-0">
                 {profileTabsVisible.map((id) => (
                   <button

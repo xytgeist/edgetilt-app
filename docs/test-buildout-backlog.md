@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **Lounge profile X-style scroll collapse:** Scroll-linked banner blur/parallax, avatar tuck, pinned chrome + compact name, sticky Posts/Replies tabs under measured chrome height. Uses `max(env, var(--edge-*))` + solid scrim fallbacks for IPA / PWA / Android / web. Helper `loungeProfileScrollCollapse.js`. Edit mode forces collapse off. Smoke: open profile → scroll → banner pins/blurs, name appears in chrome, tabs stick, feed scrolls under.
 - 2026-08-24: **Lounge composer no scroll-fold:** Expanded feed composer no longer auto-collapses / re-expands on scroll (felt jumpy). Stays open until explicit close / discard / post; title-bar hide-on-scroll unchanged. Removed `composerFoldedFromFeedScrollRef`.
 - 2026-08-24: **Settings from Chat FAB under status bar:** Dock panels used `loungeFeedViewportTopPx` for title `top`; on other tabs Lounge is `display:none` so rect top is 0. Now `max(feedTop, readCssSafeAreaTopPx())` + panel hide travel includes that inset. Smoke: Chat → FAB → Settings → EDGE below status bar.
 - 2026-08-24: **Title bar scroll-hide clears status bar:** Hide translate used only bar height while `top` sat below safe area … EDGE parked in the status bar. Travel is now `barHeight + viewportTopPx` (`loungeTitleBarHideTranslateYPx`) in Lounge feed + `ScrollLinkedEdgeTitleBarShell`. Smoke: scroll down → header fully off-screen above Island.

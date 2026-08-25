@@ -108,6 +108,8 @@ async function runLoungeStagedFeedPostPublishLoop(postId) {
       return
     }
     console.warn('staged video publish:', e)
+    // Tab hide / AbortError returns above. Timeout and Stream 404 are processing failures.
+    // Unexpected errors (e.g. feed_visible_at write) wait for resume on return.
     setLoungePendingPostProgress(id, {
       progress: 0.99,
       status: 'Still processing…',
@@ -212,6 +214,7 @@ async function runPendingCommentCfPollLoop(commentId) {
       return
     }
     console.warn('pending comment video CF wait:', e)
+    // Tab hide / AbortError returns above. Timeout and Stream 404 are processing failures.
     setLoungePendingPostProgress(id, {
       progress: 0.99,
       status: 'Still processing…',

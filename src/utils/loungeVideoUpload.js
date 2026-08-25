@@ -1899,7 +1899,7 @@ export function probeCfStreamHlsReady(uid, signal) {
   })
 }
 
-/** Thrown when Cloudflare Stream reports `status.state: error` during publish polling. */
+/** Thrown when Stream encode fails, the uid is gone (404), or HLS never becomes playable in time. */
 export class LoungeCfStreamProcessingError extends Error {
   /**
    * @param {string} message
@@ -1922,11 +1922,27 @@ export function isLoungeCfStreamProcessingError(err) {
   )
 }
 
+function loungeCfStreamStatusLooksMissing(message) {
+  return /video not found|not found on cloudflare stream|requested resource or operation was not found/i.test(
+    String(message || ''),
+  )
+}
+
+/** Consecutive Stream "not found" polls before we treat the uid as gone (not a brief index lag). */
+const CF_STREAM_MISSING_CONFIRM_POLLS = 8
+
 /**
- * @param {{ errorReasonText?: string, errorReasonCode?: string } | null | undefined} cfStatus
+ * @param {{ errorReasonText?: string, errorReasonCode?: string, state?: string } | null | undefined} cfStatus
  * @returns {string}
  */
 export function loungeCfStreamProcessingErrorMessage(cfStatus) {
+  const state = String(cfStatus?.state || '').trim()
+  if (state === 'missing') {
+    return "This video never landed on Cloudflare. Try posting it again."
+  }
+  if (state === 'timeout') {
+    return "This video didn't become playable in time. Try posting it again."
+  }
   const reason = String(cfStatus?.errorReasonText || '').trim()
   if (reason) {
     return `Video couldn't be processed. ${reason}`
@@ -1959,6 +1975,13 @@ export async function fetchCfStreamVideoProcessingStatus(supabaseClient, uid, si
       functionName: 'lounge-cf-stream-video-status',
       defaultUserMessage: 'Could not check video processing status.',
     })
+    if (loungeCfStreamStatusLooksMissing(msg)) {
+      throw new LoungeCfStreamProcessingError("This video never landed on Cloudflare. Try posting it again.", {
+        state: 'missing',
+        errorReasonCode: 'not_found',
+        errorReasonText: msg,
+      })
+    }
     throw new Error(msg)
   }
 
@@ -1973,7 +1996,8 @@ export async function fetchCfStreamVideoProcessingStatus(supabaseClient, uid, si
 
 /**
  * Poll until Stream HLS playback is ready (encoding finished).
- * When `supabaseClient` is set, also polls CF `status.state` and fails fast on `error`.
+ * When `supabaseClient` is set, also polls CF `status.state` and fails fast on encode
+ * `error`, confirmed missing (404), or HLS timeout. Tab hide stays AbortError.
  * @param {string} uid
  * @param {{ timeoutMs?: number, intervalMs?: number, signal?: AbortSignal, supabaseClient?: import('@supabase/supabase-js').SupabaseClient, onPoll?: (args: { elapsed: number }) => void, onUploadDiagnostic?: (detail: string) => void }} [options]
  */
@@ -1988,6 +2012,9 @@ export async function waitForCfStreamManifestReady(uid, options = {}) {
   if (!id) throw new Error('Missing video id.')
   const start = typeof performance !== 'undefined' ? performance.now() : Date.now()
   let lastPollError = ''
+  let consecutiveMissing = 0
+  /** @type {unknown} */
+  let lastMissingError = null
   while (true) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
     const elapsed =
@@ -2005,13 +2032,26 @@ export async function waitForCfStreamManifestReady(uid, options = {}) {
         },
         onUploadDiagnostic,
       )
-      throw new Error('Video is still processing. Wait a bit and try posting again.')
+      throw new LoungeCfStreamProcessingError(
+        loungeCfStreamProcessingErrorMessage({
+          state: 'timeout',
+          errorReasonCode: 'playback_timeout',
+          errorReasonText: lastPollError,
+        }),
+        {
+          state: 'timeout',
+          errorReasonCode: 'playback_timeout',
+          errorReasonText: lastPollError.slice(0, 200),
+        },
+      )
     }
     options.onPoll?.({ elapsed })
 
     if (supabaseClient) {
       try {
         const cfStatus = await fetchCfStreamVideoProcessingStatus(supabaseClient, id, signal)
+        consecutiveMissing = 0
+        lastMissingError = null
         if (cfStatus.state === 'error') {
           logLoungeVideoUploadTelemetry(
             {
@@ -2030,22 +2070,44 @@ export async function waitForCfStreamManifestReady(uid, options = {}) {
           )
         }
       } catch (e) {
-        if (isLoungeCfStreamProcessingError(e)) throw e
         if (e && typeof e === 'object' && 'name' in e && /** @type {{ name?: string }} */ (e).name === 'AbortError') {
           throw e
         }
-        lastPollError = e instanceof Error ? e.message : String(e)
+        const missing =
+          isLoungeCfStreamProcessingError(e) &&
+          String(/** @type {{ cfStatus?: { state?: string } }} */ (e).cfStatus?.state || '') === 'missing'
+        if (missing) {
+          consecutiveMissing += 1
+          lastMissingError = e
+          lastPollError = e instanceof Error ? e.message : String(e)
+          logLoungeVideoUploadTelemetry(
+            {
+              phase: 'cf_stream_status_poll',
+              outcome: 'missing',
+              consecutiveMissing,
+              videoUidPrefix: id.slice(0, 8),
+            },
+            onUploadDiagnostic,
+          )
+        } else if (isLoungeCfStreamProcessingError(e)) {
+          throw e
+        } else {
+          lastPollError = e instanceof Error ? e.message : String(e)
+        }
       }
     }
 
     try {
       if (await probeCfStreamHlsReady(id, signal)) return true
-      lastPollError = ''
+      lastPollError = lastMissingError instanceof Error ? lastMissingError.message : lastPollError
     } catch (e) {
       if (e && typeof e === 'object' && 'name' in e && /** @type {{ name?: string }} */ (e).name === 'AbortError') {
         throw e
       }
       lastPollError = e instanceof Error ? e.message : String(e)
+    }
+    if (consecutiveMissing >= CF_STREAM_MISSING_CONFIRM_POLLS && lastMissingError) {
+      throw lastMissingError
     }
     await sleepWithAbort(intervalMs, signal)
   }

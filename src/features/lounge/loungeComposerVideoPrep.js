@@ -10,6 +10,7 @@ import {
   isLikelyIphoneScreenRecording,
   isLoungeAndroidBlockedIphoneSpatialDirectUpload,
   isLoungeAndroidBlockedOversizedTrimSource,
+  isLoungeCfStreamProcessingError,
   isLoungeVideoQuicktimeMov,
   loungeAndroidIphoneSpatialDirectUploadMessage,
   loungeAndroidOversizedTrimSourceMessage,
@@ -477,6 +478,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
         }
         throw e
       }
+      if (isLoungeCfStreamProcessingError(e)) throw e
       lastErr = e instanceof Error ? e : new Error(String(e))
       report(0.42, 'Retrying…', '', attempt)
       // Do NOT delete the CF asset on intermediate failures.

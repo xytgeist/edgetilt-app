@@ -12,11 +12,14 @@ import {
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileLiveBannerBlurProgress,
+  profileIosWebTitleChromeEnabled,
   profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
+  PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX,
+  PROFILE_IOS_WEB_TITLE_BAR_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
@@ -1530,6 +1533,8 @@ export default function LoungeProfileFullScreen({
 
   const applyProfileCollapseVisuals = useCallback((scrollTop, opts = {}) => {
     const collapseOn = profileCollapseEnabledRef.current
+    const iosWebTitle =
+      profileIosWebTitleChromeEnabled() && !showOwnEditControls && !opts.forceZero
     const forceZero =
       Boolean(opts.forceZero) || showOwnEditControls || !collapseOn
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
@@ -1646,14 +1651,38 @@ export default function LoungeProfileFullScreen({
       }
     }
     const chromeMotion = profileChromeMotionRef.current
+    const chromeReveal = Math.max(0, Math.min(1, Number(profileDockRevealRef.current) || 0))
+    const sat = Math.max(8, readCssSafeAreaTopPx())
     if (chromeMotion) {
-      // Collapse on: fixed at banner midpoint. Classic iOS web: no mid-banner nudge.
-      const nudge =
-        forceZero || showOwnEditControls || !collapseOn
-          ? 0
-          : profileChromeCenterNudgePxRef.current
-      chromeMotion.style.transform =
-        reduce && !forceZero ? '' : `translate3d(0, ${nudge}px, 0)`
+      if (showOwnEditControls || opts.forceZero) {
+        chromeMotion.style.transform = ''
+        chromeMotion.style.opacity = ''
+      } else if (iosWebTitle) {
+        // Classic iOS web/PWA: title-bar chrome at top … slide away on scroll-down.
+        const hide = (1 - chromeReveal) * (PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX + sat)
+        chromeMotion.style.transform = `translate3d(0, ${-hide}px, 0)`
+        chromeMotion.style.opacity = chromeReveal < 0.08 ? '0' : '1'
+      } else if (collapseOn) {
+        const nudge = profileChromeCenterNudgePxRef.current
+        chromeMotion.style.transform =
+          reduce ? '' : `translate3d(0, ${nudge}px, 0)`
+        chromeMotion.style.opacity = ''
+      } else {
+        chromeMotion.style.transform = ''
+        chromeMotion.style.opacity = ''
+      }
+    }
+    // iOS web/PWA: Posts/Replies yield space when the title-bar chrome is visible.
+    const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
+    if (tabsEl) {
+      let tabsTop = collapseOn
+        ? profileStickyTopPxRef.current
+        : Math.max(0, Math.round(readCssSafeAreaTopPx()))
+      if (iosWebTitle) {
+        tabsTop = Math.round(sat + chromeReveal * PROFILE_IOS_WEB_TITLE_BAR_PX)
+      }
+      tabsEl.style.top = `${tabsTop}px`
+      setProfileTabsStickyTopPxState((prev) => (prev === tabsTop ? prev : tabsTop))
     }
     const avatar = profileAvatarMotionRef.current
     if (avatar) {
@@ -1994,7 +2023,6 @@ export default function LoungeProfileFullScreen({
     }
     const onScroll = () => {
       const st = el.scrollTop
-      applyProfileCollapseVisuals(st)
       const prev = profileDockScrollPrevTopRef.current
       const rawDelta = st - prev
       profileDockScrollPrevTopRef.current = st
@@ -2012,6 +2040,8 @@ export default function LoungeProfileFullScreen({
         profileDockRevealRef.current = r
         queueFlush()
       }
+      // After reveal so iOS web title-bar chrome/tabs track this frame.
+      applyProfileCollapseVisuals(st)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => {

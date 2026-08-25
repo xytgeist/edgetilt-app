@@ -51,20 +51,28 @@ export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
 /** Max `filter: blur()` on the banner media when frost completes. */
 export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
 
-/**
- * Default tuck fraction before blur may begin (Apple / desktop).
- * Android uses a lower fraction via `profileBannerBlurTuckFrac()`.
- */
+/** Default tuck fraction before blur may begin (non-IPA Apple / desktop). */
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC = 0.9
 
-/** Android: avatar clears the pinned strip later in scroll … start blur sooner. */
+/** Android: start blur sooner (signed off). */
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_ANDROID = 0.58
+
+/** IPA: start blur earlier than 90% tuck. */
+export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_IPA = 0.52
 
 /**
  * Minimum scroll distance for the blur ramp after tuck (Apple).
  * Prevents an instant full-blur when the display name is already near the banner.
  */
 export const PROFILE_BANNER_BLUR_MIN_RAMP_PX = 96
+
+/**
+ * iOS Safari / PWA title-bar chrome: sticky tabs clearance when back/menu are visible.
+ */
+export const PROFILE_IOS_WEB_TITLE_BAR_PX = 48
+
+/** iOS Safari / PWA: how far back/menu slide up when hiding on scroll-down. */
+export const PROFILE_IOS_WEB_CHROME_HIDE_SLIDE_PX = 64
 
 /**
  * Whether X-style profile header collapse is active on this client.
@@ -82,11 +90,25 @@ export function profileScrollCollapseEnabled() {
 }
 
 /**
+ * Classic-scroll iOS Safari / Home Screen PWA … title-bar chrome hide/show only
+ * (no sticky banner collapse). Positive iOS checks; never the EdgeiOS shell.
+ */
+export function profileIosWebTitleChromeEnabled() {
+  if (typeof navigator === 'undefined') return false
+  if (isEdgeiOSShell()) return false
+  const ua = String(navigator.userAgent || '')
+  if (/iPhone|iPad|iPod/i.test(ua)) return true
+  if (/Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1) return true
+  return false
+}
+
+/**
  * Platform tuck fraction for banner media blur.
- * Positive Android UA check only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
+ * Positive platform checks only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
  * @param {string} [ua]
  */
 export function profileBannerBlurTuckFrac(ua) {
+  if (isEdgeiOSShell()) return PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_IPA
   const agent =
     ua
     ?? (typeof navigator !== 'undefined' ? navigator.userAgent : '')

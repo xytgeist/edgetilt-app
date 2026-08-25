@@ -2667,7 +2667,7 @@ export default function LoungeProfileFullScreen({
             typeof onOpenFanSubscriptionSettings === 'function' &&
             supabaseClient ? (
               <div
-                className="pointer-events-auto absolute right-4 top-[calc(-3.5rem+10px)] z-[15] -translate-y-1/2 sm:top-[calc(-4.5rem+10px)]"
+                className="pointer-events-auto absolute right-4 top-[calc(-3.5rem+20px)] z-[15] -translate-y-1/2 sm:top-[calc(-4.5rem+20px)]"
                 data-lounge-profile-banner-actions=""
               >
                 <OwnProfileFanMonetizationCta
@@ -2678,7 +2678,7 @@ export default function LoungeProfileFullScreen({
               </div>
             ) : !isOwnProfile && viewerUserId ? (
               <div
-                className="pointer-events-auto absolute right-4 top-[calc(-3.5rem+10px)] z-[15] flex -translate-y-1/2 flex-wrap items-center justify-end gap-2 sm:top-[calc(-4.5rem+10px)]"
+                className="pointer-events-auto absolute right-4 top-[calc(-3.5rem+20px)] z-[15] flex -translate-y-1/2 flex-wrap items-center justify-end gap-2 sm:top-[calc(-4.5rem+20px)]"
                 data-lounge-profile-banner-actions=""
               >
                   {isFollowing ? (

@@ -52,6 +52,11 @@ export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
 export const PROFILE_BANNER_MEDIA_BLUR_SCALE = 1.1
 
 /**
+ * Blur starts once this fraction of the (scaled) avatar height sits under the pinned banner.
+ */
+export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC = 0.9
+
+/**
  * Motion + chrome presets.
  * IPA: Ryan-signed mid-banner chrome + lag/shrink.
  * Web (PWA / Android / desktop): raise chrome in the photo band; shrink faster /
@@ -157,7 +162,10 @@ function smoothstep01(t) {
  *   scrollLag?: number,
  *   shrinkEasePower?: number,
  *   minScale?: number,
+ *   blurStartScrollPx?: number,
+ *   blurEndScrollPx?: number,
  * }} [opts]
+ * blurStartScrollPx: avatar ~90% under banner. blurEndScrollPx: display name starts under banner.
  */
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
   const y = Math.max(0, Number(scrollTop) || 0)
@@ -182,11 +190,13 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinStart = PROFILE_PIN_SCRIM_START
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
-  // Media blur ramps a bit earlier than the thin chrome frost so the photo softens first.
-  const blurStart = 0.72
-  const blurT = reduce
-    ? pinReveal
-    : Math.max(0, Math.min(1, (pinEase - blurStart) / (1 - blurStart)))
+  const blurStart = Math.max(0, Number(opts.blurStartScrollPx) || pinRange)
+  const blurEnd = Math.max(blurStart + 24, Number(opts.blurEndScrollPx) || blurStart + 80)
+  let blurT = 0
+  if (y <= blurStart) blurT = 0
+  else if (y >= blurEnd) blurT = 1
+  else blurT = (y - blurStart) / (blurEnd - blurStart)
+  if (reduce) blurT = blurT >= 0.5 ? 1 : 0
   const bannerBlurPx = blurT * PROFILE_BANNER_MEDIA_BLUR_MAX_PX
 
   const shrinkT = reduce ? pinRaw : Math.pow(pinRaw, shrinkPower)
@@ -211,6 +221,39 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     /** Raise banner over avatar once the pin/clear line is reached. */
     avatarUnderBanner: y > pinRange + 2,
   }
+}
+
+/**
+ * ScrollTop when `tuckFrac` of the scaled avatar height sits under the pinned banner bottom.
+ * Uses post-pin lag freeze + final min scale (top-origin).
+ *
+ * @param {{
+ *   avatarTopPx: number,
+ *   avatarHeightPx: number,
+ *   pinnedVisiblePx: number,
+ *   pinRangePx: number,
+ *   scrollLag?: number,
+ *   minScale?: number,
+ *   tuckFrac?: number,
+ * }} args
+ */
+export function profileBannerBlurStartScrollPx({
+  avatarTopPx,
+  avatarHeightPx,
+  pinnedVisiblePx,
+  pinRangePx,
+  scrollLag = PROFILE_AVATAR_SCROLL_LAG,
+  minScale = PROFILE_AVATAR_MIN_SCALE,
+  tuckFrac = PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC,
+}) {
+  const A0 = Number(avatarTopPx) || 0
+  const H = Math.max(1, Number(avatarHeightPx) || 1)
+  const P = Math.max(0, Number(pinnedVisiblePx) || 0)
+  const pinRange = Math.max(0, Number(pinRangePx) || 0)
+  const lag = Math.max(0, Math.min(1, Number(scrollLag) || 0))
+  const scale = Math.max(0.35, Math.min(1, Number(minScale) || PROFILE_AVATAR_MIN_SCALE))
+  const frac = Math.max(0.05, Math.min(1, Number(tuckFrac) || PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC))
+  return Math.round(A0 - P + pinRange * lag + frac * H * scale)
 }
 
 /**

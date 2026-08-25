@@ -4,6 +4,7 @@ import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import {
   prefersReducedMotion,
+  profileBannerBlurStartScrollPx,
   profileBannerPinScrollRangePx,
   profileBannerStickyTopPx,
   profileChromeCenterNudgePx,
@@ -761,6 +762,8 @@ export default function LoungeProfileFullScreen({
   const profileChromeCenterNudgePxRef = useRef(36)
   const profileCollapsedScrimRef = useRef(null)
   const profileNameRevealScrollRef = useRef(80)
+  const profileBannerBlurStartScrollRef = useRef(120)
+  const profileBannerBlurEndScrollRef = useRef(200)
   const profileStickyTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
   const profileCollapseRangePxRef = useRef(112)
   const profileBannerStickyTopPxRef = useRef(0)
@@ -1531,6 +1534,8 @@ export default function LoungeProfileFullScreen({
       scrollLag: motion.scrollLag,
       shrinkEasePower: motion.shrinkEasePower,
       minScale: motion.minScale,
+      blurStartScrollPx: profileBannerBlurStartScrollRef.current,
+      blurEndScrollPx: profileBannerBlurEndScrollRef.current,
     })
     const nameOp = forceZero
       ? 0
@@ -1630,13 +1635,42 @@ export default function LoungeProfileFullScreen({
     }
 
     const nameEl = profileDisplayNameRef.current
+    const avatarEl = profileAvatarMotionRef.current
+    const motion = profileCollapseShellPreset(isIpa)
+    let nameUnderScroll = Math.max(36, pinRange + 48)
     if (scrollEl && nameEl) {
       const scrollRect = scrollEl.getBoundingClientRect()
       const nameRect = nameEl.getBoundingClientRect()
       const nameDocTop = nameRect.top - scrollRect.top + scrollEl.scrollTop
-      // Compact title fades in as the large name crosses under the pinned banner strip.
-      profileNameRevealScrollRef.current = Math.max(36, Math.round(nameDocTop - pinnedVisible + 8))
+      // Display name begins sliding under the pinned banner bottom.
+      nameUnderScroll = Math.max(36, Math.round(nameDocTop - pinnedVisible))
+      // Compact title fades in just after that crossing.
+      profileNameRevealScrollRef.current = Math.max(36, nameUnderScroll + 8)
     }
+
+    let blurStartScroll = Math.max(pinRange, nameUnderScroll - 64)
+    if (scrollEl && avatarEl) {
+      const prevTransform = avatarEl.style.transform
+      avatarEl.style.transform = ''
+      const scrollRect = scrollEl.getBoundingClientRect()
+      const avatarRect = avatarEl.getBoundingClientRect()
+      avatarEl.style.transform = prevTransform
+      const avatarTop = avatarRect.top - scrollRect.top + scrollEl.scrollTop
+      blurStartScroll = profileBannerBlurStartScrollPx({
+        avatarTopPx: avatarTop,
+        avatarHeightPx: avatarRect.height,
+        pinnedVisiblePx: pinnedVisible,
+        pinRangePx: pinRange,
+        scrollLag: motion.scrollLag,
+        minScale: motion.minScale,
+      })
+    }
+    // Keep a usable ramp … blur starts at 90% tuck and finishes as the name enters.
+    if (blurStartScroll > nameUnderScroll - 24) {
+      blurStartScroll = Math.max(pinRange, nameUnderScroll - 24)
+    }
+    profileBannerBlurStartScrollRef.current = blurStartScroll
+    profileBannerBlurEndScrollRef.current = Math.max(blurStartScroll + 24, nameUnderScroll)
   }, [])
 
   /** After edit mode (keyboard / overflow-hidden), scroll position or iOS visual viewport can leave the banner chrome clipped. */

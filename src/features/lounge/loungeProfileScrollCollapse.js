@@ -1,14 +1,14 @@
 /**
  * X-style profile header collapse math.
  *
- * Enabled on: EdgeiOS IPA shell + Android (Chrome / PWA).
- * Disabled on: iOS Safari + iOS Home Screen PWA … those keep classic in-flow scroll
- * (status-bar sticky collapse looked wrong there).
+ * Enabled on: EdgeiOS IPA shell.
+ * Disabled on: iOS Safari + iOS Home Screen PWA + Android … those keep classic in-flow
+ * scroll + title-bar chrome (`profileIosWebTitleChromeEnabled`).
  *
  * Cross-platform when enabled:
  * - Progress is pure scrollTop / live geometry (no shell-only APIs).
  * - Banner pins via `position: sticky`.
- * - Avatar lag + shrink presets differ IPA vs Android/desktop.
+ * - Avatar lag + shrink presets differ IPA vs desktop.
  * - Blur: live avatar tuck → ramp until display name enters (scroll-distance ramp on Apple).
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
@@ -38,9 +38,6 @@ export const PROFILE_PIN_SCRIM_START = 0.9
 
 /** Final avatar scale once shrink completes (IPA preset). */
 export const PROFILE_AVATAR_MIN_SCALE = 0.78
-
-/** Matches `h-[4.8rem]` avatar on profile collapse (layout shrink path). */
-export const PROFILE_AVATAR_LAYOUT_SIZE_PX = 77
 
 /** Matches `ring-4` on the profile avatar … outer edge of the border around the face. */
 export const PROFILE_AVATAR_RING_PX = 4
@@ -89,13 +86,13 @@ export const PROFILE_IOS_WEB_TABS_OVERLAP_PX = 2
 
 /**
  * Whether X-style profile header collapse is active on this client.
- * Positive checks only … iPhone/iPad Safari + iOS PWA stay on classic scroll.
+ * Positive checks only … iPhone/iPad Safari + iOS PWA + Android stay on classic scroll.
  */
 export function profileScrollCollapseEnabled() {
   if (typeof navigator === 'undefined') return true
   if (isEdgeiOSShell()) return true
   const ua = String(navigator.userAgent || '')
-  if (/Android/i.test(ua)) return true
+  if (/Android/i.test(ua)) return false
   if (/iPhone|iPad|iPod/i.test(ua)) return false
   // iPadOS desktop UA
   if (/Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1) return false
@@ -103,13 +100,14 @@ export function profileScrollCollapseEnabled() {
 }
 
 /**
- * Classic-scroll iOS Safari / Home Screen PWA … title-bar chrome hide/show only
- * (no sticky banner collapse). Positive iOS checks; never the EdgeiOS shell.
+ * Classic-scroll title-bar chrome hide/show (no sticky banner collapse).
+ * iOS Safari / Home Screen PWA + Android. Never the EdgeiOS shell.
  */
 export function profileIosWebTitleChromeEnabled() {
   if (typeof navigator === 'undefined') return false
   if (isEdgeiOSShell()) return false
   const ua = String(navigator.userAgent || '')
+  if (/Android/i.test(ua)) return true
   if (/iPhone|iPad|iPod/i.test(ua)) return true
   if (/Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1) return true
   return false
@@ -204,7 +202,7 @@ export function profileLiveBannerBlurProgress({
 /**
  * Motion + chrome presets.
  * IPA: Ryan-signed mid-banner chrome + lag/shrink.
- * Web (PWA / Android / desktop): raise chrome in the photo band; shrink faster /
+ * Desktop web (collapse on): raise chrome in the photo band; shrink faster /
  * farther and lag less so the pinned banner bottom can clear the avatar ring top.
  *
  * @param {boolean} isIpaShell `isEdgeiOSShell()` … positive IPA check only
@@ -219,16 +217,6 @@ export function profileCollapseShellPreset(isIpaShell) {
       scrollLag: PROFILE_AVATAR_SCROLL_LAG,
       shrinkEasePower: PROFILE_AVATAR_SHRINK_EASE_POWER,
       minScale: PROFILE_AVATAR_MIN_SCALE,
-    }
-  }
-  // Android: layout-sized shrink (no transform). Faster/farther so it tucks under sticky.
-  if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '')) {
-    return {
-      chromeCenterExtraPx: 0,
-      chromeContentCenterFrac: 0.34,
-      scrollLag: 0.28,
-      shrinkEasePower: 1.15,
-      minScale: 0.7,
     }
   }
   return {

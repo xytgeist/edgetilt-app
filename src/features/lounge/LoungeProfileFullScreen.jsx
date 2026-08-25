@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom'
 import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
-import { isAndroidDevice } from '../../utils/pwaNotificationPrompt.js'
 import {
   prefersReducedMotion,
   profileBannerBlurTuckFrac,
@@ -16,7 +15,6 @@ import {
   profileIosWebTitleChromeEnabled,
   profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
-  PROFILE_AVATAR_LAYOUT_SIZE_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
@@ -1643,7 +1641,6 @@ export default function LoungeProfileFullScreen({
       }
     }
     const bannerShell = profileBannerShellRef.current
-    const androidCollapse = collapseOn && isAndroidDevice()
     if (bannerShell) {
       if (!collapseOn) {
         bannerShell.style.zIndex = ''
@@ -1667,7 +1664,7 @@ export default function LoungeProfileFullScreen({
         avatarRow.style.clipPath = ''
         avatarRow.style.webkitClipPath = ''
       } else {
-        // Rest: above banner for −mt peek. After a few px: under banner (layout shrink tucks).
+        // Rest: above banner for −mt peek. After a few px: under banner.
         avatarRow.style.zIndex = v.avatarUnderBanner ? '10' : '29'
         avatarRow.style.clipPath = ''
         avatarRow.style.webkitClipPath = ''
@@ -1867,22 +1864,6 @@ export default function LoungeProfileFullScreen({
         avatar.style.width = ''
         avatar.style.height = ''
         avatar.style.marginTop = ''
-      } else if (androidCollapse) {
-        // Layout shrink + margin lag … no transform layer (Android sticky fling safe).
-        const sizePx = Math.max(
-          44,
-          Math.round(PROFILE_AVATAR_LAYOUT_SIZE_PX * v.avatarScale),
-        )
-        const lagPx = Math.round(v.avatarTranslateY)
-        avatar.style.transformOrigin = ''
-        avatar.style.transform = ''
-        avatar.style.willChange = 'auto'
-        avatar.style.zIndex = ''
-        avatar.style.width = `${sizePx}px`
-        avatar.style.height = `${sizePx}px`
-        avatar.style.marginTop = lagPx ? `${lagPx}px` : ''
-        avatar.style.opacity = '1'
-        avatar.style.pointerEvents = ''
       } else {
         avatar.style.transformOrigin = '50% 0%'
         avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
@@ -3118,9 +3099,7 @@ export default function LoungeProfileFullScreen({
               <div className="relative shrink-0 pointer-events-auto">
                 <div
                   ref={profileAvatarMotionRef}
-                  className={`relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px] ${
-                    profileCollapseEnabled && isAndroidDevice() ? '' : 'will-change-transform'
-                  }`}
+                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
                   style={{ transformOrigin: 'center top' }}
                   data-lounge-profile-avatar=""
                 >

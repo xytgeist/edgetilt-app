@@ -1646,13 +1646,15 @@ export default function LoungeProfileFullScreen({
       if (!collapseOn) {
         bannerShell.style.zIndex = ''
         bannerShell.style.top = ''
+        bannerShell.style.transform = ''
         bannerShell.classList.remove('sticky')
         bannerShell.classList.add('relative')
       } else {
         bannerShell.classList.add('sticky')
         bannerShell.classList.remove('relative')
-        // Above avatar row (z-20) / avatar (z-25 in-row); below top chrome (z-30).
-        bannerShell.style.zIndex = v.avatarUnderBanner ? '28' : '18'
+        // Own compositor layer below chrome (z-30). Avatar row only beats this at rest.
+        bannerShell.style.zIndex = '28'
+        bannerShell.style.transform = 'translateZ(0)'
         bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
       }
     }
@@ -1661,8 +1663,8 @@ export default function LoungeProfileFullScreen({
       if (!collapseOn) {
         avatarRow.style.zIndex = ''
       } else {
-        // Drop under the pinned banner so fast Android flings cannot paint avatar on top.
-        avatarRow.style.zIndex = v.avatarUnderBanner ? '12' : ''
+        // Rest: above banner so the -mt overlap peeks. Else: under pinned banner.
+        avatarRow.style.zIndex = v.avatarUnderBanner ? '10' : '29'
       }
     }
     const liveScrim = profileBannerLiveScrimRef.current
@@ -1854,11 +1856,16 @@ export default function LoungeProfileFullScreen({
         avatar.style.transform = ''
         avatar.style.opacity = ''
         avatar.style.pointerEvents = ''
+        avatar.style.willChange = ''
+        avatar.style.zIndex = ''
       } else {
         avatar.style.transformOrigin = '50% 0%'
         avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
         avatar.style.opacity = String(v.avatarOpacity)
         avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
+        // Drop the promoted layer once tucked … Android otherwise keeps it above sticky.
+        avatar.style.willChange = v.avatarUnderBanner ? 'auto' : 'transform'
+        avatar.style.zIndex = v.avatarUnderBanner ? '1' : ''
       }
     }
     const compact = profileCompactNameRef.current
@@ -2252,8 +2259,13 @@ export default function LoungeProfileFullScreen({
       profileCollapseScrollPumpRafRef.current = window.requestAnimationFrame(pumpScrollVisuals)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
+    // Touch kicks the pump before Android coalesces fling scroll events.
+    el.addEventListener('touchstart', onScroll, { passive: true })
+    el.addEventListener('touchmove', onScroll, { passive: true })
     return () => {
       el.removeEventListener('scroll', onScroll)
+      el.removeEventListener('touchstart', onScroll)
+      el.removeEventListener('touchmove', onScroll)
       stopScrollPump()
       if (profileDockScrollRafRef.current) window.cancelAnimationFrame(profileDockScrollRafRef.current)
     }
@@ -3036,7 +3048,7 @@ export default function LoungeProfileFullScreen({
         >
           <div
             ref={profileBannerShellRef}
-            className={`${profileCollapseEnabled ? 'sticky z-[18]' : 'relative z-10'} w-full shrink-0`}
+            className={`${profileCollapseEnabled ? 'sticky z-[28]' : 'relative z-10'} w-full shrink-0`}
             data-lounge-profile-banner=""
             style={{
               // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.

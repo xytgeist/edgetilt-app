@@ -1581,7 +1581,7 @@ export default function LoungeProfileFullScreen({
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
     profileChromeCenterNudgePxRef.current = Math.max(
       0,
-      Math.round(bannerH / 2 - chromePadTop - 20 + 5),
+      Math.round(bannerH / 2 - chromePadTop - 20 + 10),
     )
 
     const pinnedVisible =
@@ -2434,9 +2434,10 @@ export default function LoungeProfileFullScreen({
       <div
         className={`${
           stackedOverlay ? 'absolute' : 'fixed'
-        } inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/90 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none ${
+        } inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l-0 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none sm:border-l sm:border-zinc-800/90 ${
           stackedOverlay || panelVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
+        data-lounge-profile-sheet=""
         onTransitionEnd={(e) => {
           if (e.propertyName !== 'transform') return
           if (!panelVisible) onAfterTransitionOut?.()
@@ -2647,14 +2648,18 @@ export default function LoungeProfileFullScreen({
               top: 0,
             }}
           >
-            <div className="absolute inset-0 overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
+            <div className="absolute inset-0 left-0 right-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
               <div
                 ref={profileBannerMediaRef}
-                className="h-full w-full will-change-transform"
+                className="h-full w-full min-w-full will-change-transform"
                 style={{ transformOrigin: 'center top' }}
               >
                 {profile?.banner_url ? (
-                  <img src={profile.banner_url} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={profile.banner_url}
+                    alt=""
+                    className="h-full w-full min-w-full object-cover"
+                  />
                 ) : null}
               </div>
               <div

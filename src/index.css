@@ -1905,6 +1905,18 @@ html.light [data-lounge-profile-tabs] {
   border-color: rgba(24, 24, 27, 0.12) !important;
 }
 
+/* Full-bleed banner … no hairline gap from sheet border / light canvas peeking. */
+[data-lounge-profile-banner] {
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+}
+[data-lounge-profile-banner] img {
+  display: block;
+  width: 100%;
+  max-width: none;
+}
+
 [data-lounge-profile-banner-chrome] {
   color: #ffffff;
   -webkit-text-fill-color: #ffffff;

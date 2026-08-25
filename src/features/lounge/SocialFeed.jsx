@@ -15649,6 +15649,7 @@ export default function SocialFeed({
       key={loungeDockPanel === 'search' ? `search-${loungeDockSearchQueryVersion}` : loungeDockPanel}
       initialSearchQuery={loungeDockPanel === 'search' ? loungeDockSearchQuery : ''}
       openPanel={loungeDockPanel}
+      stackAboveDetailOrProfile={loungeDockStackAboveDetailOrProfile}
       onClose={onLoungeDockPanelClose}
       panelScrollRefOut={loungeDockPanelScrollRef}
       restorePanelScrollTop={dockPanelScrollRestore}

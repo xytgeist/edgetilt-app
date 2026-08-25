@@ -18,6 +18,12 @@ export const Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL = 100
  */
 export const Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE = 102
 
+/** Settings / search / notifications over a still-mounted profile or post detail. */
+export const Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE = 102
+
+/** FAB above that overlay slide (lightbox stays 103+ … avoid opening media from Settings). */
+export const Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL = 103
+
 /** Default floor for full-screen app sheets/dialogs (bankroll, logbook, offers, lounge prompts). */
 export const Z_APP_MODAL = 120
 

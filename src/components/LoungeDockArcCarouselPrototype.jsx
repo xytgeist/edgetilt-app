@@ -39,6 +39,7 @@ import {
 } from '../utils/loungeDockFabGlow.js'
 import {
   Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE,
+  Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL,
   Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL,
   Z_LOUNGE_DOCK_VIEWPORT,
 } from '../constants/appZIndex.js'
@@ -1748,11 +1749,14 @@ export default function LoungeDockArcCarouselPrototype({
       : 'origin-bottom-right'
     : ''
 
-  const dockLayerZIndex = stackAboveDetailOrProfile
-    ? Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE
-    : stackAboveSlidePanel
-      ? Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL
-      : Z_LOUNGE_DOCK_VIEWPORT
+  const dockLayerZIndex =
+    stackAboveDetailOrProfile && stackAboveSlidePanel
+      ? Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL
+      : stackAboveDetailOrProfile
+        ? Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE
+        : stackAboveSlidePanel
+          ? Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL
+          : Z_LOUNGE_DOCK_VIEWPORT
 
   const pickerOffset =
     menuExpanded && spinEnabled

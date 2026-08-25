@@ -49,7 +49,8 @@ export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
 export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
 
 /**
- * Blur starts once this fraction of the (scaled) avatar height sits under the pinned banner.
+ * Blur starts once this fraction of the avatar (incl. ring) sits under the pinned banner.
+ * Live geometry also hard-gates blur below this fraction.
  */
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC = 0.9
 
@@ -221,8 +222,8 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
 }
 
 /**
- * ScrollTop when `tuckFrac` of the scaled avatar height sits under the pinned banner bottom.
- * Uses post-pin lag freeze + final min scale (top-origin).
+ * ScrollTop when `tuckFrac` of the avatar height sits under the pinned banner bottom.
+ * Uses post-pin lag freeze + layout height (not min-scale) so 90% tuck is not early.
  *
  * @param {{
  *   avatarTopPx: number,
@@ -230,7 +231,6 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
  *   pinnedVisiblePx: number,
  *   pinRangePx: number,
  *   scrollLag?: number,
- *   minScale?: number,
  *   tuckFrac?: number,
  * }} args
  */
@@ -240,7 +240,6 @@ export function profileBannerBlurStartScrollPx({
   pinnedVisiblePx,
   pinRangePx,
   scrollLag = PROFILE_AVATAR_SCROLL_LAG,
-  minScale = PROFILE_AVATAR_MIN_SCALE,
   tuckFrac = PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC,
 }) {
   const A0 = Number(avatarTopPx) || 0
@@ -248,9 +247,9 @@ export function profileBannerBlurStartScrollPx({
   const P = Math.max(0, Number(pinnedVisiblePx) || 0)
   const pinRange = Math.max(0, Number(pinRangePx) || 0)
   const lag = Math.max(0, Math.min(1, Number(scrollLag) || 0))
-  const scale = Math.max(0.35, Math.min(1, Number(minScale) || PROFILE_AVATAR_MIN_SCALE))
   const frac = Math.max(0.05, Math.min(1, Number(tuckFrac) || PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC))
-  return Math.round(A0 - P + pinRange * lag + frac * H * scale)
+  // After pin: screenTop = A0 - y + pinRange*lag. Want P - screenTop = frac*H.
+  return Math.round(A0 - P + pinRange * lag + frac * H)
 }
 
 /**

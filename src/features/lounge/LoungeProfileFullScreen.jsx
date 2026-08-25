@@ -12,6 +12,8 @@ import {
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileTabsStickyTopPx,
+  PROFILE_AVATAR_RING_PX,
+  PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
@@ -1542,7 +1544,28 @@ export default function LoungeProfileFullScreen({
 
     const media = profileBannerMediaRef.current
     if (media) {
-      const blurPx = Number(v.bannerBlurPx) || 0
+      let blurPx = Number(v.bannerBlurPx) || 0
+      // Hard gate: never blur until the live avatar is ~90% under the banner bottom.
+      const scrollEl = profileBodyScrollRef.current
+      const avatarEl = profileAvatarMotionRef.current
+      if (blurPx > 0 && scrollEl && avatarEl) {
+        const scrollRect = scrollEl.getBoundingClientRect()
+        const pinRangeNow = profileCollapseRangePxRef.current
+        const pinnedVisible = profileStickyTopPxRef.current
+        const bannerEl = profileBannerShellRef.current
+        const bannerBottomY =
+          y >= pinRangeNow
+            ? scrollRect.top + pinnedVisible
+            : bannerEl
+              ? bannerEl.getBoundingClientRect().bottom
+              : scrollRect.top + pinnedVisible
+        const ar = avatarEl.getBoundingClientRect()
+        const ring = PROFILE_AVATAR_RING_PX
+        const top = ar.top - ring
+        const h = Math.max(1, ar.height + ring * 2)
+        const underFrac = Math.max(0, Math.min(1, (bannerBottomY - top) / h))
+        if (underFrac < PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC) blurPx = 0
+      }
       media.style.transform = ''
       if (blurPx > 0.15) {
         media.style.filter = `blur(${blurPx.toFixed(2)}px)`
@@ -1646,29 +1669,31 @@ export default function LoungeProfileFullScreen({
       profileNameRevealScrollRef.current = Math.max(36, nameUnderScroll + 8)
     }
 
-    let blurStartScroll = Math.max(pinRange, nameUnderScroll - 64)
+    let blurStartScroll = pinRange + 48
     if (scrollEl && avatarEl) {
       const prevTransform = avatarEl.style.transform
       avatarEl.style.transform = ''
       const scrollRect = scrollEl.getBoundingClientRect()
       const avatarRect = avatarEl.getBoundingClientRect()
       avatarEl.style.transform = prevTransform
-      const avatarTop = avatarRect.top - scrollRect.top + scrollEl.scrollTop
+      const ring = PROFILE_AVATAR_RING_PX
+      // Outer ring top / height … match what “behind the banner” looks like on screen.
+      const avatarTop = avatarRect.top - ring - scrollRect.top + scrollEl.scrollTop
+      const avatarH = avatarRect.height + ring * 2
       blurStartScroll = profileBannerBlurStartScrollPx({
         avatarTopPx: avatarTop,
-        avatarHeightPx: avatarRect.height,
+        avatarHeightPx: avatarH,
         pinnedVisiblePx: pinnedVisible,
         pinRangePx: pinRange,
         scrollLag: motion.scrollLag,
-        minScale: motion.minScale,
       })
     }
-    // Keep a usable ramp … blur starts at 90% tuck and finishes as the name enters.
-    if (blurStartScroll > nameUnderScroll - 24) {
-      blurStartScroll = Math.max(pinRange, nameUnderScroll - 24)
-    }
-    profileBannerBlurStartScrollRef.current = blurStartScroll
-    profileBannerBlurEndScrollRef.current = Math.max(blurStartScroll + 24, nameUnderScroll)
+    // Do not pull start earlier for the name ramp … wait for the 90% tuck first.
+    profileBannerBlurStartScrollRef.current = Math.max(pinRange, blurStartScroll)
+    profileBannerBlurEndScrollRef.current = Math.max(
+      profileBannerBlurStartScrollRef.current + 24,
+      nameUnderScroll,
+    )
   }, [])
 
   /** After edit mode (keyboard / overflow-hidden), scroll position or iOS visual viewport can leave the banner chrome clipped. */

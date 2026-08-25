@@ -44,9 +44,9 @@ export const PROFILE_AVATAR_RING_PX = 4
 /**
  * Fraction of scroll that is counteracted on the avatar during the pin/shrink window.
  * 0 = full-speed with the page; 1 = screen-pinned.
- * Net upward speed ≈ (1 - lag) × scroll speed.
+ * Net upward speed ≈ (1 - lag) × scroll speed (~18% at 0.82).
  */
-export const PROFILE_AVATAR_SCROLL_LAG = 0.62
+export const PROFILE_AVATAR_SCROLL_LAG = 0.82
 
 /**
  * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.

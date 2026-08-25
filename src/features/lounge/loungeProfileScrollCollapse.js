@@ -44,9 +44,10 @@ export const PROFILE_AVATAR_RING_PX = 4
 /**
  * Fraction of scroll that is counteracted on the avatar during the pin/shrink window.
  * 0 = full-speed with the page; 1 = screen-pinned.
- * Net upward speed ≈ (1 - lag) × scroll speed (~8% at 0.92).
+ * Net upward speed ≈ (1 - lag) × scroll speed (~55% at 0.45).
+ * Keep this well below ~0.85 on long chrome pin ranges or the avatar reads as stuck.
  */
-export const PROFILE_AVATAR_SCROLL_LAG = 0.92
+export const PROFILE_AVATAR_SCROLL_LAG = 0.45
 
 /**
  * Ease-in power for avatar scale over the pin window.

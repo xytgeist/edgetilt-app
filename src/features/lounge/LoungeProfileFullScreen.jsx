@@ -763,7 +763,9 @@ export default function LoungeProfileFullScreen({
   const profileBannerLiveScrimRef = useRef(null)
   const profileBannerBlurOverlayRef = useRef(null)
   const profileAvatarMotionRef = useRef(null)
+  const profileAvatarRowRef = useRef(null)
   const profileDisplayNameRef = useRef(null)
+  const profileCollapseScrollPumpRafRef = useRef(0)
   const profileCompactNameRef = useRef(null)
   const profileChromeMotionRef = useRef(null)
   const profileChromeCenterNudgePxRef = useRef(36)
@@ -1649,9 +1651,18 @@ export default function LoungeProfileFullScreen({
       } else {
         bannerShell.classList.add('sticky')
         bannerShell.classList.remove('relative')
-        // Sticky pin … raise over avatar only during the post-pin tuck phase.
-        bannerShell.style.zIndex = v.avatarUnderBanner ? '22' : '18'
+        // Above avatar row (z-20) / avatar (z-25 in-row); below top chrome (z-30).
+        bannerShell.style.zIndex = v.avatarUnderBanner ? '28' : '18'
         bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
+      }
+    }
+    const avatarRow = profileAvatarRowRef.current
+    if (avatarRow) {
+      if (!collapseOn) {
+        avatarRow.style.zIndex = ''
+      } else {
+        // Drop under the pinned banner so fast Android flings cannot paint avatar on top.
+        avatarRow.style.zIndex = v.avatarUnderBanner ? '12' : ''
       }
     }
     const liveScrim = profileBannerLiveScrimRef.current
@@ -2194,7 +2205,16 @@ export default function LoungeProfileFullScreen({
         onDockRevealChange?.(r)
       })
     }
-    const onScroll = () => {
+    /** Android flings often coalesce `scroll` … keep sampling scrollTop until it settles. */
+    let pumpLastTop = el.scrollTop
+    let pumpStableFrames = 0
+    const stopScrollPump = () => {
+      if (!profileCollapseScrollPumpRafRef.current) return
+      window.cancelAnimationFrame(profileCollapseScrollPumpRafRef.current)
+      profileCollapseScrollPumpRafRef.current = 0
+    }
+    const pumpScrollVisuals = () => {
+      profileCollapseScrollPumpRafRef.current = 0
       const st = el.scrollTop
       const prev = profileDockScrollPrevTopRef.current
       const rawDelta = st - prev
@@ -2213,12 +2233,28 @@ export default function LoungeProfileFullScreen({
         profileDockRevealRef.current = r
         queueFlush()
       }
-      // After reveal so iOS web title-bar chrome/tabs track this frame.
       applyProfileCollapseVisuals(st)
+      if (st !== pumpLastTop) {
+        pumpLastTop = st
+        pumpStableFrames = 0
+        profileCollapseScrollPumpRafRef.current = window.requestAnimationFrame(pumpScrollVisuals)
+        return
+      }
+      pumpStableFrames += 1
+      if (pumpStableFrames < 4) {
+        profileCollapseScrollPumpRafRef.current = window.requestAnimationFrame(pumpScrollVisuals)
+      }
+    }
+    const onScroll = () => {
+      if (profileCollapseScrollPumpRafRef.current) return
+      pumpLastTop = el.scrollTop
+      pumpStableFrames = 0
+      profileCollapseScrollPumpRafRef.current = window.requestAnimationFrame(pumpScrollVisuals)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => {
       el.removeEventListener('scroll', onScroll)
+      stopScrollPump()
       if (profileDockScrollRafRef.current) window.cancelAnimationFrame(profileDockScrollRafRef.current)
     }
   }, [onDockRevealChange, showOwnEditControls, open, panelVisible, applyProfileCollapseVisuals])
@@ -3066,7 +3102,11 @@ export default function LoungeProfileFullScreen({
 
           <div className="relative px-4">
             {/* ~1/4 avatar overlap on banner at rest (−mt-5 on 4.8rem ≈ 20/77). */}
-            <div className="pointer-events-none relative z-20 -mt-5 flex flex-wrap items-end justify-between gap-3 sm:-mt-5">
+            <div
+              ref={profileAvatarRowRef}
+              className="pointer-events-none relative z-20 -mt-5 flex flex-wrap items-end justify-between gap-3 sm:-mt-5"
+              data-lounge-profile-avatar-row=""
+            >
               <div className="relative shrink-0 pointer-events-auto">
                 <div
                   ref={profileAvatarMotionRef}

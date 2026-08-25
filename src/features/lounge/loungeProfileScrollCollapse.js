@@ -346,8 +346,8 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     avatarScale,
     avatarTranslateY,
     avatarOpacity: 1,
-    /** Raise banner over avatar once the pin/clear line is reached. */
-    avatarUnderBanner: y > pinRange + 2,
+    /** Raise banner over avatar once the pin settles (not +2px later … Android flings skip that window). */
+    avatarUnderBanner: y >= pinRange,
   }
 }
 

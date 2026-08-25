@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-24: **IPA profile banner frost (Ryan sign-off):** Backdrop-filter overlay (photo stays sharp … no `filter:blur` squeeze/zoom). Banner fill paints 3px past layout bottom to kill sticky/backdrop hairline. Tip **`test` @ `c635940b`**.
 - 2026-08-24: **iOS Safari/PWA profile title chrome (Ryan sign-off):** Classic scroll (collapse off). Opaque status + title plates; back/menu dock-hide on scroll-down; latched near-top handoff (title slides away, same buttons stay); tabs ride title 1:1 on slide-in. Tip **`test` @ `39cc8ece`**. IPA keeps X-collapse. Files: `LoungeProfileFullScreen.jsx`, `loungeProfileScrollCollapse.js`, `index.css`.
 - 2026-08-24: **Profile banner sticky pin:** Banner uses `position: sticky` with measured negative `top` so it slides up then locks; pinned bottom = chrome height + 10px. Collapse range derived from pin distance. No scroll-away banner.
 - 2026-08-24: **Lounge profile collapse polish (X recording):** Avatar starts on top with ~1/4 banner overlap (`-mt-6`); top-anchored shrink then late tuck under raised banner; blur/scrim only after pin (≥90% progress); light chrome = smoky dark + white icons; action buttons +10px. Helper `loungeProfileScrollCollapse.js`.

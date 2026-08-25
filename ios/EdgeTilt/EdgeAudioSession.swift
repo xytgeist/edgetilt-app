@@ -13,7 +13,7 @@ enum EdgeAudioSession {
       try session.setCategory(
         .playAndRecord,
         mode: .voiceChat,
-        options: [.allowBluetooth, .defaultToSpeaker]
+        options: [.allowBluetoothHFP, .defaultToSpeaker]
       )
       try session.setActive(true)
     case "default":

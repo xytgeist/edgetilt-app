@@ -11,6 +11,7 @@ import {
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileTabsStickyTopPx,
+  PROFILE_BANNER_MEDIA_BLUR_SCALE,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
@@ -1537,8 +1538,14 @@ export default function LoungeProfileFullScreen({
 
     const media = profileBannerMediaRef.current
     if (media) {
-      media.style.transform = ''
-      media.style.filter = ''
+      const blurPx = Number(v.bannerBlurPx) || 0
+      if (blurPx > 0.15) {
+        media.style.filter = `blur(${blurPx.toFixed(2)}px)`
+        media.style.transform = `scale(${PROFILE_BANNER_MEDIA_BLUR_SCALE})`
+      } else {
+        media.style.filter = ''
+        media.style.transform = ''
+      }
     }
     const bannerShell = profileBannerShellRef.current
     if (bannerShell) {
@@ -1552,6 +1559,21 @@ export default function LoungeProfileFullScreen({
     }
     const collapsedScrim = profileCollapsedScrimRef.current
     if (collapsedScrim) {
+      // Thin frost under chrome/name only … media blur handles the rest of the photo.
+      const frostH = Math.max(
+        48,
+        Math.round(
+          (Number(profileChromeCenterNudgePxRef.current) || 0)
+            + Math.max(8, readCssSafeAreaTopPx())
+            + 40
+            + 10,
+        ),
+      )
+      collapsedScrim.style.height = `${frostH}px`
+      collapsedScrim.style.top = '0'
+      collapsedScrim.style.left = '0'
+      collapsedScrim.style.right = '0'
+      collapsedScrim.style.bottom = 'auto'
       collapsedScrim.style.opacity = String(v.collapsedBarOpacity)
     }
     const chromeMotion = profileChromeMotionRef.current
@@ -2464,7 +2486,7 @@ export default function LoungeProfileFullScreen({
             ref={profileCollapsedScrimRef}
             aria-hidden
             data-lounge-profile-collapsed-scrim=""
-            className="pointer-events-none absolute inset-0 opacity-0"
+            className="pointer-events-none absolute inset-x-0 top-0 opacity-0"
           />
           <div
             className="px-2 pb-1 sm:px-3"

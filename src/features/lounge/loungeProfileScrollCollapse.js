@@ -7,6 +7,8 @@
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  * - IPA keeps the tuned chrome-mid + lag/shrink preset; PWA/Android/web use a
  *   higher chrome seat + faster shrink so the banner can clear the avatar ring.
+ * - Collapsed look (hybrid C): `filter: blur` on banner media + thin light frost
+ *   under the chrome/name only (no full-banner dark overlay).
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
@@ -42,6 +44,12 @@ export const PROFILE_AVATAR_SCROLL_LAG = 0.45
 
 /** IPA: ease-in power for avatar scale over the pin window. */
 export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
+
+/** Max `filter: blur()` on the banner media when the pin settles (hybrid frost). */
+export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
+
+/** Extra scale on blurred media so soft edges stay clipped by overflow:hidden. */
+export const PROFILE_BANNER_MEDIA_BLUR_SCALE = 1.1
 
 /**
  * Motion + chrome presets.
@@ -174,6 +182,13 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinStart = PROFILE_PIN_SCRIM_START
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
+  // Media blur ramps a bit earlier than the thin chrome frost so the photo softens first.
+  const blurStart = 0.72
+  const blurT = reduce
+    ? pinReveal
+    : Math.max(0, Math.min(1, (pinEase - blurStart) / (1 - blurStart)))
+  const bannerBlurPx = blurT * PROFILE_BANNER_MEDIA_BLUR_MAX_PX
+
   const shrinkT = reduce ? pinRaw : Math.pow(pinRaw, shrinkPower)
   const avatarScale = 1 - shrinkT * (1 - minScale)
 
@@ -186,8 +201,9 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     /** 0..1 while the banner is sliding to its sticky rest. */
     pinProgress: pinRaw,
     bannerTranslateY: 0,
-    bannerBlurPx: 0,
-    bannerScrim: 0.08,
+    bannerBlurPx,
+    /** Resting live tint stays light … collapse frost is a separate thin chrome layer. */
+    bannerScrim: 0.06,
     collapsedBarOpacity: pinReveal,
     avatarScale,
     avatarTranslateY,

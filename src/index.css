@@ -1878,19 +1878,17 @@ html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
 }
 
 /*
- * Profile banner back / ⋯ / Cancel.
- * Dark + light: X-style smoky translucent circles with white glyphs (reads on
- * both banner photos and the pinned collapsed bar).
+ * Profile collapsed chrome frost (hybrid C).
+ * Thin wash under back / name / ⋯ only … the banner photo blurs via filter on the media.
+ * Keep the fill light so bright banners do not black out when the pin settles.
  */
 [data-lounge-profile-collapsed-scrim] {
-  /* Solid first so Android WebViews without strong backdrop-filter still read as a bar. */
-  background: rgba(9, 9, 11, 0.72);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  background: rgba(9, 9, 11, 0.14);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
 }
 html.light [data-lounge-profile-collapsed-scrim] {
-  /* Match X light-mode pinned header … dark smoke over the banner crop, not white frost. */
-  background: rgba(15, 15, 15, 0.52);
+  background: rgba(15, 15, 15, 0.12);
 }
 html.light [data-lounge-profile-compact-name] {
   color: #ffffff !important;

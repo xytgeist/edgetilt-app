@@ -130,7 +130,7 @@ After **any** change to Stream playback, hero, or HLS attach on Apple WebKit:
 3. **Hero open:** tap playing tile ... **no poster flash**, smooth **fly-in**, lands **centered**, **keeps playing** with chrome.
 4. **Hero close:** swipe down ... smooth **fly-away**, feed tile resumes.
 5. **Optional:** Tap for sound on feed ... handoff still OK (separate from hero MSE lock).
-6. **EdgeiOS shell:** after unmute once, scroll handoff should keep audio (web uses coordinated sound when `!appleWebKitBlocksFeedSoundHandoff()`; Safari/PWA still per-tile). Confirm native `mediaTypesRequiringUserActionForPlayback` stays empty. Also confirm **silent switch on** still has audio (shell `.playback` session + `ensureEdgeiOSPlaybackAudioSession()`).
+6. **EdgeiOS shell:** after unmute once, scroll handoff should keep audio. Sound sync follows Android (`!appleWebKitBlocksFeedSoundHandoff()`): unmute the new winner even if it was already playing muted in the prefetch ring. Safari/PWA stay per-tile / gesture-only. Do not key EdgeiOS sound off `detectAppleWebKitInlineStream()` (that flag is MSE/hero only).
 
 ---
 

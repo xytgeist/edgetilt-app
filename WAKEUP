@@ -84,10 +84,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Pick up here (2026-08-25 ... IPA feed unmute)
 
-**In progress:** Lounge feed videos unmute on EdgeiOS.
-- Native: `.playback` audio session on launch / becomeActive (does not stomp LiveKit `.playAndRecord`).
-- Web: `ensureEdgeiOSPlaybackAudioSession()` when Tap for sound turns on. Safari/PWA still per-tile; handoff path already excludes shell via `appleWebKitBlocksFeedSoundHandoff()`.
-- **Next:** rebuild **EdgeTilt Test** IPA, silent switch **on**, unmute one tile → scroll → next clips stay audible.
+**In progress:** Lounge feed videos stay unmuted after one Tap for sound.
+- Bug: EdgeiOS used Safari sound sync. Next winner was often already playing muted in the prefetch ring, so it never got `muted = false`.
+- Fix: EdgeiOS sound follows Android (`!appleWebKitBlocksFeedSoundHandoff()`). Safari/PWA unchanged.
+- **Next:** wait for Vercel, Tap for sound on one tile, scroll … next clips stay audible. No IPA rebuild needed for this web fix.
 
 **Shipped on `test` (Ryan signed: tab slide, native scroll, FAB overlay close):**
 - **Profile tabs:** Posts/Replies/Likes/Bookmarks slide left/right under a pinned banner + tab bar. Sheet does not remount. Idle-prefetch Replies (and Likes/Bookmarks on own profile). One **native** profile scroller (`overflow: clip` on the tab pane ... do **not** revive the JS header-then-feed lock). Files: `LoungeProfileFullScreen.jsx`, `index.css`.
@@ -150,7 +150,7 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - Safe area: no letterbox; post-detail ← clear of Island; FAB vs home indicator; feed title chrome
 
 **Mac do now (Ryan + Theo):**
-1. Rebuild **EdgeTilt Test** IPA (`.playback` session is native). Wait for Vercel for the web caller. **Unmute smoke:** silent switch on → Tap for sound → scroll → next clips audible.
+1. Wait for Vercel. **Unmute smoke:** Tap for sound → scroll → next clips stay audible. No IPA rebuild for the handoff fix.
 2. Remaining web-gate smoke: Stripe Checkout/portal → system Safari; no A2HS / web-push nag.
 3. OAuth-in-shell smoke; hard-crash repro leaving post detail.
 4. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token.

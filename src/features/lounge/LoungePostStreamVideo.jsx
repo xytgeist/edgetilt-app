@@ -1066,6 +1066,16 @@ export default function LoungePostStreamVideo({
       iosGestureUnmuteInFlightRef.current = false
       iosFeedSoundGestureUnlockedRef.current = false
       prevCoordinatedTileRatioRef.current = tileRatio
+      // EdgeiOS / Android: winner is often already ≥60% (prefetch was playing muted).
+      // Safari/PWA still wait for a gesture ... do not programmatic-unmute there.
+      if (
+        !appleWebKitBlocksFeedSoundHandoffRef.current &&
+        feedInlineSoundUnmuted &&
+        !feedInlineSoundExplicitlyMuted
+      ) {
+        const v = videoRef.current
+        if (v && !v.paused) tryCoordinatedDomUnmute(v)
+      }
     }
     prevCoordinatedActiveRef.current = Boolean(isActive)
     return undefined
@@ -1075,6 +1085,7 @@ export default function LoungePostStreamVideo({
     feedInlineSoundUnmuted,
     feedInlineSoundExplicitlyMuted,
     tileRatio,
+    tryCoordinatedDomUnmute,
   ])
 
   /** Feed-wide sound: iOS playing fires often - mute-only sync + one DOM unmute when playback starts in ON band. */
@@ -1084,7 +1095,10 @@ export default function LoungePostStreamVideo({
     if (!v) return undefined
 
     const onPlayingSound = () => {
-      if (appleWebKitInlineStreamRef.current) {
+      if (
+        appleWebKitInlineStreamRef.current &&
+        appleWebKitBlocksFeedSoundHandoffRef.current
+      ) {
         syncCoordinatedSoundMuteOnly()
         return
       }
@@ -1111,7 +1125,10 @@ export default function LoungePostStreamVideo({
     const prev = prevCoordinatedTileRatioRef.current
     prevCoordinatedTileRatioRef.current = tileRatio
     syncCoordinatedSoundMuteOnly()
-    if (!appleWebKitInlineStreamRef.current) {
+    if (
+      !appleWebKitInlineStreamRef.current ||
+      !appleWebKitBlocksFeedSoundHandoffRef.current
+    ) {
       if (
         feedInlineSoundUnmuted &&
         !feedInlineSoundExplicitlyMuted &&
@@ -1189,6 +1206,13 @@ export default function LoungePostStreamVideo({
       appleWebKitInlineStreamRef.current &&
       appleWebKitInlineStreamPlaybackLooksLive(v)
     ) {
+      if (
+        coordinatedInlineSound &&
+        isActiveRef.current &&
+        !appleWebKitBlocksFeedSoundHandoffRef.current
+      ) {
+        tryCoordinatedDomUnmute(v)
+      }
       return true
     }
     if (lazyStream && v.readyState < HTMLMediaElement.HAVE_METADATA) return false

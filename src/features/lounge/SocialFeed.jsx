@@ -816,7 +816,6 @@ export default function SocialFeed({
     return String(d?.composerMediaUrl || '').trim().slice(0, 2048)
   })
   const [klipyPickerOpen, setKlipyPickerOpen] = useState(false)
-  const klipyPickerOpenRef = useRef(false)
   const [klipyPickerTarget, setKlipyPickerTarget] = useState('composer')
   const [marketPickerOpen, setMarketPickerOpen] = useState(false)
   const [marketPickerTarget, setMarketPickerTarget] = useState(
@@ -2208,11 +2207,11 @@ export default function SocialFeed({
     (target) => {
       if (openProfileGateIfNeeded()) return
       if (target === 'detailComment') beginLoungeDetailCommentMediaSession()
-      klipyPickerOpenRef.current = true
       setKlipyPickerTarget(target)
+      blurLoungeComposerCaptionForTarget(target)
       setKlipyPickerOpen(true)
     },
-    [beginLoungeDetailCommentMediaSession, openProfileGateIfNeeded],
+    [beginLoungeDetailCommentMediaSession, blurLoungeComposerCaptionForTarget, openProfileGateIfNeeded],
   )
 
   const openMarketPicker = useCallback(
@@ -2357,29 +2356,22 @@ export default function SocialFeed({
   }, [loungeDetailEditing])
 
   useEffect(() => {
-    klipyPickerOpenRef.current = klipyPickerOpen
-  }, [klipyPickerOpen])
-
-  useEffect(() => {
     if (
       threadComposeOpen ||
       !composerExpanded ||
       composerFoldReveal < 0.88 ||
-      loungeDockPanel ||
-      klipyPickerOpen
+      loungeDockPanel
     ) {
       return undefined
     }
     return scheduleLoungeComposerTextareaFocus({
       getTextarea: () => composerFieldRef.current,
       scrollFeedToTop: scrollLoungeFeedToTopInstant,
-      isBlocked: () => klipyPickerOpenRef.current,
     })
   }, [
     composerExpanded,
     composerFoldReveal,
     composerFocusToken,
-    klipyPickerOpen,
     loungeDockPanel,
     scrollLoungeFeedToTopInstant,
     threadComposeOpen,
@@ -18890,10 +18882,7 @@ export default function SocialFeed({
 
       <KlipyGifPicker
         open={klipyPickerOpen}
-        onClose={() => {
-          klipyPickerOpenRef.current = false
-          setKlipyPickerOpen(false)
-        }}
+        onClose={() => setKlipyPickerOpen(false)}
         onPick={handleKlipyGifPicked}
         supabaseClient={supabaseClient}
       />

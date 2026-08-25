@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows (2026-08-25 … GIF keyboard):** First dismiss passes failed on iOS. New approach: full Klipy sheet behind the keyboard, search focused on open, keyboard drops when the GIF grid scrolls. Wait for Vercel `test`. Image/video toolbar still keeps the keyboard.
+**Windows (2026-08-25 … GIF keyboard rolled back):** PWA/web attempts to dismiss the Lounge GIF keyboard failed. Restored pre-`0191c548` GIF picker/toolbar/focus code. Ryan will fix it in the IPA. Do not reopen on web. Trim audio mux fix (`d744555b`) stays.
 
 ### Decisions locked (do not reopen without Ryan)
 

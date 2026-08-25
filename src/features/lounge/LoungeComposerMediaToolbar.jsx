@@ -171,17 +171,8 @@ export default function LoungeComposerMediaToolbar({
         <button
           type="button"
           disabled={gifDisabled || disabled}
-          onPointerDown={(e) => {
-            if (e.button != null && e.button !== 0) return
-            e.preventDefault()
-            e.stopPropagation()
-            onOpenGifPicker?.()
-          }}
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onOpenGifPicker?.()
-          }}
+          onMouseDown={preventFocusSteal}
+          onClick={onOpenGifPicker}
           className={gifBtnClass}
           title="Add GIF"
           aria-label="Add GIF"

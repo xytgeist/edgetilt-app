@@ -89,7 +89,7 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
    If either drifted, restore + rebuild. Do **not** edit `src/**`.
 2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** ~~open~~ **Ryan sign-off 2026-08-25** (`ff9a8c16`). Tap for sound → next clips stay audible. Do not invent Safari unmute hacks in `ios/`.
 3. **Stripe→Safari smoke:** one Checkout or portal CTA → leaves WebView into Safari.
-4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). ~~Safe area / Island pad / unmute handoff~~ **Ryan device sign-off 2026-08-25.** Remaining: OAuth-in-shell smoke, hard-crash repro leaving post detail, Stripe→Safari / no A2HS.
+4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). ~~Safe area / Island pad / unmute handoff~~ **Ryan device sign-off 2026-08-25.** Remaining: OAuth-in-shell smoke, hard-crash repro leaving post detail, Stripe→Safari / no A2HS, **Lounge GIF picker keyboard** (web/PWA rolled back 2026-08-25; Ryan will fix in the IPA … do not re-attempt in `src/**`).
 
 ### Mac slice (2026-08-24)
 

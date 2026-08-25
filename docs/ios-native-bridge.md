@@ -133,7 +133,7 @@ Conflict rule: **Mac wins `ios/`**; **Windows wins `src/`**. Do not “helpfully
 
 | When | Do |
 | --- | --- |
-| **Start** | `git checkout test` → `git pull`. Skim **`WAKEUP`** Pick up here + this file if touching shell/bridge. |
+| **Start / before any edit** | `git checkout test` → fetch and match **`origin/test`** (pull if behind; stop if diverged). Skim **`WAKEUP`** Pick up here + this file if touching shell/bridge. See **`.cursor/rules/sync-origin-before-edit.mdc`**. |
 | **During** | Stay in lane. New bridge method → update this table **before** freestyle. |
 | **End (meaningful work)** | Commit + push **`test`**. 2–5 lines in **`WAKEUP`** (done / next / bridge notes). Backlog Update log if a decision or ship fact. |
 | **Never** | Push **`main`** / prod Supabase / prod Edge without Ryan’s explicit ask. |

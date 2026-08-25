@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` tip **device-Run green** (2026-08-23). `main` @ **`c262fbdd`**. Always `git pull` before work ... dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` tip **device-Run green** (2026-08-23). `main` @ **`c262fbdd`**. Always match `origin/test` before edits ... dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -58,7 +58,7 @@ The agent should treat the following as **standing instructions for this session
 
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
-**Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory** ... this file + backlog + **`docs/ios-native-bridge.md`** are the bridge. Same git repo; both push **`test`**; **`git pull`** at session start.
+**Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory** ... this file + backlog + **`docs/ios-native-bridge.md`** are the bridge. Same git repo; both push **`test`**; match **`origin/test`** before every edit.
 
 ### Dual-agent ruleset (BOTH Theos ... follow every session)
 
@@ -69,7 +69,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 | **Mac** | `ios/` (scaffold), native bridge handlers, Xcode | `src/**` features, Edge/SQL, poker catalog GHA |
 | **Windows** | `src/**`, web bugs/features, catalog runner | `ios/**`, Xcode / signing |
 
-1. **Start:** `git pull` on `test`. Skim this Pick up here. If shell/bridge work → skim **`docs/ios-native-bridge.md`**.
+1. **Start / before any edit:** `git fetch` + confirm local matches `origin/test` (pull if behind; stop if diverged). Skim this Pick up here. If shell/bridge work → skim **`docs/ios-native-bridge.md`**. Rule: **`.cursor/rules/sync-origin-before-edit.mdc`**.
 2. **Same-day file ownership:** do not edit the other lane’s files. Conflict → Mac wins `ios/`, Windows wins `src/`.
 3. **Bridge:** new `window.EdgeNative.*` names go in the bridge contract **before** coding both sides. Stub one side first.
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
@@ -128,7 +128,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 - **Safe area:** WebView respects safe area (no `.ignoresSafeArea`) so post-detail back isn’t under the island; rebuild to verify
 - **Open:** hard device power-off leaving post detail ... repro after rebuild
 
-**Next (Mac Theo) … read this first after `git pull`:**
+**Next (Mac Theo) … read this first after matching `origin/test`:**
 
 Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handoff (2026-08-24)**.
 

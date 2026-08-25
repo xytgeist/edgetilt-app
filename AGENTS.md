@@ -51,6 +51,16 @@ Good: `composerFocused && IS_IOS ? { paddingTop: X } : undefined`
 
 ---
 
+## CRITICAL — GIT: MATCH ORIGIN BEFORE ANY EDIT
+
+> **Before changing any tracked file, fetch and confirm local matches `origin` (usually `origin/test`).** Dual-machine both push `test`. A stale local is how conflicts happen. Question-only turns skip this.
+
+If behind: pull first. If diverged (`N` local and `M` remote): **stop**, tell Ryan, do not start a new diff. Cursor: **`.cursor/rules/sync-origin-before-edit.mdc`**.
+
+`AGENT_RULE_SYNC_ORIGIN_BEFORE_EDIT` — searchability token.
+
+---
+
 ## CRITICAL — GIT: COMMIT AND PUSH TO `test` + `main` (Ryan pre-approved)
 
 > **Ryan has standing permission to commit and push to `test` without asking each time.** After finishing implementation work, commit, `git push origin test`, tell him the hash and summary. **Do not** wait for "commit and push" every session.
@@ -78,7 +88,7 @@ Follow normal git safety (no secrets, no force-push). Cursor rule: **`.cursor/ru
 
 **Bridge:** Agree / update method rows in **`docs/ios-native-bridge.md`** before freestyling `window.EdgeNative.*` on both sides. Stub one side first.
 
-**Session ritual:** pull → work in lane → push `test` → short `WAKEUP` note. Full ruleset: **`docs/ios-native-bridge.md`** + **`WAKEUP`** Dual-agent ruleset. Cursor: **`.cursor/rules/dual-machine-ios-shell.mdc`**.
+**Session ritual:** match origin before each edit → work in lane → push `test` → short `WAKEUP` note. Full ruleset: **`docs/ios-native-bridge.md`** + **`WAKEUP`** Dual-agent ruleset. Cursor: **`.cursor/rules/dual-machine-ios-shell.mdc`** + **`.cursor/rules/sync-origin-before-edit.mdc`**.
 
 `AGENT_RULE_DUAL_MACHINE_IOS` — searchability token.
 

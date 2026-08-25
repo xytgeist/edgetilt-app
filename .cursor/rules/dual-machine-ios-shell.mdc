@@ -19,6 +19,6 @@ Before adding or renaming `window.EdgeNative.*` on either side, update **`docs/i
 
 ## Ritual
 
-`git pull` at session start → work in lane → commit/push **`test`** → short **`WAKEUP`** note. No `main` / prod without Ryan’s ask.
+Fetch/match **`origin`** before **every** edit (not only session start) → work in lane → commit/push **`test`** → short **`WAKEUP`** note. No `main` / prod without Ryan’s ask. See **`.cursor/rules/sync-origin-before-edit.mdc`**.
 
 `AGENT_RULE_DUAL_MACHINE_IOS` — searchability token.

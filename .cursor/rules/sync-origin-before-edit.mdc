@@ -1,0 +1,35 @@
+---
+description: Fetch and match origin before any codebase edit so dual-machine work does not collide
+alwaysApply: true
+---
+
+# Sync local with origin before edits
+
+**Before changing any tracked file**, confirm this machine matches the remote tip. Dual-machine (Mac + Windows) both push **`test`**. Editing on a stale local is how conflicts happen.
+
+Question-only turns do not need this check.
+
+## Required check (every implementation turn)
+
+```bash
+git fetch origin
+git status -sb
+git rev-list --left-right --count HEAD...@{upstream}
+```
+
+On **`test`**, `@{upstream}` is **`origin/test`**. Use that branch’s upstream if Ryan is elsewhere.
+
+| Result (`local` `remote`) | Do |
+| --- | --- |
+| `0  0` | In sync. Edit. |
+| `0  N` | Behind. `git pull` (rebase if already the habit), then edit. |
+| `N  0` | Ahead only. Fine if those commits are ours this session. Do not assume Windows/Mac has the same tip. |
+| `N  M` | **Diverged.** Stop. Do not edit. Tell Ryan. Resolve (usually pull --rebase) before any new diff. |
+
+## Do not
+
+- Start implementing because “we pulled at session start.” Fetch again if anything may have landed since.
+- Pull over dirty tracked files. Stop and tell Ryan if the tree is dirty **and** origin is ahead.
+- Force-push to “win” a divergence.
+
+`AGENT_RULE_SYNC_ORIGIN_BEFORE_EDIT` — searchability token.

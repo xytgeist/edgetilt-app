@@ -1581,7 +1581,7 @@ export default function LoungeProfileFullScreen({
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
     profileChromeCenterNudgePxRef.current = Math.max(
       0,
-      Math.round(bannerH / 2 - chromePadTop - 20),
+      Math.round(bannerH / 2 - chromePadTop - 20 + 5),
     )
 
     const pinnedVisible =

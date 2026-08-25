@@ -1558,6 +1558,7 @@ export default function LoungeProfileFullScreen({
     }
     const avatar = profileAvatarMotionRef.current
     if (avatar) {
+      avatar.style.transformOrigin = '50% 0%'
       avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
       avatar.style.opacity = String(v.avatarOpacity)
       avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''

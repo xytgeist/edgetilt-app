@@ -7,8 +7,10 @@
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  *
  * Motion phases:
- * 1. Banner slides to pin … avatar shrinks in place (top-tethered), no tuck.
- * 2. After banner rests … avatar stops shrinking and slides up under the banner.
+ * 1. Banner slides to pin … avatar shrinks in place with its TOP EDGE screen-pinned
+ *    (counter-scroll + scale, transform-origin top). No tuck yet.
+ * 2. After banner rests … scale freezes; counter-scroll releases so the avatar
+ *    slides up under the pinned banner.
  * 3. Collapsed blur/scrim only after the banner has settled.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
@@ -105,7 +107,25 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
   const minScale = PROFILE_AVATAR_MIN_SCALE
+  // Shrink only while the banner is still moving to its rest; freeze after pin.
   const avatarScale = 1 - pinEase * (1 - minScale)
+
+  /**
+   * Phase 1 (y ≤ pinRange): counter-scroll by +y so the avatar TOP stays planted
+   * on screen while scale shrinks downward (transform-origin: top).
+   * Phase 2 (after pin): release that counter-scroll so it rises under the banner.
+   */
+  let avatarTranslateY = 0
+  if (!reduce) {
+    if (y <= pinRange) {
+      avatarTranslateY = y
+    } else {
+      // Release from +pinRange → 0, plus a little extra tuck under the sticky strip.
+      avatarTranslateY = pinRange * (1 - tuckEase) - tuckEase * 28
+    }
+  } else if (y > pinRange) {
+    avatarTranslateY = -tuckEase * 48
+  }
 
   return {
     /** 0..1 while the banner is sliding to its sticky rest. */
@@ -114,11 +134,9 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     bannerBlurPx: 0,
     bannerScrim: 0.08,
     collapsedBarOpacity: pinReveal,
-    /** Shrinks only during pin; frozen once the banner rests. */
     avatarScale,
-    /** Zero until pin complete; then slides under the resting banner. */
-    avatarTranslateY: -tuckEase * 48,
-    avatarOpacity: 1 - Math.max(0, (tuckEase - 0.4) / 0.6),
+    avatarTranslateY,
+    avatarOpacity: 1 - Math.max(0, (tuckEase - 0.45) / 0.55),
     avatarUnderBanner: tuckEase > 0.06,
   }
 }

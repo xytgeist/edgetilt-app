@@ -16,6 +16,7 @@ export default function LoungeBackArrowIcon({
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
+      data-lounge-back-arrow=""
     >
       <polyline points="15 18 9 12 15 6" />
     </svg>

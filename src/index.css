@@ -1973,11 +1973,15 @@ html.light [data-lounge-profile-sheet][data-lounge-profile-android-perf] [data-l
   color: inherit;
   -webkit-text-fill-color: inherit;
 }
-[data-lounge-profile-banner-chrome] svg {
+/* Solid ⋯ dots keep fill; stroke rules are back-chevron only. */
+[data-lounge-profile-banner-chrome] svg:not([data-lounge-back-arrow]) {
+  fill: currentColor;
+}
+[data-lounge-profile-banner-chrome] svg[data-lounge-back-arrow] {
   fill: none;
   stroke: currentColor;
 }
-[data-lounge-profile-banner-chrome] svg * {
+[data-lounge-profile-banner-chrome] svg[data-lounge-back-arrow] * {
   fill: none;
   stroke: inherit;
 }
@@ -2005,11 +2009,14 @@ html.light [data-lounge-profile-banner-chrome] svg {
   -webkit-text-fill-color: #ffffff !important;
   text-shadow: none !important;
 }
-html.light [data-lounge-profile-banner-chrome] svg {
+html.light [data-lounge-profile-banner-chrome] svg:not([data-lounge-back-arrow]) {
+  fill: currentColor !important;
+}
+html.light [data-lounge-profile-banner-chrome] svg[data-lounge-back-arrow] {
   fill: none !important;
   stroke: currentColor !important;
 }
-html.light [data-lounge-profile-banner-chrome] svg * {
+html.light [data-lounge-profile-banner-chrome] svg[data-lounge-back-arrow] * {
   fill: none !important;
   stroke: inherit !important;
 }

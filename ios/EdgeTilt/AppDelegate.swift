@@ -6,7 +6,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     EdgePushManager.shared.configure()
+    EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
     return true
+  }
+
+  func applicationDidBecomeActive(_ application: UIApplication) {
+    EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
   }
 
   func application(

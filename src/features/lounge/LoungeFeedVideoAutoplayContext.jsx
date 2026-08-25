@@ -20,6 +20,7 @@ import {
 } from '../../utils/loungeFeedVideoDebugPref.js'
 import LoungeFeedVideoAutoplayDebugHud from './LoungeFeedVideoAutoplayDebugHud.jsx'
 import { appleWebKitBlocksFeedSoundHandoff } from '../../utils/loungeAppleWebKit.js'
+import { ensureEdgeiOSPlaybackAudioSession } from '../../utils/edgeNative.js'
 
 const LoungeFeedVideoAutoplayContext = createContext(null)
 
@@ -83,6 +84,11 @@ export function LoungeFeedVideoAutoplayProvider({ scrollRootRef, children, showD
       setFeedInlineSoundExplicitlyMuted(false)
     }
   }, [feedAutoplayEnabled])
+
+  useEffect(() => {
+    if (!feedInlineSoundUnmuted || feedInlineSoundExplicitlyMuted) return
+    void ensureEdgeiOSPlaybackAudioSession()
+  }, [feedInlineSoundUnmuted, feedInlineSoundExplicitlyMuted])
 
   useEffect(() => {
     store.setScrollRootRef(scrollRootRef)

@@ -23,6 +23,18 @@ enum EdgeAudioSession {
       throw EdgeAudioSessionError.unknownMode(mode)
     }
   }
+
+  /// Lounge / media default. `.playback` ignores the Ring/Silent switch so
+  /// `video.muted = false` is actually audible. Skip when a call owns `.playAndRecord`.
+  static func ensurePlaybackUnlessVoiceChat() {
+    let session = AVAudioSession.sharedInstance()
+    if session.category == .playAndRecord { return }
+    do {
+      try apply(mode: "playback")
+    } catch {
+      // Boot / resume must not fail if the session is briefly unavailable.
+    }
+  }
 }
 
 private enum EdgeAudioSessionError: LocalizedError {

@@ -78,3 +78,21 @@ export async function openExternalBillingUrl(url) {
   window.location.assign(href)
   return { ok: true, via: 'assign' }
 }
+
+/**
+ * Ask the shell for AVAudioSession `.playback` so Lounge video ignores the silent switch.
+ * No-op outside EdgeiOS. Never throws.
+ *
+ * @returns {Promise<{ ok: boolean, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function ensureEdgeiOSPlaybackAudioSession() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { ok: false, via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('setAudioSession', { mode: 'playback' })
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}

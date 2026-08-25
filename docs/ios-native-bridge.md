@@ -46,7 +46,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | **native** (`ios/` scaffold) |
 | `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** (UNUserNotificationCenter; 2026-08-24) |
 | `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (device token hex when registered; null until org Push entitlement) |
-| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | **native** (AVAudioSession; 2026-08-24) |
+| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | **native** (2026-08-24) + **web caller** (2026-08-25): Lounge Tap for sound → `ensureEdgeiOSPlaybackAudioSession()`. Shell also applies `.playback` on launch / becomeActive unless a call owns `.playAndRecord`. |
 | `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean, unregistered?: number, cacheKeysDeleted?: number }` | Mac (boot) | **native** (boot clear + bridge; 2026-08-23) |
 
 **Web-owned (no Swift required for first cut):**
@@ -55,7 +55,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | --- | --- | --- |
 | Hide Stripe Checkout / subscribe CTAs in WebView | Windows | **Done (2026-08-24):** `openExternalBillingUrl` on Edge checkout / portal, fan Connect / checkout / portal, affiliate Connect, staff bot fan Connect. Shell → Safari; web → assign. |
 | Deep link handling after APNs | Both | Native opens URL; web already has `?tab=` / lounge routes |
-| Lounge unmuted autoplay | Mac config + Windows playback paths | **Done (2026-08-24 web):** `appleWebKitBlocksFeedSoundHandoff()`; shell uses feed-wide sound handoff. Native media policy already open. Device smoke remaining. |
+| Lounge unmuted autoplay | Mac config + Windows playback paths | **Done (2026-08-24 web + 2026-08-25 audio session):** `appleWebKitBlocksFeedSoundHandoff()`; shell uses feed-wide sound handoff. Native `.playback` on launch / becomeActive (skip voiceChat) + web `ensureEdgeiOSPlaybackAudioSession()` on Tap for sound. Media policy already open. Device smoke remaining. |
 | Skip web push SW in shell | Windows | **Done (2026-08-24):** `useWebPushNotifications` unsupported under `isEdgeiOSShell()`; no `push-sw` register. A2HS / install-for-push gated via `iosPwaInstallRequired`. APNs still Mac. |
 
 **v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
@@ -87,7 +87,7 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
    - `allowsInlineMediaPlayback = true`
    - `mediaTypesRequiringUserActionForPlayback = []`
    If either drifted, restore + rebuild. Do **not** edit `src/**`.
-2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** unmute one feed tile → scroll → next clips stay **audible**. Fail → verify step 1 + Web Inspector; note in `WAKEUP` / backlog. Do not invent Safari unmute hacks in `ios/`.
+2. **Lounge unmuted handoff smoke (EdgeTilt Test → `lvslotpro.com`):** rebuild IPA so launch `.playback` is in the binary; wait for Vercel if smoking the web caller. Unmute one feed tile (silent switch **on**) → scroll → next clips stay **audible**. Fail → verify step 1 + Web Inspector; note in `WAKEUP` / backlog. Do not invent Safari unmute hacks in `ios/`.
 3. **Stripe→Safari smoke:** one Checkout or portal CTA → leaves WebView into Safari.
 4. **Continue Mac P0:** ~~APNs bridge + `setAudioSession`~~ **landed 2026-08-24** (token delivery needs org Push entitlement + Windows Edge path). ~~Safe area / Island pad~~ **Ryan device sign-off 2026-08-25.** Remaining: OAuth-in-shell smoke, hard-crash repro leaving post detail, web-gate smoke (unmute / Stripe→Safari / no A2HS).
 

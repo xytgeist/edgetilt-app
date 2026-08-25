@@ -223,6 +223,7 @@ export async function executeLoungeCommentSubmission({
           supabaseClient,
           user: session.user,
           file: readyPoster,
+          signal,
         })
         if (upErr) throw new Error(upErr.message || 'Could not upload video preview image.')
         if (!upUrl) throw new Error('Could not upload video preview image.')
@@ -241,6 +242,7 @@ export async function executeLoungeCommentSubmission({
         supabaseClient,
         user: session.user,
         file: ready,
+        signal,
       })
       if (upErr) throw new Error(upErr.message || 'Could not upload image.')
       if (!upUrl) throw new Error('Could not upload image.')
@@ -505,6 +507,7 @@ export async function executeLoungeCommentUpdate({
           supabaseClient,
           user: session.user,
           file: readyPoster,
+          signal,
         })
         if (upErr) throw new Error(upErr.message || 'Could not upload video preview image.')
         if (!upUrl) throw new Error('Could not upload video preview image.')
@@ -523,6 +526,7 @@ export async function executeLoungeCommentUpdate({
         supabaseClient,
         user: session.user,
         file: ready,
+        signal,
       })
       if (upErr) throw new Error(upErr.message || 'Could not upload image.')
       if (!upUrl) throw new Error('Could not upload image.')

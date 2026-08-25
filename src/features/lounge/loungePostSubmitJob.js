@@ -61,6 +61,7 @@ async function uploadLoungeThreadPartImageFiles({
       supabaseClient,
       user,
       file: ready,
+      signal,
     })
     if (upErr) throw new Error(upErr.message || 'Could not upload image.')
     if (!upUrl) throw new Error('Could not upload image.')
@@ -185,6 +186,7 @@ async function resolveThreadPartStreamVideoForInsert({
       supabaseClient,
       user,
       file: readyPoster,
+      signal,
     })
     if (upErr) throw new Error(upErr.message || 'Could not upload video preview image.')
     if (!upUrl) throw new Error('Could not upload video preview image.')
@@ -982,6 +984,7 @@ export async function executeLoungeCommunityPostSubmission({
           supabaseClient,
           user: session.user,
           file: readyPoster,
+          signal,
         })
         if (upErr) throw new Error(upErr.message || 'Could not upload video preview image.')
         if (!upUrl) throw new Error('Could not upload video preview image.')
@@ -1008,6 +1011,7 @@ export async function executeLoungeCommunityPostSubmission({
         supabaseClient,
         user: session.user,
         file: ready,
+        signal,
       })
       if (upErr) throw new Error(upErr.message || 'Could not upload image.')
       if (!upUrl) throw new Error('Could not upload image.')
@@ -1436,6 +1440,7 @@ export async function executeLoungeCommunityPostUpdate({
           supabaseClient,
           user: session.user,
           file: readyPoster,
+          signal,
         })
         if (upErr) throw new Error(upErr.message || 'Could not upload video preview image.')
         if (!upUrl) throw new Error('Could not upload video preview image.')
@@ -1457,6 +1462,7 @@ export async function executeLoungeCommunityPostUpdate({
         supabaseClient,
         user: session.user,
         file: ready,
+        signal,
       })
       if (upErr) throw new Error(upErr.message || 'Could not upload image.')
       if (!upUrl) throw new Error('Could not upload image.')

@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **R2 preview PUT retry:** Poster/image upload no longer fails the job on the first Safari `Failed to fetch`. Presigned PUT retries 4 times (gaps 0 / 1s / 2.5s / 5s) on network flakes, 408/429, and 5xx. Mint invoke budget 12s. Post/comment jobs pass abort so Cancel still works. Same helper: feed images, Stream posters, chat video, profile, offers. Files: `loungeCfImageMedia.js`, `loungePostSubmitJob.js`, `loungeCommentSubmitJob.js`. No SQL / Edge.
 - 2026-08-25: **GIF picker keyboard (Ryan smoke PASSED, all surfaces):** IPA + iOS PWA + Android. Search focused, composer cannot steal first-responder, sheet full-screen behind the keys, IPA has no WK Done/prev-next bar. Tip **`f28a319e`**. Do not reopen dismiss-keyboard experiments.
 - 2026-08-25: **GIF picker full-screen on web too:** Klipy uses the layout viewport on IPA, Safari/PWA, and Android. Keyboard overlays the sheet. No more `visualViewport` dock. File: `KlipyGifPicker.jsx`. No SQL / Edge.
 - 2026-08-25: **GIF picker composer focus steal:** Search never took the keyboard because the Lounge/Chat composer kept first-responder. While Klipy is open, `#root` is `inert` (picker is portaled on `document.body`) so the composer cannot hold or reclaim focus. File: `KlipyGifPicker.jsx`. No SQL / Edge.

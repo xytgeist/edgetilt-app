@@ -113,14 +113,45 @@ export function loungeFeedImageDeliveryUrl(storedUrl, variant = 'feed', opts = {
 }
 
 /** Total wall-clock budget for iOS PWA Edge invoke flakes (ms). */
-const R2_DIRECT_UPLOAD_INVOKE_BUDGET_MS = 3000
+const R2_DIRECT_UPLOAD_INVOKE_BUDGET_MS = 12000
 /** Gaps before attempt 0 / 1 / 2… (capped by remaining budget). */
-const R2_DIRECT_UPLOAD_INVOKE_GAPS_MS = [0, 250, 600]
+const R2_DIRECT_UPLOAD_INVOKE_GAPS_MS = [0, 400, 1000, 2000]
+/** Delays before PUT attempt 0 / 1 / 2 / 3. Same URL; R2 overwrite is idempotent. */
+const R2_PRESIGNED_PUT_RETRY_GAPS_MS = [0, 1000, 2500, 5000]
 
-function sleepMs(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, Math.max(0, ms))
+function sleepMs(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    const id = window.setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, Math.max(0, ms))
+    const onAbort = () => {
+      window.clearTimeout(id)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
+}
+
+function isAbortError(error) {
+  return Boolean(error && typeof error === 'object' && error.name === 'AbortError')
+}
+
+/** Network / 5xx / 408 / 429. Do not retry 403 (expired signature) or other 4xx. */
+function isRetryableR2PutFailure(error, httpStatus) {
+  if (typeof httpStatus === 'number') {
+    if (httpStatus === 408 || httpStatus === 429) return true
+    if (httpStatus >= 500) return true
+    return false
+  }
+  const msg = String(
+    (error && typeof error === 'object' && 'message' in error && error.message) || error || '',
+  )
+  return /failed to fetch|load failed|networkerror|network request failed|interrupted/i.test(msg)
 }
 
 /** True when invoke never got an HTTP response (Safari/PWA flake). */
@@ -253,24 +284,47 @@ export async function requestCfR2DirectUpload(supabaseClient, opts = {}) {
  */
 export async function uploadFileToCfR2PresignedUrl(uploadURL, file, opts = {}) {
   const signal = opts.signal
-  const res = await fetch(uploadURL, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': file.type || 'application/octet-stream',
-      'Cache-Control': LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
-    },
-    body: file,
-    signal,
-  })
-  if (!res.ok) {
+  const lastIndex = R2_PRESIGNED_PUT_RETRY_GAPS_MS.length - 1
+  let lastError = /** @type {unknown} */ (null)
+
+  for (let attempt = 0; attempt <= lastIndex; attempt += 1) {
+    const gap = R2_PRESIGNED_PUT_RETRY_GAPS_MS[attempt] ?? 0
+    if (gap > 0) await sleepMs(gap, signal)
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+
+    let res
+    try {
+      res = await fetch(uploadURL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'Cache-Control': LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
+        },
+        body: file,
+        signal,
+      })
+    } catch (e) {
+      if (isAbortError(e)) throw e
+      lastError = e
+      if (!isRetryableR2PutFailure(e, null) || attempt >= lastIndex) throw e
+      continue
+    }
+
+    if (res.ok) return
     const raw = await res.text().catch(() => '')
-    throw new Error(
+    const err = new Error(
       mapGenericNetworkErrorMessage(
         raw || `Upload failed (${res.status})`,
         'Could not upload your image. Check your connection and try again.',
       ),
     )
+    lastError = err
+    if (!isRetryableR2PutFailure(err, res.status) || attempt >= lastIndex) throw err
   }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Could not upload your image. Check your connection and try again.')
 }
 
 /**
@@ -340,6 +394,7 @@ export async function uploadLoungeFeedPostImageToCfR2(supabaseClient, user, file
     if (mint.data?.publicUrl) {
       void deleteCfR2OrphanObject(supabaseClient, mint.data.publicUrl)
     }
+    if (isAbortError(e)) throw e
     const msg = mapGenericNetworkErrorMessage(
       e instanceof Error ? e.message : String(e),
       'Could not upload your image. Check your connection and try again.',

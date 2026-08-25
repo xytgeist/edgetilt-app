@@ -828,45 +828,31 @@ export function LoungeImageLightbox({
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [])
 
-  // Shrink-back: lift covering title chrome above the flyout when it can (feed EDGE /
-  // detail bar are document-level). Profile sheet uses a transform stacking context, so
-  // also clip the full-screen portal below sticky tabs/top chrome … otherwise the
-  // flyout paints over the bars while the tile is tucked under them.
+  // Shrink-back: clip the full-screen portal below sticky chrome (profile/detail sheets
+  // are transform stacking contexts … z-index lifts inside them cannot beat the portal).
+  // Only lift document-level feed EDGE chrome. Always clear any leftover attrs on cleanup.
   useEffect(() => {
-    const detailBar = document.querySelector('[data-lounge-post-detail-title-bar]')
-    const profileBars = document.querySelectorAll('[data-lounge-profile-top-chrome]')
-    const profileBar = profileBars.length ? profileBars[profileBars.length - 1] : null
-    const profileTabs = document.querySelectorAll('[data-lounge-profile-tabs]')
-    const profileSheetOpen = Boolean(document.querySelector('[data-lounge-profile-sheet]'))
-    const feedBar = document.querySelector('[data-lounge-title-bar]')
-    const bar =
-      detailBar instanceof HTMLElement
-        ? detailBar
-        : profileBar instanceof HTMLElement
-          ? profileBar
-          : profileSheetOpen
-            ? null
-            : feedBar instanceof HTMLElement
-              ? feedBar
-              : null
-
     const shell = lightboxShellRef.current
+    const clearAllCloseChromeAttrs = () => {
+      document
+        .querySelectorAll('[data-lounge-title-bar-over-lightbox-close]')
+        .forEach((el) => el.removeAttribute('data-lounge-title-bar-over-lightbox-close'))
+    }
     const clearClip = () => {
       if (shell) shell.style.clipPath = ''
     }
-    const clearBarAttr = (el) => {
-      if (el instanceof HTMLElement) el.removeAttribute('data-lounge-title-bar-over-lightbox-close')
-    }
 
     if (phase === 'closing') {
-      if (bar instanceof HTMLElement) {
-        bar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
-      }
-      profileTabs.forEach((el) => {
-        if (el instanceof HTMLElement) {
-          el.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
+      clearAllCloseChromeAttrs()
+      const profileSheetOpen = Boolean(document.querySelector('[data-lounge-profile-sheet]'))
+      const detailOpen = Boolean(document.querySelector('[data-lounge-post-detail-title-bar]'))
+      // Feed EDGE only … never raise it over an open profile/detail sheet.
+      if (!profileSheetOpen && !detailOpen) {
+        const feedBar = document.querySelector('[data-lounge-title-bar]')
+        if (feedBar instanceof HTMLElement) {
+          feedBar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
         }
-      })
+      }
       const clipTop = readLightboxCloseChromeClipTopPx()
       if (shell && clipTop > 0) {
         shell.style.clipPath = `inset(${clipTop}px 0 0 0)`
@@ -874,13 +860,11 @@ export function LoungeImageLightbox({
         clearClip()
       }
     } else {
-      clearBarAttr(bar)
-      profileTabs.forEach(clearBarAttr)
+      clearAllCloseChromeAttrs()
       clearClip()
     }
     return () => {
-      clearBarAttr(bar)
-      profileTabs.forEach(clearBarAttr)
+      clearAllCloseChromeAttrs()
       clearClip()
     }
   }, [phase])

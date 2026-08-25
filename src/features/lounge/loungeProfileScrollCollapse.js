@@ -64,7 +64,7 @@ export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_ANDROID = 0.58
 /** IPA: start blur earlier than 90% tuck. */
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_IPA = 0.52
 
-/** Avatar may paint over the banner only while scrollTop is at/near rest. */
+/** @deprecated Android collapse used an early z-swap; collapse is IPA/desktop only now. */
 export const PROFILE_AVATAR_OVER_BANNER_MAX_SCROLL_PX = 8
 
 /**
@@ -354,8 +354,8 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     avatarScale,
     avatarTranslateY,
     avatarOpacity: 1,
-    /** Raise banner over avatar as soon as scroll leaves rest (Android flings skip late swaps). */
-    avatarUnderBanner: y > PROFILE_AVATAR_OVER_BANNER_MAX_SCROLL_PX,
+    /** Keep avatar above sticky banner until pin completes … then tuck under. */
+    avatarUnderBanner: y > pinRange + 2,
   }
 }
 

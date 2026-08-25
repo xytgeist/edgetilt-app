@@ -1251,17 +1251,12 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   transition: none !important;
 }
 /*
- * Image lightbox shrink-back: title chrome must sit above the portaled flyout
- * (z ~100–111) so the tile can tuck under the header when chrome is document-level
- * (feed EDGE / detail). Profile sheet is a transform stacking context … also clip
- * the lightbox shell below sticky tabs/top chrome (`readLightboxCloseChromeClipTopPx`).
- * Prefer post-detail, then profile chrome, then feed EDGE … never lift EDGE over an
- * open profile/detail sheet. Below app modals (z-120). Cleared when close ends.
+ * Image lightbox shrink-back: clip the full-screen shell below sticky chrome
+ * (`readLightboxCloseChromeClipTopPx`) for profile/detail sheets. Optionally lift
+ * document-level feed EDGE chrome only. Never leave over-lightbox attrs on profile/
+ * detail chrome (transform stacking + stuck z-index caused regressions). Cleared on close end.
  */
-[data-lounge-title-bar][data-lounge-title-bar-over-lightbox-close],
-[data-lounge-post-detail-title-bar][data-lounge-title-bar-over-lightbox-close],
-[data-lounge-profile-top-chrome][data-lounge-title-bar-over-lightbox-close],
-[data-lounge-profile-tabs][data-lounge-title-bar-over-lightbox-close] {
+[data-lounge-title-bar][data-lounge-title-bar-over-lightbox-close] {
   z-index: 112 !important;
 }
 /*

@@ -3009,7 +3009,15 @@ export default function LoungeProfileFullScreen({
               top: profileCollapseEnabled ? 0 : undefined,
             }}
           >
-            <div className="absolute inset-0 left-0 right-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
+            <div
+              className="absolute inset-x-0 top-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950"
+              data-lounge-profile-banner-fill=""
+              style={{
+                // Paint past the layout bottom so sticky / backdrop-filter hairlines
+                // sit under the profile body instead of on the visible join.
+                bottom: -3,
+              }}
+            >
               <div
                 ref={profileBannerMediaRef}
                 className="h-full w-full min-w-full will-change-transform"

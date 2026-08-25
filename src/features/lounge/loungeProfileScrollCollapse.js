@@ -67,9 +67,9 @@ export function profileCollapseShellPreset(isIpaShell) {
     chromeCenterExtraPx: 0,
     /** Sit in the upper part of the photo band (status-restricted / no IPA bleed). */
     chromeContentCenterFrac: 0.34,
-    scrollLag: 0.42,
-    shrinkEasePower: 1.65,
-    minScale: 0.72,
+    scrollLag: 0.55,
+    shrinkEasePower: 1.75,
+    minScale: 0.8,
   }
 }
 

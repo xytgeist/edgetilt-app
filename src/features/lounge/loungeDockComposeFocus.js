@@ -87,9 +87,22 @@ export function invokeLoungeComposerCaptionKeyboard(getTextarea, opts = {}) {
 /** Dismiss the software keyboard before a full-screen picker (e.g. Klipy) opens. */
 export function blurLoungeComposerCaption(getTextarea) {
   const el = getTextarea?.()
-  if (!el) return
+  if (el) {
+    try {
+      el.blur()
+    } catch {
+      // ignore
+    }
+  }
   try {
-    el.blur()
+    const active = document.activeElement
+    if (
+      active instanceof HTMLElement &&
+      active !== document.body &&
+      typeof active.blur === 'function'
+    ) {
+      active.blur()
+    }
   } catch {
     // ignore
   }

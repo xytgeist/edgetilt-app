@@ -142,6 +142,15 @@ export default function LoungeComposerMediaToolbar({
     : `flex shrink-0 touch-manipulation items-center justify-center rounded-md ${padClass} text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]`
 
   const preventFocusSteal = (e) => e.preventDefault()
+  /** GIF opens a sheet … allow the composer to blur so the software keyboard dismisses. */
+  const dismissSoftwareKeyboard = () => {
+    try {
+      const active = document.activeElement
+      if (active instanceof HTMLElement && typeof active.blur === 'function') active.blur()
+    } catch {
+      // ignore
+    }
+  }
 
   return (
     <div
@@ -171,7 +180,10 @@ export default function LoungeComposerMediaToolbar({
         <button
           type="button"
           disabled={gifDisabled || disabled}
-          onMouseDown={preventFocusSteal}
+          onPointerDown={() => {
+            dismissSoftwareKeyboard()
+            onOpenGifPicker?.()
+          }}
           onClick={onOpenGifPicker}
           className={gifBtnClass}
           title="Add GIF"

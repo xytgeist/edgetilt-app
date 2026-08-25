@@ -15,6 +15,14 @@ export const EDGE_SAFE_AREA_CSS = {
   left: 'max(env(safe-area-inset-left,0px),var(--edge-sal,0px))',
 }
 
+/** Probe-path cache … creating a DOM node per read was brutal on scroll handlers (Android Chrome). */
+let cachedEnvSatPx = /** @type {number | null} */ (null)
+
+/** Drop env probe cache (resize / orientation / shell inject). */
+export function invalidateCssSafeAreaTopPxCache() {
+  cachedEnvSatPx = null
+}
+
 /**
  * JS pixel read of top safe area for fixed chrome positioning.
  * Prefer `--edge-sat` (shell inject); else probe `env(safe-area-inset-top)` (Safari/PWA).
@@ -30,6 +38,8 @@ export function readCssSafeAreaTopPx() {
   )
   if (Number.isFinite(fromVar) && fromVar > 0) return Math.round(fromVar)
 
+  if (cachedEnvSatPx != null) return cachedEnvSatPx
+
   if (!document.body) return 0
   const probe = document.createElement('div')
   probe.setAttribute('aria-hidden', 'true')
@@ -38,5 +48,6 @@ export function readCssSafeAreaTopPx() {
   document.body.appendChild(probe)
   const pt = parseFloat(getComputedStyle(probe).paddingTop) || 0
   probe.remove()
-  return Math.round(pt)
+  cachedEnvSatPx = Math.round(pt)
+  return cachedEnvSatPx
 }

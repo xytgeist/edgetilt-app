@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
+import {
+  invalidateCssSafeAreaTopPxCache,
+  readCssSafeAreaTopPx,
+} from '../../utils/edgeSafeAreaCss.js'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import {
   prefersReducedMotion,
@@ -116,6 +119,10 @@ import {
 import ProfileFanSubPillButton from './ProfileFanSubPillButton.jsx'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
+
+/** Positive Android UA … cheaper paint (no backdrop-blur) on classic title-chrome path. */
+const PROFILE_ANDROID_PERF =
+  typeof navigator !== 'undefined' && /Android/i.test(String(navigator.userAgent || ''))
 
 const PROFILE_BANNER_CHROME_BTN_CLASS =
   'flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]'
@@ -778,6 +785,12 @@ export default function LoungeProfileFullScreen({
   const profileIosWebFeedLatchRef = useRef(false)
   const profileIosWebWasPastBannerRef = useRef(false)
   const profileIosWebChromeScrollPrevRef = useRef(0)
+  /** Last applied iOS-web / Android title chrome px … skip redundant style writes. */
+  const profileIosWebAppliedHideRef = useRef({ title: -1, btn: -1, tabs: -1, inFeed: -1 })
+  /** Cached safe-area top for scroll frames (refresh in measure / resize). */
+  const profileSatPxRef = useRef(Math.max(8, readCssSafeAreaTopPx()))
+  /** True after classic (non-collapse) chrome styles were cleared once. */
+  const profileClassicChromeClearedRef = useRef(false)
   const applyProfileCollapseVisualsRef = useRef(/** @type {null | ((n?: number, o?: object) => void)} */ (null))
   const profileNameRevealScrollRef = useRef(80)
   const profileBannerBlurNameGapAtTuckRef = useRef(/** @type {number | null} */ (null))
@@ -793,9 +806,12 @@ export default function LoungeProfileFullScreen({
   )
   /** Latest tabs sticky top … re-applied after paint so React reveal setState cannot clobber it. */
   const profileTabsTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
+  const profileTabsElRef = useRef(/** @type {HTMLElement | null} */ (null))
   const profileDockScrollPrevTopRef = useRef(0)
   const profileDockRevealRef = useRef(1)
   const profileDockScrollRafRef = useRef(0)
+  /** Last dock reveal sent to parent (throttle SocialFeed re-renders). */
+  const profileDockRevealNotifiedRef = useRef(1)
   /** FAB dock reveal only (header chrome stays pinned for X-style collapse). */
   const [, setProfileDockReveal] = useState(1)
   // LOUNGE_DOCK_FOOTER_BAR_DISABLED — keep setters for commented classic dock restore.
@@ -1553,102 +1569,160 @@ export default function LoungeProfileFullScreen({
       Boolean(opts.forceZero) || showOwnEditControls || !collapseOn
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
-    const pinRange = profileCollapseRangePxRef.current
-    const motion = profileCollapseShellPreset(isEdgeiOSShell())
-    const v = profileCollapseVisuals(y, pinRange, {
-      reduceMotion: reduce,
-      scrollLag: motion.scrollLag,
-      shrinkEasePower: motion.shrinkEasePower,
-      minScale: motion.minScale,
-    })
-    const nameOp = forceZero
-      ? 0
-      : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
+    const sat = Math.max(8, Number(profileSatPxRef.current) || readCssSafeAreaTopPx())
+    profileSatPxRef.current = sat
 
-    // Live blur: wait for avatar tuck, ramp until display name enters under the banner.
-    // IPA uses scroll-distance ramp (name-gap alone flashed to full). Android keeps name-gap.
-    let blurT = 0
-    if (!forceZero) {
-      const scrollEl = profileBodyScrollRef.current
-      const avatarEl = profileAvatarMotionRef.current
-      const nameEl = profileDisplayNameRef.current
-      const bannerEl = profileBannerShellRef.current
-      if (scrollEl && avatarEl) {
-        const scrollRect = scrollEl.getBoundingClientRect()
-        const pinRangeNow = profileCollapseRangePxRef.current
-        const pinnedVisible = profileStickyTopPxRef.current
-        const bannerBottomY =
-          y >= pinRangeNow
-            ? scrollRect.top + pinnedVisible
-            : bannerEl
-              ? bannerEl.getBoundingClientRect().bottom
-              : scrollRect.top + pinnedVisible
-        const ar = avatarEl.getBoundingClientRect()
-        const ring = PROFILE_AVATAR_RING_PX
-        const top = ar.top - ring
-        const h = Math.max(1, ar.height + ring * 2)
-        const underFrac = Math.max(0, Math.min(1, (bannerBottomY - top) / h))
-        const nameTop = nameEl ? nameEl.getBoundingClientRect().top : bannerBottomY + 999
-        const nameGapPx = nameTop - bannerBottomY
-        const nameUnderScroll = Math.max(
-          0,
-          (Number(profileNameRevealScrollRef.current) || 0) - 8,
-        )
-        blurT = profileLiveBannerBlurProgress({
-          underFrac,
-          nameGapPx,
-          scrollTop: y,
-          nameUnderScrollPx: nameUnderScroll,
-          tuckFrac: profileBannerBlurTuckFrac(),
-          nameGapAtTuckRef: profileBannerBlurNameGapAtTuckRef,
-          blurStartScrollRef: profileBannerBlurStartScrollRef,
-          reduceMotion: reduce,
-          useScrollRamp: isEdgeiOSShell(),
-        })
+    // Classic scroll (iOS PWA / Android): skip collapse math + style thrash every frame.
+    if (!collapseOn) {
+      if (!profileClassicChromeClearedRef.current || opts.forceZero || showOwnEditControls) {
+        profileClassicChromeClearedRef.current = true
+        profileBannerBlurNameGapAtTuckRef.current = null
+        profileBannerBlurStartScrollRef.current = null
+        const media = profileBannerMediaRef.current
+        if (media) {
+          media.style.filter = ''
+          media.style.transform = ''
+          media.style.top = ''
+          media.style.right = ''
+          media.style.bottom = ''
+          media.style.left = ''
+          media.style.width = ''
+          media.style.height = ''
+        }
+        const blurOverlay = profileBannerBlurOverlayRef.current
+        if (blurOverlay) {
+          blurOverlay.style.opacity = '0'
+          blurOverlay.style.background = ''
+          blurOverlay.style.backdropFilter = 'none'
+          blurOverlay.style.webkitBackdropFilter = 'none'
+        }
+        const bannerShell = profileBannerShellRef.current
+        if (bannerShell) {
+          bannerShell.style.zIndex = ''
+          bannerShell.style.top = ''
+          bannerShell.style.transform = ''
+          bannerShell.classList.remove('sticky')
+          bannerShell.classList.add('relative')
+        }
+        const avatarRow = profileAvatarRowRef.current
+        if (avatarRow) {
+          avatarRow.style.zIndex = ''
+          avatarRow.style.clipPath = ''
+          avatarRow.style.webkitClipPath = ''
+        }
+        const liveScrim = profileBannerLiveScrimRef.current
+        if (liveScrim) liveScrim.style.opacity = '0.12'
+        const collapsedScrim = profileCollapsedScrimRef.current
+        if (collapsedScrim) {
+          collapsedScrim.style.opacity = '0'
+          collapsedScrim.style.height = ''
+        }
+        const avatar = profileAvatarMotionRef.current
+        if (avatar) {
+          avatar.style.transformOrigin = ''
+          avatar.style.transform = ''
+          avatar.style.opacity = ''
+          avatar.style.pointerEvents = ''
+          avatar.style.willChange = ''
+          avatar.style.zIndex = ''
+          avatar.style.width = ''
+          avatar.style.height = ''
+          avatar.style.marginTop = ''
+        }
+        const compact = profileCompactNameRef.current
+        if (compact) compact.style.opacity = '0'
       }
     } else {
-      profileBannerBlurNameGapAtTuckRef.current = null
-      profileBannerBlurStartScrollRef.current = null
-    }
-    const blurPx = blurT * PROFILE_BANNER_MEDIA_BLUR_MAX_PX
+      profileClassicChromeClearedRef.current = false
+      const pinRange = profileCollapseRangePxRef.current
+      const motion = profileCollapseShellPreset(isEdgeiOSShell())
+      const v = profileCollapseVisuals(y, pinRange, {
+        reduceMotion: reduce,
+        scrollLag: motion.scrollLag,
+        shrinkEasePower: motion.shrinkEasePower,
+        minScale: motion.minScale,
+      })
+      const nameOp = forceZero
+        ? 0
+        : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
 
-    // Keep the photo sharp … CSS filter:blur on the img squeezes edges / seams.
-    // Frost is a backdrop-filter overlay so crop and scale never change.
-    const media = profileBannerMediaRef.current
-    if (media) {
-      media.style.filter = ''
-      media.style.transform = ''
-      media.style.top = ''
-      media.style.right = ''
-      media.style.bottom = ''
-      media.style.left = ''
-      media.style.width = ''
-      media.style.height = ''
-    }
-    const blurOverlay = profileBannerBlurOverlayRef.current
-    if (blurOverlay) {
-      if (collapseOn && blurPx > 0.15) {
-        const tint = 0.04 + blurT * 0.1
-        blurOverlay.style.opacity = '1'
-        blurOverlay.style.background = `rgba(9, 9, 11, ${tint.toFixed(3)})`
-        blurOverlay.style.backdropFilter = `blur(${blurPx.toFixed(2)}px)`
-        blurOverlay.style.webkitBackdropFilter = `blur(${blurPx.toFixed(2)}px)`
+      // Live blur: wait for avatar tuck, ramp until display name enters under the banner.
+      // IPA uses scroll-distance ramp (name-gap alone flashed to full).
+      let blurT = 0
+      if (!forceZero) {
+        const scrollEl = profileBodyScrollRef.current
+        const avatarEl = profileAvatarMotionRef.current
+        const nameEl = profileDisplayNameRef.current
+        const bannerEl = profileBannerShellRef.current
+        if (scrollEl && avatarEl) {
+          const scrollRect = scrollEl.getBoundingClientRect()
+          const pinRangeNow = profileCollapseRangePxRef.current
+          const pinnedVisible = profileStickyTopPxRef.current
+          const bannerBottomY =
+            y >= pinRangeNow
+              ? scrollRect.top + pinnedVisible
+              : bannerEl
+                ? bannerEl.getBoundingClientRect().bottom
+                : scrollRect.top + pinnedVisible
+          const ar = avatarEl.getBoundingClientRect()
+          const ring = PROFILE_AVATAR_RING_PX
+          const top = ar.top - ring
+          const h = Math.max(1, ar.height + ring * 2)
+          const underFrac = Math.max(0, Math.min(1, (bannerBottomY - top) / h))
+          const nameTop = nameEl ? nameEl.getBoundingClientRect().top : bannerBottomY + 999
+          const nameGapPx = nameTop - bannerBottomY
+          const nameUnderScroll = Math.max(
+            0,
+            (Number(profileNameRevealScrollRef.current) || 0) - 8,
+          )
+          blurT = profileLiveBannerBlurProgress({
+            underFrac,
+            nameGapPx,
+            scrollTop: y,
+            nameUnderScrollPx: nameUnderScroll,
+            tuckFrac: profileBannerBlurTuckFrac(),
+            nameGapAtTuckRef: profileBannerBlurNameGapAtTuckRef,
+            blurStartScrollRef: profileBannerBlurStartScrollRef,
+            reduceMotion: reduce,
+            useScrollRamp: isEdgeiOSShell(),
+          })
+        }
       } else {
-        blurOverlay.style.opacity = '0'
-        blurOverlay.style.background = ''
-        blurOverlay.style.backdropFilter = 'none'
-        blurOverlay.style.webkitBackdropFilter = 'none'
+        profileBannerBlurNameGapAtTuckRef.current = null
+        profileBannerBlurStartScrollRef.current = null
       }
-    }
-    const bannerShell = profileBannerShellRef.current
-    if (bannerShell) {
-      if (!collapseOn) {
-        bannerShell.style.zIndex = ''
-        bannerShell.style.top = ''
-        bannerShell.style.transform = ''
-        bannerShell.classList.remove('sticky')
-        bannerShell.classList.add('relative')
-      } else {
+      const blurPx = blurT * PROFILE_BANNER_MEDIA_BLUR_MAX_PX
+
+      // Keep the photo sharp … CSS filter:blur on the img squeezes edges / seams.
+      // Frost is a backdrop-filter overlay so crop and scale never change.
+      const media = profileBannerMediaRef.current
+      if (media) {
+        media.style.filter = ''
+        media.style.transform = ''
+        media.style.top = ''
+        media.style.right = ''
+        media.style.bottom = ''
+        media.style.left = ''
+        media.style.width = ''
+        media.style.height = ''
+      }
+      const blurOverlay = profileBannerBlurOverlayRef.current
+      if (blurOverlay) {
+        if (blurPx > 0.15) {
+          const tint = 0.04 + blurT * 0.1
+          blurOverlay.style.opacity = '1'
+          blurOverlay.style.background = `rgba(9, 9, 11, ${tint.toFixed(3)})`
+          blurOverlay.style.backdropFilter = `blur(${blurPx.toFixed(2)}px)`
+          blurOverlay.style.webkitBackdropFilter = `blur(${blurPx.toFixed(2)}px)`
+        } else {
+          blurOverlay.style.opacity = '0'
+          blurOverlay.style.background = ''
+          blurOverlay.style.backdropFilter = 'none'
+          blurOverlay.style.webkitBackdropFilter = 'none'
+        }
+      }
+      const bannerShell = profileBannerShellRef.current
+      if (bannerShell) {
         bannerShell.classList.add('sticky')
         bannerShell.classList.remove('relative')
         // Sticky layer below chrome (z-30). Avatar row beats this only at rest (peek).
@@ -1656,36 +1730,25 @@ export default function LoungeProfileFullScreen({
         bannerShell.style.transform = 'translateZ(0)'
         bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
       }
-    }
-    const avatarRow = profileAvatarRowRef.current
-    if (avatarRow) {
-      if (!collapseOn) {
-        avatarRow.style.zIndex = ''
-        avatarRow.style.clipPath = ''
-        avatarRow.style.webkitClipPath = ''
-      } else {
+      const avatarRow = profileAvatarRowRef.current
+      if (avatarRow) {
         // Rest: above banner for −mt peek. After a few px: under banner.
         avatarRow.style.zIndex = v.avatarUnderBanner ? '10' : '29'
         avatarRow.style.clipPath = ''
         avatarRow.style.webkitClipPath = ''
       }
-    }
-    const liveScrim = profileBannerLiveScrimRef.current
-    if (liveScrim) {
-      liveScrim.style.opacity = collapseOn ? String(v.bannerScrim) : '0.12'
-    }
-    const collapsedScrim = profileCollapsedScrimRef.current
-    if (collapsedScrim) {
-      if (!collapseOn) {
-        collapsedScrim.style.opacity = '0'
-        collapsedScrim.style.height = ''
-      } else {
+      const liveScrim = profileBannerLiveScrimRef.current
+      if (liveScrim) {
+        liveScrim.style.opacity = String(v.bannerScrim)
+      }
+      const collapsedScrim = profileCollapsedScrimRef.current
+      if (collapsedScrim) {
         // Thin frost under chrome/name … same timing as media blur (not pin settle).
         const frostH = Math.max(
           48,
           Math.round(
             (Number(profileChromeCenterNudgePxRef.current) || 0)
-              + Math.max(8, readCssSafeAreaTopPx())
+              + sat
               + 40
               + 10,
           ),
@@ -1697,17 +1760,27 @@ export default function LoungeProfileFullScreen({
         collapsedScrim.style.bottom = 'auto'
         collapsedScrim.style.opacity = String(blurT)
       }
+      const avatar = profileAvatarMotionRef.current
+      if (avatar) {
+        avatar.style.transformOrigin = '50% 0%'
+        avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
+        avatar.style.opacity = String(v.avatarOpacity)
+        avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
+        avatar.style.willChange = v.avatarUnderBanner ? 'auto' : 'transform'
+        avatar.style.zIndex = v.avatarUnderBanner ? '1' : ''
+        avatar.style.width = ''
+        avatar.style.height = ''
+        avatar.style.marginTop = ''
+      }
+      const compact = profileCompactNameRef.current
+      if (compact) {
+        compact.style.opacity = String(nameOp)
+      }
     }
+
     const chromeMotion = profileChromeMotionRef.current
-    const sat = Math.max(8, readCssSafeAreaTopPx())
     const scrollYForChrome = Math.max(0, Number(scrollTop) || 0)
-    const bannerHApprox = Math.max(
-      0,
-      profileBannerHeightPxRef.current
-        || (profileBannerShellRef.current
-          ? Math.ceil(profileBannerShellRef.current.getBoundingClientRect().height)
-          : 0),
-    )
+    const bannerHApprox = Math.max(0, profileBannerHeightPxRef.current)
     const iosWebTitleH = sat + PROFILE_IOS_WEB_TITLE_BAR_PX
     const bannerClearY =
       bannerHApprox > 0 ? Math.max(24, bannerHApprox - 8) : Number.POSITIVE_INFINITY
@@ -1768,6 +1841,35 @@ export default function LoungeProfileFullScreen({
     // Tabs / status use latched-or-past so returning through the banner stays flush.
     const inFeedChrome = pastBanner || feedLatched
 
+    let tabsTop = collapseOn
+      ? profileStickyTopPxRef.current
+      : Math.max(0, Math.round(sat))
+    if (iosWebTitle) {
+      if (inFeedChrome) {
+        const titleBottom = iosWebTitleH - titleHidePx
+        const overlap =
+          titleBottom > sat + PROFILE_IOS_WEB_TABS_OVERLAP_PX
+            ? PROFILE_IOS_WEB_TABS_OVERLAP_PX
+            : 0
+        tabsTop = Math.max(sat, Math.min(iosWebTitleH, titleBottom - overlap))
+      } else {
+        tabsTop = Math.round(sat)
+      }
+    }
+
+    const applied = profileIosWebAppliedHideRef.current
+    const chromeDirty =
+      applied.title !== titleHidePx
+      || applied.btn !== buttonHidePx
+      || applied.tabs !== tabsTop
+      || applied.inFeed !== (inFeedChrome ? 1 : 0)
+      || Boolean(opts.forceZero)
+      || showOwnEditControls
+
+    if (!chromeDirty && iosWebTitle) {
+      return
+    }
+
     const iosWebSlide = profileIosWebSlideRef.current
     if (iosWebSlide) {
       // Stack stays put … title plate and buttons move independently.
@@ -1827,59 +1929,27 @@ export default function LoungeProfileFullScreen({
       }
     }
     // Tabs track the title plate bottom (not the buttons).
-    const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
+    const tabsEl =
+      profileTabsElRef.current
+      || profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
     if (tabsEl) {
-      let tabsTop = collapseOn
-        ? profileStickyTopPxRef.current
-        : Math.max(0, Math.round(readCssSafeAreaTopPx()))
-      if (iosWebTitle) {
-        if (inFeedChrome) {
-          const titleBottom = iosWebTitleH - titleHidePx
-          const overlap =
-            titleBottom > sat + PROFILE_IOS_WEB_TABS_OVERLAP_PX
-              ? PROFILE_IOS_WEB_TABS_OVERLAP_PX
-              : 0
-          tabsTop = Math.max(sat, Math.min(iosWebTitleH, titleBottom - overlap))
-          tabsEl.setAttribute('data-lounge-profile-ios-web-tabs', '')
-        } else {
-          tabsTop = Math.round(sat)
-          tabsEl.removeAttribute('data-lounge-profile-ios-web-tabs')
-        }
+      profileTabsElRef.current = tabsEl
+      if (iosWebTitle && inFeedChrome) {
+        tabsEl.setAttribute('data-lounge-profile-ios-web-tabs', '')
       } else {
         tabsEl.removeAttribute('data-lounge-profile-ios-web-tabs')
       }
       tabsEl.style.top = `${tabsTop}px`
       profileTabsTopPxRef.current = tabsTop
-      setProfileTabsStickyTopPxState((prev) => (prev === tabsTop ? prev : tabsTop))
-    }
-    const avatar = profileAvatarMotionRef.current
-    if (avatar) {
-      if (!collapseOn) {
-        avatar.style.transformOrigin = ''
-        avatar.style.transform = ''
-        avatar.style.opacity = ''
-        avatar.style.pointerEvents = ''
-        avatar.style.willChange = ''
-        avatar.style.zIndex = ''
-        avatar.style.width = ''
-        avatar.style.height = ''
-        avatar.style.marginTop = ''
-      } else {
-        avatar.style.transformOrigin = '50% 0%'
-        avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
-        avatar.style.opacity = String(v.avatarOpacity)
-        avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
-        avatar.style.willChange = v.avatarUnderBanner ? 'auto' : 'transform'
-        avatar.style.zIndex = v.avatarUnderBanner ? '1' : ''
-        avatar.style.width = ''
-        avatar.style.height = ''
-        avatar.style.marginTop = ''
+      // Avoid React setState on every scroll frame when title chrome owns `top` via DOM.
+      if (!iosWebTitle) {
+        setProfileTabsStickyTopPxState((prev) => (prev === tabsTop ? prev : tabsTop))
       }
     }
-    const compact = profileCompactNameRef.current
-    if (compact) {
-      compact.style.opacity = String(nameOp)
-    }
+    applied.title = titleHidePx
+    applied.btn = buttonHidePx
+    applied.tabs = tabsTop
+    applied.inFeed = inFeedChrome ? 1 : 0
   }, [showOwnEditControls])
   applyProfileCollapseVisualsRef.current = applyProfileCollapseVisuals
 
@@ -1890,7 +1960,9 @@ export default function LoungeProfileFullScreen({
     const scrollEl = profileBodyScrollRef.current
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
     profileBannerHeightPxRef.current = bannerH
+    invalidateCssSafeAreaTopPxCache()
     const sat = readCssSafeAreaTopPx()
+    profileSatPxRef.current = Math.max(8, sat)
     // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the tuned band.
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
     const isIpa = isEdgeiOSShell()
@@ -1953,6 +2025,8 @@ export default function LoungeProfileFullScreen({
       profileNameRevealScrollRef.current = Math.max(36, nameUnderScroll + 8)
     }
 
+    profileIosWebAppliedHideRef.current = { title: -1, btn: -1, tabs: -1, inFeed: -1 }
+    profileClassicChromeClearedRef.current = false
     applyProfileCollapseVisualsRef.current?.(scrollEl?.scrollTop ?? 0)
   }, [])
 
@@ -2145,6 +2219,7 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     if (!open || !panelVisible) return
     profileDockRevealRef.current = 1
+    profileDockRevealNotifiedRef.current = 1
     profileIosWebFeedLatchRef.current = false
     profileIosWebWasPastBannerRef.current = false
     profileIosWebChromeScrollPrevRef.current = 0
@@ -2161,7 +2236,7 @@ export default function LoungeProfileFullScreen({
   // Re-apply the latest measured top after every commit so tabs ride the title plate.
   useLayoutEffect(() => {
     if (!open || !panelVisible) return
-    const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
+    const tabsEl = profileTabsElRef.current
     if (!tabsEl) return
     tabsEl.style.top = `${profileTabsTopPxRef.current}px`
   })
@@ -2211,13 +2286,21 @@ export default function LoungeProfileFullScreen({
     const titleHidePerScrollPx = 110
     const maxAbsScrollStepPx = 180
     const minScrollStepPx = 0.5
+    // Throttle parent SocialFeed setState … full Lounge re-render per scroll tick was killing Android.
+    const dockRevealNotifyStep = 0.08
     const queueFlush = () => {
       if (profileDockScrollRafRef.current) return
       profileDockScrollRafRef.current = window.requestAnimationFrame(() => {
         profileDockScrollRafRef.current = 0
         const r = profileDockRevealRef.current
-        setProfileDockReveal(r)
-        onDockRevealChange?.(r)
+        const prev = profileDockRevealNotifiedRef.current
+        const atEdge = r <= 0.02 || r >= 0.98
+        if (!atEdge && Math.abs(r - prev) < dockRevealNotifyStep) return
+        const notified = r <= 0.02 ? 0 : r >= 0.98 ? 1 : Math.round(r / dockRevealNotifyStep) * dockRevealNotifyStep
+        if (notified === prev) return
+        profileDockRevealNotifiedRef.current = notified
+        // Local setState only kept the (disabled) sheet dock in sync … skip it.
+        onDockRevealChange?.(notified)
       })
     }
     const onScroll = () => {
@@ -2240,6 +2323,14 @@ export default function LoungeProfileFullScreen({
         queueFlush()
       }
       applyProfileCollapseVisuals(st)
+      // apply may latch dock reveal to 0 when clearing the banner … flush parent FAB.
+      const after = profileDockRevealRef.current
+      if (
+        (after <= 0.02 && profileDockRevealNotifiedRef.current !== 0)
+        || (after >= 0.98 && profileDockRevealNotifiedRef.current !== 1)
+      ) {
+        queueFlush()
+      }
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => {
@@ -2251,6 +2342,7 @@ export default function LoungeProfileFullScreen({
   useEffect(() => {
     if (!showOwnEditControls) return
     profileDockRevealRef.current = 1
+    profileDockRevealNotifiedRef.current = 1
     setProfileDockReveal(1)
     onDockRevealChange?.(1)
     applyProfileCollapseVisuals(0, { forceZero: true })
@@ -2802,6 +2894,7 @@ export default function LoungeProfileFullScreen({
           stackedOverlay || panelVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
         data-lounge-profile-sheet=""
+        {...(PROFILE_ANDROID_PERF ? { 'data-lounge-profile-android-perf': '' } : {})}
         onTransitionEnd={(e) => {
           if (e.propertyName !== 'transform') return
           if (!panelVisible) onAfterTransitionOut?.()
@@ -3045,7 +3138,7 @@ export default function LoungeProfileFullScreen({
             >
               <div
                 ref={profileBannerMediaRef}
-                className="h-full w-full min-w-full will-change-transform"
+                className={`h-full w-full min-w-full${profileCollapseEnabled ? ' will-change-transform' : ''}`}
                 style={{ transformOrigin: 'center top' }}
                 data-lounge-profile-banner-media=""
               >
@@ -3099,7 +3192,9 @@ export default function LoungeProfileFullScreen({
               <div className="relative shrink-0 pointer-events-auto">
                 <div
                   ref={profileAvatarMotionRef}
-                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
+                  className={`relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]${
+                    profileCollapseEnabled ? ' will-change-transform' : ''
+                  }`}
                   style={{ transformOrigin: 'center top' }}
                   data-lounge-profile-avatar=""
                 >
@@ -3400,6 +3495,9 @@ export default function LoungeProfileFullScreen({
           {!showOwnEditControls ? (
           <div className="w-full min-w-0">
             <div
+              ref={(node) => {
+                profileTabsElRef.current = node
+              }}
               data-lounge-profile-tabs=""
               className="sticky z-20 mt-6 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
               style={{ top: profileTabsStickyTopPxState }}

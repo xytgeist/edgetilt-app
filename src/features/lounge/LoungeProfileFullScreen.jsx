@@ -2661,74 +2661,26 @@ export default function LoungeProfileFullScreen({
           </div>
 
           <div className="relative px-4">
-            {/* ~1/4 avatar overlap on banner at rest (−mt-6 on h-24 ≈ 24/96). Avatar paints above banner until tuck. */}
-            <div className="pointer-events-none relative z-20 -mt-6 flex flex-wrap items-end justify-between gap-3 sm:-mt-7">
-              <div className="relative shrink-0 pointer-events-auto">
-                <div
-                  ref={profileAvatarMotionRef}
-                  className="relative z-[25] flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]"
-                  style={{ transformOrigin: 'center top' }}
-                  data-lounge-profile-avatar=""
-                >
-                  {profile?.avatar_url ? (
-                    <img
-                      key={profile.avatar_url}
-                      src={profile.avatar_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span
-                      className={`grid h-full w-full place-items-center font-bold text-white ${profileAvatarToneClass(
-                        profile?.user_id || profile?.handle || 'member'
-                      )}`}
-                    >
-                      {profileAvatarInitials(profile?.display_name, profile?.handle)}
-                    </span>
-                  )}
-                </div>
-                {showOwnEditControls ? (
-                  <>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={(ev) => onPickAvatar(ev)}
-                    />
-                    <button
-                      type="button"
-                      disabled={avatarBusy}
-                      onClick={() => avatarInputRef.current?.click()}
-                      aria-label={avatarBusy ? 'Uploading avatar' : 'Change avatar'}
-                      className="absolute bottom-0 right-0 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
-                    >
-                      {avatarBusy ? '…' : 'Avatar'}
-                    </button>
-                  </>
-                ) : null}
+            {/* Action CTAs: vertically centered in the banner band (h-28 / sm:h-36), scroll with content. */}
+            {isOwnProfile &&
+            !showOwnEditControls &&
+            typeof onOpenFanSubscriptionSettings === 'function' &&
+            supabaseClient ? (
+              <div
+                className="pointer-events-auto absolute right-4 top-[-3.5rem] z-[15] -translate-y-1/2 sm:top-[-4.5rem]"
+                data-lounge-profile-banner-actions=""
+              >
+                <OwnProfileFanMonetizationCta
+                  supabaseClient={supabaseClient}
+                  onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
+                  onOpenCreatorFanPortal={() => setFanPortalOpen(true)}
+                />
               </div>
-              {isOwnProfile &&
-              !showOwnEditControls &&
-              typeof onOpenFanSubscriptionSettings === 'function' &&
-              supabaseClient ? (
-                <div
-                  className="pointer-events-auto relative z-20 mb-1 shrink-0"
-                  style={{ transform: 'translateY(10px)' }}
-                >
-                  <OwnProfileFanMonetizationCta
-                    supabaseClient={supabaseClient}
-                    onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
-                    onOpenCreatorFanPortal={() => setFanPortalOpen(true)}
-                  />
-                </div>
-              ) : !isOwnProfile && viewerUserId ? (
-                <div
-                  className="pointer-events-auto relative z-20 mb-1 shrink-0"
-                  style={{ transform: 'translateY(10px)' }}
-                >
-                  <div className="flex flex-wrap items-center justify-end gap-2">
+            ) : !isOwnProfile && viewerUserId ? (
+              <div
+                className="pointer-events-auto absolute right-4 top-[-3.5rem] z-[15] flex -translate-y-1/2 flex-wrap items-center justify-end gap-2 sm:top-[-4.5rem]"
+                data-lounge-profile-banner-actions=""
+              >
                   {isFollowing ? (
                     creatorFanOffer && hasCreatorFanSub ? (
                       <ProfileFanSubPillButton
@@ -2811,9 +2763,57 @@ export default function LoungeProfileFullScreen({
                   >
                     <ProfileSocialFollowIcon following={isFollowing} />
                   </button>
-                  </div>
+              </div>
+            ) : null}
+
+            {/* ~1/4 avatar overlap on banner at rest (−mt-6 on h-24 ≈ 24/96). */}
+            <div className="pointer-events-none relative z-20 -mt-6 flex flex-wrap items-end justify-between gap-3 sm:-mt-7">
+              <div className="relative shrink-0 pointer-events-auto">
+                <div
+                  ref={profileAvatarMotionRef}
+                  className="relative z-[25] flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]"
+                  style={{ transformOrigin: 'center top' }}
+                  data-lounge-profile-avatar=""
+                >
+                  {profile?.avatar_url ? (
+                    <img
+                      key={profile.avatar_url}
+                      src={profile.avatar_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span
+                      className={`grid h-full w-full place-items-center font-bold text-white ${profileAvatarToneClass(
+                        profile?.user_id || profile?.handle || 'member'
+                      )}`}
+                    >
+                      {profileAvatarInitials(profile?.display_name, profile?.handle)}
+                    </span>
+                  )}
                 </div>
-              ) : null}
+                {showOwnEditControls ? (
+                  <>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(ev) => onPickAvatar(ev)}
+                    />
+                    <button
+                      type="button"
+                      disabled={avatarBusy}
+                      onClick={() => avatarInputRef.current?.click()}
+                      aria-label={avatarBusy ? 'Uploading avatar' : 'Change avatar'}
+                      className="absolute bottom-0 right-0 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
+                    >
+                      {avatarBusy ? '…' : 'Avatar'}
+                    </button>
+                  </>
+                ) : null}
+              </div>
             </div>
 
             <div className="mt-3 space-y-1">

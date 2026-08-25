@@ -989,8 +989,6 @@ export default function SocialFeed({
   const loungeSkipNavPopOnCloseRef = useRef(false)
   const loungeNavRestoringRef = useRef(false)
   const loungeNavSearchReturnPendingRef = useRef(false)
-  /** Prior dock panel when Settings overlays it (search / notifications / chat). Profile/detail stay mounted. */
-  const loungeSettingsReturnDockRef = useRef(null)
   const profileNavSnapshotRef = useRef({ tab: 'posts', scrollTop: 0 })
   const loungeDockPanelScrollRef = useRef(null)
   const restoreLoungeNavFrameRef = useRef(async () => {})
@@ -8124,7 +8122,7 @@ export default function SocialFeed({
         window.clearTimeout(openTid)
         loungePostDetailOpenFallbackTimerRef.current = 0
       }
-      if (reduce || opts?.instant) {
+      if (reduce) {
         loungePostDetailPanelEnteredRef.current = true
         setLoungePostDetailPanelEntered(true)
         setLoungePostDetailVisible(true)
@@ -8573,40 +8571,14 @@ export default function SocialFeed({
     }
   }, [onOpenChatRoomFromDock, ensureLoungeFeedVisible, refreshChatUnreadRoomCount])
 
-  const closeLoungeSettingsOverlay = useCallback(() => {
-    setLoungeSettingsFocusSection(null)
-    const back = loungeSettingsReturnDockRef.current
-    loungeSettingsReturnDockRef.current = null
-    setLoungeDockPanel(back)
-  }, [])
-
-  const openLoungeSettingsOverlay = useCallback(() => {
-    if (loungeDockPanel === 'settings') return
-    loungeSettingsReturnDockRef.current =
-      loungeDockPanel === 'search' || loungeDockPanel === 'notifications' || loungeDockPanel === 'chat'
-        ? loungeDockPanel
-        : null
-    setLoungeDockPanel('settings')
-  }, [loungeDockPanel])
-
   const onLoungeDockSettings = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
       onRequireAuth?.()
       return
     }
-    if (loungeDockPanel === 'settings') {
-      closeLoungeSettingsOverlay()
-      return
-    }
-    openLoungeSettingsOverlay()
-  }, [
-    closeLoungeSettingsOverlay,
-    loungeDockPanel,
-    loungeFeedBrowseMode,
-    loungeReadOnly,
-    onRequireAuth,
-    openLoungeSettingsOverlay,
-  ])
+    dismissLoungeStackForDockNavRef.current()
+    setLoungeDockPanel((p) => (p === 'settings' ? null : 'settings'))
+  }, [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth])
 
   const onLoungeOpenSettingsSection = useCallback(
     (section) => {
@@ -8614,17 +8586,11 @@ export default function SocialFeed({
         onRequireAuth?.()
         return
       }
-      if (loungeDockPanel !== 'settings') openLoungeSettingsOverlay()
+      dismissLoungeStackForDockNavRef.current()
       setLoungeSettingsFocusSection(section)
       setLoungeDockPanel('settings')
     },
-    [
-      loungeDockPanel,
-      loungeFeedBrowseMode,
-      loungeReadOnly,
-      onRequireAuth,
-      openLoungeSettingsOverlay,
-    ],
+    [loungeFeedBrowseMode, loungeReadOnly, onRequireAuth],
   )
 
   useEffect(() => {
@@ -14297,8 +14263,8 @@ export default function SocialFeed({
     return rest
   }, [])
 
-  const revealProfileModalPanel = useCallback((reduceMotion, instant) => {
-    if (reduceMotion || instant) {
+  const revealProfileModalPanel = useCallback((reduceMotion) => {
+    if (reduceMotion) {
       profileModalVisibleRef.current = true
       setProfileModalVisible(true)
       return
@@ -14357,7 +14323,7 @@ export default function SocialFeed({
       const reduce =
         typeof window !== 'undefined' &&
         window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
-      revealProfileModalPanel(reduce, opts?.instant === true)
+      revealProfileModalPanel(reduce)
       try {
         const { profile, profileErr } = await fetchLoungeProfileRow(supabaseClient, userId, profileStub)
         if (loadGen !== profileModalLoadGenRef.current) return
@@ -14793,12 +14759,8 @@ export default function SocialFeed({
       }
       return
     }
-    if (loungeDockPanel === 'settings') {
-      closeLoungeSettingsOverlay()
-      return
-    }
     setLoungeDockPanel(null)
-  }, [closeLoungeSettingsOverlay, loungeDockPanel])
+  }, [loungeDockPanel])
 
   const onProfileNavRestoreApplied = useCallback(() => {
     setProfileNavRestore(null)
@@ -14853,7 +14815,6 @@ export default function SocialFeed({
   const onLoungeSettingsEditProfile = useCallback(() => {
     if (!composerUserId || loungeReadOnly) return
     if (openProfileGateIfNeeded()) return
-    loungeSettingsReturnDockRef.current = null
     pushLoungeNavReturnContext()
     setLoungeDockPanel(null)
     void openProfileModal(
@@ -15627,7 +15588,6 @@ export default function SocialFeed({
       key={loungeDockPanel === 'search' ? `search-${loungeDockSearchQueryVersion}` : loungeDockPanel}
       initialSearchQuery={loungeDockPanel === 'search' ? loungeDockSearchQuery : ''}
       openPanel={loungeDockPanel}
-      stackAboveDetailOrProfile={loungeDockStackAboveDetailOrProfile}
       onClose={onLoungeDockPanelClose}
       panelScrollRefOut={loungeDockPanelScrollRef}
       restorePanelScrollTop={dockPanelScrollRestore}

@@ -38,7 +38,7 @@ import {
   NEON_BLUE_ITEM_GLOW_PAGE_ACTIVE,
 } from '../utils/loungeDockFabGlow.js'
 import {
-  Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL,
+  Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE,
   Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL,
   Z_LOUNGE_DOCK_VIEWPORT,
 } from '../constants/appZIndex.js'
@@ -60,6 +60,8 @@ const AWAY_HOME_POINTER_GUARD_MS = 650
 const REPOSITION_POINTER_GUARD_MS = 1000
 /** Hard cap so a wedged main thread cannot leave clickShield/capture listeners forever. */
 const POINTER_GUARD_WATCHDOG_MS = 1500
+/** Slide panels that must stay tappable (not awayFromFeed / tool screens). */
+const SLIDE_PANEL_CHROME = new Set(['search', 'notifications', 'chat', 'settings'])
 /** Hold on the menu button to unlock position, then drag; release to lock at the new spot. */
 const FAB_REPOSITION_LONG_PRESS_MS = 450
 /** Backdrop: past this movement = pan/scroll (close menu, release capture); below = tap (close only, block click-through). */
@@ -273,7 +275,7 @@ export default function LoungeDockArcCarouselPrototype({
   enableFabCompactPip = true,
   /** Raise above `LoungeDockSlidePanels` (z-99) on search / notifications / settings. */
   stackAboveSlidePanel = false,
-  /** Raise above post detail / profile / overlay Settings (z 104) so the FAB stays tappable. */
+  /** Raise above post detail / profile shells (z 98–102) while keeping below detail media lightbox (103+). */
   stackAboveDetailOrProfile = false,
   /**
    * Post / comment detail: after {@link FAB_COMPACT_PIP_MS} idle, Edge L shrinks in place;
@@ -698,6 +700,12 @@ export default function LoungeDockArcCarouselPrototype({
       disarmPointerGuard()
     }
   }, [disarmPointerGuard])
+
+  // Live slide panel must stay tappable ... never leave clickShield over Notifications/etc.
+  useEffect(() => {
+    if (!panelChrome || !SLIDE_PANEL_CHROME.has(panelChrome)) return
+    disarmPointerGuard()
+  }, [panelChrome, disarmPointerGuard])
 
   const clearRepositionCapture = useCallback(() => {
     repositionCaptureCleanupRef.current?.()
@@ -1741,7 +1749,7 @@ export default function LoungeDockArcCarouselPrototype({
     : ''
 
   const dockLayerZIndex = stackAboveDetailOrProfile
-    ? Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL
+    ? Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE
     : stackAboveSlidePanel
       ? Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL
       : Z_LOUNGE_DOCK_VIEWPORT

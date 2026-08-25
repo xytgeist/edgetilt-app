@@ -126,11 +126,10 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - BUILD SUCCEEDED
 
 **Mac do now (Ryan + Theo):**
-1. Pull tip; **FAB Settings overlay:** profile / post detail stay mounted. Settings sits on top (z 104). Close should land on that same screen, no feed flash. Chip tap should register. Home / compose still dump to feed.
-2. Pull tip; **IPA post-detail:** panel no longer double-pads sat (title bar only). Smoke vs Safari/PWA Image 1.
-3. Pull tip; wait for Vercel if smoking live web gates; rebuild IPA; **device smoke:** no black bars; post-detail ← clear of Island; unmute / Safari / no A2HS
-4. OAuth-in-shell smoke; hard-crash repro leaving post detail
-5. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token
+1. Pull tip; **IPA post-detail:** panel no longer double-pads sat (title bar only). Smoke vs Safari/PWA Image 1.
+2. Pull tip; wait for Vercel if smoking live web gates; rebuild IPA; **device smoke:** no black bars; post-detail ← clear of Island; unmute / Safari / no A2HS
+2. OAuth-in-shell smoke; hard-crash repro leaving post detail
+3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token
 
 **Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 

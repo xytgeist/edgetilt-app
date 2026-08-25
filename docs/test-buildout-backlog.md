@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **Profile tab scroll order:** Finger on a tab feed first scrolls the profile chrome (banner/bio) until the tabs pin. Then that tab’s feed becomes the scroller. Scroll up from the top of a feed expands the header again. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
 - 2026-08-25: **Profile tab preload:** After the sheet opens, idle-prefetch Replies (and Likes/Bookmarks on own profile) so a tab tap slides into a warm list. Does not block Posts first paint. Tap still starts the fetch immediately if idle has not run. File: `LoungeProfileFullScreen.jsx`.
 - 2026-08-25: **Profile tab slide:** Posts/Replies/Likes/Bookmarks keep the banner + tab bar put. Only the feed under the tabs translates left/right. Tab click does not remount the sheet or scroll the banner back open. Likes and bookmarks keep their own lists so a return swipe does not refetch. `prefers-reduced-motion` skips the slide. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
 - 2026-08-25: **FAB overlay close:** Do not park profile/detail at z 40 under Settings/Search/Notifications. That restyle replayed the post-detail slide and flashed the profile. Overlay sits on top; the stack stays put. File: `SocialFeed.jsx`.

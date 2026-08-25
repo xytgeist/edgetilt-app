@@ -1955,7 +1955,8 @@ html.light [data-lounge-profile-tabs] [data-lounge-profile-tab-underline] {
   background-color: rgb(37 99 235) !important;
 }
 [data-lounge-profile-tab-viewport] {
-  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-y: none;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-lounge-profile-tab-track] {

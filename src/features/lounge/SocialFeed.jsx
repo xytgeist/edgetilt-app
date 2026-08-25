@@ -8329,10 +8329,9 @@ export default function SocialFeed({
         loungeDockPanel === 'chat'
           ? loungeDockPanel
           : null
-      const sheetOpen = Boolean(
-        loungePostDetail?.id || profileModalOpen || profileOverlayStack.length > 0,
+      setLoungeDockOverlayOnSheet(
+        Boolean(loungePostDetail?.id || profileModalOpen || profileOverlayStack.length > 0),
       )
-      setLoungeDockOverlayOnSheet(sheetOpen)
       setLoungeDockPanel(panel)
     },
     [loungeDockPanel, loungePostDetail?.id, profileModalOpen, profileOverlayStack.length],

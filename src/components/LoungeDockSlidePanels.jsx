@@ -91,7 +91,7 @@ const VERTICAL_BEATS_HORIZONTAL = 1.52
  * Same **title bar** chrome as the feed (logo, updating line, nav slot) with **scroll-linked hide/show**;
  * Bottom scroll inset clears the draggable FAB menu. On search / notifications / settings,
  * `SocialFeed` raises the viewport dock to z-index 100 above this `z-[99]` layer.
- * Over a mounted profile / post detail the panel uses z 104 so Settings sits on top.
+ * Over a mounted profile / post detail the panel uses z 104 so it sits on top.
  * Swipe horizontally to dismiss (left or right). `viewportTitleTopPx` must
  * match the feed title’s `top` offset so the bar aligns with the main Lounge shell.
  *
@@ -191,7 +191,7 @@ export default function LoungeDockSlidePanels({
   onTitleRevealChange,
   /** Pre-fill the search input when the panel opens (e.g. from a #hashtag tap). */
   initialSearchQuery = '',
-  /** Raise above profile (101) / post detail (98–102) / lightbox (103) when those stay mounted. */
+  /** Raise above profile / post detail when those stay mounted under the panel. */
   stackAboveDetailOrProfile = false,
   /** Freeze search scroll-root autoplay when post/comment detail is open over the panel. */
   videoCoordinatorSuspended = false,

@@ -19,12 +19,12 @@ export const Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL = 100
 export const Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE = 102
 
 /**
- * Settings over a still-mounted profile or post detail.
+ * Search / notifications / settings over a still-mounted profile or post detail.
  * Above profile (101), detail-over-profile (102), and profile lightbox (103).
  */
 export const Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE = 104
 
-/** FAB above that Settings overlay so the wheel chip stays tappable. */
+/** FAB above that overlay so the wheel chips stay tappable. */
 export const Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL = 105
 
 /** Default floor for full-screen app sheets/dialogs (bankroll, logbook, offers, lounge prompts). */

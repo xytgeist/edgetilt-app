@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { fetchKlipyGifs } from '../../utils/klipyGifs'
+import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 
 /** Cap auto-fetched pages (per search / trending session) to limit Klipy + edge invocations if user scrolls endlessly. */
 const KLIPY_PICKER_MAX_PAGES = 15
@@ -11,6 +12,11 @@ function measureLayoutSheetHeightPx() {
   return Math.min(Math.round(window.innerHeight * SHEET_HEIGHT_RATIO), SHEET_HEIGHT_CAP_PX)
 }
 
+function readLayoutViewportFrame() {
+  if (typeof window === 'undefined') return { top: 0, height: 640 }
+  return { top: 0, height: window.innerHeight }
+}
+
 function readVisualViewportFrame() {
   if (typeof window === 'undefined') return { top: 0, height: 640 }
   const vv = window.visualViewport
@@ -18,6 +24,10 @@ function readVisualViewportFrame() {
     top: vv?.offsetTop ?? 0,
     height: vv?.height ?? window.innerHeight,
   }
+}
+
+function readPickerFrame() {
+  return isEdgeiOSShell() ? readLayoutViewportFrame() : readVisualViewportFrame()
 }
 
 /**
@@ -33,8 +43,9 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   const [page, setPage] = useState(1)
   const [hasNext, setHasNext] = useState(false)
   const [sheetHeightPx, setSheetHeightPx] = useState(measureLayoutSheetHeightPx)
-  const [viewportFrame, setViewportFrame] = useState(readVisualViewportFrame)
+  const [viewportFrame, setViewportFrame] = useState(readPickerFrame)
   const debounceRef = useRef(0)
+  const searchInputRef = useRef(null)
   const scrollRef = useRef(null)
   const sentinelRef = useRef(null)
   const pageRef = useRef(1)
@@ -61,14 +72,29 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
   useEffect(() => {
     if (!open) return
     setSheetHeightPx(measureLayoutSheetHeightPx())
-    const syncViewport = () => setViewportFrame(readVisualViewportFrame())
+    const syncViewport = () => setViewportFrame(readPickerFrame())
     syncViewport()
+    if (isEdgeiOSShell()) {
+      window.addEventListener('resize', syncViewport)
+      return () => window.removeEventListener('resize', syncViewport)
+    }
     const vv = window.visualViewport
     vv?.addEventListener('resize', syncViewport)
     vv?.addEventListener('scroll', syncViewport)
     return () => {
       vv?.removeEventListener('resize', syncViewport)
       vv?.removeEventListener('scroll', syncViewport)
+    }
+  }, [open])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const el = searchInputRef.current
+    if (!el) return
+    try {
+      el.focus({ preventScroll: true })
+    } catch {
+      el.focus()
     }
   }, [open])
 
@@ -182,10 +208,12 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
     return () => io.disconnect()
   }, [open, debounced, items.length, hasNext])
 
+  const ipaShell = isEdgeiOSShell()
   const resolvedSheetHeightPx = useMemo(() => {
+    if (ipaShell) return sheetHeightPx
     const visibleCap = Math.max(240, Math.round(viewportFrame.height - 32))
     return Math.min(sheetHeightPx, visibleCap)
-  }, [sheetHeightPx, viewportFrame.height])
+  }, [ipaShell, sheetHeightPx, viewportFrame.height])
 
   const refreshing = loading && loadingMode === 'refresh'
   const loadingMore = loading && loadingMode === 'append'
@@ -216,6 +244,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
       >
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-3 py-2">
           <input
+            ref={searchInputRef}
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}

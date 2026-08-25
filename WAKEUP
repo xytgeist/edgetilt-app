@@ -99,7 +99,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows (2026-08-25 … GIF keyboard rolled back):** PWA/web attempts to dismiss the Lounge GIF keyboard failed. Restored pre-`0191c548` GIF picker/toolbar/focus code. Ryan will fix it in the IPA. Do not reopen on web. Trim audio mux fix (`d744555b`) stays.
+**Windows (2026-08-25 … GIF keyboard):** Do not reopen dismiss-keyboard experiments. Spec (Mac): non-IPA moves focus to Klipy search; IPA sheet is full layout viewport (keyboard overlays, no WK accessory bar). Trim audio mux fix (`d744555b`) stays.
+
+**Mac (2026-08-25 … GIF picker):** Rebuild IPA to hide the accessory bar. Web focus + IPA layout are in `KlipyGifPicker.jsx` (wait for Vercel for the JS).
 
 ### Decisions locked (do not reopen without Ryan)
 

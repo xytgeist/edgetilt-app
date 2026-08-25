@@ -171,6 +171,7 @@ export default function LoungeComposerMediaToolbar({
         <button
           type="button"
           disabled={gifDisabled || disabled}
+          onPointerDown={preventFocusSteal}
           onMouseDown={preventFocusSteal}
           onClick={onOpenGifPicker}
           className={gifBtnClass}

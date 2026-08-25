@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
   ) -> Bool {
     EdgePushManager.shared.configure()
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
+    EdgeWebKitKeyboard.hideAccessoryBar()
     return true
   }
 

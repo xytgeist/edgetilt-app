@@ -273,7 +273,7 @@ export default function LoungeDockArcCarouselPrototype({
   enableFabCompactPip = true,
   /** Raise above `LoungeDockSlidePanels` (z-99) on search / notifications / settings. */
   stackAboveSlidePanel = false,
-  /** Raise above post detail / profile shells (z 98–102) while keeping below detail media lightbox (103+). */
+  /** Raise above post detail / profile / overlay Settings (z 104) so the FAB stays tappable. */
   stackAboveDetailOrProfile = false,
   /**
    * Post / comment detail: after {@link FAB_COMPACT_PIP_MS} idle, Edge L shrinks in place;

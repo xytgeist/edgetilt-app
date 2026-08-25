@@ -7,8 +7,9 @@
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  * - IPA keeps the tuned chrome-mid + lag/shrink preset; PWA/Android/web use a
  *   higher chrome seat + faster shrink so the banner can clear the avatar ring.
- * - Collapsed look (hybrid C): `filter: blur` on banner media + thin light frost
- *   under the chrome/name only (no full-banner dark overlay).
+ * - Collapsed look (hybrid C): live `filter: blur` on banner media + thin frost
+ *   under chrome/name, gated on avatar tuck → display-name entry (not pin settle).
+ *   Android uses an earlier tuck fraction than Apple.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
@@ -45,14 +46,69 @@ export const PROFILE_AVATAR_SCROLL_LAG = 0.45
 /** IPA: ease-in power for avatar scale over the pin window. */
 export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
 
-/** Max `filter: blur()` on the banner media when the pin settles (hybrid frost). */
+/** Max `filter: blur()` on the banner media when frost completes. */
 export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
 
 /**
- * Blur starts once this fraction of the avatar (incl. ring) sits under the pinned banner.
- * Live geometry also hard-gates blur below this fraction.
+ * Default tuck fraction before blur may begin (Apple / desktop).
+ * Android uses a lower fraction via `profileBannerBlurTuckFrac()`.
  */
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC = 0.9
+
+/** Android: avatar clears the pinned strip later in scroll … start blur sooner. */
+export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_ANDROID = 0.58
+
+/**
+ * Platform tuck fraction for banner media blur.
+ * Positive Android UA check only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
+ * @param {string} [ua]
+ */
+export function profileBannerBlurTuckFrac(ua) {
+  const agent =
+    ua
+    ?? (typeof navigator !== 'undefined' ? navigator.userAgent : '')
+  if (/Android/i.test(String(agent || ''))) return PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_ANDROID
+  return PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC
+}
+
+/**
+ * Live blur progress: 0 until avatar tuckFrac is under the banner, then ramps until
+ * the display name reaches the banner bottom. Self-calibrates the ramp via name gap.
+ *
+ * @param {{
+ *   underFrac: number,
+ *   nameGapPx: number,
+ *   tuckFrac?: number,
+ *   nameGapAtTuckRef?: { current: number | null },
+ *   reduceMotion?: boolean,
+ * }} args
+ * @returns {number} 0..1
+ */
+export function profileLiveBannerBlurProgress({
+  underFrac,
+  nameGapPx,
+  tuckFrac = PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC,
+  nameGapAtTuckRef = null,
+  reduceMotion = false,
+}) {
+  const tuck = Math.max(0.05, Math.min(0.95, Number(tuckFrac) || PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC))
+  const under = Math.max(0, Math.min(1, Number(underFrac) || 0))
+  const gap = Number(nameGapPx)
+  if (under < tuck) {
+    if (nameGapAtTuckRef) nameGapAtTuckRef.current = null
+    return 0
+  }
+  if (!(gap > 0)) return 1
+  let denom = nameGapAtTuckRef ? nameGapAtTuckRef.current : null
+  if (denom == null || denom < 8) {
+    denom = Math.max(28, gap)
+    if (nameGapAtTuckRef) nameGapAtTuckRef.current = denom
+  }
+  let t = 1 - gap / denom
+  t = Math.max(0, Math.min(1, t))
+  if (reduceMotion) return t >= 0.5 ? 1 : 0
+  return t
+}
 
 /**
  * Motion + chrome presets.
@@ -160,10 +216,7 @@ function smoothstep01(t) {
  *   scrollLag?: number,
  *   shrinkEasePower?: number,
  *   minScale?: number,
- *   blurStartScrollPx?: number,
- *   blurEndScrollPx?: number,
  * }} [opts]
- * blurStartScrollPx: avatar ~90% under banner. blurEndScrollPx: display name starts under banner.
  */
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
   const y = Math.max(0, Number(scrollTop) || 0)
@@ -188,15 +241,6 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinStart = PROFILE_PIN_SCRIM_START
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
-  const blurStart = Math.max(0, Number(opts.blurStartScrollPx) || pinRange)
-  const blurEnd = Math.max(blurStart + 24, Number(opts.blurEndScrollPx) || blurStart + 80)
-  let blurT = 0
-  if (y <= blurStart) blurT = 0
-  else if (y >= blurEnd) blurT = 1
-  else blurT = (y - blurStart) / (blurEnd - blurStart)
-  if (reduce) blurT = blurT >= 0.5 ? 1 : 0
-  const bannerBlurPx = blurT * PROFILE_BANNER_MEDIA_BLUR_MAX_PX
-
   const shrinkT = reduce ? pinRaw : Math.pow(pinRaw, shrinkPower)
   const avatarScale = 1 - shrinkT * (1 - minScale)
 
@@ -209,8 +253,9 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     /** 0..1 while the banner is sliding to its sticky rest. */
     pinProgress: pinRaw,
     bannerTranslateY: 0,
-    bannerBlurPx,
-    /** Resting live tint stays light … collapse frost is a separate thin chrome layer. */
+    /** Media blur is applied live in the profile screen (tuck → name). */
+    bannerBlurPx: 0,
+    /** Resting live tint stays light … collapse frost tracks live blur progress. */
     bannerScrim: 0.06,
     collapsedBarOpacity: pinReveal,
     avatarScale,

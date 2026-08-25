@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **FAB Settings chip on post detail:** Detail sheet (backdrop-blur + comment footer) was winning the hit test over the portaled FAB. While the wheel is open, post detail is `pointer-events: none`. Settings portals to `document.body` when a sheet stays mounted. File: `SocialFeed.jsx`.
 - 2026-08-25: **FAB Settings overlay:** Settings opens on top of the current stack. Profile / post detail stay mounted. Close drops Settings only (search / notifications / chat come back if that was the prior dock panel). Slide at z 104, FAB at 105 so the wheel chip sits above detail-over-profile 102. Home / compose still dismiss. Files: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.
 - 2026-08-25: **FAB Settings return:** Reverted the overlay / teardown / z-index experiment stack back to **`791ebdb6`**. Next pass should overlay Settings without that bloat. Files restored: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.
 - 2026-08-25: **Post-detail light canvas (Ryan sign-off):** Sheet + title bar + reply footer match `#fff` under `html.light [data-lounge-post-detail-sheet]`. Dark frost/zinc unchanged. Tip **`test` @ `5f309d70`**. Files: `SocialFeed.jsx`, `index.css`.

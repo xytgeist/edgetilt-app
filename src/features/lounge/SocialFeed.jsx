@@ -16648,7 +16648,9 @@ export default function SocialFeed({
 
       {loungePostDetail ? (
         <div
-          className={`fixed inset-0 sm:bg-black/55 sm:backdrop-blur-[2px] ${loungePostDetailShellZClass}`}
+          className={`fixed inset-0 sm:bg-black/55 sm:backdrop-blur-[2px] ${loungePostDetailShellZClass}${
+            loungeFabPointerBlocked ? ' pointer-events-none [&_*]:pointer-events-none' : ''
+          }`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"
@@ -18312,8 +18314,10 @@ export default function SocialFeed({
         </div>
       ) : null}
 
-      {isActivePage ? loungeDockSlidePanelsEl : null}
-      {!isActivePage && loungeDockSlidePanelsEl && typeof document !== 'undefined'
+      {isActivePage && !loungeDockStackAboveDetailOrProfile ? loungeDockSlidePanelsEl : null}
+      {loungeDockSlidePanelsEl &&
+      typeof document !== 'undefined' &&
+      (!isActivePage || loungeDockStackAboveDetailOrProfile)
         ? createPortal(loungeDockSlidePanelsEl, document.body)
         : null}
 

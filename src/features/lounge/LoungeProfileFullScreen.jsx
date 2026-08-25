@@ -1714,16 +1714,24 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.opacity = ''
       }
     }
-    // iOS web/PWA: tabs sit flush under status plate, or under the full title bar when visible.
+    // iOS web/PWA: tabs ride the title-bar bottom (no air gap while it slides in).
     const tabsEl = profileBodyScrollRef.current?.querySelector?.('[data-lounge-profile-tabs]')
     if (tabsEl) {
       let tabsTop = collapseOn
         ? profileStickyTopPxRef.current
         : Math.max(0, Math.round(readCssSafeAreaTopPx()))
       if (iosWebTitle) {
-        tabsTop = iosWebInFeed
-          ? Math.round(sat + chromeReveal * PROFILE_IOS_WEB_TITLE_BAR_PX)
-          : Math.round(sat)
+        if (iosWebInFeed) {
+          const titleBottom = iosWebTitleH - iosWebHide
+          // Stay under the status plate until the sliding bar reaches it, then track 1:1.
+          tabsTop = Math.round(Math.max(sat, Math.min(iosWebTitleH, titleBottom)))
+          tabsEl.setAttribute('data-lounge-profile-ios-web-tabs', '')
+        } else {
+          tabsTop = Math.round(sat)
+          tabsEl.removeAttribute('data-lounge-profile-ios-web-tabs')
+        }
+      } else {
+        tabsEl.removeAttribute('data-lounge-profile-ios-web-tabs')
       }
       tabsEl.style.top = `${tabsTop}px`
       setProfileTabsStickyTopPxState((prev) => (prev === tabsTop ? prev : tabsTop))

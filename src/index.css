@@ -1878,21 +1878,23 @@ html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
 }
 
 /*
- * Profile banner back / ⋯ / Cancel — match Lounge lightbox frost (bg-white/15 + blur).
- * Glyph color is CSS-owned (no text-white utility) so light mode stays black at rest and on scroll.
+ * Profile banner back / ⋯ / Cancel.
+ * Dark + light: X-style smoky translucent circles with white glyphs (reads on
+ * both banner photos and the pinned collapsed bar).
  */
 [data-lounge-profile-collapsed-scrim] {
   /* Solid first so Android WebViews without strong backdrop-filter still read as a bar. */
-  background: rgba(9, 9, 11, 0.88);
+  background: rgba(9, 9, 11, 0.72);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 html.light [data-lounge-profile-collapsed-scrim] {
-  background: rgba(250, 250, 250, 0.92);
+  /* Match X light-mode pinned header … dark smoke over the banner crop, not white frost. */
+  background: rgba(15, 15, 15, 0.52);
 }
 html.light [data-lounge-profile-compact-name] {
-  color: #18181b !important;
-  -webkit-text-fill-color: #18181b !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 [data-lounge-profile-tabs] {
   /* Sticky tabs under collapsed chrome … solid fallback for weak backdrop-filter. */
@@ -1917,29 +1919,39 @@ html.light [data-lounge-profile-tabs] {
   fill: currentColor;
 }
 html.light [data-lounge-profile-banner-chrome] {
-  background: rgba(255, 255, 255, 0.22) !important;
-  color: #18181b !important;
-  -webkit-text-fill-color: #18181b !important;
+  /* X smoky circle: dark translucent + white icon (not white frost + black glyph). */
+  background: rgba(15, 15, 15, 0.48) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
   border: none !important;
   border-width: 0 !important;
   box-shadow: none !important;
   text-shadow: none !important;
-  backdrop-filter: blur(28px) saturate(165%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(165%) !important;
+  backdrop-filter: blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
 }
 html.light [data-lounge-profile-banner-chrome]:hover {
-  background: rgba(255, 255, 255, 0.32) !important;
+  background: rgba(15, 15, 15, 0.58) !important;
 }
 html.light [data-lounge-profile-banner-chrome]:active {
-  background: rgba(255, 255, 255, 0.4) !important;
+  background: rgba(15, 15, 15, 0.66) !important;
 }
 html.light [data-lounge-profile-banner-chrome] span,
 html.light [data-lounge-profile-banner-chrome] svg,
 html.light [data-lounge-profile-banner-chrome] svg * {
-  color: #18181b !important;
-  -webkit-text-fill-color: #18181b !important;
-  fill: #18181b !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  fill: #ffffff !important;
   text-shadow: none !important;
+}
+
+/* X-style white avatar ring on light surfaces (dark keeps zinc-950 ring from utility). */
+html.light [data-lounge-profile-avatar] {
+  --tw-ring-color: #ffffff;
+  box-shadow:
+    0 0 0 4px #ffffff,
+    0 10px 15px -3px rgb(0 0 0 / 0.25),
+    0 4px 6px -4px rgb(0 0 0 / 0.25);
 }
 
 /*

@@ -746,6 +746,7 @@ export default function LoungeProfileFullScreen({
   const profileTopChromeRef = useRef(null)
   const profileBodyScrollRef = useRef(null)
   const profileBannerMediaRef = useRef(null)
+  const profileBannerShellRef = useRef(null)
   const profileBannerLiveScrimRef = useRef(null)
   const profileAvatarMotionRef = useRef(null)
   const profileDisplayNameRef = useRef(null)
@@ -1521,8 +1522,13 @@ export default function LoungeProfileFullScreen({
 
     const media = profileBannerMediaRef.current
     if (media) {
-      media.style.transform = `translate3d(0, ${v.bannerTranslateY}px, 0) scale(1.06)`
-      media.style.filter = v.bannerBlurPx > 0.4 ? `blur(${v.bannerBlurPx}px)` : ''
+      media.style.transform = `translate3d(0, ${v.bannerTranslateY}px, 0) scale(1.04)`
+      media.style.filter = ''
+    }
+    const bannerShell = profileBannerShellRef.current
+    if (bannerShell) {
+      // Raise banner over the avatar row only during the late tuck-under phase.
+      bannerShell.style.zIndex = v.avatarUnderBanner ? '22' : '10'
     }
     const liveScrim = profileBannerLiveScrimRef.current
     if (liveScrim) {
@@ -2589,7 +2595,8 @@ export default function LoungeProfileFullScreen({
           }}
         >
           <div
-            className="relative z-[18] w-full shrink-0"
+            ref={profileBannerShellRef}
+            className="relative z-10 w-full shrink-0"
             data-lounge-profile-banner=""
             style={{
               // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.
@@ -2632,12 +2639,14 @@ export default function LoungeProfileFullScreen({
           </div>
 
           <div className="relative px-4">
-            <div className="pointer-events-none relative z-10 -mt-12 flex flex-wrap items-end justify-between gap-3 sm:-mt-14">
+            {/* ~1/4 avatar overlap on banner at rest (−mt-6 on h-24 ≈ 24/96). Avatar paints above banner until tuck. */}
+            <div className="pointer-events-none relative z-20 -mt-6 flex flex-wrap items-end justify-between gap-3 sm:-mt-7">
               <div className="relative shrink-0 pointer-events-auto">
                 <div
                   ref={profileAvatarMotionRef}
-                  className="flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg will-change-transform sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]"
-                  style={{ transformOrigin: 'center bottom' }}
+                  className="relative z-[25] flex h-24 w-24 overflow-hidden rounded-full bg-zinc-900 text-[28px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[5.5rem] sm:w-[5.5rem] sm:text-[32px]"
+                  style={{ transformOrigin: 'center top' }}
+                  data-lounge-profile-avatar=""
                 >
                   {profile?.avatar_url ? (
                     <img
@@ -2682,7 +2691,7 @@ export default function LoungeProfileFullScreen({
               !showOwnEditControls &&
               typeof onOpenFanSubscriptionSettings === 'function' &&
               supabaseClient ? (
-                <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
+                <div className="pointer-events-auto relative z-20 mb-1 shrink-0 translate-y-2.5">
                   <OwnProfileFanMonetizationCta
                     supabaseClient={supabaseClient}
                     onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
@@ -2690,7 +2699,7 @@ export default function LoungeProfileFullScreen({
                   />
                 </div>
               ) : !isOwnProfile && viewerUserId ? (
-                <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
+                <div className="pointer-events-auto relative z-20 mb-1 shrink-0 translate-y-2.5">
                   <div className="flex flex-wrap items-center justify-end gap-2">
                   {isFollowing ? (
                     creatorFanOffer && hasCreatorFanSub ? (

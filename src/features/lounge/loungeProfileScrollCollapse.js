@@ -8,8 +8,8 @@
  *
  * Motion:
  * - Avatar rises slower than the page while shrinking (partial counter-scroll lag).
- * - Shrink runs over the banner pin distance; freezes when the banner rests.
- * - Banner resting bottom = avatar ring top at layout rest (the clear line).
+ * - Banner keeps rising until its bottom clears the lagged avatar ring top, then sticks.
+ * - Shrink runs over that same pin/clear window.
  * - After pin, lag offset freezes so the avatar then scrolls 1:1 under the banner.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
@@ -44,9 +44,9 @@ export const PROFILE_AVATAR_RING_PX = 4
 /**
  * Fraction of scroll that is counteracted on the avatar during the pin/shrink window.
  * 0 = full-speed with the page; 1 = screen-pinned.
- * Net upward speed ≈ (1 - lag) × scroll speed (~18% at 0.82).
+ * Net upward speed ≈ (1 - lag) × scroll speed (~8% at 0.92).
  */
-export const PROFILE_AVATAR_SCROLL_LAG = 0.82
+export const PROFILE_AVATAR_SCROLL_LAG = 0.92
 
 /**
  * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.
@@ -72,6 +72,30 @@ export function profileBannerPinScrollRangePx(bannerHeightPx, pinnedVisiblePx) {
 }
 
 /**
+ * Pinned banner visible height so that, with avatar scroll lag, the banner bottom
+ * meets the avatar ring top at the same scrollTop the sticky pin finishes.
+ *
+ * Rest ring line alone is too low once the avatar lags … solve:
+ *   P = (R0 - bannerH × (1 - lag)) / lag
+ *
+ * @param {number} bannerHeightPx
+ * @param {number} avatarRingTopPx ring top from scrollport top at scrollTop 0 (no transform)
+ * @param {number} [scrollLag]
+ */
+export function profileBannerPinnedVisibleForLagClear(
+  bannerHeightPx,
+  avatarRingTopPx,
+  scrollLag = PROFILE_AVATAR_SCROLL_LAG,
+) {
+  const h = Math.max(0, Number(bannerHeightPx) || 0)
+  const R0 = Math.max(0, Number(avatarRingTopPx) || 0)
+  const lag = Math.max(0.01, Math.min(1, Number(scrollLag) || PROFILE_AVATAR_SCROLL_LAG))
+  if (h <= 0) return Math.round(R0)
+  const p = (R0 - h * (1 - lag)) / lag
+  return Math.max(0, Math.min(Math.round(h), Math.round(p)))
+}
+
+/**
  * @param {number} scrollTop
  * @param {number} [rangePx]
  * @returns {number} 0..1
@@ -92,7 +116,7 @@ function smoothstep01(t) {
 /**
  * @param {number} scrollTop
  * @param {number} pinRangePx scroll distance until the banner finishes pinning
- *   (also the shrink window … pin rest = avatar-ring clear line)
+ *   (also the shrink window … pin rest = lagged avatar-ring clear)
  * @param {{ reduceMotion?: boolean, scrollLag?: number }} [opts]
  */
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
@@ -111,7 +135,7 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
   const minScale = PROFILE_AVATAR_MIN_SCALE
-  // Shrink while lagging upward; freeze when the banner rests on the clear line.
+  // Shrink while lagging upward; freeze when the banner clears the ring.
   const avatarScale = 1 - pinEase * (1 - minScale)
 
   /**

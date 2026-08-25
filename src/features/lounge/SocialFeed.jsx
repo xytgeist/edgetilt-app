@@ -8901,13 +8901,11 @@ export default function SocialFeed({
       (loungeDockPanel === 'search' || loungeDockPanel === 'notifications') &&
       !loungePostDetailAboveProfile,
   )
-  const loungePostDetailShellZClass = loungeDockOverlayOnSheet
-    ? 'z-[40]'
-    : loungePostDetailAboveProfile
-      ? 'z-[102]'
-      : loungePostDetailOpenedOverSearch
-        ? 'z-[100]'
-        : 'z-[98]'
+  const loungePostDetailShellZClass = loungePostDetailAboveProfile
+    ? 'z-[102]'
+    : loungePostDetailOpenedOverSearch
+      ? 'z-[100]'
+      : 'z-[98]'
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile
     ? 'z-[103]'
@@ -18358,7 +18356,6 @@ export default function SocialFeed({
         : null}
 
       {profileModalOpen && profileModalData?.user_id ? (
-        <div className={loungeDockOverlayOnSheet ? 'fixed inset-0 z-[40]' : 'contents'}>
         <LoungeProfileFullScreen
           open={profileModalOpen}
           panelVisible={profileModalVisible}
@@ -18410,7 +18407,6 @@ export default function SocialFeed({
           onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
           requestOpenFanPortal={profileModalOpenFanPortal}
         />
-        </div>
       ) : null}
 
       {profileOverlayStack.map((layer, index) => {

@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **FAB overlay close:** Do not park profile/detail at z 40 under Settings/Search/Notifications. That restyle replayed the post-detail slide and flashed the profile. Overlay sits on top; the stack stays put. File: `SocialFeed.jsx`.
 - 2026-08-25: **FAB Settings / Search / Notifications overlay:** Those chips open on top of the current stack. Profile and post detail stay mounted. Close drops the panel. An effect that used to unmount Settings over post detail now allows it. Opening a post from search/alerts still brings detail forward. Home / compose / chat still dismiss. Files: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.
 - 2026-08-25: **Post-detail light canvas (Ryan sign-off):** Sheet + title bar + reply footer match `#fff` under `html.light [data-lounge-post-detail-sheet]`. Dark frost/zinc unchanged. Tip **`test` @ `5f309d70`**. Files: `SocialFeed.jsx`, `index.css`.
 - 2026-08-25: **IPA post-detail double sat:** Panel `pt-[sat]` + absolute title `pt-[sat]` + spacer = full measured bar height stacked an extra Island gap on EdgeiOS. Sat stays on the title bar only. Safari/PWA env() path unchanged in intent. File: `SocialFeed.jsx`.

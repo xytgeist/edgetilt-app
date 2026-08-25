@@ -93,7 +93,6 @@ function smoothstep01(t) {
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
   const y = Math.max(0, Number(scrollTop) || 0)
   const pinRange = Math.max(24, Number(pinRangePx) || PROFILE_COLLAPSE_RANGE_PX)
-  const tuckRange = Math.max(24, Number(opts.tuckRangePx) || PROFILE_AVATAR_TUCK_RANGE_PX)
   // Shrink ends when the banner's lower edge has risen above the avatar … not at full pin.
   const shrinkRange = Math.max(
     16,

@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **FAB Settings return:** Opening Settings no longer dismisses profile / post detail / the nav stack. Close restores search or notifications when that was the prior dock panel. Home / compose still tear down. File: `SocialFeed.jsx`.
 - 2026-08-25: **Post-detail light canvas (Ryan sign-off):** Sheet + title bar + reply footer match `#fff` under `html.light [data-lounge-post-detail-sheet]`. Dark frost/zinc unchanged. Tip **`test` @ `5f309d70`**. Files: `SocialFeed.jsx`, `index.css`.
 - 2026-08-25: **IPA post-detail double sat:** Panel `pt-[sat]` + absolute title `pt-[sat]` + spacer = full measured bar height stacked an extra Island gap on EdgeiOS. Sat stays on the title bar only. Safari/PWA env() path unchanged in intent. File: `SocialFeed.jsx`.
 - 2026-08-24: **iOS/Android profile compact title:** Same name + posts slide-up as IPA/web, centered in the opaque title plate (rides title hide). Light plate uses dark type. Files: `LoungeProfileFullScreen.jsx`, `index.css`.

@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **FAB Search / Notifications overlay:** Same as Settings. Opening from the FAB no longer dismisses profile or post detail. Close drops the panel and leaves the sheet. Opening a post from search/alerts still brings detail to the front. File: `SocialFeed.jsx`.
 - 2026-08-25: **FAB Settings on post detail:** An effect auto-closed any dock panel except search/notifications while post detail was open, so Settings opened and immediately unmounted. Allow `settings`. Park the sheet at z 40 under the overlay. File: `SocialFeed.jsx`.
 - 2026-08-25: **FAB Settings chip on post detail:** Detail sheet (backdrop-blur + comment footer) was winning the hit test over the portaled FAB. While the wheel is open, post detail is `pointer-events: none`. Settings portals to `document.body` when a sheet stays mounted. File: `SocialFeed.jsx`.
 - 2026-08-25: **FAB Settings overlay:** Settings opens on top of the current stack. Profile / post detail stay mounted. Close drops Settings only (search / notifications / chat come back if that was the prior dock panel). Slide at z 104, FAB at 105 so the wheel chip sits above detail-over-profile 102. Home / compose still dismiss. Files: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.

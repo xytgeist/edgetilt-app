@@ -702,10 +702,15 @@ export default function LoungeDockArcCarouselPrototype({
   }, [disarmPointerGuard])
 
   // Live slide panel must stay tappable ... never leave clickShield over Notifications/etc.
-  // Settings over a still-mounted sheet keeps the guard so the leftover tap cannot hit the sheet.
+  // Overlaying a still-mounted sheet keeps the guard so the leftover tap cannot hit the sheet.
   useEffect(() => {
     if (!panelChrome || !SLIDE_PANEL_CHROME.has(panelChrome)) return
-    if (stackAboveDetailOrProfile && panelChrome === 'settings') return
+    if (
+      stackAboveDetailOrProfile &&
+      (panelChrome === 'settings' || panelChrome === 'search' || panelChrome === 'notifications')
+    ) {
+      return
+    }
     disarmPointerGuard()
   }, [panelChrome, disarmPointerGuard, stackAboveDetailOrProfile])
 

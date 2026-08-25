@@ -774,6 +774,8 @@ export default function LoungeProfileFullScreen({
   const profileBannerHeightPxRef = useRef(0)
   /** Once the user scrolls past the banner, keep feed title chrome until near the top handoff. */
   const profileIosWebFeedLatchRef = useRef(false)
+  const profileIosWebWasPastBannerRef = useRef(false)
+  const profileIosWebChromeScrollPrevRef = useRef(0)
   const applyProfileCollapseVisualsRef = useRef(/** @type {null | ((n?: number, o?: object) => void)} */ (null))
   const profileNameRevealScrollRef = useRef(80)
   const profileBannerBlurNameGapAtTuckRef = useRef(/** @type {number | null} */ (null))
@@ -1659,7 +1661,6 @@ export default function LoungeProfileFullScreen({
       }
     }
     const chromeMotion = profileChromeMotionRef.current
-    const chromeReveal = Math.max(0, Math.min(1, Number(profileDockRevealRef.current) || 0))
     const sat = Math.max(8, readCssSafeAreaTopPx())
     const scrollYForChrome = Math.max(0, Number(scrollTop) || 0)
     const bannerHApprox = Math.max(
@@ -1672,18 +1673,28 @@ export default function LoungeProfileFullScreen({
     const iosWebTitleH = sat + PROFILE_IOS_WEB_TITLE_BAR_PX
     const bannerClearY =
       bannerHApprox > 0 ? Math.max(24, bannerHApprox - 8) : Number.POSITIVE_INFINITY
-    const dockHide = (1 - chromeReveal) * iosWebTitleH
     const pastBanner = iosWebTitle && scrollYForChrome >= bannerClearY
+    const scrollDelta = scrollYForChrome - profileIosWebChromeScrollPrevRef.current
+    profileIosWebChromeScrollPrevRef.current = scrollYForChrome
 
     // Latch feed chrome after clearing the banner; clear only near the top so the white
-    // plate does not pre-exit mid-profile (pop) or hand off to a second button set early.
+    // plate does not pre-exit mid-profile or hand off to a second button set early.
     if (!iosWebTitle || scrollYForChrome <= 2) {
       profileIosWebFeedLatchRef.current = false
     } else if (pastBanner) {
       profileIosWebFeedLatchRef.current = true
     }
+    // Entering the feed with buttons already scrolled away … keep dock chrome hidden
+    // so they do not pop back, then slide away again on the next scroll-down.
+    if (pastBanner && !profileIosWebWasPastBannerRef.current && scrollYForChrome >= iosWebTitleH) {
+      profileDockRevealRef.current = 0
+    }
+    profileIosWebWasPastBannerRef.current = Boolean(pastBanner)
+
     const feedLatched = profileIosWebFeedLatchRef.current
     const nearTopHandoff = feedLatched && scrollYForChrome <= iosWebTitleH
+    const revealNow = Math.max(0, Math.min(1, Number(profileDockRevealRef.current) || 0))
+    const dockHideNow = (1 - revealNow) * iosWebTitleH
 
     let titleHidePx = 0
     let buttonHidePx = 0
@@ -1691,17 +1702,23 @@ export default function LoungeProfileFullScreen({
       titleHidePx = 0
       buttonHidePx = 0
     } else if (nearTopHandoff) {
-      // Same moment: title slides up as we reach the top; buttons stay (no second set).
-      titleHidePx = Math.round(iosWebTitleH - scrollYForChrome)
-      buttonHidePx = 0
+      if (scrollDelta > 0.5) {
+        // Scrolling down through the handoff band … do not slide the title back in.
+        titleHidePx = Math.round(iosWebTitleH)
+        buttonHidePx = Math.round(Math.min(iosWebTitleH, scrollYForChrome))
+      } else {
+        // Scroll-up handoff (signed off): title leaves, same buttons stay.
+        titleHidePx = Math.round(iosWebTitleH - scrollYForChrome)
+        buttonHidePx = 0
+      }
     } else if (feedLatched || pastBanner) {
-      // In feed, or returning through the banner with latch … dock only (no edge pre-exit).
-      titleHidePx = Math.round(dockHide)
-      buttonHidePx = Math.round(dockHide)
+      // Buttons track dock (slide away on scroll-down). Title is binary … no half-pop.
+      titleHidePx = revealNow >= 0.97 ? 0 : Math.round(iosWebTitleH)
+      buttonHidePx = Math.round(dockHideNow)
     } else {
-      // Fresh open / still on banner before first feed entry: floating buttons, no white plate.
+      // Fresh open on banner: floating buttons leave with the page; no white plate.
       titleHidePx = Math.round(iosWebTitleH)
-      buttonHidePx = 0
+      buttonHidePx = Math.round(Math.min(iosWebTitleH, scrollYForChrome))
     }
     const titleOnScreen = iosWebTitle && titleHidePx < iosWebTitleH - 1
     const buttonsOnScreen = iosWebTitle && buttonHidePx < iosWebTitleH - 1
@@ -2075,6 +2092,8 @@ export default function LoungeProfileFullScreen({
     if (!open || !panelVisible) return
     profileDockRevealRef.current = 1
     profileIosWebFeedLatchRef.current = false
+    profileIosWebWasPastBannerRef.current = false
+    profileIosWebChromeScrollPrevRef.current = 0
     setProfileDockReveal(1)
     onDockRevealChange?.(1)
     const el = profileBodyScrollRef.current
@@ -2125,10 +2144,10 @@ export default function LoungeProfileFullScreen({
     }
     profileDockScrollPrevTopRef.current = el.scrollTop
     applyProfileCollapseVisuals(el.scrollTop)
-    const titleRevealPerScrollPx = 220
-    const titleHidePerScrollPx = 190
+    const titleRevealPerScrollPx = 200
+    const titleHidePerScrollPx = 110
     const maxAbsScrollStepPx = 180
-    const minScrollStepPx = 0.35
+    const minScrollStepPx = 0.5
     const queueFlush = () => {
       if (profileDockScrollRafRef.current) return
       profileDockScrollRafRef.current = window.requestAnimationFrame(() => {

@@ -989,12 +989,13 @@ export default function SocialFeed({
   const loungeSkipNavPopOnCloseRef = useRef(false)
   const loungeNavRestoringRef = useRef(false)
   const loungeNavSearchReturnPendingRef = useRef(false)
-  /** FAB Settings over search/notifications … restore that dock panel on close (profile/detail stay mounted). */
+  /** FAB Settings: snapshot the surface, dismiss it so Settings can stack, restore on close. */
   const loungeSettingsReturnRef = useRef(null)
   const profileNavSnapshotRef = useRef({ tab: 'posts', scrollTop: 0 })
   const loungeDockPanelScrollRef = useRef(null)
   const restoreLoungeNavFrameRef = useRef(async () => {})
   const pushLoungeNavReturnContextRef = useRef(() => {})
+  const captureLoungeNavReturnContextRef = useRef(() => ({ kind: 'feed', scrollTop: 0 }))
   const [profileNavRestore, setProfileNavRestore] = useState(null)
   const [dockPanelScrollRestore, setDockPanelScrollRestore] = useState(null)
   const [profileModalLoading, setProfileModalLoading] = useState(false)
@@ -8574,34 +8575,24 @@ export default function SocialFeed({
   }, [onOpenChatRoomFromDock, ensureLoungeFeedVisible, refreshChatUnreadRoomCount])
 
   const rememberSurfaceForSettingsReturn = useCallback(() => {
-    if (loungeDockPanel === 'search') {
-      loungeSettingsReturnRef.current = {
-        kind: 'search',
-        query: loungeDockSearchQuery,
-        scrollTop: loungeDockPanelScrollRef.current?.scrollTop ?? 0,
-      }
-      return
-    }
-    if (loungeDockPanel === 'notifications' || loungeDockPanel === 'chat') {
-      loungeSettingsReturnRef.current = {
-        kind: 'dock',
-        panel: loungeDockPanel,
-        scrollTop: loungeDockPanelScrollRef.current?.scrollTop ?? 0,
-      }
-      return
-    }
-    loungeSettingsReturnRef.current = null
-  }, [loungeDockPanel, loungeDockSearchQuery])
+    loungeSettingsReturnRef.current = captureLoungeNavReturnContextRef.current()
+  }, [])
 
   const restoreSurfaceAfterSettingsClose = useCallback(() => {
     const saved = loungeSettingsReturnRef.current
     loungeSettingsReturnRef.current = null
-    if (!saved) return
-    if (saved.kind !== 'search' && saved.kind !== 'dock') return
+    if (!saved || saved.kind === 'feed') return
     requestAnimationFrame(() => {
       void restoreLoungeNavFrameRef.current(saved)
     })
   }, [])
+
+  const openLoungeSettingsFromDock = useCallback(() => {
+    if (loungeDockPanel === 'settings') return
+    rememberSurfaceForSettingsReturn()
+    dismissLoungeStackForDockNavRef.current()
+    setLoungeDockPanel('settings')
+  }, [loungeDockPanel, rememberSurfaceForSettingsReturn])
 
   const onLoungeDockSettings = useCallback(() => {
     if (loungeFeedBrowseMode === 'anonymous' || loungeReadOnly) {
@@ -8614,14 +8605,13 @@ export default function SocialFeed({
       restoreSurfaceAfterSettingsClose()
       return
     }
-    rememberSurfaceForSettingsReturn()
-    setLoungeDockPanel('settings')
+    openLoungeSettingsFromDock()
   }, [
     loungeDockPanel,
     loungeFeedBrowseMode,
     loungeReadOnly,
     onRequireAuth,
-    rememberSurfaceForSettingsReturn,
+    openLoungeSettingsFromDock,
     restoreSurfaceAfterSettingsClose,
   ])
 
@@ -8631,7 +8621,7 @@ export default function SocialFeed({
         onRequireAuth?.()
         return
       }
-      if (loungeDockPanel !== 'settings') rememberSurfaceForSettingsReturn()
+      if (loungeDockPanel !== 'settings') openLoungeSettingsFromDock()
       setLoungeSettingsFocusSection(section)
       setLoungeDockPanel('settings')
     },
@@ -8640,7 +8630,7 @@ export default function SocialFeed({
       loungeFeedBrowseMode,
       loungeReadOnly,
       onRequireAuth,
-      rememberSurfaceForSettingsReturn,
+      openLoungeSettingsFromDock,
     ],
   )
 
@@ -14753,6 +14743,10 @@ export default function SocialFeed({
     pushLoungeNavReturnContextRef.current = pushLoungeNavReturnContext
   }, [pushLoungeNavReturnContext])
 
+  useEffect(() => {
+    captureLoungeNavReturnContextRef.current = captureLoungeNavReturnContext
+  }, [captureLoungeNavReturnContext])
+
   /** Open another member's profile from a post/comment row (`user_id` + optional `author_profile`). */
   const openAuthorProfile = useCallback(
     (entity, opts) => {
@@ -14811,17 +14805,12 @@ export default function SocialFeed({
       return
     }
     if (loungeDockPanel === 'settings') {
-      const saved = loungeSettingsReturnRef.current
-      loungeSettingsReturnRef.current = null
-      if (saved?.kind === 'search' || saved?.kind === 'dock') {
-        void restoreLoungeNavFrameRef.current(saved)
-        return
-      }
       setLoungeDockPanel(null)
+      restoreSurfaceAfterSettingsClose()
       return
     }
     setLoungeDockPanel(null)
-  }, [loungeDockPanel])
+  }, [loungeDockPanel, restoreSurfaceAfterSettingsClose])
 
   const onProfileNavRestoreApplied = useCallback(() => {
     setProfileNavRestore(null)
@@ -14876,6 +14865,7 @@ export default function SocialFeed({
   const onLoungeSettingsEditProfile = useCallback(() => {
     if (!composerUserId || loungeReadOnly) return
     if (openProfileGateIfNeeded()) return
+    loungeSettingsReturnRef.current = null
     pushLoungeNavReturnContext()
     setLoungeDockPanel(null)
     void openProfileModal(

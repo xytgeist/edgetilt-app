@@ -1,18 +1,20 @@
 /**
  * X-style profile header collapse math.
  *
- * Cross-platform (IPA WKWebView, iOS/Android PWA, Android Chrome, desktop):
- * - Progress is pure scrollTop math (no shell-only APIs).
- * - Banner pins via `position: sticky` (not scroll-away + fake translate).
- * - Prefer `position: sticky` for tabs inside the profile scroll root.
- * - IPA keeps the tuned chrome-mid + lag/shrink preset; PWA/Android/web use a
- *   higher chrome seat + faster shrink so the banner can clear the avatar ring.
- * - Collapsed look (hybrid C): live `filter: blur` on banner media + thin frost
- *   under chrome/name, gated on avatar tuck → display-name entry (not pin settle).
- *   Android uses an earlier tuck fraction than Apple.
+ * Enabled on: EdgeiOS IPA shell + Android (Chrome / PWA).
+ * Disabled on: iOS Safari + iOS Home Screen PWA … those keep classic in-flow scroll
+ * (status-bar sticky collapse looked wrong there).
+ *
+ * Cross-platform when enabled:
+ * - Progress is pure scrollTop / live geometry (no shell-only APIs).
+ * - Banner pins via `position: sticky`.
+ * - Avatar lag + shrink presets differ IPA vs Android/desktop.
+ * - Blur: live avatar tuck → ramp until display name enters (scroll-distance ramp on Apple).
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
+
+import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 
 /** Extra scroll after collapse before the compact name is fully opaque. */
 export const PROFILE_COMPACT_NAME_FADE_PX = 36
@@ -59,6 +61,27 @@ export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC = 0.9
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC_ANDROID = 0.58
 
 /**
+ * Minimum scroll distance for the blur ramp after tuck (Apple).
+ * Prevents an instant full-blur when the display name is already near the banner.
+ */
+export const PROFILE_BANNER_BLUR_MIN_RAMP_PX = 96
+
+/**
+ * Whether X-style profile header collapse is active on this client.
+ * Positive checks only … iPhone/iPad Safari + iOS PWA stay on classic scroll.
+ */
+export function profileScrollCollapseEnabled() {
+  if (typeof navigator === 'undefined') return true
+  if (isEdgeiOSShell()) return true
+  const ua = String(navigator.userAgent || '')
+  if (/Android/i.test(ua)) return true
+  if (/iPhone|iPad|iPod/i.test(ua)) return false
+  // iPadOS desktop UA
+  if (/Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1) return false
+  return true
+}
+
+/**
  * Platform tuck fraction for banner media blur.
  * Positive Android UA check only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
  * @param {string} [ua]
@@ -72,32 +95,65 @@ export function profileBannerBlurTuckFrac(ua) {
 }
 
 /**
- * Live blur progress: 0 until avatar tuckFrac is under the banner, then ramps until
- * the display name reaches the banner bottom. Self-calibrates the ramp via name gap.
+ * Live blur progress from avatar tuck → display name under the banner.
+ *
+ * Android: name-gap ramp (signed off).
+ * Apple (IPA): scroll-distance ramp with a minimum window so blur cannot flash to full
+ * when the name is already close at tuck time.
  *
  * @param {{
  *   underFrac: number,
  *   nameGapPx: number,
+ *   scrollTop: number,
+ *   nameUnderScrollPx: number,
  *   tuckFrac?: number,
  *   nameGapAtTuckRef?: { current: number | null },
+ *   blurStartScrollRef?: { current: number | null },
  *   reduceMotion?: boolean,
+ *   useScrollRamp?: boolean,
+ *   minRampPx?: number,
  * }} args
  * @returns {number} 0..1
  */
 export function profileLiveBannerBlurProgress({
   underFrac,
   nameGapPx,
+  scrollTop = 0,
+  nameUnderScrollPx = 0,
   tuckFrac = PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC,
   nameGapAtTuckRef = null,
+  blurStartScrollRef = null,
   reduceMotion = false,
+  useScrollRamp = false,
+  minRampPx = PROFILE_BANNER_BLUR_MIN_RAMP_PX,
 }) {
   const tuck = Math.max(0.05, Math.min(0.95, Number(tuckFrac) || PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC))
   const under = Math.max(0, Math.min(1, Number(underFrac) || 0))
+  const y = Math.max(0, Number(scrollTop) || 0)
   const gap = Number(nameGapPx)
+  const minRamp = Math.max(24, Number(minRampPx) || PROFILE_BANNER_BLUR_MIN_RAMP_PX)
+
   if (under < tuck) {
     if (nameGapAtTuckRef) nameGapAtTuckRef.current = null
+    if (blurStartScrollRef) blurStartScrollRef.current = null
     return 0
   }
+
+  if (useScrollRamp) {
+    if (blurStartScrollRef && blurStartScrollRef.current == null) {
+      blurStartScrollRef.current = y
+    }
+    const start = blurStartScrollRef?.current ?? y
+    const end = Math.max(start + minRamp, Number(nameUnderScrollPx) || start + minRamp)
+    let t = end > start ? (y - start) / (end - start) : 1
+    t = Math.max(0, Math.min(1, t))
+    // Only allow “name already under” to finish the ramp after the minimum scroll window.
+    if (gap <= 0 && y >= start + minRamp) t = 1
+    if (reduceMotion) return t >= 0.5 ? 1 : 0
+    return t
+  }
+
+  // Android / default: ramp by remaining name gap from the tuck moment.
   if (!(gap > 0)) return 1
   let denom = nameGapAtTuckRef ? nameGapAtTuckRef.current : null
   if (denom == null || denom < 8) {

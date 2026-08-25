@@ -12,9 +12,10 @@ import {
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileLiveBannerBlurProgress,
-  profileTabsStickyTopPx,
+  profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
+  PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
@@ -765,10 +766,13 @@ export default function LoungeProfileFullScreen({
   const profileCollapsedScrimRef = useRef(null)
   const profileNameRevealScrollRef = useRef(80)
   const profileBannerBlurNameGapAtTuckRef = useRef(/** @type {number | null} */ (null))
+  const profileBannerBlurStartScrollRef = useRef(/** @type {number | null} */ (null))
   const profileStickyTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
   const profileCollapseRangePxRef = useRef(112)
   const profileBannerStickyTopPxRef = useRef(0)
   const profileCollapseReduceMotionRef = useRef(false)
+  const profileCollapseEnabledRef = useRef(profileScrollCollapseEnabled())
+  const [profileCollapseEnabled, setProfileCollapseEnabled] = useState(() => profileScrollCollapseEnabled())
   const [profileTabsStickyTopPxState, setProfileTabsStickyTopPxState] = useState(
     PROFILE_COLLAPSED_CHROME_ROW_PX,
   )
@@ -1525,7 +1529,9 @@ export default function LoungeProfileFullScreen({
   }, [otherProfileMenuOpen, placeOtherProfileMenu])
 
   const applyProfileCollapseVisuals = useCallback((scrollTop, opts = {}) => {
-    const forceZero = Boolean(opts.forceZero) || showOwnEditControls
+    const collapseOn = profileCollapseEnabledRef.current
+    const forceZero =
+      Boolean(opts.forceZero) || showOwnEditControls || !collapseOn
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
     const pinRange = profileCollapseRangePxRef.current
@@ -1541,7 +1547,7 @@ export default function LoungeProfileFullScreen({
       : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
 
     // Live blur: wait for avatar tuck, ramp until display name enters under the banner.
-    // (Chrome frost used to track pin settle … that felt like “blur at rest” on IPA/iOS.)
+    // IPA uses scroll-distance ramp (name-gap alone flashed to full). Android keeps name-gap.
     let blurT = 0
     if (!forceZero) {
       const scrollEl = profileBodyScrollRef.current
@@ -1565,16 +1571,25 @@ export default function LoungeProfileFullScreen({
         const underFrac = Math.max(0, Math.min(1, (bannerBottomY - top) / h))
         const nameTop = nameEl ? nameEl.getBoundingClientRect().top : bannerBottomY + 999
         const nameGapPx = nameTop - bannerBottomY
+        const nameUnderScroll = Math.max(
+          0,
+          (Number(profileNameRevealScrollRef.current) || 0) - 8,
+        )
         blurT = profileLiveBannerBlurProgress({
           underFrac,
           nameGapPx,
+          scrollTop: y,
+          nameUnderScrollPx: nameUnderScroll,
           tuckFrac: profileBannerBlurTuckFrac(),
           nameGapAtTuckRef: profileBannerBlurNameGapAtTuckRef,
+          blurStartScrollRef: profileBannerBlurStartScrollRef,
           reduceMotion: reduce,
+          useScrollRamp: isEdgeiOSShell(),
         })
       }
     } else {
       profileBannerBlurNameGapAtTuckRef.current = null
+      profileBannerBlurStartScrollRef.current = null
     }
     const blurPx = blurT * PROFILE_BANNER_MEDIA_BLUR_MAX_PX
 
@@ -1589,47 +1604,70 @@ export default function LoungeProfileFullScreen({
     }
     const bannerShell = profileBannerShellRef.current
     if (bannerShell) {
-      // Sticky pin … raise over avatar only during the post-pin tuck phase.
-      bannerShell.style.zIndex = v.avatarUnderBanner ? '22' : '18'
-      bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
+      if (!collapseOn) {
+        bannerShell.style.zIndex = ''
+        bannerShell.style.top = ''
+        bannerShell.classList.remove('sticky')
+        bannerShell.classList.add('relative')
+      } else {
+        bannerShell.classList.add('sticky')
+        bannerShell.classList.remove('relative')
+        // Sticky pin … raise over avatar only during the post-pin tuck phase.
+        bannerShell.style.zIndex = v.avatarUnderBanner ? '22' : '18'
+        bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
+      }
     }
     const liveScrim = profileBannerLiveScrimRef.current
     if (liveScrim) {
-      liveScrim.style.opacity = String(v.bannerScrim)
+      liveScrim.style.opacity = collapseOn ? String(v.bannerScrim) : '0.12'
     }
     const collapsedScrim = profileCollapsedScrimRef.current
     if (collapsedScrim) {
-      // Thin frost under chrome/name … same timing as media blur (not pin settle).
-      const frostH = Math.max(
-        48,
-        Math.round(
-          (Number(profileChromeCenterNudgePxRef.current) || 0)
-            + Math.max(8, readCssSafeAreaTopPx())
-            + 40
-            + 10,
-        ),
-      )
-      collapsedScrim.style.height = `${frostH}px`
-      collapsedScrim.style.top = '0'
-      collapsedScrim.style.left = '0'
-      collapsedScrim.style.right = '0'
-      collapsedScrim.style.bottom = 'auto'
-      collapsedScrim.style.opacity = String(blurT)
+      if (!collapseOn) {
+        collapsedScrim.style.opacity = '0'
+        collapsedScrim.style.height = ''
+      } else {
+        // Thin frost under chrome/name … same timing as media blur (not pin settle).
+        const frostH = Math.max(
+          48,
+          Math.round(
+            (Number(profileChromeCenterNudgePxRef.current) || 0)
+              + Math.max(8, readCssSafeAreaTopPx())
+              + 40
+              + 10,
+          ),
+        )
+        collapsedScrim.style.height = `${frostH}px`
+        collapsedScrim.style.top = '0'
+        collapsedScrim.style.left = '0'
+        collapsedScrim.style.right = '0'
+        collapsedScrim.style.bottom = 'auto'
+        collapsedScrim.style.opacity = String(blurT)
+      }
     }
     const chromeMotion = profileChromeMotionRef.current
     if (chromeMotion) {
-      // Fixed on screen at the banner midpoint … do not ride up with pin progress.
+      // Collapse on: fixed at banner midpoint. Classic iOS web: no mid-banner nudge.
       const nudge =
-        forceZero || showOwnEditControls ? 0 : profileChromeCenterNudgePxRef.current
+        forceZero || showOwnEditControls || !collapseOn
+          ? 0
+          : profileChromeCenterNudgePxRef.current
       chromeMotion.style.transform =
         reduce && !forceZero ? '' : `translate3d(0, ${nudge}px, 0)`
     }
     const avatar = profileAvatarMotionRef.current
     if (avatar) {
-      avatar.style.transformOrigin = '50% 0%'
-      avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
-      avatar.style.opacity = String(v.avatarOpacity)
-      avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
+      if (!collapseOn) {
+        avatar.style.transformOrigin = ''
+        avatar.style.transform = ''
+        avatar.style.opacity = ''
+        avatar.style.pointerEvents = ''
+      } else {
+        avatar.style.transformOrigin = '50% 0%'
+        avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
+        avatar.style.opacity = String(v.avatarOpacity)
+        avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
+      }
     }
     const compact = profileCompactNameRef.current
     if (compact) {
@@ -1638,6 +1676,7 @@ export default function LoungeProfileFullScreen({
   }, [showOwnEditControls])
 
   const measureProfileCollapseGeometry = useCallback(() => {
+    const collapseOn = profileCollapseEnabledRef.current
     const banner = profileBannerShellRef.current
     const scrollEl = profileBodyScrollRef.current
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
@@ -1645,11 +1684,13 @@ export default function LoungeProfileFullScreen({
     // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the tuned band.
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
     const isIpa = isEdgeiOSShell()
-    const chromeNudge = profileChromeCenterNudgePx({
-      bannerHeightPx: bannerH,
-      chromePadTopPx: chromePadTop,
-      isIpaShell: isIpa,
-    })
+    const chromeNudge = collapseOn
+      ? profileChromeCenterNudgePx({
+          bannerHeightPx: bannerH,
+          chromePadTopPx: chromePadTop,
+          isIpaShell: isIpa,
+        })
+      : 0
     profileChromeCenterNudgePxRef.current = chromeNudge
 
     const chromeButtonBottom = chromePadTop + chromeNudge + 40
@@ -1657,16 +1698,35 @@ export default function LoungeProfileFullScreen({
     // Banner rests ~5px below the back/⋯ buttons, then sticks.
     const pinnedVisible = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
 
-    const bannerStickyTop = profileBannerStickyTopPx(bannerH, pinnedVisible)
-    const pinRange = profileBannerPinScrollRangePx(bannerH, pinnedVisible)
+    const bannerStickyTop = collapseOn
+      ? profileBannerStickyTopPx(bannerH, pinnedVisible)
+      : 0
+    const pinRange = collapseOn
+      ? profileBannerPinScrollRangePx(bannerH, pinnedVisible)
+      : PROFILE_COLLAPSE_RANGE_PX
 
     profileBannerStickyTopPxRef.current = bannerStickyTop
     profileCollapseRangePxRef.current = pinRange
     profileStickyTopPxRef.current = pinnedVisible
-    setProfileTabsStickyTopPxState((prev) => (prev === pinnedVisible ? prev : pinnedVisible))
+    setProfileTabsStickyTopPxState((prev) => {
+      if (!collapseOn) {
+        const classicTop = Math.max(0, Math.round(sat))
+        return prev === classicTop ? prev : classicTop
+      }
+      return prev === pinnedVisible ? prev : pinnedVisible
+    })
 
     if (banner) {
-      banner.style.top = `${bannerStickyTop}px`
+      if (collapseOn) {
+        banner.style.top = `${bannerStickyTop}px`
+        banner.classList.add('sticky')
+        banner.classList.remove('relative')
+      } else {
+        banner.style.top = ''
+        banner.style.zIndex = ''
+        banner.classList.remove('sticky')
+        banner.classList.add('relative')
+      }
     }
 
     const nameEl = profileDisplayNameRef.current
@@ -1880,11 +1940,17 @@ export default function LoungeProfileFullScreen({
 
   useLayoutEffect(() => {
     if (!open || !panelVisible) return
+    const enabled = profileScrollCollapseEnabled()
+    profileCollapseEnabledRef.current = enabled
+    setProfileCollapseEnabled(enabled)
     profileCollapseReduceMotionRef.current = prefersReducedMotion()
     measureProfileCollapseGeometry()
     const el = profileBodyScrollRef.current
     applyProfileCollapseVisuals(el?.scrollTop ?? 0)
     const onResize = () => {
+      const next = profileScrollCollapseEnabled()
+      profileCollapseEnabledRef.current = next
+      setProfileCollapseEnabled(next)
       measureProfileCollapseGeometry()
       applyProfileCollapseVisuals(profileBodyScrollRef.current?.scrollTop ?? 0)
     }
@@ -2710,13 +2776,13 @@ export default function LoungeProfileFullScreen({
         >
           <div
             ref={profileBannerShellRef}
-            className="sticky z-[18] w-full shrink-0"
+            className={`${profileCollapseEnabled ? 'sticky z-[18]' : 'relative z-10'} w-full shrink-0`}
             data-lounge-profile-banner=""
             style={{
               // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.
-              // Sticky `top` is measured so the pinned strip ends ~5px below chrome buttons.
+              // Sticky `top` is measured so the pinned strip ends ~5px below chrome buttons (collapse only).
               paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
-              top: 0,
+              top: profileCollapseEnabled ? 0 : undefined,
             }}
           >
             <div className="absolute inset-0 left-0 right-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">

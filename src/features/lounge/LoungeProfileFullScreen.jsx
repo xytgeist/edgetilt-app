@@ -2691,7 +2691,10 @@ export default function LoungeProfileFullScreen({
               !showOwnEditControls &&
               typeof onOpenFanSubscriptionSettings === 'function' &&
               supabaseClient ? (
-                <div className="pointer-events-auto relative z-20 mb-1 shrink-0 translate-y-2.5">
+                <div
+                  className="pointer-events-auto relative z-20 mb-1 shrink-0"
+                  style={{ transform: 'translateY(10px)' }}
+                >
                   <OwnProfileFanMonetizationCta
                     supabaseClient={supabaseClient}
                     onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
@@ -2699,7 +2702,10 @@ export default function LoungeProfileFullScreen({
                   />
                 </div>
               ) : !isOwnProfile && viewerUserId ? (
-                <div className="pointer-events-auto relative z-20 mb-1 shrink-0 translate-y-2.5">
+                <div
+                  className="pointer-events-auto relative z-20 mb-1 shrink-0"
+                  style={{ transform: 'translateY(10px)' }}
+                >
                   <div className="flex flex-wrap items-center justify-end gap-2">
                   {isFollowing ? (
                     creatorFanOffer && hasCreatorFanSub ? (

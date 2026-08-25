@@ -1521,10 +1521,9 @@ export default function LoungeProfileFullScreen({
     const forceZero = Boolean(opts.forceZero) || showOwnEditControls
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
-    const progress = forceZero
-      ? 0
-      : profileCollapseProgress(y, profileCollapseRangePxRef.current)
-    const v = profileCollapseVisuals(progress, { reduceMotion: reduce })
+    const pinRange = profileCollapseRangePxRef.current
+    const v = profileCollapseVisuals(y, pinRange, { reduceMotion: reduce })
+    const pinProgress = forceZero ? 0 : v.pinProgress
     const nameOp = forceZero
       ? 0
       : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
@@ -1536,7 +1535,7 @@ export default function LoungeProfileFullScreen({
     }
     const bannerShell = profileBannerShellRef.current
     if (bannerShell) {
-      // Sticky pin … raise over avatar only during the late tuck-under phase.
+      // Sticky pin … raise over avatar only during the post-pin tuck phase.
       bannerShell.style.zIndex = v.avatarUnderBanner ? '22' : '18'
       bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
     }
@@ -1554,7 +1553,7 @@ export default function LoungeProfileFullScreen({
       const nudge =
         forceZero || showOwnEditControls
           ? 0
-          : (1 - progress) * profileChromeCenterNudgePxRef.current
+          : (1 - pinProgress) * profileChromeCenterNudgePxRef.current
       chromeMotion.style.transform =
         reduce && !forceZero ? '' : `translate3d(0, ${nudge}px, 0)`
     }

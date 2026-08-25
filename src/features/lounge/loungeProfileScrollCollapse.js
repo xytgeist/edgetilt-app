@@ -6,12 +6,10 @@
  * - Banner pins via `position: sticky` (not scroll-away + fake translate).
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  *
- * Motion notes (from X reference recording):
- * - Banner slides up a short distance then sticks; pinned bottom ≈ chrome
- *   button bottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX.
- * - Avatar starts ON TOP of the banner with ~1/4 overlap.
- * - Shrink uses top-anchored scale; late tuck slides under the pinned banner.
- * - Collapsed blur/scrim only appears once the banner has settled.
+ * Motion phases:
+ * 1. Banner slides to pin … avatar shrinks in place (top-tethered), no tuck.
+ * 2. After banner rests … avatar stops shrinking and slides up under the banner.
+ * 3. Collapsed blur/scrim only after the banner has settled.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
@@ -31,17 +29,17 @@ export const PROFILE_PINNED_BANNER_BELOW_CHROME_PX = 10
 /** Fallback scroll range when banner geometry is not measured yet. */
 export const PROFILE_COLLAPSE_RANGE_PX = 112
 
-/**
- * Progress fraction where shrink finishes and tuck-under begins.
- * First phase = scale with top locked; second = slide under banner.
- */
-export const PROFILE_AVATAR_TUCK_START = 0.72
+/** Scroll distance after the banner pins over which the avatar tucks under. */
+export const PROFILE_AVATAR_TUCK_RANGE_PX = 56
 
 /**
- * Progress fraction where the pinned blur/scrim may begin fading in.
- * Before this, banner stays sharp (blur mid-parallax looks wrong).
+ * Progress fraction (within the pin range) where the pinned blur/scrim may begin.
+ * Before this, banner stays sharp.
  */
 export const PROFILE_PIN_SCRIM_START = 0.9
+
+/** Final avatar scale once the banner has pinned (shrink completes at pin). */
+export const PROFILE_AVATAR_MIN_SCALE = 0.45
 
 /**
  * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.
@@ -79,33 +77,49 @@ export function profileCollapseProgress(scrollTop, rangePx = PROFILE_COLLAPSE_RA
   return y / range
 }
 
+function smoothstep01(t) {
+  const p = Math.max(0, Math.min(1, Number(t) || 0))
+  return p * p * (3 - 2 * p)
+}
+
 /**
- * @param {number} progress 0..1
- * @param {{ reduceMotion?: boolean }} [opts]
+ * @param {number} scrollTop
+ * @param {number} pinRangePx scroll distance until the banner finishes pinning
+ * @param {{ reduceMotion?: boolean, tuckRangePx?: number }} [opts]
  */
-export function profileCollapseVisuals(progress, opts = {}) {
-  const p = Math.max(0, Math.min(1, Number(progress) || 0))
+export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
+  const y = Math.max(0, Number(scrollTop) || 0)
+  const pinRange = Math.max(24, Number(pinRangePx) || PROFILE_COLLAPSE_RANGE_PX)
+  const tuckRange = Math.max(24, Number(opts.tuckRangePx) || PROFILE_AVATAR_TUCK_RANGE_PX)
   const reduce = Boolean(opts.reduceMotion)
-  const ease = reduce ? (p >= 0.5 ? 1 : p * 2) : p * p * (3 - 2 * p) // smoothstep
 
-  const tuckStart = PROFILE_AVATAR_TUCK_START
-  const shrinkPhase = Math.min(1, ease / tuckStart)
-  const tuckPhase = Math.max(0, (ease - tuckStart) / (1 - tuckStart))
+  const pinRaw = profileCollapseProgress(y, pinRange)
+  const pinEase = reduce ? (pinRaw >= 0.5 ? 1 : pinRaw * 2) : smoothstep01(pinRaw)
 
-  // Scrim/blur only after the banner has effectively pinned.
+  // Tuck only after the banner has fully pinned … never during the pin slide.
+  const tuckRaw =
+    y <= pinRange ? 0 : Math.min(1, (y - pinRange) / tuckRange)
+  const tuckEase = reduce ? (tuckRaw >= 0.5 ? 1 : tuckRaw * 2) : smoothstep01(tuckRaw)
+
   const pinStart = PROFILE_PIN_SCRIM_START
-  const pinReveal = Math.max(0, Math.min(1, (ease - pinStart) / (1 - pinStart)))
+  const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
+
+  const minScale = PROFILE_AVATAR_MIN_SCALE
+  const avatarScale = 1 - pinEase * (1 - minScale)
 
   return {
-    /** Sticky handles pin … no mid-scroll banner translate. */
+    /** 0..1 while the banner is sliding to its sticky rest. */
+    pinProgress: pinRaw,
     bannerTranslateY: 0,
     bannerBlurPx: 0,
     bannerScrim: 0.08,
     collapsedBarOpacity: pinReveal,
-    avatarScale: 1 - shrinkPhase * 0.55,
-    avatarTranslateY: -tuckPhase * 40,
-    avatarOpacity: 1 - Math.max(0, (tuckPhase - 0.35) / 0.65),
-    avatarUnderBanner: tuckPhase > 0.08,
+    /** Shrinks only during pin; frozen once the banner rests. */
+    avatarScale,
+    /** Zero until pin complete; then slides under the resting banner. */
+    avatarTranslateY: -tuckEase * 48,
+    avatarOpacity: 1 - Math.max(0, (tuckEase - 0.4) / 0.6),
+    avatarUnderBanner: tuckEase > 0.06,
   }
 }
 

@@ -7,9 +7,9 @@
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  *
  * Motion:
- * - Avatar rises slower than the page while shrinking (partial counter-scroll lag).
- * - Banner keeps rising until its bottom clears the lagged avatar ring top, then sticks.
- * - Shrink runs over that same pin/clear window.
+ * - Banner rises until its bottom sits ~10px below the back/⋯ buttons, then sticks.
+ * - Avatar rises slower than the page (partial counter-scroll lag) while shrinking.
+ * - Shrink is ease-in over the full pin distance so it feels slower early on.
  * - After pin, lag offset freezes so the avatar then scrolls 1:1 under the banner.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
@@ -22,7 +22,7 @@ export const PROFILE_COMPACT_NAME_FADE_PX = 36
 export const PROFILE_COLLAPSED_CHROME_ROW_PX = 48
 
 /**
- * Extra px below a measured pin line (kept for tabs / chrome fallbacks).
+ * Extra px below the chrome button bottoms where the pinned banner bottom rests.
  */
 export const PROFILE_PINNED_BANNER_BELOW_CHROME_PX = 10
 
@@ -35,7 +35,7 @@ export const PROFILE_COLLAPSE_RANGE_PX = 112
  */
 export const PROFILE_PIN_SCRIM_START = 0.9
 
-/** Final avatar scale once the banner has rested on the avatar-ring clear line. */
+/** Final avatar scale once shrink completes (banner finished pinning). */
 export const PROFILE_AVATAR_MIN_SCALE = 0.78
 
 /** Matches `ring-4` on the profile avatar … outer edge of the border around the face. */
@@ -47,6 +47,12 @@ export const PROFILE_AVATAR_RING_PX = 4
  * Net upward speed ≈ (1 - lag) × scroll speed (~8% at 0.92).
  */
 export const PROFILE_AVATAR_SCROLL_LAG = 0.92
+
+/**
+ * Ease-in power for avatar scale over the pin window.
+ * Higher = shrink stays near 1 longer, then catches up near the end.
+ */
+export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
 
 /**
  * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.
@@ -74,9 +80,7 @@ export function profileBannerPinScrollRangePx(bannerHeightPx, pinnedVisiblePx) {
 /**
  * Pinned banner visible height so that, with avatar scroll lag, the banner bottom
  * meets the avatar ring top at the same scrollTop the sticky pin finishes.
- *
- * Rest ring line alone is too low once the avatar lags … solve:
- *   P = (R0 - bannerH × (1 - lag)) / lag
+ * (Unused for the chrome+10 pin target; kept for clear-line experiments.)
  *
  * @param {number} bannerHeightPx
  * @param {number} avatarRingTopPx ring top from scrollport top at scrollTop 0 (no transform)
@@ -116,8 +120,8 @@ function smoothstep01(t) {
 /**
  * @param {number} scrollTop
  * @param {number} pinRangePx scroll distance until the banner finishes pinning
- *   (also the shrink window … pin rest = lagged avatar-ring clear)
- * @param {{ reduceMotion?: boolean, scrollLag?: number }} [opts]
+ *   (also the shrink window … pin rest ≈ chrome button bottoms + 10px)
+ * @param {{ reduceMotion?: boolean, scrollLag?: number, shrinkEasePower?: number }} [opts]
  */
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
   const y = Math.max(0, Number(scrollTop) || 0)
@@ -127,6 +131,10 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     0,
     Math.min(1, Number(opts.scrollLag) || PROFILE_AVATAR_SCROLL_LAG),
   )
+  const shrinkPower = Math.max(
+    1,
+    Number(opts.shrinkEasePower) || PROFILE_AVATAR_SHRINK_EASE_POWER,
+  )
 
   const pinRaw = profileCollapseProgress(y, pinRange)
   const pinEase = reduce ? (pinRaw >= 0.5 ? 1 : pinRaw * 2) : smoothstep01(pinRaw)
@@ -135,8 +143,9 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
   const minScale = PROFILE_AVATAR_MIN_SCALE
-  // Shrink while lagging upward; freeze when the banner clears the ring.
-  const avatarScale = 1 - pinEase * (1 - minScale)
+  // Ease-in shrink over the full (now longer) chrome pin window … stays larger longer.
+  const shrinkT = reduce ? pinRaw : Math.pow(pinRaw, shrinkPower)
+  const avatarScale = 1 - shrinkT * (1 - minScale)
 
   /**
    * Partial counter-scroll during pin: avatar rises slower than the page.

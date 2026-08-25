@@ -4,15 +4,12 @@ import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
 import {
   prefersReducedMotion,
   profileBannerPinScrollRangePx,
-  profileBannerPinnedVisibleForLagClear,
   profileBannerStickyTopPx,
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileTabsStickyTopPx,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
-  PROFILE_AVATAR_RING_PX,
-  PROFILE_AVATAR_SCROLL_LAG,
 } from './loungeProfileScrollCollapse.js'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
@@ -1574,7 +1571,6 @@ export default function LoungeProfileFullScreen({
   const measureProfileCollapseGeometry = useCallback(() => {
     const banner = profileBannerShellRef.current
     const scrollEl = profileBodyScrollRef.current
-    const avatarEl = profileAvatarMotionRef.current
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
     const sat = readCssSafeAreaTopPx()
     // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the full banner.
@@ -1587,27 +1583,8 @@ export default function LoungeProfileFullScreen({
 
     const chromeButtonBottom = chromePadTop + chromeNudge + 40
 
-    // Banner keeps rising until its bottom clears the *lagged* avatar ring, then sticks.
-    // Rest ring line alone is too low once the avatar counter-scrolls.
-    const chromeFloor = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
-    let pinnedVisible = chromeFloor
-    if (scrollEl && avatarEl && bannerH > 0) {
-      const prevTransform = avatarEl.style.transform
-      avatarEl.style.transform = ''
-      const scrollRect = scrollEl.getBoundingClientRect()
-      const avatarRect = avatarEl.getBoundingClientRect()
-      avatarEl.style.transform = prevTransform
-      const ringTopFromScrollport = Math.round(
-        avatarRect.top - PROFILE_AVATAR_RING_PX - scrollRect.top + scrollEl.scrollTop,
-      )
-      const lagClearVisible = profileBannerPinnedVisibleForLagClear(
-        bannerH,
-        ringTopFromScrollport,
-        PROFILE_AVATAR_SCROLL_LAG,
-      )
-      // Prefer clear line; never pin shorter than chrome coverage.
-      pinnedVisible = Math.max(chromeFloor, lagClearVisible)
-    }
+    // Banner rests ~10px below the back/⋯ buttons, then sticks.
+    const pinnedVisible = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
 
     const bannerStickyTop = profileBannerStickyTopPx(bannerH, pinnedVisible)
     const pinRange = profileBannerPinScrollRangePx(bannerH, pinnedVisible)

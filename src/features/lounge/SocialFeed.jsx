@@ -8125,7 +8125,7 @@ export default function SocialFeed({
         window.clearTimeout(openTid)
         loungePostDetailOpenFallbackTimerRef.current = 0
       }
-      if (reduce) {
+      if (reduce || opts?.instant) {
         loungePostDetailPanelEnteredRef.current = true
         setLoungePostDetailPanelEntered(true)
         setLoungePostDetailVisible(true)
@@ -8581,10 +8581,18 @@ export default function SocialFeed({
   const restoreSurfaceAfterSettingsClose = useCallback(() => {
     const saved = loungeSettingsReturnRef.current
     loungeSettingsReturnRef.current = null
-    if (!saved || saved.kind === 'feed') return
-    requestAnimationFrame(() => {
+    if (!saved || saved.kind === 'feed') {
+      setLoungeDockPanel(null)
+      return
+    }
+    if (saved.kind === 'search' || saved.kind === 'dock') {
       void restoreLoungeNavFrameRef.current(saved)
-    })
+      return
+    }
+    void (async () => {
+      await restoreLoungeNavFrameRef.current(saved, { holdDockPanel: true, instant: true })
+      setLoungeDockPanel(null)
+    })()
   }, [])
 
   const openLoungeSettingsFromDock = useCallback(() => {
@@ -8601,7 +8609,6 @@ export default function SocialFeed({
     }
     if (loungeDockPanel === 'settings') {
       setLoungeSettingsFocusSection(null)
-      setLoungeDockPanel(null)
       restoreSurfaceAfterSettingsClose()
       return
     }
@@ -14304,8 +14311,8 @@ export default function SocialFeed({
     return rest
   }, [])
 
-  const revealProfileModalPanel = useCallback((reduceMotion) => {
-    if (reduceMotion) {
+  const revealProfileModalPanel = useCallback((reduceMotion, instant) => {
+    if (reduceMotion || instant) {
       profileModalVisibleRef.current = true
       setProfileModalVisible(true)
       return
@@ -14364,7 +14371,7 @@ export default function SocialFeed({
       const reduce =
         typeof window !== 'undefined' &&
         window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
-      revealProfileModalPanel(reduce)
+      revealProfileModalPanel(reduce, opts?.instant === true)
       try {
         const { profile, profileErr } = await fetchLoungeProfileRow(supabaseClient, userId, profileStub)
         if (loadGen !== profileModalLoadGenRef.current) return
@@ -14656,8 +14663,10 @@ export default function SocialFeed({
   }, [captureLoungeNavReturnContext])
 
   const restoreLoungeNavFrame = useCallback(
-    async (frame) => {
+    async (frame, opts = {}) => {
       if (!frame) return
+      const holdDockPanel = opts.holdDockPanel === true
+      const instant = opts.instant === true
       loungeNavRestoringRef.current = true
       try {
         switch (frame.kind) {
@@ -14672,23 +14681,24 @@ export default function SocialFeed({
             break
           }
           case 'profile': {
-            setLoungeDockPanel(null)
+            if (!holdDockPanel) setLoungeDockPanel(null)
             setProfileOverlayStack([])
             if (loungePostDetail?.id) finalizeLoungePostDetailClose()
             setProfileNavRestore({ tab: frame.tab, scrollTop: frame.scrollTop })
             await openProfileModal(
               { user_id: frame.userId, ...(frame.profileStub || {}) },
-              { skipNavCapture: true },
+              { skipNavCapture: true, instant },
             )
             break
           }
           case 'postDetail': {
-            setLoungeDockPanel(null)
+            if (!holdDockPanel) setLoungeDockPanel(null)
             setProfileOverlayStack([])
             if (profileModalOpen) finalizeProfileModalClose()
             setLoungePostDetailAboveProfile(frame.aboveProfile)
             openLoungePostDetail(frame.post, {
               skipNavCapture: true,
+              instant,
               restoreCommentPathIds: frame.commentPathIds,
             })
             await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
@@ -14805,7 +14815,6 @@ export default function SocialFeed({
       return
     }
     if (loungeDockPanel === 'settings') {
-      setLoungeDockPanel(null)
       restoreSurfaceAfterSettingsClose()
       return
     }

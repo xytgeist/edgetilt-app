@@ -1053,7 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-25: **FAB Settings return (teardown):** Overlay stacking kept losing the Settings tap. Snapshot the current surface, dismiss it (clean z), open Settings, restore profile / post detail / notifications / search on close. File: `SocialFeed.jsx`.
+- 2026-08-25: **FAB Settings return (teardown):** Overlay stacking kept losing the Settings tap. Snapshot, dismiss, open Settings. Close remounts profile/detail under Settings (instant, no slide) then drops Settings so the feed does not flash. File: `SocialFeed.jsx`.
 - 2026-08-25: **FAB Settings over profile/detail:** Slide panel `z-[102]` over mounted sheets. FAB stays at 103 whenever profile/detail is open (post-detail-over-profile is also 102 and was winning hit-test). Stop disarming the 400ms click guard when Settings mounts (that let the tap fall through). Files: `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.
 - 2026-08-25: **FAB Settings return:** Opening Settings no longer dismisses profile / post detail / the nav stack. Close restores search or notifications when that was the prior dock panel. Home / compose still tear down. File: `SocialFeed.jsx`.
 - 2026-08-25: **Post-detail light canvas (Ryan sign-off):** Sheet + title bar + reply footer match `#fff` under `html.light [data-lounge-post-detail-sheet]`. Dark frost/zinc unchanged. Tip **`test` @ `5f309d70`**. Files: `SocialFeed.jsx`, `index.css`.

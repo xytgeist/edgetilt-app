@@ -12,7 +12,6 @@ import {
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileTabsStickyTopPx,
-  PROFILE_BANNER_MEDIA_BLUR_SCALE,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
@@ -1544,12 +1543,11 @@ export default function LoungeProfileFullScreen({
     const media = profileBannerMediaRef.current
     if (media) {
       const blurPx = Number(v.bannerBlurPx) || 0
+      media.style.transform = ''
       if (blurPx > 0.15) {
         media.style.filter = `blur(${blurPx.toFixed(2)}px)`
-        media.style.transform = `scale(${PROFILE_BANNER_MEDIA_BLUR_SCALE})`
       } else {
         media.style.filter = ''
-        media.style.transform = ''
       }
     }
     const bannerShell = profileBannerShellRef.current

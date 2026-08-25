@@ -48,9 +48,6 @@ export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
 /** Max `filter: blur()` on the banner media when the pin settles (hybrid frost). */
 export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
 
-/** Extra scale on blurred media so soft edges stay clipped by overflow:hidden. */
-export const PROFILE_BANNER_MEDIA_BLUR_SCALE = 1.1
-
 /**
  * Blur starts once this fraction of the (scaled) avatar height sits under the pinned banner.
  */

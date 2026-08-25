@@ -164,6 +164,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 | --- | --- |
 | **Open / close** | Tap FAB → wheel; tap FAB or backdrop → close. **Home** chip when a dock panel is open (compact chrome). |
 | **Panels** | Search, notifications, chat, settings via `LoungeDockSlidePanels.jsx` (`activePanel` / `panelChrome`). |
+| **Overlay vs dump (2026-08-25)** | Settings / Search / Notifications open **on top of** a still-mounted profile or post detail. Close drops the panel onto that screen. **Home / compose / chat** still dismiss the Lounge stack. Do not park sheets under the overlay (z-40 replayed the detail slide). |
 | **Following filter** | Wheel **Following** toggles feed scope (`LoungeFeedScopeSwitch` / `loungeFeedScope.js`); **cyan filled** person+ when on; **mid border** on chip, not full “page active” glow. |
 | **Compose** | Wheel compose expands feed composer + keyboard (`loungeDockComposeFocus.js`; panel must close first). |
 | **Reposition** | Long-press FAB (~450ms), drag, release → position saved (`loungeDockFabPosition.js`). Native text-selection suppressed while held; **~1s** click-through guard after release (synthesized click on feed under finger). |
@@ -177,6 +178,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 ## Phase C - Profiles + first-interaction gating
 
 - **Shipped + signed off on test (Ryan, 2026-05-18 @ `7ce7b44`):** Full-screen **profile editor**; **7-day handle change** (DB trigger + confirm/cooldown modals); **`/u/:handle`** permalink + OG + in-app deep link (profile sheet with posts); **handle conflict** dialog for taken/reserved handles (`RESERVED_HANDLES` + DB unique index); profile completion gate before first post (Lounge + Guides).
+- **Shipped (test, Ryan 2026-08-25):** Profile **Posts / Replies / Likes / Bookmarks** slide left/right under a pinned banner + tab bar (`LoungeProfileFullScreen.jsx`). Idle-prefetch other tabs. **One native scroller** (`overflow: clip` on the tab pane). Do not remount the sheet or revive a JS header-then-feed lock.
 - *Deferred (not blocking Phase C close):* standalone marketing profile page beyond the in-app sheet; extra server-side reserved-handle policy beyond client preflight + Postgres constraints.
 
 ---

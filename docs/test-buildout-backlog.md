@@ -1053,7 +1053,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-25: **Profile tab scroll (native):** One profile scroller again. Tab pane uses `overflow: clip` so it cannot steal the gesture. Header and feed move in one flick. The JS header-then-feed lock was not smooth. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
+- 2026-08-25: **Continuity + prod promote:** Session wrap in **`WAKEUP`** Pick up here (2026-08-25), **`docs/frontend-architecture.md`** (`lounge/` profile tabs), **`docs/social-feed-roadmap.md`** (FAB overlay + profile tabs). Web-only … no SQL / Edge. Ryan asked to promote **`test` → `main`** so prod does not stay backed up.
+- 2026-08-25: **index.css Problems panel:** Empty splash ruleset now has `opacity: 1`. Workspace CSS custom data teaches the editor Tailwind v4 `@theme` (do not “fix” by deleting `@theme`). Files: `index.css`, `.vscode/css-custom-data.json`, `.vscode/settings.json`.
+- 2026-08-25: **Profile tab scroll (native, Ryan sign-off):** One profile scroller again. Tab pane uses `overflow: clip` so it cannot steal the gesture. Header and feed move in one flick. The JS header-then-feed lock was not smooth. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
 - 2026-08-25: **Profile tab preload:** After the sheet opens, idle-prefetch Replies (and Likes/Bookmarks on own profile) so a tab tap slides into a warm list. Does not block Posts first paint. Tap still starts the fetch immediately if idle has not run. File: `LoungeProfileFullScreen.jsx`.
 - 2026-08-25: **Profile tab slide:** Posts/Replies/Likes/Bookmarks keep the banner + tab bar put. Only the feed under the tabs translates left/right. Tab click does not remount the sheet or scroll the banner back open. Likes and bookmarks keep their own lists so a return swipe does not refetch. `prefers-reduced-motion` skips the slide. Files: `LoungeProfileFullScreen.jsx`, `index.css`.
 - 2026-08-25: **FAB overlay close:** Do not park profile/detail at z 40 under Settings/Search/Notifications. That restyle replayed the post-detail slide and flashed the profile. Overlay sits on top; the stack stays put. File: `SocialFeed.jsx`.

@@ -79,8 +79,22 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`94040612`** | Edge-to-edge safe area inject + web max(env, var) |
-| **`main`** | **`c262fbdd`** / **`b55ff3b6`** | Prod Vercel (older; do not promote without Ryan ask) |
+| **`test`** | **`904790b5`** | Profile tab slide + preload + native scroll; FAB overlay; CSS Problems clear |
+| **`main`** | **`b55ff3b6`** | Prod Vercel (behind `test` until this session's promote) |
+
+### Pick up here (2026-08-25 ... Mac web + profile)
+
+**Shipped on `test` (Ryan signed: tab slide, native scroll, FAB overlay close):**
+- **Profile tabs:** Posts/Replies/Likes/Bookmarks slide left/right under a pinned banner + tab bar. Sheet does not remount. Idle-prefetch Replies (and Likes/Bookmarks on own profile). One **native** profile scroller (`overflow: clip` on the tab pane ... do **not** revive the JS header-then-feed lock). Files: `LoungeProfileFullScreen.jsx`, `index.css`.
+- **FAB Settings / Search / Notifications:** Open on top of the current stack. Profile and post detail stay mounted. Close drops the panel. Home / compose / chat still dump the stack. Do **not** park sheets at z-40 (replays post-detail slide). Files: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `appZIndex.js`.
+- **Post-detail:** Light canvas `#fff` (Ryan sign-off). IPA sat on the title bar only (no double Island pad).
+- **Editor:** `@theme` is Tailwind v4 (workspace CSS custom data). Splash empty-ruleset warning gone.
+
+**Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park.
+
+**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. Mac IPA still needs device smoke for safe-area / web gates (see Mac do now below). No SQL in this slice.
+
+**Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
 ### Decisions locked (do not reopen without Ryan)
 

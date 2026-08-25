@@ -1898,11 +1898,11 @@ html.light [data-lounge-profile-collapsed-scrim] {
 [data-lounge-profile-banner-blur] {
   transform: translateZ(0);
 }
-html.light [data-lounge-profile-compact-name] {
+html.light [data-lounge-profile-compact-collapse] {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
-html.light [data-lounge-profile-compact-name] span {
+html.light [data-lounge-profile-compact-collapse] span {
   color: inherit !important;
   -webkit-text-fill-color: inherit !important;
 }
@@ -1914,7 +1914,7 @@ html.light [data-lounge-profile-compact-name] span {
     0 0 10px rgba(0, 0, 0, 0.28);
 }
 /* iOS Safari / PWA / Android … centered compact title on the opaque plate.
- * Avoid `-webkit-text-fill-color` here … it kills `text-shadow` on WebKit. */
+ * Avoid `-webkit-text-fill-color` on dark … it kills `text-shadow` on WebKit. */
 [data-lounge-profile-compact-ios-web] {
   color: #ffffff;
 }
@@ -1926,23 +1926,15 @@ html.light [data-lounge-profile-compact-name] span {
 }
 html.light [data-lounge-profile-compact-ios-web] {
   color: #18181b !important;
-  -webkit-text-fill-color: #18181b !important;
 }
 html.light [data-lounge-profile-compact-ios-web] span {
   color: inherit !important;
-  -webkit-text-fill-color: inherit !important;
   text-shadow:
     0 1px 1px rgba(255, 255, 255, 0.7),
     0 1px 2px rgba(24, 24, 27, 0.12);
 }
 html.light [data-lounge-profile-compact-ios-web] span:last-child {
   color: rgba(24, 24, 27, 0.62) !important;
-  -webkit-text-fill-color: rgba(24, 24, 27, 0.62) !important;
-}
-/* Generic compact-name white fill must not blank ios-web shadow on dark plates. */
-html.light [data-lounge-profile-compact-ios-web],
-html.light [data-lounge-profile-compact-ios-web] span {
-  /* keep light rules above; dark ios-web is not under html.light */
 }
 [data-lounge-profile-tabs] {
   /* Sticky tabs under collapsed chrome … solid fallback for weak backdrop-filter. */
@@ -1951,6 +1943,18 @@ html.light [data-lounge-profile-compact-ios-web] span {
 html.light [data-lounge-profile-tabs] {
   background-color: rgba(250, 250, 250, 0.96) !important;
   border-color: rgba(24, 24, 27, 0.12) !important;
+}
+html.light [data-lounge-profile-tabs] [data-lounge-profile-tab][data-active='true'] {
+  color: rgb(24 24 27) !important;
+}
+html.light [data-lounge-profile-tabs] [data-lounge-profile-tab][data-active='false'] {
+  color: rgb(113 113 122) !important;
+}
+html.light [data-lounge-profile-tabs] [data-lounge-profile-tab][data-active='false']:hover {
+  color: rgb(63 63 70) !important;
+}
+html.light [data-lounge-profile-tabs] [data-lounge-profile-tab-underline] {
+  background-color: rgb(6 182 212) !important;
 }
 
 /*

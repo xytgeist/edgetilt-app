@@ -980,7 +980,9 @@ export default function LoungeProfileFullScreen({
     ],
   )
   const profileTabBtnClass =
-    profileTabsVisible.length > 2 ? 'min-h-11 px-1 text-[13px]' : 'min-h-11 px-2 text-[15px]'
+    profileTabsVisible.length > 2
+      ? 'min-h-12 px-1 text-[15px] sm:text-[16px]'
+      : 'min-h-12 px-2 text-[16px] sm:text-[17px]'
   const profileAutoplayPostCount =
     tab === 'posts'
       ? posts.length
@@ -3593,25 +3595,38 @@ export default function LoungeProfileFullScreen({
                 profileTabsElRef.current = node
               }}
               data-lounge-profile-tabs=""
-              className="sticky z-20 mt-6 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
+              className="sticky z-20 mt-6 border-b border-zinc-800/90 bg-zinc-950/95 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/80"
               style={{ top: profileTabsStickyTopPxState }}
             >
               <div className="flex gap-0">
-                {profileTabsVisible.map((id) => (
+                {profileTabsVisible.map((id) => {
+                  const active = tab === id
+                  return (
                   <button
                     key={id}
                     type="button"
                     onClick={() => setTab(id)}
-                    className={`relative flex-1 touch-manipulation font-semibold capitalize [-webkit-tap-highlight-color:transparent] ${profileTabBtnClass} ${
-                      tab === id ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
+                    data-lounge-profile-tab=""
+                    data-active={active ? 'true' : 'false'}
+                    className={`relative flex flex-1 touch-manipulation items-center justify-center capitalize [-webkit-tap-highlight-color:transparent] ${profileTabBtnClass} ${
+                      active
+                        ? 'font-bold text-white'
+                        : 'font-semibold text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
-                    {profileTabLabel(id)}
-                    {tab === id ? (
-                      <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-cyan-500 sm:left-3 sm:right-3" />
-                    ) : null}
+                    <span className="relative inline-flex max-w-full items-center justify-center px-0.5 pb-2.5 pt-1">
+                      <span className="truncate">{profileTabLabel(id)}</span>
+                      {active ? (
+                        <span
+                          aria-hidden
+                          data-lounge-profile-tab-underline=""
+                          className="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-full bg-cyan-500"
+                        />
+                      ) : null}
+                    </span>
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
 

@@ -71,6 +71,7 @@ import { LOUNGE_NOTIFICATION_PREF_ROWS } from '../utils/loungeNotificationPrefer
 import LoungeDockMenuLayoutHelp from './LoungeDockMenuLayoutHelp.jsx'
 import IosPwaInstallHelpDialog from './IosPwaInstallHelpDialog.jsx'
 import { getTheme, setTheme } from '../utils/theme.js'
+import { Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE } from '../constants/appZIndex.js'
 import {
   hasSeenLoungeIosPwaSetup,
   iosPwaInstallRequired,
@@ -90,6 +91,7 @@ const VERTICAL_BEATS_HORIZONTAL = 1.52
  * Same **title bar** chrome as the feed (logo, updating line, nav slot) with **scroll-linked hide/show**;
  * Bottom scroll inset clears the draggable FAB menu. On search / notifications / settings,
  * `SocialFeed` raises the viewport dock to z-index 100 above this `z-[99]` layer.
+ * Over a mounted profile / post detail the panel uses z 104 so Settings sits on top.
  * Swipe horizontally to dismiss (left or right). `viewportTitleTopPx` must
  * match the feed title’s `top` offset so the bar aligns with the main Lounge shell.
  *
@@ -189,6 +191,8 @@ export default function LoungeDockSlidePanels({
   onTitleRevealChange,
   /** Pre-fill the search input when the panel opens (e.g. from a #hashtag tap). */
   initialSearchQuery = '',
+  /** Raise above profile (101) / post detail (98–102) / lightbox (103) when those stay mounted. */
+  stackAboveDetailOrProfile = false,
   /** Freeze search scroll-root autoplay when post/comment detail is open over the panel. */
   videoCoordinatorSuspended = false,
   pushNotificationsEnabled = true,
@@ -1026,7 +1030,10 @@ export default function LoungeDockSlidePanels({
 
   return (
     <>
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-[99] flex h-dvh max-h-dvh justify-center">
+    <div
+      className="pointer-events-none fixed inset-x-0 top-0 flex h-dvh max-h-dvh justify-center"
+      style={{ zIndex: stackAboveDetailOrProfile ? Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE : 99 }}
+    >
       <div
         ref={panelRef}
         role="dialog"

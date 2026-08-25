@@ -38,7 +38,7 @@ import {
   NEON_BLUE_ITEM_GLOW_PAGE_ACTIVE,
 } from '../utils/loungeDockFabGlow.js'
 import {
-  Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE,
+  Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL,
   Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL,
   Z_LOUNGE_DOCK_VIEWPORT,
 } from '../constants/appZIndex.js'
@@ -275,7 +275,7 @@ export default function LoungeDockArcCarouselPrototype({
   enableFabCompactPip = true,
   /** Raise above `LoungeDockSlidePanels` (z-99) on search / notifications / settings. */
   stackAboveSlidePanel = false,
-  /** Raise above post detail / profile shells (z 98–102) while keeping below detail media lightbox (103+). */
+  /** Raise above post detail / profile / overlay Settings (z 104) so the wheel chip stays tappable. */
   stackAboveDetailOrProfile = false,
   /**
    * Post / comment detail: after {@link FAB_COMPACT_PIP_MS} idle, Edge L shrinks in place;
@@ -1749,7 +1749,7 @@ export default function LoungeDockArcCarouselPrototype({
     : ''
 
   const dockLayerZIndex = stackAboveDetailOrProfile
-    ? Z_LOUNGE_DOCK_ABOVE_DETAIL_PROFILE
+    ? Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL
     : stackAboveSlidePanel
       ? Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL
       : Z_LOUNGE_DOCK_VIEWPORT

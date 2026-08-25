@@ -1053,6 +1053,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **FAB Settings overlay:** Settings opens on top of the current stack. Profile / post detail stay mounted. Close drops Settings only (search / notifications / chat come back if that was the prior dock panel). Slide at z 104, FAB at 105 so the wheel chip sits above detail-over-profile 102. Home / compose still dismiss. Files: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.
 - 2026-08-25: **FAB Settings return:** Reverted the overlay / teardown / z-index experiment stack back to **`791ebdb6`**. Next pass should overlay Settings without that bloat. Files restored: `SocialFeed.jsx`, `LoungeDockSlidePanels.jsx`, `LoungeDockArcCarouselPrototype.jsx`, `appZIndex.js`.
 - 2026-08-25: **Post-detail light canvas (Ryan sign-off):** Sheet + title bar + reply footer match `#fff` under `html.light [data-lounge-post-detail-sheet]`. Dark frost/zinc unchanged. Tip **`test` @ `5f309d70`**. Files: `SocialFeed.jsx`, `index.css`.
 - 2026-08-25: **IPA post-detail double sat:** Panel `pt-[sat]` + absolute title `pt-[sat]` + spacer = full measured bar height stacked an extra Island gap on EdgeiOS. Sat stays on the title bar only. Safari/PWA env() path unchanged in intent. File: `SocialFeed.jsx`.

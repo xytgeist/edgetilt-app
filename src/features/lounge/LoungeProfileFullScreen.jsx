@@ -1575,14 +1575,15 @@ export default function LoungeProfileFullScreen({
     const banner = profileBannerShellRef.current
     const chromeH = bar ? Math.ceil(bar.getBoundingClientRect().height) : 0
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
-    const bannerContentEl = banner?.querySelector?.('[data-lounge-profile-banner-band]')
-    const bannerContentH = bannerContentEl
-      ? Math.ceil(bannerContentEl.getBoundingClientRect().height)
-      : 112
-    // Vertically center h-10 chrome buttons in the banner photo band.
-    profileChromeCenterNudgePxRef.current = Math.max(0, Math.round(bannerContentH / 2 - 20))
-
     const sat = readCssSafeAreaTopPx()
+    // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the full banner
+    // (status bar through photo bottom). Prior formula used contentH/2 only and sat too low.
+    const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
+    profileChromeCenterNudgePxRef.current = Math.max(
+      0,
+      Math.round(bannerH / 2 - chromePadTop - 20),
+    )
+
     const pinnedVisible =
       (chromeH > 0 ? chromeH : PROFILE_COLLAPSED_CHROME_ROW_PX + sat)
       + PROFILE_PINNED_BANNER_BELOW_CHROME_PX

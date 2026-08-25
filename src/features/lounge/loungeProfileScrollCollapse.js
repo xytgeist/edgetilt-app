@@ -51,6 +51,13 @@ export const PROFILE_AVATAR_SHRINK_EASE_POWER = 1.85
 /** Max `filter: blur()` on the banner media when frost completes. */
 export const PROFILE_BANNER_MEDIA_BLUR_MAX_PX = 22
 
+/**
+ * Extra paint outside the banner clip while blurred.
+ * CSS blur samples transparent outside the box … clipped soft edges read as a
+ * zoom-out / bottom seam. Bleed so the kernel stays on real pixels.
+ */
+export const PROFILE_BANNER_MEDIA_BLUR_BLEED_PX = 28
+
 /** Default tuck fraction before blur may begin (non-IPA Apple / desktop). */
 export const PROFILE_BANNER_BLUR_AVATAR_TUCK_FRAC = 0.9
 

@@ -15,6 +15,7 @@ import {
   profileIosWebTitleChromeEnabled,
   profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
+  PROFILE_BANNER_MEDIA_BLUR_BLEED_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
@@ -1612,10 +1613,29 @@ export default function LoungeProfileFullScreen({
 
     const media = profileBannerMediaRef.current
     if (media) {
-      media.style.transform = ''
+      // No scale() … that read as a zoom. Bleed past the clip instead so blur
+      // does not sample empty pixels (squeeze + bottom fringe).
       if (blurPx > 0.15) {
+        const bleed = Math.max(
+          PROFILE_BANNER_MEDIA_BLUR_BLEED_PX,
+          Math.ceil(blurPx * 2 + 4),
+        )
+        media.style.top = `-${bleed}px`
+        media.style.right = `-${bleed}px`
+        media.style.bottom = `-${bleed}px`
+        media.style.left = `-${bleed}px`
+        media.style.width = 'auto'
+        media.style.height = 'auto'
+        media.style.transform = ''
         media.style.filter = `blur(${blurPx.toFixed(2)}px)`
       } else {
+        media.style.top = '0'
+        media.style.right = '0'
+        media.style.bottom = '0'
+        media.style.left = '0'
+        media.style.width = ''
+        media.style.height = ''
+        media.style.transform = ''
         media.style.filter = ''
       }
     }
@@ -2989,11 +3009,12 @@ export default function LoungeProfileFullScreen({
               top: profileCollapseEnabled ? 0 : undefined,
             }}
           >
-            <div className="absolute inset-0 left-0 right-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950">
+            <div className="absolute inset-0 left-0 right-0 w-full min-w-full overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-zinc-950 [bottom:-1px]">
               <div
                 ref={profileBannerMediaRef}
-                className="h-full w-full min-w-full will-change-transform"
+                className="absolute inset-0 min-h-full min-w-full will-change-transform"
                 style={{ transformOrigin: 'center top' }}
+                data-lounge-profile-banner-media=""
               >
                 {profile?.banner_url ? (
                   <img

@@ -1653,7 +1653,7 @@ export default function LoungeProfileFullScreen({
       } else {
         bannerShell.classList.add('sticky')
         bannerShell.classList.remove('relative')
-        // Always above the profile body on collapse … Android cannot fling-swap layers reliably.
+        // Sticky layer below chrome (z-30). Avatar row beats this only at rest (peek).
         bannerShell.style.zIndex = '28'
         bannerShell.style.transform = 'translateZ(0)'
         bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
@@ -1665,12 +1665,9 @@ export default function LoungeProfileFullScreen({
         avatarRow.style.zIndex = ''
         avatarRow.style.clipPath = ''
         avatarRow.style.webkitClipPath = ''
-      } else if (androidCollapse) {
-        // Stay under the banner for the whole scroll … no rest-time z fight on Android.
-        avatarRow.style.zIndex = '10'
-        avatarRow.style.clipPath = ''
-        avatarRow.style.webkitClipPath = ''
       } else {
+        // Rest: above banner for −mt peek. After a few px: under banner.
+        // Android has no avatar transform, so this z-swap stays reliable while flinging.
         avatarRow.style.zIndex = v.avatarUnderBanner ? '10' : '29'
         avatarRow.style.clipPath = ''
         avatarRow.style.webkitClipPath = ''
@@ -3097,13 +3094,11 @@ export default function LoungeProfileFullScreen({
             </div>
           </div>
 
-          <div className="relative z-[10] px-4">
-            {/* IPA/web: ~1/4 avatar overlap (−mt-5). Android: no overlap … sticky must stay above. */}
+          <div className="relative px-4">
+            {/* ~1/4 avatar overlap on banner at rest (−mt-5 on 4.8rem ≈ 20/77). */}
             <div
               ref={profileAvatarRowRef}
-              className={`pointer-events-none relative z-20 flex flex-wrap items-end justify-between gap-3 ${
-                profileCollapseEnabled && isAndroidDevice() ? 'mt-1' : '-mt-5 sm:-mt-5'
-              }`}
+              className="pointer-events-none relative z-20 -mt-5 flex flex-wrap items-end justify-between gap-3 sm:-mt-5"
               data-lounge-profile-avatar-row=""
             >
               <div className="relative shrink-0 pointer-events-auto">

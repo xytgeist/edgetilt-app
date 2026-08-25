@@ -39,6 +39,9 @@ export const PROFILE_PIN_SCRIM_START = 0.9
 /** Final avatar scale once shrink completes (IPA preset). */
 export const PROFILE_AVATAR_MIN_SCALE = 0.78
 
+/** Matches `h-[4.8rem]` avatar on profile collapse (layout shrink path). */
+export const PROFILE_AVATAR_LAYOUT_SIZE_PX = 77
+
 /** Matches `ring-4` on the profile avatar … outer edge of the border around the face. */
 export const PROFILE_AVATAR_RING_PX = 4
 
@@ -216,6 +219,16 @@ export function profileCollapseShellPreset(isIpaShell) {
       scrollLag: PROFILE_AVATAR_SCROLL_LAG,
       shrinkEasePower: PROFILE_AVATAR_SHRINK_EASE_POWER,
       minScale: PROFILE_AVATAR_MIN_SCALE,
+    }
+  }
+  // Android: layout-sized shrink (no transform). Faster/farther so it tucks under sticky.
+  if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '')) {
+    return {
+      chromeCenterExtraPx: 0,
+      chromeContentCenterFrac: 0.34,
+      scrollLag: 0.28,
+      shrinkEasePower: 1.15,
+      minScale: 0.7,
     }
   }
   return {

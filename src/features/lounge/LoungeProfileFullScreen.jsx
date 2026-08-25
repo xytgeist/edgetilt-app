@@ -16,6 +16,7 @@ import {
   profileIosWebTitleChromeEnabled,
   profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
+  PROFILE_AVATAR_LAYOUT_SIZE_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
   PROFILE_COLLAPSE_RANGE_PX,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
@@ -1666,8 +1667,7 @@ export default function LoungeProfileFullScreen({
         avatarRow.style.clipPath = ''
         avatarRow.style.webkitClipPath = ''
       } else {
-        // Rest: above banner for −mt peek. After a few px: under banner.
-        // Android has no avatar transform, so this z-swap stays reliable while flinging.
+        // Rest: above banner for −mt peek. After a few px: under banner (layout shrink tucks).
         avatarRow.style.zIndex = v.avatarUnderBanner ? '10' : '29'
         avatarRow.style.clipPath = ''
         avatarRow.style.webkitClipPath = ''
@@ -1864,14 +1864,25 @@ export default function LoungeProfileFullScreen({
         avatar.style.pointerEvents = ''
         avatar.style.willChange = ''
         avatar.style.zIndex = ''
+        avatar.style.width = ''
+        avatar.style.height = ''
+        avatar.style.marginTop = ''
       } else if (androidCollapse) {
-        // No transform layer on Android … sticky stacking stays correct while flinging.
+        // Layout shrink + margin lag … no transform layer (Android sticky fling safe).
+        const sizePx = Math.max(
+          44,
+          Math.round(PROFILE_AVATAR_LAYOUT_SIZE_PX * v.avatarScale),
+        )
+        const lagPx = Math.round(v.avatarTranslateY)
         avatar.style.transformOrigin = ''
         avatar.style.transform = ''
-        avatar.style.opacity = '1'
-        avatar.style.pointerEvents = ''
         avatar.style.willChange = 'auto'
         avatar.style.zIndex = ''
+        avatar.style.width = `${sizePx}px`
+        avatar.style.height = `${sizePx}px`
+        avatar.style.marginTop = lagPx ? `${lagPx}px` : ''
+        avatar.style.opacity = '1'
+        avatar.style.pointerEvents = ''
       } else {
         avatar.style.transformOrigin = '50% 0%'
         avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
@@ -1879,6 +1890,9 @@ export default function LoungeProfileFullScreen({
         avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
         avatar.style.willChange = v.avatarUnderBanner ? 'auto' : 'transform'
         avatar.style.zIndex = v.avatarUnderBanner ? '1' : ''
+        avatar.style.width = ''
+        avatar.style.height = ''
+        avatar.style.marginTop = ''
       }
     }
     const compact = profileCompactNameRef.current

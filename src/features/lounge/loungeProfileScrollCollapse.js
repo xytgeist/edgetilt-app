@@ -7,9 +7,10 @@
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  *
  * Motion:
- * - Avatar scrolls up with the page while shrinking (no screen-pin / counter-scroll).
- * - Shrink runs for the banner pin distance and freezes when the banner rests.
+ * - Avatar rises slower than the page while shrinking (partial counter-scroll lag).
+ * - Shrink runs over the banner pin distance; freezes when the banner rests.
  * - Banner resting bottom = avatar ring top at layout rest (the clear line).
+ * - After pin, lag offset freezes so the avatar then scrolls 1:1 under the banner.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
  */
@@ -39,6 +40,13 @@ export const PROFILE_AVATAR_MIN_SCALE = 0.78
 
 /** Matches `ring-4` on the profile avatar … outer edge of the border around the face. */
 export const PROFILE_AVATAR_RING_PX = 4
+
+/**
+ * Fraction of scroll that is counteracted on the avatar during the pin/shrink window.
+ * 0 = full-speed with the page; 1 = screen-pinned.
+ * Net upward speed ≈ (1 - lag) × scroll speed.
+ */
+export const PROFILE_AVATAR_SCROLL_LAG = 0.62
 
 /**
  * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.
@@ -85,12 +93,16 @@ function smoothstep01(t) {
  * @param {number} scrollTop
  * @param {number} pinRangePx scroll distance until the banner finishes pinning
  *   (also the shrink window … pin rest = avatar-ring clear line)
- * @param {{ reduceMotion?: boolean }} [opts]
+ * @param {{ reduceMotion?: boolean, scrollLag?: number }} [opts]
  */
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
   const y = Math.max(0, Number(scrollTop) || 0)
   const pinRange = Math.max(24, Number(pinRangePx) || PROFILE_COLLAPSE_RANGE_PX)
   const reduce = Boolean(opts.reduceMotion)
+  const lag = Math.max(
+    0,
+    Math.min(1, Number(opts.scrollLag) || PROFILE_AVATAR_SCROLL_LAG),
+  )
 
   const pinRaw = profileCollapseProgress(y, pinRange)
   const pinEase = reduce ? (pinRaw >= 0.5 ? 1 : pinRaw * 2) : smoothstep01(pinRaw)
@@ -99,8 +111,17 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
   const minScale = PROFILE_AVATAR_MIN_SCALE
-  // Shrink while sliding up with the page; freeze when the banner rests on the clear line.
+  // Shrink while lagging upward; freeze when the banner rests on the clear line.
   const avatarScale = 1 - pinEase * (1 - minScale)
+
+  /**
+   * Partial counter-scroll during pin: avatar rises slower than the page.
+   * After pin: freeze the lag offset so further scroll is 1:1 under the banner.
+   */
+  let avatarTranslateY = 0
+  if (!reduce && lag > 0) {
+    avatarTranslateY = (y <= pinRange ? y : pinRange) * lag
+  }
 
   return {
     /** 0..1 while the banner is sliding to its sticky rest. */
@@ -110,8 +131,7 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
     bannerScrim: 0.08,
     collapsedBarOpacity: pinReveal,
     avatarScale,
-    /** No counter-scroll … avatar rides the document while shrinking. */
-    avatarTranslateY: 0,
+    avatarTranslateY,
     avatarOpacity: 1,
     /** Raise banner over avatar once the pin/clear line is reached. */
     avatarUnderBanner: y > pinRange + 2,

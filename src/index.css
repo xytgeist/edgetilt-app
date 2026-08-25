@@ -1251,13 +1251,15 @@ html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
   transition: none !important;
 }
 /*
- * Image lightbox shrink-back: title bar must sit above the portaled flyout
- * (z ~100–111) so the tile can tuck under the header. Prefer the post-detail
- * title bar when that sheet is open … lifting the feed EDGE bar flashes it over
- * the sheet. Below app modals (z-120). Cleared when close ends / lightbox unmounts.
+ * Image lightbox shrink-back: title chrome must sit above the portaled flyout
+ * (z ~100–111) so the tile can tuck under the header. Prefer post-detail, then
+ * profile top chrome, then feed EDGE … never lift EDGE over an open profile/
+ * detail sheet (that flashes the Lounge header for a frame). Below app modals
+ * (z-120). Cleared when close ends / lightbox unmounts.
  */
 [data-lounge-title-bar][data-lounge-title-bar-over-lightbox-close],
-[data-lounge-post-detail-title-bar][data-lounge-title-bar-over-lightbox-close] {
+[data-lounge-post-detail-title-bar][data-lounge-title-bar-over-lightbox-close],
+[data-lounge-profile-top-chrome][data-lounge-title-bar-over-lightbox-close] {
   z-index: 112 !important;
 }
 /*

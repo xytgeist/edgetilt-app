@@ -826,18 +826,25 @@ export function LoungeImageLightbox({
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [])
 
-  // Shrink-back: lift the covering title bar above the flyout so the tile tucks under it.
-  // Prefer post-detail "Post/Reply" chrome when that sheet is open … never the feed EDGE bar
-  // (lifting EDGE flashes it over the detail sheet for a frame).
+  // Shrink-back: lift the covering title chrome above the flyout so the tile tucks under it.
+  // Prefer post-detail → profile → feed EDGE. Never lift EDGE while a profile sheet is open
+  // (that flashes the Lounge header over the profile for a frame).
   useEffect(() => {
     const detailBar = document.querySelector('[data-lounge-post-detail-title-bar]')
+    const profileBars = document.querySelectorAll('[data-lounge-profile-top-chrome]')
+    const profileBar = profileBars.length ? profileBars[profileBars.length - 1] : null
+    const profileSheetOpen = Boolean(document.querySelector('[data-lounge-profile-sheet]'))
     const feedBar = document.querySelector('[data-lounge-title-bar]')
     const bar =
       detailBar instanceof HTMLElement
         ? detailBar
-        : feedBar instanceof HTMLElement
-          ? feedBar
-          : null
+        : profileBar instanceof HTMLElement
+          ? profileBar
+          : profileSheetOpen
+            ? null
+            : feedBar instanceof HTMLElement
+              ? feedBar
+              : null
     if (!bar) return undefined
     if (phase === 'closing') {
       bar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')

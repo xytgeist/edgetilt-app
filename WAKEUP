@@ -79,8 +79,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`904790b5`** | Profile tab slide + preload + native scroll; FAB overlay; CSS Problems clear |
-| **`main`** | **`b55ff3b6`** | Prod Vercel (behind `test` until this session's promote) |
+| **`test`** | **`87434bfd`** | Continuity wrap + profile tabs + FAB overlay (promote this to `main`) |
+| **`main`** | **`87434bfd`** | Same tip after this session's `test` → `main` promote |
 
 ### Pick up here (2026-08-25 ... Mac web + profile)
 

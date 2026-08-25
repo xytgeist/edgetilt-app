@@ -5,7 +5,6 @@ import {
   prefersReducedMotion,
   profileBannerPinScrollRangePx,
   profileBannerStickyTopPx,
-  profileCollapseProgress,
   profileCollapseVisuals,
   profileCompactNameOpacity,
   profileTabsStickyTopPx,

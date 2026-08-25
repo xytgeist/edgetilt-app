@@ -40,8 +40,11 @@ export const PROFILE_AVATAR_TUCK_RANGE_PX = 56
  */
 export const PROFILE_PIN_SCRIM_START = 0.9
 
-/** Final avatar scale once shrink completes (banner bottom cleared above avatar). */
+/** Final avatar scale once shrink completes (banner bottom cleared above avatar ring). */
 export const PROFILE_AVATAR_MIN_SCALE = 0.78
+
+/** Matches `ring-4` on the profile avatar … outer edge of the border around the face. */
+export const PROFILE_AVATAR_RING_PX = 4
 
 /**
  * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.
@@ -88,7 +91,7 @@ function smoothstep01(t) {
  * @param {number} scrollTop
  * @param {number} pinRangePx scroll distance until the banner finishes pinning
  * @param {{ reduceMotion?: boolean, tuckRangePx?: number, shrinkRangePx?: number }} [opts]
- *   shrinkRangePx: scroll until banner bottom rises above the avatar top (shrink ends).
+ *   shrinkRangePx: scroll until banner bottom rises above the avatar ring top (shrink ends).
  */
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
   const y = Math.max(0, Number(scrollTop) || 0)

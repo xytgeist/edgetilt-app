@@ -10,6 +10,7 @@ import {
   profileTabsStickyTopPx,
   PROFILE_COLLAPSED_CHROME_ROW_PX,
   PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
+  PROFILE_AVATAR_RING_PX,
 } from './loungeProfileScrollCollapse.js'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
@@ -1600,15 +1601,16 @@ export default function LoungeProfileFullScreen({
 
     const scrollEl = profileBodyScrollRef.current
     const avatarEl = profileAvatarMotionRef.current
-    // Shrink ends when banner bottom has risen above the avatar top (overlap cleared).
+    // Shrink ends when banner bottom has risen above the avatar RING top (not the fill).
     if (scrollEl && banner && avatarEl) {
       const prevTransform = avatarEl.style.transform
       avatarEl.style.transform = ''
-      const scrollRect = scrollEl.getBoundingClientRect()
       const bannerRect = banner.getBoundingClientRect()
       const avatarRect = avatarEl.getBoundingClientRect()
       avatarEl.style.transform = prevTransform
-      const clearPx = Math.round(bannerRect.bottom - avatarRect.top)
+      // ring-4 sits outside the box … top of border = avatarTop - ring.
+      const avatarRingTop = avatarRect.top - PROFILE_AVATAR_RING_PX
+      const clearPx = Math.round(bannerRect.bottom - avatarRingTop)
       profileAvatarShrinkRangePxRef.current = Math.max(
         16,
         Math.min(pinRange, clearPx > 0 ? clearPx : Math.round(pinRange * 0.35)),

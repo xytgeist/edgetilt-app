@@ -759,6 +759,7 @@ export default function LoungeProfileFullScreen({
   const profileNameRevealScrollRef = useRef(80)
   const profileStickyTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
   const profileCollapseRangePxRef = useRef(112)
+  const profileAvatarShrinkRangePxRef = useRef(40)
   const profileBannerStickyTopPxRef = useRef(0)
   const profileCollapseReduceMotionRef = useRef(false)
   const [profileTabsStickyTopPxState, setProfileTabsStickyTopPxState] = useState(
@@ -1521,7 +1522,10 @@ export default function LoungeProfileFullScreen({
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
     const pinRange = profileCollapseRangePxRef.current
-    const v = profileCollapseVisuals(y, pinRange, { reduceMotion: reduce })
+    const v = profileCollapseVisuals(y, pinRange, {
+      reduceMotion: reduce,
+      shrinkRangePx: profileAvatarShrinkRangePxRef.current,
+    })
     const nameOp = forceZero
       ? 0
       : profileCompactNameOpacity(y, profileNameRevealScrollRef.current)
@@ -1595,6 +1599,22 @@ export default function LoungeProfileFullScreen({
     }
 
     const scrollEl = profileBodyScrollRef.current
+    const avatarEl = profileAvatarMotionRef.current
+    // Shrink ends when banner bottom has risen above the avatar top (overlap cleared).
+    if (scrollEl && banner && avatarEl) {
+      const prevTransform = avatarEl.style.transform
+      avatarEl.style.transform = ''
+      const scrollRect = scrollEl.getBoundingClientRect()
+      const bannerRect = banner.getBoundingClientRect()
+      const avatarRect = avatarEl.getBoundingClientRect()
+      avatarEl.style.transform = prevTransform
+      const clearPx = Math.round(bannerRect.bottom - avatarRect.top)
+      profileAvatarShrinkRangePxRef.current = Math.max(
+        16,
+        Math.min(pinRange, clearPx > 0 ? clearPx : Math.round(pinRange * 0.35)),
+      )
+    }
+
     const nameEl = profileDisplayNameRef.current
     if (scrollEl && nameEl) {
       const scrollRect = scrollEl.getBoundingClientRect()
@@ -2625,7 +2645,8 @@ export default function LoungeProfileFullScreen({
         {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED: was style paddingBottom Math.max(56, profileDockFooterMeasured) + 8 when shellDock */}
         <div
           ref={profileBodyScrollRef}
-          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain [-webkit-overflow-scrolling:touch]"
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain no-scrollbar [-webkit-overflow-scrolling:touch]"
+          data-lounge-profile-scroll=""
           style={{
             paddingBottom: `max(${
               !showOwnEditControls && profileFabBottomPadPx > 0 ? `${profileFabBottomPadPx}px` : '0.5rem'
@@ -2688,7 +2709,7 @@ export default function LoungeProfileFullScreen({
               <div className="relative shrink-0 pointer-events-auto">
                 <div
                   ref={profileAvatarMotionRef}
-                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 shadow-lg ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
+                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
                   style={{ transformOrigin: 'center top' }}
                   data-lounge-profile-avatar=""
                 >

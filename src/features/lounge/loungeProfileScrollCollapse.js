@@ -7,10 +7,9 @@
  * - Prefer `position: sticky` for tabs inside the profile scroll root.
  *
  * Motion phases:
- * 1. Banner slides to pin … avatar shrinks in place with its TOP EDGE screen-pinned
- *    (counter-scroll + scale, transform-origin top). No tuck yet.
- * 2. After banner rests … scale freezes; counter-scroll releases so the avatar
- *    slides up under the pinned banner.
+ * 1. Banner slides … avatar shrinks in place (top-tethered) only until the banner
+ *    bottom rises above the avatar; then scale freezes.
+ * 2. After banner rests … counter-scroll releases so the avatar slides under.
  * 3. Collapsed blur/scrim only after the banner has settled.
  *
  * `AGENT_RULE_PROFILE_SCROLL_COLLAPSE` — searchability token.
@@ -40,8 +39,8 @@ export const PROFILE_AVATAR_TUCK_RANGE_PX = 56
  */
 export const PROFILE_PIN_SCRIM_START = 0.9
 
-/** Final avatar scale once the banner has pinned (shrink completes at pin). */
-export const PROFILE_AVATAR_MIN_SCALE = 0.45
+/** Final avatar scale once shrink completes (banner bottom cleared above avatar). */
+export const PROFILE_AVATAR_MIN_SCALE = 0.78
 
 /**
  * Sticky `top` so only `pinnedVisiblePx` of the banner remains in view.
@@ -87,16 +86,25 @@ function smoothstep01(t) {
 /**
  * @param {number} scrollTop
  * @param {number} pinRangePx scroll distance until the banner finishes pinning
- * @param {{ reduceMotion?: boolean, tuckRangePx?: number }} [opts]
+ * @param {{ reduceMotion?: boolean, tuckRangePx?: number, shrinkRangePx?: number }} [opts]
+ *   shrinkRangePx: scroll until banner bottom rises above the avatar top (shrink ends).
  */
 export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_RANGE_PX, opts = {}) {
   const y = Math.max(0, Number(scrollTop) || 0)
   const pinRange = Math.max(24, Number(pinRangePx) || PROFILE_COLLAPSE_RANGE_PX)
   const tuckRange = Math.max(24, Number(opts.tuckRangePx) || PROFILE_AVATAR_TUCK_RANGE_PX)
+  // Shrink ends when the banner's lower edge has risen above the avatar … not at full pin.
+  const shrinkRange = Math.max(
+    16,
+    Math.min(pinRange, Number(opts.shrinkRangePx) || Math.round(pinRange * 0.35)),
+  )
   const reduce = Boolean(opts.reduceMotion)
 
   const pinRaw = profileCollapseProgress(y, pinRange)
   const pinEase = reduce ? (pinRaw >= 0.5 ? 1 : pinRaw * 2) : smoothstep01(pinRaw)
+
+  const shrinkRaw = profileCollapseProgress(y, shrinkRange)
+  const shrinkEase = reduce ? (shrinkRaw >= 0.5 ? 1 : shrinkRaw * 2) : smoothstep01(shrinkRaw)
 
   // Tuck only after the banner has fully pinned … never during the pin slide.
   const tuckRaw =
@@ -107,8 +115,8 @@ export function profileCollapseVisuals(scrollTop, pinRangePx = PROFILE_COLLAPSE_
   const pinReveal = Math.max(0, Math.min(1, (pinEase - pinStart) / (1 - pinStart)))
 
   const minScale = PROFILE_AVATAR_MIN_SCALE
-  // Shrink only while the banner is still moving to its rest; freeze after pin.
-  const avatarScale = 1 - pinEase * (1 - minScale)
+  // Shrink only until banner bottom clears the avatar; then freeze.
+  const avatarScale = 1 - shrinkEase * (1 - minScale)
 
   /**
    * Phase 1 (y ≤ pinRange): counter-scroll by +y so the avatar TOP stays planted

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom'
 import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
+import { isAndroidDevice } from '../../utils/pwaNotificationPrompt.js'
 import {
   prefersReducedMotion,
   profileBannerBlurTuckFrac,
@@ -765,7 +766,6 @@ export default function LoungeProfileFullScreen({
   const profileAvatarMotionRef = useRef(null)
   const profileAvatarRowRef = useRef(null)
   const profileDisplayNameRef = useRef(null)
-  const profileCollapseScrollPumpRafRef = useRef(0)
   const profileCompactNameRef = useRef(null)
   const profileChromeMotionRef = useRef(null)
   const profileChromeCenterNudgePxRef = useRef(36)
@@ -1642,6 +1642,7 @@ export default function LoungeProfileFullScreen({
       }
     }
     const bannerShell = profileBannerShellRef.current
+    const androidCollapse = collapseOn && isAndroidDevice()
     if (bannerShell) {
       if (!collapseOn) {
         bannerShell.style.zIndex = ''
@@ -1652,7 +1653,7 @@ export default function LoungeProfileFullScreen({
       } else {
         bannerShell.classList.add('sticky')
         bannerShell.classList.remove('relative')
-        // Own compositor layer below chrome (z-30). Avatar row only beats this at rest.
+        // Always above the profile body on collapse … Android cannot fling-swap layers reliably.
         bannerShell.style.zIndex = '28'
         bannerShell.style.transform = 'translateZ(0)'
         bannerShell.style.top = `${profileBannerStickyTopPxRef.current}px`
@@ -1662,9 +1663,17 @@ export default function LoungeProfileFullScreen({
     if (avatarRow) {
       if (!collapseOn) {
         avatarRow.style.zIndex = ''
+        avatarRow.style.clipPath = ''
+        avatarRow.style.webkitClipPath = ''
+      } else if (androidCollapse) {
+        // Stay under the banner for the whole scroll … no rest-time z fight on Android.
+        avatarRow.style.zIndex = '10'
+        avatarRow.style.clipPath = ''
+        avatarRow.style.webkitClipPath = ''
       } else {
-        // Rest: above banner so the -mt overlap peeks. Else: under pinned banner.
         avatarRow.style.zIndex = v.avatarUnderBanner ? '10' : '29'
+        avatarRow.style.clipPath = ''
+        avatarRow.style.webkitClipPath = ''
       }
     }
     const liveScrim = profileBannerLiveScrimRef.current
@@ -1858,29 +1867,21 @@ export default function LoungeProfileFullScreen({
         avatar.style.pointerEvents = ''
         avatar.style.willChange = ''
         avatar.style.zIndex = ''
+      } else if (androidCollapse) {
+        // No transform layer on Android … sticky stacking stays correct while flinging.
+        avatar.style.transformOrigin = ''
+        avatar.style.transform = ''
+        avatar.style.opacity = '1'
+        avatar.style.pointerEvents = ''
+        avatar.style.willChange = 'auto'
+        avatar.style.zIndex = ''
       } else {
         avatar.style.transformOrigin = '50% 0%'
         avatar.style.transform = `translate3d(0, ${v.avatarTranslateY}px, 0) scale(${v.avatarScale})`
         avatar.style.opacity = String(v.avatarOpacity)
         avatar.style.pointerEvents = v.avatarOpacity < 0.08 ? 'none' : ''
-        // Drop the promoted layer once tucked … Android otherwise keeps it above sticky.
         avatar.style.willChange = v.avatarUnderBanner ? 'auto' : 'transform'
         avatar.style.zIndex = v.avatarUnderBanner ? '1' : ''
-      }
-    }
-    // After avatar transform … Android sticky+transform ignores z-index on flings.
-    // Clip the row to the live banner bottom so nothing can paint over the photo.
-    if (avatarRow) {
-      if (!collapseOn || !v.avatarUnderBanner || !bannerShell) {
-        avatarRow.style.clipPath = ''
-        avatarRow.style.webkitClipPath = ''
-      } else {
-        const br = bannerShell.getBoundingClientRect()
-        const ar = avatarRow.getBoundingClientRect()
-        const clipPx = Math.max(0, Math.ceil(br.bottom - ar.top + 1))
-        const clip = clipPx > 0 ? `inset(${clipPx}px 0 0 0)` : 'none'
-        avatarRow.style.clipPath = clip
-        avatarRow.style.webkitClipPath = clip
       }
     }
     const compact = profileCompactNameRef.current
@@ -2227,16 +2228,7 @@ export default function LoungeProfileFullScreen({
         onDockRevealChange?.(r)
       })
     }
-    /** Android flings often coalesce `scroll` … keep sampling scrollTop until it settles. */
-    let pumpLastTop = el.scrollTop
-    let pumpStableFrames = 0
-    const stopScrollPump = () => {
-      if (!profileCollapseScrollPumpRafRef.current) return
-      window.cancelAnimationFrame(profileCollapseScrollPumpRafRef.current)
-      profileCollapseScrollPumpRafRef.current = 0
-    }
-    const pumpScrollVisuals = () => {
-      profileCollapseScrollPumpRafRef.current = 0
+    const onScroll = () => {
       const st = el.scrollTop
       const prev = profileDockScrollPrevTopRef.current
       const rawDelta = st - prev
@@ -2256,32 +2248,10 @@ export default function LoungeProfileFullScreen({
         queueFlush()
       }
       applyProfileCollapseVisuals(st)
-      if (st !== pumpLastTop) {
-        pumpLastTop = st
-        pumpStableFrames = 0
-        profileCollapseScrollPumpRafRef.current = window.requestAnimationFrame(pumpScrollVisuals)
-        return
-      }
-      pumpStableFrames += 1
-      if (pumpStableFrames < 4) {
-        profileCollapseScrollPumpRafRef.current = window.requestAnimationFrame(pumpScrollVisuals)
-      }
-    }
-    const onScroll = () => {
-      if (profileCollapseScrollPumpRafRef.current) return
-      pumpLastTop = el.scrollTop
-      pumpStableFrames = 0
-      profileCollapseScrollPumpRafRef.current = window.requestAnimationFrame(pumpScrollVisuals)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
-    // Touch kicks the pump before Android coalesces fling scroll events.
-    el.addEventListener('touchstart', onScroll, { passive: true })
-    el.addEventListener('touchmove', onScroll, { passive: true })
     return () => {
       el.removeEventListener('scroll', onScroll)
-      el.removeEventListener('touchstart', onScroll)
-      el.removeEventListener('touchmove', onScroll)
-      stopScrollPump()
       if (profileDockScrollRafRef.current) window.cancelAnimationFrame(profileDockScrollRafRef.current)
     }
   }, [onDockRevealChange, showOwnEditControls, open, panelVisible, applyProfileCollapseVisuals])
@@ -3127,17 +3097,21 @@ export default function LoungeProfileFullScreen({
             </div>
           </div>
 
-          <div className="relative px-4">
-            {/* ~1/4 avatar overlap on banner at rest (−mt-5 on 4.8rem ≈ 20/77). */}
+          <div className="relative z-[10] px-4">
+            {/* IPA/web: ~1/4 avatar overlap (−mt-5). Android: no overlap … sticky must stay above. */}
             <div
               ref={profileAvatarRowRef}
-              className="pointer-events-none relative z-20 -mt-5 flex flex-wrap items-end justify-between gap-3 sm:-mt-5"
+              className={`pointer-events-none relative z-20 flex flex-wrap items-end justify-between gap-3 ${
+                profileCollapseEnabled && isAndroidDevice() ? 'mt-1' : '-mt-5 sm:-mt-5'
+              }`}
               data-lounge-profile-avatar-row=""
             >
               <div className="relative shrink-0 pointer-events-auto">
                 <div
                   ref={profileAvatarMotionRef}
-                  className="relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 will-change-transform sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px]"
+                  className={`relative z-[25] flex h-[4.8rem] w-[4.8rem] overflow-hidden rounded-full bg-zinc-900 text-[22px] font-bold text-zinc-200 ring-4 ring-zinc-950 sm:h-[4.4rem] sm:w-[4.4rem] sm:text-[26px] ${
+                    profileCollapseEnabled && isAndroidDevice() ? '' : 'will-change-transform'
+                  }`}
                   style={{ transformOrigin: 'center top' }}
                   data-lounge-profile-avatar=""
                 >

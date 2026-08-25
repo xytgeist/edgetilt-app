@@ -760,7 +760,6 @@ export default function LoungeProfileFullScreen({
   const profileNameRevealScrollRef = useRef(80)
   const profileStickyTopPxRef = useRef(PROFILE_COLLAPSED_CHROME_ROW_PX)
   const profileCollapseRangePxRef = useRef(112)
-  const profileAvatarShrinkRangePxRef = useRef(40)
   const profileBannerStickyTopPxRef = useRef(0)
   const profileCollapseReduceMotionRef = useRef(false)
   const [profileTabsStickyTopPxState, setProfileTabsStickyTopPxState] = useState(
@@ -1525,7 +1524,6 @@ export default function LoungeProfileFullScreen({
     const pinRange = profileCollapseRangePxRef.current
     const v = profileCollapseVisuals(y, pinRange, {
       reduceMotion: reduce,
-      shrinkRangePx: profileAvatarShrinkRangePxRef.current,
     })
     const nameOp = forceZero
       ? 0
@@ -1573,10 +1571,11 @@ export default function LoungeProfileFullScreen({
 
   const measureProfileCollapseGeometry = useCallback(() => {
     const banner = profileBannerShellRef.current
+    const scrollEl = profileBodyScrollRef.current
+    const avatarEl = profileAvatarMotionRef.current
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
     const sat = readCssSafeAreaTopPx()
-    // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the full banner
-    // (status bar through photo bottom). Prior formula used contentH/2 only and sat too low.
+    // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the full banner.
     const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
     const chromeNudge = Math.max(
       0,
@@ -1584,9 +1583,27 @@ export default function LoungeProfileFullScreen({
     )
     profileChromeCenterNudgePxRef.current = chromeNudge
 
-    // Pinned strip must reach below the fixed chrome buttons (+ 10px).
     const chromeButtonBottom = chromePadTop + chromeNudge + 40
-    const pinnedVisible = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
+
+    // Banner rests with its bottom on the avatar RING top (clear line). Pin distance
+    // is the overlap between banner bottom and that ring … shrink runs over the same window.
+    let pinnedVisible = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
+    if (scrollEl && avatarEl) {
+      const prevTransform = avatarEl.style.transform
+      avatarEl.style.transform = ''
+      const scrollRect = scrollEl.getBoundingClientRect()
+      const avatarRect = avatarEl.getBoundingClientRect()
+      avatarEl.style.transform = prevTransform
+      const ringTopFromScrollport = Math.round(
+        avatarRect.top - PROFILE_AVATAR_RING_PX - scrollRect.top + scrollEl.scrollTop,
+      )
+      // Keep chrome buttons covered if the ring line would pin above them.
+      pinnedVisible = Math.max(
+        chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
+        ringTopFromScrollport,
+      )
+    }
+
     const bannerStickyTop = profileBannerStickyTopPx(bannerH, pinnedVisible)
     const pinRange = profileBannerPinScrollRangePx(bannerH, pinnedVisible)
 
@@ -1597,24 +1614,6 @@ export default function LoungeProfileFullScreen({
 
     if (banner) {
       banner.style.top = `${bannerStickyTop}px`
-    }
-
-    const scrollEl = profileBodyScrollRef.current
-    const avatarEl = profileAvatarMotionRef.current
-    // Shrink ends when banner bottom has risen above the avatar RING top (not the fill).
-    if (scrollEl && banner && avatarEl) {
-      const prevTransform = avatarEl.style.transform
-      avatarEl.style.transform = ''
-      const bannerRect = banner.getBoundingClientRect()
-      const avatarRect = avatarEl.getBoundingClientRect()
-      avatarEl.style.transform = prevTransform
-      // ring-4 sits outside the box … top of border = avatarTop - ring.
-      const avatarRingTop = avatarRect.top - PROFILE_AVATAR_RING_PX
-      const clearPx = Math.round(bannerRect.bottom - avatarRingTop)
-      profileAvatarShrinkRangePxRef.current = Math.max(
-        16,
-        Math.min(pinRange, clearPx > 0 ? clearPx : Math.round(pinRange * 0.35)),
-      )
     }
 
     const nameEl = profileDisplayNameRef.current

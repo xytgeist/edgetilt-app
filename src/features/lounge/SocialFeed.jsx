@@ -8750,7 +8750,8 @@ export default function SocialFeed({
       loungePostDetail &&
       loungeDockPanel &&
       loungeDockPanel !== 'search' &&
-      loungeDockPanel !== 'notifications'
+      loungeDockPanel !== 'notifications' &&
+      loungeDockPanel !== 'settings'
     ) {
       setChatDockInitialPeerUserId(null)
       setLoungeDockPanel(null)
@@ -8870,11 +8871,14 @@ export default function SocialFeed({
       (loungeDockPanel === 'search' || loungeDockPanel === 'notifications') &&
       !loungePostDetailAboveProfile,
   )
-  const loungePostDetailShellZClass = loungePostDetailAboveProfile
-    ? 'z-[102]'
-    : loungePostDetailOpenedOverSearch
-      ? 'z-[100]'
-      : 'z-[98]'
+  const loungePostDetailShellZClass =
+    loungeDockPanel === 'settings'
+      ? 'z-[40]'
+      : loungePostDetailAboveProfile
+        ? 'z-[102]'
+        : loungePostDetailOpenedOverSearch
+          ? 'z-[100]'
+          : 'z-[98]'
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile
     ? 'z-[103]'
@@ -16648,9 +16652,7 @@ export default function SocialFeed({
 
       {loungePostDetail ? (
         <div
-          className={`fixed inset-0 sm:bg-black/55 sm:backdrop-blur-[2px] ${loungePostDetailShellZClass}${
-            loungeFabPointerBlocked ? ' pointer-events-none [&_*]:pointer-events-none' : ''
-          }`}
+          className={`fixed inset-0 sm:bg-black/55 sm:backdrop-blur-[2px] ${loungePostDetailShellZClass}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"
@@ -18322,6 +18324,7 @@ export default function SocialFeed({
         : null}
 
       {profileModalOpen && profileModalData?.user_id ? (
+        <div className={loungeDockPanel === 'settings' ? 'fixed inset-0 z-[40]' : 'contents'}>
         <LoungeProfileFullScreen
           open={profileModalOpen}
           panelVisible={profileModalVisible}
@@ -18373,6 +18376,7 @@ export default function SocialFeed({
           onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
           requestOpenFanPortal={profileModalOpenFanPortal}
         />
+        </div>
       ) : null}
 
       {profileOverlayStack.map((layer, index) => {

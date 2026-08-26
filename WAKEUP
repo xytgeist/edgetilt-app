@@ -95,7 +95,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat. Safari/PWA per-tile feed sound (EdgeiOS handoff is signed). GIF dismiss-keyboard hacks (inert + layout viewport is the signed path).
 
-**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. IPA P0 smokes signed. APNs: Individual team **`8932AKQW4W`** is live; entitlements wired. First device Run must add Push capability if Xcode asks. Token upload still Windows. No SQL in this slice.
+**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. IPA P0 smokes signed. APNs permission on device signed. Next: Windows token upload/send + deep links. No SQL in this slice.
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
@@ -156,12 +156,13 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - Post-detail Island pad: title bar only, matches Safari/PWA
 - Safe area: no letterbox; post-detail ← clear of Island; FAB vs home indicator; feed title chrome
 - Lounge unmute handoff: Tap for sound → next clips stay audible (`ff9a8c16`)
-- Web-gate smoke: Joey K fan unsub opened Stripe in system Safari. Settings / Offers: no A2HS / web-push install nag. Notifications toggle stays off (native APNs not live).
+- Web-gate smoke: Joey K fan unsub opened Stripe in system Safari. Settings / Offers: no A2HS / web-push install nag.
 - OAuth-in-shell: Log out → Continue with Google → back in Edge signed in. No ASWebAuthentication needed.
 - Post-detail hard crash: could not repro. Video detail → back, phone stayed on.
+- Native APNs permission: Settings → Push → iOS Allow prompt → switch stays on (`815864e1`). Alerts still need Windows token upload/send.
 
 **Mac do now (Ryan + Theo):**
-1. APNs: Individual team **`8932AKQW4W`**. Entitlements + Lounge Settings → native permission wired. Rebuild IPA; wait for Vercel `test` web deploy; smoke Allow prompt. Token upload/send still Windows. New LLC / org can wait.
+1. Windows: APNs token upload + send path (and deep links when send works). New LLC / org can wait.
 
 **Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 

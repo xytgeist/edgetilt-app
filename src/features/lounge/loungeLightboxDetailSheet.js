@@ -14,6 +14,9 @@ let frozenLayoutH = 0
 let frozenSheetTop = 0
 let frozenSheetH = 0
 let frozenViewport = null
+let appliedParkPan = 0
+
+const PARK_STYLE_PROPS = ['transform', 'top', 'bottom', 'height', 'max-height']
 
 function emit() {
   listeners.forEach((fn) => {
@@ -92,6 +95,82 @@ function captureOverlayLayoutBaseline() {
     width: Math.max(width, frozenViewport?.width || 0),
     height: frozenLayoutH,
   }
+}
+
+function clearParkedLayerStyles(el) {
+  if (!(el instanceof HTMLElement)) return
+  for (const prop of PARK_STYLE_PROPS) el.style.removeProperty(prop)
+}
+
+function queryParkedLightboxLayers() {
+  if (typeof document === 'undefined') return []
+  return [
+    ...document.querySelectorAll('[data-lounge-media-lightbox]'),
+    ...document.querySelectorAll('[data-lounge-media-kb-park]'),
+  ].filter((el, i, all) => all.indexOf(el) === i)
+}
+
+/**
+ * Inline styles beat Tailwind `inset-0` / `h-[78dvh]`. Overlay transform parks peek+grab
+ * in screen space when iOS pans visualViewport; sheet is a child so it rides that park.
+ * Inner footer pad is what moves comments + composer.
+ */
+function writeParkedLayerStyles(pan) {
+  if (typeof document === 'undefined' || !sheetKbLocked) return
+  appliedParkPan = pan
+  const tx = `translate3d(0, ${Math.round(pan)}px, 0)`
+  const overlay = document.querySelector('[data-lounge-media-detail-overlay]')
+  const sheet = document.querySelector('[data-lounge-media-detail-sheet]')
+
+  if (overlay instanceof HTMLElement) {
+    overlay.style.setProperty('top', '0px', 'important')
+    overlay.style.setProperty('bottom', 'auto', 'important')
+    overlay.style.setProperty('height', `${frozenLayoutH}px`, 'important')
+    overlay.style.setProperty('max-height', `${frozenLayoutH}px`, 'important')
+    overlay.style.setProperty('transform', tx, 'important')
+  }
+  if (sheet instanceof HTMLElement) {
+    sheet.style.setProperty('top', `${Math.round(frozenSheetTop)}px`, 'important')
+    sheet.style.setProperty('bottom', 'auto', 'important')
+    sheet.style.setProperty('height', `${Math.round(frozenSheetH)}px`, 'important')
+    sheet.style.setProperty('max-height', `${Math.round(frozenSheetH)}px`, 'important')
+    sheet.style.setProperty('transform', 'none', 'important')
+  }
+  for (const el of queryParkedLightboxLayers()) {
+    if (!(el instanceof HTMLElement)) continue
+    if (overlay instanceof HTMLElement && overlay.contains(el)) continue
+    el.style.setProperty('top', '0px', 'important')
+    el.style.setProperty('bottom', 'auto', 'important')
+    el.style.setProperty('height', `${frozenLayoutH}px`, 'important')
+    el.style.setProperty('max-height', `${frozenLayoutH}px`, 'important')
+    el.style.setProperty('transform', tx, 'important')
+  }
+  document.documentElement.style.setProperty('--lounge-overlay-vv-pan', `${Math.round(pan)}px`)
+  document.documentElement.style.setProperty(
+    '--lounge-media-sheet-top',
+    `${Math.round(frozenSheetTop)}px`,
+  )
+}
+
+function parkOverlayToFrozenSheetTop() {
+  writeParkedLayerStyles(appliedParkPan)
+  const sheet = document.querySelector('[data-lounge-media-detail-sheet]')
+  if (!(sheet instanceof HTMLElement)) return
+  const actualTop = sheet.getBoundingClientRect().top
+  const error = Math.round(frozenSheetTop - actualTop)
+  if (Math.abs(error) < 1) return
+  writeParkedLayerStyles(appliedParkPan + error)
+}
+
+function readInnerKeyboardOverlapPx() {
+  if (!sheetKbLocked || typeof window === 'undefined') return 0
+  const visibleH = window.visualViewport?.height ?? window.innerHeight ?? 0
+  const sheet = document.querySelector('[data-lounge-media-detail-sheet]')
+  const sheetBottom =
+    sheet instanceof HTMLElement
+      ? sheet.getBoundingClientRect().bottom
+      : frozenSheetTop + frozenSheetH
+  return Math.max(0, Math.round(sheetBottom - visibleH))
 }
 
 function estimatedParkedSheetBox() {
@@ -207,13 +286,11 @@ export function notifyLoungeMediaDetailSheetMetrics() {
 
 function syncLockedSheetKeyboardVars() {
   if (typeof document === 'undefined' || typeof window === 'undefined' || !sheetKbLocked) return
-  const visibleH = window.visualViewport?.height ?? window.innerHeight ?? 0
-  const overlap = Math.max(0, Math.round(frozenLayoutH - visibleH))
+  parkOverlayToFrozenSheetTop()
   document.documentElement.style.setProperty(
-    '--lounge-media-sheet-top',
-    `${Math.round(frozenSheetTop)}px`,
+    '--lounge-overlay-inner-kb',
+    `${readInnerKeyboardOverlapPx()}px`,
   )
-  document.documentElement.style.setProperty('--lounge-overlay-inner-kb', `${overlap}px`)
 }
 
 /**
@@ -232,12 +309,14 @@ export function lockLoungeMediaSheetKeyboard() {
   frozenSheetTop = box.top
   frozenSheetH = box.height
   frozenPeekInsetPx = box.height
+  appliedParkPan = 0
   sheetKbLocked = true
   document.documentElement.style.setProperty('--lounge-media-sheet-h', `${frozenPeekInsetPx}px`)
   document.documentElement.style.setProperty('--lounge-media-sheet-panel-h', `${frozenSheetH}px`)
   document.documentElement.style.setProperty('--lounge-lightbox-layout-h', `${frozenLayoutH}px`)
-  syncLockedSheetKeyboardVars()
   document.documentElement.setAttribute('data-lounge-media-sheet-kb', '')
+  document.documentElement.style.overflow = 'hidden'
+  syncLockedSheetKeyboardVars()
   emit()
 }
 
@@ -247,12 +326,20 @@ export function unlockLoungeMediaSheetKeyboard() {
   frozenPeekInsetPx = 0
   frozenSheetTop = 0
   frozenSheetH = 0
+  appliedParkPan = 0
   if (typeof document !== 'undefined') {
+    const overlay = document.querySelector('[data-lounge-media-detail-overlay]')
+    const sheet = document.querySelector('[data-lounge-media-detail-sheet]')
+    clearParkedLayerStyles(overlay)
+    clearParkedLayerStyles(sheet)
+    queryParkedLightboxLayers().forEach(clearParkedLayerStyles)
     document.documentElement.removeAttribute('data-lounge-media-sheet-kb')
+    document.documentElement.style.removeProperty('overflow')
     document.documentElement.style.removeProperty('--lounge-media-sheet-panel-h')
     document.documentElement.style.removeProperty('--lounge-media-sheet-top')
     document.documentElement.style.removeProperty('--lounge-lightbox-layout-h')
     document.documentElement.style.removeProperty('--lounge-overlay-inner-kb')
+    document.documentElement.style.removeProperty('--lounge-overlay-vv-pan')
   }
   if (overlayOn) syncLoungeMediaSheetHeightVar()
   else if (typeof document !== 'undefined') {
@@ -266,9 +353,7 @@ export function getLoungeMediaSheetKeyboardLocked() {
 }
 
 export function readLoungeOverlayInnerKeyboardOverlapPx() {
-  if (!sheetKbLocked || frozenLayoutH < 1 || typeof window === 'undefined') return 0
-  const visibleH = window.visualViewport?.height ?? window.innerHeight ?? 0
-  return Math.max(0, Math.round(frozenLayoutH - visibleH))
+  return readInnerKeyboardOverlapPx()
 }
 
 export function computeLoungeLightboxPeekTarget(fromRect, extra = {}) {

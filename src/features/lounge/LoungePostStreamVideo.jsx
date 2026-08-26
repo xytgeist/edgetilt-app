@@ -3509,6 +3509,7 @@ export default function LoungePostStreamVideo({
             <>
               <div
                 className="pointer-events-none fixed inset-0"
+                data-lounge-media-kb-park=""
                 style={{ zIndex: heroScrimZIndex }}
                 aria-hidden
               >

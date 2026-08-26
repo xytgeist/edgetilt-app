@@ -16822,6 +16822,7 @@ export default function SocialFeed({
               ? 'bg-black/40'
               : 'sm:bg-black/55 sm:backdrop-blur-[2px]'
           } ${loungePostDetailShellZClass}`}
+          {...(loungePostDetailOverLightbox ? { 'data-lounge-media-detail-overlay': '' } : {})}
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"

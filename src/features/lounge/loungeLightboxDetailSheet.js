@@ -1,15 +1,11 @@
 import { computeHeroTargetRect } from './loungeLightboxFlip.js'
 
-/** Rest ~65% of the large viewport. Composer focused ~80%. */
-const SHEET_REST_FRACTION = 0.65
-const SHEET_COMPOSER_FRACTION = 0.8
+/** Rest ~60% of the layout viewport. Composer focused ~74%. */
+const SHEET_REST_FRACTION = 0.6
+const SHEET_COMPOSER_FRACTION = 0.74
 const SHEET_MIN_PEEK_REM = 5.5
 /** Black gap between contain-fit media and the sheet top. */
 const PEEK_GAP_PX = 12
-
-/** Inline transform so peek beats React `transform: none` / leftover WAAPI on the flyout. */
-export const LOUNGE_MEDIA_PEEK_TRANSFORM =
-  'translate3d(var(--lounge-media-peek-tx, 0px), var(--lounge-media-peek-ty, 0px), 0) scale(var(--lounge-media-peek-scale, 1))'
 
 let overlayOn = false
 let composerExpanded = false
@@ -26,8 +22,6 @@ let frozenSheetH = 0
 let frozenViewport = null
 let lvhProbeEl = null
 let peekRevealTries = 0
-/** Painted image/GIF box, captured while peek transform is identity. */
-let cachedPeekMediaBox = null
 /** Cached for useSyncExternalStore ... never read getBoundingClientRect in getSnapshot. */
 let cachedInnerKbPx = 0
 
@@ -46,20 +40,6 @@ function onViewportChange(event) {
   if (event?.type === 'orientationchange') {
     frozenLayoutH = 0
     frozenViewport = null
-    cachedPeekMediaBox = null
-    writePeekIdentityVars()
-    if (sheetKbLocked) {
-      if (refreshCachedInnerKbPx()) emit()
-      return
-    }
-    captureOverlayLayoutBaseline()
-    writeSheetHeightVar(estimateLoungeMediaDetailSheetHeightPx())
-    requestAnimationFrame(() => {
-      if (!overlayOn) return
-      writePeekInsetVar()
-      emit()
-    })
-    return
   }
   if (sheetKbLocked) {
     if (refreshCachedInnerKbPx()) emit()
@@ -134,45 +114,12 @@ function readInlineFixedBox(el) {
   return { top, left, width, height }
 }
 
-function peekTransformIsIdentity() {
-  if (typeof document === 'undefined') return true
-  const root = document.documentElement.style
-  const scale = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-scale') || '1')
-  const tx = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-tx') || '0')
-  const ty = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-ty') || '0')
-  return Math.abs(scale - 1) < 0.001 && Math.abs(tx) < 0.5 && Math.abs(ty) < 0.5
-}
-
-function readPaintedMediaBox(el) {
-  if (!(el instanceof HTMLElement)) return null
-  let r = el.getBoundingClientRect()
-  if (r.width < 8 || r.height < 8) {
-    const painted = el.querySelector('img, video')
-    if (painted instanceof HTMLElement) r = painted.getBoundingClientRect()
-  }
-  if (r.width < 8 || r.height < 8) return null
-  return { top: r.top, left: r.left, width: r.width, height: r.height }
-}
-
 function readPeekMediaLayoutBox() {
   if (typeof document === 'undefined') return null
-  const flyout = document.querySelector('[data-lounge-stream-hero-flyout]')
-  const fromFlyout = readInlineFixedBox(flyout)
-  if (fromFlyout) {
-    cachedPeekMediaBox = fromFlyout
-    return fromFlyout
-  }
-  const media = document.querySelector('[data-lounge-lightbox-peek-media]')
-  const fromInline = readInlineFixedBox(media)
-  if (fromInline) {
-    cachedPeekMediaBox = fromInline
-    return fromInline
-  }
-  if (cachedPeekMediaBox) return cachedPeekMediaBox
-  if (!peekTransformIsIdentity()) return null
-  const painted = readPaintedMediaBox(flyout) || readPaintedMediaBox(media)
-  if (painted) cachedPeekMediaBox = painted
-  return painted
+  return (
+    readInlineFixedBox(document.querySelector('[data-lounge-stream-hero-flyout]')) ||
+    readInlineFixedBox(document.querySelector('[data-lounge-lightbox-peek-media]'))
+  )
 }
 
 function peekContainTarget(box, bandW, bandH) {
@@ -213,22 +160,6 @@ function writeSheetHeightVar(px) {
   else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
 }
 
-function cancelPeekHostAnimations() {
-  if (typeof document === 'undefined') return
-  document
-    .querySelectorAll('[data-lounge-stream-hero-flyout], [data-lounge-lightbox-peek-media]')
-    .forEach((el) => {
-      if (!(el instanceof HTMLElement) || typeof el.getAnimations !== 'function') return
-      el.getAnimations().forEach((anim) => {
-        try {
-          anim.cancel()
-        } catch {
-          // ignore
-        }
-      })
-    })
-}
-
 function writePeekIdentityVars() {
   const root = document.documentElement
   root.style.setProperty('--lounge-media-peek-tx', '0px')
@@ -236,36 +167,20 @@ function writePeekIdentityVars() {
   root.style.setProperty('--lounge-media-peek-scale', '1')
 }
 
-function readVisualSheetTopPx() {
-  if (typeof document === 'undefined') return 0
-  const el = document.querySelector('[data-lounge-media-detail-sheet]')
-  if (!(el instanceof HTMLElement)) return 0
-  const top = el.getBoundingClientRect().top
-  return Number.isFinite(top) ? top : 0
-}
-
-function peekBandHeightPx() {
-  if (!overlayOn || !peekRevealed) return 0
-  const sheetTop = readVisualSheetTopPx()
-  if (sheetTop >= 8) return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
-  const estimated = visualSheetHeightPx()
-  if (estimated < 8) return 0
-  return Math.max(0, layoutViewportH() - estimated - PEEK_GAP_PX)
-}
-
 function writePeekInsetVar() {
   if (typeof document === 'undefined') return
-  const bandH = peekBandHeightPx()
   const inset = peekInsetPx()
   const root = document.documentElement
   root.style.setProperty('--lounge-media-peek-inset', `${Math.max(0, inset)}px`)
-  if (!overlayOn || !peekRevealed || bandH < 8) {
+  if (!overlayOn || !peekRevealed || inset < 8) {
     writePeekIdentityVars()
     return
   }
   const box = readPeekMediaLayoutBox()
+  const vh = layoutViewportH()
   const vw = layoutViewportW()
-  if (!box || vw < 8) {
+  const bandH = Math.max(0, vh - inset)
+  if (!box || bandH < 8 || vw < 8 || vh < 8) {
     writePeekIdentityVars()
     return
   }
@@ -299,9 +214,9 @@ function visualSheetHeightPx() {
 
 function peekInsetPx() {
   if (!overlayOn || !peekRevealed) return 0
-  const band = peekBandHeightPx()
-  if (band < 8) return 0
-  return Math.max(0, layoutViewportH() - band)
+  const visual = visualSheetHeightPx()
+  if (visual < 8) return 0
+  return visual + PEEK_GAP_PX
 }
 
 /** Grow the sheet when the overlay composer is focused ... media peek follows. */
@@ -399,10 +314,8 @@ export function setLoungeDetailOverLightboxAttr(on) {
     sheetDragging = false
     peekRevealed = false
     peekRevealTries = 0
-    cachedPeekMediaBox = null
     captureOverlayLayoutBaseline()
     document.documentElement.setAttribute('data-lounge-detail-over-lightbox', '')
-    cancelPeekHostAnimations()
     syncDraggingAttr()
     const estimated = estimateLoungeMediaDetailSheetHeightPx()
     writeSheetHeightVar(estimated)
@@ -424,7 +337,6 @@ export function setLoungeDetailOverLightboxAttr(on) {
     composerExpanded = false
     peekRevealed = false
     peekRevealTries = 0
-    cachedPeekMediaBox = null
     dragOffsetPx = 0
     sheetDragging = false
     syncComposerAttr()

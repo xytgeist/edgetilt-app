@@ -1058,11 +1058,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-26: **Lounge lightbox peek transform (Windows):** Peek is an inline `transform` with CSS vars on the Stream flyout / image shell so React `transform: none` and WAAPI fill cannot pin media full-bleed. No SQL / Edge.
-
-- 2026-08-26: **Lounge lightbox image/GIF peek (Windows):** Image lightbox drops `landFrame` after FLIP, so peek had no inline box and stayed at scale 1. Cache the painted image/GIF rect while peek is identity. Stream flyout unchanged. No SQL / Edge.
-
-- 2026-08-26: **Lounge lightbox sheet 65/80 + gap (Windows):** Rest **65lvh**, composer **80lvh**. Peek band is `sheetTop - 12px` (live sheet box) so the gap is not eaten by viewport mismatch. No SQL / Edge.
+- 2026-08-26: **Lounge lightbox peek revert (Windows):** Ryan rolled back `a52bc836` / `efc8e9e7` / `100afceb`. Tree matches **`2c82f4c3`** (60lvh / 74lvh contain-fit peek). No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox sheet height + peek gap (Windows):** Sheet floored at **60lvh / 74lvh** (JS `innerHeight` px can no longer shrink it to ~50%). Peek contain-fits the flyout / image shell into the band above the sheet with a **12px** gap, instead of center-scaling the letterbox. No SQL / Edge.
 
@@ -2376,5 +2372,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 | # | Item | Trigger to act |
 |---|---|---|
 | 3 | **`last_message_at` trigger hotspot** | Measure Postgres lock wait on `chat_rooms` in production at >500 msg/min per room. Fix: batch update with 1s delay, or move to Edge function write path. |
-| 4 | **Realtime `postgres_changes` → Broadcast** | Supabase dashboard shows WAL lag, OR concurrent Realtime connections approach plan limit. Fix: Edge `send_message` also publishes to a Supabase Broadcast channel; client subscribes to Broadcast instead of `postgres_changes`. ~3h work. |
-| 5 | **E2E encryption** | Schema already has `content_encoding`, `body_cipher`, `nonce`, `key_version` columns. Implement when product roadmap demands it. |
+| 4 | **Realtime `postgres_changes` → Broadcast** | Supabase dashboard shows WAL lag, OR concurrent Realtime connections approach plan limit. Fix: Edge `send_message` also publishes to a Supabase Broadcast channel; client subscribes to Broadcast instead of 

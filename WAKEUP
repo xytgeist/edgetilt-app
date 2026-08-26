@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows 2026-08-26 (lightbox comments sheet):** Sheet **65lvh / 80lvh**. Peek transform is on the Stream flyout / image shell **inline** (CSS vars) so it beats `transform: none` and leftover WAAPI. 12px gap from live sheet top. Live drag. Do not JS-transform the `<video>` host off visualViewport.
+**Windows 2026-08-26 (lightbox comments sheet):** Ryan reverted later peek work. Tip is **`2c82f4c3` tree** ... 60lvh / 74lvh, contain-fit peek. Do not revive 65/80, painted-box cache, or inline flyout peek transform until Ryan says so.
 
 **GIF picker (Ryan smoke PASSED 2026-08-25, IPA + non-IPA):** Search takes focus (`#root` inert). Sheet is layout-viewport full screen, keyboard overlays. IPA hides the WK accessory bar. Do not reopen dismiss-keyboard hacks. Trim audio mux (`d744555b`) stays.
 

@@ -1,20 +1,20 @@
 import Foundation
 import WebKit
 
-/// Clears service worker registrations (and related caches) so the shell always
-/// loads a fresh live site instead of a sticky `push-sw.js` control surface.
+/// Clears service worker registrations on cold launch so `push-sw.js` cannot stick in
+/// the IPA. HTTP disk/memory cache is preserved ... wiping it every launch forced full
+/// re-downloads and main-thread image decode (WEBP) that stalled WKWebView taps.
 enum EdgeWebsiteDataHygiene {
-  static let serviceWorkerTypes: Set<String> = [
+  /// Boot-only: drop SW control surface. Disk/memory cache intentionally kept.
+  static let bootHygieneTypes: Set<String> = [
     WKWebsiteDataTypeServiceWorkerRegistrations,
-    WKWebsiteDataTypeDiskCache,
-    WKWebsiteDataTypeMemoryCache,
   ]
 
   /// Run once before the first navigation of a cold launch.
   static func clearServiceWorkersAndCaches(from store: WKWebsiteDataStore = .default(),
                                            completion: @escaping () -> Void) {
     store.removeData(
-      ofTypes: serviceWorkerTypes,
+      ofTypes: bootHygieneTypes,
       modifiedSince: Date.distantPast,
       completionHandler: completion
     )

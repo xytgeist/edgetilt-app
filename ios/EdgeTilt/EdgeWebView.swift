@@ -49,6 +49,7 @@ struct EdgeWebView: UIViewRepresentable {
     let bridge = EdgeNativeBridge()
     private weak var webView: EdgeInsetAwareWebView?
     private var lastInsets: UIEdgeInsets = .init(top: -1, left: -1, bottom: -1, right: -1)
+    private var safeAreaPushWork: DispatchWorkItem?
     var swiftSafeArea: EdgeInsets = EdgeInsets()
 
     init(url: URL) {
@@ -79,8 +80,18 @@ struct EdgeWebView: UIViewRepresentable {
     }
 
     func pushSafeAreaInsets(from webView: EdgeInsetAwareWebView, force: Bool) {
-      let insets = EdgeSafeAreaInsets.resolve(for: webView, swiftFallback: swiftSafeArea)
-      applyIfNeeded(insets, to: webView, force: force)
+      safeAreaPushWork?.cancel()
+      let work = DispatchWorkItem { [weak self] in
+        guard let self else { return }
+        let insets = EdgeSafeAreaInsets.resolve(for: webView, swiftFallback: self.swiftSafeArea)
+        self.applyIfNeeded(insets, to: webView, force: force)
+      }
+      safeAreaPushWork = work
+      if force {
+        work.perform()
+      } else {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: work)
+      }
     }
 
     private func applyIfNeeded(_ insets: UIEdgeInsets, to webView: WKWebView, force: Bool) {

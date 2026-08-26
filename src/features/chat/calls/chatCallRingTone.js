@@ -6,6 +6,8 @@
  * pointer/key interaction so incoming can ring without tapping Answer first.
  */
 
+import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
+
 /** @typedef {{ stop: () => void }} ChatCallToneHandle */
 
 let sharedCtx = /** @type {AudioContext | null} */ (null)
@@ -39,10 +41,12 @@ export function unlockChatCallAudio() {
 
 /**
  * Keep the shared AudioContext primed from normal app taps so incoming can ring
- * without waiting for Accept (autoplay policy).
+ * without waiting for Accept (autoplay policy). Skipped in EdgeiOS shell ... capture-
+ * phase pointer listeners on every tap added measurable WKWebView gesture lag.
  */
 export function installChatCallAudioUnlock() {
   if (typeof window === 'undefined' || unlockInstalled) return
+  if (isEdgeiOSShell()) return
   unlockInstalled = true
 
   const onGesture = () => {

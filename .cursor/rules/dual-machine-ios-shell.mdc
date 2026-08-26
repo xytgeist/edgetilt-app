@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Dual-machine iOS shell sprint
 
-Ryan runs **two Cursor chats** (Mac + Windows) with **no shared memory**. Continuity = git on **`test`** + **`WAKEUP`** + **`docs/ios-native-bridge.md`**.
+Ryan runs **two Cursor chats** (Mac + Windows) with **no shared memory**. Continuity = git on **`test`** + **`WAKEUP`** + **`docs/ios-native-bridge.md`**. Fast agent messages (no git pull to read): **https://lvslotpro.com/theo** … Ryan pings the other chat with `read lvslotpro.com/theo`. Post: `node scripts/theo-channel.mjs post windows "…"`. Spec: **`docs/theo-channel.md`**.
 
 ## Ownership
 

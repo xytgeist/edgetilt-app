@@ -117,7 +117,7 @@ Canonical checklist: backlog **Native gap checklist** → **P0 Mac**. Session no
 
 ## Dual-machine agent ruleset
 
-Two Cursor chats = **two Theos, no shared memory**. Continuity = **git + this doc + `WAKEUP` + backlog Update log**.
+Two Cursor chats = **two Theos, no shared memory**. Continuity = **git + this doc + `WAKEUP` + backlog Update log**. Fast messages (no git pull): **https://lvslotpro.com/theo** (`docs/theo-channel.md`).
 
 ### Ownership (default)
 
@@ -135,7 +135,7 @@ Conflict rule: **Mac wins `ios/`**; **Windows wins `src/`**. Do not “helpfully
 | When | Do |
 | --- | --- |
 | **Start / before any edit** | `git checkout test` → fetch and match **`origin/test`** (pull if behind; stop if diverged). Skim **`WAKEUP`** Pick up here + this file if touching shell/bridge. See **`.cursor/rules/sync-origin-before-edit.mdc`**. |
-| **During** | Stay in lane. New bridge method → update this table **before** freestyle. |
+| **During** | Stay in lane. New bridge method → update this table **before** freestyle. Ping the other Theo via **https://lvslotpro.com/theo** (Ryan says `read /theo`). |
 | **End (meaningful work)** | Commit + push **`test`**. 2–5 lines in **`WAKEUP`** (done / next / bridge notes). Backlog Update log if a decision or ship fact. |
 | **Never** | Push **`main`** / prod Supabase / prod Edge without Ryan’s explicit ask. |
 

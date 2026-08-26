@@ -20,7 +20,7 @@
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, follow" }]
     },
     {
-      "source": "/compliance/(.*)",
+      "source": "/theo",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],
@@ -45,6 +45,7 @@
     { "source": "/poker", "destination": "/poker.html" },
     { "source": "/poker/bankroll", "destination": "/poker-bankroll.html" },
     { "source": "/poker/stable", "destination": "/poker-stable.html" },
+    { "source": "/theo", "destination": "/api/theo" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

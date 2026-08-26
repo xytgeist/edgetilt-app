@@ -1,6 +1,9 @@
 # https://edgetilt.com
 User-agent: *
 Allow: /
+Disallow: /theo
+
+# Legal policy pages stay reachable but are not search landing URLs (see sitemap + X-Robots-Tag on /privacy, /terms, /guidelines).
 
 # Legal policy pages stay reachable but are not search landing URLs (see sitemap + X-Robots-Tag on /privacy, /terms, /guidelines).
 

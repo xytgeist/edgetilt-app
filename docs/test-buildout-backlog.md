@@ -1058,7 +1058,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-26: **Lounge lightbox peek smoothness (Windows):** Peek no longer resizes the Stream flyout in React. Overlay scales the lightbox with `--lounge-media-peek-scale` (compositor). Drag updates CSS vars only. No SQL / Edge.
+- 2026-08-26: **Lounge lightbox sheet height + peek gap (Windows):** Sheet floored at **60lvh / 74lvh** (JS `innerHeight` px can no longer shrink it to ~50%). Peek contain-fits the flyout / image shell into the band above the sheet with a **12px** gap, instead of center-scaling the letterbox. No SQL / Edge.
+
+- 2026-08-26: **Lounge lightbox peek target (Windows):** Peek scale is on `[data-lounge-stream-hero-flyout]` / image stage, not the chrome overlay (video lives in the feed-tree flyout). No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox comments sheet peek (Windows):** Sheet still over a live lightbox. Media **contain-fits in the band above the sheet** (Stream flyout `forceBand` + image stage `--lounge-media-sheet-h`). The post/comment that owns that media is **caption-only** in the sheet. Same `<video>` node. Feed → Post unchanged. No SQL / Edge.
 

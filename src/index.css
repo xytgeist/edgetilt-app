@@ -8832,6 +8832,16 @@ html.light [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-gradien
   inherits: true;
   initial-value: 1;
 }
+@property --lounge-media-peek-tx {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+@property --lounge-media-peek-ty {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
 @property --lounge-media-peek-inset {
   syntax: "<length>";
   inherits: true;
@@ -8848,15 +8858,20 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-chrome-layer] {
 html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]) {
   transition:
     --lounge-media-peek-scale 0.28s cubic-bezier(0.32, 0.72, 0, 1),
-    --lounge-media-peek-inset 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    --lounge-media-peek-tx 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    --lounge-media-peek-ty 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging] {
   transition: none;
 }
 html[data-lounge-detail-over-lightbox] [data-lounge-stream-hero-flyout],
-html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
-  transform-origin: 50% 50% !important;
-  transform: translate3d(0, calc(var(--lounge-media-peek-inset, 0px) * -0.5), 0)
+html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-peek-media] {
+  transform-origin: 0 0 !important;
+  transform: translate3d(
+      var(--lounge-media-peek-tx, 0px),
+      var(--lounge-media-peek-ty, 0px),
+      0
+    )
     scale(var(--lounge-media-peek-scale, 1)) !important;
   will-change: transform;
 }
@@ -8874,15 +8889,15 @@ html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
 [data-lounge-media-detail-sheet] {
   width: 100%;
   max-width: none;
-  height: var(--lounge-media-sheet-h, min(60lvh, 60dvh));
-  max-height: var(--lounge-media-sheet-h, min(60lvh, 60dvh));
+  height: max(60lvh, var(--lounge-media-sheet-h, 0px));
+  max-height: max(60lvh, var(--lounge-media-sheet-h, 0px));
   transition:
     height 0.28s cubic-bezier(0.32, 0.72, 0, 1),
     transform 0.3s ease-out;
 }
 html[data-lounge-media-sheet-composer] [data-lounge-media-detail-sheet] {
-  height: var(--lounge-media-sheet-h, min(74lvh, 74dvh));
-  max-height: var(--lounge-media-sheet-h, min(74lvh, 74dvh));
+  height: max(74lvh, var(--lounge-media-sheet-h, 0px));
+  max-height: max(74lvh, var(--lounge-media-sheet-h, 0px));
 }
 html[data-lounge-media-sheet-dragging] [data-lounge-media-detail-sheet] {
   transition: none;

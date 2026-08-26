@@ -1420,6 +1420,7 @@ export function LoungeImageLightbox({
                     >
                       <div
                         className="relative z-[1] inline-flex max-h-full max-w-full"
+                        {...(i === idx ? { 'data-lounge-lightbox-peek-media': '' } : {})}
                         style={
                           i === landSlideIndexRef.current && heroShellStyle ? heroShellStyle : undefined
                         }
@@ -1455,6 +1456,7 @@ export function LoungeImageLightbox({
                       ? 'relative z-[1] inline-flex origin-center'
                       : 'relative z-[1] inline-flex max-h-full max-w-full origin-center'
                   }
+                  data-lounge-lightbox-peek-media=""
                   style={{ ...(heroShellStyle || null), ...mediaTransformStyle }}
                 >
                   <LoungeLightboxStackedPhoto

@@ -99,6 +99,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
+**Windows 2026-08-26 (lightbox comments sheet keyboard):** Composer focus on the overlay sheet must not slide the whole screen. Peek media + grab stay parked; only comments + composer inside the sheet move up onto the keyboard. `data-lounge-media-sheet-kb` + inner footer pad. Full Post slide unchanged. Smoke: lightbox → comment → tap composer → peek/grab stay, composer sits on the keys; dismiss keyboard → inner layout restores.
+
 **Windows 2026-08-26 (lightbox comments sheet):** Comment / reply from Stream or image lightbox keeps the lightbox playing and lifts post/comment detail as an X-style grab-handle sheet. Media contain-fits in the peek above the sheet; the owning post/comment is caption-only in the sheet. Feed → Post slide unchanged. Smoke: tap video/image → comment → fitted peek, no duplicate media in the sheet; dismiss sheet → full lightbox again.
 
 **GIF picker (Ryan smoke PASSED 2026-08-25, IPA + non-IPA):** Search takes focus (`#root` inert). Sheet is layout-viewport full screen, keyboard overlays. IPA hides the WK accessory bar. Do not reopen dismiss-keyboard hacks. Trim audio mux (`d744555b`) stays.

@@ -123,6 +123,8 @@ export function LoungeCommentCard({
   onSharePost,
   /** Viewport full-bleed carousel (caption-column rows only; off for thread ancestors). */
   captionColumnMedia = true,
+  /** While the X-style lightbox sheet is up, hide this entity's media (already in the peek). */
+  omitMediaEntityId = null,
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -265,6 +267,7 @@ export function LoungeCommentCard({
     !bodyEditing && feedCommentRowHasMedia(comment) ? (
       <LoungePostFeedImagesAndGif
         post={comment}
+        omitMediaEntityId={omitMediaEntityId}
         variant={mediaFeedVariant}
         captionColumnMedia={captionColumnMedia}
         firstMarginTopClass={
@@ -517,6 +520,7 @@ export default function LoungePostCommentThread({
   onSharePost,
   /** Tailwind z-index for image/video lightboxes (must exceed the detail shell's z-index). */
   lightboxPortalClass = 'z-[100]',
+  omitMediaEntityId = null,
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
@@ -676,6 +680,7 @@ export default function LoungePostCommentThread({
     onFeedVideoAutoplayChange,
     onStreamLightboxOpenDetail,
     onSharePost,
+    omitMediaEntityId,
   }
 
   const renderCommentRow = (comment) => (

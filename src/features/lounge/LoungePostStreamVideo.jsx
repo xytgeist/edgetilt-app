@@ -46,6 +46,11 @@ import {
   snapFlyoutToHeroOpen,
   snapFlyoutToHeroTile,
 } from './loungeLightboxFlip.js'
+import {
+  computeLoungeLightboxPeekTarget,
+  getLoungeDetailOverLightbox,
+  subscribeLoungeDetailOverLightbox,
+} from './loungeLightboxDetailSheet.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS, LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD, LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS } from './LoungeStreamVideoLightboxChrome.jsx'
 import LoungeBackArrowIcon from './LoungeBackArrowIcon.jsx'
@@ -338,6 +343,7 @@ export default function LoungePostStreamVideo({
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
   lightboxPortalClass = 'z-[100]',
+  hideAsSheetPeekDuplicate = false,
 }) {
   const sessionPosterUrl = String(sessionPosterUrlProp || '').trim()
   const persistedPosterTrim = useMemo(
@@ -2576,10 +2582,20 @@ export default function LoungePostStreamVideo({
     const applyHeroViewportLayout = () => {
       const from = heroFromRectRef.current
       if (!from || heroPhaseRef.current !== 'open') return
-      const target = computeHeroTargetRect(from, {
-        displayW,
-        displayH,
-      })
+      const peek = getLoungeDetailOverLightbox()
+      const target = peek
+        ? computeLoungeLightboxPeekTarget(from, { displayW, displayH })
+        : computeHeroTargetRect(from, { displayW, displayH })
+      const prev = heroTargetRectRef.current
+      if (
+        prev &&
+        Math.abs(prev.top - target.top) < 0.5 &&
+        Math.abs(prev.left - target.left) < 0.5 &&
+        Math.abs(prev.width - target.width) < 0.5 &&
+        Math.abs(prev.height - target.height) < 0.5
+      ) {
+        return
+      }
       heroTargetRectRef.current = target
       setHeroLayout(target)
     }
@@ -2593,6 +2609,7 @@ export default function LoungePostStreamVideo({
       tid = window.setTimeout(applyHeroViewportLayout, 120)
     }
     schedule()
+    const unsubPeek = subscribeLoungeDetailOverLightbox(schedule)
     window.addEventListener('resize', schedule)
     window.addEventListener('orientationchange', schedule)
     window.visualViewport?.addEventListener('resize', schedule)
@@ -2600,6 +2617,7 @@ export default function LoungePostStreamVideo({
     return () => {
       if (raf) cancelAnimationFrame(raf)
       if (tid) window.clearTimeout(tid)
+      unsubPeek()
       window.removeEventListener('resize', schedule)
       window.removeEventListener('orientationchange', schedule)
       window.visualViewport?.removeEventListener('resize', schedule)
@@ -3183,6 +3201,14 @@ export default function LoungePostStreamVideo({
   const heroTransformTransition = heroAnimating
     ? `transform ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
     : 'none'
+  const heroPeekGeometryTransition =
+    heroPhase === 'open' && !heroShrinkDomActive
+      ? 'top 280ms cubic-bezier(0.32, 0.72, 0, 1), left 280ms cubic-bezier(0.32, 0.72, 0, 1), width 280ms cubic-bezier(0.32, 0.72, 0, 1), height 280ms cubic-bezier(0.32, 0.72, 0, 1)'
+      : ''
+  const heroCombinedTransition =
+    [heroPeekGeometryTransition, heroTransformTransition === 'none' ? '' : heroTransformTransition]
+      .filter(Boolean)
+      .join(', ') || 'none'
   let heroFlipTransform = 'none'
   if (heroExpanded && heroLayout && heroPhase === 'opening' && heroTransitionArmed && heroFromRectRef.current && heroTargetRectRef.current) {
     heroFlipTransform = computeHeroExpandTransform(heroFromRectRef.current, heroTargetRectRef.current)
@@ -3201,7 +3227,7 @@ export default function LoungePostStreamVideo({
             ? undefined
             : {
                 transform: heroFlipTransform,
-                transition: heroTransformTransition,
+                transition: heroCombinedTransition,
                 willChange: heroAnimating ? 'transform' : undefined,
               }),
           borderRadius: heroPhase === 'open' ? 0 : 12,
@@ -3279,9 +3305,18 @@ export default function LoungePostStreamVideo({
     />
   ) : null
 
+  if (hideAsSheetPeekDuplicate && !lightboxOpen && !heroExpanded) {
+    return null
+  }
+
   return (
     <div
-      className={`${firstMarginTopClass} ${feedLikeVariant ? outerShellClass : `inline-flex shrink-0 self-start ${slideMaxW}`}`}
+      className={
+        hideAsSheetPeekDuplicate
+          ? 'mt-0 h-0 overflow-hidden'
+          : `${firstMarginTopClass} ${feedLikeVariant ? outerShellClass : `inline-flex shrink-0 self-start ${slideMaxW}`}`
+      }
+      aria-hidden={hideAsSheetPeekDuplicate ? true : undefined}
     >
       <div
         ref={containerRef}
@@ -3365,6 +3400,7 @@ export default function LoungePostStreamVideo({
             ) : null}
             <div
               ref={videoFlyoutRef}
+              {...(heroExpanded ? { 'data-lounge-stream-hero-flyout': '' } : {})}
               style={
                 heroExpandDomActive && heroExpandFlyoutStyleRef.current
                   ? heroExpandFlyoutStyleRef.current

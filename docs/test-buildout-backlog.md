@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox peek bugs (Windows):** Images/GIFs shrink from a painted-box cache after `landFrame` drops. 12px gap is the painted sheet top minus 12 (not a mismatched `innerHeight` estimate). Overlay composer pad listens to `visualViewport` only while kb-locked. Still **60lvh / 74lvh**. No Stream React peek transform. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox peek revert (Windows):** Ryan rolled back `a52bc836` / `efc8e9e7` / `100afceb`. Tree matches **`2c82f4c3`** (60lvh / 74lvh contain-fit peek). No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox sheet height + peek gap (Windows):** Sheet floored at **60lvh / 74lvh** (JS `innerHeight` px can no longer shrink it to ~50%). Peek contain-fits the flyout / image shell into the band above the sheet with a **12px** gap, instead of center-scaling the letterbox. No SQL / Edge.

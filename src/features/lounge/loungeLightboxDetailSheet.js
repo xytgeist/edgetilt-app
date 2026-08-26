@@ -13,7 +13,6 @@ let peekRevealed = false
 let dragOffsetPx = 0
 let sheetDragging = false
 const listeners = new Set()
-let dragEmitRaf = 0
 let viewportBound = false
 let sheetKbLocked = false
 let frozenPeekInsetPx = 0
@@ -31,14 +30,6 @@ function emit() {
     } catch {
       // ignore
     }
-  })
-}
-
-function emitOnNextFrame() {
-  if (dragEmitRaf) return
-  dragEmitRaf = requestAnimationFrame(() => {
-    dragEmitRaf = 0
-    emit()
   })
 }
 
@@ -106,9 +97,14 @@ function writeSheetHeightVar(px) {
 
 function writePeekInsetVar() {
   if (typeof document === 'undefined') return
-  const px = peekInsetPx()
-  if (px > 0) document.documentElement.style.setProperty('--lounge-media-peek-inset', `${px}px`)
-  else document.documentElement.style.setProperty('--lounge-media-peek-inset', '0px')
+  const inset = peekInsetPx()
+  const vh = layoutViewportH()
+  const scale =
+    overlayOn && peekRevealed && inset >= 8 && vh > 0
+      ? Math.max(0.08, Math.min(1, (vh - inset) / vh))
+      : 1
+  document.documentElement.style.setProperty('--lounge-media-peek-inset', `${Math.max(0, inset)}px`)
+  document.documentElement.style.setProperty('--lounge-media-peek-scale', String(scale))
 }
 
 function syncComposerAttr() {
@@ -178,7 +174,6 @@ export function setLoungeMediaSheetDragOffsetPx(dy) {
   if (next === dragOffsetPx) return
   dragOffsetPx = next
   writePeekInsetVar()
-  emitOnNextFrame()
 }
 
 /** Sheet dismissed or snapping closed ... media fills the viewport in the same motion. */
@@ -263,6 +258,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     document.documentElement.removeAttribute('data-lounge-detail-over-lightbox')
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
     document.documentElement.style.removeProperty('--lounge-media-peek-inset')
+    document.documentElement.style.removeProperty('--lounge-media-peek-scale')
   }
   emit()
 }
@@ -354,6 +350,7 @@ export function unlockLoungeMediaSheetKeyboard() {
   else if (typeof document !== 'undefined') {
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
     document.documentElement.style.removeProperty('--lounge-media-peek-inset')
+    document.documentElement.style.removeProperty('--lounge-media-peek-scale')
   }
   emit()
 }

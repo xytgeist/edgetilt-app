@@ -8827,6 +8827,17 @@ html.light [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-gradien
   );
 }
 
+@property --lounge-media-peek-scale {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@property --lounge-media-peek-inset {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 /* X-style comments sheet over lightbox: peek is media only. */
 html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-top-chrome],
 html[data-lounge-detail-over-lightbox] [data-lounge-stream-lightbox-chrome],
@@ -8834,11 +8845,24 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-chrome-layer] {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
-  bottom: var(--lounge-media-peek-inset, 0px) !important;
+html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]) {
+  transition:
+    --lounge-media-peek-scale 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    --lounge-media-peek-inset 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
-html[data-lounge-media-sheet-dragging] [data-lounge-image-lightbox-stage] {
-  transition: none !important;
+html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging] {
+  transition: none;
+}
+html[data-lounge-detail-over-lightbox] [data-lounge-media-lightbox] {
+  transform-origin: 50% 50%;
+  transform: translate3d(0, calc(var(--lounge-media-peek-inset, 0px) * -0.5), 0)
+    scale(var(--lounge-media-peek-scale, 1));
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]) {
+    transition: none;
+  }
 }
 [data-lounge-media-detail-scroll] {
   overscroll-behavior-y: none;

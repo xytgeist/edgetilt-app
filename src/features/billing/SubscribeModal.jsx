@@ -19,7 +19,7 @@ import {
   formatUsdMonthly,
   formatUsdOneTime,
 } from './edgePricing.js'
-import { startEdgeCheckout } from './stripeBillingApi.js'
+import { isCheckoutAuthRequiredError, startEdgeCheckout } from './stripeBillingApi.js'
 import {
   getAffiliateCodeForCheckout,
   getAffiliateStampForSubscribeUi,
@@ -280,6 +280,7 @@ function billingSwitchTargetInterval(interval) {
  *   onClose: () => void,
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
  *   onCheckoutStarted?: () => void,
+ *   onAuthRequiredForCheckout?: () => void,
  *   hasSlotsEdgePro?: boolean,
  *   hasSlotsEdgeLifetime?: boolean,
  *   hasSlotsEdgeStarter?: boolean,
@@ -293,6 +294,7 @@ export default function SubscribeModal({
   onClose,
   supabaseClient,
   onCheckoutStarted,
+  onAuthRequiredForCheckout,
   hasSlotsEdgePro = false,
   hasSlotsEdgeLifetime = false,
   hasSlotsEdgeStarter = false,
@@ -628,6 +630,14 @@ export default function SubscribeModal({
       })
     } catch (e) {
       setBusy(false)
+      if (isCheckoutAuthRequiredError(e)) {
+        if (onAuthRequiredForCheckout) {
+          onAuthRequiredForCheckout()
+          return
+        }
+        setError('Sign in to continue to checkout.')
+        return
+      }
       setError(e instanceof Error ? e.message : String(e))
     }
   }

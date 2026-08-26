@@ -149,6 +149,7 @@ function clearBillingQueryParams() {
 
 function App() {
   const AUTH_VIEW_STORAGE_KEY = 'lvslotpro-auth-view'
+  const RESUME_SUBSCRIBE_AFTER_AUTH_KEY = 'edge_resume_subscribe_after_auth'
   const [user, setUser] = useState(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -763,6 +764,17 @@ function App() {
     setSubscribeModal((s) => ({ ...s, open: false }))
   }, [])
 
+  useEffect(() => {
+    if (!user?.id || isChecking) return
+    try {
+      if (window.sessionStorage.getItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY) !== '1') return
+      window.sessionStorage.removeItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY)
+    } catch {
+      return
+    }
+    openSubscribeModal()
+  }, [user?.id, isChecking, openSubscribeModal])
+
   const closeBillingManageModal = useCallback(() => {
     setBillingManageOpen(false)
   }, [])
@@ -1069,12 +1081,27 @@ function App() {
     setAuthPanelOpen(true)
   }
 
+  const handleSubscribeAuthRequired = useCallback(() => {
+    try {
+      window.sessionStorage.setItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY, '1')
+    } catch {
+      // ignore
+    }
+    closeSubscribeModal()
+    openAuthPanel('create')
+  }, [closeSubscribeModal])
+
   const closeAuthPanel = useCallback(() => {
     setAuthPanelOpen(false)
     setLoginError('')
     setSignupError('')
     setSignupMessage('')
     setVerificationSuccess(false)
+    try {
+      window.sessionStorage.removeItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY)
+    } catch {
+      // ignore
+    }
   }, [])
 
   const openLegalDocument = useCallback(
@@ -1508,6 +1535,7 @@ function App() {
           onClose={closeSubscribeModal}
           supabaseClient={supabase}
           onCheckoutStarted={handleCheckoutStarted}
+          onAuthRequiredForCheckout={handleSubscribeAuthRequired}
           hasSlotsEdgePro={hasSlotsEdgeProFromRpc}
           hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeFromRpc}
           hasSlotsEdgeStarter={hasSlotsEdgeStarterFromRpc}

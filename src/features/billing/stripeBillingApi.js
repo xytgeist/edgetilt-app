@@ -1,4 +1,48 @@
 import { openExternalBillingUrl } from '../../utils/edgeNative.js'
+import { restoreSupabaseSession } from '../../utils/supabaseSessionRestore.js'
+
+export const CHECKOUT_AUTH_REQUIRED_CODE = 'CHECKOUT_AUTH_REQUIRED'
+export const CHECKOUT_AUTH_REQUIRED_MESSAGE = 'Sign in to continue to checkout.'
+
+/**
+ * @param {unknown} err
+ */
+export function isCheckoutAuthRequiredError(err) {
+  if (!err || typeof err !== 'object') {
+    const msg = String(err || '')
+    return /sign in to continue to checkout/i.test(msg) || /invalid or expired session/i.test(msg)
+  }
+  if ('code' in err && err.code === CHECKOUT_AUTH_REQUIRED_CODE) return true
+  const msg = err instanceof Error ? err.message : String(err)
+  return /sign in to continue to checkout/i.test(msg) || /invalid or expired session/i.test(msg)
+}
+
+function throwCheckoutAuthRequired() {
+  const err = new Error(CHECKOUT_AUTH_REQUIRED_MESSAGE)
+  err.code = CHECKOUT_AUTH_REQUIRED_CODE
+  throw err
+}
+
+function isAuthRequiredDetail(detail) {
+  const msg = String(detail || '').trim()
+  if (!msg) return false
+  return /invalid or expired session/i.test(msg) || /missing authorization bearer/i.test(msg)
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} fnName
+ * @param {Record<string, unknown>} body
+ */
+async function invokeBillingFunction(supabaseClient, fnName, body) {
+  const session = await restoreSupabaseSession(supabaseClient)
+  if (!session?.access_token) throwCheckoutAuthRequired()
+
+  return supabaseClient.functions.invoke(fnName, {
+    body,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+}
 
 /**
  * @param {Response | undefined} response
@@ -44,14 +88,18 @@ export async function startEdgeCheckout(supabaseClient, productSlug, options = {
   if (military) body.military_promo_code = military
   else if (code) body.affiliate_code = code
 
-  const { data, error, response } = await supabaseClient.functions.invoke('stripe-create-checkout-session', {
+  const { data, error, response } = await invokeBillingFunction(
+    supabaseClient,
+    'stripe-create-checkout-session',
     body,
-  })
+  )
   if (error) {
     const detail = await readEdgeFunctionError(response)
+    if (isAuthRequiredDetail(detail) || isAuthRequiredDetail(error.message)) throwCheckoutAuthRequired()
     throw new Error(detail || error.message || 'Could not start checkout.')
   }
   if (data?.error) {
+    if (isAuthRequiredDetail(data.error)) throwCheckoutAuthRequired()
     throw new Error(String(data.error))
   }
   if (!data?.url) {
@@ -63,14 +111,18 @@ export async function startEdgeCheckout(supabaseClient, productSlug, options = {
 
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient */
 export async function openBillingPortal(supabaseClient) {
-  const { data, error, response } = await supabaseClient.functions.invoke('stripe-create-portal-session', {
-    body: {},
-  })
+  const { data, error, response } = await invokeBillingFunction(
+    supabaseClient,
+    'stripe-create-portal-session',
+    {},
+  )
   if (error) {
     const detail = await readEdgeFunctionError(response)
+    if (isAuthRequiredDetail(detail) || isAuthRequiredDetail(error.message)) throwCheckoutAuthRequired()
     throw new Error(detail || error.message || 'Could not open billing portal.')
   }
   if (data?.error) {
+    if (isAuthRequiredDetail(data.error)) throwCheckoutAuthRequired()
     throw new Error(String(data.error))
   }
   if (!data?.url) {

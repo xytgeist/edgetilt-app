@@ -19,16 +19,13 @@ import { installGlobalTapHaptic } from './utils/tapHaptic.js'
 import { initGoogleAnalytics } from './utils/googleAnalytics.js'
 import { installChatCallPushProbeListener } from './utils/chatCallPushProbeListener.js'
 import { installEdgeAppVisibilityBeacon } from './utils/edgeAppVisibilityBeacon.js'
-import { isEdgeiOSShell } from './utils/edgeNative.js'
 
 // Capture console output for in-app debug log (staff only)
 installAppDebugLog()
 
-// SW call-push suppress (PWA only ... shell uses native APNs, no push-sw.js).
-if (!isEdgeiOSShell()) {
-  installEdgeAppVisibilityBeacon()
-  installChatCallPushProbeListener()
-}
+// SW call-push suppress: Cache visibility beacon + MessageChannel probe.
+installEdgeAppVisibilityBeacon()
+installChatCallPushProbeListener()
 
 // Apply theme before first paint to prevent flash
 applyTheme()

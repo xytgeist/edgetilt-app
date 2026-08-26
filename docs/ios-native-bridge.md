@@ -49,7 +49,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** + **web** (2026-08-25): Lounge Settings polls after grant and **uploads** hex to `apns_device_tokens`. Send needs Edge `APNS_*` secrets + function redeploy. |
 | `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'voiceChatEarpiece'\|'default' }` | `{ ok: boolean }` | Mac | **native** + **web** (2026-08-26): Lounge playback; calls use `voiceChatEarpiece` (audio) or `voiceChat` (video). |
 | `setAudioRoute` | JS→native | `{ route: 'earpiece'\|'speaker' }` | `{ ok: boolean, route }` | Mac | **native** + **web** (2026-08-26): IPA call speaker toggle via `chatCallAudioOutput.js`. |
-| `triggerHaptic` | JS→native | `{ style: 'light'\|'medium'\|'heavy'\|'success'\|'warning'\|'error' }` | `{ ok: boolean }` | Mac | **native** (2026-08-26). Web **shell caller disabled** (2026-08-26) … tap haptics off in IPA until a WKWebView-safe path is proven on device. |
+| `triggerHaptic` | JS→native | `{ style: 'light'\|'medium'\|'heavy'\|'success'\|'warning'\|'error' }` | `{ ok: boolean }` | Mac | **native** + **web** (2026-08-26): `tapHaptic.js` uses UIKit in shell. |
 | `reportIncomingCall` | JS→native | `{ callId, roomId, handle, hasVideo, uuid? }` | `{ ok, uuid }` | Mac | **native** + **web** (2026-08-26): `ChatCallProvider` + CallKit. |
 | `endNativeCall` | JS→native | `{ uuid?, callId? }` | `{ ok }` | Mac | **native** + **web** (2026-08-26): hangup / decline teardown. |
 | `getVoIPPushToken` | JS→native | none | `{ token }` | Mac | **native** + **web** (2026-08-26): PushKit token → `apns_device_tokens.push_channel=voip`. |

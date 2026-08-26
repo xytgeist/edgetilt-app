@@ -595,8 +595,6 @@ export function LoungePostFeedImagesAndGif({
   captionColumnMedia = false,
   /** First visible feed rows only. See {@link LoungeImageCarousel} `priority`. */
   priority = false,
-  /** Hide this row's media when it is already in the lightbox peek above the comments sheet. */
-  omitMediaEntityId = null,
 }) {
   const streamLightbox = useLoungeStreamLightbox()
   const lightboxHost = streamLightboxHost ?? post
@@ -650,9 +648,6 @@ export function LoungePostFeedImagesAndGif({
       ? () => streamLightbox.buildTopBarExtra(lightboxHost, post, streamLightboxTileCtx, streamLightboxSurface)
       : null
   const streamUid = feedPostStreamVideoUid(post)
-  const hideAsSheetPeekDuplicate = Boolean(
-    omitMediaEntityId && post?.id && String(post.id) === String(omitMediaEntityId),
-  )
   const pendingPublishKey = String(post?._pendingPublishKey || post?.id || '').trim()
   const authorPendingPublish =
     post?._authorPendingPublish === true || post?.feed_visible_at === null
@@ -660,7 +655,6 @@ export function LoungePostFeedImagesAndGif({
     String(post?._sessionStreamPosterBlob || '').trim() ||
     (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '')
   if (post?._authorPendingPublish && pendingPublishKey && !streamUid) {
-    if (hideAsSheetPeekDuplicate) return null
     const posterSrc = sessionPosterFromPost.startsWith('blob:') ? sessionPosterFromPost : ''
     return (
       <LoungePostPendingStreamPublishTile
@@ -704,7 +698,6 @@ export function LoungePostFeedImagesAndGif({
         renderMediaLightboxMenu={menuRenderer}
         renderMediaLightboxTopBarExtra={topBarExtraRenderer}
         lightboxPortalClass={lightboxPortalClass}
-        hideAsSheetPeekDuplicate={hideAsSheetPeekDuplicate}
       />
     )
   }
@@ -716,10 +709,11 @@ export function LoungePostFeedImagesAndGif({
   }
   const imgs = feedPostImageUrls(post)
   const gif = String(post?.gif_url || '').trim()
-  const imageBlock =
-    imgs.length > 0 ? (
+  if (imgs.length > 0) {
+    const urls = gif ? [...imgs, gif] : imgs
+    return (
       <LoungeImageCarousel
-        urls={gif ? [...imgs, gif] : imgs}
+        urls={urls}
         variant={variant}
         firstMarginTopClass={firstMarginTopClass}
         regionAriaLabel={gif ? 'Post images and GIF' : 'Post images'}
@@ -730,22 +724,16 @@ export function LoungePostFeedImagesAndGif({
         priority={priority}
         {...imageLightboxProps}
       />
-    ) : (
-      <LoungePostMediaPair
-        mediaUrl={post?.media_url}
-        gifUrl={post?.gif_url}
-        variant={variant}
-        firstMarginTopClass={firstMarginTopClass}
-        enableLightbox={enableLightbox}
-        {...imageLightboxProps}
-      />
-    )
-  if (hideAsSheetPeekDuplicate) {
-    return (
-      <div className="hidden" aria-hidden>
-        {imageBlock}
-      </div>
     )
   }
-  return imageBlock
+  return (
+    <LoungePostMediaPair
+      mediaUrl={post?.media_url}
+      gifUrl={post?.gif_url}
+      variant={variant}
+      firstMarginTopClass={firstMarginTopClass}
+      enableLightbox={enableLightbox}
+      {...imageLightboxProps}
+    />
+  )
 }

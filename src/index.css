@@ -8834,30 +8834,6 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-chrome-layer] {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
-  bottom: var(--lounge-media-sheet-h, min(78dvh, calc(100dvh - 5.5rem))) !important;
-}
-html[data-lounge-media-sheet-kb] [data-lounge-media-detail-sheet] {
-  top: var(--lounge-media-sheet-top) !important;
-  bottom: auto !important;
-  height: var(--lounge-media-sheet-panel-h) !important;
-  max-height: var(--lounge-media-sheet-panel-h) !important;
-}
-html[data-lounge-media-sheet-kb] [data-lounge-image-lightbox],
-html[data-lounge-media-sheet-kb] [data-lounge-media-lightbox] {
-  top: 0 !important;
-  bottom: auto !important;
-  height: var(--lounge-lightbox-layout-h, 100dvh) !important;
-  max-height: var(--lounge-lightbox-layout-h, 100dvh) !important;
-}
-[data-lounge-image-lightbox-stage] {
-  transition: bottom 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-lounge-image-lightbox-stage] {
-    transition: none;
-  }
-}
 html.light [data-lounge-media-detail-grab] {
   background-color: #d4d4d8;
 }

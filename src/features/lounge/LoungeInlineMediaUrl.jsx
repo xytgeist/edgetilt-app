@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import {
   LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS,
@@ -27,10 +27,6 @@ import {
   runHeroShrinkAnimation,
   snapFlyoutToHeroOpen,
 } from './loungeLightboxFlip.js'
-import {
-  getLoungeDetailOverLightbox,
-  subscribeLoungeDetailOverLightbox,
-} from './loungeLightboxDetailSheet.js'
 import {
   loungeFeedImageDeliveryUrl,
   markLoungeCfImageResizeUnavailable,
@@ -760,11 +756,6 @@ export function LoungeImageLightbox({
     // Full shell (chrome + media) so caption-heavy posts still dismiss like Stream.
     className: 'absolute inset-0 flex flex-col bg-transparent',
   })
-  const detailOverLightbox = useSyncExternalStore(
-    subscribeLoungeDetailOverLightbox,
-    getLoungeDetailOverLightbox,
-    () => false,
-  )
 
   const {
     onPointerDown: swipePointerDown,
@@ -1278,7 +1269,6 @@ export function LoungeImageLightbox({
           )}
         </div>
         <div
-          data-lounge-image-lightbox-stage=""
           className={[swipeClassName, isZoomed || isPinching ? 'touch-none' : ''].filter(Boolean).join(' ')}
           style={{
             // Above the flyout while opening so viewport chrome fades in over the growing image
@@ -1383,7 +1373,7 @@ export function LoungeImageLightbox({
               ref={mediaContainerRef}
               className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
               style={(() => {
-                if (detailOverLightbox || carouselMode) return undefined
+                if (carouselMode) return undefined
                 const pad = bandPadIfFits(idx)
                 return pad ? { paddingTop: pad.top, paddingBottom: pad.bottom } : undefined
               })()}

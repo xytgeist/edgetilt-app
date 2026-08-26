@@ -29,6 +29,7 @@ import {
 } from './loungeLightboxFlip.js'
 import {
   getLoungeDetailOverLightbox,
+  LOUNGE_MEDIA_PEEK_TRANSFORM,
   subscribeLoungeDetailOverLightbox,
 } from './loungeLightboxDetailSheet.js'
 import {
@@ -1147,6 +1148,12 @@ export function LoungeImageLightbox({
           height: landFrame.height,
         }
       : undefined
+  const peekMediaStyle = detailOverLightbox
+    ? {
+        transform: LOUNGE_MEDIA_PEEK_TRANSFORM,
+        transformOrigin: '0 0',
+      }
+    : null
 
   return createPortal(
     <div
@@ -1421,9 +1428,10 @@ export function LoungeImageLightbox({
                       <div
                         className="relative z-[1] inline-flex max-h-full max-w-full"
                         {...(i === idx ? { 'data-lounge-lightbox-peek-media': '' } : {})}
-                        style={
-                          i === landSlideIndexRef.current && heroShellStyle ? heroShellStyle : undefined
-                        }
+                        style={{
+                          ...(i === landSlideIndexRef.current && heroShellStyle ? heroShellStyle : null),
+                          ...(i === idx ? peekMediaStyle : null),
+                        }}
                       >
                         {loadFeed ? (
                           <LoungeLightboxStackedPhoto
@@ -1457,7 +1465,7 @@ export function LoungeImageLightbox({
                       : 'relative z-[1] inline-flex max-h-full max-w-full origin-center'
                   }
                   data-lounge-lightbox-peek-media=""
-                  style={{ ...(heroShellStyle || null), ...mediaTransformStyle }}
+                  style={{ ...(heroShellStyle || null), ...mediaTransformStyle, ...(peekMediaStyle || null) }}
                 >
                   <LoungeLightboxStackedPhoto
                     storedUrl={current}

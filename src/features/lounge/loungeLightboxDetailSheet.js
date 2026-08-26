@@ -7,6 +7,10 @@ const SHEET_MIN_PEEK_REM = 5.5
 /** Black gap between contain-fit media and the sheet top. */
 const PEEK_GAP_PX = 12
 
+/** Inline transform so peek beats React `transform: none` / leftover WAAPI on the flyout. */
+export const LOUNGE_MEDIA_PEEK_TRANSFORM =
+  'translate3d(var(--lounge-media-peek-tx, 0px), var(--lounge-media-peek-ty, 0px), 0) scale(var(--lounge-media-peek-scale, 1))'
+
 let overlayOn = false
 let composerExpanded = false
 let peekRevealed = false
@@ -166,7 +170,7 @@ function readPeekMediaLayoutBox() {
   }
   if (cachedPeekMediaBox) return cachedPeekMediaBox
   if (!peekTransformIsIdentity()) return null
-  const painted = readPaintedMediaBox(media)
+  const painted = readPaintedMediaBox(flyout) || readPaintedMediaBox(media)
   if (painted) cachedPeekMediaBox = painted
   return painted
 }
@@ -207,6 +211,22 @@ function writeSheetHeightVar(px) {
   if (typeof document === 'undefined') return
   if (px > 0) document.documentElement.style.setProperty('--lounge-media-sheet-h', `${px}px`)
   else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
+}
+
+function cancelPeekHostAnimations() {
+  if (typeof document === 'undefined') return
+  document
+    .querySelectorAll('[data-lounge-stream-hero-flyout], [data-lounge-lightbox-peek-media]')
+    .forEach((el) => {
+      if (!(el instanceof HTMLElement) || typeof el.getAnimations !== 'function') return
+      el.getAnimations().forEach((anim) => {
+        try {
+          anim.cancel()
+        } catch {
+          // ignore
+        }
+      })
+    })
 }
 
 function writePeekIdentityVars() {
@@ -382,6 +402,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     cachedPeekMediaBox = null
     captureOverlayLayoutBaseline()
     document.documentElement.setAttribute('data-lounge-detail-over-lightbox', '')
+    cancelPeekHostAnimations()
     syncDraggingAttr()
     const estimated = estimateLoungeMediaDetailSheetHeightPx()
     writeSheetHeightVar(estimated)

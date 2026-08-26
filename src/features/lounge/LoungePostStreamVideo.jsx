@@ -31,6 +31,11 @@ import {
 import { pauseLoungeHeroStreamForDismiss } from '../../utils/loungeLightboxMediaControl.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import {
+  getLoungeDetailOverLightbox,
+  LOUNGE_MEDIA_PEEK_TRANSFORM,
+  subscribeLoungeDetailOverLightbox,
+} from './loungeLightboxDetailSheet.js'
+import {
   clearFlyoutHeroInlineStyles,
   computeHeroExpandTransform,
   computeHeroTargetRect,
@@ -634,6 +639,11 @@ export default function LoungePostStreamVideo({
   const anyStreamLightboxOpen = useSyncExternalStore(
     subscribeLoungeStreamLightboxOpen,
     getLoungeStreamLightboxOpen,
+    () => false,
+  )
+  const loungeDetailOverLightbox = useSyncExternalStore(
+    subscribeLoungeDetailOverLightbox,
+    getLoungeDetailOverLightbox,
     () => false,
   )
   isActiveRef.current =
@@ -3202,7 +3212,10 @@ export default function LoungePostStreamVideo({
           ...(heroShrinkDomActive
             ? undefined
             : {
-                transform: heroFlipTransform,
+                transform:
+                  loungeDetailOverLightbox && heroPhase === 'open'
+                    ? LOUNGE_MEDIA_PEEK_TRANSFORM
+                    : heroFlipTransform,
                 transition: heroCombinedTransition,
                 willChange: heroAnimating ? 'transform' : undefined,
               }),

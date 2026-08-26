@@ -304,7 +304,7 @@ import {
   buildLoungeStreamLightboxCtxFromPostCardProps,
 } from './LoungeStreamLightboxContext.jsx'
 import { isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeStreamLightboxRenderers.jsx'
-import { setLoungeDetailOverLightboxAttr } from './loungeLightboxDetailSheet.js'
+import { setLoungeDetailOverLightboxAttr, notifyLoungeMediaDetailSheetMetrics } from './loungeLightboxDetailSheet.js'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import {
   LOUNGE_COMMENT_BUBBLE_D,
@@ -1266,6 +1266,7 @@ export default function SocialFeed({
   const [loungePostDetailOverLightbox, setLoungePostDetailOverLightbox] = useState(false)
   const loungePostDetailOverLightboxRef = useRef(false)
   const loungePostDetailOpenedAsLightboxSheetRef = useRef(false)
+  const [loungeLightboxSheetMediaEntityId, setLoungeLightboxSheetMediaEntityId] = useState(null)
   /** When true, post detail was opened from profile (likes/bookmarks/posts) and must sit above z-[101] profile chrome. */
   const [loungePostDetailAboveProfile, setLoungePostDetailAboveProfile] = useState(false)
   const [loungeDetailEditing, setLoungeDetailEditing] = useState(false)
@@ -7682,6 +7683,7 @@ export default function SocialFeed({
     loungePostDetailOverLightboxRef.current = false
     loungePostDetailOpenedAsLightboxSheetRef.current = false
     setLoungePostDetailOverLightbox(false)
+    setLoungeLightboxSheetMediaEntityId(null)
     setLoungeDetailOverLightboxAttr(false)
     setLoungePostDetail(null)
     setLoungePostDetailAboveProfile(false)
@@ -8928,6 +8930,10 @@ export default function SocialFeed({
       : loungePostDetailOpenedOverSearch
         ? 'z-[100]'
         : 'z-[98]'
+  const loungeSheetOmitMediaEntityId =
+    loungePostDetailOverLightbox && loungeLightboxSheetMediaEntityId
+      ? loungeLightboxSheetMediaEntityId
+      : null
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile
     ? 'z-[103]'
@@ -8975,6 +8981,7 @@ export default function SocialFeed({
           loungePostDetailPanelEnteredRef.current = true
           setLoungePostDetailPanelEntered(true)
         }
+        notifyLoungeMediaDetailSheetMetrics()
         return
       }
       finalizeLoungePostDetailClose()
@@ -9014,11 +9021,12 @@ export default function SocialFeed({
     }
   }, [cancelLoungeDetailEditMediaPrep, loungeDetailEditBackgroundUploadInFlight])
 
-  const enterLoungeLightboxDetailSheet = useCallback(() => {
+  const enterLoungeLightboxDetailSheet = useCallback((mediaEntityId) => {
     if (!loungePostDetail?.id) {
       loungePostDetailOpenedAsLightboxSheetRef.current = true
     }
     loungePostDetailOverLightboxRef.current = true
+    setLoungeLightboxSheetMediaEntityId(mediaEntityId ? String(mediaEntityId) : null)
     setLoungePostDetailOverLightbox(true)
     setLoungeDetailOverLightboxAttr(true)
   }, [loungePostDetail?.id])
@@ -9030,6 +9038,7 @@ export default function SocialFeed({
     }
     loungePostDetailOverLightboxRef.current = false
     setLoungePostDetailOverLightbox(false)
+    setLoungeLightboxSheetMediaEntityId(null)
     setLoungeDetailOverLightboxAttr(false)
   }, [closeLoungePostDetail])
 
@@ -9162,8 +9171,8 @@ export default function SocialFeed({
   const openLoungeStreamLightboxDetail = useCallback(
     (hostPost, mediaPost, { focusComposer = false } = {}) => {
       if (openProfileGateIfNeeded()) return
-      enterLoungeLightboxDetailSheet()
       const { displayEntity } = loungeStreamLightboxMediaSource(hostPost, mediaPost)
+      enterLoungeLightboxDetailSheet(displayEntity?.id)
       if (isFeedCommentEntity(displayEntity)) {
         if (loungePostDetail?.id && String(loungePostDetail.id) === String(displayEntity.post_id)) {
           openLoungeCommentDetail(displayEntity, { focusComposer, keepLightboxPlaying: true })
@@ -9200,7 +9209,7 @@ export default function SocialFeed({
     (comment, _media, { focusComposer = false } = {}) => {
       if (!comment?.id) return
       if (openProfileGateIfNeeded()) return
-      enterLoungeLightboxDetailSheet()
+      enterLoungeLightboxDetailSheet(comment.id)
       if (focusComposer) {
         onLoungeCommentReplyInteraction(comment)
       } else {
@@ -9771,8 +9780,9 @@ export default function SocialFeed({
   useEffect(() => {
     loungePostDetailOverLightboxRef.current = loungePostDetailOverLightbox
     setLoungeDetailOverLightboxAttr(loungePostDetailOverLightbox)
-    return () => setLoungeDetailOverLightboxAttr(false)
   }, [loungePostDetailOverLightbox])
+
+  useEffect(() => () => setLoungeDetailOverLightboxAttr(false), [])
 
   useEffect(() => {
     if (!composerUserId) {
@@ -17302,6 +17312,7 @@ export default function SocialFeed({
                   >
                     <LoungePostFeedImagesAndGif
                       post={loungePostDetail}
+                      omitMediaEntityId={loungeSheetOmitMediaEntityId}
                       variant="detail"
                       firstMarginTopClass={
                         loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
@@ -17353,6 +17364,7 @@ export default function SocialFeed({
                             lightboxPortalClass: loungeDetailMediaLightboxPortalClass,
                             streamLightboxHost: loungePostDetail,
                             streamLightboxSurface: loungeDetailStreamLightboxSurface,
+                            omitMediaEntityId: loungeSheetOmitMediaEntityId,
                           }}
                           onOpenGuideCard={openLoungeGuideCard}
                           fanSubscribeBusy={feedFanSubscribeBusy}
@@ -17402,6 +17414,7 @@ export default function SocialFeed({
                   >
                     <LoungePostFeedImagesAndGif
                       post={loungePostDetail}
+                      omitMediaEntityId={loungeSheetOmitMediaEntityId}
                       variant="detail"
                       firstMarginTopClass={
                         loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
@@ -17919,6 +17932,7 @@ export default function SocialFeed({
                     onFeedVideoAutoplayChange: onLoungeFeedVideoAutoplayChange,
                     onStreamLightboxOpenDetail: openLoungeCommentStreamLightboxDetail,
                     onSharePost: handleShareLoungePost,
+                    omitMediaEntityId: loungeSheetOmitMediaEntityId,
                   }}
                 />
               ) : null}
@@ -18004,6 +18018,7 @@ export default function SocialFeed({
                     onFeedVideoAutoplayChange: onLoungeFeedVideoAutoplayChange,
                     onStreamLightboxOpenDetail: openLoungeCommentStreamLightboxDetail,
                     onSharePost: handleShareLoungePost,
+                    omitMediaEntityId: loungeSheetOmitMediaEntityId,
                   }}
                 />
               ) : null}
@@ -18117,6 +18132,7 @@ export default function SocialFeed({
                           onFeedVideoAutoplayChange={onLoungeFeedVideoAutoplayChange}
                           onStreamLightboxOpenDetail={openLoungeCommentStreamLightboxDetail}
                           onSharePost={handleShareLoungePost}
+                          omitMediaEntityId={loungeSheetOmitMediaEntityId}
                         />
                       </>
                     )}

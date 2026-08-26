@@ -79,7 +79,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`87434bfd`** | Continuity wrap + profile tabs + FAB overlay (promote this to `main`) |
+| **`test`** | **`520cd621`** | Lightbox comments sheet (Ryan smoke PASSED 2026-08-26) |
 | **`main`** | **`87434bfd`** | Same tip after this session's `test` → `main` promote |
 
 ### Pick up here (2026-08-25 ... IPA feed unmute)
@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows 2026-08-26 (lightbox comments sheet):** Rest 60lvh / composer 74lvh on iOS. Peek contain-fits and centers in the status-bar-to-sheet gap. Overlay comments do **not** dim peek media (`bg-transparent`, not `bg-black/40`). Overlay composer keeps a **solid footer plate** (no frost halo). Collapsed pill has a **40px avatar** beside it. Opening the sheet starts on the **pill**, not the full composer (74lvh only after the field is focused). Opening comments from post/comment **detail** must keep the same lightbox instance (do not remount stills / unmount Stream) and dismiss must return to **that detail**, not the feed. Do **not** revive 65/80 or Stream React peek transform. Do **not** JS-height the hero `<video>`.
+**Windows 2026-08-26 (lightbox comments sheet):** **Ryan smoke PASSED.** Rest 60lvh / composer 74lvh on iOS. Peek contain-fits and centers in the status-bar-to-sheet gap. Overlay comments do **not** dim peek media (`bg-transparent`, not `bg-black/40`). Overlay composer keeps a **solid footer plate** (no frost halo). Collapsed pill has a **40px avatar** beside it. Opening the sheet starts on the **pill**, not the full composer (74lvh only after the field is focused). Opening comments from post/comment **detail** must keep the same lightbox instance (do not remount stills / unmount Stream) and dismiss must return to **that detail**, not the feed. Do **not** revive 65/80 or Stream React peek transform. Do **not** JS-height the hero `<video>`. Do **not** reopen PWA iOS composer-peek geometry.
 
 **GIF picker (Ryan smoke PASSED 2026-08-25, IPA + non-IPA):** Search takes focus (`#root` inert). Sheet is layout-viewport full screen, keyboard overlays. IPA hides the WK accessory bar. Do not reopen dismiss-keyboard hacks. Trim audio mux (`d744555b`) stays.
 

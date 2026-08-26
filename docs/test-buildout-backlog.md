@@ -1076,6 +1076,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-08-26: **Lounge lightbox peek 12px gap (Windows):** Peek band is `min(painted sheet top - 12, estimated 60/74 band)` so CSS `max(60lvh, …)` cannot sit on top of the media. Composer shrink still uses the smaller 74% estimate immediately. No SQL / Edge.
 
+- 2026-08-26: **Lounge lightbox comments sheet smoke PASSED (Ryan):** Overlay from feed and from post/comment detail. Peek not dimmed. Images/GIFs stay in lightbox. Video dismiss returns to the same detail (no freeze). Solid footer plate + 40px pill avatar. Sheet opens on the pill (not full composer). Tip **`520cd621`**. Do not reopen PWA iOS composer-peek geometry. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox overlay composer opens on the pill (Windows):** Invoking comments from a lightbox no longer expands the full reply composer or 74lvh sheet. Pill first. 74lvh + keyboard lock only after the field is focused. Overlay comment drill does not force-expand the composer. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox overlay composer frost (Windows):** Overlay comments composer keeps a solid footer plate (no gradient / `backdrop-filter` / upward shadow). Collapsed reply pill has a 40px avatar beside it (same height as the pill). Full post/comment detail glass unchanged. No SQL / Edge.

@@ -1048,6 +1048,7 @@ export default function SocialFeed({
   const [loungeDetailRepostMenuOpen, setLoungeDetailRepostMenuOpen] = useState(false)
   const loungeDetailRepostMenuRef = useRef(null)
   const loungePostDetailScrollRef = useRef(null)
+  const loungePostDetailPanelRef = useRef(null)
   const loungeDetailCommentFooterRef = useRef(null)
   const loungePostDetailPostAvatarRef = useRef(null)
   const loungePostDetailCommentConnectorRef = useRef(null)
@@ -9066,9 +9067,7 @@ export default function SocialFeed({
   }, [cancelLoungeDetailEditMediaPrep, loungeDetailEditBackgroundUploadInFlight])
 
   const enterLoungeLightboxDetailSheet = useCallback((mediaEntityId) => {
-    if (!loungePostDetail?.id) {
-      loungePostDetailOpenedAsLightboxSheetRef.current = true
-    }
+    loungePostDetailOpenedAsLightboxSheetRef.current = !loungePostDetail?.id
     loungePostDetailOverLightboxRef.current = true
     setLoungeLightboxSheetMediaEntityId(mediaEntityId ? String(mediaEntityId) : null)
     setLoungePostDetailOverLightbox(true)
@@ -9087,6 +9086,12 @@ export default function SocialFeed({
     if (loungePostDetailOpenedAsLightboxSheetRef.current) {
       closeLoungePostDetail()
       return
+    }
+    const panel = loungePostDetailPanelRef.current
+    if (panel instanceof HTMLElement) {
+      panel.style.transition = 'none'
+      panel.style.transform = ''
+      panel.style.willChange = ''
     }
     loungePostDetailOverLightboxRef.current = false
     setLoungePostDetailOverLightbox(false)
@@ -9821,6 +9826,22 @@ export default function SocialFeed({
   useEffect(() => {
     loungePostDetailOverLightboxRef.current = loungePostDetailOverLightbox
     setLoungeDetailOverLightboxAttr(loungePostDetailOverLightbox)
+  }, [loungePostDetailOverLightbox])
+
+  /** Swipe-dismiss leaves an inline translate on the same panel node. Overlay off must not keep it or the full detail stays off-screen. */
+  useLayoutEffect(() => {
+    if (loungePostDetailOverLightbox) return undefined
+    const panel = loungePostDetailPanelRef.current
+    if (!(panel instanceof HTMLElement)) return undefined
+    if (!panel.style.transform && panel.style.transition !== 'none') return undefined
+    panel.style.transition = 'none'
+    panel.style.transform = ''
+    panel.style.willChange = ''
+    const tid = window.requestAnimationFrame(() => {
+      if (loungePostDetailPanelRef.current !== panel) return
+      if (panel.style.transition === 'none') panel.style.transition = ''
+    })
+    return () => window.cancelAnimationFrame(tid)
   }, [loungePostDetailOverLightbox])
 
   useEffect(() => () => setLoungeDetailOverLightboxAttr(false), [])
@@ -16824,7 +16845,7 @@ export default function SocialFeed({
         <div
           className={`fixed inset-0 ${
             loungePostDetailOverLightbox
-              ? 'bg-black/40'
+              ? 'bg-transparent'
               : 'sm:bg-black/55 sm:backdrop-blur-[2px]'
           } ${loungePostDetailShellZClass}`}
           {...(loungePostDetailOverLightbox ? { 'data-lounge-media-detail-overlay': '' } : {})}
@@ -16845,6 +16866,7 @@ export default function SocialFeed({
             }}
           />
           <div
+            ref={loungePostDetailPanelRef}
             data-lounge-post-detail-sheet=""
             {...(loungePostDetailOverLightbox ? { 'data-lounge-media-detail-sheet': '' } : {})}
             className={

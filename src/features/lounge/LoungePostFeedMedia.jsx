@@ -740,12 +740,12 @@ export function LoungePostFeedImagesAndGif({
         {...imageLightboxProps}
       />
     )
-  if (hideAsSheetPeekDuplicate) {
-    return (
-      <div className="hidden" aria-hidden>
-        {imageBlock}
-      </div>
-    )
-  }
-  return imageBlock
+  return (
+    <div
+      className={hideAsSheetPeekDuplicate ? 'h-0 overflow-hidden' : 'contents'}
+      aria-hidden={hideAsSheetPeekDuplicate ? true : undefined}
+    >
+      {imageBlock}
+    </div>
+  )
 }

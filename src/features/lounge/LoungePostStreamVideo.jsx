@@ -3281,10 +3281,6 @@ export default function LoungePostStreamVideo({
     />
   ) : null
 
-  if (hideAsSheetPeekDuplicate && !lightboxOpen && !heroExpanded) {
-    return null
-  }
-
   return (
     <div
       className={

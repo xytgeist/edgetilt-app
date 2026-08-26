@@ -33,11 +33,6 @@ import {
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 
 const PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
-const PLAN_LABELS = {
-  [PRODUCT_SLOTS_EDGE_STARTER]: productDisplayName(PRODUCT_SLOTS_EDGE_STARTER),
-  [PRODUCT_SLOTS_EDGE]: productDisplayName(PRODUCT_SLOTS_EDGE),
-  [PRODUCT_SLOTS_EDGE_LIFETIME]: productDisplayName(PRODUCT_SLOTS_EDGE_LIFETIME),
-}
 
 /** @param {number} index @param {number} activeIndex */
 function getSlideOffset(index, activeIndex) {
@@ -1043,29 +1038,7 @@ export default function SubscribeModal({
               </div>
 
               <div className="subscribe-modal-footer shrink-0 pt-2">
-              <div
-                className="flex items-center justify-center gap-2"
-                role="tablist"
-                aria-label="Plan carousel pagination"
-              >
-                {PLAN_SLUGS.map((slug, index) => (
-                  <button
-                    key={slug}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeSlide === index}
-                    aria-label={`Show ${PLAN_LABELS[slug]} plan`}
-                    disabled={busy}
-                    onClick={() => selectPlan(slug, index)}
-                    className={[
-                      'h-2.5 rounded-full touch-manipulation transition-all',
-                      activeSlide === index ? 'w-7 bg-cyan-500' : 'w-2.5 bg-zinc-600 hover:bg-zinc-500',
-                    ].join(' ')}
-                  />
-                ))}
-              </div>
-
-              <p className="mt-4 text-center text-xs leading-relaxed text-zinc-500">
+              <p className="text-center text-xs leading-relaxed text-zinc-500">
                 Secure checkout powered by Stripe.
               </p>
 

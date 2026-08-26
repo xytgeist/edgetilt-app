@@ -22,6 +22,7 @@ let frozenSheetTop = 0
 let frozenSheetH = 0
 let frozenViewport = null
 let frozenKbInnerH = 0
+let frozenSafeTopPx = 0
 let lvhProbeEl = null
 let peekRevealTries = 0
 /** Painted image/GIF box, captured while peek transform is identity. */
@@ -50,6 +51,7 @@ function onViewportChange(event) {
     cachedPeekMediaBox = null
     writePeekIdentityVars()
     frozenKbInnerH = 0
+    frozenSafeTopPx = 0
     if (sheetKbLocked) {
       if (refreshCachedInnerKbPx()) emit()
       return
@@ -211,12 +213,53 @@ function readPeekMediaLayoutBox() {
   return painted
 }
 
-function peekContainTarget(box, bandW, bandH) {
+function readSafeTopPx() {
+  if (typeof document === 'undefined') return 0
+  const probe = document.createElement('div')
+  probe.setAttribute('aria-hidden', 'true')
+  probe.style.cssText =
+    'position:fixed;left:0;top:0;width:0;padding-top:max(env(safe-area-inset-top,0px),var(--edge-sat,0px));visibility:hidden;pointer-events:none'
+  document.documentElement.appendChild(probe)
+  const px = Number.parseFloat(getComputedStyle(probe).paddingTop)
+  probe.remove()
+  return Number.isFinite(px) && px > 0 ? Math.round(px) : 0
+}
+
+function captureSafeTopPx() {
+  if (frozenSafeTopPx > 0) return
+  frozenSafeTopPx = readSafeTopPx()
+}
+
+/** Visible peek gap: status-bar bottom → sheet top minus 12px. Wide stills contain-fit and center here. */
+function peekVisibleBand() {
+  if (!overlayOn || !peekRevealed) return { top: 0, height: 0 }
+  const vh = sheetLayoutH()
+  const estimatedH = visualSheetHeightPx()
+  const estimatedBottom = estimatedH < 8 ? 0 : Math.round(vh - estimatedH)
+  const sheetTop = readVisualSheetTopPx()
+  const dragging = sheetDragging || dragOffsetPx > 0 || peekResizing
+  const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
+  let bottom = 0
+  if (sheetTop >= 8 && !slidingOn) {
+    bottom = Math.round(sheetTop)
+    if (estimatedBottom > 0) bottom = Math.min(bottom, estimatedBottom)
+  } else if (estimatedBottom > 0) {
+    bottom = estimatedBottom
+  }
+  bottom -= PEEK_GAP_PX
+  const top = Math.max(0, Math.min(frozenSafeTopPx, Math.max(0, bottom - 8)))
+  const height = Math.max(0, Math.round(bottom - top))
+  return { top, height }
+}
+
+function peekContainTarget(box, bandW, band) {
+  const bandH = Math.max(0, Number(band?.height) || 0)
+  const bandTop = Math.max(0, Number(band?.top) || 0)
   const scale = Math.min(bandW / Math.max(box.width, 1), bandH / Math.max(box.height, 1), 1)
   const width = box.width * scale
   const height = box.height * scale
   return {
-    top: Math.max(0, bandH - height),
+    top: bandTop + Math.max(0, (bandH - height) / 2),
     left: (bandW - width) / 2,
     width,
     height,
@@ -319,34 +362,16 @@ function readVisualSheetTopPx() {
   return Number.isFinite(top) ? top : 0
 }
 
-function peekBandHeightPx() {
-  if (!overlayOn || !peekRevealed) return 0
-  const vh = sheetLayoutH()
-  const estimatedH = visualSheetHeightPx()
-  const estimatedBand =
-    estimatedH < 8 ? 0 : Math.max(0, Math.round(vh - estimatedH - PEEK_GAP_PX))
-  const sheetTop = readVisualSheetTopPx()
-  const dragging = sheetDragging || dragOffsetPx > 0 || peekResizing
-  const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
-  // Same coordinate space as the painted image box (getBoundingClientRect).
-  // Landscape stills are width-capped (scale stays 1 until the band is shorter
-  // than the photo). Following the 60lvh painted top while the sheet is already
-  // heading to 74% leaves them too tall and the sheet covers the bottom.
-  if (sheetTop >= 8 && !slidingOn) {
-    const paintedBand = Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
-    if (estimatedBand > 0) return Math.min(paintedBand, estimatedBand)
-    return paintedBand
-  }
-  return estimatedBand
-}
-
 function writePeekInsetVar() {
   if (typeof document === 'undefined') return
-  const bandH = peekBandHeightPx()
-  const inset = peekInsetPx()
+  const band = peekVisibleBand()
+  const inset =
+    !overlayOn || !peekRevealed || band.height < 8
+      ? 0
+      : Math.max(0, Math.round(sheetLayoutH() - (band.top + band.height)))
   const root = document.documentElement
-  root.style.setProperty('--lounge-media-peek-inset', `${Math.max(0, inset)}px`)
-  if (!overlayOn || !peekRevealed || bandH < 8) {
+  root.style.setProperty('--lounge-media-peek-inset', `${inset}px`)
+  if (!overlayOn || !peekRevealed || band.height < 8) {
     writePeekIdentityVars()
     return
   }
@@ -359,7 +384,7 @@ function writePeekInsetVar() {
     writePeekIdentityVars()
     return
   }
-  const target = peekContainTarget(box, vw, bandH)
+  const target = peekContainTarget(box, vw, band)
   const tx = Math.round(target.left - box.left)
   const ty = Math.round(target.top - box.top)
   root.style.setProperty('--lounge-media-peek-tx', `${tx}px`)
@@ -395,9 +420,9 @@ function visualSheetHeightPx() {
 
 function peekInsetPx() {
   if (!overlayOn || !peekRevealed) return 0
-  const band = peekBandHeightPx()
-  if (band < 8) return 0
-  return Math.max(0, sheetLayoutH() - band)
+  const band = peekVisibleBand()
+  if (band.height < 8) return 0
+  return Math.max(0, Math.round(sheetLayoutH() - (band.top + band.height)))
 }
 
 /** Grow the sheet when the overlay composer is focused ... media peek follows. */
@@ -464,6 +489,7 @@ function captureOverlayLayoutBaseline() {
     height: frozenLayoutH,
   }
   captureKeyboardViewportBaseline()
+  captureSafeTopPx()
   writeLayoutHeightVar()
 }
 
@@ -568,6 +594,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     clearPeekSettleWrite()
     frozenLayoutH = 0
     frozenKbInnerH = 0
+    frozenSafeTopPx = 0
     frozenViewport = null
     unbindViewportWatch()
     removeLvhProbe()
@@ -703,11 +730,13 @@ export function readLoungeOverlayInnerKeyboardOverlapPx() {
 
 export function computeLoungeLightboxPeekTarget(fromRect, extra = {}) {
   const insetBottomOpt = Number(extra.insetBottom)
+  const insetTopOpt = Number(extra.insetTop)
   const vpH = layoutViewportH()
   const vpW = layoutViewportW()
+  const band = peekVisibleBand()
   return computeHeroTargetRect(fromRect, {
     ...extra,
-    insetTop: Number(extra.insetTop) || 0,
+    insetTop: Number.isFinite(insetTopOpt) && insetTopOpt > 0 ? insetTopOpt : band.top,
     insetBottom: Number.isFinite(insetBottomOpt) ? insetBottomOpt : peekInsetPx(),
     forceBand: true,
     viewportW: vpW,

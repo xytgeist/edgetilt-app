@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox wide-image peek (Windows):** Wide stills were bottom-aligned in a band that included the status bar, so they sat on the sheet and could still clip. Peek now contain-fits and centers in the gap from `safe-area-inset-top` to the sheet (12px). Smoke: Edge Lord Aug 12 carousel first image. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox iOS landscape peek (Windows):** Wider-than-tall stills stay scale 1 until the peek band is shorter than the photo. Following the painted 60lvh sheet top while composer is already 74lvh left them too tall and the sheet covered the bottom. Peek band is now **min(painted top - 12, 60/74 estimate)** so composer shrinks them immediately. Android path unchanged. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox Android image peek (Windows):** Non-video stills live in a flex-centered `fixed inset-0` shell. IME shrinks that box, recenters the photo up, then peek still translates from the pre-keyboard cache so the image leaves the top. Android overlay now pins `[data-lounge-image-lightbox]` to `--lounge-media-layout-h`. Stream flyout unchanged. No SQL / Edge.

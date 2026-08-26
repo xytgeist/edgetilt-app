@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows 2026-08-26 (lightbox comments sheet):** Rest 60lvh / composer 74lvh on iOS. Peek contain-fits and centers in the status-bar-to-sheet gap. Composer peek uses the **74lvh destination** (not the 60lvh painted top) so wide stills shrink when the sheet grows. Android composer is 74% of the live layout. Do **not** revive 65/80 or Stream React peek transform. Do **not** JS-height the hero `<video>`.
+**Windows 2026-08-26 (lightbox comments sheet):** Rest 60lvh / composer 74lvh on iOS. Peek contain-fits and centers in the status-bar-to-sheet gap. iOS composer peek uses the **smallest real sheet top** (`innerHeight` / painted / 74lvh), not frozen-lvh minus 74lvh. Android composer is 74% of the live layout. Do **not** revive 65/80 or Stream React peek transform. Do **not** JS-height the hero `<video>`.
 
 **GIF picker (Ryan smoke PASSED 2026-08-25, IPA + non-IPA):** Search takes focus (`#root` inert). Sheet is layout-viewport full screen, keyboard overlays. IPA hides the WK accessory bar. Do not reopen dismiss-keyboard hacks. Trim audio mux (`d744555b`) stays.
 

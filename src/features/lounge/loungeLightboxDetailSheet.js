@@ -238,17 +238,28 @@ function peekCssSheetHeightPx() {
   return Math.round(lvh * activeSheetFraction())
 }
 
-function peekDestinationSheetHeightPx() {
-  const vh = sheetLayoutH()
-  const jsH = estimateSheetHeightForLayout(vh)
-  const cssH = peekCssSheetHeightPx()
-  let h = Math.max(jsH, cssH)
-  if (typeof document === 'undefined') return h
-  const el = document.querySelector('[data-lounge-media-detail-sheet]')
-  if (!(el instanceof HTMLElement)) return h
-  const paintedH = Math.round(el.getBoundingClientRect().height)
-  if (paintedH > 8) h = Math.max(h, paintedH)
-  return h
+function peekComposerSheetHeightPx() {
+  return Math.max(estimateSheetHeightForLayout(sheetLayoutH()), peekCssSheetHeightPx())
+}
+
+/** Highest plausible sheet top for the 74% composer sheet (smallest air gap). */
+function peekIosComposerBandBottomPx(sheetTop, slidingOn) {
+  const destH = peekComposerSheetHeightPx()
+  const bottoms = []
+  const consider = (layoutH) => {
+    const h = Math.round(Number(layoutH) || 0)
+    if (h > destH + 24) bottoms.push(h - destH)
+  }
+  consider(sheetLayoutH())
+  if (typeof window !== 'undefined') consider(window.innerHeight)
+  if (typeof document !== 'undefined') consider(document.documentElement?.clientHeight)
+  const probe = ensureLvhProbe()
+  if (probe instanceof HTMLElement) consider(probe.getBoundingClientRect().height)
+  let bottom = bottoms.length ? Math.min(...bottoms) : 0
+  if (sheetTop >= 8 && !slidingOn) {
+    bottom = bottom > 0 ? Math.min(bottom, Math.round(sheetTop)) : Math.round(sheetTop)
+  }
+  return bottom
 }
 
 /** Visible peek gap: status-bar bottom → sheet top minus 12px. Contain-fit and center. */
@@ -262,11 +273,14 @@ function peekVisibleBand() {
   const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
   let bottom = 0
   if (composerExpanded && !sheetDragging && dragOffsetPx === 0) {
-    // iOS sheet is max(74lvh, JS px). Measuring the 60lvh painted top while
-    // composer is already 74% leaves wide stills at scale 1 and the sheet covers them.
-    // Android composer is 74% of the live layout, not 74lvh.
-    const destH = IS_ANDROID ? visualSheetHeightPx() : peekDestinationSheetHeightPx()
-    if (destH > 8) bottom = Math.round(vh - destH)
+    // Android composer is 74% of the live layout. iOS 74lvh is parked in a
+    // smaller innerHeight than frozen lvh, so frozen-lvh minus 74lvh leaves a
+    // gap that is taller than the real sheet top... media does not shrink enough.
+    bottom = IS_ANDROID
+      ? visualSheetHeightPx() > 8
+        ? Math.round(vh - visualSheetHeightPx())
+        : 0
+      : peekIosComposerBandBottomPx(sheetTop, slidingOn)
   } else if (sheetTop >= 8 && !slidingOn) {
     bottom = Math.round(sheetTop)
     if (estimatedBottom > 0) bottom = Math.min(bottom, estimatedBottom)
@@ -398,10 +412,11 @@ function writePeekInsetVar() {
       : Math.max(0, Math.round(sheetLayoutH() - (band.top + band.height)))
   const root = document.documentElement
   root.style.setProperty('--lounge-media-peek-inset', `${inset}px`)
-  if (!overlayOn || !peekRevealed || band.height < 8) {
+  if (!overlayOn || !peekRevealed) {
     writePeekIdentityVars()
     return
   }
+  if (band.height < 8) return
   const box = readPeekMediaLayoutBox()
   const vw = Math.max(
     layoutViewportW(),

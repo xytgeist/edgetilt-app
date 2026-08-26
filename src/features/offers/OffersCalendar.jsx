@@ -27,7 +27,7 @@ import {
   OFFERS_IOS_ALERT_SETUP_SEEN_STORAGE_KEY_PREFIX,
   OFFERS_IOS_ALERT_REMINDER_SUPPRESS_STORAGE_KEY_PREFIX,
 } from './offerStorageKeys'
-import { isEdgeiOSShell } from '../../utils/edgeNative.js'
+import { isEdgeiOSShell, openEdgeAppSettings } from '../../utils/edgeNative.js'
 import {
   consumePwaNotifEnablePending,
   isIosDevice as detectIosDevice,
@@ -485,20 +485,47 @@ export default function OffersCalendar({
         return alertPreset
       }
 
-      const shouldEnable = await showAppConfirm({
-        title: 'Enable Notifications',
-        message: '',
-        confirmLabel: 'Enable',
-        cancelLabel: 'Cancel'
-      })
-      if (!shouldEnable) {
+      // OS already allows notifications ... register this device silently (no modal).
+      if (pushPermission === 'granted') {
+        await enablePush()
+        return alertPreset
+      }
+
+      if (pushPermission === 'denied') {
+        if (isEdgeiOSShell()) {
+          const openSettings = await showAppConfirm({
+            title: 'Notifications are off',
+            message:
+              'Edge alerts are disabled in iPhone Settings.\n\nOpen Settings → Edge → Notifications and turn on Allow Notifications. Then tap Turn on alerts on this device in Offer reminders.',
+            confirmLabel: 'Open Settings',
+            cancelLabel: 'Cancel',
+          })
+          if (openSettings) await openEdgeAppSettings()
+        } else {
+          await showAppInfo({
+            title: 'Notifications are off',
+            message:
+              'This site does not have notification permission. Open your browser site settings and set Notifications to Allow, then try again.',
+            confirmLabel: 'Got it',
+          })
+        }
         await setDefaultNone()
         return OFFER_ALERT_NONE
       }
 
+      // prompt (or unknown): call enable immediately ... do not show a confirm dialog
+      // first (second tap breaks the iOS user-gesture chain for native permission).
       const enabled = await enablePush()
       if (!enabled) {
-        return alertPreset
+        await showAppInfo({
+          title: 'Alerts not enabled',
+          message: isEdgeiOSShell()
+            ? 'Could not enable native alerts. Allow notifications when iOS prompts, or use Turn on alerts on this device below.'
+            : 'Could not enable push notifications. Allow notifications when your browser prompts.',
+          confirmLabel: 'Got it',
+        })
+        await setDefaultNone()
+        return OFFER_ALERT_NONE
       }
       return alertPreset
     },
@@ -508,6 +535,7 @@ export default function OffersCalendar({
       getIosAlertSetupSeenStorageKeyForUser,
       iosInstallRequired,
       isSafariBrowser,
+      pushPermission,
       pushSubscribed,
       setStoredAlertDefaultForCurrentUser,
       showAppConfirm,
@@ -1307,7 +1335,9 @@ export default function OffersCalendar({
                   ? 'Turn on native alerts below (or in Lounge Settings). Web push is not used in the store shell.'
                   : 'Alerts are unavailable because this browser does not support web push here (try Chrome on Android or your installed app on iPhone).'
                 : pushPermission === 'denied'
-                  ? 'This site does not have notification permission. Open your browser’s site settings for this page (lock or info icon → Permissions) and set Notifications to Allow, then try again.'
+                  ? isEdgeiOSShell()
+                    ? 'Notifications are off for Edge. Open Settings → Edge → Notifications, or tap Turn on alerts below after enabling.'
+                    : 'This site does not have notification permission. Open your browser’s site settings for this page (lock or info icon → Permissions) and set Notifications to Allow, then try again.'
                   : 'Alerts are temporarily unavailable while setup finishes.'}
           </div>
         ) : null}

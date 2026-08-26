@@ -77,6 +77,16 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
           completion(.success(["ok": ok]))
         }
       }
+    case "openAppSettings":
+      DispatchQueue.main.async {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+          completion(.success(["ok": false]))
+          return
+        }
+        UIApplication.shared.open(url, options: [:]) { ok in
+          completion(.success(["ok": ok]))
+        }
+      }
     case "bustServiceWorker":
       bustServiceWorker(completion: completion)
     case "getPushPermissionStatus":
@@ -294,6 +304,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     window.EdgeNative = {
       getInfo: function () { return call('getInfo', null); },
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
+      openAppSettings: function () { return call('openAppSettings', null); },
       getPushPermissionStatus: function () {
         return call('getPushPermissionStatus', null);
       },

@@ -80,6 +80,22 @@ export async function openExternalBillingUrl(url) {
 }
 
 /**
+ * Open the Edge app page in iOS Settings (notifications, etc.). Shell only.
+ * @returns {Promise<{ ok: boolean, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function openEdgeAppSettings() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { ok: false, via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('openAppSettings')
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
  * Ask the shell for AVAudioSession `.playback` so Lounge video ignores the silent switch.
  * No-op outside EdgeiOS. Never throws.
  *

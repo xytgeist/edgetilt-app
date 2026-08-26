@@ -458,6 +458,7 @@ function captureOverlayLayoutBaseline() {
     height: frozenLayoutH,
   }
   captureKeyboardViewportBaseline()
+  writeLayoutHeightVar()
 }
 
 /** Rest innerHeight only ... lvh vs visualViewport is why the composer sat above the keys. */
@@ -465,6 +466,15 @@ function captureKeyboardViewportBaseline() {
   if (typeof window === 'undefined') return
   const inner = Math.round(window.innerHeight || 0)
   if (inner > frozenKbInnerH) frozenKbInnerH = inner
+}
+
+function writeLayoutHeightVar() {
+  if (typeof document === 'undefined') return
+  if (frozenLayoutH > 0) {
+    document.documentElement.style.setProperty('--lounge-media-layout-h', `${frozenLayoutH}px`)
+  } else {
+    document.documentElement.style.removeProperty('--lounge-media-layout-h')
+  }
 }
 
 function estimatedParkedSheetBox() {
@@ -558,6 +568,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     document.documentElement.removeAttribute('data-lounge-detail-over-lightbox')
     document.documentElement.removeAttribute('data-lounge-media-sheet-resizing')
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
+    document.documentElement.style.removeProperty('--lounge-media-layout-h')
     document.documentElement.style.removeProperty('--lounge-media-peek-inset')
     document.documentElement.style.removeProperty('--lounge-media-peek-scale')
     document.documentElement.style.removeProperty('--lounge-media-peek-tx')

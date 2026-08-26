@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox Android image peek (Windows):** Non-video stills live in a flex-centered `fixed inset-0` shell. IME shrinks that box, recenters the photo up, then peek still translates from the pre-keyboard cache so the image leaves the top. Android overlay now pins `[data-lounge-image-lightbox]` to `--lounge-media-layout-h`. Stream flyout unchanged. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox Android composer sheet height (Windows):** Pad fix was not enough. Composer still used **74lvh** / frozen pre-keyboard height while `resizes-content` had already shrunk the layout, so the sheet filled the leftover band. Android now sizes the overlay sheet to **74% of the live layout** and does not lock the iOS pre-keyboard park. iOS 60/74 lvh + frozen pad unchanged. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox Android composer pad (Windows):** Overlay pad used frozen `innerHeight - visualViewport`, which double-counts Android `resizes-content` and parked the reply field under the status bar. Android now uses live `innerHeight - visualViewport` (usually 0). iOS path unchanged. No SQL / Edge.

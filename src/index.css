@@ -8862,6 +8862,16 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-peek-media] {
   transform: var(--lounge-media-peek-transform) !important;
   will-change: transform;
 }
+/* Image/GIF shell is flex-centered `fixed inset-0`. Android IME shrinks that box and
+   recenters the still upward; peek then translates from the old full-screen cache
+   and the photo leaves the top. Pin the pre-keyboard layout. Stream flyout is
+   pixel-fixed already. Do not set height on the hero <video>. */
+html.platform-android[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox] {
+  top: 0;
+  bottom: auto;
+  height: var(--lounge-media-layout-h, 100lvh);
+  max-height: none;
+}
 html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
     [data-lounge-media-sheet-resizing]
   )

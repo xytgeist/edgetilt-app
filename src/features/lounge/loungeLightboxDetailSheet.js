@@ -8,6 +8,12 @@ let overlayOn = false
 const listeners = new Set()
 let metricPollRaf = 0
 let viewportBound = false
+let sheetKbLocked = false
+let frozenPeekInsetPx = 0
+let frozenLayoutH = 0
+let frozenSheetTop = 0
+let frozenSheetH = 0
+let frozenViewport = null
 
 function emit() {
   listeners.forEach((fn) => {
@@ -40,6 +46,11 @@ function startMetricPoll() {
 
 function onViewportChange() {
   if (!overlayOn) return
+  if (sheetKbLocked) {
+    syncLockedSheetKeyboardVars()
+    emit()
+    return
+  }
   notifyLoungeMediaDetailSheetMetrics()
 }
 
@@ -48,6 +59,7 @@ function bindViewportWatch() {
   viewportBound = true
   window.addEventListener('resize', onViewportChange)
   window.visualViewport?.addEventListener('resize', onViewportChange)
+  window.visualViewport?.addEventListener('scroll', onViewportChange)
 }
 
 function unbindViewportWatch() {
@@ -55,6 +67,60 @@ function unbindViewportWatch() {
   viewportBound = false
   window.removeEventListener('resize', onViewportChange)
   window.visualViewport?.removeEventListener('resize', onViewportChange)
+  window.visualViewport?.removeEventListener('scroll', onViewportChange)
+}
+
+function rootFontPx() {
+  if (typeof document === 'undefined') return 16
+  return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+}
+
+function estimateSheetHeightForLayout(layoutH) {
+  const vh = Math.max(0, Number(layoutH) || 0)
+  const minPeek = SHEET_MIN_PEEK_REM * rootFontPx()
+  return Math.round(Math.min(vh * SHEET_DVH_FRACTION, Math.max(0, vh - minPeek)))
+}
+
+/** Keep the tallest pre-keyboard layout; never freeze a already-shrunk keyboard viewport. */
+function captureOverlayLayoutBaseline() {
+  if (typeof window === 'undefined') return
+  const layout = Math.max(window.innerHeight || 0, document.documentElement?.clientHeight || 0)
+  if (layout > frozenLayoutH) frozenLayoutH = layout
+  if (frozenLayoutH < 1) frozenLayoutH = layout
+  const width = window.innerWidth || 0
+  frozenViewport = {
+    width: Math.max(width, frozenViewport?.width || 0),
+    height: frozenLayoutH,
+  }
+}
+
+function estimatedParkedSheetBox() {
+  const height = estimateSheetHeightForLayout(frozenLayoutH)
+  if (height < 120 || frozenLayoutH < height + 24) return null
+  return {
+    top: Math.round(frozenLayoutH - height),
+    height,
+  }
+}
+
+/**
+ * Live box only if the sheet has actually landed on-screen.
+ * Off-screen / mid-slide rects are how the last pin hid the sheet.
+ */
+function readSettledOverlaySheetBox() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return null
+  const sheet = document.querySelector('[data-lounge-media-detail-sheet]')
+  if (!(sheet instanceof HTMLElement)) return null
+  const rect = sheet.getBoundingClientRect()
+  const estimated = estimatedParkedSheetBox()
+  if (!estimated) return null
+  if (rect.height < estimated.height * 0.7) return null
+  if (rect.top < 16) return null
+  if (rect.top > estimated.top + 48) return null
+  return {
+    top: Math.round(rect.top),
+    height: Math.round(rect.height),
+  }
 }
 
 /** Document flag so lightbox chrome can hide while the X-style detail sheet is up. */
@@ -62,6 +128,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
   overlayOn = Boolean(on)
   if (typeof document === 'undefined') return
   if (overlayOn) {
+    captureOverlayLayoutBaseline()
     document.documentElement.setAttribute('data-lounge-detail-over-lightbox', '')
     const estimated = estimateLoungeMediaDetailSheetHeightPx()
     if (estimated > 0) {
@@ -70,6 +137,9 @@ export function setLoungeDetailOverLightboxAttr(on) {
     startMetricPoll()
     bindViewportWatch()
   } else {
+    unlockLoungeMediaSheetKeyboard()
+    frozenLayoutH = 0
+    frozenViewport = null
     stopMetricPoll()
     unbindViewportWatch()
     document.documentElement.removeAttribute('data-lounge-detail-over-lightbox')
@@ -89,14 +159,11 @@ export function subscribeLoungeDetailOverLightbox(listener) {
 
 export function estimateLoungeMediaDetailSheetHeightPx() {
   if (typeof window === 'undefined') return 0
-  const rootPx =
-    typeof document !== 'undefined'
-      ? Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      : 16
-  const vv = window.visualViewport
-  const vh = vv?.height ?? window.innerHeight
-  const minPeek = SHEET_MIN_PEEK_REM * rootPx
-  return Math.round(Math.min(vh * SHEET_DVH_FRACTION, Math.max(0, vh - minPeek)))
+  const vh =
+    sheetKbLocked && frozenLayoutH > 0
+      ? frozenLayoutH
+      : (window.visualViewport?.height ?? window.innerHeight)
+  return estimateSheetHeightForLayout(vh)
 }
 
 export function readLoungeMediaDetailSheetBottomInsetPx() {
@@ -113,6 +180,7 @@ export function readLoungeMediaDetailSheetBottomInsetPx() {
 /** Prefer the live sheet box; fall back to the CSS height while it is still sliding on. */
 export function readLoungeLightboxPeekBottomInsetPx() {
   if (!overlayOn) return 0
+  if (sheetKbLocked && frozenPeekInsetPx > 0) return frozenPeekInsetPx
   const measured = readLoungeMediaDetailSheetBottomInsetPx()
   const estimated = estimateLoungeMediaDetailSheetHeightPx()
   if (measured < estimated * 0.45) return estimated
@@ -121,22 +189,104 @@ export function readLoungeLightboxPeekBottomInsetPx() {
 
 export function syncLoungeMediaSheetHeightVar() {
   if (typeof document === 'undefined') return
+  if (sheetKbLocked) return
   const px = overlayOn ? readLoungeLightboxPeekBottomInsetPx() : 0
   if (px > 0) document.documentElement.style.setProperty('--lounge-media-sheet-h', `${px}px`)
   else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
 }
 
 export function notifyLoungeMediaDetailSheetMetrics() {
+  if (sheetKbLocked) {
+    syncLockedSheetKeyboardVars()
+    emit()
+    return
+  }
   syncLoungeMediaSheetHeightVar()
   emit()
 }
 
+function syncLockedSheetKeyboardVars() {
+  if (typeof document === 'undefined' || typeof window === 'undefined' || !sheetKbLocked) return
+  const visibleH = window.visualViewport?.height ?? window.innerHeight ?? 0
+  const overlap = Math.max(0, Math.round(frozenLayoutH - visibleH))
+  document.documentElement.style.setProperty(
+    '--lounge-media-sheet-top',
+    `${Math.round(frozenSheetTop)}px`,
+  )
+  document.documentElement.style.setProperty('--lounge-overlay-inner-kb', `${overlap}px`)
+}
+
+/**
+ * Pin peek + sheet frame from the pre-keyboard baseline.
+ * Never pin a mid-slide / off-screen live rect (that hid the sheet last time).
+ * Call from composer focus; safe to call before the slide finishes.
+ */
+export function lockLoungeMediaSheetKeyboard() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (!overlayOn) return
+  captureOverlayLayoutBaseline()
+  const parked = estimatedParkedSheetBox()
+  if (!parked) return
+  const settled = readSettledOverlaySheetBox()
+  const box = settled || parked
+  frozenSheetTop = box.top
+  frozenSheetH = box.height
+  frozenPeekInsetPx = box.height
+  sheetKbLocked = true
+  document.documentElement.style.setProperty('--lounge-media-sheet-h', `${frozenPeekInsetPx}px`)
+  document.documentElement.style.setProperty('--lounge-media-sheet-panel-h', `${frozenSheetH}px`)
+  document.documentElement.style.setProperty('--lounge-lightbox-layout-h', `${frozenLayoutH}px`)
+  syncLockedSheetKeyboardVars()
+  document.documentElement.setAttribute('data-lounge-media-sheet-kb', '')
+  emit()
+}
+
+export function unlockLoungeMediaSheetKeyboard() {
+  if (!sheetKbLocked) return
+  sheetKbLocked = false
+  frozenPeekInsetPx = 0
+  frozenSheetTop = 0
+  frozenSheetH = 0
+  if (typeof document !== 'undefined') {
+    document.documentElement.removeAttribute('data-lounge-media-sheet-kb')
+    document.documentElement.style.removeProperty('--lounge-media-sheet-panel-h')
+    document.documentElement.style.removeProperty('--lounge-media-sheet-top')
+    document.documentElement.style.removeProperty('--lounge-lightbox-layout-h')
+    document.documentElement.style.removeProperty('--lounge-overlay-inner-kb')
+  }
+  if (overlayOn) syncLoungeMediaSheetHeightVar()
+  else if (typeof document !== 'undefined') {
+    document.documentElement.style.removeProperty('--lounge-media-sheet-h')
+  }
+  emit()
+}
+
+export function getLoungeMediaSheetKeyboardLocked() {
+  return sheetKbLocked
+}
+
+export function readLoungeOverlayInnerKeyboardOverlapPx() {
+  if (!sheetKbLocked || frozenLayoutH < 1 || typeof window === 'undefined') return 0
+  const visibleH = window.visualViewport?.height ?? window.innerHeight ?? 0
+  return Math.max(0, Math.round(frozenLayoutH - visibleH))
+}
+
 export function computeLoungeLightboxPeekTarget(fromRect, extra = {}) {
   const insetBottomOpt = Number(extra.insetBottom)
+  const vp = sheetKbLocked && frozenViewport ? frozenViewport : null
   return computeHeroTargetRect(fromRect, {
     ...extra,
     insetTop: Number(extra.insetTop) || 0,
-    insetBottom: Number.isFinite(insetBottomOpt) ? insetBottomOpt : readLoungeLightboxPeekBottomInsetPx(),
+    insetBottom: Number.isFinite(insetBottomOpt)
+      ? insetBottomOpt
+      : readLoungeLightboxPeekBottomInsetPx(),
     forceBand: true,
+    ...(vp
+      ? {
+          viewportW: vp.width,
+          viewportH: vp.height,
+          ignoreVisualViewport: true,
+        }
+      : {}),
   })
 }

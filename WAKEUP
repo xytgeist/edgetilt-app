@@ -95,7 +95,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat. Safari/PWA per-tile feed sound (EdgeiOS handoff is signed). GIF dismiss-keyboard hacks (inert + layout viewport is the signed path).
 
-**Next:** Windows APNs: token upload is in web + test SQL. Set test Edge `APNS_*` and redeploy senders before device smoke. Mac: tap → load `url`. No SQL on prod until Ryan asks.
+**Next:** APNs delivery signed on test (Ryan got a banner). Mac next: tap → load payload `url` in WKWebView. No SQL on prod until Ryan asks.
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
@@ -115,7 +115,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows 2026-08-25 (SEO hub → app auth):** Brand / Open app / primary CTAs on `/slots` (+ tool subpages), `/guides`, `/advantage-play-slots`, `/poker` (+ subpages) use `?auth=join`. SPA opens Join for logged-out visitors and strips the param. Logged-in skips the modal. Guide catalog deep links stay without `auth=`. Needs `main` for edgetilt.com.
 
-**Windows 2026-08-25 (APNs upload):** IPA Settings → Allow now upserts the hex token to **`apns_device_tokens`** on test SQL **`20260825210000`**. Real banners still need Edge secrets **`APNS_KEY_ID` + `APNS_P8`** and a redeploy of **`lounge-send-activity-push`** (plus test/offer senders). Mac next: tap notification → load payload `url` in WKWebView. Do not edit `ios/`.
+**Windows 2026-08-25 (APNs upload):** IPA Settings → Allow upserts hex to **`apns_device_tokens`** (SQL **`20260825210000`**). **Ryan device sign-off 2026-08-25:** Lounge activity push arrived on IPA after test Edge `APNS_*` secrets. Mac next: tap → load payload `url` in WKWebView. Do not edit `ios/` from Windows.
 
 **Windows 2026-08-25 (Theo channel):** Fast Mac↔Windows mailbox is **https://lvslotpro.com/theo** (SSR HTML, no git pull to read). Post: `node scripts/theo-channel.mjs post windows "…"`. Ryan pings the other chat with `read lvslotpro.com/theo`. Do not put secrets in it. Needs Vercel `test` deploy before the URL works.
 
@@ -169,10 +169,11 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - Web-gate smoke: Joey K fan unsub opened Stripe in system Safari. Settings / Offers: no A2HS / web-push install nag.
 - OAuth-in-shell: Log out → Continue with Google → back in Edge signed in. No ASWebAuthentication needed.
 - Post-detail hard crash: could not repro. Video detail → back, phone stayed on.
-- Native APNs permission: Settings → Push → iOS Allow prompt → switch stays on (`815864e1`). Alerts still need Windows token upload/send.
+- Native APNs permission: Settings → Push → iOS Allow prompt → switch stays on (`815864e1`).
+- APNs delivery: Lounge activity banner arrived on device after test Edge `APNS_*` secrets (token row for `@edgelord`).
 
 **Mac do now (Ryan + Theo):**
-1. Windows: APNs token upload + send path (and deep links when send works). New LLC / org can wait.
+1. Notification tap → load payload `url` in existing WKWebView (`didReceive`). No new `EdgeNative` method. New LLC / org can wait.
 
 **Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 

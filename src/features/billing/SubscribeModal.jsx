@@ -200,7 +200,7 @@ function PlanPromoBadge({ affiliate = null, military = false }) {
           </span>
           <span className="subscribe-plan-military-badge-divider h-3 w-px shrink-0 bg-emerald-400/40" aria-hidden />
           <span className="subscribe-plan-military-badge-value text-[11px] font-semibold text-emerald-50">
-            {MILITARY_PROMO_PERCENT_OFF}% off forever
+            {MILITARY_PROMO_PERCENT_OFF}% off
           </span>
         </div>
       </div>
@@ -548,7 +548,7 @@ export default function SubscribeModal({
     : affiliatePromo?.buyerDiscountPct || SLOTS_EDGE_FOUNDING_PERCENT_OFF
   const isAffiliatePromo = !isMilitaryPromo && Boolean(affiliatePromo?.buyerDiscountPct)
   const affiliateVia = affiliateHandleLabel(affiliatePromo)
-  const militaryRateCaption = `${MILITARY_PROMO_PERCENT_OFF}% off forever`
+  const militaryRateCaption = `${MILITARY_PROMO_PERCENT_OFF}% off`
   const discounted = {
     starterMonthlyUsd: applyPercentOff(SLOTS_EDGE_STARTER_MONTHLY_USD, promoPercentOff),
     starterAnnualUsd: applyPercentOff(SLOTS_EDGE_STARTER_ANNUAL_USD, promoPercentOff),
@@ -653,13 +653,21 @@ export default function SubscribeModal({
         data-subscribe-modal
         className="subscribe-modal-shell relative z-10 flex h-[96dvh] max-h-[96dvh] min-h-[96dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:h-[94dvh] sm:max-h-[94dvh] sm:min-h-[94dvh] sm:max-w-2xl sm:rounded-[1.75rem]"
       >
-        <div className="subscribe-modal-hero relative z-20 shrink-0 bg-zinc-950 px-6 pb-3 pt-5 sm:px-7 sm:pb-5 sm:pt-7">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 z-50 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-900/80 text-lg leading-none text-zinc-400 touch-manipulation hover:border-zinc-600 hover:text-zinc-200 sm:right-5 sm:top-5"
+        >
+          <span aria-hidden>×</span>
+        </button>
+        <div className="subscribe-modal-hero relative z-10 shrink-0 bg-zinc-950 px-6 pb-3 pt-5 pr-14 sm:px-7 sm:pb-5 sm:pt-7 sm:pr-16">
           <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(6,182,212,0.2),transparent_60%)]"
             aria-hidden
           />
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
+          <div className="relative">
+            <div className="min-w-0">
               <div className="mb-2 inline-flex h-5 items-center">
                 <img
                   src="/edge-lounge-logo-transparent.png"
@@ -684,18 +692,10 @@ export default function SubscribeModal({
                 </p>
               ) : null}
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-900/80 text-lg leading-none text-zinc-400 touch-manipulation hover:border-zinc-600 hover:text-zinc-200"
-            >
-              <span aria-hidden>×</span>
-            </button>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:px-7 sm:pb-6">
+        <div className="relative z-20 flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:px-7 sm:pb-6">
           {hasSlotsEdgeLifetime ? (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5">
               <p className="text-sm leading-relaxed text-zinc-300">
@@ -705,7 +705,7 @@ export default function SubscribeModal({
             </div>
           ) : (
             <>
-              <div className="relative z-10 flex min-h-0 flex-1 items-start justify-center overflow-visible px-1 pb-1 pt-8 sm:items-center sm:pt-10 sm:pb-2">
+              <div className="relative z-20 flex min-h-0 flex-1 items-start justify-center overflow-visible px-1 pb-1 pt-8 sm:items-center sm:pt-10 sm:pb-2">
                 <button
                   type="button"
                   aria-label="Previous plan"

@@ -22,7 +22,7 @@ settings:
     INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     CODE_SIGN_STYLE: Automatic
-    # Personal Team (Ryan) for device Run; swap to org Team ID at App Store enroll.
+    # Individual paid team (Ryan / investigence@gmail.com). Same ID as the old free Personal Team.
     DEVELOPMENT_TEAM: 8932AKQW4W
     ENABLE_PREVIEWS: NO
     ENABLE_USER_SCRIPT_SANDBOXING: YES
@@ -43,9 +43,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.edgetilt.app
         PRODUCT_NAME: EdgeTilt
-        # Push entitlements (`EdgeTilt.entitlements`) require a paid Apple Developer / org team
-        # with Push Notifications capability. Personal Team device Run omits CODE_SIGN_ENTITLEMENTS;
-        # bridge still implements requestPushPermission / getPushToken (token stays null until APNs enabled).
+        CODE_SIGN_ENTITLEMENTS: EdgeTilt/EdgeTilt.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO

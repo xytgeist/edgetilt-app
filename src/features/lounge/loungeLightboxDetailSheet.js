@@ -30,7 +30,7 @@ let cachedPeekMediaBox = null
 let cachedInnerKbPx = 0
 let peekFollowRaf = 0
 let peekResizing = false
-const PEEK_FOLLOW_MS = 300
+const PEEK_FOLLOW_MS = 400
 
 function emit() {
   listeners.forEach((fn) => {
@@ -322,16 +322,22 @@ function readVisualSheetTopPx() {
 function peekBandHeightPx() {
   if (!overlayOn || !peekRevealed) return 0
   const vh = sheetLayoutH()
+  const estimatedH = visualSheetHeightPx()
+  const estimatedBand =
+    estimatedH < 8 ? 0 : Math.max(0, Math.round(vh - estimatedH - PEEK_GAP_PX))
   const sheetTop = readVisualSheetTopPx()
   const dragging = sheetDragging || dragOffsetPx > 0 || peekResizing
   const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
   // Same coordinate space as the painted image box (getBoundingClientRect).
-  // Landscape shots are width-capped so they only re-fit when this band actually
-  // shrinks with the painted sheet, not with a mixed lvh estimate.
-  if (sheetTop >= 8 && !slidingOn) return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
-  const estimated = visualSheetHeightPx()
-  if (estimated < 8) return 0
-  return Math.max(0, vh - estimated - PEEK_GAP_PX)
+  // Landscape stills are width-capped (scale stays 1 until the band is shorter
+  // than the photo). Following the 60lvh painted top while the sheet is already
+  // heading to 74% leaves them too tall and the sheet covers the bottom.
+  if (sheetTop >= 8 && !slidingOn) {
+    const paintedBand = Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
+    if (estimatedBand > 0) return Math.min(paintedBand, estimatedBand)
+    return paintedBand
+  }
+  return estimatedBand
 }
 
 function writePeekInsetVar() {

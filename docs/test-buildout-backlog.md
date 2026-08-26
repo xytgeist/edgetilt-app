@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox iOS landscape peek (Windows):** Wider-than-tall stills stay scale 1 until the peek band is shorter than the photo. Following the painted 60lvh sheet top while composer is already 74lvh left them too tall and the sheet covered the bottom. Peek band is now **min(painted top - 12, 60/74 estimate)** so composer shrinks them immediately. Android path unchanged. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox Android image peek (Windows):** Non-video stills live in a flex-centered `fixed inset-0` shell. IME shrinks that box, recenters the photo up, then peek still translates from the pre-keyboard cache so the image leaves the top. Android overlay now pins `[data-lounge-image-lightbox]` to `--lounge-media-layout-h`. Stream flyout unchanged. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox Android composer sheet height (Windows):** Pad fix was not enough. Composer still used **74lvh** / frozen pre-keyboard height while `resizes-content` had already shrunk the layout, so the sheet filled the leftover band. Android now sizes the overlay sheet to **74% of the live layout** and does not lock the iOS pre-keyboard park. iOS 60/74 lvh + frozen pad unchanged. No SQL / Edge.

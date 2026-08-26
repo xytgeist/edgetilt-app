@@ -8827,6 +8827,21 @@ html.light [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-gradien
   );
 }
 
+/* X-style comments sheet over lightbox: peek is media only. */
+html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-top-chrome],
+html[data-lounge-detail-over-lightbox] [data-lounge-stream-lightbox-chrome],
+html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-chrome-layer] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+html.light [data-lounge-media-detail-grab] {
+  background-color: #d4d4d8;
+}
+html.light [data-lounge-media-detail-sheet] {
+  box-shadow: 0 -16px 48px rgba(15, 23, 42, 0.14);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
 /* Post / comment detail - zinc-neutral glass (panel is zinc-950). */
 .lounge-detail-comment-footer-glass {
   background: rgba(9, 9, 11, 0.58);

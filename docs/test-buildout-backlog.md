@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox comments sheet (Windows, X-style v1):** Comment / reply from Stream or image/GIF lightbox no longer dismisses the lightbox. Post/comment detail lifts as a grab-handle bottom sheet over the still-playing media (`data-lounge-media-detail-sheet`, z-109). Same detail tree + reply composer. Feed → Post slide unchanged. Light sheet scoped under `html.light`. No SQL / Edge.
+
 - 2026-08-26: **EdgeiOS APNs prod smoke PASSED (Ryan):** Like → native banner on EdgeTilt against **edgetilt.com**. Tip **`698749b1`**. Sandbox device token + prod Supabase/Edge is the expected path until App Store `aps-environment` = production.
 
 - 2026-08-26: **EdgeiOS APNs BadEnvironmentKeyInToken:** Dev-signed IPA tokens are sandbox, but Prod shell labeled them `production`. Apple returns **`BadEnvironmentKeyInToken`** (not `BadDeviceToken`), so host retry never ran … web push `sent:5` / APNs `failed:1`. Fix: retry on that reason; EdgeiOS defaults upsert to sandbox; `getInfo.apsEnvironment`; flipped existing prod row to sandbox. Redeployed senders on prod + test.

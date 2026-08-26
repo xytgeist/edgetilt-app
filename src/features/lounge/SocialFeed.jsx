@@ -1695,13 +1695,9 @@ export default function SocialFeed({
   )
   const loungeDetailCommentKeyboardUp =
     loungeDetailCommentKbFooterLiftPx > loungeDetailCommentIosSafeBottomPx + 0.5
-  const loungeOverlayKbLiftPx = Math.max(
-    loungeOverlayInnerKbPx,
-    loungeDetailCommentKbFooterLiftPx,
-  )
   const loungeDetailCommentFooterPadBottom =
-    loungePostDetailOverLightbox && loungeOverlayKbLiftPx > 8
-      ? `${Math.round(loungeOverlayKbLiftPx)}px`
+    loungePostDetailOverLightbox && loungeOverlayInnerKbPx > 8
+      ? `${Math.round(loungeOverlayInnerKbPx)}px`
       : loungeDetailCommentKeyboardUp
         ? `${Math.round(loungeDetailCommentKbFooterLiftPx)}px`
         : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)

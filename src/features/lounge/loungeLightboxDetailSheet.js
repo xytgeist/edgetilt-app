@@ -20,6 +20,7 @@ let frozenLayoutH = 0
 let frozenSheetTop = 0
 let frozenSheetH = 0
 let frozenViewport = null
+let frozenKbInnerH = 0
 let lvhProbeEl = null
 let peekRevealTries = 0
 /** Painted image/GIF box, captured while peek transform is identity. */
@@ -44,6 +45,7 @@ function onViewportChange(event) {
     frozenViewport = null
     cachedPeekMediaBox = null
     writePeekIdentityVars()
+    frozenKbInnerH = 0
     if (sheetKbLocked) {
       if (refreshCachedInnerKbPx()) emit()
       return
@@ -150,8 +152,6 @@ function readInlineFixedBox(el) {
 function peekTransformIsIdentity() {
   if (typeof document === 'undefined') return true
   const root = document.documentElement.style
-  const raw = root.getPropertyValue('--lounge-media-peek-transform').trim()
-  if (raw && raw !== 'none') return false
   const scale = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-scale') || '1')
   const tx = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-tx') || '0')
   const ty = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-ty') || '0')
@@ -233,7 +233,8 @@ function writePeekIdentityVars() {
   root.style.setProperty('--lounge-media-peek-tx', '0px')
   root.style.setProperty('--lounge-media-peek-ty', '0px')
   root.style.setProperty('--lounge-media-peek-scale', '1')
-  root.style.setProperty('--lounge-media-peek-transform', 'none')
+  // Interpolable identity ... `none` will not ease into translate/scale.
+  root.style.setProperty('--lounge-media-peek-transform', 'translate3d(0px, 0px, 0) scale(1)')
 }
 
 function readVisualSheetTopPx() {
@@ -244,15 +245,6 @@ function readVisualSheetTopPx() {
   return Number.isFinite(top) ? top : 0
 }
 
-function sheetIsParkedForPeek() {
-  const vh = layoutViewportH()
-  const top = readVisualSheetTopPx()
-  if (vh < 80) return false
-  if (top < 8) return false
-  if (top > vh * 0.88) return false
-  return true
-}
-
 function peekBandHeightPx() {
   if (!overlayOn || !peekRevealed) return 0
   const vh = layoutViewportH()
@@ -260,10 +252,11 @@ function peekBandHeightPx() {
   const estimatedBand = estimated >= 8 ? Math.max(0, vh - estimated - PEEK_GAP_PX) : 0
   const sheetTop = readVisualSheetTopPx()
   const dragging = sheetDragging || dragOffsetPx > 0
-  // translate-y-full still has a real rect near the bottom of the viewport. Using that
-  // top makes the peek band ~full screen, so scale stays 1 and the 12px gap vanishes.
-  const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
-  if (sheetTop >= 8 && !slidingOn) return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
+  if (dragging && sheetTop >= 8) {
+    return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
+  }
+  // Use the target rest/composer height, not mid-transition layout. Live top stays 60%
+  // for a beat after composer expands, so peek would never shrink with the sheet.
   return estimatedBand
 }
 
@@ -386,6 +379,14 @@ function captureOverlayLayoutBaseline() {
     width: Math.max(width, frozenViewport?.width || 0),
     height: frozenLayoutH,
   }
+  captureKeyboardViewportBaseline()
+}
+
+/** Rest innerHeight only ... lvh vs visualViewport is why the composer sat above the keys. */
+function captureKeyboardViewportBaseline() {
+  if (typeof window === 'undefined') return
+  const inner = Math.round(window.innerHeight || 0)
+  if (inner > frozenKbInnerH) frozenKbInnerH = inner
 }
 
 function estimatedParkedSheetBox() {
@@ -398,7 +399,7 @@ function estimatedParkedSheetBox() {
 }
 
 function refreshCachedInnerKbPx() {
-  if (!overlayOn || frozenLayoutH < 1 || typeof window === 'undefined') {
+  if (!overlayOn || typeof window === 'undefined') {
     if (cachedInnerKbPx === 0) return false
     cachedInnerKbPx = 0
     return true
@@ -408,10 +409,12 @@ function refreshCachedInnerKbPx() {
     cachedInnerKbPx = 0
     return true
   }
+  const baseline = frozenKbInnerH > 0 ? frozenKbInnerH : Math.round(window.innerHeight || 0)
+  if (baseline < 1) return false
   const vv = window.visualViewport
   const visibleH = vv?.height ?? window.innerHeight ?? 0
   const offset = Number(vv?.offsetTop) || 0
-  const next = Math.max(0, Math.round(frozenLayoutH - visibleH - offset))
+  const next = Math.max(0, Math.round(baseline - visibleH - offset))
   if (next === cachedInnerKbPx) return false
   cachedInnerKbPx = next
   document.documentElement.style.setProperty('--lounge-overlay-inner-kb', `${next}px`)
@@ -429,6 +432,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     peekRevealTries = 0
     cachedPeekMediaBox = null
     captureOverlayLayoutBaseline()
+    writePeekIdentityVars()
     document.documentElement.setAttribute('data-lounge-detail-over-lightbox', '')
     syncDraggingAttr()
     const estimated = estimateLoungeMediaDetailSheetHeightPx()
@@ -440,14 +444,15 @@ export function setLoungeDetailOverLightboxAttr(on) {
       peekRevealed = true
       writePeekInsetVar()
       emit()
-      const parked = sheetIsParkedForPeek()
-      const hasBox = Boolean(readPeekMediaLayoutBox())
-      if ((!parked || !hasBox) && peekRevealTries < 32) {
+      if (!readPeekMediaLayoutBox() && peekRevealTries < 32) {
         peekRevealTries += 1
         requestAnimationFrame(revealPeekAfterLayout)
       }
     }
-    requestAnimationFrame(revealPeekAfterLayout)
+    // Paint identity under the overlay rule first, then ease to the peek.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(revealPeekAfterLayout)
+    })
     bindViewportWatch()
   } else {
     composerExpanded = false
@@ -460,6 +465,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     syncDraggingAttr()
     unlockLoungeMediaSheetKeyboard()
     frozenLayoutH = 0
+    frozenKbInnerH = 0
     frozenViewport = null
     unbindViewportWatch()
     removeLvhProbe()

@@ -5,7 +5,9 @@
  *
  * Cloudflare sits in front of mttdb.com (the scrape source), not Supabase.
  * Sync = scrape MTTDB HTML → parse embedded tournaments → upsert into Supabase.
- * A CF JS challenge blocks step 1; the DB upsert never sees the 403.
+ * Turnstile blocks datacenter + often residential Playwright. Default is plain
+ * fetch only; set MTTDB_PLAYWRIGHT=1 to try headless Chrome. A blocked scrape
+ * must not wipe catalog rows (upsert is additive; prune is past dates only).
  */
 
 import { chromium } from 'playwright'
@@ -80,6 +82,16 @@ function looksLikeCloudflareChallenge(html) {
   )
 }
 
+/** True when MTTDB HTML fetch died on Cloudflare (plain fetch or Playwright). */
+export function isMttdbCloudflareBlock(err) {
+  return /cloudflare challenge/i.test(String(err?.message || err || ''))
+}
+
+function mttdbPlaywrightEnabled() {
+  const raw = String(process.env.MTTDB_PLAYWRIGHT || '').trim().toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'yes'
+}
+
 function htmlHasEmbeddedTournaments(html) {
   return String(html || '').includes('{"id":')
 }
@@ -101,8 +113,8 @@ async function launchMttdbBrowser() {
 }
 
 /**
- * Real Chromium clears Cloudflare's JS challenge; plain fetch cannot.
- * Browser is reused for live + online in the same sync process.
+ * Optional Chromium fallback when MTTDB_PLAYWRIGHT=1.
+ * Turnstile still wins on GitHub Actions and often on residential IPs.
  * @param {string} url
  * @param {{ label?: string }} [opts]
  */
@@ -171,7 +183,7 @@ export async function fetchMttdbLobbyHtmlViaPlaywright(url, opts = {}) {
 export async function fetchMttdbLobbyHtml(url, opts = {}) {
   const fetchImpl = opts.fetchImpl || fetch
   const label = opts.label || 'lobby'
-  const allowPlaywright = opts.allowPlaywright !== false
+  const allowPlaywright = opts.allowPlaywright !== false && mttdbPlaywrightEnabled()
 
   let cookie = ''
   try {
@@ -217,6 +229,9 @@ export async function fetchMttdbLobbyHtml(url, opts = {}) {
   }
 
   if (sawChallenge) {
+    console.warn(
+      `[mttdb] ${label} blocked by Cloudflare (Playwright off; set MTTDB_PLAYWRIGHT=1 to retry headed/headless Chrome).`,
+    )
     throw new Error(`MTTDB ${label} fetch failed: Cloudflare challenge (${lastStatus || 'ok'})`)
   }
   if (lastStatus && lastStatus !== 200) {

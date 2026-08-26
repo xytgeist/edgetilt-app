@@ -9541,6 +9541,12 @@ html.light [data-edge-monitor] .bg-zinc-800\/80,
 html.light [data-edge-monitor] .bg-zinc-800\/60 {
   background-color: #ececef !important;
 }
+html.light [data-edge-monitor-poker-catalog] .bg-amber-950\/25 {
+  background-color: #fffbeb !important;
+}
+html.light [data-edge-monitor-poker-catalog] .border-amber-500\/30 {
+  border-color: rgba(180, 83, 9, 0.35) !important;
+}
 html.light [data-edge-monitor] .bg-zinc-800\/60.edge-monitor-shimmer {
   background-color: #e4e4e7 !important;
 }

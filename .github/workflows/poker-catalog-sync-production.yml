@@ -10,8 +10,11 @@
 #   SUPABASE_DB_URL_PRODUCTION
 #
 # On success, writes admin_ops_job_heartbeats (Edge Monitor) on production.
-# Job fails (red) if MTTDB online scrape errors or returns 0 rows … regional JSON
-# alone must not mark the sync healthy. Live + online scrapes are independent.
+# MTTDB is often behind Cloudflare Turnstile (GHA + residential). Regional /
+# ClubWPT upsert still runs. Job stays green when Cloudflare blocks MTTDB but
+# future mttdb:* rows remain in the catalog. Hard-fail only if online lobby is
+# empty after a non-CF error, or CF blocked and the catalog has no remaining
+# mttdb:online rows. Set MTTDB_PLAYWRIGHT=1 only to retry headless Chrome.
 
 name: Poker catalog sync (production)
 

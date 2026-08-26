@@ -24,6 +24,7 @@ import {
   closeMttdbBrowser,
   fetchMttdbLiveCatalogOneOffs,
   fetchMttdbOnlineCatalogOneOffs,
+  isMttdbCloudflareBlock,
 } from './lib/mttdbCatalogFetch.mjs'
 import {
   fetchClubwptCatalogOneOffs,
@@ -339,10 +340,19 @@ async function main() {
     }
     if (rows.length > 8) console.log(`  … +${rows.length - 8} more`)
     if (!skipFetch) {
-      const mttdbProblems = mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length)
-      if (mttdbProblems.length) {
-        console.error('[poker:catalog:sync] MTTDB dry-run would fail:', mttdbProblems.join('; '))
-        process.exit(1)
+      if (isMttdbCloudflareBlock(mttdbFetch.onlineError) || isMttdbCloudflareBlock(mttdbFetch.liveError)) {
+        console.warn(
+          '[poker:catalog:sync] MTTDB Cloudflare block (dry-run). Would keep existing catalog rows and still upsert regional/ClubWPT.',
+        )
+      } else {
+        const mttdbProblems = mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length, {
+          online: mttdbOnlineRows.length,
+          live: mttdbLiveRows.length,
+        })
+        if (mttdbProblems.length) {
+          console.error('[poker:catalog:sync] MTTDB dry-run would fail:', mttdbProblems.join('; '))
+          process.exit(1)
+        }
       }
     }
     return
@@ -367,38 +377,52 @@ async function main() {
       process.exit(1)
     }
 
-    const mttdbProblems = skipFetch ? [] : mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length)
+    const remaining = skipFetch
+      ? { online: mttdbOnlineRows.length, live: mttdbLiveRows.length }
+      : await countRemainingMttdbCatalogRows(supabase)
+
+    const mttdbProblems = skipFetch
+      ? []
+      : mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length, remaining)
+    const mttdbBlocked =
+      isMttdbCloudflareBlock(mttdbFetch.onlineError) || isMttdbCloudflareBlock(mttdbFetch.liveError)
+    const heartbeatDetail = {
+      upsert: data,
+      rows: rows.length,
+      mttdb: mttdbFetch,
+      clubwpt: clubwptFetch,
+      coinpoker: coinpokerFetch,
+      mttdbOnlineRows: remaining.online,
+      mttdbLiveRows: remaining.live,
+      mttdbOnlineIngested: mttdbOnlineRows.length,
+      mttdbLiveIngested: mttdbLiveRows.length,
+      mttdbBlocked,
+      clubwptOnlineRows: clubwptOnlineRows.length,
+      coinpokerOnlineRows: coinpokerOnlineRows.length,
+      target,
+    }
+
     if (mttdbProblems.length) {
       await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
+        ...heartbeatDetail,
         message: mttdbProblems.join('; '),
-        upsert: data,
-        rows: rows.length,
-        mttdb: mttdbFetch,
-        clubwpt: clubwptFetch,
-        coinpoker: coinpokerFetch,
-        mttdbOnlineRows: mttdbOnlineRows.length,
-        mttdbLiveRows: mttdbLiveRows.length,
-        clubwptOnlineRows: clubwptOnlineRows.length,
-        coinpokerOnlineRows: coinpokerOnlineRows.length,
-        target,
       })
       console.error('[poker:catalog:sync] Upserted regional/partial catalog, but MTTDB check failed:')
       for (const p of mttdbProblems) console.error(`  - ${p}`)
       process.exit(1)
     }
 
+    const okMessage = mttdbBlocked
+      ? `MTTDB blocked by Cloudflare. Kept catalog: online ${remaining.online} · live ${remaining.live}.`
+      : null
+
     await recordOpsJobHeartbeatForTarget(supabase, target, 'ok', {
-      upsert: data,
-      rows: rows.length,
-      mttdb: mttdbFetch,
-      clubwpt: clubwptFetch,
-      coinpoker: coinpokerFetch,
-      mttdbOnlineRows: mttdbOnlineRows.length,
-      mttdbLiveRows: mttdbLiveRows.length,
-      clubwptOnlineRows: clubwptOnlineRows.length,
-      coinpokerOnlineRows: coinpokerOnlineRows.length,
-      target,
+      ...heartbeatDetail,
+      ...(okMessage ? { message: okMessage } : {}),
     })
+    if (mttdbBlocked) {
+      console.warn(`[poker:catalog:sync] ${okMessage} Regional/ClubWPT upsert still applied.`)
+    }
     console.log('Done:', data)
   } catch (err) {
     await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
@@ -413,24 +437,63 @@ async function main() {
 }
 
 /**
- * Hard fail conditions for scheduled sync (false-green was swallowing MTTDB outages).
+ * Hard fail only when online lobby is actually gone.
+ * Cloudflare blocks are expected (Turnstile). Keep last scrape; do not fail the job
+ * unless the catalog has no remaining future mttdb:online rows.
+ *
  * @param {{ liveError: string | null, onlineError: string | null, liveIngested: number, onlineIngested: number, onlineParsed: number }} fetch
- * @param {number} onlineRowCount
+ * @param {number} onlineRowCount ingested this run
+ * @param {{ online: number, live: number }} remaining future mttdb:* rows already in catalog
  */
-function mttdbFetchProblems(fetch, onlineRowCount) {
+function mttdbFetchProblems(fetch, onlineRowCount, remaining = { online: 0, live: 0 }) {
   /** @type {string[]} */
   const problems = []
-  if (fetch.onlineError) problems.push(`online scrape error: ${fetch.onlineError}`)
-  if (!fetch.onlineError && (fetch.onlineIngested < 1 || onlineRowCount < 1)) {
+  const remainingOnline = Number(remaining.online) || 0
+
+  if (isMttdbCloudflareBlock(fetch.onlineError)) {
+    if (remainingOnline < 1 && onlineRowCount < 1) {
+      problems.push(
+        'MTTDB online blocked by Cloudflare and catalog has no remaining online rows',
+      )
+    }
+  } else if (fetch.onlineError) {
+    problems.push(`online scrape error: ${fetch.onlineError}`)
+  } else if (fetch.onlineIngested < 1 || onlineRowCount < 1) {
     problems.push(
       `online ingested ${fetch.onlineIngested} (parsed ${fetch.onlineParsed}, upsert rows ${onlineRowCount})`,
     )
   }
+
   if (fetch.liveError) {
-    // Live failure is logged in detail; do not block online success.
     console.warn('[poker:catalog:sync] MTTDB live scrape failed (online still required):', fetch.liveError)
   }
   return problems
+}
+
+/**
+ * Future MTTDB rows still in the catalog (picker truth after this upsert).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @returns {Promise<{ online: number, live: number }>}
+ */
+async function countRemainingMttdbCatalogRows(supabase) {
+  const today = isoDateLocal(new Date())
+  const countPrefix = async (prefix) => {
+    const { count, error } = await supabase
+      .from('poker_tournament_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('source', 'catalog')
+      .gte('event_date', today)
+      .like('external_id', `${prefix}%`)
+    if (error) {
+      console.warn(`[poker:catalog:sync] could not count ${prefix}* rows:`, error.message)
+      return 0
+    }
+    return Number(count) || 0
+  }
+  return {
+    online: await countPrefix('mttdb:online:'),
+    live: await countPrefix('mttdb:live:'),
+  }
 }
 
 main()

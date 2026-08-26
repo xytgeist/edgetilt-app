@@ -26,7 +26,7 @@ export default function EdgeMonitorPokerCatalogPanel({ systemHealth, loading = f
         <div>
           <div className="text-white font-bold text-[15px] lg:text-base">Poker catalog sync</div>
           <div className="text-zinc-500 text-xs mt-0.5">
-            Last GitHub Actions run · MTTDB + regional upsert counts
+            Last GitHub Actions run · regional upsert; MTTDB tiles are rows still in the catalog
           </div>
         </div>
         {runbook?.href ? (
@@ -94,6 +94,12 @@ export default function EdgeMonitorPokerCatalogPanel({ systemHealth, loading = f
               </div>
             ))}
           </div>
+
+          {summary.mttdbBlocked ? (
+            <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-950/25 px-3 py-2 text-[11px] leading-relaxed text-amber-100">
+              MTTDB lobby was blocked by Cloudflare this run. Existing online/live rows were kept.
+            </p>
+          ) : null}
 
           {summary.hint ? (
             <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">{summary.hint}</p>

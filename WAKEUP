@@ -103,6 +103,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows 2026-08-25 (Stream 99%):** Ghost CF uid (tus id, no asset) used to park at Still processing 99%. Timeout + confirmed Stream 404 now open the existing failed-video modal. Joey's current stuck post is not auto-deleted; if he opens Lounge after this lands, the rehydrate poll will fail-fast into that modal.
 
+**Windows 2026-08-25 (poker catalog):** Stop failing the job when MTTDB Cloudflare blocks. Keep last `mttdb:*` rows, heartbeat ok, Playwright off unless `MTTDB_PLAYWRIGHT=1`. Needs **main** before GHA cron uses it. Local prod sync after this commit greens Monitor.
+
 ### Decisions locked (do not reopen without Ryan)
 
 | Topic | Decision |

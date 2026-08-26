@@ -199,28 +199,8 @@ export function computeHeroTargetRect(fromRect, opts = {}) {
   const insetTopReq = Math.max(0, Number(opts.insetTop) || 0)
   const insetBottomReq = Math.max(0, Number(opts.insetBottom) || 0)
   const vv = typeof window !== 'undefined' ? window.visualViewport : null
-  const vwOpt = Number(opts.viewportW)
-  const vhOpt = Number(opts.viewportH)
-  const vw =
-    Number.isFinite(vwOpt) && vwOpt > 0
-      ? vwOpt
-      : vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 390)
-  const vh =
-    Number.isFinite(vhOpt) && vhOpt > 0
-      ? vhOpt
-      : vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
-  const offsetTop =
-    opts.ignoreVisualViewport === true
-      ? 0
-      : Number.isFinite(Number(opts.viewportOffsetTop))
-        ? Number(opts.viewportOffsetTop)
-        : (vv?.offsetTop ?? 0)
-  const offsetLeft =
-    opts.ignoreVisualViewport === true
-      ? 0
-      : Number.isFinite(Number(opts.viewportOffsetLeft))
-        ? Number(opts.viewportOffsetLeft)
-        : (vv?.offsetLeft ?? 0)
+  const vw = vv?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 390)
+  const vh = vv?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
 
   let aspect = fromRect.width / Math.max(fromRect.height, 1)
   const aspectOpt = Number(opts.aspect)
@@ -247,8 +227,8 @@ export function computeHeroTargetRect(fromRect, opts = {}) {
     w = h * aspect
   }
   return {
-    top: insetTop + (maxH - h) / 2 + offsetTop,
-    left: (vw - w) / 2 + offsetLeft,
+    top: insetTop + (maxH - h) / 2 + (vv?.offsetTop ?? 0),
+    left: (vw - w) / 2 + (vv?.offsetLeft ?? 0),
     width: w,
     height: h,
   }

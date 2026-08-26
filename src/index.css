@@ -8845,17 +8845,6 @@ html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
     transition: none;
   }
 }
-html[data-lounge-lightbox-peek-locked] [data-lounge-media-detail-sheet] {
-  height: var(--lounge-media-sheet-panel-h) !important;
-  max-height: var(--lounge-media-sheet-panel-h) !important;
-}
-html[data-lounge-lightbox-peek-locked] [data-lounge-image-lightbox],
-html[data-lounge-lightbox-peek-locked] [data-lounge-media-lightbox] {
-  top: 0;
-  bottom: auto;
-  height: var(--lounge-lightbox-layout-h, 100dvh);
-  max-height: var(--lounge-lightbox-layout-h, 100dvh);
-}
 html.light [data-lounge-media-detail-grab] {
   background-color: #d4d4d8;
 }

@@ -304,13 +304,7 @@ import {
   buildLoungeStreamLightboxCtxFromPostCardProps,
 } from './LoungeStreamLightboxContext.jsx'
 import { isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeStreamLightboxRenderers.jsx'
-import {
-  setLoungeDetailOverLightboxAttr,
-  notifyLoungeMediaDetailSheetMetrics,
-  lockLoungeLightboxPeekLayout,
-  unlockLoungeLightboxPeekLayout,
-  readLoungeOverlaySheetKeyboardLiftPx,
-} from './loungeLightboxDetailSheet.js'
+import { setLoungeDetailOverLightboxAttr, notifyLoungeMediaDetailSheetMetrics } from './loungeLightboxDetailSheet.js'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import {
   LOUNGE_COMMENT_BUBBLE_D,
@@ -1273,7 +1267,6 @@ export default function SocialFeed({
   const loungePostDetailOverLightboxRef = useRef(false)
   const loungePostDetailOpenedAsLightboxSheetRef = useRef(false)
   const [loungeLightboxSheetMediaEntityId, setLoungeLightboxSheetMediaEntityId] = useState(null)
-  const [loungeOverlaySheetKbLiftPx, setLoungeOverlaySheetKbLiftPx] = useState(0)
   /** When true, post detail was opened from profile (likes/bookmarks/posts) and must sit above z-[101] profile chrome. */
   const [loungePostDetailAboveProfile, setLoungePostDetailAboveProfile] = useState(false)
   const [loungeDetailEditing, setLoungeDetailEditing] = useState(false)
@@ -1687,40 +1680,9 @@ export default function SocialFeed({
   )
   const loungeDetailCommentKeyboardUp =
     loungeDetailCommentKbFooterLiftPx > loungeDetailCommentIosSafeBottomPx + 0.5
-  const loungeDetailCommentFooterPadBottom =
-    loungePostDetailOverLightbox && loungeDetailCommentFieldFocused
-      ? loungeOverlaySheetKbLiftPx > 8
-        ? '0px'
-        : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)
-      : loungeDetailCommentKeyboardUp
-        ? `${Math.round(loungeDetailCommentKbFooterLiftPx)}px`
-        : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)
-
-  useEffect(() => {
-    if (!loungePostDetailOverLightbox) {
-      unlockLoungeLightboxPeekLayout()
-      setLoungeOverlaySheetKbLiftPx(0)
-      return undefined
-    }
-    if (loungeDetailCommentFieldFocused) {
-      lockLoungeLightboxPeekLayout()
-      const sync = () => setLoungeOverlaySheetKbLiftPx(readLoungeOverlaySheetKeyboardLiftPx())
-      sync()
-      window.visualViewport?.addEventListener('resize', sync)
-      window.visualViewport?.addEventListener('scroll', sync)
-      window.addEventListener('resize', sync)
-      return () => {
-        window.visualViewport?.removeEventListener('resize', sync)
-        window.visualViewport?.removeEventListener('scroll', sync)
-        window.removeEventListener('resize', sync)
-      }
-    }
-    const t = window.setTimeout(() => {
-      unlockLoungeLightboxPeekLayout()
-      setLoungeOverlaySheetKbLiftPx(0)
-    }, 280)
-    return () => window.clearTimeout(t)
-  }, [loungePostDetailOverLightbox, loungeDetailCommentFieldFocused])
+  const loungeDetailCommentFooterPadBottom = loungeDetailCommentKeyboardUp
+    ? `${Math.round(loungeDetailCommentKbFooterLiftPx)}px`
+    : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)
 
   const quoteRepostComposeOpen = Boolean(quoteRepostModal && quoteRepostModal.mode !== 'remove')
   const {
@@ -2326,7 +2288,6 @@ export default function SocialFeed({
   )
 
   const expandAndFocusLoungeDetailCommentComposer = useCallback(({ skipScrollToTop = false } = {}) => {
-    if (loungePostDetailOverLightboxRef.current) lockLoungeLightboxPeekLayout()
     if (!skipScrollToTop) scrollLoungePostDetailToTopInstant()
     focusLoungeComposerCaption(() => loungeDetailCommentFieldRef.current, {
       scrollFeedToTop: skipScrollToTop ? undefined : scrollLoungePostDetailToTopInstant,
@@ -16848,8 +16809,8 @@ export default function SocialFeed({
               loungePostDetailOverLightbox
                 ? `fixed inset-x-0 bottom-0 z-10 mx-auto flex h-[min(78dvh,calc(100dvh-5.5rem))] max-h-[min(78dvh,calc(100dvh-5.5rem))] w-full max-w-2xl flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-zinc-800/70 bg-zinc-950 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${
                     LOUNGE_IOS && loungeDetailCommentFieldFocused
-                      ? 'transform-none transition-[bottom] duration-200 ease-out motion-reduce:transition-none'
-                      : `transition-[transform,bottom] duration-300 ease-out motion-reduce:transition-none ${
+                      ? 'transform-none'
+                      : `transition-transform duration-300 ease-out motion-reduce:transition-none ${
                           loungePostDetailVisible ? 'translate-y-0' : 'translate-y-full'
                         }`
                   }`
@@ -16864,11 +16825,6 @@ export default function SocialFeed({
             onTransitionEnd={onLoungePostDetailPanelTransitionEnd}
             onTransitionCancel={onLoungePostDetailPanelTransitionEnd}
             onClick={(e) => e.stopPropagation()}
-            style={
-              loungePostDetailOverLightbox && loungeOverlaySheetKbLiftPx > 0
-                ? { bottom: loungeOverlaySheetKbLiftPx }
-                : undefined
-            }
           >
             {loungePostDetailOverLightbox ? (
               <div
@@ -18301,7 +18257,6 @@ export default function SocialFeed({
                           onFocus={() => {
                             loungeDetailCommentFieldFocusedRef.current = true
                             setLoungeDetailCommentFieldFocused(true)
-                            if (loungePostDetailOverLightboxRef.current) lockLoungeLightboxPeekLayout()
                           }}
                           onBlur={(e) => {
                             loungeDetailCommentFieldFocusedRef.current = false

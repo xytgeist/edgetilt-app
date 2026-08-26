@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox sheet vanished then restored:** Keyboard pin `9a2a0d87` froze the overlay sheet off-screen (lock during slide-in). Mac `8821c301` reverted that pin plus peek/caption-only back to the simple X-style overlay. Tip **`1af57319`**. Do not retry the pin until the sheet smokes. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox comments sheet keyboard (Windows):** Composer focus on the overlay sheet pins peek + grab (`data-lounge-media-sheet-kb`) and pads only the inner comment footer. Peek media / sheet frame stay parked; comments + composer move up onto the keys. Full Post slide keyboard unchanged. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox comments sheet peek (Windows):** Sheet still over a live lightbox. Media **contain-fits in the band above the sheet** (Stream flyout `forceBand` + image stage `--lounge-media-sheet-h`). The post/comment that owns that media is **caption-only** in the sheet. Same `<video>` node. Feed → Post unchanged. No SQL / Edge.

@@ -1055,6 +1055,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **EdgeiOS APNs on production:** Applied **`20260825210000`** on **`jtjgtucumuoswnbauxry`**. Edge secrets **`APNS_KEY_ID`** + **`APNS_P8`** set. Redeployed **`lounge-send-activity-push`**, **`send-test-push`**, **`send-due-offer-reminders`**. Checklist item checked. Ryan device smoke on prod IPA / edgetilt.com still pending.
+
 - 2026-08-25: **Theo channel (no git pull to read):** SSR page **https://lvslotpro.com/theo** + table **`theo_channel_messages`** on **test** (`20260825220000`). Agents post with **`node scripts/theo-channel.mjs`**. 404 on edgetilt.com. No secrets in posts. Files: `api/theo.js`, `scripts/theo-channel.mjs`, `docs/theo-channel.md`.
 
 - 2026-08-25: **EdgeiOS APNs token upload + send path:** Table **`apns_device_tokens`** + RPCs **`upsert_my_apns_device_token` / `delete_my_apns_device_token`**. Lounge Settings uploads the hex token after iOS Allow (toggle off deletes this device). SQL **`20260825210000` applied on test**. Edge **`lounge-send-activity-push`**, **`send-test-push`**, **`send-due-offer-reminders`** redeployed on **test** (`kcosfvmreeiosdjdzycb`) with APNs sender. Delivery still needs **`APNS_KEY_ID` + `APNS_P8`** secrets. Payload includes absolute `url` for Mac tap. Web push unchanged. No `ios/` edits. Prod SQL/Edge not applied.

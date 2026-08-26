@@ -95,7 +95,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat. Safari/PWA per-tile feed sound (EdgeiOS handoff is signed). GIF dismiss-keyboard hacks (inert + layout viewport is the signed path).
 
-**Next:** IPA APNs end-to-end signed on test (permission, delivery, tap deep link). Prod APNs secrets/SQL only when Ryan asks. No SQL on prod until then.
+**Next:** Prod APNs SQL + Edge secrets + senders deployed 2026-08-26. Ryan smoke on EdgeTilt against **edgetilt.com** (Settings push on → like/reply → banner + tap). Next Mac slice only when Ryan names one.
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 

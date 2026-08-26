@@ -8813,11 +8813,11 @@ html.light [data-lounge-post-detail-sheet] [data-lounge-post-detail-title-bar] {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-html.light [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-glass,
-html.light.platform-android [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-glass {
+html.light [data-lounge-post-detail-sheet]:not([data-lounge-media-detail-sheet]) .lounge-detail-comment-footer-glass,
+html.light.platform-android [data-lounge-post-detail-sheet]:not([data-lounge-media-detail-sheet]) .lounge-detail-comment-footer-glass {
   background: #fff;
 }
-html.light [data-lounge-post-detail-sheet] .lounge-detail-comment-footer-gradient {
+html.light [data-lounge-post-detail-sheet]:not([data-lounge-media-detail-sheet]) .lounge-detail-comment-footer-gradient {
   background: linear-gradient(
     to top,
     #fff 0%,
@@ -8952,19 +8952,29 @@ html.light [data-lounge-media-detail-sheet] {
   box-shadow: 0 -16px 48px rgba(15, 23, 42, 0.14);
   border-color: rgba(0, 0, 0, 0.08);
 }
-/* Overlay comments composer: no frost halo (gradient + footer blur + upward shadow). */
-[data-lounge-media-detail-sheet] .lounge-detail-comment-footer-gradient {
+/* Overlay comments composer: no footer plate, no frost halo. Pill/box only. */
+[data-lounge-media-detail-sheet] .lounge-detail-comment-footer-gradient,
+html.light [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-gradient {
   display: none;
 }
 [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-glass,
-html.platform-android [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-glass {
-  background: #09090b;
+html.platform-android [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-glass,
+html.light [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-glass,
+html.light.platform-android [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-glass {
+  background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: none;
+  border-top: none;
 }
-html.light [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-glass,
-html.light.platform-android [data-lounge-media-detail-sheet] .lounge-detail-comment-footer-glass {
+[data-lounge-media-detail-sheet] .lounge-detail-comment-composer-glass,
+html.platform-android [data-lounge-media-detail-sheet] .lounge-detail-comment-composer-glass {
+  background: rgb(24, 24, 27);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.light [data-lounge-media-detail-sheet] .lounge-detail-comment-composer-glass,
+html.light.platform-android [data-lounge-media-detail-sheet] .lounge-detail-comment-composer-glass {
   background: #fff;
 }
 

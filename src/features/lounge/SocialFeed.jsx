@@ -9072,7 +9072,13 @@ export default function SocialFeed({
     setLoungeLightboxSheetMediaEntityId(mediaEntityId ? String(mediaEntityId) : null)
     setLoungePostDetailOverLightbox(true)
     setLoungeDetailOverLightboxAttr(true)
-    setLoungeDetailCommentComposerExpanded(true)
+    setLoungeDetailCommentComposerExpanded(false)
+    setLoungeMediaSheetComposerExpanded(false)
+    try {
+      loungeDetailCommentFieldRef.current?.blur()
+    } catch {
+      // ignore
+    }
   }, [loungePostDetail?.id])
 
   const dismissLoungeLightboxDetailSheet = useCallback(() => {
@@ -9173,8 +9179,8 @@ export default function SocialFeed({
       cancelLoungeDetailEdit()
       cancelLoungeDetailCommentEdit()
       if (focusComposer) loungePostDetailPendingCommentComposerRef.current = true
-      else if (loungePostDetailOverLightboxRef.current) setLoungeDetailCommentComposerExpanded(true)
-      else collapseLoungeDetailCommentComposer()
+      else if (!loungePostDetailOverLightboxRef.current) collapseLoungeDetailCommentComposer()
+      else setLoungeDetailCommentComposerExpanded(false)
       resetPostDetailInlineSound()
       setLoungeCommentDetailPathIds(chain)
     },

@@ -243,6 +243,8 @@ function App() {
   const [legalAcceptanceError, setLegalAcceptanceError] = useState('')
   /** Suppress popstate from re-entering legal while programmatically exiting (Got it / Back). */
   const legalExitViaPopRef = useRef(false)
+  /** Password login reloads the page. Do not consume the subscribe-resume flag (or flash Subscribe) before that reload. */
+  const skipSubscribeOpenForAuthReloadRef = useRef(false)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -769,7 +771,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (isChecking) return
+    if (isChecking || isLoggingIn || skipSubscribeOpenForAuthReloadRef.current) return
     try {
       if (window.sessionStorage.getItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY) !== '1') return
     } catch {
@@ -791,7 +793,7 @@ function App() {
     }
     setAuthPanelOpen(false)
     openSubscribeModal()
-  }, [user?.id, isChecking, openSubscribeModal])
+  }, [user?.id, isChecking, isLoggingIn, openSubscribeModal])
 
   const closeBillingManageModal = useCallback(() => {
     setBillingManageOpen(false)
@@ -841,10 +843,18 @@ function App() {
     if (isLoggingIn) return
     setIsLoggingIn(true)
     setLoginError('')
+    try {
+      if (window.sessionStorage.getItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY) === '1') {
+        skipSubscribeOpenForAuthReloadRef.current = true
+      }
+    } catch {
+      // ignore
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     
     if (error) {
+      skipSubscribeOpenForAuthReloadRef.current = false
       setLoginError(getFriendlyErrorMessage(error, 'login'))
       setIsLoggingIn(false)
       return

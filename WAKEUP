@@ -95,7 +95,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat. Safari/PWA per-tile feed sound (EdgeiOS handoff is signed). GIF dismiss-keyboard hacks (inert + layout viewport is the signed path).
 
-**Next:** Prod APNs SQL + Edge secrets + senders deployed 2026-08-26. Ryan smoke on EdgeTilt against **edgetilt.com** (Settings push on → like/reply → banner + tap). Next Mac slice only when Ryan names one.
+**Next:** Prod APNs smoke PASSED 2026-08-26 (edgetilt.com like → banner). Next Mac slice only when Ryan names one.
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
@@ -174,7 +174,7 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - APNs tap deep link: banner tap opens payload `url` in WKWebView (`b66986cf`). Ryan smoke PASSED.
 
 **Mac do now (Ryan + Theo):**
-1. IPA APNs P0 closed on test. Next Mac slice only when Ryan names one (Offers native push UI, CallKit, etc.). New LLC / org can wait.
+1. IPA APNs P0 closed on test + **prod smoke PASSED 2026-08-26**. Next Mac slice only when Ryan names one (Offers native push UI, CallKit, etc.). New LLC / org can wait.
 
 **Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 

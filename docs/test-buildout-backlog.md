@@ -1055,9 +1055,11 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **EdgeiOS APNs prod smoke PASSED (Ryan):** Like → native banner on EdgeTilt against **edgetilt.com**. Tip **`698749b1`**. Sandbox device token + prod Supabase/Edge is the expected path until App Store `aps-environment` = production.
+
 - 2026-08-26: **EdgeiOS APNs BadEnvironmentKeyInToken:** Dev-signed IPA tokens are sandbox, but Prod shell labeled them `production`. Apple returns **`BadEnvironmentKeyInToken`** (not `BadDeviceToken`), so host retry never ran … web push `sent:5` / APNs `failed:1`. Fix: retry on that reason; EdgeiOS defaults upsert to sandbox; `getInfo.apsEnvironment`; flipped existing prod row to sandbox. Redeployed senders on prod + test.
 
-- 2026-08-26: **EdgeiOS APNs on production:** Applied **`20260825210000`** on **`jtjgtucumuoswnbauxry`**. Edge secrets **`APNS_KEY_ID`** + **`APNS_P8`** set. Redeployed **`lounge-send-activity-push`**, **`send-test-push`**, **`send-due-offer-reminders`**. Checklist item checked. Ryan device smoke on prod IPA / edgetilt.com still pending.
+- 2026-08-26: **EdgeiOS APNs on production:** Applied **`20260825210000`** on **`jtjgtucumuoswnbauxry`**. Edge secrets **`APNS_KEY_ID`** + **`APNS_P8`** set. Redeployed **`lounge-send-activity-push`**, **`send-test-push`**, **`send-due-offer-reminders`**. Checklist item checked. **Ryan prod smoke PASSED 2026-08-26.**
 
 - 2026-08-25: **Theo channel (no git pull to read):** SSR page **https://lvslotpro.com/theo** + table **`theo_channel_messages`** on **test** (`20260825220000`). Agents post with **`node scripts/theo-channel.mjs`**. 404 on edgetilt.com. No secrets in posts. Files: `api/theo.js`, `scripts/theo-channel.mjs`, `docs/theo-channel.md`.
 

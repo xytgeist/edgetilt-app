@@ -83,7 +83,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Mac device Run smoke (2026-08-23):** M4 Max + **Xcode 27 beta**; iPhone Air **iOS 27** Developer Mode; Personal Team install; Trust developer; Edge Test scheme loads **`lvslotpro.com`** in-app. (App Store Xcode 26 alone cannot DDI/debug iOS 27.)
 - [x] **SW bust on boot + bridge (2026-08-23):** clear service worker registrations / caches before first load; `EdgeNative.bustServiceWorker` implemented. Camera / mic / photo / location usage strings + WK media-capture grant.
 - [ ] **Bridge contract:** keep **`docs/ios-native-bridge.md`** method table current as methods land. (`getInfo` + `openInSafari` + `bustServiceWorker` native; push + audio session still stub.)
-- [ ] **Bridges v1 remaining:** push (APNs `requestPushPermission` / `getPushToken`), call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), ~~unmuted media autoplay **web unlock** under shell~~ **done (Windows 2026-08-24)** … ~~device smoke~~ **Ryan sign-off 2026-08-25** (Tap for sound → next clips stay audible).
+- [x] **Bridges v1 remaining:** ~~push (`requestPushPermission` / `getPushToken`)~~ **native signed 2026-08-25** + Windows token upload 2026-08-25; call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), ~~unmuted media autoplay **web unlock** under shell~~ **done (Windows 2026-08-24)** … ~~device smoke~~ **Ryan sign-off 2026-08-25** (Tap for sound → next clips stay audible). APNs **send** still needs Edge `APNS_*` + redeploy. Tap deep links still Mac.
 - [ ] **Native UA web gates (Windows):** ~~hide in-WebView Stripe / subscribe CTAs → `openInSafari`~~ **done** (`openExternalBillingUrl`); ~~skip `push-sw` register~~ **done**; ~~hide A2HS / install-for-push chrome~~ (How to Install chip + `iosPwaInstallRequired` + web push hook). UA token **`EdgeiOS/0.1.0`**; **`src/utils/edgeNative.js`** landed.
 - [x] **Billing v1 (US) Safari link-out:** Stripe Checkout / portal / Connect never `location.assign` inside EdgeiOS … `openExternalBillingUrl` → `openInSafari`. StoreKit IAP deferred to v1.1. Counsel + App Review notes still before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
@@ -96,6 +96,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] `src/utils/edgeNative.js` … `isEdgeiOSShell()`, `edgeNativeInvoke` (positive UA / `window.EdgeNative` only)
 - [x] Stripe / fan / affiliate Connect: never `location.assign` checkout in shell → `openInSafari` (`openExternalBillingUrl` in `edgeNative.js`; wired in `stripeBillingApi`, `creatorFanSubsApi`, `CreatorAffiliatePortal`, `botPortalApi`)
 - [x] Skip `push-sw.js` registration when EdgeiOS; hide A2HS / Offers “install for push” UX (`useWebPushNotifications` unsupported in shell; `iosPwaInstallRequired` / `isInstalledPwaNotifPromptEligible` false in shell)
+- [x] **APNs token upload** to **`apns_device_tokens`** after Lounge Settings grant (`apnsDeviceTokenApi.js`). Send waits on Edge **`APNS_*`** secrets.
 - [x] **How to Install title-bar chip:** `shouldShowPwaInstallBanner()` returns false when `isEdgeiOSShell()` (`PwaInstallBanner.jsx` / `pwaNotificationPrompt.js`)
 - [x] **Lounge cold-boot / resume Lottie:** EdgeiOS treated as installed surface (`loungeColdBootSplash.js`); DotLottie uses **direct canvas** in shell (OffscreenCanvas blit kept for Safari/PWA). Smoke on device after `test` deploy.
 - [x] Lounge unmuted autoplay when `isEdgeiOSShell()` … `appleWebKitBlocksFeedSoundHandoff()` excludes shell; feed-wide coordinated sound like Android. Safari/PWA unchanged. **Ryan device sign-off 2026-08-25:** Tap for sound → scroll → next clips stay audible (`ff9a8c16`).
@@ -107,7 +108,8 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] **Safe area edge-to-edge + inset inject (2026-08-24):** WebView `.ignoresSafeArea()` again; native pushes `--edge-sat|sar|sab|sal` on safe-area changes; web uses `max(env(...), var(--edge-*))` (~210 call sites). Removes letterbox bars; PWA path unchanged (no double-pad). **Ryan device sign-off 2026-08-25:** no letterbox; post-detail ← clear of Island; FAB vs home indicator; feed title chrome.
 - [x] **Device smoke after Windows 2026-08-24 web gates** (`test` ≥ **`6a3155e2`**, Vercel live): ~~(1) Lounge unmute → scroll → next clips audible~~ **Ryan sign-off 2026-08-25** (`ff9a8c16` handoff); ~~(2) Stripe Checkout/portal → system Safari~~ **Ryan sign-off 2026-08-25** (Joey K fan unsub → Stripe in system Safari); ~~(3) no A2HS / web-push nag in shell~~ **Ryan sign-off 2026-08-25** (Settings / Offers; Notifications toggle stays off until APNs). Confirm `mediaTypesRequiringUserActionForPlayback = []` still in IPA. See **`docs/ios-native-bridge.md`** → Windows → Mac handoff.
 - [x] **Hard crash investigating:** Ryan … opening Lounge post detail then trying to leave crashed the **phone** (device powered off), not just the app. **Ryan could-not-repro 2026-08-25** after later IPA rebuilds (video post detail → back, phone stayed on). Reopen only if it returns; then Console / Jetsam.
-- [x] APNs bridge: `requestPushPermission` + `getPushToken` + AppDelegate register (2026-08-24). **`CODE_SIGN_ENTITLEMENTS` on 2026-08-25** for Individual team **`8932AKQW4W`**. First device Run: add Push capability if Xcode asks. Token unused until Windows upload/send.
+- [x] APNs bridge: `requestPushPermission` + `getPushToken` + AppDelegate register (2026-08-24). **`CODE_SIGN_ENTITLEMENTS` on 2026-08-25** for Individual team **`8932AKQW4W`**. First device Run: add Push capability if Xcode asks. **Ryan device sign-off:** Settings → iOS Allow.
+- [x] **APNs token upload (Windows 2026-08-25):** Lounge Settings grant writes hex to **`apns_device_tokens`** (`upsert_my_apns_device_token`). Toggle off deletes this device. SQL **`20260825210000`**. Send is Edge **`APNS_KEY_ID` / `APNS_P8`** + redeploy **`lounge-send-activity-push`** (and test/offer senders).
 - [x] `setAudioSession` for LiveKit enter/exit (`playback` / `voiceChat` / `default`)
 - [x] OAuth-in-shell smoke; Safari / ASWebAuthentication if broken. **Ryan sign-off 2026-08-25:** Log out → Continue with Google → returned to Edge signed in. No native hop needed.
 
@@ -115,7 +117,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] Post-detail absolute title bar now includes safe-area `pt` (2026-08-24); parent panel `pt` alone does not move `absolute top-0` chrome. **Ryan device sign-off 2026-08-25:** title bar only, no extra Island gap vs Safari/PWA (do not restack panel `pt` + title `pt`).
 
 **P1 polish**
-- [ ] APNs deep links → existing `?tab=` / `post=` / `comment=` / `call=` parsers
+- [ ] APNs tap deep links (Mac): load APNs `url` (absolute `/?tab=` already in payload) into WKWebView so existing parsers run. Windows payload shipped 2026-08-25.
 - [ ] Safe area / status bar vs `env(safe-area-*)`; update/cold-boot copy; geolocation smoke; keyboard compose pass
 - [ ] Call speaker/earpiece routing under shell
 
@@ -1052,6 +1054,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-08-25: **EdgeiOS APNs token upload + send path:** Table **`apns_device_tokens`** + RPCs **`upsert_my_apns_device_token` / `delete_my_apns_device_token`**. Lounge Settings uploads the hex token after iOS Allow (toggle off deletes this device). SQL **`20260825210000` applied on test**. Edge **`lounge-send-activity-push`**, **`send-test-push`**, **`send-due-offer-reminders`** redeployed on **test** (`kcosfvmreeiosdjdzycb`) with APNs sender. Delivery still needs **`APNS_KEY_ID` + `APNS_P8`** secrets. Payload includes absolute `url` for Mac tap. Web push unchanged. No `ios/` edits. Prod SQL/Edge not applied.
 
 - 2026-08-25: **SEO hub CTAs open Join / Sign in:** Brand, Open app, and primary Open-in-EdgeTilt links on public hub HTML (`/slots` + subpages, `/guides`, `/advantage-play-slots`, `/poker` + subpages) use `?auth=join`. App reads it after auth bootstrap, opens Join (or Sign in for `auth=login`) when logged out, then strips the param. Logged-in visits strip and skip. Guide catalog `/?tab=guides&guide=` links unchanged. Files: `authPanelFromUrl.js`, `App.jsx`, `public/*.html`, `docs/seo-edgetilt-slots.md`. No SQL / Edge.
 

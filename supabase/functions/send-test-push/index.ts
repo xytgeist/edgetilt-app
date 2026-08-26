@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { sendApnsToUser } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,27 +61,22 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
 
     if (subError) throw subError
-    if (!subscriptions || subscriptions.length === 0) {
-      return new Response(
-        JSON.stringify({
-          sent: 0,
-          failed: 0,
-          removed: 0,
-          message: 'No push subscriptions found for this account.',
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+
+    const payload = {
+      title,
+      body: message,
+      url: targetUrl,
     }
-
-    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
-
+    const webList = subscriptions || []
     let sent = 0
     let failed = 0
     let removed = 0
 
-    for (const sub of subscriptions) {
+    if (webList.length > 0) {
+      webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+    }
+
+    for (const sub of webList) {
       const subscription = {
         endpoint: sub.endpoint,
         keys: {
@@ -91,11 +87,7 @@ Deno.serve(async (req) => {
       try {
         await webpush.sendNotification(
           subscription as { endpoint: string; keys: { p256dh: string; auth: string } },
-          JSON.stringify({
-            title,
-            body: message,
-            url: targetUrl,
-          })
+          JSON.stringify(payload)
         )
         sent += 1
       } catch (error) {
@@ -106,6 +98,25 @@ Deno.serve(async (req) => {
           if (!deleteError) removed += 1
         }
       }
+    }
+
+    const apns = await sendApnsToUser(admin, userId, payload)
+    sent += apns.sent
+    failed += apns.failed
+    removed += apns.removed
+
+    if (webList.length === 0 && apns.reason === 'no_tokens') {
+      return new Response(
+        JSON.stringify({
+          sent: 0,
+          failed: 0,
+          removed: 0,
+          message: 'No push destinations found for this account.',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     return new Response(

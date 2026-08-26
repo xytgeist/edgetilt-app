@@ -7,7 +7,7 @@ It:
 - reads enabled rows from `offer_notification_rules`
 - finds matching `offer_events` based on each rule's `lead_minutes`
 - dedupes with `offer_notification_sends`
-- sends push payloads to `push_subscriptions`
+- sends push payloads to `push_subscriptions` and `apns_device_tokens`
 - cleans stale endpoints (`404/410`)
 
 ## Required secrets
@@ -17,6 +17,7 @@ It:
 - `WEB_PUSH_PUBLIC_KEY`
 - `WEB_PUSH_PRIVATE_KEY`
 - `WEB_PUSH_SUBJECT`
+- **APNs (optional):** `APNS_KEY_ID`, `APNS_P8`, optional `APNS_TEAM_ID` / `APNS_BUNDLE_ID`
 
 ## Deploy
 

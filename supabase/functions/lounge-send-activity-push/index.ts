@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { sendApnsToUser } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -646,17 +647,17 @@ async function sendPushToUser(
     .eq('user_id', userId)
 
   if (subError) throw subError
-  if (!subscriptions || subscriptions.length === 0) {
-    return { sent: 0, failed: 0, removed: 0, message: 'No push subscriptions for recipient.' }
-  }
 
-  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
-
+  const webList = subscriptions || []
   let sent = 0
   let failed = 0
   let removed = 0
 
-  for (const sub of subscriptions) {
+  if (webList.length > 0) {
+    webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+  }
+
+  for (const sub of webList) {
     const subscription = {
       endpoint: sub.endpoint,
       keys: {
@@ -682,6 +683,15 @@ async function sendPushToUser(
         if (!deleteError) removed += 1
       }
     }
+  }
+
+  const apns = await sendApnsToUser(admin, userId, notification)
+  sent += apns.sent
+  failed += apns.failed
+  removed += apns.removed
+
+  if (webList.length === 0 && apns.reason === 'no_tokens') {
+    return { sent: 0, failed: 0, removed: 0, message: 'No push destinations for recipient.' }
   }
 
   return { sent, failed, removed }

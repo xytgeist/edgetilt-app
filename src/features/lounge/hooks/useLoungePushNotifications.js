@@ -11,6 +11,10 @@ import {
   iosPwaInstallRequired,
 } from '../../../utils/pwaNotificationPrompt.js'
 import {
+  deleteMyApnsDeviceToken,
+  upsertMyApnsDeviceToken,
+} from '../../../utils/apnsDeviceTokenApi.js'
+import {
   readLoungePushNotificationsEnabled,
   subscribeLoungePushNotificationsEnabled,
   writeLoungePushNotificationsEnabled,
@@ -24,7 +28,7 @@ import {
 
 /**
  * Lounge Settings push toggle.
- * EdgeiOS → native APNs permission + device token (server upload/send still pending).
+ * EdgeiOS → native APNs permission + upload hex token to `apns_device_tokens`.
  * Everywhere else → web push + `push_subscriptions`.
  */
 export default function useLoungePushNotifications({ supabaseClient, viewerUserId }) {
@@ -44,6 +48,10 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
   const [nativeToken, setNativeToken] = useState(/** @type {string | null} */ (null))
   const [nativeBusy, setNativeBusy] = useState(false)
   const [nativeStatusMessage, setNativeStatusMessage] = useState('')
+  const [nativeServerRegistered, setNativeServerRegistered] = useState(
+    /** @type {boolean | null} */ (null),
+  )
+  const uploadedTokenRef = useRef('')
 
   const {
     isSupported,
@@ -98,8 +106,34 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     }
   }, [isIpaShell, pushPrefEnabled, nativeStatus, nativeToken])
 
+  useEffect(() => {
+    uploadedTokenRef.current = ''
+    setNativeServerRegistered(null)
+  }, [viewerUserId])
+
+  /** Upload the hex token once OS grant + session exist. */
+  useEffect(() => {
+    if (!isIpaShell || !viewerUserId || !supabaseClient) return
+    if (!pushPrefEnabled || nativeStatus !== 'granted' || !nativeToken) return
+    if (uploadedTokenRef.current === nativeToken) return
+    let cancelled = false
+    void (async () => {
+      const result = await upsertMyApnsDeviceToken(supabaseClient, nativeToken)
+      if (cancelled) return
+      if (result.ok) {
+        uploadedTokenRef.current = nativeToken
+        setNativeServerRegistered(true)
+      } else {
+        setNativeServerRegistered(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isIpaShell, viewerUserId, supabaseClient, pushPrefEnabled, nativeStatus, nativeToken])
+
   const pushActive = isIpaShell
-    ? pushPrefEnabled && nativeStatus === 'granted'
+    ? pushPrefEnabled && nativeStatus === 'granted' && nativeServerRegistered === true
     : pushPrefEnabled && isRegistered
 
   const pushStatusHint = useMemo(() => {
@@ -110,8 +144,11 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
       }
       if (pushActive) {
         return nativeToken
-          ? 'Native alerts enabled on this device. Server delivery coming soon.'
+          ? 'Native alerts enabled on this device.'
           : 'Permission granted. Waiting for device token…'
+      }
+      if (pushPrefEnabled && nativeStatus === 'granted' && nativeServerRegistered === false) {
+        return 'Could not save this iPhone for alerts. Turn off, then on again.'
       }
       return 'Turn on to allow Edge alerts on this iPhone (native push).'
     }
@@ -137,6 +174,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     nativeStatus,
     pushActive,
     nativeToken,
+    nativeServerRegistered,
     isSupported,
     permission,
     pushPrefEnabled,
@@ -262,14 +300,28 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
             writePushOptInIntent(viewerUserId, true)
             const { token } = await getEdgeiOSPushToken()
             setNativeToken(token)
-            setNativeStatusMessage(
-              token
-                ? 'Native push ready on this device. Alerts will work after server delivery ships.'
-                : 'Permission granted. Waiting for device token…',
-            )
+            if (token && supabaseClient) {
+              const saved = await upsertMyApnsDeviceToken(supabaseClient, token)
+              if (saved.ok) {
+                uploadedTokenRef.current = token
+                setNativeServerRegistered(true)
+                setNativeStatusMessage('Native alerts enabled on this device.')
+              } else {
+                setNativeServerRegistered(false)
+                setNativeStatusMessage('Permission granted, but this iPhone was not saved for alerts.')
+              }
+            } else {
+              setNativeStatusMessage('Permission granted. Waiting for device token…')
+            }
           } else {
             writeLoungePushNotificationsEnabled(false)
             writePushOptInIntent(viewerUserId, false)
+            const tokenToDrop = nativeToken
+            uploadedTokenRef.current = ''
+            setNativeServerRegistered(false)
+            if (tokenToDrop && supabaseClient) {
+              await deleteMyApnsDeviceToken(supabaseClient, tokenToDrop)
+            }
             setNativeStatusMessage('')
           }
         } finally {
@@ -294,7 +346,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
         syncingPrefRef.current = false
       }
     },
-    [viewerUserId, enable, disable, isIpaShell],
+    [viewerUserId, enable, disable, isIpaShell, supabaseClient, nativeToken],
   )
 
   return {

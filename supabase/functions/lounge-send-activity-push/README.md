@@ -1,6 +1,6 @@
 # lounge-send-activity-push
 
-Supabase Edge Function invoked from Postgres (`pg_net`) when a row is inserted into **`activity_events`**. Sends a web push to all **`push_subscriptions`** for the **recipient** user.
+Supabase Edge Function invoked from Postgres (`pg_net`) when a row is inserted into **`activity_events`**. Sends a web push to all **`push_subscriptions`** and an APNs alert to all **`apns_device_tokens`** for the **recipient** user.
 
 ## Required secrets
 
@@ -12,6 +12,7 @@ Set in Supabase Dashboard → Edge Functions → Secrets (same VAPID keys as Off
 - `WEB_PUSH_PRIVATE_KEY`
 - `WEB_PUSH_SUBJECT` (e.g. `mailto:support@edgetilt.com`)
 - **`LOUNGE_ACTIVITY_PUSH_SECRET`** — shared with Vault **`lounge_activity_push_http_secret`** (see migration)
+- **APNs (EdgeiOS, optional until set):** `APNS_KEY_ID`, `APNS_P8` (Auth Key `.p8` PEM), optional `APNS_TEAM_ID` (default `8932AKQW4W`), optional `APNS_BUNDLE_ID` (default `com.edgetilt.app`). Without these, IPA tokens upload but delivery is skipped. Development IPAs use the sandbox host; `BadDeviceToken` retries production.
 
 ## Deploy
 
@@ -48,7 +49,7 @@ select vault.create_secret('YOUR_LEGACY_ANON_JWT', 'lounge_activity_push_supabas
 
 Lounge **Settings → Notifications**:
 
-- **Push notifications** — device master toggle (`push_subscriptions` + localStorage)
+- **Push notifications** — device master toggle (`push_subscriptions` on web / `apns_device_tokens` on EdgeiOS + localStorage)
 - **Notify me about** — per-category prefs in `notification_preferences` (account-wide)
 
 Like/bookmark pushes are **debounced 10 seconds** and **grouped** (`@a and 4 others liked your post`). **DM messages:** the **first message** after a quiet period pushes **immediately**; **follow-ups within 60 seconds** collapse to one batched notification (`@a sent you 3 messages`) after 60s idle from the last message. Replies, mentions, follows, and reposts stay **immediate**.
@@ -59,6 +60,8 @@ Tap targets (URL + push JSON fields):
 - **Post activity** → `/?tab=home&post=<uuid>` (+ **`comment=<uuid>`** when the alert is about a specific comment/reply/mention/like/bookmark on a comment; + **`activityEventId`** or batched **`activityBatchId`**)
 - **DM (batched)** → `/?tab=chat&room=<uuid>` (+ **`activityBatchId`**)
 - Fallback → `/?tab=home&lounge=notifications`
+
+Web push JSON uses those relative URLs. APNs custom data uses the same fields plus an **absolute** `url` (`PUBLIC_APP_URL` / test `https://lvslotpro.com` / prod `https://edgetilt.com`) so Mac can load it into the WKWebView on tap. **Tap deep links in the IPA still need a native `didReceive` handler** (Mac lane). Web **`push-sw.js`** is unchanged.
 
 Push JSON also includes **`activityEventId`** / **`activityBatchId`** so **`push-sw.js`** can mark read on tap without waiting for the Alerts panel. Client: **`lounge_activity_mark_push_opened`** RPC + **`refreshLoungeNotificationsUnread`** in **`SocialFeed.jsx`** (via **`lounge-push-opened`** custom event from **`AppShell.jsx`** or cold-start URL params). **Redeploy Edge** after payload changes; old notifications without IDs still need Alerts open or the 60s poll to clear badges.
 

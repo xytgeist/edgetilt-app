@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { sendApnsToUser } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -165,6 +166,7 @@ Deno.serve(async (req) => {
     let removed = 0
 
     const subscriptionCache = new Map<string, Array<{ id: string; endpoint: string; p256dh: string | null; auth: string | null }>>()
+    const apnsTokenCache = new Map<string, boolean>()
     for (const eventsAtSameTime of grouped.values()) {
       const ev = eventsAtSameTime[0]
       queued += eventsAtSameTime.length
@@ -181,14 +183,26 @@ Deno.serve(async (req) => {
         subscriptionCache.set(ev.user_id, subscriptions)
       }
 
-      if (!subscriptions || subscriptions.length === 0) {
+      let hasApns = apnsTokenCache.get(ev.user_id)
+      if (hasApns === undefined) {
+        const { data: apnsRows, error: apnsError } = await admin
+          .from('apns_device_tokens')
+          .select('id')
+          .eq('user_id', ev.user_id)
+          .limit(1)
+        if (apnsError) throw apnsError
+        hasApns = Boolean(apnsRows && apnsRows.length > 0)
+        apnsTokenCache.set(ev.user_id, hasApns)
+      }
+
+      if ((!subscriptions || subscriptions.length === 0) && !hasApns) {
         await admin.from('offer_notification_sends').insert(
           eventsAtSameTime.map((item) => ({
             user_id: item.user_id,
             event_id: item.id,
             lead_minutes: ALERT_SCHEDULE_LEAD_KEY,
             send_status: 'no_subscription',
-            error_message: 'No push subscriptions found for user.',
+            error_message: 'No push destinations found for user.',
           }))
         )
         continue
@@ -196,6 +210,15 @@ Deno.serve(async (req) => {
 
       const sortedEvents = [...eventsAtSameTime].sort((a, b) => a.start_at.localeCompare(b.start_at))
       const { title, body: nBody } = batchedNotificationPayload(sortedEvents)
+      const firstEvent = sortedEvents[0]
+      const isSingleEvent = sortedEvents.length === 1
+      const payload = {
+        title,
+        body: nBody,
+        url: '/?tab=offers',
+        eventStartAt: isSingleEvent ? firstEvent?.start_at || null : null,
+        eventAlertPreset: isSingleEvent ? firstEvent?.alert_preset || null : null,
+      }
       let hadSuccess = false
       let errorSummary = ''
       for (const sub of subscriptions) {
@@ -204,17 +227,9 @@ Deno.serve(async (req) => {
           keys: { p256dh: toBase64Url(sub.p256dh), auth: toBase64Url(sub.auth) },
         }
         try {
-          const firstEvent = sortedEvents[0]
-          const isSingleEvent = sortedEvents.length === 1
           await webpush.sendNotification(
             subscription as { endpoint: string; keys: { p256dh: string; auth: string } },
-            JSON.stringify({
-              title,
-              body: nBody,
-              url: '/?tab=offers',
-              eventStartAt: isSingleEvent ? firstEvent?.start_at || null : null,
-              eventAlertPreset: isSingleEvent ? firstEvent?.alert_preset || null : null,
-            })
+            JSON.stringify(payload)
           )
           hadSuccess = true
           sent += 1
@@ -228,6 +243,19 @@ Deno.serve(async (req) => {
             if (!deleteError) removed += 1
           }
         }
+      }
+
+      const apns = await sendApnsToUser(admin, ev.user_id, {
+        title,
+        body: nBody,
+        url: '/?tab=offers',
+      })
+      sent += apns.sent
+      failed += apns.failed
+      removed += apns.removed
+      if (apns.sent > 0) hadSuccess = true
+      if (!hadSuccess && apns.reason === 'not_configured') {
+        errorSummary = errorSummary || 'APNs is not configured on this Edge project.'
       }
 
       await admin.from('offer_notification_sends').insert(

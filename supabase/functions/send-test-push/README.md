@@ -11,6 +11,7 @@ Set these in your Supabase project:
 - `WEB_PUSH_PUBLIC_KEY`
 - `WEB_PUSH_PRIVATE_KEY`
 - `WEB_PUSH_SUBJECT` (recommended format: `mailto:you@example.com`)
+- **APNs (optional):** `APNS_KEY_ID`, `APNS_P8`, optional `APNS_TEAM_ID` / `APNS_BUNDLE_ID` (same names as `lounge-send-activity-push`)
 
 ## Deploy
 

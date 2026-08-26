@@ -49,6 +49,7 @@ import {
 import {
   computeLoungeLightboxPeekTarget,
   getLoungeDetailOverLightbox,
+  getLoungeMediaSheetKeyboardLocked,
   subscribeLoungeDetailOverLightbox,
 } from './loungeLightboxDetailSheet.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
@@ -2582,6 +2583,7 @@ export default function LoungePostStreamVideo({
     const applyHeroViewportLayout = () => {
       const from = heroFromRectRef.current
       if (!from || heroPhaseRef.current !== 'open') return
+      if (getLoungeMediaSheetKeyboardLocked()) return
       const peek = getLoungeDetailOverLightbox()
       const target = peek
         ? computeLoungeLightboxPeekTarget(from, { displayW, displayH })
@@ -3509,7 +3511,6 @@ export default function LoungePostStreamVideo({
             <>
               <div
                 className="pointer-events-none fixed inset-0"
-                data-lounge-media-kb-park=""
                 style={{ zIndex: heroScrimZIndex }}
                 aria-hidden
               >

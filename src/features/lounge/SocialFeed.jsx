@@ -304,6 +304,7 @@ import {
   buildLoungeStreamLightboxCtxFromPostCardProps,
 } from './LoungeStreamLightboxContext.jsx'
 import { isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeStreamLightboxRenderers.jsx'
+import { setLoungeDetailOverLightboxAttr } from './loungeLightboxDetailSheet.js'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import {
   LOUNGE_COMMENT_BUBBLE_D,
@@ -1261,6 +1262,10 @@ export default function SocialFeed({
   const [loungeDockFooterHeight, setLoungeDockFooterHeight] = useState(0)
   const [loungePostDetail, setLoungePostDetail] = useState(null)
   /** Continuation rows for multi-part post threads in post detail. */
+  /** X-style: post/comment detail as a bottom sheet over a still-open media lightbox. */
+  const [loungePostDetailOverLightbox, setLoungePostDetailOverLightbox] = useState(false)
+  const loungePostDetailOverLightboxRef = useRef(false)
+  const loungePostDetailOpenedAsLightboxSheetRef = useRef(false)
   /** When true, post detail was opened from profile (likes/bookmarks/posts) and must sit above z-[101] profile chrome. */
   const [loungePostDetailAboveProfile, setLoungePostDetailAboveProfile] = useState(false)
   const [loungeDetailEditing, setLoungeDetailEditing] = useState(false)
@@ -7674,6 +7679,10 @@ export default function SocialFeed({
     }
     loungePostDetailPanelEnteredRef.current = true
     setLoungePostDetailPanelEntered(true)
+    loungePostDetailOverLightboxRef.current = false
+    loungePostDetailOpenedAsLightboxSheetRef.current = false
+    setLoungePostDetailOverLightbox(false)
+    setLoungeDetailOverLightboxAttr(false)
     setLoungePostDetail(null)
     setLoungePostDetailAboveProfile(false)
     setLoungePostDetailVisible(true)
@@ -7997,20 +8006,22 @@ export default function SocialFeed({
         performance.now() < loungeFeedNavClickSuppressUntilRef.current &&
         !opts?.fromReplyFailureToast
       ) return
-      pauseAllLoungeStreamInlineVideos()
+      if (!opts?.keepLightboxPlaying) {
+        pauseAllLoungeStreamInlineVideos()
+        try {
+          resetFeedInlineSoundRef.current?.()
+        } catch {
+          /* ignore */
+        }
+        try {
+          resetPostDetailInlineSoundRef.current?.()
+        } catch {
+          /* ignore */
+        }
+      }
       if (loungeReadOnly && !opts?.fromPublicLink) {
         onRequireAuth?.()
         return
-      }
-      try {
-        resetFeedInlineSoundRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        resetPostDetailInlineSoundRef.current?.()
-      } catch {
-        /* ignore */
       }
       const wantEdit = opts?.startEditing === true
       const tid = loungePostDetailCloseFallbackTimerRef.current
@@ -8182,7 +8193,7 @@ export default function SocialFeed({
    * then smooth-scroll from top to the focused comment (see pathIds focus-scroll effect).
    */
   const openDirectCommentPostDetail = useCallback(
-    async (post, commentId, { focusComposer = false, prefetchedComments = null } = {}) => {
+    async (post, commentId, { focusComposer = false, prefetchedComments = null, keepLightboxPlaying = false } = {}) => {
       if (!post?.id || !commentId) return
       const contentPost = loungeFanOnlyPostContentEntity(post)
       if (loungeFanOnlyPostDetailOpenBlocked(post, loungeFanLockCtx)) {
@@ -8209,6 +8220,7 @@ export default function SocialFeed({
           openLoungePostDetail(parentPost, {
             focusCommentId: commentId,
             focusCommentComposer: focusComposer,
+            keepLightboxPlaying,
           })
           return
         }
@@ -8219,6 +8231,7 @@ export default function SocialFeed({
         openLoungePostDetail(parentPost, {
           focusCommentId: commentId,
           focusCommentComposer: focusComposer,
+          keepLightboxPlaying,
         })
         return
       }
@@ -8231,7 +8244,7 @@ export default function SocialFeed({
         focusComposer,
       }
       loungeCommentDetailDirectEntryDepthRef.current = pathIds.length
-      openLoungePostDetail(parentPost)
+      openLoungePostDetail(parentPost, keepLightboxPlaying ? { keepLightboxPlaying: true } : undefined)
     },
     [hydrateCommunityPosts, loungeFanLockCtx, openLoungePostDetail, supabaseClient],
   )
@@ -8241,7 +8254,7 @@ export default function SocialFeed({
    * Prefetches comments so the first paint is comment detail, not post-only then drill.
    */
   const openCommentRepostDetail = useCallback(
-    async (repostedComment, { focusComposer = false } = {}) => {
+    async (repostedComment, { focusComposer = false, keepLightboxPlaying = false } = {}) => {
       if (!repostedComment?.post_id || !repostedComment?.id) return
       let parentPost = communityPosts.find((p) => String(p.id) === String(repostedComment.post_id))
       if (!parentPost) {
@@ -8268,6 +8281,7 @@ export default function SocialFeed({
         openLoungePostDetail(parentPost, {
           focusCommentId: repostedComment.id,
           focusCommentComposer: focusComposer,
+          keepLightboxPlaying,
         })
         return
       }
@@ -8275,6 +8289,7 @@ export default function SocialFeed({
       await openDirectCommentPostDetail(parentPost, repostedComment.id, {
         focusComposer,
         prefetchedComments: comments,
+        keepLightboxPlaying,
       })
     },
     [communityPosts, hydrateCommunityPosts, openDirectCommentPostDetail, openLoungePostDetail, supabaseClient],
@@ -8906,11 +8921,13 @@ export default function SocialFeed({
       (loungeDockPanel === 'search' || loungeDockPanel === 'notifications') &&
       !loungePostDetailAboveProfile,
   )
-  const loungePostDetailShellZClass = loungePostDetailAboveProfile
-    ? 'z-[102]'
-    : loungePostDetailOpenedOverSearch
-      ? 'z-[100]'
-      : 'z-[98]'
+  const loungePostDetailShellZClass = loungePostDetailOverLightbox
+    ? 'z-[109]'
+    : loungePostDetailAboveProfile
+      ? 'z-[102]'
+      : loungePostDetailOpenedOverSearch
+        ? 'z-[100]'
+        : 'z-[98]'
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile
     ? 'z-[103]'
@@ -8919,11 +8936,13 @@ export default function SocialFeed({
       : 'z-[100]'
 
   const loungeProfileScreenOpen = profileModalOpen || profileOverlayStack.length > 0
-  const loungeQuoteRepostShellZClass = loungePostDetailAboveProfile
-    ? 'z-[107]'
-    : loungeProfileScreenOpen
-      ? 'z-[111]'
-      : 'z-[100]'
+  const loungeQuoteRepostShellZClass = loungePostDetailOverLightbox
+    ? 'z-[111]'
+    : loungePostDetailAboveProfile
+      ? 'z-[107]'
+      : loungeProfileScreenOpen
+        ? 'z-[111]'
+        : 'z-[100]'
 
   const loungeDetailStreamLightboxSurface = useMemo(
     () => ({
@@ -8995,6 +9014,25 @@ export default function SocialFeed({
     }
   }, [cancelLoungeDetailEditMediaPrep, loungeDetailEditBackgroundUploadInFlight])
 
+  const enterLoungeLightboxDetailSheet = useCallback(() => {
+    if (!loungePostDetail?.id) {
+      loungePostDetailOpenedAsLightboxSheetRef.current = true
+    }
+    loungePostDetailOverLightboxRef.current = true
+    setLoungePostDetailOverLightbox(true)
+    setLoungeDetailOverLightboxAttr(true)
+  }, [loungePostDetail?.id])
+
+  const dismissLoungeLightboxDetailSheet = useCallback(() => {
+    if (loungePostDetailOpenedAsLightboxSheetRef.current) {
+      closeLoungePostDetail()
+      return
+    }
+    loungePostDetailOverLightboxRef.current = false
+    setLoungePostDetailOverLightbox(false)
+    setLoungeDetailOverLightboxAttr(false)
+  }, [closeLoungePostDetail])
+
   const handleLoungePostDetailBack = useCallback(() => {
     if (loungePostDetailMenuOpen) {
       setLoungePostDetailMenuOpen(false)
@@ -9007,6 +9045,10 @@ export default function SocialFeed({
     if (loungeCommentDetailPathIds.length > 0) {
       const entryDepth = loungeCommentDetailDirectEntryDepthRef.current
       if (entryDepth != null && loungeCommentDetailPathIds.length <= entryDepth) {
+        if (loungePostDetailOverLightbox) {
+          dismissLoungeLightboxDetailSheet()
+          return
+        }
         closeLoungePostDetail()
         return
       }
@@ -9019,13 +9061,19 @@ export default function SocialFeed({
       })
       return
     }
+    if (loungePostDetailOverLightbox) {
+      dismissLoungeLightboxDetailSheet()
+      return
+    }
     closeLoungePostDetail()
   }, [
     cancelLoungeDetailEdit,
     closeLoungePostDetail,
+    dismissLoungeLightboxDetailSheet,
     loungeCommentDetailPathIds.length,
     loungeDetailEditing,
     loungePostDetailMenuOpen,
+    loungePostDetailOverLightbox,
     scrollLoungePostDetailToTopInstant,
   ])
 
@@ -9043,9 +9091,11 @@ export default function SocialFeed({
   )
 
   const openLoungeCommentDetail = useCallback(
-    (comment, { focusComposer = false } = {}) => {
+    (comment, { focusComposer = false, keepLightboxPlaying = false } = {}) => {
       if (!comment?.id) return
-      pauseAllLoungeStreamInlineVideos()
+      if (!keepLightboxPlaying && !loungePostDetailOverLightboxRef.current) {
+        pauseAllLoungeStreamInlineVideos()
+      }
       if (loungeReadOnly) {
         requireLoungeAuth()
         return
@@ -9112,13 +9162,14 @@ export default function SocialFeed({
   const openLoungeStreamLightboxDetail = useCallback(
     (hostPost, mediaPost, { focusComposer = false } = {}) => {
       if (openProfileGateIfNeeded()) return
+      enterLoungeLightboxDetailSheet()
       const { displayEntity } = loungeStreamLightboxMediaSource(hostPost, mediaPost)
       if (isFeedCommentEntity(displayEntity)) {
         if (loungePostDetail?.id && String(loungePostDetail.id) === String(displayEntity.post_id)) {
-          openLoungeCommentDetail(displayEntity, { focusComposer })
+          openLoungeCommentDetail(displayEntity, { focusComposer, keepLightboxPlaying: true })
           return
         }
-        void openCommentRepostDetail(displayEntity, { focusComposer })
+        void openCommentRepostDetail(displayEntity, { focusComposer, keepLightboxPlaying: true })
         return
       }
       const targetPost = displayEntity || mediaPost || hostPost
@@ -9129,16 +9180,19 @@ export default function SocialFeed({
       }
       openLoungePostDetail(
         targetPost,
-        focusComposer ? { focusCommentComposer: true } : {},
+        focusComposer
+          ? { focusCommentComposer: true, keepLightboxPlaying: true }
+          : { keepLightboxPlaying: true },
       )
     },
     [
-      openProfileGateIfNeeded,
-      loungePostDetail?.id,
-      openLoungeCommentDetail,
-      openCommentRepostDetail,
+      enterLoungeLightboxDetailSheet,
       expandAndFocusLoungeDetailCommentComposer,
+      loungePostDetail?.id,
+      openCommentRepostDetail,
+      openLoungeCommentDetail,
       openLoungePostDetail,
+      openProfileGateIfNeeded,
     ],
   )
 
@@ -9146,10 +9200,19 @@ export default function SocialFeed({
     (comment, _media, { focusComposer = false } = {}) => {
       if (!comment?.id) return
       if (openProfileGateIfNeeded()) return
-      if (focusComposer) onLoungeCommentReplyInteraction(comment)
-      else openLoungeCommentDetail(comment, { focusComposer: false })
+      enterLoungeLightboxDetailSheet()
+      if (focusComposer) {
+        onLoungeCommentReplyInteraction(comment)
+      } else {
+        openLoungeCommentDetail(comment, { focusComposer: false, keepLightboxPlaying: true })
+      }
     },
-    [openProfileGateIfNeeded, onLoungeCommentReplyInteraction, openLoungeCommentDetail],
+    [
+      enterLoungeLightboxDetailSheet,
+      onLoungeCommentReplyInteraction,
+      openLoungeCommentDetail,
+      openProfileGateIfNeeded,
+    ],
   )
 
   useEffect(() => {
@@ -9706,6 +9769,12 @@ export default function SocialFeed({
   }, [loungePostDetailVisible])
 
   useEffect(() => {
+    loungePostDetailOverLightboxRef.current = loungePostDetailOverLightbox
+    setLoungeDetailOverLightboxAttr(loungePostDetailOverLightbox)
+    return () => setLoungeDetailOverLightboxAttr(false)
+  }, [loungePostDetailOverLightbox])
+
+  useEffect(() => {
     if (!composerUserId) {
       closeLoungePostDetail()
     }
@@ -9730,6 +9799,11 @@ export default function SocialFeed({
         cancelLoungeDetailCommentEdit()
         return
       }
+      if (loungePostDetailOverLightbox) {
+        e.preventDefault()
+        dismissLoungeLightboxDetailSheet()
+        return
+      }
       closeLoungePostDetail()
     }
     window.addEventListener('keydown', onKey)
@@ -9738,10 +9812,12 @@ export default function SocialFeed({
     cancelLoungeDetailCommentEdit,
     cancelLoungeDetailEdit,
     closeLoungePostDetail,
+    dismissLoungeLightboxDetailSheet,
     loungeDetailCommentEditingId,
     loungeDetailEditing,
     loungePostDetail,
     loungePostDetailMenuOpen,
+    loungePostDetailOverLightbox,
   ])
 
   useEffect(() => {
@@ -15562,6 +15638,12 @@ export default function SocialFeed({
     getLoungeStreamLightboxOpen,
     () => false,
   )
+
+  useEffect(() => {
+    if (loungeStreamLightboxOpen) return
+    if (!loungePostDetailOverLightbox) return
+    dismissLoungeLightboxDetailSheet()
+  }, [dismissLoungeLightboxDetailSheet, loungePostDetailOverLightbox, loungeStreamLightboxOpen])
   const loungeDockSuppressed = useSyncExternalStore(
     subscribeLoungeDockSuppressed,
     getLoungeDockSuppressed,
@@ -16689,49 +16771,92 @@ export default function SocialFeed({
 
       {loungePostDetail ? (
         <div
-          className={`fixed inset-0 sm:bg-black/55 sm:backdrop-blur-[2px] ${loungePostDetailShellZClass}`}
+          className={`fixed inset-0 ${
+            loungePostDetailOverLightbox
+              ? 'bg-black/40'
+              : 'sm:bg-black/55 sm:backdrop-blur-[2px]'
+          } ${loungePostDetailShellZClass}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"
         >
           <button
             type="button"
-            className="absolute inset-0 z-0 hidden cursor-default sm:block"
-            aria-label="Close post"
+            className={`absolute inset-0 z-0 cursor-default ${
+              loungePostDetailOverLightbox ? 'block' : 'hidden sm:block'
+            }`}
+            aria-label={loungePostDetailOverLightbox ? 'Close comments' : 'Close post'}
             onClick={() => {
               if (loungeDetailEditing) cancelLoungeDetailEdit()
+              else if (loungePostDetailOverLightbox) dismissLoungeLightboxDetailSheet()
               else closeLoungePostDetail()
             }}
           />
           <div
             data-lounge-post-detail-sheet=""
-            className={`fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md ${
-              LOUNGE_IOS && loungeDetailCommentFieldFocused
-                ? 'transform-none'
-                : `transition-transform duration-300 ease-out motion-reduce:transition-none ${
-                    loungePostDetailVisible ? 'translate-x-0' : 'translate-x-full'
+            {...(loungePostDetailOverLightbox ? { 'data-lounge-media-detail-sheet': '' } : {})}
+            className={
+              loungePostDetailOverLightbox
+                ? `fixed inset-x-0 bottom-0 z-10 mx-auto flex h-[min(78dvh,calc(100dvh-5.5rem))] max-h-[min(78dvh,calc(100dvh-5.5rem))] w-full max-w-2xl flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-zinc-800/70 bg-zinc-950 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${
+                    LOUNGE_IOS && loungeDetailCommentFieldFocused
+                      ? 'transform-none'
+                      : `transition-transform duration-300 ease-out motion-reduce:transition-none ${
+                          loungePostDetailVisible ? 'translate-y-0' : 'translate-y-full'
+                        }`
                   }`
-            }`}
+                : `fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md ${
+                    LOUNGE_IOS && loungeDetailCommentFieldFocused
+                      ? 'transform-none'
+                      : `transition-transform duration-300 ease-out motion-reduce:transition-none ${
+                          loungePostDetailVisible ? 'translate-x-0' : 'translate-x-full'
+                        }`
+                  }`
+            }
             onTransitionEnd={onLoungePostDetailPanelTransitionEnd}
             onTransitionCancel={onLoungePostDetailPanelTransitionEnd}
             onClick={(e) => e.stopPropagation()}
           >
+            {loungePostDetailOverLightbox ? (
+              <div
+                className="flex shrink-0 justify-center pb-0.5 pt-2"
+                aria-hidden
+              >
+                <span
+                  data-lounge-media-detail-grab=""
+                  className="h-1 w-10 rounded-full bg-zinc-600"
+                />
+              </div>
+            ) : null}
             {/* sat on this absolute bar only … panel pt + measured spacer double-padded IPA */}
             <div
               ref={loungePostDetailTitleBarRef}
               data-lounge-post-detail-title-bar=""
-              className="absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform"
-              style={{
-                transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
-                pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
-              }}
+              className={
+                loungePostDetailOverLightbox
+                  ? 'relative z-30 shrink-0 bg-zinc-950 will-change-auto'
+                  : 'absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform'
+              }
+              style={
+                loungePostDetailOverLightbox
+                  ? undefined
+                  : {
+                      transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
+                      pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
+                    }
+              }
             >
               <div className={`flex shrink-0 items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
               <button
                 type="button"
                 onClick={handleLoungePostDetailBack}
                 className={`flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]`}
-                aria-label={loungeCommentDetailPathIds.length > 0 ? 'Back' : 'Back to Lounge'}
+                aria-label={
+                  loungeCommentDetailPathIds.length > 0
+                    ? 'Back'
+                    : loungePostDetailOverLightbox
+                      ? 'Close comments'
+                      : 'Back to Lounge'
+                }
               >
                 <span className="text-[22px] leading-none" aria-hidden>
                   ←
@@ -16823,7 +16948,11 @@ export default function SocialFeed({
                 aria-hidden
                 className="shrink-0"
                 style={{
-                  height: loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56,
+                  height: loungePostDetailOverLightbox
+                    ? 0
+                    : loungePostDetailTitleBarHeight > 0
+                      ? loungePostDetailTitleBarHeight
+                      : 56,
                 }}
               />
               <div className="px-4 py-4 pb-4">
@@ -18314,7 +18443,13 @@ export default function SocialFeed({
       {loungeDetailCommentDiscardPromptOpen ? (
         <div
           className={`fixed inset-0 flex items-end justify-center bg-black/45 px-4 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-8 backdrop-blur-[3px] sm:items-center sm:p-6 ${
-            loungePostDetailAboveProfile ? 'z-[106]' : loungePostDetailOpenedOverSearch ? 'z-[101]' : 'z-[99]'
+            loungePostDetailOverLightbox
+              ? 'z-[110]'
+              : loungePostDetailAboveProfile
+                ? 'z-[106]'
+                : loungePostDetailOpenedOverSearch
+                  ? 'z-[101]'
+                  : 'z-[99]'
           }`}
           role="dialog"
           aria-modal="true"
@@ -19275,9 +19410,11 @@ export default function SocialFeed({
                 : loungeProfileScreenOpen
                   ? 'z-[112]'
                   : 'z-[105]'
-              : loungePostDetailAboveProfile
-                ? 'z-[106]'
-                : 'z-[105]'
+              : loungePostDetailOverLightbox
+                ? 'z-[112]'
+                : loungePostDetailAboveProfile
+                  ? 'z-[106]'
+                  : 'z-[105]'
           }
           onCancel={() => {
             if (loungeVideoCrop.mode === 'detailComment') {

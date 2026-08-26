@@ -240,10 +240,7 @@ export function buildLoungeStreamLightboxChrome(hostEntity, mediaPost, dismissLi
       onLinkClick={ctx.onLinkClick}
       onCaptionClick={
         typeof ctx.onLightboxOpenDetail === 'function' && captionText
-          ? () => {
-              dismissLightbox()
-              openDetailFromLightbox(false)
-            }
+          ? () => openDetailFromLightbox(false)
           : undefined
       }
     />

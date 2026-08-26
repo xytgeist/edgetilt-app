@@ -1076,6 +1076,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-08-26: **Lounge lightbox peek 12px gap (Windows):** Peek band is `min(painted sheet top - 12, estimated 60/74 band)` so CSS `max(60lvh, …)` cannot sit on top of the media. Composer shrink still uses the smaller 74% estimate immediately. No SQL / Edge.
 
+- 2026-08-26: **Lounge lightbox overlay composer frost (Windows):** Overlay comments sheet composer no longer has the 56px fade, footer `backdrop-filter`, or upward shadow. Solid sheet-matching footer. Full post/comment detail glass unchanged. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox comments from post/comment detail (Windows):** Overlay no longer paints `bg-black/40` over peek media. Image/GIF lightbox state stays mounted when the sheet hides the duplicate tile (`contents` / `h-0`, not a remount). Stream peek tile is not `return null`'d on lightbox close. Dismissing the sheet from an already-open detail clears the swipe translate and returns to **that** post/comment detail, not the feed. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox peek polish (Windows):** Peek eases from interpolable identity (double rAF) instead of first-paint snap. Composer 74lvh uses the target sheet height so media shrinks with the sheet, not the mid-transition 60% top. Keyboard pad is frozen `innerHeight - visualViewport` (not lvh), so the composer is not stranded above the keys. Still **60lvh / 74lvh**. No SQL / Edge.

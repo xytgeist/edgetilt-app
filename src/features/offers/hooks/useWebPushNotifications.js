@@ -68,11 +68,10 @@ export default function useWebPushNotifications({ supabaseClient }) {
 
   const canEnable = useMemo(() => {
     if (isIpaShell) {
-      const alreadyActive = nativeStatus === 'granted' && nativeServerRegistered === true
-      return !alreadyActive && !isBusy
+      return nativeStatus !== 'denied' && !(nativeStatus === 'granted' && nativeServerRegistered === true) && !isBusy
     }
-    return isSupported && !isSubscribed && !isBusy
-  }, [isIpaShell, nativeStatus, nativeServerRegistered, isBusy, isSupported, isSubscribed])
+    return isSupported && permission !== 'denied' && !isSubscribed && !isBusy
+  }, [isIpaShell, nativeStatus, nativeServerRegistered, isBusy, isSupported, permission, isSubscribed])
   const canDisable = useMemo(() => {
     if (isIpaShell) {
       return nativeStatus === 'granted' && nativeServerRegistered === true && !isBusy
@@ -313,13 +312,6 @@ export default function useWebPushNotifications({ supabaseClient }) {
     }
     try {
       let permissionResult = Notification.permission
-      if (permissionResult === 'denied') {
-        setStatusMessage(
-          'Notifications are blocked in browser settings. Open site settings for this page and allow notifications, then try again.',
-        )
-        setIsSubscribed(false)
-        return false
-      }
       if (permissionResult !== 'granted') {
         if (silent) {
           setStatusMessage('Notification permission is not granted.')

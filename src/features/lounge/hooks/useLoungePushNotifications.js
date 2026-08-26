@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import useWebPushNotifications from '../../offers/hooks/useWebPushNotifications.js'
 import {
-  disableEdgeIOSApnsPush,
-  enableEdgeIOSApnsPush,
-  syncEdgeIOSApnsPushState,
-} from '../../../utils/edgeIOSApnsPush.js'
-import {
   getEdgeiOSPushPermissionStatus,
   getEdgeiOSPushToken,
   isEdgeiOSShell,
+  requestEdgeiOSPushPermission,
 } from '../../../utils/edgeNative.js'
 import {
   consumePwaNotifEnablePending,
   iosPwaInstallRequired,
 } from '../../../utils/pwaNotificationPrompt.js'
-import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
+import {
+  deleteMyApnsDeviceToken,
+  upsertMyApnsDeviceToken,
+} from '../../../utils/apnsDeviceTokenApi.js'
 import {
   readLoungePushNotificationsEnabled,
   subscribeLoungePushNotificationsEnabled,
@@ -141,7 +140,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     if (!viewerUserId) return 'Sign in to enable push on this device.'
     if (isIpaShell) {
       if (nativeStatus === 'denied') {
-        return 'Notifications are off in Settings. Turn the toggle on to open Settings, then allow Edge notifications and try again.'
+        return 'Notifications are blocked in iOS Settings for Edge.'
       }
       if (pushActive) {
         return nativeToken
@@ -283,30 +282,47 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
         syncingPrefRef.current = true
         try {
           if (nextEnabled) {
-            const result = await enableEdgeIOSApnsPush(supabaseClient)
-            setNativeStatus(result.status)
-            if (!result.ok) {
+            const { status, via } = await requestEdgeiOSPushPermission()
+            setNativeStatus(status)
+            if (status !== 'granted') {
               writeLoungePushNotificationsEnabled(false)
               writePushOptInIntent(viewerUserId, false)
-              setNativeStatusMessage(result.message)
+              setNativeStatusMessage(
+                via === 'error'
+                  ? 'Could not reach the native push bridge.'
+                  : status === 'denied'
+                    ? 'Notification permission was not granted.'
+                    : 'Notification permission is still pending.',
+              )
               return
             }
             writeLoungePushNotificationsEnabled(true)
             writePushOptInIntent(viewerUserId, true)
-            const next = await syncEdgeIOSApnsPushState(supabaseClient)
-            setNativeToken(next.token)
-            setNativeServerRegistered(next.serverRegistered)
-            if (next.token) uploadedTokenRef.current = next.token
-            setNativeStatusMessage(result.message)
+            const { token } = await getEdgeiOSPushToken()
+            setNativeToken(token)
+            if (token && supabaseClient) {
+              const saved = await upsertMyApnsDeviceToken(supabaseClient, token)
+              if (saved.ok) {
+                uploadedTokenRef.current = token
+                setNativeServerRegistered(true)
+                setNativeStatusMessage('Native alerts enabled on this device.')
+              } else {
+                setNativeServerRegistered(false)
+                setNativeStatusMessage('Permission granted, but this iPhone was not saved for alerts.')
+              }
+            } else {
+              setNativeStatusMessage('Permission granted. Waiting for device token…')
+            }
           } else {
             writeLoungePushNotificationsEnabled(false)
             writePushOptInIntent(viewerUserId, false)
             const tokenToDrop = nativeToken
             uploadedTokenRef.current = ''
             setNativeServerRegistered(false)
-            const result = await disableEdgeIOSApnsPush(supabaseClient, tokenToDrop)
-            setNativeToken(null)
-            setNativeStatusMessage(result.message || '')
+            if (tokenToDrop && supabaseClient) {
+              await deleteMyApnsDeviceToken(supabaseClient, tokenToDrop)
+            }
+            setNativeStatusMessage('')
           }
         } finally {
           syncingPrefRef.current = false

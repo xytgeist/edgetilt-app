@@ -27,7 +27,7 @@ import {
   OFFERS_IOS_ALERT_SETUP_SEEN_STORAGE_KEY_PREFIX,
   OFFERS_IOS_ALERT_REMINDER_SUPPRESS_STORAGE_KEY_PREFIX,
 } from './offerStorageKeys'
-import { isEdgeiOSShell } from '../../utils/edgeNative.js'
+import { isEdgeiOSShell, openEdgeAppSettings } from '../../utils/edgeNative.js'
 import {
   consumePwaNotifEnablePending,
   isIosDevice as detectIosDevice,
@@ -492,8 +492,25 @@ export default function OffersCalendar({
       }
 
       if (pushPermission === 'denied') {
-        await enablePush()
-        return alertPreset
+        if (isEdgeiOSShell()) {
+          const openSettings = await showAppConfirm({
+            title: 'Notifications are off',
+            message:
+              'Edge alerts are disabled in iPhone Settings.\n\nOpen Settings → Edge → Notifications and turn on Allow Notifications. Then tap Turn on alerts on this device in Offer reminders.',
+            confirmLabel: 'Open Settings',
+            cancelLabel: 'Cancel',
+          })
+          if (openSettings) await openEdgeAppSettings()
+        } else {
+          await showAppInfo({
+            title: 'Notifications are off',
+            message:
+              'This site does not have notification permission. Open your browser site settings and set Notifications to Allow, then try again.',
+            confirmLabel: 'Got it',
+          })
+        }
+        await setDefaultNone()
+        return OFFER_ALERT_NONE
       }
 
       // prompt (or unknown): call enable immediately ... do not show a confirm dialog
@@ -1218,11 +1235,7 @@ export default function OffersCalendar({
             onClick={() => void enablePush()}
             className="min-h-11 shrink-0 rounded-xl border border-cyan-300/35 bg-cyan-600 px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-cyan-900/35 disabled:text-cyan-100/90 disabled:opacity-100 touch-manipulation"
           >
-            {pushBusy
-              ? 'Working…'
-              : pushPermission === 'denied' && isEdgeiOSShell()
-                ? 'Open Settings to enable alerts'
-                : 'Turn on alerts on this device'}
+            {pushBusy ? 'Working…' : 'Turn on alerts on this device'}
           </button>
           <button
             type="button"
@@ -1323,7 +1336,7 @@ export default function OffersCalendar({
                   : 'Alerts are unavailable because this browser does not support web push here (try Chrome on Android or your installed app on iPhone).'
                 : pushPermission === 'denied'
                   ? isEdgeiOSShell()
-                    ? 'Notifications are off for Edge. Tap Open Settings to enable alerts, then return and tap the button again.'
+                    ? 'Notifications are off for Edge. Open Settings → Edge → Notifications, or tap Turn on alerts below after enabling.'
                     : 'This site does not have notification permission. Open your browser’s site settings for this page (lock or info icon → Permissions) and set Notifications to Allow, then try again.'
                   : 'Alerts are temporarily unavailable while setup finishes.'}
           </div>

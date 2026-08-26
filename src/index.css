@@ -8913,6 +8913,12 @@ html[data-lounge-media-sheet-composer] [data-lounge-media-detail-sheet] {
   height: max(74lvh, var(--lounge-media-sheet-h, 0px));
   max-height: max(74lvh, var(--lounge-media-sheet-h, 0px));
 }
+/* Android IME shrinks the layout viewport. 74lvh is the pre-keyboard screen, so the
+   sheet would fill the leftover band. 74% tracks the live layout; iOS stays on lvh. */
+html.platform-android[data-lounge-media-sheet-composer] [data-lounge-media-detail-sheet] {
+  height: 74%;
+  max-height: 74%;
+}
 html[data-lounge-media-sheet-dragging] [data-lounge-media-detail-sheet] {
   transition: none;
 }

@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox Android composer sheet height (Windows):** Pad fix was not enough. Composer still used **74lvh** / frozen pre-keyboard height while `resizes-content` had already shrunk the layout, so the sheet filled the leftover band. Android now sizes the overlay sheet to **74% of the live layout** and does not lock the iOS pre-keyboard park. iOS 60/74 lvh + frozen pad unchanged. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox Android composer pad (Windows):** Overlay pad used frozen `innerHeight - visualViewport`, which double-counts Android `resizes-content` and parked the reply field under the status bar. Android now uses live `innerHeight - visualViewport` (usually 0). iOS path unchanged. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox landscape composer peek (Windows):** Wider-than-tall media is width-capped, so a mixed lvh estimate did not shrink it when the sheet went 60 → 74. Peek now follows the painted sheet top for 300ms (same 12px gap) while height animates. No SQL / Edge.

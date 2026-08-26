@@ -143,6 +143,23 @@ function layoutViewportH() {
   return readLargeViewportH()
 }
 
+function liveLayoutH() {
+  if (typeof window === 'undefined') return 0
+  return Math.max(
+    Math.round(window.innerHeight || 0),
+    Math.round(document.documentElement?.clientHeight || 0),
+  )
+}
+
+/** Android IME already shrank the layout. Size the sheet against that band, not frozen lvh. */
+function sheetLayoutH() {
+  if (IS_ANDROID && (composerExpanded || sheetKbLocked)) {
+    const live = liveLayoutH()
+    if (live > 0) return live
+  }
+  return layoutViewportH()
+}
+
 function readInlineFixedBox(el) {
   if (!(el instanceof HTMLElement)) return null
   const top = Number.parseFloat(el.style.top)
@@ -304,7 +321,7 @@ function readVisualSheetTopPx() {
 
 function peekBandHeightPx() {
   if (!overlayOn || !peekRevealed) return 0
-  const vh = layoutViewportH()
+  const vh = sheetLayoutH()
   const sheetTop = readVisualSheetTopPx()
   const dragging = sheetDragging || dragOffsetPx > 0 || peekResizing
   const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
@@ -374,7 +391,7 @@ function peekInsetPx() {
   if (!overlayOn || !peekRevealed) return 0
   const band = peekBandHeightPx()
   if (band < 8) return 0
-  return Math.max(0, layoutViewportH() - band)
+  return Math.max(0, sheetLayoutH() - band)
 }
 
 /** Grow the sheet when the overlay composer is focused ... media peek follows. */
@@ -561,7 +578,7 @@ export function subscribeLoungeDetailOverLightbox(listener) {
 
 export function estimateLoungeMediaDetailSheetHeightPx() {
   if (typeof window === 'undefined') return 0
-  return estimateSheetHeightForLayout(layoutViewportH())
+  return estimateSheetHeightForLayout(sheetLayoutH())
 }
 
 export function readLoungeMediaDetailSheetBottomInsetPx() {
@@ -600,6 +617,16 @@ export function notifyLoungeMediaDetailSheetMetrics() {
 export function lockLoungeMediaSheetKeyboard() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
   if (!overlayOn) return
+  if (IS_ANDROID) {
+    // resizes-content already parked `fixed bottom` on the keys. Pinning 74lvh of the
+    // pre-keyboard layout fills the remaining band. Follow live innerHeight instead.
+    writeSheetHeightVar(estimateLoungeMediaDetailSheetHeightPx())
+    writePeekInsetVar()
+    refreshCachedInnerKbPx()
+    emit()
+    schedulePeekSettleWrite()
+    return
+  }
   if (sheetKbLocked) {
     if (refreshCachedInnerKbPx()) emit()
     return

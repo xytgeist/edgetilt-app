@@ -16,8 +16,6 @@ let frozenSheetH = 0
 let frozenViewport = null
 /** Cached for useSyncExternalStore ... never read getBoundingClientRect in getSnapshot. */
 let cachedInnerKbPx = 0
-let bodyScrollLocked = false
-let bodyScrollY = 0
 
 function emit() {
   listeners.forEach((fn) => {
@@ -116,31 +114,6 @@ function refreshCachedInnerKbPx() {
   cachedInnerKbPx = next
   document.documentElement.style.setProperty('--lounge-overlay-inner-kb', `${next}px`)
   return true
-}
-
-function lockBodyScroll() {
-  if (typeof document === 'undefined' || bodyScrollLocked) return
-  bodyScrollLocked = true
-  bodyScrollY = window.scrollY || 0
-  const b = document.body
-  b.style.position = 'fixed'
-  b.style.top = `-${bodyScrollY}px`
-  b.style.left = '0'
-  b.style.right = '0'
-  b.style.width = '100%'
-}
-
-function unlockBodyScroll() {
-  if (typeof document === 'undefined' || !bodyScrollLocked) return
-  bodyScrollLocked = false
-  const b = document.body
-  b.style.removeProperty('position')
-  b.style.removeProperty('top')
-  b.style.removeProperty('left')
-  b.style.removeProperty('right')
-  b.style.removeProperty('width')
-  window.scrollTo(0, bodyScrollY)
-  bodyScrollY = 0
 }
 
 /** Document flag so lightbox chrome can hide while the X-style detail sheet is up. */
@@ -246,7 +219,6 @@ export function lockLoungeMediaSheetKeyboard() {
   document.documentElement.style.setProperty('--lounge-media-sheet-panel-h', `${frozenSheetH}px`)
   document.documentElement.style.setProperty('--lounge-media-sheet-top', `${frozenSheetTop}px`)
   document.documentElement.setAttribute('data-lounge-media-sheet-kb', '')
-  lockBodyScroll()
   refreshCachedInnerKbPx()
   emit()
 }
@@ -258,7 +230,6 @@ export function unlockLoungeMediaSheetKeyboard() {
   frozenSheetTop = 0
   frozenSheetH = 0
   cachedInnerKbPx = 0
-  unlockBodyScroll()
   if (typeof document !== 'undefined') {
     document.documentElement.removeAttribute('data-lounge-media-sheet-kb')
     document.documentElement.style.removeProperty('--lounge-media-sheet-panel-h')

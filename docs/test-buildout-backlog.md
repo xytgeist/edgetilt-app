@@ -1058,7 +1058,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-26: **Lounge lightbox sheet keyboard crash (Windows):** `Maximum update depth exceeded` when parking peek with transforms on the Stream lightbox node + live getBoundingClientRect in `useSyncExternalStore`. Stopped mutating the `<video>` host; overlap is a cached snapshot; Stream skips hero relayout while the composer lock is on. Tap peek to dismiss sheet should not white-screen. Grab may still follow iOS keyboard pan ... do not bring back the transform loop.
+- 2026-08-26: **Lounge lightbox peek restored after keyboard crash fix:** Composer lock no longer skips Stream hero relayout (that left media full-bleed). Dropped `body { position:fixed }` (that shoved the whole screen). Still no transform on the `<video>` host. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox comments sheet peek (Windows):** Sheet still over a live lightbox. Media **contain-fits in the band above the sheet** (Stream flyout `forceBand` + image stage `--lounge-media-sheet-h`). The post/comment that owns that media is **caption-only** in the sheet. Same `<video>` node. Feed → Post unchanged. No SQL / Edge.
 

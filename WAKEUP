@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows 2026-08-26 (lightbox sheet keyboard crash):** Sentry `Maximum update depth exceeded` from transforming the Stream lightbox + live layout reads in `useSyncExternalStore`. Do not put transform/height on `[data-lounge-media-lightbox]`. Overlap is cached. Stream skips hero relayout while composer lock is on. Grab may still follow iOS pan ... do not revive that loop.
+**Windows 2026-08-26 (lightbox peek + crash):** Peek contain-fit is back (do not skip Stream hero relayout when the composer lock is on). Body `position:fixed` keyboard lock is gone (that shoved the whole screen). Do not transform the Stream lightbox node. Smoke: lightbox → comment → media shrinks into the peek; tap peek to dismiss without crash. Composer keyboard may still pan the viewport.
 
 **Windows 2026-08-26 (lightbox comments sheet):** Comment / reply from Stream or image lightbox keeps the lightbox playing and lifts post/comment detail as an X-style grab-handle sheet. Media contain-fits in the peek above the sheet; the owning post/comment is caption-only in the sheet. Feed → Post slide unchanged. Smoke: tap video/image → comment → fitted peek, no duplicate media in the sheet; dismiss sheet → full lightbox again.
 

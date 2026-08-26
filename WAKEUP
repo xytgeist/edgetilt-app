@@ -95,7 +95,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Do not reopen:** JS-coordinated profile tab scroll (felt like trash). Nested inner scroller on the tab pane (`overflow-x: hidden` creating overflow-y auto). FAB overlay teardown / snapshot restore / z-40 park. IPA post-detail double Island pad. IPA letterbox / Island-under-back / FAB home-indicator / feed title sat. Safari/PWA per-tile feed sound (EdgeiOS handoff is signed). GIF dismiss-keyboard hacks (inert + layout viewport is the signed path).
 
-**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. IPA remaining: Stripe→Safari / no A2HS, OAuth-in-shell, hard-crash leaving post detail (see Mac do now). No SQL in this slice.
+**Next:** After this session's `main` promote, Vercel prod smoke: profile tabs + FAB overlay + post-detail light. IPA remaining: OAuth-in-shell, hard-crash leaving post detail. APNs waits on org enroll (see Mac do now). No SQL in this slice.
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
@@ -152,11 +152,12 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - Post-detail Island pad: title bar only, matches Safari/PWA
 - Safe area: no letterbox; post-detail ← clear of Island; FAB vs home indicator; feed title chrome
 - Lounge unmute handoff: Tap for sound → next clips stay audible (`ff9a8c16`)
+- Web-gate smoke: Joey K fan unsub opened Stripe in system Safari. Settings / Offers: no A2HS / web-push install nag. Notifications toggle stays off (native APNs not live). 
 
 **Mac do now (Ryan + Theo):**
-1. Remaining web-gate smoke: Stripe Checkout/portal → system Safari; no A2HS / web-push nag.
-2. OAuth-in-shell smoke; hard-crash repro leaving post detail.
-3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token.
+1. OAuth-in-shell smoke (sign in / return inside the IPA).
+2. Hard-crash repro leaving post detail.
+3. Org Apple Developer enroll → wire `CODE_SIGN_ENTITLEMENTS` + Push capability for real APNs token. Not a coding slice until the org team exists.
 
 **Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 

@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox peek still broken after `70ed7f52` (Windows):** Peek was reading the sheet while it was still `translate-y-full` (band ≈ full screen, scale 1). iOS also ignores `@property` values inside `transform()`. Now: skip that off-screen rect, keep ticking until the sheet is parked, apply peek as `--lounge-media-peek-transform`, overlay comments skip the slide-from-below so the sheet is already at rest. Composer pad uses `visualViewport` while the field is up. Still **60lvh / 74lvh**. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox peek bugs (Windows):** Images/GIFs shrink from a painted-box cache after `landFrame` drops. 12px gap is the painted sheet top minus 12 (not a mismatched `innerHeight` estimate). Overlay composer pad listens to `visualViewport` only while kb-locked. Still **60lvh / 74lvh**. No Stream React peek transform. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox peek revert (Windows):** Ryan rolled back `a52bc836` / `efc8e9e7` / `100afceb`. Tree matches **`2c82f4c3`** (60lvh / 74lvh contain-fit peek). No SQL / Edge.

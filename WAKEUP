@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows 2026-08-26 (lightbox comments sheet):** Rest 60lvh / composer 74lvh. Image/GIF peek uses a painted-box cache (landFrame is dropped after FLIP). 12px gap is sheet-top minus 12. Composer pad listens to `visualViewport` only while kb-locked. Do **not** revive 65/80 or Stream inline peek transform.
+**Windows 2026-08-26 (lightbox comments sheet):** Rest 60lvh / composer 74lvh. Peek transform is `--lounge-media-peek-transform` (not @property inside transform). Do not use the sheet's translate-y-full rect as the peek band. Keyboard pad uses visualViewport while composer is up. Do **not** revive 65/80 or Stream React peek transform.
 
 **GIF picker (Ryan smoke PASSED 2026-08-25, IPA + non-IPA):** Search takes focus (`#root` inert). Sheet is layout-viewport full screen, keyboard overlays. IPA hides the WK accessory bar. Do not reopen dismiss-keyboard hacks. Trim audio mux (`d744555b`) stays.
 

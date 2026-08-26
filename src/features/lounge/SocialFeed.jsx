@@ -1695,9 +1695,13 @@ export default function SocialFeed({
   )
   const loungeDetailCommentKeyboardUp =
     loungeDetailCommentKbFooterLiftPx > loungeDetailCommentIosSafeBottomPx + 0.5
+  const loungeOverlayKbLiftPx = Math.max(
+    loungeOverlayInnerKbPx,
+    loungeDetailCommentKbFooterLiftPx,
+  )
   const loungeDetailCommentFooterPadBottom =
-    loungePostDetailOverLightbox && loungeOverlayInnerKbPx > 8
-      ? `${Math.round(loungeOverlayInnerKbPx)}px`
+    loungePostDetailOverLightbox && loungeOverlayKbLiftPx > 8
+      ? `${Math.round(loungeOverlayKbLiftPx)}px`
       : loungeDetailCommentKeyboardUp
         ? `${Math.round(loungeDetailCommentKbFooterLiftPx)}px`
         : loungeComposerFooterPaddingBottom(0, loungeDetailCommentIosSafeBottomPx)
@@ -8185,10 +8189,13 @@ export default function SocialFeed({
         window.clearTimeout(openTid)
         loungePostDetailOpenFallbackTimerRef.current = 0
       }
-      if (reduce) {
+      if (reduce || opts?.keepLightboxPlaying) {
         loungePostDetailPanelEnteredRef.current = true
         setLoungePostDetailPanelEntered(true)
         setLoungePostDetailVisible(true)
+        if (opts?.keepLightboxPlaying) {
+          requestAnimationFrame(() => notifyLoungeMediaDetailSheetMetrics())
+        }
         return
       }
       loungePostDetailPanelEnteredRef.current = false

@@ -69,7 +69,8 @@ function onViewportChange(event) {
 
 /** Keyboard overlap only. Do not size the sheet or peek from visualViewport. */
 function onVisualViewportChange() {
-  if (!overlayOn || !sheetKbLocked) return
+  if (!overlayOn) return
+  if (!sheetKbLocked && !composerExpanded) return
   if (refreshCachedInnerKbPx()) emit()
 }
 
@@ -149,6 +150,8 @@ function readInlineFixedBox(el) {
 function peekTransformIsIdentity() {
   if (typeof document === 'undefined') return true
   const root = document.documentElement.style
+  const raw = root.getPropertyValue('--lounge-media-peek-transform').trim()
+  if (raw && raw !== 'none') return false
   const scale = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-scale') || '1')
   const tx = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-tx') || '0')
   const ty = Number.parseFloat(root.getPropertyValue('--lounge-media-peek-ty') || '0')
@@ -168,17 +171,17 @@ function readPaintedMediaBox(el) {
 
 function readPeekMediaLayoutBox() {
   if (typeof document === 'undefined') return null
-  const flyout = document.querySelector('[data-lounge-stream-hero-flyout]')
-  const fromFlyout = readInlineFixedBox(flyout)
-  if (fromFlyout) {
-    cachedPeekMediaBox = fromFlyout
-    return fromFlyout
-  }
   const media = document.querySelector('[data-lounge-lightbox-peek-media]')
   const fromInline = readInlineFixedBox(media)
   if (fromInline) {
     cachedPeekMediaBox = fromInline
     return fromInline
+  }
+  const flyout = document.querySelector('[data-lounge-stream-hero-flyout]')
+  const fromFlyout = readInlineFixedBox(flyout)
+  if (fromFlyout) {
+    cachedPeekMediaBox = fromFlyout
+    return fromFlyout
   }
   if (cachedPeekMediaBox) return cachedPeekMediaBox
   if (!peekTransformIsIdentity()) return null
@@ -230,6 +233,7 @@ function writePeekIdentityVars() {
   root.style.setProperty('--lounge-media-peek-tx', '0px')
   root.style.setProperty('--lounge-media-peek-ty', '0px')
   root.style.setProperty('--lounge-media-peek-scale', '1')
+  root.style.setProperty('--lounge-media-peek-transform', 'none')
 }
 
 function readVisualSheetTopPx() {
@@ -240,13 +244,27 @@ function readVisualSheetTopPx() {
   return Number.isFinite(top) ? top : 0
 }
 
+function sheetIsParkedForPeek() {
+  const vh = layoutViewportH()
+  const top = readVisualSheetTopPx()
+  if (vh < 80) return false
+  if (top < 8) return false
+  if (top > vh * 0.88) return false
+  return true
+}
+
 function peekBandHeightPx() {
   if (!overlayOn || !peekRevealed) return 0
-  const sheetTop = readVisualSheetTopPx()
-  if (sheetTop >= 8) return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
+  const vh = layoutViewportH()
   const estimated = visualSheetHeightPx()
-  if (estimated < 8) return 0
-  return Math.max(0, layoutViewportH() - estimated - PEEK_GAP_PX)
+  const estimatedBand = estimated >= 8 ? Math.max(0, vh - estimated - PEEK_GAP_PX) : 0
+  const sheetTop = readVisualSheetTopPx()
+  const dragging = sheetDragging || dragOffsetPx > 0
+  // translate-y-full still has a real rect near the bottom of the viewport. Using that
+  // top makes the peek band ~full screen, so scale stays 1 and the 12px gap vanishes.
+  const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
+  if (sheetTop >= 8 && !slidingOn) return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
+  return estimatedBand
 }
 
 function writePeekInsetVar() {
@@ -266,9 +284,15 @@ function writePeekInsetVar() {
     return
   }
   const target = peekContainTarget(box, vw, bandH)
-  root.style.setProperty('--lounge-media-peek-tx', `${Math.round(target.left - box.left)}px`)
-  root.style.setProperty('--lounge-media-peek-ty', `${Math.round(target.top - box.top)}px`)
+  const tx = Math.round(target.left - box.left)
+  const ty = Math.round(target.top - box.top)
+  root.style.setProperty('--lounge-media-peek-tx', `${tx}px`)
+  root.style.setProperty('--lounge-media-peek-ty', `${ty}px`)
   root.style.setProperty('--lounge-media-peek-scale', String(target.scale))
+  root.style.setProperty(
+    '--lounge-media-peek-transform',
+    `translate3d(${tx}px, ${ty}px, 0) scale(${target.scale})`,
+  )
 }
 
 function syncComposerAttr() {
@@ -318,6 +342,7 @@ export function setLoungeMediaSheetComposerExpanded(on) {
     }
   }
   writePeekInsetVar()
+  refreshCachedInnerKbPx()
   emit()
 }
 
@@ -373,13 +398,20 @@ function estimatedParkedSheetBox() {
 }
 
 function refreshCachedInnerKbPx() {
-  if (!sheetKbLocked || frozenLayoutH < 1 || typeof window === 'undefined') {
+  if (!overlayOn || frozenLayoutH < 1 || typeof window === 'undefined') {
     if (cachedInnerKbPx === 0) return false
     cachedInnerKbPx = 0
     return true
   }
-  const visibleH = window.visualViewport?.height ?? window.innerHeight ?? 0
-  const next = Math.max(0, Math.round(frozenLayoutH - visibleH))
+  if (!sheetKbLocked && !composerExpanded) {
+    if (cachedInnerKbPx === 0) return false
+    cachedInnerKbPx = 0
+    return true
+  }
+  const vv = window.visualViewport
+  const visibleH = vv?.height ?? window.innerHeight ?? 0
+  const offset = Number(vv?.offsetTop) || 0
+  const next = Math.max(0, Math.round(frozenLayoutH - visibleH - offset))
   if (next === cachedInnerKbPx) return false
   cachedInnerKbPx = next
   document.documentElement.style.setProperty('--lounge-overlay-inner-kb', `${next}px`)
@@ -408,7 +440,9 @@ export function setLoungeDetailOverLightboxAttr(on) {
       peekRevealed = true
       writePeekInsetVar()
       emit()
-      if (!readPeekMediaLayoutBox() && peekRevealTries < 8) {
+      const parked = sheetIsParkedForPeek()
+      const hasBox = Boolean(readPeekMediaLayoutBox())
+      if ((!parked || !hasBox) && peekRevealTries < 32) {
         peekRevealTries += 1
         requestAnimationFrame(revealPeekAfterLayout)
       }
@@ -435,6 +469,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     document.documentElement.style.removeProperty('--lounge-media-peek-scale')
     document.documentElement.style.removeProperty('--lounge-media-peek-tx')
     document.documentElement.style.removeProperty('--lounge-media-peek-ty')
+    document.documentElement.style.removeProperty('--lounge-media-peek-transform')
   }
   emit()
 }
@@ -508,7 +543,7 @@ export function lockLoungeMediaSheetKeyboard() {
   refreshCachedInnerKbPx()
   emit()
   requestAnimationFrame(() => {
-    if (!sheetKbLocked) return
+    if (!overlayOn || (!sheetKbLocked && !composerExpanded)) return
     if (refreshCachedInnerKbPx()) emit()
   })
 }
@@ -533,6 +568,7 @@ export function unlockLoungeMediaSheetKeyboard() {
     document.documentElement.style.removeProperty('--lounge-media-peek-scale')
     document.documentElement.style.removeProperty('--lounge-media-peek-tx')
     document.documentElement.style.removeProperty('--lounge-media-peek-ty')
+    document.documentElement.style.removeProperty('--lounge-media-peek-transform')
   }
   emit()
 }

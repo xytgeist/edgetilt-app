@@ -8855,28 +8855,30 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-chrome-layer] {
   opacity: 0 !important;
   pointer-events: none !important;
 }
-html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]) {
-  transition:
-    --lounge-media-peek-scale 0.28s cubic-bezier(0.32, 0.72, 0, 1),
-    --lounge-media-peek-tx 0.28s cubic-bezier(0.32, 0.72, 0, 1),
-    --lounge-media-peek-ty 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-}
-html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging] {
-  transition: none;
-}
 html[data-lounge-detail-over-lightbox] [data-lounge-stream-hero-flyout],
 html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-peek-media] {
   transform-origin: 0 0 !important;
-  transform: translate3d(
-      var(--lounge-media-peek-tx, 0px),
-      var(--lounge-media-peek-ty, 0px),
-      0
-    )
-    scale(var(--lounge-media-peek-scale, 1)) !important;
+  /* One unregistered transform string … iOS often ignores @property values inside transform(). */
+  transform: var(--lounge-media-peek-transform, none) !important;
   will-change: transform;
 }
+html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+  [data-lounge-stream-hero-flyout],
+html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+  [data-lounge-lightbox-peek-media] {
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging]
+  [data-lounge-stream-hero-flyout],
+html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging]
+  [data-lounge-lightbox-peek-media] {
+  transition: none;
+}
 @media (prefers-reduced-motion: reduce) {
-  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]) {
+  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+    [data-lounge-stream-hero-flyout],
+  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+    [data-lounge-lightbox-peek-media] {
     transition: none;
   }
 }

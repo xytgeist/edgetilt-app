@@ -6,6 +6,7 @@ const SHEET_COMPOSER_FRACTION = 0.74
 const SHEET_MIN_PEEK_REM = 5.5
 /** Black gap between contain-fit media and the sheet top. */
 const PEEK_GAP_PX = 12
+const IS_ANDROID = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 
 let overlayOn = false
 let composerExpanded = false
@@ -474,7 +475,12 @@ function refreshCachedInnerKbPx() {
   const vv = window.visualViewport
   const visibleH = vv?.height ?? window.innerHeight ?? 0
   const offset = Number(vv?.offsetTop) || 0
-  const next = Math.max(0, Math.round(baseline - visibleH - offset))
+  const inner = Math.round(window.innerHeight || 0)
+  // Android `interactive-widget=resizes-content` already shrinks the layout viewport, so
+  // `fixed bottom` is on the keys. iOS needs frozen innerHeight vs visualViewport.
+  const next = IS_ANDROID
+    ? Math.max(0, Math.round(inner - visibleH - offset))
+    : Math.max(0, Math.round(baseline - visibleH - offset))
   if (next === cachedInnerKbPx) return false
   cachedInnerKbPx = next
   document.documentElement.style.setProperty('--lounge-overlay-inner-kb', `${next}px`)

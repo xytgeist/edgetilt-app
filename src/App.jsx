@@ -756,22 +756,40 @@ function App() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const militaryFromUrl = captureMilitaryPromoFromUrl()
-    if (militaryFromUrl) openSubscribeModal()
-  }, [openSubscribeModal])
+    if (!captureMilitaryPromoFromUrl()) return
+    try {
+      window.sessionStorage.setItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY, '1')
+    } catch {
+      // ignore
+    }
+  }, [])
 
   const closeSubscribeModal = useCallback(() => {
     setSubscribeModal((s) => ({ ...s, open: false }))
   }, [])
 
   useEffect(() => {
-    if (!user?.id || isChecking) return
+    if (isChecking) return
     try {
       if (window.sessionStorage.getItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY) !== '1') return
-      window.sessionStorage.removeItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY)
     } catch {
       return
     }
+    if (!user?.id) {
+      setAuthTab('join')
+      setShowForgotPassword(false)
+      setLoginError('')
+      setSignupError('')
+      setSignupMessage('')
+      setAuthPanelOpen(true)
+      return
+    }
+    try {
+      window.sessionStorage.removeItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY)
+    } catch {
+      // ignore
+    }
+    setAuthPanelOpen(false)
     openSubscribeModal()
   }, [user?.id, isChecking, openSubscribeModal])
 

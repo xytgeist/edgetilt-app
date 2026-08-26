@@ -106,6 +106,7 @@ export function stripMilitaryPromoFromUrl() {
 
 /**
  * Stamp localStorage from `/mil25/CODE` or `?mil=` / `?c=`.
+ * App then opens Join / Sign in if logged out, Subscribe after auth.
  * @returns {MilitaryPromoStamp | null} stamp when this load captured a URL code
  */
 export function captureMilitaryPromoFromUrl() {

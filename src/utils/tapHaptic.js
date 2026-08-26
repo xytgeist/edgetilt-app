@@ -1,4 +1,3 @@
-import { isEdgeiOSShell, triggerEdgeNativeHaptic } from './edgeNative.js'
 import { isAndroidDevice, isIosDevice } from './pwaNotificationPrompt.js'
 
 /** Opt-in only — global listener does not haptic every button. */
@@ -61,11 +60,8 @@ function fireAndroidVibrate() {
 export function triggerTapHapticLight() {
   if (!isTapHapticSupported()) return
 
-  if (isEdgeiOSShell()) {
-    void triggerEdgeNativeHaptic('light')
-    return
-  }
-
+  // Shell: stay on the in-WebView switch trick. The native bridge round-trip on every
+  // capture-phase click was starving CHHapticEngine and caused gesture gate timeouts.
   if (isIosDevice()) {
     fireIosSwitchHaptic()
     return

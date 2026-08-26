@@ -1,22 +1,42 @@
 import UIKit
 
 /// UIKit haptics for EdgeiOS shell. Contract: `docs/ios-native-bridge.md` `triggerHaptic`.
+/// Reuses prepared generators ... creating one per tap exhausts CHHapticEngine channels and stalls touches.
 enum EdgeHaptics {
+  private static let light = UIImpactFeedbackGenerator(style: .light)
+  private static let medium = UIImpactFeedbackGenerator(style: .medium)
+  private static let heavy = UIImpactFeedbackGenerator(style: .heavy)
+  private static let notification = UINotificationFeedbackGenerator()
+
+  private static var lastFireMs: TimeInterval = 0
+  private static let minGapMs: TimeInterval = 0.05
+
   static func trigger(style: String) {
+    let now = ProcessInfo.processInfo.systemUptime
+    guard now - lastFireMs >= minGapMs else { return }
+    lastFireMs = now
+
+    let normalized = style.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     DispatchQueue.main.async {
-      switch style.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+      switch normalized {
       case "medium":
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        medium.prepare()
+        medium.impactOccurred()
       case "heavy":
-        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        heavy.prepare()
+        heavy.impactOccurred()
       case "success":
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        notification.prepare()
+        notification.notificationOccurred(.success)
       case "warning":
-        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        notification.prepare()
+        notification.notificationOccurred(.warning)
       case "error":
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        notification.prepare()
+        notification.notificationOccurred(.error)
       default:
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        light.prepare()
+        light.impactOccurred()
       }
     }
   }

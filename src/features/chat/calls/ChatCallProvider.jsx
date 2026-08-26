@@ -367,11 +367,9 @@ export function ChatCallProvider({
       if (token) void upsertMyApnsDeviceToken(supabaseClient, token, { pushChannel: 'voip' })
     }
     window.addEventListener('edge-voip-token', onVoipToken)
-    const interval = window.setInterval(() => void syncVoip(), 15000)
     return () => {
       cancelled = true
       window.removeEventListener('edge-voip-token', onVoipToken)
-      window.clearInterval(interval)
     }
   }, [supabaseClient, viewerUserId])
 

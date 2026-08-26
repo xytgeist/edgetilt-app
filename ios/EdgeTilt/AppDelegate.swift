@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     EdgePushManager.shared.configure()
+    EdgeCallKitManager.shared.configure()
     EdgeLocationManager.shared.configure()
     EdgeLocationManager.shared.ensureWhenInUseAuthorization()
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()

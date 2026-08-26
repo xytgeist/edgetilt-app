@@ -47,7 +47,15 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web caller** (2026-08-25): Lounge Settings toggle → `requestEdgeiOSPushPermission()` |
 | `getPushPermissionStatus` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web** (2026-08-25): read-only; never prompts |
 | `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** + **web** (2026-08-25): Lounge Settings polls after grant and **uploads** hex to `apns_device_tokens`. Send needs Edge `APNS_*` secrets + function redeploy. |
-| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | **native** (2026-08-24) + **web caller** (2026-08-25): Lounge Tap for sound → `ensureEdgeiOSPlaybackAudioSession()`. Shell also applies `.playback` on launch / becomeActive unless a call owns `.playAndRecord`. |
+| `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'voiceChatEarpiece'\|'default' }` | `{ ok: boolean }` | Mac | **native** + **web** (2026-08-26): Lounge playback; calls use `voiceChatEarpiece` (audio) or `voiceChat` (video). |
+| `setAudioRoute` | JS→native | `{ route: 'earpiece'\|'speaker' }` | `{ ok: boolean, route }` | Mac | **native** + **web** (2026-08-26): IPA call speaker toggle via `chatCallAudioOutput.js`. |
+| `triggerHaptic` | JS→native | `{ style: 'light'\|'medium'\|'heavy'\|'success'\|'warning'\|'error' }` | `{ ok: boolean }` | Mac | **native** + **web** (2026-08-26): `tapHaptic.js` uses UIKit in shell. |
+| `reportIncomingCall` | JS→native | `{ callId, roomId, handle, hasVideo, uuid? }` | `{ ok, uuid }` | Mac | **native** + **web** (2026-08-26): `ChatCallProvider` + CallKit. |
+| `endNativeCall` | JS→native | `{ uuid?, callId? }` | `{ ok }` | Mac | **native** + **web** (2026-08-26): hangup / decline teardown. |
+| `getVoIPPushToken` | JS→native | none | `{ token }` | Mac | **native** + **web** (2026-08-26): PushKit token → `apns_device_tokens.push_channel=voip`. |
+| `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: [...] }` | Mac | **native** (2026-08-26). StoreKit 2 catalog fetch. |
+| `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | purchase payload | Mac | **native** + **web** (2026-08-26): `SubscribeModal` → `apple-iap-verify` Edge. |
+| `restoreStorePurchases` | JS→native | none | `{ transactions: [...] }` | Mac | **native** (2026-08-26). |
 | `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean, unregistered?: number, cacheKeysDeleted?: number }` | Mac (boot) | **native** (boot clear + bridge; 2026-08-23) |
 
 **Web-owned (no Swift required for first cut):**
@@ -61,7 +69,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | WKWebView geolocation | Mac | **Native (2026-08-26):** `EdgeLocationManager` + `WKUIDelegate` `requestGeolocationPermissionFor` grants when app has When In Use. `AppDelegate` requests authorization on launch. Web still uses `navigator.geolocation` (nearby casinos, poker currency). **Device smoke pending.** |
 | Call audio session in shell | Mac + Windows web | **Web caller (2026-08-26):** `chatCallAudioSession.js` → `setAudioSession({ mode: 'voiceChat' })` on call enter, `default` on exit (native `.defaultToSpeaker` for voiceChat). **Device smoke pending** (speaker vs earpiece). |
 
-**v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
+**v1.1 shipped on Mac (2026-08-26):** CallKit + PushKit VoIP, StoreKit IAP dual-path, native haptics. See method table. App Store Connect product IDs must match `EdgeStoreKitManager.swift` before IAP smoke succeeds.
 
 ### StoreKit IAP (v1.1 note)
 

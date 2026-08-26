@@ -153,6 +153,35 @@ export async function getEdgeiOSPushToken() {
   }
 }
 
+/**
+ * Native UIKit haptics in EdgeiOS shell. No-op elsewhere.
+ * @param {'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error'} [style]
+ */
+export async function triggerEdgeNativeHaptic(style = 'light') {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('triggerHaptic', { style })
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
+ * @param {'earpiece' | 'speaker'} route
+ */
+export async function setEdgeCallAudioRoute(route) {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { ok: false, via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('setAudioRoute', { route })
+    return { ok: result?.ok !== false, via: 'bridge', route: result?.route || route }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /** @param {unknown} value */
 function normalizePushStatus(value) {
   const s = String(value || '').trim().toLowerCase()

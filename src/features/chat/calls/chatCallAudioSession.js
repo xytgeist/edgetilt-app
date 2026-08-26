@@ -29,11 +29,15 @@ export function supportsCallAudioSession() {
 
 /**
  * Enter telephony-style session after mic is live.
+ * @param {{ preferSpeaker?: boolean, isVideo?: boolean }} [options]
  * @returns {boolean} true when applied
  */
-export function enterCallAudioSession() {
+export function enterCallAudioSession(options = {}) {
+  const preferSpeaker = Boolean(options.preferSpeaker)
+  const isVideo = Boolean(options.isVideo)
   if (isEdgeiOSShell()) {
-    void edgeNativeInvoke('setAudioSession', { mode: 'voiceChat' }).catch(() => {})
+    const mode = isVideo || preferSpeaker ? 'voiceChat' : 'voiceChatEarpiece'
+    void edgeNativeInvoke('setAudioSession', { mode }).catch(() => {})
     return true
   }
   const session = getAudioSession()

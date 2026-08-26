@@ -1053,6 +1053,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-25: **SEO hub CTAs open Join / Sign in:** Brand, Open app, and primary Open-in-EdgeTilt links on public hub HTML (`/slots` + subpages, `/guides`, `/advantage-play-slots`, `/poker` + subpages) use `?auth=join`. App reads it after auth bootstrap, opens Join (or Sign in for `auth=login`) when logged out, then strips the param. Logged-in visits strip and skip. Guide catalog `/?tab=guides&guide=` links unchanged. Files: `authPanelFromUrl.js`, `App.jsx`, `public/*.html`, `docs/seo-edgetilt-slots.md`. No SQL / Edge.
+
 - 2026-08-25: **Military personal discount links:** `/mil25/{CODE}` stamps a one-use Stripe promotion code (coupon **`9zheeC1H`**, 25% forever). Subscribe carousel shows Military instead of Founding. Checkout applies that promo and does not fall back to founding if the code is spent. Needs **prod** Edge redeploy **`stripe-create-checkout-session`** (optional secret **`STRIPE_COUPON_MILITARY`**). Files: `militaryPromoStamp.js`, `SubscribeModal.jsx`, `stripe-create-checkout-session`. No SQL.
 
 - 2026-08-25: **Poker catalog schedule = this Windows PC:** Task Scheduler **daily 2:00 AM** (`install-poker-catalog-windows-task.ps1`). GitHub Actions cron removed (manual dispatch only). Cloud `ubuntu-latest` cannot scrape MTTDB. PC should be on / wake at 2am. Log `scripts/.poker-catalog-sync.log`. Promote workflow to **main** so the old GHA cron stops. No SQL / Edge.

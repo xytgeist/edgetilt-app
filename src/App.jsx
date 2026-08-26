@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, hasAuthSuccessTokens, replaceUrlPreservingQuery, isLikelyEmailConfirmLanding } from './features/auth/oauthCallback'
+import { parseAuthPanelFromSearch, stripAuthPanelQueryParam } from './features/auth/authPanelFromUrl.js'
 import { routeAfterGuestClaimEmailConfirm, waitForSupabaseSession } from './features/auth/emailConfirmRouting.js'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AuthModalShell from './features/auth/AuthModalShell'
@@ -794,6 +795,22 @@ function App() {
     setAuthPanelOpen(false)
     openSubscribeModal()
   }, [user?.id, isChecking, isLoggingIn, openSubscribeModal])
+
+  useEffect(() => {
+    if (isChecking || isLoggingIn) return
+    if (typeof window === 'undefined') return
+    const mode = parseAuthPanelFromSearch(window.location.search || '')
+    if (!mode) return
+    const tokens = readAuthTokensFromLocation()
+    stripAuthPanelQueryParam()
+    if (hasAuthSuccessTokens(tokens) || user?.id) return
+    setAuthTab(mode === 'login' ? 'signin' : 'join')
+    setShowForgotPassword(false)
+    setLoginError('')
+    setSignupError('')
+    setSignupMessage('')
+    setAuthPanelOpen(true)
+  }, [isChecking, isLoggingIn, user?.id])
 
   const closeBillingManageModal = useCallback(() => {
     setBillingManageOpen(false)

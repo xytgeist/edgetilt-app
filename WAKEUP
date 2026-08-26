@@ -113,6 +113,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows 2026-08-25 (/mil25 flow):** Logged-out personal link opens Join / Sign in first, then Subscribe after login. Already signed in still goes straight to Subscribe. Password login must not consume the resume flag before `location.reload` (that flashed Subscribe then dumped to Lounge).
 
+**Windows 2026-08-25 (SEO hub → app auth):** Brand / Open app / primary CTAs on `/slots` (+ tool subpages), `/guides`, `/advantage-play-slots`, `/poker` (+ subpages) use `?auth=join`. SPA opens Join for logged-out visitors and strips the param. Logged-in skips the modal. Guide catalog deep links stay without `auth=`. Needs `main` for edgetilt.com.
+
 ### Decisions locked (do not reopen without Ryan)
 
 | Topic | Decision |

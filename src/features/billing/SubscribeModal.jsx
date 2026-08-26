@@ -20,8 +20,6 @@ import {
   formatUsdOneTime,
 } from './edgePricing.js'
 import { isCheckoutAuthRequiredError, startEdgeCheckout } from './stripeBillingApi.js'
-import { isEdgeiOSShell } from '../../utils/edgeNative.js'
-import { iapProductIdForPlan, startEdgeIapPurchase } from '../../utils/edgeIapBilling.js'
 import {
   getAffiliateCodeForCheckout,
   getAffiliateStampForSubscribeUi,
@@ -619,28 +617,13 @@ export default function SubscribeModal({
     setBusy(true)
     try {
       onCheckoutStarted?.()
-      const priceInterval =
-        selectedPlan === PRODUCT_SLOTS_EDGE
-          ? fullInterval
-          : selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
-            ? starterInterval
-            : 'monthly'
-
-      if (isEdgeiOSShell() && iapProductIdForPlan(selectedPlan, priceInterval)) {
-        const iapResult = await startEdgeIapPurchase(supabaseClient, selectedPlan, { priceInterval })
-        if (iapResult?.cancelled) {
-          setBusy(false)
-          return
-        }
-        if (iapResult?.ok) {
-          setBusy(false)
-          onClose?.()
-          return
-        }
-      }
-
       await startEdgeCheckout(supabaseClient, selectedPlan, {
-        priceInterval,
+        priceInterval:
+          selectedPlan === PRODUCT_SLOTS_EDGE
+            ? fullInterval
+            : selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
+              ? starterInterval
+              : 'monthly',
         applyEarlyBird: !militaryPromo,
         affiliateCode: militaryPromo ? null : getAffiliateCodeForCheckout(),
         militaryPromoCode: getMilitaryPromoCodeForCheckout(),

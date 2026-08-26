@@ -208,12 +208,12 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     return hosts
   }
 
+  // Foreground presentation so smoke / test pushes are visible while debugging.
   func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    EdgeCallKitManager.shared.handleCallInviteUserInfo(notification.request.content.userInfo)
     completionHandler([.banner, .sound, .badge])
   }
 

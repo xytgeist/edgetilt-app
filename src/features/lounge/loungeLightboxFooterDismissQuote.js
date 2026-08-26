@@ -1,9 +1,8 @@
 import { cloneElement, isValidElement } from 'react'
 
 /**
- * Wraps a lightbox footer (e.g. `LoungePostInteractionBar`) so **Quote** closes the
- * image/video fullscreen first (quote composer **`z-[100]`+). **Comment / reply** keep
- * the lightbox mounted so post/comment detail can sit as a sheet over the media.
+ * Wraps a lightbox footer (e.g. `LoungePostInteractionBar`) so **Quote** and **Comment** close the
+ * image/video fullscreen first, then run the parent handlers (post detail **`z-[98]`**; quote / media **`z-[100]`+).
  * @param {import('react').ReactNode} footer
  * @param {() => void} dismissLightbox
  */
@@ -20,6 +19,7 @@ export function mergeLightboxDismissOnQuoteRepost(footer, dismissLightbox) {
       prevQuote?.(p)
     },
     onCommentClick: () => {
+      dismissLightbox()
       if (typeof prevCommentClick === 'function') {
         prevCommentClick()
         return

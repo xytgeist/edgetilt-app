@@ -125,8 +125,8 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Ryan device smoke pending:** speaker vs earpiece on voice/video call.
 
 **Later (v1.1+)**
-- [x] **CallKit / PushKit VoIP / native haptics / StoreKit IAP (2026-08-26):** Mac Swift + web wiring landed. **Ryan device smoke pending.** SQL `20260826120000` + deploy `apple-iap-verify` + redeploy `lounge-send-activity-push` on test before VoIP/IAP smokes.
-- [ ] Android TWA
+- [ ] CallKit / background ring; native haptics; Android TWA
+- [ ] **StoreKit IAP (optional dual-path):** same entitlements as Stripe; shell can offer IAP + Safari; may upcharge for Apple cut. See **`docs/ios-native-bridge.md`** § StoreKit IAP. Not required for v1 if Safari link-out stays clean.
 
 Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.jsx`, `useWebPushNotifications.js`, `OffersCalendar.jsx`, `stripeBillingApi.js`, `creatorFanSubsApi.js`, `affiliatePortalApi.js`, Lounge Stream / autoplay stack.
 
@@ -1058,14 +1058,6 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-26: **Lounge lightbox sheet vanished then restored:** Keyboard pin `9a2a0d87` froze the overlay sheet off-screen (lock during slide-in). Mac `8821c301` reverted that pin plus peek/caption-only back to the simple X-style overlay. Tip **`1af57319`**. Do not retry the pin until the sheet smokes. No SQL / Edge.
-
-- 2026-08-26: **Lounge lightbox comments sheet keyboard (Windows):** Composer focus on the overlay sheet pins peek + grab (`data-lounge-media-sheet-kb`) and pads only the inner comment footer. Peek media / sheet frame stay parked; comments + composer move up onto the keys. Full Post slide keyboard unchanged. No SQL / Edge.
-
-- 2026-08-26: **Lounge lightbox comments sheet peek (Windows):** Sheet still over a live lightbox. Media **contain-fits in the band above the sheet** (Stream flyout `forceBand` + image stage `--lounge-media-sheet-h`). The post/comment that owns that media is **caption-only** in the sheet. Same `<video>` node. Feed → Post unchanged. No SQL / Edge.
-
-- 2026-08-26: **Lounge lightbox comments sheet (Windows, X-style v1):** Comment / reply from Stream or image/GIF lightbox no longer dismisses the lightbox. Post/comment detail lifts as a grab-handle bottom sheet over the still-playing media (`data-lounge-media-detail-sheet`, z-109). Same detail tree + reply composer. Feed → Post slide unchanged. Light sheet scoped under `html.light`. No SQL / Edge.
-
 - 2026-08-26: **EdgeiOS APNs prod smoke PASSED (Ryan):** Like → native banner on EdgeTilt against **edgetilt.com**. Tip **`698749b1`**. Sandbox device token + prod Supabase/Edge is the expected path until App Store `aps-environment` = production.
 
 - 2026-08-26: **EdgeiOS APNs BadEnvironmentKeyInToken:** Dev-signed IPA tokens are sandbox, but Prod shell labeled them `production`. Apple returns **`BadEnvironmentKeyInToken`** (not `BadDeviceToken`), so host retry never ran … web push `sent:5` / APNs `failed:1`. Fix: retry on that reason; EdgeiOS defaults upsert to sandbox; `getInfo.apsEnvironment`; flipped existing prod row to sandbox. Redeployed senders on prod + test.
@@ -1083,7 +1075,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - 2026-08-25: **Poker catalog schedule = this Windows PC:** Task Scheduler **daily 2:00 AM** (`install-poker-catalog-windows-task.ps1`). GitHub Actions cron removed (manual dispatch only). Cloud `ubuntu-latest` cannot scrape MTTDB. PC should be on / wake at 2am. Log `scripts/.poker-catalog-sync.log`. Promote workflow to **main** so the old GHA cron stops. No SQL / Edge.
 - 2026-08-25: **Poker catalog MTTDB Cloudflare is not a red job:** Turnstile blocks GHA and this house. Sync still upserts regional/ClubWPT, **keeps last `mttdb:*` rows**, heartbeats **ok**. Playwright is off unless `MTTDB_PLAYWRIGHT=1`. Monitor tiles are remaining catalog counts + an amber "blocked this run" note. Prod currently has **0** `mttdb:online/live` (nothing left to keep) until a scrape succeeds; ClubWPT + regional still refresh. Files: `sync-poker-tournament-catalog.mjs`, `mttdbCatalogFetch.mjs`, `EdgeMonitorPokerCatalogPanel.jsx`. No SQL / Edge. GHA stays on old fail-logic until this is on **main**.
 - 2026-08-25: **Staged Stream wait no longer parks at 99%:** HLS timeout and confirmed Stream 404 (uid never landed) now fail into the existing "Video couldn't be processed" modal (Retry / Draft / Discard). Soft "Still processing… return to EdgeTilt" stays only for unexpected errors + tab-hide abort. File: `loungeVideoUpload.js`. No SQL / Edge.
-- 2026-08-26: **IPA v1.1 native stack (Mac):** CallKit + PushKit VoIP (`EdgeCallKitManager`), StoreKit 2 IAP (`EdgeStoreKitManager` + `apple-iap-verify` Edge + SubscribeModal shell path), native haptics (`triggerHaptic`), call earpiece/speaker (`setAudioRoute` / `voiceChatEarpiece`). SQL **`20260826120000`**. Redeploy **`lounge-send-activity-push`** + **`apple-iap-verify`** on test before device smokes. App Store Connect IAP products must match Swift product ids.
+- 2026-08-26: **IPA P1 polish (Mac code landed, Ryan device smokes pending):** (1) Offers Calendar native APNs toggle via `edgeIOSApnsPush.js` + `useWebPushNotifications` shell branch (no coming-soon). (2) WKWebView geolocation: `EdgeLocationManager.swift` + delegate grant when When In Use authorized. (3) Chat calls in shell → `setAudioSession(voiceChat|default)` from `chatCallAudioSession.js`. Still open: geolocation coords smoke, keyboard compose walk (feed/thread/chat), safe-area leftovers, call speaker/earpiece. v1.1 unchanged: CallKit, StoreKit IAP, haptics.
 - 2026-08-25: **IPA APNs tap → WKWebView deep link:** Notification tap (and cold start) loads payload `url` in the existing shell WebView. No new `EdgeNative` method. HTTPS + edgetilt/lvslotpro hosts only. Files: `EdgePushManager.swift`, `EdgeWebView.swift`, `AppDelegate.swift`. Rebuild IPA + device smoke.
 - 2026-08-25: **IPA APNs delivery (Ryan device sign-off):** Lounge activity push banner arrived on EdgeTilt Test after test Edge `APNS_KEY_ID` + `APNS_P8`. Token row present for `@edgelord`. Remaining Mac: tap → load payload `url` in WKWebView. Prod secrets/SQL not touched.
 - 2026-08-25: **IPA native APNs permission (Ryan device sign-off):** Settings → Push → iOS Allow → switch on. Tip **`815864e1`**. Token upload/send + delivery still Windows. Offers toggle still "coming soon."

@@ -18,7 +18,6 @@ import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
-import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -347,7 +346,7 @@ export default function ChatCallSession({
           didConnectRef.current = true
           setConnectError('')
           unlockChatCallAudio()
-          enterCallAudioSession({ isVideo: videoEnabled, preferSpeaker: speakerOn })
+          enterCallAudioSession()
         }}
         onDisconnected={() => {
           exitCallAudioSession()
@@ -692,7 +691,7 @@ function CallChrome({
   // Probe real sink switching once the room is up (not on every join/leave).
   useEffect(() => {
     if (!room) return undefined
-    if (isIosDevice() && !isEdgeiOSShell()) {
+    if (isIosDevice()) {
       setAudioRouteSupported(false)
       return undefined
     }
@@ -908,7 +907,7 @@ function CallChrome({
         )
       ) : null}
 
-      {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (
+      {audioRouteSupported && !isIosDevice() ? (
         <button
           type="button"
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${

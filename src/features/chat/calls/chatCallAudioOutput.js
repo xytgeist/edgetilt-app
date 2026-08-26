@@ -10,7 +10,6 @@
  * is false. UI must hide the speaker button; use AudioSession play-and-record instead.
  */
 import { Room, Track } from 'livekit-client'
-import { isEdgeiOSShell, edgeNativeInvoke } from '../../../utils/edgeNative.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 
 /**
@@ -110,9 +109,8 @@ function elementSupportsSetSinkId() {
  */
 export async function canToggleCallAudioRoute() {
   try {
-    if (isEdgeiOSShell()) return true
-
     // Safari / iOS PWA cannot reliably switch earpiece ↔ speakerphone from the web.
+    // Never surface a speaker control there (even if device labels look promising).
     if (isIosDevice()) return false
 
     const devices = await listAudioDevices()
@@ -152,30 +150,6 @@ export async function applyCallAudioOutput({
   rootSelector = '[data-chat-call-session]',
 }) {
   const prefer = speakerphoneOn ? 'speakerphone' : 'earpiece'
-
-  if (isEdgeiOSShell()) {
-    try {
-      await edgeNativeInvoke('setAudioRoute', {
-        route: speakerphoneOn ? 'speaker' : 'earpiece',
-      })
-      return {
-        preferred: prefer,
-        routed: true,
-        method: 'native',
-        deviceId: null,
-        canRoute: true,
-      }
-    } catch {
-      return {
-        preferred: prefer,
-        routed: false,
-        method: 'native-error',
-        deviceId: null,
-        canRoute: true,
-      }
-    }
-  }
-
   const canRoute = await canToggleCallAudioRoute()
   if (!canRoute) {
     return {

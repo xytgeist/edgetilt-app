@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { sendApnsToUser, sendVoipApnsToUser } from '../_shared/apnsPush.ts'
+import { sendApnsToUser } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,17 +80,6 @@ function pushTitleForEventType(eventType: string): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function extractRoomIdFromPushUrl(url: string | null | undefined): string {
-  const raw = String(url || '').trim()
-  if (!raw) return ''
-  try {
-    const parsed = new URL(raw.startsWith('http') ? raw : `https://edgetilt.com${raw.startsWith('/') ? '' : '/'}${raw}`)
-    return parsed.searchParams.get('room') || ''
-  } catch {
-    return ''
-  }
 }
 
 async function waitForChatDmDebounce(
@@ -700,18 +689,6 @@ async function sendPushToUser(
   sent += apns.sent
   failed += apns.failed
   removed += apns.removed
-
-  if (notification.eventType === 'chat_call_invite' && notification.chatCallId) {
-    const voip = await sendVoipApnsToUser(admin, userId, {
-      chatCallId: notification.chatCallId,
-      roomId: extractRoomIdFromPushUrl(notification.url),
-      callerName: notification.body?.replace(/^.*from\s+/i, '') || notification.title,
-      hasVideo: false,
-    })
-    sent += voip.sent
-    failed += voip.failed
-    removed += voip.removed
-  }
 
   if (webList.length === 0 && apns.reason === 'no_tokens') {
     return { sent: 0, failed: 0, removed: 0, message: 'No push destinations for recipient.' }

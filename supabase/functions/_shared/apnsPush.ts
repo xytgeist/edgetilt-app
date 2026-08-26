@@ -200,9 +200,8 @@ export async function sendApnsToUser(
   const config = readApnsConfig()
   const { data: rows, error } = await admin
     .from('apns_device_tokens')
-    .select('id, token, environment, bundle_id, push_channel')
+    .select('id, token, environment, bundle_id')
     .eq('user_id', userId)
-    .eq('push_channel', 'alert')
 
   if (error) throw error
   const tokens = (rows || []) as ApnsTokenRow[]
@@ -237,112 +236,6 @@ export async function sendApnsToUser(
       }
       failed += 1
       // Do not drop on BadEnvironmentKeyInToken … wrong host only; token is still valid.
-      if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken') {
-        const { error: deleteError } = await admin
-          .from('apns_device_tokens')
-          .delete()
-          .eq('id', row.id)
-          .eq('user_id', userId)
-        if (!deleteError) removed += 1
-      }
-    } catch {
-      failed += 1
-    }
-  }
-
-  return { sent, failed, removed, skipped: false }
-}
-
-export type ApnsVoipCallPayload = {
-  chatCallId: string
-  roomId?: string
-  callerName?: string
-  hasVideo?: boolean
-}
-
-async function postVoipApns(
-  config: ApnsConfig,
-  tokenHex: string,
-  environment: ApnsEnvironment,
-  bundleId: string,
-  payload: ApnsVoipCallPayload,
-): Promise<ApnsPostResult> {
-  const jwt = await mintApnsJwt(config)
-  const topic = `${(bundleId || config.bundleId || 'com.edgetilt.app').trim()}.voip`
-  const headers: Record<string, string> = {
-    authorization: `bearer ${jwt}`,
-    'apns-topic': topic,
-    'apns-push-type': 'voip',
-    'apns-priority': '10',
-    'content-type': 'application/json',
-  }
-  const body = {
-    chatCallId: payload.chatCallId,
-    roomId: payload.roomId || '',
-    callerName: payload.callerName || 'Incoming call',
-    hasVideo: Boolean(payload.hasVideo),
-  }
-  const res = await fetch(`${apnsHost(environment)}/3/device/${tokenHex}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  })
-  let reason = ''
-  try {
-    const json = await res.json() as { reason?: string }
-    reason = String(json?.reason || '')
-  } catch {
-    reason = ''
-  }
-  return { ok: res.ok, status: res.status, reason }
-}
-
-/** PushKit VoIP ring for chat_call_invite (CallKit background path). */
-export async function sendVoipApnsToUser(
-  // deno-lint-ignore no-explicit-any
-  admin: any,
-  userId: string,
-  payload: ApnsVoipCallPayload,
-): Promise<ApnsSendStats> {
-  const config = readApnsConfig()
-  const { data: rows, error } = await admin
-    .from('apns_device_tokens')
-    .select('id, token, environment, bundle_id')
-    .eq('user_id', userId)
-    .eq('push_channel', 'voip')
-
-  if (error) throw error
-  const tokens = (rows || []) as ApnsTokenRow[]
-  if (tokens.length === 0) {
-    return { sent: 0, failed: 0, removed: 0, skipped: true, reason: 'no_tokens' }
-  }
-  if (!config) {
-    return { sent: 0, failed: tokens.length, removed: 0, skipped: true, reason: 'not_configured' }
-  }
-
-  let sent = 0
-  let failed = 0
-  let removed = 0
-
-  for (const row of tokens) {
-    const env: ApnsEnvironment = row.environment === 'production' ? 'production' : 'sandbox'
-    try {
-      let result = await postVoipApns(config, row.token, env, row.bundle_id, payload)
-      if (!result.ok && shouldRetryOtherEnvironment(result.reason)) {
-        const alt = otherEnvironment(env)
-        const retry = await postVoipApns(config, row.token, alt, row.bundle_id, payload)
-        if (retry.ok) {
-          await admin.from('apns_device_tokens').update({ environment: alt }).eq('id', row.id)
-          result = retry
-        } else {
-          result = retry
-        }
-      }
-      if (result.ok) {
-        sent += 1
-        continue
-      }
-      failed += 1
       if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken') {
         const { error: deleteError } = await admin
           .from('apns_device_tokens')

@@ -102,4 +102,9 @@ final class EdgeInsetAwareWebView: WKWebView {
     inputAssistantItem.trailingBarButtonGroups = []
     onSafeAreaInsetsChange?()
   }
+
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    onSafeAreaInsetsChange?()
+  }
 }

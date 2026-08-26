@@ -17,14 +17,6 @@ enum EdgeAudioSession {
           options: [.allowBluetoothHFP, .defaultToSpeaker]
         )
         setActive(true, completion: completion)
-      case "voiceChatEarpiece":
-        try session.setCategory(
-          .playAndRecord,
-          mode: .voiceChat,
-          options: [.allowBluetoothHFP]
-        )
-        try session.overrideOutputAudioPort(.none)
-        setActive(true, completion: completion)
       case "default":
         try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
         setActive(false, options: [.notifyOthersOnDeactivation], completion: completion)
@@ -36,24 +28,7 @@ enum EdgeAudioSession {
     }
   }
 
-  /// Route PlayAndRecord output during an active call.
-  static func setOutputRoute(speaker: Bool, completion: ((Result<Void, Error>) -> Void)? = nil) {
-    let session = AVAudioSession.sharedInstance()
-    let run = {
-      do {
-        try session.overrideOutputAudioPort(speaker ? .speaker : .none)
-        finish(completion, .success(()))
-      } catch {
-        finish(completion, .failure(error))
-      }
-    }
-    if Thread.isMainThread {
-      DispatchQueue.global(qos: .userInitiated).async(execute: run)
-    } else {
-      run()
-    }
-  }
-
+  /// Lounge / media default. `.playback` ignores the Ring/Silent switch so
   /// `video.muted = false` is actually audible. Skip when a call owns `.playAndRecord`.
   static func ensurePlaybackUnlessVoiceChat() {
     let session = AVAudioSession.sharedInstance()

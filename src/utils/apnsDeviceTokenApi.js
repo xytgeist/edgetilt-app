@@ -59,20 +59,18 @@ async function readShellEnvironmentHint() {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} token
  */
-export async function upsertMyApnsDeviceToken(supabaseClient, token, options = {}) {
+export async function upsertMyApnsDeviceToken(supabaseClient, token) {
   const normalized = normalizeApnsDeviceToken(token)
   if (!supabaseClient || !normalized) return { ok: false, reason: 'invalid' }
-  const pushChannel = options.pushChannel === 'voip' ? 'voip' : 'alert'
   const hint = await readShellEnvironmentHint()
   const { error } = await supabaseClient.rpc('upsert_my_apns_device_token', {
     p_token: normalized,
     p_environment: inferApnsEnvironment(hint.environment, hint.apsEnvironment),
     p_bundle_id: DEFAULT_BUNDLE_ID,
     p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-    p_push_channel: pushChannel,
   })
   if (error) return { ok: false, reason: error.message || 'rpc' }
-  return { ok: true, token: normalized, pushChannel }
+  return { ok: true, token: normalized }
 }
 
 /**

@@ -1,4 +1,3 @@
-import { isEdgeiOSShell, triggerEdgeNativeHaptic } from './edgeNative.js'
 import { isAndroidDevice, isIosDevice } from './pwaNotificationPrompt.js'
 
 /** Opt-in only — global listener does not haptic every button. */
@@ -60,11 +59,6 @@ function fireAndroidVibrate() {
 /** Light impact for standard button taps (X.com-style). Must run inside the user gesture. */
 export function triggerTapHapticLight() {
   if (!isTapHapticSupported()) return
-
-  if (isEdgeiOSShell()) {
-    void triggerEdgeNativeHaptic('light')
-    return
-  }
 
   if (isIosDevice()) {
     fireIosSwitchHaptic()

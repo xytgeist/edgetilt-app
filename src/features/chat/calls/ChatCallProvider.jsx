@@ -32,13 +32,6 @@ import {
 } from '../../../utils/pendingChatCallDeepLink.js'
 import { enterCallAudioSession } from './chatCallAudioSession.js'
 import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
-import {
-  endEdgeNativeCall,
-  getEdgeVoIPPushToken,
-  installEdgeCallKitListeners,
-  reportEdgeIncomingCall,
-} from '../../../utils/edgeCallKit.js'
-import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 
 const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
 
@@ -317,12 +310,6 @@ export function ChatCallProvider({
         title: profile.title,
         avatarUrl: profile.avatarUrl,
       })
-      void reportEdgeIncomingCall({
-        callId: String(row.id),
-        roomId,
-        handle: profile.title || 'Incoming call',
-        hasVideo: mediaMode === 'video',
-      })
       void resolveCallerProfileAsync(roomId, fromUserId).then((next) => {
         setIncoming((prev) =>
           prev?.callId === row.id ? { ...prev, title: next.title, avatarUrl: next.avatarUrl } : prev,
@@ -351,27 +338,6 @@ export function ChatCallProvider({
   useEffect(() => {
     installChatCallAudioUnlock()
   }, [])
-
-  // Upload PushKit VoIP token for CallKit background ring (best-effort).
-  useEffect(() => {
-    if (!supabaseClient || !viewerUserId) return undefined
-    let cancelled = false
-    const syncVoip = async () => {
-      const { token } = await getEdgeVoIPPushToken()
-      if (cancelled || !token) return
-      await upsertMyApnsDeviceToken(supabaseClient, token, { pushChannel: 'voip' })
-    }
-    void syncVoip()
-    const onVoipToken = (event) => {
-      const token = event?.detail?.token
-      if (token) void upsertMyApnsDeviceToken(supabaseClient, token, { pushChannel: 'voip' })
-    }
-    window.addEventListener('edge-voip-token', onVoipToken)
-    return () => {
-      cancelled = true
-      window.removeEventListener('edge-voip-token', onVoipToken)
-    }
-  }, [supabaseClient, viewerUserId])
 
   // App-wide Realtime invites (provider should live above ChatTab so any screen rings).
   useEffect(() => {
@@ -807,46 +773,13 @@ export function ChatCallProvider({
         }
       }
       setIncoming(null)
-      void endEdgeNativeCall({ callId: snap.callId })
     } catch (err) {
       showCallStatusToast(err instanceof Error ? err.message : 'Could not decline')
       setIncoming(null)
-      void endEdgeNativeCall({ callId: snap.callId })
     } finally {
       setBusy(false)
     }
   }, [supabaseClient, incoming, ensureBroadcast, showCallStatusToast])
-
-  const acceptIncomingRef = useRef(acceptIncoming)
-  acceptIncomingRef.current = acceptIncoming
-  const declineIncomingRef = useRef(declineIncoming)
-  declineIncomingRef.current = declineIncoming
-  const joinCallRef = useRef(joinCall)
-  joinCallRef.current = joinCall
-
-  useEffect(() => {
-    return installEdgeCallKitListeners({
-      onAnswer: (detail) => {
-        const callId = String(detail?.callId || '').trim()
-        if (!callId || activeCallRef.current) return
-        const snap = incomingRef.current
-        if (snap?.callId && snap.callId !== callId) return
-        void joinCallRef.current?.(callId, {
-          title: snap?.title || 'Chat call',
-          avatarUrl: snap?.avatarUrl || null,
-          peerUserId: snap?.fromUserId || null,
-          preferAccept: snap?.kind === 'dm_av',
-          openRoom: true,
-        })
-      },
-      onDecline: (detail) => {
-        const callId = String(detail?.callId || '').trim()
-        if (callId && incomingRef.current?.callId !== callId) return
-        void declineIncomingRef.current?.()
-        void endEdgeNativeCall({ callId: callId || incomingRef.current?.callId })
-      },
-    })
-  }, [])
 
   const hangup = useCallback(async () => {
     const current = activeCallRef.current
@@ -874,7 +807,6 @@ export function ChatCallProvider({
       setActiveCall(null)
       setBusy(false)
       endingRef.current = false
-      void endEdgeNativeCall({ callId: current.callId })
     }
   }, [supabaseClient, ensureBroadcast])
 

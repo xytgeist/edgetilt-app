@@ -59,6 +59,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         "shellVersion": AppConfig.shellVersion,
         "build": AppConfig.buildNumber,
         "environment": AppConfig.environment,
+        // Matches EdgeTilt.entitlements aps-environment (development until App Store).
+        "apsEnvironment": "development",
         "ua": AppConfig.userAgentToken,
       ]))
     case "openInSafari":

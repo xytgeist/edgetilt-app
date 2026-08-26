@@ -14,15 +14,24 @@ export function normalizeApnsDeviceToken(raw) {
 }
 
 /**
- * Hint only. Send path retries the other APNs host on BadDeviceToken
- * (debug IPA loading prod still uses sandbox tokens).
+ * Hint only. Send path retries the other APNs host on BadDeviceToken /
+ * BadEnvironmentKeyInToken (dev-signed IPA still gets sandbox device tokens
+ * even when AppConfig.environment is prod / edgetilt.com).
  *
  * @param {unknown} [infoEnvironment]
+ * @param {unknown} [apsEnvironment] native entitlements aps-environment when present
  * @returns {'sandbox' | 'production'}
  */
-export function inferApnsEnvironment(infoEnvironment) {
+export function inferApnsEnvironment(infoEnvironment, apsEnvironment) {
+  const aps = String(apsEnvironment || '').trim().toLowerCase()
+  if (aps === 'development' || aps === 'sandbox') return 'sandbox'
+  if (aps === 'production') return 'production'
+
   const env = String(infoEnvironment || '').trim().toLowerCase()
   if (env === 'test' || env === 'sandbox' || env === 'development') return 'sandbox'
+  // AppConfig "prod" means live-site host, not APNs production. Entitlements are
+  // still development until App Store / production aps-environment ships.
+  if (isEdgeiOSShell()) return 'sandbox'
   if (env === 'prod' || env === 'production') return 'production'
   try {
     const host = String(window.location.hostname || '')
@@ -34,12 +43,15 @@ export function inferApnsEnvironment(infoEnvironment) {
 }
 
 async function readShellEnvironmentHint() {
-  if (!isEdgeiOSShell()) return null
+  if (!isEdgeiOSShell()) return { environment: null, apsEnvironment: null }
   try {
     const info = await edgeNativeInvoke('getInfo')
-    return info?.environment ?? null
+    return {
+      environment: info?.environment ?? null,
+      apsEnvironment: info?.apsEnvironment ?? null,
+    }
   } catch {
-    return null
+    return { environment: null, apsEnvironment: null }
   }
 }
 
@@ -50,10 +62,10 @@ async function readShellEnvironmentHint() {
 export async function upsertMyApnsDeviceToken(supabaseClient, token) {
   const normalized = normalizeApnsDeviceToken(token)
   if (!supabaseClient || !normalized) return { ok: false, reason: 'invalid' }
-  const infoEnv = await readShellEnvironmentHint()
+  const hint = await readShellEnvironmentHint()
   const { error } = await supabaseClient.rpc('upsert_my_apns_device_token', {
     p_token: normalized,
-    p_environment: inferApnsEnvironment(infoEnv),
+    p_environment: inferApnsEnvironment(hint.environment, hint.apsEnvironment),
     p_bundle_id: DEFAULT_BUNDLE_ID,
     p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
   })

@@ -42,7 +42,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 
 | Method | Direction | Payload (draft) | Result (draft) | Owner first | Status |
 | --- | --- | --- | --- | --- | --- |
-| `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', ua }` | Mac | **native** (`ios/` scaffold) |
+| `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', apsEnvironment: 'development'\|'production', ua }` | Mac | **native** (`ios/` scaffold). `apsEnvironment` mirrors entitlements (still `development` until App Store). |
 | `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | **native** (`ios/` scaffold) |
 | `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web caller** (2026-08-25): Lounge Settings toggle → `requestEdgeiOSPushPermission()` |
 | `getPushPermissionStatus` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web** (2026-08-25): read-only; never prompts |

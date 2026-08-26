@@ -185,6 +185,12 @@ function shouldDropToken(status: number, reason: string): boolean {
   return r === 'unregistered' || r === 'expiredtoken' || r === 'devicetokennotfortopic'
 }
 
+/** Wrong APNs host for this device token … retry the other environment. */
+function shouldRetryOtherEnvironment(reason: string): boolean {
+  const r = reason.toLowerCase()
+  return r === 'baddevicetoken' || r === 'badenvironmentkeyintoken'
+}
+
 export async function sendApnsToUser(
   // deno-lint-ignore no-explicit-any
   admin: any,
@@ -214,7 +220,7 @@ export async function sendApnsToUser(
     const env: ApnsEnvironment = row.environment === 'production' ? 'production' : 'sandbox'
     try {
       let result = await postApns(config, row.token, env, row.bundle_id, notification)
-      if (!result.ok && result.reason === 'BadDeviceToken') {
+      if (!result.ok && shouldRetryOtherEnvironment(result.reason)) {
         const alt = otherEnvironment(env)
         const retry = await postApns(config, row.token, alt, row.bundle_id, notification)
         if (retry.ok) {
@@ -229,6 +235,7 @@ export async function sendApnsToUser(
         continue
       }
       failed += 1
+      // Do not drop on BadEnvironmentKeyInToken … wrong host only; token is still valid.
       if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken') {
         const { error: deleteError } = await admin
           .from('apns_device_tokens')

@@ -1,26 +1,19 @@
 # Scrape MTTDB + regional JSON → upsert poker_tournament_events on production.
-# Schedule: every 3 days (picker only needs today + tomorrow; MTTDB lobby ≈ 7 days ahead).
+#
+# Primary schedule is Windows Task Scheduler on the home PC
+# (`scripts/install-poker-catalog-windows-task.ps1`, daily 2:00 AM local).
+# This workflow is manual only (workflow_dispatch). Do not re-add ubuntu-latest
+# cron … GitHub cloud egress cannot pass MTTDB Cloudflare.
 #
 # Required GitHub repo secrets (Settings → Secrets → Actions):
 #   SUPABASE_URL_PRODUCTION
 #   SUPABASE_SERVICE_ROLE_KEY_PRODUCTION
 #
-# Optional (not needed for RPC upsert; geocode uses Supabase REST only):
-#   SUPABASE_DB_PASSWORD_PRODUCTION
-#   SUPABASE_DB_URL_PRODUCTION
-#
 # On success, writes admin_ops_job_heartbeats (Edge Monitor) on production.
-# MTTDB is often behind Cloudflare Turnstile (GHA + residential). Regional /
-# ClubWPT upsert still runs. A Cloudflare block is a degraded success (keep last
-# mttdb:* rows, heartbeat ok). Hard-fail for non-CF online scrape errors or a
-# successful fetch that returns 0 online rows. Set MTTDB_PLAYWRIGHT=1 to retry Chrome.
 
 name: Poker catalog sync (production)
 
 on:
-  schedule:
-    # 06:00 UTC every 3rd day-of-month block (≈ every 3 days)
-    - cron: '0 6 */3 * *'
   workflow_dispatch:
 
 concurrency:

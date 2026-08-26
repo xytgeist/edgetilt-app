@@ -103,7 +103,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows 2026-08-25 (Stream 99%):** Ghost CF uid (tus id, no asset) used to park at Still processing 99%. Timeout + confirmed Stream 404 now open the existing failed-video modal. Joey's current stuck post is not auto-deleted; if he opens Lounge after this lands, the rehydrate poll will fail-fast into that modal.
 
-**Windows 2026-08-25 (poker catalog):** Stop failing the job when MTTDB Cloudflare blocks. Keep last `mttdb:*` rows, heartbeat ok, Playwright off unless `MTTDB_PLAYWRIGHT=1`. Needs **main** before GHA cron uses it. Local prod sync after this commit greens Monitor.
+**Windows 2026-08-25 (poker catalog):** Daily Task Scheduler on this PC (2:00 AM). GHA cron is pointless for MTTDB; workflow becomes manual after **main** promote.
 
 ### Decisions locked (do not reopen without Ryan)
 
@@ -229,13 +229,13 @@ Bridge coordination with Windows Theo: **`docs/ios-native-bridge.md`**. When add
 
 **Windows Theo:** you own the **webapp** while Mac builds the shell. Follow **Dual-agent ruleset** above. Do not edit `ios/` once it exists. New native-facing web work (UA detect, hide Stripe-in-WebView, `openInSafari` callers) must match the bridge contract.
 
-### Poker catalog self-hosted runner
+### Poker catalog (this Windows PC)
 
-**Why:** GHA `ubuntu-latest` blocked by Cloudflare on MTTDB; residential egress works. Manual refill 2026-08-19 restored prod catalog.
+**Why not GitHub cron:** `ubuntu-latest` never clears MTTDB Cloudflare. Regional JSON still worked from GHA; the full scrape belongs here.
 
-1. Register **Windows** self-hosted Actions runner (service) on this PC.
-2. Patch **`.github/workflows/poker-catalog-sync-production.yml`**: `runs-on: [self-hosted, Windows, X64]`.
-3. Push **`test`**, Ryan promotes workflow to **`main`**, smoke **Run workflow**.
+**Now:** Task Scheduler **`EdgeTilt Poker Catalog Sync`** daily **2:00 AM** local. Install: `scripts/install-poker-catalog-windows-task.ps1`. Log: `scripts/.poker-catalog-sync.log`. GitHub workflow is **manual only** after **main** promote (until then the old cloud cron can still fire).
+
+PC must be on (or wake) at 2am. Logged-in user (interactive). MTTDB can still be Turnstile-blocked; then regional + ClubWPT still upsert.
 
 ### Also parked
 

@@ -60,7 +60,8 @@
     "poker:catalog:sync:test": "node scripts/sync-poker-tournament-catalog.mjs --target=test",
     "poker:catalog:sync:test:dry": "node scripts/sync-poker-tournament-catalog.mjs --target=test --dry-run",
     "poker:catalog:sync:production": "node scripts/sync-poker-tournament-catalog.mjs --target=production",
-    "poker:catalog:sync:production:dry": "node scripts/sync-poker-tournament-catalog.mjs --target=production --dry-run"
+    "poker:catalog:sync:production:dry": "node scripts/sync-poker-tournament-catalog.mjs --target=production --dry-run",
+    "poker:catalog:install-windows-task": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-poker-catalog-windows-task.ps1"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",

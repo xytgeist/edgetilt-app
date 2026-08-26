@@ -26,7 +26,7 @@ export default function EdgeMonitorPokerCatalogPanel({ systemHealth, loading = f
         <div>
           <div className="text-white font-bold text-[15px] lg:text-base">Poker catalog sync</div>
           <div className="text-zinc-500 text-xs mt-0.5">
-            Last GitHub Actions run · regional upsert; MTTDB tiles are rows still in the catalog
+            Last sync from this Windows PC (Task Scheduler, 2:00 AM) · GitHub Actions is manual only
           </div>
         </div>
         {runbook?.href ? (

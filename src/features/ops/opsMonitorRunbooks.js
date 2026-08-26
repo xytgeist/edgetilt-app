@@ -65,7 +65,7 @@ export const OPS_MONITOR_RUNBOOKS = [
     id: 'poker-catalog-sync',
     title: 'Poker catalog GitHub Actions',
     href: 'https://github.com/xytgeist/edgetilt-app/actions/workflows/poker-catalog-sync-production.yml',
-    hint: 'Every 3 days · MTTDB + regional JSON upsert',
+    hint: 'Windows Task Scheduler daily 2am · this PC',
   },
   {
     id: 'sentry',

@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox sheet 65/80 + gap (Windows):** Rest **65lvh**, composer **80lvh**. Peek band is `sheetTop - 12px` (live sheet box) so the gap is not eaten by viewport mismatch. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox sheet height + peek gap (Windows):** Sheet floored at **60lvh / 74lvh** (JS `innerHeight` px can no longer shrink it to ~50%). Peek contain-fits the flyout / image shell into the band above the sheet with a **12px** gap, instead of center-scaling the letterbox. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox peek target (Windows):** Peek scale is on `[data-lounge-stream-hero-flyout]` / image stage, not the chrome overlay (video lives in the feed-tree flyout). No SQL / Edge.

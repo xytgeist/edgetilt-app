@@ -1,8 +1,8 @@
 import { computeHeroTargetRect } from './loungeLightboxFlip.js'
 
-/** Rest ~60% of the layout viewport. Composer focused ~74%. */
-const SHEET_REST_FRACTION = 0.6
-const SHEET_COMPOSER_FRACTION = 0.74
+/** Rest ~65% of the large viewport. Composer focused ~80%. */
+const SHEET_REST_FRACTION = 0.65
+const SHEET_COMPOSER_FRACTION = 0.8
 const SHEET_MIN_PEEK_REM = 5.5
 /** Black gap between contain-fit media and the sheet top. */
 const PEEK_GAP_PX = 12
@@ -167,20 +167,36 @@ function writePeekIdentityVars() {
   root.style.setProperty('--lounge-media-peek-scale', '1')
 }
 
+function readVisualSheetTopPx() {
+  if (typeof document === 'undefined') return 0
+  const el = document.querySelector('[data-lounge-media-detail-sheet]')
+  if (!(el instanceof HTMLElement)) return 0
+  const top = el.getBoundingClientRect().top
+  return Number.isFinite(top) ? top : 0
+}
+
+function peekBandHeightPx() {
+  if (!overlayOn || !peekRevealed) return 0
+  const sheetTop = readVisualSheetTopPx()
+  if (sheetTop >= 8) return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
+  const estimated = visualSheetHeightPx()
+  if (estimated < 8) return 0
+  return Math.max(0, layoutViewportH() - estimated - PEEK_GAP_PX)
+}
+
 function writePeekInsetVar() {
   if (typeof document === 'undefined') return
+  const bandH = peekBandHeightPx()
   const inset = peekInsetPx()
   const root = document.documentElement
   root.style.setProperty('--lounge-media-peek-inset', `${Math.max(0, inset)}px`)
-  if (!overlayOn || !peekRevealed || inset < 8) {
+  if (!overlayOn || !peekRevealed || bandH < 8) {
     writePeekIdentityVars()
     return
   }
   const box = readPeekMediaLayoutBox()
-  const vh = layoutViewportH()
   const vw = layoutViewportW()
-  const bandH = Math.max(0, vh - inset)
-  if (!box || bandH < 8 || vw < 8 || vh < 8) {
+  if (!box || vw < 8) {
     writePeekIdentityVars()
     return
   }
@@ -214,9 +230,9 @@ function visualSheetHeightPx() {
 
 function peekInsetPx() {
   if (!overlayOn || !peekRevealed) return 0
-  const visual = visualSheetHeightPx()
-  if (visual < 8) return 0
-  return visual + PEEK_GAP_PX
+  const band = peekBandHeightPx()
+  if (band < 8) return 0
+  return Math.max(0, layoutViewportH() - band)
 }
 
 /** Grow the sheet when the overlay composer is focused ... media peek follows. */

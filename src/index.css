@@ -8889,15 +8889,15 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-peek-media] {
 [data-lounge-media-detail-sheet] {
   width: 100%;
   max-width: none;
-  height: max(60lvh, var(--lounge-media-sheet-h, 0px));
-  max-height: max(60lvh, var(--lounge-media-sheet-h, 0px));
+  height: max(65lvh, var(--lounge-media-sheet-h, 0px));
+  max-height: max(65lvh, var(--lounge-media-sheet-h, 0px));
   transition:
     height 0.28s cubic-bezier(0.32, 0.72, 0, 1),
     transform 0.3s ease-out;
 }
 html[data-lounge-media-sheet-composer] [data-lounge-media-detail-sheet] {
-  height: max(74lvh, var(--lounge-media-sheet-h, 0px));
-  max-height: max(74lvh, var(--lounge-media-sheet-h, 0px));
+  height: max(80lvh, var(--lounge-media-sheet-h, 0px));
+  max-height: max(80lvh, var(--lounge-media-sheet-h, 0px));
 }
 html[data-lounge-media-sheet-dragging] [data-lounge-media-detail-sheet] {
   transition: none;

@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox comments sheet keyboard (Windows):** Composer focus freezes the peek media and slides **only the sheet** above the keyboard (`data-lounge-lightbox-peek-locked`). Full Post slide keyboard pad unchanged. `interactive-widget=resizes-content` does not shrink the peek.
+
 - 2026-08-26: **Lounge lightbox comments sheet peek (Windows):** Sheet still over a live lightbox. Media **contain-fits in the band above the sheet** (Stream flyout `forceBand` + image stage `--lounge-media-sheet-h`). The post/comment that owns that media is **caption-only** in the sheet. Same `<video>` node. Feed → Post unchanged. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox comments sheet (Windows, X-style v1):** Comment / reply from Stream or image/GIF lightbox no longer dismisses the lightbox. Post/comment detail lifts as a grab-handle bottom sheet over the still-playing media (`data-lounge-media-detail-sheet`, z-109). Same detail tree + reply composer. Feed → Post slide unchanged. Light sheet scoped under `html.light`. No SQL / Edge.

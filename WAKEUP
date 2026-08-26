@@ -157,7 +157,7 @@ Full handoff table: **`docs/ios-native-bridge.md`** → **Windows → Mac handof
 - Post-detail hard crash: could not repro. Video detail → back, phone stayed on.
 
 **Mac do now (Ryan + Theo):**
-1. APNs: Individual team **`8932AKQW4W`** (`investigence@gmail.com`). Entitlements wired. Rebuild **EdgeTilt Test**; add Push Notifications in Signing & Capabilities if missing. Token is still unused until Windows upload/send. New LLC / org can wait.
+1. APNs: Individual team **`8932AKQW4W`**. Entitlements + Lounge Settings → native permission wired. Rebuild IPA; wait for Vercel `test` web deploy; smoke Allow prompt. Token upload/send still Windows. New LLC / org can wait.
 
 **Windows Theo:** P0 web gates for EdgeiOS are done. Next web only if Ryan asks (e.g. centralize external opens; APNs token upload Edge). Do **not** edit `ios/`.
 

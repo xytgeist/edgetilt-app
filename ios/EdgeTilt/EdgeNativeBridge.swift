@@ -77,6 +77,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       }
     case "bustServiceWorker":
       bustServiceWorker(completion: completion)
+    case "getPushPermissionStatus":
+      EdgePushManager.shared.permissionStatus(completion: completion)
     case "requestPushPermission":
       EdgePushManager.shared.requestPermission(completion: completion)
     case "getPushToken":
@@ -205,6 +207,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     window.EdgeNative = {
       getInfo: function () { return call('getInfo', null); },
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
+      getPushPermissionStatus: function () {
+        return call('getPushPermissionStatus', null);
+      },
       requestPushPermission: function () {
         return call('requestPushPermission', null);
       },

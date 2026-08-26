@@ -14,7 +14,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - **Audio:** boot + becomeActive apply `AVAudioSession` `.playback` (ignores Ring/Silent) unless a call already owns `.playAndRecord`. Lounge Tap for sound also calls `EdgeNative.setAudioSession({ mode: 'playback' })`.
 - **Safe area:** WebView is **edge-to-edge** (`.ignoresSafeArea()`). Native injects `--edge-sat|sar|sab|sal` from **window / SwiftUI geometry** insets (not `webView.safeAreaInsets`, which SwiftUI zeroes under ignoresSafeArea). Web uses `max(env(safe-area-inset-*), var(--edge-*))`. See `EdgeSafeAreaInsets.swift` + `src/utils/edgeSafeAreaCss.js`.
 - **App icon:** `AppIcon-1024.png` generated from live web pack **`public/EdgeIconBlack/`** (same as `public/apple-touch-icon.png`). Upscaled 310→1024, flattened onto black (no alpha) for App Store rules. Swap with a true 1024 master when you have one.
-- **Push (APNs):** bridge `requestPushPermission` / `getPushToken` are implemented. `CODE_SIGN_ENTITLEMENTS` is on (`EdgeTilt/EdgeTilt.entitlements`, `aps-environment` development for Test/Debug). Team **`8932AKQW4W`** (Individual, `investigence@gmail.com`). First device Run after this: Xcode Signing & Capabilities → add **Push Notifications** if it is not already there. Token → Edge send path still needs Windows DB/Edge work. New LLC / org can wait.
+- **Push (APNs):** bridge `getPushPermissionStatus` / `requestPushPermission` / `getPushToken` live. `CODE_SIGN_ENTITLEMENTS` on (`EdgeTilt/EdgeTilt.entitlements`). Team **`8932AKQW4W`** (Individual). Lounge Settings toggle calls native permission on EdgeiOS. Token → Edge send path still needs Windows DB/Edge work. New LLC / org can wait.
 
 ## Open / build
 

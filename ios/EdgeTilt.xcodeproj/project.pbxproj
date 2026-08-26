@@ -26,7 +26,7 @@
 		15C1B2458EAAC3EEFB381F8B /* EdgeTilt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EdgeTilt.entitlements; sourceTree = "<group>"; };
 		1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSafeAreaInsets.swift; sourceTree = "<group>"; };
 		226468E06E598019B8166B33 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
-		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		636A0FF8CC23E17E467905A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgePushManager.swift; sourceTree = "<group>"; };
 		A039684E44413435F9C5696A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -108,7 +108,6 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					91193AAD51A0876C7ED2EDB0 = {
-						DevelopmentTeam = 8932AKQW4W;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -172,6 +171,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = EdgeTilt/EdgeTilt.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 8932AKQW4W;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -343,6 +343,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = EdgeTilt/EdgeTilt.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 8932AKQW4W;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

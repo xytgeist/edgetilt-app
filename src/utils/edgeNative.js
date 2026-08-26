@@ -96,3 +96,66 @@ export async function ensureEdgeiOSPlaybackAudioSession() {
     return { ok: false, via: 'error' }
   }
 }
+
+/**
+ * @typedef {'granted' | 'denied' | 'prompt'} EdgeiOSPushPermissionStatus
+ */
+
+/**
+ * Read APNs authorization without prompting. No-op outside EdgeiOS.
+ * @returns {Promise<{ status: EdgeiOSPushPermissionStatus, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function getEdgeiOSPushPermissionStatus() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { status: 'prompt', via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('getPushPermissionStatus')
+    const status = normalizePushStatus(result?.status)
+    return { status, via: 'bridge' }
+  } catch {
+    return { status: 'prompt', via: 'error' }
+  }
+}
+
+/**
+ * Prompt (if needed) and register for remote notifications. Call from a user gesture.
+ * @returns {Promise<{ status: EdgeiOSPushPermissionStatus, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function requestEdgeiOSPushPermission() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { status: 'prompt', via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('requestPushPermission')
+    const status = normalizePushStatus(result?.status)
+    return { status, via: 'bridge' }
+  } catch {
+    return { status: 'prompt', via: 'error' }
+  }
+}
+
+/**
+ * Device token hex when APNs has registered. May be null briefly after grant.
+ * @returns {Promise<{ token: string | null, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function getEdgeiOSPushToken() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { token: null, via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('getPushToken')
+    const raw = result?.token
+    const token = typeof raw === 'string' && raw.trim() ? raw.trim() : null
+    return { token, via: 'bridge' }
+  } catch {
+    return { token: null, via: 'error' }
+  }
+}
+
+/** @param {unknown} value */
+function normalizePushStatus(value) {
+  const s = String(value || '').trim().toLowerCase()
+  if (s === 'granted' || s === 'denied' || s === 'prompt') return s
+  return 'prompt'
+}

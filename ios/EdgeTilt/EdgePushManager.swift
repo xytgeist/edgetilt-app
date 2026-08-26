@@ -34,6 +34,13 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     }
   }
 
+  /// Read-only status. Never prompts. `prompt` = notDetermined / unknown.
+  func permissionStatus(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+    UNUserNotificationCenter.current().getNotificationSettings { settings in
+      completion(.success(["status": Self.statusString(for: settings.authorizationStatus)]))
+    }
+  }
+
   func requestPermission(completion: @escaping (Result<[String: Any], Error>) -> Void) {
     let center = UNUserNotificationCenter.current()
     center.getNotificationSettings { settings in
@@ -63,6 +70,19 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
       @unknown default:
         completion(.success(["status": "prompt"]))
       }
+    }
+  }
+
+  private static func statusString(for status: UNAuthorizationStatus) -> String {
+    switch status {
+    case .authorized, .provisional, .ephemeral:
+      return "granted"
+    case .denied:
+      return "denied"
+    case .notDetermined:
+      return "prompt"
+    @unknown default:
+      return "prompt"
     }
   }
 

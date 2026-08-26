@@ -1192,9 +1192,11 @@ export default function OffersCalendar({
             Get alerted before timed offers start. Turn on notifications on this phone, choose how early to remind, then keep your calendar filled in.
             {!pushSupported
               ? isEdgeiOSShell()
-                ? ' Native push for the Edge app is coming soon.'
+                ? ''
                 : ' This browser cannot use web push in this mode.'
-              : null}
+              : isEdgeiOSShell()
+                ? ' Uses native iPhone alerts (same device token as Lounge Settings).'
+                : null}
           </p>
         </div>
 
@@ -1221,7 +1223,9 @@ export default function OffersCalendar({
           {!pushSupported
             ? 'Not supported here'
             : pushSubscribed
-              ? 'Subscribed • tap a notification to open Calendar'
+              ? isEdgeiOSShell()
+                ? 'Native alerts on • tap a notification to open Calendar'
+                : 'Subscribed • tap a notification to open Calendar'
               : 'Not subscribed yet'}
         </div>
 
@@ -1300,7 +1304,7 @@ export default function OffersCalendar({
               ? 'Alerts are unavailable in a normal iPhone browser tab. Add this site to your Home Screen and open it from the icon first.'
               : !pushSupported
                 ? isEdgeiOSShell()
-                  ? 'Native push for the Edge app is coming soon. Web push is not used in the store shell.'
+                  ? 'Turn on native alerts below (or in Lounge Settings). Web push is not used in the store shell.'
                   : 'Alerts are unavailable because this browser does not support web push here (try Chrome on Android or your installed app on iPhone).'
                 : pushPermission === 'denied'
                   ? 'This site does not have notification permission. Open your browser’s site settings for this page (lock or info icon → Permissions) and set Notifications to Allow, then try again.'

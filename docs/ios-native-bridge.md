@@ -57,7 +57,9 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | Hide Stripe Checkout / subscribe CTAs in WebView | Windows | **Done (2026-08-24):** `openExternalBillingUrl` on Edge checkout / portal, fan Connect / checkout / portal, affiliate Connect, staff bot fan Connect. Shell → Safari; web → assign. |
 | Deep link handling after APNs | Both | Native opens absolute `url` from the APNs payload (`userInfo.url`) in the existing WKWebView. **Mac 2026-08-25:** `didReceive` + cold-start pending / first-load consume. HTTPS + `lvslotpro.com` / `edgetilt.com` only. Web already has `?tab=` / lounge parsers. |
 | Lounge unmuted autoplay | Mac config + Windows playback paths | **Ryan sign-off 2026-08-25:** Tap for sound → next clips stay audible (`ff9a8c16`). Safari/PWA still per-tile. |
-| Skip web push SW in shell | Windows | **Done (2026-08-24):** `useWebPushNotifications` unsupported under `isEdgeiOSShell()`; no `push-sw` register. A2HS / install-for-push gated via `iosPwaInstallRequired`. **Lounge Settings native APNs toggle** wired 2026-08-25. **Token upload** to `apns_device_tokens` wired 2026-08-25. **Send** live on test after Ryan set `APNS_*` (**device banner 2026-08-25**). Redeploy already done for senders. |
+| Skip web push SW in shell | Windows + Mac web | **Done (2026-08-24):** no `push-sw` register in shell; A2HS / install-for-push gated via `iosPwaInstallRequired`. **Lounge Settings native APNs toggle** wired 2026-08-25. **Offers reminders native path** wired 2026-08-26 (`edgeIOSApnsPush.js` + `useWebPushNotifications` shell branch … same `apns_device_tokens` row as Lounge). **Send** live on prod+test (**Ryan prod banner 2026-08-26**). |
+| WKWebView geolocation | Mac | **Native (2026-08-26):** `EdgeLocationManager` + `WKUIDelegate` `requestGeolocationPermissionFor` grants when app has When In Use. `AppDelegate` requests authorization on launch. Web still uses `navigator.geolocation` (nearby casinos, poker currency). **Device smoke pending.** |
+| Call audio session in shell | Mac + Windows web | **Web caller (2026-08-26):** `chatCallAudioSession.js` → `setAudioSession({ mode: 'voiceChat' })` on call enter, `default` on exit (native `.defaultToSpeaker` for voiceChat). **Device smoke pending** (speaker vs earpiece). |
 
 **v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
 
@@ -78,7 +80,7 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
 | Item | What shipped | Mac action |
 | --- | --- | --- |
 | Stripe / fan / affiliate / bot Connect | `openExternalBillingUrl` → `EdgeNative.openInSafari` in shell | **Smoke:** Subscribe / Manage billing / Connect opens **system Safari**, not Checkout inside WKWebView |
-| Skip web push + A2HS | No `push-sw.js` register; `iosPwaInstallRequired` false in shell; How to Install chip already hidden | **Smoke:** Settings Notifications / Offers do **not** nag Add to Home Screen. Push toggle copy says native coming later |
+| Skip web push + A2HS | No `push-sw.js` register; `iosPwaInstallRequired` false in shell; How to Install chip already hidden | **Smoke:** Settings Notifications / Offers do **not** nag Add to Home Screen. Offers + Lounge both use native APNs toggle (2026-08-26). |
 | Lounge unmuted feed handoff | `appleWebKitBlocksFeedSoundHandoff()` … EdgeiOS uses Android-style coordinated sound; Safari/PWA unchanged | **Smoke** (below). **No new Swift** if media policy still open |
 | Install chip + Lottie | Prior commits | Device smoke optional |
 

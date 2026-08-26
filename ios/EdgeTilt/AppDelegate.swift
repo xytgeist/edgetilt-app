@@ -6,6 +6,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     EdgePushManager.shared.configure()
+    EdgeLocationManager.shared.configure()
+    EdgeLocationManager.shared.ensureWhenInUseAuthorization()
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
     EdgeWebKitKeyboard.hideAccessoryBar()
     if let remote = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {

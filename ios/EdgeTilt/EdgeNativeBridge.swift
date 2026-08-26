@@ -159,6 +159,21 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     decisionHandler(.grant)
   }
 
+  /// Grant webpage geolocation when app-level When In Use is already authorized.
+  @available(iOS 15.0, *)
+  func webView(
+    _ webView: WKWebView,
+    requestGeolocationPermissionFor origin: WKSecurityOrigin,
+    initiatedByFrame frame: WKFrameInfo,
+    decisionHandler: @escaping (WKPermissionDecision) -> Void
+  ) {
+    if EdgeLocationManager.shared.webViewMayGrantGeolocation() {
+      decisionHandler(.grant)
+    } else {
+      decisionHandler(.deny)
+    }
+  }
+
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     applyCustomUserAgent(to: webView)
   }

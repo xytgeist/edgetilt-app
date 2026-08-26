@@ -4,8 +4,10 @@
  * `play-and-record` tells the OS this is a conferencing session (may bias earpiece).
  * On hangup we kick back through playback → auto so normal media routing recovers.
  *
- * Feature-detect only... no-op where navigator.audioSession is missing.
+ * EdgeiOS shell → native `setAudioSession` (`voiceChat` / `default`).
+ * Feature-detect only elsewhere ... no-op where navigator.audioSession is missing.
  */
+import { edgeNativeInvoke, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 
 function getAudioSession() {
   if (typeof navigator === 'undefined') return null
@@ -30,6 +32,10 @@ export function supportsCallAudioSession() {
  * @returns {boolean} true when applied
  */
 export function enterCallAudioSession() {
+  if (isEdgeiOSShell()) {
+    void edgeNativeInvoke('setAudioSession', { mode: 'voiceChat' }).catch(() => {})
+    return true
+  }
   const session = getAudioSession()
   if (!session) return false
   try {
@@ -45,6 +51,10 @@ export function enterCallAudioSession() {
  * @returns {boolean} true when reset attempted
  */
 export function exitCallAudioSession() {
+  if (isEdgeiOSShell()) {
+    void edgeNativeInvoke('setAudioSession', { mode: 'default' }).catch(() => {})
+    return true
+  }
   const session = getAudioSession()
   if (!session) return false
   try {

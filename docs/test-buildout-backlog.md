@@ -118,8 +118,11 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 
 **P1 polish**
 - [x] APNs tap deep links (Mac): load APNs `url` into WKWebView. **Ryan smoke PASSED 2026-08-25** (`b66986cf`).
-- [ ] Safe area / status bar vs `env(safe-area-*)`; update/cold-boot copy; geolocation smoke; keyboard compose pass
-- [ ] Call speaker/earpiece routing under shell
+- [x] **Offers native push UI (2026-08-26):** `useWebPushNotifications` shell branch + `edgeIOSApnsPush.js` … Calendar Offer reminders uses native APNs (no coming-soon stub). **Ryan device smoke pending** (toggle on → token row → reminder banner).
+- [x] **Geolocation native wiring (2026-08-26):** `EdgeLocationManager` + WK geolocation delegate. **Ryan device smoke pending:** nearby casinos or poker session currency → iOS prompt → coords (not silent USD fallback).
+- [ ] Safe area leftovers vs `env(safe-area-*)` (scan for double-pad / letterbox after Island sign-off)
+- [ ] **Keyboard compose pass (IPA):** Lounge feed compose, thread compose, chat … field + toolbar not covered by keys. Safari/PWA thread media-bar-behind-keys bug is parked; GIF picker IPA already signed.
+- [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Ryan device smoke pending:** speaker vs earpiece on voice/video call.
 
 **Later (v1.1+)**
 - [ ] CallKit / background ring; native haptics; Android TWA
@@ -1072,7 +1075,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - 2026-08-25: **Poker catalog schedule = this Windows PC:** Task Scheduler **daily 2:00 AM** (`install-poker-catalog-windows-task.ps1`). GitHub Actions cron removed (manual dispatch only). Cloud `ubuntu-latest` cannot scrape MTTDB. PC should be on / wake at 2am. Log `scripts/.poker-catalog-sync.log`. Promote workflow to **main** so the old GHA cron stops. No SQL / Edge.
 - 2026-08-25: **Poker catalog MTTDB Cloudflare is not a red job:** Turnstile blocks GHA and this house. Sync still upserts regional/ClubWPT, **keeps last `mttdb:*` rows**, heartbeats **ok**. Playwright is off unless `MTTDB_PLAYWRIGHT=1`. Monitor tiles are remaining catalog counts + an amber "blocked this run" note. Prod currently has **0** `mttdb:online/live` (nothing left to keep) until a scrape succeeds; ClubWPT + regional still refresh. Files: `sync-poker-tournament-catalog.mjs`, `mttdbCatalogFetch.mjs`, `EdgeMonitorPokerCatalogPanel.jsx`. No SQL / Edge. GHA stays on old fail-logic until this is on **main**.
 - 2026-08-25: **Staged Stream wait no longer parks at 99%:** HLS timeout and confirmed Stream 404 (uid never landed) now fail into the existing "Video couldn't be processed" modal (Retry / Draft / Discard). Soft "Still processing… return to EdgeTilt" stays only for unexpected errors + tab-hide abort. File: `loungeVideoUpload.js`. No SQL / Edge.
-- 2026-08-25: **IPA APNs tap deep link (Ryan smoke PASSED):** Banner tap opens payload `url` in the shell WKWebView. Tip **`b66986cf`**. IPA APNs P0 closed on test (permission + delivery + tap).
+- 2026-08-26: **IPA P1 polish (Mac code landed, Ryan device smokes pending):** (1) Offers Calendar native APNs toggle via `edgeIOSApnsPush.js` + `useWebPushNotifications` shell branch (no coming-soon). (2) WKWebView geolocation: `EdgeLocationManager.swift` + delegate grant when When In Use authorized. (3) Chat calls in shell → `setAudioSession(voiceChat|default)` from `chatCallAudioSession.js`. Still open: geolocation coords smoke, keyboard compose walk (feed/thread/chat), safe-area leftovers, call speaker/earpiece. v1.1 unchanged: CallKit, StoreKit IAP, haptics.
 - 2026-08-25: **IPA APNs tap → WKWebView deep link:** Notification tap (and cold start) loads payload `url` in the existing shell WebView. No new `EdgeNative` method. HTTPS + edgetilt/lvslotpro hosts only. Files: `EdgePushManager.swift`, `EdgeWebView.swift`, `AppDelegate.swift`. Rebuild IPA + device smoke.
 - 2026-08-25: **IPA APNs delivery (Ryan device sign-off):** Lounge activity push banner arrived on EdgeTilt Test after test Edge `APNS_KEY_ID` + `APNS_P8`. Token row present for `@edgelord`. Remaining Mac: tap → load payload `url` in WKWebView. Prod secrets/SQL not touched.
 - 2026-08-25: **IPA native APNs permission (Ryan device sign-off):** Settings → Push → iOS Allow → switch on. Tip **`815864e1`**. Token upload/send + delivery still Windows. Offers toggle still "coming soon."

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
+import {
+  disableEdgeIOSApnsPush,
+  enableEdgeIOSApnsPush,
+  syncEdgeIOSApnsPushState,
+} from '../../../utils/edgeIOSApnsPush.js'
 import { writePushOptInIntent } from '../../../utils/pushOptInIntent.js'
-
-const EDGE_IOS_PUSH_STATUS =
-  'Push for the Edge app will use native notifications (coming soon). Web push is not used in the shell.'
 
 /** Registration that owns our push-sw.js worker (avoid mixing with unrelated SW registrations). */
 async function getPushServiceWorkerRegistration() {
@@ -45,6 +47,14 @@ function readSubscriptionKeys(subscription) {
 }
 
 export default function useWebPushNotifications({ supabaseClient }) {
+  const isIpaShell = typeof window !== 'undefined' && isEdgeiOSShell()
+  const [nativeStatus, setNativeStatus] = useState(/** @type {'granted' | 'denied' | 'prompt'} */ ('prompt'))
+  const [nativeToken, setNativeToken] = useState(/** @type {string | null} */ (null))
+  const [nativeServerRegistered, setNativeServerRegistered] = useState(
+    /** @type {boolean | null} */ (null),
+  )
+  const uploadedTokenRef = useRef('')
+
   const [isSupported, setIsSupported] = useState(false)
   const [permission, setPermission] = useState('default')
   const [isBusy, setIsBusy] = useState(false)
@@ -56,11 +66,27 @@ export default function useWebPushNotifications({ supabaseClient }) {
 
   const envPublicKey = (import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || '').trim()
 
-  const canEnable = useMemo(
-    () => isSupported && permission !== 'denied' && !isSubscribed && !isBusy,
-    [isSupported, permission, isSubscribed, isBusy]
-  )
-  const canDisable = useMemo(() => isSupported && isSubscribed && !isBusy, [isSupported, isSubscribed, isBusy])
+  const canEnable = useMemo(() => {
+    if (isIpaShell) {
+      return nativeStatus !== 'denied' && !(nativeStatus === 'granted' && nativeServerRegistered === true) && !isBusy
+    }
+    return isSupported && permission !== 'denied' && !isSubscribed && !isBusy
+  }, [isIpaShell, nativeStatus, nativeServerRegistered, isBusy, isSupported, permission, isSubscribed])
+  const canDisable = useMemo(() => {
+    if (isIpaShell) {
+      return nativeStatus === 'granted' && nativeServerRegistered === true && !isBusy
+    }
+    return isSupported && isSubscribed && !isBusy
+  }, [isIpaShell, nativeStatus, nativeServerRegistered, isBusy, isSupported, isSubscribed])
+
+  const syncNativeState = useCallback(async () => {
+    if (!isIpaShell || !supabaseClient) return
+    const next = await syncEdgeIOSApnsPushState(supabaseClient)
+    setNativeStatus(next.status)
+    setNativeToken(next.token)
+    setNativeServerRegistered(next.serverRegistered)
+    if (next.token && next.serverRegistered) uploadedTokenRef.current = next.token
+  }, [isIpaShell, supabaseClient])
 
   const upsertSubscriptionRow = useCallback(
     async (subscription) => {
@@ -139,12 +165,19 @@ export default function useWebPushNotifications({ supabaseClient }) {
   }, [verifyOrRepairServerRegistration])
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && isEdgeiOSShell()) {
-      setIsSupported(false)
-      setIsSubscribed(false)
-      setIsServerRegistered(false)
-      setStatusMessage(EDGE_IOS_PUSH_STATUS)
-      return
+    if (typeof window !== 'undefined' && isIpaShell) {
+      setIsSupported(true)
+      void syncNativeState()
+      const onFocus = () => {
+        void syncNativeState()
+      }
+      window.addEventListener('focus', onFocus)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') onFocus()
+      })
+      return () => {
+        window.removeEventListener('focus', onFocus)
+      }
     }
     const supported =
       typeof window !== 'undefined' &&
@@ -170,7 +203,23 @@ export default function useWebPushNotifications({ supabaseClient }) {
       window.removeEventListener('focus', onFocusOrVisible)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [syncLocalState])
+  }, [syncLocalState, isIpaShell, syncNativeState])
+
+  useEffect(() => {
+    if (!isIpaShell || !supabaseClient) return
+    if (nativeStatus !== 'granted' || !nativeToken) return
+    if (uploadedTokenRef.current === nativeToken && nativeServerRegistered === true) return
+    let cancelled = false
+    void (async () => {
+      const next = await syncEdgeIOSApnsPushState(supabaseClient)
+      if (cancelled) return
+      setNativeServerRegistered(next.serverRegistered)
+      if (next.token && next.serverRegistered) uploadedTokenRef.current = next.token
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isIpaShell, supabaseClient, nativeStatus, nativeToken, nativeServerRegistered])
 
   /** Production / PWA builds often omit VITE_WEB_PUSH_PUBLIC_KEY; load public key from Edge Function. */
   useEffect(() => {
@@ -225,9 +274,27 @@ export default function useWebPushNotifications({ supabaseClient }) {
    */
   const enable = useCallback(async (opts = {}) => {
     const silent = opts?.silent === true
-    if (isEdgeiOSShell()) {
-      setStatusMessage(EDGE_IOS_PUSH_STATUS)
-      return false
+    if (isIpaShell) {
+      if (silent) return nativeStatus === 'granted' && nativeServerRegistered === true
+      setIsBusy(true)
+      setStatusMessage('')
+      const result = await enableEdgeIOSApnsPush(supabaseClient)
+      setNativeStatus(result.status)
+      if (result.ok) {
+        const { token } = await syncEdgeIOSApnsPushState(supabaseClient)
+        setNativeToken(token)
+        setNativeServerRegistered(true)
+        if (token) uploadedTokenRef.current = token
+        setIsSubscribed(true)
+        setIsServerRegistered(true)
+      } else {
+        setNativeServerRegistered(false)
+        setIsSubscribed(false)
+        setIsServerRegistered(false)
+      }
+      setStatusMessage(result.message)
+      setIsBusy(false)
+      return result.ok
     }
     if (!isSupported) return false
     setIsBusy(true)
@@ -287,9 +354,22 @@ export default function useWebPushNotifications({ supabaseClient }) {
     } finally {
       setIsBusy(false)
     }
-  }, [isSupported, resolveVapidPublicKey, upsertSubscriptionRow, supabaseClient])
+  }, [isSupported, resolveVapidPublicKey, upsertSubscriptionRow, supabaseClient, isIpaShell, nativeStatus, nativeServerRegistered, syncNativeState])
 
   const disable = useCallback(async () => {
+    if (isIpaShell) {
+      setIsBusy(true)
+      setStatusMessage('')
+      const result = await disableEdgeIOSApnsPush(supabaseClient, nativeToken || uploadedTokenRef.current)
+      uploadedTokenRef.current = ''
+      setNativeToken(null)
+      setNativeServerRegistered(false)
+      setIsSubscribed(false)
+      setIsServerRegistered(false)
+      setStatusMessage(result.message || 'Native alerts disabled on this device.')
+      setIsBusy(false)
+      return
+    }
     if (!isSupported) return
     setIsBusy(true)
     setStatusMessage('')
@@ -327,17 +407,18 @@ export default function useWebPushNotifications({ supabaseClient }) {
     } finally {
       setIsBusy(false)
     }
-  }, [isSupported, removeSubscriptionRow, supabaseClient])
+  }, [isSupported, removeSubscriptionRow, supabaseClient, isIpaShell, nativeToken])
 
-  const isRegistered = isSubscribed && isServerRegistered === true
+  const shellSubscribed = isIpaShell && nativeStatus === 'granted' && nativeServerRegistered === true
+  const isRegistered = shellSubscribed || (isSubscribed && isServerRegistered === true)
 
   return {
-    isSupported,
-    permission,
+    isSupported: isIpaShell ? true : isSupported,
+    permission: isIpaShell ? nativeStatus : permission,
     isBusy,
     statusMessage,
-    isSubscribed,
-    isServerRegistered,
+    isSubscribed: isIpaShell ? shellSubscribed : isSubscribed,
+    isServerRegistered: isIpaShell ? nativeServerRegistered : isServerRegistered,
     isRegistered,
     syncLocalState,
     canEnable,

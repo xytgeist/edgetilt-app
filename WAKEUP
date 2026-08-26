@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
-**Windows 2026-08-26 (lightbox comments sheet):** Peek is a compositor scale of the lightbox (`--lounge-media-peek-scale`), not a React video relayout. Sheet ~60/74. Live drag. At-top swipe. Do not JS-transform the Stream `<video>` host off visualViewport.
+**Windows 2026-08-26 (lightbox comments sheet):** Peek scales the Stream flyout / image stage (`--lounge-media-peek-scale`), not the chrome overlay. Sheet ~60/74. Live drag. Do not JS-transform the `<video>` host off visualViewport.
 
 **GIF picker (Ryan smoke PASSED 2026-08-25, IPA + non-IPA):** Search takes focus (`#root` inert). Sheet is layout-viewport full screen, keyboard overlays. IPA hides the WK accessory bar. Do not reopen dismiss-keyboard hacks. Trim audio mux (`d744555b`) stays.
 

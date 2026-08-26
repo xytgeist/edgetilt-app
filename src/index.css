@@ -8853,10 +8853,11 @@ html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]) {
 html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging] {
   transition: none;
 }
-html[data-lounge-detail-over-lightbox] [data-lounge-media-lightbox] {
-  transform-origin: 50% 50%;
+html[data-lounge-detail-over-lightbox] [data-lounge-stream-hero-flyout],
+html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
+  transform-origin: 50% 50% !important;
   transform: translate3d(0, calc(var(--lounge-media-peek-inset, 0px) * -0.5), 0)
-    scale(var(--lounge-media-peek-scale, 1));
+    scale(var(--lounge-media-peek-scale, 1)) !important;
   will-change: transform;
 }
 @media (prefers-reduced-motion: reduce) {

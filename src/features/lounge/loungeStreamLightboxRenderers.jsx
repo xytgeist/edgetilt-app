@@ -81,7 +81,7 @@ function buildStreamLightboxInteractionBar(hostPost, mediaPost, menuState, ctx, 
       repostMenuScrollRootRef={ctx.repostMenuScrollRootRef}
       onCommentClick={
         typeof ctx.onLightboxOpenDetail === 'function'
-          ? () => openDetailFromLightbox(true)
+          ? () => openDetailFromLightbox(false)
           : ctx.onCommentClick
       }
       pillOverlay

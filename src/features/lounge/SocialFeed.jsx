@@ -306,12 +306,14 @@ import {
 import { isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeStreamLightboxRenderers.jsx'
 import {
   setLoungeDetailOverLightboxAttr,
+  setLoungeMediaSheetComposerExpanded,
   notifyLoungeMediaDetailSheetMetrics,
   lockLoungeMediaSheetKeyboard,
   unlockLoungeMediaSheetKeyboard,
   readLoungeOverlayInnerKeyboardOverlapPx,
   subscribeLoungeDetailOverLightbox,
 } from './loungeLightboxDetailSheet.js'
+import { useLoungeMediaDetailSheetSwipe } from './useLoungeMediaDetailSheetSwipe.js'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
 import {
   LOUNGE_COMMENT_BUBBLE_D,
@@ -1701,9 +1703,11 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (!loungePostDetailOverLightbox) {
+      setLoungeMediaSheetComposerExpanded(false)
       unlockLoungeMediaSheetKeyboard()
       return undefined
     }
+    setLoungeMediaSheetComposerExpanded(loungeDetailCommentFieldFocused)
     if (loungeDetailCommentFieldFocused) {
       lockLoungeMediaSheetKeyboard()
       return undefined
@@ -9065,9 +9069,16 @@ export default function SocialFeed({
     setLoungeLightboxSheetMediaEntityId(mediaEntityId ? String(mediaEntityId) : null)
     setLoungePostDetailOverLightbox(true)
     setLoungeDetailOverLightboxAttr(true)
+    setLoungeDetailCommentComposerExpanded(true)
   }, [loungePostDetail?.id])
 
   const dismissLoungeLightboxDetailSheet = useCallback(() => {
+    try {
+      loungeDetailCommentFieldRef.current?.blur()
+    } catch {
+      // ignore
+    }
+    setLoungeMediaSheetComposerExpanded(false)
     if (loungePostDetailOpenedAsLightboxSheetRef.current) {
       closeLoungePostDetail()
       return
@@ -9151,8 +9162,9 @@ export default function SocialFeed({
       setLoungePostDetailMenuOpen(false)
       cancelLoungeDetailEdit()
       cancelLoungeDetailCommentEdit()
-      if (!focusComposer) collapseLoungeDetailCommentComposer()
-      else loungePostDetailPendingCommentComposerRef.current = true
+      if (focusComposer) loungePostDetailPendingCommentComposerRef.current = true
+      else if (loungePostDetailOverLightboxRef.current) setLoungeDetailCommentComposerExpanded(true)
+      else collapseLoungeDetailCommentComposer()
       resetPostDetailInlineSound()
       setLoungeCommentDetailPathIds(chain)
     },
@@ -9205,34 +9217,25 @@ export default function SocialFeed({
   )
 
   const openLoungeStreamLightboxDetail = useCallback(
-    (hostPost, mediaPost, { focusComposer = false } = {}) => {
+    (hostPost, mediaPost) => {
       if (openProfileGateIfNeeded()) return
       const { displayEntity } = loungeStreamLightboxMediaSource(hostPost, mediaPost)
       enterLoungeLightboxDetailSheet(displayEntity?.id)
       if (isFeedCommentEntity(displayEntity)) {
         if (loungePostDetail?.id && String(loungePostDetail.id) === String(displayEntity.post_id)) {
-          openLoungeCommentDetail(displayEntity, { focusComposer, keepLightboxPlaying: true })
+          openLoungeCommentDetail(displayEntity, { focusComposer: false, keepLightboxPlaying: true })
           return
         }
-        void openCommentRepostDetail(displayEntity, { focusComposer, keepLightboxPlaying: true })
+        void openCommentRepostDetail(displayEntity, { focusComposer: false, keepLightboxPlaying: true })
         return
       }
       const targetPost = displayEntity || mediaPost || hostPost
       if (!targetPost?.id) return
-      if (loungePostDetail?.id && String(loungePostDetail.id) === String(targetPost.id)) {
-        if (focusComposer) expandAndFocusLoungeDetailCommentComposer()
-        return
-      }
-      openLoungePostDetail(
-        targetPost,
-        focusComposer
-          ? { focusCommentComposer: true, keepLightboxPlaying: true }
-          : { keepLightboxPlaying: true },
-      )
+      if (loungePostDetail?.id && String(loungePostDetail.id) === String(targetPost.id)) return
+      openLoungePostDetail(targetPost, { keepLightboxPlaying: true })
     },
     [
       enterLoungeLightboxDetailSheet,
-      expandAndFocusLoungeDetailCommentComposer,
       loungePostDetail?.id,
       openCommentRepostDetail,
       openLoungeCommentDetail,
@@ -9242,23 +9245,20 @@ export default function SocialFeed({
   )
 
   const openLoungeCommentStreamLightboxDetail = useCallback(
-    (comment, _media, { focusComposer = false } = {}) => {
+    (comment, _media) => {
       if (!comment?.id) return
       if (openProfileGateIfNeeded()) return
       enterLoungeLightboxDetailSheet(comment.id)
-      if (focusComposer) {
-        onLoungeCommentReplyInteraction(comment)
-      } else {
-        openLoungeCommentDetail(comment, { focusComposer: false, keepLightboxPlaying: true })
-      }
+      openLoungeCommentDetail(comment, { focusComposer: false, keepLightboxPlaying: true })
     },
-    [
-      enterLoungeLightboxDetailSheet,
-      onLoungeCommentReplyInteraction,
-      openLoungeCommentDetail,
-      openProfileGateIfNeeded,
-    ],
+    [enterLoungeLightboxDetailSheet, openLoungeCommentDetail, openProfileGateIfNeeded],
   )
+
+  const { sheetSwipeProps: loungeMediaDetailSheetSwipeProps } = useLoungeMediaDetailSheetSwipe({
+    enabled: Boolean(loungePostDetailOverLightbox && loungePostDetailVisible),
+    onDismiss: dismissLoungeLightboxDetailSheet,
+    scrollRef: loungePostDetailScrollRef,
+  })
 
   useEffect(() => {
     if (loungeCommentDetailPathIds.length === 0 || loungeDetailCommentsLoading) return
@@ -16844,12 +16844,8 @@ export default function SocialFeed({
             {...(loungePostDetailOverLightbox ? { 'data-lounge-media-detail-sheet': '' } : {})}
             className={
               loungePostDetailOverLightbox
-                ? `fixed inset-x-0 bottom-0 z-10 mx-auto flex h-[min(78dvh,calc(100dvh-5.5rem))] max-h-[min(78dvh,calc(100dvh-5.5rem))] w-full max-w-2xl flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-zinc-800/70 bg-zinc-950 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] ${
-                    LOUNGE_IOS && loungeDetailCommentFieldFocused
-                      ? 'transform-none'
-                      : `transition-transform duration-300 ease-out motion-reduce:transition-none ${
-                          loungePostDetailVisible ? 'translate-y-0' : 'translate-y-full'
-                        }`
+                ? `fixed inset-x-0 bottom-0 z-10 flex w-full flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-zinc-800/70 bg-zinc-950 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] motion-reduce:transition-none ${
+                    loungePostDetailVisible ? 'translate-y-0' : 'translate-y-full'
                   }`
                 : `fixed inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l border-zinc-800/70 bg-zinc-950/94 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] backdrop-blur-md ${
                     LOUNGE_IOS && loungeDetailCommentFieldFocused
@@ -16862,10 +16858,12 @@ export default function SocialFeed({
             onTransitionEnd={onLoungePostDetailPanelTransitionEnd}
             onTransitionCancel={onLoungePostDetailPanelTransitionEnd}
             onClick={(e) => e.stopPropagation()}
+            {...(loungePostDetailOverLightbox ? loungeMediaDetailSheetSwipeProps : {})}
           >
             {loungePostDetailOverLightbox ? (
               <div
-                className="flex shrink-0 justify-center pb-0.5 pt-2"
+                data-lounge-media-detail-grab-hit=""
+                className="flex shrink-0 touch-none justify-center pb-1.5 pt-2.5"
                 aria-hidden
               >
                 <span
@@ -16874,23 +16872,19 @@ export default function SocialFeed({
                 />
               </div>
             ) : null}
-            {/* sat on this absolute bar only … panel pt + measured spacer double-padded IPA */}
+            {loungePostDetailOverLightbox ? (
+              <h2 id="lounge-post-detail-title" className="sr-only">
+                {loungeCommentDetailPathIds.length > 0 ? 'Reply' : 'Post'}
+              </h2>
+            ) : (
             <div
               ref={loungePostDetailTitleBarRef}
               data-lounge-post-detail-title-bar=""
-              className={
-                loungePostDetailOverLightbox
-                  ? 'relative z-30 shrink-0 bg-zinc-950 will-change-auto'
-                  : 'absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform'
-              }
-              style={
-                loungePostDetailOverLightbox
-                  ? undefined
-                  : {
-                      transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
-                      pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
-                    }
-              }
+              className="absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform"
+              style={{
+                transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
+                pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
+              }}
             >
               <div className={`flex shrink-0 items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
               <button
@@ -16971,6 +16965,7 @@ export default function SocialFeed({
               )}
               </div>
             </div>
+            )}
 
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <div
@@ -18294,7 +18289,10 @@ export default function SocialFeed({
                           onFocus={() => {
                             loungeDetailCommentFieldFocusedRef.current = true
                             setLoungeDetailCommentFieldFocused(true)
-                            if (loungePostDetailOverLightboxRef.current) lockLoungeMediaSheetKeyboard()
+                            if (loungePostDetailOverLightboxRef.current) {
+                              setLoungeMediaSheetComposerExpanded(true)
+                              lockLoungeMediaSheetKeyboard()
+                            }
                           }}
                           onBlur={(e) => {
                             loungeDetailCommentFieldFocusedRef.current = false

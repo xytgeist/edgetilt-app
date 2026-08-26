@@ -1,10 +1,12 @@
 import { computeHeroTargetRect } from './loungeLightboxFlip.js'
 
-/** Matches `h-[min(78dvh,calc(100dvh-5.5rem))]` on `[data-lounge-media-detail-sheet]`. */
-const SHEET_DVH_FRACTION = 0.78
+/** Rest ~60% (image 1). Composer focused ~73% (image 2). */
+const SHEET_REST_FRACTION = 0.6
+const SHEET_COMPOSER_FRACTION = 0.73
 const SHEET_MIN_PEEK_REM = 5.5
 
 let overlayOn = false
+let composerExpanded = false
 const listeners = new Set()
 let metricPollRaf = 0
 let viewportBound = false
@@ -74,10 +76,49 @@ function rootFontPx() {
   return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
 }
 
+function activeSheetFraction() {
+  return composerExpanded ? SHEET_COMPOSER_FRACTION : SHEET_REST_FRACTION
+}
+
 function estimateSheetHeightForLayout(layoutH) {
   const vh = Math.max(0, Number(layoutH) || 0)
   const minPeek = SHEET_MIN_PEEK_REM * rootFontPx()
-  return Math.round(Math.min(vh * SHEET_DVH_FRACTION, Math.max(0, vh - minPeek)))
+  return Math.round(Math.min(vh * activeSheetFraction(), Math.max(0, vh - minPeek)))
+}
+
+function writeSheetHeightVar(px) {
+  if (typeof document === 'undefined') return
+  if (px > 0) document.documentElement.style.setProperty('--lounge-media-sheet-h', `${px}px`)
+  else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
+}
+
+function syncComposerAttr() {
+  if (typeof document === 'undefined') return
+  if (overlayOn && composerExpanded) {
+    document.documentElement.setAttribute('data-lounge-media-sheet-composer', '')
+  } else {
+    document.documentElement.removeAttribute('data-lounge-media-sheet-composer')
+  }
+}
+
+/** Grow the sheet when the overlay composer is focused ... media peek follows. */
+export function setLoungeMediaSheetComposerExpanded(on) {
+  const next = Boolean(on)
+  const changed = composerExpanded !== next
+  composerExpanded = next
+  syncComposerAttr()
+  if (!overlayOn || !changed) return
+  const estimated = estimateLoungeMediaDetailSheetHeightPx()
+  writeSheetHeightVar(estimated)
+  if (sheetKbLocked && estimated > 0) {
+    frozenPeekInsetPx = estimated
+    const parked = estimatedParkedSheetBox()
+    if (parked) {
+      frozenSheetTop = parked.top
+      frozenSheetH = parked.height
+    }
+  }
+  emit()
 }
 
 /** Keep the tallest pre-keyboard layout; never freeze an already-shrunk keyboard viewport. */
@@ -130,6 +171,8 @@ export function setLoungeDetailOverLightboxAttr(on) {
     startMetricPoll()
     bindViewportWatch()
   } else {
+    composerExpanded = false
+    syncComposerAttr()
     unlockLoungeMediaSheetKeyboard()
     frozenLayoutH = 0
     frozenViewport = null
@@ -184,8 +227,7 @@ export function syncLoungeMediaSheetHeightVar() {
   if (typeof document === 'undefined') return
   if (sheetKbLocked) return
   const px = overlayOn ? readLoungeLightboxPeekBottomInsetPx() : 0
-  if (px > 0) document.documentElement.style.setProperty('--lounge-media-sheet-h', `${px}px`)
-  else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
+  writeSheetHeightVar(px)
 }
 
 export function notifyLoungeMediaDetailSheetMetrics() {

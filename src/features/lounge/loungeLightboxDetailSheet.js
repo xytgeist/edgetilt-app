@@ -27,6 +27,7 @@ let peekRevealTries = 0
 let cachedPeekMediaBox = null
 /** Cached for useSyncExternalStore ... never read getBoundingClientRect in getSnapshot. */
 let cachedInnerKbPx = 0
+let peekSettleTimer = 0
 
 function emit() {
   listeners.forEach((fn) => {
@@ -228,6 +229,22 @@ function writeSheetHeightVar(px) {
   else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
 }
 
+function schedulePeekSettleWrite() {
+  if (typeof window === 'undefined') return
+  if (peekSettleTimer) window.clearTimeout(peekSettleTimer)
+  peekSettleTimer = window.setTimeout(() => {
+    peekSettleTimer = 0
+    if (!overlayOn || !peekRevealed) return
+    writePeekInsetVar()
+  }, 300)
+}
+
+function clearPeekSettleWrite() {
+  if (typeof window === 'undefined' || !peekSettleTimer) return
+  window.clearTimeout(peekSettleTimer)
+  peekSettleTimer = 0
+}
+
 function writePeekIdentityVars() {
   const root = document.documentElement
   root.style.setProperty('--lounge-media-peek-tx', '0px')
@@ -252,11 +269,15 @@ function peekBandHeightPx() {
   const estimatedBand = estimated >= 8 ? Math.max(0, vh - estimated - PEEK_GAP_PX) : 0
   const sheetTop = readVisualSheetTopPx()
   const dragging = sheetDragging || dragOffsetPx > 0
-  if (dragging && sheetTop >= 8) {
-    return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
-  }
-  // Use the target rest/composer height, not mid-transition layout. Live top stays 60%
-  // for a beat after composer expands, so peek would never shrink with the sheet.
+  const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
+  const liveBand =
+    sheetTop >= 8 && !slidingOn ? Math.max(0, Math.round(sheetTop - PEEK_GAP_PX)) : 0
+  if (dragging && liveBand >= 8) return liveBand
+  // Live top is the painted sheet (CSS 60lvh can be taller than the JS px estimate,
+  // which ate the 12px gap). Estimated shrinks immediately on composer expand.
+  // min() keeps the gap and still lets peek follow 74lvh without waiting.
+  if (liveBand >= 8 && estimatedBand >= 8) return Math.min(liveBand, estimatedBand)
+  if (liveBand >= 8) return liveBand
   return estimatedBand
 }
 
@@ -337,6 +358,7 @@ export function setLoungeMediaSheetComposerExpanded(on) {
   writePeekInsetVar()
   refreshCachedInnerKbPx()
   emit()
+  schedulePeekSettleWrite()
 }
 
 export function getLoungeMediaSheetDragging() {
@@ -447,7 +469,9 @@ export function setLoungeDetailOverLightboxAttr(on) {
       if (!readPeekMediaLayoutBox() && peekRevealTries < 32) {
         peekRevealTries += 1
         requestAnimationFrame(revealPeekAfterLayout)
+        return
       }
+      schedulePeekSettleWrite()
     }
     // Paint identity under the overlay rule first, then ease to the peek.
     requestAnimationFrame(() => {
@@ -464,6 +488,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     syncComposerAttr()
     syncDraggingAttr()
     unlockLoungeMediaSheetKeyboard()
+    clearPeekSettleWrite()
     frozenLayoutH = 0
     frozenKbInnerH = 0
     frozenViewport = null

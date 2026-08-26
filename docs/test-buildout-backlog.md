@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge lightbox peek 12px gap (Windows):** Peek band is `min(painted sheet top - 12, estimated 60/74 band)` so CSS `max(60lvh, …)` cannot sit on top of the media. Composer shrink still uses the smaller 74% estimate immediately. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox peek polish (Windows):** Peek eases from interpolable identity (double rAF) instead of first-paint snap. Composer 74lvh uses the target sheet height so media shrinks with the sheet, not the mid-transition 60% top. Keyboard pad is frozen `innerHeight - visualViewport` (not lvh), so the composer is not stranded above the keys. Still **60lvh / 74lvh**. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox peek still broken after `70ed7f52` (Windows):** Peek was reading the sheet while it was still `translate-y-full` (band ≈ full screen, scale 1). iOS also ignores `@property` values inside `transform()`. Now: skip that off-screen rect, keep ticking until the sheet is parked, apply peek as `--lounge-media-peek-transform`, overlay comments skip the slide-from-below so the sheet is already at rest. Composer pad uses `visualViewport` while the field is up. Still **60lvh / 74lvh**. No SQL / Edge.

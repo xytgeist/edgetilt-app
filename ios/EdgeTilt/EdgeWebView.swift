@@ -31,7 +31,9 @@ struct EdgeWebView: UIViewRepresentable {
     let store = config.websiteDataStore
     EdgeWebsiteDataHygiene.clearServiceWorkersAndCaches(from: store) {
       DispatchQueue.main.async {
-        webView.load(URLRequest(url: context.coordinator.url))
+        let url = EdgePushManager.shared.consumePendingDeepLinkURL() ?? context.coordinator.url
+        webView.load(URLRequest(url: url))
+        EdgePushManager.shared.markReadyForDeepLinks()
       }
     }
     return webView
@@ -55,6 +57,7 @@ struct EdgeWebView: UIViewRepresentable {
 
     func attach(webView: EdgeInsetAwareWebView) {
       self.webView = webView
+      EdgePushManager.shared.attach(webView: webView)
       webView.onSafeAreaInsetsChange = { [weak self] in
         guard let self, let webView = self.webView else { return }
         self.pushSafeAreaInsets(from: webView, force: false)

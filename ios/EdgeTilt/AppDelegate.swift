@@ -8,6 +8,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     EdgePushManager.shared.configure()
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
     EdgeWebKitKeyboard.hideAccessoryBar()
+    if let remote = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+      EdgePushManager.shared.handleNotificationUserInfo(remote)
+    }
     return true
   }
 

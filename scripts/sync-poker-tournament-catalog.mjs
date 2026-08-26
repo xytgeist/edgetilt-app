@@ -437,25 +437,20 @@ async function main() {
 }
 
 /**
- * Hard fail only when online lobby is actually gone.
- * Cloudflare blocks are expected (Turnstile). Keep last scrape; do not fail the job
- * unless the catalog has no remaining future mttdb:online rows.
+ * Cloudflare Turnstile is a standing outage, not a catalog bug.
+ * Keep last mttdb:* rows (upsert is additive; prune is past dates only).
+ * Do not fail the job on a CF block even if remaining online is already 0.
  *
  * @param {{ liveError: string | null, onlineError: string | null, liveIngested: number, onlineIngested: number, onlineParsed: number }} fetch
  * @param {number} onlineRowCount ingested this run
- * @param {{ online: number, live: number }} remaining future mttdb:* rows already in catalog
+ * @param {{ online: number, live: number }} [_remaining]
  */
-function mttdbFetchProblems(fetch, onlineRowCount, remaining = { online: 0, live: 0 }) {
+function mttdbFetchProblems(fetch, onlineRowCount, _remaining = { online: 0, live: 0 }) {
   /** @type {string[]} */
   const problems = []
-  const remainingOnline = Number(remaining.online) || 0
 
   if (isMttdbCloudflareBlock(fetch.onlineError)) {
-    if (remainingOnline < 1 && onlineRowCount < 1) {
-      problems.push(
-        'MTTDB online blocked by Cloudflare and catalog has no remaining online rows',
-      )
-    }
+    // Degraded. Monitor shows remaining catalog counts + blocked note.
   } else if (fetch.onlineError) {
     problems.push(`online scrape error: ${fetch.onlineError}`)
   } else if (fetch.onlineIngested < 1 || onlineRowCount < 1) {
@@ -465,7 +460,7 @@ function mttdbFetchProblems(fetch, onlineRowCount, remaining = { online: 0, live
   }
 
   if (fetch.liveError) {
-    console.warn('[poker:catalog:sync] MTTDB live scrape failed (online still required):', fetch.liveError)
+    console.warn('[poker:catalog:sync] MTTDB live scrape failed:', fetch.liveError)
   }
   return problems
 }

@@ -11,10 +11,9 @@
 #
 # On success, writes admin_ops_job_heartbeats (Edge Monitor) on production.
 # MTTDB is often behind Cloudflare Turnstile (GHA + residential). Regional /
-# ClubWPT upsert still runs. Job stays green when Cloudflare blocks MTTDB but
-# future mttdb:* rows remain in the catalog. Hard-fail only if online lobby is
-# empty after a non-CF error, or CF blocked and the catalog has no remaining
-# mttdb:online rows. Set MTTDB_PLAYWRIGHT=1 only to retry headless Chrome.
+# ClubWPT upsert still runs. A Cloudflare block is a degraded success (keep last
+# mttdb:* rows, heartbeat ok). Hard-fail for non-CF online scrape errors or a
+# successful fetch that returns 0 online rows. Set MTTDB_PLAYWRIGHT=1 to retry Chrome.
 
 name: Poker catalog sync (production)
 

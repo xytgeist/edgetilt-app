@@ -119,7 +119,7 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 
 **Offer reminders cron (40600):** pg_cron **`send_due_offer_reminders_minute`** every minute → **`send-due-offer-reminders`** Edge fn (`lookaheadMinutes: 1`).
 
-**Poker catalog heartbeat (40800):** GitHub Actions sync writes **`admin_ops_job_heartbeats`**; Monitor stale if last success >4 days. Health tab **Poker catalog sync** panel (`20260812120000`) shows upserted / pruned plus **remaining** MTTDB online+live in the catalog. Cloudflare-blocked MTTDB scrapes heartbeat **ok** and keep last rows (amber note). Hard-fail only if online catalog is empty.
+**Poker catalog heartbeat (40800):** GitHub Actions sync writes **`admin_ops_job_heartbeats`**; Monitor stale if last success >4 days. Health tab **Poker catalog sync** panel (`20260812120000`) shows upserted / pruned plus **remaining** MTTDB online+live in the catalog. Cloudflare-blocked MTTDB scrapes heartbeat **ok** and keep last rows (amber note).
 
 ## Phase 8 — app section visits + member activity (shipped, prod 2026-07-31)
 

@@ -18491,8 +18491,44 @@ export default function SocialFeed({
                       if (openProfileGateIfNeeded()) return
                       expandAndFocusLoungeDetailCommentComposer()
                     }}
-                    className="lounge-detail-comment-composer-glass flex min-h-10 w-full touch-manipulation items-center rounded-full px-3 py-2 text-left text-[15px] leading-tight text-zinc-500 [-webkit-tap-highlight-color:transparent] active:opacity-80"
+                    className="flex w-full touch-manipulation items-center gap-2.5 text-left [-webkit-tap-highlight-color:transparent] active:opacity-80"
                   >
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-900 text-[14px] font-bold text-zinc-200"
+                      aria-hidden
+                    >
+                      {composerUserProfile?.avatar_url ? (
+                        <img
+                          key={composerUserProfile.avatar_url}
+                          src={composerUserProfile.avatar_url}
+                          alt=""
+                          className="h-full w-full rounded-full object-cover"
+                          loading="eager"
+                          decoding="async"
+                        />
+                      ) : !composerAuthResolved ? (
+                        <span className="block h-full w-full animate-pulse rounded-full bg-zinc-700/55" />
+                      ) : (
+                        <span
+                          className={`flex h-full w-full items-center justify-center font-bold text-white ${avatarToneClass(
+                            composerUserProfile?.user_id || composerUserId || 'me',
+                          )}`}
+                        >
+                          {(() => {
+                            if (composerUserProfile?.display_name?.trim() || composerUserProfile?.handle?.trim()) {
+                              return avatarText({ author_profile: composerUserProfile })
+                            }
+                            if (composerAuthUser) {
+                              const seed = profileSeedFromUser(composerAuthUser)
+                              return profileAvatarInitials(seed.displayName, seed.baseHandle)
+                            }
+                            if (composerUserId) return composerStableInitialsFromUid(composerUserId)
+                            return avatarText({ author_profile: { display_name: 'Me', handle: '' } })
+                          })()}
+                        </span>
+                      )}
+                    </span>
+                    <span className="lounge-detail-comment-composer-glass flex min-h-10 min-w-0 flex-1 items-center rounded-full px-3 py-2 text-[15px] leading-tight text-zinc-500">
                     {(() => {
                       const firstLine = String(loungeDetailCommentDraft || '')
                         .split('\n')[0]
@@ -18513,6 +18549,7 @@ export default function SocialFeed({
                         </span>
                       )
                     })()}
+                    </span>
                   </button>
                 )}
                 </div>

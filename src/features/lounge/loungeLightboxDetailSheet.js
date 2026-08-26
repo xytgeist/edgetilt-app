@@ -66,6 +66,7 @@ function onViewportChange(event) {
     return
   }
   if (sheetKbLocked) {
+    if (composerExpanded) writePeekInsetVar()
     if (refreshCachedInnerKbPx()) emit()
     return
   }
@@ -230,7 +231,27 @@ function captureSafeTopPx() {
   frozenSafeTopPx = readSafeTopPx()
 }
 
-/** Visible peek gap: status-bar bottom → sheet top minus 12px. Wide stills contain-fit and center here. */
+function peekCssSheetHeightPx() {
+  const probe = ensureLvhProbe()
+  const lvh = probe instanceof HTMLElement ? probe.getBoundingClientRect().height : 0
+  if (!(lvh > 8)) return 0
+  return Math.round(lvh * activeSheetFraction())
+}
+
+function peekDestinationSheetHeightPx() {
+  const vh = sheetLayoutH()
+  const jsH = estimateSheetHeightForLayout(vh)
+  const cssH = peekCssSheetHeightPx()
+  let h = Math.max(jsH, cssH)
+  if (typeof document === 'undefined') return h
+  const el = document.querySelector('[data-lounge-media-detail-sheet]')
+  if (!(el instanceof HTMLElement)) return h
+  const paintedH = Math.round(el.getBoundingClientRect().height)
+  if (paintedH > 8) h = Math.max(h, paintedH)
+  return h
+}
+
+/** Visible peek gap: status-bar bottom → sheet top minus 12px. Contain-fit and center. */
 function peekVisibleBand() {
   if (!overlayOn || !peekRevealed) return { top: 0, height: 0 }
   const vh = sheetLayoutH()
@@ -240,7 +261,13 @@ function peekVisibleBand() {
   const dragging = sheetDragging || dragOffsetPx > 0 || peekResizing
   const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
   let bottom = 0
-  if (sheetTop >= 8 && !slidingOn) {
+  if (composerExpanded && !sheetDragging && dragOffsetPx === 0) {
+    // iOS sheet is max(74lvh, JS px). Measuring the 60lvh painted top while
+    // composer is already 74% leaves wide stills at scale 1 and the sheet covers them.
+    // Android composer is 74% of the live layout, not 74lvh.
+    const destH = IS_ANDROID ? visualSheetHeightPx() : peekDestinationSheetHeightPx()
+    if (destH > 8) bottom = Math.round(vh - destH)
+  } else if (sheetTop >= 8 && !slidingOn) {
     bottom = Math.round(sheetTop)
     if (estimatedBottom > 0) bottom = Math.min(bottom, estimatedBottom)
   } else if (estimatedBottom > 0) {
@@ -672,6 +699,7 @@ export function lockLoungeMediaSheetKeyboard() {
     return
   }
   if (sheetKbLocked) {
+    if (composerExpanded) writePeekInsetVar()
     if (refreshCachedInnerKbPx()) emit()
     return
   }
@@ -691,6 +719,7 @@ export function lockLoungeMediaSheetKeyboard() {
   emit()
   requestAnimationFrame(() => {
     if (!overlayOn || (!sheetKbLocked && !composerExpanded)) return
+    writePeekInsetVar()
     if (refreshCachedInnerKbPx()) emit()
   })
 }

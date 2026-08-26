@@ -8862,22 +8862,34 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-peek-media] {
   transform: var(--lounge-media-peek-transform) !important;
   will-change: transform;
 }
-html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+    [data-lounge-media-sheet-resizing]
+  )
   [data-lounge-stream-hero-flyout],
-html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+    [data-lounge-media-sheet-resizing]
+  )
   [data-lounge-lightbox-peek-media] {
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1) !important;
 }
 html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging]
   [data-lounge-stream-hero-flyout],
 html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging]
+  [data-lounge-lightbox-peek-media],
+html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-resizing]
+  [data-lounge-stream-hero-flyout],
+html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-resizing]
   [data-lounge-lightbox-peek-media] {
   transition: none !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+      [data-lounge-media-sheet-resizing]
+    )
     [data-lounge-stream-hero-flyout],
-  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+      [data-lounge-media-sheet-resizing]
+    )
     [data-lounge-lightbox-peek-media] {
     transition: none !important;
   }

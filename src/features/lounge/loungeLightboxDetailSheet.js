@@ -27,7 +27,9 @@ let peekRevealTries = 0
 let cachedPeekMediaBox = null
 /** Cached for useSyncExternalStore ... never read getBoundingClientRect in getSnapshot. */
 let cachedInnerKbPx = 0
-let peekSettleTimer = 0
+let peekFollowRaf = 0
+let peekResizing = false
+const PEEK_FOLLOW_MS = 300
 
 function emit() {
   listeners.forEach((fn) => {
@@ -230,19 +232,56 @@ function writeSheetHeightVar(px) {
 }
 
 function schedulePeekSettleWrite() {
-  if (typeof window === 'undefined') return
-  if (peekSettleTimer) window.clearTimeout(peekSettleTimer)
-  peekSettleTimer = window.setTimeout(() => {
-    peekSettleTimer = 0
-    if (!overlayOn || !peekRevealed) return
-    writePeekInsetVar()
-  }, 300)
+  startPeekFollowSheet()
 }
 
 function clearPeekSettleWrite() {
-  if (typeof window === 'undefined' || !peekSettleTimer) return
-  window.clearTimeout(peekSettleTimer)
-  peekSettleTimer = 0
+  stopPeekFollowSheet()
+}
+
+function syncResizingAttr() {
+  if (typeof document === 'undefined') return
+  if (overlayOn && peekResizing) {
+    document.documentElement.setAttribute('data-lounge-media-sheet-resizing', '')
+  } else {
+    document.documentElement.removeAttribute('data-lounge-media-sheet-resizing')
+  }
+}
+
+function stopPeekFollowSheet() {
+  if (peekFollowRaf) {
+    cancelAnimationFrame(peekFollowRaf)
+    peekFollowRaf = 0
+  }
+  if (peekResizing) {
+    peekResizing = false
+    syncResizingAttr()
+  }
+}
+
+function startPeekFollowSheet() {
+  if (typeof window === 'undefined') return
+  stopPeekFollowSheet()
+  peekResizing = true
+  syncResizingAttr()
+  const t0 = performance.now()
+  const tick = (now) => {
+    peekFollowRaf = 0
+    if (!overlayOn) {
+      peekResizing = false
+      syncResizingAttr()
+      return
+    }
+    writePeekInsetVar()
+    if (now - t0 < PEEK_FOLLOW_MS) {
+      peekFollowRaf = requestAnimationFrame(tick)
+      return
+    }
+    peekResizing = false
+    syncResizingAttr()
+    writePeekInsetVar()
+  }
+  peekFollowRaf = requestAnimationFrame(tick)
 }
 
 function writePeekIdentityVars() {
@@ -265,20 +304,16 @@ function readVisualSheetTopPx() {
 function peekBandHeightPx() {
   if (!overlayOn || !peekRevealed) return 0
   const vh = layoutViewportH()
-  const estimated = visualSheetHeightPx()
-  const estimatedBand = estimated >= 8 ? Math.max(0, vh - estimated - PEEK_GAP_PX) : 0
   const sheetTop = readVisualSheetTopPx()
-  const dragging = sheetDragging || dragOffsetPx > 0
+  const dragging = sheetDragging || dragOffsetPx > 0 || peekResizing
   const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
-  const liveBand =
-    sheetTop >= 8 && !slidingOn ? Math.max(0, Math.round(sheetTop - PEEK_GAP_PX)) : 0
-  if (dragging && liveBand >= 8) return liveBand
-  // Live top is the painted sheet (CSS 60lvh can be taller than the JS px estimate,
-  // which ate the 12px gap). Estimated shrinks immediately on composer expand.
-  // min() keeps the gap and still lets peek follow 74lvh without waiting.
-  if (liveBand >= 8 && estimatedBand >= 8) return Math.min(liveBand, estimatedBand)
-  if (liveBand >= 8) return liveBand
-  return estimatedBand
+  // Same coordinate space as the painted image box (getBoundingClientRect).
+  // Landscape shots are width-capped so they only re-fit when this band actually
+  // shrinks with the painted sheet, not with a mixed lvh estimate.
+  if (sheetTop >= 8 && !slidingOn) return Math.max(0, Math.round(sheetTop - PEEK_GAP_PX))
+  const estimated = visualSheetHeightPx()
+  if (estimated < 8) return 0
+  return Math.max(0, vh - estimated - PEEK_GAP_PX)
 }
 
 function writePeekInsetVar() {
@@ -292,7 +327,10 @@ function writePeekInsetVar() {
     return
   }
   const box = readPeekMediaLayoutBox()
-  const vw = layoutViewportW()
+  const vw = Math.max(
+    layoutViewportW(),
+    typeof window !== 'undefined' ? Math.round(window.visualViewport?.width || window.innerWidth || 0) : 0,
+  )
   if (!box || vw < 8) {
     writePeekIdentityVars()
     return
@@ -495,6 +533,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     unbindViewportWatch()
     removeLvhProbe()
     document.documentElement.removeAttribute('data-lounge-detail-over-lightbox')
+    document.documentElement.removeAttribute('data-lounge-media-sheet-resizing')
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
     document.documentElement.style.removeProperty('--lounge-media-peek-inset')
     document.documentElement.style.removeProperty('--lounge-media-peek-scale')

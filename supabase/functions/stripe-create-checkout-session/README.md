@@ -38,7 +38,7 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 
 | --- | --- | --- |
 
-| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual", "apply_early_bird": true, "affiliate_code"?: "…" }` → `{ url }`. Optional **`affiliate_code`** applies that creator’s Stripe promotion code and sets **`affiliate_id` / `affiliate_code`** metadata (mutually exclusive with founding coupons). **`slots-edge-lifetime`** uses one-time **`mode: payment`** checkout. If the user has active Starter or Pro, metadata lists subs to cancel on success. **Starter → Pro** / **monthly → annual** open Checkout; **annual → monthly** in-place update returns **`interval_changed: true`**. Affiliates: **`docs/affiliates.md`**. |
+| **`stripe-create-checkout-session`** | User JWT | `POST { "product_slug": "…", "price_interval": "monthly"|"annual", "apply_early_bird": true, "affiliate_code"?: "…", "military_promo_code"?: "…" }` → `{ url }`. Optional **`affiliate_code`** applies that creator’s Stripe promotion code and sets **`affiliate_id` / `affiliate_code`** metadata (mutually exclusive with founding coupons). Optional **`military_promo_code`** (customer-facing code from `/mil25/CODE`) applies that Stripe promotion code on coupon **`STRIPE_COUPON_MILITARY`** (default **`9zheeC1H`**, 25% forever), skips founding, and does not fall back if the code is used. **`slots-edge-lifetime`** uses one-time **`mode: payment`** checkout. If the user has active Starter or Pro, metadata lists subs to cancel on success. **Starter → Pro** / **monthly → annual** open Checkout; **annual → monthly** in-place update returns **`interval_changed: true`**. Affiliates: **`docs/affiliates.md`**. |
 
 | **`stripe-create-portal-session`** | User JWT | Manage/cancel billing in Stripe Customer Portal |
 
@@ -100,6 +100,8 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 | **`STRIPE_COUPON_FOUNDING_ONCE`** | 25% once on annual Starter, annual Full + Lifetime checkout |
 
 | **`STRIPE_COUPON_EARLY_BIRD`** | Legacy alias for founding monthly coupon id |
+
+| **`STRIPE_COUPON_MILITARY`** | Optional. Military 25% forever coupon id (default **`9zheeC1H`** on live). Personal codes are Stripe promotion codes on this coupon. |
 
 | **`STRIPE_PRICE_SPORTS_EDGE`** | When sports-edge goes live |
 

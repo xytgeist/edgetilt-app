@@ -3640,6 +3640,23 @@ html.light [data-subscribe-modal] .subscribe-plan-founding-badge-value {
 html.light [data-subscribe-modal] .subscribe-plan-founding-badge-divider {
   background-color: rgba(69, 26, 3, 0.28) !important;
 }
+[data-subscribe-modal] .subscribe-plan-military-badge-inner {
+  background: linear-gradient(180deg, #047857 0%, #18181b 100%);
+}
+html.light [data-subscribe-modal] .subscribe-plan-military-badge-inner {
+  background: linear-gradient(180deg, #6ee7b7 0%, #34d399 100%) !important;
+  border-color: rgba(4, 120, 87, 0.5) !important;
+  box-shadow:
+    0 8px 22px rgba(16, 185, 129, 0.24),
+    0 0 0 1px rgba(52, 211, 153, 0.4) !important;
+}
+html.light [data-subscribe-modal] .subscribe-plan-military-badge-label,
+html.light [data-subscribe-modal] .subscribe-plan-military-badge-value {
+  color: #064e3b !important;
+}
+html.light [data-subscribe-modal] .subscribe-plan-military-badge-divider {
+  background-color: rgba(6, 78, 59, 0.3) !important;
+}
 [data-subscribe-modal] .subscribe-plan-affiliate-badge-inner {
   background: linear-gradient(180deg, #0e7490 0%, #18181b 100%);
 }

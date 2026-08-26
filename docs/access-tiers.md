@@ -99,6 +99,8 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 **Founding member offer:** **25% off** via Stripe Coupons — **`STRIPE_COUPON_FOUNDING_MONTHLY`** (or legacy **`STRIPE_COUPON_EARLY_BIRD`**) on **monthly** Slots Edge and Slots Edge Pro: `percent_off: 25`, `duration: repeating`, `duration_in_months: 12`. **`STRIPE_COUPON_FOUNDING_ONCE`**: `percent_off: 25`, `duration: once` on **annual Slots Edge**, **annual Slots Edge Pro** subscription checkout, and **Slots Edge Lifetime** one-time payment.
 
+**Military 25% forever:** personal links **`edgetilt.com/mil25/{CODE}`** (unique Stripe promotion codes on coupon **`9zheeC1H`**, optional secret **`STRIPE_COUPON_MILITARY`**). Subscribe cards swap Founding → Military. Checkout applies that promotion code and does **not** stack with founding or creator promos. Used codes fail closed.
+
 **Competitive positioning:** Founding Slots Edge Pro at **~$45/mo** sits at the top of typical AP sites (**$35–49/mo**) while MSRP **$60** anchors premium vs competitors. Slots Edge founding **~$15/mo** keeps a clear **~3×** gap to Pro.
 
 ### 5.3.1 Slots Edge Lifetime (`slots-edge-lifetime`)

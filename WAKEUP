@@ -105,6 +105,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows 2026-08-25 (poker catalog):** Daily Task Scheduler on this PC (2:00 AM). GHA cron is pointless for MTTDB; workflow becomes manual after **main** promote.
 
+**Windows 2026-08-25 (military codes):** Personal links `edgetilt.com/mil25/{CODE}` (test code `MIL-K9QX72` on coupon `9zheeC1H`). Frontend on `test`. **Prod Checkout will not apply until Edge `stripe-create-checkout-session` is redeployed on `jtjgtucumuoswnbauxry`.** Do not DM real vets until that deploy + a paid smoke.
+
 ### Decisions locked (do not reopen without Ryan)
 
 | Topic | Decision |

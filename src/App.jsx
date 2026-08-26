@@ -15,11 +15,17 @@ import {
   stripStarterDropQueryParam,
 } from './features/billing/starterWeeklyDropApi.js'
 import {
-  authRedirectUrlWithAffiliateRef,
   captureAffiliateRefFromUrl,
   ensureAffiliateStampFromUserMetadata,
   getAffiliateCodeForCheckout,
 } from './features/affiliates/affiliateRefApi.js'
+import {
+  authRedirectUrlWithPromoStamps,
+  captureMilitaryPromoFromUrl,
+  clearMilitaryPromoStamp,
+  ensureMilitaryPromoStampFromUserMetadata,
+  getMilitaryPromoCodeForCheckout,
+} from './features/billing/militaryPromoStamp.js'
 import { useStarterWeeklyDropGuideSlugs } from './features/billing/useStarterWeeklyDropGuideSlugs.js'
 import { useStarterWeeklyDropPoolExhausted } from './features/billing/useStarterWeeklyDropPoolExhausted.js'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
@@ -631,6 +637,7 @@ function App() {
   useEffect(() => {
     if (!user?.id) return
     void ensureAffiliateStampFromUserMetadata(supabase, user)
+    ensureMilitaryPromoStampFromUserMetadata(supabase, user)
     // Re-stamp once per signed-in user when localStorage was lost (email confirm in another profile).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: user.id gate only
   }, [user?.id])
@@ -723,6 +730,7 @@ function App() {
         }
       })
       if (billing.billing === 'success') {
+        clearMilitaryPromoStamp()
         setAccessNotice('Subscription updated - thanks for supporting Edge.')
       } else {
         setAccessNotice('Billing settings saved.')
@@ -744,6 +752,12 @@ function App() {
   const openSubscribeModal = useCallback((productSlug = PRODUCT_SLOTS_EDGE) => {
     setSubscribeModal((s) => ({ open: true, productSlug, openKey: s.openKey + 1 }))
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const militaryFromUrl = captureMilitaryPromoFromUrl()
+    if (militaryFromUrl) openSubscribeModal()
+  }, [openSubscribeModal])
 
   const closeSubscribeModal = useCallback(() => {
     setSubscribeModal((s) => ({ ...s, open: false }))
@@ -824,7 +838,7 @@ function App() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: authRedirectUrlWithAffiliateRef(authRedirectBaseForCurrentLocation()),
+        redirectTo: authRedirectUrlWithPromoStamps(authRedirectBaseForCurrentLocation()),
       },
     })
     if (error) {
@@ -846,6 +860,7 @@ function App() {
     setIsSigningUp(true)
 
     const affiliateCode = getAffiliateCodeForCheckout()
+    const militaryPromoCode = getMilitaryPromoCodeForCheckout()
     const claimCtx = parsePokerStakeClaimFromLocation(
       window.location.pathname || '/',
       window.location.search || '',
@@ -879,8 +894,14 @@ function App() {
             ? stableClaimSignupEmailRedirectUrl()
             : signupFromSwapClaim
               ? swapClaimSignupEmailRedirectUrl()
-              : authRedirectUrlWithAffiliateRef(`${window.location.origin}/`),
-        data: affiliateCode ? { affiliate_code: affiliateCode } : undefined,
+              : authRedirectUrlWithPromoStamps(`${window.location.origin}/`),
+        data:
+          affiliateCode || militaryPromoCode
+            ? {
+                ...(affiliateCode ? { affiliate_code: affiliateCode } : {}),
+                ...(militaryPromoCode ? { military_promo_code: militaryPromoCode } : {}),
+              }
+            : undefined,
       },
     })
     if (error) {

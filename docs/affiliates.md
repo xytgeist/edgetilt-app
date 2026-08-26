@@ -26,6 +26,7 @@ Goal: curated X/creator affiliates with tiered commissions, unique links + disco
 - Real Stripe coupon / promotion code per creator (typically **10% / 20% / 25%** off first payment ... configure once / first invoice in Stripe Dashboard).
 - Store matching **`affiliates.buyer_discount_pct`** in admin (drives subscribe modal preview). Checkout still applies `stripe_promotion_code_id`.
 - Founding / sitewide promos: **mutually exclusive** with creator codes (Checkout skips founding when `affiliate_code` is present).
+- **Military 25% forever** personal links (`/mil25/CODE`) also skip founding and skip creator promos. Unique Stripe promotion codes on coupon `9zheeC1H`.
 - Subscribe UI: with a valid `?ref=` stamp, plan cards show creator **avatar + promo code + % off** pill (not Founding Member), price caption includes `via @handle`, and list prices use that %.
 
 ### Attribution
@@ -33,6 +34,7 @@ Goal: curated X/creator affiliates with tiered commissions, unique links + disco
 - Link: `edgetilt.com/?ref=CODE` **and** promo e.g. `SCOTT20` (1:1 map on `affiliates`).
 - `?ref=` stamps affiliate in localStorage (`edge_affiliate_ref_v1`) for **30 days** and Checkout sends `affiliate_code`.
 - **No stacking** creator promos / refs with founding.
+- **No stacking** military personal codes with founding or creator promos.
 - First-party localStorage. **No CMP banner for v1.**
 
 ### Holds, refunds, abuse

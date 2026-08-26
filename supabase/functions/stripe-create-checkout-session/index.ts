@@ -5,6 +5,7 @@ import {
   requireStripeSecretKey,
   stripeFoundingMonthlyCouponId,
   stripeFoundingOnceCouponId,
+  stripeMilitaryCouponId,
   stripePriceSecretForProduct,
 } from '../_shared/billingEnv.ts'
 import {
@@ -51,13 +52,51 @@ function isStripePromoIneligibleError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err)
   const lower = msg.toLowerCase()
   if (lower.includes('prior transactions')) return true
-  if (!lower.includes('promotion code') && !lower.includes('promo')) return false
+  if (!lower.includes('promotion code') && !lower.includes('promo') && !lower.includes('coupon')) {
+    return false
+  }
   return (
     lower.includes('cannot be redeemed') ||
     lower.includes('not eligible') ||
     lower.includes('expired') ||
-    lower.includes('first time')
+    lower.includes('first time') ||
+    lower.includes('already been redeemed') ||
+    lower.includes('max') ||
+    lower.includes('times it can be redeemed')
   )
+}
+
+function couponIdFromPromo(promo: Stripe.PromotionCode): string | null {
+  const coupon = promo.coupon
+  if (!coupon) return null
+  if (typeof coupon === 'string') return coupon
+  return coupon.id || null
+}
+
+/**
+ * Resolve a customer-facing military code to a Stripe promotion_code id.
+ * Only codes on STRIPE_COUPON_MILITARY (default 9zheeC1H) are accepted.
+ */
+async function resolveMilitaryPromotionCode(
+  stripe: Stripe,
+  rawCode: string,
+): Promise<{ id: string; code: string } | { error: string }> {
+  const code = rawCode.trim()
+  if (!code) return { error: 'Military promo code is required.' }
+  const allowedCoupon = stripeMilitaryCouponId()
+  if (!allowedCoupon) {
+    return { error: 'Military discount is not configured.' }
+  }
+
+  const listed = await stripe.promotionCodes.list({ code, active: true, limit: 10 })
+  const match = listed.data.find((promo) => couponIdFromPromo(promo) === allowedCoupon)
+  if (!match) {
+    return { error: 'This military code is invalid or already used.' }
+  }
+  if (match.max_redemptions != null && match.times_redeemed >= match.max_redemptions) {
+    return { error: 'This military code is invalid or already used.' }
+  }
+  return { id: match.id, code: match.code }
 }
 
 async function customerHasPriorStripeTransactions(
@@ -79,13 +118,17 @@ async function createCheckoutSessionAllowingPromoFallback(
   stripe: Stripe,
   sessionParams: Stripe.Checkout.SessionCreateParams,
   opts: {
+    militaryPromotionCodeId: string | null
     affiliatePromotionCodeId: string | null
     foundingCouponIdValue: string | null
     allowFoundingFallback: boolean
   },
 ): Promise<Stripe.Checkout.Session> {
-  const withAffiliatePromo = Boolean(opts.affiliatePromotionCodeId)
-  if (withAffiliatePromo) {
+  const withMilitaryPromo = Boolean(opts.militaryPromotionCodeId)
+  const withAffiliatePromo = Boolean(opts.affiliatePromotionCodeId) && !withMilitaryPromo
+  if (withMilitaryPromo) {
+    sessionParams.discounts = [{ promotion_code: opts.militaryPromotionCodeId! }]
+  } else if (withAffiliatePromo) {
     sessionParams.discounts = [{ promotion_code: opts.affiliatePromotionCodeId! }]
   } else if (opts.foundingCouponIdValue) {
     sessionParams.discounts = [{ coupon: opts.foundingCouponIdValue }]
@@ -96,6 +139,12 @@ async function createCheckoutSessionAllowingPromoFallback(
   try {
     return await stripe.checkout.sessions.create(sessionParams)
   } catch (err) {
+    if (withMilitaryPromo) {
+      if (isStripePromoIneligibleError(err)) {
+        throw new Error('This military code is invalid or already used.')
+      }
+      throw err
+    }
     if (!withAffiliatePromo || !isStripePromoIneligibleError(err)) throw err
 
     // Returning customers / prior transactions must still be able to check out.
@@ -233,6 +282,7 @@ async function updateExistingSubscriptionPrice(
     priceId: string
     priceInterval: 'monthly' | 'annual'
     couponId: string | null
+    promotionCodeId?: string | null
     upgradedFrom?: string | null
   },
 ) {
@@ -255,7 +305,9 @@ async function updateExistingSubscriptionPrice(
     },
   }
 
-  if (args.couponId) {
+  if (args.promotionCodeId) {
+    updateParams.discounts = [{ promotion_code: args.promotionCodeId }]
+  } else if (args.couponId) {
     updateParams.discounts = [{ coupon: args.couponId }]
   }
 
@@ -280,6 +332,7 @@ async function changeSubscriptionBillingInterval(
     priceInterval: 'monthly' | 'annual'
     priceId: string
     couponId: string | null
+    promotionCodeId?: string | null
   },
 ) {
   const subscription = await stripe.subscriptions.retrieve(args.subscriptionId)
@@ -294,7 +347,8 @@ async function changeSubscriptionBillingInterval(
     productSlug: args.productSlug,
     priceId: args.priceId,
     priceInterval: args.priceInterval,
-    couponId: args.couponId,
+    couponId: args.promotionCodeId ? null : args.couponId,
+    promotionCodeId: args.promotionCodeId || null,
   })
 }
 
@@ -316,6 +370,7 @@ Deno.serve(async (req) => {
       price_interval?: string
       apply_early_bird?: boolean
       affiliate_code?: string
+      military_promo_code?: string
     } = {}
     try {
       body = await req.json()
@@ -373,10 +428,22 @@ Deno.serve(async (req) => {
       if (custErr) throw new Error(`profiles.stripe_customer_id update: ${custErr.message}`)
     }
 
+    const militaryPromoRaw = String(body.military_promo_code ?? '').trim()
+    let militaryPromotionCodeId: string | null = null
+    let militaryPromoCode: string | null = null
+    if (militaryPromoRaw) {
+      const resolved = await resolveMilitaryPromotionCode(stripe, militaryPromoRaw)
+      if ('error' in resolved) {
+        return jsonResponse({ error: resolved.error }, 400)
+      }
+      militaryPromotionCodeId = resolved.id
+      militaryPromoCode = resolved.code
+    }
+
     const affiliateCodeRaw = String(body.affiliate_code ?? '').trim()
     let affiliateMeta: { affiliate_id: string; affiliate_code: string } | null = null
     let affiliatePromotionCodeId: string | null = null
-    if (affiliateCodeRaw) {
+    if (affiliateCodeRaw && !militaryPromotionCodeId) {
       const affiliate = await loadActiveAffiliateByCode(admin, affiliateCodeRaw)
       if (!affiliate) {
         return jsonResponse({ error: 'Affiliate referral code is invalid or inactive.' }, 400)
@@ -413,16 +480,24 @@ Deno.serve(async (req) => {
     const { success_url, cancel_url } = checkoutReturnUrls(req, productSlug)
     // Creator promo and founding are mutually exclusive when the creator promo actually applies.
     const wantsFounding =
-      body.apply_early_bird !== false && (!affiliateMeta || !affiliatePromotionCodeId)
-    const allowFoundingFallback = body.apply_early_bird !== false
+      body.apply_early_bird !== false &&
+      !militaryPromotionCodeId &&
+      (!affiliateMeta || !affiliatePromotionCodeId)
+    const allowFoundingFallback = body.apply_early_bird !== false && !militaryPromotionCodeId
 
-    const applyAffiliateToMetadata = (meta: Record<string, string>) => {
-      if (!affiliateMeta) return meta
-      return {
-        ...meta,
-        affiliate_id: affiliateMeta.affiliate_id,
-        affiliate_code: affiliateMeta.affiliate_code,
+    const applyCheckoutPromoMetadata = (meta: Record<string, string>) => {
+      let next = meta
+      if (affiliateMeta) {
+        next = {
+          ...next,
+          affiliate_id: affiliateMeta.affiliate_id,
+          affiliate_code: affiliateMeta.affiliate_code,
+        }
       }
+      if (militaryPromoCode) {
+        next = { ...next, military_promo_code: militaryPromoCode }
+      }
+      return next
     }
 
     let replaceStripeSubscriptionId: string | null = null
@@ -465,6 +540,7 @@ Deno.serve(async (req) => {
             priceInterval,
             priceId,
             couponId,
+            promotionCodeId: militaryPromotionCodeId,
           })
         } catch (intervalErr) {
           const msg = intervalErr instanceof Error ? intervalErr.message : String(intervalErr)
@@ -510,9 +586,10 @@ Deno.serve(async (req) => {
       if (replaceSubscriptionIds.length > 0) {
         sessionMetadata.replaces_stripe_subscription_ids = replaceSubscriptionIds.join(',')
       }
-      sessionMetadata = applyAffiliateToMetadata(sessionMetadata)
+      sessionMetadata = applyCheckoutPromoMetadata(sessionMetadata)
 
-      const useComputedPrice = lifetimeCheckoutUsesComputedPrice(lifetimePricing)
+      const useComputedPrice =
+        !militaryPromotionCodeId && lifetimeCheckoutUsesComputedPrice(lifetimePricing)
       const couponId = foundingCouponId(productSlug, 'monthly', true, wantsFounding)
 
       const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -545,6 +622,7 @@ Deno.serve(async (req) => {
       const session = useComputedPrice
         ? await stripe.checkout.sessions.create(sessionParams)
         : await createCheckoutSessionAllowingPromoFallback(stripe, sessionParams, {
+            militaryPromotionCodeId,
             affiliatePromotionCodeId,
             foundingCouponIdValue: couponId,
             allowFoundingFallback,
@@ -575,7 +653,7 @@ Deno.serve(async (req) => {
         sessionMetadata.upgraded_from = STARTER_PRODUCT_SLUG
       }
     }
-    sessionMetadata = applyAffiliateToMetadata(sessionMetadata)
+    sessionMetadata = applyCheckoutPromoMetadata(sessionMetadata)
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
@@ -592,6 +670,7 @@ Deno.serve(async (req) => {
     }
 
     const session = await createCheckoutSessionAllowingPromoFallback(stripe, sessionParams, {
+      militaryPromotionCodeId,
       affiliatePromotionCodeId,
       foundingCouponIdValue: couponId,
       allowFoundingFallback,
@@ -604,6 +683,9 @@ Deno.serve(async (req) => {
     return jsonResponse({ url: session.url, product_slug: productSlug })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    if (/military code is invalid or already used/i.test(msg)) {
+      return jsonResponse({ error: msg }, 400)
+    }
     return jsonResponse({ error: msg || 'Server error' }, 500)
   }
 })

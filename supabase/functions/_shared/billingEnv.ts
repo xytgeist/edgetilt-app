@@ -41,6 +41,11 @@ export function stripeFoundingOnceCouponId(): string | null {
   return Deno.env.get('STRIPE_COUPON_FOUNDING_ONCE')?.trim() || null
 }
 
+/** Military 25% forever. Live default is coupon `9zheeC1H`. Override with STRIPE_COUPON_MILITARY. */
+export function stripeMilitaryCouponId(): string | null {
+  return Deno.env.get('STRIPE_COUPON_MILITARY')?.trim() || '9zheeC1H'
+}
+
 /** @deprecated use stripeFoundingMonthlyCouponId */
 export function stripeEarlyBirdCouponId(): string | null {
   return stripeFoundingMonthlyCouponId()

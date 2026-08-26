@@ -9,6 +9,7 @@ import {
 } from './edgeProducts.js'
 import { openBillingPortal, startEdgeCheckout } from './stripeBillingApi.js'
 import { getAffiliateCodeForCheckout } from '../affiliates/affiliateRefApi.js'
+import { getMilitaryPromoCodeForCheckout } from './militaryPromoStamp.js'
 
 /** @param {'monthly' | 'annual'} interval */
 function billingIntervalLabel(interval) {
@@ -129,6 +130,7 @@ export default function BillingManageModal({
           priceInterval,
           applyEarlyBird: true,
           affiliateCode: getAffiliateCodeForCheckout(),
+          militaryPromoCode: getMilitaryPromoCodeForCheckout(),
         })
       } catch (e) {
         setBusyKey('')

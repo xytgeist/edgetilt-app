@@ -10,7 +10,7 @@
 | --- | --- |
 | `https://edgetilt.com/` | Homepage title/description: **EdgeTilt** + **slots** + **poker** |
 | `https://edgetilt.com/advantage-play-slots` | Intent page for **advantage play slots** (competes with listicle SERPs; links catalog + tools) |
-| `https://edgetilt.com/slots` | Slots hub (cards linking to each tool) |
+| `https://edgetilt.com/slots` | Slots hub (H1 **+EV Edge for slots**; cards linking to each tool) |
 | `https://edgetilt.com/guides` | Full AP guide **title catalog** (no paywalled markdown). Regenerate: `npm run seo:guides-index` |
 | `https://edgetilt.com/slots/bankroll` | Slots Bankroll Manager |
 | `https://edgetilt.com/slots/calculators` | Slot EV calculators |

@@ -107,6 +107,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows 2026-08-25 (military codes):** Personal links `edgetilt.com/mil25/{CODE}` (test code `MIL-K9QX72` on coupon `9zheeC1H`). Frontend on `test`. **Prod Checkout will not apply until Edge `stripe-create-checkout-session` is redeployed on `jtjgtucumuoswnbauxry`.** Do not DM real vets until that deploy + a paid smoke.
 
+**Windows 2026-08-25 (/slots title):** Public hub H1 is **+EV Edge for slots** (`public/slots.html`). Tab/og still `EdgeTilt | +EV Edge for slots`. Needs `main` to show on edgetilt.com.
+
 ### Decisions locked (do not reopen without Ryan)
 
 | Topic | Decision |

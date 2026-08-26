@@ -8866,7 +8866,10 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-peek-media] {
    recenters the still upward; peek then translates from the old full-screen cache
    and the photo leaves the top. Pin the pre-keyboard layout. Stream flyout is
    pixel-fixed already. Do not set height on the hero <video>. */
-html.platform-android[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox] {
+html.platform-android[data-lounge-detail-over-lightbox]:not(
+    [data-lounge-overlay-nested-peek]
+  )
+  [data-lounge-image-lightbox]:not([data-lounge-nested-lightbox]) {
   top: 0;
   bottom: auto;
   height: var(--lounge-media-layout-h, 100lvh);
@@ -8903,6 +8906,46 @@ html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-resizing]
     [data-lounge-lightbox-peek-media] {
     transition: none !important;
   }
+}
+/* Nested comment-media lightbox sits above the overlay sheet. Do not peek-transform
+   or hide its chrome while it is the stacked full-screen layer. */
+html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
+  [data-lounge-nested-lightbox][data-lounge-stream-hero-flyout],
+html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
+  [data-lounge-nested-lightbox]
+  [data-lounge-lightbox-peek-media] {
+  transform: none !important;
+  will-change: auto;
+}
+html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
+  [data-lounge-nested-lightbox]
+  [data-lounge-lightbox-top-chrome],
+html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
+  [data-lounge-nested-lightbox]
+  [data-lounge-stream-lightbox-chrome] {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
+  [data-lounge-nested-lightbox]
+  [data-lounge-lightbox-chrome-layer] {
+  opacity: 1 !important;
+}
+html[data-lounge-overlay-nested-peek]
+  [data-lounge-image-lightbox]:not([data-lounge-nested-lightbox]),
+html[data-lounge-overlay-nested-peek]
+  [data-lounge-stream-hero-flyout]:not([data-lounge-nested-lightbox]),
+html[data-lounge-overlay-nested-peek]
+  [data-lounge-media-lightbox]:not([data-lounge-nested-lightbox]) {
+  visibility: hidden;
+  pointer-events: none;
+}
+html.platform-android[data-lounge-overlay-nested-peek]
+  [data-lounge-image-lightbox][data-lounge-nested-lightbox] {
+  top: 0;
+  bottom: auto;
+  height: var(--lounge-media-layout-h, 100lvh);
+  max-height: none;
 }
 [data-lounge-media-detail-scroll] {
   overscroll-behavior-y: none;

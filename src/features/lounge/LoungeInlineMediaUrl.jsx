@@ -19,6 +19,7 @@ import {
   heroRectUsableForShrinkBack,
   isLoungeLightboxGifUrl,
   mediaFitsChromeBand,
+  LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS,
   readContainedImageViewportRect,
   readElementViewportRect,
   readLightboxCloseChromeClipTopPx,
@@ -285,6 +286,7 @@ export function LoungeImageLightbox({
     () => resolveLoungeHeroStackZIndexes(lightboxPortalClass),
     [lightboxPortalClass],
   )
+  const nestedOverOverlay = lightboxPortalClass === LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS
 
   const openFromRectRef = useRef(
     heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
@@ -1155,6 +1157,7 @@ export function LoungeImageLightbox({
       data-lounge-image-lightbox
       data-lounge-image-lightbox-phase={phase}
       data-lounge-image-lightbox-chrome={showAuthorMeta ? 'full' : 'compact'}
+      {...(nestedOverOverlay ? { 'data-lounge-nested-lightbox': '' } : {})}
       className={`fixed inset-0 ${lightboxPortalClass}${phase === 'closing' ? ' pointer-events-none' : ''}`}
       role="dialog"
       aria-modal="true"

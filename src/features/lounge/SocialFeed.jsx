@@ -306,6 +306,7 @@ import {
 import { isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeStreamLightboxRenderers.jsx'
 import {
   setLoungeDetailOverLightboxAttr,
+  setLoungeOverlayNestedPeekAttr,
   setLoungeMediaSheetComposerExpanded,
   releaseLoungeMediaSheetPeek,
   notifyLoungeMediaDetailSheetMetrics,
@@ -1185,6 +1186,8 @@ export default function SocialFeed({
   const loungeDetailCommentEditJobRunningRef = useRef(false)
   /** Drill-down into a comment thread (`slice(-1)` = composer reply parent). */
   const [loungeCommentDetailPathIds, setLoungeCommentDetailPathIds] = useState([])
+  const loungeCommentDetailPathIdsRef = useRef(loungeCommentDetailPathIds)
+  loungeCommentDetailPathIdsRef.current = loungeCommentDetailPathIds
   const [loungeDetailCommentEditingId, setLoungeDetailCommentEditingId] = useState(null)
   const [loungeDetailCommentEditDraft, setLoungeDetailCommentEditDraft] = useState('')
   const [loungeDetailCommentEditBusy, setLoungeDetailCommentEditBusy] = useState(false)
@@ -1278,6 +1281,11 @@ export default function SocialFeed({
   const loungePostDetailOverLightboxRef = useRef(false)
   const loungePostDetailOpenedAsLightboxSheetRef = useRef(false)
   const [loungeLightboxSheetMediaEntityId, setLoungeLightboxSheetMediaEntityId] = useState(null)
+  const loungeLightboxSheetMediaEntityIdRef = useRef(null)
+  loungeLightboxSheetMediaEntityIdRef.current = loungeLightboxSheetMediaEntityId
+  const loungeOverlaySheetStackRef = useRef([])
+  const [loungeOverlaySheetStackDepth, setLoungeOverlaySheetStackDepth] = useState(0)
+  const [loungeOverlayRootPeekEntityId, setLoungeOverlayRootPeekEntityId] = useState(null)
   /** When true, post detail was opened from profile (likes/bookmarks/posts) and must sit above z-[101] profile chrome. */
   const [loungePostDetailAboveProfile, setLoungePostDetailAboveProfile] = useState(false)
   const [loungeDetailEditing, setLoungeDetailEditing] = useState(false)
@@ -7724,6 +7732,10 @@ export default function SocialFeed({
     setLoungePostDetailPanelEntered(true)
     loungePostDetailOverLightboxRef.current = false
     loungePostDetailOpenedAsLightboxSheetRef.current = false
+    loungeOverlaySheetStackRef.current = []
+    setLoungeOverlaySheetStackDepth(0)
+    setLoungeOverlayRootPeekEntityId(null)
+    setLoungeOverlayNestedPeekAttr(false)
     setLoungePostDetailOverLightbox(false)
     setLoungeLightboxSheetMediaEntityId(null)
     setLoungeDetailOverLightboxAttr(false)
@@ -8969,7 +8981,9 @@ export default function SocialFeed({
       !loungePostDetailAboveProfile,
   )
   const loungePostDetailShellZClass = loungePostDetailOverLightbox
-    ? 'z-[109]'
+    ? loungeOverlaySheetStackDepth > 0
+      ? 'z-[118]'
+      : 'z-[109]'
     : loungePostDetailAboveProfile
       ? 'z-[102]'
       : loungePostDetailOpenedOverSearch
@@ -8978,6 +8992,10 @@ export default function SocialFeed({
   const loungeSheetOmitMediaEntityId =
     loungePostDetailOverLightbox && loungeLightboxSheetMediaEntityId
       ? loungeLightboxSheetMediaEntityId
+      : null
+  const loungeOverlayNestedRootEntityId =
+    loungePostDetailOverLightbox && loungeOverlaySheetStackDepth > 0
+      ? loungeOverlayRootPeekEntityId
       : null
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile
@@ -8988,7 +9006,9 @@ export default function SocialFeed({
 
   const loungeProfileScreenOpen = profileModalOpen || profileOverlayStack.length > 0
   const loungeQuoteRepostShellZClass = loungePostDetailOverLightbox
-    ? 'z-[111]'
+    ? loungeOverlaySheetStackDepth > 0
+      ? 'z-[119]'
+      : 'z-[111]'
     : loungePostDetailAboveProfile
       ? 'z-[107]'
       : loungeProfileScreenOpen
@@ -8997,11 +9017,14 @@ export default function SocialFeed({
 
   const loungeDetailStreamLightboxSurface = useMemo(
     () => ({
-      repostMenuPortalClass:
-        loungeDetailMediaLightboxPortalClass === 'z-[103]' ? 'z-[106]' : 'z-[105]',
+      repostMenuPortalClass: loungePostDetailOverLightbox
+        ? 'z-[117]'
+        : loungeDetailMediaLightboxPortalClass === 'z-[103]'
+          ? 'z-[106]'
+          : 'z-[105]',
       repostMenuScrollRootRef: loungePostDetailScrollRef,
     }),
-    [loungeDetailMediaLightboxPortalClass, loungePostDetailScrollRef],
+    [loungeDetailMediaLightboxPortalClass, loungePostDetailOverLightbox, loungePostDetailScrollRef],
   )
 
   const quoteRepostStreamLightboxSurface = useMemo(
@@ -9067,7 +9090,19 @@ export default function SocialFeed({
   }, [cancelLoungeDetailEditMediaPrep, loungeDetailEditBackgroundUploadInFlight])
 
   const enterLoungeLightboxDetailSheet = useCallback((mediaEntityId) => {
-    loungePostDetailOpenedAsLightboxSheetRef.current = !loungePostDetail?.id
+    if (loungePostDetailOverLightboxRef.current) {
+      loungeOverlaySheetStackRef.current.push({
+        omitId: loungeLightboxSheetMediaEntityIdRef.current,
+        commentPathIds: [...loungeCommentDetailPathIdsRef.current],
+      })
+      const depth = loungeOverlaySheetStackRef.current.length
+      setLoungeOverlaySheetStackDepth(depth)
+      setLoungeOverlayNestedPeekAttr(true)
+    } else {
+      loungePostDetailOpenedAsLightboxSheetRef.current = !loungePostDetail?.id
+      setLoungeOverlayRootPeekEntityId(mediaEntityId ? String(mediaEntityId) : null)
+      setLoungeOverlayNestedPeekAttr(false)
+    }
     loungePostDetailOverLightboxRef.current = true
     setLoungeLightboxSheetMediaEntityId(mediaEntityId ? String(mediaEntityId) : null)
     setLoungePostDetailOverLightbox(true)
@@ -9088,6 +9123,16 @@ export default function SocialFeed({
       // ignore
     }
     setLoungeMediaSheetComposerExpanded(false)
+    const prev = loungeOverlaySheetStackRef.current.pop()
+    if (prev) {
+      const depth = loungeOverlaySheetStackRef.current.length
+      setLoungeOverlaySheetStackDepth(depth)
+      setLoungeOverlayNestedPeekAttr(depth > 0)
+      setLoungeLightboxSheetMediaEntityId(prev.omitId)
+      setLoungeCommentDetailPathIds(Array.isArray(prev.commentPathIds) ? prev.commentPathIds : [])
+      setLoungeDetailCommentComposerExpanded(false)
+      return
+    }
     releaseLoungeMediaSheetPeek()
     if (loungePostDetailOpenedAsLightboxSheetRef.current) {
       closeLoungePostDetail()
@@ -9100,6 +9145,9 @@ export default function SocialFeed({
       panel.style.willChange = ''
     }
     loungePostDetailOverLightboxRef.current = false
+    setLoungeOverlaySheetStackDepth(0)
+    setLoungeOverlayRootPeekEntityId(null)
+    setLoungeOverlayNestedPeekAttr(false)
     setLoungePostDetailOverLightbox(false)
     setLoungeLightboxSheetMediaEntityId(null)
     setLoungeDetailOverLightboxAttr(false)
@@ -9112,6 +9160,10 @@ export default function SocialFeed({
     }
     if (loungeDetailEditing) {
       cancelLoungeDetailEdit()
+      return
+    }
+    if (loungePostDetailOverLightbox && loungeOverlaySheetStackDepth > 0) {
+      dismissLoungeLightboxDetailSheet()
       return
     }
     if (loungeCommentDetailPathIds.length > 0) {
@@ -9144,6 +9196,7 @@ export default function SocialFeed({
     dismissLoungeLightboxDetailSheet,
     loungeCommentDetailPathIds.length,
     loungeDetailEditing,
+    loungeOverlaySheetStackDepth,
     loungePostDetailMenuOpen,
     loungePostDetailOverLightbox,
     scrollLoungePostDetailToTopInstant,
@@ -17383,6 +17436,7 @@ export default function SocialFeed({
                     <LoungePostFeedImagesAndGif
                       post={loungePostDetail}
                       omitMediaEntityId={loungeSheetOmitMediaEntityId}
+                      overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
                       variant="detail"
                       firstMarginTopClass={
                         loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
@@ -17435,6 +17489,7 @@ export default function SocialFeed({
                             streamLightboxHost: loungePostDetail,
                             streamLightboxSurface: loungeDetailStreamLightboxSurface,
                             omitMediaEntityId: loungeSheetOmitMediaEntityId,
+                            overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
                           }}
                           onOpenGuideCard={openLoungeGuideCard}
                           fanSubscribeBusy={feedFanSubscribeBusy}
@@ -17485,6 +17540,7 @@ export default function SocialFeed({
                     <LoungePostFeedImagesAndGif
                       post={loungePostDetail}
                       omitMediaEntityId={loungeSheetOmitMediaEntityId}
+                      overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
                       variant="detail"
                       firstMarginTopClass={
                         loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
@@ -18003,6 +18059,7 @@ export default function SocialFeed({
                     onStreamLightboxOpenDetail: openLoungeCommentStreamLightboxDetail,
                     onSharePost: handleShareLoungePost,
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
+                    overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
                   }}
                 />
               ) : null}
@@ -18089,6 +18146,7 @@ export default function SocialFeed({
                     onStreamLightboxOpenDetail: openLoungeCommentStreamLightboxDetail,
                     onSharePost: handleShareLoungePost,
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
+                    overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
                   }}
                 />
               ) : null}
@@ -18203,6 +18261,7 @@ export default function SocialFeed({
                           onStreamLightboxOpenDetail={openLoungeCommentStreamLightboxDetail}
                           onSharePost={handleShareLoungePost}
                           omitMediaEntityId={loungeSheetOmitMediaEntityId}
+                          overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
                         />
                       </>
                     )}

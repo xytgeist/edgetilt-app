@@ -193,15 +193,45 @@ function readPaintedMediaBox(el) {
   return { top: r.top, left: r.left, width: r.width, height: r.height }
 }
 
+function overlayNestedPeekActive() {
+  return typeof document !== 'undefined' &&
+    document.documentElement.hasAttribute('data-lounge-overlay-nested-peek')
+}
+
+function isNestedLightboxNode(el) {
+  if (!(el instanceof Element)) return false
+  return Boolean(el.closest('[data-lounge-nested-lightbox]'))
+}
+
+function queryOverlayPeekMediaEl() {
+  if (typeof document === 'undefined') return null
+  const nestedPeek = overlayNestedPeekActive()
+  const nodes = document.querySelectorAll('[data-lounge-lightbox-peek-media]')
+  for (const el of nodes) {
+    if (isNestedLightboxNode(el) === nestedPeek) return el
+  }
+  return null
+}
+
+function queryOverlayPeekFlyoutEl() {
+  if (typeof document === 'undefined') return null
+  const nestedPeek = overlayNestedPeekActive()
+  const nodes = document.querySelectorAll('[data-lounge-stream-hero-flyout]')
+  for (const el of nodes) {
+    if (isNestedLightboxNode(el) === nestedPeek) return el
+  }
+  return null
+}
+
 function readPeekMediaLayoutBox() {
   if (typeof document === 'undefined') return null
-  const media = document.querySelector('[data-lounge-lightbox-peek-media]')
+  const media = queryOverlayPeekMediaEl()
   const fromInline = readInlineFixedBox(media)
   if (fromInline) {
     cachedPeekMediaBox = fromInline
     return fromInline
   }
-  const flyout = document.querySelector('[data-lounge-stream-hero-flyout]')
+  const flyout = queryOverlayPeekFlyoutEl()
   const fromFlyout = readInlineFixedBox(flyout)
   if (fromFlyout) {
     cachedPeekMediaBox = fromFlyout
@@ -641,6 +671,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     unbindViewportWatch()
     removeLvhProbe()
     document.documentElement.removeAttribute('data-lounge-detail-over-lightbox')
+    document.documentElement.removeAttribute('data-lounge-overlay-nested-peek')
     document.documentElement.removeAttribute('data-lounge-media-sheet-resizing')
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
     document.documentElement.style.removeProperty('--lounge-media-layout-h')
@@ -655,6 +686,13 @@ export function setLoungeDetailOverLightboxAttr(on) {
 
 export function getLoungeDetailOverLightbox() {
   return overlayOn
+}
+
+/** Nested comment-media lightbox is the peek (overlay comments stacked over it). */
+export function setLoungeOverlayNestedPeekAttr(on) {
+  if (typeof document === 'undefined') return
+  if (on) document.documentElement.setAttribute('data-lounge-overlay-nested-peek', '')
+  else document.documentElement.removeAttribute('data-lounge-overlay-nested-peek')
 }
 
 export function subscribeLoungeDetailOverLightbox(listener) {

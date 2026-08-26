@@ -1072,6 +1072,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-08-26: **Lounge lightbox Android composer pad (Windows):** Overlay pad used frozen `innerHeight - visualViewport`, which double-counts Android `resizes-content` and parked the reply field under the status bar. Android now uses live `innerHeight - visualViewport` (usually 0). iOS path unchanged. No SQL / Edge.
 
+- 2026-08-26: **Lounge overlay comment-media nested lightbox (Windows):** Tapping image/GIF/video in the overlay comments sheet opens that media as its own lightbox (`z-[115]`) on top of the stack. Peek CSS / chrome-hide skip `data-lounge-nested-lightbox`. Close returns to the original lightbox + comments sheet. Comments from the nested lightbox retarget the overlay (stack pop restores). No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox landscape composer peek (Windows):** Wider-than-tall media is width-capped, so a mixed lvh estimate did not shrink it when the sheet went 60 → 74. Peek now follows the painted sheet top for 300ms (same 12px gap) while height animates. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox peek 12px gap (Windows):** Peek band is `min(painted sheet top - 12, estimated 60/74 band)` so CSS `max(60lvh, …)` cannot sit on top of the media. Composer shrink still uses the smaller 74% estimate immediately. No SQL / Edge.

@@ -40,6 +40,7 @@ import {
   HERO_SHRINK_TRANSITION,
   heroRectUsableForShrinkBack,
   readHeroMediaViewportRect,
+  LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS,
   resolveLoungeHeroStackZIndexes,
   runHeroExpandAnimation,
   runHeroShrinkAnimation,
@@ -671,6 +672,7 @@ export default function LoungePostStreamVideo({
     flyout: heroFlyoutZIndex,
     overlay: heroOverlayZIndex,
   } = useMemo(() => resolveLoungeHeroStackZIndexes(lightboxPortalClass), [lightboxPortalClass])
+  const nestedOverOverlay = lightboxPortalClass === LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS
   const [ringHlsHeld, setRingHlsHeld] = useState(false)
   const activeHlsGraceEligible =
     variant === 'detail' || variant === 'commentInline'
@@ -3373,6 +3375,7 @@ export default function LoungePostStreamVideo({
             <div
               ref={videoFlyoutRef}
               {...(heroExpanded ? { 'data-lounge-stream-hero-flyout': '' } : {})}
+              {...(heroExpanded && nestedOverOverlay ? { 'data-lounge-nested-lightbox': '' } : {})}
               style={
                 heroExpandDomActive && heroExpandFlyoutStyleRef.current
                   ? heroExpandFlyoutStyleRef.current
@@ -3491,6 +3494,7 @@ export default function LoungePostStreamVideo({
               </div>
               <div
                 data-lounge-media-lightbox
+                {...(nestedOverOverlay ? { 'data-lounge-nested-lightbox': '' } : {})}
                 className="fixed inset-0"
                 style={{ zIndex: heroOverlayZIndex }}
                 role="dialog"

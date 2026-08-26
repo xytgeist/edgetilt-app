@@ -13,6 +13,11 @@ export const HERO_SHRINK_TRANSITION = `${HERO_SHRINK_MS}ms ${HERO_MOTION_CURVE}`
 export const HERO_CHROME_FADE_MS = 220
 /** Default hero stack when no parent `lightboxPortalClass` is passed. */
 export const HERO_STACK_BASE_Z_INDEX = 102
+/**
+ * Comment/quote media lightbox stacked on the X-style overlay comments sheet
+ * (sheet is `z-[109]`). App modals stay at `z-[120]`.
+ */
+export const LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS = 'z-[115]'
 
 /**
  * Hero stack must sit above the parent shell (`lightboxPortalClass`, e.g. post detail z-[98]/z-[102]).

@@ -31,6 +31,7 @@ import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.j
 import {
   heroRectUsableForShrinkBack,
   isLoungeLightboxGifUrl,
+  LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS,
   readContainedImageViewportRect,
   readElementViewportRect,
 } from './loungeLightboxFlip.js'
@@ -597,6 +598,12 @@ export function LoungePostFeedImagesAndGif({
   priority = false,
   /** Hide this row's media when it is already in the lightbox peek above the comments sheet. */
   omitMediaEntityId = null,
+  /**
+   * Entity whose lightbox opened the overlay sheet. Comment/quote tiles that are not this
+   * id stack a nested lightbox above the sheet. When the overlay is retargeted onto nested
+   * media, this stays the original peek so that lightbox does not jump to z-115.
+   */
+  overlayNestedRootEntityId = null,
 }) {
   const streamLightbox = useLoungeStreamLightbox()
   const lightboxHost = streamLightboxHost ?? post
@@ -653,6 +660,11 @@ export function LoungePostFeedImagesAndGif({
   const hideAsSheetPeekDuplicate = Boolean(
     omitMediaEntityId && post?.id && String(post.id) === String(omitMediaEntityId),
   )
+  const nestedRootId = overlayNestedRootEntityId || omitMediaEntityId
+  const effectiveLightboxPortalClass =
+    omitMediaEntityId && post?.id && nestedRootId && String(post.id) !== String(nestedRootId)
+      ? LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS
+      : lightboxPortalClass
   const pendingPublishKey = String(post?._pendingPublishKey || post?.id || '').trim()
   const authorPendingPublish =
     post?._authorPendingPublish === true || post?.feed_visible_at === null
@@ -703,13 +715,13 @@ export function LoungePostFeedImagesAndGif({
         renderMediaLightboxChrome={chromeRenderer}
         renderMediaLightboxMenu={menuRenderer}
         renderMediaLightboxTopBarExtra={topBarExtraRenderer}
-        lightboxPortalClass={lightboxPortalClass}
+        lightboxPortalClass={effectiveLightboxPortalClass}
         hideAsSheetPeekDuplicate={hideAsSheetPeekDuplicate}
       />
     )
   }
   const imageLightboxProps = {
-    lightboxPortalClass,
+    lightboxPortalClass: effectiveLightboxPortalClass,
     renderMediaLightboxMenu: imageLightboxMenuRenderer,
     renderMediaLightboxTopBarExtra: imageLightboxTopBarExtraRenderer,
     renderMediaLightboxChrome: imageLightboxChromeRenderer,

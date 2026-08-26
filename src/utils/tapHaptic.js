@@ -1,3 +1,4 @@
+import { isEdgeiOSShell, triggerEdgeNativeHaptic } from './edgeNative.js'
 import { isAndroidDevice, isIosDevice } from './pwaNotificationPrompt.js'
 
 /** Opt-in only — global listener does not haptic every button. */
@@ -60,8 +61,13 @@ function fireAndroidVibrate() {
 export function triggerTapHapticLight() {
   if (!isTapHapticSupported()) return
 
-  // Shell: stay on the in-WebView switch trick. The native bridge round-trip on every
-  // capture-phase click was starving CHHapticEngine and caused gesture gate timeouts.
+  // Edge iOS shell: never run the in-WebView switch trick (synthetic label.click() during
+  // the real tap stalls WKWebView gesture delivery). Native UIKit haptics are fire-and-forget.
+  if (isEdgeiOSShell()) {
+    void triggerEdgeNativeHaptic('light')
+    return
+  }
+
   if (isIosDevice()) {
     fireIosSwitchHaptic()
     return
@@ -94,6 +100,8 @@ function shouldHapticForTapEvent(event) {
  */
 export function installGlobalTapHaptic() {
   if (typeof document === 'undefined' || !isMobileTapEnvironment()) return () => {}
+  // Shell haptics are wired explicitly; skip capture-phase listener (switch trick / bridge noise).
+  if (isEdgeiOSShell()) return () => {}
 
   const onTap = (event) => {
     if (!shouldHapticForTapEvent(event)) return

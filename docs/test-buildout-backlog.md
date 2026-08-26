@@ -1058,7 +1058,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-26: **Lounge lightbox comments sheet (X peek polish, Windows):** No auto-focus on open. No header bar (swipe down to dismiss). Full width. Rest height ~60%, composer tap ~73% with peek shrink. Feed → Post slide unchanged. No SQL / Edge.
+- 2026-08-26: **Lounge lightbox comments sheet (peek follow, Windows):** Sheet height uses the layout viewport (~60% rest / ~74% composer), not visualViewport. Peek has a 12px gap, CSS-transitions, and tracks live drag / dismiss (no 120ms delay). At-top list swipe dismisses instead of rubber-banding. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox comments sheet peek (Windows):** Sheet still over a live lightbox. Media **contain-fits in the band above the sheet** (Stream flyout `forceBand` + image stage `--lounge-media-sheet-h`). The post/comment that owns that media is **caption-only** in the sheet. Same `<video>` node. Feed → Post unchanged. No SQL / Edge.
 

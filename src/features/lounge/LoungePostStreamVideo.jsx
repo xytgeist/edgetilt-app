@@ -49,6 +49,7 @@ import {
 import {
   computeLoungeLightboxPeekTarget,
   getLoungeDetailOverLightbox,
+  getLoungeMediaSheetDragging,
   subscribeLoungeDetailOverLightbox,
 } from './loungeLightboxDetailSheet.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
@@ -639,6 +640,11 @@ export default function LoungePostStreamVideo({
   const anyStreamLightboxOpen = useSyncExternalStore(
     subscribeLoungeStreamLightboxOpen,
     getLoungeStreamLightboxOpen,
+    () => false,
+  )
+  const mediaSheetDragging = useSyncExternalStore(
+    subscribeLoungeDetailOverLightbox,
+    getLoungeMediaSheetDragging,
     () => false,
   )
   isActiveRef.current =
@@ -2578,7 +2584,6 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     if (!lightboxOpen || heroPhase !== 'open') return undefined
     let raf = 0
-    let tid = 0
     const applyHeroViewportLayout = () => {
       const from = heroFromRectRef.current
       if (!from || heroPhaseRef.current !== 'open') return
@@ -2601,27 +2606,20 @@ export default function LoungePostStreamVideo({
     }
     const schedule = () => {
       if (raf) cancelAnimationFrame(raf)
-      if (tid) window.clearTimeout(tid)
       raf = requestAnimationFrame(() => {
         raf = 0
         applyHeroViewportLayout()
       })
-      tid = window.setTimeout(applyHeroViewportLayout, 120)
     }
     schedule()
     const unsubPeek = subscribeLoungeDetailOverLightbox(schedule)
     window.addEventListener('resize', schedule)
     window.addEventListener('orientationchange', schedule)
-    window.visualViewport?.addEventListener('resize', schedule)
-    window.visualViewport?.addEventListener('scroll', schedule)
     return () => {
       if (raf) cancelAnimationFrame(raf)
-      if (tid) window.clearTimeout(tid)
       unsubPeek()
       window.removeEventListener('resize', schedule)
       window.removeEventListener('orientationchange', schedule)
-      window.visualViewport?.removeEventListener('resize', schedule)
-      window.visualViewport?.removeEventListener('scroll', schedule)
     }
   }, [lightboxOpen, heroPhase, displayW, displayH])
 
@@ -3202,7 +3200,7 @@ export default function LoungePostStreamVideo({
     ? `transform ${HERO_MOTION_TRANSITION}, border-radius ${HERO_MOTION_TRANSITION}`
     : 'none'
   const heroPeekGeometryTransition =
-    heroPhase === 'open' && !heroShrinkDomActive
+    heroPhase === 'open' && !heroShrinkDomActive && !mediaSheetDragging
       ? 'top 280ms cubic-bezier(0.32, 0.72, 0, 1), left 280ms cubic-bezier(0.32, 0.72, 0, 1), width 280ms cubic-bezier(0.32, 0.72, 0, 1), height 280ms cubic-bezier(0.32, 0.72, 0, 1)'
       : ''
   const heroCombinedTransition =

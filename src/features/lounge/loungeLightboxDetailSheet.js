@@ -1,14 +1,19 @@
 import { computeHeroTargetRect } from './loungeLightboxFlip.js'
 
-/** Rest ~60% (image 1). Composer focused ~73% (image 2). */
+/** Rest ~60% of the layout viewport. Composer focused ~74%. */
 const SHEET_REST_FRACTION = 0.6
-const SHEET_COMPOSER_FRACTION = 0.73
+const SHEET_COMPOSER_FRACTION = 0.74
 const SHEET_MIN_PEEK_REM = 5.5
+/** Black gap between contain-fit media and the sheet top. */
+const PEEK_GAP_PX = 12
 
 let overlayOn = false
 let composerExpanded = false
+let peekRevealed = false
+let dragOffsetPx = 0
+let sheetDragging = false
 const listeners = new Set()
-let metricPollRaf = 0
+let dragEmitRaf = 0
 let viewportBound = false
 let sheetKbLocked = false
 let frozenPeekInsetPx = 0
@@ -29,23 +34,12 @@ function emit() {
   })
 }
 
-function stopMetricPoll() {
-  if (!metricPollRaf) return
-  cancelAnimationFrame(metricPollRaf)
-  metricPollRaf = 0
-}
-
-function startMetricPoll() {
-  stopMetricPoll()
-  let frames = 0
-  const tick = () => {
-    metricPollRaf = 0
-    syncLoungeMediaSheetHeightVar()
+function emitOnNextFrame() {
+  if (dragEmitRaf) return
+  dragEmitRaf = requestAnimationFrame(() => {
+    dragEmitRaf = 0
     emit()
-    frames += 1
-    if (frames < 40) metricPollRaf = requestAnimationFrame(tick)
-  }
-  metricPollRaf = requestAnimationFrame(tick)
+  })
 }
 
 function onViewportChange() {
@@ -54,26 +48,44 @@ function onViewportChange() {
     if (refreshCachedInnerKbPx()) emit()
     return
   }
-  notifyLoungeMediaDetailSheetMetrics()
+  captureOverlayLayoutBaseline()
+  writeSheetHeightVar(estimateLoungeMediaDetailSheetHeightPx())
+  writePeekInsetVar()
+  emit()
 }
 
 function bindViewportWatch() {
   if (viewportBound || typeof window === 'undefined') return
   viewportBound = true
   window.addEventListener('resize', onViewportChange)
-  window.visualViewport?.addEventListener('resize', onViewportChange)
+  window.addEventListener('orientationchange', onViewportChange)
 }
 
 function unbindViewportWatch() {
   if (!viewportBound || typeof window === 'undefined') return
   viewportBound = false
   window.removeEventListener('resize', onViewportChange)
-  window.visualViewport?.removeEventListener('resize', onViewportChange)
+  window.removeEventListener('orientationchange', onViewportChange)
 }
 
 function rootFontPx() {
   if (typeof document === 'undefined') return 16
   return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+}
+
+function layoutViewportH() {
+  if (typeof window === 'undefined') return 0
+  if (frozenLayoutH > 0) return frozenLayoutH
+  return Math.max(window.innerHeight || 0, document.documentElement?.clientHeight || 0)
+}
+
+function layoutViewportW() {
+  if (typeof window === 'undefined') return 0
+  return Math.max(
+    frozenViewport?.width || 0,
+    window.innerWidth || 0,
+    document.documentElement?.clientWidth || 0,
+  )
 }
 
 function activeSheetFraction() {
@@ -92,6 +104,13 @@ function writeSheetHeightVar(px) {
   else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
 }
 
+function writePeekInsetVar() {
+  if (typeof document === 'undefined') return
+  const px = peekInsetPx()
+  if (px > 0) document.documentElement.style.setProperty('--lounge-media-peek-inset', `${px}px`)
+  else document.documentElement.style.setProperty('--lounge-media-peek-inset', '0px')
+}
+
 function syncComposerAttr() {
   if (typeof document === 'undefined') return
   if (overlayOn && composerExpanded) {
@@ -99,6 +118,26 @@ function syncComposerAttr() {
   } else {
     document.documentElement.removeAttribute('data-lounge-media-sheet-composer')
   }
+}
+
+function syncDraggingAttr() {
+  if (typeof document === 'undefined') return
+  if (overlayOn && sheetDragging) {
+    document.documentElement.setAttribute('data-lounge-media-sheet-dragging', '')
+  } else {
+    document.documentElement.removeAttribute('data-lounge-media-sheet-dragging')
+  }
+}
+
+function visualSheetHeightPx() {
+  return Math.max(0, estimateLoungeMediaDetailSheetHeightPx() - dragOffsetPx)
+}
+
+function peekInsetPx() {
+  if (!overlayOn || !peekRevealed) return 0
+  const visual = visualSheetHeightPx()
+  if (visual < 8) return 0
+  return visual + PEEK_GAP_PX
 }
 
 /** Grow the sheet when the overlay composer is focused ... media peek follows. */
@@ -118,6 +157,37 @@ export function setLoungeMediaSheetComposerExpanded(on) {
       frozenSheetH = parked.height
     }
   }
+  writePeekInsetVar()
+  emit()
+}
+
+export function getLoungeMediaSheetDragging() {
+  return sheetDragging
+}
+
+export function setLoungeMediaSheetDragging(on) {
+  const next = Boolean(on)
+  if (sheetDragging === next) return
+  sheetDragging = next
+  syncDraggingAttr()
+  emit()
+}
+
+export function setLoungeMediaSheetDragOffsetPx(dy) {
+  const next = Math.max(0, Math.round(Number(dy) || 0))
+  if (next === dragOffsetPx) return
+  dragOffsetPx = next
+  writePeekInsetVar()
+  emitOnNextFrame()
+}
+
+/** Sheet dismissed or snapping closed ... media fills the viewport in the same motion. */
+export function releaseLoungeMediaSheetPeek() {
+  dragOffsetPx = 0
+  sheetDragging = false
+  peekRevealed = false
+  syncDraggingAttr()
+  writePeekInsetVar()
   emit()
 }
 
@@ -127,7 +197,7 @@ function captureOverlayLayoutBaseline() {
   const layout = Math.max(window.innerHeight || 0, document.documentElement?.clientHeight || 0)
   if (layout > frozenLayoutH) frozenLayoutH = layout
   if (frozenLayoutH < 1) frozenLayoutH = layout
-  const width = window.innerWidth || 0
+  const width = layoutViewportW()
   frozenViewport = {
     width: Math.max(width, frozenViewport?.width || 0),
     height: frozenLayoutH,
@@ -162,24 +232,37 @@ export function setLoungeDetailOverLightboxAttr(on) {
   overlayOn = Boolean(on)
   if (typeof document === 'undefined') return
   if (overlayOn) {
+    dragOffsetPx = 0
+    sheetDragging = false
+    peekRevealed = false
     captureOverlayLayoutBaseline()
     document.documentElement.setAttribute('data-lounge-detail-over-lightbox', '')
+    syncDraggingAttr()
     const estimated = estimateLoungeMediaDetailSheetHeightPx()
-    if (estimated > 0) {
-      document.documentElement.style.setProperty('--lounge-media-sheet-h', `${estimated}px`)
-    }
-    startMetricPoll()
+    writeSheetHeightVar(estimated)
+    writePeekInsetVar()
+    emit()
+    requestAnimationFrame(() => {
+      if (!overlayOn) return
+      peekRevealed = true
+      writePeekInsetVar()
+      emit()
+    })
     bindViewportWatch()
   } else {
     composerExpanded = false
+    peekRevealed = false
+    dragOffsetPx = 0
+    sheetDragging = false
     syncComposerAttr()
+    syncDraggingAttr()
     unlockLoungeMediaSheetKeyboard()
     frozenLayoutH = 0
     frozenViewport = null
-    stopMetricPoll()
     unbindViewportWatch()
     document.documentElement.removeAttribute('data-lounge-detail-over-lightbox')
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
+    document.documentElement.style.removeProperty('--lounge-media-peek-inset')
   }
   emit()
 }
@@ -195,11 +278,7 @@ export function subscribeLoungeDetailOverLightbox(listener) {
 
 export function estimateLoungeMediaDetailSheetHeightPx() {
   if (typeof window === 'undefined') return 0
-  const vh =
-    sheetKbLocked && frozenLayoutH > 0
-      ? frozenLayoutH
-      : (window.visualViewport?.height ?? window.innerHeight)
-  return estimateSheetHeightForLayout(vh)
+  return estimateSheetHeightForLayout(layoutViewportH())
 }
 
 export function readLoungeMediaDetailSheetBottomInsetPx() {
@@ -207,27 +286,19 @@ export function readLoungeMediaDetailSheetBottomInsetPx() {
   const el = document.querySelector('[data-lounge-media-detail-sheet]')
   if (!(el instanceof HTMLElement)) return 0
   const top = el.getBoundingClientRect().top
-  const vv = window.visualViewport
-  const vh = vv?.height ?? window.innerHeight
-  const offsetTop = vv?.offsetTop ?? 0
-  return Math.max(0, Math.round(offsetTop + vh - top))
+  const vh = layoutViewportH()
+  return Math.max(0, Math.round(vh - top))
 }
 
-/** Prefer the live sheet box; fall back to the CSS height while it is still sliding on. */
 export function readLoungeLightboxPeekBottomInsetPx() {
-  if (!overlayOn) return 0
-  if (sheetKbLocked && frozenPeekInsetPx > 0) return frozenPeekInsetPx
-  const measured = readLoungeMediaDetailSheetBottomInsetPx()
-  const estimated = estimateLoungeMediaDetailSheetHeightPx()
-  if (measured < estimated * 0.45) return estimated
-  return measured
+  return peekInsetPx()
 }
 
 export function syncLoungeMediaSheetHeightVar() {
   if (typeof document === 'undefined') return
   if (sheetKbLocked) return
-  const px = overlayOn ? readLoungeLightboxPeekBottomInsetPx() : 0
-  writeSheetHeightVar(px)
+  writeSheetHeightVar(overlayOn ? estimateLoungeMediaDetailSheetHeightPx() : 0)
+  writePeekInsetVar()
 }
 
 export function notifyLoungeMediaDetailSheetMetrics() {
@@ -257,10 +328,11 @@ export function lockLoungeMediaSheetKeyboard() {
   frozenSheetH = parked.height
   frozenPeekInsetPx = parked.height
   sheetKbLocked = true
-  document.documentElement.style.setProperty('--lounge-media-sheet-h', `${frozenPeekInsetPx}px`)
+  writeSheetHeightVar(frozenPeekInsetPx)
   document.documentElement.style.setProperty('--lounge-media-sheet-panel-h', `${frozenSheetH}px`)
   document.documentElement.style.setProperty('--lounge-media-sheet-top', `${frozenSheetTop}px`)
   document.documentElement.setAttribute('data-lounge-media-sheet-kb', '')
+  writePeekInsetVar()
   refreshCachedInnerKbPx()
   emit()
 }
@@ -281,6 +353,7 @@ export function unlockLoungeMediaSheetKeyboard() {
   if (overlayOn) syncLoungeMediaSheetHeightVar()
   else if (typeof document !== 'undefined') {
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
+    document.documentElement.style.removeProperty('--lounge-media-peek-inset')
   }
   emit()
 }
@@ -295,20 +368,15 @@ export function readLoungeOverlayInnerKeyboardOverlapPx() {
 
 export function computeLoungeLightboxPeekTarget(fromRect, extra = {}) {
   const insetBottomOpt = Number(extra.insetBottom)
-  const vp = sheetKbLocked && frozenViewport ? frozenViewport : null
+  const vpH = layoutViewportH()
+  const vpW = layoutViewportW()
   return computeHeroTargetRect(fromRect, {
     ...extra,
     insetTop: Number(extra.insetTop) || 0,
-    insetBottom: Number.isFinite(insetBottomOpt)
-      ? insetBottomOpt
-      : readLoungeLightboxPeekBottomInsetPx(),
+    insetBottom: Number.isFinite(insetBottomOpt) ? insetBottomOpt : peekInsetPx(),
     forceBand: true,
-    ...(vp
-      ? {
-          viewportW: vp.width,
-          viewportH: vp.height,
-          ignoreVisualViewport: true,
-        }
-      : {}),
+    viewportW: vpW,
+    viewportH: vpH,
+    ignoreVisualViewport: true,
   })
 }

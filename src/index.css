@@ -8835,7 +8835,16 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-chrome-layer] {
   pointer-events: none !important;
 }
 html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
-  bottom: var(--lounge-media-sheet-h, min(60lvh, 60dvh)) !important;
+  bottom: var(--lounge-media-peek-inset, 0px) !important;
+}
+html[data-lounge-media-sheet-dragging] [data-lounge-image-lightbox-stage] {
+  transition: none !important;
+}
+[data-lounge-media-detail-scroll] {
+  overscroll-behavior-y: none;
+}
+[data-lounge-media-detail-scroll][data-at-top] {
+  touch-action: pan-up;
 }
 [data-lounge-media-detail-sheet] {
   width: 100%;
@@ -8847,8 +8856,11 @@ html[data-lounge-detail-over-lightbox] [data-lounge-image-lightbox-stage] {
     transform 0.3s ease-out;
 }
 html[data-lounge-media-sheet-composer] [data-lounge-media-detail-sheet] {
-  height: var(--lounge-media-sheet-h, min(73lvh, 73dvh));
-  max-height: var(--lounge-media-sheet-h, min(73lvh, 73dvh));
+  height: var(--lounge-media-sheet-h, min(74lvh, 74dvh));
+  max-height: var(--lounge-media-sheet-h, min(74lvh, 74dvh));
+}
+html[data-lounge-media-sheet-dragging] [data-lounge-media-detail-sheet] {
+  transition: none;
 }
 @media (prefers-reduced-motion: reduce) {
   [data-lounge-media-detail-sheet] {

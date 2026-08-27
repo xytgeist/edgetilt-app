@@ -117,7 +117,20 @@ SQL-first with the old function still running is a short window of possible extr
 
 **Leaked prod key in test cron:** Ryan 2026-08-27 … **there was never a leak. Mac Theo misread it.** Not a risk we accepted ... a false alarm. **Do not rotate. Do not reopen. Do not re-raise it at Ryan on a cold start.**
 
-**Also still open:** IPA smoke of Windows Theo's lightbox list. We'll walk it together.
+**✅ IPA lightbox smoke PASSED (Ryan, 2026-08-27, `EdgeTilt Test Fast`).** Whole overlay-comments list works: peek contain-fit + 5px gap, dismiss targets, comment media from the list, one-hop nested, composer 80lvh. No functional follow-up.
+
+### Lightbox smoothness … Ryan's one complaint (assigned to WinTheo, web not `ios/`)
+
+Motion is visibly less smooth than X / Instagram (media flying in/out, shrinking/growing with the sheet). **Not a shell problem** … WKWebView is the same WebKit as Safari. Three causes, full spec + invariants + measurement plan in the backlog Update log 2026-08-27 "Lounge lightbox smoothness":
+1. The sheet animates **`height`** (a layout property) so it can never composite … relayouts the comment list every frame. Slide-in is already transform and is fine; the **rest ↔ composer resize** is the expensive one.
+2. `startPeekFollowSheet()` chases the sheet with a **400ms rAF loop** doing `getBoundingClientRect()` per frame with `transition: none` … forced sync layout on the thread cause 1 is dirtying. Exists *because* of cause 1.
+3. rAF animation likely misses the **ProMotion** path a declarative transition would get. Measure, do not assume.
+
+**Target:** constant-height sheet animated with **`transform: translateY`**, peek target derived in closed form, chase loop collapses to one declarative transition. Prerequisite even if we go native later.
+
+### ⚠️ Direction (Ryan 2026-08-27) … full native rewrite after the IPA ships
+
+Ship the **IPA as a wrapper** to publishable quality first, then **rewrite Edge natively** and carry **three codebases: Swift + Kotlin + web**. **Not started. Do not begin native rewrite work unless Ryan names a surface.** Recorded with cost caveats in backlog **Planned (Native shells / app stores)** → long-term direction. Ryan chose option A first: fix the web `height` animation and **measure on device** before any native motion work.
 
 **Do not reopen:** the "app feels slow / multi-tap" hunt … that was **Debug + debugger attached**, not a code regression (2026-08-26 entry). Use the **`EdgeTilt Test Fast`** scheme before believing a perf report.
 

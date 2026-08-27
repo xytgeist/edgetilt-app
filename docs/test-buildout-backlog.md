@@ -1071,17 +1071,6 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-08-27: **Lock-screen answer cannot unlock the phone (Mac).** No public API. After answer, native audio still starts locked. On `applicationDidBecomeActive` we fire `edge-native-call-reveal` so web opens the chat room + full in-app live call screen (expand if minimized). Rebuild owed.
 
-- 2026-08-27: **🎯 Lightbox smoothness: constant-height GPU translateY sheet + closed-form peek transition (Windows).** Landed Ryan's option A to eliminate main-thread layout thrashing during overlay comments / composer resize:
-
-  1. **Sheet height is constant (80lvh max):** `[data-lounge-media-detail-sheet]` in `index.css` no longer animates `height: max(70lvh, ...)` to `max(80lvh, ...)`. Sized once to tallest (80lvh), rest position translates down by `(80lvh - 70lvh)` via `--lounge-media-sheet-translate-y` with composited `transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)`. The comment subtree (avatar list, composer glass, connector lines) **never re-lays-out** across rest ↔ composer.
-  2. **Killed the 400ms rAF chase loop:** `startPeekFollowSheet()` and `stopPeekFollowSheet()` removed. Because the sheet's rest and composer positions are derived in closed form from `sheetLayoutH()` and fractions (70% / 80%), the media peek target is computed instantly and transitions declaratively via matching CSS `transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)`. No forced synchronous `getBoundingClientRect()` layout thrashing per frame.
-  3. **Invariants verified:**
-     - 70lvh rest / 80lvh composer effective visible geometry preserved.
-     - 5px black peek gap preserved (`sheetTop - PEEK_GAP_PX`).
-     - Swipe-to-dismiss drag offsets add directly to the base `translateY`.
-     - Android `interactive-widget=resizes-content` 80% band override preserved with `transform: translate3d(0, 0, 0)`.
-     - Single continuous video/image node untouched across all sheet states.
-
 - 2026-08-27: **Agent scratch archived out of the working tree, not deleted (Windows).** **724 files / 58.2 MB** moved to **`../LVSlotPro-archive/2026-08-27/`** (outside the repo, still inside OneDrive so it stays backed up), preserving relative paths. Nothing destroyed … if a one-off debug query is wanted again it is sitting right there.
 
   Contents: 487 generated SQL chunks under `scripts/.tmp-migration-apply/`, ~150 `scripts/.tmp-*` ClubWPT / CoinPoker / Gold probes (incl. the 558 KB `.tmp-gold-main.js` minified bundle), ~80 `scripts/tmp-*` one-off debug + cleanup scripts, 76 lightbox reference frames, 8 `assets/brand-logos` PNGs, a 33 MB screen recording, and a stray 0-byte file literally named **`now()`**.

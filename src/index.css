@@ -8875,22 +8875,34 @@ html.platform-android[data-lounge-detail-over-lightbox]:not(
   height: var(--lounge-media-layout-h, 100lvh);
   max-height: none;
 }
-html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+    [data-lounge-media-sheet-resizing]
+  )
   [data-lounge-stream-hero-flyout],
-html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+    [data-lounge-media-sheet-resizing]
+  )
   [data-lounge-lightbox-peek-media] {
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1) !important;
 }
 html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging]
   [data-lounge-stream-hero-flyout],
 html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-dragging]
+  [data-lounge-lightbox-peek-media],
+html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-resizing]
+  [data-lounge-stream-hero-flyout],
+html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-resizing]
   [data-lounge-lightbox-peek-media] {
   transition: none !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+      [data-lounge-media-sheet-resizing]
+    )
     [data-lounge-stream-hero-flyout],
-  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging])
+  html[data-lounge-detail-over-lightbox]:not([data-lounge-media-sheet-dragging]):not(
+      [data-lounge-media-sheet-resizing]
+    )
     [data-lounge-lightbox-peek-media] {
     transition: none !important;
   }
@@ -8953,19 +8965,21 @@ html.platform-android[data-lounge-overlay-nested-peek]
 [data-lounge-media-detail-sheet] {
   width: 100%;
   max-width: none;
-  /* Constant tallest-height container (80lvh). Position transition is pure GPU translateY. */
+  height: max(70lvh, var(--lounge-media-sheet-h, 0px));
+  max-height: max(70lvh, var(--lounge-media-sheet-h, 0px));
+  transition:
+    height 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.3s ease-out;
+}
+html[data-lounge-media-sheet-composer] [data-lounge-media-detail-sheet] {
   height: max(80lvh, var(--lounge-media-sheet-h, 0px));
   max-height: max(80lvh, var(--lounge-media-sheet-h, 0px));
-  transform: translate3d(0, var(--lounge-media-sheet-translate-y, 0px), 0);
-  transition:
-    transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* Android IME shrinks the layout viewport. 80lvh is the pre-keyboard screen, so the
    sheet would fill the leftover band. 80% tracks the live layout; iOS stays on lvh. */
 html.platform-android[data-lounge-media-sheet-composer] [data-lounge-media-detail-sheet] {
   height: 80%;
   max-height: 80%;
-  transform: translate3d(0, 0, 0);
 }
 html[data-lounge-media-sheet-dragging] [data-lounge-media-detail-sheet] {
   transition: none;

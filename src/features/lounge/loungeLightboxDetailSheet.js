@@ -29,6 +29,9 @@ let peekRevealTries = 0
 let cachedPeekMediaBox = null
 /** Cached for useSyncExternalStore ... never read getBoundingClientRect in getSnapshot. */
 let cachedInnerKbPx = 0
+let peekFollowRaf = 0
+let peekResizing = false
+const PEEK_FOLLOW_MS = 400
 
 function emit() {
   listeners.forEach((fn) => {
@@ -258,13 +261,63 @@ function captureSafeTopPx() {
   frozenSafeTopPx = readSafeTopPx()
 }
 
+function peekCssSheetHeightPx() {
+  const probe = ensureLvhProbe()
+  const lvh = probe instanceof HTMLElement ? probe.getBoundingClientRect().height : 0
+  if (!(lvh > 8)) return 0
+  return Math.round(lvh * activeSheetFraction())
+}
+
+function peekComposerSheetHeightPx() {
+  return Math.max(estimateSheetHeightForLayout(sheetLayoutH()), peekCssSheetHeightPx())
+}
+
+/** Highest plausible sheet top for the 80% composer sheet (smallest air gap). */
+function peekIosComposerBandBottomPx(sheetTop, slidingOn) {
+  const destH = peekComposerSheetHeightPx()
+  const bottoms = []
+  const consider = (layoutH) => {
+    const h = Math.round(Number(layoutH) || 0)
+    if (h > destH + 24) bottoms.push(h - destH)
+  }
+  consider(sheetLayoutH())
+  if (typeof window !== 'undefined') consider(window.innerHeight)
+  if (typeof document !== 'undefined') consider(document.documentElement?.clientHeight)
+  const probe = ensureLvhProbe()
+  if (probe instanceof HTMLElement) consider(probe.getBoundingClientRect().height)
+  let bottom = bottoms.length ? Math.min(...bottoms) : 0
+  if (sheetTop >= 8 && !slidingOn) {
+    bottom = bottom > 0 ? Math.min(bottom, Math.round(sheetTop)) : Math.round(sheetTop)
+  }
+  return bottom
+}
+
+/** Visible peek gap: status-bar bottom → sheet top minus 5px. Contain-fit and center. */
 function peekVisibleBand() {
   if (!overlayOn || !peekRevealed) return { top: 0, height: 0 }
   const vh = sheetLayoutH()
-  const layoutHeight = estimateLoungeMediaDetailSheetHeightPx()
-  const ty = computeSheetTranslateYPx()
-  const sheetTop = Math.round(vh - layoutHeight + ty)
-  let bottom = Math.max(0, sheetTop - PEEK_GAP_PX)
+  const estimatedH = visualSheetHeightPx()
+  const estimatedBottom = estimatedH < 8 ? 0 : Math.round(vh - estimatedH)
+  const sheetTop = readVisualSheetTopPx()
+  const dragging = sheetDragging || dragOffsetPx > 0 || peekResizing
+  const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
+  let bottom = 0
+  if (composerExpanded && !sheetDragging && dragOffsetPx === 0) {
+    // Android composer is 80% of the live layout. iOS 80lvh is parked in a
+    // smaller innerHeight than frozen lvh, so frozen-lvh minus 80lvh leaves a
+    // gap that is taller than the real sheet top... media does not shrink enough.
+    bottom = IS_ANDROID
+      ? visualSheetHeightPx() > 8
+        ? Math.round(vh - visualSheetHeightPx())
+        : 0
+      : peekIosComposerBandBottomPx(sheetTop, slidingOn)
+  } else if (sheetTop >= 8 && !slidingOn) {
+    bottom = Math.round(sheetTop)
+    if (estimatedBottom > 0) bottom = Math.min(bottom, estimatedBottom)
+  } else if (estimatedBottom > 0) {
+    bottom = estimatedBottom
+  }
+  bottom -= PEEK_GAP_PX
   const top = Math.max(0, Math.min(frozenSafeTopPx, Math.max(0, bottom - 8)))
   const height = Math.max(0, Math.round(bottom - top))
   return { top, height }
@@ -298,44 +351,69 @@ function activeSheetFraction() {
   return composerExpanded ? SHEET_COMPOSER_FRACTION : SHEET_REST_FRACTION
 }
 
-function estimateSheetHeightForLayout(layoutH, fraction = activeSheetFraction()) {
+function estimateSheetHeightForLayout(layoutH) {
   const vh = Math.max(0, Number(layoutH) || 0)
   const minPeek = SHEET_MIN_PEEK_REM * rootFontPx()
-  return Math.round(Math.min(vh * fraction, Math.max(0, vh - minPeek)))
-}
-
-function computeSheetTranslateYPx() {
-  if (!overlayOn) return 0
-  if (sheetDragging || dragOffsetPx > 0) return dragOffsetPx
-  if (sheetKbLocked || composerExpanded) return 0
-  const layoutH = sheetLayoutH()
-  const composerH = estimateSheetHeightForLayout(layoutH, SHEET_COMPOSER_FRACTION)
-  const restH = estimateSheetHeightForLayout(layoutH, SHEET_REST_FRACTION)
-  return Math.max(0, composerH - restH)
+  return Math.round(Math.min(vh * activeSheetFraction(), Math.max(0, vh - minPeek)))
 }
 
 function writeSheetHeightVar(px) {
   if (typeof document === 'undefined') return
-  const root = document.documentElement
-  if (px > 0) {
-    root.style.setProperty('--lounge-media-sheet-h', `${px}px`)
-  } else {
-    root.style.removeProperty('--lounge-media-sheet-h')
-  }
-  const ty = computeSheetTranslateYPx()
-  if (ty > 0) {
-    root.style.setProperty('--lounge-media-sheet-translate-y', `${ty}px`)
-  } else {
-    root.style.removeProperty('--lounge-media-sheet-translate-y')
-  }
+  if (px > 0) document.documentElement.style.setProperty('--lounge-media-sheet-h', `${px}px`)
+  else document.documentElement.style.removeProperty('--lounge-media-sheet-h')
 }
 
 function schedulePeekSettleWrite() {
-  writePeekInsetVar()
+  startPeekFollowSheet()
 }
 
 function clearPeekSettleWrite() {
-  // No-op ... rAF loop eliminated in favor of closed-form declarative transform
+  stopPeekFollowSheet()
+}
+
+function syncResizingAttr() {
+  if (typeof document === 'undefined') return
+  if (overlayOn && peekResizing) {
+    document.documentElement.setAttribute('data-lounge-media-sheet-resizing', '')
+  } else {
+    document.documentElement.removeAttribute('data-lounge-media-sheet-resizing')
+  }
+}
+
+function stopPeekFollowSheet() {
+  if (peekFollowRaf) {
+    cancelAnimationFrame(peekFollowRaf)
+    peekFollowRaf = 0
+  }
+  if (peekResizing) {
+    peekResizing = false
+    syncResizingAttr()
+  }
+}
+
+function startPeekFollowSheet() {
+  if (typeof window === 'undefined') return
+  stopPeekFollowSheet()
+  peekResizing = true
+  syncResizingAttr()
+  const t0 = performance.now()
+  const tick = (now) => {
+    peekFollowRaf = 0
+    if (!overlayOn) {
+      peekResizing = false
+      syncResizingAttr()
+      return
+    }
+    writePeekInsetVar()
+    if (now - t0 < PEEK_FOLLOW_MS) {
+      peekFollowRaf = requestAnimationFrame(tick)
+      return
+    }
+    peekResizing = false
+    syncResizingAttr()
+    writePeekInsetVar()
+  }
+  peekFollowRaf = requestAnimationFrame(tick)
 }
 
 function writePeekIdentityVars() {
@@ -345,6 +423,14 @@ function writePeekIdentityVars() {
   root.style.setProperty('--lounge-media-peek-scale', '1')
   // Interpolable identity ... `none` will not ease into translate/scale.
   root.style.setProperty('--lounge-media-peek-transform', 'translate3d(0px, 0px, 0) scale(1)')
+}
+
+function readVisualSheetTopPx() {
+  if (typeof document === 'undefined') return 0
+  const el = document.querySelector('[data-lounge-media-detail-sheet]')
+  if (!(el instanceof HTMLElement)) return 0
+  const top = el.getBoundingClientRect().top
+  return Number.isFinite(top) ? top : 0
 }
 
 function writePeekInsetVar() {
@@ -398,6 +484,10 @@ function syncDraggingAttr() {
   } else {
     document.documentElement.removeAttribute('data-lounge-media-sheet-dragging')
   }
+}
+
+function visualSheetHeightPx() {
+  return Math.max(0, estimateLoungeMediaDetailSheetHeightPx() - dragOffsetPx)
 }
 
 function peekInsetPx() {
@@ -584,7 +674,6 @@ export function setLoungeDetailOverLightboxAttr(on) {
     document.documentElement.removeAttribute('data-lounge-overlay-nested-peek')
     document.documentElement.removeAttribute('data-lounge-media-sheet-resizing')
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
-    document.documentElement.style.removeProperty('--lounge-media-sheet-translate-y')
     document.documentElement.style.removeProperty('--lounge-media-layout-h')
     document.documentElement.style.removeProperty('--lounge-media-peek-inset')
     document.documentElement.style.removeProperty('--lounge-media-peek-scale')
@@ -636,10 +725,10 @@ export function estimateLoungeMediaDetailSheetHeightPx() {
 
 export function readLoungeMediaDetailSheetBottomInsetPx() {
   if (typeof document === 'undefined' || typeof window === 'undefined') return 0
+  const el = document.querySelector('[data-lounge-media-detail-sheet]')
+  if (!(el instanceof HTMLElement)) return 0
+  const top = el.getBoundingClientRect().top
   const vh = layoutViewportH()
-  const layoutHeight = estimateLoungeMediaDetailSheetHeightPx()
-  const ty = computeSheetTranslateYPx()
-  const top = vh - layoutHeight + ty
   return Math.max(0, Math.round(vh - top))
 }
 
@@ -722,7 +811,6 @@ export function unlockLoungeMediaSheetKeyboard() {
   if (overlayOn) syncLoungeMediaSheetHeightVar()
   else if (typeof document !== 'undefined') {
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
-    document.documentElement.style.removeProperty('--lounge-media-sheet-translate-y')
     document.documentElement.style.removeProperty('--lounge-media-peek-inset')
     document.documentElement.style.removeProperty('--lounge-media-peek-scale')
     document.documentElement.style.removeProperty('--lounge-media-peek-tx')

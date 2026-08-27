@@ -86,10 +86,7 @@ export function useLoungeMediaDetailSheetSwipe({ enabled, onDismiss, scrollRef }
     }
     el.style.willChange = 'transform'
     el.style.transition = `transform ${SNAP_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`
-    const baseTy = Number.parseFloat(
-      document.documentElement.style.getPropertyValue('--lounge-media-sheet-translate-y') || '0',
-    ) || 0
-    el.style.transform = `translate3d(0, ${baseTy}px, 0)`
+    el.style.transform = 'translate3d(0, 0, 0)'
     window.setTimeout(() => clearSheetDragVisual(el), SNAP_MS + 20)
   }, [])
 
@@ -127,10 +124,7 @@ export function useLoungeMediaDetailSheetSwipe({ enabled, onDismiss, scrollRef }
     const applyOffset = (el, y) => {
       el.style.willChange = 'transform'
       el.style.transition = 'none'
-      const baseTy = Number.parseFloat(
-        document.documentElement.style.getPropertyValue('--lounge-media-sheet-translate-y') || '0',
-      ) || 0
-      el.style.transform = `translate3d(0, ${baseTy + y}px, 0)`
+      el.style.transform = `translate3d(0, ${y}px, 0)`
       setLoungeMediaSheetDragOffsetPx(y)
     }
 
@@ -288,10 +282,7 @@ export function useLoungeMediaDetailSheetSwipe({ enabled, onDismiss, scrollRef }
       d.lastT = e.timeStamp || Date.now()
       d.el.style.willChange = 'transform'
       d.el.style.transition = 'none'
-      const baseTy = Number.parseFloat(
-        document.documentElement.style.getPropertyValue('--lounge-media-sheet-translate-y') || '0',
-      ) || 0
-      d.el.style.transform = `translate3d(0, ${baseTy + y}px, 0)`
+      d.el.style.transform = `translate3d(0, ${y}px, 0)`
       setLoungeMediaSheetDragOffsetPx(y)
     },
     [scrollRef],

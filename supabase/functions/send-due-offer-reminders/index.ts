@@ -133,22 +133,25 @@ Deno.serve(async (req) => {
     const { data: alreadySentRows, error: sentErr } = candidateIds.length
       ? await admin
         .from('offer_notification_sends')
-        .select('event_id,created_at')
+        .select('event_id,alert_fire_at')
         .in('event_id', candidateIds)
         .eq('lead_minutes', ALERT_SCHEDULE_LEAD_KEY)
       : { data: [], error: null }
     if (sentErr) throw sentErr
-    const lastSentAtByEventId = new Map(
-      (alreadySentRows || []).map((r) => [r.event_id, r.created_at || null])
+    // Dedupe on the fire time we actually covered, never on created_at: this sender
+    // fires early by design (lookaheadMinutes), so comparing a send timestamp against
+    // alert_fire_at made every send re-qualify itself on the next tick (2-3 duplicates).
+    // A moved alert_fire_at is a new key, so real edits still notify exactly once more.
+    const sentKeys = new Set(
+      (alreadySentRows || [])
+        .filter((r) => r.alert_fire_at)
+        .map((r) => `${r.event_id}|${new Date(r.alert_fire_at).toISOString()}`)
     )
-    // Re-send when an event was edited after the prior send (alert_fire_at moved later).
     const unsentEvents = list.filter((ev) => {
-      const sentAt = lastSentAtByEventId.get(ev.id)
-      if (!sentAt) return true
-      const sentMs = new Date(sentAt).getTime()
-      const fireMs = new Date(ev.alert_fire_at || '').getTime()
-      if (!Number.isFinite(sentMs) || !Number.isFinite(fireMs)) return false
-      return sentMs < fireMs
+      if (!ev.alert_fire_at) return false
+      const fireMs = new Date(ev.alert_fire_at).getTime()
+      if (!Number.isFinite(fireMs)) return false
+      return !sentKeys.has(`${ev.id}|${new Date(ev.alert_fire_at).toISOString()}`)
     })
 
     const grouped = new Map<string, typeof unsentEvents>()
@@ -164,6 +167,7 @@ Deno.serve(async (req) => {
     let sent = 0
     let failed = 0
     let removed = 0
+    let logWriteErrors = 0
 
     const subscriptionCache = new Map<string, Array<{ id: string; endpoint: string; p256dh: string | null; auth: string | null }>>()
     const apnsTokenCache = new Map<string, boolean>()
@@ -196,15 +200,21 @@ Deno.serve(async (req) => {
       }
 
       if ((!subscriptions || subscriptions.length === 0) && !hasApns) {
-        await admin.from('offer_notification_sends').insert(
+        const { error: noSubLogError } = await admin.from('offer_notification_sends').upsert(
           eventsAtSameTime.map((item) => ({
             user_id: item.user_id,
             event_id: item.id,
             lead_minutes: ALERT_SCHEDULE_LEAD_KEY,
+            alert_fire_at: item.alert_fire_at,
             send_status: 'no_subscription',
             error_message: 'No push destinations found for user.',
-          }))
+          })),
+          { onConflict: 'event_id,lead_minutes,alert_fire_at', ignoreDuplicates: true }
         )
+        if (noSubLogError) {
+          logWriteErrors += 1
+          console.error('offer_notification_sends upsert failed (no_subscription)', noSubLogError)
+        }
         continue
       }
 
@@ -258,18 +268,30 @@ Deno.serve(async (req) => {
         errorSummary = errorSummary || 'APNs is not configured on this Edge project.'
       }
 
-      await admin.from('offer_notification_sends').insert(
+      // Never let this fail silently: this row IS the dedupe record, so a dropped write
+      // means the same reminder sends again on the next tick.
+      const { error: logError } = await admin.from('offer_notification_sends').upsert(
         eventsAtSameTime.map((item) => ({
           user_id: item.user_id,
           event_id: item.id,
           lead_minutes: ALERT_SCHEDULE_LEAD_KEY,
+          alert_fire_at: item.alert_fire_at,
           send_status: hadSuccess ? 'sent' : 'failed',
           error_message: hadSuccess ? null : errorSummary.slice(0, 400),
-        }))
+        })),
+        { onConflict: 'event_id,lead_minutes,alert_fire_at', ignoreDuplicates: true }
       )
+      if (logError) {
+        logWriteErrors += 1
+        console.error('offer_notification_sends upsert failed', {
+          eventIds: eventsAtSameTime.map((item) => item.id),
+          alertFireAt: ev.alert_fire_at,
+          error: logError,
+        })
+      }
     }
 
-    return new Response(JSON.stringify({ checked, queued, sent, failed, removed, dryRun }), {
+    return new Response(JSON.stringify({ checked, queued, sent, failed, removed, logWriteErrors, dryRun }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {

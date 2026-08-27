@@ -601,6 +601,7 @@ export function ChatCallProvider({
    *   peerUserId?: string | null,
    *   openRoom?: boolean,
    *   preferAccept?: boolean,
+   *   startMinimized?: boolean,
    * }} [opts]
    */
   const joinCall = useCallback(
@@ -651,6 +652,7 @@ export function ChatCallProvider({
               ? opts.peerUserId.trim()
               : null,
           callStartedBy: call.started_by ? String(call.started_by) : null,
+          startMinimized: Boolean(opts.startMinimized),
           ...recordingFieldsFromCall(call),
         })
         setIncoming(null)
@@ -838,8 +840,13 @@ export function ChatCallProvider({
           title: snap?.title || 'Chat call',
           avatarUrl: snap?.avatarUrl || null,
           peerUserId: snap?.fromUserId || null,
-          preferAccept: snap?.kind === 'dm_av',
-          openRoom: true,
+          // Cold-start answers have no incoming snap. Always accept: join() on a
+          // ringing DM is why a lock-screen answer can fulfill CallKit and still
+          // never connect. Do not open the room or mount full-screen chrome…
+          // that steals iOS's in-call UI when the phone is already unlocked.
+          preferAccept: true,
+          openRoom: false,
+          startMinimized: true,
         })
       },
       onDecline: (detail) => {
@@ -1095,13 +1102,16 @@ export function ChatCallProvider({
       {activeCall ? (
         <Suspense
           fallback={
-            <div className="fixed inset-0 z-[128] flex items-center justify-center bg-[#09090b] text-[#a1a1aa]">
-              Connecting...
-            </div>
+            activeCall.startMinimized ? null : (
+              <div className="fixed inset-0 z-[128] flex items-center justify-center bg-[#09090b] text-[#a1a1aa]">
+                Connecting...
+              </div>
+            )
           }
         >
           <ChatCallSession
             key={activeCall.callId}
+            initialMinimized={Boolean(activeCall.startMinimized)}
             callId={activeCall.callId}
             token={activeCall.token}
             serverUrl={activeCall.livekitUrl}

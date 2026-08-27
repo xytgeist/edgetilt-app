@@ -121,6 +121,17 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **Still Windows-owned at the source:** VoIP `callerName` should be the actor display name, not the alert body. Do not "fix" this by deleting the alert push … it is the fallback when VoIP is missing.
 
+### ⚠️ Lock-screen answer needs `audio` + a live page, not just `voip` (2026-08-27)
+
+**Read before touching `UIBackgroundModes` or `EdgeWebView.makeUIView`.** Two device-smoke failures, same architecture:
+
+1. **Phone locked.** CallKit shows "Incoming call." Answer swaps the button to hang up and nothing connects. `voip` only keeps us alive long enough to **report** the incoming call. After `fulfill()`, iOS suspends the process unless **`audio`** is in `UIBackgroundModes`, so WKWebView JS never runs, `callKitWebReady` never fires, and the buffered answer dies. Compounding that, a cold `makeUIView` waited on service-worker hygiene **before the first `load`**, so the page had not even started when the user answered.
+2. **Phone unlocked.** A nicer CallKit UI connects, then the app comes to the front and **dismisses** the system in-call screen. That steal was us: CallKit answer called `joinCall({ openRoom: true })` and mounted full-screen `ChatCallSession` (plus a full-screen Suspense fallback). iOS already hides the native in-call UI when the app is foreground … we made it worse by navigating to the room.
+
+**Fix:** add `audio` to `UIBackgroundModes`; `beginCallBackgroundTask` from report/answer until end; skip SW hygiene when a CallKit call is already tracked; CallKit answer is `preferAccept: true`, `openRoom: false`, `startMinimized: true`.
+
+**Honest limit:** answering while the phone is **unlocked** still foregrounds Edge. That is iOS, not us. We no longer replace CallKit with a second full-screen web call. We cannot keep the full-screen system "you're on a call" UI while our window is the foreground app.
+
 ---
 
 ## Debug builds feel broken … measure before you "fix" (2026-08-26)

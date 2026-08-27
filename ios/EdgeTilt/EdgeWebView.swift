@@ -29,11 +29,20 @@ struct EdgeWebView: UIViewRepresentable {
     context.coordinator.attach(webView: webView)
 
     let store = config.websiteDataStore
-    EdgeWebsiteDataHygiene.clearServiceWorkersAndCaches(from: store) {
-      DispatchQueue.main.async {
-        let url = EdgePushManager.shared.consumePendingDeepLinkURL() ?? context.coordinator.url
-        webView.load(URLRequest(url: url))
-        EdgePushManager.shared.markReadyForDeepLinks()
+    let loadNow = {
+      let url = EdgePushManager.shared.consumePendingDeepLinkURL() ?? context.coordinator.url
+      webView.load(URLRequest(url: url))
+      EdgePushManager.shared.markReadyForDeepLinks()
+    }
+    // A VoIP wake already has a CallKit call tracked. Waiting on SW hygiene here
+    // is how a lock-screen answer fulfills CallKit before the page even starts.
+    if EdgeCallKitManager.shared.hasTrackedCalls {
+      loadNow()
+    } else {
+      EdgeWebsiteDataHygiene.clearServiceWorkersAndCaches(from: store) {
+        DispatchQueue.main.async {
+          loadNow()
+        }
       }
     }
     return webView

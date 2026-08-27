@@ -1068,6 +1068,14 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **CallKit lock-screen answer still dead / unlocked answer steals the system in-call UI … fix landed, rebuild owed (Mac):** Ryan's second-pass report after `4d4f15ce`.
+
+  **Locked:** "Incoming call" → answer only flips the button to hang up, no connect. `voip` does not keep WKWebView alive after we `fulfill()`. Missing **`audio`** background mode, plus a cold `makeUIView` that waited on SW hygiene **before the first load**, so the page never reached `callKitWebReady` while the phone stayed locked. Also: a cold-start answer has no `incoming` snap, so we called `chatJoinCall` instead of `chatAcceptCall`.
+
+  **Unlocked:** nicer CallKit UI actually connects, then Edge comes forward and **dismisses** the native in-call screen. iOS already hides that screen when the app is foreground. We made it worse with `openRoom: true` + full-screen `ChatCallSession` / "Connecting…" fallback.
+
+  **Fix:** `audio` in `UIBackgroundModes`; background task from report/answer until end; skip hygiene when a call is already tracked; CallKit answer is `preferAccept: true`, `openRoom: false`, `startMinimized: true`. **Honest limit:** we cannot keep the full-screen system call UI while Edge is the foreground app. Rebuild required.
+
 - 2026-08-27: **CallKit banner stuck on "Theo Mac is calling.." … native defense landed, re-smoke owed (Mac):** second-pass smoke after `22e35da0`. Caller side connected (timer, 2:04 hangup). Callee reported the **banner never left "Theo Mac is calling.."** after answer.
 
   **Two stacked causes, neither is the web overlay** (`ChatIncomingCallOverlay` says `Incoming call`; the phrase lives only in `lounge-send-activity-push`):

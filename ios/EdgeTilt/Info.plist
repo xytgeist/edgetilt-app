@@ -57,6 +57,7 @@
 	<string>Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
 		<string>remote-notification</string>
 		<string>voip</string>
 	</array>

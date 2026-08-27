@@ -222,6 +222,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
  *   kind: 'dm_av' | 'group_audio',
  *   callId?: string | null,
  *   title: string,
+ *   initialMinimized?: boolean,
  *   isOutgoing?: boolean,
  *   avatarUrl?: string | null,
  *   viewerAvatarUrl?: string | null,
@@ -247,6 +248,7 @@ export default function ChatCallSession({
   kind,
   callId = null,
   title,
+  initialMinimized = false,
   isOutgoing = false,
   avatarUrl = null,
   viewerAvatarUrl = null,
@@ -270,7 +272,7 @@ export default function ChatCallSession({
   // so multi-remote mics don't stay silent under autoplay.
   const useWebAudioMix = isGroup || videoEnabled
   const [connectError, setConnectError] = useState('')
-  const [minimized, setMinimized] = useState(false)
+  const [minimized, setMinimized] = useState(Boolean(initialMinimized))
   const didConnectRef = useRef(false)
 
   // Ear/cheek against the glass was panning the page under the call overlay.

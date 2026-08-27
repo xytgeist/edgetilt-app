@@ -26,6 +26,12 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   private var webReady = false
   private var pendingWebEvents: [(event: String, detail: [String: Any])] = []
   private static let maxPendingWebEvents = 8
+  private var callBackgroundTask: UIBackgroundTaskIdentifier = .invalid
+
+  /// True while CallKit is tracking at least one invite/call. The web view uses
+  /// this to skip SW hygiene on a VoIP cold start so the page can load before
+  /// the user answers from the lock screen.
+  var hasTrackedCalls: Bool { !calls.isEmpty }
 
   private override init() {
     // Call UI name comes from CFBundleDisplayName ("Edge").
@@ -72,6 +78,22 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   /// A new page load tears down the listeners, so stop dispatching until JS re-marks.
   func invalidateWebReady() {
     webReady = false
+  }
+
+  /// Keep the process (and WKWebView JS) alive long enough to load + join after a
+  /// lock-screen answer. `voip` alone does not keep us runnable once the push is
+  /// handled; `audio` + this task is what lets LiveKit connect while locked.
+  func beginCallBackgroundTask() {
+    if callBackgroundTask != .invalid { return }
+    callBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "edge.callkit") { [weak self] in
+      self?.endCallBackgroundTask()
+    }
+  }
+
+  func endCallBackgroundTask() {
+    guard callBackgroundTask != .invalid else { return }
+    UIApplication.shared.endBackgroundTask(callBackgroundTask)
+    callBackgroundTask = .invalid
   }
 
   func currentVoIPTokenPayload() -> [String: Any] {
@@ -131,6 +153,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       // CallKit is now the ring UI. Drop the sibling APNs "X is calling you" card so
       // it does not sit on the lock screen / banner after the user answers.
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+      self.beginCallBackgroundTask()
       completion(.success(["ok": true, "uuid": uuid.uuidString.lowercased()]))
     }
   }
@@ -157,6 +180,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
       calls.removeValue(forKey: uuid)
     }
+    endCallBackgroundTask()
   }
 
   // MARK: - APNs alert path (foreground banner with chat_call_invite metadata)
@@ -238,9 +262,11 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   func providerDidReset(_ provider: CXProvider) {
     calls.removeAll()
+    endCallBackgroundTask()
   }
 
   func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
+    beginCallBackgroundTask()
     if let meta = calls[action.callUUID] {
       dispatchToWeb(
         event: "edge-callkit-answer",
@@ -270,6 +296,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
     calls.removeValue(forKey: action.callUUID)
     EdgeAudioSession.apply(mode: "default") { _ in }
+    endCallBackgroundTask()
     action.fulfill()
   }
 

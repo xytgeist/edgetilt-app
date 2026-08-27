@@ -1080,7 +1080,18 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
   **Fix … dedupe on the fire time we actually covered, never on `created_at`.** Migration **`20260827130000_offer_sends_dedupe_by_fire_time.sql`**: adds `offer_notification_sends.alert_fire_at`, backfills from `offer_events`, collapses pre-existing duplicates (kept earliest per key), and adds **unique index `offer_notification_sends_event_lead_fire_uidx (event_id, lead_minutes, alert_fire_at)`**. Function now keys its "already sent" set on `event_id|alert_fire_at` and both writes are `upsert(..., { onConflict: 'event_id,lead_minutes,alert_fire_at', ignoreDuplicates: true })`. Exact instead of heuristic; a genuine edit moves `alert_fire_at`, becomes a new key, and legitimately notifies **once** more; the unique index makes concurrent ticks race-safe where the old read-then-write had nothing behind it.
 
-  **Applied to test** (statement-by-statement … see the prod checklist note on `db:query` multi-statement files) and **`send-due-offer-reminders` redeployed (v43)**. ⏳ **Open:** Ryan to set one more reminder and confirm a **single** banner with `logWriteErrors: 0`. **⚠️ Do NOT promote to prod until that passes.** Prod then needs: the migration (incl. the `drop index offer_notification_sends_unique`), the function redeploy, and note the unique index builds against prod's larger table. **Prod is worse off than test was** … its two overlapping cron jobs (`*/5` + `* * * * *`) both hit the same broken dedupe.
+  **Applied to test** (statement-by-statement … see the prod checklist note on `db:query` multi-statement files) and **`send-due-offer-reminders` redeployed (v43)**.
+
+  **✅ SMOKE PASSED on test (Ryan, 2026-08-27).** Two alerts on the **same** event, each sent **exactly once**, no repeat on the following ticks:
+
+  | `alert_fire_at` | Sent tick | Sends | `logWriteErrors` | Row written |
+  | --- | --- | --- | --- | --- |
+  | 17:30:00Z | 17:29 | 1 | 0 | ✅ |
+  | 17:45:00Z | 17:44 | 1 | 0 | ✅ |
+
+  That covers **both** halves: duplicates gone, **and** edit-renotify still works … the re-edited event took a new `alert_fire_at`, got its own dedupe row, and notified once instead of being suppressed forever. Deep-link tap → `WeekEventDetailModal` also confirmed.
+
+  ⏳ **Prod promotion (needs Ryan's explicit go):** (1) apply `20260827130000` incl. **`drop index offer_notification_sends_unique`** … the unique index builds against prod's much larger table, so expect a brief lock; (2) redeploy `send-due-offer-reminders`; (3) ship the web build for the `WeekEventDetailModal` deep link. **Prod is worse off than test was** … its **two** overlapping cron jobs (`*/5` + `* * * * *`) both hit the same broken dedupe, so consider collapsing to the every-minute job at the same time (the `*/5` one has a dead zone anyway … see cadence note below).
 
   **Corrects the claim in the cron entry below** that duplicate triggers were "deduped by `offer_notification_sends` on `(event_id, lead_minutes)`, so no user ever got doubles." That was wrong … the dedupe was defeated by its own early-send lookahead, and prod's **two overlapping jobs** (`send-due-offer-reminders-5m` + `send_due_offer_reminders_minute`) made prod *more* exposed, not less. Re-evaluate collapsing those to one once the fix lands.
 

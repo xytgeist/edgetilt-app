@@ -117,6 +117,8 @@ SQL-first with the old function still running is a short window of possible extr
 
 **Leaked prod key in test cron:** Ryan 2026-08-27 … **there was never a leak. Mac Theo misread it.** Not a risk we accepted ... a false alarm. **Do not rotate. Do not reopen. Do not re-raise it at Ryan on a cold start.**
 
+**Prod key in prod `cron.job.command` (the real, separate one WinTheo found):** the dropped `send-due-offer-reminders-5m` job had an inline `sb_secret_…` bearer. Job drop removed the stored value, and **Ryan handled it 2026-08-27 … closed, not an issue.** Same instruction: do not re-raise on a cold start. Standing rule that *does* carry forward: new cron jobs use the `invoke_*()` vault wrapper, **never** an inline bearer in `cron.job`.
+
 **✅ IPA lightbox smoke PASSED (Ryan, 2026-08-27, `EdgeTilt Test Fast`).** Whole overlay-comments list works: peek contain-fit + 5px gap, dismiss targets, comment media from the list, one-hop nested, composer 80lvh. No functional follow-up.
 
 ### Lightbox smoothness … Ryan's one complaint (assigned to WinTheo, web not `ios/`)

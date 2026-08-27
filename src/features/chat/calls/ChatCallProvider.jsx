@@ -1131,7 +1131,7 @@ export function ChatCallProvider({
     <ChatCallContext.Provider value={value}>
       {children}
       <ChatIncomingCallOverlay
-        open={Boolean(incoming) && !activeCall && !callbackPrompt}
+        open={Boolean(incoming) && !activeCall && !callbackPrompt && !isEdgeiOSShell()}
         title={incoming?.title || 'Incoming call'}
         avatarUrl={incoming?.avatarUrl || null}
         subtitle={

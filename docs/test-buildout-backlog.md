@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **IPA call chrome: background/killed unlock + no stacked invite + no in-app incoming overlay (Mac).** Ryan's focused-then-lock path worked because iOS already had our scene warm. Backgrounded / force-closed answers left us on the home screen because `protectedDataDidBecomeAvailable` often does not fire after the first unlock of the boot. Fix: poll `requestSceneSessionActivation` + `edgetilt://call` after a non-active answer until we become `.active`. Unlocked home screen was showing CallKit **and** the APNs "Edge Chat is calling you" card … sender now skips the ringing alert when VoIP landed (missed still notifies). `ChatIncomingCallOverlay` hidden on `isEdgeiOSShell()`. Rebuild + **redeploy `lounge-send-activity-push` on test** owed.
+
 - 2026-08-27: **Unlock after lock-screen answer did not open Edge (Mac).** Ryan's expected flow is correct: answer locked → unlock → Edge comes forward on the chat room + call chrome. First cut only fired reveal if we were already `.active`. Unlocking usually leaves us backgrounded, so the event never ran. Fix: `protectedDataDidBecomeAvailable` + `didBecomeActive` / `scenePhase` + `requestSceneSessionActivation` + `edgetilt://call`, then `edge-native-call-reveal`. Also persist `chat_room_id` from `accept_call` onto CallKit meta, remount chrome if the call row fetch misses. Rebuild owed.
 
 - 2026-08-27: **Lounge lightbox comments sheet smoothness + GPU compositing (Windows).** Root cause of the sheet/media animation stutter identified and resolved:

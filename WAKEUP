@@ -83,7 +83,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Contract:** `docs/ios-native-bridge.md` (principle + method rows + native LiveKit table). Web writes `setAuthSession` on login/refresh. CallKit answer → Keychain JWT → `accept_call` → `Room.connect` → mic on `didActivate`. Chrome stays web. Video is a UIKit overlay behind a transparent hole.
 
-**Smoke owed on device:** locked, force-closed, answer, **do not unlock**. Caller must leave Ringing and hear two-way audio. Then unlock: Edge should come forward on that chat room + live call chrome (we cannot unlock the phone; unlock → `protectedDataDidBecomeAvailable` → `edgetilt://call` → `edge-native-call-reveal`). Camera / remote video after unlock. First reveal cut (`ce928433`) only fired if we were already `.active` … that is why it looked like it did nothing.
+**Smoke owed on device:** (1) focused-then-lock still works. (2) **backgrounded then lock** and **force-closed then lock** … answer, two-way audio, unlock should now bring Edge to that room + chrome (we poll the scene; `protectedData` is not enough). (3) Unlocked home screen: CallKit only, no sibling "Edge Chat is calling you" … needs **`lounge-send-activity-push` redeploy**. (4) In-app incoming: CallKit banner, not the old full-screen VOICE CALL overlay.
 
 **WinTheo:** Mac landed the IPA JS stubs (`setAuthSession` writer, `ChatCallSession` skips `LiveKitRoom`). Do not revert those to a second LiveKit room.
 

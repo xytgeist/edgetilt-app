@@ -109,7 +109,7 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
 2. **APNs alert banner** … `EdgePushManager` `willPresent` → `handleCallInviteUserInfo()` (foreground only).
 3. **PushKit VoIP** … `pushRegistry(_:didReceiveIncomingPushWith:)` (any app state).
 
-Paths 2 and 3 both fire because **`lounge-send-activity-push` sends an alert push *and* a VoIP push** for `chat_call_invite` (`sendApnsToUser` + `sendVoipApnsToUser`). With `maximumCallGroups = 1` that meant duplicate or failed `reportNewIncomingCall` calls for one logical call, repeated `EdgeAudioSession.apply`, and worst of all **stranded CallKit calls**: `endCall` resolves a single UUID, so declining cleared one and left the others up ("stuck on a call that does not exist").
+Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an alert push *and* a VoIP push** for `chat_call_invite`. With `maximumCallGroups = 1` that meant duplicate or failed `reportNewIncomingCall` calls for one logical call, repeated `EdgeAudioSession.apply`, and worst of all **stranded CallKit calls**: `endCall` resolves a single UUID, so declining cleared one and left the others up ("stuck on a call that does not exist"). As of 2026-08-27 the sender **skips the ringing alert when VoIP sent**, so path 2 is fallback-only. Dedup still stays.
 
 **Fix:** `reportIncomingCall` now returns the **existing** UUID when a call with the same trimmed `callId` is already tracked (`deduped: true`). All three paths converge on one CallKit call. **Do not** re-add per-path UUID minting, and **do not** "fix" this by removing one of the three paths … each is load-bearing for a different app state.
 
@@ -140,7 +140,9 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **Native defense (this commit):** `sanitizedCallerName` strips a trailing `is calling you` / `is calling` before `reportNewIncomingCall`. Successful report / answer / end also `removeDeliveredCallInviteNotifications`. Foreground `willPresent` for `chat_call_invite` reports CallKit and presents **nothing** (no stacked banner).
 
-**Still Windows-owned at the source:** VoIP `callerName` should be the actor display name, not the alert body. Do not "fix" this by deleting the alert push … it is the fallback when VoIP is missing.
+**Alert vs CallKit (2026-08-27):** if VoIP landed (`sendVoipApnsToUser` sent ≥ 1), **do not** also send the ringing APNs alert. CallKit is the incoming UI. Keep `chat_call_missed` as a normal notification. Keep the ringing alert as **fallback** when the user has no VoIP token (PWA / token missing). Native still retracts a delivered invite card if both race in.
+
+**VoIP `callerName`:** sender now strips `is calling you` and sends the actor name. Native `sanitizedCallerName` stays as defense.
 
 ### ⚠️ Lock-screen answer needs `audio` + a live page, not just `voip` (2026-08-27)
 
@@ -155,7 +157,9 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **The IPA path (2026-08-27) is native LiveKit.** CallKit answer calls `chat-calls` `accept_call` with the Keychain JWT, connects the Swift `Room`, and publishes the mic in `provider(_:didActivate:)`. Web is notified so chrome can mount. Web does **not** create a second room. Camera publishes when the app is active (iOS will not give a useful camera while locked). Remote video is a UIKit `VideoView` **behind** the (transparent) WKWebView hole.
 
-**We cannot unlock the phone.** There is no public API for that. After a lock-screen answer, iOS keeps the system CallKit UI on the lock screen (audio is already native). Unlocking often does **not** foreground Edge (home screen / CallKit UI stays). We listen for `protectedDataDidBecomeAvailable` (the unlock signal even while backgrounded), then `requestSceneSessionActivation` + `edgetilt://call` to bring Edge forward, then fire `edge-native-call-reveal` so web opens the chat room and the full in-app live call screen. Also re-fire reveal when JS calls `callKitWebReady` after a cold page load, and again once `accept_call` fills `chat_room_id`.
+**We cannot unlock the phone.** There is no public API for that. After a lock-screen answer, iOS keeps the system CallKit UI on the lock screen (audio is already native). Unlocking often does **not** foreground Edge (home screen / CallKit UI stays), and `protectedDataDidBecomeAvailable` often does **not** fire after the first unlock of the boot (data stays available while locked). That is why the path only worked when Edge was already the focused app at lock time (iOS brings that scene back). After a background / killed answer we poll `requestSceneSessionActivation` + `edgetilt://call` until we actually become `.active`, then fire `edge-native-call-reveal` so web opens the chat room and the full in-app live call screen. Also re-fire reveal when JS calls `callKitWebReady` after a cold page load, and again once `accept_call` fills `chat_room_id`.
+
+**IPA incoming overlay:** CallKit is the answer UI. `ChatIncomingCallOverlay` stays for web / PWA / Android and is hidden on `isEdgeiOSShell()`. Live chrome after answer is unchanged.
 
 **Do not** re-introduce unlock-retry / remount-`LiveKitRoom` as the lock-screen fix. That was a wrapper-era patch and it cannot pass the locked-phone smoke.
 

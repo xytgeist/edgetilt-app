@@ -326,6 +326,15 @@ type PushNotificationPayload = {
   chatCallId?: string
 }
 
+/** VoIP / CallKit wants the actor name, not the APNs sentence. */
+function callerNameFromInviteNotification(notification: PushNotificationPayload): string {
+  const body = String(notification.body || '').trim()
+  const stripped = body.replace(/\s+is calling(?: you)?\.?$/i, '').trim()
+  if (stripped) return stripped
+  const title = String(notification.title || '').trim()
+  return title || 'Incoming call'
+}
+
 function pokerStableTabForRecipient(
   event: Pick<
     ActivityEventRow,
@@ -696,24 +705,34 @@ async function sendPushToUser(
     }
   }
 
-  const apns = await sendApnsToUser(admin, userId, notification)
-  sent += apns.sent
-  failed += apns.failed
-  removed += apns.removed
-
+  // IPA + a live VoIP token: CallKit is the ring. Sending the sibling APNs
+  // "Edge Chat / X is calling you" banner stacks on the CallKit UI while
+  // unlocked. Keep the alert as fallback when VoIP did not land. Missed
+  // calls still go through the normal APNs path below.
+  let skipApnsAlert = false
   if (notification.eventType === 'chat_call_invite' && notification.chatCallId) {
     const voip = await sendVoipApnsToUser(admin, userId, {
       chatCallId: notification.chatCallId,
       roomId: extractRoomIdFromPushUrl(notification.url),
-      callerName: notification.body?.replace(/^.*from\s+/i, '') || notification.title,
+      callerName: callerNameFromInviteNotification(notification),
       hasVideo: false,
     })
     sent += voip.sent
     failed += voip.failed
     removed += voip.removed
+    skipApnsAlert = voip.sent > 0
   }
 
-  if (webList.length === 0 && apns.reason === 'no_tokens') {
+  let apnsReason = ''
+  if (!skipApnsAlert) {
+    const apns = await sendApnsToUser(admin, userId, notification)
+    sent += apns.sent
+    failed += apns.failed
+    removed += apns.removed
+    apnsReason = String(apns.reason || '')
+  }
+
+  if (webList.length === 0 && sent === 0 && (skipApnsAlert || apnsReason === 'no_tokens')) {
     return { sent: 0, failed: 0, removed: 0, message: 'No push destinations for recipient.' }
   }
 

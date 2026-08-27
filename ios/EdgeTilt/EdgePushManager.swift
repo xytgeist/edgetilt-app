@@ -212,6 +212,18 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
   /// ended). The alert is a sibling of the VoIP push, not the call UI, so answering
   /// CallKit never updates it.
   func removeDeliveredCallInviteNotifications(callId: String?) {
+    removeDeliveredCallInviteNotificationsNow(callId: callId)
+    // APNs often lands a beat after VoIP. Retract again so the sibling
+    // "Edge Chat is calling you" card does not stick under CallKit.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+      self?.removeDeliveredCallInviteNotificationsNow(callId: callId)
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+      self?.removeDeliveredCallInviteNotificationsNow(callId: callId)
+    }
+  }
+
+  private func removeDeliveredCallInviteNotificationsNow(callId: String?) {
     let trimmed = callId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let center = UNUserNotificationCenter.current()
     center.getDeliveredNotifications { notes in

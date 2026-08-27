@@ -1511,12 +1511,8 @@ export async function revokeHorseDeal(supabase, dealId, stakerUserId) {
     }
     return { deal: null, error }
   }
-  // Detach pending-play sessions to personal (trigger also runs when RPC applied).
-  try {
-    await supabase.rpc('poker_stable_detach_stake_sessions_to_personal', { p_deal_id: dealId })
-  } catch {
-    // ignore if migration not applied yet
-  }
+  // Sessions detach to personal via the poker_stable_after_backer_exit_detach
+  // trigger on the status flip above, so there is no RPC to make here.
   return { deal: data, error: null }
 }
 

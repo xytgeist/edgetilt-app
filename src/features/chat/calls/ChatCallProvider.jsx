@@ -620,11 +620,15 @@ export function ChatCallProvider({
       if (activeCallRef.current?.callId === id) {
         unlockChatCallAudio()
         enterCallAudioSession()
+        const roomId = String(opts.roomId || activeCallRef.current.roomId || '').trim()
+        if (roomId && roomId !== activeCallRef.current.roomId) {
+          setActiveCall((prev) => (prev ? { ...prev, roomId } : prev))
+        }
         // Remounting LiveKitRoom was a wrapper-era unlock retry. IPA media is native.
         if (!isEdgeiOSShell()) {
           setActiveCall((prev) => (prev ? { ...prev, connectNonce: Date.now() } : prev))
         }
-        if (opts.openRoom !== false) onOpenRoom?.(activeCallRef.current.roomId)
+        if (opts.openRoom !== false) onOpenRoom?.(roomId || activeCallRef.current.roomId)
         return activeCallRef.current
       }
       unlockChatCallAudio()
@@ -653,9 +657,12 @@ export function ChatCallProvider({
           res = await action(supabaseClient, id)
         }
         const call = res.call
-        if (!call?.id) throw new Error('Could not join call')
-        const roomId = String(call.chat_room_id || res.roomId || '')
-        ensureBroadcast(roomId)?.emit('accept', { callId: call.id })
+        const roomId = String(call?.chat_room_id || res.roomId || opts.roomId || '')
+        if (!call?.id && !(isEdgeiOSShell() && (roomId || id))) {
+          throw new Error('Could not join call')
+        }
+        const resolvedCallId = String(call?.id || id)
+        ensureBroadcast(roomId)?.emit('accept', { callId: resolvedCallId })
         let viewerAvatarUrl =
           typeof opts.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
             ? opts.viewerAvatarUrl.trim()
@@ -673,10 +680,10 @@ export function ChatCallProvider({
         endingRef.current = false
         // Mount call UI before room navigation so Accept never flashes the underlying tab.
         setActiveCall({
-          callId: call.id,
+          callId: resolvedCallId,
           roomId,
-          kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
-          mediaMode: call.media_mode === 'video' || res.hasVideo ? 'video' : 'audio',
+          kind: call?.kind === 'group_audio' ? 'group_audio' : 'dm_av',
+          mediaMode: call?.media_mode === 'video' || res.hasVideo ? 'video' : 'audio',
           token: res.token || 'native',
           livekitUrl: res.livekit_url || res.livekitUrl || 'native',
           viaNative: isEdgeiOSShell(),
@@ -688,13 +695,13 @@ export function ChatCallProvider({
             typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
               ? opts.peerUserId.trim()
               : null,
-          callStartedBy: call.started_by ? String(call.started_by) : null,
+          callStartedBy: call?.started_by ? String(call.started_by) : null,
           startMinimized: Boolean(opts.startMinimized),
           ...recordingFieldsFromCall(call),
         })
         setIncoming(null)
         if (opts.openRoom !== false) onOpenRoom?.(roomId)
-        return call
+        return call || { id: resolvedCallId, chat_room_id: roomId }
       } catch (err) {
         showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
         return null

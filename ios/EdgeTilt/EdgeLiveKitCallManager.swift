@@ -258,7 +258,14 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       let next = try await connectRoom(callId: id, roomId: resolvedRoom, hasVideo: video, url: url, token: token)
       var withCall = next
       withCall.callPayload = joined.call
-      await MainActor.run { self.state.callPayload = joined.call }
+      await MainActor.run {
+        self.state.callPayload = joined.call
+        EdgeCallKitManager.shared.updateTrackedCall(
+          callId: id,
+          roomId: resolvedRoom,
+          hasVideo: video
+        )
+      }
       return withCall
     }
     connectingCallId = id

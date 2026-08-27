@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Unlock after lock-screen answer did not open Edge (Mac).** Ryan's expected flow is correct: answer locked → unlock → Edge comes forward on the chat room + call chrome. First cut only fired reveal if we were already `.active`. Unlocking usually leaves us backgrounded, so the event never ran. Fix: `protectedDataDidBecomeAvailable` + `didBecomeActive` / `scenePhase` + `requestSceneSessionActivation` + `edgetilt://call`, then `edge-native-call-reveal`. Also persist `chat_room_id` from `accept_call` onto CallKit meta, remount chrome if the call row fetch misses. Rebuild owed.
+
 - 2026-08-27: **Lounge lightbox comments sheet smoothness + GPU compositing (Windows).** Root cause of the sheet/media animation stutter identified and resolved:
   - **The real bottleneck:** `startPeekFollowSheet()` ran a 400ms `requestAnimationFrame` polling loop that attached `data-lounge-media-sheet-resizing`, which explicitly disabled CSS transitions on the peek media (`transition: none !important`), and repeatedly invoked `getBoundingClientRect()` on every single frame to chase the animating sheet. This forced synchronous layout recalculation and DOM reflow at 60-120Hz while disabling GPU compositor interpolation.
   - **Fix:** Eliminated the rAF chase loop (`startPeekFollowSheet`, `stopPeekFollowSheet`, `peekResizing`, `syncResizingAttr`, `schedulePeekSettleWrite`, `clearPeekSettleWrite`).

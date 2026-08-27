@@ -23,6 +23,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     EdgeCallKitManager.shared.handleDidBecomeActive()
   }
 
+  func applicationProtectedDataDidBecomeAvailable(_ application: UIApplication) {
+    EdgeCallKitManager.shared.handleDeviceUnlocked()
+  }
+
   func application(
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data

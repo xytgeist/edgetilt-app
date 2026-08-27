@@ -29,9 +29,12 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   private var callBackgroundTask: UIBackgroundTaskIdentifier = .invalid
   private var mediaConnected = false
   private var answeredUUIDs: Set<UUID> = []
-  /// Answer happened while the phone was locked / backgrounded. On unlock we
-  /// reveal the in-app live call screen. We cannot unlock the device ourselves.
+  /// Answer happened while the phone was locked / backgrounded. Stay true until
+  /// we have actually become active and told web to open chat + chrome.
   private var pendingCallReveal = false
+  private var didRevealCallThisAnswer = false
+  private var unlockObserversInstalled = false
+  private var lastSceneActivationAt: Date?
 
   /// True while CallKit is tracking at least one invite/call. The web view uses
   /// this to skip SW hygiene on a VoIP cold start so the page can load before
@@ -60,6 +63,37 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     registry.delegate = self
     registry.desiredPushTypes = [.voIP]
     pushRegistry = registry
+    installUnlockObservers()
+  }
+
+  /// Unlock often does **not** activate the app (home screen / CallKit UI stays).
+  /// `protectedDataDidBecomeAvailable` is the unlock signal even while we stay
+  /// backgrounded. Then we request the scene so Edge actually comes forward.
+  private func installUnlockObservers() {
+    if unlockObserversInstalled { return }
+    unlockObserversInstalled = true
+    let center = NotificationCenter.default
+    center.addObserver(
+      forName: UIApplication.protectedDataDidBecomeAvailableNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.handleDeviceUnlocked()
+    }
+    center.addObserver(
+      forName: UIApplication.didBecomeActiveNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.handleDidBecomeActive()
+    }
+    center.addObserver(
+      forName: UIScene.didActivateNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.handleDidBecomeActive()
+    }
   }
 
   func attach(webView: WKWebView) {
@@ -77,6 +111,12 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     pendingWebEvents = []
     for item in replay {
       evaluateWebEvent(event: item.event, detail: item.detail)
+    }
+    // Page just became ready after a lock-screen answer. Replay may have been
+    // empty if becomeActive never ran (Edge stayed in the background).
+    if pendingCallReveal || (hasTrackedCalls && !answeredUUIDs.isEmpty && !didRevealCallThisAnswer) {
+      pendingCallReveal = true
+      revealInAppCallIfNeeded(force: true)
     }
     completion(.success(["ok": true, "replayed": replay.count]))
   }
@@ -96,31 +136,103 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   /// this is also when we can show the in-app live call chrome.
   func handleDidBecomeActive() {
     EdgeLiveKitCallManager.shared.handleDidBecomeActive()
-    revealInAppCallIfNeeded()
+    revealInAppCallIfNeeded(force: false)
   }
 
-  /// iOS will not let us unlock the phone. After the user unlocks (or iOS
-  /// brings Edge forward), open the chat room + full call modal.
-  func revealInAppCallIfNeeded() {
-    guard pendingCallReveal else { return }
+  /// Device unlocked while we may still be backgrounded. Ask iOS to show Edge.
+  func handleDeviceUnlocked() {
+    guard pendingCallReveal || (!answeredUUIDs.isEmpty && !didRevealCallThisAnswer) else { return }
+    pendingCallReveal = true
+    activateCallScene()
+    if UIApplication.shared.applicationState == .active {
+      revealInAppCallIfNeeded(force: false)
+    }
+  }
+
+  /// iOS will not let us unlock the phone. After unlock we request our scene,
+  /// then tell web to open the chat room + full call chrome.
+  func revealInAppCallIfNeeded(force: Bool) {
+    guard pendingCallReveal || force else { return }
+    if !force, UIApplication.shared.applicationState != .active {
+      activateCallScene()
+      return
+    }
+    let snapshot = revealSnapshot()
+    guard !snapshot.callId.isEmpty else { return }
     pendingCallReveal = false
+    didRevealCallThisAnswer = true
+    dispatchToWeb(
+      event: "edge-native-call-reveal",
+      detail: [
+        "callId": snapshot.callId,
+        "roomId": snapshot.roomId,
+        "hasVideo": snapshot.hasVideo,
+        "openRoom": true,
+      ]
+    )
+  }
+
+  func updateTrackedCall(callId: String, roomId: String, hasVideo: Bool?) {
+    let trimmed = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let uuid = calls.first(where: { $0.value.callId == trimmed })?.key,
+          let old = calls[uuid]
+    else { return }
+    let nextRoom = roomId.trimmingCharacters(in: .whitespacesAndNewlines)
+    let resolvedRoom = nextRoom.isEmpty ? old.roomId : nextRoom
+    calls[uuid] = CallMeta(
+      callId: old.callId,
+      roomId: resolvedRoom,
+      hasVideo: hasVideo ?? old.hasVideo,
+      callerName: old.callerName
+    )
+    let roomFilled = old.roomId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      && !resolvedRoom.isEmpty
+    if roomFilled, pendingCallReveal || didRevealCallThisAnswer {
+      pendingCallReveal = true
+      didRevealCallThisAnswer = false
+      if UIApplication.shared.applicationState == .active {
+        revealInAppCallIfNeeded(force: true)
+      } else {
+        activateCallScene()
+      }
+    }
+  }
+
+  private func revealSnapshot() -> (callId: String, roomId: String, hasVideo: Bool) {
     let native = EdgeLiveKitCallManager.shared.currentState()
     let meta = calls.values.first
     let callId = ((native["callId"] as? String) ?? meta?.callId ?? "")
       .trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !callId.isEmpty else { return }
     let roomId = ((native["roomId"] as? String) ?? meta?.roomId ?? "")
       .trimmingCharacters(in: .whitespacesAndNewlines)
     let hasVideo = (native["hasVideo"] as? Bool) ?? meta?.hasVideo ?? false
-    dispatchToWeb(
-      event: "edge-native-call-reveal",
-      detail: [
-        "callId": callId,
-        "roomId": roomId,
-        "hasVideo": hasVideo,
-        "openRoom": true,
-      ]
+    return (callId, roomId, hasVideo)
+  }
+
+  /// Bring the existing WKWebView scene forward after a lock-screen answer.
+  private func activateCallScene() {
+    if let last = lastSceneActivationAt, Date().timeIntervalSince(last) < 1.5 {
+      return
+    }
+    lastSceneActivationAt = Date()
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    guard let scene = scenes.first(where: { $0.activationState != .unattached }) ?? scenes.first else {
+      return
+    }
+    let options = UIScene.ActivationRequestOptions()
+    options.requestingScene = scene
+    UIApplication.shared.requestSceneSessionActivation(
+      scene.session,
+      userActivity: nil,
+      options: options,
+      errorHandler: nil
     )
+    scene.windows.first(where: \.isKeyWindow)?.makeKeyAndVisible()
+    // Own-scheme open is the reliable "bring Edge forward after unlock" nudge.
+    // requestSceneSessionActivation alone often no-ops while we stay backgrounded.
+    if let url = URL(string: "edgetilt://call") {
+      UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
   }
 
   func dispatchNativeCallState(_ detail: [String: Any]) {
@@ -232,6 +344,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       answeredUUIDs.remove(uuid)
       mediaConnected = false
       pendingCallReveal = false
+      didRevealCallThisAnswer = false
       if calls.isEmpty { endCallBackgroundTask() }
       EdgeAudioSession.apply(mode: "default") { _ in }
       completion(.success(["ok": true]))
@@ -256,6 +369,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     answeredUUIDs.removeAll()
     mediaConnected = false
     pendingCallReveal = false
+    didRevealCallThisAnswer = false
     EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
     endCallBackgroundTask()
   }
@@ -382,6 +496,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     answeredUUIDs.removeAll()
     mediaConnected = false
     pendingCallReveal = false
+    didRevealCallThisAnswer = false
     EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
     endCallBackgroundTask()
   }
@@ -450,6 +565,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     answeredUUIDs.remove(action.callUUID)
     mediaConnected = false
     pendingCallReveal = false
+    didRevealCallThisAnswer = false
     EdgeAudioSession.apply(mode: "default") { _ in }
     endCallBackgroundTask()
     action.fulfill()

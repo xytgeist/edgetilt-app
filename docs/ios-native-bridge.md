@@ -155,6 +155,8 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **The IPA path (2026-08-27) is native LiveKit.** CallKit answer calls `chat-calls` `accept_call` with the Keychain JWT, connects the Swift `Room`, and publishes the mic in `provider(_:didActivate:)`. Web is notified so chrome can mount. Web does **not** create a second room. Camera publishes when the app is active (iOS will not give a useful camera while locked). Remote video is a UIKit `VideoView` **behind** the (transparent) WKWebView hole.
 
+**We cannot unlock the phone.** There is no public API for that. After a lock-screen answer, iOS keeps the system CallKit UI on the lock screen (audio is already native). The moment the user unlocks (or iOS brings Edge forward), native fires `edge-native-call-reveal` so web opens the chat room and the full in-app live call screen.
+
 **Do not** re-introduce unlock-retry / remount-`LiveKitRoom` as the lock-screen fix. That was a wrapper-era patch and it cannot pass the locked-phone smoke.
 
 **Remote hangup must tell CallKit.** Broadcast `end` / `decline` and the `chat_calls` UPDATE to `ended|missed|declined` used to only `setActiveCall(null)`. That unmounts chrome and leaves the native call up. Both paths `endEdgeNativeCall({ reason: 'remote' })`, which also disconnects the native room.

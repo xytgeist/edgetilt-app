@@ -545,6 +545,16 @@ function NativeIpaCallSession({
   }, [callId, onDisconnected, onError])
 
   useEffect(() => {
+    const onExpand = (event) => {
+      const id = String(event?.detail?.callId || '').trim()
+      if (id && callId && id !== String(callId)) return
+      setMinimized(false)
+    }
+    window.addEventListener('edge-native-call-expand', onExpand)
+    return () => window.removeEventListener('edge-native-call-expand', onExpand)
+  }, [callId])
+
+  useEffect(() => {
     void setNativeCallChrome({ minimized, videoVisible: videoEnabled && !awaitingAnswer })
   }, [minimized, videoEnabled, awaitingAnswer])
 

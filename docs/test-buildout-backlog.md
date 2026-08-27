@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Lock-screen answer cannot unlock the phone (Mac).** No public API. After answer, native audio still starts locked. On `applicationDidBecomeActive` we fire `edge-native-call-reveal` so web opens the chat room + full in-app live call screen (expand if minimized). Rebuild owed.
+
 - 2026-08-27: **🎯 Lightbox smoothness: constant-height GPU translateY sheet + closed-form peek transition (Windows).** Landed Ryan's option A to eliminate main-thread layout thrashing during overlay comments / composer resize:
 
   1. **Sheet height is constant (80lvh max):** `[data-lounge-media-detail-sheet]` in `index.css` no longer animates `height: max(70lvh, ...)` to `max(80lvh, ...)`. Sized once to tallest (80lvh), rest position translates down by `(80lvh - 70lvh)` via `--lounge-media-sheet-translate-y` with composited `transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)`. The comment subtree (avatar list, composer glass, connector lines) **never re-lays-out** across rest ↔ composer.

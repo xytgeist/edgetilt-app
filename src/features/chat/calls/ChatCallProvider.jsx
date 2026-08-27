@@ -899,6 +899,23 @@ export function ChatCallProvider({
         void declineIncomingRef.current?.()
         void endEdgeNativeCall({ callId: callId || incomingRef.current?.callId })
       },
+      onReveal: (detail) => {
+        const callId = String(detail?.callId || '').trim()
+        if (!callId) return
+        if (activeCallRef.current && activeCallRef.current.callId !== callId) return
+        window.dispatchEvent(new CustomEvent('edge-native-call-expand', { detail: { callId } }))
+        const snap = incomingRef.current
+        void joinCallRef.current?.(callId, {
+          title: snap?.title || 'Chat call',
+          avatarUrl: snap?.avatarUrl || null,
+          peerUserId: snap?.fromUserId || null,
+          roomId: snap?.roomId || detail?.roomId || '',
+          hasVideo: Boolean(detail?.hasVideo),
+          preferAccept: true,
+          openRoom: true,
+          startMinimized: false,
+        })
+      },
     })
   }, [])
 

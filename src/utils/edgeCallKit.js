@@ -47,7 +47,7 @@ export async function endEdgeNativeCall(args = {}) {
 }
 
 /** Wire CallKit answer/decline → window events for ChatCallProvider. */
-export function installEdgeCallKitListeners({ onAnswer, onDecline }) {
+export function installEdgeCallKitListeners({ onAnswer, onDecline, onReveal }) {
   if (typeof window === 'undefined' || !isEdgeiOSShell()) return () => {}
 
   const onAnswerEvent = (event) => {
@@ -58,13 +58,19 @@ export function installEdgeCallKitListeners({ onAnswer, onDecline }) {
     const detail = event?.detail || {}
     onDecline?.(detail)
   }
+  const onRevealEvent = (event) => {
+    const detail = event?.detail || {}
+    onReveal?.(detail)
+  }
 
   window.addEventListener('edge-callkit-answer', onAnswerEvent)
   window.addEventListener('edge-callkit-decline', onDeclineEvent)
+  window.addEventListener('edge-native-call-reveal', onRevealEvent)
 
   return () => {
     window.removeEventListener('edge-callkit-answer', onAnswerEvent)
     window.removeEventListener('edge-callkit-decline', onDeclineEvent)
+    window.removeEventListener('edge-native-call-reveal', onRevealEvent)
   }
 }
 

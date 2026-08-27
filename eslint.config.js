@@ -16,6 +16,27 @@ const UNUSED_VARS_OPTIONS = {
   destructuredArrayIgnorePattern: '^_',
 }
 
+// These fire as errors from eslint-plugin-react-hooks v7's compiler-based rules,
+// which landed via a caret upgrade rather than from anything we wrote. They flag
+// optimization and purity smells, not crashes, and ~107 of them sit inside
+// LoungePostStreamVideo.jsx ... device-smoked iOS HLS playback with its own
+// do-not-regress doc (docs/lounge-stream-ios-playback.md). As errors they made
+// `npm run lint` permanently red, which is how a real ReferenceError hid in the
+// output for weeks. Warnings keep them visible and burnable down (tracked in
+// docs/test-buildout-backlog.md) while a red run means something actually broke.
+//
+// rules-of-hooks stays an ERROR on purpose ... that one is a genuine crash.
+const COMPILER_RULES_AS_WARNINGS = {
+  'react-hooks/refs': 'warn',
+  'react-hooks/set-state-in-effect': 'warn',
+  'react-hooks/preserve-manual-memoization': 'warn',
+  'react-hooks/immutability': 'warn',
+  'react-hooks/purity': 'warn',
+  // Dev-only Fast Refresh hygiene. Fixing means splitting ~40 files just to move
+  // helpers out ... no runtime or production effect either way.
+  'react-refresh/only-export-components': 'warn',
+}
+
 export default defineConfig([
   globalIgnores([
     'dist',
@@ -68,6 +89,7 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', UNUSED_VARS_OPTIONS],
+      ...COMPILER_RULES_AS_WARNINGS,
     },
   },
 ])

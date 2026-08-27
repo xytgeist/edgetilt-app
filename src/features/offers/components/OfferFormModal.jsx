@@ -33,6 +33,27 @@ function GroupRow({ children, divider = true }) {
   )
 }
 
+const OFFER_DT_PILL_CLASS =
+  'inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-zinc-600/60 px-2.5 py-1'
+
+function offerDtPillClass(active) {
+  return `${OFFER_DT_PILL_CLASS} ${active ? 'text-cyan-300' : 'text-zinc-50'}`
+}
+
+/** Full `Aug 27, 2026` on iPhone 14 Pro+; drop year below ~380px when it is the current year. */
+function OfferDatePillText({ dt }) {
+  if (!dt) return null
+  const withYear = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  if (dt.getFullYear() !== new Date().getFullYear()) return withYear
+  const monthDay = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return (
+    <>
+      <span className="max-[380px]:hidden">{withYear}</span>
+      <span className="hidden max-[380px]:inline">{monthDay}</span>
+    </>
+  )
+}
+
 const ALERT_OPTIONS_ALL_DAY = [
   { value: OFFER_ALERT_NONE, label: 'None' },
   { value: OFFER_ALERT_DAY_9AM, label: 'On day of event (9 AM)' },
@@ -161,7 +182,6 @@ export default function OfferFormModal({
     })
   }, [allDay, draft.endAt, draft.startAt, setDraft])
 
-  const formatDateOnly = (dt) => (dt ? dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '')
   const formatTimeOnly = (dt) => (dt ? dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '')
   const alertOptions = allDay ? ALERT_OPTIONS_ALL_DAY : ALERT_OPTIONS_TIMED
   const safeAlertPreset = draft.alertPreset || defaultAlertPresetForAllDay(allDay)
@@ -822,8 +842,8 @@ export default function OfferFormModal({
             </GroupRow>
             <GroupRow>
             <div ref={startPickerAnchorRef} className="flex h-0 w-0" />
-            <div className="flex h-12 items-center gap-4">
-              <span className="w-[74px] shrink-0 pt-0.5 text-[16px] text-zinc-100">Starts</span>
+            <div className="flex h-12 items-center gap-2">
+              <span className="w-14 shrink-0 pt-0.5 text-[16px] text-zinc-100">Starts</span>
               <button
                 type="button"
                 onClick={() => {
@@ -834,9 +854,9 @@ export default function OfferFormModal({
                 aria-label="Pick start date"
               >
                 {!allDay ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'start' ? 'text-cyan-300' : 'text-zinc-50'}`}>
-                      {formatDateOnly(startSelected)}
+                  <span className="inline-flex shrink-0 items-center gap-1.5">
+                    <span className={offerDtPillClass(activeCalendar === 'start')}>
+                      <OfferDatePillText dt={startSelected} />
                     </span>
                     <button
                       type="button"
@@ -849,14 +869,14 @@ export default function OfferFormModal({
                           return next
                         })
                       }}
-                      className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeTime === 'start' ? 'text-cyan-300' : 'text-zinc-50'}`}
+                      className={offerDtPillClass(activeTime === 'start')}
                     >
                       {formatTimeOnly(startSelected)}
                     </button>
                   </span>
                 ) : (
-                  <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'start' ? 'text-cyan-300' : 'text-zinc-50'}`}>
-                    {formatDateOnly(startSelected)}
+                  <span className={offerDtPillClass(activeCalendar === 'start')}>
+                    <OfferDatePillText dt={startSelected} />
                   </span>
                 )}
               </button>
@@ -866,8 +886,8 @@ export default function OfferFormModal({
             {renderTimePicker('start')}
             <GroupRow divider={false}>
             <div ref={endPickerAnchorRef} className="flex h-0 w-0" />
-            <div className="flex h-12 items-center gap-4">
-              <span className="w-[74px] shrink-0 pt-0.5 text-[16px] text-zinc-100">Ends</span>
+            <div className="flex h-12 items-center gap-2">
+              <span className="w-14 shrink-0 pt-0.5 text-[16px] text-zinc-100">Ends</span>
               <button
                 type="button"
                 onClick={() => {
@@ -878,9 +898,9 @@ export default function OfferFormModal({
                 aria-label="Pick end date"
               >
                 {!allDay ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'end' ? 'text-cyan-300' : 'text-zinc-50'}`}>
-                      {formatDateOnly(endSelected)}
+                  <span className="inline-flex shrink-0 items-center gap-1.5">
+                    <span className={offerDtPillClass(activeCalendar === 'end')}>
+                      <OfferDatePillText dt={endSelected} />
                     </span>
                     <button
                       type="button"
@@ -893,14 +913,14 @@ export default function OfferFormModal({
                           return next
                         })
                       }}
-                      className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeTime === 'end' ? 'text-cyan-300' : 'text-zinc-50'}`}
+                      className={offerDtPillClass(activeTime === 'end')}
                     >
                       {formatTimeOnly(endSelected)}
                     </button>
                   </span>
                 ) : (
-                  <span className={`inline-flex items-center rounded-full bg-zinc-600/60 px-3 py-1 ${activeCalendar === 'end' ? 'text-cyan-300' : 'text-zinc-50'}`}>
-                    {formatDateOnly(endSelected)}
+                  <span className={offerDtPillClass(activeCalendar === 'end')}>
+                    <OfferDatePillText dt={endSelected} />
                   </span>
                 )}
               </button>

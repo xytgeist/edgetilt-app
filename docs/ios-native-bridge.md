@@ -49,6 +49,16 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** + **web** (2026-08-25): Lounge Settings polls after grant and **uploads** hex to `apns_device_tokens`. Send needs Edge `APNS_*` secrets + function redeploy. |
 | `setAudioSession` | JS→native | `{ mode: 'playback'\|'voiceChat'\|'default' }` | `{ ok: boolean }` | Mac | **native** (2026-08-24) + **web caller** (2026-08-25): Lounge Tap for sound → `ensureEdgeiOSPlaybackAudioSession()`. Shell also applies `.playback` on launch / becomeActive unless a call owns `.playAndRecord`. |
 | `bustServiceWorker` | JS→native *or* boot-only | none / `{ scope?: string }` | `{ ok: boolean, unregistered?: number, cacheKeysDeleted?: number }` | Mac (boot) | **native** (boot clear + bridge; 2026-08-23) |
+| `openAppSettings` | JS→native | none | `{ ok: boolean }` | Mac | **native** + **web caller** (2026-08-26): push-denied path opens iOS Settings so alerts can be re-enabled. **Device smoke pending.** |
+| `setAudioRoute` | JS→native | `{ route: 'speaker'\|'earpiece' }` | `{ ok: boolean }` | Mac | **native** + **web caller** (2026-08-26): call speaker toggle. Voice defaults earpiece, video defaults speaker. **Device smoke pending.** |
+| `triggerHaptic` | JS→native | `{ style?: 'light'\|'medium'\|'heavy'\|'success'\|'warning'\|'error' }` | `{ ok: boolean }` | Mac | **native** (`EdgeHaptics.swift`, 2026-08-26). Web still uses the iOS switch trick in `tapHaptic.js`; **no shell caller wired yet** … see caution below. |
+| `getCallKitCapabilities` | JS→native | none | `{ supported: boolean, voipToken: string \| null }` | Mac | **native** (2026-08-26). Lets web decide CallKit vs in-app ring UI. **Device smoke pending.** |
+| `reportIncomingCall` | JS→native | `{ callId, handle, hasVideo?, roomId? }` | `{ ok: boolean }` | Mac | **native** (2026-08-26): shows system incoming-call UI. **Device smoke pending.** |
+| `endNativeCall` | JS→native | `{ callId }` | `{ ok: boolean }` | Mac | **native** (2026-08-26): tears down the CallKit call on hangup/decline. **Device smoke pending.** |
+| `getVoIPPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (2026-08-26): PushKit token, uploaded with `pushChannel: 'voip'`. Also fires `edge-voip-token` event on refresh. **Device smoke pending.** |
+| `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |
+| `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, state, transactionId?, jws? }` | Mac | **native** (2026-08-26) + **web** SubscribeModal shell path. JWS verified server-side by Edge `apple-iap-verify`. **Device smoke pending.** |
+| `restoreStorePurchases` | JS→native | none | `{ ok, entitlements: string[] }` | Mac | **native** (2026-08-26). **Device smoke pending.** |
 
 **Web-owned (no Swift required for first cut):**
 
@@ -68,6 +78,34 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connect onboarding). That is enough for a clean US App Review story if CTAs never open Stripe inside WKWebView.
 
 **v1.1 (optional, safer dual-path):** StoreKit 2 products that grant the **same** `get_my_entitlements()` / fan-sub rows as Stripe webhooks. Web keeps Stripe; shell can offer IAP beside “Continue in Safari.” May **upcharge IAP** for Apple’s cut. Do not invent a second entitlement system. Counsel + App Review notes before submit.
+
+---
+
+## Debug builds feel broken … measure before you "fix" (2026-08-26)
+
+**Read this before chasing any shell performance report.** A whole session was burned reverting good v1.1 work chasing "the app needs multiple taps," which turned out to be **Debug build + Xcode debugger attached** … not a code regression at all.
+
+`Debug` is `-Onone` with the Main Thread Checker and LLDB attached. On device that is genuinely sluggish and **will** produce scary-looking console output that has nothing to do with our code.
+
+**Triage order (both cheap, do them first):**
+
+1. Open the same URL in **Mobile Safari** on the device. Still slow? → web problem.
+2. Launch the app from the **home screen icon** (no Xcode). Still slow? → shell problem.
+
+If both are fine, the build configuration is the answer and there is nothing to fix. Use the **`EdgeTilt Test Fast`** scheme (below) for any perceived-performance work.
+
+**Console noise that is NOT a bug** (all confirmed benign): `CHHapticEngine … releaseChannel: ERROR: This channel was not registered`, `Gesture: System gesture gate timed out`, `Unable to simultaneously satisfy constraints` naming `TUIPredictionViewCell` / `TUICandidateGradientContentLabel` (that is the **keyboard predictive bar**, system-owned), `RTIInputSystemClient … Can only set suggestions for an active session`, `Reporter disconnected`, `RBSServiceErrorDomain Code=1 "Client not entitled"`, `Couldn't open <private>`, `xpc_user_sessions_get_foreground_uid() failed`, `makeImagePlus … 'WEBP' … err=-50`, `Invalid UIScreen coordinate space conversion`, `markAllLayersVolatile: Failed`. Do not open investigations on these.
+
+### `EdgeTilt Test Fast` scheme
+
+| | |
+| --- | --- |
+| **Configuration** | `ReleaseTest` … `-O` + `wholemodule`, `EDGE_ENV_TEST` (so it loads **lvslotpro.com**, *not* prod) |
+| **Debugger** | detached (`PosixSpawn` launcher), Main Thread Checker off |
+| **Use for** | any responsiveness / gesture / scroll / animation judgement on device |
+| **Do not use for** | breakpoint debugging … there is no debugger attached; use `EdgeTilt Test` |
+
+`ReleaseTest` exists because `EDGE_ENV_PROD` is set by the **`Release` configuration**, not by the scheme. Flipping the Test scheme to `Release` would silently point a test build at **edgetilt.com**. If you add configurations, keep that mapping in mind.
 
 ---
 

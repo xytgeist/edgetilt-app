@@ -485,20 +485,30 @@ export default function OffersCalendar({
         return alertPreset
       }
 
-      const shouldEnable = await showAppConfirm({
-        title: 'Enable Notifications',
-        message: '',
-        confirmLabel: 'Enable',
-        cancelLabel: 'Cancel'
-      })
-      if (!shouldEnable) {
-        await setDefaultNone()
-        return OFFER_ALERT_NONE
+      // OS already allows notifications ... register this device silently (no modal).
+      if (pushPermission === 'granted') {
+        await enablePush()
+        return alertPreset
       }
 
+      if (pushPermission === 'denied') {
+        await enablePush()
+        return alertPreset
+      }
+
+      // prompt (or unknown): call enable immediately ... do not show a confirm dialog
+      // first (second tap breaks the iOS user-gesture chain for native permission).
       const enabled = await enablePush()
       if (!enabled) {
-        return alertPreset
+        await showAppInfo({
+          title: 'Alerts not enabled',
+          message: isEdgeiOSShell()
+            ? 'Could not enable native alerts. Allow notifications when iOS prompts, or use Turn on alerts on this device below.'
+            : 'Could not enable push notifications. Allow notifications when your browser prompts.',
+          confirmLabel: 'Got it',
+        })
+        await setDefaultNone()
+        return OFFER_ALERT_NONE
       }
       return alertPreset
     },
@@ -508,6 +518,7 @@ export default function OffersCalendar({
       getIosAlertSetupSeenStorageKeyForUser,
       iosInstallRequired,
       isSafariBrowser,
+      pushPermission,
       pushSubscribed,
       setStoredAlertDefaultForCurrentUser,
       showAppConfirm,
@@ -1207,7 +1218,11 @@ export default function OffersCalendar({
             onClick={() => void enablePush()}
             className="min-h-11 shrink-0 rounded-xl border border-cyan-300/35 bg-cyan-600 px-4 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-cyan-900/35 disabled:text-cyan-100/90 disabled:opacity-100 touch-manipulation"
           >
-            {pushBusy ? 'Working…' : 'Turn on alerts on this device'}
+            {pushBusy
+              ? 'Working…'
+              : pushPermission === 'denied' && isEdgeiOSShell()
+                ? 'Open Settings to enable alerts'
+                : 'Turn on alerts on this device'}
           </button>
           <button
             type="button"
@@ -1307,7 +1322,9 @@ export default function OffersCalendar({
                   ? 'Turn on native alerts below (or in Lounge Settings). Web push is not used in the store shell.'
                   : 'Alerts are unavailable because this browser does not support web push here (try Chrome on Android or your installed app on iPhone).'
                 : pushPermission === 'denied'
-                  ? 'This site does not have notification permission. Open your browser’s site settings for this page (lock or info icon → Permissions) and set Notifications to Allow, then try again.'
+                  ? isEdgeiOSShell()
+                    ? 'Notifications are off for Edge. Tap Open Settings to enable alerts, then return and tap the button again.'
+                    : 'This site does not have notification permission. Open your browser’s site settings for this page (lock or info icon → Permissions) and set Notifications to Allow, then try again.'
                   : 'Alerts are temporarily unavailable while setup finishes.'}
           </div>
         ) : null}

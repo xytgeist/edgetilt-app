@@ -69,3 +69,5 @@ tmp-poker-frames/
 tmp-poker-overview-frames/
 tmp-poker-overview-dd/
 tmp-ffmpeg-tools/
+.tmp-img-cmp/
+tmp-ipa-cmp/

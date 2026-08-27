@@ -18,6 +18,7 @@ import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
+import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -346,7 +347,9 @@ export default function ChatCallSession({
           didConnectRef.current = true
           setConnectError('')
           unlockChatCallAudio()
-          enterCallAudioSession()
+          // Matches CallChrome's initial speakerOn intent; CallChrome re-applies the
+          // authoritative route once the room exists.
+          enterCallAudioSession({ isVideo: videoEnabled, preferSpeaker: Boolean(videoEnabled) })
         }}
         onDisconnected={() => {
           exitCallAudioSession()
@@ -691,7 +694,7 @@ function CallChrome({
   // Probe real sink switching once the room is up (not on every join/leave).
   useEffect(() => {
     if (!room) return undefined
-    if (isIosDevice()) {
+    if (isIosDevice() && !isEdgeiOSShell()) {
       setAudioRouteSupported(false)
       return undefined
     }
@@ -907,7 +910,7 @@ function CallChrome({
         )
       ) : null}
 
-      {audioRouteSupported && !isIosDevice() ? (
+      {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (
         <button
           type="button"
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${

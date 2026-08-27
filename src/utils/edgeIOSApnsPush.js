@@ -10,9 +10,13 @@ import {
   getEdgeiOSPushPermissionStatus,
   getEdgeiOSPushToken,
   isEdgeiOSShell,
+  openEdgeAppSettings,
   requestEdgeiOSPushPermission,
 } from './edgeNative.js'
 import { writePushOptInIntent } from './pushOptInIntent.js'
+
+const EDGE_PUSH_DENIED_SETTINGS_MESSAGE =
+  'Notifications are off in iPhone Settings. Turn on Allow Notifications for Edge, then return here and try again.'
 
 /**
  * Read native permission + whether this device token is saved (no upsert).
@@ -47,14 +51,33 @@ export async function enableEdgeIOSApnsPush(supabaseClient) {
   if (!isEdgeiOSShell()) {
     return { ok: false, status: 'prompt', message: 'Native push is only available in the Edge app.' }
   }
+
+  const { status: currentStatus } = await getEdgeiOSPushPermissionStatus()
+  if (currentStatus === 'denied') {
+    await openEdgeAppSettings()
+    return {
+      ok: false,
+      status: 'denied',
+      message: EDGE_PUSH_DENIED_SETTINGS_MESSAGE,
+      openedSettings: true,
+    }
+  }
+
   const { status, via } = await requestEdgeiOSPushPermission()
   if (status !== 'granted') {
+    if (status === 'denied') {
+      await openEdgeAppSettings()
+      return {
+        ok: false,
+        status: 'denied',
+        message: EDGE_PUSH_DENIED_SETTINGS_MESSAGE,
+        openedSettings: true,
+      }
+    }
     const message =
       via === 'error'
         ? 'Could not reach the native push bridge.'
-        : status === 'denied'
-          ? 'Notification permission was not granted.'
-          : 'Notification permission is still pending.'
+        : 'Notification permission is still pending.'
     return { ok: false, status, message }
   }
   let token = (await getEdgeiOSPushToken()).token

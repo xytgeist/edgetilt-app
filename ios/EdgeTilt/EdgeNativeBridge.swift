@@ -77,6 +77,16 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
           completion(.success(["ok": ok]))
         }
       }
+    case "openAppSettings":
+      DispatchQueue.main.async {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+          completion(.success(["ok": false]))
+          return
+        }
+        UIApplication.shared.open(url, options: [:]) { ok in
+          completion(.success(["ok": ok]))
+        }
+      }
     case "bustServiceWorker":
       bustServiceWorker(completion: completion)
     case "getPushPermissionStatus":
@@ -95,6 +105,76 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
           completion(.failure(error))
         }
       }
+    case "setAudioRoute":
+      let route = (payload?["route"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+      EdgeAudioSession.setOutputRoute(speaker: route == "speaker") { result in
+        switch result {
+        case .success:
+          completion(.success(["ok": true, "route": route == "speaker" ? "speaker" : "earpiece"]))
+        case .failure(let error):
+          completion(.failure(error))
+        }
+      }
+    case "triggerHaptic":
+      let style = (payload?["style"] as? String) ?? "light"
+      EdgeHaptics.trigger(style: style)
+      completion(.success(["ok": true]))
+    case "getCallKitCapabilities":
+      completion(.success(["supported": true, "voipPush": true]))
+    case "reportIncomingCall":
+      let callId = (payload?["callId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      let roomId = (payload?["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      let handle = (payload?["handle"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Incoming call"
+      let hasVideo = (payload?["hasVideo"] as? Bool) ?? false
+      let uuid = payload?["uuid"] as? String
+      guard !callId.isEmpty else {
+        completion(.success(["ok": false]))
+        return
+      }
+      EdgeCallKitManager.shared.reportIncomingCall(
+        uuidString: uuid,
+        callId: callId,
+        roomId: roomId,
+        handle: handle,
+        hasVideo: hasVideo,
+        completion: completion
+      )
+    case "endNativeCall":
+      EdgeCallKitManager.shared.endCall(
+        uuidString: payload?["uuid"] as? String,
+        callId: payload?["callId"] as? String,
+        completion: completion
+      )
+    case "getVoIPPushToken":
+      completion(.success(EdgeCallKitManager.shared.currentVoIPTokenPayload()))
+    case "getStoreProducts":
+      guard #available(iOS 15.0, *) else {
+        completion(.failure(EdgeStoreKitError.unavailable))
+        return
+      }
+      let ids = payload?["productIds"] as? [String] ?? []
+      EdgeStoreKitManager.shared.fetchProducts(productIds: ids, completion: completion)
+    case "purchaseStoreProduct":
+      guard #available(iOS 15.0, *) else {
+        completion(.failure(EdgeStoreKitError.unavailable))
+        return
+      }
+      let productId = (payload?["productId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      guard !productId.isEmpty else {
+        completion(.success(["ok": false, "status": "invalid_product"]))
+        return
+      }
+      EdgeStoreKitManager.shared.purchase(
+        productId: productId,
+        appAccountToken: payload?["appAccountToken"] as? String,
+        completion: completion
+      )
+    case "restoreStorePurchases":
+      guard #available(iOS 15.0, *) else {
+        completion(.failure(EdgeStoreKitError.unavailable))
+        return
+      }
+      EdgeStoreKitManager.shared.restore(completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -224,6 +304,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     window.EdgeNative = {
       getInfo: function () { return call('getInfo', null); },
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
+      openAppSettings: function () { return call('openAppSettings', null); },
       getPushPermissionStatus: function () {
         return call('getPushPermissionStatus', null);
       },
@@ -235,6 +316,33 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       setAudioSession: function (payload) {
         return call('setAudioSession', payload || {});
+      },
+      setAudioRoute: function (payload) {
+        return call('setAudioRoute', payload || {});
+      },
+      triggerHaptic: function (payload) {
+        return call('triggerHaptic', payload || {});
+      },
+      getCallKitCapabilities: function () {
+        return call('getCallKitCapabilities', null);
+      },
+      reportIncomingCall: function (payload) {
+        return call('reportIncomingCall', payload || {});
+      },
+      endNativeCall: function (payload) {
+        return call('endNativeCall', payload || {});
+      },
+      getVoIPPushToken: function () {
+        return call('getVoIPPushToken', null);
+      },
+      getStoreProducts: function (payload) {
+        return call('getStoreProducts', payload || {});
+      },
+      purchaseStoreProduct: function (payload) {
+        return call('purchaseStoreProduct', payload || {});
+      },
+      restoreStorePurchases: function () {
+        return call('restoreStorePurchases', null);
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

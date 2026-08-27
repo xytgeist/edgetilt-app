@@ -58,6 +58,7 @@ struct EdgeWebView: UIViewRepresentable {
     func attach(webView: EdgeInsetAwareWebView) {
       self.webView = webView
       EdgePushManager.shared.attach(webView: webView)
+      EdgeCallKitManager.shared.attach(webView: webView)
       webView.onSafeAreaInsetsChange = { [weak self] in
         guard let self, let webView = self.webView else { return }
         self.pushSafeAreaInsets(from: webView, force: false)

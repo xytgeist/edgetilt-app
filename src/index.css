@@ -8862,11 +8862,11 @@ html[data-lounge-detail-over-lightbox] [data-lounge-lightbox-peek-media] {
   transform: var(--lounge-media-peek-transform) !important;
   will-change: transform;
 }
-/* Image/GIF shell is flex-centered `fixed inset-0`. Android IME shrinks that box and
-   recenters the still upward; peek then translates from the old full-screen cache
-   and the photo leaves the top. Pin the pre-keyboard layout. Stream flyout is
-   pixel-fixed already. Do not set height on the hero <video>. */
-html.platform-android[data-lounge-detail-over-lightbox]:not(
+/* Image/GIF shell is flex-centered `fixed inset-0`. Software keyboards / IME shrink
+   that box and recenter the still; peek then translates from the old full-screen cache
+   and the photo shifts out of position. Pin the pre-keyboard layout across all platforms.
+   Stream flyout is pixel-fixed already. Do not set height on the hero <video>. */
+html[data-lounge-detail-over-lightbox]:not(
     [data-lounge-overlay-nested-peek]
   )
   [data-lounge-image-lightbox]:not([data-lounge-nested-lightbox]) {
@@ -8937,7 +8937,7 @@ html[data-lounge-overlay-nested-peek]
   visibility: hidden;
   pointer-events: none;
 }
-html.platform-android[data-lounge-overlay-nested-peek]
+html[data-lounge-overlay-nested-peek]
   [data-lounge-image-lightbox][data-lounge-nested-lightbox] {
   top: 0;
   bottom: auto;

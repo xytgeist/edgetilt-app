@@ -21,7 +21,6 @@ import {
   isLoungeLightboxGifUrl,
   mediaFitsChromeBand,
   LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS,
-  loungeNestedLightboxDomProps,
   readContainedImageViewportRect,
   readElementViewportRect,
   readLightboxCloseChromeClipTopPx,
@@ -32,12 +31,6 @@ import {
 } from './loungeLightboxFlip.js'
 import {
   getLoungeDetailOverLightbox,
-  getLoungeOverlayNestRoot,
-  markLoungeOverlayNestedTops,
-  registerLoungeOverlayNestedLightbox,
-  releaseLoungeOverlayNestRootIfEmpty,
-  restoreLoungeOverlayNestedPeekIfNeeded,
-  setLoungeOverlayNestedPeekAttr,
   subscribeLoungeDetailOverLightbox,
 } from './loungeLightboxDetailSheet.js'
 import {
@@ -244,7 +237,6 @@ export function LoungeImageLightbox({
   gifUrl = '',
   /** Tailwind z-index on the portaled shell (default below profile sheet `z-[101]`). */
   lightboxPortalClass = 'z-[100]',
-  nestedLightboxDepth = 0,
   /** `() => ReactNode` - top-right ⋯ menu (no autoplay toggle for images). */
   renderMediaLightboxMenu,
   /**
@@ -296,10 +288,6 @@ export function LoungeImageLightbox({
     [lightboxPortalClass],
   )
   const nestedOverOverlay = lightboxPortalClass === LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS
-  const nestedLightboxLayer = nestedOverOverlay
-    ? Math.max(1, Number(nestedLightboxDepth) || 1)
-    : 0
-  const nestedLightboxDom = loungeNestedLightboxDomProps(nestedOverOverlay, nestedLightboxLayer)
 
   const openFromRectRef = useRef(
     heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
@@ -853,22 +841,6 @@ export function LoungeImageLightbox({
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [])
 
-  useLayoutEffect(() => {
-    if (!nestedOverOverlay) return undefined
-    setLoungeOverlayNestedPeekAttr(false)
-    const unreg = registerLoungeOverlayNestedLightbox({
-      depth: nestedLightboxLayer,
-      close: finishClose,
-    })
-    markLoungeOverlayNestedTops()
-    return () => {
-      unreg()
-      restoreLoungeOverlayNestedPeekIfNeeded()
-      markLoungeOverlayNestedTops()
-      releaseLoungeOverlayNestRootIfEmpty()
-    }
-  }, [nestedOverOverlay, nestedLightboxLayer, finishClose])
-
   // Shrink-back: clip the full-screen portal below sticky chrome (profile/detail sheets
   // are transform stacking contexts … z-index lifts inside them cannot beat the portal).
   // Only lift document-level feed EDGE chrome. Always clear any leftover attrs on cleanup.
@@ -1187,7 +1159,7 @@ export function LoungeImageLightbox({
       data-lounge-image-lightbox
       data-lounge-image-lightbox-phase={phase}
       data-lounge-image-lightbox-chrome={showAuthorMeta ? 'full' : 'compact'}
-      {...(nestedOverOverlay ? nestedLightboxDom : {})}
+      {...(nestedOverOverlay ? { 'data-lounge-nested-lightbox': '' } : {})}
       className={`fixed inset-0 ${lightboxPortalClass}${phase === 'closing' ? ' pointer-events-none' : ''}`}
       role="dialog"
       aria-modal="true"
@@ -1512,7 +1484,7 @@ export function LoungeImageLightbox({
         </>
       ) : null}
     </div>,
-    nestedOverOverlay ? getLoungeOverlayNestRoot() || document.body : document.body,
+    document.body,
   )
 }
 
@@ -1528,7 +1500,6 @@ export function LoungeInlineMediaUrl({
   enableLightbox = true,
   knownGifUrl = '',
   lightboxPortalClass = 'z-[100]',
-  nestedLightboxDepth = 0,
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
   renderMediaLightboxChrome,
@@ -1656,7 +1627,6 @@ export function LoungeInlineMediaUrl({
           getOriginRect={getOriginRect}
           onClose={() => setLightbox(null)}
           lightboxPortalClass={lightboxPortalClass}
-          nestedLightboxDepth={nestedLightboxDepth}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
           renderMediaLightboxChrome={renderMediaLightboxChrome}
@@ -1678,7 +1648,6 @@ export function LoungePostMediaPair({
   firstMarginTopClass = 'mt-2',
   enableLightbox = true,
   lightboxPortalClass = 'z-[100]',
-  nestedLightboxDepth = 0,
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
   renderMediaLightboxChrome,
@@ -1696,7 +1665,6 @@ export function LoungePostMediaPair({
           marginTopClass={firstMarginTopClass}
           enableLightbox={enableLightbox}
           lightboxPortalClass={lightboxPortalClass}
-          nestedLightboxDepth={nestedLightboxDepth}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
           renderMediaLightboxChrome={renderMediaLightboxChrome}
@@ -1709,7 +1677,6 @@ export function LoungePostMediaPair({
           marginTopClass="mt-2"
           enableLightbox={enableLightbox}
           lightboxPortalClass={lightboxPortalClass}
-          nestedLightboxDepth={nestedLightboxDepth}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
           renderMediaLightboxChrome={renderMediaLightboxChrome}
@@ -1727,7 +1694,6 @@ export function LoungePostMediaPair({
       marginTopClass={firstMarginTopClass}
       enableLightbox={enableLightbox}
       lightboxPortalClass={lightboxPortalClass}
-      nestedLightboxDepth={nestedLightboxDepth}
       renderMediaLightboxMenu={renderMediaLightboxMenu}
       renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
       renderMediaLightboxChrome={renderMediaLightboxChrome}

@@ -307,8 +307,6 @@ import { isFeedCommentEntity, loungeStreamLightboxMediaSource } from './loungeSt
 import {
   setLoungeDetailOverLightboxAttr,
   setLoungeOverlayNestedPeekAttr,
-  setLoungeOverlaySheetDepthAttr,
-  closeLoungeOverlayNestedLightboxesAbove,
   setLoungeMediaSheetComposerExpanded,
   releaseLoungeMediaSheetPeek,
   notifyLoungeMediaDetailSheetMetrics,
@@ -7749,8 +7747,6 @@ export default function SocialFeed({
     loungePostDetailOpenedAsLightboxSheetRef.current = false
     loungeOverlaySheetStackRef.current = []
     setLoungeOverlaySheetStackDepth(0)
-    setLoungeOverlaySheetDepthAttr(0)
-    closeLoungeOverlayNestedLightboxesAbove(0)
     setLoungeOverlayRootPeekEntityId(null)
     setLoungeOverlayNestedPeekAttr(false)
     setLoungePostDetailOverLightbox(false)
@@ -9014,7 +9010,6 @@ export default function SocialFeed({
     loungePostDetailOverLightbox && loungeOverlaySheetStackDepth > 0
       ? loungeOverlayRootPeekEntityId
       : null
-  const loungeOverlayNestedLightboxDepth = loungeOverlaySheetStackDepth + 1
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile
     ? 'z-[103]'
@@ -9115,12 +9110,10 @@ export default function SocialFeed({
       })
       const depth = loungeOverlaySheetStackRef.current.length
       setLoungeOverlaySheetStackDepth(depth)
-      setLoungeOverlaySheetDepthAttr(depth)
-      setLoungeOverlayNestedPeekAttr(depth)
+      setLoungeOverlayNestedPeekAttr(true)
     } else {
       loungePostDetailOpenedAsLightboxSheetRef.current = !loungePostDetail?.id
       setLoungeOverlayRootPeekEntityId(mediaEntityId ? String(mediaEntityId) : null)
-      setLoungeOverlaySheetDepthAttr(0)
       setLoungeOverlayNestedPeekAttr(false)
     }
     loungePostDetailOverLightboxRef.current = true
@@ -9147,16 +9140,12 @@ export default function SocialFeed({
     if (prev) {
       const depth = loungeOverlaySheetStackRef.current.length
       setLoungeOverlaySheetStackDepth(depth)
-      setLoungeOverlaySheetDepthAttr(depth)
-      setLoungeOverlayNestedPeekAttr(depth)
-      closeLoungeOverlayNestedLightboxesAbove(Math.max(depth, 1))
+      setLoungeOverlayNestedPeekAttr(depth > 0)
       setLoungeLightboxSheetMediaEntityId(prev.omitId)
       setLoungeCommentDetailPathIds(Array.isArray(prev.commentPathIds) ? prev.commentPathIds : [])
       setLoungeDetailCommentComposerExpanded(false)
       return
     }
-    setLoungeOverlaySheetDepthAttr(0)
-    closeLoungeOverlayNestedLightboxesAbove(0)
     releaseLoungeMediaSheetPeek()
     if (loungePostDetailOpenedAsLightboxSheetRef.current) {
       closeLoungePostDetail()
@@ -17510,7 +17499,6 @@ export default function SocialFeed({
                       post={loungePostDetail}
                       omitMediaEntityId={loungeSheetOmitMediaEntityId}
                       overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
-                      overlayNestedLightboxDepth={loungeOverlayNestedLightboxDepth}
                       variant="detail"
                       firstMarginTopClass={
                         loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
@@ -17564,7 +17552,6 @@ export default function SocialFeed({
                             streamLightboxSurface: loungeDetailStreamLightboxSurface,
                             omitMediaEntityId: loungeSheetOmitMediaEntityId,
                             overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
-                            overlayNestedLightboxDepth: loungeOverlayNestedLightboxDepth,
                           }}
                           onOpenGuideCard={openLoungeGuideCard}
                           fanSubscribeBusy={feedFanSubscribeBusy}
@@ -17616,7 +17603,6 @@ export default function SocialFeed({
                       post={loungePostDetail}
                       omitMediaEntityId={loungeSheetOmitMediaEntityId}
                       overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
-                      overlayNestedLightboxDepth={loungeOverlayNestedLightboxDepth}
                       variant="detail"
                       firstMarginTopClass={
                         loungeDetailShowsCaption(loungePostDetail) || loungePostDetail.link_preview
@@ -18147,7 +18133,6 @@ export default function SocialFeed({
                     onSharePost: handleShareLoungePost,
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
                     overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
-                    overlayNestedLightboxDepth: loungeOverlayNestedLightboxDepth,
                   }}
                 />
               ) : null}
@@ -18236,7 +18221,6 @@ export default function SocialFeed({
                     onSharePost: handleShareLoungePost,
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
                     overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
-                    overlayNestedLightboxDepth: loungeOverlayNestedLightboxDepth,
                   }}
                 />
               ) : null}
@@ -18352,7 +18336,6 @@ export default function SocialFeed({
                           onSharePost={handleShareLoungePost}
                           omitMediaEntityId={loungeSheetOmitMediaEntityId}
                           overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
-                          overlayNestedLightboxDepth={loungeOverlayNestedLightboxDepth}
                         />
                       </>
                     )}

@@ -62,7 +62,6 @@ export function LoungeImageCarousel({
   /** Tap image to open fullscreen (disabled in composer). */
   enableLightbox = true,
   lightboxPortalClass = 'z-[100]',
-  nestedLightboxDepth = 0,
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
   /** Stream-style avatar/caption/interaction chrome (preferred). */
@@ -489,7 +488,6 @@ export function LoungeImageCarousel({
           getOriginRect={getLightboxOriginRect}
           onClose={() => setLightbox(null)}
           lightboxPortalClass={lightboxPortalClass}
-          nestedLightboxDepth={nestedLightboxDepth}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
           renderMediaLightboxChrome={renderMediaLightboxChrome}
@@ -606,8 +604,6 @@ export function LoungePostFeedImagesAndGif({
    * media, this stays the original peek so that lightbox does not jump to z-115.
    */
   overlayNestedRootEntityId = null,
-  /** 1-based nest layer for comment-media lightboxes (`stackDepth + 1`). */
-  overlayNestedLightboxDepth = 0,
 }) {
   const streamLightbox = useLoungeStreamLightbox()
   const lightboxHost = streamLightboxHost ?? post
@@ -665,15 +661,10 @@ export function LoungePostFeedImagesAndGif({
     omitMediaEntityId && post?.id && String(post.id) === String(omitMediaEntityId),
   )
   const nestedRootId = overlayNestedRootEntityId || omitMediaEntityId
-  const isNestedOverlayTile = Boolean(
-    omitMediaEntityId && post?.id && nestedRootId && String(post.id) !== String(nestedRootId),
-  )
-  const effectiveLightboxPortalClass = isNestedOverlayTile
-    ? LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS
-    : lightboxPortalClass
-  const nestedLightboxDepth = isNestedOverlayTile
-    ? Math.max(1, Number(overlayNestedLightboxDepth) || 1)
-    : 0
+  const effectiveLightboxPortalClass =
+    omitMediaEntityId && post?.id && nestedRootId && String(post.id) !== String(nestedRootId)
+      ? LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS
+      : lightboxPortalClass
   const pendingPublishKey = String(post?._pendingPublishKey || post?.id || '').trim()
   const authorPendingPublish =
     post?._authorPendingPublish === true || post?.feed_visible_at === null
@@ -725,14 +716,12 @@ export function LoungePostFeedImagesAndGif({
         renderMediaLightboxMenu={menuRenderer}
         renderMediaLightboxTopBarExtra={topBarExtraRenderer}
         lightboxPortalClass={effectiveLightboxPortalClass}
-        nestedLightboxDepth={nestedLightboxDepth}
         hideAsSheetPeekDuplicate={hideAsSheetPeekDuplicate}
       />
     )
   }
   const imageLightboxProps = {
     lightboxPortalClass: effectiveLightboxPortalClass,
-    nestedLightboxDepth,
     renderMediaLightboxMenu: imageLightboxMenuRenderer,
     renderMediaLightboxTopBarExtra: imageLightboxTopBarExtraRenderer,
     renderMediaLightboxChrome: imageLightboxChromeRenderer,

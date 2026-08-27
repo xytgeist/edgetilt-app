@@ -79,8 +79,36 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`520cd621`** | Lightbox comments sheet (Ryan smoke PASSED 2026-08-26) |
-| **`main`** | **`87434bfd`** | Same tip after this session's `test` → `main` promote |
+| **`test`** | **`686572ae`** | Offer reminder dedupe + deep link (Mac Theo 2026-08-27) |
+| **`main`** | **`87434bfd`** | Unchanged … **prod still has the duplicate-reminder bug**, see below |
+
+### Mac Theo 2026-08-27 … offer reminders were sending 2-3× since May (FIXED on test)
+
+**I am Mac Theo.** Session was Edge Functions + SQL + one Offers web fix. **`ios/`** untouched today.
+
+**Ryan smoke PASSED on test.** Two alerts on the same event, each sent **exactly once**, `logWriteErrors: 0`, dedupe row written for each.
+
+**Root cause (worth reading before you touch this table):** **`offer_notification_sends_unique (user_id, event_id, lead_minutes)`** allowed exactly **one send row per event, forever**. So the 2026-05-07 "notify again after an edit" feature was **broken on arrival** … it had to write a second send row, the index forbade it, and the insert error was **swallowed** (unchecked return), so the function reported `sent: 8` + `200` while its own dedupe record vanished. Dedupe then re-read the *first* row and re-sent every tick. **It was a bare unique INDEX, not a constraint, so it never appeared in `pg_constraint`** … I wasted an hour on a wrong theory because of that. **Always check `pg_indexes` too.**
+
+**Fixed:** migration **`20260827130000_offer_sends_dedupe_by_fire_time.sql`** … adds `alert_fire_at`, backfills, drops the old index, adds unique **`(event_id, lead_minutes, alert_fire_at)`**. Dedupe is now per **scheduled alert**, so an edit legitimately notifies once more. Function also reports **`logWriteErrors`** in its response body so `pg_net` surfaces dropped writes without Edge log access. Secondary bug also fixed: it compared `created_at` to `alert_fire_at` while the sender fires **early** by design (`lookaheadMinutes`), so every send re-qualified itself.
+
+**Reminder tap now deep links** to the event → **`WeekEventDetailModal`** (not the agenda card, not the bare calendar). Edge sends `/?tab=offers&eventIds=<csv>`; `AppShell` + `OffersCalendar` already consumed that param (it was dead code … nothing generated those links before).
+
+**⚠️ Two ordering traps in `OffersCalendar.jsx` (I own this deep-link code):**
+1. The deep-link modal opener **must stay declared AFTER** `useEffect(() => setWeekDetailEvent(null), [activeCalendarView])`. Same-commit effect order is declaration order; move it up and "tap does nothing" comes back **silently**.
+2. **`deepLinkOwnsViewRef`** exists because `offersDefaultView` resolves **async** (`getSession()` + localStorage). A saved Calendar/Week default landing after the deep link would flip the view and close the modal. Do not delete that guard.
+
+**⛔ Windows Theo … assigned task, BLOCKS prod promotion.** Spec is on **https://lvslotpro.com/theo**. The deep link is lost on the **postMessage / durable-stash** path = the **iOS-on-wake** case (already-open client never reloads the URL). Ryan's smoke only passed because `client.navigate()` won the race. Two edits: (1) **`public/push-sw.js`** `parseAppNavigateMessage()` extracts `tab`/`post`/`comment`/`call`/`room` but **not `eventIds`**; (2) **`src/features/shell/AppShell.jsx`** `applyAppNavigate()` offers branch does `setTab('offers'); return` and never calls `setPendingOfferEventIds`. **SW change ⇒ force-close the PWA.** Smoke: background iPhone PWA → reminder → tap → modal.
+
+**⛔ PROD IS STILL BROKEN (since 2026-05-07)** and is **worse than test was** … it runs **two** overlapping cron jobs (`*/5` + every-minute) against the same broken dedupe. Needs Ryan's explicit go, then: apply `20260827130000` (incl. the index drop … it builds against a much larger table, expect a brief lock) → redeploy `send-due-offer-reminders` → ship the web build for the modal deep link → consider collapsing the two cron jobs to the every-minute one (the `*/5` has a dead zone; cadence note in the backlog).
+
+**🔴 STILL NOT DONE … leaked prod key.** This morning's fix found a **production service_role bearer token** stored in **test**'s `cron.job.command` (test cron was calling *prod*'s function). Job row is deleted but **assume the value is compromised … it has never been rotated.** Ryan chose rotation; nobody has done it. Rotating means updating vault secrets in **both** projects.
+
+**Also still open:** IPA smoke of Windows Theo's lightbox list. Ryan's Offers reminder work ate the session.
+
+**Do not reopen:** the "app feels slow / multi-tap" hunt … that was **Debug + debugger attached**, not a code regression (2026-08-26 entry). Use the **`EdgeTilt Test Fast`** scheme before believing a perf report.
+
+**Tooling gotchas:** `npm run db:query:test -- -f <file>` **cannot** run multi-statement files (prepared statement) … split them. Each `db:query` round trip is 8-17s; batch your SQL. Don't `rg` the repo root without globs … `public/` binaries spew hundreds of "Operation not permitted" lines and burn context.
 
 ### Pick up here (2026-08-25 ... IPA feed unmute)
 

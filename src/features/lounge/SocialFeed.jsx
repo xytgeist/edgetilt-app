@@ -525,9 +525,15 @@ function loungeDetailCaptionDisplayText(row) {
   return bodyTextWithLinkPreview(feedPostDisplayCaption(row), row?.link_preview)
 }
 
+/** Overlay Reply: keep this much connector above the focus comment (no title bar, no OP interaction row). */
+const LOUNGE_OVERLAY_COMMENT_CONNECTOR_STUB_PX = 20
+
 /** Root → focused comment ids for post-detail drill / comment-repost deep link. */
-function buildFeedCommentDrillPath(commentId, comments) {
+function buildFeedCommentDrillPath(commentId, comments, seedComment = null) {
   const byId = new Map((comments || []).map((r) => [String(r.id), r]))
+  if (seedComment?.id && !byId.has(String(seedComment.id))) {
+    byId.set(String(seedComment.id), seedComment)
+  }
   const chain = []
   let cur = byId.get(String(commentId))
   if (!cur) return chain
@@ -2027,10 +2033,17 @@ export default function SocialFeed({
     const el = document.getElementById('lounge-detail-focus-comment')
     if (!sc || !el) return false
 
-    const barH = loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56
-    // 4px matches the mt-1 row-separator in LoungePostDetailCommentHierarchy so the title
-    // bar lands just at the bottom of the interaction row of the card above the focused comment.
-    const GAP_PX = 8
+    const overlaySheet = loungePostDetailOverLightboxRef.current
+    // Overlay sheet has no overlapping title bar (grab + Reply sit outside the scroller).
+    // Subtracting 56px here parks the OP timestamp + interaction row in the viewport.
+    const barH = overlaySheet
+      ? 0
+      : loungePostDetailTitleBarHeight > 0
+        ? loungePostDetailTitleBarHeight
+        : 56
+    // Full Post Reply: title bar sits just under the card above. Overlay Reply: only a
+    // connector stub (OP interactions are hidden).
+    const GAP_PX = overlaySheet ? LOUNGE_OVERLAY_COMMENT_CONNECTOR_STUB_PX : 8
 
     const computeTargetTop = () => {
       const scRect = sc.getBoundingClientRect()
@@ -8295,7 +8308,7 @@ export default function SocialFeed({
         return
       }
 
-      loungeCommentDetailDirectEntryAnimateRef.current = true
+      loungeCommentDetailDirectEntryAnimateRef.current = !keepLightboxPlaying
       loungePostDetailDirectCommentOpenRef.current = {
         postId: String(parentPost.id),
         pathIds,
@@ -9211,12 +9224,13 @@ export default function SocialFeed({
   }, [])
 
   const buildLoungeCommentDrillPath = useCallback(
-    (commentId) => buildFeedCommentDrillPath(commentId, loungeDetailComments),
+    (commentId, seedComment = null) =>
+      buildFeedCommentDrillPath(commentId, loungeDetailComments, seedComment),
     [loungeDetailComments],
   )
 
   const openLoungeCommentDetail = useCallback(
-    (comment, { focusComposer = false, keepLightboxPlaying = false } = {}) => {
+    (comment, { focusComposer = false, keepLightboxPlaying = false, overlayDirectEntry = false } = {}) => {
       if (!comment?.id) return
       if (!keepLightboxPlaying && !loungePostDetailOverLightboxRef.current) {
         pauseAllLoungeStreamInlineVideos()
@@ -9226,7 +9240,7 @@ export default function SocialFeed({
         return
       }
       if (openProfileGateIfNeeded()) return
-      const chain = buildLoungeCommentDrillPath(comment.id)
+      const chain = buildLoungeCommentDrillPath(comment.id, comment)
       if (!chain.length) return
       setLoungePostDetailMenuOpen(false)
       cancelLoungeDetailEdit()
@@ -9235,7 +9249,13 @@ export default function SocialFeed({
       else if (!loungePostDetailOverLightboxRef.current) collapseLoungeDetailCommentComposer()
       else setLoungeDetailCommentComposerExpanded(false)
       resetPostDetailInlineSound()
+      if (overlayDirectEntry) {
+        loungeCommentDetailDirectEntryDepthRef.current = chain.length
+      }
       setLoungeCommentDetailPathIds(chain)
+      if (loungePostDetailOverLightboxRef.current) {
+        scheduleLoungePostDetailFocusScroll({ animate: false })
+      }
     },
     [
       buildLoungeCommentDrillPath,
@@ -9246,6 +9266,7 @@ export default function SocialFeed({
       openProfileGateIfNeeded,
       requireLoungeAuth,
       resetPostDetailInlineSound,
+      scheduleLoungePostDetailFocusScroll,
     ],
   )
 
@@ -9289,10 +9310,15 @@ export default function SocialFeed({
     (hostPost, mediaPost) => {
       if (openProfileGateIfNeeded()) return
       const { displayEntity } = loungeStreamLightboxMediaSource(hostPost, mediaPost)
+      const alreadyOverlay = loungePostDetailOverLightboxRef.current
       enterLoungeLightboxDetailSheet(displayEntity?.id)
       if (isFeedCommentEntity(displayEntity)) {
         if (loungePostDetail?.id && String(loungePostDetail.id) === String(displayEntity.post_id)) {
-          openLoungeCommentDetail(displayEntity, { focusComposer: false, keepLightboxPlaying: true })
+          openLoungeCommentDetail(displayEntity, {
+            focusComposer: false,
+            keepLightboxPlaying: true,
+            overlayDirectEntry: !alreadyOverlay,
+          })
           return
         }
         void openCommentRepostDetail(displayEntity, { focusComposer: false, keepLightboxPlaying: true })
@@ -9317,8 +9343,13 @@ export default function SocialFeed({
     (comment, _media) => {
       if (!comment?.id) return
       if (openProfileGateIfNeeded()) return
+      const alreadyOverlay = loungePostDetailOverLightboxRef.current
       enterLoungeLightboxDetailSheet(comment.id)
-      openLoungeCommentDetail(comment, { focusComposer: false, keepLightboxPlaying: true })
+      openLoungeCommentDetail(comment, {
+        focusComposer: false,
+        keepLightboxPlaying: true,
+        overlayDirectEntry: !alreadyOverlay,
+      })
     },
     [enterLoungeLightboxDetailSheet, openLoungeCommentDetail, openProfileGateIfNeeded],
   )
@@ -9353,6 +9384,8 @@ export default function SocialFeed({
     loungeCommentDetailPathIds,
     loungeDetailCommentsLoading,
     loungePostDetailPanelEntered,
+    loungeSheetOmitMediaEntityId,
+    loungeOverlaySheetStackDepth,
     resetPostDetailInlineSound,
     scheduleLoungePostDetailFocusScroll,
   ])
@@ -9420,6 +9453,9 @@ export default function SocialFeed({
   const loungePostDetailConnectorActive =
     loungeCommentDetailPathIds.length > 0 ||
     (loungePostIsThreadRoot(loungePostDetail) && loungeDetailThreadPartsSorted.length > 0)
+  const loungeOverlayCommentDetail = Boolean(
+    loungePostDetailOverLightbox && loungeCommentDetailPathIds.length > 0,
+  )
 
   const loungeDetailCommentHierarchyFocusId = useMemo(
     () =>
@@ -17107,7 +17143,7 @@ export default function SocialFeed({
                 }}
               />
               <div
-                className="px-4 py-4 pb-4"
+                className={loungeOverlayCommentDetail ? 'px-4 pt-1 pb-4' : 'px-4 py-4 pb-4'}
                 {...(loungePostDetailOverLightbox
                   ? {
                       'data-lounge-overlay-comment-scene':
@@ -17617,15 +17653,18 @@ export default function SocialFeed({
                 </>
               )}
 
+              {loungeOverlayCommentDetail ? null : (
               <div className={`mt-2 text-[14px] leading-tight text-zinc-500 ${loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}`}>
                 {formatLoungePostDetailWhen(loungePostDetail.created_at)}
                 {loungePostDetail.edited_at ? (
                   <span className="text-zinc-600"> · Edited</span>
                 ) : null}
               </div>
+              )}
               </article>
 
               {(() => {
+                if (loungeOverlayCommentDetail && !loungeDetailEditing) return null
                 const d = loungePostDetail
                 const ui = interactionStateFor(d.id)
                 const isBookmarked = !!bookmarkedByPost[d.id]
@@ -18019,6 +18058,14 @@ export default function SocialFeed({
                   </div>
                 )
               })()}
+
+              {loungeOverlayCommentDetail ? (
+                <div
+                  className="shrink-0"
+                  style={{ height: LOUNGE_OVERLAY_COMMENT_CONNECTOR_STUB_PX }}
+                  aria-hidden
+                />
+              ) : null}
 
               {loungeCommentDetailPathIds.length === 0 &&
               !loungeDetailCommentsLoading &&

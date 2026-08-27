@@ -98,16 +98,17 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     // invite. `endCall` resolves a single UUID, so the extras stranded on screen.
     if !trimmedCallId.isEmpty,
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
+      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
       completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
       return
     }
     let uuid = Self.uuid(from: uuidString) ?? UUID()
-    let callerName = handle.trimmingCharacters(in: .whitespacesAndNewlines)
+    let callerName = Self.sanitizedCallerName(handle)
     let meta = CallMeta(
       callId: trimmedCallId,
       roomId: roomId,
       hasVideo: hasVideo,
-      callerName: callerName.isEmpty ? "Incoming call" : callerName
+      callerName: callerName
     )
     calls[uuid] = meta
 
@@ -127,6 +128,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         return
       }
       EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
+      // CallKit is now the ring UI. Drop the sibling APNs "X is calling you" card so
+      // it does not sit on the lock screen / banner after the user answers.
+      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
       completion(.success(["ok": true, "uuid": uuid.uuidString.lowercased()]))
     }
   }
@@ -247,6 +251,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
           "hasVideo": meta.hasVideo,
         ]
       )
+      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: meta.callId)
     }
     action.fulfill()
   }
@@ -261,6 +266,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
           "roomId": meta.roomId,
         ]
       )
+      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: meta.callId)
     }
     calls.removeValue(forKey: action.callUUID)
     EdgeAudioSession.apply(mode: "default") { _ in }
@@ -296,6 +302,21 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       return calls.first(where: { $0.value.callId == trimmedCallId })?.key
     }
     return calls.keys.first
+  }
+
+  /// VoIP `callerName` is currently the full APNs body ("Theo Mac is calling you"),
+  /// not the actor name. CallKit uses that as `localizedCallerName`, so the banner
+  /// never "changes" after answer … the sentence *is* the name. Strip the phrase.
+  static func sanitizedCallerName(_ raw: String) -> String {
+    var name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    let suffixes = [" is calling you", " is calling"]
+    for suffix in suffixes {
+      if let range = name.range(of: suffix, options: [.anchored, .backwards, .caseInsensitive]) {
+        name = String(name[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        break
+      }
+    }
+    return name.isEmpty ? "Incoming call" : name
   }
 
   private static func uuid(from raw: String?) -> UUID? {

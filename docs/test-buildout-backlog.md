@@ -1068,6 +1068,14 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **CallKit banner stuck on "Theo Mac is calling.." … native defense landed, re-smoke owed (Mac):** second-pass smoke after `22e35da0`. Caller side connected (timer, 2:04 hangup). Callee reported the **banner never left "Theo Mac is calling.."** after answer.
+
+  **Two stacked causes, neither is the web overlay** (`ChatIncomingCallOverlay` says `Incoming call`; the phrase lives only in `lounge-send-activity-push`):
+  1. VoIP `callerName` is the full APNs **body** (`Theo Mac is calling you`). The sender's `replace(/^.*from\s+/i)` never matches that copy, so CallKit's `localizedCallerName` *is* the sentence. Answering cannot change it.
+  2. The APNs alert is a **sibling** of the VoIP ring. Answering CallKit never updates that card, and foreground `willPresent` was presenting it *and* reporting CallKit.
+
+  **Native defense:** `sanitizedCallerName` strips a trailing `is calling you` / `is calling`. Report / answer / end clear delivered+pending notifications for that `chatCallId`. Foreground invite `willPresent` reports CallKit and presents nothing. **Still Windows-owned:** send a real actor display name as VoIP `callerName`. Rebuild required before the next smoke.
+
 - 2026-08-27: **🔴 CallKit background ring PASSED, answer FAILED … fixed, re-smoke owed (Mac):** first real device smoke of CallKit/VoIP. **Passed:** a VoIP push woke a **force-closed** app and CallKit rang on the lock screen, and Ryan saw **one** call screen (the `eedd3d8c` `callId` dedupe held). **Failed:** answering never connected … the native UI swapped to the hang-up button but sat on **"Calling"** and the web app never joined LiveKit.
 
   **Root cause:** `EdgeCallKitManager.dispatchToWeb` was fire-and-forget. On a cold VoIP wake the answer fires before the web view has booted / mounted `ChatCallProvider`, so `window.dispatchEvent('edge-callkit-answer')` hit a page with **no listener** and the answer was lost. CallKit looked half-alive only because we `fulfill()` the action regardless. **Diagnostic worth remembering:** "Calling" is **not a string the web app contains** … `ChatCallSession` only ever renders `Ringing…` or a timer, which is how we proved the web layer never ran rather than guessing at LiveKit or mic permissions.

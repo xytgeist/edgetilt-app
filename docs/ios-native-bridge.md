@@ -111,6 +111,16 @@ Symptom (device smoke, 2026-08-27): the ring worked, answering swapped CallKit t
 - **Readiness is not "listeners installed."** `joinCall` throws `Sign in to call.` without a Supabase session, and a replayed answer has **no second chance** (the rejection is swallowed by `void`). So `markEdgeCallKitWebReady()` is called from an effect gated on **`supabaseClient && viewerUserId`**, not from `installEdgeCallKitListeners`.
 - **Answering does not give you audio for free.** `provider(_:didActivate:)` / `didDeactivate` are now implemented: CallKit owns activation for an answered call and WebKit's capture unit has to start against the already-active session. Without them you can reach a connected call with no audio.
 
+### ⚠️ CallKit caller name is not the APNs body (2026-08-27)
+
+**Read before touching VoIP `callerName` or `willPresent`.** `lounge-send-activity-push` builds the alert as `title: Edge Chat` / `body: "${who} is calling you"`, then stuffs **the whole body** into the VoIP payload as `callerName` (the `replace(/^.*from\s+/i)` never matches this copy). CallKit uses that as `localizedCallerName`, so the native banner reads **"Theo Mac is calling you"** for the entire call … answering cannot change it, because the sentence *is* the name.
+
+The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering CallKit never updates that card. In foreground, `willPresent` used to present it *and* report CallKit, so the user saw two "is calling" surfaces.
+
+**Native defense (this commit):** `sanitizedCallerName` strips a trailing `is calling you` / `is calling` before `reportNewIncomingCall`. Successful report / answer / end also `removeDeliveredCallInviteNotifications`. Foreground `willPresent` for `chat_call_invite` reports CallKit and presents **nothing** (no stacked banner).
+
+**Still Windows-owned at the source:** VoIP `callerName` should be the actor display name, not the alert body. Do not "fix" this by deleting the alert push … it is the fallback when VoIP is missing.
+
 ---
 
 ## Debug builds feel broken … measure before you "fix" (2026-08-26)

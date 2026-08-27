@@ -208,12 +208,55 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     return hosts
   }
 
+  /// Drop the APNs "X is calling you" card once CallKit owns the invite (or the call
+  /// ended). The alert is a sibling of the VoIP push, not the call UI, so answering
+  /// CallKit never updates it.
+  func removeDeliveredCallInviteNotifications(callId: String?) {
+    let trimmed = callId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let center = UNUserNotificationCenter.current()
+    center.getDeliveredNotifications { notes in
+      let ids = notes.compactMap { note -> String? in
+        Self.isCallInvite(note.request.content.userInfo, callId: trimmed)
+          ? note.request.identifier
+          : nil
+      }
+      if !ids.isEmpty {
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+      }
+    }
+    center.getPendingNotificationRequests { requests in
+      let ids = requests.compactMap { request -> String? in
+        Self.isCallInvite(request.content.userInfo, callId: trimmed)
+          ? request.identifier
+          : nil
+      }
+      if !ids.isEmpty {
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+      }
+    }
+  }
+
+  private static func isCallInvite(_ userInfo: [AnyHashable: Any], callId: String) -> Bool {
+    let eventType = (userInfo["eventType"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let noteCallId = (userInfo["chatCallId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !callId.isEmpty { return noteCallId == callId }
+    return eventType == "chat_call_invite"
+  }
+
   func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    EdgeCallKitManager.shared.handleCallInviteUserInfo(notification.request.content.userInfo)
+    let userInfo = notification.request.content.userInfo
+    let eventType = (userInfo["eventType"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    if eventType == "chat_call_invite" {
+      // CallKit is the ring. Showing the APNs banner here stacks a second "is calling
+      // you" card that never transitions when the user answers.
+      EdgeCallKitManager.shared.handleCallInviteUserInfo(userInfo)
+      completionHandler([])
+      return
+    }
     completionHandler([.banner, .sound, .badge])
   }
 

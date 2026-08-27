@@ -99,6 +99,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
+**Windows 2026-08-26 (nested connector):** Comments from nested comment-media un-hide OP media in the sheet. The avatar line remeasures so it does not stop mid-media. OP-sheet Reply connector was already fine.
+
 **Windows 2026-08-26 (overlay Reply landing):** Overlay comment detail sits on the focus comment with a short connector stub. OP timestamp + interaction row are hidden in that sheet (scroll up for the parent). Nested comment-media comments use the same hierarchy, as the top-level sheet of that stack frame. Full Post Reply still shows OP chrome.
 
 **Windows 2026-08-26 (comment-detail layout):** Reply focus comment is post-shaped (caption/media full width). OP + ancestors stay indented with the avatar connector. Overlay sheet + full Post + profile. Feed comment list rows unchanged.

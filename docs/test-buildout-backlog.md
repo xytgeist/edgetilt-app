@@ -1058,6 +1058,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-26: **Lounge nested comment-detail connector (Windows):** Opening comments from nested comment-media un-hides OP media in the sheet (omit flips to the comment). The avatar line now remeasures on that layout (omit/stack key, media load, avatar resize) so it reaches the focus avatar. OP-sheet Reply was already fine. No SQL / Edge.
+
 - 2026-08-26: **Lounge overlay Reply landing (Windows):** Overlay comment detail no longer parks the OP timestamp + interaction row on screen (that was the leftover 56px title-bar offset). Lands on the focus comment with a 20px connector stub. Nested comment-media comments use the same OP/ancestor hierarchy as a slide-in Reply. Full Post Reply unchanged. No SQL / Edge.
 
 - 2026-08-26: **Lounge comment-detail focus layout (Windows):** Reply focus comment matches post detail (avatar + name on the first row; caption/media full width below). OP post + ancestor comments stay indented with the avatar connector. Overlay sheet + full Post + profile Reply. No SQL / Edge.

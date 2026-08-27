@@ -17160,7 +17160,7 @@ export default function SocialFeed({
               <>
               <div
                 ref={loungePostDetailConnectorActive ? loungePostDetailCommentConnectorRef : undefined}
-                className={loungePostDetailConnectorActive ? 'relative' : ''}
+                className={loungePostDetailConnectorActive ? 'relative overflow-visible' : ''}
               >
               <article
                 tabIndex={loungeCommentDetailPathIds.length > 0 ? 0 : undefined}
@@ -18158,6 +18158,7 @@ export default function SocialFeed({
                   postAvatarRef={loungePostDetailPostAvatarRef}
                   connectorRootRef={loungePostDetailCommentConnectorRef}
                   isCommentPostDetail
+                  connectorLayoutKey={`${loungeSheetOmitMediaEntityId || ''}:${loungeOverlaySheetStackDepth}`}
                   onNavigateToPathIndex={navigateLoungeCommentDetailToPathIndex}
                   descendantCountByCommentId={loungeDetailDescendantCountByCommentId}
                   cardProps={{

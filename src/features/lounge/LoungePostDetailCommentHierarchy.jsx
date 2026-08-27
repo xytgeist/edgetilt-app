@@ -11,7 +11,13 @@ export const LOUNGE_THREAD_PART_NUMBER_BADGE_CLASS =
 export const LOUNGE_THREAD_PART_NUMBER_BADGE_LAST_CLASS =
   'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold tabular-nums text-lv-red ring-1 ring-lv-red/85'
 
-export function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRef }) {
+export function AvatarConnectorLine({
+  containerRef,
+  topAvatarRef,
+  bottomAvatarRef,
+  /** Remount/remeasure when overlay omit / nested stack changes (OP media can unhide). */
+  layoutKey = null,
+}) {
   const [line, setLine] = useState(null)
 
   const updateLine = useCallback(() => {
@@ -25,11 +31,15 @@ export function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRe
     const cRect = container.getBoundingClientRect()
     const tr = topBtn.getBoundingClientRect()
     const br = bottomBtn.getBoundingClientRect()
-    const cxTop = (tr.left + tr.right) / 2 - cRect.left
-    const cxBottom = (br.left + br.right) / 2 - cRect.left
+    const scaleY = cRect.height / Math.max(container.offsetHeight, 1)
+    const scaleX = cRect.width / Math.max(container.offsetWidth, 1)
+    const invY = scaleY > 0.01 ? 1 / scaleY : 1
+    const invX = scaleX > 0.01 ? 1 / scaleX : 1
+    const cxTop = ((tr.left + tr.right) / 2 - cRect.left) * invX
+    const cxBottom = ((br.left + br.right) / 2 - cRect.left) * invX
     const x = (cxTop + cxBottom) / 2
-    const yStart = tr.bottom - cRect.top + END_PAD_PX
-    const yEnd = br.top - cRect.top - END_PAD_PX
+    const yStart = (tr.bottom - cRect.top) * invY + END_PAD_PX
+    const yEnd = (br.top - cRect.top) * invY - END_PAD_PX
     if (yEnd <= yStart) {
       setLine(null)
       return
@@ -38,25 +48,44 @@ export function AvatarConnectorLine({ containerRef, topAvatarRef, bottomAvatarRe
   }, [bottomAvatarRef, containerRef, topAvatarRef])
 
   useLayoutEffect(() => {
-    updateLine()
-    const raf = requestAnimationFrame(updateLine)
     const container = containerRef.current
-    if (!container || typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateLine)
-      return () => {
-        cancelAnimationFrame(raf)
-        window.removeEventListener('resize', updateLine)
-      }
+    const topBtn = topAvatarRef?.current
+    const bottomBtn = bottomAvatarRef?.current
+    const run = () => updateLine()
+    run()
+    const raf1 = requestAnimationFrame(() => {
+      run()
+      requestAnimationFrame(run)
+    })
+    const t0 = window.setTimeout(run, 0)
+    const t1 = window.setTimeout(run, 80)
+
+    const observers = []
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(run)
+      if (container) ro.observe(container)
+      if (topBtn) ro.observe(topBtn)
+      if (bottomBtn) ro.observe(bottomBtn)
+      observers.push(ro)
     }
-    const ro = new ResizeObserver(() => updateLine())
-    ro.observe(container)
-    window.addEventListener('resize', updateLine)
+
+    const onMedia = () => run()
+    container?.addEventListener('load', onMedia, true)
+    container?.addEventListener('loadedmetadata', onMedia, true)
+    container?.addEventListener('loadeddata', onMedia, true)
+    window.addEventListener('resize', run)
+
     return () => {
-      cancelAnimationFrame(raf)
-      ro.disconnect()
-      window.removeEventListener('resize', updateLine)
+      cancelAnimationFrame(raf1)
+      window.clearTimeout(t0)
+      window.clearTimeout(t1)
+      observers.forEach((ro) => ro.disconnect())
+      container?.removeEventListener('load', onMedia, true)
+      container?.removeEventListener('loadedmetadata', onMedia, true)
+      container?.removeEventListener('loadeddata', onMedia, true)
+      window.removeEventListener('resize', run)
     }
-  }, [containerRef, updateLine])
+  }, [bottomAvatarRef, containerRef, layoutKey, topAvatarRef, updateLine])
 
   if (!line) return null
   return (
@@ -85,6 +114,7 @@ function HierarchyCommentRow({
   connectorRootRef,
   isCommentPostDetail,
   betweenRowClassName = 'mt-1',
+  connectorLayoutKey = null,
 }) {
   const rowRef = useRef(null)
   const lineContainerRef = pathIndex === 0 && connectorRootRef ? connectorRootRef : rowRef
@@ -104,6 +134,7 @@ function HierarchyCommentRow({
           containerRef={lineContainerRef}
           topAvatarRef={topAvatarRef}
           bottomAvatarRef={avatarRef}
+          layoutKey={connectorLayoutKey}
         />
       ) : null}
       <div id={isFocus ? 'lounge-detail-focus-comment' : undefined} className="relative z-[1]">
@@ -142,6 +173,7 @@ export default function LoungePostDetailCommentHierarchy({
   cardProps = {},
   isCommentPostDetail = true,
   betweenRowClassName = 'mt-1',
+  connectorLayoutKey = null,
 }) {
   const byId = new Map((comments || []).map((c) => [String(c.id), c]))
   const chain = (pathIds || []).map((id) => byId.get(String(id))).filter(Boolean)
@@ -175,6 +207,7 @@ export default function LoungePostDetailCommentHierarchy({
             connectorRootRef={connectorRootRef}
             isCommentPostDetail={isCommentPostDetail}
             betweenRowClassName={betweenRowClassName}
+            connectorLayoutKey={connectorLayoutKey}
           />
         )
       })}
@@ -184,6 +217,7 @@ export default function LoungePostDetailCommentHierarchy({
           containerRef={connectorRootRef}
           topAvatarRef={postAvatarRef}
           bottomAvatarRef={focusAvatarRef}
+          layoutKey={connectorLayoutKey}
         />
       ) : null}
     </section>

@@ -22,6 +22,16 @@
 
 ## 2. Database — SQL to run in production (order matters)
 
+> **Two gotchas learned applying `20260826120000_apple_iap_voip.sql` to test (2026-08-26):**
+>
+> 1. **`npm run db:query:* -- -f <file>` cannot run multi-statement files.** It goes through `supabase db query`, which uses a prepared statement, so anything with more than one statement dies on `cannot insert multiple commands into a prepared statement`. Use the **Dashboard SQL Editor** for multi-statement migrations, or split into one statement per file.
+> 2. **`supabase db push` is NOT usable on this repo.** Many migrations were applied out-of-band and are missing from `supabase_migrations.schema_migrations`, so push tries to replay old ones (it attempted `20260520120000` and failed on a `create or replace function` return-type change). If you apply a migration by hand, **record it** afterward:
+>
+> ```sql
+> insert into supabase_migrations.schema_migrations (version, name)
+> values ('20260826120000','apple_iap_voip') on conflict (version) do nothing;
+> ```
+
 Apply in the **Supabase Dashboard → SQL Editor** for **production**, or via CLI from this repo after linking production:
 
 ```bash

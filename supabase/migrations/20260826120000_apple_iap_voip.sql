@@ -17,6 +17,11 @@ alter table public.apns_device_tokens
   add column if not exists push_channel text not null default 'alert'
     check (push_channel in ('alert', 'voip'));
 
+-- token_key is a UNIQUE *constraint*, so `drop index` cannot remove it.
+-- Dropping the constraint also drops its backing index.
+alter table public.apns_device_tokens
+  drop constraint if exists apns_device_tokens_token_key;
+
 drop index if exists apns_device_tokens_token_key;
 
 create unique index if not exists apns_device_tokens_token_channel_uidx

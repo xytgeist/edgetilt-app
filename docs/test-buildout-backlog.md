@@ -1068,6 +1068,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Lock-screen connect was a false pass … CallKit timer ≠ LiveKit (Mac, Ryan correction):** callee lock screen showed hang-up + timer after answer; **caller never left Ringing.** `fulfill()` is CallKit theater. The caller only connects when a remote LiveKit participant appears, and WKWebView cannot start the mic while the phone stays locked. Fix: hold `edge-callkit-answer` until the app is `.active`, re-fire on `applicationDidBecomeActive` until `callKitDidConnect`, remount LiveKit on the same `callId`. **Unlock after answer is required** for a wrapper join. Native LiveKit is the only way to do a true lock-screen two-way call. Rebuild owed.
+
 - 2026-08-27: **Remote hangup left CallKit connected on the locked callee (Mac):** lock-screen answer now connects (timer + hang-up on both sides). When the caller hung up, the callee's CallKit UI stayed live. Broadcast `end` / postgres `ended` only did `setActiveCall(null)` and never called `endEdgeNativeCall`, so native never heard the remote hangup. Both paths now end CallKit with `reason: 'remote'` (`reportCall(.remoteEnded)`). Rebuild + web deploy owed.
 
 - 2026-08-27: **CallKit lock-screen answer still dead / unlocked answer steals the system in-call UI … fix landed, rebuild owed (Mac):** Ryan's second-pass report after `4d4f15ce`.

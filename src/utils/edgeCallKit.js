@@ -90,6 +90,17 @@ export async function markEdgeCallKitWebReady() {
   }
 }
 
+/** LiveKit connected. CallKit fulfill is not this ... do not skip it. */
+export async function markEdgeCallKitDidConnect() {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('callKitDidConnect')
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /**
  * @returns {Promise<{ token: string | null, via: 'bridge' | 'noop' | 'error' }>}
  */

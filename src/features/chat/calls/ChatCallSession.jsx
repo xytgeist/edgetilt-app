@@ -19,6 +19,7 @@ import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chat
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
+import { markEdgeCallKitDidConnect } from '../../../utils/edgeCallKit.js'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -348,6 +349,7 @@ export default function ChatCallSession({
         onConnected={() => {
           didConnectRef.current = true
           setConnectError('')
+          void markEdgeCallKitDidConnect()
           unlockChatCallAudio()
           // Matches CallChrome's initial speakerOn intent; CallChrome re-applies the
           // authoritative route once the room exists.

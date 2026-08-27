@@ -57,6 +57,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `endNativeCall` | JS→native | `{ callId, reason?: 'remote' }` | `{ ok: boolean }` | Mac | **native** (2026-08-26). `reason: 'remote'` uses `reportCall(.remoteEnded)` so a lock-screen CallKit UI actually clears when the other side hangs up. Local hangup still uses `CXEndCallAction`. |
 | `getVoIPPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (2026-08-26): PushKit token, uploaded with `pushChannel: 'voip'`. Also fires `edge-voip-token` event on refresh. **Device smoke pending.** |
 | `callKitWebReady` | JS→native | none | `{ ok: boolean, replayed: number }` | Mac | **native** + **web caller** (2026-08-27): web says its CallKit listeners are installed **and** a session exists; native replays buffered answer/decline. Fixes the cold-start dropped answer … see caution below. **Device smoke pending.** |
+| `callKitDidConnect` | JS→native | none | `{ ok: boolean }` | Mac | **native** + **web caller** (2026-08-27): LiveKit `onConnected`. CallKit `fulfill()` is **not** this. Stops unlock-retry of the answer event. |
 | `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |
 | `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, state, transactionId?, jws? }` | Mac | **native** (2026-08-26) + **web** SubscribeModal shell path. JWS verified server-side by Edge `apple-iap-verify`. **Device smoke pending.** |
 | `restoreStorePurchases` | JS→native | none | `{ ok, entitlements: string[] }` | Mac | **native** (2026-08-26). **Device smoke pending.** |
@@ -129,6 +130,8 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 2. **Phone unlocked.** A nicer CallKit UI connects, then iOS brings Edge forward and hides the system in-call screen. That part is iOS. **What we do next is ours:** open the chat room and mount the full in-app call modal (`openRoom: true`, `startMinimized: false`).
 
 **Fix:** add `audio` to `UIBackgroundModes`; `beginCallBackgroundTask` from report/answer until end; skip SW hygiene when a CallKit call is already tracked; CallKit answer is `preferAccept: true`, `openRoom: true`, full call modal.
+
+**⚠️ CallKit timer is not a LiveKit join.** `fulfill()` makes the callee lock screen show hang-up + a timer. The caller stays on `Ringing…` until a **remote LiveKit participant** appears. WKWebView **cannot start the microphone while the phone stays locked**, so a join attempted there is a no-op. We now **hold the answer event until `applicationState == .active`**, re-fire it on `applicationDidBecomeActive` until JS calls **`callKitDidConnect`**, and remount LiveKit if the same `callId` is already the active call. **Unlock after answer is required for a wrapper join.** A real lock-screen two-way call needs native LiveKit, not WebKit capture.
 
 **Remote hangup must tell CallKit.** Broadcast `end` / `decline` and the `chat_calls` UPDATE to `ended|missed|declined` used to only `setActiveCall(null)`. That unmounts LiveKit and leaves the native call up, which is exactly "they hung up, my lock-screen timer kept running." Both paths now `endEdgeNativeCall({ reason: 'remote' })`.
 

@@ -609,9 +609,18 @@ export function ChatCallProvider({
   const joinCall = useCallback(
     async (callId, opts = {}) => {
       if (!supabaseClient || !viewerUserId) throw new Error('Sign in to call.')
-      if (activeCallRef.current) throw new Error('Already in a call.')
       const id = String(callId || '').trim()
       if (!id) throw new Error('Missing call.')
+      if (activeCallRef.current && activeCallRef.current.callId !== id) {
+        throw new Error('Already in a call.')
+      }
+      if (activeCallRef.current?.callId === id) {
+        unlockChatCallAudio()
+        enterCallAudioSession()
+        setActiveCall((prev) => (prev ? { ...prev, connectNonce: Date.now() } : prev))
+        if (opts.openRoom !== false) onOpenRoom?.(activeCallRef.current.roomId)
+        return activeCallRef.current
+      }
       unlockChatCallAudio()
       enterCallAudioSession()
       setBusy(true)
@@ -835,7 +844,11 @@ export function ChatCallProvider({
     return installEdgeCallKitListeners({
       onAnswer: (detail) => {
         const callId = String(detail?.callId || '').trim()
-        if (!callId || activeCallRef.current) return
+        if (!callId) return
+        // Same call may be answered again on unlock ... WKWebView cannot start
+        // the mic while locked, so the first join is often a no-op. A different
+        // live call still wins and this event is ignored.
+        if (activeCallRef.current && activeCallRef.current.callId !== callId) return
         const snap = incomingRef.current
         if (snap?.callId && snap.callId !== callId) return
         void joinCallRef.current?.(callId, {
@@ -1112,7 +1125,7 @@ export function ChatCallProvider({
           }
         >
           <ChatCallSession
-            key={activeCall.callId}
+            key={`${activeCall.callId}:${activeCall.connectNonce || 0}`}
             initialMinimized={Boolean(activeCall.startMinimized)}
             callId={activeCall.callId}
             token={activeCall.token}

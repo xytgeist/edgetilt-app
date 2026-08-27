@@ -150,6 +150,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       completion(.success(EdgeCallKitManager.shared.currentVoIPTokenPayload()))
     case "callKitWebReady":
       EdgeCallKitManager.shared.markWebReady(completion: completion)
+    case "callKitDidConnect":
+      EdgeCallKitManager.shared.markMediaConnected(completion: completion)
     case "getStoreProducts":
       guard #available(iOS 15.0, *) else {
         completion(.failure(EdgeStoreKitError.unavailable))
@@ -342,6 +344,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       callKitWebReady: function () {
         return call('callKitWebReady', null);
+      },
+      callKitDidConnect: function () {
+        return call('callKitDidConnect', null);
       },
       getStoreProducts: function (payload) {
         return call('getStoreProducts', payload || {});

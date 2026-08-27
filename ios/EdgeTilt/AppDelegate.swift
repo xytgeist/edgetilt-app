@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
   func applicationDidBecomeActive(_ application: UIApplication) {
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
+    EdgeCallKitManager.shared.handleDidBecomeActive()
   }
 
   func application(

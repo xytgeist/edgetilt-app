@@ -66,10 +66,21 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     hasVideo: Bool,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
+    let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    // One invite reaches us up to three ways: web Realtime (`ChatCallProvider`), the
+    // foreground APNs alert banner (`willPresent`), and the PushKit VoIP ring. The
+    // sender emits both an alert and a VoIP push for `chat_call_invite`, so without
+    // this every path minted its own UUID and CallKit saw unrelated calls for one
+    // invite. `endCall` resolves a single UUID, so the extras stranded on screen.
+    if !trimmedCallId.isEmpty,
+       let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
+      completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
+      return
+    }
     let uuid = Self.uuid(from: uuidString) ?? UUID()
     let callerName = handle.trimmingCharacters(in: .whitespacesAndNewlines)
     let meta = CallMeta(
-      callId: callId,
+      callId: trimmedCallId,
       roomId: roomId,
       hasVideo: hasVideo,
       callerName: callerName.isEmpty ? "Incoming call" : callerName
@@ -242,10 +253,11 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     if let uuidString, let uuid = Self.uuid(from: uuidString) {
       return uuid
     }
-    if let callId, !callId.isEmpty {
-      if let hit = calls.first(where: { $0.value.callId == callId })?.key {
-        return hit
-      }
+    let trimmedCallId = callId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !trimmedCallId.isEmpty {
+      // Named a specific call, so never fall through to an arbitrary one: hanging up
+      // call B must not tear down call A. `endAllCalls()` is the blanket teardown.
+      return calls.first(where: { $0.value.callId == trimmedCallId })?.key
     }
     return calls.keys.first
   }

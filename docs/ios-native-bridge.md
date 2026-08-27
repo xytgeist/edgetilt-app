@@ -53,7 +53,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `setAudioRoute` | JS→native | `{ route: 'speaker'\|'earpiece' }` | `{ ok: boolean }` | Mac | **native** + **web caller** (2026-08-26): call speaker toggle. Voice defaults earpiece, video defaults speaker. **Device smoke pending.** |
 | `triggerHaptic` | JS→native | `{ style?: 'light'\|'medium'\|'heavy'\|'success'\|'warning'\|'error' }` | `{ ok: boolean }` | Mac | **native** (`EdgeHaptics.swift`, 2026-08-26). Web still uses the iOS switch trick in `tapHaptic.js`; **no shell caller wired yet** … see caution below. |
 | `getCallKitCapabilities` | JS→native | none | `{ supported: boolean, voipToken: string \| null }` | Mac | **native** (2026-08-26). Lets web decide CallKit vs in-app ring UI. **Device smoke pending.** |
-| `reportIncomingCall` | JS→native | `{ callId, handle, hasVideo?, roomId? }` | `{ ok: boolean }` | Mac | **native** (2026-08-26): shows system incoming-call UI. **Device smoke pending.** |
+| `reportIncomingCall` | JS→native | `{ callId, handle, hasVideo?, roomId? }` | `{ ok: boolean, uuid?: string, deduped?: true }` | Mac | **native** (2026-08-26). **Deduped by `callId` 2026-08-27** … see caution below. **Device smoke pending.** |
 | `endNativeCall` | JS→native | `{ callId }` | `{ ok: boolean }` | Mac | **native** (2026-08-26): tears down the CallKit call on hangup/decline. **Device smoke pending.** |
 | `getVoIPPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (2026-08-26): PushKit token, uploaded with `pushChannel: 'voip'`. Also fires `edge-voip-token` event on refresh. **Device smoke pending.** |
 | `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |
@@ -78,6 +78,20 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connect onboarding). That is enough for a clean US App Review story if CTAs never open Stripe inside WKWebView.
 
 **v1.1 (optional, safer dual-path):** StoreKit 2 products that grant the **same** `get_my_entitlements()` / fan-sub rows as Stripe webhooks. Web keeps Stripe; shell can offer IAP beside “Continue in Safari.” May **upcharge IAP** for Apple’s cut. Do not invent a second entitlement system. Counsel + App Review notes before submit.
+
+### ⚠️ CallKit: one invite arrives three ways … dedupe by `callId` (2026-08-27)
+
+**Read before touching `EdgeCallKitManager.reportIncomingCall`.** A single `chat_call_invite` can reach the shell through **three independent paths**, and every one of them used to mint a fresh `UUID`:
+
+1. **Web Realtime** … `ChatCallProvider.jsx` calls `reportEdgeIncomingCall()` when the invite row arrives (foreground).
+2. **APNs alert banner** … `EdgePushManager` `willPresent` → `handleCallInviteUserInfo()` (foreground only).
+3. **PushKit VoIP** … `pushRegistry(_:didReceiveIncomingPushWith:)` (any app state).
+
+Paths 2 and 3 both fire because **`lounge-send-activity-push` sends an alert push *and* a VoIP push** for `chat_call_invite` (`sendApnsToUser` + `sendVoipApnsToUser`). With `maximumCallGroups = 1` that meant duplicate or failed `reportNewIncomingCall` calls for one logical call, repeated `EdgeAudioSession.apply`, and worst of all **stranded CallKit calls**: `endCall` resolves a single UUID, so declining cleared one and left the others up ("stuck on a call that does not exist").
+
+**Fix:** `reportIncomingCall` now returns the **existing** UUID when a call with the same trimmed `callId` is already tracked (`deduped: true`). All three paths converge on one CallKit call. **Do not** re-add per-path UUID minting, and **do not** "fix" this by removing one of the three paths … each is load-bearing for a different app state.
+
+**Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
 
 ---
 

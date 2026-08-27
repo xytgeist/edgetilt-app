@@ -644,6 +644,11 @@ export default function OffersCalendar({
     setAlertPromptHandledForCurrentForm(false)
   }, [showForm, editingId])
 
+  // Deep-linked reminder taps open the detail modal, but not in this pass: switching to
+  // agenda changes activeCalendarView, and the effect that watches it clears
+  // weekDetailEvent. Hand the id off and open once the view has settled.
+  const [deepLinkDetailEventId, setDeepLinkDetailEventId] = useState(null)
+
   const pendingOfferEventIdsKey = pendingOfferEventIds.join('\u0001')
   useEffect(() => {
     if (!pendingOfferEventIds.length) return
@@ -653,6 +658,7 @@ export default function OffersCalendar({
     setSelectedDays([])
     setExpandedEventId(existingIds[0])
     setOfferSpotlightEventIds(existingIds)
+    setDeepLinkDetailEventId(existingIds[0])
     setPendingOfferEventIds([])
     window.setTimeout(() => setOfferSpotlightEventIds([]), 12000)
     if (typeof window !== 'undefined') {
@@ -823,6 +829,18 @@ export default function OffersCalendar({
   useEffect(() => {
     setWeekDetailEvent(null)
   }, [activeCalendarView, setWeekDetailEvent])
+
+  // Must stay declared AFTER the clear-on-view-change effect above: on the render where
+  // the deep link flips the view to agenda, that one runs first and would otherwise wipe
+  // the modal we are about to open.
+  useEffect(() => {
+    if (!deepLinkDetailEventId) return
+    if (activeCalendarView !== 'agenda') return
+    const target = events.find((ev) => ev.id === deepLinkDetailEventId)
+    if (!target) return
+    setDeepLinkDetailEventId(null)
+    setWeekDetailEvent(target)
+  }, [deepLinkDetailEventId, activeCalendarView, events, setWeekDetailEvent])
 
   const [weekDetailImageUrl, setWeekDetailImageUrl] = useState(null)
   useEffect(() => {

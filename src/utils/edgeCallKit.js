@@ -30,7 +30,7 @@ export async function reportEdgeIncomingCall(args) {
 }
 
 /**
- * @param {{ uuid?: string, callId?: string }} [args]
+ * @param {{ uuid?: string, callId?: string, reason?: 'local' | 'remote' }} [args]
  */
 export async function endEdgeNativeCall(args = {}) {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
@@ -38,6 +38,7 @@ export async function endEdgeNativeCall(args = {}) {
     const result = await edgeNativeInvoke('endNativeCall', {
       uuid: args.uuid,
       callId: args.callId,
+      reason: args.reason === 'remote' ? 'remote' : undefined,
     })
     return { ok: result?.ok !== false, via: 'bridge' }
   } catch {

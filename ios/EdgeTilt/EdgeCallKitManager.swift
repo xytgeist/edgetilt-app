@@ -158,10 +158,27 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
   }
 
-  func endCall(uuidString: String?, callId: String?, completion: @escaping (Result<[String: Any], Error>) -> Void) {
+  func endCall(
+    uuidString: String?,
+    callId: String?,
+    reason: String?,
+    completion: @escaping (Result<[String: Any], Error>) -> Void
+  ) {
     let uuid = resolveUUID(uuidString: uuidString, callId: callId)
     guard let uuid else {
       completion(.success(["ok": false]))
+      return
+    }
+    // Remote hangup must not go through CXEndCallAction. That path looks like a
+    // local decline and can re-enter JS. reportCall(.remoteEnded) is the CallKit
+    // API for "the other side hung up" and is what actually clears a lock-screen
+    // in-call UI when the web session is already gone.
+    if reason == "remote" {
+      provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
+      calls.removeValue(forKey: uuid)
+      if calls.isEmpty { endCallBackgroundTask() }
+      EdgeAudioSession.apply(mode: "default") { _ in }
+      completion(.success(["ok": true]))
       return
     }
     let action = CXEndCallAction(call: uuid)

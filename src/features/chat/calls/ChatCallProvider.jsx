@@ -256,6 +256,7 @@ export function ChatCallProvider({
           if (activeCallRef.current?.callId === callId) {
             setActiveCall(null)
           }
+          void endEdgeNativeCall({ callId, reason: 'remote' })
           return
         }
 
@@ -400,6 +401,7 @@ export function ChatCallProvider({
           if (['ended', 'missed', 'declined'].includes(row.status)) {
             if (incomingRef.current?.callId === row.id) setIncoming(null)
             if (activeCallRef.current?.callId === row.id) setActiveCall(null)
+            void endEdgeNativeCall({ callId: row.id, reason: 'remote' })
             return
           }
           if (activeCallRef.current?.callId === row.id && row.recording_status) {

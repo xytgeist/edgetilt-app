@@ -143,6 +143,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeCallKitManager.shared.endCall(
         uuidString: payload?["uuid"] as? String,
         callId: payload?["callId"] as? String,
+        reason: payload?["reason"] as? String,
         completion: completion
       )
     case "getVoIPPushToken":

@@ -1194,6 +1194,8 @@ export default function SocialFeed({
   const [loungeCommentDetailPathIds, setLoungeCommentDetailPathIds] = useState([])
   const loungeCommentDetailPathIdsRef = useRef(loungeCommentDetailPathIds)
   loungeCommentDetailPathIdsRef.current = loungeCommentDetailPathIds
+  /** After drilling into a comment from a media tap, open that comment's lightbox from the detail tile. */
+  const [loungeAutoOpenCommentMediaId, setLoungeAutoOpenCommentMediaId] = useState(null)
   const [loungeDetailCommentEditingId, setLoungeDetailCommentEditingId] = useState(null)
   const [loungeDetailCommentEditDraft, setLoungeDetailCommentEditDraft] = useState('')
   const [loungeDetailCommentEditBusy, setLoungeDetailCommentEditBusy] = useState(false)
@@ -9235,17 +9237,17 @@ export default function SocialFeed({
 
   const openLoungeCommentDetail = useCallback(
     (comment, { focusComposer = false, keepLightboxPlaying = false, overlayDirectEntry = false } = {}) => {
-      if (!comment?.id) return
+      if (!comment?.id) return false
       if (!keepLightboxPlaying && !loungePostDetailOverLightboxRef.current) {
         pauseAllLoungeStreamInlineVideos()
       }
       if (loungeReadOnly) {
         requireLoungeAuth()
-        return
+        return false
       }
-      if (openProfileGateIfNeeded()) return
+      if (openProfileGateIfNeeded()) return false
       const chain = buildLoungeCommentDrillPath(comment.id, comment)
-      if (!chain.length) return
+      if (!chain.length) return false
       setLoungePostDetailMenuOpen(false)
       cancelLoungeDetailEdit()
       cancelLoungeDetailCommentEdit()
@@ -9260,6 +9262,7 @@ export default function SocialFeed({
       if (loungePostDetailOverLightboxRef.current) {
         scheduleLoungePostDetailFocusScroll({ animate: false })
       }
+      return true
     },
     [
       buildLoungeCommentDrillPath,
@@ -9309,6 +9312,28 @@ export default function SocialFeed({
     (comment) => openLoungeCommentDetail(comment, { focusComposer: true }),
     [openLoungeCommentDetail],
   )
+
+  const openLoungeCommentMediaViaDetail = useCallback(
+    (comment) => {
+      if (!comment?.id) return false
+      const drilled = openLoungeCommentDetail(comment, { keepLightboxPlaying: true })
+      if (drilled) setLoungeAutoOpenCommentMediaId(String(comment.id))
+      return drilled
+    },
+    [openLoungeCommentDetail],
+  )
+
+  const clearLoungeAutoOpenCommentMedia = useCallback(() => {
+    setLoungeAutoOpenCommentMediaId(null)
+  }, [])
+
+  useEffect(() => {
+    if (!loungeAutoOpenCommentMediaId) return
+    const focusId = loungeCommentDetailPathIds[loungeCommentDetailPathIds.length - 1]
+    if (String(focusId || '') !== String(loungeAutoOpenCommentMediaId)) {
+      setLoungeAutoOpenCommentMediaId(null)
+    }
+  }, [loungeAutoOpenCommentMediaId, loungeCommentDetailPathIds])
 
   const openLoungeStreamLightboxDetail = useCallback(
     (hostPost, mediaPost) => {
@@ -18138,6 +18163,9 @@ export default function SocialFeed({
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
                     overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
                     enableLightbox: loungeCommentMediaLightboxEnabled,
+                    onOpenCommentMediaViaDetail: openLoungeCommentMediaViaDetail,
+                    autoOpenCommentMediaId: loungeAutoOpenCommentMediaId,
+                    onAutoOpenCommentMediaConsumed: clearLoungeAutoOpenCommentMedia,
                   }}
                 />
               ) : null}
@@ -18227,6 +18255,9 @@ export default function SocialFeed({
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
                     overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
                     enableLightbox: loungeCommentMediaLightboxEnabled,
+                    onOpenCommentMediaViaDetail: openLoungeCommentMediaViaDetail,
+                    autoOpenCommentMediaId: loungeAutoOpenCommentMediaId,
+                    onAutoOpenCommentMediaConsumed: clearLoungeAutoOpenCommentMedia,
                   }}
                 />
               ) : null}
@@ -18343,6 +18374,9 @@ export default function SocialFeed({
                           omitMediaEntityId={loungeSheetOmitMediaEntityId}
                           overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
                           enableLightbox={loungeCommentMediaLightboxEnabled}
+                          onOpenCommentMediaViaDetail={openLoungeCommentMediaViaDetail}
+                          autoOpenCommentMediaId={loungeAutoOpenCommentMediaId}
+                          onAutoOpenCommentMediaConsumed={clearLoungeAutoOpenCommentMedia}
                         />
                       </>
                     )}

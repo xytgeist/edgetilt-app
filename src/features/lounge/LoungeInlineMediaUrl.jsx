@@ -1498,6 +1498,9 @@ export function LoungeInlineMediaUrl({
   variant = 'feed',
   marginTopClass = 'mt-2',
   enableLightbox = true,
+  onBeforeOpenLightbox = null,
+  autoOpenLightbox = false,
+  onAutoOpenLightboxConsumed = null,
   knownGifUrl = '',
   lightboxPortalClass = 'z-[100]',
   renderMediaLightboxMenu,
@@ -1544,6 +1547,7 @@ export function LoungeInlineMediaUrl({
     : 'w-full min-w-0 max-w-full'
 
   const openLightbox = useCallback(() => {
+    if (typeof onBeforeOpenLightbox === 'function' && onBeforeOpenLightbox()) return false
     const img = originImgRef.current
     const stored = String(url).trim()
     const fromRect =
@@ -1557,7 +1561,14 @@ export function LoungeInlineMediaUrl({
       index: 0,
       fromRect: heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
     })
-  }, [url, knownGifUrl])
+    return true
+  }, [url, knownGifUrl, onBeforeOpenLightbox])
+
+  useLayoutEffect(() => {
+    if (!autoOpenLightbox || !enableLightbox) return
+    const opened = openLightbox()
+    if (opened !== false) onAutoOpenLightboxConsumed?.()
+  }, [autoOpenLightbox, enableLightbox, openLightbox, onAutoOpenLightboxConsumed])
 
   const getOriginRect = useCallback((_index) => {
     const img = originImgRef.current
@@ -1647,6 +1658,9 @@ export function LoungePostMediaPair({
   variant = 'feed',
   firstMarginTopClass = 'mt-2',
   enableLightbox = true,
+  onBeforeOpenLightbox = null,
+  autoOpenLightbox = false,
+  onAutoOpenLightboxConsumed = null,
   lightboxPortalClass = 'z-[100]',
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
@@ -1664,6 +1678,9 @@ export function LoungePostMediaPair({
           variant={variant}
           marginTopClass={firstMarginTopClass}
           enableLightbox={enableLightbox}
+          onBeforeOpenLightbox={onBeforeOpenLightbox}
+          autoOpenLightbox={autoOpenLightbox}
+          onAutoOpenLightboxConsumed={onAutoOpenLightboxConsumed}
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
@@ -1676,6 +1693,7 @@ export function LoungePostMediaPair({
           variant={variant}
           marginTopClass="mt-2"
           enableLightbox={enableLightbox}
+          onBeforeOpenLightbox={onBeforeOpenLightbox}
           lightboxPortalClass={lightboxPortalClass}
           renderMediaLightboxMenu={renderMediaLightboxMenu}
           renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}
@@ -1693,6 +1711,9 @@ export function LoungePostMediaPair({
       variant={variant}
       marginTopClass={firstMarginTopClass}
       enableLightbox={enableLightbox}
+      onBeforeOpenLightbox={onBeforeOpenLightbox}
+      autoOpenLightbox={autoOpenLightbox}
+      onAutoOpenLightboxConsumed={onAutoOpenLightboxConsumed}
       lightboxPortalClass={lightboxPortalClass}
       renderMediaLightboxMenu={renderMediaLightboxMenu}
       renderMediaLightboxTopBarExtra={renderMediaLightboxTopBarExtra}

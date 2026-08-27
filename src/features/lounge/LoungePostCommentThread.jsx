@@ -137,6 +137,9 @@ export function LoungeCommentCard({
   overlayNestedRootEntityId = null,
   /** Comment-row media lightbox. Off after the first overlay nested-media hop. */
   enableLightbox = true,
+  onOpenCommentMediaViaDetail = null,
+  autoOpenCommentMediaId = null,
+  onAutoOpenCommentMediaConsumed = null,
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -183,6 +186,12 @@ export function LoungeCommentCard({
         typeof onCommentMenuBlock === 'function' ||
         typeof onCommentMenuReport === 'function'),
   )
+
+  const interceptCommentMediaLightbox = useCallback(() => {
+    if (!enableLightbox || detailFocusLayout) return false
+    if (typeof onOpenCommentMediaViaDetail !== 'function') return false
+    return Boolean(onOpenCommentMediaViaDetail(comment))
+  }, [comment, detailFocusLayout, enableLightbox, onOpenCommentMediaViaDetail])
 
   const bodyEditing = editingCommentId === comment.id
 
@@ -284,6 +293,11 @@ export function LoungeCommentCard({
         omitMediaEntityId={omitMediaEntityId}
         overlayNestedRootEntityId={overlayNestedRootEntityId}
         enableLightbox={enableLightbox}
+        onBeforeOpenLightbox={interceptCommentMediaLightbox}
+        autoOpenLightbox={
+          Boolean(autoOpenCommentMediaId) && String(comment.id) === String(autoOpenCommentMediaId)
+        }
+        onAutoOpenLightboxConsumed={onAutoOpenCommentMediaConsumed}
         variant={mediaFeedVariant}
         captionColumnMedia={captionColumnMedia}
         firstMarginTopClass={
@@ -603,6 +617,9 @@ export default function LoungePostCommentThread({
   omitMediaEntityId = null,
   overlayNestedRootEntityId = null,
   enableLightbox = true,
+  onOpenCommentMediaViaDetail = null,
+  autoOpenCommentMediaId = null,
+  onAutoOpenCommentMediaConsumed = null,
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
@@ -765,6 +782,9 @@ export default function LoungePostCommentThread({
     omitMediaEntityId,
     overlayNestedRootEntityId,
     enableLightbox,
+    onOpenCommentMediaViaDetail,
+    autoOpenCommentMediaId,
+    onAutoOpenCommentMediaConsumed,
   }
 
   const renderCommentRow = (comment) => (

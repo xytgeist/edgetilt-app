@@ -1056,7 +1056,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ---
 
-## Update log
+- 2026-08-26: **Lounge comment-list media via Reply (Windows):** Tapping media on a comment that is not already the Reply focus drills that comment first, then opens the lightbox from the focus tile. Close and comments-on-lightbox match opening the comment then the media. Overlay + full Post. 2+ hop still comment-only. No SQL / Edge.
 
 - 2026-08-26: **Lounge nested comment-detail connector (Windows):** Opening comments from nested comment-media un-hides OP media in the sheet (omit flips to the comment). The avatar line now remeasures on that layout (omit/stack key, media load, avatar resize) so it reaches the focus avatar. OP-sheet Reply was already fine. No SQL / Edge.
 

@@ -61,6 +61,9 @@ export function LoungeImageCarousel({
   removeLabelForIndex,
   /** Tap image to open fullscreen (disabled in composer). */
   enableLightbox = true,
+  onBeforeOpenLightbox = null,
+  autoOpenLightbox = false,
+  onAutoOpenLightboxConsumed = null,
   lightboxPortalClass = 'z-[100]',
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
@@ -108,14 +111,16 @@ export function LoungeImageCarousel({
 
   const openLightboxAt = useCallback(
     (i) => {
+      if (typeof onBeforeOpenLightbox === 'function' && onBeforeOpenLightbox()) return false
       const fromRect = getLightboxOriginRect(i)
       setLightbox({
         urls: list,
         index: i,
         fromRect,
       })
+      return true
     },
-    [getLightboxOriginRect, list],
+    [getLightboxOriginRect, list, onBeforeOpenLightbox],
   )
   const multiSlideCarousel = list.length > 1
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multiSlideCarousel)
@@ -234,6 +239,11 @@ export function LoungeImageCarousel({
   }, [urlsKey, isComposer, list.length, visibilityResetRootRef])
   const imgClass = imgClassByVariant[variant] || imgClassByVariant.feed
   const canOpenLightbox = enableLightbox && !isComposer && typeof onRemoveIndex !== 'function'
+  useLayoutEffect(() => {
+    if (!autoOpenLightbox || !canOpenLightbox) return
+    const opened = openLightboxAt(0)
+    if (opened !== false) onAutoOpenLightboxConsumed?.()
+  }, [autoOpenLightbox, canOpenLightbox, openLightboxAt, onAutoOpenLightboxConsumed])
   const usesCarouselLayout = !isComposer && loungeFeedUsesCarouselLayout(variant)
   const singleCarouselSlide = usesCarouselLayout && list.length === 1
   const rounding = variant === 'embed' ? 'rounded-lg' : 'rounded-xl'
@@ -578,6 +588,9 @@ export function LoungePostFeedImagesAndGif({
   variant = 'feed',
   firstMarginTopClass = 'mt-2',
   enableLightbox = true,
+  onBeforeOpenLightbox = null,
+  autoOpenLightbox = false,
+  onAutoOpenLightboxConsumed = null,
   visibilityResetRootRef,
   lightboxPortalClass = 'z-[100]',
   /** Feed/detail row or comment row for Stream hero chrome (defaults to `post`). */
@@ -660,6 +673,7 @@ export function LoungePostFeedImagesAndGif({
   const hideAsSheetPeekDuplicate = Boolean(
     omitMediaEntityId && post?.id && String(post.id) === String(omitMediaEntityId),
   )
+  const shouldAutoOpenLightbox = Boolean(autoOpenLightbox) && !hideAsSheetPeekDuplicate
   const nestedRootId = overlayNestedRootEntityId || omitMediaEntityId
   const effectiveLightboxPortalClass =
     omitMediaEntityId && post?.id && nestedRootId && String(post.id) !== String(nestedRootId)
@@ -704,6 +718,9 @@ export function LoungePostFeedImagesAndGif({
         variant={variant}
         firstMarginTopClass={firstMarginTopClass}
         enableLightbox={enableLightbox}
+        onBeforeOpenLightbox={onBeforeOpenLightbox}
+        autoOpenLightbox={shouldAutoOpenLightbox}
+        onAutoOpenLightboxConsumed={onAutoOpenLightboxConsumed}
         visibilityResetRootRef={visibilityResetRootRef}
         feedAutoplayClientId={feedAutoplayClientId}
         sessionPosterUrl={sessionStreamPosterUrl || undefined}
@@ -737,6 +754,9 @@ export function LoungePostFeedImagesAndGif({
         regionAriaLabel={gif ? 'Post images and GIF' : 'Post images'}
         gifUrl={gif}
         enableLightbox={enableLightbox}
+        onBeforeOpenLightbox={onBeforeOpenLightbox}
+        autoOpenLightbox={shouldAutoOpenLightbox}
+        onAutoOpenLightboxConsumed={onAutoOpenLightboxConsumed}
         visibilityResetRootRef={visibilityResetRootRef}
         captionColumnMedia={captionColumnMedia}
         priority={priority}
@@ -749,6 +769,9 @@ export function LoungePostFeedImagesAndGif({
         variant={variant}
         firstMarginTopClass={firstMarginTopClass}
         enableLightbox={enableLightbox}
+        onBeforeOpenLightbox={onBeforeOpenLightbox}
+        autoOpenLightbox={shouldAutoOpenLightbox}
+        onAutoOpenLightboxConsumed={onAutoOpenLightboxConsumed}
         {...imageLightboxProps}
       />
     )

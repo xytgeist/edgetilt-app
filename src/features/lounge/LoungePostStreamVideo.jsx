@@ -328,6 +328,9 @@ export default function LoungePostStreamVideo({
   variant = 'feed',
   firstMarginTopClass = 'mt-2',
   enableLightbox = true,
+  onBeforeOpenLightbox = null,
+  autoOpenLightbox = false,
+  onAutoOpenLightboxConsumed = null,
   visibilityResetRootRef,
   feedAutoplayClientId,
   sessionPosterUrl: sessionPosterUrlProp = '',
@@ -2415,6 +2418,7 @@ export default function LoungePostStreamVideo({
 
   const openLightbox = useCallback(() => {
     if (lightboxOpenRef.current) return
+    if (typeof onBeforeOpenLightbox === 'function' && onBeforeOpenLightbox()) return
     const slot = heroInlineSlotRef.current
     const wrap = containerRef.current
     const flyout = videoFlyoutRef.current
@@ -2579,6 +2583,43 @@ export default function LoungePostStreamVideo({
     tryHeroPlayback,
     landHeroOpen,
     reportHeroShrinkDebug,
+    onBeforeOpenLightbox,
+  ])
+
+  useLayoutEffect(() => {
+    if (!autoOpenLightbox || !enableLightbox || hideAsSheetPeekDuplicate) return undefined
+    if (lightboxOpenRef.current) {
+      onAutoOpenLightboxConsumed?.()
+      return undefined
+    }
+    const tryOpen = () => {
+      if (lightboxOpenRef.current) {
+        onAutoOpenLightboxConsumed?.()
+        return
+      }
+      openLightbox()
+      if (lightboxOpenRef.current) onAutoOpenLightboxConsumed?.()
+    }
+    if (containerRef.current) {
+      tryOpen()
+      return undefined
+    }
+    let cancelled = false
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) tryOpen()
+      })
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(id)
+    }
+  }, [
+    autoOpenLightbox,
+    enableLightbox,
+    hideAsSheetPeekDuplicate,
+    openLightbox,
+    onAutoOpenLightboxConsumed,
   ])
 
   /** Re-layout hero video when the device rotates or the viewport resizes while full-screen. */

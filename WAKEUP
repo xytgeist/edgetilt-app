@@ -79,7 +79,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`686572ae`** | Offer reminder dedupe + deep link (Mac Theo 2026-08-27) |
+| **`test`** | **`2a82a5cb`** | WinTheo: offer reminder `eventIds` on postMessage / iOS-wake path |
 | **`main`** | **`87434bfd`** | Unchanged … **prod still has the duplicate-reminder bug**, see below |
 
 ### Mac Theo 2026-08-27 … offer reminders were sending 2-3× since May (FIXED on test)
@@ -98,13 +98,26 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 1. The deep-link modal opener **must stay declared AFTER** `useEffect(() => setWeekDetailEvent(null), [activeCalendarView])`. Same-commit effect order is declaration order; move it up and "tap does nothing" comes back **silently**.
 2. **`deepLinkOwnsViewRef`** exists because `offersDefaultView` resolves **async** (`getSession()` + localStorage). A saved Calendar/Week default landing after the deep link would flip the view and close the modal. Do not delete that guard.
 
-**⛔ Windows Theo … assigned task, BLOCKS prod promotion.** Spec is on **https://lvslotpro.com/theo**. The deep link is lost on the **postMessage / durable-stash** path = the **iOS-on-wake** case (already-open client never reloads the URL). Ryan's smoke only passed because `client.navigate()` won the race. Two edits: (1) **`public/push-sw.js`** `parseAppNavigateMessage()` extracts `tab`/`post`/`comment`/`call`/`room` but **not `eventIds`**; (2) **`src/features/shell/AppShell.jsx`** `applyAppNavigate()` offers branch does `setTab('offers'); return` and never calls `setPendingOfferEventIds`. **SW change ⇒ force-close the PWA.** Smoke: background iPhone PWA → reminder → tap → modal.
+**✅ Gap 1 (iOS-on-wake deep link) … WinTheo landed it on `test` `2a82a5cb`.** Confirmed in tree: `push-sw.js` `parseAppNavigateMessage()` returns `offerEventIds`; `AppShell.applyAppNavigate()` offers branch calls `setPendingOfferEventIds` before `setTab('offers')`. OffersCalendar opener-order gotcha untouched. **Still owed:** iPhone PWA smoke. Users must **fully force-close the PWA** to pick up the new SW. Do not promote reminders to prod until Ryan walks that.
 
-**⛔ PROD IS STILL BROKEN (since 2026-05-07)** and is **worse than test was** … it runs **two** overlapping cron jobs (`*/5` + every-minute) against the same broken dedupe. Needs Ryan's explicit go, then: apply `20260827130000` (incl. the index drop … it builds against a much larger table, expect a brief lock) → redeploy `send-due-offer-reminders` → ship the web build for the modal deep link → consider collapsing the two cron jobs to the every-minute one (the `*/5` has a dead zone; cadence note in the backlog).
+**Both duplicate-send root causes were real and both are fixed on test** (WinTheo asked; they are not alternatives):
+- **(A) SQL:** unique index `offer_notification_sends_unique (user_id, event_id, lead_minutes)` = one send row per event forever. Edit-renotify could never write a second row. Insert error swallowed. Dedupe re-read the first row.
+- **(B) Edge code:** `sentMs` (`created_at`) vs `fireMs` (`alert_fire_at`) while the sender fires early (`lookaheadMinutes=1`), so a 16:59 send for a 17:00 event re-qualified on the next ticks.
+They stacked: (B) made every tick *want* to re-send; (A) made ticks 2-3 fail to persist a dedupe row (`logWriteErrors: 1`), so it never self-corrected. One migration + one function fix both. Do not apply one without the other.
 
-**🔴 STILL NOT DONE … leaked prod key.** This morning's fix found a **production service_role bearer token** stored in **test**'s `cron.job.command` (test cron was calling *prod*'s function). Job row is deleted but **assume the value is compromised … it has never been rotated.** Ryan chose rotation; nobody has done it. Rotating means updating vault secrets in **both** projects.
+**⛔ PROD IS STILL BROKEN (since 2026-05-07)** … two overlapping crons (`send-due-offer-reminders-5m` `*/5` + `send_due_offer_reminders_minute` `* * * * *`) against the old dedupe. Needs Ryan's explicit go. Exact replay (also posted to `/theo`):
 
-**Also still open:** IPA smoke of Windows Theo's lightbox list. Ryan's Offers reminder work ate the session.
+1. **SQL first** on `jtjgtucumuoswnbauxry`: `20260827130000_offer_sends_dedupe_by_fire_time.sql` (split statements … `db:query` cannot run the file as one). Includes `drop index offer_notification_sends_unique` + new unique `(event_id, lead_minutes, alert_fire_at)`. Brief lock on the larger prod table.
+2. **Immediately redeploy** Edge **`send-due-offer-reminders`**. Reverse order = **zero sends**: the new function `select`s `alert_fire_at` and `throw`s on that error (500) until the column exists.
+3. **Never pause** `send_due_offer_reminders_minute`. That is the load-bearing cadence (`lookaheadMinutes=1`). Dropping it is the zero-send gap.
+4. **After** SQL + function are live: drop prod job `send-due-offer-reminders-5m` (`*/5`). It has a dead zone and double-fires with the minute job. Keep the minute job only.
+5. **Web** (deep link + `2a82a5cb` SW) can ship independently of SQL/Edge. Still wait for the iPhone PWA wake-path smoke.
+
+SQL-first with the old function still running is a short window of possible extra dupes, not silence. Function-first is silence. Cron collapse is last, never first.
+
+**Leaked prod key in test cron:** Ryan 2026-08-27 … **not an issue. Do not rotate. Do not reopen.**
+
+**Also still open:** IPA smoke of Windows Theo's lightbox list. We'll walk it together.
 
 **Do not reopen:** the "app feels slow / multi-tap" hunt … that was **Debug + debugger attached**, not a code regression (2026-08-26 entry). Use the **`EdgeTilt Test Fast`** scheme before believing a perf report.
 

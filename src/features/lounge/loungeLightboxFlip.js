@@ -15,9 +15,21 @@ export const HERO_CHROME_FADE_MS = 220
 export const HERO_STACK_BASE_Z_INDEX = 102
 /**
  * Comment/quote media lightbox stacked on the X-style overlay comments sheet
- * (sheet is `z-[109]`). App modals stay at `z-[120]`.
+ * (sheet is `z-[109]`, nested peek sheet `z-[118]`). Nested layers portal into
+ * `[data-lounge-overlay-nest-root]` (115 while peeked, 119 while full-screen)
+ * so every extra media→comments hop can sit above the current sheet. App
+ * modals stay at `z-[120]`.
  */
 export const LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS = 'z-[115]'
+
+/** DOM attrs for a comment-media lightbox stacked over the overlay sheet. */
+export function loungeNestedLightboxDomProps(nested, depth = 1) {
+  if (!nested) return {}
+  return {
+    'data-lounge-nested-lightbox': '',
+    'data-lounge-nested-depth': String(Math.max(1, Number(depth) || 1)),
+  }
+}
 
 /**
  * Hero stack must sit above the parent shell (`lightboxPortalClass`, e.g. post detail z-[98]/z-[102]).

@@ -32,6 +32,9 @@ let cachedInnerKbPx = 0
 let peekFollowRaf = 0
 let peekResizing = false
 const PEEK_FOLLOW_MS = 400
+const OVERLAY_NEST_ROOT_ATTR = 'data-lounge-overlay-nest-root'
+/** @type {{ depth: number, close: () => void }[]} */
+const nestedLightboxStack = []
 
 function emit() {
   listeners.forEach((fn) => {
@@ -203,24 +206,128 @@ function isNestedLightboxNode(el) {
   return Boolean(el.closest('[data-lounge-nested-lightbox]'))
 }
 
+function queryNestedTopPeekMediaEl() {
+  if (typeof document === 'undefined') return null
+  const top = document.querySelector(
+    '[data-lounge-nested-lightbox][data-lounge-nested-top][data-lounge-lightbox-peek-media]',
+  )
+  if (top instanceof HTMLElement) return top
+  const inside = document.querySelector(
+    '[data-lounge-nested-lightbox][data-lounge-nested-top] [data-lounge-lightbox-peek-media]',
+  )
+  return inside instanceof HTMLElement ? inside : null
+}
+
+function queryNestedTopPeekFlyoutEl() {
+  if (typeof document === 'undefined') return null
+  const top = document.querySelector(
+    '[data-lounge-nested-lightbox][data-lounge-nested-top][data-lounge-stream-hero-flyout]',
+  )
+  if (top instanceof HTMLElement) return top
+  const inside = document.querySelector(
+    '[data-lounge-nested-lightbox][data-lounge-nested-top] [data-lounge-stream-hero-flyout]',
+  )
+  return inside instanceof HTMLElement ? inside : null
+}
+
 function queryOverlayPeekMediaEl() {
   if (typeof document === 'undefined') return null
-  const nestedPeek = overlayNestedPeekActive()
+  if (overlayNestedPeekActive()) return queryNestedTopPeekMediaEl()
   const nodes = document.querySelectorAll('[data-lounge-lightbox-peek-media]')
   for (const el of nodes) {
-    if (isNestedLightboxNode(el) === nestedPeek) return el
+    if (!isNestedLightboxNode(el)) return el
   }
   return null
 }
 
 function queryOverlayPeekFlyoutEl() {
   if (typeof document === 'undefined') return null
-  const nestedPeek = overlayNestedPeekActive()
+  if (overlayNestedPeekActive()) return queryNestedTopPeekFlyoutEl()
   const nodes = document.querySelectorAll('[data-lounge-stream-hero-flyout]')
   for (const el of nodes) {
-    if (isNestedLightboxNode(el) === nestedPeek) return el
+    if (!isNestedLightboxNode(el)) return el
   }
   return null
+}
+
+export function getLoungeOverlayNestRoot() {
+  if (typeof document === 'undefined') return null
+  let el = document.querySelector(`[${OVERLAY_NEST_ROOT_ATTR}]`)
+  if (el instanceof HTMLElement) return el
+  el = document.createElement('div')
+  el.setAttribute(OVERLAY_NEST_ROOT_ATTR, '')
+  document.body.appendChild(el)
+  return el
+}
+
+export function releaseLoungeOverlayNestRootIfEmpty() {
+  if (typeof document === 'undefined') return
+  const el = document.querySelector(`[${OVERLAY_NEST_ROOT_ATTR}]`)
+  if (!(el instanceof HTMLElement) || el.childElementCount > 0) return
+  el.remove()
+}
+
+export function markLoungeOverlayNestedTops() {
+  if (typeof document === 'undefined') return
+  const nodes = [...document.querySelectorAll('[data-lounge-nested-lightbox]')]
+  let topDepth = -1
+  for (const el of nodes) {
+    const d = Number(el.getAttribute('data-lounge-nested-depth') || '1')
+    if (Number.isFinite(d) && d > topDepth) topDepth = d
+  }
+  for (const el of nodes) {
+    const d = Number(el.getAttribute('data-lounge-nested-depth') || '1')
+    if (d === topDepth && topDepth >= 0) el.setAttribute('data-lounge-nested-top', '')
+    else el.removeAttribute('data-lounge-nested-top')
+  }
+}
+
+export function setLoungeOverlaySheetDepthAttr(depth) {
+  if (typeof document === 'undefined') return
+  const d = Math.max(0, Number(depth) || 0)
+  if (d > 0) {
+    document.documentElement.setAttribute('data-lounge-overlay-sheet-depth', String(d))
+    return
+  }
+  document.documentElement.removeAttribute('data-lounge-overlay-sheet-depth')
+}
+
+/**
+ * @param {{ depth: number, close: () => void }} entry
+ * @returns {() => void}
+ */
+export function registerLoungeOverlayNestedLightbox(entry) {
+  const rec = {
+    depth: Math.max(1, Number(entry?.depth) || 1),
+    close: typeof entry?.close === 'function' ? entry.close : () => {},
+  }
+  nestedLightboxStack.push(rec)
+  markLoungeOverlayNestedTops()
+  return () => {
+    const i = nestedLightboxStack.indexOf(rec)
+    if (i >= 0) nestedLightboxStack.splice(i, 1)
+    markLoungeOverlayNestedTops()
+  }
+}
+
+/** Close nested comment-media lightboxes deeper than `keepDepth` (immediate, no shrink). */
+export function closeLoungeOverlayNestedLightboxesAbove(keepDepth) {
+  const keep = Math.max(0, Number(keepDepth) || 0)
+  const toClose = nestedLightboxStack.filter((e) => e.depth > keep)
+  for (const e of toClose) {
+    try {
+      e.close()
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function restoreLoungeOverlayNestedPeekIfNeeded() {
+  if (typeof document === 'undefined') return
+  if (!document.documentElement.hasAttribute('data-lounge-detail-over-lightbox')) return
+  const d = Number(document.documentElement.getAttribute('data-lounge-overlay-sheet-depth') || '0')
+  if (d > 0) setLoungeOverlayNestedPeekAttr(d)
 }
 
 function readPeekMediaLayoutBox() {
@@ -672,6 +779,7 @@ export function setLoungeDetailOverLightboxAttr(on) {
     removeLvhProbe()
     document.documentElement.removeAttribute('data-lounge-detail-over-lightbox')
     document.documentElement.removeAttribute('data-lounge-overlay-nested-peek')
+    document.documentElement.removeAttribute('data-lounge-overlay-sheet-depth')
     document.documentElement.removeAttribute('data-lounge-media-sheet-resizing')
     document.documentElement.style.removeProperty('--lounge-media-sheet-h')
     document.documentElement.style.removeProperty('--lounge-media-layout-h')
@@ -689,17 +797,21 @@ export function getLoungeDetailOverLightbox() {
 }
 
 /** Nested comment-media lightbox is the peek (overlay comments stacked over it). */
-export function setLoungeOverlayNestedPeekAttr(on) {
+export function setLoungeOverlayNestedPeekAttr(onOrDepth) {
   if (typeof document === 'undefined') return
   cachedPeekMediaBox = null
-  if (on) {
-    document.documentElement.setAttribute('data-lounge-overlay-nested-peek', '')
+  const depth =
+    typeof onOrDepth === 'number' ? Math.max(0, onOrDepth) : onOrDepth ? 1 : 0
+  if (depth > 0) {
+    document.documentElement.setAttribute('data-lounge-overlay-nested-peek', String(depth))
+    markLoungeOverlayNestedTops()
     writePeekIdentityVars()
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (!overlayOn || !document.documentElement.hasAttribute('data-lounge-overlay-nested-peek')) {
           return
         }
+        markLoungeOverlayNestedTops()
         cachedPeekMediaBox = null
         writePeekInsetVar()
         schedulePeekSettleWrite()

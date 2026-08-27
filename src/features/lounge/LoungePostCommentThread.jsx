@@ -135,6 +135,7 @@ export function LoungeCommentCard({
   /** While the X-style lightbox sheet is up, hide this entity's media (already in the peek). */
   omitMediaEntityId = null,
   overlayNestedRootEntityId = null,
+  overlayNestedLightboxDepth = 0,
 }) {
   const mediaFeedVariant =
     typeof resolveMediaFeedVariant === 'function'
@@ -281,6 +282,7 @@ export function LoungeCommentCard({
         post={comment}
         omitMediaEntityId={omitMediaEntityId}
         overlayNestedRootEntityId={overlayNestedRootEntityId}
+        overlayNestedLightboxDepth={overlayNestedLightboxDepth}
         variant={mediaFeedVariant}
         captionColumnMedia={captionColumnMedia}
         firstMarginTopClass={
@@ -599,6 +601,7 @@ export default function LoungePostCommentThread({
   lightboxPortalClass = 'z-[100]',
   omitMediaEntityId = null,
   overlayNestedRootEntityId = null,
+  overlayNestedLightboxDepth = 0,
 }) {
   const byId = useMemo(() => new Map((comments || []).map((c) => [c.id, c])), [comments])
 
@@ -760,6 +763,7 @@ export default function LoungePostCommentThread({
     onSharePost,
     omitMediaEntityId,
     overlayNestedRootEntityId,
+    overlayNestedLightboxDepth,
   }
 
   const renderCommentRow = (comment) => (

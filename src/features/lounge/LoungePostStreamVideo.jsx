@@ -43,12 +43,21 @@ import {
   heroRectUsableForShrinkBack,
   readHeroMediaViewportRect,
   LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS,
+  loungeNestedLightboxDomProps,
   resolveLoungeHeroStackZIndexes,
   runHeroExpandAnimation,
   runHeroShrinkAnimation,
   snapFlyoutToHeroOpen,
   snapFlyoutToHeroTile,
 } from './loungeLightboxFlip.js'
+import {
+  getLoungeOverlayNestRoot,
+  markLoungeOverlayNestedTops,
+  registerLoungeOverlayNestedLightbox,
+  releaseLoungeOverlayNestRootIfEmpty,
+  restoreLoungeOverlayNestedPeekIfNeeded,
+  setLoungeOverlayNestedPeekAttr,
+} from './loungeLightboxDetailSheet.js'
 import LoungeStreamVideoPlaybackControls from './LoungeStreamVideoPlaybackControls.jsx'
 import { LOUNGE_HERO_LIGHTBOX_BOTTOM_SCRIM_CLASS, LOUNGE_HERO_LIGHTBOX_TOP_BTN_CLASS, LOUNGE_HERO_LIGHTBOX_CHROME_X_PAD, LOUNGE_HERO_LIGHTBOX_TOP_SCRIM_CLASS } from './LoungeStreamVideoLightboxChrome.jsx'
 import LoungeBackArrowIcon from './LoungeBackArrowIcon.jsx'
@@ -341,6 +350,7 @@ export default function LoungePostStreamVideo({
   renderMediaLightboxMenu,
   renderMediaLightboxTopBarExtra,
   lightboxPortalClass = 'z-[100]',
+  nestedLightboxDepth = 0,
   hideAsSheetPeekDuplicate = false,
 }) {
   const sessionPosterUrl = String(sessionPosterUrlProp || '').trim()
@@ -681,6 +691,10 @@ export default function LoungePostStreamVideo({
     overlay: heroOverlayZIndex,
   } = useMemo(() => resolveLoungeHeroStackZIndexes(lightboxPortalClass), [lightboxPortalClass])
   const nestedOverOverlay = lightboxPortalClass === LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS
+  const nestedLightboxLayer = nestedOverOverlay
+    ? Math.max(1, Number(nestedLightboxDepth) || 1)
+    : 0
+  const nestedLightboxDom = loungeNestedLightboxDomProps(nestedOverOverlay, nestedLightboxLayer)
   const [ringHlsHeld, setRingHlsHeld] = useState(false)
   const activeHlsGraceEligible =
     variant === 'detail' || variant === 'commentInline'
@@ -1177,16 +1191,18 @@ export default function LoungePostStreamVideo({
     if (heroBodyHostRef.current) return heroBodyHostRef.current
     const host = document.createElement('div')
     host.dataset.loungeStreamFlyoutHost = id
-    document.body.appendChild(host)
+    const parent = nestedOverOverlay ? getLoungeOverlayNestRoot() : document.body
+    ;(parent || document.body).appendChild(host)
     heroBodyHostRef.current = host
     return host
-  }, [id])
+  }, [id, nestedOverOverlay])
 
   const releaseHeroBodyHost = useCallback(() => {
     const host = heroBodyHostRef.current
     if (!host) return
     host.remove()
     heroBodyHostRef.current = null
+    releaseLoungeOverlayNestRootIfEmpty()
   }, [])
 
   /** Reparent the same flyout DOM node - inline while idle, body while hero expanded (no remount). */
@@ -2156,6 +2172,22 @@ export default function LoungePostStreamVideo({
     heroTargetRectRef.current = null
   }, [exitFeedHeroLock])
 
+  useEffect(() => {
+    if (!lightboxOpen || !nestedOverOverlay) return undefined
+    setLoungeOverlayNestedPeekAttr(false)
+    const unreg = registerLoungeOverlayNestedLightbox({
+      depth: nestedLightboxLayer,
+      close: finalizeHeroClose,
+    })
+    requestAnimationFrame(() => markLoungeOverlayNestedTops())
+    return () => {
+      unreg()
+      restoreLoungeOverlayNestedPeekIfNeeded()
+      markLoungeOverlayNestedTops()
+      releaseLoungeOverlayNestRootIfEmpty()
+    }
+  }, [lightboxOpen, nestedOverOverlay, nestedLightboxLayer, finalizeHeroClose])
+
   const finishHeroCloseAnimation = useCallback(() => {
     const snap = inlineFeedSoundSnapshotRef.current
     inlineFeedSoundSnapshotRef.current = null
@@ -2421,6 +2453,8 @@ export default function LoungePostStreamVideo({
     const vBeforeOpen = videoRef.current
     if (!wrap) return
 
+    if (nestedOverOverlay) setLoungeOverlayNestedPeekAttr(false)
+
     lightboxOpenRef.current = true
     if (feedAutoplayClientId) {
       enterFeedHeroLock(feedAutoplayClientId)
@@ -2568,6 +2602,7 @@ export default function LoungePostStreamVideo({
     localStripSoundExplicitlyMuted,
     stripSoundUnmuted,
     ensureHeroBodyHost,
+    nestedOverOverlay,
     displayW,
     displayH,
     streamFadeShowVideo,
@@ -3404,7 +3439,7 @@ export default function LoungePostStreamVideo({
             <div
               ref={videoFlyoutRef}
               {...(heroExpanded ? { 'data-lounge-stream-hero-flyout': '' } : {})}
-              {...(heroExpanded && nestedOverOverlay ? { 'data-lounge-nested-lightbox': '' } : {})}
+              {...(heroExpanded ? nestedLightboxDom : {})}
               style={
                 heroExpandDomActive && heroExpandFlyoutStyleRef.current
                   ? heroExpandFlyoutStyleRef.current
@@ -3515,6 +3550,7 @@ export default function LoungePostStreamVideo({
                 className="pointer-events-none fixed inset-0"
                 style={{ zIndex: heroScrimZIndex }}
                 aria-hidden
+                {...nestedLightboxDom}
               >
                 <div
                   className={`absolute inset-0 bg-black ${heroBackdropOpacityClass}`}
@@ -3523,7 +3559,7 @@ export default function LoungePostStreamVideo({
               </div>
               <div
                 data-lounge-media-lightbox
-                {...(nestedOverOverlay ? { 'data-lounge-nested-lightbox': '' } : {})}
+                {...nestedLightboxDom}
                 className="fixed inset-0"
                 style={{ zIndex: heroOverlayZIndex }}
                 role="dialog"
@@ -3627,7 +3663,7 @@ export default function LoungePostStreamVideo({
                 </div>
               </div>
             </>,
-            document.body,
+            document.body && nestedOverOverlay ? getLoungeOverlayNestRoot() || document.body : document.body,
           )
         : null}
     </div>

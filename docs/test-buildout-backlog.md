@@ -1068,6 +1068,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-08-26: **Lounge lightbox iOS composer wide peek (Windows):** Rest centering in the air gap worked. Composer still sized peek from the 60lvh painted top, so wide stills stayed scale 1 and the 74lvh sheet covered them. Composer peek now uses the destination sheet (`max(74lvh, JS px, painted height)`). Android live-layout path unchanged. No SQL / Edge.
 
+- 2026-08-26: **Lounge overlay nested lightbox N-level stack (Windows):** Depth 2+ comment-media lightboxes were opening under the already-raised `z-[118]` comments sheet. Nested layers now portal into `[data-lounge-overlay-nest-root]` (115 peeked / 119 full-screen), peek only `data-lounge-nested-top`, and overlay back closes deeper lightboxes. Same comments path at every hop. No SQL / Edge.
+
 - 2026-08-26: **Lounge lightbox wide-image peek (Windows):** Wide stills were bottom-aligned in a band that included the status bar, so they sat on the sheet and could still clip. Peek now contain-fits and centers in the gap from `safe-area-inset-top` to the sheet (12px). Smoke: Edge Lord Aug 12 carousel first image. No SQL / Edge.
 
 - 2026-08-26: **Lounge lightbox iOS landscape peek (Windows):** Wider-than-tall stills stay scale 1 until the peek band is shorter than the photo. Following the painted 60lvh sheet top while composer is already 74lvh left them too tall and the sheet covered the bottom. Peek band is now **min(painted top - 12, 60/74 estimate)** so composer shrinks them immediately. Android path unchanged. No SQL / Edge.

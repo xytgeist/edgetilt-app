@@ -8910,32 +8910,34 @@ html[data-lounge-detail-over-lightbox][data-lounge-media-sheet-resizing]
 /* Nested comment-media lightbox sits above the overlay sheet. Do not peek-transform
    or hide its chrome while it is the stacked full-screen layer. */
 html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
-  [data-lounge-nested-lightbox][data-lounge-stream-hero-flyout],
+  [data-lounge-nested-lightbox][data-lounge-nested-top][data-lounge-stream-hero-flyout],
 html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
-  [data-lounge-nested-lightbox]
+  [data-lounge-nested-lightbox][data-lounge-nested-top]
   [data-lounge-lightbox-peek-media] {
   transform: none !important;
   will-change: auto;
 }
 html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
-  [data-lounge-nested-lightbox]
+  [data-lounge-nested-lightbox][data-lounge-nested-top]
   [data-lounge-lightbox-top-chrome],
 html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
-  [data-lounge-nested-lightbox]
+  [data-lounge-nested-lightbox][data-lounge-nested-top]
   [data-lounge-stream-lightbox-chrome] {
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
-  [data-lounge-nested-lightbox]
+  [data-lounge-nested-lightbox][data-lounge-nested-top]
   [data-lounge-lightbox-chrome-layer] {
   opacity: 1 !important;
 }
 html[data-lounge-overlay-nested-peek]
-  [data-lounge-nested-lightbox][data-lounge-stream-hero-flyout],
+  [data-lounge-nested-lightbox][data-lounge-nested-top][data-lounge-stream-hero-flyout],
 html[data-lounge-overlay-nested-peek]
-  [data-lounge-nested-lightbox]
-  [data-lounge-lightbox-peek-media] {
+  [data-lounge-nested-lightbox][data-lounge-nested-top]
+  [data-lounge-lightbox-peek-media],
+html[data-lounge-overlay-nested-peek]
+  [data-lounge-nested-lightbox][data-lounge-nested-top][data-lounge-lightbox-peek-media] {
   transform-origin: 0 0 !important;
   transform: var(--lounge-media-peek-transform) !important;
   will-change: transform;
@@ -8949,12 +8951,32 @@ html[data-lounge-overlay-nested-peek]
   visibility: hidden;
   pointer-events: none;
 }
+html[data-lounge-detail-over-lightbox]
+  [data-lounge-nested-lightbox]:not([data-lounge-nested-top]) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 html.platform-android[data-lounge-overlay-nested-peek]
-  [data-lounge-image-lightbox][data-lounge-nested-lightbox] {
+  [data-lounge-image-lightbox][data-lounge-nested-lightbox][data-lounge-nested-top] {
   top: 0;
   bottom: auto;
   height: var(--lounge-media-layout-h, 100lvh);
   max-height: none;
+}
+[data-lounge-overlay-nest-root] {
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  pointer-events: none;
+  isolation: isolate;
+}
+html[data-lounge-detail-over-lightbox]:not([data-lounge-overlay-nested-peek])
+  [data-lounge-overlay-nest-root] {
+  z-index: 119;
+}
+[data-lounge-overlay-nest-root] [data-lounge-nested-lightbox],
+[data-lounge-overlay-nest-root] [data-lounge-stream-hero-flyout] {
+  pointer-events: auto;
 }
 [data-lounge-media-detail-scroll] {
   overscroll-behavior-y: none;

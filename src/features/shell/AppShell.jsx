@@ -1426,6 +1426,22 @@ export default function AppShell({
           onRequireAuthRef.current?.()
           return
         }
+        try {
+          const msgUrl = new URL(data.url || '', window.location.origin)
+          const rawEventIds = String(
+            data.offerEventIds ||
+              msgUrl.searchParams.get('eventIds') ||
+              msgUrl.searchParams.get('eventId') ||
+              '',
+          )
+          const eventIds = rawEventIds
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean)
+          if (eventIds.length > 0) setPendingOfferEventIds(eventIds)
+        } catch {
+          /* ignore */
+        }
         setTab('offers')
         return
       }

@@ -295,6 +295,8 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
   // reload the URL, and iOS can drop the query string entirely on wake.
   const postId = params.get('post') || null
   const commentId = params.get('comment') || null
+  // Offer reminder target rides along for the same reason as post/comment above.
+  const offerEventIds = params.get('eventIds') || params.get('eventId') || null
   return {
     type: 'app-navigate',
     url: relativeUrl,
@@ -306,6 +308,7 @@ function parseAppNavigateMessage(relativeUrl, extra = {}) {
     roomId,
     postId,
     commentId,
+    offerEventIds,
     eventType,
     chatCallId,
     markActivityRead: Boolean(activityEventId || activityBatchId),

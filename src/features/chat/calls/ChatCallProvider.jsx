@@ -36,6 +36,7 @@ import {
   endEdgeNativeCall,
   getEdgeVoIPPushToken,
   installEdgeCallKitListeners,
+  markEdgeCallKitWebReady,
   reportEdgeIncomingCall,
 } from '../../../utils/edgeCallKit.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
@@ -849,6 +850,13 @@ export function ChatCallProvider({
       },
     })
   }, [])
+
+  // Gate the native replay on a usable session: `joinCall` throws "Sign in to call."
+  // without one, and a replayed cold-start answer has no second chance.
+  useEffect(() => {
+    if (!supabaseClient || !viewerUserId) return
+    void markEdgeCallKitWebReady()
+  }, [supabaseClient, viewerUserId])
 
   const hangup = useCallback(async () => {
     const current = activeCallRef.current

@@ -56,6 +56,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `reportIncomingCall` | JS→native | `{ callId, handle, hasVideo?, roomId? }` | `{ ok: boolean, uuid?: string, deduped?: true }` | Mac | **native** (2026-08-26). **Deduped by `callId` 2026-08-27** … see caution below. **Device smoke pending.** |
 | `endNativeCall` | JS→native | `{ callId }` | `{ ok: boolean }` | Mac | **native** (2026-08-26): tears down the CallKit call on hangup/decline. **Device smoke pending.** |
 | `getVoIPPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (2026-08-26): PushKit token, uploaded with `pushChannel: 'voip'`. Also fires `edge-voip-token` event on refresh. **Device smoke pending.** |
+| `callKitWebReady` | JS→native | none | `{ ok: boolean, replayed: number }` | Mac | **native** + **web caller** (2026-08-27): web says its CallKit listeners are installed **and** a session exists; native replays buffered answer/decline. Fixes the cold-start dropped answer … see caution below. **Device smoke pending.** |
 | `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |
 | `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, state, transactionId?, jws? }` | Mac | **native** (2026-08-26) + **web** SubscribeModal shell path. JWS verified server-side by Edge `apple-iap-verify`. **Device smoke pending.** |
 | `restoreStorePurchases` | JS→native | none | `{ ok, entitlements: string[] }` | Mac | **native** (2026-08-26). **Device smoke pending.** |
@@ -92,6 +93,23 @@ Paths 2 and 3 both fire because **`lounge-send-activity-push` sends an alert pus
 **Fix:** `reportIncomingCall` now returns the **existing** UUID when a call with the same trimmed `callId` is already tracked (`deduped: true`). All three paths converge on one CallKit call. **Do not** re-add per-path UUID minting, and **do not** "fix" this by removing one of the three paths … each is load-bearing for a different app state.
 
 **Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
+
+### ⚠️ CallKit native→JS events must be buffered … the web layer does not exist yet (2026-08-27)
+
+**Read before touching `dispatchToWeb` or `installEdgeCallKitListeners`.** A VoIP push wakes the shell **from terminated**, so the order on a cold-start ring is:
+
+1. PushKit wakes the app → `reportNewIncomingCall` → CallKit rings on the lock screen. **No web view has loaded.**
+2. Ryan answers → `provider(_:perform: CXAnswerCallAction)` → `dispatchToWeb('edge-callkit-answer')`.
+3. `dispatchToWeb` was fire-and-forget (`guard let webView else { return }`, then a bare `window.dispatchEvent`). The page either did not exist or had not mounted `ChatCallProvider`, so **the CustomEvent landed with no listener and the answer was gone.**
+
+Symptom (device smoke, 2026-08-27): the ring worked, answering swapped CallKit to the hang-up button because we `fulfill()`ed the action, but the native screen sat on **"Calling"** forever and the web app never joined LiveKit. The giveaway was that **"Calling" is not a string the web app contains** … it was iOS's own call UI, proving the web side never ran.
+
+**Fix:** native buffers call events (cap **8**, oldest dropped) until JS calls **`callKitWebReady`**, then replays them. Invalidate on `didStartProvisionalNavigation` since a new page load kills the listeners.
+
+**Two traps if you re-touch this:**
+
+- **Readiness is not "listeners installed."** `joinCall` throws `Sign in to call.` without a Supabase session, and a replayed answer has **no second chance** (the rejection is swallowed by `void`). So `markEdgeCallKitWebReady()` is called from an effect gated on **`supabaseClient && viewerUserId`**, not from `installEdgeCallKitListeners`.
+- **Answering does not give you audio for free.** `provider(_:didActivate:)` / `didDeactivate` are now implemented: CallKit owns activation for an answered call and WebKit's capture unit has to start against the already-active session. Without them you can reach a connected call with no audio.
 
 ---
 

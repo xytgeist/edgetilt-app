@@ -22,6 +22,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   private var pushRegistry: PKPushRegistry?
   private weak var webView: WKWebView?
   private var voipTokenHex: String?
+  /// True only once JS has installed its CallKit listeners for the current page.
+  private var webReady = false
+  private var pendingWebEvents: [(event: String, detail: [String: Any])] = []
+  private static let maxPendingWebEvents = 8
 
   private override init() {
     // Call UI name comes from CFBundleDisplayName ("Edge").
@@ -48,6 +52,26 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   func attach(webView: WKWebView) {
     self.webView = webView
+  }
+
+  /// JS → native: `ChatCallProvider` has its answer/decline listeners installed.
+  /// A VoIP push can wake us from terminated, so an answer often happens before the
+  /// web layer exists. Events buffered until now are replayed here; without this the
+  /// CustomEvent landed on a page with no listener and the answer was lost, leaving
+  /// CallKit showing an answered call the web app never joined.
+  func markWebReady(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+    webReady = true
+    let replay = pendingWebEvents
+    pendingWebEvents = []
+    for item in replay {
+      evaluateWebEvent(event: item.event, detail: item.detail)
+    }
+    completion(.success(["ok": true, "replayed": replay.count]))
+  }
+
+  /// A new page load tears down the listeners, so stop dispatching until JS re-marks.
+  func invalidateWebReady() {
+    webReady = false
   }
 
   func currentVoIPTokenPayload() -> [String: Any] {
@@ -247,6 +271,18 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     action.fail()
   }
 
+  /// CallKit owns activation for an answered call. WebKit's capture unit has to start
+  /// against the already-active session, so re-assert the call category here.
+  func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
+    let hasVideo = calls.values.contains { $0.hasVideo }
+    EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
+  }
+
+  func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
+    guard calls.isEmpty else { return }
+    EdgeAudioSession.apply(mode: "default") { _ in }
+  }
+
   // MARK: - Helpers
 
   private func resolveUUID(uuidString: String?, callId: String?) -> UUID? {
@@ -270,6 +306,18 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   }
 
   private func dispatchToWeb(event: String, detail: [String: Any]) {
+    guard webReady, webView != nil else {
+      // Drop the oldest rather than grow without bound; a stale invite is worse than none.
+      if pendingWebEvents.count >= Self.maxPendingWebEvents {
+        pendingWebEvents.removeFirst()
+      }
+      pendingWebEvents.append((event: event, detail: detail))
+      return
+    }
+    evaluateWebEvent(event: event, detail: detail)
+  }
+
+  private func evaluateWebEvent(event: String, detail: [String: Any]) {
     guard let webView else { return }
     guard let data = try? JSONSerialization.data(withJSONObject: detail),
           let json = String(data: data, encoding: .utf8)

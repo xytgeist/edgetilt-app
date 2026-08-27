@@ -147,6 +147,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       )
     case "getVoIPPushToken":
       completion(.success(EdgeCallKitManager.shared.currentVoIPTokenPayload()))
+    case "callKitWebReady":
+      EdgeCallKitManager.shared.markWebReady(completion: completion)
     case "getStoreProducts":
       guard #available(iOS 15.0, *) else {
         completion(.failure(EdgeStoreKitError.unavailable))
@@ -256,6 +258,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     applyCustomUserAgent(to: webView)
+    // Listeners die with the outgoing page; JS re-marks after it reinstalls them.
+    EdgeCallKitManager.shared.invalidateWebReady()
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -334,6 +338,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       getVoIPPushToken: function () {
         return call('getVoIPPushToken', null);
+      },
+      callKitWebReady: function () {
+        return call('callKitWebReady', null);
       },
       getStoreProducts: function (payload) {
         return call('getStoreProducts', payload || {});

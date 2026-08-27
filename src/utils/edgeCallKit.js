@@ -68,6 +68,28 @@ export function installEdgeCallKitListeners({ onAnswer, onDecline }) {
 }
 
 /**
+ * Tell native the web layer can accept CallKit events, so it replays anything it
+ * buffered. A VoIP push wakes the shell from terminated, so CallKit can hold an
+ * answered call before this page exists ... those events are dropped without this.
+ * Call it only once listeners are installed AND a session can actually join a call.
+ * @returns {Promise<{ ok: boolean, replayed: number, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function markEdgeCallKitWebReady() {
+  if (!isEdgeiOSShell()) return { ok: false, replayed: 0, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('callKitWebReady')
+    const replayed = Number(result?.replayed)
+    return {
+      ok: result?.ok !== false,
+      replayed: Number.isFinite(replayed) ? replayed : 0,
+      via: 'bridge',
+    }
+  } catch {
+    return { ok: false, replayed: 0, via: 'error' }
+  }
+}
+
+/**
  * @returns {Promise<{ token: string | null, via: 'bridge' | 'noop' | 'error' }>}
  */
 export async function getEdgeVoIPPushToken() {

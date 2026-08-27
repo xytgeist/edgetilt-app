@@ -842,11 +842,11 @@ export function ChatCallProvider({
           peerUserId: snap?.fromUserId || null,
           // Cold-start answers have no incoming snap. Always accept: join() on a
           // ringing DM is why a lock-screen answer can fulfill CallKit and still
-          // never connect. Do not open the room or mount full-screen chrome…
-          // that steals iOS's in-call UI when the phone is already unlocked.
+          // never connect. Once iOS brings Edge forward (unlocked answer), open
+          // the room and the full call modal. Locked stays on CallKit until then.
           preferAccept: true,
-          openRoom: false,
-          startMinimized: true,
+          openRoom: true,
+          startMinimized: false,
         })
       },
       onDecline: (detail) => {

@@ -5,7 +5,7 @@ const SHEET_REST_FRACTION = 0.7
 const SHEET_COMPOSER_FRACTION = 0.8
 const SHEET_MIN_PEEK_REM = 5.5
 /** Black gap between contain-fit media and the sheet top. */
-const PEEK_GAP_PX = 5
+const PEEK_GAP_PX = 3
 const IS_ANDROID = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 
 let overlayOn = false

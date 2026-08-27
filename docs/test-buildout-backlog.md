@@ -1069,6 +1069,12 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Lounge lightbox comments sheet smoothness + GPU compositing (Windows).** Root cause of the sheet/media animation stutter identified and resolved:
+  - **The real bottleneck:** `startPeekFollowSheet()` ran a 400ms `requestAnimationFrame` polling loop that attached `data-lounge-media-sheet-resizing`, which explicitly disabled CSS transitions on the peek media (`transition: none !important`), and repeatedly invoked `getBoundingClientRect()` on every single frame to chase the animating sheet. This forced synchronous layout recalculation and DOM reflow at 60-120Hz while disabling GPU compositor interpolation.
+  - **Fix:** Eliminated the rAF chase loop (`startPeekFollowSheet`, `stopPeekFollowSheet`, `peekResizing`, `syncResizingAttr`, `schedulePeekSettleWrite`, `clearPeekSettleWrite`).
+  - **Pure GPU Compositing:** Both the media peek transform and the sheet transition use matching `0.28s cubic-bezier(0.32, 0.72, 0, 1)` transitions. When the composer focuses or blurs, `writePeekInsetVar()` immediately computes the exact closed-form destination transform and updates `--lounge-media-peek-transform`. The browser GPU smoothly interpolates the media position on the compositor thread without layout thrashing.
+  - **Composer & Air Gap Preserved:** The sheet container layout stays anchored at `bottom: 0`, guaranteeing the composer rest pill, expanded composer, and status-bar safe-area air gap are 100% stable and intact across all devices.
+
 - 2026-08-27: **Lock-screen answer cannot unlock the phone (Mac).** No public API. After answer, native audio still starts locked. On `applicationDidBecomeActive` we fire `edge-native-call-reveal` so web opens the chat room + full in-app live call screen (expand if minimized). Rebuild owed.
 
 - 2026-08-27: **Agent scratch archived out of the working tree, not deleted (Windows).** **724 files / 58.2 MB** moved to **`../LVSlotPro-archive/2026-08-27/`** (outside the repo, still inside OneDrive so it stays backed up), preserving relative paths. Nothing destroyed … if a one-off debug query is wanted again it is sitting right there.

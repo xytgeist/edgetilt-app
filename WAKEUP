@@ -79,8 +79,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 | Branch | Tip | Note |
 | --- | --- | --- |
-| **`test`** | **`2a82a5cb`** | WinTheo: offer reminder `eventIds` on postMessage / iOS-wake path |
-| **`main`** | **`87434bfd`** | Unchanged … **prod still has the duplicate-reminder bug**, see below |
+| **`test`** | **`7ca12504`** | Offer reminder dedupe + `eventIds` wake path + prod apply docs |
+| **`main`** | **`7ca12504`** | Promoted 2026-08-27 … **prod duplicate-reminder bug is FIXED** (SQL + Edge applied, `*/5` cron dropped, Ryan called the PWA wake smoke passed). FF also carried iOS v1.1 (CallKit / StoreKit / haptics) into `main`; every web entry point no-ops outside `isEdgeiOSShell()`. **Prod still lacks `20260826120000` + `apple-iap-verify`** … apply before any IAP-enabled prod build |
 
 ### Mac Theo 2026-08-27 … offer reminders were sending 2-3× since May (FIXED on test)
 

@@ -3,7 +3,6 @@
  */
 
 import { AreaSeries, CandlestickSeries, LineSeries } from 'lightweight-charts'
-import { loungeMarketBarsToSeries } from './loungeMarketChartTheme.js'
 import { marketBarHasOhlc } from '../../utils/marketBarOhlc.js'
 
 export const LOUNGE_MARKET_CHART_TYPE_STORAGE_KEY = 'loungeMarketChartType:v1'

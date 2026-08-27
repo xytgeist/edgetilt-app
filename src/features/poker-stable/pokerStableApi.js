@@ -731,40 +731,6 @@ export async function maybeCloseCompletedPieceDeal(supabase, dealId) {
   return { closed: true, error: archErr }
 }
 
-function sliceRowsFromTerms(dealId, slices) {
-  return slices.map((sl, idx) => ({
-    deal_id: dealId,
-    slice_index: idx,
-    counterparty_kind: sl.counterpartyKind || 'user',
-    staker_user_id: sl.stakerUserId || null,
-    guest_label: sl.guestLabel?.trim() || null,
-    guest_phone: sl.guestPhone?.trim() || null,
-    guest_email: sl.guestEmail?.trim()?.toLowerCase() || null,
-    action_pct: sl.actionPct,
-    pricing_mode: sl.pricingMode,
-    player_profit_pct: sl.pricingMode === 'profit_split' ? sl.playerProfitPct : null,
-    markup_rate: sl.pricingMode === 'markup' ? sl.markupRate : null,
-    rakeback_mode: sl.rakebackMode || 'disabled',
-    rakeback_player_pct: sl.rakebackMode === 'custom' ? sl.rakebackPlayerPct : null,
-    status: sl.counterpartyKind === 'guest' ? 'active' : 'pending',
-    label: sl.label?.trim() || null,
-    responded_at: sl.counterpartyKind === 'guest' ? new Date().toISOString() : null,
-  }))
-}
-
-async function replacePendingDealSlices(supabase, dealId, slices) {
-  const { error: delErr } = await supabase
-    .from('poker_stable_deal_slices')
-    .delete()
-    .eq('deal_id', dealId)
-  if (delErr) return { error: delErr }
-  if (!slices.length) return { error: new Error('Add at least one backer slice.') }
-  const { error: insErr } = await supabase
-    .from('poker_stable_deal_slices')
-    .insert(sliceRowsFromTerms(dealId, slices))
-  return { error: insErr }
-}
-
 /** Link a guest backer slice to an Edge user (slice invite pending accept in Stable). */
 export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId }) {
   const { error } = await supabase.rpc('poker_stable_reassign_guest_slice', {
@@ -781,7 +747,7 @@ export async function reassignGuestSliceToUser(supabase, { sliceId, stakerUserId
 }
 
 /** Stakee cancels an unsettled stake (unwinds accepted capital + markup fees, then deletes). */
-export async function cancelStakeDeal(supabase, dealId, stakeeUserId) {
+export async function cancelStakeDeal(supabase, dealId, _stakeeUserId) {
   const { error: notifyErr, notifiedCount, data: notifyData } = await notifyStableStakeGuests(
     supabase,
     dealId,

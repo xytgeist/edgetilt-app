@@ -48,7 +48,6 @@ export function initGoogleAnalytics() {
   window.dataLayer = window.dataLayer || []
   // Must match Google's snippet: push `arguments`, not a rest-array.
   window.gtag = function gtag() {
-    // eslint-disable-next-line prefer-rest-params
     window.dataLayer.push(arguments)
   }
 

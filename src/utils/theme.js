@@ -7,7 +7,9 @@ export function getTheme() {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
     if (v === 'dark' || v === 'light' || v === 'system') return v
-  } catch (_) {}
+  } catch {
+    /* storage blocked (private mode) … fall through to system */
+  }
   return 'system'
 }
 
@@ -52,7 +54,9 @@ export function applyPlatformClass() {
 export function setTheme(value) {
   try {
     localStorage.setItem(STORAGE_KEY, value)
-  } catch (_) {}
+  } catch {
+    /* storage blocked … theme still applies for this session */
+  }
   applyTheme()
 }
 

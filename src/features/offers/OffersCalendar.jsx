@@ -47,7 +47,6 @@ export default function OffersCalendar({
   onRequireSubscribe,
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
-  isAdmin = false,
   titleBarToolCloseVisible = false,
 }) {
   /** Gate for the large legacy push / iOS help block below (was `false &&`). */
@@ -597,7 +596,6 @@ export default function OffersCalendar({
     expandedEventId,
     setExpandedEventId,
     notesPreviewRefs,
-    notesOverflowById,
     setNotesOverflowById,
     calendarMode,
     setCalendarMode,
@@ -720,10 +718,6 @@ export default function OffersCalendar({
     media.addEventListener('change', sync)
     return () => media.removeEventListener('change', sync)
   }, [setIsLandscape])
-
-  const toggleExpandedEvent = (eventId) => {
-    setExpandedEventId((id) => (id === eventId ? null : eventId))
-  }
 
   const toggleSelectedDay = (dayKey) => {
     setSelectedDays((current) => (current.includes(dayKey) ? current.filter((d) => d !== dayKey) : [...current, dayKey]))

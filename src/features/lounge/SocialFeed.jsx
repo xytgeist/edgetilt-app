@@ -50,7 +50,6 @@ import {
   deleteLoungeFeedRowHostedMedia,
   feedPostAuthorEditMediaSeed,
   feedPostDisplayCaption,
-  feedPostMediaUpdatePayload,
   feedPostStreamVideoUid,
   isQuoteRepostPost,
   normalizeFeedCaption,
@@ -68,7 +67,6 @@ import {
 } from '../../utils/loungePostCategoryPills.js'
 import {
   feedCommentAuthorEditMediaSeed,
-  feedCommentRowHasMedia,
   feedCommentStreamVideoUid,
   bumpFeedCommentAncestorCountsInList,
   feedCommentAncestorIdsAfterRemoval,
@@ -240,11 +238,6 @@ import {
   startParallelQueuedVideoPrep,
   startParallelQueuedVideoPrepForWaitingJobs,
 } from './loungeQueuedVideoPrep.js'
-import {
-  formatCompactStatCount,
-  fullStatCountTitle,
-  loungeInteractionStatCountCellClass,
-} from '../../utils/formatCompactStatCount.js'
 import { composerStableInitialsFromUid, formatLoungePostDetailWhen } from './loungeFormat'
 import LoungeRichComposerField from './LoungeRichComposerField.jsx'
 import LoungeFeedComposerPostChrome from './LoungeFeedComposerPostChrome.jsx'
@@ -292,7 +285,6 @@ import {
   loungeFanOnlyPostDetailOpenBlocked,
   LOUNGE_COMPOSER_AUDIENCE_ALL,
   LOUNGE_COMPOSER_AUDIENCE_SUBS,
-  loungeFanOnlyPostContentEntity,
   showLoungeFanOnlyPostUnlockedTint,
 } from '../../utils/loungeFanOnlyPost.js'
 import LoungeQuoteRepostEmbeddedOriginal from './LoungeQuoteRepostEmbeddedOriginal.jsx'
@@ -1281,7 +1273,6 @@ export default function SocialFeed({
       setNotificationInteractionCountsRefreshKey((k) => k + 1)
     }
   }, [])
-  const [loungeDockFooterHeight, setLoungeDockFooterHeight] = useState(0)
   const [loungePostDetail, setLoungePostDetail] = useState(null)
   /** Continuation rows for multi-part post threads in post detail. */
   /** X-style: post/comment detail as a bottom sheet over a still-open media lightbox. */
@@ -1298,7 +1289,7 @@ export default function SocialFeed({
   const [loungePostDetailAboveProfile, setLoungePostDetailAboveProfile] = useState(false)
   const [loungeDetailEditing, setLoungeDetailEditing] = useState(false)
   const [loungeDetailDraftCaption, setLoungeDetailDraftCaption] = useState('')
-  const [loungeDetailEditBusy, setLoungeDetailEditBusy] = useState(false)
+  const [loungeDetailEditBusy] = useState(false)
   const [loungeDetailEditErr, setLoungeDetailEditErr] = useState('')
   /** Remote URLs for the post being edited (remove-only in UI until upload-on-edit exists). */
   const [loungeDetailEditImageUrls, setLoungeDetailEditImageUrls] = useState([])
@@ -2164,20 +2155,6 @@ export default function SocialFeed({
     ],
   )
 
-  /** Sync focus while the file-picker user gesture is still active (before previews mount). */
-  const focusLoungeComposerCaptionNow = useCallback(
-    (target) => {
-      if (target === 'detailComment') {
-        flushSync(() => {
-          setLoungeDetailCommentComposerExpanded(true)
-        })
-      }
-      const { getTextarea } = loungeComposerCaptionTargetConfig(target)
-      focusLoungeComposerCaption(getTextarea)
-    },
-    [loungeComposerCaptionTargetConfig],
-  )
-
   /** Re-open the software keyboard after native/Klipy/crop pickers dismiss (iOS loses focus). */
   const scheduleLoungeComposerCaptionRefocus = useCallback(
     (target, opts = {}) => {
@@ -2228,18 +2205,6 @@ export default function SocialFeed({
       if (target === 'detailComment') endLoungeDetailCommentMediaSession()
     },
     [endLoungeDetailCommentMediaSession],
-  )
-
-  const nudgeLoungeComposerCaptionDuringMediaSheet = useCallback(
-    (target) => {
-      const { getTextarea } = loungeComposerCaptionTargetConfig(target)
-      focusLoungeComposerCaption(getTextarea)
-      requestAnimationFrame(() => {
-        if (loungeComposerMediaPickerTargetRef.current !== target) return
-        focusLoungeComposerCaption(getTextarea)
-      })
-    },
-    [loungeComposerCaptionTargetConfig],
   )
 
   const blurLoungeComposerCaptionForTarget = useCallback((target) => {
@@ -2714,11 +2679,6 @@ export default function SocialFeed({
       onCopied: () => setLoungeShareFlash('Link copied to clipboard.'),
       onCopyFailed: () => setLoungeShareFlash('Could not copy link. Try copying from the address bar.'),
     })
-  }, [])
-
-  const handleBlockLoungeProfile = useCallback((profileRow) => {
-    void profileRow
-    setLoungeShareFlash('Blocking users is not available yet.')
   }, [])
 
   const avatarText = useCallback((p) => {
@@ -5729,8 +5689,6 @@ export default function SocialFeed({
     return v.prepStatus === 'failed'
   }, [loungeDetailCommentEditVideoSlot])
 
-  const actionIconClass = 'h-[20px] w-[20px] text-zinc-500'
-
   const defaultInteraction = useMemo(
     () => ({ commented: false, reposted: false, liked: false, plainRepostChildId: null, quoteRepostChildId: null }),
     []
@@ -7984,7 +7942,7 @@ export default function SocialFeed({
   )
 
   const handleCfStreamVideoProcessingFailed = useCallback(
-    async ({ target, postId, streamUid, message }) => {
+    async ({ target, postId, streamUid }) => {
       const key = String(postId || '').trim()
       if (!key) return
       const dedupeKey = `${String(target || 'post')}:${key}:${String(streamUid || '').trim()}`
@@ -8069,7 +8027,6 @@ export default function SocialFeed({
   const openLoungePostDetail = useCallback(
     (post, opts) => {
       if (!post?.id) return
-      const contentPost = loungeFanOnlyPostContentEntity(post)
       if (loungeFanOnlyPostDetailOpenBlocked(post, loungeFanLockCtx)) {
         return
       }
@@ -8269,7 +8226,6 @@ export default function SocialFeed({
   const openDirectCommentPostDetail = useCallback(
     async (post, commentId, { focusComposer = false, prefetchedComments = null, keepLightboxPlaying = false } = {}) => {
       if (!post?.id || !commentId) return
-      const contentPost = loungeFanOnlyPostContentEntity(post)
       if (loungeFanOnlyPostDetailOpenBlocked(post, loungeFanLockCtx)) {
         return
       }
@@ -8373,11 +8329,6 @@ export default function SocialFeed({
     const el = loungeFeedScrollRef.current
     if (!el) return
     el.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
-
-  const onLoungeDockFooterHeight = useCallback((px) => {
-    if (typeof px !== 'number' || !Number.isFinite(px) || px <= 0) return
-    setLoungeDockFooterHeight((cur) => (cur === px ? cur : px))
   }, [])
 
   const onLoungePanelTitleReveal = useCallback((reveal) => {
@@ -14160,8 +14111,6 @@ export default function SocialFeed({
       setPostErr(gifCheck.message)
       return
     }
-    const hasGif = gifCheck.value.length > 0
-    const hasImages = composerImageItems.length > 0
     const slotNow = composerVideoSlotRef.current
     const hasVideo = slotNow != null
 
@@ -15214,7 +15163,9 @@ export default function SocialFeed({
             { skipNavCapture: true },
           )
         }
-      } catch {}
+      } catch {
+        /* handle lookup failed … leave the tap inert rather than surfacing an error */
+      }
     },
     [
       openProfileGateIfNeeded,

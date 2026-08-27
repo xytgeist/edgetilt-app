@@ -1,6 +1,5 @@
 import { guestBackerClaimByEmail, guestBackerClaimPreview } from './pokerStableApi.js'
 import {
-  clearPokerStableClaimFlowPending,
   clearStashedPokerStableClaimToken,
   isPokerStableClaimFlowPending,
   navigateAfterStableClaim,

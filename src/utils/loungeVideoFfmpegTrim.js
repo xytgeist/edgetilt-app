@@ -583,7 +583,6 @@ function buildEncodeStrategies(sourceHasAudio, audioStreamIndices, probedStreams
 
   /** @type {EncodeStrategy[]} */
   const withAudio = []
-  const spatialBlocked = spatialBlockedAudioIndices(probedStreams)
   const seenStreamLabels = new Set()
 
   const pushStreamStrategy = (idx, copy = false) => {
@@ -1001,7 +1000,6 @@ function wasmOutputFileFromBuffer(buf, outBaseName, outSuffix) {
 async function wasmAndroidLargePrimaryPath({
   file,
   startSec,
-  endSec,
   dur,
   outName,
   inName,
@@ -1028,9 +1026,6 @@ async function wasmAndroidLargePrimaryPath({
     onProgress(0.05 + r * 0.9)
   }
   ffmpeg.on('progress', onProg)
-
-  /** @type {string | null} */
-  let browserAudioFile = null
 
   try {
     ;({ inputPath, mode } = await installTrimInput(ffmpeg, file, inName))

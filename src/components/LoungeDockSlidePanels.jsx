@@ -131,18 +131,9 @@ export default function LoungeDockSlidePanels({
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   communityFeedLoading = false,
-  onHome,
-  onSearch,
-  onFollowingFilterToggle,
-  followingFilterOn = false,
-  followingFilterDisabled = false,
-  onNotifications,
-  onChat,
-  onSettings,
   onOpenSettingsSection,
   settingsFocusSection = null,
   onSettingsFocusSectionHandled,
-  activePanel = null,
   /** Open a post from search (full row); closes the panel and opens post detail like the main feed. */
   onOpenPostFromSearch,
   /** Signed-in Supabase client for Phase G server search RPCs. */
@@ -623,9 +614,12 @@ export default function LoungeDockSlidePanels({
         setSearchSettledQuery(query)
         setSearchSettledCategorySlug(categorySlug || '')
       } finally {
-        if (seq !== searchFetchSeqRef.current) return
-        if (append) setSearchLoadingMore(false)
-        else setSearchLoading(false)
+        // Guard rather than `return` … a return inside finally would swallow any
+        // in-flight throw from the blocks above.
+        if (seq === searchFetchSeqRef.current) {
+          if (append) setSearchLoadingMore(false)
+          else setSearchLoading(false)
+        }
       }
     },
     [searchSupabaseClient, hydrateSearchPosts, trimmedQuery, searchSort, searchCategorySlug],

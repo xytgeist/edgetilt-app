@@ -202,7 +202,7 @@ function App() {
   const [isAdminRole, setIsAdminRole] = useState(false)
   /** From `profiles.has_active_subscription` when column exists (see `supabase/profiles_tier_testing.sql`). */
   const [hasActiveSubscriptionFromProfile, setHasActiveSubscriptionFromProfile] = useState(false)
-  const [stripeCustomerId, setStripeCustomerId] = useState(null)
+  const [, setStripeCustomerId] = useState(null)
   const [subscribeModal, setSubscribeModal] = useState({
     open: false,
     productSlug: PRODUCT_SLOTS_EDGE,

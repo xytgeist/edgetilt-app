@@ -37,7 +37,6 @@ import {
   pokerStableSliceToneAttr,
 } from './pokerStableSliceTone.js'
 import {
-  computeDealMakeup,
   computeProRataBackerShares,
   computeProfitAboveBaseline,
   dealTypeLabel,
@@ -47,7 +46,6 @@ import {
 import {
   canProposeSettleStake,
   dealCanPeriodicSettle,
-  dealHasMakeup,
   isSettleCommitKind,
   pendingSettleCommitsForDeal,
   SETTLE_BLOCKED_PENDING_COMMIT_MESSAGE,
@@ -105,7 +103,6 @@ export default function PokerStableDealDetailSheet({
   onClose,
   onRefresh,
   onError,
-  onOpenPokerBankroll,
   onArchive = null,
   variant = 'full',
 }) {
@@ -118,7 +115,7 @@ export default function PokerStableDealDetailSheet({
   const [topupAmount, setTopupAmount] = useState('')
   const [reduceStake, setReduceStake] = useState(false)
   const [newBaselineInput, setNewBaselineInput] = useState('')
-  const [settlement, setSettlement] = useState(null)
+  const [, setSettlement] = useState(null)
   const [settlementLines, setSettlementLines] = useState([])
   const [ledgerEntries, setLedgerEntries] = useState([])
   const [pendingCommits, setPendingCommits] = useState(() =>
@@ -217,10 +214,8 @@ export default function PokerStableDealDetailSheet({
   const canProposeSettle = canProposeSettleBase && !settleBlockedPending
   const showSettleSection = canProposeSettleBase
   const showPeriodicSettle = canProposeSettleBase && dealCanPeriodicSettle(deal, roll)
-  const showMakeup = dealHasMakeup(deal)
   const rollValue = roll?.overall_bankroll ?? deal?.starting_roll ?? 0
   const baseline = deal?.baseline_bankroll ?? 0
-  const makeup = computeDealMakeup({ baseline_bankroll: baseline, roll: rollValue })
   const profitUp = computeProfitAboveBaseline({ baseline_bankroll: baseline, roll: rollValue })
   const maxReduction = maxStakeReductionAmount(baseline, rollValue)
 

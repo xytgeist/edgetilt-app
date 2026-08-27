@@ -729,7 +729,6 @@ export default function LoungeProfileFullScreen({
   /** Scroll-linked FAB reveal while profile is open (arc carousel dock). */
   onDockRevealChange = null,
   onShareProfile = null,
-  onBlockProfile = null,
   /** Refilter Lounge home feed after mute toggle. */
   onProfileFeedMuteChange = null,
   /** Open another member profile from feed rows (replaces modal). */

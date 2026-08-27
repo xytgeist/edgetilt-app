@@ -849,7 +849,6 @@ function feedPostStreamVideoUid(row) {
 export function authorPendingPublishPatchFromSubmit({
   postId,
   streamVideoUid,
-  pendingKey,
   sessionPosterBlobUrl,
 }) {
   const id = String(postId || '').trim()

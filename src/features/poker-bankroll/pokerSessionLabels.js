@@ -853,7 +853,7 @@ export function lastTournamentGameFromSessions(sessions) {
 
 /** @param {'cash' | 'tournament' | string | null | undefined} sessionType */
 export function pokerGameOptionsForSessionType(sessionType) {
-  return sessionType === 'tournament' ? POKER_TOURNAMENT_GAME_VARIANTS : POKER_CASH_GAME_TYPE_OPTIONS
+  return sessionType === 'tournament' ? POKER_TOURNAMENT_GAME_VARIANTS : POKER_GAME_VARIANTS
 }
 
 /** @param {string | null | undefined} id @param {{ id: string, label: string }[]} list */

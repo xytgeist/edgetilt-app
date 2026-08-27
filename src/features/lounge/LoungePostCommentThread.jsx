@@ -117,14 +117,6 @@ export function LoungeCommentCard({
   onLinkClick,
   onLinkPreviewOpen,
   youtubeIframeLoading = 'lazy',
-  avatarText,
-  avatarToneClass,
-  viewerFollowingUserIds,
-  onFollowUser,
-  feedVideoAutoplayEnabled = true,
-  onFeedVideoAutoplayChange,
-  onStreamLightboxOpenDetail,
-  onSharePost,
   /** Viewport full-bleed carousel (caption-column rows only; off for thread ancestors). */
   captionColumnMedia = true,
   /**

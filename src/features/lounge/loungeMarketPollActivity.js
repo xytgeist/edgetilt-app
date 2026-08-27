@@ -7,7 +7,6 @@ let lastActivityAt = Date.now()
 /** @type {Set<() => void>} */
 const resumeListeners = new Set()
 let listenersInstalled = false
-let listenerInstallCount = 0
 
 function notifyResumeIfNeeded() {
   for (const fn of resumeListeners) fn()
@@ -65,13 +64,8 @@ export function useLoungeMarketPollActivityTracker(opts = {}) {
   feedActiveRef.current = feedActive
 
   useEffect(() => {
-    listenerInstallCount += 1
     installGlobalActivityListeners()
     markLoungeUserActivity()
-
-    return () => {
-      listenerInstallCount -= 1
-    }
   }, [])
 
   useEffect(() => {

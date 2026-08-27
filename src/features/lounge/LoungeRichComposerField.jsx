@@ -50,7 +50,6 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     onFocus,
     onInput,
     disabled = false,
-    autoGrow = false,
     enterInsertsNewline = true,
     cashtagStyleContext = null,
     /** When set, pasted clipboard images are routed here instead of inserting text. */

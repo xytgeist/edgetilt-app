@@ -15,6 +15,7 @@ import {
   pokerSessionTotalCost,
   pokerSessionWinLoss,
 } from './pokerBankrollMath.js'
+import { pokerSessionStakesLabel } from './pokerSessionLabels.js'
 import { resolveSessionMetricWinLoss } from './pokerSessionAttribution.js'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler)

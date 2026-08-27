@@ -155,7 +155,6 @@ function compareFeedCommentsByRelevanceDesc(a, b, opts) {
  * @param {{
  *   roots: object[],
  *   postAuthorUserId?: string | null,
- *   viewerUserId?: string | null,
  *   followingUserIds?: string[],
  *   viewerPinnedCommentIds?: string[],
  *   sortMode?: LoungeDetailCommentSortMode,
@@ -164,7 +163,6 @@ function compareFeedCommentsByRelevanceDesc(a, b, opts) {
 export function orderPostDetailRootComments({
   roots,
   postAuthorUserId = null,
-  viewerUserId = null,
   followingUserIds = [],
   viewerPinnedCommentIds = [],
   sortMode = LOUNGE_DETAIL_COMMENT_SORT.RANKED,

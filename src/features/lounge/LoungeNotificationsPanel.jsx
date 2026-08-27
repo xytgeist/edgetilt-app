@@ -209,9 +209,12 @@ export default function LoungeNotificationsPanel({
           setErr(e?.message || 'Could not load notifications.')
         }
       } finally {
-        if (seq !== fetchSeqRef.current) return
-        if (append) setLoadingMore(false)
-        else if (!silent) setLoading(false)
+        // Guard rather than `return` … a return inside finally would swallow any
+        // in-flight throw from the blocks above.
+        if (seq === fetchSeqRef.current) {
+          if (append) setLoadingMore(false)
+          else if (!silent) setLoading(false)
+        }
       }
     },
     [supabaseClient, viewerUserId],

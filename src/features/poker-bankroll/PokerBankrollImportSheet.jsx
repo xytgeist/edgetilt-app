@@ -77,7 +77,7 @@ function SkipBadge({ count, label }) {
   )
 }
 
-function SessionTypePill({ value, active, onClick, label }) {
+function SessionTypePill({ active, onClick, label }) {
   return (
     <button
       type="button"

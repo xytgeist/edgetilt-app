@@ -62,11 +62,6 @@ function hourlyRate(session) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-// ── Haversine distance (miles) ────────────────────────────────────────────────
-function fmtMiles(mi) {
-  return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`
-}
-
 /** YYYY-MM-DD in the device timezone (not UTC - avoid toISOString().slice(0,10)). */
 function localYmd(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -1636,7 +1631,7 @@ function MoneyInput({
           const raw = e.target.value
           if (allowNegative) {
             // Allow minus only at start, strip other non-numeric chars
-            const cleaned = raw.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
+            const cleaned = raw.replace(/[^0-9.-]/g, '').replace(/(?!^)-/g, '')
             onChange(cleaned)
           } else {
             onChange(raw)

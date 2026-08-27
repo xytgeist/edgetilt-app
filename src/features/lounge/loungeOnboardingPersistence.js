@@ -6,10 +6,7 @@ import {
   writeLoungeSlotsMenuHintAck,
   writeLoungeWelcomeAck,
 } from './loungeStorage.js'
-import {
-  readLoungeDockMenuLayoutIntroCompleted,
-  writeLoungeDockMenuLayoutIntroCompleted,
-} from '../../utils/loungeDockFabPosition.js'
+import { writeLoungeDockMenuLayoutIntroCompleted } from '../../utils/loungeDockFabPosition.js'
 
 const ONBOARDING_SELECT =
   'lounge_welcome_seen_at, lounge_slots_menu_hint_seen_at, lounge_fab_hint_seen_at, lounge_dock_menu_layout_intro_seen_at'

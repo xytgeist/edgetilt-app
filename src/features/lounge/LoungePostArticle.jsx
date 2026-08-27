@@ -35,7 +35,6 @@ import {
   LOUNGE_FEED_POST_CARD_MENU_ANCHOR_CLASS,
   LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
   LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE,
-  loungeFeedAuthorHasStaffBadge,
 } from './loungeFeedAvatar.js'
 
 /**
@@ -124,11 +123,6 @@ function LoungePostArticle({
   viewerFollowingUserIds,
   /** Follow the given user ID. Called with the author's user_id on pill tap. */
   onFollowUser,
-  /** Matches Settings → Feed playback (Stream lightbox ⋯ menu). */
-  feedVideoAutoplayEnabled = true,
-  onFeedVideoAutoplayChange,
-  /** Stream hero: caption / comment → post or comment detail (`hostPost`, `mediaPost`, `{ focusComposer }`). */
-  onStreamLightboxOpenDetail,
   /** Tap caption body → post detail (feed/profile cards). */
   onPostBodyClick,
   /** Active Lounge search query - highlights matching terms in captions (search panel only). */
@@ -333,7 +327,6 @@ function LoungePostArticle({
   // For plain-repost cards, show the original author's badges/name
   const displayEntity = isCommentRepost ? rc : displayPost
   const authorRole = displayEntity?.author_profile?.role
-  const hasStaffBadge = loungeFeedAuthorHasStaffBadge(authorRole)
   const showOgBadge = displayEntity?.author_profile?.is_og === true
 
   // ── Follow pill ───────────────────────────────────────────────────────────

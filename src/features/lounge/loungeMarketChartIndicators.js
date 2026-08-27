@@ -9,7 +9,6 @@ import {
   INDICATOR_BY_ID,
   MARKET_CHART_INDICATOR_CATEGORIES,
   MARKET_CHART_INDICATORS,
-  listMarketChartIndicatorsByCategory,
 } from './loungeMarketChartIndicatorCatalog.js'
 import {
   buildOhlcvPoints,

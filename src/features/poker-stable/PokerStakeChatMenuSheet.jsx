@@ -4,7 +4,7 @@ import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
 import { chatCreateGroup } from '../chat/chatApi.js'
 import { edgeProfileDisplayName } from './pokerStableTerms.js'
 
-function peerLabel(profile, userId) {
+function peerLabel(profile) {
   const name = edgeProfileDisplayName(profile)
   if (name) return name
   return 'Edge user'
@@ -100,7 +100,7 @@ export default function PokerStakeChatMenuSheet({
         <div className="mt-4 space-y-1.5">
           {dmPeers.map((peerId) => {
             const profile = profilesById[peerId] || null
-            const label = peerLabel(profile, peerId)
+            const label = peerLabel(profile)
             const avatar = profile?.avatar_url
             return (
               <button

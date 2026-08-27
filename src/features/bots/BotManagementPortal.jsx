@@ -423,7 +423,7 @@ function EditPostModal({ post, onClose, onSave, busy }) {
   )
 }
 
-function BotDetailPanel({ bot, supabaseClient, onReload, toast, setToast }) {
+function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
   const [busy, setBusy] = useState('')
   const [editPost, setEditPost] = useState(null)
   const [draft, setDraft] = useState(null)

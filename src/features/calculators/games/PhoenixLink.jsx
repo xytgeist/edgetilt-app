@@ -3,7 +3,7 @@ import { DropdownSelect } from '../DropdownSelect'
 import { Line } from 'react-chartjs-2'
 import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import CalculatorLogPlayButton from '../CalculatorLogPlayButton.jsx'
-import { playLogCalcEvPrefill, recommendedAcquisitionFeeUsd } from '../../../utils/playLogCalcSnapshot.js'
+import { playLogCalcEvPrefill } from '../../../utils/playLogCalcSnapshot.js'
 import {
   Chart as ChartJS,
   CategoryScale,

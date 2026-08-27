@@ -49,7 +49,6 @@ export default function PokerStableHorseCarousel({
   onRevoke,
   onAcceptSlice,
   onDeclineSlice,
-  onOpenTerms,
   /** Open Chat DM with Edge peer (null / omitted when guest counterpart). */
   onOpenChatWithUser = null,
   /** Open Chat room by id (stake group create). */

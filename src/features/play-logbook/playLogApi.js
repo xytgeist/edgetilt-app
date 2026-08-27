@@ -46,7 +46,6 @@ function sortPartnerProfiles(rows, viewerUserId) {
 
 /** @param {object[]} profiles @param {string} viewerUserId @param {Map<string, number>} partnerCounts */
 function sortProfilesByPartnerCount(profiles, viewerUserId, partnerCounts) {
-  const uid = String(viewerUserId || '').trim()
   return [...(profiles || [])].sort((a, b) => {
     const ca = partnerCounts.get(String(a.user_id)) || 0
     const cb = partnerCounts.get(String(b.user_id)) || 0

@@ -344,7 +344,7 @@ export default function LoungeDockArcCarouselPrototype({
   const longPressArmedRef = useRef(false)
   const longPressRafRef = useRef(0)
   const longPressStartedAtRef = useRef(0)
-  const [fabLongPressProgress, setFabLongPressProgress] = useState(0)
+  const [, setFabLongPressProgress] = useState(0)
   const [fabLongPressRingsActive, setFabLongPressRingsActive] = useState(false)
   const [fabLongPressRings, setFabLongPressRings] = useState(() =>
     Array.from({ length: FAB_LONG_PRESS_RING_COUNT }, () => hiddenFabLongPressRing()),

@@ -1653,8 +1653,6 @@ function ChatRoomListRow({
     onOpen(room.id)
   }, [onOpen, onSwipeOpen, room.id, setOffset])
 
-  const rowWidth = rowWidthRef.current || 320
-  const commitAt = getRoomSwipeCommitThreshold(rowWidth)
   const deleteProgress = offsetX > 0 ? getSwipeIconRevealProgress(offsetX) : 0
   const leftSwipeProgress = offsetX < 0 ? getSwipeIconRevealProgress(-offsetX) : 0
   const leftUnderlayClass = listMode === 'archived'

@@ -124,7 +124,7 @@ const REQUIRED_FIELDS = ['start_at', 'start_amount', 'end_amount']
 function normalize(str) {
   return String(str || '')
     .toLowerCase()
-    .replace(/[_\-]/g, ' ')
+    .replace(/[_-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }

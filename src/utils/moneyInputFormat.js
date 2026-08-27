@@ -7,7 +7,7 @@ export function cleanMoneyInputRaw(raw, { allowNegative = false } = {}) {
   if (raw == null) return ''
   let s = String(raw).replace(/,/g, '')
   if (allowNegative) {
-    s = s.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
+    s = s.replace(/[^0-9.-]/g, '').replace(/(?!^)-/g, '')
   } else {
     s = s.replace(/[^0-9.]/g, '')
   }

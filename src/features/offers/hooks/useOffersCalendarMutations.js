@@ -407,7 +407,7 @@ export default function useOffersCalendarMutations({
                 contentType: file.type || 'image/jpeg',
                 fileName: file.name || '',
               })
-            } catch (r2Err) {
+            } catch {
               if (r2Configured === null) r2Configured = false
             }
             if (mint) {

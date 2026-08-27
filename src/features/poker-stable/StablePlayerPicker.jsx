@@ -37,7 +37,6 @@ export default function StablePlayerPicker({
   onChange,
   selectedProfile = null,
   isGuest = false,
-  guestLabel = '',
   onSelectProfile,
   onSelectGuestMode,
   onClearSelection,

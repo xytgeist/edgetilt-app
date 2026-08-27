@@ -95,7 +95,6 @@ import {
 import {
   captureMarketChartPngFile,
   marketChartSnapshotBrandingFromCapture,
-  marketChartSnapshotBrandingFromEmbed,
   marketChartSnapshotFilename,
   marketChartSnapshotSaveMenuLabel,
   saveMarketChartScreenshot,
@@ -1224,11 +1223,6 @@ export default function LoungeMarketChartModal({
     setChartTypeMenuOpen(false)
   }, [])
 
-  const selectTimeframeIdx = useCallback((idx) => {
-    setTimeframeIdx(idx)
-    setTimeframeMenuOpen(false)
-  }, [])
-
   const selectAdvancedResolutionId = useCallback((id) => {
     advancedResolutionSessionPickedRef.current = true
     setAdvancedResolutionId(id)
@@ -1958,7 +1952,6 @@ export default function LoungeMarketChartModal({
       setPriceAxisLabels(next)
     }
 
-    let priceScaleUserPinned = false
     priceScaleUserPinnedRef.current = false
     const mainPlotBottomLocalY = () => marketChartMainPanePlotBottomLocalY(mainSeries, el)
     const fitAdvancedPriceToVisibleCandles = (series = mainSeries, liveChart = chart, opts = {}) => {
@@ -1975,7 +1968,6 @@ export default function LoungeMarketChartModal({
       })
     }
     const resetPriceScaleToData = () => {
-      priceScaleUserPinned = false
       priceScaleUserPinnedRef.current = false
       if (!isAdvancedView) return
       fitAdvancedPriceToVisibleCandles()
@@ -2007,10 +1999,9 @@ export default function LoungeMarketChartModal({
     const unbindPriceAxisZoom = isAdvancedView
       ? bindMarketChartPriceAxisZoom(el, chart, mainSeries, {
           maxPlotLocalY: mainPlotBottomLocalY,
-          onUserZoom: () => {
-            priceScaleUserPinned = true
-            priceScaleUserPinnedRef.current = true
-          },
+              onUserZoom: () => {
+                priceScaleUserPinnedRef.current = true
+              },
           onReset: resetPriceScaleToData,
         })
       : () => {}
@@ -2020,10 +2011,9 @@ export default function LoungeMarketChartModal({
           mainSeries,
           mainPlotBottomLocalY,
           priceAxisHit,
-          onUserPricePan: () => {
-            priceScaleUserPinned = true
-            priceScaleUserPinnedRef.current = true
-          },
+              onUserPricePan: () => {
+                priceScaleUserPinnedRef.current = true
+              },
           onPanActiveChange: (active) => {
             chartPanningRef.current = active
             if (active) {
@@ -2339,7 +2329,6 @@ export default function LoungeMarketChartModal({
   const mutedClass = 'text-zinc-400'
   const borderClass = 'border-zinc-800'
   const pillIdleClass = 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700'
-  const pillActiveClass = 'bg-zinc-700 text-zinc-50'
   const tabActiveClass = 'border-cyan-400 text-zinc-50'
   const tabIdleClass = 'border-transparent text-zinc-500'
   const backdropOpacity = sheetClosing ? 0 : Math.max(0, 0.55 - sheetDragY / 700)

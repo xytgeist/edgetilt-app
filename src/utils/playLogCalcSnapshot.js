@@ -51,7 +51,7 @@ export function playLogCalcEvPrefill({
   return out
 }
 /** @param {string} slug @param {unknown} v @param {import('../features/play-logbook/playLogMetrics.js').PlayLogValueType} [type] */
-export function formatPlayLogCalcMetricDisplay(slug, v, type = 'decimal') {
+export function formatPlayLogCalcMetricDisplay(slug, v, _type = 'decimal') {
   const n = Number(v)
   if (!Number.isFinite(n)) return '-'
   if (slug === 'current_ev_rtp') return `${n.toFixed(1)}%`

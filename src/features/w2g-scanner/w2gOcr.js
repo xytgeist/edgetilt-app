@@ -114,7 +114,7 @@ export function parseMoneyToNumber(s) {
  */
 function normalizeDate(s, opts = {}) {
   const t = cleanSpace(s).replace(/\s+/g, '')
-  const m = t.match(/(\d{1,2})[\/\-|.|¦](\d{1,2})[\/\-|.|¦](\d{2,4})/)
+  const m = t.match(/(\d{1,2})[/\-|.|¦](\d{1,2})[/\-|.|¦](\d{2,4})/)
   if (!m) return cleanSpace(s)
   const mm = m[1].padStart(2, '0')
   const dd = m[2].padStart(2, '0')
@@ -137,7 +137,7 @@ export function parseDateToIso(s) {
   if (!t) return null
   const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (iso) return t
-  const m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/)
+  const m = t.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/)
   if (!m) return null
   let yy = m[3]
   if (yy.length === 2) yy = `20${yy}`
@@ -221,12 +221,12 @@ export function parseW2GText(rawText) {
   }
 
   let dateWon = ''
-  const dateNear = text.match(/date\s*won[^\d]{0,24}(\d{1,2}\s*[\/\-|.]\s*\d{1,2}\s*[\/\-|.]\s*\d{2,4})/i)
+  const dateNear = text.match(/date\s*won[^\d]{0,24}(\d{1,2}\s*[/\-|.]\s*\d{1,2}\s*[/\-|.]\s*\d{2,4})/i)
   if (dateNear) dateWon = normalizeDate(dateNear[1], { allowTwoDigitYear: true })
   if (!dateWon) {
     for (const line of lines) {
       if (/\bDOB\b/i.test(line)) continue
-      const dm = line.match(/\b(\d{1,2}\s*[\/\-|.]\s*\d{1,2}\s*[\/\-|.]\s*\d{2,4})\b/)
+      const dm = line.match(/\b(\d{1,2}\s*[/\-|.]\s*\d{1,2}\s*[/\-|.]\s*\d{2,4})\b/)
       if (!dm) continue
       const norm = normalizeDate(dm[1], { allowTwoDigitYear: true })
       if (norm) {

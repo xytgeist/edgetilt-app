@@ -63,19 +63,6 @@ export function removeLoungeProfilePostFromPosts(posts, postId) {
   return (Array.isArray(posts) ? posts : []).filter((p) => String(p?.id || '') !== id)
 }
 
-function profilePostsQuery(supabaseClient, userId, select = PROFILE_POST_SELECT) {
-  let q = supabaseClient
-    .from('community_feed_posts')
-    .select(select)
-    .eq('user_id', userId)
-    .is('hidden_at', null)
-    .is('thread_root_id', null)
-  if (select.includes('profile_pinned_at')) {
-    q = q.order('profile_pinned_at', { ascending: false, nullsFirst: false })
-  }
-  return q.order('created_at', { ascending: false }).order('id', { ascending: false })
-}
-
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} userId

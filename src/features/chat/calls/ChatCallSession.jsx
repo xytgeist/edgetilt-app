@@ -822,7 +822,6 @@ function NativeIpaCallSession({
 
 function CallChrome({
   title,
-  callId = null,
   videoEnabled,
   isGroup,
   isOutgoing,

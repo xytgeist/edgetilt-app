@@ -1,5 +1,3 @@
-import { useRef } from 'react'
-
 export const TAB_ERROR_COUNT_KEY = 'lvsp_tab_error_count'
 
 export const TAB_ERROR_TEST_PREFIX = '[Staff test]'

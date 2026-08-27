@@ -293,7 +293,7 @@ export function parseMetricInput(raw, type) {
   const s = String(raw ?? '').trim()
   if (!s) return null
   if (type === 'text') return s
-  const n = Number(s.replace(/[^0-9.\-]/g, ''))
+  const n = Number(s.replace(/[^0-9.-]/g, ''))
   if (!Number.isFinite(n)) return null
   if (type === 'integer') return Math.round(n)
   return n
@@ -501,7 +501,7 @@ export function orderedLogPlayFormFields(templateSlugs, defsMap) {
 
 /** @param {unknown} raw Acquisition fee (stored/displayed as a positive cost). */
 export function parseAcquisitionFee(raw) {
-  const n = Number(String(raw ?? '').replace(/[^0-9.\-]/g, ''))
+  const n = Number(String(raw ?? '').replace(/[^0-9.-]/g, ''))
   if (!Number.isFinite(n) || n === 0) return null
   return Math.abs(n)
 }
@@ -513,8 +513,8 @@ export function parseAcquisitionFee(raw) {
  * @param {unknown} [acquisitionFeeRaw]
  */
 export function playLogWinLoss(inRaw, outRaw, acquisitionFeeRaw = null) {
-  const inn = Number(String(inRaw ?? '').replace(/[^0-9.\-]/g, ''))
-  const out = Number(String(outRaw ?? '').replace(/[^0-9.\-]/g, ''))
+  const inn = Number(String(inRaw ?? '').replace(/[^0-9.-]/g, ''))
+  const out = Number(String(outRaw ?? '').replace(/[^0-9.-]/g, ''))
   if (!Number.isFinite(inn) || !Number.isFinite(out)) return null
   let net = out - inn
   const fee = parseAcquisitionFee(acquisitionFeeRaw)
@@ -538,8 +538,8 @@ export function isTargetBonusPaidField(field) {
 
 /** Target bonus paid ÷ bet size → number of bets (null if not computable). */
 export function targetBonusPaidInBets(paidRaw, betSizeRaw) {
-  const paid = Number(String(paidRaw ?? '').replace(/[^0-9.\-]/g, ''))
-  const bet = Number(String(betSizeRaw ?? '').replace(/[^0-9.\-]/g, ''))
+  const paid = Number(String(paidRaw ?? '').replace(/[^0-9.-]/g, ''))
+  const bet = Number(String(betSizeRaw ?? '').replace(/[^0-9.-]/g, ''))
   if (!Number.isFinite(paid) || !Number.isFinite(bet) || bet <= 0) return null
   return paid / bet
 }
@@ -1049,6 +1049,6 @@ export function entryDetailFieldsForEntry(entry, template, defsMap) {
 /** @param {string | null | undefined} label e.g. "94.32%" */
 function parseRtpPercentLabel(label) {
   if (!label) return null
-  const n = Number(String(label).replace(/[^0-9.\-]/g, ''))
+  const n = Number(String(label).replace(/[^0-9.-]/g, ''))
   return Number.isFinite(n) ? n : null
 }

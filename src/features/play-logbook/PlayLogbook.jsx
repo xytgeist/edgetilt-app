@@ -32,7 +32,6 @@ import {
   entryDetailFieldsForEntry,
   runningRealRtpByEntryId,
   rtpToneFromPercentLabel,
-  sortMetricSlugs,
   targetBonusPaidInBets,
   templatesSorted,
   defaultLogPlayTemplateId,
@@ -2241,7 +2240,7 @@ function MetricFieldInput({ value, onChange, valueType, trailingHint = null }) {
           type="text"
           inputMode="decimal"
           value={value}
-          onChange={e => onChange(e.target.value.replace(/[^0-9.\-]/g, ''))}
+          onChange={e => onChange(e.target.value.replace(/[^0-9.-]/g, ''))}
           className={`w-full min-h-12 rounded-2xl bg-zinc-800 pl-8 text-white font-semibold outline-none focus:ring-2 focus:ring-cyan-500/40 ${
             trailingHint ? 'pr-[7.25rem]' : 'pr-4'
           }`}
@@ -2271,7 +2270,7 @@ function MetricFieldInput({ value, onChange, valueType, trailingHint = null }) {
         type="text"
         inputMode="decimal"
         value={value}
-        onChange={e => onChange(e.target.value.replace(/[^0-9.\-]/g, ''))}
+        onChange={e => onChange(e.target.value.replace(/[^0-9.-]/g, ''))}
         className="w-full min-h-12 rounded-2xl bg-zinc-800 px-4 text-white font-semibold outline-none focus:ring-2 focus:ring-cyan-500/40 tabular-nums"
       />
     )

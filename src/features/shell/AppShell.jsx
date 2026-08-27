@@ -74,7 +74,6 @@ import {
   readPokerStableBackerOnboardingDealId,
   readPokerStableBackerOnboardingSliceId,
 } from '../poker-stable/pokerStableBackerOnboarding.js'
-import { tryAutoLinkGuestStakeeOffers } from '../poker-bankroll/pokerGuestStakeeAutoLink.js'
 import LoungeActivityInAppToast from '../lounge/LoungeActivityInAppToast.jsx'
 import PokerStableCommitSyncModal from '../poker-stable/PokerStableCommitSyncModal.jsx'
 import {
@@ -794,9 +793,6 @@ export default function AppShell({
         const profiles = res.data
         profileByUserId = Object.fromEntries((profiles || []).map((p) => [uidKey(p.user_id), p]))
       }
-
-      const originalPostSelect =
-        'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,is_ap_guide_post,guide_thumbnail_url,link_preview,creator_fan_only'
 
       let repostById = {}
       if (depth === 0) {

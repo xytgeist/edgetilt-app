@@ -77,7 +77,7 @@ export default function TimeWheelPicker({ value, onChange, insetLabel = '' }) {
 
     const prev = pickerValue
     const [, prevHourRaw] = String(prev.hour).split(':')
-    const [prevMinRepRaw, prevMinuteRaw] = String(prev.minute).split(':')
+    const [, prevMinuteRaw] = String(prev.minute).split(':')
     const [hourRepRaw, hourRawToken] = String(nextValue.hour).split(':')
     const [minRepRaw] = String(nextValue.minute).split(':')
     const minuteRawToken = String(nextValue.minute).split(':')[1]

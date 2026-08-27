@@ -31,7 +31,6 @@ export default function ChatPrivateSubsTab({
   isStaff = false,
   onRequireSubscribe = null,
   onOpenRoom,
-  onViewProfile = null,
   onUnreadChange = null,
 }) {
   const [search, setSearch] = useState('')

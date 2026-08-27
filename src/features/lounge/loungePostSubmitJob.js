@@ -22,10 +22,7 @@ import { feedCommentThreadPartInsertPayload } from '../../utils/communityFeedCom
 import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
 import { attachMarketEmbedsToPost } from '../../utils/loungeMarketApi.js'
 import { resolveLoungeSubmissionVideoPrep } from './loungeQueuedVideoPrep.js'
-import {
-  loungeSubmissionSnapshotIncludesVideo,
-  loungeSubmissionSnapshotThreadPartCount,
-} from './loungeSubmissionSnapshot.js'
+import { loungeSubmissionSnapshotThreadPartCount } from './loungeSubmissionSnapshot.js'
 
 export { loungeSubmissionSnapshotIncludesVideo, loungeSubmissionSnapshotThreadPartCount } from './loungeSubmissionSnapshot.js'
 

@@ -45,7 +45,7 @@ function ColHead({ children, className = '' }) {
 }
 
 /** CG / Tourney matrix column label: icon stacked above text, right-justified. */
-function MatrixTypeHead({ label, Icon, className = '' }) {
+function MatrixTypeHead({ label, className = '' }) {
   return (
     <div
       className={`flex flex-col items-end justify-end gap-0.5 text-[10px] font-semibold uppercase tracking-wide ${className}`}

@@ -1,6 +1,5 @@
 import { prepareLoungeFeedImageForUpload } from './compressImageForUpload.js'
 import { uploadLoungeFeedPostImage, feedPostImageUrls } from './communityFeedPost.js'
-import { loungeFeedPostHasPersistedId } from '../features/lounge/loungePendingPostPublish.js'
 import { LOUNGE_CAPTION_SUBSCRIBER_MAX, LOUNGE_POST_THREAD_MAX_PARTS } from './loungeCommentLimits.js'
 import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
 import { buildThreadDraftCaptionsWithSnapshotMediaMarkers } from './loungeThreadComposeDraftMediaMarkers.js'
@@ -968,7 +967,7 @@ export async function upsertLoungePostDraft(supabaseClient, payload = {}) {
       delete writeRow.stream_video_height
       delete writeRow.thread_part_media
     }
-    if (!includeMediaFields && !includeThreadFields) {
+    if (!includeMediaFields && !writeThreadFields) {
       delete writeRow.stream_video_uid
       delete writeRow.stream_poster_url
       delete writeRow.stream_video_width

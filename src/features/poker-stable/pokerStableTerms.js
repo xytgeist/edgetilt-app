@@ -528,7 +528,7 @@ export function canReassignGuestSlice({ deal, slice, userId, hasProposal = false
  * Player may cancel a stake that has not been settled.
  * After Edge accept, cancel unwinds paid capital + markup fees server-side.
  */
-export function stakeDealCanBeCancelled(deal, slices = [], { userId } = {}) {
+export function stakeDealCanBeCancelled(deal, _slices = [], { userId } = {}) {
   if (!deal || !userId || deal.stakee_user_id !== userId) return false
   if (!['pending', 'active'].includes(deal.status)) return false
   return true

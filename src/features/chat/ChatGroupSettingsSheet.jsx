@@ -654,7 +654,6 @@ export default function ChatGroupSettingsSheet({
             <div className={`px-3 pb-3 pt-2.5 ${members.length > 0 ? 'border-t border-zinc-800/50' : ''}`}>
               <div className="flex items-center gap-2">
                 <input
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                   value={addSearch}
                   onChange={(e) => setAddSearch(e.target.value)}

@@ -145,7 +145,6 @@ import {
   pokerSessionBbPerHour,
   pokerSessionDurationHours,
   pokerSessionElapsedSeconds,
-  pokerSessionHourly,
   pokerSessionIsPaused,
   pokerSessionPausedMs,
   pokerSessionTotalCost,
@@ -384,22 +383,6 @@ function defaultNewSessionForm(activeDeal, scopedSessions, completedSessions) {
   )
 }
 
-function stakeOfferStatusLabel(status) {
-  if (status === 'active') return 'Active'
-  if (status === 'pending') return 'Pending'
-  if (status === 'settled') return 'Settled'
-  if (status === 'declined') return 'Declined'
-  if (status === 'revoked') return 'Revoked'
-  return status || 'Unknown'
-}
-
-function stakeOfferStatusTone(status) {
-  if (status === 'active') return 'bg-amber-500/20 text-amber-300'
-  if (status === 'pending') return 'bg-amber-500/15 text-amber-200/90'
-  if (status === 'declined') return 'bg-zinc-700/60 text-zinc-400'
-  return 'bg-rose-500/20 text-rose-300'
-}
-
 /**
  * Poker Bankroll Manager — separate from slots Bankroll.
  * Core start fields: type, table size, location, game (+ stake/tourney details).
@@ -594,13 +577,6 @@ export default function PokerBankrollTracker({
   const stakeScopeRevoked = activeDeal?.status === 'revoked'
   const stakeScopeClosedUnarchived =
     isOnStake && stakeeBankrollShowsClosedCarouselCard(activeDeal)
-  const activeDealSlices = slicesByDeal[bankrollScope] || []
-  const stakeScopeLive =
-    isOnStake && stakeDealIsLiveForStakee(activeDeal, activeDealSlices)
-  const pendingBackerOffer =
-    isOnStake &&
-    activeDeal?.status === 'pending' &&
-    isBackerInitiatedBackingDeal(activeDeal)
   /** Pending-play: log on stake after player accepted terms; still block backer-offer until player accepts. */
   const stakeScopeSessionBlocked =
     stakeScopeRevoked ||
@@ -1485,7 +1461,6 @@ export default function PokerBankrollTracker({
     openSessionDetail(session)
     onOpenSessionConsumed?.()
     // openSessionDetail is a stable-enough local opener; intentionally omit from deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deep-link one-shot
   }, [openSessionId, loading, sessions, onOpenSessionConsumed])
 
   const fetchNearby = useCallback(async (onNearest) => {
@@ -1620,14 +1595,6 @@ export default function PokerBankrollTracker({
     })
   }, [completedSessions, typeFilter, venueFilter])
 
-  const metricFiltered = useMemo(() => {
-    return metricCompleted.filter((s) => {
-      if (typeFilter !== 'all' && s.session_type !== typeFilter) return false
-      if (venueFilter !== 'all' && s.venue_kind !== venueFilter) return false
-      return true
-    })
-  }, [metricCompleted, typeFilter, venueFilter])
-
   const stakeHistoryEvents = useMemo(() => {
     if (!isOnStake || !activeDeal) return []
     const dealSessions = (completedSessions || []).filter(
@@ -1694,57 +1661,6 @@ export default function PokerBankrollTracker({
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
     )
   }, [filtered, isOnStake, stakeHistoryEvents, personalSettlementEvents, swapEventsById])
-
-  /** Bankroll-card stats follow All/Cash/Tourney + Any/Live/Online filters. */
-  const stats = useMemo(() => {
-    let profit = 0
-    let hours = 0
-    let wins = 0
-    let counted = 0
-    for (const s of metricFiltered) {
-      const wl = resolveSessionMetricWinLoss(s, tournamentSwaps, userId, metricContext)
-      if (wl == null) continue
-      counted += 1
-      profit += wl
-      hours += pokerSessionDurationHours(s)
-      if (wl > 0) wins += 1
-    }
-    return {
-      profit,
-      hours,
-      hourly: hours >= 0.02 ? profit / hours : null,
-      winRate: counted > 0 ? Math.round((wins / counted) * 100) : null,
-      count: counted,
-    }
-  }, [metricFiltered, metricContext, tournamentSwaps, userId])
-
-  /** Running bankroll after each filtered session (inferred start = current − filtered profit). */
-  const bankrollSparkSeries = useMemo(() => {
-    const ordered = [...metricFiltered]
-      .map((s) => ({
-        at: s.end_at || s.start_at || null,
-        wl: resolveSessionMetricWinLoss(s, tournamentSwaps, userId, metricContext),
-      }))
-      .filter((x) => x.wl != null && x.at)
-      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
-    if (ordered.length === 0) return []
-    if (isOnStake && overallBankroll != null) {
-      let run = Number(overallBankroll) - ordered.reduce((sum, x) => sum + x.wl, 0)
-      const points = [run]
-      for (const x of ordered) {
-        run += x.wl
-        points.push(run)
-      }
-      return points
-    }
-    let run = 0
-    const points = [run]
-    for (const x of ordered) {
-      run += x.wl
-      points.push(run)
-    }
-    return points
-  }, [metricFiltered, isOnStake, overallBankroll, metricContext, tournamentSwaps, userId])
 
   const bankrollSlides = useMemo(() => {
     const slides = [{ id: 'personal', deal: null }]
@@ -3985,7 +3901,7 @@ export default function PokerBankrollTracker({
               activeId={bankrollScope}
               onActiveIdChange={selectBankrollScope}
               activeSyncEnabled={scopeHydrated && scopeCarouselSyncReady}
-              renderSlide={(slide, slideIndex) => {
+              renderSlide={(slide) => {
                 const scopeId = slide.id
                 const onStake = scopeId !== 'personal'
                 // Never fall back to personal hero for a stake slide ... that painted

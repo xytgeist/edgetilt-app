@@ -90,8 +90,8 @@ function legendOptions(chrome, position = 'bottom') {
 }
 
 export function MonitorPulseChart({ labels, datasets, height = 220 }) {
-  if (!labels?.length || !datasets?.length) return null
   const isLight = useOpsMonitorChartIsLight()
+  if (!labels?.length || !datasets?.length) return null
   const chrome = opsMonitorChartChrome(isLight)
   return (
     <div className="edge-monitor-chart-shell rounded-2xl bg-zinc-950 border border-zinc-800 p-3" style={{ height }}>
@@ -114,8 +114,8 @@ export function MonitorPulseChart({ labels, datasets, height = 220 }) {
 }
 
 export function MonitorDoughnutChart({ labels, values, colors, height = 200 }) {
-  if (!labels?.length || !values?.some((v) => v > 0)) return null
   const isLight = useOpsMonitorChartIsLight()
+  if (!labels?.length || !values?.some((v) => v > 0)) return null
   const chrome = opsMonitorChartChrome(isLight)
   return (
     <div className="edge-monitor-chart-shell rounded-2xl bg-zinc-950 border border-zinc-800 p-3" style={{ height }}>
@@ -147,8 +147,8 @@ export function MonitorDoughnutChart({ labels, values, colors, height = 200 }) {
 }
 
 export function MonitorBarChart({ labels, values, color = OPS_CHART_COLORS.cyan, height = 200 }) {
-  if (!labels?.length) return null
   const isLight = useOpsMonitorChartIsLight()
+  if (!labels?.length) return null
   const chrome = opsMonitorChartChrome(isLight)
   return (
     <div className="edge-monitor-chart-shell rounded-2xl bg-zinc-950 border border-zinc-800 p-3" style={{ height }}>
@@ -188,8 +188,8 @@ export function MonitorSparklineChart({
   label = 'Trend',
   height = 120,
 }) {
-  if (!labels?.length || !values?.length) return null
   const isLight = useOpsMonitorChartIsLight()
+  if (!labels?.length || !values?.length) return null
   const chrome = opsMonitorChartChrome(isLight)
   return (
     <div className="edge-monitor-chart-shell rounded-2xl bg-zinc-950 border border-zinc-800 p-3" style={{ height }}>
@@ -237,8 +237,8 @@ export function MonitorSparklineChart({
 }
 
 export function MonitorCompareBars({ items, height = 180 }) {
-  if (!items?.length) return null
   const isLight = useOpsMonitorChartIsLight()
+  if (!items?.length) return null
   const chrome = opsMonitorChartChrome(isLight)
   const labels = items.map((i) => i.label)
   const values24 = items.map((i) => i.v24)

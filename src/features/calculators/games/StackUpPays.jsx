@@ -3,7 +3,7 @@ import CalculatorDisclaimer from '../../../components/CalculatorDisclaimer'
 import { CALCULATOR_ICON_SRC } from '../calculatorAccess.js'
 import BankrollRiskAdvisor from '../BankrollRiskAdvisor.jsx'
 import CalculatorLogPlayButton from '../CalculatorLogPlayButton.jsx'
-import { playLogCalcEvPrefill, recommendedAcquisitionFeeUsd } from '../../../utils/playLogCalcSnapshot.js'
+import { playLogCalcEvPrefill } from '../../../utils/playLogCalcSnapshot.js'
 import { formatDenomLabel } from '../../../utils/formatDenomLabel'
 import { DropdownSelect } from '../DropdownSelect'
 

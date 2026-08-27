@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ChatBubble from './ChatBubble.jsx'
 import ChatComposer from './ChatComposer.jsx'
@@ -25,12 +24,10 @@ import {
   chatMessagesWindow,
   chatCanPinMessages,
   chatCanDeleteCallRecording,
-  chatIsGroupOwner,
   chatRoomReadReceipts,
 } from './chatApi.js'
 import { findLastOwnMessageId, getMessageReceiptStatus } from './chatReceiptStatus.js'
 import {
-  compareChatMessagesChronological,
   formatChatHeaderDatePillLabel,
   sortChatMessagesChronological,
 } from './chatMessageTimeline.js'
@@ -185,7 +182,7 @@ export default function ChatConversation({
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   // hasMore: there are older messages to page back through
-  const [hasMore, setHasMore] = useState(false)
+  const [, setHasMore] = useState(false)
   // hasNewer: the DOM tail was trimmed - user is viewing history, not live end
   const [hasNewer, setHasNewer] = useState(false)
   // newMsgCount: messages that arrived via Realtime while not at the live end
@@ -457,7 +454,6 @@ export default function ChatConversation({
     localProfiles,
   ])
 
-  const isGroupOwner = chatIsGroupOwner(activeRoom, viewerUserId)
   const canPinMessages = chatCanPinMessages(activeRoom, viewerUserId)
   const showStarPinActions = isGroupRoom || isDmRoom
   const showReadReceipts = activeRoom.kind === 'dm' || isGroupRoom
@@ -1402,7 +1398,7 @@ export default function ChatConversation({
         }
       }
     }
-  }, [supabaseClient, room.id, viewerUserId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [supabaseClient, room.id, viewerUserId])
 
   const goToLatest = useCallback(() => {
     setNewMsgCount(0)

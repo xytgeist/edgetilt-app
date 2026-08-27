@@ -57,9 +57,7 @@ import LoungePostVideoInlineProgress, {
   useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import {
-  getLoungePendingPostProgress,
   LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
-  subscribeLoungePendingPostProgress,
   tryCompleteLoungeStagedFeedPostPublishFromPlayback,
 } from './loungePendingPostPublish.js'
 import {
@@ -362,11 +360,6 @@ export default function LoungePostStreamVideo({
   const hasDisplayDims =
     Number.isFinite(displayW) && Number.isFinite(displayH) && displayW >= 2 && displayH >= 2
   const pendingPublishKey = String(pendingPublishKeyProp || '').trim()
-  const pendingUploadProgress = useSyncExternalStore(
-    subscribeLoungePendingPostProgress,
-    () => (pendingPublishKey ? getLoungePendingPostProgress(pendingPublishKey) : null),
-    () => null,
-  )
   const containerRef = useRef(null)
   const videoRef = useRef(null)
   const videoFlyoutRef = useRef(null)

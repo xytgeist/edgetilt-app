@@ -1513,6 +1513,42 @@ export function LoungeInlineMediaUrl({
   const [feedAttachmentTier, setFeedAttachmentTier] = useState(
     /** @type {import('./loungeFeedImageAttachment.js').LoungeFeedAttachmentTier} */ ('column'),
   )
+
+  const openLightbox = useCallback(() => {
+    if (typeof onBeforeOpenLightbox === 'function' && onBeforeOpenLightbox()) return false
+    const img = originImgRef.current
+    const stored = String(url).trim()
+    const fromRect =
+      isLoungeLightboxGifUrl(stored, knownGifUrl) && img instanceof HTMLImageElement
+        ? readContainedImageViewportRect(img)
+        : img instanceof HTMLElement
+          ? readElementViewportRect(img)
+          : null
+    setLightbox({
+      urls: [stored],
+      index: 0,
+      fromRect: heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
+    })
+    return true
+  }, [url, knownGifUrl, onBeforeOpenLightbox])
+
+  useLayoutEffect(() => {
+    if (!url || !autoOpenLightbox || !enableLightbox) return
+    const opened = openLightbox()
+    if (opened !== false) onAutoOpenLightboxConsumed?.()
+  }, [url, autoOpenLightbox, enableLightbox, openLightbox, onAutoOpenLightboxConsumed])
+
+  const getOriginRect = useCallback((_index) => {
+    const img = originImgRef.current
+    if (!(img instanceof HTMLElement)) return null
+    const stored = String(url).trim()
+    if (isLoungeLightboxGifUrl(stored, knownGifUrl) && img instanceof HTMLImageElement) {
+      return readContainedImageViewportRect(img)
+    }
+    const rect = readElementViewportRect(img)
+    return heroRectUsableForShrinkBack(rect) ? rect : null
+  }, [url, knownGifUrl])
+
   if (!url) return null
   const isEmbed = variant === 'embed'
   const isDetail = variant === 'detail'
@@ -1545,41 +1581,6 @@ export function LoungeInlineMediaUrl({
   const outerShellClass = usesFeedAttachmentLayout
     ? loungeFeedAttachmentOuterShellClassName(feedAttachmentTier, { variant })
     : 'w-full min-w-0 max-w-full'
-
-  const openLightbox = useCallback(() => {
-    if (typeof onBeforeOpenLightbox === 'function' && onBeforeOpenLightbox()) return false
-    const img = originImgRef.current
-    const stored = String(url).trim()
-    const fromRect =
-      isLoungeLightboxGifUrl(stored, knownGifUrl) && img instanceof HTMLImageElement
-        ? readContainedImageViewportRect(img)
-        : img instanceof HTMLElement
-          ? readElementViewportRect(img)
-          : null
-    setLightbox({
-      urls: [stored],
-      index: 0,
-      fromRect: heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
-    })
-    return true
-  }, [url, knownGifUrl, onBeforeOpenLightbox])
-
-  useLayoutEffect(() => {
-    if (!autoOpenLightbox || !enableLightbox) return
-    const opened = openLightbox()
-    if (opened !== false) onAutoOpenLightboxConsumed?.()
-  }, [autoOpenLightbox, enableLightbox, openLightbox, onAutoOpenLightboxConsumed])
-
-  const getOriginRect = useCallback((_index) => {
-    const img = originImgRef.current
-    if (!(img instanceof HTMLElement)) return null
-    const stored = String(url).trim()
-    if (isLoungeLightboxGifUrl(stored, knownGifUrl) && img instanceof HTMLImageElement) {
-      return readContainedImageViewportRect(img)
-    }
-    const rect = readElementViewportRect(img)
-    return heroRectUsableForShrinkBack(rect) ? rect : null
-  }, [url, knownGifUrl])
 
   const framed = (
     <div className={frameClass}>

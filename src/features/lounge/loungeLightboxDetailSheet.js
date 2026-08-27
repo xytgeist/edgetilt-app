@@ -691,8 +691,26 @@ export function getLoungeDetailOverLightbox() {
 /** Nested comment-media lightbox is the peek (overlay comments stacked over it). */
 export function setLoungeOverlayNestedPeekAttr(on) {
   if (typeof document === 'undefined') return
-  if (on) document.documentElement.setAttribute('data-lounge-overlay-nested-peek', '')
-  else document.documentElement.removeAttribute('data-lounge-overlay-nested-peek')
+  cachedPeekMediaBox = null
+  if (on) {
+    document.documentElement.setAttribute('data-lounge-overlay-nested-peek', '')
+    writePeekIdentityVars()
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!overlayOn || !document.documentElement.hasAttribute('data-lounge-overlay-nested-peek')) {
+          return
+        }
+        cachedPeekMediaBox = null
+        writePeekInsetVar()
+        schedulePeekSettleWrite()
+        emit()
+      })
+    })
+    return
+  }
+  document.documentElement.removeAttribute('data-lounge-overlay-nested-peek')
+  writePeekInsetVar()
+  schedulePeekSettleWrite()
 }
 
 export function subscribeLoungeDetailOverLightbox(listener) {

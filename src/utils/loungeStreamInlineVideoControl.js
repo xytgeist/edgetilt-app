@@ -2,14 +2,14 @@
  * Pause inline Lounge Stream `<video>` nodes (feed, profile, search, detail, hero flyout).
  * @param {HTMLVideoElement | null | undefined} [exceptVideo]
  */
-export function pauseLoungeStreamInlineVideos(exceptVideo = null) {
+export function pauseLoungeStreamInlineVideos(exceptVideo = null, { mute = true } = {}) {
   try {
     document
       .querySelectorAll('[data-lounge-video-zoom] video, [data-lounge-stream-flyout-host] video')
       .forEach((el) => {
         if (exceptVideo && el === exceptVideo) return
         el.pause()
-        el.muted = true
+        if (mute) el.muted = true
       })
   } catch {
     // ignore

@@ -20,8 +20,10 @@ import { bindLoungeLightboxHistory } from './loungeLightboxHistory.js'
 import { mergeLightboxDismissOnQuoteRepost } from './loungeLightboxFooterDismissQuote.js'
 import { releaseLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 import {
+  getLoungeStreamLightboxCount,
   getLoungeStreamLightboxOpen,
   notifyLoungeStreamLightboxOpen,
+  subscribeLoungeStreamLightboxCount,
   subscribeLoungeStreamLightboxOpen,
 } from './loungeStreamLightboxRegistry.js'
 import {
@@ -637,6 +639,12 @@ export default function LoungePostStreamVideo({
     getLoungeStreamLightboxOpen,
     () => false,
   )
+  const lightboxStackCount = useSyncExternalStore(
+    subscribeLoungeStreamLightboxCount,
+    getLoungeStreamLightboxCount,
+    () => 0,
+  )
+  const lightboxStackDepthRef = useRef(0)
   isActiveRef.current =
     feedAutoplayEnabled && !coordinatorSuspended && (!coordinatorActive || isActive)
   /** Feed-wide Tap for sound on Android/desktop/EdgeiOS; per-tile only on Safari/PWA Apple WebKit. */
@@ -2421,6 +2429,8 @@ export default function LoungePostStreamVideo({
       }
     }
     notifyLoungeStreamLightboxOpen(true)
+    lightboxStackDepthRef.current = getLoungeStreamLightboxCount()
+    pauseLoungeStreamInlineVideos(vBeforeOpen ?? videoRef.current, { mute: false })
 
     const from = readHeroMediaViewportRect(slot, flyout, wrap, displayW, displayH)
     const target = computeHeroTargetRect(from, {
@@ -2757,6 +2767,7 @@ export default function LoungePostStreamVideo({
   useEffect(() => {
     if (!lightboxOpen || !enableLightbox) return undefined
     return () => {
+      lightboxStackDepthRef.current = 0
       notifyLoungeStreamLightboxOpen(false)
       exitFeedHeroLock()
     }
@@ -3006,6 +3017,24 @@ export default function LoungePostStreamVideo({
     v.addEventListener('canplay', tryPlay, { once: true })
     return () => v.removeEventListener('canplay', tryPlay)
   }, [lightboxOpen, hlsAttachEnabled, streamAttachKey])
+
+  /** A nested lightbox on top of this hero must pause this video; closing it resumes. */
+  useEffect(() => {
+    if (!lightboxOpen) return
+    const v = videoRef.current
+    if (!v) return
+    if (lightboxStackCount > lightboxStackDepthRef.current) {
+      try {
+        v.pause()
+      } catch {
+        // ignore
+      }
+      return
+    }
+    if (lightboxStackCount === lightboxStackDepthRef.current && lightboxStackCount > 0) {
+      tryHeroPlayback(v)
+    }
+  }, [lightboxOpen, lightboxStackCount, tryHeroPlayback])
 
   /** Detail/comment tiles often mount `<video>` only on lightbox open - force HLS attach once the node exists. */
   useEffect(() => {

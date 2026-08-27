@@ -11,6 +11,7 @@ import { useLoungeLightboxImageZoom } from './loungeLightboxImageZoom.js'
 import { useLoungeLightboxSwipeDismiss } from './loungeLightboxSwipeDismiss.js'
 import { useLoungeLightboxCarouselSnap } from './useLoungeLightboxCarouselSnap.js'
 import { notifyLoungeStreamLightboxOpen } from './loungeStreamLightboxRegistry.js'
+import { pauseLoungeStreamInlineVideos } from '../../utils/loungeStreamInlineVideoControl.js'
 import {
   clearFlyoutHeroInlineStyles,
   computeHeroTargetRect,
@@ -836,6 +837,7 @@ export function LoungeImageLightbox({
 
   useEffect(() => {
     notifyLoungeStreamLightboxOpen(true)
+    pauseLoungeStreamInlineVideos(null, { mute: false })
     return () => notifyLoungeStreamLightboxOpen(false)
   }, [])
 

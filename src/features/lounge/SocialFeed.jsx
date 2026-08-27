@@ -16958,6 +16958,24 @@ export default function SocialFeed({
                 />
               </div>
             ) : null}
+            {loungePostDetailOverLightbox && loungeCommentDetailPathIds.length > 0 ? (
+              <div
+                data-lounge-overlay-comment-back=""
+                className="flex shrink-0 items-center gap-1 px-2 pb-1.5"
+              >
+                <button
+                  type="button"
+                  onClick={handleLoungePostDetailBack}
+                  className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]"
+                  aria-label="Back"
+                >
+                  <span className="text-[22px] leading-none" aria-hidden>
+                    ←
+                  </span>
+                </button>
+                <p className="min-w-0 flex-1 text-[15px] font-semibold text-white">Reply</p>
+              </div>
+            ) : null}
             {loungePostDetailOverLightbox ? (
               <h2 id="lounge-post-detail-title" className="sr-only">
                 {loungeCommentDetailPathIds.length > 0 ? 'Reply' : 'Post'}
@@ -17088,7 +17106,15 @@ export default function SocialFeed({
                       : 56,
                 }}
               />
-              <div className="px-4 py-4 pb-4">
+              <div
+                className="px-4 py-4 pb-4"
+                {...(loungePostDetailOverLightbox
+                  ? {
+                      'data-lounge-overlay-comment-scene':
+                        loungeCommentDetailPathIds.length > 0 ? 'comment' : 'post',
+                    }
+                  : {})}
+              >
               {loungeManageErr ? (
                 <div className="mb-4 rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-2 text-[14px] leading-tight text-rose-200">
                   {loungeManageErr}

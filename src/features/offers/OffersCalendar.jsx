@@ -632,7 +632,15 @@ export default function OffersCalendar({
     newEventAlertPresetDefault
   })
 
+  // A deep-linked reminder owns the view. offersDefaultView resolves async (getSession +
+  // localStorage), so a saved Calendar/Week default can land AFTER the deep link, flip
+  // activeCalendarView, and trip the clear-on-view-change effect that closes the detail
+  // modal we just opened. The view-menu handlers set calendarMode themselves, so skipping
+  // this re-apply never strands the user on the wrong view.
+  const deepLinkOwnsViewRef = useRef(false)
+
   useEffect(() => {
+    if (deepLinkOwnsViewRef.current) return
     if (offersDefaultView === 'month' || offersDefaultView === 'week' || offersDefaultView === 'agenda') {
       setCalendarMode(offersDefaultView)
     } else if (offersDefaultView === 'auto') {
@@ -654,6 +662,7 @@ export default function OffersCalendar({
     if (!pendingOfferEventIds.length) return
     const existingIds = pendingOfferEventIds.filter((id) => events.some((ev) => ev.id === id))
     if (!existingIds.length) return
+    deepLinkOwnsViewRef.current = true
     setCalendarMode('agenda')
     setSelectedDays([])
     setExpandedEventId(existingIds[0])

@@ -222,10 +222,14 @@ Deno.serve(async (req) => {
       const { title, body: nBody } = batchedNotificationPayload(sortedEvents)
       const firstEvent = sortedEvents[0]
       const isSingleEvent = sortedEvents.length === 1
+      // Deep link to the event(s) instead of dumping the user on the calendar. AppShell
+      // already parses `eventIds` (csv) and OffersCalendar expands + spotlights them, so
+      // this only ever needed the ids in the URL. Batched reminders pass all of them.
+      const targetUrl = `/?tab=offers&eventIds=${sortedEvents.map((item) => encodeURIComponent(item.id)).join(',')}`
       const payload = {
         title,
         body: nBody,
-        url: '/?tab=offers',
+        url: targetUrl,
         eventStartAt: isSingleEvent ? firstEvent?.start_at || null : null,
         eventAlertPreset: isSingleEvent ? firstEvent?.alert_preset || null : null,
       }
@@ -258,7 +262,7 @@ Deno.serve(async (req) => {
       const apns = await sendApnsToUser(admin, ev.user_id, {
         title,
         body: nBody,
-        url: '/?tab=offers',
+        url: targetUrl,
       })
       sent += apns.sent
       failed += apns.failed

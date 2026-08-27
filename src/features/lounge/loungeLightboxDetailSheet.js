@@ -1,11 +1,11 @@
 import { computeHeroTargetRect } from './loungeLightboxFlip.js'
 
-/** Rest ~60% of the layout viewport. Composer focused ~74%. */
-const SHEET_REST_FRACTION = 0.6
-const SHEET_COMPOSER_FRACTION = 0.74
+/** Rest ~70% of the layout viewport. Composer focused ~80%. */
+const SHEET_REST_FRACTION = 0.7
+const SHEET_COMPOSER_FRACTION = 0.8
 const SHEET_MIN_PEEK_REM = 5.5
 /** Black gap between contain-fit media and the sheet top. */
-const PEEK_GAP_PX = 12
+const PEEK_GAP_PX = 5
 const IS_ANDROID = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 
 let overlayOn = false
@@ -272,7 +272,7 @@ function peekComposerSheetHeightPx() {
   return Math.max(estimateSheetHeightForLayout(sheetLayoutH()), peekCssSheetHeightPx())
 }
 
-/** Highest plausible sheet top for the 74% composer sheet (smallest air gap). */
+/** Highest plausible sheet top for the 80% composer sheet (smallest air gap). */
 function peekIosComposerBandBottomPx(sheetTop, slidingOn) {
   const destH = peekComposerSheetHeightPx()
   const bottoms = []
@@ -292,7 +292,7 @@ function peekIosComposerBandBottomPx(sheetTop, slidingOn) {
   return bottom
 }
 
-/** Visible peek gap: status-bar bottom → sheet top minus 12px. Contain-fit and center. */
+/** Visible peek gap: status-bar bottom → sheet top minus 5px. Contain-fit and center. */
 function peekVisibleBand() {
   if (!overlayOn || !peekRevealed) return { top: 0, height: 0 }
   const vh = sheetLayoutH()
@@ -303,8 +303,8 @@ function peekVisibleBand() {
   const slidingOn = !dragging && vh >= 80 && sheetTop > vh * 0.88
   let bottom = 0
   if (composerExpanded && !sheetDragging && dragOffsetPx === 0) {
-    // Android composer is 74% of the live layout. iOS 74lvh is parked in a
-    // smaller innerHeight than frozen lvh, so frozen-lvh minus 74lvh leaves a
+    // Android composer is 80% of the live layout. iOS 80lvh is parked in a
+    // smaller innerHeight than frozen lvh, so frozen-lvh minus 80lvh leaves a
     // gap that is taller than the real sheet top... media does not shrink enough.
     bottom = IS_ANDROID
       ? visualSheetHeightPx() > 8
@@ -760,7 +760,7 @@ export function lockLoungeMediaSheetKeyboard() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
   if (!overlayOn) return
   if (IS_ANDROID) {
-    // resizes-content already parked `fixed bottom` on the keys. Pinning 74lvh of the
+    // resizes-content already parked `fixed bottom` on the keys. Pinning 80lvh of the
     // pre-keyboard layout fills the remaining band. Follow live innerHeight instead.
     writeSheetHeightVar(estimateLoungeMediaDetailSheetHeightPx())
     writePeekInsetVar()

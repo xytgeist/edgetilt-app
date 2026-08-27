@@ -1058,7 +1058,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-26: **Lounge nested Reply keeps peek media (Windows):** Sliding the next comment (or tapping its media) from a nested-comments sheet remounted the peek comment's Stream/image, which closed that lightbox and resumed the original video. Comment cards now keep caption/media in a stable grid parent across focus↔ancestor. Original hero will not play while a nested lightbox is still on top. No SQL / Edge.
+- 2026-08-26: **Lounge overlay sheet 70/80 + 5px peek (Windows):** Rest **70lvh**, composer **80lvh** (Android composer **80%** of live layout). Peek gap **5px**. Replaces 60/74 and 12px. Nested Reply remount **Ryan smoke PASSED** @ **`85ce96fa`**. No SQL / Edge.
+
+- 2026-08-26: **Lounge nested Reply keeps peek media (Windows):** **Ryan smoke PASSED.** Sliding the next comment from a nested-comments sheet no longer remounts peek Stream/image or resume the original video. Tip **`85ce96fa`**. Do not remount comment media on focus↔ancestor. No SQL / Edge.
 
 - 2026-08-26: **Lounge comment-list media via Reply (Windows):** Tapping media on a comment that is not already the Reply focus drills that comment first, then opens the lightbox from the focus tile. Close and comments-on-lightbox match opening the comment then the media. Overlay + full Post. 2+ hop still comment-only. No SQL / Edge.
 

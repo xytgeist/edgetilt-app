@@ -1078,6 +1078,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-08-26: **Lounge lightbox Android composer pad (Windows):** Overlay pad used frozen `innerHeight - visualViewport`, which double-counts Android `resizes-content` and parked the reply field under the status bar. Android now uses live `innerHeight - visualViewport` (usually 0). iOS path unchanged. No SQL / Edge.
 
+- 2026-08-26: **Lounge overlay nested media one hop only (Windows):** Comment media in the overlay sheet can open one nested lightbox. Media in that nested-comments sheet opens the comment (Reply), not a second lightbox. N-level stack `1092c942` was reverted. No SQL / Edge.
+
 - 2026-08-26: **Lounge overlay nested lightbox peek / pause / comment slide (Windows):** Comments on a nested lightbox peek-shrink that media (clear peek cache + `--lounge-media-peek-transform`). Opening nested media pauses videos under it and resumes when it closes. Tapping a comment row slides Reply into the overlay sheet (← back). No SQL / Edge.
 
 - 2026-08-26: **Lounge overlay comment-media nested lightbox (Windows):** Tapping image/GIF/video in the overlay comments sheet opens that media as its own lightbox (`z-[115]`) on top of the stack. Peek CSS / chrome-hide skip `data-lounge-nested-lightbox`. Close returns to the original lightbox + comments sheet. Comments from the nested lightbox retarget the overlay (stack pop restores). No SQL / Edge.

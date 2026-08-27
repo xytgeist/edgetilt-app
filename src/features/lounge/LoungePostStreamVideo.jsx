@@ -3325,7 +3325,7 @@ export default function LoungePostStreamVideo({
         ref={containerRef}
         role="button"
         tabIndex={0}
-        data-lounge-video-zoom
+        data-lounge-video-zoom={showOpen ? '' : undefined}
         {...(videoDebugEnabled && feedAutoplayClientId
           ? { 'data-lounge-autoplay-id': feedAutoplayClientId }
           : {})}
@@ -3357,8 +3357,10 @@ export default function LoungePostStreamVideo({
               : undefined
           }
           onClick={(e) => {
-            e.stopPropagation()
-            if (showOpen && !showPublishBlurOverlay && !heroExpanded) openLightbox()
+            if (showOpen && !showPublishBlurOverlay && !heroExpanded) {
+              e.stopPropagation()
+              openLightbox()
+            }
           }}
           onKeyDown={(e) => {
             if (!showOpen || showPublishBlurOverlay || heroExpanded) return

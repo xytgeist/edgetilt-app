@@ -9010,6 +9010,10 @@ export default function SocialFeed({
     loungePostDetailOverLightbox && loungeOverlaySheetStackDepth > 0
       ? loungeOverlayRootPeekEntityId
       : null
+  /** First overlay hop can open comment media as its own lightbox. Deeper hops open the comment instead. */
+  const loungeCommentMediaLightboxEnabled = !(
+    loungePostDetailOverLightbox && loungeOverlaySheetStackDepth > 0
+  )
 
   const loungeDetailMediaLightboxPortalClass = loungePostDetailAboveProfile
     ? 'z-[103]'
@@ -18133,6 +18137,7 @@ export default function SocialFeed({
                     onSharePost: handleShareLoungePost,
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
                     overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
+                    enableLightbox: loungeCommentMediaLightboxEnabled,
                   }}
                 />
               ) : null}
@@ -18221,6 +18226,7 @@ export default function SocialFeed({
                     onSharePost: handleShareLoungePost,
                     omitMediaEntityId: loungeSheetOmitMediaEntityId,
                     overlayNestedRootEntityId: loungeOverlayNestedRootEntityId,
+                    enableLightbox: loungeCommentMediaLightboxEnabled,
                   }}
                 />
               ) : null}
@@ -18336,6 +18342,7 @@ export default function SocialFeed({
                           onSharePost={handleShareLoungePost}
                           omitMediaEntityId={loungeSheetOmitMediaEntityId}
                           overlayNestedRootEntityId={loungeOverlayNestedRootEntityId}
+                          enableLightbox={loungeCommentMediaLightboxEnabled}
                         />
                       </>
                     )}

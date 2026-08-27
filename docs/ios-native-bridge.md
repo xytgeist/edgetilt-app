@@ -78,6 +78,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `setNativeCallSpeaker` | JS→native | `{ speaker: boolean }` | `{ ok: boolean, speaker?: boolean }` | Mac | **native** (2026-08-27). |
 | `setNativeCallChrome` | JS→native | `{ minimized?: boolean, videoVisible?: boolean }` | `{ ok: boolean }` | Mac | **native** (2026-08-27). Hide the native video overlay when the web chrome is minimized. |
 | `getNativeCallState` | JS→native | none | `{ callId, connected, remoteCount, micOn, camOn, speakerOn, hasVideo }` | Mac | **native** (2026-08-27). Chrome hydrates from this + `edge-native-call-state` events. |
+| `dismissKeyboard` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-08-27). Answer / start call drops the WKWebView keyboard. CallKit answer also resigns first responder without waiting for JS. |
 | `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |
 | `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, state, transactionId?, jws? }` | Mac | **native** (2026-08-26) + **web** SubscribeModal shell path. JWS verified server-side by Edge `apple-iap-verify`. **Device smoke pending.** |
 | `restoreStorePurchases` | JS→native | none | `{ ok, entitlements: string[] }` | Mac | **native** (2026-08-26). **Device smoke pending.** |

@@ -182,6 +182,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       completion(.success(["ok": true]))
     case "getNativeCallState":
       completion(.success(EdgeLiveKitCallManager.shared.currentState()))
+    case "dismissKeyboard":
+      EdgeCallKitManager.shared.dismissWebKeyboard()
+      completion(.success(["ok": true]))
     case "getStoreProducts":
       guard #available(iOS 15.0, *) else {
         completion(.failure(EdgeStoreKitError.unavailable))
@@ -502,6 +505,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       getNativeCallState: function () {
         return call('getNativeCallState', null);
+      },
+      dismissKeyboard: function () {
+        return call('dismissKeyboard', null);
       },
       getStoreProducts: function (payload) {
         return call('getStoreProducts', payload || {});

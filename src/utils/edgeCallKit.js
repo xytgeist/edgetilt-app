@@ -177,6 +177,18 @@ export async function setNativeCallChrome(args = {}) {
   }
 }
 
+/** Blur web focus and tell WKWebView to drop the software keyboard. */
+export function dismissEdgeCallKeyboard() {
+  try {
+    const el = typeof document !== 'undefined' ? document.activeElement : null
+    if (el && el !== document.body && typeof el.blur === 'function') el.blur()
+  } catch {
+    /* ignore */
+  }
+  if (!isEdgeiOSShell()) return
+  void edgeNativeInvoke('dismissKeyboard')
+}
+
 export async function getNativeCallState() {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {

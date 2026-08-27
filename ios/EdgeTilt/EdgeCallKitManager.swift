@@ -111,6 +111,24 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     self.webView = webView
   }
 
+  /// CallKit / in-call chrome owns the screen. Drop any WKWebView keyboard.
+  func dismissWebKeyboard() {
+    let resign = {
+      self.webView?.endEditing(true)
+      UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder),
+        to: nil,
+        from: nil,
+        for: nil
+      )
+    }
+    if Thread.isMainThread {
+      resign()
+    } else {
+      DispatchQueue.main.async(execute: resign)
+    }
+  }
+
   /// JS → native: `ChatCallProvider` has its answer/decline listeners installed.
   /// A VoIP push can wake us from terminated, so an answer often happens before the
   /// web layer exists. Events buffered until now are replayed here; without this the
@@ -174,6 +192,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     pendingCallReveal = false
     didRevealCallThisAnswer = true
     stopUnlockPoll()
+    dismissWebKeyboard()
     dispatchToWeb(
       event: "edge-native-call-reveal",
       detail: [
@@ -559,6 +578,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     beginCallBackgroundTask()
     mediaConnected = false
     answeredUUIDs.insert(action.callUUID)
+    dismissWebKeyboard()
     if let meta = calls[action.callUUID] {
       let detail: [String: Any] = [
         "uuid": action.callUUID.uuidString.lowercased(),

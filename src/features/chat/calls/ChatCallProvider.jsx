@@ -34,6 +34,7 @@ import { enterCallAudioSession } from './chatCallAudioSession.js'
 import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
 import {
   acceptNativeCall,
+  dismissEdgeCallKeyboard,
   endEdgeNativeCall,
   getEdgeVoIPPushToken,
   installEdgeCallKitListeners,
@@ -633,9 +634,48 @@ export function ChatCallProvider({
       }
       unlockChatCallAudio()
       enterCallAudioSession()
+      dismissEdgeCallKeyboard()
       setBusy(true)
       setError('')
       try {
+        const incomingSnap = incomingRef.current
+        const optimisticRoomId = String(opts.roomId || incomingSnap?.roomId || '')
+        const optimisticMedia =
+          opts.hasVideo || incomingSnap?.mediaMode === 'video' ? 'video' : 'audio'
+        if (isEdgeiOSShell()) {
+          // Show in-call chrome on answer. Native connect can take a beat.
+          const optimistic = {
+            callId: id,
+            roomId: optimisticRoomId,
+            kind: incomingSnap?.kind === 'group_audio' ? 'group_audio' : 'dm_av',
+            mediaMode: /** @type {'audio' | 'video'} */ (optimisticMedia),
+            token: 'native',
+            livekitUrl: 'native',
+            viaNative: true,
+            title: opts.title || incomingSnap?.title || 'Chat call',
+            isOutgoing: false,
+            avatarUrl:
+              typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim()
+                ? opts.avatarUrl.trim()
+                : incomingSnap?.avatarUrl || null,
+            viewerAvatarUrl:
+              typeof opts.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
+                ? opts.viewerAvatarUrl.trim()
+                : null,
+            peerUserId:
+              typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
+                ? opts.peerUserId.trim()
+                : incomingSnap?.fromUserId || null,
+            callStartedBy: null,
+            startMinimized: Boolean(opts.startMinimized),
+            ...recordingFieldsFromCall(null),
+          }
+          endingRef.current = false
+          activeCallRef.current = optimistic
+          setActiveCall(optimistic)
+          setIncoming(null)
+          if (opts.openRoom !== false && optimisticRoomId) onOpenRoom?.(optimisticRoomId)
+        }
         let res
         if (isEdgeiOSShell()) {
           res = await acceptNativeCall({
@@ -649,7 +689,7 @@ export function ChatCallProvider({
               const fetched = await chatGetCall(supabaseClient, id)
               res = { ...res, call: fetched?.call || fetched }
             } catch {
-              /* chrome can still mount */
+              /* chrome is already up */
             }
           }
         } else {
@@ -657,7 +697,7 @@ export function ChatCallProvider({
           res = await action(supabaseClient, id)
         }
         const call = res.call
-        const roomId = String(call?.chat_room_id || res.roomId || opts.roomId || '')
+        const roomId = String(call?.chat_room_id || res.roomId || opts.roomId || optimisticRoomId || '')
         if (!call?.id && !(isEdgeiOSShell() && (roomId || id))) {
           throw new Error('Could not join call')
         }
@@ -676,10 +716,11 @@ export function ChatCallProvider({
           }
         }
         const avatarUrl =
-          typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim() ? opts.avatarUrl.trim() : null
+          typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim()
+            ? opts.avatarUrl.trim()
+            : incomingSnap?.avatarUrl || null
         endingRef.current = false
-        // Mount call UI before room navigation so Accept never flashes the underlying tab.
-        setActiveCall({
+        const next = {
           callId: resolvedCallId,
           roomId,
           kind: call?.kind === 'group_audio' ? 'group_audio' : 'dm_av',
@@ -687,22 +728,28 @@ export function ChatCallProvider({
           token: res.token || 'native',
           livekitUrl: res.livekit_url || res.livekitUrl || 'native',
           viaNative: isEdgeiOSShell(),
-          title: opts.title || 'Chat call',
+          title: opts.title || incomingSnap?.title || 'Chat call',
           isOutgoing: false,
           avatarUrl,
           viewerAvatarUrl,
           peerUserId:
             typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
               ? opts.peerUserId.trim()
-              : null,
+              : incomingSnap?.fromUserId || null,
           callStartedBy: call?.started_by ? String(call.started_by) : null,
           startMinimized: Boolean(opts.startMinimized),
           ...recordingFieldsFromCall(call),
-        })
+        }
+        activeCallRef.current = next
+        setActiveCall(next)
         setIncoming(null)
         if (opts.openRoom !== false) onOpenRoom?.(roomId)
         return call || { id: resolvedCallId, chat_room_id: roomId }
       } catch (err) {
+        if (isEdgeiOSShell() && activeCallRef.current?.callId === id) {
+          activeCallRef.current = null
+          setActiveCall(null)
+        }
         showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
         return null
       } finally {
@@ -731,6 +778,7 @@ export function ChatCallProvider({
       if (activeCallRef.current) throw new Error('Already in a call.')
       unlockChatCallAudio()
       enterCallAudioSession()
+      dismissEdgeCallKeyboard()
       setBusy(true)
       setError('')
       const avatarFromOpts =

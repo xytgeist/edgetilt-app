@@ -33,14 +33,18 @@ import {
   LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS,
   LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS,
   LOUNGE_FEED_DISPLAY_NAME_CLASS,
+  LOUNGE_FEED_DISPLAY_NAME_DETAIL_CLASS,
   LOUNGE_FEED_META_HANDLE_TIME_CLASS,
   LOUNGE_FEED_META_ROW_CLASS,
   LOUNGE_FEED_META_TEXT_COLUMN_CLASS,
+  LOUNGE_FEED_POST_DETAIL_AUTHOR_BLOCK_CLASS,
+  LOUNGE_FEED_POST_DETAIL_HANDLE_TIME_CLASS,
   LOUNGE_FEED_POST_DETAIL_COMMENT_AVATAR_CLASS,
   LOUNGE_FEED_POST_DETAIL_COMMENT_LIST_CLASS,
   LOUNGE_FEED_POST_DETAIL_COMMENT_LIST_ITEM_CLASS,
   LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS,
   LOUNGE_FEED_POST_DETAIL_COMMENT_INTERACTIONS_CLASS,
+  LOUNGE_FEED_POST_INTERACTIONS_CLASS,
   LOUNGE_FEED_POST_CARD_MENU_ANCHOR_CLASS,
 } from './loungeFeedAvatar.js'
 
@@ -123,6 +127,11 @@ export function LoungeCommentCard({
   onSharePost,
   /** Viewport full-bleed carousel (caption-column rows only; off for thread ancestors). */
   captionColumnMedia = true,
+  /**
+   * Reply-screen focus comment: avatar + name on the first row; caption, media,
+   * timestamp, and the interaction bar are full width below (same as post detail).
+   */
+  detailFocusLayout = false,
   /** While the X-style lightbox sheet is up, hide this entity's media (already in the peek). */
   omitMediaEntityId = null,
   overlayNestedRootEntityId = null,
@@ -177,7 +186,7 @@ export function LoungeCommentCard({
 
   const bodyBlock = bodyEditing ? (
     <div
-      className="mt-1.5"
+      className={detailFocusLayout ? 'mt-4' : 'mt-1.5'}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         e.stopPropagation()
@@ -244,7 +253,9 @@ export function LoungeCommentCard({
         <>
           {bodyText ? (
             <div
-              className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
+              className={`${detailFocusLayout ? 'mt-4' : LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} ${
+                detailFocusLayout ? 'text-zinc-100' : 'text-zinc-200'
+              }`}
             >
               <LoungeExpandableRichCaption
                 text={bodyText}
@@ -275,7 +286,9 @@ export function LoungeCommentCard({
         firstMarginTopClass={
           String(comment.body || '').trim()
             ? LOUNGE_FEED_MEDIA_AFTER_CAPTION_TOP_CLASS
-            : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
+            : detailFocusLayout
+              ? 'mt-4'
+              : LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS
         }
         visibilityResetRootRef={positionScrollRootRef}
         lightboxPortalClass={lightboxPortalClass}
@@ -288,121 +301,175 @@ export function LoungeCommentCard({
       />
     ) : null
 
-  const commentBodyColumn = (
-      <div className="min-w-0 flex-1">
-        {commentPublishPending ? (
-          <LoungeFeedPendingStatusRow className="mb-1">Sending reply…</LoungeFeedPendingStatusRow>
-        ) : null}
-        {commentDeletePending ? (
-          <LoungeFeedPendingStatusRow className="mb-1">Deleting reply…</LoungeFeedPendingStatusRow>
-        ) : null}
-        {commentEditSavePending ? (
-          <LoungeFeedPendingStatusRow className="mb-1">Updating reply…</LoungeFeedPendingStatusRow>
-        ) : null}
-        <div className="relative min-w-0">
-          <div className={`${LOUNGE_FEED_META_TEXT_COLUMN_CLASS} ${showCommentMenu ? 'pr-7' : ''}`}>
-            <div className={LOUNGE_FEED_META_ROW_CLASS}>
-              <LoungeFeedAuthorMetaBadges
-                role={profile?.role}
-                isOg={profile?.is_og}
-                displayName={displayName}
-                displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
-              />
-              <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
-                <span className="min-w-0 truncate">{handleLabel}</span>
-                <span className="shrink-0 text-zinc-600">·</span>
-                <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
-                  {typeof postAgeLabel === 'function' ? postAgeLabel(comment.created_at) : ''}
-                </span>
-              </span>
-            </div>
-          </div>
-          {showCommentMenu ? (
-            <div className={LOUNGE_FEED_POST_CARD_MENU_ANCHOR_CLASS}>
-              <LoungePostRowMenu
-                menuAriaLabel="Comment options"
-                isOwn={menuIsOwn}
-                showEdit={menuIsOwn && typeof onCommentMenuEdit === 'function'}
-                deleteBusy={Boolean(busyDeletingCommentId && busyDeletingCommentId === comment.id)}
-                onEdit={() => onCommentMenuEdit?.(comment)}
-                onDelete={() => onCommentMenuDelete?.(comment)}
-                showStaffDelete={false}
-                onBlock={() => onCommentMenuBlock?.(comment)}
-                onReport={() => onCommentMenuReport?.(comment)}
-                positionScrollRootRef={positionScrollRootRef}
-              />
-            </div>
-          ) : null}
-        </div>
-        {bodyBlock}
-        {commentMediaBlock}
-        {showDetailTimestamp && detailTimestampLabel && !bodyEditing ? (
-          <div className="mt-2 text-[14px] leading-tight text-zinc-500">{detailTimestampLabel}</div>
-        ) : null}
-        {bodyEditing || commentPublishPending || hideInteractionBar || typeof interactionStateFor !== 'function' ? null : interactionBarPost ? (
-          <LoungePostInteractionBar
-            post={interactionBarPost}
-            variant="comment"
-            rootClassName={LOUNGE_FEED_POST_DETAIL_COMMENT_INTERACTIONS_CLASS}
-            loungeReadOnly={loungeReadOnly}
-            interactionStateFor={interactionStateFor}
-            toggleInteraction={toggleInteraction}
-            onPlainRepost={onPlainRepost}
-            onUndoPlainRepost={onUndoPlainRepost}
-            onRemoveQuoteRepost={onRemoveQuoteRepost}
-            onQuoteRepost={onQuoteRepost}
-            toggleBookmark={toggleBookmark}
-            bookmarkedByPost={bookmarkedByPost}
-            onToggleLike={onToggleCommentLike}
-            onToggleBookmark={onToggleCommentBookmark}
-            getBookmarked={getCommentBookmarked}
-            requireLoungeAuth={requireLoungeAuth}
-            openProfileGateIfNeeded={openProfileGateIfNeeded}
-            repostMenuScrollRootRef={positionScrollRootRef}
-            onCommentClick={onCommentBarClick}
-            repostActionBusy={repostActionBusy}
-            repostHidden={repostHidden}
-          />
-        ) : null}
-      </div>
+  const pendingRows = (
+    <>
+      {commentPublishPending ? (
+        <LoungeFeedPendingStatusRow className="mb-1">Sending reply…</LoungeFeedPendingStatusRow>
+      ) : null}
+      {commentDeletePending ? (
+        <LoungeFeedPendingStatusRow className="mb-1">Deleting reply…</LoungeFeedPendingStatusRow>
+      ) : null}
+      {commentEditSavePending ? (
+        <LoungeFeedPendingStatusRow className="mb-1">Updating reply…</LoungeFeedPendingStatusRow>
+      ) : null}
+    </>
   )
 
-  const metaRow = hideAvatar ? (
-    commentBodyColumn
+  const authorMetaBlock = detailFocusLayout ? (
+    <div className={LOUNGE_FEED_POST_DETAIL_AUTHOR_BLOCK_CLASS}>
+      <div className={LOUNGE_FEED_META_ROW_CLASS}>
+        <LoungeFeedAuthorMetaBadges
+          role={profile?.role}
+          isOg={profile?.is_og}
+          displayName={displayName}
+          displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_DETAIL_CLASS}
+        />
+      </div>
+      <span className={LOUNGE_FEED_POST_DETAIL_HANDLE_TIME_CLASS}>
+        <span className="min-w-0 truncate">{handleLabel}</span>
+      </span>
+    </div>
   ) : (
-    <div className="flex items-start gap-3">
-      <button
-        ref={avatarButtonRef}
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          if (openProfileGateIfNeeded?.()) return
-          onAvatarClickProfile?.(comment)
-        }}
-        className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_AVATAR_CLASS} flex items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent]`}
-        aria-label={`Open profile for ${displayName}`}
-      >
-        {profile?.avatar_url ? (
-          <img
-            src={profile.avatar_url}
-            alt=""
-            className="h-full w-full rounded-full object-cover"
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <span
-            className={`flex h-full w-full items-center justify-center font-bold text-white ${profileAvatarToneClass(
-              profile?.user_id || profile?.handle || comment?.user_id || 'member',
-            )}`}
-          >
-            {profileAvatarInitials(profile?.display_name, profile?.handle)}
-          </span>
-        )}
-      </button>
-      {commentBodyColumn}
+    <div className={LOUNGE_FEED_META_ROW_CLASS}>
+      <LoungeFeedAuthorMetaBadges
+        role={profile?.role}
+        isOg={profile?.is_og}
+        displayName={displayName}
+        displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
+      />
+      <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+        <span className="min-w-0 truncate">{handleLabel}</span>
+        <span className="shrink-0 text-zinc-600">·</span>
+        <span className="shrink-0 font-normal tabular-nums whitespace-nowrap">
+          {typeof postAgeLabel === 'function' ? postAgeLabel(comment.created_at) : ''}
+        </span>
+      </span>
     </div>
   )
+
+  const authorRowWithMenu = (
+    <div className="relative min-w-0">
+      <div className={`${LOUNGE_FEED_META_TEXT_COLUMN_CLASS} ${showCommentMenu ? 'pr-7' : ''}`}>
+        {authorMetaBlock}
+      </div>
+      {showCommentMenu ? (
+        <div className={LOUNGE_FEED_POST_CARD_MENU_ANCHOR_CLASS}>
+          <LoungePostRowMenu
+            menuAriaLabel="Comment options"
+            isOwn={menuIsOwn}
+            showEdit={menuIsOwn && typeof onCommentMenuEdit === 'function'}
+            deleteBusy={Boolean(busyDeletingCommentId && busyDeletingCommentId === comment.id)}
+            onEdit={() => onCommentMenuEdit?.(comment)}
+            onDelete={() => onCommentMenuDelete?.(comment)}
+            showStaffDelete={false}
+            onBlock={() => onCommentMenuBlock?.(comment)}
+            onReport={() => onCommentMenuReport?.(comment)}
+            positionScrollRootRef={positionScrollRootRef}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+
+  const bodyAndChrome = (
+    <>
+      {bodyBlock}
+      {commentMediaBlock}
+      {showDetailTimestamp && detailTimestampLabel && !bodyEditing ? (
+        <div className="mt-2 text-[14px] leading-tight text-zinc-500">{detailTimestampLabel}</div>
+      ) : null}
+      {bodyEditing || commentPublishPending || hideInteractionBar || typeof interactionStateFor !== 'function' ? null : interactionBarPost ? (
+        <LoungePostInteractionBar
+          post={interactionBarPost}
+          variant="comment"
+          rootClassName={
+            detailFocusLayout
+              ? LOUNGE_FEED_POST_INTERACTIONS_CLASS
+              : LOUNGE_FEED_POST_DETAIL_COMMENT_INTERACTIONS_CLASS
+          }
+          loungeReadOnly={loungeReadOnly}
+          interactionStateFor={interactionStateFor}
+          toggleInteraction={toggleInteraction}
+          onPlainRepost={onPlainRepost}
+          onUndoPlainRepost={onUndoPlainRepost}
+          onRemoveQuoteRepost={onRemoveQuoteRepost}
+          onQuoteRepost={onQuoteRepost}
+          toggleBookmark={toggleBookmark}
+          bookmarkedByPost={bookmarkedByPost}
+          onToggleLike={onToggleCommentLike}
+          onToggleBookmark={onToggleCommentBookmark}
+          getBookmarked={getCommentBookmarked}
+          requireLoungeAuth={requireLoungeAuth}
+          openProfileGateIfNeeded={openProfileGateIfNeeded}
+          repostMenuScrollRootRef={positionScrollRootRef}
+          onCommentClick={onCommentBarClick}
+          repostActionBusy={repostActionBusy}
+          repostHidden={repostHidden}
+        />
+      ) : null}
+    </>
+  )
+
+  const avatarButton = hideAvatar ? null : (
+    <button
+      ref={avatarButtonRef}
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (openProfileGateIfNeeded?.()) return
+        onAvatarClickProfile?.(comment)
+      }}
+      className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_AVATAR_CLASS} flex items-center justify-center touch-manipulation [-webkit-tap-highlight-color:transparent]`}
+      aria-label={`Open profile for ${displayName}`}
+    >
+      {profile?.avatar_url ? (
+        <img
+          src={profile.avatar_url}
+          alt=""
+          className="h-full w-full rounded-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : (
+        <span
+          className={`flex h-full w-full items-center justify-center font-bold text-white ${profileAvatarToneClass(
+            profile?.user_id || profile?.handle || comment?.user_id || 'member',
+          )}`}
+        >
+          {profileAvatarInitials(profile?.display_name, profile?.handle)}
+        </span>
+      )}
+    </button>
+  )
+
+  const columnInner = (
+    <div className="min-w-0 flex-1">
+      {pendingRows}
+      {authorRowWithMenu}
+      {bodyAndChrome}
+    </div>
+  )
+
+  const metaRow =
+    detailFocusLayout && !hideAvatar ? (
+      <>
+        <div className="flex items-start gap-3">
+          {avatarButton}
+          <div className="min-w-0 flex-1">
+            {pendingRows}
+            {authorRowWithMenu}
+          </div>
+        </div>
+        {bodyAndChrome}
+      </>
+    ) : hideAvatar ? (
+      columnInner
+    ) : (
+      <div className="flex items-start gap-3">
+        {avatarButton}
+        {columnInner}
+      </div>
+    )
 
   if (navigable && onOpenCommentThread && !commentPublishPending) {
     const openRow = () => onOpenCommentThread(comment)
@@ -430,13 +497,21 @@ export function LoungeCommentCard({
           openRow()
         }}
         className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS} cursor-pointer rounded-lg touch-manipulation outline-none hover:bg-zinc-900/50 [-webkit-tap-highlight-color:transparent] focus-visible:ring-2 focus-visible:ring-violet-500/40`}
+        {...(detailFocusLayout ? { 'data-lounge-comment-detail-focus': '' } : {})}
       >
         {metaRow}
       </article>
     )
   }
 
-  return <article className={LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS}>{metaRow}</article>
+  return (
+    <article
+      className={LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS}
+      {...(detailFocusLayout ? { 'data-lounge-comment-detail-focus': '' } : {})}
+    >
+      {metaRow}
+    </article>
+  )
 }
 
 /**

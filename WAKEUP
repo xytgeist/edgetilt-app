@@ -99,6 +99,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
+**Windows 2026-08-26 (comment-detail layout):** Reply focus comment is post-shaped (caption/media full width). OP + ancestors stay indented with the avatar connector. Overlay sheet + full Post + profile. Feed comment list rows unchanged.
+
 **Windows 2026-08-26 (lightbox comments sheet):** **Ryan smoke PASSED.** Rest 60lvh / composer 74lvh on iOS. Peek contain-fits and centers in the status-bar-to-sheet gap. Overlay comments do **not** dim peek media (`bg-transparent`, not `bg-black/40`). Overlay composer keeps a **solid footer plate** (no frost halo). Collapsed pill has a **40px avatar** beside it. Opening the sheet starts on the **pill**, not the full composer (74lvh only after the field is focused). Opening comments from post/comment **detail** must keep the same lightbox instance (do not remount stills / unmount Stream) and dismiss must return to **that detail**, not the feed. Tapping **comment media** in the overlay sheet opens a nested lightbox on top of the stack; comments on that nested lightbox peek-shrink it; videos under it pause; tapping a **comment row** slides Reply into the sheet. Close nested returns to the original lightbox + comments sheet. Do **not** revive 65/80 or Stream React peek transform. Do **not** JS-height the hero `<video>`. Do **not** reopen PWA iOS composer-peek geometry.
 
 **GIF picker (Ryan smoke PASSED 2026-08-25, IPA + non-IPA):** Search takes focus (`#root` inert). Sheet is layout-viewport full screen, keyboard overlays. IPA hides the WK accessory bar. Do not reopen dismiss-keyboard hacks. Trim audio mux (`d744555b`) stays.

@@ -1069,6 +1069,16 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Agent scratch archived out of the working tree, not deleted (Windows).** **724 files / 58.2 MB** moved to **`../LVSlotPro-archive/2026-08-27/`** (outside the repo, still inside OneDrive so it stays backed up), preserving relative paths. Nothing destroyed … if a one-off debug query is wanted again it is sitting right there.
+
+  Contents: 487 generated SQL chunks under `scripts/.tmp-migration-apply/`, ~150 `scripts/.tmp-*` ClubWPT / CoinPoker / Gold probes (incl. the 558 KB `.tmp-gold-main.js` minified bundle), ~80 `scripts/tmp-*` one-off debug + cleanup scripts, 76 lightbox reference frames, 8 `assets/brand-logos` PNGs, a 33 MB screen recording, and a stray 0-byte file literally named **`now()`**.
+
+  **Safety:** the move list was derived from **`git status --porcelain -uall`** untracked entries only, so no tracked file could be caught by a glob. Verified the brand logos were safe first … every code reference is `/edge-lounge-logo-*.png` (served from **`public/`**), and 4 of the 8 were byte-identical copies of the tracked `public/` files. `npm run build` and `npm run lint` clean afterwards.
+
+  **Four accidental commits removed from tracking:** `scripts/tmp-apply-migration-2026081018/19/20/23_0000.mjs` were committed while their 29 siblings stayed untracked. Nothing references them and their migrations applied weeks ago. Archived, then `git rm`.
+
+  **`.gitignore` now covers the scratch patterns** (`.tmp-*`, `tmp-*`, `scripts/.tmp-*`, `scripts/tmp-*`, `test_files/`, the lightbox frame dirs). Previously **only ESLint** knew these were junk, so a careless `git add -A` would have committed 58 MB. **`assets/brand-logos/` is deliberately NOT ignored** … it holds source art, and new logo drops should show up in `git status`.
+
 - 2026-08-27: **Lint backlog cleared … 1073 → 470, and three of them were real bugs (Windows, `a9e66224`).** Ryan's call: the pile kept getting mentioned and never fixed, so nobody read `npm run lint` … which is exactly how these hid:
 
   - **`PokerBankrollTrendTab.jsx`** rendered `pokerSessionStakesLabel(session)` with **no import**. `SessionDetailModal` renders on session tap in the Trend tab, so that was a live **`ReferenceError`** on a real user path. Every other caller imports it from `pokerSessionLabels.js`.

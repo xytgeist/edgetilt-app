@@ -71,3 +71,15 @@ tmp-poker-overview-dd/
 tmp-ffmpeg-tools/
 .tmp-img-cmp/
 tmp-ipa-cmp/
+
+# Agent / debugging scratch: one-off probes, generated migration chunks, vendor
+# bundles pulled down to read, screen recordings. ESLint already ignores these;
+# git needs to as well, or a careless `git add -A` commits them. Archived out to
+# ../LVSlotPro-archive/ on 2026-08-27 rather than deleted.
+.tmp-*
+tmp-*
+scripts/.tmp-*
+scripts/tmp-*
+test_files/
+assets/lightbox-ref-frames/
+assets/lightbox-close-ref-frames/

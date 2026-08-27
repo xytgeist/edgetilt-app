@@ -115,7 +115,7 @@ They stacked: (B) made every tick *want* to re-send; (A) made ticks 2-3 fail to 
 
 SQL-first with the old function still running is a short window of possible extra dupes, not silence. Function-first is silence. Cron collapse is last, never first.
 
-**Leaked prod key in test cron:** Ryan 2026-08-27 … **not an issue. Do not rotate. Do not reopen.**
+**Leaked prod key in test cron:** Ryan 2026-08-27 … **there was never a leak. Mac Theo misread it.** Not a risk we accepted ... a false alarm. **Do not rotate. Do not reopen. Do not re-raise it at Ryan on a cold start.**
 
 **Also still open:** IPA smoke of Windows Theo's lightbox list. We'll walk it together.
 

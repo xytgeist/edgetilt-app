@@ -1069,6 +1069,11 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Lounge lightbox air gap calculation stabilized from frozen baseline (`test`):**
+  - Removed `peekIosComposerBandBottomPx` and redundant `peekComposerSheetHeightPx` which polled `window.innerHeight` and `document.documentElement.clientHeight`.
+  - On iOS/mobile web, keyboard appearance temporarily reduces `innerHeight`, which was corrupting `peekIosComposerBandBottomPx` and causing `peekVisibleBand().height` to collapse below 8px, resetting media transforms to identity and pushing media down.
+  - `peekVisibleBand` now derives destination air gap strictly from `frozenLayoutH` and `visualSheetHeightPx()` with 3px padding (`PEEK_GAP_PX`), ensuring rock-solid contain-fit positioning within the air gap between the status bar and the sheet top.
+
 - 2026-08-27: **IPA answer shows in-call chrome immediately + dismiss keyboard (Mac).** `joinCall` no longer waits for native LiveKit connect before mounting chrome … Connecting… is the status. CallKit answer + `dismissKeyboard` resign the WKWebView keyboard. **`lounge-send-activity-push` redeployed on test** (`kcosfvmreeiosdjdzycb`) so a background/home-screen ring is CallKit only … missed still notifies. Prod Edge not deployed.
 
 - 2026-08-27: **IPA call chrome: background/killed unlock + no stacked invite + no in-app incoming overlay (Mac).** Ryan's focused-then-lock path worked because iOS already had our scene warm. Backgrounded / force-closed answers left us on the home screen because `protectedDataDidBecomeAvailable` often does not fire after the first unlock of the boot. Fix: poll `requestSceneSessionActivation` + `edgetilt://call` after a non-active answer until we become `.active`. Unlocked home screen was showing CallKit **and** the APNs "Edge Chat is calling you" card … sender now skips the ringing alert when VoIP landed (missed still notifies). `ChatIncomingCallOverlay` hidden on `isEdgeiOSShell()`. Rebuild + **redeploy `lounge-send-activity-push` on test** owed.

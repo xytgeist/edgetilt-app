@@ -1335,6 +1335,7 @@ export default function LoungePostStreamVideo({
   /** Hero / manual-play: muted-first (iOS gesture-safe), unmute after decode when sound is wanted. */
   const tryHeroPlayback = useCallback((video) => {
     if (!video || !lightboxOpenRef.current) return
+    if (getLoungeStreamLightboxCount() > lightboxStackDepthRef.current) return
     try {
       const wantSound = heroWantsSoundRef.current
       const hasFrame = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
@@ -1343,6 +1344,7 @@ export default function LoungePostStreamVideo({
       if (p && typeof p.then === 'function') {
         p.then(() => {
           if (!video || video.paused || !heroWantsSoundRef.current) return
+          if (getLoungeStreamLightboxCount() > lightboxStackDepthRef.current) return
           if (
             video.muted &&
             video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
@@ -3043,6 +3045,7 @@ export default function LoungePostStreamVideo({
     const v = videoRef.current
     if (!v) return undefined
     const tryPlay = () => {
+      if (getLoungeStreamLightboxCount() > lightboxStackDepthRef.current) return
       try {
         if (heroWantsSoundRef.current) v.muted = false
         const p = v.play()

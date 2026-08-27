@@ -99,6 +99,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Windows Theo:** Web lane. Do not edit `ios/`. Pull before more profile/FAB work.
 
+**Windows 2026-08-26 (nested Reply remount):** Sliding the next comment from a nested-comments sheet remounted the peek media and the original video started playing. Focus↔ancestor now keeps the same Stream/image node. Original hero stays paused while nested is open.
+
 **Windows 2026-08-26 (comment-list media via Reply):** Tapping media on a comment without opening it first drills Reply, then opens the lightbox from the focus tile. Same close / comments-sheet path as open-comment-then-media. 2+ hop still comment-only.
 
 **Windows 2026-08-26 (nested media one hop):** Overlay comment media can open one nested lightbox. Past that, tapping media opens the comment instead of stacking another lightbox. Do not revive `1092c942`.

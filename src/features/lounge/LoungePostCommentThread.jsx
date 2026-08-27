@@ -467,63 +467,73 @@ export function LoungeCommentCard({
     </div>
   )
 
-  const metaRow =
-    detailFocusLayout && !hideAvatar ? (
-      <>
-        <div className="flex items-start gap-3">
-          {avatarButton}
-          <div className="min-w-0 flex-1">
-            {pendingRows}
-            {authorRowWithMenu}
-          </div>
-        </div>
-        {bodyAndChrome}
-      </>
-    ) : hideAvatar ? (
-      columnInner
-    ) : (
-      <div className="flex items-start gap-3">
+  /**
+   * Keep caption/media in one React parent so focus↔ancestor layout changes do not remount
+   * Stream / image lightbox (nested peek would close and the original hero would resume).
+   */
+  const metaRow = hideAvatar ? (
+    columnInner
+  ) : (
+    <div
+      className="grid items-start gap-x-3 [grid-template-columns:auto_minmax(0,1fr)]"
+      style={{
+        gridTemplateAreas: detailFocusLayout
+          ? '"avatar author" "body body"'
+          : '"avatar author" "avatar body"',
+      }}
+    >
+      <div className="min-w-0" style={{ gridArea: 'avatar' }}>
         {avatarButton}
-        {columnInner}
       </div>
-    )
+      <div className="min-w-0" style={{ gridArea: 'author' }}>
+        {pendingRows}
+        {authorRowWithMenu}
+      </div>
+      <div className="min-w-0" style={{ gridArea: 'body' }}>
+        {bodyAndChrome}
+      </div>
+    </div>
+  )
 
-  if (navigable && onOpenCommentThread && !commentPublishPending) {
-    const openRow = () => onOpenCommentThread(comment)
-    return (
-      <article
-        tabIndex={0}
-        aria-label="View comment"
-        onClick={(e) => {
-          const t = e.target
-          if (!(t instanceof Element)) return
-          // Match feed post row: avoid drilling when tapping real controls (nested <button> inside role="button" breaks touch on iOS).
-          if (
-            t.closest(
-              'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-badge-tip], [data-lounge-post-interaction-bar], [data-lounge-image-zoom], [data-lounge-video-zoom]',
-            )
-          ) {
-            return
-          }
-          openRow()
-        }}
-        onKeyDown={(e) => {
-          if (e.key !== 'Enter' && e.key !== ' ') return
-          if (e.target !== e.currentTarget) return
-          e.preventDefault()
-          openRow()
-        }}
-        className={`${LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS} cursor-pointer rounded-lg touch-manipulation outline-none hover:bg-zinc-900/50 [-webkit-tap-highlight-color:transparent] focus-visible:ring-2 focus-visible:ring-violet-500/40`}
-        {...(detailFocusLayout ? { 'data-lounge-comment-detail-focus': '' } : {})}
-      >
-        {metaRow}
-      </article>
-    )
-  }
+  const canOpenRow = Boolean(navigable && onOpenCommentThread && !commentPublishPending)
+  const openRow = canOpenRow ? () => onOpenCommentThread(comment) : null
 
   return (
     <article
-      className={LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS}
+      tabIndex={openRow ? 0 : undefined}
+      aria-label={openRow ? 'View comment' : undefined}
+      onClick={
+        openRow
+          ? (e) => {
+              const t = e.target
+              if (!(t instanceof Element)) return
+              // Match feed post row: avoid drilling when tapping real controls (nested <button> inside role="button" breaks touch on iOS).
+              if (
+                t.closest(
+                  'button, a, textarea, input, select, [data-lounge-post-menu], [data-lounge-badge-tip], [data-lounge-post-interaction-bar], [data-lounge-image-zoom], [data-lounge-video-zoom]',
+                )
+              ) {
+                return
+              }
+              openRow()
+            }
+          : undefined
+      }
+      onKeyDown={
+        openRow
+          ? (e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              if (e.target !== e.currentTarget) return
+              e.preventDefault()
+              openRow()
+            }
+          : undefined
+      }
+      className={
+        openRow
+          ? `${LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS} cursor-pointer rounded-lg touch-manipulation outline-none hover:bg-zinc-900/50 [-webkit-tap-highlight-color:transparent] focus-visible:ring-2 focus-visible:ring-violet-500/40`
+          : LOUNGE_FEED_POST_DETAIL_COMMENT_ROW_CLASS
+      }
       {...(detailFocusLayout ? { 'data-lounge-comment-detail-focus': '' } : {})}
     >
       {metaRow}

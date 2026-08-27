@@ -27,11 +27,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   private var pendingWebEvents: [(event: String, detail: [String: Any])] = []
   private static let maxPendingWebEvents = 8
   private var callBackgroundTask: UIBackgroundTaskIdentifier = .invalid
-  /// Last CallKit answer that has not yet produced a LiveKit connect.
-  /// WKWebView cannot start the mic while the phone is locked, so we keep this
-  /// and re-fire when the app becomes active instead of treating fulfill() as join.
-  private var pendingAnswerDetail: [String: Any]?
   private var mediaConnected = false
+  private var answeredUUIDs: Set<UUID> = []
 
   /// True while CallKit is tracking at least one invite/call. The web view uses
   /// this to skip SW hygiene on a VoIP cold start so the page can load before
@@ -55,6 +52,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   }
 
   func configure() {
+    EdgeLiveKitCallManager.shared.configure()
     let registry = PKPushRegistry(queue: DispatchQueue.main)
     registry.delegate = self
     registry.desiredPushTypes = [.voIP]
@@ -74,31 +72,30 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     webReady = true
     let replay = pendingWebEvents
     pendingWebEvents = []
-    var held = 0
     for item in replay {
-      if item.event == "edge-callkit-answer", !Self.isAppActive {
-        pendingAnswerDetail = item.detail
-        pendingWebEvents.append(item)
-        held += 1
-        continue
-      }
       evaluateWebEvent(event: item.event, detail: item.detail)
     }
-    completion(.success(["ok": true, "replayed": replay.count - held, "held": held]))
+    completion(.success(["ok": true, "replayed": replay.count]))
   }
 
-  /// JS → native: LiveKit actually connected. CallKit fulfill is not this.
+  /// JS → native: native LiveKit Room connected. CallKit fulfill is not this.
   func markMediaConnected(completion: @escaping (Result<[String: Any], Error>) -> Void) {
     mediaConnected = true
-    pendingAnswerDetail = nil
     completion(.success(["ok": true]))
   }
 
-  /// Unlock / app foreground is when WKWebView can acquire the mic. Re-fire the
-  /// unanswered-join so the caller finally sees a remote participant.
+  func markMediaConnectedLocally() {
+    mediaConnected = true
+  }
+
+  /// Unlock / foreground is when iOS will allow a useful camera. Mic already
+  /// published from CallKit didActivate.
   func handleDidBecomeActive() {
-    guard webReady, !mediaConnected, let detail = pendingAnswerDetail else { return }
-    evaluateWebEvent(event: "edge-callkit-answer", detail: detail)
+    EdgeLiveKitCallManager.shared.handleDidBecomeActive()
+  }
+
+  func dispatchNativeCallState(_ detail: [String: Any]) {
+    dispatchToWeb(event: "edge-native-call-state", detail: detail)
   }
 
   /// A new page load tears down the listeners, so stop dispatching until JS re-marks.
@@ -200,9 +197,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     // API for "the other side hung up" and is what actually clears a lock-screen
     // in-call UI when the web session is already gone.
     if reason == "remote" {
+      EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
       provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
       calls.removeValue(forKey: uuid)
-      pendingAnswerDetail = nil
+      answeredUUIDs.remove(uuid)
       mediaConnected = false
       if calls.isEmpty { endCallBackgroundTask() }
       EdgeAudioSession.apply(mode: "default") { _ in }
@@ -225,9 +223,50 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
       calls.removeValue(forKey: uuid)
     }
-    pendingAnswerDetail = nil
+    answeredUUIDs.removeAll()
     mediaConnected = false
+    EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
     endCallBackgroundTask()
+  }
+
+  /// Outgoing in-app IPA calls also go through CallKit so `didActivate` fires.
+  func reportOutgoingCall(callId: String, roomId: String, handle: String, hasVideo: Bool) {
+    let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedCallId.isEmpty,
+       let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
+      answeredUUIDs.insert(existing)
+      return
+    }
+    let uuid = UUID()
+    let callerName = Self.sanitizedCallerName(handle)
+    calls[uuid] = CallMeta(
+      callId: trimmedCallId,
+      roomId: roomId,
+      hasVideo: hasVideo,
+      callerName: callerName
+    )
+    answeredUUIDs.insert(uuid)
+    beginCallBackgroundTask()
+    let start = CXStartCallAction(call: uuid, handle: CXHandle(type: .generic, value: callerName))
+    start.isVideo = hasVideo
+    callController.request(CXTransaction(action: start)) { [weak self] error in
+      guard let self, error == nil else { return }
+      self.provider.reportOutgoingCall(with: uuid, startedConnectingAt: Date())
+    }
+  }
+
+  func markOutgoingConnected(callId: String) {
+    let trimmed = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let uuid = calls.first(where: { $0.value.callId == trimmed })?.key else { return }
+    provider.reportOutgoingCall(with: uuid, connectedAt: Date())
+    mediaConnected = true
+  }
+
+  func requestAnswerIfNeeded(callId: String) {
+    let trimmed = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let uuid = calls.first(where: { $0.value.callId == trimmed })?.key else { return }
+    if answeredUUIDs.contains(uuid) { return }
+    callController.request(CXTransaction(action: CXAnswerCallAction(call: uuid))) { _ in }
   }
 
   // MARK: - APNs alert path (foreground banner with chat_call_invite metadata)
@@ -309,22 +348,48 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   func providerDidReset(_ provider: CXProvider) {
     calls.removeAll()
-    pendingAnswerDetail = nil
+    answeredUUIDs.removeAll()
     mediaConnected = false
+    EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
     endCallBackgroundTask()
+  }
+
+  func provider(_ provider: CXProvider, perform action: CXStartCallAction) {
+    answeredUUIDs.insert(action.callUUID)
+    action.fulfill()
   }
 
   func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
     beginCallBackgroundTask()
     mediaConnected = false
+    answeredUUIDs.insert(action.callUUID)
     if let meta = calls[action.callUUID] {
       let detail: [String: Any] = [
         "uuid": action.callUUID.uuidString.lowercased(),
         "callId": meta.callId,
         "roomId": meta.roomId,
         "hasVideo": meta.hasVideo,
+        "nativeMedia": true,
       ]
-      pendingAnswerDetail = detail
+      // Native room starts now. Web only needs this event for chrome.
+      Task {
+        do {
+          _ = try await EdgeLiveKitCallManager.shared.answerIncoming(
+            callId: meta.callId,
+            roomId: meta.roomId,
+            hasVideo: meta.hasVideo
+          )
+        } catch {
+          self.dispatchToWeb(
+            event: "edge-native-call-state",
+            detail: [
+              "callId": meta.callId,
+              "connected": false,
+              "error": error.localizedDescription,
+            ]
+          )
+        }
+      }
       dispatchToWeb(event: "edge-callkit-answer", detail: detail)
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: meta.callId)
     }
@@ -342,9 +407,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         ]
       )
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: meta.callId)
+      EdgeLiveKitCallManager.shared.hangup(leaveOnServer: true)
     }
     calls.removeValue(forKey: action.callUUID)
-    pendingAnswerDetail = nil
+    answeredUUIDs.remove(action.callUUID)
     mediaConnected = false
     EdgeAudioSession.apply(mode: "default") { _ in }
     endCallBackgroundTask()
@@ -355,14 +421,16 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     action.fail()
   }
 
-  /// CallKit owns activation for an answered call. WebKit's capture unit has to start
-  /// against the already-active session, so re-assert the call category here.
+  /// CallKit owns activation. Native LiveKit publishes the mic here ... that is
+  /// the lock-screen two-way call. Do not point this at WKWebView capture.
   func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
     let hasVideo = calls.values.contains { $0.hasVideo }
     EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
+    EdgeLiveKitCallManager.shared.handleAudioActivated()
   }
 
   func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
+    EdgeLiveKitCallManager.shared.handleAudioDeactivated()
     guard calls.isEmpty else { return }
     EdgeAudioSession.apply(mode: "default") { _ in }
   }
@@ -404,17 +472,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     return UUID(uuidString: raw)
   }
 
-  private static var isAppActive: Bool {
-    UIApplication.shared.applicationState == .active
-  }
-
   private func dispatchToWeb(event: String, detail: [String: Any]) {
-    if event == "edge-callkit-answer" {
-      pendingAnswerDetail = detail
-    }
-    let holdAnswer = event == "edge-callkit-answer" && !Self.isAppActive
-    guard webReady, webView != nil, !holdAnswer else {
-      // Drop the oldest rather than grow without bound; a stale invite is worse than none.
+    guard webReady, webView != nil else {
       if pendingWebEvents.count >= Self.maxPendingWebEvents {
         pendingWebEvents.removeFirst()
       }

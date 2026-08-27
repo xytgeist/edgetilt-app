@@ -90,7 +90,98 @@ export async function markEdgeCallKitWebReady() {
   }
 }
 
-/** LiveKit connected. CallKit fulfill is not this ... do not skip it. */
+/**
+ * @param {{ roomId: string, mediaMode?: 'audio' | 'video', title?: string }} args
+ */
+export async function startNativeCall(args) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('startNativeCall', {
+      roomId: String(args.roomId || '').trim(),
+      mediaMode: args.mediaMode === 'video' ? 'video' : 'audio',
+      title: String(args.title || 'Chat call').trim(),
+    })
+    return { ...result, ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
+ * @param {{ callId: string, roomId?: string, hasVideo?: boolean }} args
+ */
+export async function acceptNativeCall(args) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('acceptNativeCall', {
+      callId: String(args.callId || '').trim(),
+      roomId: String(args.roomId || '').trim(),
+      hasVideo: Boolean(args.hasVideo),
+    })
+    return { ...result, ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/** @param {boolean} muted */
+export async function setNativeCallMute(muted) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('setNativeCallMute', { muted: Boolean(muted) })
+    return { ok: result?.ok !== false, via: 'bridge', muted: Boolean(result?.muted) }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/** @param {{ enabled?: boolean, flip?: boolean }} args */
+export async function setNativeCallCamera(args = {}) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('setNativeCallCamera', {
+      enabled: args.enabled,
+      flip: Boolean(args.flip),
+    })
+    return { ok: result?.ok !== false, via: 'bridge', enabled: result?.enabled }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/** @param {boolean} speaker */
+export async function setNativeCallSpeaker(speaker) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('setNativeCallSpeaker', { speaker: Boolean(speaker) })
+    return { ok: result?.ok !== false, via: 'bridge', speaker: Boolean(result?.speaker) }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/** @param {{ minimized?: boolean, videoVisible?: boolean }} args */
+export async function setNativeCallChrome(args = {}) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('setNativeCallChrome', args)
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+export async function getNativeCallState() {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('getNativeCallState')
+    return { ...result, ok: true, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/** Native LiveKit Room connected. CallKit fulfill is not this ... do not skip it. */
 export async function markEdgeCallKitDidConnect() {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {

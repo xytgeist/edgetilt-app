@@ -93,6 +93,8 @@ import {
   recoverStaleStableBackerClaim,
 } from './features/poker-stable/pokerGuestBackerAutoLink.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
+import { isEdgeiOSShell } from './utils/edgeNative.js'
+import { syncEdgeNativeAuthSession } from './utils/edgeNativeAuthSession.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
 const PokerTournamentSwapClaimPage = lazyRoute(
@@ -487,6 +489,25 @@ function App() {
       subscription.unsubscribe()
       document.removeEventListener('visibilitychange', onResume)
       window.removeEventListener('pageshow', onResume)
+    }
+  }, [])
+
+  // IPA lock-screen answer POSTs chat-calls with this Keychain JWT. Same idea as VoIP token sync.
+  useEffect(() => {
+    if (!isEdgeiOSShell()) return undefined
+    const write = (session) => {
+      void syncEdgeNativeAuthSession(session)
+    }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      write(session)
+    })
+    void supabase.auth.getSession().then(({ data }) => {
+      write(data.session)
+    })
+    return () => {
+      subscription.unsubscribe()
     }
   }, [])
 

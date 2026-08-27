@@ -33,12 +33,15 @@ import {
 import { enterCallAudioSession } from './chatCallAudioSession.js'
 import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
 import {
+  acceptNativeCall,
   endEdgeNativeCall,
   getEdgeVoIPPushToken,
   installEdgeCallKitListeners,
   markEdgeCallKitWebReady,
   reportEdgeIncomingCall,
+  startNativeCall,
 } from '../../../utils/edgeCallKit.js'
+import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 
 const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
@@ -617,7 +620,10 @@ export function ChatCallProvider({
       if (activeCallRef.current?.callId === id) {
         unlockChatCallAudio()
         enterCallAudioSession()
-        setActiveCall((prev) => (prev ? { ...prev, connectNonce: Date.now() } : prev))
+        // Remounting LiveKitRoom was a wrapper-era unlock retry. IPA media is native.
+        if (!isEdgeiOSShell()) {
+          setActiveCall((prev) => (prev ? { ...prev, connectNonce: Date.now() } : prev))
+        }
         if (opts.openRoom !== false) onOpenRoom?.(activeCallRef.current.roomId)
         return activeCallRef.current
       }
@@ -626,10 +632,29 @@ export function ChatCallProvider({
       setBusy(true)
       setError('')
       try {
-        const action = opts.preferAccept ? chatAcceptCall : chatJoinCall
-        const res = await action(supabaseClient, id)
+        let res
+        if (isEdgeiOSShell()) {
+          res = await acceptNativeCall({
+            callId: id,
+            roomId: opts.roomId,
+            hasVideo: opts.hasVideo,
+          })
+          if (!res.ok) throw new Error(res.error || 'Could not join call')
+          if (!res.call) {
+            try {
+              const fetched = await chatGetCall(supabaseClient, id)
+              res = { ...res, call: fetched?.call || fetched }
+            } catch {
+              /* chrome can still mount */
+            }
+          }
+        } else {
+          const action = opts.preferAccept ? chatAcceptCall : chatJoinCall
+          res = await action(supabaseClient, id)
+        }
         const call = res.call
-        const roomId = String(call.chat_room_id || '')
+        if (!call?.id) throw new Error('Could not join call')
+        const roomId = String(call.chat_room_id || res.roomId || '')
         ensureBroadcast(roomId)?.emit('accept', { callId: call.id })
         let viewerAvatarUrl =
           typeof opts.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
@@ -651,9 +676,10 @@ export function ChatCallProvider({
           callId: call.id,
           roomId,
           kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
-          mediaMode: call.media_mode === 'video' ? 'video' : 'audio',
-          token: res.token,
-          livekitUrl: res.livekit_url,
+          mediaMode: call.media_mode === 'video' || res.hasVideo ? 'video' : 'audio',
+          token: res.token || 'native',
+          livekitUrl: res.livekit_url || res.livekitUrl || 'native',
+          viaNative: isEdgeiOSShell(),
           title: opts.title || 'Chat call',
           isOutgoing: false,
           avatarUrl,
@@ -709,8 +735,15 @@ export function ChatCallProvider({
       const peerUserId =
         typeof opts?.peerUserId === 'string' && opts.peerUserId.trim() ? opts.peerUserId.trim() : null
       try {
-        const res = await chatStartCall(supabaseClient, roomId, mediaMode)
+        let res
+        if (isEdgeiOSShell()) {
+          res = await startNativeCall({ roomId, mediaMode, title })
+          if (!res.ok) throw new Error(res.error || 'Could not start call')
+        } else {
+          res = await chatStartCall(supabaseClient, roomId, mediaMode)
+        }
         const call = res.call
+        if (!call?.id) throw new Error('Could not start call')
         const sub = ensureBroadcast(roomId)
         sub?.emit('invite', {
           callId: call.id,
@@ -738,8 +771,9 @@ export function ChatCallProvider({
           roomId,
           kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
           mediaMode: call.media_mode === 'video' ? 'video' : 'audio',
-          token: res.token,
-          livekitUrl: res.livekit_url,
+          token: res.token || 'native',
+          livekitUrl: res.livekit_url || res.livekitUrl || 'native',
+          viaNative: isEdgeiOSShell(),
           title,
           isOutgoing: true,
           avatarUrl,
@@ -845,9 +879,6 @@ export function ChatCallProvider({
       onAnswer: (detail) => {
         const callId = String(detail?.callId || '').trim()
         if (!callId) return
-        // Same call may be answered again on unlock ... WKWebView cannot start
-        // the mic while locked, so the first join is often a no-op. A different
-        // live call still wins and this event is ignored.
         if (activeCallRef.current && activeCallRef.current.callId !== callId) return
         const snap = incomingRef.current
         if (snap?.callId && snap.callId !== callId) return
@@ -855,10 +886,8 @@ export function ChatCallProvider({
           title: snap?.title || 'Chat call',
           avatarUrl: snap?.avatarUrl || null,
           peerUserId: snap?.fromUserId || null,
-          // Cold-start answers have no incoming snap. Always accept: join() on a
-          // ringing DM is why a lock-screen answer can fulfill CallKit and still
-          // never connect. Once iOS brings Edge forward (unlocked answer), open
-          // the room and the full call modal. Locked stays on CallKit until then.
+          roomId: snap?.roomId || detail?.roomId || '',
+          hasVideo: Boolean(detail?.hasVideo),
           preferAccept: true,
           openRoom: true,
           startMinimized: false,

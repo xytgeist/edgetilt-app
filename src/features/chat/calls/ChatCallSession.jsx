@@ -19,7 +19,14 @@ import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chat
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
-import { markEdgeCallKitDidConnect } from '../../../utils/edgeCallKit.js'
+import {
+  getNativeCallState,
+  markEdgeCallKitDidConnect,
+  setNativeCallCamera,
+  setNativeCallChrome,
+  setNativeCallMute,
+  setNativeCallSpeaker,
+} from '../../../utils/edgeCallKit.js'
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -242,7 +249,14 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
  *   onError?: (msg: string) => void,
  * }} props
  */
-export default function ChatCallSession({
+export default function ChatCallSession(props) {
+  if (isEdgeiOSShell()) {
+    return <NativeIpaCallSession {...props} />
+  }
+  return <WebLiveKitCallSession {...props} />
+}
+
+function WebLiveKitCallSession({
   token,
   serverUrl,
   mediaMode,
@@ -446,6 +460,364 @@ function CallStartAudioGate() {
 
   if (canPlayAudio) return null
   return <button {...mergedProps}>Tap for call audio</button>
+}
+
+/**
+ * IPA chrome only. Media is the native LiveKit room. Do not mount LiveKitRoom here.
+ */
+function NativeIpaCallSession({
+  mediaMode,
+  kind,
+  callId = null,
+  title,
+  initialMinimized = false,
+  isOutgoing = false,
+  avatarUrl = null,
+  viewerUserId = null,
+  callStartedBy = null,
+  recordingStatus = 'idle',
+  recordingStartedBy = null,
+  recordingStartedAt = null,
+  recordingMaxSeconds = CHAT_CALL_RECORDING_MAX_SECONDS,
+  onDisconnected,
+  onHangup,
+  onStartRecording,
+  onStopRecording,
+  onError,
+}) {
+  const videoEnabled = mediaMode === 'video'
+  const isGroup = kind === 'group_audio'
+  const [minimized, setMinimized] = useState(Boolean(initialMinimized))
+  const [micOn, setMicOn] = useState(true)
+  const [camOn, setCamOn] = useState(videoEnabled)
+  const [speakerOn, setSpeakerOn] = useState(() => Boolean(videoEnabled))
+  const [remoteCount, setRemoteCount] = useState(0)
+  const [connected, setConnected] = useState(false)
+  const [connectError, setConnectError] = useState('')
+  const [elapsed, setElapsed] = useState(0)
+  const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
+  const hadRemoteRef = useRef(false)
+  const didConnectRef = useRef(false)
+  const recWarn60Ref = useRef(false)
+  const recWarn15Ref = useRef(false)
+  const recAutoStopRef = useRef(false)
+
+  if (remoteCount > 0) hadRemoteRef.current = true
+  const awaitingAnswer = Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
+
+  const recordingActive = recordingStatus === 'recording'
+  const recordingSaving = recordingStatus === 'stopping'
+  const isRecordingStarter =
+    Boolean(viewerUserId) && Boolean(recordingStartedBy) && viewerUserId === recordingStartedBy
+  const isCallInitiator =
+    Boolean(viewerUserId) && Boolean(callStartedBy) && viewerUserId === callStartedBy
+  const canStopRecording = isRecordingStarter || isCallInitiator
+
+  useEffect(() => {
+    const apply = (detail) => {
+      if (!detail) return
+      if (callId && detail.callId && String(detail.callId) !== String(callId)) return
+      if (typeof detail.remoteCount === 'number') setRemoteCount(detail.remoteCount)
+      if (typeof detail.micOn === 'boolean') setMicOn(detail.micOn)
+      if (typeof detail.camOn === 'boolean') setCamOn(detail.camOn)
+      if (typeof detail.speakerOn === 'boolean') setSpeakerOn(detail.speakerOn)
+      if (typeof detail.connected === 'boolean') {
+        setConnected(detail.connected)
+        if (detail.connected) {
+          didConnectRef.current = true
+          setConnectError('')
+          void markEdgeCallKitDidConnect()
+        } else if (didConnectRef.current) {
+          onDisconnected?.()
+        }
+      }
+      if (detail.error) {
+        setConnectError(String(detail.error))
+        onError?.(String(detail.error))
+      }
+    }
+    const onState = (event) => apply(event?.detail || {})
+    window.addEventListener('edge-native-call-state', onState)
+    void getNativeCallState().then(apply)
+    return () => {
+      window.removeEventListener('edge-native-call-state', onState)
+    }
+  }, [callId, onDisconnected, onError])
+
+  useEffect(() => {
+    void setNativeCallChrome({ minimized, videoVisible: videoEnabled && !awaitingAnswer })
+  }, [minimized, videoEnabled, awaitingAnswer])
+
+  useEffect(() => {
+    return () => {
+      void setNativeCallChrome({ minimized: true, videoVisible: false })
+    }
+  }, [])
+
+  useEffect(() => {
+    const t0 = Date.now()
+    const id = window.setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    if (recordingStatus !== 'recording' || !recordingStartedAt) {
+      setRecCountdownLabel(null)
+      recWarn60Ref.current = false
+      recWarn15Ref.current = false
+      recAutoStopRef.current = false
+      return undefined
+    }
+    const maxSec = Math.max(1, Number(recordingMaxSeconds) || CHAT_CALL_RECORDING_MAX_SECONDS)
+    const startedMs = Date.parse(recordingStartedAt)
+    if (!Number.isFinite(startedMs)) return undefined
+    const tick = () => {
+      const elapsedRec = Math.max(0, Math.floor((Date.now() - startedMs) / 1000))
+      const left = Math.max(0, maxSec - elapsedRec)
+      if (left <= 60 && left > 15) {
+        setRecCountdownLabel(`Recording ends in ${left}s`)
+        if (!recWarn60Ref.current) {
+          recWarn60Ref.current = true
+          playChatCallRecordingCue('warn_60')
+        }
+      } else if (left <= 15 && left > 0) {
+        setRecCountdownLabel(`Recording ends in ${left}s`)
+        if (!recWarn15Ref.current) {
+          recWarn15Ref.current = true
+          playChatCallRecordingCue('warn_15')
+        }
+      } else if (left <= 0) {
+        setRecCountdownLabel('Stopping recording…')
+        if (!recAutoStopRef.current && canStopRecording) {
+          recAutoStopRef.current = true
+          onStopRecording?.()
+        }
+      } else {
+        setRecCountdownLabel(null)
+      }
+    }
+    tick()
+    const id = window.setInterval(tick, 500)
+    return () => window.clearInterval(id)
+  }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording, canStopRecording])
+
+  useEffect(() => {
+    if (!awaitingAnswer) return undefined
+    const tone = startChatCallTone('ringback')
+    return () => stopChatCallTone(tone)
+  }, [awaitingAnswer])
+
+  useEffect(() => {
+    if (minimized) return undefined
+    const html = document.documentElement
+    const body = document.body
+    const prevHtmlOverflow = html.style.overflow
+    const prevBodyOverflow = body.style.overflow
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = prevHtmlOverflow
+      body.style.overflow = prevBodyOverflow
+    }
+  }, [minimized])
+
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
+  const ss = String(elapsed % 60).padStart(2, '0')
+  const statusLabel = connectError
+    ? 'Could not connect'
+    : awaitingAnswer
+      ? 'Ringing…'
+      : !connected
+        ? 'Connecting…'
+        : `${mm}:${ss}${isGroup ? ` · ${remoteCount + 1} in call` : ''}${
+            recordingActive ? ' · REC' : recordingSaving ? ' · Saving recording…' : ''
+          }`
+
+  const setMicEnabled = (next) => {
+    setMicOn(next)
+    void setNativeCallMute(!next)
+  }
+  const setCameraEnabled = (next) => {
+    setCamOn(next)
+    void setNativeCallCamera({ enabled: next })
+  }
+  const applySpeaker = (next) => {
+    setSpeakerOn(next)
+    void setNativeCallSpeaker(next)
+  }
+
+  const controlButtons = (
+    <>
+      <button
+        type="button"
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
+          micOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
+        }`}
+        aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
+        onClick={() => setMicEnabled(!micOn)}
+      >
+        <MicIcon muted={!micOn} />
+      </button>
+      {videoEnabled ? (
+        <button
+          type="button"
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
+            camOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
+          }`}
+          aria-label={camOn ? 'Turn camera off' : 'Turn camera on'}
+          onClick={() => setCameraEnabled(!camOn)}
+        >
+          <VideoIcon off={!camOn} />
+        </button>
+      ) : null}
+      {videoEnabled ? (
+        <button
+          type="button"
+          disabled={!camOn}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
+            camOn ? 'bg-[#2a3942] text-[#f4f4f5] active:opacity-80' : 'bg-[#2a3942]/50 text-[#71717a]'
+          }`}
+          aria-label="Switch camera"
+          onClick={() => void setNativeCallCamera({ flip: true })}
+        >
+          <FlipCameraIcon />
+        </button>
+      ) : null}
+      {videoEnabled && !awaitingAnswer ? (
+        recordingActive ? (
+          canStopRecording ? (
+            <button
+              type="button"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
+              aria-label="Stop recording"
+              onClick={() => onStopRecording?.()}
+            >
+              <RecordStopIcon />
+            </button>
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/40 text-[#71717a]" aria-hidden>
+              <RecordDotIcon dimmed />
+            </div>
+          )
+        ) : recordingSaving ? (
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/50 text-[#fbbf24]" aria-label="Saving recording">
+            <RecordStopIcon />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942] text-[#f4f4f5] touch-manipulation active:opacity-80"
+            aria-label="Start recording"
+            onClick={() => onStartRecording?.(viewerUserId || null)}
+          >
+            <RecordDotIcon />
+          </button>
+        )
+      ) : null}
+      <button
+        type="button"
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
+          speakerOn ? 'bg-[#25d366] text-white' : 'bg-[#2a3942] text-[#a1a1aa]'
+        }`}
+        aria-label={speakerOn ? 'Speakerphone on, tap for earpiece' : 'Earpiece, tap for speakerphone'}
+        onClick={() => applySpeaker(!speakerOn)}
+      >
+        <SpeakerIcon />
+      </button>
+      <button
+        type="button"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
+        aria-label="Hang up"
+        onClick={() => onHangup?.()}
+      >
+        <HangupIcon />
+      </button>
+    </>
+  )
+
+  if (minimized) {
+    return (
+      <DraggableMinimizedCallPill avatarUrl={avatarUrl} title={title} onExpand={() => setMinimized(false)}>
+        {controlButtons}
+      </DraggableMinimizedCallPill>
+    )
+  }
+
+  const showVideoHole = videoEnabled && !awaitingAnswer
+
+  return (
+    <div
+      className={minimized ? 'pointer-events-none fixed inset-0' : 'fixed inset-0 flex flex-col'}
+      style={{
+        zIndex: 128,
+        backgroundColor: showVideoHole ? 'transparent' : '#0b141a',
+        width: '100vw',
+        height: '100dvh',
+      }}
+      data-chat-feature
+      data-chat-call-session
+      data-native-ipa-call="1"
+    >
+      <div
+        className="relative z-[1] flex shrink-0 items-start justify-between px-3 pb-2"
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.5rem)' }}
+      >
+        <button
+          type="button"
+          data-chat-call-interactive=""
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1f2c34]/90 text-[#f4f4f5] touch-manipulation active:opacity-80"
+          aria-label="Minimize call"
+          onClick={() => setMinimized(true)}
+        >
+          <MinimizeIcon />
+        </button>
+        <div className="min-w-0 flex-1 px-3 text-center">
+          <p className="truncate text-[18px] font-semibold text-[#fafafa]">{title}</p>
+          <p className="mt-0.5 text-[13px] text-[#a1a1aa]">{statusLabel}</p>
+          {connectError ? (
+            <p className="mt-1 text-[12px] font-semibold text-[#fca5a5]">{connectError}</p>
+          ) : null}
+          {recordingActive ? (
+            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#ea4335]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#fca5a5]">
+              Recording
+            </p>
+          ) : null}
+          {recCountdownLabel ? (
+            <p className="mt-1 text-[12px] font-semibold text-[#fbbf24]">{recCountdownLabel}</p>
+          ) : null}
+        </div>
+        <div className="h-10 w-10 shrink-0" aria-hidden />
+      </div>
+
+      <div className="relative z-[1] min-h-0 flex-1 px-3">
+        {showVideoHole ? (
+          <div className="h-full w-full" aria-hidden />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center pb-8">
+            <CallAvatarCircle
+              avatarUrl={avatarUrl}
+              title={title}
+              sizeClass="h-40 w-40"
+              textClass="text-[48px]"
+              ring
+            />
+          </div>
+        )}
+      </div>
+
+      <div
+        className="relative z-[1] flex shrink-0 justify-center px-4 pt-2"
+        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1rem)' }}
+      >
+        <div
+          data-chat-call-interactive=""
+          className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-2 rounded-[28px] bg-[#1f2c34]/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md"
+        >
+          {controlButtons}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function CallChrome({

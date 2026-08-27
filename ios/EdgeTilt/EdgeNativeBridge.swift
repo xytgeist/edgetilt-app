@@ -152,6 +152,36 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeCallKitManager.shared.markWebReady(completion: completion)
     case "callKitDidConnect":
       EdgeCallKitManager.shared.markMediaConnected(completion: completion)
+    case "setAuthSession":
+      setAuthSession(payload: payload, completion: completion)
+    case "clearAuthSession":
+      EdgeAuthSessionStore.clear()
+      completion(.success(["ok": true]))
+    case "startNativeCall":
+      startNativeCall(payload: payload, completion: completion)
+    case "acceptNativeCall":
+      acceptNativeCall(payload: payload, completion: completion)
+    case "setNativeCallMute":
+      let muted = (payload?["muted"] as? Bool) ?? false
+      EdgeLiveKitCallManager.shared.setMuted(muted)
+      completion(.success(["ok": true, "muted": muted]))
+    case "setNativeCallCamera":
+      let enabled = payload?["enabled"] as? Bool
+      let flip = (payload?["flip"] as? Bool) ?? false
+      EdgeLiveKitCallManager.shared.setCamera(enabled: enabled, flip: flip)
+      completion(.success(["ok": true, "enabled": enabled ?? true]))
+    case "setNativeCallSpeaker":
+      let speaker = (payload?["speaker"] as? Bool) ?? false
+      EdgeLiveKitCallManager.shared.setSpeaker(speaker)
+      completion(.success(["ok": true, "speaker": speaker]))
+    case "setNativeCallChrome":
+      EdgeLiveKitCallManager.shared.setChrome(
+        minimized: payload?["minimized"] as? Bool,
+        videoVisible: payload?["videoVisible"] as? Bool
+      )
+      completion(.success(["ok": true]))
+    case "getNativeCallState":
+      completion(.success(EdgeLiveKitCallManager.shared.currentState()))
     case "getStoreProducts":
       guard #available(iOS 15.0, *) else {
         completion(.failure(EdgeStoreKitError.unavailable))
@@ -182,6 +212,104 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeStoreKitManager.shared.restore(completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
+    }
+  }
+
+  private func setAuthSession(
+    payload: [String: Any]?,
+    completion: @escaping (Result<[String: Any], Error>) -> Void
+  ) {
+    let access = (payload?["accessToken"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let refresh = (payload?["refreshToken"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let supabaseUrl = (payload?["supabaseUrl"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let anonKey = (payload?["anonKey"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let expiresAt = (payload?["expiresAt"] as? TimeInterval)
+      ?? (payload?["expiresAt"] as? Int).map { TimeInterval($0) }
+      ?? 0
+    guard !access.isEmpty, !refresh.isEmpty, !supabaseUrl.isEmpty, !anonKey.isEmpty else {
+      EdgeAuthSessionStore.clear()
+      completion(.success(["ok": false]))
+      return
+    }
+    do {
+      try EdgeAuthSessionStore.save(
+        EdgeAuthSessionStore.Session(
+          accessToken: access,
+          refreshToken: refresh,
+          expiresAt: expiresAt,
+          supabaseUrl: supabaseUrl,
+          anonKey: anonKey
+        )
+      )
+      completion(.success(["ok": true]))
+    } catch {
+      completion(.failure(error))
+    }
+  }
+
+  private func startNativeCall(
+    payload: [String: Any]?,
+    completion: @escaping (Result<[String: Any], Error>) -> Void
+  ) {
+    let roomId = (payload?["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let mediaMode = (payload?["mediaMode"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "audio"
+    let title = (payload?["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Chat call"
+    guard !roomId.isEmpty else {
+      completion(.success(["ok": false, "error": "Missing room."]))
+      return
+    }
+    Task {
+      do {
+        let (state, started) = try await EdgeLiveKitCallManager.shared.startOutgoing(
+          roomId: roomId,
+          mediaMode: mediaMode,
+          title: title
+        )
+        var result: [String: Any] = state.dictionary()
+        result["ok"] = true
+        if let token = started.token { result["token"] = token }
+        if let url = started.livekitUrl { result["livekitUrl"] = url }
+        if let call = started.call { result["call"] = call }
+        if let callId = started.callId { result["callId"] = callId }
+        completion(.success(result))
+      } catch {
+        completion(.success(["ok": false, "error": error.localizedDescription]))
+      }
+    }
+  }
+
+  private func acceptNativeCall(
+    payload: [String: Any]?,
+    completion: @escaping (Result<[String: Any], Error>) -> Void
+  ) {
+    let callId = (payload?["callId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let roomId = (payload?["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let hasVideo = (payload?["hasVideo"] as? Bool) ?? false
+    guard !callId.isEmpty else {
+      completion(.success(["ok": false, "error": "Missing call."]))
+      return
+    }
+    if EdgeLiveKitCallManager.shared.isConnected(to: callId) {
+      var result = EdgeLiveKitCallManager.shared.currentState()
+      result["ok"] = true
+      result["alreadyConnected"] = true
+      completion(.success(result))
+      return
+    }
+    EdgeCallKitManager.shared.requestAnswerIfNeeded(callId: callId)
+    Task {
+      do {
+        let state = try await EdgeLiveKitCallManager.shared.answerIncoming(
+          callId: callId,
+          roomId: roomId,
+          hasVideo: hasVideo
+        )
+        var result = state.dictionary()
+        result["ok"] = true
+        completion(.success(result))
+      } catch {
+        completion(.success(["ok": false, "error": error.localizedDescription]))
+      }
     }
   }
 
@@ -347,6 +475,33 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       callKitDidConnect: function () {
         return call('callKitDidConnect', null);
+      },
+      setAuthSession: function (payload) {
+        return call('setAuthSession', payload || {});
+      },
+      clearAuthSession: function () {
+        return call('clearAuthSession', null);
+      },
+      startNativeCall: function (payload) {
+        return call('startNativeCall', payload || {});
+      },
+      acceptNativeCall: function (payload) {
+        return call('acceptNativeCall', payload || {});
+      },
+      setNativeCallMute: function (payload) {
+        return call('setNativeCallMute', payload || {});
+      },
+      setNativeCallCamera: function (payload) {
+        return call('setNativeCallCamera', payload || {});
+      },
+      setNativeCallSpeaker: function (payload) {
+        return call('setNativeCallSpeaker', payload || {});
+      },
+      setNativeCallChrome: function (payload) {
+        return call('setNativeCallChrome', payload || {});
+      },
+      getNativeCallState: function () {
+        return call('getNativeCallState', null);
       },
       getStoreProducts: function (payload) {
         return call('getStoreProducts', payload || {});

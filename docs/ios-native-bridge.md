@@ -8,11 +8,22 @@
 
 ---
 
+## Principle: the IPA uses native when iOS has a better option
+
+The store shell is **not** a shared React call stack with CallKit glued on. **If iOS has a better option, the IPA uses it.** Web / PWA / Android keep `livekit-client` and `LiveKitRoom`. The IPA owns call **media** with the official **LiveKit Swift SDK**.
+
+Do **not** "fix" CallKit by retrying WKWebView `getUserMedia`, remounting `LiveKitRoom` on unlock, or treating `CXAnswerCallAction.fulfill()` as a LiveKit join. Those paths cannot start the mic while the phone stays locked. Native LiveKit publishes into CallKit's `provider(_:didActivate:)` audio session. That is the lock-screen two-way call.
+
+`AGENT_RULE_IPA_USES_NATIVE_WHEN_BETTER` — searchability token.
+
+---
+
 ## Goals
 
 1. One **named** JS ↔ Swift surface so Mac and Windows Theos do not invent parallel APIs.
 2. Web remains usable in Safari / PWA when native is absent (feature-detect, never require the shell).
 3. New bridge methods that old binaries lack stay **safe no-ops** or gated until users update from the store.
+4. On EdgeiOS, call **media** is native LiveKit. Web is chrome (timer, hangup, mute, recording) plus a transparent video hole. No IPA path mounts `LiveKitRoom`.
 
 ---
 
@@ -57,7 +68,16 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `endNativeCall` | JS→native | `{ callId, reason?: 'remote' }` | `{ ok: boolean }` | Mac | **native** (2026-08-26). `reason: 'remote'` uses `reportCall(.remoteEnded)` so a lock-screen CallKit UI actually clears when the other side hangs up. Local hangup still uses `CXEndCallAction`. |
 | `getVoIPPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (2026-08-26): PushKit token, uploaded with `pushChannel: 'voip'`. Also fires `edge-voip-token` event on refresh. **Device smoke pending.** |
 | `callKitWebReady` | JS→native | none | `{ ok: boolean, replayed: number }` | Mac | **native** + **web caller** (2026-08-27): web says its CallKit listeners are installed **and** a session exists; native replays buffered answer/decline. Fixes the cold-start dropped answer … see caution below. **Device smoke pending.** |
-| `callKitDidConnect` | JS→native | none | `{ ok: boolean }` | Mac | **native** + **web caller** (2026-08-27): LiveKit `onConnected`. CallKit `fulfill()` is **not** this. Stops unlock-retry of the answer event. |
+| `callKitDidConnect` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-08-27): marks media connected. On the IPA this is the **native** LiveKit `Room` connect, not web `LiveKitRoom`. CallKit `fulfill()` is **not** this. |
+| `setAuthSession` | JS→native | `{ accessToken, refreshToken, expiresAt, supabaseUrl, anonKey }` | `{ ok: boolean }` | Mac + web writer | **native** + **web caller** (2026-08-27). Keychain so lock-screen answer can POST `chat-calls` without WKWebView. `expiresAt` is unix seconds. `anonKey` is required to refresh. `supabaseUrl` is **not** in `AppConfig` … web writes the project the session belongs to (test vs prod). Web writes on login and every token refresh. Do **not** put LiveKit tokens in the VoIP payload. |
+| `clearAuthSession` | JS→native | none | `{ ok: boolean }` | Mac + web writer | **native** + **web caller** (2026-08-27). Sign-out / no session. |
+| `startNativeCall` | JS→native | `{ roomId, mediaMode?: 'audio'\|'video', title? }` | `{ ok, callId?, call?, token?, livekitUrl? }` | Mac | **native** (2026-08-27). Outgoing IPA call: `start_call` + CallKit outgoing + native LiveKit. Web mounts chrome only. |
+| `acceptNativeCall` | JS→native | `{ callId, hasVideo?, roomId? }` | `{ ok, alreadyConnected?, call?, token?, livekitUrl? }` | Mac | **native** (2026-08-27). Incoming IPA accept. No-ops if this `callId` is already the native room (CallKit answer already joined). |
+| `setNativeCallMute` | JS→native | `{ muted: boolean }` | `{ ok: boolean, muted?: boolean }` | Mac | **native** (2026-08-27). Chrome mute talks here. |
+| `setNativeCallCamera` | JS→native | `{ enabled?: boolean, flip?: boolean }` | `{ ok: boolean, enabled?: boolean }` | Mac | **native** (2026-08-27). Camera publishes when the app is active. Flip switches front/back. |
+| `setNativeCallSpeaker` | JS→native | `{ speaker: boolean }` | `{ ok: boolean, speaker?: boolean }` | Mac | **native** (2026-08-27). |
+| `setNativeCallChrome` | JS→native | `{ minimized?: boolean, videoVisible?: boolean }` | `{ ok: boolean }` | Mac | **native** (2026-08-27). Hide the native video overlay when the web chrome is minimized. |
+| `getNativeCallState` | JS→native | none | `{ callId, connected, remoteCount, micOn, camOn, speakerOn, hasVideo }` | Mac | **native** (2026-08-27). Chrome hydrates from this + `edge-native-call-state` events. |
 | `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |
 | `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, state, transactionId?, jws? }` | Mac | **native** (2026-08-26) + **web** SubscribeModal shell path. JWS verified server-side by Edge `apple-iap-verify`. **Device smoke pending.** |
 | `restoreStorePurchases` | JS→native | none | `{ ok, entitlements: string[] }` | Mac | **native** (2026-08-26). **Device smoke pending.** |
@@ -110,7 +130,7 @@ Symptom (device smoke, 2026-08-27): the ring worked, answering swapped CallKit t
 **Two traps if you re-touch this:**
 
 - **Readiness is not "listeners installed."** `joinCall` throws `Sign in to call.` without a Supabase session, and a replayed answer has **no second chance** (the rejection is swallowed by `void`). So `markEdgeCallKitWebReady()` is called from an effect gated on **`supabaseClient && viewerUserId`**, not from `installEdgeCallKitListeners`.
-- **Answering does not give you audio for free.** `provider(_:didActivate:)` / `didDeactivate` are now implemented: CallKit owns activation for an answered call and WebKit's capture unit has to start against the already-active session. Without them you can reach a connected call with no audio.
+- **Answering does not give you audio for free.** `provider(_:didActivate:)` / `didDeactivate` coordinate LiveKit's audio engine (`AudioManager.setEngineAvailability`) with CallKit's session. The IPA publishes the **native** mic there. Do not point this at WKWebView capture.
 
 ### ⚠️ CallKit caller name is not the APNs body (2026-08-27)
 
@@ -131,9 +151,31 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **Fix:** add `audio` to `UIBackgroundModes`; `beginCallBackgroundTask` from report/answer until end; skip SW hygiene when a CallKit call is already tracked; CallKit answer is `preferAccept: true`, `openRoom: true`, full call modal.
 
-**⚠️ CallKit timer is not a LiveKit join.** `fulfill()` makes the callee lock screen show hang-up + a timer. The caller stays on `Ringing…` until a **remote LiveKit participant** appears. WKWebView **cannot start the microphone while the phone stays locked**, so a join attempted there is a no-op. We now **hold the answer event until `applicationState == .active`**, re-fire it on `applicationDidBecomeActive` until JS calls **`callKitDidConnect`**, and remount LiveKit if the same `callId` is already the active call. **Unlock after answer is required for a wrapper join.** A real lock-screen two-way call needs native LiveKit, not WebKit capture.
+**⚠️ CallKit timer is not a LiveKit join.** `fulfill()` makes the callee lock screen show hang-up + a timer. The caller stays on `Ringing…` until a **remote LiveKit participant** appears. WKWebView **cannot start the microphone while the phone stays locked.**
 
-**Remote hangup must tell CallKit.** Broadcast `end` / `decline` and the `chat_calls` UPDATE to `ended|missed|declined` used to only `setActiveCall(null)`. That unmounts LiveKit and leaves the native call up, which is exactly "they hung up, my lock-screen timer kept running." Both paths now `endEdgeNativeCall({ reason: 'remote' })`.
+**The IPA path (2026-08-27) is native LiveKit.** CallKit answer calls `chat-calls` `accept_call` with the Keychain JWT, connects the Swift `Room`, and publishes the mic in `provider(_:didActivate:)`. Web is notified so chrome can mount. Web does **not** create a second room. Camera publishes when the app is active (iOS will not give a useful camera while locked). Remote video is a UIKit `VideoView` **behind** the (transparent) WKWebView hole.
+
+**Do not** re-introduce unlock-retry / remount-`LiveKitRoom` as the lock-screen fix. That was a wrapper-era patch and it cannot pass the locked-phone smoke.
+
+**Remote hangup must tell CallKit.** Broadcast `end` / `decline` and the `chat_calls` UPDATE to `ended|missed|declined` used to only `setActiveCall(null)`. That unmounts chrome and leaves the native call up. Both paths `endEdgeNativeCall({ reason: 'remote' })`, which also disconnects the native room.
+
+### Native LiveKit contract (2026-08-27)
+
+| Step | Who | What |
+| --- | --- | --- |
+| Sign-in / token refresh | Web | `setAuthSession({ accessToken, refreshToken, expiresAt, supabaseUrl, anonKey })` → Keychain |
+| Sign-out | Web | `clearAuthSession` |
+| Incoming VoIP / Realtime / APNs | Native | Dedupe by `callId`, `reportNewIncomingCall` |
+| Answer (lock screen or in-app) | Native | Refresh JWT if needed → `accept_call` → `Room.connect` → mic on `didActivate` |
+| Outgoing in-app | Native | `start_call` → CallKit outgoing → same `Room` |
+| Chrome | Web | Timer, mute, camera, speaker, hangup, recording. Gated on `isEdgeiOSShell()`. |
+| Video | Native | `VideoView` overlay behind WKWebView. Web stage is a transparent hole. |
+| Hangup local | Both | Web `leave_call` when it can; CallKit end also `leave_call` from native so a lock-screen hangup still ends the row. |
+| Hangup remote | Native | LiveKit disconnect + `reportCall(.remoteEnded)` |
+
+**Out of v1:** replacing chat / recording / group UI in Swift. Recording and group signaling stay on existing Edge actions. Android native LiveKit is not this lane.
+
+**Pass smoke:** locked phone, force-closed, answer, **do not unlock**. Caller leaves `Ringing…` and hears two-way audio. Unlock: camera / remote video if it is a video call. Remote hangup clears CallKit. Unlocked in-app audio and video use the same native room.
 
 ---
 

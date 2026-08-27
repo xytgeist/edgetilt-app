@@ -22,10 +22,15 @@
 		BD77B93B3B8FE0B930A6B235 /* EdgePushManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */; };
 		C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */; };
 		D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */; };
+		D92B401F5C3E02B78F6D2159 /* EdgeAuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */; };
 		EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */; };
+		F14D62317E5024D9A18F437B /* EdgeChatCallsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */; };
+		136F8453907246F1C3A1659D /* EdgeLiveKitCallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */; };
+		4692A786C3A57924F6D498C0 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 35819675B2946813E5C387BF /* LiveKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveKitCallManager.swift; sourceTree = "<group>"; };
 		12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeNativeBridge.swift; sourceTree = "<group>"; };
 		15C1B2458EAAC3EEFB381F8B /* EdgeTilt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EdgeTilt.entitlements; sourceTree = "<group>"; };
 		1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSafeAreaInsets.swift; sourceTree = "<group>"; };
@@ -42,6 +47,8 @@
 		B884711901FA09324B73CC22 /* EdgeWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebView.swift; sourceTree = "<group>"; };
 		BF0D9AEF6D31B7874CAA6351 /* EdgeHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeHaptics.swift; sourceTree = "<group>"; };
 		C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellRootView.swift; sourceTree = "<group>"; };
+		C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAuthSessionStore.swift; sourceTree = "<group>"; };
+		E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChatCallsClient.swift; sourceTree = "<group>"; };
 		D77BF9A686EB3B073BF18F1F /* EdgeWebKitKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebKitKeyboard.swift; sourceTree = "<group>"; };
 		EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebsiteDataHygiene.swift; sourceTree = "<group>"; };
 		F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -63,7 +70,10 @@
 				F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */,
 				A039684E44413435F9C5696A /* Assets.xcassets */,
 				A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */,
+				C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */,
 				8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */,
+				E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */,
+				025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */,
 				BF0D9AEF6D31B7874CAA6351 /* EdgeHaptics.swift */,
 				A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */,
 				12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */,
@@ -97,6 +107,7 @@
 			buildConfigurationList = D63F5690312F147949771E7F /* Build configuration list for PBXNativeTarget "EdgeTilt" */;
 			buildPhases = (
 				DB8699AC652AD65F3335FAC7 /* Sources */,
+				57A3B897D4B68A3507E5A9D1 /* Frameworks */,
 				5B28E63BBC49DA83E18E03F4 /* Resources */,
 			);
 			buildRules = (
@@ -105,6 +116,7 @@
 			);
 			name = EdgeTilt;
 			packageProductDependencies = (
+				35819675B2946813E5C387BF /* LiveKit */,
 			);
 			productName = EdgeTilt;
 			productReference = 4310EE47360251D57F675AE8 /* EdgeTilt.app */;
@@ -134,6 +146,9 @@
 			);
 			mainGroup = 50EDDAF85A56BC5716958FE3;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				24708564A1835702D4B276AE /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D7563C52910B46C1CCAC6ADA /* Products */;
 			projectDirPath = "";
@@ -143,6 +158,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		57A3B897D4B68A3507E5A9D1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4692A786C3A57924F6D498C0 /* LiveKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
 		5B28E63BBC49DA83E18E03F4 /* Resources */ = {
@@ -163,7 +189,10 @@
 				BB702B52C0AE20A07AE04E78 /* AppConfig.swift in Sources */,
 				56164041B61C9D93975189F6 /* AppDelegate.swift in Sources */,
 				9980D8DAF4E53F6C0DF750A5 /* EdgeAudioSession.swift in Sources */,
+				D92B401F5C3E02B78F6D2159 /* EdgeAuthSessionStore.swift in Sources */,
 				D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */,
+				F14D62317E5024D9A18F437B /* EdgeChatCallsClient.swift in Sources */,
+				136F8453907246F1C3A1659D /* EdgeLiveKitCallManager.swift in Sources */,
 				2EDAB0E529026EF8B5FEA532 /* EdgeHaptics.swift in Sources */,
 				AD8603BE6B58AD8A27B8F9BB /* EdgeLocationManager.swift in Sources */,
 				8082591BEFAB79FE461FFDD5 /* EdgeNativeBridge.swift in Sources */,
@@ -491,6 +520,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		24708564A1835702D4B276AE /* XCRemoteSwiftPackageReference "client-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/livekit/client-sdk-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.16.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		35819675B2946813E5C387BF /* LiveKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 24708564A1835702D4B276AE /* XCRemoteSwiftPackageReference "client-sdk-swift" */;
+			productName = LiveKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9B018330A6B28ADC0B136F49 /* Project object */;
 }

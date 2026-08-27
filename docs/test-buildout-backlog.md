@@ -55,8 +55,8 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 
 **v1 vs v1.1 (Ryan 2026-08-20):**
 
-- **v1 (ship):** WKWebView → live site, native UA, unmuted Lounge autoplay, APNs end-to-end + deep links, Safari subscribe link-out (hide Stripe-in-WebView), foreground-solid call audio session (LiveKit UI stays web). ~4–5 focused weeks → submit.
-- **v1.1:** CallKit / background ring polish, optional StoreKit IAP (+ upcharge), optional Android TWA. Not blocking v1.
+- **v1 (ship):** WKWebView → live site, native UA, unmuted Lounge autoplay, APNs end-to-end + deep links, Safari subscribe link-out (hide Stripe-in-WebView), **native LiveKit** for IPA call media (CallKit + Swift SDK). Web / PWA / Android keep `livekit-client`. ~4–5 focused weeks → submit.
+- **v1.1:** CallKit polish leftover, optional StoreKit IAP (+ upcharge), optional Android TWA. Not blocking v1. **Principle:** if iOS has a better option, the IPA uses it (`docs/ios-native-bridge.md`). Do not "fix" IPA calls by retrying WKWebView.
 
 **Native vs web**
 
@@ -132,7 +132,8 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] **Geolocation native wiring (2026-08-26):** `EdgeLocationManager` + WK geolocation delegate. **Ryan device smoke pending:** nearby casinos or poker session currency → iOS prompt → coords (not silent USD fallback).
 - [ ] Safe area leftovers vs `env(safe-area-*)` (scan for double-pad / letterbox after Island sign-off)
 - [ ] **Keyboard compose pass (IPA):** Lounge feed compose, thread compose, chat … field + toolbar not covered by keys. Safari/PWA thread media-bar-behind-keys bug is parked; GIF picker IPA already signed.
-- [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Ryan device smoke pending:** speaker vs earpiece on voice/video call.
+- [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Superseded for IPA media 2026-08-27:** native LiveKit owns the session via CallKit `didActivate`.
+- [ ] **Native LiveKit lock-screen smoke (owed):** force-close IPA, lock, answer, **do not unlock**. Caller must leave `Ringing…` with two-way audio. Unlock: camera / remote video on video calls. Remote hangup clears CallKit. Unlocked in-app uses the same native room (no `LiveKitRoom`).
 
 **Later (v1.1+)**
 - [ ] CallKit / background ring; native haptics; Android TWA
@@ -1068,7 +1069,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-27: **Lock-screen connect was a false pass … CallKit timer ≠ LiveKit (Mac, Ryan correction):** callee lock screen showed hang-up + timer after answer; **caller never left Ringing.** `fulfill()` is CallKit theater. The caller only connects when a remote LiveKit participant appears, and WKWebView cannot start the mic while the phone stays locked. Fix: hold `edge-callkit-answer` until the app is `.active`, re-fire on `applicationDidBecomeActive` until `callKitDidConnect`, remount LiveKit on the same `callId`. **Unlock after answer is required** for a wrapper join. Native LiveKit is the only way to do a true lock-screen two-way call. Rebuild owed.
+- 2026-08-27: **Native LiveKit on the IPA (Mac).** Principle written: the IPA is not a React call stack with a ringer glued on. **If iOS has a better option, the IPA uses it.** Web / PWA / Android keep `livekit-client`. IPA call media is the official LiveKit Swift SDK. Lock-screen answer: Keychain JWT → `chat-calls` `accept_call` → `Room.connect` → mic on CallKit `didActivate`. Camera when the app is active. Remote video is a UIKit overlay behind a transparent WKWebView hole. Chrome (timer / mute / hangup / recording) stays web. **Do not** "fix" CallKit by remounting `LiveKitRoom` or retrying `getUserMedia` on unlock. **Smoke owed:** locked + force-closed, answer, do **not** unlock … caller leaves Ringing and hears two-way audio. Then unlock for camera / remote video. Remote hangup still clears CallKit.
+
+- 2026-08-27: **Lock-screen connect was a false pass … CallKit timer ≠ LiveKit (Mac, Ryan correction):** callee lock screen showed hang-up + timer after answer; **caller never left Ringing.** `fulfill()` is CallKit theater. The caller only connects when a remote LiveKit participant appears, and WKWebView cannot start the mic while the phone stays locked. Wrapper-era retry-on-unlock is **superseded** by native LiveKit (entry above). Do not re-land remount-`LiveKitRoom` as the lock-screen fix.
 
 - 2026-08-27: **Remote hangup left CallKit connected on the locked callee (Mac):** lock-screen answer now connects (timer + hang-up on both sides). When the caller hung up, the callee's CallKit UI stayed live. Broadcast `end` / postgres `ended` only did `setActiveCall(null)` and never called `endEdgeNativeCall`, so native never heard the remote hangup. Both paths now end CallKit with `reason: 'remote'` (`reportCall(.remoteEnded)`). Rebuild + web deploy owed.
 

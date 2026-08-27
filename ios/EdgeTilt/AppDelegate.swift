@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
   ) -> Bool {
     EdgePushManager.shared.configure()
     EdgeCallKitManager.shared.configure()
+    EdgeLiveKitCallManager.shared.configure()
     EdgeLocationManager.shared.configure()
     EdgeLocationManager.shared.ensureWhenInUseAuthorization()
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()

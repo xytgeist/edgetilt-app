@@ -51,6 +51,7 @@ struct EdgeWebView: UIViewRepresentable {
   func updateUIView(_ uiView: EdgeInsetAwareWebView, context: Context) {
     context.coordinator.swiftSafeArea = swiftSafeArea
     context.coordinator.pushSafeAreaInsets(from: uiView, force: false)
+    EdgeLiveKitCallManager.shared.attach(webView: uiView)
   }
 
   final class Coordinator: NSObject {
@@ -68,6 +69,7 @@ struct EdgeWebView: UIViewRepresentable {
       self.webView = webView
       EdgePushManager.shared.attach(webView: webView)
       EdgeCallKitManager.shared.attach(webView: webView)
+      EdgeLiveKitCallManager.shared.attach(webView: webView)
       webView.onSafeAreaInsetsChange = { [weak self] in
         guard let self, let webView = self.webView else { return }
         self.pushSafeAreaInsets(from: webView, force: false)

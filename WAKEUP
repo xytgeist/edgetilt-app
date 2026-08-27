@@ -75,6 +75,18 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-08-27 … native LiveKit on the IPA
+
+**I am Mac Theo.** Call media on the store shell is now the official LiveKit Swift SDK. Web / PWA / Android are unchanged (`isEdgeiOSShell()` gates).
+
+**Principle:** if iOS has a better option, the IPA uses it. Do **not** "fix" CallKit by remounting `LiveKitRoom` or retrying WKWebView `getUserMedia` on unlock. That cannot start the mic while locked.
+
+**Contract:** `docs/ios-native-bridge.md` (principle + method rows + native LiveKit table). Web writes `setAuthSession` on login/refresh. CallKit answer → Keychain JWT → `accept_call` → `Room.connect` → mic on `didActivate`. Chrome stays web. Video is a UIKit overlay behind a transparent hole.
+
+**Smoke owed on device:** locked, force-closed, answer, **do not unlock**. Caller must leave Ringing and hear two-way audio. Then unlock for camera / remote video.
+
+**WinTheo:** Mac landed the IPA JS stubs (`setAuthSession` writer, `ChatCallSession` skips `LiveKitRoom`). Do not revert those to a second LiveKit room.
+
 ### Latest tips
 
 | Branch | Tip | Note |

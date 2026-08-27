@@ -258,60 +258,13 @@ function captureSafeTopPx() {
   frozenSafeTopPx = readSafeTopPx()
 }
 
-function peekCssSheetHeightPx() {
-  const probe = ensureLvhProbe()
-  const lvh = probe instanceof HTMLElement ? probe.getBoundingClientRect().height : 0
-  if (!(lvh > 8)) return 0
-  return Math.round(lvh * activeSheetFraction())
-}
-
-function peekComposerSheetHeightPx() {
-  return Math.max(estimateSheetHeightForLayout(sheetLayoutH()), peekCssSheetHeightPx())
-}
-
-/** Highest plausible sheet top for the 80% composer sheet (smallest air gap). */
-function peekIosComposerBandBottomPx(sheetTop, slidingOn) {
-  const destH = peekComposerSheetHeightPx()
-  const bottoms = []
-  const consider = (layoutH) => {
-    const h = Math.round(Number(layoutH) || 0)
-    if (h > destH + 24) bottoms.push(h - destH)
-  }
-  consider(sheetLayoutH())
-  if (typeof window !== 'undefined') consider(window.innerHeight)
-  if (typeof document !== 'undefined') consider(document.documentElement?.clientHeight)
-  const probe = ensureLvhProbe()
-  if (probe instanceof HTMLElement) consider(probe.getBoundingClientRect().height)
-  let bottom = bottoms.length ? Math.min(...bottoms) : 0
-  if (sheetTop >= 8 && !slidingOn) {
-    bottom = bottom > 0 ? Math.min(bottom, Math.round(sheetTop)) : Math.round(sheetTop)
-  }
-  return bottom
-}
-
-/** Visible peek gap: status-bar bottom → sheet top minus 5px. Contain-fit and center. */
+/** Visible peek gap: status-bar bottom → sheet top minus PEEK_GAP_PX. Contain-fit and center. */
 function peekVisibleBand() {
   if (!overlayOn || !peekRevealed) return { top: 0, height: 0 }
   const vh = sheetLayoutH()
   const estimatedH = visualSheetHeightPx()
   const estimatedBottom = estimatedH < 8 ? 0 : Math.round(vh - estimatedH)
-  const dragging = sheetDragging || dragOffsetPx > 0
-  let bottom = 0
-  if (composerExpanded && !dragging) {
-    // Android composer is 80% of the live layout. iOS 80lvh is parked in a
-    // smaller innerHeight than frozen lvh, so frozen-lvh minus 80lvh leaves a
-    // gap that is taller than the real sheet top... media does not shrink enough.
-    bottom = IS_ANDROID
-      ? visualSheetHeightPx() > 8
-        ? Math.round(vh - visualSheetHeightPx())
-        : 0
-      : peekIosComposerBandBottomPx(0, false)
-  } else if (!dragging) {
-    bottom = estimatedBottom
-  } else if (estimatedBottom > 0) {
-    bottom = estimatedBottom
-  }
-  bottom -= PEEK_GAP_PX
+  const bottom = Math.max(0, estimatedBottom - PEEK_GAP_PX)
   const top = Math.max(0, Math.min(frozenSafeTopPx, Math.max(0, bottom - 8)))
   const height = Math.max(0, Math.round(bottom - top))
   return { top, height }

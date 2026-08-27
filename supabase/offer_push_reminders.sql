@@ -20,13 +20,18 @@ create table if not exists public.offer_notification_sends (
   user_id uuid not null references auth.users(id) on delete cascade,
   event_id uuid not null references public.offer_events(id) on delete cascade,
   lead_minutes integer not null,
+  alert_fire_at timestamptz,
   send_status text not null default 'sent',
   error_message text,
   created_at timestamptz not null default now()
 );
 
-create unique index if not exists offer_notification_sends_unique
-  on public.offer_notification_sends(user_id, event_id, lead_minutes);
+-- Dedupe is per SCHEDULED ALERT, not per event: an edited event gets a new alert_fire_at
+-- and is allowed to notify once more. Do NOT narrow this to (user_id, event_id,
+-- lead_minutes) ... that permits only one send row per event forever, which silently broke
+-- edit-renotify for months (see 20260827130000_offer_sends_dedupe_by_fire_time.sql).
+create unique index if not exists offer_notification_sends_event_lead_fire_uidx
+  on public.offer_notification_sends(event_id, lead_minutes, alert_fire_at);
 
 create index if not exists offer_notification_sends_user_id_idx
   on public.offer_notification_sends(user_id);

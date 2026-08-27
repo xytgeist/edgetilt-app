@@ -38,5 +38,15 @@ where s.event_id = keep.event_id
     or (keep.created_at = s.created_at and keep.id < s.id)
   );
 
+-- THE actual blocker. `offer_notification_sends_unique (user_id, event_id, lead_minutes)`
+-- allows exactly ONE send row per event, forever. That is why the 20260507 "notify again
+-- after an edit" feature never worked: recording a second send was impossible, the insert
+-- error was swallowed (unchecked return), and the dedupe kept re-reading the FIRST row and
+-- re-sending every tick. It was a bare unique INDEX, not a constraint, so it does not
+-- appear in pg_constraint ... check pg_indexes too.
+-- Replaced by the fire-time key below, which is what "one send per scheduled alert" means.
+-- Nothing upserts against the old index (only send-due-offer-reminders writes this table).
+drop index if exists public.offer_notification_sends_unique;
+
 create unique index if not exists offer_notification_sends_event_lead_fire_uidx
   on public.offer_notification_sends (event_id, lead_minutes, alert_fire_at);

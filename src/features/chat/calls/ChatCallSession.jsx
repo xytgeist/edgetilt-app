@@ -180,6 +180,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
     <div
       ref={pillRef}
       className="pointer-events-auto fixed flex max-w-[min(22rem,calc(100vw-1rem))] cursor-grab items-center justify-between gap-2 rounded-[28px] bg-[#1f2c34]/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md active:cursor-grabbing touch-none"
+      data-lounge-fab-obstacle=""
       style={{
         left: pos?.left ?? -9999,
         top: pos?.top ?? -9999,
@@ -616,20 +617,6 @@ function NativeIpaCallSession({
     const tone = startChatCallTone('ringback')
     return () => stopChatCallTone(tone)
   }, [awaitingAnswer])
-
-  useEffect(() => {
-    if (minimized) return undefined
-    const html = document.documentElement
-    const body = document.body
-    const prevHtmlOverflow = html.style.overflow
-    const prevBodyOverflow = body.style.overflow
-    html.style.overflow = 'hidden'
-    body.style.overflow = 'hidden'
-    return () => {
-      html.style.overflow = prevHtmlOverflow
-      body.style.overflow = prevBodyOverflow
-    }
-  }, [minimized])
 
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
   const ss = String(elapsed % 60).padStart(2, '0')

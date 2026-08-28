@@ -158,7 +158,12 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **The IPA path (2026-08-27) is native LiveKit.** CallKit answer calls `chat-calls` `accept_call` with the Keychain JWT, connects the Swift `Room`, and publishes the mic in `provider(_:didActivate:)`. Web is notified so chrome can mount. Web does **not** create a second room. Camera publishes when the app is active (iOS will not give a useful camera while locked). Remote video is a UIKit `VideoView` **behind** the (transparent) WKWebView hole.
 
-**We cannot unlock the phone.** There is no public API for that. After a lock-screen answer, iOS keeps the system CallKit UI on the lock screen (audio is already native). Unlocking often does **not** foreground Edge (home screen / CallKit UI stays), and `protectedDataDidBecomeAvailable` often does **not** fire after the first unlock of the boot (data stays available while locked). That is why the path only worked when Edge was already the focused app at lock time (iOS brings that scene back). After a background / killed answer we poll `requestSceneSessionActivation` + `edgetilt://call` until we actually become `.active`, then fire `edge-native-call-reveal` so web opens the chat room and the full in-app live call screen. Also re-fire reveal when JS calls `callKitWebReady` after a cold page load, and again once `accept_call` fills `chat_room_id`.
+**We cannot unlock the phone.** There is no public API for that. After a lock-screen answer, iOS keeps the system CallKit UI on the lock screen (audio is already native). Unlocking often does **not** foreground Edge. Two traps that made this look like a no-op:
+
+1. `callKitWebReady` force-revealed chrome while we were still backgrounded, then **cleared** `pendingCallReveal`. Unlock had nothing left to do.
+2. `protectedDataDidBecomeAvailable` often does **not** fire after the first unlock of the boot. We also listen for SpringBoard `lockstate` (0 = unlocked) and keep polling `requestSceneSessionActivation` + `edgetilt://call` until `.active`.
+
+Then `edge-native-call-reveal` opens the chat room + live chrome.
 
 **IPA incoming overlay:** CallKit is the answer UI. `ChatIncomingCallOverlay` stays for web / PWA / Android and is hidden on `isEdgeiOSShell()`. Live chrome after answer is unchanged.
 

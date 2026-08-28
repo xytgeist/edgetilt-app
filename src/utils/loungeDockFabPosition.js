@@ -317,6 +317,11 @@ export function loungeDockFabAndroidKeyboardLikelyOpen(layoutViewportHeightPx) {
   return layoutH - window.innerHeight > LOUNGE_DOCK_FAB_ANDROID_KEYBOARD_SHRINK_PX
 }
 
+/** Reject keyboard-dismiss / overlay frames that collapse the dock to 0,0. */
+export function loungeDockViewportIsUsable(width, height) {
+  return Number(width) >= 200 && Number(height) >= 300
+}
+
 /** FAB position + clamp bounds: layout viewport height (keyboard opening must not yank the menu). */
 export function loungeDockLayoutViewportSize() {
   if (typeof window === 'undefined') {

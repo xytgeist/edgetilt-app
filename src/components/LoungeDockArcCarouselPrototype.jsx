@@ -15,6 +15,7 @@ import {
   loungeDockFabCollisionBottomInsetPx,
   loungeDockFabAndroidKeyboardLikelyOpen,
   loungeDockLayoutViewportSize,
+  loungeDockViewportIsUsable,
   LOUNGE_FAB_OBSTACLE_SELECTOR,
   loungeDockCompactPipFabVisualCenter,
   loungeDockCompactPipHomeOffset,
@@ -398,6 +399,7 @@ export default function LoungeDockArcCarouselPrototype({
 
   const syncViewport = useCallback(() => {
     const next = loungeDockLayoutViewportSize()
+    if (!loungeDockViewportIsUsable(next.width, next.height)) return
     setViewport((prev) =>
       prev.width === next.width && prev.height === next.height ? prev : next,
     )
@@ -418,9 +420,11 @@ export default function LoungeDockArcCarouselPrototype({
     const { width, height } = viewport
     const bounds = loungeDockFabMoveBounds(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
     const saved = readLoungeDockFabPrefs()
-    const pos = saved
-      ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, bounds)
-      : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
+    const savedLooksCollapsed = Boolean(saved && saved.xPct <= 0.02 && saved.yPct <= 0.02)
+    const pos =
+      saved && !savedLooksCollapsed
+        ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, bounds)
+        : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
     if (!fabObstacleCollisionEnabled) {
       setFabPos(pos)
       return
@@ -439,7 +443,7 @@ export default function LoungeDockArcCarouselPrototype({
       const totalInset = bottomObstaclePx + liveObstacleInset
       const adjustedBounds = loungeDockFabMoveBounds(width, height, LOUNGE_DOCK_FAB_SIZE_PX, totalInset)
       setFabPos(
-        saved
+        saved && !savedLooksCollapsed
           ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, adjustedBounds)
           : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, totalInset),
       )
@@ -859,18 +863,23 @@ export default function LoungeDockArcCarouselPrototype({
   const persistFabPrefs = useCallback(
     (pos) => {
       if (!pos) return
+      if (!loungeDockViewportIsUsable(viewport.width, viewport.height)) return
+      const spanX = fabMoveBounds.maxLeft - fabMoveBounds.minLeft
+      const spanY = fabMoveBounds.maxTop - fabMoveBounds.minTop
+      if (spanX < 8 || spanY < 8) return
       const pct = loungeDockFabPctFromPosition(pos.left, pos.top, fabMoveBounds)
       writeLoungeDockFabPrefs({ ...pct, locked: true })
       if (!readLoungeDockMenuLayoutIntroCompleted(viewerUserId)) {
         completeMenuLayoutIntro()
       }
     },
-    [fabMoveBounds, viewerUserId, completeMenuLayoutIntro],
+    [fabMoveBounds, viewerUserId, completeMenuLayoutIntro, viewport.width, viewport.height],
   )
 
   /** When using L layout, snap FAB to bottom corner for the screen half (preferences / resize / mode switch). */
   useEffect(() => {
     if (!isCornerL) return
+    if (!loungeDockViewportIsUsable(viewport.width, viewport.height)) return
     const cur = fabPosRef.current
     if (!cur) return
     const cx = cur.left + LOUNGE_DOCK_FAB_SIZE_PX / 2
@@ -2018,8 +2027,8 @@ export default function LoungeDockArcCarouselPrototype({
               : ''
         } ${fabWakePop && !fabCompactActive && !fabExpandFromPip ? 'scale-100' : ''}`}
         style={{
-          left: fabDisplayPos?.left ?? 0,
-          top: fabDisplayPos?.top ?? 0,
+          left: fabDisplayPos?.left ?? fabPos?.left ?? 0,
+          top: fabDisplayPos?.top ?? fabPos?.top ?? 0,
           width: LOUNGE_DOCK_FAB_SIZE_PX,
           height: LOUNGE_DOCK_FAB_SIZE_PX,
           opacity: fabDisplayOpacity,

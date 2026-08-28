@@ -105,6 +105,24 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     ) { [weak self] _ in
       self?.handleDidBecomeActive()
     }
+    // protectedData often stays available after the first unlock of the boot,
+    // so it does not fire on later unlocks. SpringBoard lockstate does.
+    // Darwin notify has no payload here ... we try on every lock/unlock flip.
+    // Activate is ignored while the device stays locked.
+    CFNotificationCenterAddObserver(
+      CFNotificationCenterGetDarwinNotifyCenter(),
+      Unmanaged.passUnretained(self).toOpaque(),
+      { _, observer, _, _, _ in
+        guard let observer else { return }
+        let manager = Unmanaged<EdgeCallKitManager>.fromOpaque(observer).takeUnretainedValue()
+        DispatchQueue.main.async {
+          manager.handleDeviceUnlocked()
+        }
+      },
+      "com.apple.springboard.lockstate" as CFString,
+      nil,
+      .deliverImmediately
+    )
   }
 
   func attach(webView: WKWebView) {
@@ -170,7 +188,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   /// Device unlocked while we may still be backgrounded. Ask iOS to show Edge.
   func handleDeviceUnlocked() {
-    guard pendingCallReveal || (!answeredUUIDs.isEmpty && !didRevealCallThisAnswer) else { return }
+    guard !answeredUUIDs.isEmpty else { return }
     pendingCallReveal = true
     activateCallScene()
     startUnlockPoll()
@@ -189,9 +207,17 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
     let snapshot = revealSnapshot()
     guard !snapshot.callId.isEmpty else { return }
-    pendingCallReveal = false
-    didRevealCallThisAnswer = true
-    stopUnlockPoll()
+    let isActive = UIApplication.shared.applicationState == .active
+    // Mount chrome in the background if the page just became ready, but do
+    // **not** clear pendingReveal ... that is what unlock uses to bring Edge forward.
+    if isActive {
+      pendingCallReveal = false
+      didRevealCallThisAnswer = true
+      stopUnlockPoll()
+    } else {
+      pendingCallReveal = true
+      startUnlockPoll()
+    }
     dismissWebKeyboard()
     dispatchToWeb(
       event: "edge-native-call-reveal",

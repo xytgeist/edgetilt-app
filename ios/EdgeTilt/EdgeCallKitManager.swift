@@ -678,17 +678,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let state = Self.applicationStateLabel(UIApplication.shared.applicationState)
     NSLog("EdgeCallKit PushKit received type=\(eventType.isEmpty ? "invite" : eventType) callId=\(callId.isEmpty ? "<empty>" : callId) roomId=\(roomId) caller=\(callerName) hasVideo=\(hasVideo) avatar=\(avatarUrl.isEmpty ? "<none>" : "yes") state=\(state) keys=\(keys)")
 
-    if eventType == "chat_call_missed" || eventType == "cancel" {
-      NSLog("EdgeCallKit PushKit handling cancellation callId=\(callId)")
-      self.endCall(uuidString: nil, callId: callId.isEmpty ? nil : callId, reason: "remote") { _ in
-        self.voipPushInFlight = false
-        completion()
-      }
-      return
-    }
-
-    // Empty chatCallId still has to become a real incoming report. Flash-fail
-    // looks like silence and still teaches iOS we "handled" the wake.
+    // iOS 13+ strict policy: Every PushKit VoIP wake MUST report a new incoming call
+    // to CXProvider immediately, or iOS will crash the app and blacklist VoIP pushes.
+    // Cancellations and missed calls arrive via standard APNs background/alert notifications.
     reportIncomingCall(
       uuidString: nil,
       callId: callId,

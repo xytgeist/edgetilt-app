@@ -722,15 +722,14 @@ async function sendPushToUser(
     }
   }
 
-  // VoIP push: instant high-priority delivery to iOS PushKit for incoming calls & cancellations.
+  // VoIP push: instant high-priority delivery to iOS PushKit for incoming calls.
+  // Note: PushKit strictly requires reporting an incoming call on 100% of wakes (iOS 13+ policy).
+  // Cancellations are delivered via standard APNs alert/background pushes.
   let skipApnsAlert = false
-  if (
-    (notification.eventType === 'chat_call_invite' || notification.eventType === 'chat_call_missed') &&
-    notification.chatCallId
-  ) {
+  if (notification.eventType === 'chat_call_invite' && notification.chatCallId) {
     const voip = await sendVoipApnsToUser(admin, userId, {
       chatCallId: notification.chatCallId,
-      eventType: notification.eventType,
+      eventType: 'chat_call_invite',
       roomId: extractRoomIdFromPushUrl(notification.url),
       callerName: callerNameFromInviteNotification(notification),
       hasVideo: false,

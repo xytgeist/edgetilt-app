@@ -222,6 +222,7 @@ function queryOverlayPeekFlyoutEl() {
 
 function readPeekMediaLayoutBox() {
   if (typeof document === 'undefined') return null
+  if (cachedPeekMediaBox) return cachedPeekMediaBox
   const media = queryOverlayPeekMediaEl()
   const fromInline = readInlineFixedBox(media)
   if (fromInline) {
@@ -234,7 +235,6 @@ function readPeekMediaLayoutBox() {
     cachedPeekMediaBox = fromFlyout
     return fromFlyout
   }
-  if (cachedPeekMediaBox) return cachedPeekMediaBox
   if (!peekTransformIsIdentity()) return null
   const painted = readPaintedMediaBox(media)
   if (painted) cachedPeekMediaBox = painted

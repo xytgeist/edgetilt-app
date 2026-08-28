@@ -2624,6 +2624,12 @@ export default function LoungePostStreamVideo({
     const applyHeroViewportLayout = () => {
       const from = heroFromRectRef.current
       if (!from || heroPhaseRef.current !== 'open') return
+      if (
+        typeof document !== 'undefined' &&
+        document.documentElement.hasAttribute('data-lounge-detail-over-lightbox')
+      ) {
+        return
+      }
       const target = computeHeroTargetRect(from, { displayW, displayH })
       const prev = heroTargetRectRef.current
       if (

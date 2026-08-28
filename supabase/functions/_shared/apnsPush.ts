@@ -292,7 +292,9 @@ async function postVoipApns(
     hasVideo: Boolean(payload.hasVideo),
   }
   if (payload.avatarUrl) body.avatarUrl = payload.avatarUrl
-  const res = await fetch(`${apnsHost(environment)}/3/device/${tokenHex}`, {
+  const url = `${apnsHost(environment)}/3/device/${tokenHex}`
+  console.log(`[postVoipApns] sending ${payload.eventType || 'chat_call_invite'} to ${url} topic=${topic}`)
+  const res = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -304,6 +306,7 @@ async function postVoipApns(
   } catch {
     reason = ''
   }
+  console.log(`[postVoipApns] response status=${res.status} ok=${res.ok} reason=${reason}`)
   return { ok: res.ok, status: res.status, reason }
 }
 
@@ -323,6 +326,7 @@ export async function sendVoipApnsToUser(
 
   if (error) throw error
   const tokens = (rows || []) as ApnsTokenRow[]
+  console.log(`[sendVoipApnsToUser] found ${tokens.length} voip tokens for userId=${userId}`)
   if (tokens.length === 0) {
     return { sent: 0, failed: 0, removed: 0, skipped: true, reason: 'no_tokens' }
   }

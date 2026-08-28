@@ -33,6 +33,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
   func application(
     _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    let eventType = (userInfo["eventType"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    if eventType == "chat_call_missed" {
+      let callId = (userInfo["chatCallId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      EdgeCallKitManager.shared.endCall(uuidString: nil, callId: callId, reason: "remote") { _ in
+        completionHandler(.newData)
+      }
+      return
+    }
+    completionHandler(.noData)
+  }
+
+  func application(
+    _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
     EdgePushManager.shared.didRegister(deviceToken: deviceToken)

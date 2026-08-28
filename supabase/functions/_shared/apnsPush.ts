@@ -117,6 +117,9 @@ async function mintApnsJwt(config: ApnsConfig): Promise<string> {
 }
 
 function buildApnsBody(notification: ApnsAlertPayload): Record<string, unknown> {
+  const isCallEvent =
+    notification.eventType === 'chat_call_invite' || notification.eventType === 'chat_call_missed'
+
   const body: Record<string, unknown> = {
     aps: {
       alert: {
@@ -124,6 +127,7 @@ function buildApnsBody(notification: ApnsAlertPayload): Record<string, unknown> 
         body: notification.body,
       },
       sound: 'default',
+      ...(isCallEvent ? { 'content-available': 1 } : {}),
     },
     url: absolutePushUrl(notification.url),
   }

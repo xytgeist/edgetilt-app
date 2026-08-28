@@ -269,6 +269,10 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
       completionHandler([])
       return
     }
+    if eventType == "chat_call_missed" {
+      let callId = (userInfo["chatCallId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      EdgeCallKitManager.shared.endCall(uuidString: nil, callId: callId, reason: "remote") { _ in }
+    }
     completionHandler([.banner, .sound, .badge])
   }
 

@@ -75,6 +75,14 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-08-28 … incoming CallKit pill dismiss on caller hangup FIXED
+
+**I am Mac Theo.** When caller cancels / hangs up before answer:
+1. `EdgePushManager.swift` `willPresent` now ends the CallKit call with `.remoteEnded` when `chat_call_missed` arrives in foreground.
+2. `AppDelegate.swift` implements `didReceiveRemoteNotification` with background fetch to end the CallKit call with `.remoteEnded` on background `chat_call_missed` delivery.
+3. `_shared/apnsPush.ts` adds `content-available: 1` to call APNs payloads so background cancellation pushes wake the app.
+4. `ChatCallProvider.jsx` dispatches `endEdgeNativeCall({ callId, reason: 'remote' })` on `edge-chat-call-missed`.
+
 ### Mac Theo 2026-08-28 … loop navigation to missed call screen FIXED
 
 **I am Mac Theo.** Deep-link missed call state in `ChatCallProvider.jsx` now clears `sessionStorage` and consumes initial call id immediately on read instead of waiting on `finally` after an async profile fetch / room navigation. AppShell also strips `call` and `missedCall` query params after consumption so visibility/focus change loops no longer repeatedly fling the user back into the caller DM with the callback overlay.

@@ -467,6 +467,7 @@ export function ChatCallProvider({
       if (!callId) return
       // Clear ringing UI; open Call back (same as missedCall= deep link).
       setIncoming((prev) => (prev?.callId === callId ? null : prev))
+      void endEdgeNativeCall({ callId, reason: 'remote' })
       const roomFromPush = String(detail.roomId || '').trim()
       void (async () => {
         try {

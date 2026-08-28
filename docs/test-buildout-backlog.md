@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **CallKit decline left the caller ringing + next invite looked missing (Mac).** Declining the pill often fires before JS has `incoming`, so `decline_call` never ran and `hangup` no-op'd (never joined LiveKit). The row stayed `ringing`, so `@theomac` kept ringing and CallKit `maximumCallGroups = 1` could swallow `@smokewagon` / a second theomac call. Native unanswered end now `decline_call`s; a new invite evicts unanswered leftovers. Rebuild owed.
+
 - 2026-08-27: **CallKit incoming pill avatar actually paints (Mac).** First cut donated `INStartCallIntent`. That does not fill the compact CallKit / Dynamic Island circle. Public `CXCallUpdate` still has no photo field on iOS 27. Native now sets undocumented `localizedCallerImageURL` on the first `CXCallUpdate` from the VoIP / JS `avatarUrl`. Rebuild owed. App Review can theoretically flag the selector. Do not write fake Contacts.
 
 - 2026-08-27: **Anon-execute security lockdown Stage 2 (`test`):**

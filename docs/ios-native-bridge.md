@@ -116,6 +116,12 @@ Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an al
 
 **Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
 
+### ⚠️ CallKit decline must end the server row without waiting for JS `incoming` (2026-08-27)
+
+**Read before touching `CXEndCallAction` or `onDecline`.** Declining the compact pill often happens **before** `ChatCallProvider` has set `incoming` (VoIP first, web later). Old JS did `if (incomingRef.callId !== callId) return`, then `declineIncoming` required `incoming`. Native `hangup(leaveOnServer:)` also no-ops if we never joined LiveKit. Result: CallKit goes away, the `chat_calls` row stays `ringing`, the caller keeps ringing, and the next invite can fail because `maximumCallGroups = 1`.
+
+**Fix:** unanswered `CXEndCallAction` calls `chat-calls` `decline_call` from Swift (leave as fallback). JS decline uses the event `callId` even when `incoming` is null. A new invite evicts unanswered leftovers (CallKit + decline the old row) so `@smokewagon` is not blocked by a leftover `@theomac` ring.
+
 ### ⚠️ CallKit native→JS events must be buffered … the web layer does not exist yet (2026-08-27)
 
 **Read before touching `dispatchToWeb` or `installEdgeCallKitListeners`.** A VoIP push wakes the shell **from terminated**, so the order on a cold-start ring is:

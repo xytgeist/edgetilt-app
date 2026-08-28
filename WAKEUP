@@ -91,6 +91,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** First avatar cut donated an intent. That does **not** fill the CallKit pill. The circle is `localizedCallerImageURL` on `CXCallUpdate` (not in the public header). We set it on the first report from the VoIP / JS `avatarUrl`. Rebuild the IPA. App Review can theoretically flag that selector. Unlock-to-foreground stays parked unless Ryan reopens it.
 
+### Mac Theo 2026-08-27 … decline must kill the caller + next ring
+
+**I am Mac Theo.** Declining CallKit did not `decline_call` when JS `incoming` was still null (VoIP-first). Caller kept ringing. That leftover also made the next invite fail (`maximumCallGroups = 1`), which looks like "I get @theomac but not @smokewagon." Native decline now hits the server. Rebuild the IPA.
+
 ### Latest tips
 
 | Branch | Tip | Note |

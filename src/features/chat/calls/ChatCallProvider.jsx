@@ -307,7 +307,22 @@ export function ChatCallProvider({
   const presentIncoming = useCallback(
     (row) => {
       if (!row?.id) return
-      if (activeCallRef.current || incomingRef.current?.callId === row.id) return
+      if (activeCallRef.current) return
+      if (incomingRef.current?.callId === row.id) return
+      if (incomingRef.current?.callId && incomingRef.current.callId !== row.id) {
+        const stale = incomingRef.current
+        void (async () => {
+          try {
+            if (stale.kind !== 'group_audio' && supabaseClient) {
+              await chatDeclineCall(supabaseClient, stale.callId)
+            }
+            if (stale.roomId) ensureBroadcast(stale.roomId)?.emit('decline', { callId: stale.callId })
+          } catch {
+            /* already ended */
+          }
+          void endEdgeNativeCall({ callId: stale.callId, reason: 'remote' })
+        })()
+      }
       const roomId = String(row.chat_room_id || row.roomId || '')
       const fromUserId = String(row.started_by || row.fromUserId || '')
       const kind = row.kind === 'group_audio' ? 'group_audio' : 'dm_av'
@@ -345,7 +360,7 @@ export function ChatCallProvider({
         }
       })
     },
-    [ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync],
+    [supabaseClient, ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync],
   )
   presentIncomingRef.current = presentIncoming
 
@@ -902,18 +917,21 @@ export function ChatCallProvider({
    * DM only: optional `message` is sent as a normal chat text after decline.
    */
   const declineIncoming = useCallback(async (opts = {}) => {
-    if (!supabaseClient || !incoming) return
-    const snap = incoming
+    const callId = String(opts.callId || incomingRef.current?.callId || incoming?.callId || '').trim()
+    if (!supabaseClient || !callId) return
+    const snap = incomingRef.current?.callId === callId ? incomingRef.current : incoming
+    const roomId = String(opts.roomId || snap?.roomId || '').trim()
+    const kind = snap?.kind === 'group_audio' ? 'group_audio' : 'dm_av'
     const message = typeof opts?.message === 'string' ? opts.message.trim() : ''
     setBusy(true)
     try {
-      if (snap.kind === 'dm_av') {
-        await chatDeclineCall(supabaseClient, snap.callId)
-        ensureBroadcast(snap.roomId)?.emit('decline', { callId: snap.callId })
+      if (kind === 'dm_av') {
+        await chatDeclineCall(supabaseClient, callId)
+        if (roomId) ensureBroadcast(roomId)?.emit('decline', { callId })
         if (message) {
           try {
             await chatSendMessage(supabaseClient, {
-              roomId: snap.roomId,
+              roomId,
               body: message,
             })
           } catch {
@@ -921,12 +939,12 @@ export function ChatCallProvider({
           }
         }
       }
-      setIncoming(null)
-      void endEdgeNativeCall({ callId: snap.callId })
+      if (incomingRef.current?.callId === callId) setIncoming(null)
+      void endEdgeNativeCall({ callId })
     } catch (err) {
       showCallStatusToast(err instanceof Error ? err.message : 'Could not decline')
-      setIncoming(null)
-      void endEdgeNativeCall({ callId: snap.callId })
+      if (incomingRef.current?.callId === callId) setIncoming(null)
+      void endEdgeNativeCall({ callId })
     } finally {
       setBusy(false)
     }
@@ -959,10 +977,15 @@ export function ChatCallProvider({
         })
       },
       onDecline: (detail) => {
-        const callId = String(detail?.callId || '').trim()
-        if (callId && incomingRef.current?.callId !== callId) return
-        void declineIncomingRef.current?.()
-        void endEdgeNativeCall({ callId: callId || incomingRef.current?.callId })
+        const callId = String(detail?.callId || incomingRef.current?.callId || '').trim()
+        if (!callId) {
+          if (incomingRef.current) setIncoming(null)
+          return
+        }
+        void declineIncomingRef.current?.({
+          callId,
+          roomId: String(detail?.roomId || incomingRef.current?.roomId || ''),
+        })
       },
       onReveal: (detail) => {
         const callId = String(detail?.callId || '').trim()

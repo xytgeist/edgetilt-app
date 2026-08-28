@@ -382,6 +382,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
       return
     }
+    // One CallKit group. An unanswered leftover (declined in UI, or a prior
+    // caller still "ringing" on our side) makes the next invite fail silently.
+    evictUnansweredCalls()
     let uuid = Self.uuid(from: uuidString) ?? UUID()
     let callerName = Self.sanitizedCallerName(handle)
     let meta = CallMeta(
@@ -682,20 +685,38 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   }
 
   func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
-    if let meta = calls[action.callUUID] {
-      dispatchToWeb(
-        event: "edge-callkit-decline",
-        detail: [
-          "uuid": action.callUUID.uuidString.lowercased(),
-          "callId": meta.callId,
-          "roomId": meta.roomId,
-        ]
-      )
+    let uuid = action.callUUID
+    let meta = calls[uuid]
+    let wasAnswered = answeredUUIDs.contains(uuid)
+    if let meta {
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: meta.callId)
-      EdgeLiveKitCallManager.shared.hangup(leaveOnServer: true)
+      if wasAnswered {
+        EdgeLiveKitCallManager.shared.hangup(leaveOnServer: true)
+      } else {
+        // Decline often fires before JS has `incoming`. hangup() no-ops if we
+        // never joined LiveKit, so the ringing row used to stay forever and
+        // the caller kept ringing. End it here.
+        dispatchToWeb(
+          event: "edge-callkit-decline",
+          detail: [
+            "uuid": uuid.uuidString.lowercased(),
+            "callId": meta.callId,
+            "roomId": meta.roomId,
+          ]
+        )
+        let callId = meta.callId
+        Task {
+          do {
+            _ = try await EdgeChatCallsClient.declineCall(callId: callId)
+          } catch {
+            _ = try? await EdgeChatCallsClient.leaveCall(callId: callId)
+          }
+        }
+        EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
+      }
     }
-    calls.removeValue(forKey: action.callUUID)
-    answeredUUIDs.remove(action.callUUID)
+    calls.removeValue(forKey: uuid)
+    answeredUUIDs.remove(uuid)
     mediaConnected = false
     pendingCallReveal = false
     didRevealCallThisAnswer = false
@@ -703,6 +724,24 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     EdgeAudioSession.apply(mode: "default") { _ in }
     endCallBackgroundTask()
     action.fulfill()
+  }
+
+  /// Drop unanswered leftovers so a second invite can `reportNewIncomingCall`.
+  /// Also decline those rows so the previous caller stops ringing.
+  private func evictUnansweredCalls() {
+    for (uuid, meta) in calls {
+      if answeredUUIDs.contains(uuid) { continue }
+      provider.reportCall(with: uuid, endedAt: Date(), reason: .failed)
+      calls.removeValue(forKey: uuid)
+      let callId = meta.callId
+      Task {
+        do {
+          _ = try await EdgeChatCallsClient.declineCall(callId: callId)
+        } catch {
+          _ = try? await EdgeChatCallsClient.leaveCall(callId: callId)
+        }
+      }
+    }
   }
 
   func provider(_ provider: CXProvider, timedOutPerforming action: CXAction) {

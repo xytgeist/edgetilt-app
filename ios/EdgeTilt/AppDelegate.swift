@@ -5,6 +5,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // PushKit must exist before didFinishLaunching returns. A VoIP wake from
+    // terminated delivers the payload only after the registry is up. Do this
+    // before LiveKit / web / location work.
+    EdgeCallKitManager.shared.startPushRegistryIfNeeded()
     EdgePushManager.shared.configure()
     EdgeCallKitManager.shared.configure()
     EdgeLiveKitCallManager.shared.configure()

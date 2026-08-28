@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Apple 200 / phone nothing on VoIP (Mac).** Diagnostic push to the live sandbox token returned 200 on `com.edgetilt.app.voip`. No CallKit, including after home-screen icon launch. iOS dropped the wake for this install after tonight's incomplete VoIP reports. Reboot was not enough. PushKit registry now starts first in `didFinishLaunching`. **Delete the app, then install clean.** Prod Edge not touched.
+
 - 2026-08-27: **PushKit always reports on the VoIP wake (Mac).** Wife's phone is not Edge Lord. Background silence after reboot was still this phone. Killed the `pending` no-report return. JS / APNs skip while `voipPushInFlight` so a wake that looks `.active` cannot steal the report. Empty `chatCallId` reports a real incoming (no flash-fail). Accepted duplicate re-reports the same UUID so in-focus VoIP wakes stay legal. Rebuild owed. Test invite alert can stay as a crutch. Prod Edge not touched.
 
 - 2026-08-27: **Invite alert back on for background receive diagnostic (Mac).** In-focus CallKit passed. Background still nothing after phone reboot + fresh voip token. Test `lounge-send-activity-push` sends the sibling invite alert even when VoIP HTTP 200. No IPA rebuild. Prod not redeployed.

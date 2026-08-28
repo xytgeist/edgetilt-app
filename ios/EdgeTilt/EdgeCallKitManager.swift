@@ -69,12 +69,20 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
   }
 
-  func configure() {
-    EdgeLiveKitCallManager.shared.configure()
+  /// Create the VoIP registry first. iOS delivers a terminated-state wake only
+  /// after this exists. Safe to call more than once.
+  func startPushRegistryIfNeeded() {
+    if pushRegistry != nil { return }
     let registry = PKPushRegistry(queue: DispatchQueue.main)
     registry.delegate = self
     registry.desiredPushTypes = [.voIP]
     pushRegistry = registry
+    NSLog("EdgeCallKit PushKit registry started")
+  }
+
+  func configure() {
+    startPushRegistryIfNeeded()
+    EdgeLiveKitCallManager.shared.configure()
     installUnlockObservers()
   }
 
@@ -613,6 +621,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let hex = pushCredentials.token.map { String(format: "%02x", $0) }.joined()
     voipTokenHex = hex
     UserDefaults.standard.set(hex, forKey: "edge.voip.deviceToken")
+    NSLog("EdgeCallKit PushKit token updated len=\(hex.count)")
     dispatchToWeb(event: "edge-voip-token", detail: ["token": hex])
   }
 

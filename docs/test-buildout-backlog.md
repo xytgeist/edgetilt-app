@@ -1069,6 +1069,13 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Anon-execute security lockdown Stage 2 (`test`):**
+  - **Comprehensive RPC Sweep:** Audited all remaining functions with `anon` execute permissions (254 total).
+  - **Category 1 (Public / Policy / Views - 16 functions):** Preserved `anon` + `authenticated` execute for legitimate guest claim flows (`poker_stable_guest_*`, `poker_tournament_swap_claim_*`), referral code resolvers (`resolve_affiliate_ref`, `get_creator_fan_offer`), and RLS policy evaluation helpers (`has_creator_fan_sub`, `poker_stable_user_can_access_deal`, etc.).
+  - **Category 2 (Authenticated Client RPCs - 124 functions):** Explicitly granted `service_role` and `authenticated`, and revoked `anon` and `public`. Rejects unauthenticated attempts at the PostgREST API layer before PL/pgSQL execution.
+  - **Category 3 (Internal Only Helpers - 114 functions):** Fully locked down ... revoked from both `anon` and `authenticated`. Pinned `service_role` and owner execution for internal triggers, pg_cron, and nested database routines.
+  - Applied via migration `20260827180000_lock_down_anon_execute_stage2.sql`. Verified 238 functions locked down; only the 16 legitimate public/guest/policy functions remain accessible anonymously.
+
 - 2026-08-27: **CallKit incoming pill avatar (Mac).** Compact banner / Dynamic Island circle had only the Edge logo because CallKit has no public caller-photo field. Native now donates `INStartCallIntent` + `INPerson.image` matching the generic handle, after `reportNewIncomingCall` (never block the VoIP fulfill on a fetch). `avatarUrl` rides VoIP + fallback APNs + foreground `reportIncomingCall`. **`lounge-send-activity-push` redeployed on test** (`kcosfvmreeiosdjdzycb`). First call from a new person may fill after fetch; repeats use disk cache. Do not write fake Contacts. Prod Edge not deployed.
 
 - 2026-08-27: **Lock-screen unlock still did not open Edge + call chrome parked the Lounge FAB at 0,0 (Mac).** Force-reveal from `callKitWebReady` mounted chrome in the background and then cleared `pendingCallReveal`, so unlock had nothing to do. Keep pending until `.active`; listen for SpringBoard lockstate; keep scene poll. Full-screen IPA call was setting `html/body overflow: hidden`, which collapsed the dock viewport and persisted the FAB at the top-left under the clock. Overflow lock removed on IPA; dock ignores degenerate viewports and 0,0 prefs.

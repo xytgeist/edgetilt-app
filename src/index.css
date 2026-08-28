@@ -10385,15 +10385,6 @@ html.light [data-sharp-scorecard] .text-amber-400 {
   color: #b45309 !important;
 }
 
-/* Edge Pro Badge light mode styling */
-html.light [data-edge-pro-badge] {
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(249, 115, 22, 0.2), rgba(245, 158, 11, 0.15)) !important;
-  color: #b45309 !important;
-  --tw-ring-color: rgba(245, 158, 11, 0.45) !important;
-}
-
-
-
 /* Affiliates portal — light mode (/?tab=affiliates, /?tab=creator). Dark default unchanged. */
 html.light [data-affiliates-portal] .text-white:not([class*="bg-"]):not([class*="from-"]) {
   color: #18181b !important;
@@ -10707,9 +10698,7 @@ html.light [data-w2g-verify-modal] [data-w2g-preview] button .text-zinc-500 {
 
 /* Edge Pro Badge light mode styling */
 html.light [data-edge-pro-badge] {
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(249, 115, 22, 0.2), rgba(245, 158, 11, 0.15)) !important;
-  color: #b45309 !important;
-  --tw-ring-color: rgba(245, 158, 11, 0.45) !important;
+  color: #d97706 !important;
 }
 
 /* Edge Pro Composer Reply Gate Pill & Menu light mode styling */

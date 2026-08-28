@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **CallKit incoming pill avatar actually paints (Mac).** First cut donated `INStartCallIntent`. That does not fill the compact CallKit / Dynamic Island circle. Public `CXCallUpdate` still has no photo field on iOS 27. Native now sets undocumented `localizedCallerImageURL` on the first `CXCallUpdate` from the VoIP / JS `avatarUrl`. Rebuild owed. App Review can theoretically flag the selector. Do not write fake Contacts.
+
 - 2026-08-27: **Anon-execute security lockdown Stage 2 (`test`):**
   - **Comprehensive RPC Sweep:** Audited all remaining functions with `anon` execute permissions (254 total).
   - **Category 1 (Public / Policy / Views - 16 functions):** Preserved `anon` + `authenticated` execute for legitimate guest claim flows (`poker_stable_guest_*`, `poker_tournament_swap_claim_*`), referral code resolvers (`resolve_affiliate_ref`, `get_creator_fan_offer`), and RLS policy evaluation helpers (`has_creator_fan_sub`, `poker_stable_user_can_access_deal`, etc.).

@@ -408,6 +408,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     update.supportsHolding = false
     update.supportsGrouping = false
     update.supportsUngrouping = false
+    EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: avatarUrl)
 
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
       if let error {
@@ -439,6 +440,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       update.remoteHandle = CXHandle(type: .generic, value: handle)
       update.localizedCallerName = handle
       update.hasVideo = hasVideo
+      EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: avatarUrl)
       self.provider.reportCall(with: uuid, updated: update)
     }
   }

@@ -1,15 +1,30 @@
+import CallKit
 import CryptoKit
 import Foundation
 import Intents
 import UIKit
 
 /// CallKit has no public `CXCallUpdate` photo field. The compact incoming
-/// pill / Dynamic Island circle uses a donated `INStartCallIntent` whose
-/// `INPerson.image` matches the same generic handle we put on the call.
+/// pill / Dynamic Island circle reads undocumented `localizedCallerImageURL`.
+/// Intent donate is extra and does not paint that circle.
 enum EdgeCallKitCallerAvatar {
   private static let cacheFolderName = "edge-callkit-avatars"
   private static let maxBytes = 512 * 1024
   private static let fetchTimeout: TimeInterval = 8
+
+  /// Put the photo on the CallKit update **before** `reportNewIncomingCall`.
+  /// The compact pill / Dynamic Island reads `localizedCallerImageURL`.
+  /// That setter is not in the public header as of iOS 27. Intent donate
+  /// does not paint this circle.
+  static func applyToCallUpdate(_ update: CXCallUpdate, avatarUrl: String?) {
+    guard let url = httpsURL(avatarUrl) else { return }
+    if let data = cachedData(for: url.absoluteString),
+       let file = writeShareableJPEG(data) {
+      setLocalizedCallerImageURL(update, file)
+      return
+    }
+    setLocalizedCallerImageURL(update, url)
+  }
 
   /// Donate whatever we can synchronously (URL + disk cache) **before**
   /// `reportNewIncomingCall`. Do not wait on the network here... Apple
@@ -41,6 +56,25 @@ enum EdgeCallKitCallerAvatar {
       store(data, for: key)
       donate(handle: handle, displayName: displayName, image: image)
       onReady?()
+    }
+  }
+
+  private static func setLocalizedCallerImageURL(_ update: CXCallUpdate, _ url: URL) {
+    let setter = NSSelectorFromString("setLocalizedCallerImageURL:")
+    guard update.responds(to: setter) else { return }
+    update.perform(setter, with: url)
+  }
+
+  /// tmp is more likely to be readable by the CallKit UI process than Caches.
+  private static func writeShareableJPEG(_ data: Data) -> URL? {
+    let jpeg = jpegAvatarData(from: data) ?? data
+    let file = FileManager.default.temporaryDirectory
+      .appendingPathComponent("edge-callkit-avatar-\(UUID().uuidString).jpg")
+    do {
+      try jpeg.write(to: file, options: .atomic)
+      return file
+    } catch {
+      return nil
     }
   }
 

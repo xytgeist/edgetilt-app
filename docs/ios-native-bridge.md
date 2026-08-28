@@ -145,20 +145,15 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **VoIP `callerName`:** sender now strips `is calling you` and sends the actor name. Native `sanitizedCallerName` stays as defense.
 
-### ⚠️ CallKit incoming pill avatar is an intent donate, not a CallKit photo field (2026-08-27)
+### ⚠️ CallKit incoming pill avatar is `localizedCallerImageURL`, not an intent donate (2026-08-27)
 
-**Read before trying to set a caller photo on `CXCallUpdate`.** There is no public image property. `iconTemplateImageData` is the **app** monochrome icon (our Edge logo), not the caller. Do **not** write fake Contacts so a `.generic` handle "matches."
+**Read before trying to set a caller photo on `CXCallUpdate`.** The public header (through iOS 27) has no image property. `iconTemplateImageData` is the **app** monochrome icon, not the caller. `INStartCallIntent` + `INPerson.image` is for communication notifications / Siri, **not** the compact CallKit pill. Do **not** write fake Contacts so a `.generic` handle "matches."
 
-The compact incoming pill / Dynamic Island circle uses a donated **`INStartCallIntent`** whose `INPerson.image` (`INImage`) matches the same generic handle we put on `CXCallUpdate.remoteHandle`.
+The Dynamic Island / top incoming circle reads an undocumented setter, **`localizedCallerImageURL`**. We set it via `responds(to:)` + `perform` on the `CXCallUpdate` **before** `reportNewIncomingCall`, using the `https` `avatarUrl` (or a tmp JPEG once we have bytes). App Review can theoretically flag that selector name. If Apple strips it, the circle goes empty again and we do not have a public replacement.
 
-**Timing:** Apple requires `reportNewIncomingCall` **immediately** in the VoIP callback. Do not wait on image download before fulfill / report. Order:
+**Timing:** Apple requires `reportNewIncomingCall` **immediately** in the VoIP callback. Do not wait on image download before fulfill / report. Put the URL on the first update. Fetch + `reportCall(updated:)` is only a late fill.
 
-1. If disk cache already has that `https` avatar, donate JPEG bytes, then report.
-2. Always donate `INImage(url:)` if we have a URL (system may fetch).
-3. Report CallKit.
-4. Fetch + cache + donate bytes, then `provider.reportCall(with:updated:)` so a first-time caller can swap the empty circle.
-
-**Payloads:** VoIP JSON and the fallback APNs `userInfo` carry `avatarUrl` from `profiles.avatar_url`. Foreground Realtime passes it on `reportIncomingCall`. A **deduped** later report (profile resolved after the first ring) still attaches the photo. `https` only. Prod Edge must be redeployed before store users get the VoIP URL.
+**Payloads:** VoIP JSON and the fallback APNs `userInfo` carry `avatarUrl` from `profiles.avatar_url`. Foreground Realtime passes it on `reportIncomingCall`. A **deduped** later report still attaches the photo. `https` only. Prod Edge must be redeployed before store users get the VoIP URL.
 
 ### ⚠️ Lock-screen answer needs `audio` + a live page, not just `voip` (2026-08-27)
 

@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-08-28 … loop navigation to missed call screen FIXED
+
+**I am Mac Theo.** Deep-link missed call state in `ChatCallProvider.jsx` now clears `sessionStorage` and consumes initial call id immediately on read instead of waiting on `finally` after an async profile fetch / room navigation. AppShell also strips `call` and `missedCall` query params after consumption so visibility/focus change loops no longer repeatedly fling the user back into the caller DM with the callback overlay.
+
 ### Mac Theo 2026-08-28 … avatar setter parked off the VoIP report
 
 **I am Mac Theo.** We cannot clear an iOS VoIP blacklist in software. Delete is still the only fix for a dead install. Prevention: the undocumented caller-image setter is **off** the `reportNewIncomingCall` path. Report is name / handle / video only. Prefetch after accept is fine. Do not put that setter back in front of the report. If this install is silent, delete + clean **EdgeTilt Test Fast**, prove the pill, stop. Avatar stays parked.

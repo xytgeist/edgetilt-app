@@ -1244,6 +1244,21 @@ export default function AppShell({
             setPendingChatCallIntent('ring')
             setPendingChatCallId(callId)
           }
+          if (missedCallId || callId) {
+            try {
+              const u = new URL(window.location.href)
+              u.searchParams.delete('call')
+              u.searchParams.delete('missedCall')
+              const qs = u.searchParams.toString()
+              window.history.replaceState(
+                {},
+                document.title,
+                `${u.pathname || '/'}${qs ? `?${qs}` : ''}${u.hash}`,
+              )
+            } catch {
+              /* ignore */
+            }
+          }
         }
       }
       if (targetTab === 'monitor') {

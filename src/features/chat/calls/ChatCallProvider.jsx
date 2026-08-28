@@ -527,12 +527,15 @@ export function ChatCallProvider({
     const stashed = peekPendingChatCallDeepLink()
     const callId = String(initialCallId || stashed?.callId || '').trim()
     if (!callId) return
+    // Clear stash and consume prop immediately so background resume / visibilitychange
+    // loops don't re-trigger navigation or missed call prompts repeatedly.
+    clearPendingChatCallDeepLink()
+    onInitialCallConsumedRef.current?.()
+
     const intent =
       initialCallIntent === 'callback' || stashed?.intent === 'callback' ? 'callback' : 'ring'
     let cancelled = false
     ;(async () => {
-      /** Only clear pending after UI actually opened (or call is gone). Keeps iOS retries alive. */
-      let shouldClear = false
       try {
         const res = await chatGetCall(supabaseClient, callId)
         if (cancelled) return
@@ -546,7 +549,6 @@ export function ChatCallProvider({
               if (!cancelled && open?.id && open.started_by !== viewerUserId) {
                 presentIncomingRef.current(open)
                 onOpenRoomRef.current?.(roomFallback)
-                shouldClear = true
                 return
               }
             } catch {
@@ -554,7 +556,6 @@ export function ChatCallProvider({
             }
           }
           showCallStatusToast('That call is no longer available.')
-          shouldClear = true
           return
         }
         const roomId = String(call.chat_room_id || stashed?.roomId || '')
@@ -563,19 +564,16 @@ export function ChatCallProvider({
         // Waiting on profiles was cancellable on PWA wake → DM opened, overlay never showed.
         if (['ringing', 'active'].includes(call.status) && intent !== 'callback') {
           if (call.started_by === viewerUserId) {
-            shouldClear = true
             return
           }
           presentIncomingRef.current(call)
           onOpenRoomRef.current?.(roomId)
-          shouldClear = true
           return
         }
 
         // Missed / ended / declined (or missedCall= deep link) → DM + call-back prompt.
         if (call.started_by === viewerUserId) {
           onOpenRoomRef.current?.(roomId)
-          shouldClear = true
           return
         }
         onOpenRoomRef.current?.(roomId)
@@ -589,16 +587,9 @@ export function ChatCallProvider({
           avatarUrl: profile.avatarUrl,
           isVideo: mediaMode === 'video',
         })
-        shouldClear = true
       } catch (err) {
-        // Leave stash for visibility retry (common on iOS wake before session is ready).
         if (!cancelled) {
           showCallStatusToast(err instanceof Error ? err.message : 'Could not open call')
-        }
-      } finally {
-        if (!cancelled && shouldClear) {
-          clearPendingChatCallDeepLink()
-          onInitialCallConsumedRef.current?.()
         }
       }
     })()

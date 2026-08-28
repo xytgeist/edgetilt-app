@@ -118,6 +118,8 @@ Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an al
 
 **Do not `reportCall(updated:)` after the first incoming report.** The avatar belongs on the initial `CXCallUpdate` only. A follow-up update (especially `localizedCallerImageURL`) is what made a live pill last ~1s, then vanish, while the caller kept ringing (no `decline_call`). Donate / cache fetch may still run. Do not poke the live CallKit call.
 
+**After that 1s kill, the next ring was nothing.** Two leftovers: CallKit still holding the dead incoming (`maximumCallGroups = 1` fails the next VoIP report), and a cached `file://` avatar on the *first* `CXCallUpdate` can make iOS reject the report entirely. PushKit now evicts other unanswered CallKit calls locally (no `decline_call` / `leave_call`) before reporting. Incoming `CXCallUpdate` is name-only until receive is stable.
+
 **Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
 
 ### ⚠️ CallKit decline must end the server row without waiting for JS `incoming` (2026-08-27)

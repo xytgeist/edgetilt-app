@@ -382,6 +382,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       completion(.success(["ok": true, "skipped": "background"]))
       return
     }
+    if fromPushKit {
+      evictLeftoverIncoming(exceptCallId: trimmedCallId)
+    }
     // One invite reaches us up to three ways: web Realtime (`ChatCallProvider`), the
     // foreground APNs alert banner (`willPresent`), and the PushKit VoIP ring.
     // Dedupe only after CallKit accepted the first report.
@@ -390,16 +393,6 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       if acceptedIncomingUUIDs.contains(existing) {
         EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
         completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
-        return
-      }
-      if fromPushKit {
-        // JS already started a report that has not been accepted. Do not mint
-        // a second UUID (maximumCallGroups = 1 would fail the VoIP report).
-        completion(.success([
-          "ok": true,
-          "uuid": existing.uuidString.lowercased(),
-          "pending": true,
-        ]))
         return
       }
     }
@@ -429,7 +422,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     update.supportsHolding = false
     update.supportsGrouping = false
     update.supportsUngrouping = false
-    EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: avatarUrl)
+    // Do not set localizedCallerImageURL on the incoming CXCallUpdate until
+    // receive is stable. A cached file:// URL on the first report can make
+    // iOS reject the whole incoming. Donate still runs above.
 
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
       if let error {
@@ -446,6 +441,29 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
       self.beginCallBackgroundTask()
       completion(.success(["ok": true, "uuid": uuid.uuidString.lowercased()]))
+    }
+  }
+
+  /// Clear stranded CallKit incomings so `maximumCallGroups = 1` does not
+  /// silently fail the next VoIP report. Local only... no decline_call / leave_call.
+  private func evictLeftoverIncoming(exceptCallId: String) {
+    let observer = CXCallObserver()
+    for call in observer.calls where !call.hasEnded {
+      let tracked = calls[call.uuid]
+      if let tracked, !exceptCallId.isEmpty, tracked.callId == exceptCallId,
+         acceptedIncomingUUIDs.contains(call.uuid) {
+        continue
+      }
+      provider.reportCall(with: call.uuid, endedAt: Date(), reason: .failed)
+    }
+    for (uuid, meta) in calls {
+      if !exceptCallId.isEmpty, meta.callId == exceptCallId, acceptedIncomingUUIDs.contains(uuid) {
+        continue
+      }
+      if answeredUUIDs.contains(uuid) { continue }
+      provider.reportCall(with: uuid, endedAt: Date(), reason: .failed)
+      calls.removeValue(forKey: uuid)
+      acceptedIncomingUUIDs.remove(uuid)
     }
   }
 

@@ -2473,6 +2473,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-05-18: **Centerline handoff (test):** primary active swap when next/prev Stream tile **midpoint crosses scroll-column center**; clip thresholds remain fallback. **`loungeFeedVideoAutoplayStore.js`**.
 
+- 2026-08-27: **Sharp Syndicate Desk & Predictive Betting Engine (Scott, Rocco, Chedda, Tank):** Added `public.lounge_bot_picks` ledger (`20260827210000_lounge_bot_picks_ledger.sql`), individual and syndicate record RPC `lounge_bot_get_picks_record`, automatic persona routing in `_shared/loungeBotPredictivePick.ts` (Chedda: ML Dogs, Rocco: Spreads, Tank: Totals/O-U, Scott: EV baseline), automated multi-picker Syndicate Card assembly, deterministic final score auto-grading via The Odds API `/scores`, automated reply comment recaps with net unit accounting, and live syndicate management dashboard (`BotSharpDeskPanel.jsx`) in the Bot Portal. Applied on **test** (`9ff421e4`, `06475ce3`).
+- 2026-08-27: **Phoenix Link EV Calculator — Midpoint Trigger Option:** added `useMidpoint` toggle and `midpointFactor` slider (50%–100%, default 75%) to calculate expected value with dynamic midpoint trigger points. Fixed navigation ghost clicks via `armShellNavGhostClickGuard()` across Shell tool switches.
 - 2026-05-18: **Restore 7-day handle change cooldown (test):** migration **`20260518150000_restore_profile_handle_change_cooldown.sql`**; client confirm/cooldown modals back in **`LoungeProfileFullScreen.jsx`**. **Apply migration on Supabase test.**
 
 - 2026-05-18: **Handle conflict dialog (test):** **`ProfileHandleConflictDialog.jsx`** + **`checkProfileHandleAvailability`**. Ryan sign-off **PASSED** @ **`7ce7b44`** (Phase C sign-off).

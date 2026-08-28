@@ -8,6 +8,7 @@ import BotPostRepliesPanel from './BotPostRepliesPanel.jsx'
 import BotReplyOnPostPanel from './BotReplyOnPostPanel.jsx'
 import BotProfileEditor from './BotProfileEditor.jsx'
 import BotSportsCalendarPanel from './BotSportsCalendarPanel.jsx'
+import { BotSharpDeskPanel } from './BotSharpDeskPanel.jsx'
 import {
   BOT_PIPELINE_LABELS,
   BOT_REVIEW_MODE_LABELS,
@@ -1319,6 +1320,14 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               busy={busy}
               setBusy={setBusy}
               onCalendarUpdated={refreshCalendarToday}
+            />
+            <BotSharpDeskPanel
+              supabaseClient={supabaseClient}
+              botUserId={bot.user_id}
+              botSlug={bot.slug}
+              setToast={setToast}
+              busy={busy}
+              setBusy={setBusy}
             />
           </div>
         ) : null}

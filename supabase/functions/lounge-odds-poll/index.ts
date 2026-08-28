@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, or value_bet_radar.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, or predictive_pick.',
       })
     }
 
@@ -150,6 +150,14 @@ Deno.serve(async (req) => {
       const { runValueBetRadarPoll } = await import('../_shared/loungeBotValueBetRadar.ts')
       const result = await runValueBetRadarPoll(admin, bot, oddsCfg, dryRun, { force })
       return adminOpsJson(200, result)
+    }
+
+    if (action === 'grade_picks') {
+      const { gradePendingPicks } = await import('../_shared/loungeBotPredictivePick.ts')
+      const key = oddsApiKey()
+      if (!key) return adminOpsJson(500, { error: 'THE_ODDS_API_KEY not configured.' })
+      const gradeResult = await gradePendingPicks(admin, key, bot.user_id)
+      return adminOpsJson(200, { ok: true, action: 'grade_picks', ...gradeResult })
     }
 
     if (action === 'poll_live') {
@@ -720,6 +728,18 @@ Deno.serve(async (req) => {
         requestsRemaining,
         details,
       })
+    }
+
+    if (!dryRun) {
+      try {
+        const { gradePendingPicks } = await import('../_shared/loungeBotPredictivePick.ts')
+        const key = oddsApiKey()
+        if (key) {
+          await gradePendingPicks(admin, key, bot.user_id)
+        }
+      } catch (gradeErr) {
+        console.warn('Auto-grading in poll_edges failed non-fatally:', gradeErr)
+      }
     }
 
     return adminOpsJson(200, {

@@ -418,6 +418,57 @@ export async function invokeLoungeOddsIngest(supabaseClient, opts = {}) {
 }
 
 /**
+ * Fetch the overall and per-picker win/loss/units record for predictive picks.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} botUserId
+ */
+export async function fetchBotPicksRecord(supabaseClient, botUserId) {
+  if (!supabaseClient || !botUserId) return { data: null, error: null }
+  const { data, error } = await supabaseClient.rpc('lounge_bot_get_picks_record', {
+    p_bot_user_id: botUserId,
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Failed to fetch picks record') }
+  return { data, error: null }
+}
+
+/**
+ * Fetch recent predictive picks logged for a bot.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} botUserId
+ * @param {number} [limit]
+ */
+export async function fetchBotRecentPicks(supabaseClient, botUserId, limit = 50) {
+  if (!supabaseClient || !botUserId) return { data: [], error: null }
+  const { data, error } = await supabaseClient
+    .from('lounge_bot_picks')
+    .select('*')
+    .eq('bot_user_id', botUserId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) return { data: [], error: new Error(error.message || 'Failed to fetch recent picks') }
+  return { data: data || [], error: null }
+}
+
+/**
+ * Trigger on-demand grading of pending picks via The Odds API scores endpoint.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string }} [opts]
+ */
+export async function invokeLoungeOddsGradePicks(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'grade_picks',
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Grading failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Publish one example Lounge post per Scott alert type (portal smoke pack).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

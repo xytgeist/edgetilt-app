@@ -11,11 +11,17 @@ import {
   buildOddsSlateCaption,
   DEFAULT_MIN_EV_PCT,
 } from '../_shared/loungeBotOddsCaption.ts'
+import {
+  formatPredictivePickCaption,
+  gradePendingPicks,
+  publishAndRecordPredictivePick,
+} from '../_shared/loungeBotPredictivePick.ts'
 import { generateCoffeeAndCovers } from '../_shared/loungeBotCoffeeAndCovers.ts'
 import {
   countPublishedKindToday,
   fetchActiveSportKeys,
   loadSportOddsContext,
+  oddsApiKey,
   ptDayStartIso,
   tryPublishCoffeeAndCovers,
   tryPublishEdgeAlert,
@@ -76,6 +82,19 @@ Deno.serve(async (req) => {
         failed: result.failed,
         postIds: result.postIds,
         details: result.details,
+      })
+    }
+
+    if (action === 'grade_picks') {
+      const key = oddsApiKey()
+      if (!key) return adminOpsJson(500, { error: 'THE_ODDS_API_KEY not configured.' })
+      const result = await gradePendingPicks(admin, key, bot.user_id)
+      return adminOpsJson(200, {
+        ok: true,
+        slug,
+        action: 'grade_picks',
+        resolved: result.resolved,
+        errors: result.errors,
       })
     }
 

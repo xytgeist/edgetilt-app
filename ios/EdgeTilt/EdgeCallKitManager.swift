@@ -32,6 +32,11 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   /// CallKit actually accepted `reportNewIncomingCall`. Dedupe only against these.
   /// A JS report that is still in-flight (or already failed) must not block VoIP.
   private var acceptedIncomingUUIDs: Set<UUID> = []
+  /// True from the start of a PushKit callback until that wake's CallKit report
+  /// finishes. A VoIP wake can look `.active` long enough for JS to steal the
+  /// report. Completing PushKit without `reportNewIncomingCall` is how iOS
+  /// then delays or drops later VoIP.
+  private var voipPushInFlight = false
   /// Answer happened while the phone was locked / backgrounded. Stay true until
   /// we have actually become active and told web to open chat + chrome.
   private var pendingCallReveal = false
@@ -373,33 +378,69 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
     let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    let appState = UIApplication.shared.applicationState
     // Backgrounded WKWebView still gets Realtime. JS then calls this, iOS
     // rejects reportNewIncomingCall outside a VoIP callback, and our callId
     // dedupe made the real PushKit report a no-op. Force-quit still worked
     // (no JS). Backgrounded received nothing.
-    if !fromPushKit && UIApplication.shared.applicationState != .active {
-      completion(.success(["ok": true, "skipped": "background"]))
-      return
+    // A VoIP wake can also look `.active` for a beat. Do not let JS report
+    // during that window ... PushKit must be the one that calls
+    // reportNewIncomingCall, or iOS treats the wake as a violation.
+    if !fromPushKit {
+      if voipPushInFlight {
+        NSLog("EdgeCallKit skip JS/APNs: voip in flight callId=\(trimmedCallId) state=\(Self.applicationStateLabel(appState))")
+        completion(.success(["ok": true, "skipped": "voip-in-flight"]))
+        return
+      }
+      if appState != .active {
+        NSLog("EdgeCallKit skip JS/APNs: not active (\(Self.applicationStateLabel(appState))) callId=\(trimmedCallId)")
+        completion(.success(["ok": true, "skipped": "background"]))
+        return
+      }
     }
     // One invite reaches us up to three ways: web Realtime (`ChatCallProvider`), the
     // foreground APNs alert banner (`willPresent`), and the PushKit VoIP ring.
-    // Dedupe only after CallKit accepted the first report.
+    // Dedupe only after CallKit accepted the first report. PushKit must still
+    // call reportNewIncomingCall on this wake if nothing was accepted yet.
     if !trimmedCallId.isEmpty,
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
       if acceptedIncomingUUIDs.contains(existing) {
+        if fromPushKit {
+          // Same invite, already on CallKit. Still must call
+          // reportNewIncomingCall in this wake or iOS starts dropping VoIP.
+          NSLog("EdgeCallKit PushKit: re-report accepted callId=\(trimmedCallId) uuid=\(existing.uuidString)")
+          let replay = CXCallUpdate()
+          if let meta = calls[existing] {
+            replay.remoteHandle = CXHandle(type: .generic, value: meta.callerName)
+            replay.localizedCallerName = meta.callerName
+            replay.hasVideo = meta.hasVideo
+            replay.supportsDTMF = false
+            replay.supportsHolding = false
+            replay.supportsGrouping = false
+            replay.supportsUngrouping = false
+          }
+          provider.reportNewIncomingCall(with: existing, update: replay) { error in
+            if let error {
+              NSLog("EdgeCallKit PushKit re-report: \(error.localizedDescription)")
+            }
+            EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+            completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
+          }
+          return
+        }
+        NSLog("EdgeCallKit dedupe accepted callId=\(trimmedCallId) uuid=\(existing.uuidString)")
         EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
         completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
         return
       }
       if fromPushKit {
-        // JS already started a report that has not been accepted. Do not mint
-        // a second UUID (maximumCallGroups = 1 would fail the VoIP report).
-        completion(.success([
-          "ok": true,
-          "uuid": existing.uuidString.lowercased(),
-          "pending": true,
-        ]))
-        return
+        // JS/APNs inserted a row that CallKit never accepted. Completing this
+        // wake without a report is how iOS delays the next VoIP. Drop the
+        // leftover and report for real.
+        NSLog("EdgeCallKit PushKit: dropping unaccepted leftover \(existing.uuidString) for \(trimmedCallId)")
+        provider.reportCall(with: existing, endedAt: Date(), reason: .failed)
+        calls.removeValue(forKey: existing)
+        acceptedIncomingUUIDs.remove(existing)
       }
     }
     let uuid = Self.uuid(from: uuidString) ?? UUID()
@@ -421,14 +462,16 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     update.supportsGrouping = false
     update.supportsUngrouping = false
 
+    NSLog("EdgeCallKit reportNewIncomingCall uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit) state=\(Self.applicationStateLabel(appState))")
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
       if let error {
-        NSLog("EdgeCallKit reportNewIncomingCall failed: \(error.localizedDescription)")
+        NSLog("EdgeCallKit reportNewIncomingCall failed: \(error.localizedDescription) uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit)")
         self.calls.removeValue(forKey: uuid)
         self.acceptedIncomingUUIDs.remove(uuid)
         completion(.failure(error))
         return
       }
+      NSLog("EdgeCallKit reportNewIncomingCall accepted uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit)")
       self.acceptedIncomingUUIDs.insert(uuid)
       EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
       // CallKit is now the ring UI. Drop the sibling APNs "X is calling you" card so
@@ -487,6 +530,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
     answeredUUIDs.removeAll()
     acceptedIncomingUUIDs.removeAll()
+    voipPushInFlight = false
     mediaConnected = false
     pendingCallReveal = false
     didRevealCallThisAnswer = false
@@ -588,33 +632,33 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       completion()
       return
     }
+    voipPushInFlight = true
     let userInfo = payload.dictionaryPayload
-    let callId = (userInfo["chatCallId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    let roomId = (userInfo["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    let callerName = (userInfo["callerName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Incoming call"
+    let keys = userInfo.keys.map { String(describing: $0) }.sorted().joined(separator: ",")
+    let callId = Self.payloadString(userInfo, keys: ["chatCallId", "chat_call_id", "callId"])
+    let roomId = Self.payloadString(userInfo, keys: ["roomId", "room_id", "room"])
+    let callerName = Self.payloadString(userInfo, keys: ["callerName", "caller_name"])
     let hasVideo = (userInfo["hasVideo"] as? Bool) ?? false
+    let state = Self.applicationStateLabel(UIApplication.shared.applicationState)
+    NSLog("EdgeCallKit PushKit received callId=\(callId.isEmpty ? "<empty>" : callId) roomId=\(roomId) caller=\(callerName) hasVideo=\(hasVideo) state=\(state) keys=\(keys)")
 
-    if callId.isEmpty {
-      // iOS stops delivering VoIP if we complete a PushKit wake without a
-      // CallKit report. Show a placeholder, then drop it.
-      let placeholder = UUID()
-      let update = CXCallUpdate()
-      update.localizedCallerName = callerName
-      provider.reportNewIncomingCall(with: placeholder, update: update) { [weak self] _ in
-        self?.provider.reportCall(with: placeholder, endedAt: Date(), reason: .failed)
-        completion()
-      }
-      return
-    }
-
+    // Empty chatCallId still has to become a real incoming report. Flash-fail
+    // looks like silence and still teaches iOS we "handled" the wake.
     reportIncomingCall(
       uuidString: nil,
       callId: callId,
       roomId: roomId,
-      handle: callerName,
+      handle: callerName.isEmpty ? "Incoming call" : callerName,
       hasVideo: hasVideo,
       fromPushKit: true
-    ) { _ in
+    ) { result in
+      switch result {
+      case .success(let payload):
+        NSLog("EdgeCallKit PushKit report finished ok payload=\(payload)")
+      case .failure(let error):
+        NSLog("EdgeCallKit PushKit report failed: \(error.localizedDescription)")
+      }
+      self.voipPushInFlight = false
       completion()
     }
   }
@@ -625,6 +669,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     calls.removeAll()
     answeredUUIDs.removeAll()
     acceptedIncomingUUIDs.removeAll()
+    voipPushInFlight = false
     mediaConnected = false
     pendingCallReveal = false
     didRevealCallThisAnswer = false
@@ -754,6 +799,25 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       }
     }
     return name.isEmpty ? "Incoming call" : name
+  }
+
+  private static func applicationStateLabel(_ state: UIApplication.State) -> String {
+    switch state {
+    case .active: return "active"
+    case .inactive: return "inactive"
+    case .background: return "background"
+    @unknown default: return "unknown"
+    }
+  }
+
+  private static func payloadString(_ userInfo: [AnyHashable: Any], keys: [String]) -> String {
+    for key in keys {
+      if let value = userInfo[key] as? String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+      }
+    }
+    return ""
   }
 
   private static func uuid(from raw: String?) -> UUID? {

@@ -101,6 +101,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** In-focus CallKit works. Background still silence after reboot + fresh voip token. Leftover CallKit is off the table. Test `lounge-send-activity-push` now sends the invite alert even when VoIP HTTP 200 (diagnostic). No IPA rebuild. Prod Edge not touched.
 
+### Mac Theo 2026-08-27 … PushKit must report on every VoIP wake
+
+**I am Mac Theo.** Wife's phone is out (not Edge Lord). Dead path is PushKit while Edge is on the home screen. Completing a VoIP wake without `reportNewIncomingCall` (the `pending` leftover, or JS stealing a wake that looked `.active`) is how iOS stops delivering later VoIP. Native now reports in every PushKit callback, skips JS while `voipPushInFlight`, and does not flash-fail an empty `chatCallId`. Rebuild **EdgeTilt Test Fast**. Smoke: phone on home screen, do **not** tap the invite banner, CallKit should show by itself. Watch Xcode for `EdgeCallKit PushKit received`. Prod Edge not touched.
+
 ### Latest tips
 
 | Branch | Tip | Note |

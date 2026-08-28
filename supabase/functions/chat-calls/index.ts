@@ -244,7 +244,27 @@ async function enqueueCallInvitePush(
   callId: string,
   actorId: string,
   recipientIds: string[],
+  callerName?: string,
+  hasVideo?: boolean,
 ) {
+  // Fire direct PushKit VoIP invite immediately for sub-second ring even when app is closed.
+  if (recipientIds.length > 0) {
+    try {
+      await Promise.allSettled(
+        recipientIds.map((uid) =>
+          sendVoipApnsToUser(admin, uid, {
+            chatCallId: callId,
+            eventType: 'chat_call_invite',
+            roomId,
+            callerName: callerName || 'Incoming call',
+            hasVideo: Boolean(hasVideo),
+          }),
+        ),
+      )
+    } catch (err) {
+      console.warn('chat-calls: direct voip invite push failed', err)
+    }
+  }
   return enqueueCallActivityPush(admin, roomId, callId, actorId, recipientIds, 'chat_call_invite')
 }
 
@@ -548,7 +568,7 @@ async function finalizeOutgoingCall(args: {
   }
 
   const recipients = await listMemberIds(admin, roomId, userId)
-  await enqueueCallInvitePush(admin, roomId, call.id, userId, recipients)
+  await enqueueCallInvitePush(admin, roomId, call.id, userId, recipients, displayName, call.kind === 'video')
   return { ok: true, call, livekit_url: lk.url, token }
 }
 

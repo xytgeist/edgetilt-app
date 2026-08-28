@@ -282,7 +282,6 @@ async function postVoipApns(
     'apns-topic': topic,
     'apns-push-type': 'voip',
     'apns-priority': '10',
-    'apns-expiration': '0',
     'content-type': 'application/json',
   }
   const body: Record<string, unknown> = {

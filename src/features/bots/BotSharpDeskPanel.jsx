@@ -7,10 +7,22 @@ import {
 } from './botPortalApi.js'
 
 const PICKER_METAS = {
-  Scott: { title: 'The Model', badge: 'bg-emerald-950/70 text-emerald-300 ring-emerald-500/30' },
-  Rocco: { title: 'Vegas Spreads', badge: 'bg-blue-950/70 text-blue-300 ring-blue-500/30' },
-  Chedda: { title: 'Moneyline & Dogs', badge: 'bg-amber-950/70 text-amber-300 ring-amber-500/30' },
-  Tank: { title: 'Totals & Primetime', badge: 'bg-purple-950/70 text-purple-300 ring-purple-500/30' },
+  Scott: {
+    title: 'The Model',
+    badge: 'bg-emerald-950/70 text-emerald-300 ring-emerald-500/30',
+  },
+  Rocco: {
+    title: 'Vegas Spreads',
+    badge: 'bg-blue-950/70 text-blue-300 ring-blue-500/30',
+  },
+  Chedda: {
+    title: 'Moneyline & Dogs',
+    badge: 'bg-amber-950/70 text-amber-300 ring-amber-500/30',
+  },
+  Tank: {
+    title: 'Totals & Primetime',
+    badge: 'bg-purple-950/70 text-purple-300 ring-purple-500/30',
+  },
 }
 
 export function BotSharpDeskPanel({

@@ -10219,6 +10219,71 @@ html.light [data-bot-portal] .bg-black\/70 {
   background-color: rgba(0, 0, 0, 0.45) !important;
 }
 
+/* Sharp Syndicate Desk light mode rules */
+html.light [data-bot-portal] .bg-amber-950\/15 {
+  background-color: rgba(254, 243, 199, 0.5) !important;
+}
+html.light [data-bot-portal] .border-amber-500\/30 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+html.light [data-bot-portal] .bg-amber-500\/20 {
+  background-color: rgba(254, 215, 170, 0.8) !important;
+}
+html.light [data-bot-portal] .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light [data-bot-portal] .ring-amber-500\/40 {
+  --tw-ring-color: rgba(245, 158, 11, 0.4) !important;
+}
+html.light [data-bot-portal] .bg-blue-950\/70 {
+  background-color: rgba(219, 234, 254, 0.9) !important;
+}
+html.light [data-bot-portal] .text-blue-300 {
+  color: #1d4ed8 !important;
+}
+html.light [data-bot-portal] .ring-blue-500\/30 {
+  --tw-ring-color: rgba(59, 130, 246, 0.35) !important;
+}
+html.light [data-bot-portal] .bg-purple-950\/70 {
+  background-color: rgba(243, 232, 255, 0.9) !important;
+}
+html.light [data-bot-portal] .text-purple-300 {
+  color: #7e22ce !important;
+}
+html.light [data-bot-portal] .ring-purple-500\/30 {
+  --tw-ring-color: rgba(168, 85, 247, 0.35) !important;
+}
+html.light [data-bot-portal] .bg-emerald-950\/70 {
+  background-color: rgba(220, 252, 231, 0.9) !important;
+}
+html.light [data-bot-portal] .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light [data-bot-portal] .ring-emerald-500\/30 {
+  --tw-ring-color: rgba(16, 185, 129, 0.35) !important;
+}
+html.light [data-bot-portal] .bg-amber-950\/70 {
+  background-color: rgba(254, 243, 199, 0.9) !important;
+}
+html.light [data-bot-portal] .text-emerald-400 {
+  color: #047857 !important;
+}
+html.light [data-bot-portal] .text-rose-400 {
+  color: #dc2626 !important;
+}
+html.light [data-bot-portal] .bg-emerald-950\/80 {
+  background-color: rgba(220, 252, 231, 0.9) !important;
+}
+html.light [data-bot-portal] .bg-rose-950\/80 {
+  background-color: rgba(254, 226, 226, 0.9) !important;
+}
+html.light [data-bot-portal] .text-rose-300 {
+  color: #dc2626 !important;
+}
+html.light [data-bot-portal] .ring-rose-500\/40 {
+  --tw-ring-color: rgba(239, 68, 68, 0.35) !important;
+}
+
 /* Affiliates portal — light mode (/?tab=affiliates, /?tab=creator). Dark default unchanged. */
 html.light [data-affiliates-portal] .text-white:not([class*="bg-"]):not([class*="from-"]) {
   color: #18181b !important;

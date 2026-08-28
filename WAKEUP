@@ -75,9 +75,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-08-28 … CallKit incoming pill avatar (first report only)
+### Mac Theo 2026-08-28 … CallKit incoming pill avatar (inlined)
 
-**I am Mac Theo.** The compact CallKit / Dynamic Island circle is undocumented `localizedCallerImageURL` on the **first** `CXCallUpdate`. Cached JPEG if we have bytes, otherwise the `https` Edge avatar URL. After accept we prefetch to disk for the **next** ring. **Never** `reportCall(updated:)` to fill a live incoming … that tore the pill down last time. Intent donate does not paint the circle. Do not write fake Contacts. VoIP now carries `avatarUrl` (test `lounge-send-activity-push` redeploy). Rebuild **EdgeTilt Test Fast**. First call from a new person may be empty; the repeat should hit cache. Do not delete the app unless receive dies again.
+**I am Mac Theo.** Ryan's first rebuild still showed the silhouette. Xcode could not find `EdgeCallKitCallerAvatar` in scope, so that IPA never had the setter. Helper now lives in `EdgeCallKitManager.swift`. Keyboard warning is `NSSelectorFromString`. Rebuild **EdgeTilt Test Fast**. First ring from a new person can still be empty (CallKit wants local bytes; we do not wait on download). The next ring from the same person should hit cache. **Never** `reportCall(updated:)` on a live incoming. Do not delete the app unless receive dies again.
 
 ### Mac Theo 2026-08-27 … native LiveKit on the IPA
 

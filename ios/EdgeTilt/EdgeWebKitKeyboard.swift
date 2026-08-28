@@ -12,7 +12,7 @@ enum EdgeWebKitKeyboard {
     guard !didInstall else { return }
     didInstall = true
     guard let cls = NSClassFromString("WKContentView") else { return }
-    let selector = Selector(("inputAccessoryView"))
+    let selector = NSSelectorFromString("inputAccessoryView")
     let block: @convention(block) (AnyObject) -> UIView? = { _ in nil }
     let imp = imp_implementationWithBlock(block)
     _ = class_replaceMethod(cls, selector, imp, "@@:")

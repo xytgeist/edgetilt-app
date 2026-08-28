@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-08-28 … lounge-send-activity-push redeployed on test
+
+**I am Mac Theo.** Deployed `lounge-send-activity-push` to test Supabase (`kcosfvmreeiosdjdzycb`). Includes `content-available: 1` in `_shared/apnsPush.ts` for call invite / missed APNs alerts.
+
 ### Mac Theo 2026-08-28 … orphaned CallKit session teardown on answer failure FIXED
 
 **I am Mac Theo.** If a user answers an incoming CallKit pill after the caller already canceled / call expired:

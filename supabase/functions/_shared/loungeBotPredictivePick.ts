@@ -93,24 +93,55 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
 }
 
 /**
+ * Filter and validate candidate picks to eliminate extreme price outliers
+ * (e.g. +1500 longshot flukes or -800 massive favorites) so all picks
+ * reflect realistic, sharp betting selections.
+ */
+export function filterPredictiveCandidates(candidates: OddsPick[]): OddsPick[] {
+  if (!Array.isArray(candidates)) return []
+  return candidates.filter((pick) => {
+    const price = Number(pick.pickPrice)
+    if (!Number.isFinite(price) || price === 0) return false
+
+    // Spreads / Runlines: Standard betting juice (-135 to +115)
+    if (pick.marketKey === 'spreads') {
+      return price >= -135 && price <= 115
+    }
+
+    // Totals: Standard Over/Under juice (-125 to +110)
+    if (pick.marketKey === 'totals') {
+      return price >= -125 && price <= 110
+    }
+
+    // Moneylines: Realistic range (-220 to +260) — no wild +1500 longshots
+    if (pick.marketKey === 'h2h') {
+      return price >= -220 && price <= 260
+    }
+
+    return price >= -220 && price <= 260
+  })
+}
+
+/**
  * Classify a candidate pick to its best-matching Sharp Syndicate persona.
  *
- * Chedda: Moneyline underdog (+115 to +350)
- * Rocco: Spread & Runlines with solid juice
- * Tank: Totals (Over/Under) or primetime heavy spots
- * Scott: High EV / model baseline play
+ * Chedda: Moneyline underdog (+110 to +260)
+ * Rocco: Spread & Runlines with solid juice (-135 to +115)
+ * Tank: Totals (Over/Under) (-125 to +110)
+ * Scott: High EV / model baseline play (-200 to +160)
  */
 export function classifyPickPersona(pick: OddsPick): SharpPicker {
-  // Chedda: Plus-money underdogs
-  if (pick.marketKey === 'h2h' && pick.pickPrice >= 115 && pick.pickPrice <= 350) {
+  const price = Number(pick.pickPrice) || 0
+  // Chedda: Realistic plus-money underdogs
+  if (pick.marketKey === 'h2h' && price >= 110 && price <= 260) {
     return 'Chedda'
   }
   // Tank: Game totals (Over/Under)
-  if (pick.marketKey === 'totals') {
+  if (pick.marketKey === 'totals' && price >= -125 && price <= 110) {
     return 'Tank'
   }
   // Rocco: Spreads / runlines
-  if (pick.marketKey === 'spreads') {
+  if (pick.marketKey === 'spreads' && price >= -135 && price <= 115) {
     return 'Rocco'
   }
   // Scott: Pure model / EV baseline
@@ -125,41 +156,42 @@ export function buildSyndicateCard(
   candidates: OddsPick[],
   opts: { cardTitle?: string } = {},
 ): { cardTitle: string; picks: SinglePickerPick[] } | null {
-  if (!candidates || candidates.length === 0) return null
+  const valid = filterPredictiveCandidates(candidates)
+  if (!valid || valid.length === 0) return null
 
   const usedEventIds = new Set<string>()
   const assignedPicks: SinglePickerPick[] = []
 
-  // 1. Find Chedda (Plus-money dog)
-  const cheddaCand = candidates.find(
-    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'h2h' && p.pickPrice >= 115,
+  // 1. Find Chedda (Plus-money dog: +110 to +260)
+  const cheddaCand = valid.find(
+    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'h2h' && p.pickPrice >= 110 && p.pickPrice <= 260,
   )
   if (cheddaCand) {
     assignedPicks.push({ pickerName: 'Chedda', pick: cheddaCand })
     usedEventIds.add(cheddaCand.eventId)
   }
 
-  // 2. Find Tank (Totals)
-  const tankCand = candidates.find(
-    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'totals',
+  // 2. Find Tank (Totals: -125 to +110)
+  const tankCand = valid.find(
+    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'totals' && p.pickPrice >= -125 && p.pickPrice <= 110,
   )
   if (tankCand) {
     assignedPicks.push({ pickerName: 'Tank', pick: tankCand })
     usedEventIds.add(tankCand.eventId)
   }
 
-  // 3. Find Rocco (Spreads)
-  const roccoCand = candidates.find(
-    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'spreads',
+  // 3. Find Rocco (Spreads: -135 to +115)
+  const roccoCand = valid.find(
+    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'spreads' && p.pickPrice >= -135 && p.pickPrice <= 115,
   )
   if (roccoCand) {
     assignedPicks.push({ pickerName: 'Rocco', pick: roccoCand })
     usedEventIds.add(roccoCand.eventId)
   }
 
-  // 4. Find Scott (Top EV remaining)
-  const scottCand = candidates.find(
-    (p) => !usedEventIds.has(p.eventId),
+  // 4. Find Scott (Top EV remaining: -200 to +160)
+  const scottCand = valid.find(
+    (p) => !usedEventIds.has(p.eventId) && p.pickPrice >= -200 && p.pickPrice <= 160,
   )
   if (scottCand) {
     assignedPicks.push({ pickerName: 'Scott', pick: scottCand })

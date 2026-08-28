@@ -12,9 +12,7 @@ import {
   DEFAULT_MIN_EV_PCT,
 } from '../_shared/loungeBotOddsCaption.ts'
 import {
-  formatPredictivePickCaption,
   gradePendingPicks,
-  publishAndRecordPredictivePick,
 } from '../_shared/loungeBotPredictivePick.ts'
 import { generateCoffeeAndCovers } from '../_shared/loungeBotCoffeeAndCovers.ts'
 import {

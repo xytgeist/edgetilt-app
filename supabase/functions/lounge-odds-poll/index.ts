@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
       const {
         buildSyndicateCard,
         classifyPickPersona,
+        filterPredictiveCandidates,
         publishAndRecordPicks,
       } = await import('../_shared/loungeBotPredictivePick.ts')
       const { findPlusEvOpportunities } = await import('../_shared/loungeBotOddsCaption.ts')
@@ -180,8 +181,9 @@ Deno.serve(async (req) => {
       for (const sk of targetSport) {
         try {
           const oddsData = await fetchSportOdds(sk, ['us'], ['h2h', 'spreads', 'totals'])
-          const opps = findPlusEvOpportunities(oddsData.events, 1.5, 30.0)
-          allCandidates.push(...opps)
+          const opps = findPlusEvOpportunities(oddsData.events, sk, { minEvPct: 0.5, maxEvPct: 20.0 })
+          const filtered = filterPredictiveCandidates(opps)
+          allCandidates.push(...filtered)
         } catch (e) {
           console.warn(`Predictive pick scan error for ${sk}:`, e)
         }

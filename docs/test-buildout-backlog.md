@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-28: **CallKit incoming pill avatar is first-report only (Mac).** `localizedCallerImageURL` on the first `CXCallUpdate` from VoIP / JS `https` `avatarUrl` (cached JPEG if we have bytes). Never `reportCall(updated:)` on a live incoming. Prefetch is disk-only for the next ring. VoIP payload now includes `avatarUrl` from `profiles.avatar_url`. Rebuild IPA + redeploy test `lounge-send-activity-push`. Prod Edge not touched.
+
 - 2026-08-28: **Home-screen CallKit receive PASSED (Mac, Ryan).** Deleted the blacklisted install, installed `32c0be35`, icon launch, backgrounded. Theo Mac → Edge Lord. CallKit pill showed without tapping the APNs banner. In-focus was already proven. Prod Edge not touched.
 
 - 2026-08-27: **Apple 200 / phone nothing on VoIP (Mac).** Diagnostic push to the live sandbox token returned 200 on `com.edgetilt.app.voip`. No CallKit, including after home-screen icon launch. iOS dropped the wake for this install after tonight's incomplete VoIP reports. Reboot was not enough. PushKit registry now starts first in `didFinishLaunching`. **Delete the app, then install clean.** Prod Edge not touched.

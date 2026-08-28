@@ -14,6 +14,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let roomId: String
     let hasVideo: Bool
     let callerName: String
+    let avatarUrl: String?
   }
 
   private let provider: CXProvider
@@ -257,7 +258,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       callId: old.callId,
       roomId: resolvedRoom,
       hasVideo: hasVideo ?? old.hasVideo,
-      callerName: old.callerName
+      callerName: old.callerName,
+      avatarUrl: old.avatarUrl
     )
     let roomFilled = old.roomId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && !resolvedRoom.isEmpty
@@ -382,6 +384,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     roomId: String,
     handle: String,
     hasVideo: Bool,
+    avatarUrl: String? = nil,
     fromPushKit: Bool = false,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
@@ -426,6 +429,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
             replay.supportsHolding = false
             replay.supportsGrouping = false
             replay.supportsUngrouping = false
+            EdgeCallKitCallerAvatar.applyToCallUpdate(
+              replay,
+              avatarUrl: avatarUrl ?? meta.avatarUrl
+            )
           }
           provider.reportNewIncomingCall(with: existing, update: replay) { error in
             if let error {
@@ -438,6 +445,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         }
         NSLog("EdgeCallKit dedupe accepted callId=\(trimmedCallId) uuid=\(existing.uuidString)")
         EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+        // Do not reportCall(updated:) here. That tore the live pill down.
+        EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
         completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
         return
       }
@@ -453,11 +462,13 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
     let uuid = Self.uuid(from: uuidString) ?? UUID()
     let callerName = Self.sanitizedCallerName(handle)
+    let resolvedAvatar = EdgeCallKitCallerAvatar.httpsURL(avatarUrl)?.absoluteString
     let meta = CallMeta(
       callId: trimmedCallId,
       roomId: roomId,
       hasVideo: hasVideo,
-      callerName: callerName
+      callerName: callerName,
+      avatarUrl: resolvedAvatar
     )
     calls[uuid] = meta
 
@@ -469,6 +480,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     update.supportsHolding = false
     update.supportsGrouping = false
     update.supportsUngrouping = false
+    EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: resolvedAvatar)
 
     NSLog("EdgeCallKit reportNewIncomingCall uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit) state=\(Self.applicationStateLabel(appState))")
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
@@ -481,6 +493,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       }
       NSLog("EdgeCallKit reportNewIncomingCall accepted uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit)")
       self.acceptedIncomingUUIDs.insert(uuid)
+      EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: resolvedAvatar)
       EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
       // CallKit is now the ring UI. Drop the sibling APNs "X is calling you" card so
       // it does not sit on the lock screen / banner after the user answers.
@@ -561,7 +574,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       callId: trimmedCallId,
       roomId: roomId,
       hasVideo: hasVideo,
-      callerName: callerName
+      callerName: callerName,
+      avatarUrl: nil
     )
     answeredUUIDs.insert(uuid)
     beginCallBackgroundTask()
@@ -605,12 +619,15 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let body = ((userInfo["aps"] as? [String: Any])?["alert"] as? [String: Any])?["body"] as? String
     let callerName = String(body ?? title ?? "Incoming call")
 
+    let avatarUrl = (userInfo["avatarUrl"] as? String)
+      ?? (userInfo["avatar_url"] as? String)
     reportIncomingCall(
       uuidString: nil,
       callId: callId,
       roomId: roomId,
       handle: callerName,
-      hasVideo: false
+      hasVideo: false,
+      avatarUrl: avatarUrl
     ) { _ in }
   }
 
@@ -647,9 +664,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let callId = Self.payloadString(userInfo, keys: ["chatCallId", "chat_call_id", "callId"])
     let roomId = Self.payloadString(userInfo, keys: ["roomId", "room_id", "room"])
     let callerName = Self.payloadString(userInfo, keys: ["callerName", "caller_name"])
+    let avatarUrl = Self.payloadString(userInfo, keys: ["avatarUrl", "avatar_url"])
     let hasVideo = (userInfo["hasVideo"] as? Bool) ?? false
     let state = Self.applicationStateLabel(UIApplication.shared.applicationState)
-    NSLog("EdgeCallKit PushKit received callId=\(callId.isEmpty ? "<empty>" : callId) roomId=\(roomId) caller=\(callerName) hasVideo=\(hasVideo) state=\(state) keys=\(keys)")
+    NSLog("EdgeCallKit PushKit received callId=\(callId.isEmpty ? "<empty>" : callId) roomId=\(roomId) caller=\(callerName) hasVideo=\(hasVideo) avatar=\(avatarUrl.isEmpty ? "<none>" : "yes") state=\(state) keys=\(keys)")
 
     // Empty chatCallId still has to become a real incoming report. Flash-fail
     // looks like silence and still teaches iOS we "handled" the wake.
@@ -659,6 +677,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       roomId: roomId,
       handle: callerName.isEmpty ? "Incoming call" : callerName,
       hasVideo: hasVideo,
+      avatarUrl: avatarUrl.isEmpty ? nil : avatarUrl,
       fromPushKit: true
     ) { result in
       switch result {

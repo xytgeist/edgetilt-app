@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` tip @ **`06475ce3`**. `main` @ **`a0ae9241`**. Always match `origin/test` before edits ... dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (CallKit avatar first-report cut; match `origin/test` before edits). `main` @ **`a0ae9241`**. Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -74,6 +74,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 3. **Bridge:** new `window.EdgeNative.*` names go in the bridge contract **before** coding both sides. Stub one side first.
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
+
+### Mac Theo 2026-08-28 … CallKit incoming pill avatar (first report only)
+
+**I am Mac Theo.** The compact CallKit / Dynamic Island circle is undocumented `localizedCallerImageURL` on the **first** `CXCallUpdate`. Cached JPEG if we have bytes, otherwise the `https` Edge avatar URL. After accept we prefetch to disk for the **next** ring. **Never** `reportCall(updated:)` to fill a live incoming … that tore the pill down last time. Intent donate does not paint the circle. Do not write fake Contacts. VoIP now carries `avatarUrl` (test `lounge-send-activity-push` redeploy). Rebuild **EdgeTilt Test Fast**. First call from a new person may be empty; the repeat should hit cache. Do not delete the app unless receive dies again.
 
 ### Mac Theo 2026-08-27 … native LiveKit on the IPA
 

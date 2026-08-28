@@ -1069,7 +1069,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-27: **Lounge video peek on Android extended comments sheet (`test`):**
+- 2026-08-27: **Lounge video peek on Android extended comments sheet (`test`, verified by Ryan):**
   - **Root cause:** On Android, when the keyboard appeared while the comments sheet was extended, `window.resize` triggered `LoungePostStreamVideo.jsx`'s `applyHeroViewportLayout()` to recompute `heroLayout` from the shrunken keyboard viewport (`window.innerHeight`), while `loungeLightboxDetailSheet.js` continued applying peek GPU transform relative to the full-screen baseline. This caused the video flyout to be positioned offscreen (negative top offset).
   - **Fix:** `applyHeroViewportLayout()` in `LoungePostStreamVideo.jsx` now guards against re-layout while `data-lounge-detail-over-lightbox` is active, and `readPeekMediaLayoutBox()` in `loungeLightboxDetailSheet.js` prioritizes the captured baseline box (`cachedPeekMediaBox`) so video dimensions remain stable during sheet expansion and keyboard transitions.
 

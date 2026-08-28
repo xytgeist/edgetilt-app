@@ -43,7 +43,7 @@ export default function LoungeEdgeProBadge({ isEdgePro, size = 'feed' }) {
     <LoungeBadgeHoverTip tip="Verified Subscriber" tone="pro" className={tipClass}>
       <span
         data-edge-pro-badge=""
-        className="inline-flex items-center text-teal-400 hover:brightness-110 transition-[filter]"
+        className="inline-flex items-center text-[#06cefc] hover:brightness-110 transition-[filter]"
         role="img"
         aria-label="Verified Subscriber"
       >

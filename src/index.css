@@ -738,8 +738,8 @@ html:not(.light) [data-lounge-badge-tip-tone="mod"] {
   filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.65)) !important;
 }
 html:not(.light) [data-lounge-badge-tip-tone="pro"] {
-  color: #2dd4bf !important;
-  filter: drop-shadow(0 0 6px rgba(45, 212, 191, 0.65)) !important;
+  color: #06cefc !important;
+  filter: drop-shadow(0 0 6px rgba(6, 206, 252, 0.65)) !important;
 }
 
 html.light [data-lounge-badge-tip-tone="og"] {

@@ -514,15 +514,19 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   ) {
     let uuid = resolveUUID(uuidString: uuidString, callId: callId)
     guard let uuid else {
-      completion(.success(["ok": false]))
+      if !calls.isEmpty {
+        endAllCalls()
+      }
+      completion(.success(["ok": true]))
       return
     }
     // Remote hangup must not go through CXEndCallAction. That path looks like a
-    // local decline and can re-enter JS. reportCall(.remoteEnded) is the CallKit
+    // local decline and can re-enter JS. reportCall(.remoteEnded / .unanswered) is the CallKit
     // API for "the other side hung up" and is what actually clears a lock-screen
     // in-call UI when the web session is already gone.
     if reason == "remote" {
       EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
+      let wasAnswered = answeredUUIDs.contains(uuid)
       calls.removeValue(forKey: uuid)
       answeredUUIDs.remove(uuid)
       acceptedIncomingUUIDs.remove(uuid)
@@ -530,7 +534,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       pendingCallReveal = false
       didRevealCallThisAnswer = false
       stopUnlockPoll()
-      provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
+      provider.reportCall(with: uuid, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
       if calls.isEmpty { endCallBackgroundTask() }
       EdgeAudioSession.apply(mode: "default") { _ in }
       completion(.success(["ok": true]))
@@ -548,12 +552,11 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   }
 
   func endAllCalls() {
-    for uuid in Array(calls.keys) {
-      calls.removeValue(forKey: uuid)
-      answeredUUIDs.remove(uuid)
-      acceptedIncomingUUIDs.remove(uuid)
-      provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
+    for (uuid, _) in calls {
+      let wasAnswered = answeredUUIDs.contains(uuid)
+      provider.reportCall(with: uuid, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
     }
+    calls.removeAll()
     answeredUUIDs.removeAll()
     acceptedIncomingUUIDs.removeAll()
     voipPushInFlight = false
@@ -813,14 +816,17 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   // MARK: - Helpers
 
   private func resolveUUID(uuidString: String?, callId: String?) -> UUID? {
-    if let uuidString, let uuid = Self.uuid(from: uuidString) {
+    if let uuidString, let uuid = Self.uuid(from: uuidString), calls.keys.contains(uuid) {
       return uuid
     }
     let trimmedCallId = callId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     if !trimmedCallId.isEmpty {
-      // Named a specific call, so never fall through to an arbitrary one: hanging up
-      // call B must not tear down call A. `endAllCalls()` is the blanket teardown.
-      return calls.first(where: { $0.value.callId == trimmedCallId })?.key
+      if let matched = calls.first(where: { $0.value.callId.caseInsensitiveCompare(trimmedCallId) == .orderedSame })?.key {
+        return matched
+      }
+      if let uuidMatch = Self.uuid(from: trimmedCallId), calls.keys.contains(uuidMatch) {
+        return uuidMatch
+      }
     }
     return calls.keys.first
   }

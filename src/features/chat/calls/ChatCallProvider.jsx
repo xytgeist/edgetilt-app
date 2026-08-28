@@ -391,6 +391,32 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, viewerUserId])
 
+  // Active ring watcher: poll call status every 1.5s while ringing so caller cancellations
+  // dismiss incoming UI and CallKit immediately even if Realtime / WebSockets blip.
+  useEffect(() => {
+    if (!supabaseClient || !incoming?.callId) return undefined
+    let cancelled = false
+    const callId = incoming.callId
+    const checkStatus = async () => {
+      try {
+        const res = await chatGetCall(supabaseClient, callId)
+        const call = res?.call
+        if (cancelled) return
+        if (!call || ['ended', 'missed', 'declined'].includes(call.status)) {
+          setIncoming((prev) => (prev?.callId === callId ? null : prev))
+          void endEdgeNativeCall({ callId, reason: 'remote' })
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    const interval = window.setInterval(() => void checkStatus(), 1500)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [supabaseClient, incoming?.callId])
+
   // App-wide Realtime invites (provider should live above ChatTab so any screen rings).
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return undefined

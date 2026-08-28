@@ -8,11 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		0A3440AB6B3037B0FEACE28C /* EdgeSafeAreaInsets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */; };
+		136F8453907246F1C3A1659D /* EdgeLiveKitCallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */; };
 		2EDAB0E529026EF8B5FEA532 /* EdgeHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF0D9AEF6D31B7874CAA6351 /* EdgeHaptics.swift */; };
 		32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B884711901FA09324B73CC22 /* EdgeWebView.swift */; };
 		3593289FFB5610CB78E87E2E /* EdgeWebKitKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D77BF9A686EB3B073BF18F1F /* EdgeWebKitKeyboard.swift */; };
 		372BD0A547F59438BBEB1FBD /* EdgeStoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526333C3005807423630ED4B /* EdgeStoreKitManager.swift */; };
+		4692A786C3A57924F6D498C0 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 35819675B2946813E5C387BF /* LiveKit */; };
 		56164041B61C9D93975189F6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */; };
+		5B2D8E14A7C3906F1D4E5A9B /* EdgeCallKitAvatarApply.m in Sources */ = {isa = PBXBuildFile; fileRef = 3E9A1C70B4D2581F90A6C2E8 /* EdgeCallKitAvatarApply.m */; };
 		68F8BF1FBC1EB0AFD22AFBE2 /* EdgeTiltApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6599ECB5DCF6CEC356D7960 /* EdgeTiltApp.swift */; };
 		8082591BEFAB79FE461FFDD5 /* EdgeNativeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */; };
 		9980D8DAF4E53F6C0DF750A5 /* EdgeAudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */; };
@@ -22,12 +25,9 @@
 		BD77B93B3B8FE0B930A6B235 /* EdgePushManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */; };
 		C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */; };
 		D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */; };
-		5B2D8E14A7C3906F1D4E5A9B /* EdgeCallKitAvatarApply.m in Sources */ = {isa = PBXBuildFile; fileRef = 3E9A1C70B4D2581F90A6C2E8 /* EdgeCallKitAvatarApply.m */; };
 		D92B401F5C3E02B78F6D2159 /* EdgeAuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */; };
 		EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */; };
 		F14D62317E5024D9A18F437B /* EdgeChatCallsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */; };
-		136F8453907246F1C3A1659D /* EdgeLiveKitCallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */; };
-		4692A786C3A57924F6D498C0 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = 35819675B2946813E5C387BF /* LiveKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,12 +36,12 @@
 		15C1B2458EAAC3EEFB381F8B /* EdgeTilt.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EdgeTilt.entitlements; sourceTree = "<group>"; };
 		1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSafeAreaInsets.swift; sourceTree = "<group>"; };
 		226468E06E598019B8166B33 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
-		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3E9A1C70B4D2581F90A6C2E8 /* EdgeCallKitAvatarApply.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EdgeCallKitAvatarApply.m; sourceTree = "<group>"; };
+		4310EE47360251D57F675AE8 /* EdgeTilt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EdgeTilt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		526333C3005807423630ED4B /* EdgeStoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeStoreKitManager.swift; sourceTree = "<group>"; };
 		636A0FF8CC23E17E467905A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgePushManager.swift; sourceTree = "<group>"; };
 		8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCallKitManager.swift; sourceTree = "<group>"; };
-		3E9A1C70B4D2581F90A6C2E8 /* EdgeCallKitAvatarApply.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EdgeCallKitAvatarApply.m; sourceTree = "<group>"; };
 		A039684E44413435F9C5696A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAudioSession.swift; sourceTree = "<group>"; };
 		A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLocationManager.swift; sourceTree = "<group>"; };
@@ -50,11 +50,22 @@
 		BF0D9AEF6D31B7874CAA6351 /* EdgeHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeHaptics.swift; sourceTree = "<group>"; };
 		C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellRootView.swift; sourceTree = "<group>"; };
 		C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAuthSessionStore.swift; sourceTree = "<group>"; };
-		E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChatCallsClient.swift; sourceTree = "<group>"; };
 		D77BF9A686EB3B073BF18F1F /* EdgeWebKitKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebKitKeyboard.swift; sourceTree = "<group>"; };
+		E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChatCallsClient.swift; sourceTree = "<group>"; };
 		EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebsiteDataHygiene.swift; sourceTree = "<group>"; };
 		F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		57A3B897D4B68A3507E5A9D1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4692A786C3A57924F6D498C0 /* LiveKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		50EDDAF85A56BC5716958FE3 = {
@@ -162,17 +173,6 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXFrameworksBuildPhase section */
-		57A3B897D4B68A3507E5A9D1 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				4692A786C3A57924F6D498C0 /* LiveKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
 /* Begin PBXResourcesBuildPhase section */
 		5B28E63BBC49DA83E18E03F4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -221,7 +221,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = EdgeTilt/EdgeTilt.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Edge can save images you capture or download to your photo library when you choose.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Edge accesses your photo library so you can attach images and videos in Lounge and Chat.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -236,6 +246,78 @@
 			};
 			name = Release;
 		};
+		3B9D6E07C41A85F2D0736C19 /* ReleaseTest */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 8932AKQW4W;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_PREVIEWS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EdgeTilt/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = ReleaseTest;
+		};
 		7C4E1A9B62D0F35814B7AE20 /* ReleaseTest */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -243,7 +325,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = EdgeTilt/EdgeTilt.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Edge can save images you capture or download to your photo library when you choose.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Edge accesses your photo library so you can attach images and videos in Lounge and Chat.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -407,78 +499,6 @@
 			};
 			name = Release;
 		};
-		3B9D6E07C41A85F2D0736C19 /* ReleaseTest */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_STYLE = Automatic;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 8932AKQW4W;
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_PREVIEWS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = EdgeTilt/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Edge;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = ReleaseTest;
-		};
 		D8FEF7F6A8CABA531C515EC3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -486,7 +506,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = EdgeTilt/EdgeTilt.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 2;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Edge uses the microphone for voice and video calls and for videos you record in Lounge or Chat.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Edge can save images you capture or download to your photo library when you choose.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Edge accesses your photo library so you can attach images and videos in Lounge and Chat.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

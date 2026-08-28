@@ -1069,7 +1069,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-08-27: **Next ring after the 1s kill was nothing (Mac).** Leftover CallKit incoming (`maximumCallGroups = 1`) and/or cached `file://` avatar on the first `CXCallUpdate`. PushKit evicts other unanswered calls locally before report. Incoming update is name-only. Rebuild owed.
+- 2026-08-27: **In-focus ring works, backgrounded does not (Mac).** JS reports when `.active`. Background is VoIP-only. Evicting every `CXCallObserver` call inside the PushKit callback was failing the incoming iOS was setting up. Evict removed. Invite APNs alert sent even when VoIP HTTP 200 (test `lounge-send-activity-push` redeploy). Rebuild owed.
+
+- 2026-08-27: **Next ring after the 1s kill was nothing (Mac).** Leftover CallKit incoming (`maximumCallGroups = 1`) and/or cached `file://` avatar on the first `CXCallUpdate`. Incoming update is name-only. Rebuild owed.
 
 - 2026-08-27: **CallKit pill lasted ~1s then vanished; caller kept ringing (Mac).** After the background-receive fix, VoIP reported, then `attachCallerAvatar` → `reportCall(updated:)` with `localizedCallerImageURL` tore the live incoming down without `decline_call`. Avatar is first-report only. Rebuild owed.
 

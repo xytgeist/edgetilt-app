@@ -101,7 +101,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** theomac rang, Edge Lord (app backgrounded) received nothing, hangup, then missed notify. Force-quit still worked earlier because JS never ran. Backgrounded WKWebView still gets Realtime, JS called `reportNewIncomingCall` outside a VoIP callback, iOS rejected it, and callId dedupe then swallowed the real PushKit report. Non-PushKit reports now skip unless `.active`.
 
-**Follow-up same night:** after that rebuild, Edge Lord received the pill for ~1s then it vanished; theomac kept ringing. Cause was `reportCall(updated:)` after the avatar fetch. Next rebuild after removing that update: **nothing**. Dead CallKit slot + cached file avatar on the first report. PushKit now evicts leftover incomings locally; incoming update is name-only. Rebuild again.
+**Follow-up same night:** after that rebuild, Edge Lord received the pill for ~1s then it vanished; theomac kept ringing. Cause was `reportCall(updated:)` after the avatar fetch. Next rebuild: nothing, then in-focus worked and backgrounded did not. The leftover evict was failing system CallKit calls inside the VoIP callback. Evict removed. Invite alert sent again (test function redeploy owed). Rebuild.
 
 ### Latest tips
 

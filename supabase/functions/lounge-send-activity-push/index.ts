@@ -731,7 +731,11 @@ async function sendPushToUser(
     sent += voip.sent
     failed += voip.failed
     removed += voip.removed
-    skipApnsAlert = voip.sent > 0
+    // Always send the invite alert too. `voip.sent` is "APNs accepted the
+    // packet," not "CallKit presented." Skipping the alert is why a
+    // backgrounded IPA got silence, then a missed notification after hangup.
+    // Foreground `willPresent` already hides this banner and routes to CallKit.
+    skipApnsAlert = false
   }
 
   let apnsReason = ''

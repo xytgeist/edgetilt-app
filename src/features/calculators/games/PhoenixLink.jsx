@@ -32,7 +32,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
   const [increment, setIncrement] = useState(1.2)
   const [avgTrigger, setAvgTrigger] = useState(1795)
   const [useMidpoint, setUseMidpoint] = useState(false)
-  const [midpointFactor, setMidpointFactor] = useState(0.50)
+  const [midpointFactor, setMidpointFactor] = useState(0.65)
   const [maxMajor, setMaxMajor] = useState(false)
   const [evAvg, setEvAvg] = useState(0)
   const [evFullRun, setEvFullRun] = useState(0)
@@ -370,17 +370,17 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
                   </div>
                   <input 
                     type="range" 
-                    min="0" 
-                    max="1" 
+                    min="0.50" 
+                    max="1.00" 
                     step="0.05" 
                     value={midpointFactor} 
                     onChange={(e) => setMidpointFactor(parseFloat(e.target.value))} 
                     className="w-full range-touch-target accent-orange-500" 
                   />
                   <div className="flex justify-between text-[11px] text-gray-400 mt-1">
-                    <span>Current (0.00)</span>
+                    <span>50%</span>
                     <span className="text-orange-400/90 font-medium">Expected Trigger: ~{Math.round(Number(currentX || 0) + (MUST_HIT - Number(currentX || 0)) * midpointFactor)}</span>
-                    <span>Cap 1888 (1.00)</span>
+                    <span>100% (1888)</span>
                   </div>
                 </div>
               )}

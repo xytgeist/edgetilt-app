@@ -1745,6 +1745,7 @@ export default function AppShell({
       setMenuOpen(false)
       return
     }
+    armShellNavGhostClickGuard()
     setActiveCalculator(key)
     setTab('calculators')
     setMenuOpen(false)
@@ -1824,6 +1825,7 @@ export default function AppShell({
       void openSlotsProLounge()
       return
     }
+    armShellNavGhostClickGuard()
     if (toolId !== 'calculators') setActiveCalculator(null)
     setTab(toolId)
   }, [openSlotsProLounge])
@@ -1832,6 +1834,7 @@ export default function AppShell({
     (toolId) => {
       if (toolId === 'poker-bankroll') acknowledgePokerBankrollAttention()
       if (toolId === 'poker-stable') acknowledgePokerStableAttention()
+      armShellNavGhostClickGuard()
       setActiveCalculator(null)
       setTab(toolId)
     },
@@ -1839,10 +1842,16 @@ export default function AppShell({
   )
 
   const openLogbook = useCallback(() => {
+    if (browseMode === 'anonymous') {
+      onRequireAuth?.()
+      setMenuOpen(false)
+      return
+    }
+    armShellNavGhostClickGuard()
     setActiveCalculator(null)
     setTab('logbook')
     setMenuOpen(false)
-  }, [])
+  }, [browseMode, onRequireAuth])
 
   const simulateTabError = useCallback(() => {
     setTabErrorTestOpen(true)
@@ -1858,12 +1867,14 @@ export default function AppShell({
   }, [])
 
   const backToSlotsHub = useCallback(() => {
+    armShellNavGhostClickGuard()
     setActiveCalculator(null)
     setTab('slots')
     setMenuOpen(false)
   }, [])
 
   const backToPokerHub = useCallback(() => {
+    armShellNavGhostClickGuard()
     setActiveCalculator(null)
     setTab('poker')
     setMenuOpen(false)

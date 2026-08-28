@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-28: **CallKit avatar setter parked off the VoIP report (Mac).** We cannot undo Apple's install blacklist in software. We can keep undocumented image code off the path before `reportNewIncomingCall`. Report is name / handle / video only. Prefetch after accept stays. This install if already silent still needs delete + reinstall. Rebuild owed.
+
 - 2026-08-28: **CallKit avatar `perform` crashed the VoIP wake (Mac).** Prefetch worked, then `-[NSURL URL]` aborted before `reportNewIncomingCall`. Setter is now ObjC `@try` (`EdgeCallKitAvatarApply.m`); Swift `perform` is gone. Local JPEG only. If the next home-screen ring is silent, delete the app ... this crash is the blacklist path. Rebuild owed.
 
 - 2026-08-28: **CallKit avatar helper inlined (Mac).** Xcode could not find `EdgeCallKitCallerAvatar` in scope, so the IPA Ryan ran still had the silhouette. Helper now lives in `EdgeCallKitManager.swift`. Keyboard accessory warning uses `NSSelectorFromString`. Rebuild owed. First ring from a new person can still be empty (no cached JPEG yet); the repeat should hit disk.

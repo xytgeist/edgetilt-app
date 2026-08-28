@@ -161,7 +161,7 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 
 **Read before trying to set a caller photo on `CXCallUpdate`.** The public header (through iOS 27) has no image property. `iconTemplateImageData` is the **app** monochrome icon, not the caller. `INStartCallIntent` + `INPerson.image` is for communication notifications / Siri, **not** the compact CallKit pill. Do **not** write fake Contacts so a `.generic` handle "matches."
 
-The Dynamic Island / top incoming circle reads an undocumented setter, **`localizedCallerImageURL`**. Helper lives in **`EdgeCallKitManager.swift`**. Apply goes through **`EdgeCallKitAvatarApply.m`** (`@try`) ... Swift `perform` on a `URL` crashed the VoIP wake (`-[NSURL URL]`) before `reportNewIncomingCall`. Only a cached local JPEG is applied. Never wait on download. Never `reportCall(updated:)` to fill a live incoming.
+**Avatar setter is parked (2026-08-28).** Swift `perform` on `localizedCallerImageURL` crashed the VoIP wake (`-[NSURL URL]`) before `reportNewIncomingCall`. iOS then stopped delivering VoIP to that install. The incoming report is name / handle / video only. Prefetch after accept may stay. Do not put the undocumented setter back on the report path. Never `reportCall(updated:)` to fill a live incoming.
 
 **Timing:** Apple requires `reportNewIncomingCall` **immediately** in the VoIP callback. Do not wait on image download before fulfill / report. Put the cached JPEG `file://` or the `https` URL on the **first** update. After accept, prefetch bytes into Caches for the **next** ring. **Never** `reportCall(updated:)` to fill a live incoming … that tore the pill down (~1s then gone, caller still ringing).
 

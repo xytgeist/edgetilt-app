@@ -432,10 +432,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
             replay.supportsHolding = false
             replay.supportsGrouping = false
             replay.supportsUngrouping = false
-            EdgeCallKitCallerAvatar.applyToCallUpdate(
-              replay,
-              avatarUrl: avatarUrl ?? meta.avatarUrl
-            )
+            // Avatar setter is parked. Anything before this report can
+            // blacklist the install if it throws.
           }
           provider.reportNewIncomingCall(with: existing, update: replay) { error in
             if let error {
@@ -483,7 +481,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     update.supportsHolding = false
     update.supportsGrouping = false
     update.supportsUngrouping = false
-    EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: resolvedAvatar)
+    // Name / handle / video only. Do not run the undocumented avatar setter
+    // here. It crashed the VoIP wake (`-[NSURL URL]`) before this report and
+    // iOS stopped delivering to that install. Prefetch after accept is fine.
 
     NSLog("EdgeCallKit reportNewIncomingCall uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit) state=\(Self.applicationStateLabel(appState))")
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
@@ -898,9 +898,9 @@ enum EdgeCallKitCallerAvatar {
   private static let maxBytes = 512 * 1024
   private static let fetchTimeout: TimeInterval = 8
 
-  /// Local JPEG only. A remote https URL is ignored by CallKit and the old
-  /// `perform` path crashed the VoIP wake (`-[NSURL URL]`). Never wait on the
-  /// network. Apple requires the report immediately.
+  /// PARKED. Do not call from `reportIncomingCall` / PushKit. The setter
+  /// crashed a VoIP wake before `reportNewIncomingCall` and blacklisted the
+  /// install. Prefetch after a successful report is the only live path.
   static func applyToCallUpdate(_ update: CXCallUpdate, avatarUrl: String?) {
     guard let source = httpsURL(avatarUrl),
           let data = localJPEGData(for: source),

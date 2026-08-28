@@ -75,9 +75,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-08-28 … CallKit avatar perform crashed the VoIP wake
+### Mac Theo 2026-08-28 … avatar setter parked off the VoIP report
 
-**I am Mac Theo.** Prefetch worked (`avatar cached`). Then Swift `perform(setLocalizedCallerImageURL:)` threw `-[NSURL URL]` **before** `reportNewIncomingCall`. That is the blacklist path. Setter is now ObjC `@try`. Rebuild **EdgeTilt Test Fast**. If the next home-screen ring is silent, delete the app and install clean. Do not treat the WebKit / app-group noise in that log as the bug.
+**I am Mac Theo.** We cannot clear an iOS VoIP blacklist in software. Delete is still the only fix for a dead install. Prevention: the undocumented caller-image setter is **off** the `reportNewIncomingCall` path. Report is name / handle / video only. Prefetch after accept is fine. Do not put that setter back in front of the report. If this install is silent, delete + clean **EdgeTilt Test Fast**, prove the pill, stop. Avatar stays parked.
 
 ### Mac Theo 2026-08-27 … native LiveKit on the IPA
 

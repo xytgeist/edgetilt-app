@@ -127,6 +127,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       let handle = (payload?["handle"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Incoming call"
       let hasVideo = (payload?["hasVideo"] as? Bool) ?? false
       let uuid = payload?["uuid"] as? String
+      let avatarUrl = (payload?["avatarUrl"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !callId.isEmpty else {
         completion(.success(["ok": false]))
         return
@@ -137,6 +138,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         roomId: roomId,
         handle: handle,
         hasVideo: hasVideo,
+        avatarUrl: avatarUrl,
         completion: completion
       )
     case "endNativeCall":

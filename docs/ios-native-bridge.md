@@ -64,7 +64,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `setAudioRoute` | JS→native | `{ route: 'speaker'\|'earpiece' }` | `{ ok: boolean }` | Mac | **native** + **web caller** (2026-08-26): call speaker toggle. Voice defaults earpiece, video defaults speaker. **Device smoke pending.** |
 | `triggerHaptic` | JS→native | `{ style?: 'light'\|'medium'\|'heavy'\|'success'\|'warning'\|'error' }` | `{ ok: boolean }` | Mac | **native** (`EdgeHaptics.swift`, 2026-08-26). Web still uses the iOS switch trick in `tapHaptic.js`; **no shell caller wired yet** … see caution below. |
 | `getCallKitCapabilities` | JS→native | none | `{ supported: boolean, voipToken: string \| null }` | Mac | **native** (2026-08-26). Lets web decide CallKit vs in-app ring UI. **Device smoke pending.** |
-| `reportIncomingCall` | JS→native | `{ callId, handle, hasVideo?, roomId? }` | `{ ok: boolean, uuid?: string, deduped?: true }` | Mac | **native** (2026-08-26). **Deduped by `callId` 2026-08-27** … see caution below. **Device smoke pending.** |
+| `reportIncomingCall` | JS→native | `{ callId, handle, hasVideo?, roomId?, avatarUrl? }` | `{ ok: boolean, uuid?: string, deduped?: true }` | Mac | **native** (2026-08-26). **Deduped by `callId` 2026-08-27** … see caution below. **`avatarUrl` 2026-08-27** fills the CallKit incoming pill via `INStartCallIntent` donate (no public `CXCallUpdate` photo field). A later report with the same `callId` still attaches the photo. **Device smoke pending.** |
 | `endNativeCall` | JS→native | `{ callId, reason?: 'remote' }` | `{ ok: boolean }` | Mac | **native** (2026-08-26). `reason: 'remote'` uses `reportCall(.remoteEnded)` so a lock-screen CallKit UI actually clears when the other side hangs up. Local hangup still uses `CXEndCallAction`. |
 | `getVoIPPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (2026-08-26): PushKit token, uploaded with `pushChannel: 'voip'`. Also fires `edge-voip-token` event on refresh. **Device smoke pending.** |
 | `callKitWebReady` | JS→native | none | `{ ok: boolean, replayed: number }` | Mac | **native** + **web caller** (2026-08-27): web says its CallKit listeners are installed **and** a session exists; native replays buffered answer/decline. Fixes the cold-start dropped answer … see caution below. **Device smoke pending.** |
@@ -144,6 +144,21 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 **Alert vs CallKit (2026-08-27):** if VoIP landed (`sendVoipApnsToUser` sent ≥ 1), **do not** also send the ringing APNs alert. CallKit is the incoming UI. Keep `chat_call_missed` as a normal notification. Keep the ringing alert as **fallback** when the user has no VoIP token (PWA / token missing). Native still retracts a delivered invite card if both race in.
 
 **VoIP `callerName`:** sender now strips `is calling you` and sends the actor name. Native `sanitizedCallerName` stays as defense.
+
+### ⚠️ CallKit incoming pill avatar is an intent donate, not a CallKit photo field (2026-08-27)
+
+**Read before trying to set a caller photo on `CXCallUpdate`.** There is no public image property. `iconTemplateImageData` is the **app** monochrome icon (our Edge logo), not the caller. Do **not** write fake Contacts so a `.generic` handle "matches."
+
+The compact incoming pill / Dynamic Island circle uses a donated **`INStartCallIntent`** whose `INPerson.image` (`INImage`) matches the same generic handle we put on `CXCallUpdate.remoteHandle`.
+
+**Timing:** Apple requires `reportNewIncomingCall` **immediately** in the VoIP callback. Do not wait on image download before fulfill / report. Order:
+
+1. If disk cache already has that `https` avatar, donate JPEG bytes, then report.
+2. Always donate `INImage(url:)` if we have a URL (system may fetch).
+3. Report CallKit.
+4. Fetch + cache + donate bytes, then `provider.reportCall(with:updated:)` so a first-time caller can swap the empty circle.
+
+**Payloads:** VoIP JSON and the fallback APNs `userInfo` carry `avatarUrl` from `profiles.avatar_url`. Foreground Realtime passes it on `reportIncomingCall`. A **deduped** later report (profile resolved after the first ring) still attaches the photo. `https` only. Prod Edge must be redeployed before store users get the VoIP URL.
 
 ### ⚠️ Lock-screen answer needs `audio` + a live page, not just `voip` (2026-08-27)
 

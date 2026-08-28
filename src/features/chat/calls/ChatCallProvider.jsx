@@ -328,11 +328,21 @@ export function ChatCallProvider({
         roomId,
         handle: profile.title || 'Incoming call',
         hasVideo: mediaMode === 'video',
+        avatarUrl: profile.avatarUrl,
       })
       void resolveCallerProfileAsync(roomId, fromUserId).then((next) => {
         setIncoming((prev) =>
           prev?.callId === row.id ? { ...prev, title: next.title, avatarUrl: next.avatarUrl } : prev,
         )
+        if (next.avatarUrl) {
+          void reportEdgeIncomingCall({
+            callId: String(row.id),
+            roomId,
+            handle: next.title || 'Incoming call',
+            hasVideo: mediaMode === 'video',
+            avatarUrl: next.avatarUrl,
+          })
+        }
       })
     },
     [ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync],

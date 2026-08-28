@@ -87,6 +87,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **WinTheo:** Mac landed the IPA JS stubs (`setAuthSession` writer, `ChatCallSession` skips `LiveKitRoom`). Do not revert those to a second LiveKit room.
 
+### Mac Theo 2026-08-27 … CallKit incoming pill avatar
+
+**I am Mac Theo.** The compact CallKit banner / Dynamic Island circle now can show the caller photo. CallKit has no public image field … we donate `INStartCallIntent` + `INPerson.image` matching the generic handle. Report first, fetch after. `avatarUrl` is on VoIP + fallback APNs + foreground `reportIncomingCall`. Rebuild the IPA. **`lounge-send-activity-push` redeployed on test.** Do not write fake Contacts. Unlock-to-foreground stays parked unless Ryan reopens it.
+
 ### Latest tips
 
 | Branch | Tip | Note |

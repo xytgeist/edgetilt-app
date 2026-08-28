@@ -365,6 +365,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     roomId: String,
     handle: String,
     hasVideo: Bool,
+    avatarUrl: String? = nil,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
     let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -376,6 +377,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     if !trimmedCallId.isEmpty,
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+      let existingName = calls[existing]?.callerName ?? Self.sanitizedCallerName(handle)
+      attachCallerAvatar(uuid: existing, handle: existingName, hasVideo: hasVideo, avatarUrl: avatarUrl)
       completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
       return
     }
@@ -388,6 +391,14 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       callerName: callerName
     )
     calls[uuid] = meta
+
+    // Donate a matching INPerson **before** the first paint when we already
+    // have a cached JPEG. Never block the VoIP fulfill on a network fetch.
+    EdgeCallKitCallerAvatar.donateNow(
+      handle: callerName,
+      displayName: callerName,
+      avatarUrl: avatarUrl
+    )
 
     let update = CXCallUpdate()
     update.remoteHandle = CXHandle(type: .generic, value: meta.callerName)
@@ -409,7 +420,26 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       // it does not sit on the lock screen / banner after the user answers.
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
       self.beginCallBackgroundTask()
+      self.attachCallerAvatar(uuid: uuid, handle: callerName, hasVideo: hasVideo, avatarUrl: avatarUrl)
       completion(.success(["ok": true, "uuid": uuid.uuidString.lowercased()]))
+    }
+  }
+
+  /// Fetch the profile photo after CallKit is already ringing, donate it, then
+  /// nudge the system UI so the compact pill can swap the empty circle.
+  private func attachCallerAvatar(uuid: UUID, handle: String, hasVideo: Bool, avatarUrl: String?) {
+    EdgeCallKitCallerAvatar.donateNow(handle: handle, displayName: handle, avatarUrl: avatarUrl)
+    EdgeCallKitCallerAvatar.fetchAndDonate(
+      handle: handle,
+      displayName: handle,
+      avatarUrl: avatarUrl
+    ) { [weak self] in
+      guard let self, self.calls[uuid] != nil else { return }
+      let update = CXCallUpdate()
+      update.remoteHandle = CXHandle(type: .generic, value: handle)
+      update.localizedCallerName = handle
+      update.hasVideo = hasVideo
+      self.provider.reportCall(with: uuid, updated: update)
     }
   }
 
@@ -525,12 +555,14 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let body = ((userInfo["aps"] as? [String: Any])?["alert"] as? [String: Any])?["body"] as? String
     let callerName = String(body ?? title ?? "Incoming call")
 
+    let avatarUrl = (userInfo["avatarUrl"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
     reportIncomingCall(
       uuidString: nil,
       callId: callId,
       roomId: roomId,
       handle: callerName,
-      hasVideo: false
+      hasVideo: false,
+      avatarUrl: avatarUrl
     ) { _ in }
   }
 
@@ -565,6 +597,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let roomId = (userInfo["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let callerName = (userInfo["callerName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Incoming call"
     let hasVideo = (userInfo["hasVideo"] as? Bool) ?? false
+    let avatarUrl = (userInfo["avatarUrl"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
 
     if callId.isEmpty {
       completion()
@@ -576,7 +609,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       callId: callId,
       roomId: roomId,
       handle: callerName,
-      hasVideo: hasVideo
+      hasVideo: hasVideo,
+      avatarUrl: avatarUrl
     ) { _ in
       completion()
     }

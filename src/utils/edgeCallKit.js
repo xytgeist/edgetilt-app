@@ -11,17 +11,21 @@ import { edgeNativeInvoke, isEdgeiOSShell } from './edgeNative.js'
  *   handle?: string
  *   hasVideo?: boolean
  *   uuid?: string
+ *   avatarUrl?: string | null
  * }} args
  */
 export async function reportEdgeIncomingCall(args) {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
+    const avatarUrl =
+      typeof args.avatarUrl === 'string' && args.avatarUrl.trim() ? args.avatarUrl.trim() : ''
     const result = await edgeNativeInvoke('reportIncomingCall', {
       callId: String(args.callId || '').trim(),
       roomId: String(args.roomId || '').trim(),
       handle: String(args.handle || 'Incoming call').trim(),
       hasVideo: Boolean(args.hasVideo),
       uuid: args.uuid || undefined,
+      ...(avatarUrl ? { avatarUrl } : {}),
     })
     return { ok: result?.ok !== false, via: 'bridge', uuid: result?.uuid || null }
   } catch {

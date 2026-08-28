@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **CallKit incoming pill avatar (Mac).** Compact banner / Dynamic Island circle had only the Edge logo because CallKit has no public caller-photo field. Native now donates `INStartCallIntent` + `INPerson.image` matching the generic handle, after `reportNewIncomingCall` (never block the VoIP fulfill on a fetch). `avatarUrl` rides VoIP + fallback APNs + foreground `reportIncomingCall`. **`lounge-send-activity-push` redeployed on test** (`kcosfvmreeiosdjdzycb`). First call from a new person may fill after fetch; repeats use disk cache. Do not write fake Contacts. Prod Edge not deployed.
+
 - 2026-08-27: **Lock-screen unlock still did not open Edge + call chrome parked the Lounge FAB at 0,0 (Mac).** Force-reveal from `callKitWebReady` mounted chrome in the background and then cleared `pendingCallReveal`, so unlock had nothing to do. Keep pending until `.active`; listen for SpringBoard lockstate; keep scene poll. Full-screen IPA call was setting `html/body overflow: hidden`, which collapsed the dock viewport and persisted the FAB at the top-left under the clock. Overflow lock removed on IPA; dock ignores degenerate viewports and 0,0 prefs.
 
 - 2026-08-27: **Lounge video peek on Android extended comments sheet (`test`, verified by Ryan):**

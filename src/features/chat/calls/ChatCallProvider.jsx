@@ -751,9 +751,12 @@ export function ChatCallProvider({
         if (opts.openRoom !== false) onOpenRoom?.(roomId)
         return call || { id: resolvedCallId, chat_room_id: roomId }
       } catch (err) {
-        if (isEdgeiOSShell() && activeCallRef.current?.callId === id) {
-          activeCallRef.current = null
-          setActiveCall(null)
+        if (isEdgeiOSShell()) {
+          if (activeCallRef.current?.callId === id) {
+            activeCallRef.current = null
+            setActiveCall(null)
+          }
+          void endEdgeNativeCall({ callId: id, reason: 'remote' })
         }
         showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
         return null

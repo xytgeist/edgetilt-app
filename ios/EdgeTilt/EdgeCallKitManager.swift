@@ -735,6 +735,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
             roomId: meta.roomId,
             hasVideo: meta.hasVideo
           )
+          action.fulfill()
         } catch {
           self.dispatchToWeb(
             event: "edge-native-call-state",
@@ -745,7 +746,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
             ]
           )
           // If answering failed (e.g. caller canceled / call expired / 409),
-          // tear down CallKit immediately so the user is not trapped in an orphaned call.
+          // fail the CXAnswerCallAction and tear down CallKit immediately.
+          action.fail()
           self.endCall(uuidString: action.callUUID.uuidString, callId: meta.callId, reason: "remote") { _ in }
         }
       }
@@ -758,8 +760,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         activateCallScene()
         startUnlockPoll()
       }
+    } else {
+      action.fail()
     }
-    action.fulfill()
   }
 
   func provider(_ provider: CXProvider, perform action: CXEndCallAction) {

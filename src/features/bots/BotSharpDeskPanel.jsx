@@ -25,6 +25,13 @@ const PICKER_METAS = {
   },
 }
 
+const TIMEFRAME_OPTIONS = [
+  { id: 'all_time', label: 'All-Time' },
+  { id: 'season', label: 'Season' },
+  { id: 'month', label: 'Month' },
+  { id: 'week', label: 'Week' },
+]
+
 export function BotSharpDeskPanel({
   supabaseClient,
   botUserId,
@@ -41,13 +48,18 @@ export function BotSharpDeskPanel({
   const [dropping, setDropping] = useState(false)
   const [selectedPicker, setSelectedPicker] = useState('auto')
   const [cardMode, setCardMode] = useState('auto')
+  const [timeframe, setTimeframe] = useState('all_time')
+  const [portalSportKey, setPortalSportKey] = useState('all')
 
   const loadData = useCallback(async () => {
     if (!supabaseClient || !botUserId) return
     setLoading(true)
     try {
       const [recRes, picksRes] = await Promise.all([
-        fetchBotPicksRecord(supabaseClient, botUserId),
+        fetchBotPicksRecord(supabaseClient, botUserId, {
+          timeframe,
+          sportKey: portalSportKey,
+        }),
         fetchBotRecentPicks(supabaseClient, botUserId, 25),
       ])
       if (recRes.data) setRecordData(recRes.data)
@@ -57,7 +69,7 @@ export function BotSharpDeskPanel({
     } finally {
       setLoading(false)
     }
-  }, [supabaseClient, botUserId])
+  }, [supabaseClient, botUserId, timeframe, portalSportKey])
 
   useEffect(() => {
     loadData()
@@ -209,15 +221,34 @@ export function BotSharpDeskPanel({
         </div>
       </div>
 
-      {/* Overall syndicate banner */}
+      {/* Overall syndicate banner with Timeframe & Sport Controls */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-900/90 border border-zinc-800 px-3 py-2 text-xs">
-        <div className="text-zinc-400 font-medium">
-          Syndicate Overall:
-          <span className="ml-1.5 font-bold text-white tabular-nums">
-            {overall.wins}-{overall.losses}{overall.pushes > 0 ? `-${overall.pushes}` : ''}
-          </span>
-          <span className="ml-2 text-zinc-500">({overall.win_rate_pct}% win)</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-zinc-400 font-medium">
+            Syndicate Record:
+            <span className="ml-1.5 font-bold text-white tabular-nums">
+              {overall.wins}-{overall.losses}{overall.pushes > 0 ? `-${overall.pushes}` : ''}
+            </span>
+            <span className="ml-2 text-zinc-500">({overall.win_rate_pct}% win)</span>
+          </div>
+
+          {/* Timeframe pill selector */}
+          <div className="flex items-center gap-1 rounded bg-zinc-950 px-1 py-0.5 text-[10px] ring-1 ring-zinc-800">
+            {TIMEFRAME_OPTIONS.map((tf) => (
+              <button
+                key={tf.id}
+                type="button"
+                onClick={() => setTimeframe(tf.id)}
+                className={`rounded px-1.5 py-0.5 font-semibold transition ${
+                  timeframe === tf.id ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
         </div>
+
         <div className="flex items-center gap-3">
           <span className="text-zinc-400">
             Units Net:{' '}
@@ -232,6 +263,58 @@ export function BotSharpDeskPanel({
           )}
         </div>
       </div>
+
+      {/* Sport filter tabs if multiple sports logged */}
+      {recordData?.sports?.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px]">
+          <span className="text-zinc-500 font-medium text-[10px]">Sport:</span>
+          <button
+            type="button"
+            onClick={() => setPortalSportKey('all')}
+            className={`rounded px-2 py-0.5 font-medium transition ring-1 ${
+              portalSportKey === 'all'
+                ? 'bg-zinc-200 text-black ring-white'
+                : 'bg-zinc-900 text-zinc-400 ring-zinc-800 hover:text-white'
+            }`}
+          >
+            All
+          </button>
+          {recordData.sports.map((sp) => {
+            const active = portalSportKey === sp.sport_key
+            const spUnits = Number(sp.units_net) || 0
+            return (
+              <button
+                key={sp.sport_key}
+                type="button"
+                onClick={() => setPortalSportKey(sp.sport_key)}
+                className={`rounded px-2 py-0.5 font-medium transition ring-1 ${
+                  active
+                    ? 'bg-amber-500 text-black ring-amber-400'
+                    : 'bg-zinc-900 text-zinc-300 ring-zinc-800 hover:text-white'
+                }`}
+              >
+                {sp.sport_label} ({spUnits > 0 ? `+${spUnits}u` : `${spUnits}u`})
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Profile Bio Live Preview */}
+      {recordData?.highlight_text && (
+        <div className="mt-2 flex items-center justify-between gap-2 rounded bg-zinc-950/80 border border-zinc-800/80 px-2.5 py-1 text-[11px]">
+          <div className="flex items-center gap-1.5 truncate text-zinc-300">
+            <span className="text-xs">💬</span>
+            <span className="font-semibold text-zinc-400">Bio Highlight:</span>
+            <span className="truncate text-amber-200/90 font-mono text-[10.5px]">
+              {recordData.highlight_text}
+            </span>
+          </div>
+          <span className="text-[10px] text-emerald-400/90 font-medium whitespace-nowrap">
+            Auto-Synced
+          </span>
+        </div>
+      )}
 
       {/* 4 Pickers Grid */}
       <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">

@@ -419,13 +419,21 @@ export async function invokeLoungeOddsIngest(supabaseClient, opts = {}) {
 
 /**
  * Fetch the overall and per-picker win/loss/units record for predictive picks.
+ * Supports multi-timeframe (week, month, season, all_time) and per-sport breakdowns.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} botUserId
+ * @param {{ timeframe?: string, sportKey?: string }} [filters]
  */
-export async function fetchBotPicksRecord(supabaseClient, botUserId) {
+export async function fetchBotPicksRecord(
+  supabaseClient,
+  botUserId,
+  { timeframe = 'all_time', sportKey = 'all' } = {},
+) {
   if (!supabaseClient || !botUserId) return { data: null, error: null }
   const { data, error } = await supabaseClient.rpc('lounge_bot_get_picks_record', {
     p_bot_user_id: botUserId,
+    p_timeframe: timeframe,
+    p_sport_key: sportKey,
   })
   if (error) return { data: null, error: new Error(error.message || 'Failed to fetch picks record') }
   return { data, error: null }

@@ -285,6 +285,9 @@ export async function publishAndRecordPicks(
     }
   }
 
+  // Update profile bio highlight
+  await syncBotProfileHighlight(admin, opts.botUserId)
+
   return { success: true, postId: postRes.postId, pickIds }
 }
 
@@ -552,5 +555,37 @@ export async function gradePendingPicks(
     }
   }
 
+  // Update profile highlight text if any bot user ID is provided or involved
+  if (botUserId) {
+    await syncBotProfileHighlight(admin, botUserId)
+  }
+
   return { resolved: resolvedCount, errors }
+}
+
+/**
+ * Update the Scott Bot profile's about_me with the latest verified record highlight.
+ */
+export async function syncBotProfileHighlight(
+  admin: SupabaseClient,
+  botUserId: string,
+): Promise<{ ok: boolean; highlight?: string; error?: string }> {
+  try {
+    const { data: rec, error } = await admin.rpc('lounge_bot_get_picks_record', {
+      p_bot_user_id: botUserId,
+      p_timeframe: 'all_time',
+      p_sport_key: 'all',
+    })
+    if (error || !rec?.highlight_text) return { ok: false, error: error?.message }
+
+    const highlight = String(rec.highlight_text).trim().slice(0, 140)
+    await admin
+      .from('profiles')
+      .update({ about_me: highlight })
+      .eq('user_id', botUserId)
+
+    return { ok: true, highlight }
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
 }

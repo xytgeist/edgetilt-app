@@ -53,6 +53,7 @@ import {
   showLoungeFanOnlyPostUnlockedTint,
 } from '../../utils/loungeFanOnlyPost.js'
 import LoungeFanOnlyPostRowTint from './LoungeFanOnlyPostRowTint.jsx'
+import { LoungeProfileSharpScorecard } from './LoungeProfileSharpScorecard.jsx'
 import { loungeFeedPostRowPerfStyle } from '../../utils/loungeFeedPostRowPerfStyle.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
@@ -3855,6 +3856,16 @@ export default function LoungeProfileFullScreen({
               )}
             </div>
           </div>
+
+          {!showOwnEditControls ? (
+            <div className="w-full min-w-0 px-4 sm:px-6">
+              <LoungeProfileSharpScorecard
+                supabaseClient={supabaseClient}
+                profileUserId={profileUserId}
+                profileHandle={profile?.handle}
+              />
+            </div>
+          ) : null}
 
           {!showOwnEditControls ? (
           <div className="w-full min-w-0">

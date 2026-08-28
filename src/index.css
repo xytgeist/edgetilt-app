@@ -737,6 +737,10 @@ html:not(.light) [data-lounge-badge-tip-tone="mod"] {
   color: #3b82f6 !important;
   filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.65)) !important;
 }
+html:not(.light) [data-lounge-badge-tip-tone="pro"] {
+  color: #2dd4bf !important;
+  filter: drop-shadow(0 0 6px rgba(45, 212, 191, 0.65)) !important;
+}
 
 html.light [data-lounge-badge-tip-tone="og"] {
   color: #000000 !important;
@@ -749,6 +753,10 @@ html.light [data-lounge-badge-tip-tone="admin"] {
 html.light [data-lounge-badge-tip-tone="mod"] {
   color: #3b82f6 !important;
   filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5)) !important;
+}
+html.light [data-lounge-badge-tip-tone="pro"] {
+  color: #2563eb !important;
+  filter: drop-shadow(0 0 5px rgba(37, 99, 235, 0.5)) !important;
 }
 
 /* ── Focused-comment highlight flash ──────────────────────────────────────── */
@@ -10698,7 +10706,7 @@ html.light [data-w2g-verify-modal] [data-w2g-preview] button .text-zinc-500 {
 
 /* Edge Pro Badge light mode styling */
 html.light [data-edge-pro-badge] {
-  color: #d97706 !important;
+  color: #2563eb !important;
 }
 
 /* Edge Pro Composer Reply Gate Pill & Menu light mode styling */

@@ -43,11 +43,11 @@ export default function LoungeEdgeProBadge({ isEdgePro, size = 'feed' }) {
     <LoungeBadgeHoverTip tip="Verified Subscriber" tone="pro" className={tipClass}>
       <span
         data-edge-pro-badge=""
-        className="inline-flex items-center text-amber-400 hover:brightness-110 transition-[filter]"
+        className="inline-flex items-center text-teal-400 hover:brightness-110 transition-[filter]"
         role="img"
         aria-label="Verified Subscriber"
       >
-        <VerifiedCheckmarkIcon className={`${s.cls} shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]`} />
+        <VerifiedCheckmarkIcon className={`${s.cls} shrink-0`} />
       </span>
     </LoungeBadgeHoverTip>
   )

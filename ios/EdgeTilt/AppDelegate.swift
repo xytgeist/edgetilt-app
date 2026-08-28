@@ -39,7 +39,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     let eventType = (userInfo["eventType"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
     if eventType == "chat_call_missed" {
       let callId = (userInfo["chatCallId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-      EdgeCallKitManager.shared.endCall(uuidString: nil, callId: callId, reason: "remote") { _ in
+        ?? (userInfo["chat_call_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      if let callId, !callId.isEmpty {
+        EdgeCallKitManager.shared.endCall(uuidString: nil, callId: callId, reason: "remote") { _ in
+          completionHandler(.newData)
+        }
+      } else {
+        EdgeCallKitManager.shared.endAllCalls()
         completionHandler(.newData)
       }
       return

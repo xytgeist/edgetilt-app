@@ -523,7 +523,6 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     // in-call UI when the web session is already gone.
     if reason == "remote" {
       EdgeLiveKitCallManager.shared.hangup(leaveOnServer: false)
-      provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
       calls.removeValue(forKey: uuid)
       answeredUUIDs.remove(uuid)
       acceptedIncomingUUIDs.remove(uuid)
@@ -531,6 +530,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       pendingCallReveal = false
       didRevealCallThisAnswer = false
       stopUnlockPoll()
+      provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
       if calls.isEmpty { endCallBackgroundTask() }
       EdgeAudioSession.apply(mode: "default") { _ in }
       completion(.success(["ok": true]))
@@ -549,8 +549,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   func endAllCalls() {
     for uuid in Array(calls.keys) {
-      provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
       calls.removeValue(forKey: uuid)
+      answeredUUIDs.remove(uuid)
+      acceptedIncomingUUIDs.remove(uuid)
+      provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
     }
     answeredUUIDs.removeAll()
     acceptedIncomingUUIDs.removeAll()

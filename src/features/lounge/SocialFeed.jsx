@@ -273,6 +273,7 @@ import LoungeFanOnlyPostRowTint from './LoungeFanOnlyPostRowTint.jsx'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerAudienceSheet from './LoungeComposerAudienceSheet.jsx'
 import LoungeComposerAudiencePill from './LoungeComposerAudiencePill.jsx'
+import LoungeComposerReplyGatePill from './LoungeComposerReplyGatePill.jsx'
 import CreatorFanSubscribeModal from '../creatorFanSubs/CreatorFanSubscribeModal.jsx'
 import {
   fetchCreatorFanOffer,
@@ -552,7 +553,7 @@ async function fetchHydratedFeedCommentsForPost(supabaseClient, postId) {
   if (authorIds.length) {
     const pr = await supabaseClient
       .from('profiles')
-      .select('user_id,handle,display_name,avatar_url,role,is_og')
+      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
       .in('user_id', authorIds)
     if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
   }
@@ -844,6 +845,7 @@ export default function SocialFeed({
   const [composerFanMonetizationLive, setComposerFanMonetizationLive] = useState(false)
   const [composerAudience, setComposerAudience] = useState(() => readLoungeComposerAudience())
   const [composerAudienceSheetOpen, setComposerAudienceSheetOpen] = useState(false)
+  const [composerReplyGateEdgePro, setComposerReplyGateEdgePro] = useState(false)
   const composerAudienceContinueRef = useRef(/** @type {((creatorFanOnly: boolean) => void) | null} */ (null))
   const [viewerFanEntitlements, setViewerFanEntitlements] = useState(null)
   const [feedFanSubscribeOffer, setFeedFanSubscribeOffer] = useState(null)
@@ -7593,7 +7595,7 @@ export default function SocialFeed({
         if (authorIds.length) {
           const pr = await supabaseClient
             .from('profiles')
-            .select('user_id,handle,display_name,avatar_url,role,is_og')
+            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
             .in('user_id', authorIds)
           if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
         }
@@ -12172,7 +12174,7 @@ export default function SocialFeed({
         loungeDetailCommentSnapshotRef.current = null
         const pr = await supabaseClient
           .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,role,is_og')
+          .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
           .eq('user_id', snap.userId)
           .maybeSingle()
         const row = { ...data, author_profile: pr.data || composerUserProfile || null }
@@ -12972,7 +12974,7 @@ export default function SocialFeed({
           })
           const pr = await supabaseClient
             .from('profiles')
-            .select('user_id,handle,display_name,avatar_url,role,is_og')
+            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
             .eq('user_id', snap.userId)
             .maybeSingle()
           const row = { ...data, author_profile: pr.data || composerUserProfile || null }
@@ -13927,6 +13929,7 @@ export default function SocialFeed({
           threadParts: hasThread ? threadPartsSnap : threadPartsSnap.length > 0 ? threadPartsSnap : undefined,
           threadCaptions: hasThread ? normalizedParts.map((p) => p.body) : undefined,
           creatorFanOnly: fanOnlyPost,
+          replyGateEdgePro: Boolean(composerReplyGateEdgePro),
         }
       } finally {
         setPostBusy(false)
@@ -14204,6 +14207,7 @@ export default function SocialFeed({
         categoryPills: composerCategoryPills,
         marketSymbols: composerMarketSymbols,
         creatorFanOnly: Boolean(creatorFanOnly) && composerFanMonetizationLive,
+        replyGateEdgePro: Boolean(composerReplyGateEdgePro),
       }
     } finally {
       setPostBusy(false)
@@ -14241,6 +14245,7 @@ export default function SocialFeed({
     composerCategoryPills,
     composerMarketSymbols,
     composerFanMonetizationLive,
+    composerReplyGateEdgePro,
     composerImageItems,
     composerMediaUrl,
     composerUserId,
@@ -16491,12 +16496,19 @@ export default function SocialFeed({
             className="will-change-[opacity]"
             style={{ opacity: Math.min(1, 0.2 + 0.8 * composerFoldReveal) }}
           >
-            <LoungePostCategoryPillPicker
-              value={composerCategoryPills}
-              onChange={setComposerCategoryPills}
-              disabled={postBusy}
-              className="mb-3"
-            />
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <LoungePostCategoryPillPicker
+                value={composerCategoryPills}
+                onChange={setComposerCategoryPills}
+                disabled={postBusy}
+                className="!mb-0"
+              />
+              <LoungeComposerReplyGatePill
+                value={composerReplyGateEdgePro}
+                onChange={setComposerReplyGateEdgePro}
+                disabled={postBusy}
+              />
+            </div>
             <div
               className="mx-auto h-px w-[90%] bg-zinc-700/85"
               role="presentation"
@@ -17207,6 +17219,7 @@ export default function SocialFeed({
                         <LoungeFeedAuthorMetaBadges
                           role={loungePostDetail?.author_profile?.role}
                           isOg={loungePostDetail?.author_profile?.is_og === true}
+                          isEdgePro={loungePostDetail?.author_profile?.has_active_subscription === true}
                           displayName={displayNameFor(loungePostDetail)}
                           displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_DETAIL_CLASS}
                         />
@@ -17243,13 +17256,23 @@ export default function SocialFeed({
                 </div>
               ) : null}
 
-              {!loungeDetailEditing && displayPostCategoryPills(loungePostDetail).length > 0 ? (
+              {!loungeDetailEditing && (displayPostCategoryPills(loungePostDetail).length > 0 || loungePostDetail.reply_gate_edge_pro) ? (
                 <div
-                  className={`flex justify-start ${
+                  className={`flex flex-wrap items-center gap-1.5 justify-start ${
                     loungePostDetail.game_slug ? 'mt-1.5' : 'mt-4'
                   } ${loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}`}
                 >
                   <LoungePostCategoryPillRow pills={displayPostCategoryPills(loungePostDetail)} />
+                  {loungePostDetail.reply_gate_edge_pro ? (
+                    <span
+                      data-edge-pro-gate-indicator=""
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300"
+                      title="Replies restricted to Edge Pro subscribers"
+                    >
+                      <span>🔒</span>
+                      <span>Edge Pro Replies</span>
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -18339,6 +18362,38 @@ export default function SocialFeed({
               </LoungeFeedVideoAutoplayProvider>
             </div>
             {!loungeReadOnly ? (
+              (() => {
+                const isAuthor = Boolean(composerUserId && loungePostDetail?.user_id === composerUserId)
+                const isStaff = Boolean(composerUserProfile?.role === 'admin' || composerUserProfile?.role === 'moderator')
+                const isEdgePro = Boolean(composerUserProfile?.has_active_subscription)
+                const isReplyGated = Boolean(loungePostDetail?.reply_gate_edge_pro)
+                const isBlockedByReplyGate = isReplyGated && !isAuthor && !isStaff && !isEdgePro
+
+                if (isBlockedByReplyGate) {
+                  return (
+                    <div
+                      ref={loungeDetailCommentFooterRef}
+                      data-lounge-detail-comment-host
+                      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20"
+                    >
+                      <div
+                        className="lounge-detail-comment-footer-gradient pointer-events-none absolute inset-x-0 bottom-full h-14"
+                        aria-hidden
+                      />
+                      <div
+                        className="lounge-detail-comment-footer-glass px-4 pt-3.5 pb-4 text-center"
+                        style={{ paddingBottom: Math.max(16, loungeDetailCommentFooterPadBottom) }}
+                      >
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/35 bg-amber-950/40 px-3.5 py-1.5 text-xs text-amber-300 shadow-sm backdrop-blur-md">
+                          <span className="text-sm">⚡</span>
+                          <span className="font-semibold">Replies are restricted to Edge Pro subscribers.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
               <div
                 ref={loungeDetailCommentFooterRef}
                 data-lounge-detail-comment-host
@@ -18685,6 +18740,8 @@ export default function SocialFeed({
                 )}
                 </div>
               </div>
+                )
+              })()
             ) : null}
             </div>
           </div>

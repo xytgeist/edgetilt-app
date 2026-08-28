@@ -30,6 +30,8 @@ const TONE = {
   /** Matches mod shield `text-blue-500`. */
   mod: '',
   violet: '',
+  /** Matches Edge Pro subscriber badge amber glow. */
+  pro: '',
 }
 
 /**

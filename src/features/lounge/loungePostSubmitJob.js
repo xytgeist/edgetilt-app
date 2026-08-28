@@ -736,13 +736,17 @@ export async function executeLoungeCommunityPostSubmission({
     threadParts: snapshotThreadParts,
     marketSymbols,
     creatorFanOnly: snapshotCreatorFanOnly,
+    replyGateEdgePro: snapshotReplyGateEdgePro,
   } = snapshot
   const quoteParentId = quoteRepostOfPostId != null ? String(quoteRepostOfPostId).trim() : ''
   const quoteCommentParentId =
     quoteRepostOfCommentId != null ? String(quoteRepostOfCommentId).trim() : ''
   const creatorFanOnly =
     snapshotCreatorFanOnly === true && !quoteParentId && !quoteCommentParentId
+  const replyGateEdgePro =
+    snapshotReplyGateEdgePro === true && !quoteParentId && !quoteCommentParentId
   const fanOnlyInsert = creatorFanOnly ? { creatorFanOnly: true } : {}
+  const replyGateInsert = replyGateEdgePro ? { replyGateEdgePro: true } : {}
   const threadParts = Array.isArray(snapshotThreadParts) && snapshotThreadParts.length > 0
     ? snapshotThreadParts.map((part) => ({
         body: normalizeFeedCaption(part?.body),
@@ -1120,6 +1124,7 @@ export async function executeLoungeCommunityPostSubmission({
         categoryPills,
         feedVisibleAt: stagedStreamPublish ? null : undefined,
         ...fanOnlyInsert,
+        ...replyGateInsert,
       })
     } else if (uploadedUrls.length > 0) {
       insertPayload = communityFeedPostInsertPayload({
@@ -1129,6 +1134,7 @@ export async function executeLoungeCommunityPostSubmission({
         gifUrl: gifOnlyUrl || undefined,
         categoryPills,
         ...fanOnlyInsert,
+        ...replyGateInsert,
       })
     } else if (gifOnlyUrl) {
       insertPayload = communityFeedPostInsertPayload({
@@ -1137,6 +1143,7 @@ export async function executeLoungeCommunityPostSubmission({
         mediaUrl: gifOnlyUrl,
         categoryPills,
         ...fanOnlyInsert,
+        ...replyGateInsert,
       })
     } else {
       insertPayload = communityFeedPostInsertPayload({
@@ -1144,6 +1151,7 @@ export async function executeLoungeCommunityPostSubmission({
         pinned: isStaffPoster && wantsPin ? true : undefined,
         categoryPills,
         ...fanOnlyInsert,
+        ...replyGateInsert,
       })
     }
 

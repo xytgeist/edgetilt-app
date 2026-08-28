@@ -18,7 +18,7 @@
 | `slots-edge-starter` | Slots Edge | EdgeTilt | 100% platform | **Shipped** |
 | `slots-edge` | Slots Edge Pro | EdgeTilt | 100% platform | **Shipped** |
 | `slots-edge-lifetime` | Slots Edge Lifetime | EdgeTilt | 100% platform | **Shipped** |
-| `edge-pro` | Edge Pro | EdgeTilt | 100% platform | **Planned** ... platform social tier (ads, filters, reply controls) |
+| `edge-pro` | Edge Pro | EdgeTilt | 100% platform | **Shipped (Foundation)** ... platform social tier (badge, reply controls, get_my_entitlements) |
 | `creator-fan:{creator_user_id}` | Support @{handle} (working title) | Creator (via Connect) | **70% creator / 30% EdgeTilt** | **Planned** |
 | `addon:*` | Niche tool packs (e.g. future sports/crypto vertical tools) | EdgeTilt | 100% platform (TBD) | **Planned** |
 | `affiliate` | _(not a buyer product)_ | n/a | Commission on EdgeTilt subs | **Shipped** ... see `docs/affiliates.md` |
@@ -173,3 +173,4 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-07-21 | Creator fan sub tiers expanded to **seven** monthly MSRPs: added **$149.99** / **$249.99** (`fan-tier-14999`, `fan-tier-24999`); migration **`20260721180000`**. |
 | 2026-07-20 | Creator fan sub preset tiers locked to **five** monthly MSRPs: $4.99 / $9.99 / $19.99 / $49.99 / $99.99 + tier keys `fan-tier-*`. |
 | 2026-07-21 | Feed teaser model for fan-only posts (visible in main feed, partial line + subscribe CTA, auto-follow on sub) added to product backlog; supersedes “hide fan-only from non-subs” for **timeline** only — full post detail policy TBD in backlog §3. |
+| 2026-08-28 | **Edge Pro Tier Phase 3 foundation landed:** `reply_gate_edge_pro` column + helper `has_edge_pro_entitlement()`, `feed_comments_insert_own` RLS reply-gate enforcement, composer reply gate picker, thread header indicator, comment footer gate message, `LoungeEdgeProBadge` on author headers & profile, expanded `get_my_entitlements()`. |

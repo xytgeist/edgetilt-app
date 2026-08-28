@@ -1,5 +1,6 @@
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge.jsx'
 import LoungeOgBadge from './LoungeOgBadge.jsx'
+import LoungeEdgeProBadge from './LoungeEdgeProBadge.jsx'
 import {
   loungeFeedAuthorHasStaffBadge,
   loungeFeedAuthorIdentityClusterClass,
@@ -10,12 +11,13 @@ import {
 } from './loungeFeedAvatar.js'
 
 /**
- * Display name + staff/OG badges - same cluster, wrap nudges, and `feed` icon sizes as
+ * Display name + staff/OG/EdgePro badges - same cluster, wrap nudges, and `feed` icon sizes as
  * `LoungePostArticle` meta row (not `size="detail"` / embed sizing).
  */
 export default function LoungeFeedAuthorMetaBadges({
   role,
   isOg = false,
+  isEdgePro = false,
   displayName,
   displayNameClassName,
   onDisplayNameClick,
@@ -24,6 +26,7 @@ export default function LoungeFeedAuthorMetaBadges({
 }) {
   const hasStaffBadge = loungeFeedAuthorHasStaffBadge(role)
   const showOgBadge = isOg === true
+  const showEdgeProBadge = isEdgePro === true
   const quoteEmbed = metaVariant === 'quoteEmbed'
   const badgeSize = quoteEmbed ? 'embed' : 'feed'
   const badgeWrapClass = quoteEmbed ? LOUNGE_QUOTE_EMBED_META_BADGE_WRAP_CLASS : LOUNGE_FEED_META_BADGE_WRAP_CLASS
@@ -58,11 +61,20 @@ export default function LoungeFeedAuthorMetaBadges({
           <span className={badgeWrapClass}>
             <LoungeOgBadge isOg size={badgeSize} />
           </span>
+        ) : showEdgeProBadge ? (
+          <span className={badgeWrapClass}>
+            <LoungeEdgeProBadge isEdgePro size={badgeSize} />
+          </span>
         ) : null}
       </span>
       {hasStaffBadge && showOgBadge ? (
         <span className={ogAfterStaffClass}>
           <LoungeOgBadge isOg size={badgeSize} />
+        </span>
+      ) : null}
+      {showEdgeProBadge && (hasStaffBadge || showOgBadge) ? (
+        <span className="ml-1 inline-flex items-center">
+          <LoungeEdgeProBadge isEdgePro size={badgeSize} />
         </span>
       ) : null}
     </>

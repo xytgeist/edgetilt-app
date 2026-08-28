@@ -54,6 +54,7 @@ import {
 } from '../../utils/loungeFanOnlyPost.js'
 import LoungeFanOnlyPostRowTint from './LoungeFanOnlyPostRowTint.jsx'
 import { LoungeProfileSharpScorecard } from './LoungeProfileSharpScorecard.jsx'
+import LoungeEdgeProBadge from './LoungeEdgeProBadge.jsx'
 import { loungeFeedPostRowPerfStyle } from '../../utils/loungeFeedPostRowPerfStyle.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
@@ -133,15 +134,20 @@ const PROFILE_BANNER_CHROME_BTN_CLASS =
 const PROFILE_BANNER_CHROME_CANCEL_CLASS =
   'pointer-events-auto flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 px-4 text-[14px] font-semibold shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]'
 
-function ProfileHeaderBadges({ role, isOg }) {
+function ProfileHeaderBadges({ role, isOg, isEdgePro }) {
   const hasStaff = loungeFeedAuthorHasStaffBadge(role)
-  if (!hasStaff && isOg !== true) return null
+  if (!hasStaff && isOg !== true && isEdgePro !== true) return null
   return (
     <span className="inline-flex shrink-0 items-baseline gap-x-1">
       {hasStaff ? <LoungeStaffRoleBadge role={role} size="modal" /> : null}
       {isOg === true ? (
         <span className={hasStaff ? 'shrink-0 -ml-0.5' : 'shrink-0'}>
           <LoungeOgBadge isOg size="modal" />
+        </span>
+      ) : null}
+      {isEdgePro === true ? (
+        <span className="shrink-0 ml-0.5">
+          <LoungeEdgeProBadge isEdgePro size="modal" />
         </span>
       ) : null}
     </span>
@@ -177,7 +183,7 @@ async function hydrateFeedCommentsWithProfiles(supabaseClient, rows) {
   if (authorIds.length > 0) {
     const pr = await supabaseClient
       .from('profiles')
-      .select('user_id,handle,display_name,avatar_url,role,is_og')
+      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
       .in('user_id', authorIds)
     if (!pr.error && pr.data) {
       profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
@@ -618,6 +624,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
                   <LoungeFeedAuthorMetaBadges
                     role={post?.author_profile?.role}
                     isOg={post?.author_profile?.is_og}
+                    isEdgePro={post?.author_profile?.has_active_subscription}
                     displayName={typeof displayNameFor === 'function' ? displayNameFor(post) : 'Member'}
                     displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
                   />
@@ -3770,7 +3777,7 @@ export default function LoungeProfileFullScreen({
                 <>
                   <div ref={profileDisplayNameRef} className="flex flex-wrap items-baseline gap-x-1">
                     <span className="text-xl font-bold leading-none text-white sm:text-2xl">{displayName}</span>
-                    <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} />
+                    <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} isEdgePro={profile?.has_active_subscription} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-[15px] text-cyan-300">
                     <span>{handle}</span>

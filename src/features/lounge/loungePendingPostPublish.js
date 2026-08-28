@@ -750,6 +750,7 @@ export function buildAuthorPendingVideoFeedPost({ snapshot, pendingKey, userId, 
     repost_count: 0,
     category_pills: Array.isArray(snapshot?.categoryPills) ? snapshot.categoryPills : [],
     creator_fan_only: snapshot?.creatorFanOnly === true,
+    reply_gate_edge_pro: snapshot?.replyGateEdgePro === true,
   }
 }
 

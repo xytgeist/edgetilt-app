@@ -328,6 +328,7 @@ function LoungePostArticle({
   const displayEntity = isCommentRepost ? rc : displayPost
   const authorRole = displayEntity?.author_profile?.role
   const showOgBadge = displayEntity?.author_profile?.is_og === true
+  const showEdgeProBadge = displayEntity?.author_profile?.has_active_subscription === true
 
   // ── Follow pill ───────────────────────────────────────────────────────────
   const displayAuthorUserId = displayEntity?.user_id
@@ -480,6 +481,7 @@ function LoungePostArticle({
               <LoungeFeedAuthorMetaBadges
                 role={authorRole}
                 isOg={showOgBadge}
+                isEdgePro={showEdgeProBadge}
                 displayName={displayNameFor(displayEntity)}
                 displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
               />

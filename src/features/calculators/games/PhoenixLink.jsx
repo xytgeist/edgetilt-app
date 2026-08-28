@@ -32,7 +32,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
   const [increment, setIncrement] = useState(1.2)
   const [avgTrigger, setAvgTrigger] = useState(1795)
   const [useMidpoint, setUseMidpoint] = useState(false)
-  const [midpointFactor, setMidpointFactor] = useState(0.65)
+  const [midpointFactor, setMidpointFactor] = useState(0.75)
   const [maxMajor, setMaxMajor] = useState(false)
   const [evAvg, setEvAvg] = useState(0)
   const [evFullRun, setEvFullRun] = useState(0)

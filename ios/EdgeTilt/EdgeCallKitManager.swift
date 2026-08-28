@@ -29,6 +29,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   private var callBackgroundTask: UIBackgroundTaskIdentifier = .invalid
   private var mediaConnected = false
   private var answeredUUIDs: Set<UUID> = []
+  /// CallKit actually accepted `reportNewIncomingCall`. Dedupe only against these.
+  /// A JS report that is still in-flight (or already failed) must not block VoIP.
+  private var acceptedIncomingUUIDs: Set<UUID> = []
   /// Answer happened while the phone was locked / backgrounded. Stay true until
   /// we have actually become active and told web to open chat + chrome.
   private var pendingCallReveal = false
@@ -358,26 +361,46 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     return ["token": NSNull()]
   }
 
-  /// JS → native: surface incoming call (foreground Realtime path).
+  /// Surface an incoming CallKit call.
+  /// `fromPushKit` is the only legal reporter when the app is not `.active`.
   func reportIncomingCall(
     uuidString: String?,
     callId: String,
     roomId: String,
     handle: String,
     hasVideo: Bool,
+    fromPushKit: Bool = false,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
     let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    // Backgrounded WKWebView still gets Realtime. JS then calls this, iOS
+    // rejects reportNewIncomingCall outside a VoIP callback, and our callId
+    // dedupe made the real PushKit report a no-op. Force-quit still worked
+    // (no JS). Backgrounded received nothing.
+    if !fromPushKit && UIApplication.shared.applicationState != .active {
+      completion(.success(["ok": true, "skipped": "background"]))
+      return
+    }
     // One invite reaches us up to three ways: web Realtime (`ChatCallProvider`), the
-    // foreground APNs alert banner (`willPresent`), and the PushKit VoIP ring. The
-    // sender emits both an alert and a VoIP push for `chat_call_invite`, so without
-    // this every path minted its own UUID and CallKit saw unrelated calls for one
-    // invite. `endCall` resolves a single UUID, so the extras stranded on screen.
+    // foreground APNs alert banner (`willPresent`), and the PushKit VoIP ring.
+    // Dedupe only after CallKit accepted the first report.
     if !trimmedCallId.isEmpty,
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
-      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
-      completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
-      return
+      if acceptedIncomingUUIDs.contains(existing) {
+        EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+        completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
+        return
+      }
+      if fromPushKit {
+        // JS already started a report that has not been accepted. Do not mint
+        // a second UUID (maximumCallGroups = 1 would fail the VoIP report).
+        completion(.success([
+          "ok": true,
+          "uuid": existing.uuidString.lowercased(),
+          "pending": true,
+        ]))
+        return
+      }
     }
     let uuid = Self.uuid(from: uuidString) ?? UUID()
     let callerName = Self.sanitizedCallerName(handle)
@@ -400,10 +423,13 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
       if let error {
+        NSLog("EdgeCallKit reportNewIncomingCall failed: \(error.localizedDescription)")
         self.calls.removeValue(forKey: uuid)
+        self.acceptedIncomingUUIDs.remove(uuid)
         completion(.failure(error))
         return
       }
+      self.acceptedIncomingUUIDs.insert(uuid)
       EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
       // CallKit is now the ring UI. Drop the sibling APNs "X is calling you" card so
       // it does not sit on the lock screen / banner after the user answers.
@@ -433,6 +459,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
       calls.removeValue(forKey: uuid)
       answeredUUIDs.remove(uuid)
+      acceptedIncomingUUIDs.remove(uuid)
       mediaConnected = false
       pendingCallReveal = false
       didRevealCallThisAnswer = false
@@ -459,6 +486,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       calls.removeValue(forKey: uuid)
     }
     answeredUUIDs.removeAll()
+    acceptedIncomingUUIDs.removeAll()
     mediaConnected = false
     pendingCallReveal = false
     didRevealCallThisAnswer = false
@@ -567,7 +595,15 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let hasVideo = (userInfo["hasVideo"] as? Bool) ?? false
 
     if callId.isEmpty {
-      completion()
+      // iOS stops delivering VoIP if we complete a PushKit wake without a
+      // CallKit report. Show a placeholder, then drop it.
+      let placeholder = UUID()
+      let update = CXCallUpdate()
+      update.localizedCallerName = callerName
+      provider.reportNewIncomingCall(with: placeholder, update: update) { [weak self] _ in
+        self?.provider.reportCall(with: placeholder, endedAt: Date(), reason: .failed)
+        completion()
+      }
       return
     }
 
@@ -576,7 +612,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       callId: callId,
       roomId: roomId,
       handle: callerName,
-      hasVideo: hasVideo
+      hasVideo: hasVideo,
+      fromPushKit: true
     ) { _ in
       completion()
     }
@@ -587,6 +624,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   func providerDidReset(_ provider: CXProvider) {
     calls.removeAll()
     answeredUUIDs.removeAll()
+    acceptedIncomingUUIDs.removeAll()
     mediaConnected = false
     pendingCallReveal = false
     didRevealCallThisAnswer = false
@@ -660,6 +698,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
     calls.removeValue(forKey: action.callUUID)
     answeredUUIDs.remove(action.callUUID)
+    acceptedIncomingUUIDs.remove(action.callUUID)
     mediaConnected = false
     pendingCallReveal = false
     didRevealCallThisAnswer = false

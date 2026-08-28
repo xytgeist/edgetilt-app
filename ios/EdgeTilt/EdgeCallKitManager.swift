@@ -674,8 +674,18 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let callerName = Self.payloadString(userInfo, keys: ["callerName", "caller_name"])
     let avatarUrl = Self.payloadString(userInfo, keys: ["avatarUrl", "avatar_url"])
     let hasVideo = (userInfo["hasVideo"] as? Bool) ?? false
+    let eventType = Self.payloadString(userInfo, keys: ["eventType", "event_type", "event"])
     let state = Self.applicationStateLabel(UIApplication.shared.applicationState)
-    NSLog("EdgeCallKit PushKit received callId=\(callId.isEmpty ? "<empty>" : callId) roomId=\(roomId) caller=\(callerName) hasVideo=\(hasVideo) avatar=\(avatarUrl.isEmpty ? "<none>" : "yes") state=\(state) keys=\(keys)")
+    NSLog("EdgeCallKit PushKit received type=\(eventType.isEmpty ? "invite" : eventType) callId=\(callId.isEmpty ? "<empty>" : callId) roomId=\(roomId) caller=\(callerName) hasVideo=\(hasVideo) avatar=\(avatarUrl.isEmpty ? "<none>" : "yes") state=\(state) keys=\(keys)")
+
+    if eventType == "chat_call_missed" || eventType == "cancel" {
+      NSLog("EdgeCallKit PushKit handling cancellation callId=\(callId)")
+      self.endCall(uuidString: nil, callId: callId.isEmpty ? nil : callId, reason: "remote") { _ in
+        self.voipPushInFlight = false
+        completion()
+      }
+      return
+    }
 
     // Empty chatCallId still has to become a real incoming report. Flash-fail
     // looks like silence and still teaches iOS we "handled" the wake.

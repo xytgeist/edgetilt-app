@@ -722,14 +722,15 @@ async function sendPushToUser(
     }
   }
 
-  // Diagnostic (2026-08-27 night): always send the invite alert too.
-  // VoIP HTTP 200 is not "CallKit presented." After reboot + fresh token,
-  // background still got silence because we skipped this banner. Missed
-  // calls still go through the normal APNs path below.
+  // VoIP push: instant high-priority delivery to iOS PushKit for incoming calls & cancellations.
   let skipApnsAlert = false
-  if (notification.eventType === 'chat_call_invite' && notification.chatCallId) {
+  if (
+    (notification.eventType === 'chat_call_invite' || notification.eventType === 'chat_call_missed') &&
+    notification.chatCallId
+  ) {
     const voip = await sendVoipApnsToUser(admin, userId, {
       chatCallId: notification.chatCallId,
+      eventType: notification.eventType,
       roomId: extractRoomIdFromPushUrl(notification.url),
       callerName: callerNameFromInviteNotification(notification),
       hasVideo: false,

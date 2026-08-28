@@ -261,6 +261,7 @@ export async function sendApnsToUser(
 
 export type ApnsVoipCallPayload = {
   chatCallId: string
+  eventType?: 'chat_call_invite' | 'chat_call_missed'
   roomId?: string
   callerName?: string
   hasVideo?: boolean
@@ -284,6 +285,7 @@ async function postVoipApns(
     'content-type': 'application/json',
   }
   const body: Record<string, unknown> = {
+    eventType: payload.eventType || 'chat_call_invite',
     chatCallId: payload.chatCallId,
     roomId: payload.roomId || '',
     callerName: payload.callerName || 'Incoming call',

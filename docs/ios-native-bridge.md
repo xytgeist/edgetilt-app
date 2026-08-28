@@ -110,7 +110,7 @@ v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connec
 2. **APNs alert banner** … `EdgePushManager` `willPresent` → `handleCallInviteUserInfo()` (foreground only).
 3. **PushKit VoIP** … `pushRegistry(_:didReceiveIncomingPushWith:)` (any app state).
 
-Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an alert push *and* a VoIP push** for `chat_call_invite`. With `maximumCallGroups = 1` that meant duplicate or failed `reportNewIncomingCall` calls for one logical call, repeated `EdgeAudioSession.apply`, and worst of all **stranded CallKit calls**: `endCall` resolves a single UUID, so declining cleared one and left the others up ("stuck on a call that does not exist"). As of 2026-08-27 the sender **skips the ringing alert when VoIP sent**, so path 2 is fallback-only. Dedup still stays.
+Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an alert push *and* a VoIP push** for `chat_call_invite`. With `maximumCallGroups = 1` that meant duplicate or failed `reportNewIncomingCall` calls for one logical call, repeated `EdgeAudioSession.apply`, and worst of all **stranded CallKit calls**: `endCall` resolves a single UUID, so declining cleared one and left the others up ("stuck on a call that does not exist"). Dedup still stays. **2026-08-27 night diagnostic:** test sender sends the invite alert even when VoIP HTTP 200. VoIP 200 is not "CallKit presented." Prod is unchanged.
 
 **Fix:** `reportIncomingCall` now returns the **existing** UUID when CallKit already **accepted** that trimmed `callId` (`deduped: true`). An in-flight or failed JS report must not block VoIP. **Do not** re-add per-path UUID minting.
 

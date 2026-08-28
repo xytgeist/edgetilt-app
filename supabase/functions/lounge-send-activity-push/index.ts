@@ -705,9 +705,9 @@ async function sendPushToUser(
     }
   }
 
-  // IPA + a live VoIP token: CallKit is the ring. Sending the sibling APNs
-  // "Edge Chat / X is calling you" banner stacks on the CallKit UI while
-  // unlocked. Keep the alert as fallback when VoIP did not land. Missed
+  // Diagnostic (2026-08-27 night): always send the invite alert too.
+  // VoIP HTTP 200 is not "CallKit presented." After reboot + fresh token,
+  // background still got silence because we skipped this banner. Missed
   // calls still go through the normal APNs path below.
   let skipApnsAlert = false
   if (notification.eventType === 'chat_call_invite' && notification.chatCallId) {
@@ -720,7 +720,6 @@ async function sendPushToUser(
     sent += voip.sent
     failed += voip.failed
     removed += voip.removed
-    skipApnsAlert = voip.sent > 0
   }
 
   let apnsReason = ''

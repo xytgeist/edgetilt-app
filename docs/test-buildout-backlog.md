@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Invite alert back on for background receive diagnostic (Mac).** In-focus CallKit passed. Background still nothing after phone reboot + fresh voip token. Test `lounge-send-activity-push` sends the sibling invite alert even when VoIP HTTP 200. No IPA rebuild. Prod not redeployed.
+
 - 2026-08-27: **Re-landed VoIP-owns-background only (Mac).** `68a9bed6` rollback smoke: theomac ringing, Edge Lord tokens fresh, invite row written, phone got nothing. JS background report + callId dedupe swallowed PushKit; skip-alert left silence. Restored the `94a23bd9` skip / accepted-dedupe only. No avatar, evict, Swift decline, or forced invite banner. Rebuild owed.
 
 - 2026-08-27: **Rolled CallKit incoming back to `68a9bed6` (Mac).** Ryan's last working landmark is the 5:42 PM WhatsApp in-call chrome message. Restored `EdgeCallKitManager` / invite push from that commit, removed the avatar file and tonight's receive/decline patches. Test `lounge-send-activity-push` redeployed. Rebuild owed.

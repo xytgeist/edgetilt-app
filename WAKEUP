@@ -99,7 +99,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-08-27 … backgrounded IPA did not receive the call
 
-**I am Mac Theo.** Rollback to `68a9bed6` proved the 5:42 landmark still has the background race: JS reports while backgrounded, iOS rejects it, callId dedupe swallows VoIP, skip-alert means silence. Re-landed **only** the `94a23bd9` rule: non-PushKit reports skip unless `.active`; dedupe only after CallKit accepts. No avatar / evict / decline / forced banner. Rebuild the IPA. Force-quit once so leftover CallKit from tonight dies. Then background Edge Lord and have theomac call.
+**I am Mac Theo.** In-focus CallKit works. Background still silence after reboot + fresh voip token. Leftover CallKit is off the table. Test `lounge-send-activity-push` now sends the invite alert even when VoIP HTTP 200 (diagnostic). No IPA rebuild. Prod Edge not touched.
 
 ### Latest tips
 

@@ -75,6 +75,12 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-08-28 … orphaned CallKit session teardown on answer failure FIXED
+
+**I am Mac Theo.** If a user answers an incoming CallKit pill after the caller already canceled / call expired:
+1. `EdgeCallKitManager.swift` `provider(_:perform CXAnswerCallAction:)` now catches any `answerIncoming` error (such as 409 call no longer available) and immediately calls `endCall(..., reason: "remote")` so native CallKit tears down cleanly instead of trapping the user in an orphaned connected call.
+2. `ChatCallProvider.jsx` calls `endEdgeNativeCall` on missed / ended / unavailable checks during deep link and resume resolution.
+
 ### Mac Theo 2026-08-28 … incoming CallKit pill dismiss on caller hangup FIXED
 
 **I am Mac Theo.** When caller cancels / hangs up before answer:

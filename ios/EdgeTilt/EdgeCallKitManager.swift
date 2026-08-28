@@ -744,6 +744,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
               "error": error.localizedDescription,
             ]
           )
+          // If answering failed (e.g. caller canceled / call expired / 409),
+          // tear down CallKit immediately so the user is not trapped in an orphaned call.
+          self.endCall(uuidString: action.callUUID.uuidString, callId: meta.callId, reason: "remote") { _ in }
         }
       }
       dispatchToWeb(event: "edge-callkit-answer", detail: detail)

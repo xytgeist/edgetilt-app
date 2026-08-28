@@ -557,6 +557,7 @@ export function ChatCallProvider({
             }
           }
           showCallStatusToast('That call is no longer available.')
+          void endEdgeNativeCall({ callId, reason: 'remote' })
           return
         }
         const roomId = String(call.chat_room_id || stashed?.roomId || '')
@@ -565,6 +566,7 @@ export function ChatCallProvider({
         // Waiting on profiles was cancellable on PWA wake → DM opened, overlay never showed.
         if (['ringing', 'active'].includes(call.status) && intent !== 'callback') {
           if (call.started_by === viewerUserId) {
+            void endEdgeNativeCall({ callId, reason: 'remote' })
             return
           }
           presentIncomingRef.current(call)
@@ -573,6 +575,7 @@ export function ChatCallProvider({
         }
 
         // Missed / ended / declined (or missedCall= deep link) → DM + call-back prompt.
+        void endEdgeNativeCall({ callId, reason: 'remote' })
         if (call.started_by === viewerUserId) {
           onOpenRoomRef.current?.(roomId)
           return

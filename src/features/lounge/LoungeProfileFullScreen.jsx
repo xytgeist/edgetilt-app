@@ -146,7 +146,7 @@ function ProfileHeaderBadges({ role, isOg, isEdgePro }) {
         </span>
       ) : null}
       {isEdgePro === true ? (
-        <span className="shrink-0 ml-0.5">
+        <span className="shrink-0">
           <LoungeEdgeProBadge isEdgePro size="modal" />
         </span>
       ) : null}

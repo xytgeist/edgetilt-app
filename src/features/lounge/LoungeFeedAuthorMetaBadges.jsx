@@ -50,34 +50,24 @@ export default function LoungeFeedAuthorMetaBadges({
     )
 
   const identityBlock = (
-    <>
-      <span className={clusterClass}>
-        {displayNameNode}
-        {hasStaffBadge ? (
-          <span className={badgeWrapClass}>
-            <LoungeStaffRoleBadge role={role} size={badgeSize} />
-          </span>
-        ) : showOgBadge ? (
-          <span className={badgeWrapClass}>
-            <LoungeOgBadge isOg size={badgeSize} />
-          </span>
-        ) : showEdgeProBadge ? (
-          <span className={badgeWrapClass}>
-            <LoungeEdgeProBadge isEdgePro size={badgeSize} />
-          </span>
-        ) : null}
-      </span>
-      {hasStaffBadge && showOgBadge ? (
-        <span className={ogAfterStaffClass}>
+    <span className={clusterClass}>
+      {displayNameNode}
+      {hasStaffBadge ? (
+        <span className={badgeWrapClass}>
+          <LoungeStaffRoleBadge role={role} size={badgeSize} />
+        </span>
+      ) : null}
+      {showOgBadge ? (
+        <span className={hasStaffBadge ? ogAfterStaffClass : badgeWrapClass}>
           <LoungeOgBadge isOg size={badgeSize} />
         </span>
       ) : null}
-      {showEdgeProBadge && (hasStaffBadge || showOgBadge) ? (
-        <span className="ml-1 inline-flex items-center">
+      {showEdgeProBadge ? (
+        <span className={badgeWrapClass}>
           <LoungeEdgeProBadge isEdgePro size={badgeSize} />
         </span>
       ) : null}
-    </>
+    </span>
   )
 
   if (quoteEmbed) {

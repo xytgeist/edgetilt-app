@@ -7,7 +7,7 @@ import LoungeBadgeHoverTip from './LoungeBadgeHoverTip.jsx'
 function VerifiedCheckmarkIcon({ className = 'h-4 w-4' }) {
   return (
     <svg
-      viewBox="0 0 22 22"
+      viewBox="1.2 1.2 19.6 19.6"
       aria-hidden="true"
       className={className}
     >
@@ -23,10 +23,10 @@ function VerifiedCheckmarkIcon({ className = 'h-4 w-4' }) {
 
 /** @type {Record<'feed' | 'detail' | 'modal' | 'embed', { cls: string, yClass?: string }>} */
 const BADGE_SIZE = {
-  feed: { cls: 'h-[15px] w-[15px]', yClass: 'inline-flex items-center translate-y-[2px]' },
-  detail: { cls: 'h-[17px] w-[17px]', yClass: 'inline-flex items-center translate-y-[2.5px]' },
-  modal: { cls: 'h-[18px] w-[18px]', yClass: 'inline-flex items-center translate-y-[1.5px]' },
-  embed: { cls: 'h-[13px] w-[13px]', yClass: 'inline-flex items-center translate-y-[1px]' },
+  feed: { cls: 'h-[15px] w-[15px]', yClass: 'translate-y-[2px]' },
+  detail: { cls: 'h-[17px] w-[17px]', yClass: 'translate-y-[2.5px]' },
+  modal: { cls: 'h-[18px] w-[18px]', yClass: 'translate-y-[1.5px]' },
+  embed: { cls: 'h-[13px] w-[13px]', yClass: 'translate-y-[1px]' },
 }
 
 /**
@@ -37,7 +37,7 @@ const BADGE_SIZE = {
 export default function LoungeEdgeProBadge({ isEdgePro, size = 'feed' }) {
   if (isEdgePro !== true) return null
   const s = BADGE_SIZE[size] ?? BADGE_SIZE.feed
-  const tipClass = `${s.yClass ?? 'inline-flex items-center'}`
+  const tipClass = `inline-flex items-center ${s.yClass ?? 'translate-y-[2px]'}`
 
   return (
     <LoungeBadgeHoverTip tip="Verified Subscriber" tone="pro" className={tipClass}>

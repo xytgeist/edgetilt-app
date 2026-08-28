@@ -72,10 +72,5 @@
 		<string>remote-notification</string>
 		<string>voip</string>
 	</array>
-	<key>NSUserActivityTypes</key>
-	<array>
-		<string>INStartCallIntent</string>
-		<string>INStartAudioCallIntent</string>
-	</array>
 </dict>
 </plist>

@@ -22,7 +22,6 @@
 		BD77B93B3B8FE0B930A6B235 /* EdgePushManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */; };
 		C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */; };
 		D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */; };
-		9D5F82B31C9E5022B7F3D4E2 /* EdgeCallKitCallerAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4E91A20B8D4F11A6E2C3D1 /* EdgeCallKitCallerAvatar.swift */; };
 		D92B401F5C3E02B78F6D2159 /* EdgeAuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */; };
 		EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */; };
 		F14D62317E5024D9A18F437B /* EdgeChatCallsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */; };
@@ -41,7 +40,6 @@
 		636A0FF8CC23E17E467905A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgePushManager.swift; sourceTree = "<group>"; };
 		8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCallKitManager.swift; sourceTree = "<group>"; };
-		7C4E91A20B8D4F11A6E2C3D1 /* EdgeCallKitCallerAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCallKitCallerAvatar.swift; sourceTree = "<group>"; };
 		A039684E44413435F9C5696A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAudioSession.swift; sourceTree = "<group>"; };
 		A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLocationManager.swift; sourceTree = "<group>"; };
@@ -74,7 +72,6 @@
 				A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */,
 				C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */,
 				8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */,
-				7C4E91A20B8D4F11A6E2C3D1 /* EdgeCallKitCallerAvatar.swift */,
 				E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */,
 				025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */,
 				BF0D9AEF6D31B7874CAA6351 /* EdgeHaptics.swift */,
@@ -194,7 +191,6 @@
 				9980D8DAF4E53F6C0DF750A5 /* EdgeAudioSession.swift in Sources */,
 				D92B401F5C3E02B78F6D2159 /* EdgeAuthSessionStore.swift in Sources */,
 				D8232F9CE5E3919C29DAE2AA /* EdgeCallKitManager.swift in Sources */,
-				9D5F82B31C9E5022B7F3D4E2 /* EdgeCallKitCallerAvatar.swift in Sources */,
 				F14D62317E5024D9A18F437B /* EdgeChatCallsClient.swift in Sources */,
 				136F8453907246F1C3A1659D /* EdgeLiveKitCallManager.swift in Sources */,
 				2EDAB0E529026EF8B5FEA532 /* EdgeHaptics.swift in Sources */,

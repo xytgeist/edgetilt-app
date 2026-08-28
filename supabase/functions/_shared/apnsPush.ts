@@ -10,7 +10,6 @@ export type ApnsAlertPayload = {
   activityBatchId?: string
   eventType?: string
   chatCallId?: string
-  avatarUrl?: string
 }
 
 type ApnsTokenRow = {
@@ -131,7 +130,6 @@ function buildApnsBody(notification: ApnsAlertPayload): Record<string, unknown> 
   if (notification.activityBatchId) body.activityBatchId = notification.activityBatchId
   if (notification.eventType) body.eventType = notification.eventType
   if (notification.chatCallId) body.chatCallId = notification.chatCallId
-  if (notification.avatarUrl) body.avatarUrl = notification.avatarUrl
   return body
 }
 
@@ -260,7 +258,6 @@ export type ApnsVoipCallPayload = {
   roomId?: string
   callerName?: string
   hasVideo?: boolean
-  avatarUrl?: string
 }
 
 async function postVoipApns(
@@ -279,13 +276,12 @@ async function postVoipApns(
     'apns-priority': '10',
     'content-type': 'application/json',
   }
-  const body: Record<string, unknown> = {
+  const body = {
     chatCallId: payload.chatCallId,
     roomId: payload.roomId || '',
     callerName: payload.callerName || 'Incoming call',
     hasVideo: Boolean(payload.hasVideo),
   }
-  if (payload.avatarUrl) body.avatarUrl = payload.avatarUrl
   const res = await fetch(`${apnsHost(environment)}/3/device/${tokenHex}`, {
     method: 'POST',
     headers,

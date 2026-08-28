@@ -37,7 +37,6 @@ type ActorProfile = {
   user_id: string
   handle: string | null
   display_name: string | null
-  avatar_url?: string | null
 }
 
 type NotificationPrefs = {
@@ -325,12 +324,6 @@ type PushNotificationPayload = {
   /** Lets the service worker treat call rings differently from Lounge toasts. */
   eventType?: string
   chatCallId?: string
-  avatarUrl?: string
-}
-
-function actorAvatarUrl(actor: ActorProfile | null | undefined): string | undefined {
-  const url = String(actor?.avatar_url || '').trim()
-  return url.startsWith('https://') ? url : undefined
 }
 
 /** VoIP / CallKit wants the actor name, not the APNs sentence. */
@@ -626,8 +619,6 @@ function buildSingleNotification(
     }
   }
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
-  const avatarUrl =
-    event.event_type === 'chat_call_invite' ? actorAvatarUrl(actor) : undefined
   return {
     title: pushTitleForEventType(event.event_type),
     body: `${who} ${phrase}`,
@@ -638,7 +629,6 @@ function buildSingleNotification(
     event.chat_call_id
       ? { chatCallId: event.chat_call_id }
       : {}),
-    ...(avatarUrl ? { avatarUrl } : {}),
   }
 }
 
@@ -726,16 +716,11 @@ async function sendPushToUser(
       roomId: extractRoomIdFromPushUrl(notification.url),
       callerName: callerNameFromInviteNotification(notification),
       hasVideo: false,
-      avatarUrl: notification.avatarUrl,
     })
     sent += voip.sent
     failed += voip.failed
     removed += voip.removed
-    // Always send the invite alert too. `voip.sent` is "APNs accepted the
-    // packet," not "CallKit presented." Skipping the alert is why a
-    // backgrounded IPA got silence, then a missed notification after hangup.
-    // Foreground `willPresent` already hides this banner and routes to CallKit.
-    skipApnsAlert = false
+    skipApnsAlert = voip.sent > 0
   }
 
   let apnsReason = ''
@@ -789,7 +774,7 @@ async function handleImmediatePush(
 
   const { data: actorProfile, error: actorError } = await admin
     .from('profiles')
-    .select('user_id, handle, display_name, avatar_url')
+    .select('user_id, handle, display_name')
     .eq('user_id', event.actor_user_id)
     .maybeSingle()
 
@@ -1029,7 +1014,7 @@ async function handleBatchPush(
 
   const { data: profiles, error: profilesError } = await admin
     .from('profiles')
-    .select('user_id, handle, display_name, avatar_url')
+    .select('user_id, handle, display_name')
     .in('user_id', actorIds)
 
   if (profilesError) throw profilesError

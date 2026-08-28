@@ -389,8 +389,6 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
       if acceptedIncomingUUIDs.contains(existing) {
         EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
-        let existingName = calls[existing]?.callerName ?? Self.sanitizedCallerName(handle)
-        attachCallerAvatar(uuid: existing, handle: existingName, hasVideo: hasVideo, avatarUrl: avatarUrl)
         completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
         return
       }
@@ -447,27 +445,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       // it does not sit on the lock screen / banner after the user answers.
       EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
       self.beginCallBackgroundTask()
-      self.attachCallerAvatar(uuid: uuid, handle: callerName, hasVideo: hasVideo, avatarUrl: avatarUrl)
       completion(.success(["ok": true, "uuid": uuid.uuidString.lowercased()]))
-    }
-  }
-
-  /// Fetch the profile photo after CallKit is already ringing, donate it, then
-  /// nudge the system UI so the compact pill can swap the empty circle.
-  private func attachCallerAvatar(uuid: UUID, handle: String, hasVideo: Bool, avatarUrl: String?) {
-    EdgeCallKitCallerAvatar.donateNow(handle: handle, displayName: handle, avatarUrl: avatarUrl)
-    EdgeCallKitCallerAvatar.fetchAndDonate(
-      handle: handle,
-      displayName: handle,
-      avatarUrl: avatarUrl
-    ) { [weak self] in
-      guard let self, self.calls[uuid] != nil else { return }
-      let update = CXCallUpdate()
-      update.remoteHandle = CXHandle(type: .generic, value: handle)
-      update.localizedCallerName = handle
-      update.hasVideo = hasVideo
-      EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: avatarUrl)
-      self.provider.reportCall(with: uuid, updated: update)
     }
   }
 

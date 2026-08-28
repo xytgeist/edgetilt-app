@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **CallKit pill lasted ~1s then vanished; caller kept ringing (Mac).** After the background-receive fix, VoIP reported, then `attachCallerAvatar` → `reportCall(updated:)` with `localizedCallerImageURL` tore the live incoming down without `decline_call`. Avatar is first-report only. Rebuild owed.
+
 - 2026-08-27: **Backgrounded IPA did not receive the call (Mac).** Realtime JS called `reportNewIncomingCall` while backgrounded; iOS rejected it; callId dedupe then made the VoIP report a no-op. Force-quit still worked (no JS). Non-PushKit reports now skip unless `.active`; dedupe only after CallKit accepts. Rebuild owed.
 
 - 2026-08-27: **Evict-on-report killed live incoming … only missed notifications (Mac).** `evictUnansweredCalls()` inside `reportIncomingCall` + `leave_call` fallback ended the new ring (CallKit fail or immediate `CXEndCallAction`). Ringing DMs then closed as **missed**. Removed evict-on-report and the leave fallback. User decline still `decline_call`s from Swift. Rebuild owed.

@@ -99,7 +99,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-08-27 … backgrounded IPA did not receive the call
 
-**I am Mac Theo.** theomac rang, Edge Lord (app backgrounded) received nothing, hangup, then missed notify. Force-quit still worked earlier because JS never ran. Backgrounded WKWebView still gets Realtime, JS called `reportNewIncomingCall` outside a VoIP callback, iOS rejected it, and callId dedupe then swallowed the real PushKit report. Non-PushKit reports now skip unless `.active`. Rebuild the IPA and smoke backgrounded receive.
+**I am Mac Theo.** theomac rang, Edge Lord (app backgrounded) received nothing, hangup, then missed notify. Force-quit still worked earlier because JS never ran. Backgrounded WKWebView still gets Realtime, JS called `reportNewIncomingCall` outside a VoIP callback, iOS rejected it, and callId dedupe then swallowed the real PushKit report. Non-PushKit reports now skip unless `.active`.
+
+**Follow-up same night:** after that rebuild, Edge Lord received the pill for ~1s then it vanished; theomac kept ringing. Cause was `reportCall(updated:)` after the avatar fetch. Avatar stays on the first `CXCallUpdate` only. Rebuild again.
 
 ### Latest tips
 

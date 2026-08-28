@@ -116,6 +116,8 @@ Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an al
 
 **Background receive (2026-08-27):** a backgrounded WKWebView still gets Realtime, so path 1 used to call `reportNewIncomingCall` *before* VoIP. iOS rejects that outside a PushKit callback. The failed JS report still parked the `callId` in `calls`, so path 3 **deduped and never reported**. Force-quit still worked (no JS). Backgrounded received nothing, then a missed notification after hangup. Non-PushKit reports now no-op unless the app is `.active`. Dedupe only after CallKit accepted the report. PushKit with an empty `chatCallId` still reports a placeholder (iOS stops VoIP if we complete the wake with no CallKit report).
 
+**Do not `reportCall(updated:)` after the first incoming report.** The avatar belongs on the initial `CXCallUpdate` only. A follow-up update (especially `localizedCallerImageURL`) is what made a live pill last ~1s, then vanish, while the caller kept ringing (no `decline_call`). Donate / cache fetch may still run. Do not poke the live CallKit call.
+
 **Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
 
 ### ⚠️ CallKit decline must end the server row without waiting for JS `incoming` (2026-08-27)

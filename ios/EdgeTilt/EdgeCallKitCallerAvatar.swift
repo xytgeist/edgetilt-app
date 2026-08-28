@@ -37,8 +37,8 @@ enum EdgeCallKitCallerAvatar {
     }
   }
 
-  /// Fetch (or reuse cache), donate JPEG bytes, then `onReady` so CallKit
-  /// can `reportCall(updated:)` after the first paint.
+  /// Fetch (or reuse cache) and donate JPEG bytes. Do not use `onReady` to
+  /// `reportCall(updated:)` on a live incoming... that kills the pill.
   static func fetchAndDonate(
     handle: String,
     displayName: String,

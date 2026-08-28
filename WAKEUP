@@ -97,6 +97,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **Hotfix same night:** evict-on-report + `leave_call` fallback was ending the *new* ring as missed. Ryan only got missed-call notifications. Evict removed. Rebuild again.
 
+### Mac Theo 2026-08-27 … backgrounded IPA did not receive the call
+
+**I am Mac Theo.** theomac rang, Edge Lord (app backgrounded) received nothing, hangup, then missed notify. Force-quit still worked earlier because JS never ran. Backgrounded WKWebView still gets Realtime, JS called `reportNewIncomingCall` outside a VoIP callback, iOS rejected it, and callId dedupe then swallowed the real PushKit report. Non-PushKit reports now skip unless `.active`. Rebuild the IPA and smoke backgrounded receive.
+
 ### Latest tips
 
 | Branch | Tip | Note |

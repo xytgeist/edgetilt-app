@@ -114,6 +114,8 @@ Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an al
 
 **Fix:** `reportIncomingCall` now returns the **existing** UUID when a call with the same trimmed `callId` is already tracked (`deduped: true`). All three paths converge on one CallKit call. **Do not** re-add per-path UUID minting, and **do not** "fix" this by removing one of the three paths … each is load-bearing for a different app state.
 
+**Background receive (2026-08-27):** a backgrounded WKWebView still gets Realtime, so path 1 used to call `reportNewIncomingCall` *before* VoIP. iOS rejects that outside a PushKit callback. The failed JS report still parked the `callId` in `calls`, so path 3 **deduped and never reported**. Force-quit still worked (no JS). Backgrounded received nothing, then a missed notification after hangup. Non-PushKit reports now no-op unless the app is `.active`. Dedupe only after CallKit accepted the report. PushKit with an empty `chatCallId` still reports a placeholder (iOS stops VoIP if we complete the wake with no CallKit report).
+
 **Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
 
 ### ⚠️ CallKit decline must end the server row without waiting for JS `incoming` (2026-08-27)

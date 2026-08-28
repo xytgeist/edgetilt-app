@@ -120,7 +120,7 @@ Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an al
 
 **Read before touching `CXEndCallAction` or `onDecline`.** Declining the compact pill often happens **before** `ChatCallProvider` has set `incoming` (VoIP first, web later). Old JS did `if (incomingRef.callId !== callId) return`, then `declineIncoming` required `incoming`. Native `hangup(leaveOnServer:)` also no-ops if we never joined LiveKit. Result: CallKit goes away, the `chat_calls` row stays `ringing`, the caller keeps ringing, and the next invite can fail because `maximumCallGroups = 1`.
 
-**Fix:** unanswered `CXEndCallAction` calls `chat-calls` `decline_call` from Swift (leave as fallback). JS decline uses the event `callId` even when `incoming` is null. A new invite evicts unanswered leftovers (CallKit + decline the old row) so `@smokewagon` is not blocked by a leftover `@theomac` ring.
+**Fix:** unanswered `CXEndCallAction` (the user actually declined) calls `chat-calls` `decline_call` from Swift. JS decline uses the event `callId` only … no fallback to whatever `incoming` is now. **Do not** evict other unanswered CallKit calls inside `reportIncomingCall`. That ends the new ring in the same turn (`reportNewIncomingCall` fails or `CXEndCallAction` fires). `leave_call` as a decline fallback marks a ringing DM **missed**, which is how Ryan only saw missed-call notifications.
 
 ### ⚠️ CallKit native→JS events must be buffered … the web layer does not exist yet (2026-08-27)
 

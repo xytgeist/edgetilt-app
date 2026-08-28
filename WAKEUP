@@ -95,6 +95,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Declining CallKit did not `decline_call` when JS `incoming` was still null (VoIP-first). Caller kept ringing. That leftover also made the next invite fail (`maximumCallGroups = 1`), which looks like "I get @theomac but not @smokewagon." Native decline now hits the server. Rebuild the IPA.
 
+**Hotfix same night:** evict-on-report + `leave_call` fallback was ending the *new* ring as missed. Ryan only got missed-call notifications. Evict removed. Rebuild again.
+
 ### Latest tips
 
 | Branch | Tip | Note |

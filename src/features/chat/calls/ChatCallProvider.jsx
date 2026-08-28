@@ -307,22 +307,7 @@ export function ChatCallProvider({
   const presentIncoming = useCallback(
     (row) => {
       if (!row?.id) return
-      if (activeCallRef.current) return
-      if (incomingRef.current?.callId === row.id) return
-      if (incomingRef.current?.callId && incomingRef.current.callId !== row.id) {
-        const stale = incomingRef.current
-        void (async () => {
-          try {
-            if (stale.kind !== 'group_audio' && supabaseClient) {
-              await chatDeclineCall(supabaseClient, stale.callId)
-            }
-            if (stale.roomId) ensureBroadcast(stale.roomId)?.emit('decline', { callId: stale.callId })
-          } catch {
-            /* already ended */
-          }
-          void endEdgeNativeCall({ callId: stale.callId, reason: 'remote' })
-        })()
-      }
+      if (activeCallRef.current || incomingRef.current?.callId === row.id) return
       const roomId = String(row.chat_room_id || row.roomId || '')
       const fromUserId = String(row.started_by || row.fromUserId || '')
       const kind = row.kind === 'group_audio' ? 'group_audio' : 'dm_av'
@@ -360,7 +345,7 @@ export function ChatCallProvider({
         }
       })
     },
-    [supabaseClient, ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync],
+    [ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync],
   )
   presentIncomingRef.current = presentIncoming
 
@@ -977,11 +962,8 @@ export function ChatCallProvider({
         })
       },
       onDecline: (detail) => {
-        const callId = String(detail?.callId || incomingRef.current?.callId || '').trim()
-        if (!callId) {
-          if (incomingRef.current) setIncoming(null)
-          return
-        }
+        const callId = String(detail?.callId || '').trim()
+        if (!callId) return
         void declineIncomingRef.current?.({
           callId,
           roomId: String(detail?.roomId || incomingRef.current?.roomId || ''),

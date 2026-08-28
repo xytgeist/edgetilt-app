@@ -31,6 +31,8 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
   const [avgBonusPay, setAvgBonusPay] = useState(31)
   const [increment, setIncrement] = useState(1.2)
   const [avgTrigger, setAvgTrigger] = useState(1795)
+  const [useMidpoint, setUseMidpoint] = useState(false)
+  const [midpointFactor, setMidpointFactor] = useState(0.50)
   const [maxMajor, setMaxMajor] = useState(false)
   const [evAvg, setEvAvg] = useState(0)
   const [evFullRun, setEvFullRun] = useState(0)
@@ -52,9 +54,11 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
   const getRecommendedWalkAway = (counter) => {
     const oRTP = overallRTP / 100
     const inc = increment
-    const avgTrig = avgTrigger
+    const targetTrig = useMidpoint
+      ? (counter + (MUST_HIT - counter) * midpointFactor)
+      : avgTrigger
     const B = avgBonusPay
-    const spinsRemaining = Math.max(0, (avgTrig - counter) / inc)
+    const spinsRemaining = Math.max(0, (targetTrig - counter) / inc)
     const remainingEV = B - (1 - oRTP) * spinsRemaining
     const normalized = Math.max(0, Math.min(1, (counter - 1300) / 588))
     const sCurve = 1 / (1 + Math.exp(-5.5 * (normalized - 0.48)))
@@ -127,20 +131,24 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
     const displayedOverall = Number(overallRTP) || 0
     const effectiveOverall = displayedOverall + (maxMajor ? 0.5 : 0)
     const oRTP = effectiveOverall / 100
-    const inc = increment
-    const avgTrig = avgTrigger
-    const X = currentX || 0
-    const bet = betSize || 25
-    const B = avgBonusPay
+    const inc = Number(increment) || 1.2
+    const avgTrig = Number(avgTrigger) || 1795
+    const X = Number(currentX) || 0
+    const bet = Number(betSize) || 25
+    const B = Number(avgBonusPay) || 31
     const houseEdge = 1 - oRTP
-    const spinsAvg = Math.max(0, (avgTrig - X) / inc)
+
+    const targetTrigger = useMidpoint ? (X + (MUST_HIT - X) * midpointFactor) : avgTrig
+    const spinsAvg = Math.max(0, (targetTrigger - X) / inc)
     const spinsFull = Math.max(0, (MUST_HIT - X) / inc)
     const avgEV = B - houseEdge * spinsAvg
     const fullEV = B - houseEdge * spinsFull
     const baseHouseEdge = 1 - (28 / 100)
     const maxExpAvg = Math.round(spinsAvg * baseHouseEdge)
     const maxExpFull = Math.round(spinsFull * baseHouseEdge)
-    const breakevenAvg = Math.round(avgTrig - (B / houseEdge) * inc)
+    const breakevenAvg = useMidpoint
+      ? (midpointFactor > 0 ? Math.round(MUST_HIT - (B / houseEdge) * (inc / midpointFactor)) : MUST_HIT)
+      : Math.round(avgTrig - (B / houseEdge) * inc)
     const breakevenFull = Math.round(MUST_HIT - (B / houseEdge) * inc)
     setEvAvg(avgEV)
     setEvFullRun(fullEV)
@@ -159,13 +167,14 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
     if (alreadyPositive) {
       setFpDollarsNeeded(0)
     } else {
-      const spinsNeeded = Math.max(0, breakevenAvg - X)
+      const spinsNeeded = Math.max(0, (breakevenAvg - X) / inc)
       const dollarsNeeded = Math.round(spinsNeeded * bet)
       setFpDollarsNeeded(dollarsNeeded)
     }
     const table = []
     for (let c = 1150; c <= 1875; c += 25) {
-      const avgSpins = Math.max(0, (avgTrig - c) / inc)
+      const targetC = useMidpoint ? (c + (MUST_HIT - c) * midpointFactor) : avgTrig
+      const avgSpins = Math.max(0, (targetC - c) / inc)
       const fullSpins = Math.max(0, (MUST_HIT - c) / inc)
       table.push({
         counter: c,
@@ -176,7 +185,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
       })
     }
     setEvTable(table)
-  }, [overallRTP, avgBonusPay, increment, avgTrigger, currentX, betSize, maxMajor])
+  }, [overallRTP, avgBonusPay, increment, avgTrigger, currentX, betSize, maxMajor, useMidpoint, midpointFactor])
 
   useEffect(() => {
     queueMicrotask(() => calculate())
@@ -324,15 +333,57 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
                 />
               </div>
               <div>
-                <label className="block text-gray-400 mb-1 text-xs">Avg Counter Trigger</label>
-                <input 
-                  type="text" 
-                  value={avgTrigger} 
-                  onChange={handleFloatChange(setAvgTrigger, 1795)} 
-                  onBlur={handleFloatBlur(setAvgTrigger, 1795)} 
-                  className="w-full p-3 bg-gray-800 rounded-xl" 
-                />
+                <label className="block text-gray-400 mb-1.5 text-xs">EV Trigger Model</label>
+                <div className="flex h-11 items-stretch bg-gray-800 rounded-xl p-1 gap-1">
+                  <button 
+                    type="button"
+                    onClick={() => setUseMidpoint(false)} 
+                    className={`flex-1 text-xs font-semibold rounded-lg transition-colors ${!useMidpoint ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Fixed ({avgTrigger})
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setUseMidpoint(true)} 
+                    className={`flex-1 text-xs font-semibold rounded-lg transition-colors ${useMidpoint ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Midpoint ({(midpointFactor * 100).toFixed(0)}%)
+                  </button>
+                </div>
               </div>
+              {!useMidpoint ? (
+                <div>
+                  <label className="block text-gray-400 mb-1 text-xs">Avg Counter Trigger</label>
+                  <input 
+                    type="text" 
+                    value={avgTrigger} 
+                    onChange={handleFloatChange(setAvgTrigger, 1795)} 
+                    onBlur={handleFloatBlur(setAvgTrigger, 1795)} 
+                    className="w-full p-3 bg-gray-800 rounded-xl" 
+                  />
+                </div>
+              ) : (
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-gray-400 text-xs">Midpoint Factor</label>
+                    <span className="text-orange-400 font-bold text-sm">{midpointFactor.toFixed(2)} ({(midpointFactor * 100).toFixed(0)}%)</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="1" 
+                    step="0.05" 
+                    value={midpointFactor} 
+                    onChange={(e) => setMidpointFactor(parseFloat(e.target.value))} 
+                    className="w-full range-touch-target accent-orange-500" 
+                  />
+                  <div className="flex justify-between text-[11px] text-gray-400 mt-1">
+                    <span>Current (0.00)</span>
+                    <span className="text-orange-400/90 font-medium">Expected Trigger: ~{Math.round(Number(currentX || 0) + (MUST_HIT - Number(currentX || 0)) * midpointFactor)}</span>
+                    <span>Cap 1888 (1.00)</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -347,7 +398,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
           </div>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-800 p-4 rounded-2xl">
-              <div className="text-gray-400 text-sm">Average Case</div>
+              <div className="text-gray-400 text-sm">{useMidpoint ? `Midpoint (${(midpointFactor * 100).toFixed(0)}%)` : 'Average Case'}</div>
               <div className={`text-3xl font-bold ${evAvg >= 0 ? 'text-green-400' : 'text-red-400'}`}>{evAvg.toFixed(1)}×</div>
               <div className="text-sm">${(evAvg * betSize).toFixed(2)}</div>
               <div className="mt-3 pt-3 border-t border-gray-700">
@@ -376,7 +427,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
           </div>
           <h2 className="text-xl font-semibold mb-5 text-orange-400">Break Even Points</h2>
           <div className="grid grid-cols-2 gap-4">
-            <div><div className="text-gray-400 text-sm">Average</div><div className="text-4xl font-bold text-green-400">{beAvg}</div></div>
+            <div><div className="text-gray-400 text-sm">{useMidpoint ? `Midpoint (${(midpointFactor * 100).toFixed(0)}%)` : 'Average'}</div><div className="text-4xl font-bold text-green-400">{beAvg}</div></div>
             <div><div className="text-gray-400 text-sm">Full Run (to 1888)</div><div className="text-4xl font-bold text-yellow-400">{beFullRun}</div></div>
           </div>
           {!isAlreadyPositive && (
@@ -428,7 +479,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
                   onClick={() => setUseFullRunForFee(false)} 
                   className={`flex-1 text-sm font-semibold rounded-[14px] ${!useFullRunForFee ? 'bg-orange-600 text-white' : 'text-gray-400'}`}
                 >
-                  Average
+                  {useMidpoint ? 'Midpoint' : 'Average'}
                 </button>
                 <button 
                   onClick={() => setUseFullRunForFee(true)} 
@@ -462,7 +513,7 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
               ${((useFullRunForFee ? evFullRun : evAvg) * betSize).toFixed(2)}
             </div>
             <div className="text-xs text-gray-400">
-              {useFullRunForFee ? 'Full Run EV' : 'Average Case EV'}
+              {useFullRunForFee ? 'Full Run EV' : (useMidpoint ? 'Midpoint EV' : 'Average Case EV')}
             </div>
           </div>
           <div className="bg-gray-800 rounded-2xl p-5 text-center">
@@ -526,7 +577,9 @@ function PhoenixLink({ onBack, supabaseClient = null, onOpenLogbook = null, logP
               <thead>
                 <tr className="border-b border-gray-700">
                   <th className="py-4 px-4 text-gray-400 font-medium w-[92px]">Counter</th>
-                  <th className="py-4 px-3 text-gray-400 font-medium w-[155px]">EV Avg (Bets | $)</th>
+                  <th className="py-4 px-3 text-gray-400 font-medium w-[155px]">
+                    {useMidpoint ? `EV Mid (${(midpointFactor * 100).toFixed(0)}%)` : 'EV Avg (Bets | $)'}
+                  </th>
                   <th className="py-4 px-5 text-gray-400 font-medium">Full Run (to 1888) (Bets | $)</th>
                 </tr>
               </thead>

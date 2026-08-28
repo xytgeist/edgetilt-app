@@ -1069,6 +1069,12 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-27: **Phoenix Link EV Calculator midpoint option (`test`):**
+  - Added an EV Trigger Model toggle in Advanced Settings allowing players to switch between the default **Fixed Trigger** (e.g. 1795) and a dynamic **Midpoint** model.
+  - Added a Midpoint Factor slider (0.00 to 1.00 in 0.05 increments, default 0.50) with live expected trigger counter preview (`X + (1888 - X) * factor`).
+  - Dynamic midpoint calculation updates the Average/Midpoint EV column, Break-Even point, Free Play needed to reach +EV, Acquisition Fee scout share, Walk-Away Advisor S-curve, and 1150-1875 scenario table.
+  - Full Run (to 1888) remains available side-by-side. Fully theme-compatible with light and dark mode styling.
+
 - 2026-08-27: **CallKit decline left the caller ringing + next invite looked missing (Mac).** Declining the pill often fires before JS has `incoming`, so `decline_call` never ran and `hangup` no-op'd (never joined LiveKit). The row stayed `ringing`, so `@theomac` kept ringing and CallKit `maximumCallGroups = 1` could swallow `@smokewagon` / a second theomac call. Native unanswered end now `decline_call`s; a new invite evicts unanswered leftovers. Rebuild owed.
 
 - 2026-08-27: **CallKit incoming pill avatar actually paints (Mac).** First cut donated `INStartCallIntent`. That does not fill the compact CallKit / Dynamic Island circle. Public `CXCallUpdate` still has no photo field on iOS 27. Native now sets undocumented `localizedCallerImageURL` on the first `CXCallUpdate` from the VoIP / JS `avatarUrl`. Rebuild owed. App Review can theoretically flag the selector. Do not write fake Contacts.

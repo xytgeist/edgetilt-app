@@ -886,6 +886,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   }
 }
 
+@_silgen_name("EdgeCallKitApplyCallerImageURL")
+private func EdgeCallKitApplyCallerImageURL(_ update: CXCallUpdate, _ url: NSURL) -> Bool
+
 /// Lives in this file so Xcode cannot drop it from the target. CallKit has no
 /// public photo field. The Island circle reads `localizedCallerImageURL`.
 /// Set it on the **first** `reportNewIncomingCall` only. Never
@@ -895,18 +898,19 @@ enum EdgeCallKitCallerAvatar {
   private static let maxBytes = 512 * 1024
   private static let fetchTimeout: TimeInterval = 8
 
-  /// Cached JPEG if we have bytes, otherwise the https URL. Never waits on
-  /// the network. Apple requires the VoIP report immediately.
+  /// Local JPEG only. A remote https URL is ignored by CallKit and the old
+  /// `perform` path crashed the VoIP wake (`-[NSURL URL]`). Never wait on the
+  /// network. Apple requires the report immediately.
   static func applyToCallUpdate(_ update: CXCallUpdate, avatarUrl: String?) {
-    guard let url = httpsURL(avatarUrl) else { return }
-    if let data = localJPEGData(for: url),
-       let file = writeShareableJPEG(data) {
-      setLocalizedCallerImageURL(update, file)
+    guard let source = httpsURL(avatarUrl),
+          let data = localJPEGData(for: source),
+          let file = writeShareableJPEG(data)
+    else { return }
+    if EdgeCallKitApplyCallerImageURL(update, file as NSURL) {
       NSLog("EdgeCallKit avatar first-report file://")
-      return
+    } else {
+      NSLog("EdgeCallKit avatar apply failed, reporting without photo")
     }
-    setLocalizedCallerImageURL(update, url)
-    NSLog("EdgeCallKit avatar first-report https")
   }
 
   /// Warm disk for the **next** ring. Do not hook this to a CallKit update.
@@ -939,15 +943,6 @@ enum EdgeCallKitCallerAvatar {
       return jpegAvatarData(from: cached) ?? cached
     }
     return nil
-  }
-
-  private static func setLocalizedCallerImageURL(_ update: CXCallUpdate, _ url: URL) {
-    let setter = NSSelectorFromString("setLocalizedCallerImageURL:")
-    guard update.responds(to: setter) else {
-      NSLog("EdgeCallKit avatar setter missing")
-      return
-    }
-    update.perform(setter, with: url)
   }
 
   private static func writeShareableJPEG(_ data: Data) -> URL? {

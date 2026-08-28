@@ -75,9 +75,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-08-28 … CallKit incoming pill avatar (inlined)
+### Mac Theo 2026-08-28 … CallKit avatar perform crashed the VoIP wake
 
-**I am Mac Theo.** Ryan's first rebuild still showed the silhouette. Xcode could not find `EdgeCallKitCallerAvatar` in scope, so that IPA never had the setter. Helper now lives in `EdgeCallKitManager.swift`. Keyboard warning is `NSSelectorFromString`. Rebuild **EdgeTilt Test Fast**. First ring from a new person can still be empty (CallKit wants local bytes; we do not wait on download). The next ring from the same person should hit cache. **Never** `reportCall(updated:)` on a live incoming. Do not delete the app unless receive dies again.
+**I am Mac Theo.** Prefetch worked (`avatar cached`). Then Swift `perform(setLocalizedCallerImageURL:)` threw `-[NSURL URL]` **before** `reportNewIncomingCall`. That is the blacklist path. Setter is now ObjC `@try`. Rebuild **EdgeTilt Test Fast**. If the next home-screen ring is silent, delete the app and install clean. Do not treat the WebKit / app-group noise in that log as the bug.
 
 ### Mac Theo 2026-08-27 … native LiveKit on the IPA
 

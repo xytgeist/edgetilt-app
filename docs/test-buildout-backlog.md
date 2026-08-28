@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-28: **CallKit avatar `perform` crashed the VoIP wake (Mac).** Prefetch worked, then `-[NSURL URL]` aborted before `reportNewIncomingCall`. Setter is now ObjC `@try` (`EdgeCallKitAvatarApply.m`); Swift `perform` is gone. Local JPEG only. If the next home-screen ring is silent, delete the app ... this crash is the blacklist path. Rebuild owed.
+
 - 2026-08-28: **CallKit avatar helper inlined (Mac).** Xcode could not find `EdgeCallKitCallerAvatar` in scope, so the IPA Ryan ran still had the silhouette. Helper now lives in `EdgeCallKitManager.swift`. Keyboard accessory warning uses `NSSelectorFromString`. Rebuild owed. First ring from a new person can still be empty (no cached JPEG yet); the repeat should hit disk.
 
 - 2026-08-28: **CallKit incoming pill avatar is first-report only (Mac).** `localizedCallerImageURL` on the first `CXCallUpdate` from VoIP / JS `https` `avatarUrl` (cached JPEG if we have bytes). Never `reportCall(updated:)` on a live incoming. Prefetch is disk-only for the next ring. VoIP payload now includes `avatarUrl` from `profiles.avatar_url`. Rebuild IPA + redeploy test `lounge-send-activity-push`. Prod Edge not touched.

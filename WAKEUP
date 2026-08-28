@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` tip @ **`6d93873a`**. `main` @ **`6d93873a`** (in sync). Always match `origin/test` before edits ... dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` tip @ **`68a9bed6`**. `main` @ **`fa97eeab`**. Always match `origin/test` before edits ... dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 

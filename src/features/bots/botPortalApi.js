@@ -451,6 +451,36 @@ export async function fetchBotRecentPicks(supabaseClient, botUserId, limit = 50)
 }
 
 /**
+ * Trigger on-demand generation and publishing of a Solo or Syndicate predictive pick.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{
+ *   slug?: string,
+ *   cardMode?: 'auto' | 'solo' | 'syndicate',
+ *   pickerName?: 'Scott' | 'Rocco' | 'Chedda' | 'Tank',
+ *   sportKey?: string,
+ *   cardTitle?: string,
+ *   dryRun?: boolean,
+ * }} [opts]
+ */
+export async function invokeLoungeOddsPredictivePick(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'predictive_pick',
+      cardMode: opts.cardMode || 'auto',
+      pickerName: opts.pickerName || undefined,
+      sportKey: opts.sportKey || undefined,
+      cardTitle: opts.cardTitle || undefined,
+      dryRun: opts.dryRun === true,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Predictive pick drop failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Trigger on-demand grading of pending picks via The Odds API scores endpoint.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

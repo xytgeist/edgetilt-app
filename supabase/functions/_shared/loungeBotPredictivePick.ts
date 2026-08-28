@@ -93,6 +93,88 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
 }
 
 /**
+ * Classify a candidate pick to its best-matching Sharp Syndicate persona.
+ *
+ * Chedda: Moneyline underdog (+115 to +350)
+ * Rocco: Spread & Runlines with solid juice
+ * Tank: Totals (Over/Under) or primetime heavy spots
+ * Scott: High EV / model baseline play
+ */
+export function classifyPickPersona(pick: OddsPick): SharpPicker {
+  // Chedda: Plus-money underdogs
+  if (pick.marketKey === 'h2h' && pick.pickPrice >= 115 && pick.pickPrice <= 350) {
+    return 'Chedda'
+  }
+  // Tank: Game totals (Over/Under)
+  if (pick.marketKey === 'totals') {
+    return 'Tank'
+  }
+  // Rocco: Spreads / runlines
+  if (pick.marketKey === 'spreads') {
+    return 'Rocco'
+  }
+  // Scott: Pure model / EV baseline
+  return 'Scott'
+}
+
+/**
+ * Assemble a multi-picker syndicate card from a pool of candidate picks across today's games.
+ * Tries to give 1 distinct pick to each persona (Scott, Rocco, Chedda, Tank) without duplicate events.
+ */
+export function buildSyndicateCard(
+  candidates: OddsPick[],
+  opts: { cardTitle?: string } = {},
+): { cardTitle: string; picks: SinglePickerPick[] } | null {
+  if (!candidates || candidates.length === 0) return null
+
+  const usedEventIds = new Set<string>()
+  const assignedPicks: SinglePickerPick[] = []
+
+  // 1. Find Chedda (Plus-money dog)
+  const cheddaCand = candidates.find(
+    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'h2h' && p.pickPrice >= 115,
+  )
+  if (cheddaCand) {
+    assignedPicks.push({ pickerName: 'Chedda', pick: cheddaCand })
+    usedEventIds.add(cheddaCand.eventId)
+  }
+
+  // 2. Find Tank (Totals)
+  const tankCand = candidates.find(
+    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'totals',
+  )
+  if (tankCand) {
+    assignedPicks.push({ pickerName: 'Tank', pick: tankCand })
+    usedEventIds.add(tankCand.eventId)
+  }
+
+  // 3. Find Rocco (Spreads)
+  const roccoCand = candidates.find(
+    (p) => !usedEventIds.has(p.eventId) && p.marketKey === 'spreads',
+  )
+  if (roccoCand) {
+    assignedPicks.push({ pickerName: 'Rocco', pick: roccoCand })
+    usedEventIds.add(roccoCand.eventId)
+  }
+
+  // 4. Find Scott (Top EV remaining)
+  const scottCand = candidates.find(
+    (p) => !usedEventIds.has(p.eventId),
+  )
+  if (scottCand) {
+    assignedPicks.push({ pickerName: 'Scott', pick: scottCand })
+    usedEventIds.add(scottCand.eventId)
+  }
+
+  if (assignedPicks.length < 2) {
+    return null // Not enough variety for a syndicate card
+  }
+
+  const title = opts.cardTitle || '🎯 Sharp Syndicate Card'
+  return { cardTitle: title, picks: assignedPicks }
+}
+
+/**
  * Calculate net profit in units for a 1-unit bet based on American odds.
  */
 export function calculateNetUnits(price: number, status: 'won' | 'lost' | 'push' | 'cancelled'): number {

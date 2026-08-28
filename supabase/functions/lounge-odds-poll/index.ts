@@ -160,6 +160,68 @@ Deno.serve(async (req) => {
       return adminOpsJson(200, { ok: true, action: 'grade_picks', ...gradeResult })
     }
 
+    if (action === 'predictive_pick') {
+      const {
+        buildSyndicateCard,
+        classifyPickPersona,
+        publishAndRecordPicks,
+      } = await import('../_shared/loungeBotPredictivePick.ts')
+      const { findPlusEvOpportunities } = await import('../_shared/loungeBotOddsCaption.ts')
+      const { fetchActiveSportsCatalog, fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const { resolveScottScanTargets } = await import('../_shared/loungeBotScanTargets.ts')
+
+      const { keys: activeSports, titles: sportTitles } = await fetchActiveSportsCatalog()
+      const scanTargetsModule = await loadScanTargetsModules()
+      const scanTargets = await scanTargetsModule.resolveScottScanTargets(admin, activeSports, sportTitles)
+
+      const targetSport = body?.sportKey ? [body.sportKey] : scanTargets.slice(0, 4).map((t) => t.sportKey)
+      const allCandidates: any[] = []
+
+      for (const sk of targetSport) {
+        try {
+          const oddsData = await fetchSportOdds(sk, ['us'], ['h2h', 'spreads', 'totals'])
+          const opps = findPlusEvOpportunities(oddsData.events, 1.5, 30.0)
+          allCandidates.push(...opps)
+        } catch (e) {
+          console.warn(`Predictive pick scan error for ${sk}:`, e)
+        }
+      }
+
+      const isSyndicate = body?.cardMode === 'syndicate' || (body?.cardMode !== 'solo' && allCandidates.length >= 3)
+
+      if (isSyndicate) {
+        const card = buildSyndicateCard(allCandidates, { cardTitle: body?.cardTitle })
+        if (!card) {
+          return adminOpsJson(200, { ok: false, message: 'Not enough distinct picks to build syndicate card.', candidates: allCandidates.length })
+        }
+        if (dryRun) {
+          return adminOpsJson(200, { ok: true, dryRun: true, card })
+        }
+        const result = await publishAndRecordPicks(admin, {
+          botUserId: bot.user_id,
+          picks: card.picks,
+          cardTitle: card.cardTitle,
+          categoryPills: bot.category_pills_default || ['sports'],
+        })
+        return adminOpsJson(200, { ok: true, isSyndicate: true, ...result })
+      } else {
+        if (!allCandidates.length) {
+          return adminOpsJson(200, { ok: false, message: 'No viable predictive pick candidates found.' })
+        }
+        const topPick = allCandidates[0]
+        const persona = body?.pickerName || classifyPickPersona(topPick)
+        if (dryRun) {
+          return adminOpsJson(200, { ok: true, dryRun: true, pickerName: persona, pick: topPick })
+        }
+        const result = await publishAndRecordPicks(admin, {
+          botUserId: bot.user_id,
+          picks: [{ pickerName: persona, pick: topPick }],
+          categoryPills: bot.category_pills_default || ['sports'],
+        })
+        return adminOpsJson(200, { ok: true, isSyndicate: false, pickerName: persona, ...result })
+      }
+    }
+
     if (action === 'poll_live') {
       const { runPollLive } = await import('../_shared/loungeBotPollLive.ts')
       const result = await runPollLive(admin, bot, oddsCfg, dryRun, { force, alertKind })

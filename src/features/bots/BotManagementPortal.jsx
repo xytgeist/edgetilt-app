@@ -1328,6 +1328,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               setToast={setToast}
               busy={busy}
               setBusy={setBusy}
+              selectedSportKey={selectedSportKey}
             />
           </div>
         ) : null}

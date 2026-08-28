@@ -3,6 +3,7 @@ import {
   fetchBotPicksRecord,
   fetchBotRecentPicks,
   invokeLoungeOddsGradePicks,
+  invokeLoungeOddsPredictivePick,
 } from './botPortalApi.js'
 
 const PICKER_METAS = {
@@ -12,11 +13,22 @@ const PICKER_METAS = {
   Tank: { title: 'Totals & Primetime', badge: 'bg-purple-950/70 text-purple-300 ring-purple-500/30' },
 }
 
-export function BotSharpDeskPanel({ supabaseClient, botUserId, botSlug, setToast, busy, setBusy }) {
+export function BotSharpDeskPanel({
+  supabaseClient,
+  botUserId,
+  botSlug,
+  setToast,
+  busy,
+  setBusy,
+  selectedSportKey,
+}) {
   const [recordData, setRecordData] = useState(null)
   const [recentPicks, setRecentPicks] = useState([])
   const [loading, setLoading] = useState(false)
   const [grading, setGrading] = useState(false)
+  const [dropping, setDropping] = useState(false)
+  const [selectedPicker, setSelectedPicker] = useState('auto')
+  const [cardMode, setCardMode] = useState('auto')
 
   const loadData = useCallback(async () => {
     if (!supabaseClient || !botUserId) return
@@ -59,6 +71,44 @@ export function BotSharpDeskPanel({ supabaseClient, botUserId, botSlug, setToast
     }
   }
 
+  const handleDropPick = async (dryRun = false) => {
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsPredictivePick(supabaseClient, {
+        slug: botSlug,
+        cardMode,
+        pickerName: selectedPicker !== 'auto' ? selectedPicker : undefined,
+        sportKey: selectedSportKey || undefined,
+        dryRun,
+      })
+      if (error) {
+        setToast?.(`Drop failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        if (data.card) {
+          setToast?.(`[Dry Run] Syndicate Card with ${data.card.picks.length} picks ready.`)
+        } else if (data.pick) {
+          setToast?.(`[Dry Run] Solo Pick: ${data.pickerName} on ${data.pick.pickName}`)
+        } else {
+          setToast?.(`[Dry Run] ${data.message || 'No candidates found.'}`)
+        }
+      } else if (data?.ok) {
+        const msg = data.isSyndicate
+          ? `Published Syndicate Card (${data.pickIds?.length || 0} picks)`
+          : `Published Solo Pick for ${data.pickerName}`
+        setToast?.(msg)
+        await loadData()
+      } else {
+        setToast?.(data?.message || 'No picks published.')
+      }
+    } catch (err) {
+      setToast?.(`Drop error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
 
@@ -94,6 +144,55 @@ export function BotSharpDeskPanel({ supabaseClient, botUserId, botSlug, setToast
             className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 text-xs text-zinc-300 transition disabled:opacity-50"
           >
             Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Manual Drop Controls */}
+      <div className="mt-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-zinc-400 font-medium text-[11px]">Drop Pick:</span>
+          <select
+            value={cardMode}
+            onChange={(e) => setCardMode(e.target.value)}
+            className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white focus:outline-none"
+          >
+            <option value="auto">Auto Mode (Slate/Density)</option>
+            <option value="solo">Solo Pick</option>
+            <option value="syndicate">Syndicate Card (Multi-Picker)</option>
+          </select>
+
+          {cardMode !== 'syndicate' && (
+            <select
+              value={selectedPicker}
+              onChange={(e) => setSelectedPicker(e.target.value)}
+              className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-white focus:outline-none"
+            >
+              <option value="auto">Auto Persona Match</option>
+              <option value="Scott">Scott (The Model / EV)</option>
+              <option value="Rocco">Rocco (Vegas Spreads)</option>
+              <option value="Chedda">Chedda (ML & Dogs)</option>
+              <option value="Tank">Tank (Totals / O/U)</option>
+            </select>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={busy || dropping || loading}
+            onClick={() => handleDropPick(true)}
+            className="rounded bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition disabled:opacity-50"
+          >
+            Preview
+          </button>
+          <button
+            type="button"
+            disabled={busy || dropping || loading}
+            onClick={() => handleDropPick(false)}
+            className="rounded bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 px-3 py-1 text-[11px] font-bold text-white shadow-sm transition disabled:opacity-50"
+          >
+            {dropping ? 'Publishing…' : 'Publish Pick'}
           </button>
         </div>
       </div>

@@ -782,7 +782,7 @@ export default function AppShell({
       const userIds = [...new Set(rows.map((r) => uidKey(r.user_id)).filter(Boolean))]
       let profileByUserId = {}
       if (userIds.length > 0) {
-        const coreFields = 'user_id,handle,display_name,avatar_url,bio,role,is_og'
+        const coreFields = 'user_id,handle,display_name,avatar_url,bio,role,is_og,has_active_subscription'
         let res = await supabaseClient
           .from('profiles')
           .select(`${coreFields},about_me,banner_url,location`)

@@ -209,6 +209,8 @@ export default function LoungeDockSlidePanels({
   settingsHasSlotsEdgeStarter = false,
   settingsHasSlotsEdgePro = false,
   settingsHasSlotsEdgeLifetime = false,
+  settingsProFilterEnabled = false,
+  onSettingsProFilterChange = null,
   settingsOnOpenBillingManage = null,
   settingsSupabaseClient = null,
   onSettingsEditProfile,
@@ -266,6 +268,7 @@ export default function LoungeDockSlidePanels({
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const [accountInfoScreenOpen, setAccountInfoScreenOpen] = useState(false)
   const [appearanceSettingsOpen, setAppearanceSettingsOpen] = useState(false)
+  const [proSettingsOpen, setProSettingsOpen] = useState(false)
   const [autoplaySettingsOpen, setAutoplaySettingsOpen] = useState(false)
   const [helpSupportSettingsOpen, setHelpSupportSettingsOpen] = useState(false)
   const [membershipsSettingsOpen, setMembershipsSettingsOpen] = useState(false)
@@ -326,6 +329,7 @@ export default function LoungeDockSlidePanels({
       setAccountSettingsOpen(false)
       setAccountInfoScreenOpen(false)
       setAppearanceSettingsOpen(false)
+      setProSettingsOpen(false)
       setAutoplaySettingsOpen(false)
       setHelpSupportSettingsOpen(false)
       setMembershipsSettingsOpen(false)
@@ -1513,6 +1517,95 @@ export default function LoungeDockSlidePanels({
                     dockMenuLayout={dockMenuLayout}
                     onDockMenuLayoutChange={onDockMenuLayoutChange}
                   />
+                </div>
+              ) : null}
+            </div>
+
+            {/* ── Edge Pro Preferences ── */}
+            <div className="mt-6 border-t border-zinc-800 pt-5">
+              <button
+                type="button"
+                aria-expanded={proSettingsOpen}
+                onClick={() => setProSettingsOpen((open) => !open)}
+                className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
+              >
+                <span className="min-w-0">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="block text-[15px] font-semibold text-zinc-100">Edge Pro preferences</span>
+                    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40">
+                      PRO
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                    Pro-only stream, comment filtering, and VIP settings.
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
+                    proSettingsOpen ? 'rotate-180' : 'rotate-0'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              </button>
+
+              {proSettingsOpen ? (
+                <div data-settings-edge-pro className="mt-2 space-y-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 p-2">
+                  {settingsHasSlotsEdgePro || settingsHasSlotsEdgeLifetime || settingsHasActiveSubscription || settingsViewerIsStaff ? (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={settingsProFilterEnabled}
+                      onClick={() => onSettingsProFilterChange?.(!settingsProFilterEnabled)}
+                      className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-zinc-700/90 bg-zinc-950/80 px-3.5 py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/70"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-semibold text-zinc-100">Pro-only stream & comments</span>
+                        <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
+                          Hide posts and comments from non-subscribers by default. You can still flip on all comments for any specific post.
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden
+                        className={`relative h-7 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+                          settingsProFilterEnabled ? 'bg-amber-500' : 'bg-zinc-700'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${
+                            settingsProFilterEnabled ? 'translate-x-[18px]' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-left">
+                      <div className="text-[13px] font-semibold text-amber-300">
+                        Unlock Edge Pro VIP Filtering
+                      </div>
+                      <p className="mt-1 text-[12px] leading-relaxed text-zinc-400">
+                        Edge Pro subscribers can filter the feed and comment threads to show only verified Pro subscribers and staff, with one-tap overrides on any post.
+                      </p>
+                      {typeof settingsOnOpenBillingManage === 'function' ? (
+                        <button
+                          type="button"
+                          onClick={() => settingsOnOpenBillingManage()}
+                          className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          <span>⚡ Upgrade to Edge Pro</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>

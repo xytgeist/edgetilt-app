@@ -75,11 +75,12 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Windows Theo 2026-08-28 … Edge Pro Platform Tier & Gated Replies Foundation
+### Windows Theo 2026-08-28 … Edge Pro Platform Tier, Gated Replies & VIP Filter
 
-**I am Windows Theo.** Landed Phase 3 Edge Pro platform tier foundation:
+**I am Windows Theo.** Landed Phase 3 Edge Pro platform tier:
 1. Migration `20260828130000_edge_pro_entitlements_and_reply_gating.sql` applied on test: added `reply_gate_edge_pro` column to `community_feed_posts`, `has_edge_pro_entitlement()` helper, RLS enforcement on `feed_comments_insert_own`, and expanded `get_my_entitlements()`.
-2. Frontend: `LoungeComposerReplyGatePill.jsx` in composer, `LoungeEdgeProBadge.jsx` on headers & profiles, gated indicator pill in post detail, reply lock notice for non-subscribers, and light mode styling in `index.css`.
+2. VIP Feed & Comment Filter: Global preference in Lounge Settings (`Pro-only stream & comments`) hides non-Pro posts and collapses non-Pro replies by default; post detail comment header includes a one-tap override toggle (`Pro only (N) · Show M non-Pro` ↔ `All replies (N) · Filter Pro only`) while preserving OP continuity and staff visibility.
+3. Frontend UI: `LoungeComposerReplyGatePill.jsx` in composer, `LoungeEdgeProBadge.jsx` on author headers & profiles, comment gate message, and full light mode styles in `index.css`.
 
 ### Mac Theo 2026-08-28 … lounge-send-activity-push redeployed on test
 

@@ -448,6 +448,10 @@ import {
   subscribeLoungeBuildBadgeEnabled,
   writeLoungeBuildBadgeEnabled,
 } from '../../utils/loungeBuildBadgePref.js'
+import {
+  readLoungeProFilterEnabled,
+  writeLoungeProFilterEnabled,
+} from '../../utils/loungeProFilterPref.js'
 import { LOUNGE_FEED_SCOPE_ALL, LOUNGE_FEED_SCOPE_FOLLOWING } from '../../utils/loungeFeedScope'
 import { LOUNGE_FEED_SORT } from '../../utils/loungeFeedSortPref'
 import LoungeFeedSortSwitch from './LoungeFeedSortSwitch.jsx'
@@ -1112,7 +1116,14 @@ export default function SocialFeed({
   /** Own just-posted comment ids - prepended at top of post-detail list for this viewer only. */
   const [loungeDetailViewerPinnedCommentIds, setLoungeDetailViewerPinnedCommentIds] = useState([])
   const [loungeDetailCommentSort, setLoungeDetailCommentSort] = useState(() => readLoungeDetailCommentSort())
+  const [proFilterEnabled, setProFilterEnabled] = useState(() => readLoungeProFilterEnabled())
+  const [showAllCommentsThisPost, setShowAllCommentsThisPost] = useState(false)
   const [loungeDetailFollowingUserIds, setLoungeDetailFollowingUserIds] = useState([])
+
+  const onProFilterChange = useCallback((next) => {
+    setProFilterEnabled(Boolean(next))
+    writeLoungeProFilterEnabled(Boolean(next))
+  }, [])
   /** Set of user IDs the viewer follows - drives the follow pill on feed/profile cards. */
   const [loungeFollowingUserIds, setLoungeFollowingUserIds] = useState(() => new Set())
   const [loungeDetailCommentDraft, setLoungeDetailCommentDraft] = useState('')
@@ -1665,6 +1676,57 @@ export default function SocialFeed({
       }),
     [composerUserProfile, hasActiveSubscription, loungeStaffToolsEnabled],
   )
+
+  const isViewerEdgePro = Boolean(
+    hasActiveSubscription ||
+    hasSlotsEdgePro ||
+    hasSlotsEdgeLifetime ||
+    loungeStaffToolsEnabled
+  )
+  const loungeProFilterActive = isViewerEdgePro && proFilterEnabled
+
+  const isProOrStaffComment = useCallback(
+    (comment) => {
+      if (!comment) return false
+      if (comment.user_id === composerUserId) return true
+      if (comment.user_id === loungePostDetail?.user_id) return true
+      if (comment.author_profile?.has_active_subscription === true) return true
+      if (comment.author_profile?.role === 'admin' || comment.author_profile?.role === 'moderator') return true
+      return false
+    },
+    [composerUserId, loungePostDetail?.user_id],
+  )
+
+  const { visibleDetailComments, proDetailCommentCount, nonProDetailCommentCount } = useMemo(() => {
+    if (!loungeDetailComments?.length) {
+      return { visibleDetailComments: [], proDetailCommentCount: 0, nonProDetailCommentCount: 0 }
+    }
+    const proList = loungeDetailComments.filter(isProOrStaffComment)
+    const proCount = proList.length
+    const nonProCount = Math.max(0, loungeDetailComments.length - proCount)
+    if (loungeProFilterActive && !showAllCommentsThisPost) {
+      return {
+        visibleDetailComments: proList,
+        proDetailCommentCount: proCount,
+        nonProDetailCommentCount: nonProCount,
+      }
+    }
+    return {
+      visibleDetailComments: loungeDetailComments,
+      proDetailCommentCount: proCount,
+      nonProDetailCommentCount: nonProCount,
+    }
+  }, [isProOrStaffComment, loungeDetailComments, loungeProFilterActive, showAllCommentsThisPost])
+
+  const visibleCommunityPosts = useMemo(() => {
+    if (!loungeProFilterActive) return communityPosts
+    return communityPosts.filter((post) => {
+      if (post.user_id === composerUserId) return true
+      if (post.author_profile?.has_active_subscription === true) return true
+      if (post.author_profile?.role === 'admin' || post.author_profile?.role === 'moderator') return true
+      return false
+    })
+  }, [communityPosts, composerUserId, loungeProFilterActive])
 
   const loungeTitleBarShowBuildBadge = loungeStaffToolsEnabled && loungeBuildBadgeEnabled
 
@@ -7513,6 +7575,7 @@ export default function SocialFeed({
       loungeDetailCommentsEffectPostIdRef.current = null
       loungeDetailCommentsLoadedPostIdRef.current = null
       setLoungeDetailComments([])
+      setShowAllCommentsThisPost(false)
       setLoungeDetailViewerPinnedCommentIds([])
       setLoungeDetailCommentSort(readLoungeDetailCommentSort())
       setLoungeDetailFollowingUserIds([])
@@ -7540,6 +7603,7 @@ export default function SocialFeed({
     const isNewPost = loungeDetailCommentsEffectPostIdRef.current !== postId
       if (isNewPost) {
       loungeDetailCommentsEffectPostIdRef.current = postId
+      setShowAllCommentsThisPost(false)
 
       const directOpen =
         loungePostDetailDirectCommentOpenRef.current?.postId === postId
@@ -15977,6 +16041,8 @@ export default function SocialFeed({
       settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
       settingsHasSlotsEdgePro={hasSlotsEdgePro}
       settingsHasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
+      settingsProFilterEnabled={proFilterEnabled}
+      onSettingsProFilterChange={onProFilterChange}
       settingsOnOpenBillingManage={onOpenBillingManage}
       settingsSupabaseClient={supabaseClient}
       onSettingsEditProfile={onLoungeSettingsEditProfile}
@@ -16726,9 +16792,9 @@ export default function SocialFeed({
             </div>
           </div>
         ) : null}
-        {communityFeedLoading && communityPosts.length === 0 ? (
+        {communityFeedLoading && visibleCommunityPosts.length === 0 ? (
           <div className="px-3 py-4 text-zinc-400 text-[17px]">Loading lounge…</div>
-        ) : communityPosts.length === 0 ? (
+        ) : visibleCommunityPosts.length === 0 ? (
           communityFeedQueryErr ? (
             <div data-lounge-feed-error className="px-3 py-5 text-[17px] leading-relaxed">
               <div className="rounded-xl border border-rose-500/45 bg-rose-950/25 px-3 py-3 text-rose-200">
@@ -16769,6 +16835,16 @@ export default function SocialFeed({
                 </div>
               ) : null}
             </div>
+          ) : loungeProFilterActive && communityPosts.length > 0 && visibleCommunityPosts.length === 0 ? (
+            <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
+              <div className="inline-flex items-center gap-1.5 font-semibold text-amber-400">
+                <span className="text-base">⚡</span>
+                <span>Pro-Only Stream</span>
+              </div>
+              <p className="mt-1 text-[14px] text-zinc-400">
+                No posts from Edge Pro subscribers in this view. Turn off the Pro-only filter in Lounge Settings to see all posts.
+              </p>
+            </div>
           ) : loungeFeedCategoryExcludedSlugs?.length > 0 ? (
             <div className="px-3 py-5 text-zinc-400 text-[17px] leading-relaxed">
               No posts match your tribe settings. Open Tribes and tap dimmed pills to show them again, or reset with
@@ -16788,7 +16864,7 @@ export default function SocialFeed({
           )
         ) : (
           <>
-            {communityPosts.map((post, feedRowIndex) => {
+            {visibleCommunityPosts.map((post, feedRowIndex) => {
               const fanOnlyRowTint = showLoungeFanOnlyPostUnlockedTint(post, loungeFanLockCtx)
               const fanOnlyFeedLocked = isLoungeFanOnlyDirectFeedRowLocked(post, loungeFanLockCtx)
               return (
@@ -16918,7 +16994,7 @@ export default function SocialFeed({
               <div className="px-3 py-3 text-zinc-500 text-[17px]">Loading more…</div>
             ) : null}
 
-            {!communityFeedHasMore && communityPosts.length > 0 ? (
+            {!communityFeedHasMore && visibleCommunityPosts.length > 0 ? (
               <div className="text-center text-[14px] text-zinc-600 py-2">You are caught up.</div>
             ) : null}
           </>
@@ -18147,11 +18223,35 @@ export default function SocialFeed({
               {loungeCommentDetailPathIds.length === 0 ? (
                 <div className={LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_SECTION_CLASS}>
                   {!loungeReadOnly && !loungeDetailCommentsLoading ? (
-                    <div className={LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_ROW_CLASS}>
+                    <div className="flex items-center justify-between gap-2 pt-0 pb-0 flex-wrap">
                       <LoungePostDetailCommentSort
                         value={loungeDetailCommentSort}
                         onChange={setLoungeDetailCommentSort}
                       />
+                      {loungeProFilterActive && nonProDetailCommentCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllCommentsThisPost((prev) => !prev)}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold touch-manipulation transition-colors border ${
+                            showAllCommentsThisPost
+                              ? 'border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700/80'
+                              : 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/50'
+                          }`}
+                          data-lounge-detail-pro-comment-toggle=""
+                        >
+                          <span className="text-[10px]">{showAllCommentsThisPost ? '👥' : '⚡'}</span>
+                          <span>
+                            {showAllCommentsThisPost
+                              ? `All replies (${loungeDetailComments.length}) · Filter Pro only`
+                              : `Pro only (${proDetailCommentCount}) · Show ${nonProDetailCommentCount} non-Pro`}
+                          </span>
+                        </button>
+                      ) : loungeProFilterActive && loungeDetailComments.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400/80" data-lounge-detail-pro-comment-pill="">
+                          <span className="text-[10px]">⚡</span>
+                          <span>All {loungeDetailComments.length} replies from Pro / staff</span>
+                        </span>
+                      ) : null}
                     </div>
                   ) : null}
                   <div className={LOUNGE_FEED_POST_DETAIL_COMMENT_SEPARATOR_CLASS} aria-hidden />
@@ -18161,7 +18261,7 @@ export default function SocialFeed({
               {loungeCommentDetailPathIds.length > 0 ? (
                 <LoungePostDetailCommentHierarchy
                   pathIds={loungeCommentDetailPathIds}
-                  comments={loungeDetailComments}
+                  comments={visibleDetailComments}
                   postAvatarRef={loungePostDetailPostAvatarRef}
                   connectorRootRef={loungePostDetailCommentConnectorRef}
                   isCommentPostDetail
@@ -18239,11 +18339,35 @@ export default function SocialFeed({
               {loungeCommentDetailPathIds.length > 0 ? (
                 <div className={LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_SECTION_CLASS}>
                   {!loungeReadOnly && !loungeDetailCommentsLoading ? (
-                    <div className={LOUNGE_FEED_POST_DETAIL_COMMENT_SORT_ROW_CLASS}>
+                    <div className="flex items-center justify-between gap-2 pt-0 pb-0 flex-wrap">
                       <LoungePostDetailCommentSort
                         value={loungeDetailCommentSort}
                         onChange={setLoungeDetailCommentSort}
                       />
+                      {loungeProFilterActive && nonProDetailCommentCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllCommentsThisPost((prev) => !prev)}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold touch-manipulation transition-colors border ${
+                            showAllCommentsThisPost
+                              ? 'border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700/80'
+                              : 'border-amber-500/40 bg-amber-950/40 text-amber-300 hover:bg-amber-900/50'
+                          }`}
+                          data-lounge-detail-pro-comment-toggle=""
+                        >
+                          <span className="text-[10px]">{showAllCommentsThisPost ? '👥' : '⚡'}</span>
+                          <span>
+                            {showAllCommentsThisPost
+                              ? `All replies (${loungeDetailComments.length}) · Filter Pro only`
+                              : `Pro only (${proDetailCommentCount}) · Show ${nonProDetailCommentCount} non-Pro`}
+                          </span>
+                        </button>
+                      ) : loungeProFilterActive && loungeDetailComments.length > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400/80" data-lounge-detail-pro-comment-pill="">
+                          <span className="text-[10px]">⚡</span>
+                          <span>All {loungeDetailComments.length} replies from Pro / staff</span>
+                        </span>
+                      ) : null}
                     </div>
                   ) : null}
                   <div className={LOUNGE_FEED_POST_DETAIL_COMMENT_SEPARATOR_CLASS} aria-hidden />
@@ -18280,7 +18404,7 @@ export default function SocialFeed({
                           }
                           focusCommentId={loungeDetailCommentHierarchyFocusId}
                           postId={loungePostDetail?.id ?? null}
-                          comments={loungeDetailComments}
+                          comments={visibleDetailComments}
                         postAuthorUserId={loungePostDetail.user_id}
                         postAgeLabel={postAgeLabel}
                         displayNameFor={displayNameFor}

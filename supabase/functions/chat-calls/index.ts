@@ -256,13 +256,17 @@ async function enqueueCallMissedPush(
   recipientIds: string[],
 ) {
   // Fire direct PushKit VoIP cancellation immediately (sub-second delivery to Apple APNs).
-  for (const uid of recipientIds) {
+  if (recipientIds.length > 0) {
     try {
-      void sendVoipApnsToUser(admin, uid, {
-        chatCallId: callId,
-        eventType: 'chat_call_missed',
-        roomId,
-      })
+      await Promise.allSettled(
+        recipientIds.map((uid) =>
+          sendVoipApnsToUser(admin, uid, {
+            chatCallId: callId,
+            eventType: 'chat_call_missed',
+            roomId,
+          }),
+        ),
+      )
     } catch (err) {
       console.warn('chat-calls: direct voip missed push failed', err)
     }

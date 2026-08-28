@@ -24,6 +24,7 @@ import {
   loungeCfR2PublicUrl,
   readLoungeCfR2Config,
 } from '../_shared/loungeCfR2.ts'
+import { sendVoipApnsToUser } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -254,6 +255,18 @@ async function enqueueCallMissedPush(
   actorId: string,
   recipientIds: string[],
 ) {
+  // Fire direct PushKit VoIP cancellation immediately (sub-second delivery to Apple APNs).
+  for (const uid of recipientIds) {
+    try {
+      void sendVoipApnsToUser(admin, uid, {
+        chatCallId: callId,
+        eventType: 'chat_call_missed',
+        roomId,
+      })
+    } catch (err) {
+      console.warn('chat-calls: direct voip missed push failed', err)
+    }
+  }
   return enqueueCallActivityPush(admin, roomId, callId, actorId, recipientIds, 'chat_call_missed')
 }
 

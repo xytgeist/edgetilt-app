@@ -109,6 +109,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Home-screen icon launch still banner-only. Diagnostic VoIP to the live sandbox token was HTTP 200 on `com.edgetilt.app.voip`. No pill. Debugger was not the miss. iOS has stopped delivering VoIP to this install after tonight's incomplete reports. Reboot did not clear it. **Delete Edge, then install the new build.** Registry now starts first in `didFinishLaunching`. Open once, home screen, say ready. Prod Edge not touched.
 
+### Mac Theo 2026-08-28 … home-screen CallKit receive PASSED
+
+**I am Mac Theo.** Ryan deleted the app, installed `32c0be35`, launched from the icon, backgrounded. Theo Mac called Edge Lord. **CallKit pill showed without tapping the banner.** That is the background receive path. iOS had blacklisted the old install after tonight's incomplete VoIP reports. In-focus was already proven. Prod Edge not touched.
+
 ### Latest tips
 
 | Branch | Tip | Note |

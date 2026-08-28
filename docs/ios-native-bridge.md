@@ -118,6 +118,8 @@ Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an al
 
 **2026-08-27 night, Apple 200 / phone nothing:** a diagnostic VoIP to the live sandbox token returned HTTP 200 on `com.edgetilt.app.voip`. No CallKit. Empty `EdgeCallKit` filter while Xcode was attached. Home-screen icon launch, same. That is iOS not delivering the wake, not a CallKit report miss. Repeated incomplete VoIP reports (the `pending` path, JS stealing the wake) make iOS stop handing VoIP to **this install**. Reboot was not enough. **Delete the app, then install clean.** PushKit registry now starts as the first line of `didFinishLaunching`, before LiveKit / web / location.
 
+**Ryan sign-off 2026-08-28:** deleted the old install, installed `32c0be35`, icon launch, backgrounded. CallKit pill on Theo Mac → Edge Lord **without** tapping the banner.
+
 **Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
 
 ### ⚠️ CallKit decline must end the server row without waiting for JS `incoming` (2026-08-27)

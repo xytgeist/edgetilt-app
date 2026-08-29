@@ -82,6 +82,14 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 2. VIP Feed & Comment Filter: Global preference in Lounge Settings (`Pro-only stream & comments`) hides non-Pro posts and collapses non-Pro replies by default; post detail comment header includes a one-tap override toggle (`Pro only (N) · Show M non-Pro` ↔ `All replies (N) · Filter Pro only`) while preserving OP continuity and staff visibility.
 3. Frontend UI: `LoungeComposerReplyGatePill.jsx` in composer, `LoungeEdgeProBadge.jsx` on author headers & profiles, comment gate message, and full light mode styles in `index.css`.
 
+### Mac Theo 2026-08-28 … CallKit incoming call avatar pre-caching pipeline wired
+
+**I am Mac Theo.** Implemented safe pre-caching pipeline for CallKit caller avatars:
+1. Native: Re-enabled `EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl:)` via the `@try/@catch` Objective-C bridge (`EdgeCallKitAvatarApply.m`), reading pre-cached local JPEGs from `Library/Caches/edge-callkit-avatars/`. Zero crash risk during PushKit VoIP wakes.
+2. Bridge: Added `preloadAvatar` action to `EdgeNativeBridge.swift` and `preloadEdgeAvatar(avatarUrl)` JS helper in `src/utils/edgeCallKit.js`.
+3. Web: Wired into `ChatConversation.jsx` to pre-cache peer avatars on chat room entry and sender batch resolution.
+4. Xcode: Bumped `CURRENT_PROJECT_VERSION` to 5 in `EdgeTilt.xcodeproj` and `project.yml`.
+
 ### Mac Theo 2026-08-28 … CallKit + PushKit + APNs full lifecycle & latency architecture documented
 
 **I am Mac Theo.** Resolved all CallKit pill and notification issues:

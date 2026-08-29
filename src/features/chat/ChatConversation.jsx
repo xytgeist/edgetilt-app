@@ -40,6 +40,7 @@ import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { useChatCallOptional } from './calls/ChatCallProvider.jsx'
 import { chatFetchActiveRoomCall } from '../../utils/chatCallsApi.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
+import { preloadEdgeAvatar } from '../../utils/edgeCallKit.js'
 import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
 /** Ignore swipe-to-reveal when the gesture starts on a Lounge horizontal carousel. */
@@ -765,6 +766,15 @@ export default function ChatConversation({
     }
   }, [])
 
+  // ── Pre-cache peer avatars for native CallKit ───────────────────────────
+  useEffect(() => {
+    if (profilesById) {
+      for (const p of Object.values(profilesById)) {
+        if (p?.avatar_url) void preloadEdgeAvatar(p.avatar_url)
+      }
+    }
+  }, [profilesById])
+
   // ── Lazy sender profile resolution ───────────────────────────────────────
   // When messages arrive with a sender_id not in profilesById (e.g. channel
   // members beyond the room list), queue a batched profiles fetch (150ms window).
@@ -796,7 +806,10 @@ export default function ChatConversation({
       if (data?.length) {
         setLocalProfiles((prev) => {
           const next = { ...prev }
-          for (const p of data) next[p.user_id] = p
+          for (const p of data) {
+            next[p.user_id] = p
+            if (p.avatar_url) void preloadEdgeAvatar(p.avatar_url)
+          }
           return next
         })
       }

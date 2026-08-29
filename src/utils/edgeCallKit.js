@@ -34,6 +34,22 @@ export async function reportEdgeIncomingCall(args) {
 }
 
 /**
+ * Pre-cache an avatar JPEG to native disk so CallKit has it ready on incoming rings.
+ * @param {string | null | undefined} avatarUrl
+ */
+export async function preloadEdgeAvatar(avatarUrl) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  const trimmed = String(avatarUrl || '').trim()
+  if (!trimmed || !trimmed.startsWith('https://')) return { ok: false, via: 'invalid' }
+  try {
+    const result = await edgeNativeInvoke('preloadAvatar', { avatarUrl: trimmed })
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
  * @param {{ uuid?: string, callId?: string, reason?: 'local' | 'remote' }} [args]
  */
 export async function endEdgeNativeCall(args = {}) {

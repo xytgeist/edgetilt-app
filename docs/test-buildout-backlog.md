@@ -2756,3 +2756,9 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 |---|---|---|
 | 3 | **`last_message_at` trigger hotspot** | Measure Postgres lock wait on `chat_rooms` in production at >500 msg/min per room. Fix: batch update with 1s delay, or move to Edge function write path. |
 | 4 | **Realtime `postgres_changes` → Broadcast** | Supabase dashboard shows WAL lag, OR concurrent Realtime connections approach plan limit. Fix: Edge `send_message` also publishes to a Supabase Broadcast channel; client subscribes to Broadcast instead of 
+
+---
+
+## Update log
+
+- **2026-08-28:** Enabled CallKit incoming call avatar pre-caching pipeline: `EdgeCallKitCallerAvatar.applyToCallUpdate` connected safely via `@try/@catch` Objective-C bridge; added `preloadAvatar` native bridge action + `preloadEdgeAvatar` JS helper + wired into `ChatConversation` on thread open and sender resolution. Bumped Build version to 5 for TestFlight/device testing.

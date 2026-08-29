@@ -481,9 +481,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     update.supportsHolding = false
     update.supportsGrouping = false
     update.supportsUngrouping = false
-    // Name / handle / video only. Do not run the undocumented avatar setter
-    // here. It crashed the VoIP wake (`-[NSURL URL]`) before this report and
-    // iOS stopped delivering to that install. Prefetch after accept is fine.
+    // Safe avatar attachment via Objective-C @try/@catch wrapper.
+    // If a cached local JPEG exists on disk, it applies it to localizedCallerImageURL.
+    // If not (or if iOS rejects the selector), it catches cleanly and proceeds with name/handle.
+    EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: resolvedAvatar)
 
     NSLog("EdgeCallKit reportNewIncomingCall uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit) state=\(Self.applicationStateLabel(appState))")
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
@@ -914,9 +915,7 @@ enum EdgeCallKitCallerAvatar {
   private static let maxBytes = 512 * 1024
   private static let fetchTimeout: TimeInterval = 8
 
-  /// PARKED. Do not call from `reportIncomingCall` / PushKit. The setter
-  /// crashed a VoIP wake before `reportNewIncomingCall` and blacklisted the
-  /// install. Prefetch after a successful report is the only live path.
+  /// Safely apply cached local JPEG to CallKit incoming update via Objective-C helper.
   static func applyToCallUpdate(_ update: CXCallUpdate, avatarUrl: String?) {
     guard let source = httpsURL(avatarUrl),
           let data = localJPEGData(for: source),

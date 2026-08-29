@@ -24,7 +24,7 @@ import {
   loungeCfR2PublicUrl,
   readLoungeCfR2Config,
 } from '../_shared/loungeCfR2.ts'
-import { readApnsConfig, sendVoipApnsToUser, sendApnsToUser, postVoipApns } from '../_shared/apnsPush.ts'
+import { readApnsConfig, sendVoipApnsToUser, sendApnsToUser, postVoipApns, postApns } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -623,26 +623,43 @@ Deno.serve(async (req) => {
         .from('apns_device_tokens')
         .select('*')
         .eq('user_id', targetUserId)
-        .eq('push_channel', 'voip')
 
       const attempts: Array<Record<string, unknown>> = []
       if (config && rows && rows.length > 0) {
         for (const row of rows) {
-          const resSandbox = await postVoipApns(config, row.token, 'sandbox', row.bundle_id, {
-            chatCallId: 'test-call-id',
-            eventType: 'chat_call_invite',
-            roomId: 'test-room',
-            callerName: 'Test Caller',
-            hasVideo: false,
-          })
-          const resProd = await postVoipApns(config, row.token, 'production', row.bundle_id, {
-            chatCallId: 'test-call-id',
-            eventType: 'chat_call_invite',
-            roomId: 'test-room',
-            callerName: 'Test Caller',
-            hasVideo: false,
-          })
-          attempts.push({ token: row.token, sandbox: resSandbox, production: resProd })
+          if (row.push_channel === 'voip') {
+            const resSandbox = await postVoipApns(config, row.token, 'sandbox', row.bundle_id, {
+              chatCallId: 'test-call-id',
+              eventType: 'chat_call_invite',
+              roomId: 'test-room',
+              callerName: 'Test Caller',
+              hasVideo: false,
+            })
+            const resProd = await postVoipApns(config, row.token, 'production', row.bundle_id, {
+              chatCallId: 'test-call-id',
+              eventType: 'chat_call_invite',
+              roomId: 'test-room',
+              callerName: 'Test Caller',
+              hasVideo: false,
+            })
+            attempts.push({ push_channel: 'voip', token: row.token, sandbox: resSandbox, production: resProd })
+          } else {
+            const resSandbox = await postApns(config, row.token, 'sandbox', row.bundle_id, {
+              title: 'Edge Chat',
+              body: 'Test Alert Push',
+              url: '/chat',
+              eventType: 'chat_call_invite',
+              chatCallId: 'test-call-id',
+            })
+            const resProd = await postApns(config, row.token, 'production', row.bundle_id, {
+              title: 'Edge Chat',
+              body: 'Test Alert Push',
+              url: '/chat',
+              eventType: 'chat_call_invite',
+              chatCallId: 'test-call-id',
+            })
+            attempts.push({ push_channel: 'alert', token: row.token, sandbox: resSandbox, production: resProd })
+          }
         }
       }
       return json(200, { ok: true, attempts })

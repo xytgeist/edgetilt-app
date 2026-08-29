@@ -678,6 +678,27 @@ async function sendPushToUser(
   vapidPrivateKey: string,
   vapidSubject: string,
 ) {
+  // Check if recipient has native CallKit VoIP token registered.
+  let hasVoipToken = false
+  if (
+    (notification.eventType === 'chat_call_invite' || notification.eventType === 'chat_call_missed') &&
+    notification.chatCallId
+  ) {
+    if (notification.eventType === 'chat_call_invite') {
+      const { count } = await admin
+        .from('apns_device_tokens')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('push_channel', 'voip')
+
+      hasVoipToken = (count ?? 0) > 0
+    }
+  }
+
+  // If the user has a native CallKit VoIP token, suppress alert banners (web push & APNs alert)
+  // for chat_call_invite because CallKit is already ringing full-screen / incoming pill natively.
+  const skipWebPush = notification.eventType === 'chat_call_invite' && hasVoipToken
+
   const { data: subscriptions, error: subError } = await admin
     .from('push_subscriptions')
     .select('id, endpoint, p256dh, auth')
@@ -685,7 +706,7 @@ async function sendPushToUser(
 
   if (subError) throw subError
 
-  const webList = subscriptions || []
+  const webList = skipWebPush ? [] : (subscriptions || [])
   let sent = 0
   let failed = 0
   let removed = 0
@@ -730,15 +751,7 @@ async function sendPushToUser(
     notification.chatCallId
   ) {
     if (notification.eventType === 'chat_call_invite') {
-      const { count } = await admin
-        .from('apns_device_tokens')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('push_channel', 'voip')
-
-      if ((count ?? 0) > 0) {
-        skipApnsAlert = true
-      }
+      skipApnsAlert = hasVoipToken
     } else if (notification.eventType === 'chat_call_missed') {
       skipApnsAlert = true
     }

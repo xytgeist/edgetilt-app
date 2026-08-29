@@ -151,7 +151,7 @@ type ApnsPostResult = {
   reason: string
 }
 
-async function postApns(
+export async function postApns(
   config: ApnsConfig,
   tokenHex: string,
   environment: ApnsEnvironment,

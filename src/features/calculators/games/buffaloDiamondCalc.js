@@ -197,7 +197,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$2.25',
     baseGamePct: 55.66,
     decimals: { green: 0.012503, blue: 0.006071, gold: 0.002782 },
-    resets: { green: 7, blue: 8, gold: 10 },
+    resets: { green: 7, blue: 8, gold: 18 },
   },
   {
     key: '250',
@@ -213,7 +213,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$3.75',
     baseGamePct: 41.62,
     decimals: { green: 0.019366, blue: 0.009782, gold: 0.004212 },
-    resets: { green: 7, blue: 15, gold: 10 },
+    resets: { green: 10, blue: 15, gold: 22 },
   },
   {
     key: '400',
@@ -229,7 +229,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$5.00',
     baseGamePct: 29.92,
     decimals: { green: 0.025085, blue: 0.012874, gold: 0.005403 },
-    resets: { green: 10, blue: 15, gold: 20 },
+    resets: { green: 10, blue: 15, gold: 22 },
   },
   {
     key: '600',

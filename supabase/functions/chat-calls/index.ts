@@ -577,7 +577,8 @@ async function finalizeOutgoingCall(args: {
   }
 
   const recipients = await listMemberIds(admin, roomId, userId)
-  await enqueueCallInvitePush(admin, roomId, call.id, userId, recipients, displayName, call.kind === 'video')
+  const isVideo = call.media_mode === 'video'
+  await enqueueCallInvitePush(admin, roomId, call.id, userId, recipients, displayName, isVideo)
   return { ok: true, call, livekit_url: lk.url, token }
 }
 

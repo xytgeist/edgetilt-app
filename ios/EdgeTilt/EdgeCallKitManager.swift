@@ -66,9 +66,6 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     provider = CXProvider(configuration: config)
     super.init()
     provider.setDelegate(self, queue: nil)
-    if let stored = UserDefaults.standard.string(forKey: "edge.voip.deviceToken"), !stored.isEmpty {
-      voipTokenHex = stored
-    }
   }
 
   /// Create the VoIP registry first. iOS delivers a terminated-state wake only

@@ -82,6 +82,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 2. VIP Feed & Comment Filter: Global preference in Lounge Settings (`Pro-only stream & comments`) hides non-Pro posts and collapses non-Pro replies by default; post detail comment header includes a one-tap override toggle (`Pro only (N) · Show M non-Pro` ↔ `All replies (N) · Filter Pro only`) while preserving OP continuity and staff visibility.
 3. Frontend UI: `LoungeComposerReplyGatePill.jsx` in composer, `LoungeEdgeProBadge.jsx` on author headers & profiles, comment gate message, and full light mode styles in `index.css`.
 
+### Mac Theo 2026-08-28 … Fix TestFlight APNs entitlements (production gateway) & bump Build 6
+
+**I am Mac Theo.** Fixed CallKit push wake rejection for TestFlight builds:
+1. Changed `aps-environment` from `development` to `production` in `EdgeTilt.entitlements` so Apple signs TestFlight / App Store builds for the production APNs gateway.
+2. Removed cached `UserDefaults` VoIP token restoration in `EdgeCallKitManager.init` so invalid cached tokens from dead installs are never re-uploaded on startup.
+3. Bumped `CURRENT_PROJECT_VERSION` to 6 in `EdgeTilt.xcodeproj/project.pbxproj`.
+
 ### Mac Theo 2026-08-28 … Automatic APNs push notification authorization on first launch
 
 **I am Mac Theo.** Added automatic native push notification authorization prompt on first launch:

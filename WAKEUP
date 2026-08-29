@@ -82,6 +82,11 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 2. VIP Feed & Comment Filter: Global preference in Lounge Settings (`Pro-only stream & comments`) hides non-Pro posts and collapses non-Pro replies by default; post detail comment header includes a one-tap override toggle (`Pro only (N) · Show M non-Pro` ↔ `All replies (N) · Filter Pro only`) while preserving OP continuity and staff visibility.
 3. Frontend UI: `LoungeComposerReplyGatePill.jsx` in composer, `LoungeEdgeProBadge.jsx` on author headers & profiles, comment gate message, and full light mode styles in `index.css`.
 
+### Mac Theo 2026-08-28 … Automatic APNs push notification authorization on first launch
+
+**I am Mac Theo.** Added automatic native push notification authorization prompt on first launch:
+1. Native: In `EdgePushManager.configure()`, when authorization status is `.notDetermined`, it calls `requestAuthorization(options: [.alert, .badge, .sound])` and registers for remote notifications immediately upon grant.
+
 ### Mac Theo 2026-08-28 … In-app foreground chat APNs alert suppression for active room
 
 **I am Mac Theo.** Fixed redundant foreground push banners for active chat room:

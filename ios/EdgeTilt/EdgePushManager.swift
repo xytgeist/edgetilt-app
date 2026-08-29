@@ -31,12 +31,21 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
   func configure() {
     let center = UNUserNotificationCenter.current()
     center.delegate = self
-    // Refresh token if already authorized (e.g. relaunch after grant).
+    // Refresh token if already authorized (e.g. relaunch after grant),
+    // or request authorization on first launch if not yet determined.
     center.getNotificationSettings { settings in
       switch settings.authorizationStatus {
       case .authorized, .provisional, .ephemeral:
         DispatchQueue.main.async {
           UIApplication.shared.registerForRemoteNotifications()
+        }
+      case .notDetermined:
+        center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+          if granted {
+            DispatchQueue.main.async {
+              UIApplication.shared.registerForRemoteNotifications()
+            }
+          }
         }
       default:
         break

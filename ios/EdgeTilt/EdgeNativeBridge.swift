@@ -190,6 +190,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         videoVisible: payload?["videoVisible"] as? Bool
       )
       completion(.success(["ok": true]))
+    case "setNativeCallStreamFocus":
+      let isLocalMain = (payload?["isLocalMain"] as? Bool) ?? false
+      EdgeLiveKitCallManager.shared.setStreamFocus(isLocalMain: isLocalMain)
+      completion(.success(["ok": true, "isLocalMain": isLocalMain]))
     case "getNativeCallState":
       completion(.success(EdgeLiveKitCallManager.shared.currentState()))
     case "dismissKeyboard":

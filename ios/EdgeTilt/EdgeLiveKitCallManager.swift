@@ -43,6 +43,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private var connectTask: Task<State, Error>?
   private var wantsCamera = false
   private var cameraPosition: AVCaptureDevice.Position = .front
+  private var isLocalMainStream = false
   private var overlayInstalled = false
   private var chromeMinimized = false
   private var videoVisible = true
@@ -181,7 +182,16 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     }
     Task {
       if wantsCamera {
-        await publishCameraIfNeeded()
+        if flip, let cameraTrack = (room.localParticipant.firstCameraPublication?.track as? LocalVideoTrack),
+           let capturer = cameraTrack.capturer as? CameraCapturer {
+          do {
+            _ = try await capturer.switchCameraPosition()
+          } catch {
+            await publishCameraIfNeeded()
+          }
+        } else {
+          await publishCameraIfNeeded()
+        }
       } else {
         try? await room.localParticipant.setCamera(enabled: false)
         await MainActor.run {
@@ -191,6 +201,16 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       }
       await MainActor.run { self.dispatchState() }
     }
+  }
+
+  func setStreamFocus(isLocalMain: Bool) {
+    self.isLocalMainStream = isLocalMain
+    DispatchQueue.main.async {
+      UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
+        self.layoutVideoViews()
+      }
+    }
+    dispatchState()
   }
 
   func setSpeaker(_ speaker: Bool) {
@@ -364,15 +384,40 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
   private func layoutVideoViews() {
     let bounds = overlay.bounds
-    remoteVideoView.frame = bounds
     let pipWidth = min(128, max(96, bounds.width * 0.28))
     let pipHeight = pipWidth * 16 / 9
-    localVideoView.frame = CGRect(
+    let pipFrame = CGRect(
       x: bounds.width - pipWidth - 16,
       y: bounds.safeAreaInsetsAwareTop + 72,
       width: pipWidth,
       height: pipHeight
     )
+
+    if isLocalMainStream {
+      localVideoView.frame = bounds
+      localVideoView.layer.cornerRadius = 0
+      localVideoView.layer.borderWidth = 0
+
+      remoteVideoView.frame = pipFrame
+      remoteVideoView.layer.cornerRadius = 14
+      remoteVideoView.layer.masksToBounds = true
+      remoteVideoView.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
+      remoteVideoView.layer.borderWidth = 1.5
+
+      overlay.bringSubviewToFront(remoteVideoView)
+    } else {
+      remoteVideoView.frame = bounds
+      remoteVideoView.layer.cornerRadius = 0
+      remoteVideoView.layer.borderWidth = 0
+
+      localVideoView.frame = pipFrame
+      localVideoView.layer.cornerRadius = 14
+      localVideoView.layer.masksToBounds = true
+      localVideoView.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
+      localVideoView.layer.borderWidth = 1.5
+
+      overlay.bringSubviewToFront(localVideoView)
+    }
   }
 
   private func updateOverlayVisibility() {

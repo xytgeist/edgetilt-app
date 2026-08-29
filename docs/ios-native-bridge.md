@@ -79,6 +79,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `setNativeCallCamera` | JS→native | `{ enabled?: boolean, flip?: boolean }` | `{ ok: boolean, enabled?: boolean }` | Mac | **native** (2026-08-27). Camera publishes when the app is active. Flip switches front/back. |
 | `setNativeCallSpeaker` | JS→native | `{ speaker: boolean }` | `{ ok: boolean, speaker?: boolean }` | Mac | **native** (2026-08-27). |
 | `setNativeCallChrome` | JS→native | `{ minimized?: boolean, videoVisible?: boolean }` | `{ ok: boolean }` | Mac | **native** (2026-08-27). Hide the native video overlay when the web chrome is minimized. |
+| `setNativeCallStreamFocus` | JS→native | `{ isLocalMain: boolean }` | `{ ok: boolean, isLocalMain: boolean }` | Mac | **native** (2026-08-29). Swap full-screen vs PiP inset video stream between peer and local camera. |
 | `getNativeCallState` | JS→native | none | `{ callId, connected, remoteCount, micOn, camOn, speakerOn, hasVideo }` | Mac | **native** (2026-08-27). Chrome hydrates from this + `edge-native-call-state` events. |
 | `dismissKeyboard` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-08-27). Answer / start call drops the WKWebView keyboard. CallKit answer also resigns first responder without waiting for JS. |
 | `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |

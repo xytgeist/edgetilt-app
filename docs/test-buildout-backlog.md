@@ -2761,6 +2761,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-08-29:** Native iOS IPA video call fixes: connected camera flip to active track capturer via `capturer.switchCameraPosition()`; added `setNativeCallStreamFocus` bridge + animated UIKit video layer swapping for PiP/main view switching; wired dynamic recording participant selection based on focused stream; muted background ringback tone immediately upon LiveKit connection.
 - **2026-08-29:** Restyled in-call screen (`ChatCallSession.jsx` & `ChatIncomingCallOverlay.jsx`) with WhatsApp 6-button 2-row dock layout and Edge dark glass aesthetic (ambient backdrop gradients, Apple-style active button states, typography labels, and prominent ringed caller avatar).
 - **2026-08-29:** Disabled PWA / web deploy update banner inside native iOS store / TestFlight IPA shell (`isEdgeiOSShell()`); fixed Vite `transformIndexHtml` plugin to inject `<meta name="edge-build-sha">` via tag descriptor so remote build token matching does not false-positive against in-bundle commit SHA.
 - **2026-08-28:** Removed cached `UserDefaults` Alert and VoIP token loading on init in `EdgePushManager` / `EdgeCallKitManager` and enabled automatic deletion of tokens with `BadEnvironmentKeyInToken` in `apnsPush.ts`.

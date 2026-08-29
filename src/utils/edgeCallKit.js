@@ -213,6 +213,19 @@ export async function setNativeCallChrome(args = {}) {
   }
 }
 
+/** @param {{ isLocalMain?: boolean }} args */
+export async function setNativeCallStreamFocus(args = {}) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('setNativeCallStreamFocus', {
+      isLocalMain: Boolean(args.isLocalMain),
+    })
+    return { ok: result?.ok !== false, via: 'bridge', isLocalMain: result?.isLocalMain }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /** Blur web focus and tell WKWebView to drop the software keyboard. */
 export function dismissEdgeCallKeyboard() {
   try {

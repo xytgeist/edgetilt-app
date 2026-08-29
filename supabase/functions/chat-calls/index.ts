@@ -403,11 +403,13 @@ async function endCallRow(
   return { status, ended_reason: endedReason, body }
 }
 
-function publishSourcesForCall(_kind: string, mediaMode: string): TrackSource[] {
-  if (mediaMode === 'audio') {
-    return [TrackSource.MICROPHONE]
-  }
-  return [TrackSource.MICROPHONE, TrackSource.CAMERA]
+function publishSourcesForCall(_kind: string, _mediaMode: string): TrackSource[] {
+  return [
+    TrackSource.MICROPHONE,
+    TrackSource.CAMERA,
+    TrackSource.SCREEN_SHARE,
+    TrackSource.SCREEN_SHARE_AUDIO,
+  ]
 }
 
 function egressClientFor(lk: { httpUrl: string; apiKey: string; apiSecret: string }) {

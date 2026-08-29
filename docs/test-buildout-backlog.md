@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-28: **CallKit + PushKit + APNs full lifecycle & latency architecture documented (Mac).** Documented the four core rules/pitfalls in `docs/ios-native-bridge.md`: (1) PushKit VoIP strict 100% incoming reporting to prevent `callservicesd` blacklisting (cancellations/hang-ups stay on APNs); (2) direct sub-second APNs missed-call dispatch from `chat-calls` (`sendApnsToUser`) bypassing the 3-5s DB queue to dismiss CallKit pill instantly with `.unanswered`; (3) duplicate notification suppression (skip APNs alert when VoIP is active, deduplicate missed call notifications, fix profiles `user_id` query); (4) APNs sandbox/prod auto-retry between direct run and TestFlight. Redeployed `chat-calls` and `lounge-send-activity-push` on test.
+
 - 2026-08-28: **CallKit avatar setter parked off the VoIP report (Mac).** We cannot undo Apple's install blacklist in software. We can keep undocumented image code off the path before `reportNewIncomingCall`. Report is name / handle / video only. Prefetch after accept stays. This install if already silent still needs delete + reinstall. Rebuild owed.
 
 - 2026-08-28: **CallKit avatar `perform` crashed the VoIP wake (Mac).** Prefetch worked, then `-[NSURL URL]` aborted before `reportNewIncomingCall`. Setter is now ObjC `@try` (`EdgeCallKitAvatarApply.m`); Swift `perform` is gone. Local JPEG only. If the next home-screen ring is silent, delete the app ... this crash is the blacklist path. Rebuild owed.

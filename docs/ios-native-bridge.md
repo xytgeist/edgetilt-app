@@ -213,7 +213,46 @@ Then `edge-native-call-reveal` opens the chat room + live chrome.
 
 ---
 
-## Debug builds feel broken … measure before you "fix" (2026-08-26)
+## CallKit, PushKit VoIP, and APNs Architecture & Pitfalls (CRITICAL — 2026-08-28)
+
+**Read this before touching ANY CallKit, PushKit, or call-notification code.** A full day was spent debugging interconnected iOS CallKit lifecycle, PushKit blacklisting, and APNs queue issues.
+
+### 1. iOS 13+ PushKit VoIP Policy & The Blacklisting Trap
+
+- **The Rule:** Every single PushKit VoIP wake (`pushRegistry(_:didReceiveIncomingPushWith:...)`) **MUST** call `provider.reportNewIncomingCall` synchronously.
+- **The Penalty:** If the app throws an uncaught exception, crashes, or returns without reporting a new incoming call to CXProvider on a PushKit wake, iOS (`callservicesd`) **terminates the app and permanently blacklists that app installation from receiving further VoIP pushes**.
+- **What triggered blacklisting in development:**
+  1. Setting undocumented `CXCallUpdate` properties like `localizedCallerImageURL` with an unverified type (threw `-[NSURL URL]: unrecognized selector`).
+  2. Attempting to send call-cancellation (`chat_call_missed`) events over PushKit instead of reporting an incoming call.
+- **The Fix & Safeguards:**
+  - PushKit VoIP (`com.edgetilt.app.voip`) is used **strictly** for `chat_call_invite`.
+  - All call cancellations and missed calls travel via standard high-priority APNs alerts (`content-available: 1`).
+  - Undocumented avatar hacks are kept completely off the critical `reportNewIncomingCall` reporting path.
+  - If a device becomes blacklisted during testing, **the only recovery is deleting and reinstalling the app** to reset Apple's OS-level penalty counter.
+
+### 2. Immediate CallKit Pill Dismissal on Remote Hangup / Cancellation
+
+- **The Issue:** When a caller cancels or hangs up while the callee's phone is ringing, the CallKit incoming pill/banner must dismiss immediately.
+- **The 5-Second Latency Trap:** Originally, call cancellation routed through PostgreSQL `activity_events` -> `pg_net` -> `lounge-send-activity-push`. That multi-hop database worker queue added 3-5 seconds of latency before Apple APNs received the push.
+- **The Direct APNs Dispatch Fix:**
+  - `chat-calls` (`enqueueCallMissedPush`) sends direct APNs alerts (`sendApnsToUser`) with `content-available: 1` and `eventType: 'chat_call_missed'` immediately when the caller hangs up or cancels, running in parallel with recording the event.
+  - On the device, `AppDelegate.swift` and `EdgePushManager.swift` intercept `chat_call_missed` and invoke `EdgeCallKitManager.shared.endCall(reason: "remote")`.
+  - For ringing/unanswered calls, CallKit reports `CXCallEndedReason.unanswered` to `CXProvider` (reporting `.remoteEnded` on an unanswered call causes CallKit to hang).
+  - Internal call tracking state (`calls`, `answeredUUIDs`, `acceptedIncomingUUIDs`) is cleared *before* reporting to `CXProvider`.
+
+### 3. Duplicate Notification Suppression
+
+- **Incoming Calls:** When the callee has an active `voip` push token registered, `lounge-send-activity-push` sets `skipApnsAlert = true` to suppress the redundant standard APNs alert banner ("Edge Chat: [Name] is calling you"). This prevents an alert card from stacking over the native CallKit incoming pill/screen.
+- **Missed Calls:** `lounge-send-activity-push` skips APNs alert dispatch for `chat_call_missed` because `chat-calls` already sent the immediate direct APNs push.
+- **Profile Queries:** When formatting notification strings in Edge Functions, the `profiles` table must be queried with `.eq('user_id', actorId)` (not `.eq('id', ...)`).
+
+### 4. APNs Sandbox vs Production Environments (Direct Run vs TestFlight)
+
+- **Direct Run (Xcode debug/release to device):** App uses the Development APNs sandbox gateway.
+- **TestFlight & App Store:** App uses the Production APNs gateway (even if entitlements specified development).
+- **Auto-Retry & Migration:** `apnsPush.ts` inspects Apple's error response (`BadDeviceToken` or `BadEnvironmentKeyInToken`). When a token was minted in the other environment, it automatically retries the alternative APNs gateway and updates the `environment` column in `apns_device_tokens`.
+
+---
 
 **Read this before chasing any shell performance report.** A whole session was burned reverting good v1.1 work chasing "the app needs multiple taps," which turned out to be **Debug build + Xcode debugger attached** … not a code regression at all.
 

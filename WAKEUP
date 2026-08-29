@@ -82,6 +82,14 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 2. VIP Feed & Comment Filter: Global preference in Lounge Settings (`Pro-only stream & comments`) hides non-Pro posts and collapses non-Pro replies by default; post detail comment header includes a one-tap override toggle (`Pro only (N) · Show M non-Pro` ↔ `All replies (N) · Filter Pro only`) while preserving OP continuity and staff visibility.
 3. Frontend UI: `LoungeComposerReplyGatePill.jsx` in composer, `LoungeEdgeProBadge.jsx` on author headers & profiles, comment gate message, and full light mode styles in `index.css`.
 
+### Mac Theo 2026-08-28 … CallKit + PushKit + APNs full lifecycle & latency architecture documented
+
+**I am Mac Theo.** Resolved all CallKit pill and notification issues:
+1. **PushKit VoIP strict 100% incoming reporting:** iOS blacklists app installs if any PushKit wake fails to synchronously call `reportNewIncomingCall` to CXProvider. Cancellations and missed calls are delivered strictly via standard APNs alerts (`content-available: 1`). Undocumented avatar hacks kept off the critical reporting path.
+2. **Sub-second CallKit pill dismissal:** `chat-calls` (`enqueueCallMissedPush`) dispatches direct APNs missed-call pushes (`sendApnsToUser`) to callee devices in parallel with writing activity rows, eliminating the 3-5s database worker delay. On device, `AppDelegate` and `EdgePushManager` end ringing CallKit calls with `.unanswered`.
+3. **Duplicate notification suppression:** `lounge-send-activity-push` suppresses redundant APNs alert banners when callee has an active `voip` token for CallKit, and skips duplicate missed call alerts already handled by `chat-calls`. Fixed profiles `user_id` query for caller display name.
+4. Full details documented in `docs/ios-native-bridge.md` § *CallKit, PushKit VoIP, and APNs Architecture & Pitfalls*.
+
 ### Mac Theo 2026-08-28 … lounge-send-activity-push redeployed on test
 
 **I am Mac Theo.** Deployed `lounge-send-activity-push` to test Supabase (`kcosfvmreeiosdjdzycb`). Includes `content-available: 1` in `_shared/apnsPush.ts` for call invite / missed APNs alerts.

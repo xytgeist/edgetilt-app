@@ -76,7 +76,7 @@ export const BUFFALO_DIAMOND_TIERS = [
     shortLabel: '2× Green',
     mult: 2,
     meterMin: 7,
-    meterMax: 60,
+    meterMax: 100,
     accent: 'emerald',
     text: 'text-emerald-400',
     sliderAccent: 'accent-emerald-500',
@@ -87,7 +87,7 @@ export const BUFFALO_DIAMOND_TIERS = [
     shortLabel: '3× Blue',
     mult: 3,
     meterMin: 7,
-    meterMax: 120,
+    meterMax: 160,
     accent: 'sky',
     text: 'text-sky-400',
     sliderAccent: 'accent-sky-500',
@@ -98,7 +98,7 @@ export const BUFFALO_DIAMOND_TIERS = [
     shortLabel: '4× Gold',
     mult: 4,
     meterMin: 7,
-    meterMax: 180,
+    meterMax: 220,
     accent: 'amber',
     text: 'text-amber-400',
     sliderAccent: 'accent-amber-500',
@@ -160,9 +160,9 @@ export function profileMeterFloor(profile, tierKey) {
 }
 
 /**
- * Bet-level profiles: linear between $0.75 and $4.00 anchors at {@link REFERENCE_OVERALL_RTP}% overall RTP.
+ * Bet-level profiles: calibrated at {@link REFERENCE_OVERALL_RTP}% overall RTP.
  * `baseGamePct` on each row is the main+1× grind return at that reference overall RTP.
- * `resets` = observed post-hit FG floors (Buffalo Diamond original; Extreme TBD per bet).
+ * `resets` = observed post-hit FG floors (Buffalo Diamond original and Extreme).
  *
  * @type {BuffaloDiamondBetLevel[]}
  */
@@ -171,80 +171,80 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     key: '75',
     totalBet: 0.75,
     label: '$0.75',
-    baseGamePct: 69.7,
-    decimals: { green: 0.00564, blue: 0.00236, gold: 0.001352 },
+    baseGamePct: 83.5,
+    decimals: { green: 0.0024528, blue: 0.0010656, gold: 0.0009286 },
     resets: { green: 7, blue: 8, gold: 10 },
   },
   {
     key: '100',
     totalBet: 1.0,
     label: '$1.00',
-    baseGamePct: 67.36,
-    decimals: { green: 0.006784, blue: 0.002978, gold: 0.00159 },
+    baseGamePct: 80.26,
+    decimals: { green: 0.002623, blue: 0.0011268, gold: 0.001 },
     resets: { green: 7, blue: 8, gold: 10 },
   },
   {
     key: '160',
     totalBet: 1.6,
     label: '$1.60',
-    baseGamePct: 61.74,
-    decimals: { green: 0.009529, blue: 0.004463, gold: 0.002162 },
+    baseGamePct: 81.37,
+    decimals: { green: 0.0030952, blue: 0.0013, gold: 0.0012381 },
     resets: { green: 8, blue: 10, gold: 15 },
   },
   {
     key: '225',
     totalBet: 2.25,
     label: '$2.25',
-    baseGamePct: 55.66,
-    decimals: { green: 0.012503, blue: 0.006071, gold: 0.002782 },
+    baseGamePct: 76.86,
+    decimals: { green: 0.0037209, blue: 0.0015238, gold: 0.0014679 },
     resets: { green: 8, blue: 10, gold: 18 },
   },
   {
     key: '250',
     totalBet: 2.5,
     label: '$2.50',
-    baseGamePct: 53.32,
-    decimals: { green: 0.013647, blue: 0.006689, gold: 0.00302 },
+    baseGamePct: 79.27,
+    decimals: { green: 0.0040625, blue: 0.001625, gold: 0.0015854 },
     resets: { green: 8, blue: 10, gold: 18 },
   },
   {
     key: '375',
     totalBet: 3.75,
     label: '$3.75',
-    baseGamePct: 41.62,
-    decimals: { green: 0.019366, blue: 0.009782, gold: 0.004212 },
+    baseGamePct: 65.11,
+    decimals: { green: 0.008, blue: 0.0038095, gold: 0.0023529 },
     resets: { green: 10, blue: 15, gold: 22 },
   },
   {
     key: '400',
     totalBet: 4.0,
     label: '$4.00',
-    baseGamePct: 39.28,
-    decimals: { green: 0.02051, blue: 0.0104, gold: 0.00445 },
+    baseGamePct: 60.1,
+    decimals: { green: 0.01, blue: 0.0052, gold: 0.0026 },
     resets: { green: 10, blue: 15, gold: 35 },
   },
   {
     key: '500',
     totalBet: 5.0,
     label: '$5.00',
-    baseGamePct: 29.92,
-    decimals: { green: 0.025085, blue: 0.012874, gold: 0.005403 },
+    baseGamePct: 56.45,
+    decimals: { green: 0.0114286, blue: 0.0064, gold: 0.002963 },
     resets: { green: 10, blue: 15, gold: 22 },
   },
   {
     key: '600',
     totalBet: 6.0,
     label: '$6.00',
-    baseGamePct: 20.56,
-    decimals: { green: 0.029661, blue: 0.015348, gold: 0.006356 },
+    baseGamePct: 41.12,
+    decimals: { green: 0.0144444, blue: 0.008125, gold: 0.0035135 },
     resets: { green: 12, blue: 20, gold: 35 },
   },
   {
     key: '700',
     totalBet: 7.0,
     label: '$7.00',
-    baseGamePct: 11.2,
-    decimals: { green: 0.034236, blue: 0.017822, gold: 0.00731 },
+    baseGamePct: 33.86,
+    decimals: { green: 0.0177778, blue: 0.0114286, gold: 0.0042105 },
     resets: { green: 10, blue: 18, gold: 28 },
   },
 ]
@@ -837,7 +837,7 @@ export function markerPercent(min, max, marker) {
   return Math.min(100, Math.max(0, ((marker - min) / (max - min)) * 100))
 }
 
-export function clampMeter(value, min = METER_RESET, max = 180) {
+export function clampMeter(value, min = METER_RESET, max = 220) {
   return Math.min(max, Math.max(min, Math.round(Number(value) || min)))
 }
 

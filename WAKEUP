@@ -87,7 +87,8 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 **I am Mac Theo.** Fixed CallKit push wake rejection for TestFlight builds:
 1. Changed `aps-environment` from `development` to `production` in `EdgeTilt.entitlements` so Apple signs TestFlight / App Store builds for the production APNs gateway.
 2. Removed cached `UserDefaults` VoIP token restoration in `EdgeCallKitManager.init` so invalid cached tokens from dead installs are never re-uploaded on startup.
-3. Added `ITSAppUsesNonExemptEncryption = false` in `Info.plist`.
+3. Updated `apsEnvironment` in `EdgeNativeBridge.swift` from `"development"` to `"production"`.
+4. Added `ITSAppUsesNonExemptEncryption = false` in `Info.plist`.
 4. Added `chat_call_invite` to `AppDelegate.didReceiveRemoteNotification` so standard APNs payloads directly trigger native CallKit ring if PushKit is delayed.
 5. Added `ios/ci_scripts/ci_post_clone.sh` auto-incrementing script (`CI_BUILD_NUMBER + 100`) and set base `CURRENT_PROJECT_VERSION = 100` so Xcode Cloud builds never collide with previous manual uploads.
 

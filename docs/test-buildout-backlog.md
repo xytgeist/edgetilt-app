@@ -2761,6 +2761,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-08-28:** Wired `chat_call_invite` into `AppDelegate.didReceiveRemoteNotification` so APNs alerts trigger native CallKit ring if PushKit VoIP socket drops or is throttled.
 - **2026-08-28:** Added `ios/ci_scripts/ci_post_clone.sh` auto-versioning hook (`CI_BUILD_NUMBER + 100`) and set base build version to 100 for Xcode Cloud distribution.
 - **2026-08-28:** Switched `aps-environment` to `production` in `EdgeTilt.entitlements` for TestFlight / App Store APNs compliance; purged stale UserDefaults VoIP token cache on native init so invalid cached tokens are never re-uploaded to Supabase; bumped build version to 6.
 - **2026-08-28:** Enabled CallKit incoming call avatar pre-caching pipeline: `EdgeCallKitCallerAvatar.applyToCallUpdate` connected safely via `@try/@catch` Objective-C bridge; added `preloadAvatar` native bridge action + `preloadEdgeAvatar` JS helper + wired into `ChatConversation` on thread open and sender resolution. Bumped Build version to 5 for TestFlight/device testing.

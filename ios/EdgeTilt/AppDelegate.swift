@@ -37,6 +37,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
   ) {
     let eventType = (userInfo["eventType"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    if eventType == "chat_call_invite" {
+      EdgeCallKitManager.shared.handleCallInviteUserInfo(userInfo)
+      completionHandler(.newData)
+      return
+    }
     if eventType == "chat_call_missed" {
       let callId = (userInfo["chatCallId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         ?? (userInfo["chat_call_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)

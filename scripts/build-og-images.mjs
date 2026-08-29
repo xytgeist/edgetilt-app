@@ -6,74 +6,73 @@ const root = path.resolve(import.meta.dirname, '..')
 const publicDir = path.join(root, 'public')
 
 async function generateOgImages() {
-  // Base logo buffer
+  // Base logo buffer - resize cleanly
   const logoPath = path.join(publicDir, 'edge-lounge-logo-transparent.png')
   const logoBuf = await sharp(logoPath)
-    .resize({ width: 520 })
+    .resize({ width: 500 })
     .png()
     .toBuffer()
 
-  // 1. Base Main OG Image (1200x630)
+  // 1. Base Main OG Image (1200x630) - Clean dark obsidian theme with subtle top rim light
   const svgOverlayMain = `
   <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <radialGradient id="cyanGlow" cx="50%" cy="0%" r="70%">
-        <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.25" />
-        <stop offset="50%" stop-color="#0891b2" stop-opacity="0.08" />
+      <!-- Deep subtle dark gradients without muddy muddy colors -->
+      <radialGradient id="mainTopRim" cx="50%" cy="0%" r="55%">
+        <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.12" />
         <stop offset="100%" stop-color="#09090b" stop-opacity="0" />
       </radialGradient>
-      <radialGradient id="ambient" cx="80%" cy="90%" r="50%">
-        <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.12" />
-        <stop offset="100%" stop-color="#09090b" stop-opacity="0" />
-      </radialGradient>
+      <linearGradient id="cardBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#3f3f46" stop-opacity="0.7" />
+        <stop offset="100%" stop-color="#18181b" stop-opacity="0.4" />
+      </linearGradient>
     </defs>
 
-    <!-- Background -->
+    <!-- Deep Clean Background -->
     <rect width="1200" height="630" fill="#09090b" />
-    <rect width="1200" height="630" fill="url(#cyanGlow)" />
-    <rect width="1200" height="630" fill="url(#ambient)" />
+    <rect width="1200" height="630" fill="url(#mainTopRim)" />
 
     <!-- Subtle framing border -->
-    <rect x="24" y="24" width="1152" height="582" rx="28" fill="none" stroke="#27272a" stroke-width="2" opacity="0.6" />
+    <rect x="24" y="24" width="1152" height="582" rx="24" fill="none" stroke="url(#cardBorder)" stroke-width="1.5" />
 
     <!-- Subtitle / Tagline -->
-    <text x="600" y="360" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="34" fill="#f4f4f5" text-anchor="middle" letter-spacing="-0.5px">
+    <text x="600" y="348" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="30" fill="#f4f4f5" text-anchor="middle" letter-spacing="-0.5px">
       The Social Platform for Risk Takers
     </text>
 
-    <!-- Feature Pills -->
-    <g transform="translate(600, 420)">
+    <!-- Feature Pills (Comfortable width & vertical centering) -->
+    <g transform="translate(600, 415)">
       <!-- Pill 1: Slots -->
-      <g transform="translate(-320, 0)">
-        <rect x="-65" y="-18" width="130" height="36" rx="18" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" />
-        <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="16" fill="#22d3ee" text-anchor="middle">⚡ SLOTS</text>
+      <g transform="translate(-360, 0)">
+        <rect x="-70" y="-20" width="140" height="40" rx="20" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="14" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5px">SLOTS</text>
       </g>
       <!-- Pill 2: Poker -->
-      <g transform="translate(-160, 0)">
-        <rect x="-65" y="-18" width="130" height="36" rx="18" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" />
-        <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="16" fill="#fb923c" text-anchor="middle">♠️ POKER</text>
+      <g transform="translate(-180, 0)">
+        <rect x="-70" y="-20" width="140" height="40" rx="20" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="14" fill="#fb923c" text-anchor="middle" letter-spacing="0.5px">POKER</text>
       </g>
       <!-- Pill 3: Markets -->
       <g transform="translate(0, 0)">
-        <rect x="-75" y="-18" width="150" height="36" rx="18" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" />
-        <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="16" fill="#34d399" text-anchor="middle">📈 MARKETS</text>
+        <rect x="-75" y="-20" width="150" height="40" rx="20" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="14" fill="#34d399" text-anchor="middle" letter-spacing="0.5px">MARKETS</text>
       </g>
       <!-- Pill 4: Odds -->
-      <g transform="translate(160, 0)">
-        <rect x="-65" y="-18" width="130" height="36" rx="18" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" />
-        <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="16" fill="#a78bfa" text-anchor="middle">🎯 ODDS</text>
+      <g transform="translate(180, 0)">
+        <rect x="-70" y="-20" width="140" height="40" rx="20" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="14" fill="#a78bfa" text-anchor="middle" letter-spacing="0.5px">ODDS</text>
       </g>
       <!-- Pill 5: Lounge -->
-      <g transform="translate(320, 0)">
-        <rect x="-70" y="-18" width="140" height="36" rx="18" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" />
-        <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="16" fill="#f472b6" text-anchor="middle">🔥 LOUNGE</text>
+      <g transform="translate(360, 0)">
+        <rect x="-75" y="-20" width="150" height="40" rx="20" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="14" fill="#f472b6" text-anchor="middle" letter-spacing="0.5px">LOUNGE</text>
       </g>
     </g>
 
     <!-- Bottom URL Footer -->
-    <g transform="translate(600, 525)">
-      <rect x="-105" y="-18" width="210" height="36" rx="18" fill="#083344" stroke="#06cefc" stroke-width="1.5" />
-      <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="800" font-size="16" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5px">edgetilt.com</text>
+    <g transform="translate(600, 520)">
+      <rect x="-110" y="-19" width="220" height="38" rx="19" fill="#18181b" stroke="#06cefc" stroke-width="1.5" />
+      <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="15" fill="#38bdf8" text-anchor="middle" letter-spacing="0.6px">edgetilt.com</text>
     </g>
   </svg>
   `
@@ -83,71 +82,69 @@ async function generateOgImages() {
     .composite([
       {
         input: logoBuf,
-        top: 155,
-        left: Math.round((1200 - 520) / 2),
+        top: 140,
+        left: Math.round((1200 - 500) / 2),
       },
     ])
     .png({ quality: 95 })
     .toFile(ogMainPath)
   console.log(`Created ${ogMainPath} (${fs.statSync(ogMainPath).size} bytes)`)
 
-  // 2. Dedicated Slots OG Image (1200x630)
+  // 2. Dedicated Slots OG Image (1200x630) - Clean dark theme
   const svgOverlaySlots = `
   <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <radialGradient id="slotsCyanGlow" cx="50%" cy="0%" r="70%">
-        <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.30" />
-        <stop offset="45%" stop-color="#0891b2" stop-opacity="0.10" />
+      <radialGradient id="slotsTopGlow" cx="50%" cy="0%" r="55%">
+        <stop offset="0%" stop-color="#06cefc" stop-opacity="0.14" />
         <stop offset="100%" stop-color="#09090b" stop-opacity="0" />
       </radialGradient>
-      <radialGradient id="slotsOrangeGlow" cx="85%" cy="85%" r="50%">
-        <stop offset="0%" stop-color="#fb923c" stop-opacity="0.14" />
-        <stop offset="100%" stop-color="#09090b" stop-opacity="0" />
-      </radialGradient>
+      <linearGradient id="slotsBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#3f3f46" stop-opacity="0.7" />
+        <stop offset="100%" stop-color="#18181b" stop-opacity="0.4" />
+      </linearGradient>
     </defs>
 
-    <!-- Background -->
+    <!-- Deep Clean Background -->
     <rect width="1200" height="630" fill="#09090b" />
-    <rect width="1200" height="630" fill="url(#slotsCyanGlow)" />
-    <rect width="1200" height="630" fill="url(#slotsOrangeGlow)" />
+    <rect width="1200" height="630" fill="url(#slotsTopGlow)" />
 
     <!-- Subtle framing border -->
-    <rect x="24" y="24" width="1152" height="582" rx="28" fill="none" stroke="#27272a" stroke-width="2" opacity="0.6" />
+    <rect x="24" y="24" width="1152" height="582" rx="24" fill="none" stroke="url(#slotsBorder)" stroke-width="1.5" />
 
     <!-- Main Headline -->
-    <text x="600" y="325" font-family="Montserrat, system-ui, sans-serif" font-weight="800" font-size="46" fill="#ffffff" text-anchor="middle" letter-spacing="-1px">
+    <text x="600" y="315" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="44" fill="#ffffff" text-anchor="middle" letter-spacing="-1px">
       +EV Edge for Slots
     </text>
 
     <!-- Subtitle -->
-    <text x="600" y="380" font-family="Montserrat, system-ui, sans-serif" font-weight="500" font-size="22" fill="#a1a1aa" text-anchor="middle">
+    <text x="600" y="365" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="500" font-size="20" fill="#a1a1aa" text-anchor="middle">
       AP Guides · EV Calculators · Bankroll · Play Logbook · Lounge
     </text>
 
-    <!-- Feature Badges -->
-    <g transform="translate(600, 445)">
-      <g transform="translate(-250, 0)">
-        <rect x="-70" y="-16" width="140" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#fb923c" text-anchor="middle">310+ AP GUIDES</text>
+    <!-- Feature Badges (Generous width to prevent text overflow) -->
+    <g transform="translate(600, 435)">
+      <g transform="translate(-330, 0)">
+        <rect x="-90" y="-19" width="180" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#fb923c" text-anchor="middle" letter-spacing="0.5px">310+ AP GUIDES</text>
       </g>
-      <g transform="translate(-80, 0)">
-        <rect x="-75" y="-16" width="150" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#22d3ee" text-anchor="middle">EV CALCULATORS</text>
+      <g transform="translate(-110, 0)">
+        <rect x="-95" y="-19" width="190" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5px">EV CALCULATORS</text>
       </g>
-      <g transform="translate(90, 0)">
-        <rect x="-75" y="-16" width="150" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#34d399" text-anchor="middle">BANKROLL TRACKER</text>
+      <g transform="translate(115, 0)">
+        <rect x="-95" y="-19" width="190" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#34d399" text-anchor="middle" letter-spacing="0.5px">BANKROLL TRACKER</text>
       </g>
-      <g transform="translate(255, 0)">
-        <rect x="-70" y="-16" width="140" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#f472b6" text-anchor="middle">PLAY LOGBOOK</text>
+      <g transform="translate(330, 0)">
+        <rect x="-85" y="-19" width="170" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#f472b6" text-anchor="middle" letter-spacing="0.5px">PLAY LOGBOOK</text>
       </g>
     </g>
 
     <!-- Bottom URL Footer -->
-    <g transform="translate(600, 530)">
-      <rect x="-120" y="-18" width="240" height="36" rx="18" fill="#083344" stroke="#06cefc" stroke-width="1.5" />
-      <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="800" font-size="16" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5px">edgetilt.com/slots</text>
+    <g transform="translate(600, 520)">
+      <rect x="-120" y="-19" width="240" height="38" rx="19" fill="#18181b" stroke="#06cefc" stroke-width="1.5" />
+      <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="15" fill="#38bdf8" text-anchor="middle" letter-spacing="0.6px">edgetilt.com/slots</text>
     </g>
   </svg>
   `
@@ -157,71 +154,69 @@ async function generateOgImages() {
     .composite([
       {
         input: logoBuf,
-        top: 130,
-        left: Math.round((1200 - 520) / 2),
+        top: 120,
+        left: Math.round((1200 - 500) / 2),
       },
     ])
     .png({ quality: 95 })
     .toFile(ogSlotsPath)
   console.log(`Created ${ogSlotsPath} (${fs.statSync(ogSlotsPath).size} bytes)`)
 
-  // 3. Dedicated Poker OG Image (1200x630)
+  // 3. Dedicated Poker OG Image (1200x630) - Clean dark theme
   const svgOverlayPoker = `
   <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <radialGradient id="pokerAmberGlow" cx="50%" cy="0%" r="70%">
-        <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.28" />
-        <stop offset="45%" stop-color="#b45309" stop-opacity="0.09" />
+      <radialGradient id="pokerTopGlow" cx="50%" cy="0%" r="55%">
+        <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.12" />
         <stop offset="100%" stop-color="#09090b" stop-opacity="0" />
       </radialGradient>
-      <radialGradient id="pokerEmeraldGlow" cx="85%" cy="85%" r="50%">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.15" />
-        <stop offset="100%" stop-color="#09090b" stop-opacity="0" />
-      </radialGradient>
+      <linearGradient id="pokerBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#3f3f46" stop-opacity="0.7" />
+        <stop offset="100%" stop-color="#18181b" stop-opacity="0.4" />
+      </linearGradient>
     </defs>
 
-    <!-- Background -->
+    <!-- Deep Clean Background -->
     <rect width="1200" height="630" fill="#09090b" />
-    <rect width="1200" height="630" fill="url(#pokerAmberGlow)" />
-    <rect width="1200" height="630" fill="url(#pokerEmeraldGlow)" />
+    <rect width="1200" height="630" fill="url(#pokerTopGlow)" />
 
     <!-- Subtle framing border -->
-    <rect x="24" y="24" width="1152" height="582" rx="28" fill="none" stroke="#27272a" stroke-width="2" opacity="0.6" />
+    <rect x="24" y="24" width="1152" height="582" rx="24" fill="none" stroke="url(#pokerBorder)" stroke-width="1.5" />
 
     <!-- Main Headline -->
-    <text x="600" y="325" font-family="Montserrat, system-ui, sans-serif" font-weight="800" font-size="46" fill="#ffffff" text-anchor="middle" letter-spacing="-1px">
+    <text x="600" y="315" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="44" fill="#ffffff" text-anchor="middle" letter-spacing="-1px">
       Edge Tilt for Poker
     </text>
 
     <!-- Subtitle -->
-    <text x="600" y="380" font-family="Montserrat, system-ui, sans-serif" font-weight="500" font-size="22" fill="#a1a1aa" text-anchor="middle">
+    <text x="600" y="365" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="500" font-size="20" fill="#a1a1aa" text-anchor="middle">
       Bankroll Tracker · Stable Manager · Stakes &amp; Swaps · Horses &amp; Deals
     </text>
 
-    <!-- Feature Badges -->
-    <g transform="translate(600, 445)">
-      <g transform="translate(-250, 0)">
-        <rect x="-70" y="-16" width="140" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#fbbf24" text-anchor="middle">♠️ CASH SESSIONS</text>
+    <!-- Feature Badges (Wide comfortable pill enclosures) -->
+    <g transform="translate(600, 435)">
+      <g transform="translate(-340, 0)">
+        <rect x="-85" y="-19" width="170" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#fb923c" text-anchor="middle" letter-spacing="0.5px">CASH SESSIONS</text>
       </g>
-      <g transform="translate(-80, 0)">
-        <rect x="-75" y="-16" width="150" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#34d399" text-anchor="middle">🏆 TOURNAMENTS</text>
+      <g transform="translate(-115, 0)">
+        <rect x="-85" y="-19" width="170" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5px">TOURNAMENTS</text>
       </g>
-      <g transform="translate(90, 0)">
-        <rect x="-75" y="-16" width="150" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#22d3ee" text-anchor="middle">🤝 STABLE &amp; BACKING</text>
+      <g transform="translate(115, 0)">
+        <rect x="-105" y="-19" width="210" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#34d399" text-anchor="middle" letter-spacing="0.5px">STABLE &amp; BACKING</text>
       </g>
-      <g transform="translate(255, 0)">
-        <rect x="-70" y="-16" width="140" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.2" />
-        <text x="0" y="5" font-family="Montserrat, system-ui, sans-serif" font-weight="700" font-size="14" fill="#f472b6" text-anchor="middle">📊 ROI &amp; TRENDS</text>
+      <g transform="translate(340, 0)">
+        <rect x="-80" y="-19" width="160" height="38" rx="19" fill="#18181b" stroke="#27272a" stroke-width="1.5" />
+        <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="700" font-size="13" fill="#f472b6" text-anchor="middle" letter-spacing="0.5px">ROI &amp; TRENDS</text>
       </g>
     </g>
 
     <!-- Bottom URL Footer -->
-    <g transform="translate(600, 530)">
-      <rect x="-120" y="-18" width="240" height="36" rx="18" fill="#451a03" stroke="#f59e0b" stroke-width="1.5" />
-      <text x="0" y="6" font-family="Montserrat, system-ui, sans-serif" font-weight="800" font-size="16" fill="#fbbf24" text-anchor="middle" letter-spacing="0.5px">edgetilt.com/poker</text>
+    <g transform="translate(600, 520)">
+      <rect x="-120" y="-19" width="240" height="38" rx="19" fill="#18181b" stroke="#06cefc" stroke-width="1.5" />
+      <text x="0" y="6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="15" fill="#38bdf8" text-anchor="middle" letter-spacing="0.6px">edgetilt.com/poker</text>
     </g>
   </svg>
   `
@@ -231,8 +226,8 @@ async function generateOgImages() {
     .composite([
       {
         input: logoBuf,
-        top: 130,
-        left: Math.round((1200 - 520) / 2),
+        top: 120,
+        left: Math.round((1200 - 500) / 2),
       },
     ])
     .png({ quality: 95 })

@@ -169,6 +169,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     if let enabled {
       wantsCamera = enabled
       state.camOn = enabled
+      if !enabled {
+        state.hasVideo = firstRemoteVideoTrack() != nil
+      }
     }
     if flip {
       cameraPosition = cameraPosition == .front ? .back : .front
@@ -177,7 +180,15 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       state.hasVideo = true
     }
     Task {
-      await publishCameraIfNeeded()
+      if wantsCamera {
+        await publishCameraIfNeeded()
+      } else {
+        try? await room.localParticipant.setCamera(enabled: false)
+        await MainActor.run {
+          self.localVideoView.track = nil
+          self.updateOverlayVisibility()
+        }
+      }
       await MainActor.run { self.dispatchState() }
     }
   }
@@ -328,6 +339,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       )
       state.camOn = true
       state.hasVideo = true
+      bindExistingTracks()
       applyWebViewHole()
       updateOverlayVisibility()
     } catch {

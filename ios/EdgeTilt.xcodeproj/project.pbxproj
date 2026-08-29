@@ -224,6 +224,7 @@
 				CURRENT_PROJECT_VERSION = 100;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
@@ -328,6 +329,7 @@
 				CURRENT_PROJECT_VERSION = 100;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
@@ -509,6 +511,7 @@
 				CURRENT_PROJECT_VERSION = 100;
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";

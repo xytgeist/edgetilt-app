@@ -8593,6 +8593,20 @@ html.light .reaction-pill {
   background: #111b21;
 }
 
+/* Native iOS IPA video hole: make HTML, body, #root, and background shell transparent so native VideoView shows through */
+html[data-edge-video-active='1'],
+html[data-edge-video-active='1'] body,
+html[data-edge-video-active='1'] #root {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+html[data-edge-video-active='1'] [data-app-shell-root] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
 [data-chat-composer-host] {
   background: transparent !important;
 }

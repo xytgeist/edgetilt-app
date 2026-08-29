@@ -3014,7 +3014,7 @@ export default function AppShell({
   }
 
   const shellTree = (
-    <div className="min-h-dvh bg-zinc-950">
+    <div data-app-shell-root="" className="min-h-dvh bg-zinc-950">
       {accessNotice ? (
         <div
           role="status"

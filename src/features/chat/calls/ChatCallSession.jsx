@@ -682,6 +682,18 @@ function NativeIpaCallSession({
 
   const showVideoHole = (videoEnabled || camOn) && !awaitingAnswer
 
+  useEffect(() => {
+    const html = document.documentElement
+    if (showVideoHole && !minimized) {
+      html.setAttribute('data-edge-video-active', '1')
+    } else {
+      html.removeAttribute('data-edge-video-active')
+    }
+    return () => {
+      html.removeAttribute('data-edge-video-active')
+    }
+  }, [showVideoHole, minimized])
+
   return (
     <div
       className={minimized ? 'pointer-events-none fixed inset-0' : 'fixed inset-0 flex flex-col'}

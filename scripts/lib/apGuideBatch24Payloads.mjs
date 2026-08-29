@@ -251,33 +251,66 @@ If floor RTP is unknown, assume **85%** and wait for **$273.85+**. Wait higher w
       slug: 'timberwolf-diamond',
       name: 'Timberwolf Diamond',
       manufacturer: 'Aristocrat',
-      type: 'Progressive Free Games Meters',
+      type: 'Progressive Free Games + Extreme Column',
       difficulty: 'Advanced',
       popularity: 'Common',
       nerf_risk: 'Medium',
-      has_calculator: false,
-      calculator_slug: null,
+      has_calculator: true,
+      calculator_slug: 'buffalo-diamond',
       volatility_index: 'Extreme',
-      popularity_summary: 'Green 20-25+ · blue/purple 35-40+',
-      release_year: null,
+      popularity_summary: 'Common where Buffalo Diamond / Timberwolf Diamond banks upgraded.',
+      release_year: 2020,
     },
     guide: {
       title: 'Timberwolf Diamond',
       published: true,
-      card_ev_threshold: 'Green 20-25+ · blue/purple 35-40+ each',
-      when_to_play: `**Primary play:**
+      card_ev_threshold: '$1.00 @ 68/150/170 · $2.25 @ 51/115/127 · $3.75 @ 30/57/90',
+      when_to_play: `Timberwolf Diamond has different take points due to the addition of the **Extreme 4×** bonus which vamps overall RTP.
 
-- **Green (2×) at 20–25+**
-- **Blue (3×) and purple (4×) at 35–40+ each** (can stack **100+**)
+**1¢ Denomination take points (based on 87% RTP):**
 
-**1024 ways**, **5×4** Xtra Reel Power. Same meter family as **Buffalo Diamond** ... **not must-hit-by**.`,
-      when_to_stop: `Stop once the **multiplier free-games bonus** at your target tier finishes.`,
-      how_to_check: `Green / blue / purple meter counts are on the bet pad. Cycle through all bets/denoms.`,
-      risk_bankroll: `**750 units**`,
-      risk_summary: `A **40+ green** meter can still refuse to trigger for a long stretch ... high count is not a forced hit.`,
+| 1¢ Bet | 2× Green | 3× Blue | 4× Purple |
+| :--- | :---: | :---: | :---: |
+| **$1.00** | 68 | 150 | 170 |
+| **$2.25** | 51 | 115 | 127 |
+| **$3.75** | 30 | 57 | 90 |
+| **$5.00** | 24 | 40 | 76 |
+| **$7.00** | 19 | 32 | 66 |
+
+**5¢ Denomination take points (based on 90% RTP):**
+
+| 5¢ Bet | 2× Green | 3× Blue | 4× Purple |
+| :--- | :---: | :---: | :---: |
+| **$5.00** ($1.00 × 5) | 57 | 123 | 140 |
+| **$11.25** ($2.25 × 5) | 43 | 95 | 107 |
+| **$18.75** ($3.75 × 5) | 26 | 49 | 77 |
+| **$25.00** ($5.00 × 5) | 21 | 35 | 66 |
+| **$35.00** ($7.00 × 5) | 17 | 29 | 59 |
+
+**Extreme 4× vampire effect:** The **Extreme 4×** bonus captures ~3% of overall RTP, shifting standard meter take points higher than original Buffalo Diamond.
+
+**RTP adjustment & combinations:** 1¢ tables are based on **87% RTP** and 5¢ tables on **90% RTP**. Use the built-in **Buffalo Diamond Calculator** (Extreme mode) to adjust for known casino RTPs and evaluate multi-tier combinations.`,
+      when_to_stop: `Stop after your **multiplier free games** session ends.`,
+      how_to_check: `1. Check the **bet pad** for **green / blue / purple** counts across each bet level.
+2. Cycle through nickel denoms ($0.05) where available.`,
+      risk_bankroll: '750 units',
+      risk_summary: `High volatility with the added Extreme column feature. High variance ... plan bankroll accordingly.`,
       risk_bullets: [],
-      skins_markdown: `**Buffalo Diamond**, **Buffalo Diamond Extreme**.`,
-      gameplay_mechanics: `**Timberwolf Diamond** (Aristocrat) runs **three uncapped free-games meters** per bet (**2× green**, **3× blue**, **4× purple**). Trigger pays accumulated spins at that multiplier, then meters reset.`,
+      where_to_find: `### Where to Find Timberwolf Diamond
+
+**Las Vegas Availability**
+- **South Point Casino** - One of the most reliable spots for Timberwolf Diamond.
+- Scattered placements at other locals casinos (Orleans, Rampart, Station Casinos properties).
+- Occasional sightings at mid-tier Strip casinos with strong Aristocrat floors.
+
+**Broader US Availability**
+- Fairly widespread, especially in casinos with good Aristocrat placements.
+- Popular in **California** tribal casinos (Pechanga, Yaamava', etc.).
+- Also found in Midwest, tribal, and regional casinos across the country.`,
+      skins_markdown: `**Buffalo Diamond Extreme** (same math family).`,
+      gameplay_mechanics: `**Timberwolf Diamond** (Aristocrat) runs **three uncapped free-games meters** per bet (**2× green**, **3× blue**, **4× purple**). Trigger awards accumulated spins at that multiplier, then resets.
+
+Same progressive free-spin meter engine and payout structure as **Buffalo Diamond Extreme**.`,
     },
   },
   {

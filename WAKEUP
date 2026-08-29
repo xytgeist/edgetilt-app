@@ -438,7 +438,6 @@ PC must be on (or wake) at 2am. Logged-in user (interactive). MTTDB can still be
 
 ### Also parked
 
-- Buffalo Diamond still grayed out (`TEMPORARILY_DISABLED_CALCULATOR_KEYS`) until meter resets verified
 - Scott Sharpe soccer fix on **`main`** code; confirm prod Edge `lounge-odds-ingest` + `lounge-odds-poll` redeployed if not done
 - Twilio From number for guest SMS on prod
 - Thread compose iOS keyboard overlap; feed +EV badge; Reuters wire

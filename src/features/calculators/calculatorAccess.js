@@ -51,7 +51,7 @@ export const SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS = new Set(
  * Remove keys here when ready to re-enable.
  */
 export const TEMPORARILY_DISABLED_CALCULATOR_KEYS = new Set(
-  /** @type {CalculatorKey[]} */ (['buffalo-diamond']),
+  /** @type {CalculatorKey[]} */ ([]),
 )
 
 export const CALCULATOR_TEMPORARILY_DISABLED_MESSAGE =

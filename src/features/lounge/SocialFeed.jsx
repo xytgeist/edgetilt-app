@@ -1949,6 +1949,7 @@ export default function SocialFeed({
         requireLoungeAuth()
         return
       }
+      dismissLoungeStackForDockNavRef.current()
       onOpenGuideCard?.(slug)
     },
     [loungeReadOnly, onOpenGuideCard, requireLoungeAuth],
@@ -8408,12 +8409,16 @@ export default function SocialFeed({
       if (isShellNavLoungeHomeSuppressed()) return
       loungeFeedNavClickSuppressUntilRef.current =
         performance.now() + LOUNGE_AWAY_HOME_CLICK_SUPPRESS_MS
+      dismissLoungeStackForDockNavRef.current()
       onNavigateToLoungeFeed?.()
       return
     }
     dismissLoungeStackForDockNavRef.current()
     setLoungeDockPanel(null)
     setChatDockInitialPeerUserId(null)
+    setLoungeSettingsFocusSection(null)
+    loungeDockOverlayReturnRef.current = null
+    setLoungeDockOverlayOnSheet(false)
     scrollLoungeFeedToTop()
     loungeTitleRevealRef.current = 1
     setLoungeTitleReveal(1)
@@ -8713,6 +8718,12 @@ export default function SocialFeed({
     setTimeout(() => void refreshChatUnreadRoomCount(), 3000)
 
     dismissLoungeStackForDockNavRef.current()
+    setLoungeDockPanel(null)
+    setChatDockInitialPeerUserId(null)
+    setLoungeSettingsFocusSection(null)
+    loungeDockOverlayReturnRef.current = null
+    setLoungeDockOverlayOnSheet(false)
+
     if (typeof onOpenChatRoomFromDock === 'function') {
       // Navigate straight to the full Chat tab (no pre-selected room)
       onOpenChatRoomFromDock(null)
@@ -14598,6 +14609,11 @@ export default function SocialFeed({
     loungeNavReturnStackRef.current.length = 0
     loungePostReturnChatRoomIdRef.current = null
     loungeNavSearchReturnPendingRef.current = false
+    setLoungeDockPanel(null)
+    setChatDockInitialPeerUserId(null)
+    setLoungeSettingsFocusSection(null)
+    loungeDockOverlayReturnRef.current = null
+    setLoungeDockOverlayOnSheet(false)
     if (loungePostDetail) finalizeLoungePostDetailClose()
     if (profileModalOpen || profileOverlayStack.length > 0) {
       finalizeProfileModalClose()

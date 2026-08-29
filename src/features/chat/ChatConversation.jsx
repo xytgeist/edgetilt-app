@@ -1449,10 +1449,19 @@ export default function ChatConversation({
       : list.getBoundingClientRect().top + 80
     const nodes = list.querySelectorAll('[data-chat-message-created]')
     let iso = ''
-    for (const node of nodes) {
-      if (node.getBoundingClientRect().bottom > probeY) {
-        iso = node.getAttribute('data-chat-message-created') || ''
-        break
+    if (nodes.length > 0) {
+      const isAtBottom =
+        atBottomRef.current || list.scrollHeight - list.scrollTop - list.clientHeight < 80
+      if (isAtBottom) {
+        const lastNode = nodes[nodes.length - 1]
+        iso = lastNode?.getAttribute('data-chat-message-created') || ''
+      } else {
+        for (const node of nodes) {
+          if (node.getBoundingClientRect().bottom > probeY) {
+            iso = node.getAttribute('data-chat-message-created') || ''
+            break
+          }
+        }
       }
     }
     const next = formatChatHeaderDatePillLabel(iso)

@@ -317,7 +317,7 @@ Misreading the curve is how you donate.`,
       title: 'Buffalo Diamond',
       published: true,
       card_ev_threshold: '$0.75 @ 60/130/150 · $2.50 @ 40/90/100 · $4.00 @ 23/40/85',
-      when_to_play: `**Standalone breakeven take points by bet level:**
+      when_to_play: `**Standalone breakeven take points by bet level (based on 87% RTP):**
 
 | Bet Level | 2× Green | 3× Blue | 4× Gold |
 | :--- | :---: | :---: | :---: |
@@ -327,9 +327,9 @@ Misreading the curve is how you donate.`,
 | **$4.00** | 23 | 40 | 85 |
 | **$6.00** | 21 | 36 | 72 |
 
-Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**, **4× gold**). **Diamonds on reel 5** increment the meters. The bonus awards all accumulated spins at that multiplier, then resets.
+Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**, **4× gold**). The bonus awards all accumulated spins at that multiplier, then resets.
 
-**Not must-hit-by:** high meter counts do not force a trigger. Use the built-in **Buffalo Diamond Calculator** for live multi-tier combinations and exact EV.`,
+**RTP adjustment & combinations:** take points above are based on **87% overall machine RTP**. Use the built-in **Buffalo Diamond Calculator** to adjust for known casino RTPs and calculate live multi-tier combinations.`,
       when_to_stop: `Stop once the **free games bonus** at your target multiplier finishes.`,
       how_to_check: `1. **Bet pad** displays **green / blue / gold** counts for **each bet level**.
 2. Cycle **all bet levels and denoms** ... meters are stored per bet.`,
@@ -367,25 +367,32 @@ Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**,
       card_ev_threshold: '$1.00 @ 68/150/170 · $2.25 @ 51/115/127 · $3.75 @ 30/57/90',
       when_to_play: `BDE has different take points due to the addition of the **Extreme 4×** bonus which vamps overall RTP.
 
-**Standalone breakeven take points by bet level ($0.01 & $0.05 Denoms):**
+**1¢ Denomination take points (based on 87% RTP):**
 
-| 1¢ Bet | 5¢ Bet | 2× Green | 3× Blue | 4× Purple |
-| :--- | :--- | :---: | :---: | :---: |
-| **$1.00** | **$5.00** | 68 | 150 | 170 |
-| **$2.25** | **$11.25** | 51 | 115 | 127 |
-| **$3.75** | **$18.75** | 30 | 57 | 90 |
-| **$5.00** | **$25.00** | 24 | 40 | 76 |
-| **$7.00** | **$35.00** | 19 | 32 | 66 |
+| 1¢ Bet | 2× Green | 3× Blue | 4× Purple |
+| :--- | :---: | :---: | :---: |
+| **$1.00** | 68 | 150 | 170 |
+| **$2.25** | 51 | 115 | 127 |
+| **$3.75** | 30 | 57 | 90 |
+| **$5.00** | 24 | 40 | 76 |
+| **$7.00** | 19 | 32 | 66 |
+
+**5¢ Denomination take points (based on 90% RTP):**
+
+| 5¢ Bet | 2× Green | 3× Blue | 4× Purple |
+| :--- | :---: | :---: | :---: |
+| **$5.00** ($1.00 × 5) | 57 | 123 | 140 |
+| **$11.25** ($2.25 × 5) | 43 | 95 | 107 |
+| **$18.75** ($3.75 × 5) | 26 | 49 | 77 |
+| **$25.00** ($5.00 × 5) | 21 | 35 | 66 |
+| **$35.00** ($7.00 × 5) | 17 | 29 | 59 |
 
 **Extreme 4× vampire effect:** Extreme's **Extreme 4×** bonus captures ~3% of overall RTP, shifting standard meter take points higher than original Buffalo Diamond.
 
-**Extreme column spot:** **Extreme symbol in column 3** with **+2 coins** showing guarantees **multiplier free games** on that hit.
-
-Use the built-in **Buffalo Diamond Calculator** (Extreme mode) for live combinations.`,
+**RTP adjustment & combinations:** 1¢ tables are based on **87% RTP** and 5¢ tables on **90% RTP**. Use the built-in **Buffalo Diamond Calculator** to adjust for known casino RTPs and evaluate multi-tier combinations.`,
       when_to_stop: `Stop after your **multiplier free games** session ends.`,
       how_to_check: `1. Check the **bet pad** for **green / blue / purple** counts across each bet level.
-2. Watch **column 3** for **Extreme symbol + coin count**.
-3. Cycle through nickel denoms ($0.05) where available.`,
+2. Cycle through nickel denoms ($0.05) where available.`,
       risk_bankroll: '750 units',
       risk_summary: `Buffalo Diamond volatility with the added Extreme column feature. High variance ... plan bankroll accordingly.`,
       risk_bullets: [],

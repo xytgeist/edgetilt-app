@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { sendApnsToUser, sendVoipApnsToUser } from '../_shared/apnsPush.ts'
+import { sendApnsToUser } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -722,22 +722,20 @@ async function sendPushToUser(
     }
   }
 
-  // VoIP push: instant high-priority delivery to iOS PushKit for incoming calls.
-  // Note: PushKit strictly requires reporting an incoming call on 100% of wakes (iOS 13+ policy).
-  // Cancellations are delivered via standard APNs alert/background pushes.
+  // VoIP push: instant high-priority delivery to iOS PushKit for incoming calls
+  // is fired directly by chat-calls. If the recipient has a VoIP token registered,
+  // skip sending the standard APNs alert banner to prevent a redundant notification card over CallKit.
   let skipApnsAlert = false
   if (notification.eventType === 'chat_call_invite' && notification.chatCallId) {
-    const voip = await sendVoipApnsToUser(admin, userId, {
-      chatCallId: notification.chatCallId,
-      eventType: 'chat_call_invite',
-      roomId: extractRoomIdFromPushUrl(notification.url),
-      callerName: callerNameFromInviteNotification(notification),
-      hasVideo: false,
-      avatarUrl: notification.avatarUrl,
-    })
-    sent += voip.sent
-    failed += voip.failed
-    removed += voip.removed
+    const { count } = await admin
+      .from('apns_device_tokens')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('push_channel', 'voip')
+
+    if ((count ?? 0) > 0) {
+      skipApnsAlert = true
+    }
   }
 
   let apnsReason = ''

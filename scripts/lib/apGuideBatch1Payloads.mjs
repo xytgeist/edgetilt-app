@@ -316,7 +316,7 @@ Misreading the curve is how you donate.`,
     guide: {
       title: 'Buffalo Diamond',
       published: true,
-      card_ev_threshold: 'Bet-dependent meters · $0.75 @ **60 / 130 / 150** · $2.50 @ **40 / 90 / 100** · $4.00 @ **23 / 40 / 85**',
+      card_ev_threshold: 'Bet-dependent meters: $0.75 @ 60/130/150 · $2.50 @ 40/90/100 · $4.00 @ 23/40/85',
       when_to_play: `**Standalone breakeven take points by bet level (2× Green / 3× Blue / 4× Gold):**
 
 - **$0.75:** **60 / 130 / 150**
@@ -332,10 +332,8 @@ Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**,
       how_to_check: `1. **Bet pad** displays **green / blue / gold** counts for **each bet level**.
 2. Cycle **all bet levels and denoms** ... meters are stored per bet.
 3. **Reel 5 diamonds** increment the meters during base spins.`,
-      risk_bankroll: `**750 units** if chasing blue or gold. Highly volatile ... easy to absorb deep variance before hitting the target tier.`,
-      risk_summary: `**Extreme volatility** (**2,400 ways**, **4-5-6-5-4** reel layout). High meters only increase the **payout value when the bonus hits** ... they do not increase trigger frequency.
-
-Without a dedicated bankroll, **stick to green 2×** plays.`,
+      risk_bankroll: '750 units',
+      risk_summary: `Extreme volatility with high meter variance. High meters only increase payout value when the bonus hits ... not trigger frequency.`,
       risk_bullets: [],
       where_to_find: wtf('Buffalo Diamond', {
         vegas: WTF_VEGAS_ARISTOCRAT_BUFFALO,
@@ -365,7 +363,7 @@ Without a dedicated bankroll, **stick to green 2×** plays.`,
     guide: {
       title: 'Buffalo Diamond Extreme',
       published: true,
-      card_ev_threshold: 'Super 4× adjusted meters · $1.00 @ **68 / 150 / 170** · $2.25 @ **51 / 115 / 127** · $3.75 @ **30 / 57 / 90**',
+      card_ev_threshold: 'Super 4× adjusted meters: $1.00 @ 68/150/170 · $2.25 @ 51/115/127 · $3.75 @ 30/57/90',
       when_to_play: `**Standalone breakeven take points by bet level (2× Green / 3× Blue / 4× Purple):**
 
 - **$1.00:** **68 / 150 / 170**
@@ -383,8 +381,8 @@ Use the built-in **Buffalo Diamond Calculator** (Extreme mode) for live combinat
       how_to_check: `1. Check the **bet pad** for **green / blue / purple** counts across each bet level.
 2. Watch **column 3** for **Extreme symbol + coin count**.
 3. Cycle through nickel denoms ($0.05) where available.`,
-      risk_bankroll: `**750 units** for blue/purple chases. **200–300 units** for 2× green plays.`,
-      risk_summary: `**Buffalo Diamond** volatility with the added **Extreme column** feature. High variance ... plan bankroll accordingly.`,
+      risk_bankroll: '750 units',
+      risk_summary: `Buffalo Diamond volatility with the added Extreme column feature. High variance ... plan bankroll accordingly.`,
       risk_bullets: [],
       where_to_find: wtf('Buffalo Diamond Extreme', {
         vegas: WTF_VEGAS_ARISTOCRAT_BUFFALO,

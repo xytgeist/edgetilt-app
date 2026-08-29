@@ -47,9 +47,9 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
   const [variantKey, setVariantKey] = useState('diamond')
   const [betLevelKey, setBetLevelKey] = useState(DEFAULT_BET_LEVEL_KEY)
   const [extremeDenom, setExtremeDenom] = useState(0.01)
-  const [greenMeter, setGreenMeter] = useState(24)
-  const [blueMeter, setBlueMeter] = useState(59)
-  const [goldMeter, setGoldMeter] = useState(120)
+  const [greenMeter, setGreenMeter] = useState(() => betLevelByKey(DEFAULT_BET_LEVEL_KEY).resets.green)
+  const [blueMeter, setBlueMeter] = useState(() => betLevelByKey(DEFAULT_BET_LEVEL_KEY).resets.blue)
+  const [goldMeter, setGoldMeter] = useState(() => betLevelByKey(DEFAULT_BET_LEVEL_KEY).resets.gold)
 
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [overallRtp, setOverallRtp] = useState(DEFAULT_OVERALL_RTP)
@@ -79,6 +79,9 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
     queueMicrotask(() => {
       setBetLevelKey(nextKey)
       setTierDecimals({ ...level.decimals })
+      setGreenMeter(level.resets.green)
+      setBlueMeter(level.resets.blue)
+      setGoldMeter(level.resets.gold)
       if (variantKey === 'extreme') setExtremeDenom(0.01)
       setOverallRtp(nextRtp)
       setOverallRtpInput(String(nextRtp))
@@ -98,9 +101,9 @@ export default function BuffaloDiamond({ onBack, supabaseClient = null, onOpenLo
     const level = betLevelByKey(betLevelKey)
     queueMicrotask(() => {
       setTierDecimals({ ...level.decimals })
-      setGreenMeter((v) => clampMeter(v, level.resets.green, BUFFALO_DIAMOND_TIERS[0].meterMax))
-      setBlueMeter((v) => clampMeter(v, level.resets.blue, BUFFALO_DIAMOND_TIERS[1].meterMax))
-      setGoldMeter((v) => clampMeter(v, level.resets.gold, BUFFALO_DIAMOND_TIERS[2].meterMax))
+      setGreenMeter(level.resets.green)
+      setBlueMeter(level.resets.blue)
+      setGoldMeter(level.resets.gold)
     })
   }, [betLevelKey])
 

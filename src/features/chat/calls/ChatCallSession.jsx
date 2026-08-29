@@ -179,7 +179,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
   return (
     <div
       ref={pillRef}
-      className="pointer-events-auto fixed flex max-w-[min(22rem,calc(100vw-1rem))] cursor-grab items-center justify-between gap-2 rounded-[28px] bg-[#1f2c34]/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md active:cursor-grabbing touch-none"
+      className="pointer-events-auto fixed flex max-w-[min(22rem,calc(100vw-1rem))] cursor-grab items-center justify-between gap-2.5 rounded-[30px] border border-white/10 bg-zinc-950/85 px-3 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl active:cursor-grabbing touch-none"
       data-lounge-fab-obstacle=""
       style={{
         left: pos?.left ?? -9999,
@@ -196,15 +196,15 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
     >
       <button
         type="button"
-        className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#2a3942] touch-manipulation active:opacity-80"
+        className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-zinc-800 touch-manipulation active:opacity-80"
         aria-label="Expand call"
         onClick={guardClick(onExpand)}
       >
         <CallAvatarCircle
           avatarUrl={avatarUrl}
           title={title}
-          sizeClass="h-12 w-12"
-          textClass="text-[16px]"
+          sizeClass="h-11 w-11"
+          textClass="text-[15px]"
         />
       </button>
       <div
@@ -385,16 +385,19 @@ function WebLiveKitCallSession({
         {connectError ? (
           <div
             data-chat-call-interactive=""
-            className="pointer-events-auto flex flex-1 flex-col items-center justify-center gap-4 bg-[#0b141a] px-6 text-center"
+            className="pointer-events-auto flex flex-1 flex-col items-center justify-center gap-4 bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950 px-6 text-center"
           >
-            <p className="text-[15px] font-semibold text-[#fca5a5]">Could not connect to call</p>
-            <p className="max-w-sm text-[13px] text-[#a1a1aa]">{connectError}</p>
-            <p className="max-w-sm text-[12px] text-[#71717a]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-rose-500/30 bg-rose-950/40 text-rose-400 shadow-xl backdrop-blur-md">
+              <HangupIcon />
+            </div>
+            <p className="text-[17px] font-bold text-white tracking-tight">Could not connect to call</p>
+            <p className="max-w-sm text-[13px] text-zinc-400">{connectError}</p>
+            <p className="max-w-sm text-[12px] text-zinc-500">
               Allow microphone access if prompted. Keep Edge open during calls.
             </p>
             <button
               type="button"
-              className="rounded-xl bg-[#f4f4f5] px-4 py-2 text-[14px] font-semibold text-[#09090b] touch-manipulation"
+              className="mt-2 rounded-2xl border border-white/15 bg-white/10 px-6 py-2.5 text-[14px] font-semibold text-white shadow-lg backdrop-blur-md transition active:scale-95 touch-manipulation hover:bg-white/15"
               onClick={onHangup}
             >
               Close
@@ -643,99 +646,34 @@ function NativeIpaCallSession({
     void setNativeCallSpeaker(next)
   }
 
-  const controlButtons = (
-    <>
-      <button
-        type="button"
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-          micOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
-        }`}
-        aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
-        onClick={() => setMicEnabled(!micOn)}
-      >
-        <MicIcon muted={!micOn} />
-      </button>
-      {videoEnabled ? (
-        <button
-          type="button"
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-            camOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
-          }`}
-          aria-label={camOn ? 'Turn camera off' : 'Turn camera on'}
-          onClick={() => setCameraEnabled(!camOn)}
-        >
-          <VideoIcon off={!camOn} />
-        </button>
-      ) : null}
-      {videoEnabled ? (
-        <button
-          type="button"
-          disabled={!camOn}
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-            camOn ? 'bg-[#2a3942] text-[#f4f4f5] active:opacity-80' : 'bg-[#2a3942]/50 text-[#71717a]'
-          }`}
-          aria-label="Switch camera"
-          onClick={() => void setNativeCallCamera({ flip: true })}
-        >
-          <FlipCameraIcon />
-        </button>
-      ) : null}
-      {videoEnabled && !awaitingAnswer ? (
-        recordingActive ? (
-          canStopRecording ? (
-            <button
-              type="button"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
-              aria-label="Stop recording"
-              onClick={() => onStopRecording?.()}
-            >
-              <RecordStopIcon />
-            </button>
-          ) : (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/40 text-[#71717a]" aria-hidden>
-              <RecordDotIcon dimmed />
-            </div>
-          )
-        ) : recordingSaving ? (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/50 text-[#fbbf24]" aria-label="Saving recording">
-            <RecordStopIcon />
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942] text-[#f4f4f5] touch-manipulation active:opacity-80"
-            aria-label="Start recording"
-            onClick={() => onStartRecording?.(viewerUserId || null)}
-          >
-            <RecordDotIcon />
-          </button>
-        )
-      ) : null}
-      <button
-        type="button"
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-          speakerOn ? 'bg-[#25d366] text-white' : 'bg-[#2a3942] text-[#a1a1aa]'
-        }`}
-        aria-label={speakerOn ? 'Speakerphone on, tap for earpiece' : 'Earpiece, tap for speakerphone'}
-        onClick={() => applySpeaker(!speakerOn)}
-      >
-        <SpeakerIcon />
-      </button>
-      <button
-        type="button"
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
-        aria-label="Hang up"
-        onClick={() => onHangup?.()}
-      >
-        <HangupIcon />
-      </button>
-    </>
-  )
-
   if (minimized) {
     return (
       <DraggableMinimizedCallPill avatarUrl={avatarUrl} title={title} onExpand={() => setMinimized(false)}>
-        {controlButtons}
+        <CallPillButton
+          icon={<MicIcon muted={!micOn} />}
+          variant={!micOn ? 'danger' : 'default'}
+          onClick={() => setMicEnabled(!micOn)}
+          ariaLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}
+        />
+        {videoEnabled ? (
+          <CallPillButton
+            icon={<VideoIcon off={!camOn} />}
+            onClick={() => setCameraEnabled(!camOn)}
+            ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
+          />
+        ) : null}
+        <CallPillButton
+          icon={<SpeakerIcon />}
+          variant={speakerOn ? 'active-white' : 'default'}
+          onClick={() => applySpeaker(!speakerOn)}
+          ariaLabel={speakerOn ? 'Speakerphone on' : 'Earpiece'}
+        />
+        <CallPillButton
+          icon={<HangupIcon />}
+          variant="danger"
+          onClick={() => onHangup?.()}
+          ariaLabel="Hang up"
+        />
       </DraggableMinimizedCallPill>
     )
   }
@@ -747,7 +685,7 @@ function NativeIpaCallSession({
       className={minimized ? 'pointer-events-none fixed inset-0' : 'fixed inset-0 flex flex-col'}
       style={{
         zIndex: 128,
-        backgroundColor: showVideoHole ? 'transparent' : '#0b141a',
+        backgroundColor: showVideoHole ? 'transparent' : undefined,
         width: '100vw',
         height: '100dvh',
       }}
@@ -755,47 +693,60 @@ function NativeIpaCallSession({
       data-chat-call-session
       data-native-ipa-call="1"
     >
+      {!showVideoHole ? (
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950">
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              backgroundImage:
+                'radial-gradient(circle at 50% 18%, rgba(6,182,212,0.12) 0%, transparent 60%), radial-gradient(circle at 50% 82%, rgba(59,130,246,0.08) 0%, transparent 60%)',
+            }}
+          />
+        </div>
+      ) : null}
+
       <div
-        className="relative z-[1] flex shrink-0 items-start justify-between px-3 pb-2"
-        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.5rem)' }}
+        className="relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2"
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.75rem)' }}
       >
         <button
           type="button"
           data-chat-call-interactive=""
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1f2c34]/90 text-[#f4f4f5] touch-manipulation active:opacity-80"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white shadow-lg backdrop-blur-xl transition active:scale-95 touch-manipulation hover:bg-white/15"
           aria-label="Minimize call"
           onClick={() => setMinimized(true)}
         >
           <MinimizeIcon />
         </button>
         <div className="min-w-0 flex-1 px-3 text-center">
-          <p className="truncate text-[18px] font-semibold text-[#fafafa]">{title}</p>
-          <p className="mt-0.5 text-[13px] text-[#a1a1aa]">{statusLabel}</p>
+          <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">{title}</p>
+          <p className="mt-1 font-mono text-[13px] font-medium tracking-wide text-zinc-300/90">{statusLabel}</p>
           {connectError ? (
-            <p className="mt-1 text-[12px] font-semibold text-[#fca5a5]">{connectError}</p>
+            <p className="mt-1.5 text-[12px] font-semibold text-rose-300">{connectError}</p>
           ) : null}
           {recordingActive ? (
-            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#ea4335]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#fca5a5]">
+            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/60 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-200 backdrop-blur-md">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" aria-hidden />
               Recording
-            </p>
+            </div>
           ) : null}
           {recCountdownLabel ? (
-            <p className="mt-1 text-[12px] font-semibold text-[#fbbf24]">{recCountdownLabel}</p>
+            <p className="mt-1.5 text-[12px] font-semibold text-amber-300">{recCountdownLabel}</p>
           ) : null}
         </div>
-        <div className="h-10 w-10 shrink-0" aria-hidden />
+        <div className="h-11 w-11 shrink-0" aria-hidden />
       </div>
 
-      <div className="relative z-[1] min-h-0 flex-1 px-3">
+      <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoHole ? (
           <div className="h-full w-full" aria-hidden />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center pb-8">
+          <div className="flex h-full flex-col items-center justify-center pb-6">
             <CallAvatarCircle
               avatarUrl={avatarUrl}
               title={title}
-              sizeClass="h-40 w-40"
-              textClass="text-[48px]"
+              sizeClass="h-44 w-44"
+              textClass="text-[52px]"
               ring
             />
           </div>
@@ -804,13 +755,90 @@ function NativeIpaCallSession({
 
       <div
         className="relative z-[1] flex shrink-0 justify-center px-4 pt-2"
-        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1rem)' }}
+        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)' }}
       >
         <div
           data-chat-call-interactive=""
-          className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-2 rounded-[28px] bg-[#1f2c34]/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md"
+          className="pointer-events-auto mx-auto w-full max-w-[22.5rem] rounded-[36px] border border-white/10 bg-zinc-950/80 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
         >
-          {controlButtons}
+          <div className="grid grid-cols-3 gap-y-4 gap-x-3 place-items-center">
+            {/* Row 1 */}
+            <CallDockItem
+              icon={<VideoIcon off={!camOn} />}
+              label="Video"
+              active={camOn && videoEnabled}
+              disabled={!videoEnabled}
+              onClick={() => setCameraEnabled(!camOn)}
+            />
+            <CallDockItem
+              icon={<SpeakerIcon />}
+              label="Speaker"
+              active={speakerOn}
+              variant={speakerOn ? 'active-white' : 'default'}
+              onClick={() => applySpeaker(!speakerOn)}
+            />
+            <CallDockItem
+              icon={<MicIcon muted={!micOn} />}
+              label="Mute"
+              active={!micOn}
+              variant={!micOn ? 'danger' : 'default'}
+              onClick={() => setMicEnabled(!micOn)}
+            />
+
+            {/* Row 2 */}
+            {videoEnabled ? (
+              <CallDockItem
+                icon={<FlipCameraIcon />}
+                label="Flip"
+                disabled={!camOn}
+                onClick={() => void setNativeCallCamera({ flip: true })}
+              />
+            ) : (
+              <CallDockItem
+                icon={<RecordDotIcon />}
+                label="Record"
+                disabled={true}
+                onClick={() => {}}
+              />
+            )}
+            {videoEnabled && !awaitingAnswer ? (
+              recordingActive ? (
+                <CallDockItem
+                  icon={<RecordStopIcon />}
+                  label="Stop"
+                  variant="danger"
+                  disabled={!canStopRecording}
+                  onClick={() => onStopRecording?.()}
+                />
+              ) : recordingSaving ? (
+                <CallDockItem
+                  icon={<RecordStopIcon />}
+                  label="Saving…"
+                  variant="warning"
+                  disabled={true}
+                  onClick={() => {}}
+                />
+              ) : (
+                <CallDockItem
+                  icon={<RecordDotIcon />}
+                  label="Record"
+                  onClick={() => onStartRecording?.(viewerUserId || null)}
+                />
+              )
+            ) : (
+              <CallDockItem
+                icon={<MoreOptionsIcon />}
+                label="More"
+                onClick={() => {}}
+              />
+            )}
+            <CallDockItem
+              icon={<HangupIcon />}
+              label="End"
+              variant="danger"
+              onClick={() => onHangup?.()}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -1191,124 +1219,6 @@ function CallChrome({
     }
   }
 
-  const controlButtons = (
-    <>
-      <button
-        type="button"
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-          micOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
-        }`}
-        aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
-        onClick={() => void setMicEnabled(!micOn)}
-      >
-        <MicIcon muted={!micOn} />
-      </button>
-
-      {videoEnabled ? (
-        <button
-          type="button"
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-            camOn ? 'bg-[#2a3942] text-[#f4f4f5]' : 'bg-[#ea4335] text-white'
-          }`}
-          aria-label={camOn ? 'Turn camera off' : 'Turn camera on'}
-          onClick={() => setCameraEnabled(!camOn)}
-        >
-          <VideoIcon off={!camOn} />
-        </button>
-      ) : null}
-
-      {videoEnabled ? (
-        <button
-          type="button"
-          disabled={!camOn || cameraBusy}
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-            camOn && !cameraBusy
-              ? 'bg-[#2a3942] text-[#f4f4f5] active:opacity-80'
-              : 'bg-[#2a3942]/50 text-[#71717a]'
-          }`}
-          aria-label="Switch camera"
-          onClick={() => void flipCamera()}
-        >
-          <FlipCameraIcon />
-        </button>
-      ) : null}
-
-      {videoEnabled && !awaitingAnswer ? (
-        recordingActive ? (
-          canStopRecording ? (
-            <button
-              type="button"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
-              aria-label="Stop recording"
-              title={isCallInitiator && !isRecordingStarter ? 'Stop recording (host)' : 'Stop recording'}
-              onClick={() => onStopRecording?.()}
-            >
-              <RecordStopIcon />
-            </button>
-          ) : (
-            <div
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/40 text-[#71717a]"
-              aria-hidden
-              title="Recording in progress"
-            >
-              <RecordDotIcon dimmed />
-            </div>
-          )
-        ) : recordingSaving ? (
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942]/50 text-[#fbbf24]"
-            aria-label="Saving recording"
-            title="Saving recording"
-          >
-            <RecordStopIcon />
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a3942] text-[#f4f4f5] touch-manipulation active:opacity-80"
-            aria-label="Start recording"
-            title="Record call"
-            onClick={() => {
-              const featured =
-                pinnedIdentity ||
-                localParticipant?.identity ||
-                viewerUserId ||
-                null
-              onStartRecording?.(featured)
-            }}
-          >
-            <RecordDotIcon />
-          </button>
-        )
-      ) : null}
-
-      {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (
-        <button
-          type="button"
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full touch-manipulation ${
-            speakerOn ? 'bg-[#25d366] text-white' : 'bg-[#2a3942] text-[#a1a1aa]'
-          }`}
-          aria-label={
-            speakerOn ? 'Speakerphone on, tap for earpiece' : 'Earpiece, tap for speakerphone'
-          }
-          aria-pressed={speakerOn}
-          onClick={() => void applySpeakerSink(!speakerOn, { manual: true })}
-        >
-          <SpeakerIcon />
-        </button>
-      ) : null}
-
-      <button
-        type="button"
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#ea4335] text-white touch-manipulation active:opacity-80"
-        aria-label="Hang up"
-        onClick={hangup}
-      >
-        <HangupIcon />
-      </button>
-    </>
-  )
-
   if (minimized) {
     return (
       <DraggableMinimizedCallPill
@@ -1316,7 +1226,33 @@ function CallChrome({
         title={title}
         onExpand={onExpand}
       >
-        {controlButtons}
+        <CallPillButton
+          icon={<MicIcon muted={!micOn} />}
+          variant={!micOn ? 'danger' : 'default'}
+          onClick={() => void setMicEnabled(!micOn)}
+          ariaLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}
+        />
+        {videoEnabled ? (
+          <CallPillButton
+            icon={<VideoIcon off={!camOn} />}
+            onClick={() => setCameraEnabled(!camOn)}
+            ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
+          />
+        ) : null}
+        {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (
+          <CallPillButton
+            icon={<SpeakerIcon />}
+            variant={speakerOn ? 'active-white' : 'default'}
+            onClick={() => void applySpeakerSink(!speakerOn, { manual: true })}
+            ariaLabel={speakerOn ? 'Speakerphone on' : 'Earpiece'}
+          />
+        ) : null}
+        <CallPillButton
+          icon={<HangupIcon />}
+          variant="danger"
+          onClick={hangup}
+          ariaLabel="Hang up"
+        />
       </DraggableMinimizedCallPill>
     )
   }
@@ -1324,59 +1260,144 @@ function CallChrome({
   const controlPill = (
     <div
       data-chat-call-interactive=""
-      className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-2 rounded-[28px] bg-[#1f2c34]/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md"
+      className="pointer-events-auto mx-auto w-full max-w-[22.5rem] rounded-[36px] border border-white/10 bg-zinc-950/80 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
     >
-      {controlButtons}
+      <div className="grid grid-cols-3 gap-y-4 gap-x-3 place-items-center">
+        {/* Row 1 */}
+        <CallDockItem
+          icon={<VideoIcon off={!camOn} />}
+          label="Video"
+          active={camOn && videoEnabled}
+          disabled={!videoEnabled}
+          onClick={() => setCameraEnabled(!camOn)}
+        />
+        <CallDockItem
+          icon={<SpeakerIcon />}
+          label="Speaker"
+          active={speakerOn}
+          variant={speakerOn ? 'active-white' : 'default'}
+          disabled={!audioRouteSupported && isIosDevice() && !isEdgeiOSShell()}
+          onClick={() => void applySpeakerSink(!speakerOn, { manual: true })}
+        />
+        <CallDockItem
+          icon={<MicIcon muted={!micOn} />}
+          label="Mute"
+          active={!micOn}
+          variant={!micOn ? 'danger' : 'default'}
+          onClick={() => void setMicEnabled(!micOn)}
+        />
+
+        {/* Row 2 */}
+        {videoEnabled ? (
+          <CallDockItem
+            icon={<FlipCameraIcon />}
+            label="Flip"
+            disabled={!camOn || cameraBusy}
+            onClick={() => void flipCamera()}
+          />
+        ) : (
+          <CallDockItem
+            icon={<RecordDotIcon />}
+            label="Record"
+            disabled={true}
+            onClick={() => {}}
+          />
+        )}
+        {videoEnabled && !awaitingAnswer ? (
+          recordingActive ? (
+            <CallDockItem
+              icon={<RecordStopIcon />}
+              label="Stop"
+              variant="danger"
+              disabled={!canStopRecording}
+              onClick={() => onStopRecording?.()}
+            />
+          ) : recordingSaving ? (
+            <CallDockItem
+              icon={<RecordStopIcon />}
+              label="Saving…"
+              variant="warning"
+              disabled={true}
+              onClick={() => {}}
+            />
+          ) : (
+            <CallDockItem
+              icon={<RecordDotIcon />}
+              label="Record"
+              onClick={() => {
+                const featured =
+                  pinnedIdentity ||
+                  localParticipant?.identity ||
+                  viewerUserId ||
+                  null
+                onStartRecording?.(featured)
+              }}
+            />
+          )
+        ) : (
+          <CallDockItem
+            icon={<MoreOptionsIcon />}
+            label="More"
+            onClick={() => {}}
+          />
+        )}
+        <CallDockItem
+          icon={<HangupIcon />}
+          label="End"
+          variant="danger"
+          onClick={hangup}
+        />
+      </div>
     </div>
   )
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.07]"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 20% 20%, #fff 0.6px, transparent 0.7px), radial-gradient(circle at 80% 40%, #fff 0.5px, transparent 0.6px), radial-gradient(circle at 40% 80%, #fff 0.55px, transparent 0.65px)',
-          backgroundSize: '28px 28px, 36px 36px, 22px 22px',
-        }}
-        aria-hidden
-      />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950">
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 50% 18%, rgba(6,182,212,0.12) 0%, transparent 60%), radial-gradient(circle at 50% 82%, rgba(59,130,246,0.08) 0%, transparent 60%)',
+          }}
+        />
+      </div>
 
       <div
-        className="relative z-[1] flex shrink-0 items-start justify-between px-3 pb-2"
-        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.5rem)' }}
+        className="relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2"
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.75rem)' }}
       >
         <button
           type="button"
           data-chat-call-interactive=""
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1f2c34]/90 text-[#f4f4f5] touch-manipulation active:opacity-80"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white shadow-lg backdrop-blur-xl transition active:scale-95 touch-manipulation hover:bg-white/15"
           aria-label="Minimize call"
           onClick={onMinimize}
         >
           <MinimizeIcon />
         </button>
         <div className="min-w-0 flex-1 px-3 text-center">
-          <p className="truncate text-[18px] font-semibold text-[#fafafa]">{title}</p>
-          <p className="mt-0.5 text-[13px] text-[#a1a1aa]">{statusLabel}</p>
+          <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">{title}</p>
+          <p className="mt-1 font-mono text-[13px] font-medium tracking-wide text-zinc-300/90">{statusLabel}</p>
           {recordingActive ? (
-            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#ea4335]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#fca5a5]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ea4335]" aria-hidden />
+            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/60 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-200 backdrop-blur-md">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" aria-hidden />
               Recording
-            </p>
+            </div>
           ) : null}
           {recordingSaving ? (
-            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#fbbf24]">
+            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-950/60 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-200 backdrop-blur-md">
               Saving recording…
-            </p>
+            </div>
           ) : null}
           {recCountdownLabel ? (
-            <p className="mt-1 text-[12px] font-semibold text-[#fbbf24]">{recCountdownLabel}</p>
+            <p className="mt-1.5 text-[12px] font-semibold text-amber-300">{recCountdownLabel}</p>
           ) : null}
         </div>
-        <div className="h-10 w-10 shrink-0" aria-hidden />
+        <div className="h-11 w-11 shrink-0" aria-hidden />
       </div>
 
-      <div className="relative z-[1] min-h-0 flex-1 px-3">
+      <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoStage ? (
           <VideoCallStage
             fullscreenParticipant={fullscreenParticipant}
@@ -1399,12 +1420,12 @@ function CallChrome({
             resolveNameForParticipant={resolveNameForParticipant}
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center pb-8">
+          <div className="flex h-full flex-col items-center justify-center pb-6">
             <CallAvatarCircle
               avatarUrl={avatarUrl}
               title={title}
-              sizeClass="h-40 w-40"
-              textClass="text-[48px]"
+              sizeClass="h-44 w-44"
+              textClass="text-[52px]"
               ring
             />
           </div>
@@ -1413,7 +1434,7 @@ function CallChrome({
 
       <div
         className="relative z-[1] flex shrink-0 justify-center px-4 pt-2"
-        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1rem)' }}
+        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)' }}
       >
         {controlPill}
       </div>
@@ -1470,21 +1491,21 @@ function GroupAudioStage({
   resolveNameForParticipant,
 }) {
   const count = participants.length
-  const sizeClass = count <= 2 ? 'h-32 w-32' : count <= 4 ? 'h-28 w-28' : 'h-24 w-24'
-  const textClass = count <= 2 ? 'text-[36px]' : count <= 4 ? 'text-[30px]' : 'text-[26px]'
+  const sizeClass = count <= 2 ? 'h-36 w-36' : count <= 4 ? 'h-28 w-28' : 'h-24 w-24'
+  const textClass = count <= 2 ? 'text-[42px]' : count <= 4 ? 'text-[32px]' : 'text-[26px]'
   const tileWidth =
-    count <= 2 ? 'w-[42%] max-w-[11rem]' : count <= 4 ? 'w-[40%] max-w-[9.5rem]' : 'w-[30%] max-w-[7.5rem]'
+    count <= 2 ? 'w-[45%] max-w-[12rem]' : count <= 4 ? 'w-[42%] max-w-[10rem]' : 'w-[30%] max-w-[8rem]'
 
   return (
-    <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto px-1 py-4">
-      <div className="flex w-full max-w-lg flex-wrap content-center justify-center gap-x-4 gap-y-5">
+    <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto px-2 py-4">
+      <div className="flex w-full max-w-lg flex-wrap content-center justify-center gap-x-4 gap-y-6">
         {participants.map((p) => {
           const name = resolveNameForParticipant(p)
           const speaking = speakingIds.has(p.identity)
           return (
             <div
               key={p.identity}
-              className={`flex flex-col items-center gap-2 ${tileWidth}`}
+              className={`flex flex-col items-center gap-2.5 ${tileWidth}`}
             >
               <CallAvatarCircle
                 avatarUrl={resolveAvatarForParticipant(p)}
@@ -1492,8 +1513,9 @@ function GroupAudioStage({
                 sizeClass={sizeClass}
                 textClass={textClass}
                 speaking={speaking}
+                ring
               />
-              <p className="w-full truncate text-center text-[13px] font-medium text-[#e4e4e7]">
+              <p className="w-full truncate text-center text-[13px] font-semibold text-zinc-200 drop-shadow-sm">
                 {name}
               </p>
             </div>
@@ -1553,8 +1575,8 @@ function VideoCallStage({
 
   return (
     <div
-      className={`relative h-full min-h-0 overflow-hidden rounded-2xl bg-[#111b21] ${
-        mainPinned ? 'ring-2 ring-inset ring-[#25d366]' : ''
+      className={`relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl ${
+        mainPinned ? 'ring-2 ring-inset ring-emerald-500' : ''
       }`}
     >
       <button
@@ -1578,12 +1600,12 @@ function VideoCallStage({
             style={{ objectFit: 'cover', width: '100%', height: '100%' }}
           />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#111b21]">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950">
             <CallAvatarCircle
               avatarUrl={fullAvatar}
               title={fullName}
-              sizeClass="h-36 w-36"
-              textClass="text-[42px]"
+              sizeClass="h-40 w-40"
+              textClass="text-[48px]"
               ring
             />
           </div>
@@ -1591,7 +1613,7 @@ function VideoCallStage({
       </button>
 
       {mainPinned ? (
-        <div className="pointer-events-none absolute left-3 top-3 z-[3] rounded-full bg-[#25d366] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#052e16] shadow">
+        <div className="pointer-events-none absolute left-4 top-4 z-[3] rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-950 shadow-lg">
           Pinned
         </div>
       ) : null}
@@ -1601,8 +1623,8 @@ function VideoCallStage({
           type="button"
           data-chat-call-round-video=""
           data-chat-call-interactive=""
-          className={`absolute bottom-3 right-3 z-[2] h-[7.5rem] w-[7.5rem] overflow-hidden rounded-full border-2 bg-[#1f2c34] shadow-lg touch-manipulation active:opacity-90 ${
-            pipPinned ? 'border-[#25d366]' : 'border-white/35'
+          className={`absolute bottom-4 right-4 z-[2] h-[8rem] w-[8rem] overflow-hidden rounded-full border-2 bg-zinc-900 shadow-2xl backdrop-blur-xl touch-manipulation active:scale-95 transition-all ${
+            pipPinned ? 'border-emerald-500 shadow-[0_0_24px_rgba(16,185,129,0.4)]' : 'border-white/30'
           }`}
           aria-label={
             duoPipParticipant.isLocal
@@ -1623,15 +1645,15 @@ function VideoCallStage({
               avatarUrl={resolveAvatarForParticipant(duoPipParticipant)}
               title={duoPipParticipant.isLocal ? 'You' : duoPipParticipant.name || title || '?'}
               sizeClass="h-full w-full"
-              textClass="text-[28px]"
+              textClass="text-[30px]"
             />
           )}
         </button>
       ) : null}
 
       {showStrip ? (
-        <div className="absolute bottom-3 left-0 right-0 z-[2] flex justify-center px-3">
-          <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="absolute bottom-4 left-0 right-0 z-[2] flex justify-center px-4">
+          <div className="flex max-w-full gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {stripParticipants.map((p) => {
               const pinned = pinnedIdentity === p.identity
               const track = cameraByIdentity.get(p.identity)
@@ -1643,8 +1665,8 @@ function VideoCallStage({
                   type="button"
                   data-chat-call-round-video=""
                   data-chat-call-interactive=""
-                  className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 bg-[#1f2c34] touch-manipulation ${
-                    pinned ? 'border-[#25d366]' : 'border-white/25'
+                  className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 bg-zinc-900 shadow-lg touch-manipulation active:scale-95 transition-all ${
+                    pinned ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'border-white/25'
                   }`}
                   aria-label={pinned ? `${label} pinned` : `Pin ${label} fullscreen`}
                   onClick={() => onPinIdentity(p.identity)}
@@ -1676,26 +1698,26 @@ function VideoCallStage({
 function CallAvatarCircle({
   avatarUrl,
   title,
-  sizeClass = 'h-28 w-28',
-  textClass = 'text-[32px]',
+  sizeClass = 'h-36 w-36',
+  textClass = 'text-[44px]',
   ring = false,
   speaking = false,
 }) {
   const initial = (title || '?').trim().charAt(0).toUpperCase() || '?'
   const ringClass = speaking
-    ? ' shadow-[0_0_0_3px_#25d366]'
+    ? ' ring-4 ring-emerald-500/80 shadow-[0_0_40px_rgba(16,185,129,0.4)] animate-pulse'
     : ring
-      ? ' shadow-[0_0_0_3px_rgba(255,255,255,0.12)]'
+      ? ' ring-2 ring-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.65)]'
       : ''
   return (
     <div
-      className={`flex items-center justify-center overflow-hidden rounded-full bg-[#2a3942] transition-[box-shadow] duration-150 ${sizeClass}${ringClass}`}
+      className={`relative flex items-center justify-center overflow-hidden rounded-full bg-zinc-800/90 backdrop-blur-md transition-all duration-200 ${sizeClass}${ringClass}`}
       aria-label={speaking ? `${title || 'Caller'} speaking` : undefined}
     >
       {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+        <img src={avatarUrl} alt="" className="h-full w-full object-cover rounded-full" />
       ) : (
-        <span className={`font-bold uppercase tracking-tight text-[#e4e4e7] ${textClass}`} aria-hidden>
+        <span className={`font-bold uppercase tracking-tight text-zinc-100 ${textClass}`} aria-hidden>
           {initial}
         </span>
       )}
@@ -1703,10 +1725,107 @@ function CallAvatarCircle({
   )
 }
 
+function CallDockItem({
+  onClick,
+  icon,
+  label,
+  variant = 'default',
+  active = false,
+  disabled = false,
+  ariaLabel,
+  title,
+}) {
+  const baseBtnStyle =
+    'flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-95 touch-manipulation'
+  let variantStyle = 'bg-white/10 hover:bg-white/15 border border-white/10 text-white shadow-md backdrop-blur-md'
+
+  if (variant === 'active-white' || (active && variant === 'default')) {
+    variantStyle = 'bg-white text-zinc-950 shadow-[0_0_24px_rgba(255,255,255,0.35)] font-bold'
+  } else if (variant === 'danger') {
+    variantStyle = 'bg-rose-600 hover:bg-rose-500 text-white shadow-[0_8px_24px_rgba(225,29,72,0.45)]'
+  } else if (variant === 'warning') {
+    variantStyle = 'bg-amber-500 text-zinc-950 shadow-[0_6px_20px_rgba(245,158,11,0.35)]'
+  } else if (variant === 'disabled' || disabled) {
+    variantStyle = 'bg-white/5 border border-white/5 text-zinc-600 cursor-not-allowed opacity-40 shadow-none'
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <button
+        type="button"
+        disabled={disabled}
+        className={`${baseBtnStyle} ${variantStyle}`}
+        onClick={onClick}
+        aria-label={ariaLabel || label}
+        title={title || label}
+      >
+        {icon}
+      </button>
+      <span className="mt-1.5 text-[11px] font-medium tracking-tight text-zinc-300/90 text-center select-none leading-none">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function CallPillButton({
+  onClick,
+  icon,
+  variant = 'default',
+  active = false,
+  disabled = false,
+  ariaLabel,
+}) {
+  const baseBtnStyle =
+    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-95 touch-manipulation'
+  let variantStyle = 'bg-white/10 hover:bg-white/15 border border-white/10 text-white shadow-sm'
+
+  if (variant === 'active-white' || (active && variant === 'default')) {
+    variantStyle = 'bg-white text-zinc-950 font-bold shadow-md'
+  } else if (variant === 'danger') {
+    variantStyle = 'bg-rose-600 hover:bg-rose-500 text-white shadow-md'
+  } else if (variant === 'disabled' || disabled) {
+    variantStyle = 'bg-white/5 text-zinc-600 opacity-40 cursor-not-allowed shadow-none'
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className={`${baseBtnStyle} ${variantStyle}`}
+      onClick={onClick}
+      aria-label={ariaLabel}
+    >
+      {icon}
+    </button>
+  )
+}
+
 function MinimizeIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
       <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function MoreOptionsIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <circle cx="5" cy="12" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="19" cy="12" r="2" />
+    </svg>
+  )
+}
+
+function ShareScreenIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M13 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3" />
+      <path d="M8 21h8" />
+      <path d="M12 17v4" />
+      <path d="m17 8 5-5m0 0h-4m4 0v4" />
     </svg>
   )
 }

@@ -420,7 +420,7 @@ export default function LoungeDockArcCarouselPrototype({
     const { width, height } = viewport
     const bounds = loungeDockFabMoveBounds(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
     const saved = readLoungeDockFabPrefs()
-    const savedLooksCollapsed = Boolean(saved && saved.xPct <= 0.02 && saved.yPct <= 0.02)
+    const savedLooksCollapsed = Boolean(saved && saved.xPct <= 0.05 && saved.yPct <= 0.05)
     const pos =
       saved && !savedLooksCollapsed
         ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, bounds)
@@ -478,7 +478,8 @@ export default function LoungeDockArcCarouselPrototype({
     const { width, height } = viewport
     const bounds = loungeDockFabMoveBounds(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
     const saved = readLoungeDockFabPrefs()
-    const pos = saved
+    const savedLooksCollapsed = Boolean(saved && saved.xPct <= 0.05 && saved.yPct <= 0.05)
+    const pos = saved && !savedLooksCollapsed
       ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, bounds)
       : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
     fabPosRef.current = pos
@@ -513,7 +514,8 @@ export default function LoungeDockArcCarouselPrototype({
         )
       } else {
         const saved = readLoungeDockFabPrefs()
-        measurePos = saved
+        const savedLooksCollapsed = Boolean(saved && saved.xPct <= 0.05 && saved.yPct <= 0.05)
+        measurePos = saved && !savedLooksCollapsed
           ? loungeDockFabPositionFromPct(saved.xPct, saved.yPct, baseBounds)
           : loungeDockFabDefaultPosition(width, height, LOUNGE_DOCK_FAB_SIZE_PX, bottomObstaclePx)
       }
@@ -868,6 +870,7 @@ export default function LoungeDockArcCarouselPrototype({
       const spanY = fabMoveBounds.maxTop - fabMoveBounds.minTop
       if (spanX < 8 || spanY < 8) return
       const pct = loungeDockFabPctFromPosition(pos.left, pos.top, fabMoveBounds)
+      if (pct.xPct <= 0.05 && pct.yPct <= 0.05) return
       writeLoungeDockFabPrefs({ ...pct, locked: true })
       if (!readLoungeDockMenuLayoutIntroCompleted(viewerUserId)) {
         completeMenuLayoutIntro()

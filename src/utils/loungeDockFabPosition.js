@@ -46,10 +46,18 @@ export function loungeDockFabMoveBounds(
   bottomObstaclePx = 0,
 ) {
   const obstacle = Math.max(0, Number(bottomObstaclePx) || 0)
+  const vw = Math.max(
+    200,
+    Number(viewportW) || (typeof window !== 'undefined' ? window.innerWidth : 390),
+  )
+  const vh = Math.max(
+    300,
+    Number(viewportH) || (typeof window !== 'undefined' ? window.innerHeight : 844),
+  )
   const minLeft = EDGE_PAD_PX
   const minTop = EDGE_PAD_PX
-  const maxLeft = Math.max(minLeft, viewportW - fabSize - EDGE_PAD_PX)
-  const maxTop = Math.max(minTop, viewportH - fabSize - EDGE_PAD_PX - obstacle)
+  const maxLeft = Math.max(minLeft, vw - fabSize - EDGE_PAD_PX)
+  const maxTop = Math.max(minTop, vh - fabSize - EDGE_PAD_PX - obstacle)
   return { minLeft, minTop, maxLeft, maxTop }
 }
 
@@ -262,6 +270,15 @@ export function readLoungeDockFabPrefs() {
     if (!raw) return null
     const o = JSON.parse(raw)
     if (typeof o?.xPct !== 'number' || typeof o?.yPct !== 'number') return null
+    // Reject degenerate / collapsed top-left positions (e.g. 0,0 from collapsed viewport or corrupted prefs)
+    if (o.xPct <= 0.05 && o.yPct <= 0.05) {
+      try {
+        window.localStorage.removeItem(LOUNGE_DOCK_FAB_STORAGE_KEY)
+      } catch {
+        /* ignore */
+      }
+      return null
+    }
     return {
       xPct: clamp(o.xPct, 0, 1),
       yPct: clamp(o.yPct, 0, 1),
@@ -276,6 +293,9 @@ export function readLoungeDockFabPrefs() {
 export function writeLoungeDockFabPrefs(prefs) {
   if (typeof window === 'undefined') return
   try {
+    if (prefs.xPct <= 0.05 && prefs.yPct <= 0.05) {
+      return
+    }
     window.localStorage.setItem(
       LOUNGE_DOCK_FAB_STORAGE_KEY,
       JSON.stringify({

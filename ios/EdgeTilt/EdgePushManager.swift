@@ -152,6 +152,13 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     deviceTokenHex = hex
     lock.unlock()
     UserDefaults.standard.set(hex, forKey: tokenDefaultsKey)
+    DispatchQueue.main.async { [weak self] in
+      guard let webView = self?.webView else { return }
+      let js = """
+      window.dispatchEvent(new CustomEvent('edge-push-token', { detail: { token: '\(hex)' } }));
+      """
+      webView.evaluateJavaScript(js, completionHandler: nil)
+    }
   }
 
   func didFailToRegister(error: Error) {

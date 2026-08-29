@@ -32,17 +32,8 @@ import {
 } from '../../../utils/pendingChatCallDeepLink.js'
 import { enterCallAudioSession } from './chatCallAudioSession.js'
 import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
-import {
-  acceptNativeCall,
-  dismissEdgeCallKeyboard,
-  endEdgeNativeCall,
-  getEdgeVoIPPushToken,
-  installEdgeCallKitListeners,
-  markEdgeCallKitWebReady,
-  reportEdgeIncomingCall,
-  startNativeCall,
-} from '../../../utils/edgeCallKit.js'
-import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
+import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
+import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 
 const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
@@ -368,25 +359,36 @@ export function ChatCallProvider({
     installChatCallAudioUnlock()
   }, [])
 
-  // Upload PushKit VoIP token for CallKit background ring (best-effort).
+  // Upload PushKit VoIP token & APNs alert token for CallKit background ring and cancellation.
   useEffect(() => {
     if (!supabaseClient || !viewerUserId) return undefined
     let cancelled = false
-    const syncVoip = async () => {
-      const { token } = await getEdgeVoIPPushToken()
-      if (cancelled || !token) return
-      await upsertMyApnsDeviceToken(supabaseClient, token, { pushChannel: 'voip' })
+    const syncTokens = async () => {
+      const { token: voipToken } = await getEdgeVoIPPushToken()
+      if (!cancelled && voipToken) {
+        await upsertMyApnsDeviceToken(supabaseClient, voipToken, { pushChannel: 'voip' })
+      }
+      const { token: alertToken } = await getEdgeiOSPushToken()
+      if (!cancelled && alertToken) {
+        await upsertMyApnsDeviceToken(supabaseClient, alertToken, { pushChannel: 'alert' })
+      }
     }
-    void syncVoip()
+    void syncTokens()
     const onVoipToken = (event) => {
       const token = event?.detail?.token
       if (token) void upsertMyApnsDeviceToken(supabaseClient, token, { pushChannel: 'voip' })
     }
+    const onAlertToken = (event) => {
+      const token = event?.detail?.token
+      if (token) void upsertMyApnsDeviceToken(supabaseClient, token, { pushChannel: 'alert' })
+    }
     window.addEventListener('edge-voip-token', onVoipToken)
-    const interval = window.setInterval(() => void syncVoip(), 15000)
+    window.addEventListener('edge-push-token', onAlertToken)
+    const interval = window.setInterval(() => void syncTokens(), 15000)
     return () => {
       cancelled = true
       window.removeEventListener('edge-voip-token', onVoipToken)
+      window.removeEventListener('edge-push-token', onAlertToken)
       window.clearInterval(interval)
     }
   }, [supabaseClient, viewerUserId])

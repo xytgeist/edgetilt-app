@@ -23,9 +23,6 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
 
   private override init() {
     super.init()
-    if let stored = UserDefaults.standard.string(forKey: tokenDefaultsKey), !stored.isEmpty {
-      deviceTokenHex = stored
-    }
   }
 
   func configure() {

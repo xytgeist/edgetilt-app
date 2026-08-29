@@ -243,7 +243,7 @@ export async function sendApnsToUser(
       }
       failed += 1
       // Do not drop on BadEnvironmentKeyInToken … wrong host only; token is still valid.
-      if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken') {
+      if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken' || (result.status === 403 && result.reason === 'BadEnvironmentKeyInToken')) {
         const { error: deleteError } = await admin
           .from('apns_device_tokens')
           .delete()
@@ -357,7 +357,7 @@ export async function sendVoipApnsToUser(
         continue
       }
       failed += 1
-      if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken') {
+      if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken' || (result.status === 403 && result.reason === 'BadEnvironmentKeyInToken')) {
         const { error: deleteError } = await admin
           .from('apns_device_tokens')
           .delete()

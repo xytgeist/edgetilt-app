@@ -2761,6 +2761,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-08-28:** Removed cached `UserDefaults` Alert and VoIP token loading on init in `EdgePushManager` / `EdgeCallKitManager` and enabled automatic deletion of tokens with `BadEnvironmentKeyInToken` in `apnsPush.ts`.
 - **2026-08-28:** Updated `apsEnvironment` in `EdgeNativeBridge.swift` from `development` to `production` so tokens uploaded to Supabase are marked for production APNs gateway.
 - **2026-08-28:** Wired `chat_call_invite` into `AppDelegate.didReceiveRemoteNotification` so APNs alerts trigger native CallKit ring if PushKit VoIP socket drops or is throttled.
 - **2026-08-28:** Added `ios/ci_scripts/ci_post_clone.sh` auto-versioning hook (`CI_BUILD_NUMBER + 100`) and set base build version to 100 for Xcode Cloud distribution.

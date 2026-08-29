@@ -559,8 +559,8 @@ function NativeIpaCallSession({
   }, [callId])
 
   useEffect(() => {
-    void setNativeCallChrome({ minimized, videoVisible: videoEnabled && !awaitingAnswer })
-  }, [minimized, videoEnabled, awaitingAnswer])
+    void setNativeCallChrome({ minimized, videoVisible: (videoEnabled || camOn) && !awaitingAnswer })
+  }, [minimized, videoEnabled, camOn, awaitingAnswer])
 
   useEffect(() => {
     return () => {
@@ -640,6 +640,9 @@ function NativeIpaCallSession({
   const setCameraEnabled = (next) => {
     setCamOn(next)
     void setNativeCallCamera({ enabled: next })
+    if (next) {
+      applySpeaker(true)
+    }
   }
   const applySpeaker = (next) => {
     setSpeakerOn(next)
@@ -655,13 +658,12 @@ function NativeIpaCallSession({
           onClick={() => setMicEnabled(!micOn)}
           ariaLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}
         />
-        {videoEnabled ? (
-          <CallPillButton
-            icon={<VideoIcon off={!camOn} />}
-            onClick={() => setCameraEnabled(!camOn)}
-            ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
-          />
-        ) : null}
+        <CallPillButton
+          icon={<VideoIcon off={!camOn} />}
+          active={camOn}
+          onClick={() => setCameraEnabled(!camOn)}
+          ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
+        />
         <CallPillButton
           icon={<SpeakerIcon />}
           variant={speakerOn ? 'active-white' : 'default'}
@@ -678,7 +680,7 @@ function NativeIpaCallSession({
     )
   }
 
-  const showVideoHole = videoEnabled && !awaitingAnswer
+  const showVideoHole = (videoEnabled || camOn) && !awaitingAnswer
 
   return (
     <div
@@ -766,8 +768,8 @@ function NativeIpaCallSession({
             <CallDockItem
               icon={<VideoIcon off={!camOn} />}
               label="Video"
-              active={camOn && videoEnabled}
-              disabled={!videoEnabled}
+              active={camOn}
+              disabled={false}
               onClick={() => setCameraEnabled(!camOn)}
             />
             <CallDockItem
@@ -786,7 +788,7 @@ function NativeIpaCallSession({
             />
 
             {/* Row 2 */}
-            {videoEnabled ? (
+            {camOn ? (
               <CallDockItem
                 icon={<FlipCameraIcon />}
                 label="Flip"
@@ -1059,7 +1061,9 @@ function CallChrome({
     return localParticipant || null
   }, [pinnedIdentity, participants, speakingRemote, remotes, localParticipant])
 
-  const showVideoStage = videoEnabled && !awaitingAnswer
+  const anyParticipantHasCamera =
+    participantHasLiveCamera(localParticipant) || remotes.some(participantHasLiveCamera)
+  const showVideoStage = (videoEnabled || camOn || anyParticipantHasCamera) && !awaitingAnswer
 
   const applySpeakerSink = async (nextOn, { manual = false } = {}) => {
     if (!audioRouteSupported && manual) return
@@ -1174,12 +1178,17 @@ function CallChrome({
     onHangup()
   }
 
-  const setCameraEnabled = (next) => {
+  const setCameraEnabled = async (next) => {
     setCamOn(next)
-    void localParticipant.setCameraEnabled(next)
-    if (!videoEnabled || speakerManualOverrideRef.current || !audioRouteSupported) return
-    // Cam off → earpiece intent; cam on → speakerphone again.
-    void applySpeakerSink(Boolean(next), { manual: false })
+    if (!localParticipant) return
+    try {
+      await localParticipant.setCameraEnabled(next)
+      if (next && audioRouteSupported && !speakerManualOverrideRef.current) {
+        void applySpeakerSink(true, { manual: false })
+      }
+    } catch {
+      /* ignore */
+    }
   }
 
   /**
@@ -1232,13 +1241,12 @@ function CallChrome({
           onClick={() => void setMicEnabled(!micOn)}
           ariaLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}
         />
-        {videoEnabled ? (
-          <CallPillButton
-            icon={<VideoIcon off={!camOn} />}
-            onClick={() => setCameraEnabled(!camOn)}
-            ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
-          />
-        ) : null}
+        <CallPillButton
+          icon={<VideoIcon off={!camOn} />}
+          active={camOn}
+          onClick={() => void setCameraEnabled(!camOn)}
+          ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
+        />
         {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (
           <CallPillButton
             icon={<SpeakerIcon />}
@@ -1267,9 +1275,9 @@ function CallChrome({
         <CallDockItem
           icon={<VideoIcon off={!camOn} />}
           label="Video"
-          active={camOn && videoEnabled}
-          disabled={!videoEnabled}
-          onClick={() => setCameraEnabled(!camOn)}
+          active={camOn}
+          disabled={false}
+          onClick={() => void setCameraEnabled(!camOn)}
         />
         <CallDockItem
           icon={<SpeakerIcon />}
@@ -1288,7 +1296,7 @@ function CallChrome({
         />
 
         {/* Row 2 */}
-        {videoEnabled ? (
+        {camOn ? (
           <CallDockItem
             icon={<FlipCameraIcon />}
             label="Flip"

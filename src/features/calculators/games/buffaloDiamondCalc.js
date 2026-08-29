@@ -237,8 +237,7 @@ export const BUFFALO_DIAMOND_BET_LEVELS = [
     label: '$6.00',
     baseGamePct: 20.56,
     decimals: { green: 0.029661, blue: 0.015348, gold: 0.006356 },
-    // $6 not on original Diamond floor chart — linear extrap from $2.50 → $4.00; verify on glass.
-    resets: { green: 13, blue: 22, gold: 58 },
+    resets: { green: 12, blue: 20, gold: 35 },
   },
   {
     key: '700',

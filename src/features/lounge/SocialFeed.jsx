@@ -1269,7 +1269,7 @@ export default function SocialFeed({
   const loungeFeedNavClickSuppressUntilRef = useRef(0)
   const LOUNGE_AWAY_HOME_CLICK_SUPPRESS_MS = 650
   const [loungeDockMenuLayout, setLoungeDockMenuLayout] = useState(() =>
-    typeof window !== 'undefined' ? readLoungeDockMenuLayout() : 'wheel',
+    typeof window !== 'undefined' ? readLoungeDockMenuLayout() : 'cornerL',
   )
   const [loungePanelTitleReveal, setLoungePanelTitleReveal] = useState(1)
   /** When set, Chat panel opens a DM with this user (cleared after `open_dm` runs). */

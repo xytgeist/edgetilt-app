@@ -2,7 +2,7 @@
 
 export default function LoungeDockMenuLayoutHelp({
 
-  dockMenuLayout = 'wheel',
+  dockMenuLayout = 'cornerL',
 
   onDockMenuLayoutChange,
 

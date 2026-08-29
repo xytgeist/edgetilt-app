@@ -208,17 +208,17 @@ export function loungeDockLShapeOffsets(itemCount, alignLeft) {
 
 /** @returns {'wheel' | 'cornerL'} */
 export function readLoungeDockMenuLayout() {
-  if (typeof window === 'undefined') return 'wheel'
+  if (typeof window === 'undefined') return 'cornerL'
   try {
     const v = window.localStorage.getItem(LOUNGE_DOCK_MENU_LAYOUT_KEY)
-    /** First visit: persist Wheel (O) so new users match the default layout. */
+    /** First visit: persist Edge (L) so new users match the default layout. */
     if (v == null) {
-      writeLoungeDockMenuLayout('wheel')
-      return 'wheel'
+      writeLoungeDockMenuLayout('cornerL')
+      return 'cornerL'
     }
-    return v === 'cornerL' ? 'cornerL' : 'wheel'
+    return v === 'wheel' ? 'wheel' : 'cornerL'
   } catch {
-    return 'wheel'
+    return 'cornerL'
   }
 }
 
@@ -226,7 +226,7 @@ export function readLoungeDockMenuLayout() {
 export function writeLoungeDockMenuLayout(mode) {
   if (typeof window === 'undefined') return
   try {
-    const v = mode === 'cornerL' ? 'cornerL' : 'wheel'
+    const v = mode === 'wheel' ? 'wheel' : 'cornerL'
     window.localStorage.setItem(LOUNGE_DOCK_MENU_LAYOUT_KEY, v)
     window.dispatchEvent(new Event('loungeDockMenuLayoutChange'))
   } catch {

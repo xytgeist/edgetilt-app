@@ -161,7 +161,7 @@ export default function LoungeDockSlidePanels({
   /** Bumped when post detail closes over notifications - refresh interaction bar counts. */
   notificationInteractionCountsRefreshKey = 0,
   /** `'wheel'` | `'cornerL'` - persisted in `loungeDockMenuLayout:v1`. */
-  dockMenuLayout = 'wheel',
+  dockMenuLayout = 'cornerL',
   onDockMenuLayoutChange,
   feedVideoAutoplayEnabled = true,
   onFeedVideoAutoplayChange,

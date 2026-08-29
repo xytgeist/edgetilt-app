@@ -264,7 +264,7 @@ export default function LoungeDockArcCarouselPrototype({
   /** True while the wheel is open or briefly after a wheel icon tap (blocks feed/panel hits). */
   onPointerBlockChange,
   /** `'wheel'` = ring (O); `'cornerL'` = bottom-corner L / Г along edges. */
-  menuLayout = 'wheel',
+  menuLayout = 'cornerL',
   /** Reserve bottom viewport space (e.g. Lounge upload bar) so the FAB does not cover controls. */
   bottomObstacleInsetPx = 0,
   /** Unread in-app notifications - FAB badge clears on menu expand; Alerts item clears on panel visit. */

@@ -22,12 +22,18 @@ export default defineConfig({
     tailwindcss(),
     {
       name: 'edge-build-sha-meta',
-      transformIndexHtml(html) {
+      transformIndexHtml() {
         const sha = process.env.VITE_BUILD_SHA || 'local'
-        return html.replace(
-          '<title>Edge</title>',
-          `<title>Edge</title>\n    <meta name="edge-build-sha" content="${sha}" />`,
-        )
+        return [
+          {
+            tag: 'meta',
+            attrs: {
+              name: 'edge-build-sha',
+              content: sha,
+            },
+            injectTo: 'head',
+          },
+        ]
       },
     },
   ],

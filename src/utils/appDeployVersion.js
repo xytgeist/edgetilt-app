@@ -1,5 +1,6 @@
 import { APP_BUILD_SHA } from './appBuildInfo.js'
 import { clearStaleChunkReloadGuard } from './lazyImportWithChunkReload.js'
+import { isEdgeiOSShell } from './edgeNative.js'
 
 /** Dispatched when live index.html reports a newer build than this session. */
 export const APP_UPDATE_AVAILABLE_EVENT = 'edge-app-update-available'
@@ -29,6 +30,9 @@ export function readLiveBuildToken() {
   const meta = document.querySelector(`meta[name="${BUILD_SHA_META}"]`)
   const fromMeta = meta?.getAttribute('content')?.trim()
   if (fromMeta) return fromMeta
+  if (APP_BUILD_SHA && APP_BUILD_SHA !== 'unknown' && APP_BUILD_SHA !== 'local') {
+    return APP_BUILD_SHA
+  }
   const script = document.querySelector('script[type="module"][src*="/assets/main-"]')
   if (!script) return APP_BUILD_SHA
   try {
@@ -40,7 +44,7 @@ export function readLiveBuildToken() {
 
 /** Fetch build token from live index.html (no-store). */
 export async function fetchRemoteBuildToken() {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined' || isEdgeiOSShell()) return null
   try {
     const res = await fetch(`${window.location.origin}/index.html?_=${Date.now()}`, {
       cache: 'no-store',
@@ -57,10 +61,20 @@ export async function fetchRemoteBuildToken() {
  * @returns {Promise<{ updateAvailable: boolean, liveToken: string, remoteToken: string | null }>}
  */
 export async function checkForAppUpdate() {
+  if (isEdgeiOSShell()) {
+    return { updateAvailable: false, liveToken: '', remoteToken: null }
+  }
   const liveToken = readLiveBuildToken()
   const remoteToken = await fetchRemoteBuildToken()
+  const isDevOrMissing =
+    !liveToken ||
+    !remoteToken ||
+    liveToken === 'local' ||
+    liveToken === 'unknown' ||
+    remoteToken === 'local' ||
+    remoteToken === 'unknown'
   return {
-    updateAvailable: Boolean(remoteToken && remoteToken !== liveToken),
+    updateAvailable: !isDevOrMissing && Boolean(remoteToken && remoteToken !== liveToken),
     liveToken,
     remoteToken,
   }
@@ -68,7 +82,7 @@ export async function checkForAppUpdate() {
 
 /** @param {{ liveToken: string, remoteToken: string, source?: string, autoReloadMs?: number }} detail */
 export function dispatchAppUpdateAvailable(detail) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || isEdgeiOSShell()) return
   window.dispatchEvent(new CustomEvent(APP_UPDATE_AVAILABLE_EVENT, { detail }))
 }
 
@@ -127,7 +141,7 @@ export function isStandalonePwa() {
  * (Chunk MIME failures still use `lazyImportWithChunkReload` / `installStaleChunkReloadListener`.)
  */
 export function installDeployVersionWatch() {
-  if (typeof window === 'undefined') return undefined
+  if (typeof window === 'undefined' || isEdgeiOSShell()) return undefined
 
   const runCheck = async (source) => {
     if (document.visibilityState === 'hidden') return

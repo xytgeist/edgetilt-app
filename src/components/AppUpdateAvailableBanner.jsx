@@ -4,15 +4,18 @@ import {
   dismissAppUpdateNotice,
   isStandalonePwa,
 } from '../utils/appDeployVersion.js'
+import { isEdgeiOSShell } from '../utils/edgeNative.js'
 
 /**
  * Top banner when a newer Vercel deploy is detected (usually on tab refocus after background).
  * Soft reload does not reliably pick up the new build (especially PWA) ... tell people to fully close + reopen.
+ * Gated off completely in the native iOS store / TestFlight IPA shell.
  */
 export default function AppUpdateAvailableBanner() {
   const [update, setUpdate] = useState(null)
 
   useEffect(() => {
+    if (isEdgeiOSShell()) return undefined
     const onUpdate = (event) => {
       const detail = event?.detail
       if (!detail?.remoteToken) return
@@ -27,7 +30,7 @@ export default function AppUpdateAvailableBanner() {
     setUpdate(null)
   }, [update?.remoteToken])
 
-  if (!update) return null
+  if (!update || isEdgeiOSShell()) return null
 
   const standalone = isStandalonePwa()
   const body = standalone

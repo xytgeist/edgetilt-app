@@ -281,7 +281,7 @@ async function enqueueCallMissedPush(
       const { data: actor } = await admin
         .from('profiles')
         .select('display_name, handle')
-        .eq('id', actorId)
+        .eq('user_id', actorId)
         .maybeSingle()
       const who = actor?.display_name || actor?.handle || 'Someone'
 

@@ -722,18 +722,24 @@ async function sendPushToUser(
     }
   }
 
-  // VoIP push: instant high-priority delivery to iOS PushKit for incoming calls
-  // is fired directly by chat-calls. If the recipient has a VoIP token registered,
-  // skip sending the standard APNs alert banner to prevent a redundant notification card over CallKit.
+  // Call invites and missed calls are dispatched directly by chat-calls to avoid
+  // multi-hop database queue latency. Skip duplicate APNs alert from activity_events worker.
   let skipApnsAlert = false
-  if (notification.eventType === 'chat_call_invite' && notification.chatCallId) {
-    const { count } = await admin
-      .from('apns_device_tokens')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('push_channel', 'voip')
+  if (
+    (notification.eventType === 'chat_call_invite' || notification.eventType === 'chat_call_missed') &&
+    notification.chatCallId
+  ) {
+    if (notification.eventType === 'chat_call_invite') {
+      const { count } = await admin
+        .from('apns_device_tokens')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('push_channel', 'voip')
 
-    if ((count ?? 0) > 0) {
+      if ((count ?? 0) > 0) {
+        skipApnsAlert = true
+      }
+    } else if (notification.eventType === 'chat_call_missed') {
       skipApnsAlert = true
     }
   }

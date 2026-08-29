@@ -34,6 +34,22 @@ export async function reportEdgeIncomingCall(args) {
 }
 
 /**
+ * Notify the native iOS shell of the currently active chat room ID.
+ * When set, APNs push alerts for messages in this room are silenced in the foreground.
+ * @param {string | null | undefined} roomId
+ */
+export async function setEdgeActiveChatRoom(roomId) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  try {
+    const trimmed = typeof roomId === 'string' ? roomId.trim() : null
+    const result = await edgeNativeInvoke('setActiveChatRoom', { roomId: trimmed || null })
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
  * Pre-cache an avatar JPEG to native disk so CallKit has it ready on incoming rings.
  * @param {string | null | undefined} avatarUrl
  */

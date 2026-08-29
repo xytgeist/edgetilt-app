@@ -125,6 +125,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       let avatarUrl = (payload?["avatarUrl"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
       EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
       completion(.success(["ok": true]))
+    case "setActiveChatRoom":
+      let roomId = (payload?["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      EdgePushManager.shared.activeChatRoomId = (roomId?.isEmpty == false) ? roomId : nil
+      completion(.success(["ok": true]))
     case "reportIncomingCall":
       let callId = (payload?["callId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
       let roomId = (payload?["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

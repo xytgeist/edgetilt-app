@@ -82,6 +82,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 2. VIP Feed & Comment Filter: Global preference in Lounge Settings (`Pro-only stream & comments`) hides non-Pro posts and collapses non-Pro replies by default; post detail comment header includes a one-tap override toggle (`Pro only (N) · Show M non-Pro` ↔ `All replies (N) · Filter Pro only`) while preserving OP continuity and staff visibility.
 3. Frontend UI: `LoungeComposerReplyGatePill.jsx` in composer, `LoungeEdgeProBadge.jsx` on author headers & profiles, comment gate message, and full light mode styles in `index.css`.
 
+### Mac Theo 2026-08-28 … In-app foreground chat APNs alert suppression for active room
+
+**I am Mac Theo.** Fixed redundant foreground push banners for active chat room:
+1. Native: Added `activeChatRoomId` to `EdgePushManager.swift` and `setActiveChatRoom` handler in `EdgeNativeBridge.swift`. `willPresent` extracts room ID from `userInfo` / deep link URL and silences the banner/sound when the incoming message belongs to the room currently viewed on screen.
+2. Web: `ChatConversation.jsx` calls `setEdgeActiveChatRoom(room.id)` on mount and clears on unmount.
+3. Bridge helper: `setEdgeActiveChatRoom` added to `src/utils/edgeCallKit.js`.
+
 ### Mac Theo 2026-08-28 … CallKit incoming call avatar pre-caching pipeline wired
 
 **I am Mac Theo.** Implemented safe pre-caching pipeline for CallKit caller avatars:

@@ -16,6 +16,11 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
   private var pendingDeepLinkURL: URL?
   private var readyForDeepLinks = false
 
+  /// Currently active chat room ID in the WKWebView (if any).
+  /// Used to suppress in-app system push banners and alert chimes for messages
+  /// arriving in the room the user is already viewing.
+  var activeChatRoomId: String?
+
   private override init() {
     super.init()
     if let stored = UserDefaults.standard.string(forKey: tokenDefaultsKey), !stored.isEmpty {
@@ -255,6 +260,26 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     return eventType == "chat_call_invite"
   }
 
+  private static func extractChatRoomId(from userInfo: [AnyHashable: Any]) -> String? {
+    if let r = (userInfo["chatRoomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !r.isEmpty {
+      return r
+    }
+    if let r = (userInfo["chat_room_id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !r.isEmpty {
+      return r
+    }
+    if let r = (userInfo["roomId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !r.isEmpty {
+      return r
+    }
+    if let deepLink = deepLinkURL(from: userInfo),
+       let components = URLComponents(url: deepLink, resolvingAgainstBaseURL: false) {
+      if let roomParam = components.queryItems?.first(where: { $0.name == "room" })?.value,
+         !roomParam.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        return roomParam.trimmingCharacters(in: .whitespacesAndNewlines)
+      }
+    }
+    return nil
+  }
+
   func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
@@ -278,6 +303,17 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
         EdgeCallKitManager.shared.endAllCalls()
       }
     }
+
+    // If the user is currently viewing this exact chat room in the foreground,
+    // suppress the in-app drop-down notification banner and alert sound.
+    if let activeRoom = activeChatRoomId, !activeRoom.isEmpty {
+      if let noteRoomId = Self.extractChatRoomId(from: userInfo), noteRoomId == activeRoom {
+        NSLog("EdgePushManager: suppressing foreground APNs banner for active chat room \(activeRoom)")
+        completionHandler([])
+        return
+      }
+    }
+
     completionHandler([.banner, .sound, .badge])
   }
 

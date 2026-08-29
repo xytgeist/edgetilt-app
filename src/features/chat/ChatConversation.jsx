@@ -40,7 +40,7 @@ import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { useChatCallOptional } from './calls/ChatCallProvider.jsx'
 import { chatFetchActiveRoomCall } from '../../utils/chatCallsApi.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
-import { preloadEdgeAvatar } from '../../utils/edgeCallKit.js'
+import { preloadEdgeAvatar, setEdgeActiveChatRoom } from '../../utils/edgeCallKit.js'
 import { useLoungeKeyboardOverlapPx, LOUNGE_IOS_KEYBOARD_SMOOTH_MS, loungeComposerFooterPaddingBottom, useLoungeIosSafeBottomPx } from '../lounge/useLoungeKeyboardOverlapPx.js'
 
 /** Ignore swipe-to-reveal when the gesture starts on a Lounge horizontal carousel. */
@@ -722,6 +722,17 @@ export default function ChatConversation({
     notifyLoungeDockSuppress(true)
     return () => notifyLoungeDockSuppress(false)
   }, [])
+
+  // ── Notify native shell of active chat room ──────────────────────────────
+  // When viewed, APNs alerts for new messages in this room are silenced in foreground.
+  useEffect(() => {
+    if (room?.id) {
+      void setEdgeActiveChatRoom(room.id)
+    }
+    return () => {
+      void setEdgeActiveChatRoom(null)
+    }
+  }, [room?.id])
 
   // Lock the entire document body against text selection while chat is mounted.
   // Portal elements (long-press menu, emoji strip) render into document.body and

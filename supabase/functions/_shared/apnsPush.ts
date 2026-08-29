@@ -268,7 +268,7 @@ export type ApnsVoipCallPayload = {
   avatarUrl?: string
 }
 
-async function postVoipApns(
+export async function postVoipApns(
   config: ApnsConfig,
   tokenHex: string,
   environment: ApnsEnvironment,

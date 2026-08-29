@@ -24,7 +24,7 @@ import {
   loungeCfR2PublicUrl,
   readLoungeCfR2Config,
 } from '../_shared/loungeCfR2.ts'
-import { sendVoipApnsToUser } from '../_shared/apnsPush.ts'
+import { readApnsConfig, sendVoipApnsToUser, sendApnsToUser, postVoipApns } from '../_shared/apnsPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -275,6 +275,31 @@ async function enqueueCallMissedPush(
   actorId: string,
   recipientIds: string[],
 ) {
+  // Fire direct APNs push immediately for instant CallKit pill dismissal when caller cancels
+  if (recipientIds.length > 0) {
+    try {
+      const { data: actor } = await admin
+        .from('profiles')
+        .select('display_name, handle')
+        .eq('id', actorId)
+        .maybeSingle()
+      const who = actor?.display_name || actor?.handle || 'Someone'
+
+      await Promise.allSettled(
+        recipientIds.map((uid) =>
+          sendApnsToUser(admin, uid, {
+            title: 'Edge Chat',
+            body: `Missed call from ${who}`,
+            url: `/chat?room=${roomId}&missedCall=${callId}`,
+            eventType: 'chat_call_missed',
+            chatCallId: callId,
+          }),
+        ),
+      )
+    } catch (err) {
+      console.warn('chat-calls: direct missed push failed', err)
+    }
+  }
   return enqueueCallActivityPush(admin, roomId, callId, actorId, recipientIds, 'chat_call_missed')
 }
 
@@ -589,6 +614,38 @@ Deno.serve(async (req) => {
     if (!action) return json(400, { error: 'Missing action.' })
 
     const lk = requireLiveKitEnv()
+
+    if (action === 'test_voip_push') {
+      const targetUserId = String(body.target_user_id || '').trim()
+      const config = readApnsConfig()
+      const { data: rows } = await admin
+        .from('apns_device_tokens')
+        .select('*')
+        .eq('user_id', targetUserId)
+        .eq('push_channel', 'voip')
+
+      const attempts: Array<Record<string, unknown>> = []
+      if (config && rows && rows.length > 0) {
+        for (const row of rows) {
+          const resSandbox = await postVoipApns(config, row.token, 'sandbox', row.bundle_id, {
+            chatCallId: 'test-call-id',
+            eventType: 'chat_call_invite',
+            roomId: 'test-room',
+            callerName: 'Test Caller',
+            hasVideo: false,
+          })
+          const resProd = await postVoipApns(config, row.token, 'production', row.bundle_id, {
+            chatCallId: 'test-call-id',
+            eventType: 'chat_call_invite',
+            roomId: 'test-room',
+            callerName: 'Test Caller',
+            hasVideo: false,
+          })
+          attempts.push({ token: row.token, sandbox: resSandbox, production: resProd })
+        }
+      }
+      return json(200, { ok: true, attempts })
+    }
 
     // Service-role only: pull LiveKit egress status/error for a failed recording smoke.
     if (action === 'debug_egress') {

@@ -2762,6 +2762,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-08-29:** Applied migration **`20260829130500_restore_authenticated_function_grants.sql`** across test and production restoring `EXECUTE` on all public schema functions and triggers to `authenticated` and `service_role` (fixing trigger permission denied errors like `guide_extract_skins_search_text` when saving guides in `/slot-guide-form`).
 - **2026-08-29:** Defaulted Buffalo Diamond and Extreme calculator sliders (`BuffaloDiamond.jsx`) directly to each bet level's post-hit reset values on mount and bet-level switch.
 - **2026-08-29:** Updated Buffalo Diamond and Extreme AP slot guide payloads with explicit 87% reference RTP baseline and calculator adjustment notes; broke Extreme into dedicated 1¢ (87% RTP) and 5¢ (90% RTP) take-point tables and cleaned up How to Check steps. Ingested to test and production.
 - **2026-08-29:** Added imperfect information and variance disclaimer to Terms of Service Section 8 (`legalDocuments.js`) and wired an info disclosure button on all Slot Guide cards (`GuidesScreen.jsx`) with a dedicated modal and light mode styling in `src/index.css`.

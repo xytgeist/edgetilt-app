@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.call-egress.config.js && node scripts/inline-call-egress-html.mjs",
+    "build": "node scripts/build-og-images.mjs && vite build && vite build --config vite.call-egress.config.js && node scripts/inline-call-egress-html.mjs",
+    "og:build": "node scripts/build-og-images.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "slots:generate": "node scripts/generate-slot-card-manifests.mjs",

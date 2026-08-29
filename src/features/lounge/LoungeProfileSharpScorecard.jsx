@@ -19,7 +19,7 @@ export function LoungeProfileSharpScorecard({ supabaseClient, profileUserId, pro
   const [timeframe, setTimeframe] = useState('all_time')
   const [sportKey, setSportKey] = useState('all')
   const [recordData, setRecordData] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [_loading, setLoading] = useState(false)
 
   const isScott = profileHandle?.toLowerCase() === 'sharpesignal' || profileHandle?.toLowerCase() === '@sharpesignal'
 

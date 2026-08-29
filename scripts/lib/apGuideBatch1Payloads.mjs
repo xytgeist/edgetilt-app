@@ -332,8 +332,7 @@ Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**,
 **Not must-hit-by:** high meter counts do not force a trigger. Use the built-in **Buffalo Diamond Calculator** for live multi-tier combinations and exact EV.`,
       when_to_stop: `Stop once the **free games bonus** at your target multiplier finishes.`,
       how_to_check: `1. **Bet pad** displays **green / blue / gold** counts for **each bet level**.
-2. Cycle **all bet levels and denoms** ... meters are stored per bet.
-3. **Reel 5 diamonds** increment the meters during base spins.`,
+2. Cycle **all bet levels and denoms** ... meters are stored per bet.`,
       risk_bankroll: '750 units',
       risk_summary: `Extreme volatility with high meter variance. High meters only increase payout value when the bonus hits ... not trigger frequency.`,
       risk_bullets: [],

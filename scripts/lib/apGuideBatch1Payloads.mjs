@@ -307,8 +307,8 @@ Misreading the curve is how you donate.`,
       difficulty: 'Advanced',
       popularity: 'Common',
       nerf_risk: 'Medium',
-      has_calculator: false,
-      calculator_slug: null,
+      has_calculator: true,
+      calculator_slug: 'buffalo-diamond',
       volatility_index: 'Extreme',
       popularity_summary: 'Common nationally on Aristocrat floors.',
       release_year: 2018,
@@ -316,29 +316,33 @@ Misreading the curve is how you donate.`,
     guide: {
       title: 'Buffalo Diamond',
       published: true,
-      card_ev_threshold: 'Green **2× 20+** · blue/purple **50–60+** free games on bet pad',
-      when_to_play: `**Primary play (smaller bankroll):** **2× green at 20+** games (**25+** on small bets).
+      card_ev_threshold: 'Bet-dependent meters · $0.75 @ **60 / 130 / 150** · $2.50 @ **40 / 90 / 100** · $4.00 @ **23 / 40 / 85**',
+      when_to_play: `**Standalone breakeven take points by bet level (2× Green / 3× Blue / 4× Gold):**
 
-**Bigger bankroll:** **blue/purple at 50–60+** ... can run **100+** games stacked.
+- **$0.75:** **60 / 130 / 150**
+- **$1.60:** **50 / 110 / 120**
+- **$2.50:** **40 / 90 / 100**
+- **$4.00:** **23 / 40 / 85**
+- **$6.00:** **21 / 36 / 72**
 
-Three **uncapped free-games meters** per bet (**2× green**, **3× blue**, **4× purple**). **Diamonds on reel 5** feed the meters. Bonus pays **accumulated spins × that multiplier**, then resets to **7** ... **not** must-hit-by (high count doesn't force a trigger).
+Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**, **4× gold**). **Diamonds on reel 5** increment the meters. The bonus awards all accumulated spins at that multiplier, then resets.
 
-Some APs still quote **30 / 90 / 150** on the old scale ... the cleaner edge usually starts at **green 2× 20+**.`,
+**Not must-hit-by:** high meter counts do not force a trigger. Use the built-in **Buffalo Diamond Calculator** for live multi-tier combinations and exact EV.`,
       when_to_stop: `Stop once the **free games bonus** at your target multiplier finishes.`,
-      how_to_check: `1. **Bet pad** shows **green / blue / purple** counts for **each bet level**.
-2. Cycle **all denoms** ... this is a pain-in-the-ass scout game.
-3. **Reel 5 diamonds** are what inflate the meter during the chase.`,
-      risk_bankroll: `**750 units** if you're chasing blue/purple. Easy to drop **100×+** without the feature paying like you hoped.`,
-      risk_summary: `**Extreme volatility** (**2,400 ways**, **4-5-6-5-4** reels). High meter only means **bigger bonus IF it hits** ... not higher trigger chance.
+      how_to_check: `1. **Bet pad** displays **green / blue / gold** counts for **each bet level**.
+2. Cycle **all bet levels and denoms** ... meters are stored per bet.
+3. **Reel 5 diamonds** increment the meters during base spins.`,
+      risk_bankroll: `**750 units** if chasing blue or gold. Highly volatile ... easy to absorb deep variance before hitting the target tier.`,
+      risk_summary: `**Extreme volatility** (**2,400 ways**, **4-5-6-5-4** reel layout). High meters only increase the **payout value when the bonus hits** ... they do not increase trigger frequency.
 
-Without a big bankroll, **stick to green 2×**.`,
+Without a dedicated bankroll, **stick to green 2×** plays.`,
       risk_bullets: [],
       where_to_find: wtf('Buffalo Diamond', {
         vegas: WTF_VEGAS_ARISTOCRAT_BUFFALO,
         regions: WTF_REGIONS_ARISTOCRAT_HEAVY,
       }),
       skins_markdown: '',
-      gameplay_mechanics: `**Buffalo Diamond** runs **three progressive free-spin counters** per bet. Trigger awards all accumulated spins at **2×, 3×, or 4×** depending which meter fired.
+      gameplay_mechanics: `**Buffalo Diamond** runs **three progressive free-spin counters** per bet. Trigger awards all accumulated spins at **2×, 3×, or 4×** depending on which meter fired.
 
 **Not must-hit-by:** a high meter count does not force a trigger.`,
     },
@@ -352,8 +356,8 @@ Without a big bankroll, **stick to green 2×**.`,
       difficulty: 'Advanced',
       popularity: 'Common',
       nerf_risk: 'Medium',
-      has_calculator: false,
-      calculator_slug: null,
+      has_calculator: true,
+      calculator_slug: 'buffalo-diamond',
       volatility_index: 'Extreme',
       popularity_summary: 'Common where Buffalo Diamond banks upgraded.',
       release_year: 2022,
@@ -361,18 +365,26 @@ Without a big bankroll, **stick to green 2×**.`,
     guide: {
       title: 'Buffalo Diamond Extreme',
       published: true,
-      card_ev_threshold: 'Same meters as Buffalo Diamond · **Extreme** symbol col 3 +2 coins = forced multiplier FG',
-      when_to_play: `**Primary play:** same **2× / 3× / 4×** diamond meters as **Buffalo Diamond** ... **green 20+**, **blue/purple 50–60+**.
+      card_ev_threshold: 'Super 4× adjusted meters · $1.00 @ **68 / 150 / 170** · $2.25 @ **51 / 115 / 127** · $3.75 @ **30 / 57 / 90**',
+      when_to_play: `**Standalone breakeven take points by bet level (2× Green / 3× Blue / 4× Purple):**
 
-**Premium spot:** **Extreme symbol in column 3** with **+2 coins** showing ... guarantees **multiplier free games** on that hit.
+- **$1.00:** **68 / 150 / 170**
+- **$2.25:** **51 / 115 / 127**
+- **$3.75:** **30 / 57 / 90**
+- **$5.00:** **24 / 40 / 76**
+- **$7.00:** **19 / 32 / 66**
 
-Without bankroll for blue/purple, **green 2× only** ... Extreme column hits are gravy, not required.`,
+**Super 4× vampire effect:** Extreme's Super 4× bonus captures ~3% of overall RTP, shifting the standard meter take points higher than original Diamond.
+
+**Extreme column spot:** **Extreme symbol in column 3** with **+2 coins** showing guarantees **multiplier free games** on that hit.
+
+Use the built-in **Buffalo Diamond Calculator** (Extreme mode) for live combinations.`,
       when_to_stop: `Stop after your **multiplier free games** session ends.`,
-      how_to_check: `1. Same **bet-pad meter read** as Buffalo Diamond.
-2. Watch **column 3** for **Extreme** symbol + coin count.
-3. **Gold scatters** still feed the **Extreme Bonus Wheel**.`,
-      risk_bankroll: `**750 units** for blue/purple. **200–300 units** if you stay on **2× green** only.`,
-      risk_summary: `**Buffalo Diamond** volatility with an extra **forced-hit lane** in col 3. Can be generous ... can also eat **100×+** while you wait for Extreme alignment.`,
+      how_to_check: `1. Check the **bet pad** for **green / blue / purple** counts across each bet level.
+2. Watch **column 3** for **Extreme symbol + coin count**.
+3. Cycle through nickel denoms ($0.05) where available.`,
+      risk_bankroll: `**750 units** for blue/purple chases. **200–300 units** for 2× green plays.`,
+      risk_summary: `**Buffalo Diamond** volatility with the added **Extreme column** feature. High variance ... plan bankroll accordingly.`,
       risk_bullets: [],
       where_to_find: wtf('Buffalo Diamond Extreme', {
         vegas: WTF_VEGAS_ARISTOCRAT_BUFFALO,
@@ -381,7 +393,7 @@ Without bankroll for blue/purple, **green 2× only** ... Extreme column hits are
       skins_markdown: `**Buffalo Diamond Extreme**`,
       gameplay_mechanics: `**Buffalo Diamond Extreme** adds an **Extreme symbol** in **column 3**. **+2 coins** with Extreme showing forces **multiplier free games**.
 
-Otherwise identical **diamond-on-reel-5** meter buildup and **2×/3×/4×** payout structure as **Buffalo Diamond**.`,
+Otherwise identical **diamond-on-reel-5** meter buildup and **2× / 3× / 4×** payout structure as **Buffalo Diamond**.`,
     },
   },
   {

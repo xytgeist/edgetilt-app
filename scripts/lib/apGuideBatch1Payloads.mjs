@@ -316,14 +316,16 @@ Misreading the curve is how you donate.`,
     guide: {
       title: 'Buffalo Diamond',
       published: true,
-      card_ev_threshold: 'Bet-dependent meters: $0.75 @ 60/130/150 · $2.50 @ 40/90/100 · $4.00 @ 23/40/85',
-      when_to_play: `**Standalone breakeven take points by bet level (2× Green / 3× Blue / 4× Gold):**
+      card_ev_threshold: '$0.75 @ 60/130/150 · $2.50 @ 40/90/100 · $4.00 @ 23/40/85',
+      when_to_play: `**Standalone breakeven take points by bet level:**
 
-- **$0.75:** **60 / 130 / 150**
-- **$1.60:** **50 / 110 / 120**
-- **$2.50:** **40 / 90 / 100**
-- **$4.00:** **23 / 40 / 85**
-- **$6.00:** **21 / 36 / 72**
+| Bet Level | 2× Green | 3× Blue | 4× Gold |
+| :--- | :---: | :---: | :---: |
+| **$0.75** | 60 | 130 | 150 |
+| **$1.60** | 50 | 110 | 120 |
+| **$2.50** | 40 | 90 | 100 |
+| **$4.00** | 23 | 40 | 85 |
+| **$6.00** | 21 | 36 | 72 |
 
 Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**, **4× gold**). **Diamonds on reel 5** increment the meters. The bonus awards all accumulated spins at that multiplier, then resets.
 
@@ -363,16 +365,20 @@ Three **uncapped free-games meters** per bet level (**2× green**, **3× blue**,
     guide: {
       title: 'Buffalo Diamond Extreme',
       published: true,
-      card_ev_threshold: 'Super 4× adjusted meters: $1.00 @ 68/150/170 · $2.25 @ 51/115/127 · $3.75 @ 30/57/90',
-      when_to_play: `**Standalone breakeven take points by bet level (2× Green / 3× Blue / 4× Purple):**
+      card_ev_threshold: '$1.00 @ 68/150/170 · $2.25 @ 51/115/127 · $3.75 @ 30/57/90',
+      when_to_play: `BDE has different take points due to the addition of the **Extreme 4×** bonus which vamps overall RTP.
 
-- **$1.00:** **68 / 150 / 170**
-- **$2.25:** **51 / 115 / 127**
-- **$3.75:** **30 / 57 / 90**
-- **$5.00:** **24 / 40 / 76**
-- **$7.00:** **19 / 32 / 66**
+**Standalone breakeven take points by bet level ($0.01 & $0.05 Denoms):**
 
-**Super 4× vampire effect:** Extreme's Super 4× bonus captures ~3% of overall RTP, shifting the standard meter take points higher than original Diamond.
+| 1¢ Bet | 5¢ Bet | 2× Green | 3× Blue | 4× Purple |
+| :--- | :--- | :---: | :---: | :---: |
+| **$1.00** | **$5.00** | 68 | 150 | 170 |
+| **$2.25** | **$11.25** | 51 | 115 | 127 |
+| **$3.75** | **$18.75** | 30 | 57 | 90 |
+| **$5.00** | **$25.00** | 24 | 40 | 76 |
+| **$7.00** | **$35.00** | 19 | 32 | 66 |
+
+**Extreme 4× vampire effect:** Extreme's **Extreme 4×** bonus captures ~3% of overall RTP, shifting standard meter take points higher than original Buffalo Diamond.
 
 **Extreme column spot:** **Extreme symbol in column 3** with **+2 coins** showing guarantees **multiplier free games** on that hit.
 

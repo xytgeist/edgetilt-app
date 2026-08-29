@@ -84,7 +84,8 @@ export const LEGAL_DOCUMENTS = {
         id: 'disclaimers',
         heading: '8. Disclaimers',
         paragraphs: [
-          'Calculators, guides, take points, and community posts are estimates and opinions. Outcomes on real machines vary. Past results do not guarantee future results.',
+          'Calculators, guides, take points, expected-value (EV) models, and community posts are statistical estimates and educational opinions. Outcomes on real machines vary widely. Past results do not guarantee future results.',
+          'Mathematical variance and imperfect information: slot machines are games of varying degrees of imperfect information. Unlike games of perfect information (such as video poker, which can be solved mathematically with exact precision), slot machines can run multiple percentage points above or below their programmed theoretical RTP over samples of tens of millions of spins depending on the volatility index of the game. Despite extensive empirical data modeling and observed spin histories, we make no guarantee of precise mathematical accuracy on any individual EV threshold, breakeven meter, or return estimate.',
           'THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.',
         ],
       },

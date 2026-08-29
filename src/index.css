@@ -2726,6 +2726,34 @@ html.light .ap-guides-search-input::placeholder {
   color: #71717a !important;
 }
 
+/* Guide EV info button */
+html.light .guide-ev-info-btn {
+  color: #71717a !important;
+}
+html.light .guide-ev-info-btn:hover {
+  color: #18181b !important;
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Guide EV Threshold & Variance Disclaimer modal */
+html.light [data-guide-disclaimer-modal] .bg-zinc-900 {
+  background-color: #ffffff !important;
+}
+html.light [data-guide-disclaimer-modal] .border-zinc-700,
+html.light [data-guide-disclaimer-modal] .border-zinc-800,
+html.light [data-guide-disclaimer-modal] .border-zinc-800\/80 {
+  border-color: #e4e4e7 !important;
+}
+html.light [data-guide-disclaimer-modal] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-guide-disclaimer-modal] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-guide-disclaimer-modal] .text-zinc-400 {
+  color: #71717a !important;
+}
+
 /* Ask Community modal (Guides) - zinc bg remaps in light mode; text-white on inputs does not */
 html.light [data-ask-community-modal],
 html.light [data-ask-community-auth-prompt],

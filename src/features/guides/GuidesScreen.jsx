@@ -862,15 +862,105 @@ function GuideLockedPaywallOverlay({ onUnlock, upgradeMode = false }) {
   )
 }
 
-function GuideEvThresholdPanel({ line, accent }) {
+function GuideEvThresholdPanel({ line, accent, onOpenDisclaimer }) {
   return (
     <div className={`guide-ev-threshold-panel ${accent.evTablesBox}`}>
-      <div className={`guide-ev-threshold-head flex items-center gap-2 ${accent.evTablesHead}`}>
-        <IconEvTrendingUp className="h-3.5 w-3.5 shrink-0" />
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em]">+EV Threshold</span>
+      <div className={`guide-ev-threshold-head flex items-center justify-between gap-2 ${accent.evTablesHead}`}>
+        <div className="flex items-center gap-2">
+          <IconEvTrendingUp className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">+EV Threshold</span>
+        </div>
+        {onOpenDisclaimer ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              onOpenDisclaimer()
+            }}
+            className="guide-ev-info-btn inline-flex items-center justify-center -mr-1 h-6 w-6 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 active:scale-95 transition-all touch-manipulation"
+            title="+EV threshold and variance disclosure"
+            aria-label="+EV threshold and variance disclosure"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        ) : null}
       </div>
       <div className={accent.evTablesRule}>
         <p className={`guide-ev-threshold-text text-base font-normal leading-snug ${accent.strong}`}>{line}</p>
+      </div>
+    </div>
+  )
+}
+
+function GuideEvDisclaimerModal({ open, onClose }) {
+  if (!open) return null
+  return (
+    <div
+      data-guide-disclaimer-modal
+      className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/75"
+      role="dialog"
+      aria-modal
+      aria-labelledby="guide-disclaimer-modal-title"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border border-zinc-700 bg-zinc-900 p-5 sm:p-6 shadow-2xl text-left"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+          <div className="flex items-center gap-2 text-amber-400">
+            <IconEvTrendingUp className="h-5 w-5 shrink-0" />
+            <h2 id="guide-disclaimer-modal-title" className="text-base font-bold text-zinc-100">
+              +EV Thresholds & Variance Disclosure
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3 text-sm text-zinc-300 leading-relaxed">
+          <p>
+            <strong className="text-zinc-100 font-semibold">Math is math:</strong> Figures and take points in these guides reflect long-run average expectations over large samples of spins... similar in spirit to theoretical payback... not a prediction for any single session or short-term run.
+          </p>
+          <p>
+            Slot machines can run multiple percentage points higher or lower than their programmed RTP even over tens of millions of spins, depending on the volatility index of the game.
+          </p>
+          <p>
+            Video poker can be solved precisely because it is a game of perfect information. Slots are games of varying degrees of imperfect information. Thus, despite tens of millions of observed spins and empirical modeling, there is no guarantee of precise accuracy on any individual EV threshold or return estimate.
+          </p>
+          <p className="text-xs text-zinc-400 pt-2 border-t border-zinc-800/80">
+            For general education and information only. Not gambling, tax, or financial advice. Always wager responsibly.
+          </p>
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-10 rounded-xl bg-amber-500 px-5 text-sm font-bold text-zinc-950 hover:bg-amber-400 active:scale-95 transition-all shadow-[0_0_16px_rgba(245,158,11,0.25)]"
+          >
+            Got it
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1508,6 +1598,7 @@ export default function GuidesScreen({
   const [guideContentById, setGuideContentById] = useState(() => new Map())
   const [visibleCount, setVisibleCount] = useState(GUIDES_LIST_PAGE_SIZE)
   const [expandedContentLoading, setExpandedContentLoading] = useState(false)
+  const [evDisclaimerOpen, setEvDisclaimerOpen] = useState(false)
 
   const guidesScrollRootRef = useRef(null)
   const loadMoreSentinelRef = useRef(null)
@@ -2144,7 +2235,11 @@ export default function GuidesScreen({
                         ) : null}
                       </div>
 
-                      <GuideEvThresholdPanel line={evThresholdLine} accent={accent} />
+                      <GuideEvThresholdPanel
+                        line={evThresholdLine}
+                        accent={accent}
+                        onOpenDisclaimer={() => setEvDisclaimerOpen(true)}
+                      />
 
                       <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         {isLocalDemoGuide(row) ? (
@@ -2358,6 +2453,11 @@ export default function GuidesScreen({
           onCommunityPosted?.()
           onNavigateHome?.()
         }}
+      />
+
+      <GuideEvDisclaimerModal
+        open={evDisclaimerOpen}
+        onClose={() => setEvDisclaimerOpen(false)}
       />
     </>
   )

@@ -23,6 +23,7 @@ import {
   type TrenchEpaMatchupSummary,
   type NflTeamMetrics,
 } from './loungeBotTeamMetrics.ts'
+import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -1119,10 +1120,23 @@ export async function gradePendingPicks(
       const botUserId = postPicks[0].bot_user_id
 
       if (postPicks.length === 1) {
-        // Solo pick comment
+        // Solo pick comment with ESPN post-mortem boxscore hook
         const p = postPicks[0]
         const grade = gradePickOutcome(p, p.home_score ?? 0, p.away_score ?? 0)
-        commentText = grade.summary
+        let note = ''
+
+        if (p.sport_key?.startsWith('americanfootball_')) {
+          try {
+            const espnSum = await fetchEspnGameSummary(p.sport_key, p.home_team, p.away_team)
+            if (espnSum?.postMortemNote) {
+              note = `\n\n📌 Post-Mortem: ${espnSum.postMortemNote}`
+            }
+          } catch (e) {
+            console.warn('ESPN summary hook error:', e)
+          }
+        }
+
+        commentText = `${grade.summary}${note}`
       } else if (postPicks.length > 8) {
         // Full Slate Card recap (e.g. 16 games = 64 picks)
         // Break down records by picker and consensus hammer/consensus/split
@@ -1186,6 +1200,22 @@ export async function gradePendingPicks(
         }
         if (consensusWins > 0 || consensusLosses > 0) {
           lines.push(`🎯 3-1 Consensus: ${consensusWins}-${consensusLosses}`)
+        }
+
+        // Spot-check any major fluke in the slate
+        for (const [, eList] of eventPicksMap) {
+          const sample = eList[0]
+          if (sample?.sport_key?.startsWith('americanfootball_')) {
+            try {
+              const espnSum = await fetchEspnGameSummary(sample.sport_key, sample.home_team, sample.away_team)
+              if (espnSum?.isFlukeLossForHome || espnSum?.isFlukeLossForAway) {
+                lines.push(`\n📌 Slate Post-Mortem: ${espnSum.postMortemNote}`)
+                break // show top standout fluke note
+              }
+            } catch (e) {
+              console.warn('ESPN slate hook error:', e)
+            }
+          }
         }
 
         lines.push('\nNext slate & in-game alerts drop in the Sharpe VIP Syndicate.')

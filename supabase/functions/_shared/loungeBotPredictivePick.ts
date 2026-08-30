@@ -11,6 +11,7 @@ import {
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 
@@ -185,6 +186,32 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
 
   lines.push('📊 Full 16-game interactive grid & in-game edges in the Sharpe VIP Syndicate.')
   return lines.join('\n').trim()
+}
+
+/**
+ * Format a clean, full ATS card list for a single persona (e.g. Tank or Chedda)
+ * for distribution to VIP subscriber chat rooms.
+ */
+export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): string {
+  const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
+  const specialty =
+    picker === 'Tank'
+      ? 'Situational & Weather'
+      : picker === 'Chedda'
+        ? 'Underdogs & Line Value'
+        : picker === 'Rocco'
+          ? 'Power Favorites & Key Numbers'
+          : 'Pure Model EV'
+
+  const lines: string[] = [`${icon} ${picker.toUpperCase()}'S FULL ATS CARD (${specialty}):\n`]
+  for (const g of card.games) {
+    const pPick = g.pickerPicks[picker]
+    const away = shortDisplayName(g.awayTeam)
+    const home = shortDisplayName(g.homeTeam)
+    const when = formatOddsCommenceTimeShort(g.commenceTime)
+    lines.push(`• ${pPick.lineDisplay} (${away}/${home} · ${when})`)
+  }
+  return lines.join('\n')
 }
 
 /**
@@ -614,6 +641,19 @@ export async function publishAndRecordNflSlateCard(
   }
 
   await syncBotProfileHighlight(admin, input.botUserId)
+
+  // Also deliver full uncut individual breakdowns into Scott's VIP subscriber chat room
+  try {
+    const threadParts = SHARP_PICKERS.map((p) => formatPickerSlateList(input.card, p))
+    const vipTitle = `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across all 4 desks for the full slate 👇`
+    await publishBotSubChatMessage(admin, {
+      botUserId: input.botUserId,
+      caption: vipTitle,
+      threadParts,
+    })
+  } catch (vipErr) {
+    console.error('Error posting slate to VIP sub chat:', vipErr)
+  }
 
   return {
     success: true,

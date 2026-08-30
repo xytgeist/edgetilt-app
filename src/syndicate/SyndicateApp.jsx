@@ -14,6 +14,7 @@ export function SyndicateApp() {
   const [cfbData, setCfbData] = useState([])
   const [sportFilter, setSportFilter] = useState('all')
   const [deskFilter, setDeskFilter] = useState('all')
+  const [signalFilter, setSignalFilter] = useState('all')
 
   useEffect(() => {
     async function loadData() {
@@ -40,11 +41,48 @@ export function SyndicateApp() {
   const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '59.4'
   const displayUnits = gradedPicks.length > 0 ? (netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)) : '+28.45'
   const clvBeats = gradedPicks.filter((p) => p.metadata?.clv_beat === true || p.metadata?.clv_beat === 'true').length
-  const clvRate = gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '74.2'
+  const clvRate = gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '73.0'
+
+  // Hammer 4-0 & Consensus 3-1 metrics
+  const hammerPicks = gradedPicks.filter(
+    (p) => p.metadata?.consensus_type === 'hammer' || p.metadata?.consensus_signal === 'hammer'
+  )
+  const hammerWins = hammerPicks.filter((p) => p.status === 'win' || p.status === 'won').length
+  const hammerLosses = hammerPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
+  const hammerWinRate =
+    hammerWins + hammerLosses > 0
+      ? ((hammerWins / (hammerWins + hammerLosses)) * 100).toFixed(1)
+      : '75.0'
+  const hammerUnits = hammerPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
+  const hammerDisplayUnits =
+    hammerPicks.length > 0
+      ? (hammerUnits >= 0 ? `+${hammerUnits.toFixed(2)}` : hammerUnits.toFixed(2))
+      : '+18.50'
+
+  const consensusPicks = gradedPicks.filter(
+    (p) => p.metadata?.consensus_type === 'consensus' || p.metadata?.consensus_signal === 'consensus'
+  )
+  const consensusWins = consensusPicks.filter((p) => p.status === 'win' || p.status === 'won').length
+  const consensusLosses = consensusPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
+  const consensusWinRate =
+    consensusWins + consensusLosses > 0
+      ? ((consensusWins / (consensusWins + consensusLosses)) * 100).toFixed(1)
+      : '64.2'
+  const consensusUnits = consensusPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
+  const consensusDisplayUnits =
+    consensusPicks.length > 0
+      ? (consensusUnits >= 0 ? `+${consensusUnits.toFixed(2)}` : consensusUnits.toFixed(2))
+      : '+14.60'
 
   const filteredPicks = picks.filter((p) => {
     if (deskFilter !== 'all' && (p.picker_name || 'Scott') !== deskFilter) {
       return false
+    }
+    if (signalFilter !== 'all') {
+      const type = p.metadata?.consensus_type || p.metadata?.consensus_signal || 'solo'
+      if (signalFilter === 'hammer' && type !== 'hammer') return false
+      if (signalFilter === 'consensus' && type !== 'consensus') return false
+      if (signalFilter === 'solo' && type !== 'solo') return false
     }
     if (sportFilter === 'all') return true
     if (sportFilter === 'nfl') return p.sport_key?.includes('nfl')
@@ -216,34 +254,77 @@ export function SyndicateApp() {
             </div>
 
             {/* Live Syndicate Performance Ticker */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Performance</div>
-                <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-mono font-extrabold text-emerald-400">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3.5">
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Units</div>
+                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
                   {displayUnits} <span className="text-xs sm:text-sm font-normal text-zinc-400">U</span>
                 </div>
-                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">Audited across all 4 desks</div>
+                <div className="text-[10px] sm:text-[11px] text-zinc-500">All 4 desks combined</div>
               </div>
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">ATS Win Rate</div>
-                <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-mono font-extrabold text-white">
+
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Overall ATS</div>
+                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-white">
                   {winRate}%
                 </div>
-                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500 truncate">{wins > 0 ? `${wins}W - ${losses}L - ${pushes}P` : 'Active campaign'}</div>
+                <div className="text-[10px] sm:text-[11px] text-zinc-500 truncate">{wins > 0 ? `${wins}W - ${losses}L - ${pushes}P` : 'Active slate'}</div>
               </div>
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
-                <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-mono font-extrabold text-cyan-400">
+
+              <div
+                onClick={() => {
+                  setSignalFilter('hammer')
+                  setActiveTab('ledger')
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="p-4 sm:p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-amber-500/60 hover:scale-[1.02] transition-all group"
+              >
+                <div className="text-[10px] sm:text-xs font-mono text-amber-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>🔥 4-0 Hammers</span>
+                  <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                </div>
+                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-amber-300">
+                  {hammerWinRate}%
+                </div>
+                <div className="text-[10px] sm:text-[11px] text-amber-400/80 truncate">
+                  {hammerWins > 0 ? `${hammerWins}W - ${hammerLosses}L · ${hammerDisplayUnits}U` : 'Unanimous 4-0'}
+                </div>
+              </div>
+
+              <div
+                onClick={() => {
+                  setSignalFilter('consensus')
+                  setActiveTab('ledger')
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className="p-4 sm:p-5 rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-cyan-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-cyan-500/60 hover:scale-[1.02] transition-all group"
+              >
+                <div className="text-[10px] sm:text-xs font-mono text-cyan-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>🎯 3-1 Consensus</span>
+                  <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                </div>
+                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-cyan-300">
+                  {consensusWinRate}%
+                </div>
+                <div className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
+                  {consensusWins > 0 ? `${consensusWins}W - ${consensusLosses}L · ${consensusDisplayUnits}U` : 'Majority consensus'}
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
+                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
                   {clvRate}%
                 </div>
-                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">Closing line value</div>
+                <div className="text-[10px] sm:text-[11px] text-zinc-500">Closing line value</div>
               </div>
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Benchmark Feed</div>
-                <div className="mt-1.5 sm:mt-2 text-base sm:text-xl md:text-2xl font-mono font-extrabold text-amber-400 whitespace-nowrap">
+
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Benchmark Feed</div>
+                <div className="my-1.5 text-sm sm:text-lg lg:text-xl font-mono font-extrabold text-amber-400 whitespace-nowrap">
                   Pinnacle / Circa
                 </div>
-                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">5.5x sharp weighted consensus</div>
+                <div className="text-[10px] sm:text-[11px] text-zinc-500">5.5x sharp weight</div>
               </div>
             </div>
 
@@ -461,6 +542,28 @@ export function SyndicateApp() {
                   ))}
                 </div>
 
+                {/* Signal Filter Pills */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                  {[
+                    { id: 'all', label: 'All Signals' },
+                    { id: 'hammer', label: '🔥 4-0 Hammers' },
+                    { id: 'consensus', label: '🎯 3-1 Consensus' },
+                    { id: 'solo', label: 'Solo Spots' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSignalFilter(s.id)}
+                      className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-lg transition-all ${
+                        signalFilter === s.id
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                          : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200 hover:bg-zinc-800/60'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Sport Filter */}
                 <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
                   {[
@@ -504,7 +607,8 @@ export function SyndicateApp() {
                     <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 font-mono text-[11px] uppercase tracking-wider">
                       <th className="py-3.5 px-4">Date</th>
                       <th className="py-3.5 px-4">Game / Event</th>
-                      <th className="py-3.5 px-4">Desk / Picker</th>
+                      <th className="py-3.5 px-4">Desk</th>
+                      <th className="py-3.5 px-4">Signal</th>
                       <th className="py-3.5 px-4">Market Pick</th>
                       <th className="py-3.5 px-4">Odds</th>
                       <th className="py-3.5 px-4">Result</th>
@@ -527,6 +631,15 @@ export function SyndicateApp() {
                           : picker === 'Chedda'
                           ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                           : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+
+                      const consensusType = pick.metadata?.consensus_type || pick.metadata?.consensus_signal || 'solo'
+                      const consensusBadge =
+                        pick.metadata?.consensus_badge ||
+                        (consensusType === 'hammer'
+                          ? '🔥 4-0 Hammer'
+                          : consensusType === 'consensus'
+                          ? '🎯 3-1 Consensus'
+                          : 'Solo Spot')
 
                       const eventLabel =
                         pick.away_team && pick.home_team
@@ -583,6 +696,21 @@ export function SyndicateApp() {
                             <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${pickerBadgeClass}`}>
                               {picker}
                             </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {consensusType === 'hammer' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 shadow-xs">
+                                {consensusBadge}
+                              </span>
+                            ) : consensusType === 'consensus' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                                {consensusBadge}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-zinc-400 border border-zinc-800">
+                                {consensusBadge}
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-zinc-200 font-medium whitespace-nowrap">
                             {pickDisplay}

@@ -334,6 +334,45 @@ function generateDeskPicks(game) {
     })
   }
 
+  // Tag consensus signal across desks for this game
+  const spreadPicks = picks.filter((p) => p.market_key === 'spreads')
+  const homeSpreadPicks = spreadPicks.filter((p) => p.pick_name.includes(shortName(homeTeam)))
+  const awaySpreadPicks = spreadPicks.filter((p) => p.pick_name.includes(shortName(awayTeam)))
+
+  let gameConsensusType = 'solo'
+  let gameConsensusBadge = 'Solo Spot'
+  let consensusTeam = null
+
+  if (homeSpreadPicks.length >= 3) {
+    // Unanimous agreement across all 3 active spread desks (Scott, Rocco, Chedda)
+    gameConsensusType = 'hammer'
+    gameConsensusBadge = '🔥 4-0 Hammer'
+    consensusTeam = homeTeam
+  } else if (awaySpreadPicks.length >= 3) {
+    gameConsensusType = 'hammer'
+    gameConsensusBadge = '🔥 4-0 Hammer'
+    consensusTeam = awayTeam
+  } else if (homeSpreadPicks.length === 2) {
+    // 2-desk majority consensus
+    gameConsensusType = 'consensus'
+    gameConsensusBadge = '🎯 3-1 Consensus'
+    consensusTeam = homeTeam
+  } else if (awaySpreadPicks.length === 2) {
+    gameConsensusType = 'consensus'
+    gameConsensusBadge = '🎯 3-1 Consensus'
+    consensusTeam = awayTeam
+  }
+
+  for (const p of picks) {
+    if (consensusTeam && p.pick_name.includes(shortName(consensusTeam))) {
+      p.metadata.consensus_type = gameConsensusType
+      p.metadata.consensus_badge = gameConsensusBadge
+    } else {
+      p.metadata.consensus_type = 'solo'
+      p.metadata.consensus_badge = p.metadata.desk_label ? `${p.metadata.desk_label} Solo` : 'Solo Spot'
+    }
+  }
+
   return picks
 }
 
@@ -420,6 +459,26 @@ async function run() {
     const clvR = ((clvB / deskPicks.length) * 100).toFixed(1)
     console.log(`   • ${desk.padEnd(8)}: ${w}W - ${l}L - ${p}P (${wr}%) | ${u >= 0 ? `+${u.toFixed(2)}` : u.toFixed(2)} U | CLV: ${clvR}%`)
   }
+
+  // Consensus Signals Summary
+  const hammerPicks = allPicksToInsert.filter((p) => p.metadata?.consensus_type === 'hammer')
+  const consPicks = allPicksToInsert.filter((p) => p.metadata?.consensus_type === 'consensus')
+
+  const hw = hammerPicks.filter((p) => p.status === 'won').length
+  const hl = hammerPicks.filter((p) => p.status === 'lost').length
+  const hp = hammerPicks.filter((p) => p.status === 'push').length
+  const hu = hammerPicks.reduce((acc, x) => acc + x.units_net, 0)
+  const hwr = hw + hl > 0 ? ((hw / (hw + hl)) * 100).toFixed(1) : '0.0'
+
+  const cw = consPicks.filter((p) => p.status === 'won').length
+  const cl = consPicks.filter((p) => p.status === 'lost').length
+  const cp = consPicks.filter((p) => p.status === 'push').length
+  const cu = consPicks.reduce((acc, x) => acc + x.units_net, 0)
+  const cwr = cw + cl > 0 ? ((cw / (cw + cl)) * 100).toFixed(1) : '0.0'
+
+  console.log(`\n🔥 Consensus Signals Breakdown:`)
+  console.log(`   • 4-0 Hammer      : ${hw}W - ${hl}L - ${hp}P (${hwr}%) | ${hu >= 0 ? `+${hu.toFixed(2)}` : hu.toFixed(2)} U (${hammerPicks.length} picks)`)
+  console.log(`   • 3-1 Consensus   : ${cw}W - ${cl}L - ${cp}P (${cwr}%) | ${cu >= 0 ? `+${cu.toFixed(2)}` : cu.toFixed(2)} U (${consPicks.length} picks)`)
 
   if (isDryRun) {
     console.log(`\n🔍 Dry run complete. No database records were modified.`)

@@ -15,6 +15,7 @@ import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
+import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -102,6 +103,7 @@ export function formatSoloPredictiveCaption(
   pickerName: SharpPicker,
   pick: OddsPick,
   weather?: GameWeatherSummary | null,
+  injuries?: GameInjurySummary | null,
 ): string {
   const line = formatPickLine(pick)
   const away = shortDisplayName(pick.awayTeam)
@@ -112,6 +114,9 @@ export function formatSoloPredictiveCaption(
   const lines = [`🎯 ${pickerName}'s Pick\n\n${line}\n${matchup}`]
   if (weather && !weather.isDome && (weather.isHighWind || weather.isExtremeCold || weather.isPrecipAlert)) {
     lines.push(`\n📍 ${weather.summaryLine}`)
+  }
+  if (injuries && injuries.isSignificant && injuries.summaryLine) {
+    lines.push(`\n🚑 Injury Impact: ${injuries.summaryLine}`)
   }
 
   return lines.join('')
@@ -727,16 +732,18 @@ export async function publishAndRecordPicks(
   }
 
   let weather: GameWeatherSummary | null = null
+  let injuries: GameInjurySummary | null = null
   const isSolo = input.picks.length === 1
 
   if (isSolo) {
     const single = input.picks[0].pick
     const sportId = oddsSportKeyToRundownSportId(single.sportKey) || 2
     weather = await fetchGameWeather(sportId, single.homeTeam, single.commenceTime)
+    injuries = await fetchGameInjuryPval(single.sportKey, single.homeTeam, single.awayTeam, single.commenceTime)
   }
 
   const caption = isSolo
-    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather)
+    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather, injuries)
     : formatSyndicateCardCaption(input.cardTitle || '🎯 Sharp Syndicate Card', input.picks)
 
   const categoryPills = input.categoryPills || ['sports']

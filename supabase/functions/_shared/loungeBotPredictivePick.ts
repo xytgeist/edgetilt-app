@@ -1047,6 +1047,87 @@ export async function gradePendingPicks(
       }
 
       for (const pick of picks) {
+        // Handle 2-game Teaser picks
+        if (pick.market_key === 'teasers') {
+          const legs = Array.isArray(pick.metadata?.legs) ? pick.metadata.legs : []
+          if (legs.length >= 2) {
+            const leg1 = legs[0]
+            const leg2 = legs[1]
+            const ev1 = eventById.get(leg1.event_id)
+            const ev2 = eventById.get(leg2.event_id)
+
+            if (ev1?.completed && ev2?.completed && Array.isArray(ev1.scores) && Array.isArray(ev2.scores)) {
+              // Parse Leg 1
+              const s1_1 = parseInt(ev1.scores[0]?.score, 10)
+              const s1_2 = parseInt(ev1.scores[1]?.score, 10)
+              let hScore1 = 0, aScore1 = 0
+              if (isTeamMatch(ev1.scores[0]?.name, leg1.home_team)) {
+                hScore1 = s1_1; aScore1 = s1_2
+              } else {
+                hScore1 = s1_2; aScore1 = s1_1
+              }
+              const isHome1 = isTeamMatch(leg1.picked_team, leg1.home_team)
+              const line1 = Number(leg1.teased_spread) || 0
+              const diff1 = isHome1 ? (hScore1 + line1) - aScore1 : (aScore1 + line1) - hScore1
+              const leg1Won = diff1 > 0
+              const leg1Push = diff1 === 0
+              const leg1Lost = diff1 < 0
+
+              // Parse Leg 2
+              const s2_1 = parseInt(ev2.scores[0]?.score, 10)
+              const s2_2 = parseInt(ev2.scores[1]?.score, 10)
+              let hScore2 = 0, aScore2 = 0
+              if (isTeamMatch(ev2.scores[0]?.name, leg2.home_team)) {
+                hScore2 = s2_1; aScore2 = s2_2
+              } else {
+                hScore2 = s2_2; aScore2 = s2_1
+              }
+              const isHome2 = isTeamMatch(leg2.picked_team, leg2.home_team)
+              const line2 = Number(leg2.teased_spread) || 0
+              const diff2 = isHome2 ? (hScore2 + line2) - aScore2 : (aScore2 + line2) - hScore2
+              const leg2Won = diff2 > 0
+              const leg2Push = diff2 === 0
+              const leg2Lost = diff2 < 0
+
+              let status: 'won' | 'lost' | 'push' = 'lost'
+              let unitsNet = -1.0
+              if (leg1Won && leg2Won) {
+                status = 'won'
+                unitsNet = calculateNetUnits(pick.pick_price, 'won')
+              } else if (leg1Lost || leg2Lost) {
+                status = 'lost'
+                unitsNet = -1.0
+              } else {
+                status = 'push'
+                unitsNet = 0.0
+              }
+
+              const leg1Summary = `${shortDisplayName(leg1.picked_team)} ${leg1.teased_disp} (${leg1Won ? '✅ Win' : leg1Push ? '🔄 Push' : '❌ Loss'})`
+              const leg2Summary = `${shortDisplayName(leg2.picked_team)} ${leg2.teased_disp} (${leg2Won ? '✅ Win' : leg2Push ? '🔄 Push' : '❌ Loss'})`
+
+              await admin
+                .from('lounge_bot_picks')
+                .update({
+                  status,
+                  home_score: hScore1,
+                  away_score: aScore1,
+                  units_net: unitsNet,
+                  resolved_at: new Date().toISOString(),
+                  metadata: {
+                    ...(pick.metadata || {}),
+                    leg1_result: leg1Summary,
+                    leg2_result: leg2Summary,
+                  },
+                })
+                .eq('id', pick.id)
+
+              updatedPickIds.add(pick.id)
+              resolvedCount++
+            }
+          }
+          continue
+        }
+
         const ev = eventById.get(pick.event_id)
         if (!ev || !ev.completed || !Array.isArray(ev.scores) || ev.scores.length < 2) {
           continue
@@ -1120,23 +1201,36 @@ export async function gradePendingPicks(
       const botUserId = postPicks[0].bot_user_id
 
       if (postPicks.length === 1) {
-        // Solo pick comment with ESPN post-mortem boxscore hook
         const p = postPicks[0]
-        const grade = gradePickOutcome(p, p.home_score ?? 0, p.away_score ?? 0)
-        let note = ''
+        if (p.market_key === 'teasers') {
+          const isWon = p.status === 'won'
+          const isPush = p.status === 'push'
+          const uStr = Number(p.units_net) > 0 ? `+${Number(p.units_net).toFixed(2)}u` : `${Number(p.units_net).toFixed(2)}u`
+          const leg1 = p.metadata?.leg1_result || 'Leg 1'
+          const leg2 = p.metadata?.leg2_result || 'Leg 2'
+          commentText = isWon
+            ? `✅ WIN: Sharpe 2-Leg Wong Teaser Cashes (${uStr})\n• ${leg1}\n• ${leg2}\n\nKey numbers 3 & 7 deliver again for Basic Strategy.`
+            : isPush
+              ? `🔄 PUSH: Sharpe 2-Leg Wong Teaser Refunded (0.0u)\n• ${leg1}\n• ${leg2}`
+              : `❌ LOSS: Sharpe 2-Leg Wong Teaser Misses (${uStr})\n• ${leg1}\n• ${leg2}`
+        } else {
+          // Solo pick comment with ESPN post-mortem boxscore hook
+          const grade = gradePickOutcome(p, p.home_score ?? 0, p.away_score ?? 0)
+          let note = ''
 
-        if (p.sport_key?.startsWith('americanfootball_')) {
-          try {
-            const espnSum = await fetchEspnGameSummary(p.sport_key, p.home_team, p.away_team)
-            if (espnSum?.postMortemNote) {
-              note = `\n\n📌 Post-Mortem: ${espnSum.postMortemNote}`
+          if (p.sport_key?.startsWith('americanfootball_')) {
+            try {
+              const espnSum = await fetchEspnGameSummary(p.sport_key, p.home_team, p.away_team)
+              if (espnSum?.postMortemNote) {
+                note = `\n\n📌 Post-Mortem: ${espnSum.postMortemNote}`
+              }
+            } catch (e) {
+              console.warn('ESPN summary hook error:', e)
             }
-          } catch (e) {
-            console.warn('ESPN summary hook error:', e)
           }
-        }
 
-        commentText = `${grade.summary}${note}`
+          commentText = `${grade.summary}${note}`
+        }
       } else if (postPicks.length > 8) {
         // Full Slate Card recap (e.g. 16 games = 64 picks)
         // Break down records by picker and consensus hammer/consensus/split

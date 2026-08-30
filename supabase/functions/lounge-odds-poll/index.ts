@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'calibrate_persona_models'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, or nfl_slate_card.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, or calibrate_persona_models.',
       })
     }
 
@@ -227,6 +227,46 @@ Deno.serve(async (req) => {
         hammersCount: card.hammers.length,
         consensusCount: card.consensus.length,
         splitsCount: card.splits.length,
+        ...result,
+      })
+    }
+
+    if (action === 'nfl_wong_teaser') {
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const { buildWongTeaserPair, publishAndRecordWongTeaser } = await import('../_shared/loungeBotWongTeaser.ts')
+
+      const oddsData = await fetchSportOdds('americanfootball_nfl', ['us', 'us2'], ['spreads', 'totals'])
+      const pair = buildWongTeaserPair(oddsData.events)
+
+      if (!pair) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'nfl_wong_teaser',
+          message: 'Fewer than 2 qualifying NFL Wong teaser legs available on the active board.',
+          totalEvents: oddsData.events.length,
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          action: 'nfl_wong_teaser',
+          pair,
+        })
+      }
+
+      const result = await publishAndRecordWongTeaser(
+        admin,
+        bot.user_id,
+        oddsData.events,
+        bot.category_pills_default || ['sports', 'nfl'],
+      )
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'nfl_wong_teaser',
+        pair,
         ...result,
       })
     }

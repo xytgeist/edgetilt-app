@@ -28,6 +28,8 @@ export type PersonaFactorKey =
   | 'sharp_money_divergence'
   | 'trench_mismatch_advantage'
   | 'epa_model_value'
+  | 'wong_teaser_key_numbers_3_7'
+  | 'nfl_basic_strategy'
 
 export type PersonaWeightRecord = {
   picker_name: SharpPicker

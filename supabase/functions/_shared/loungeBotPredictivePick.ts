@@ -1370,7 +1370,8 @@ export async function gradePendingPicks(
           }
         }
 
-        lines.push('\nNext slate & in-game alerts drop in the Sharpe VIP Syndicate.')
+        lines.push('\n🌐 Audited ledger, whitepapers & live models: sharpesyndicate.com')
+        lines.push('Next slate & in-game alerts drop in the Sharpe VIP Syndicate.')
 
         commentText = lines.join('\n')
       } else {

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "node scripts/build-og-images.mjs && vite build && vite build --config vite.call-egress.config.js && node scripts/inline-call-egress-html.mjs",
+    "build:syndicate": "vite build --config vite.syndicate.config.js",
     "og:build": "node scripts/build-og-images.mjs",
     "lint": "eslint .",
     "preview": "vite preview",

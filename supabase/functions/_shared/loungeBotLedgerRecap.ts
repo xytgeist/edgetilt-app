@@ -244,6 +244,7 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
     lines.push('')
   }
 
+  lines.push(`🌐 *Audited ledger, model whitepapers & CLV breakdown: sharpesyndicate.com*`)
   lines.push(`💬 *Full uncut slate cards, early CLV line moves, and Thursday Night Football spotlight dropping in Sharpe VIP Syndicate chat.*`)
 
   return lines.join('\n')

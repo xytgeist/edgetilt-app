@@ -628,12 +628,6 @@ function NativeIpaCallSession({
     return () => window.clearInterval(id)
   }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording, canStopRecording])
 
-  useEffect(() => {
-    if (!awaitingAnswer) return undefined
-    const tone = startChatCallTone('ringback')
-    return () => stopChatCallTone(tone)
-  }, [awaitingAnswer])
-
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
   const ss = String(elapsed % 60).padStart(2, '0')
   const statusLabel = connectError
@@ -754,7 +748,7 @@ function NativeIpaCallSession({
           {recordingActive ? (
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/60 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-200 backdrop-blur-md">
               <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" aria-hidden />
-              Recording
+              Recording{isLocalMain ? ' · Focus: You' : ''}
             </div>
           ) : null}
           {recCountdownLabel ? (
@@ -767,36 +761,13 @@ function NativeIpaCallSession({
       <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoHole ? (
           <div className="relative h-full w-full">
-            {/* Full stage clickable to focus main stream */}
+            {/* Full stage clickable to toggle stream focus between main / inset PiP */}
             <button
               type="button"
-              className="absolute inset-0 h-full w-full cursor-pointer touch-manipulation"
-              aria-label="Main video stream"
-              onClick={() => toggleStreamFocus(false)}
+              className="absolute inset-0 h-full w-full cursor-pointer touch-manipulation bg-transparent border-0 outline-none"
+              aria-label="Toggle main video stream focus"
+              onClick={() => toggleStreamFocus()}
             />
-
-            {/* Top-right PiP interactive inset overlay */}
-            {camOn || remoteCount > 0 ? (
-              <button
-                type="button"
-                className={`absolute top-2 right-2 z-10 w-28 sm:w-32 aspect-[9/16] rounded-2xl border-2 transition-all duration-200 active:scale-95 touch-manipulation backdrop-blur-sm ${
-                  isLocalMain
-                    ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)] ring-2 ring-emerald-400/40'
-                    : 'border-white/30 hover:border-white/60 shadow-lg'
-                }`}
-                aria-label="Switch main video focus"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleStreamFocus()
-                }}
-              >
-                <div className="absolute inset-x-0 bottom-1.5 flex justify-center">
-                  <span className="rounded-full bg-zinc-950/70 px-2 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur-md">
-                    {isLocalMain ? 'Peer' : 'You'}
-                  </span>
-                </div>
-              </button>
-            ) : null}
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center pb-6">

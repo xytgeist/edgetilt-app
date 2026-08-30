@@ -246,6 +246,7 @@ async function enqueueCallInvitePush(
   recipientIds: string[],
   callerName?: string,
   hasVideo?: boolean,
+  avatarUrl?: string | null,
 ) {
   // Fire direct PushKit VoIP invite immediately for sub-second ring even when app is closed.
   if (recipientIds.length > 0) {
@@ -258,6 +259,7 @@ async function enqueueCallInvitePush(
             roomId,
             callerName: callerName || 'Incoming call',
             hasVideo: Boolean(hasVideo),
+            avatarUrl: avatarUrl || undefined,
           }),
         ),
       )
@@ -540,9 +542,10 @@ async function finalizeOutgoingCall(args: {
   }
   userId: string
   displayName: string
+  avatarUrl?: string | null
   roomId: string
 }) {
-  const { admin, lk, call, userId, displayName, roomId } = args
+  const { admin, lk, call, userId, displayName, avatarUrl, roomId } = args
   await admin.from('chat_call_participants').upsert(
     {
       call_id: call.id,
@@ -580,7 +583,7 @@ async function finalizeOutgoingCall(args: {
 
   const recipients = await listMemberIds(admin, roomId, userId)
   const isVideo = call.media_mode === 'video'
-  await enqueueCallInvitePush(admin, roomId, call.id, userId, recipients, displayName, isVideo)
+  await enqueueCallInvitePush(admin, roomId, call.id, userId, recipients, displayName, isVideo, avatarUrl)
   return { ok: true, call, livekit_url: lk.url, token }
 }
 
@@ -716,7 +719,7 @@ Deno.serve(async (req) => {
 
     const { data: actorProfile } = await admin
       .from('profiles')
-      .select('handle, display_name')
+      .select('handle, display_name, avatar_url')
       .eq('user_id', user.id)
       .maybeSingle()
     if (!minProfile(actorProfile)) {
@@ -727,6 +730,10 @@ Deno.serve(async (req) => {
       String(actorProfile?.display_name || '').trim() ||
       String(actorProfile?.handle || '').trim() ||
       'Member'
+    const avatarUrl =
+      typeof actorProfile?.avatar_url === 'string' && actorProfile.avatar_url.trim()
+        ? actorProfile.avatar_url.trim()
+        : null
 
     if (action === 'start_call') {
       const roomId = String(body.room_id || '').trim()
@@ -805,6 +812,7 @@ Deno.serve(async (req) => {
         call: inserted,
         userId: user.id,
         displayName,
+        avatarUrl,
         roomId,
       })
       return json(200, started)

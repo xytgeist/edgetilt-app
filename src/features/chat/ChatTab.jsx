@@ -30,6 +30,7 @@ import { loungeChatInvoke } from '../../utils/loungeChatApi.js'
 import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.js'
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import { isChatMediaPickerActive } from './chatMediaPickerRegistry.js'
+import { preloadEdgeAvatar } from '../../utils/edgeCallKit.js'
 
 /**
  * @param {{
@@ -271,6 +272,9 @@ export default function ChatTab({
 
       const enriched = mapChatRoomsRpcRows(data, viewerUserId, profilesCacheRef.current)
       setRooms(enriched)
+      for (const r of enriched) {
+        if (r.peer_avatar_url) void preloadEdgeAvatar(r.peer_avatar_url)
+      }
       const groupIds = enriched.filter((r) => r.kind === 'group').map((r) => r.id)
       if (groupIds.length > 0) {
         void chatGroupHeaderMembersBatch(supabaseClient, groupIds)

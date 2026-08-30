@@ -240,6 +240,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         "callId": snapshot.callId,
         "roomId": snapshot.roomId,
         "hasVideo": snapshot.hasVideo,
+        "callerName": snapshot.callerName,
+        "avatarUrl": snapshot.avatarUrl ?? "",
         "openRoom": true,
       ]
     )
@@ -272,7 +274,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     }
   }
 
-  private func revealSnapshot() -> (callId: String, roomId: String, hasVideo: Bool) {
+  private func revealSnapshot() -> (callId: String, roomId: String, hasVideo: Bool, callerName: String, avatarUrl: String?) {
     let native = EdgeLiveKitCallManager.shared.currentState()
     let meta = calls.values.first
     let callId = ((native["callId"] as? String) ?? meta?.callId ?? "")
@@ -280,7 +282,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let roomId = ((native["roomId"] as? String) ?? meta?.roomId ?? "")
       .trimmingCharacters(in: .whitespacesAndNewlines)
     let hasVideo = (native["hasVideo"] as? Bool) ?? meta?.hasVideo ?? false
-    return (callId, roomId, hasVideo)
+    let callerName = meta?.callerName ?? ""
+    let avatarUrl = meta?.avatarUrl
+    return (callId, roomId, hasVideo, callerName, avatarUrl)
   }
 
   /// Bring the existing WKWebView scene forward after a lock-screen / background answer.
@@ -730,6 +734,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         "callId": meta.callId,
         "roomId": meta.roomId,
         "hasVideo": meta.hasVideo,
+        "callerName": meta.callerName,
+        "avatarUrl": meta.avatarUrl ?? "",
         "nativeMedia": true,
       ]
       // Native room starts now. Web only needs this event for chrome.
@@ -771,9 +777,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   }
 
   func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
+    let wasAnswered = answeredUUIDs.contains(action.callUUID)
     if let meta = calls[action.callUUID] {
       dispatchToWeb(
-        event: "edge-callkit-decline",
+        event: wasAnswered ? "edge-callkit-end" : "edge-callkit-decline",
         detail: [
           "uuid": action.callUUID.uuidString.lowercased(),
           "callId": meta.callId,

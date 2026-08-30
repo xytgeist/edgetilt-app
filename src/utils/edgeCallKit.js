@@ -82,8 +82,8 @@ export async function endEdgeNativeCall(args = {}) {
   }
 }
 
-/** Wire CallKit answer/decline → window events for ChatCallProvider. */
-export function installEdgeCallKitListeners({ onAnswer, onDecline, onReveal }) {
+/** Wire CallKit answer/decline/end → window events for ChatCallProvider. */
+export function installEdgeCallKitListeners({ onAnswer, onDecline, onEnd, onReveal }) {
   if (typeof window === 'undefined' || !isEdgeiOSShell()) return () => {}
 
   const onAnswerEvent = (event) => {
@@ -94,6 +94,10 @@ export function installEdgeCallKitListeners({ onAnswer, onDecline, onReveal }) {
     const detail = event?.detail || {}
     onDecline?.(detail)
   }
+  const onEndEvent = (event) => {
+    const detail = event?.detail || {}
+    onEnd?.(detail)
+  }
   const onRevealEvent = (event) => {
     const detail = event?.detail || {}
     onReveal?.(detail)
@@ -101,11 +105,13 @@ export function installEdgeCallKitListeners({ onAnswer, onDecline, onReveal }) {
 
   window.addEventListener('edge-callkit-answer', onAnswerEvent)
   window.addEventListener('edge-callkit-decline', onDeclineEvent)
+  window.addEventListener('edge-callkit-end', onEndEvent)
   window.addEventListener('edge-native-call-reveal', onRevealEvent)
 
   return () => {
     window.removeEventListener('edge-callkit-answer', onAnswerEvent)
     window.removeEventListener('edge-callkit-decline', onDeclineEvent)
+    window.removeEventListener('edge-callkit-end', onEndEvent)
     window.removeEventListener('edge-native-call-reveal', onRevealEvent)
   }
 }

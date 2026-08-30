@@ -32,7 +32,7 @@ import {
 } from '../../../utils/pendingChatCallDeepLink.js'
 import { enterCallAudioSession } from './chatCallAudioSession.js'
 import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
-import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
+import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 
@@ -325,7 +325,16 @@ export function ChatCallProvider({
         setIncoming((prev) =>
           prev?.callId === row.id ? { ...prev, title: next.title, avatarUrl: next.avatarUrl } : prev,
         )
+        setActiveCall((prev) => {
+          if (!prev || prev.callId !== row.id) return prev
+          return {
+            ...prev,
+            title: (!prev.title || prev.title === 'Chat call' || prev.title === 'Incoming call') ? next.title : prev.title,
+            avatarUrl: prev.avatarUrl || next.avatarUrl,
+          }
+        })
         if (next.avatarUrl) {
+          void preloadEdgeAvatar(next.avatarUrl)
           void reportEdgeIncomingCall({
             callId: String(row.id),
             roomId,
@@ -752,6 +761,16 @@ export function ChatCallProvider({
           typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim()
             ? opts.avatarUrl.trim()
             : incomingSnap?.avatarUrl || null
+        const callerUserId = call?.started_by
+          ? String(call.started_by)
+          : (typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
+              ? opts.peerUserId.trim()
+              : incomingSnap?.fromUserId || null)
+        const initialTitle = (opts.title && opts.title !== 'Chat call')
+          ? opts.title
+          : (incomingSnap?.title && incomingSnap.title !== 'Chat call')
+            ? incomingSnap.title
+            : 'Chat call'
         endingRef.current = false
         const next = {
           callId: resolvedCallId,
@@ -761,14 +780,11 @@ export function ChatCallProvider({
           token: res.token || 'native',
           livekitUrl: res.livekit_url || res.livekitUrl || 'native',
           viaNative: isEdgeiOSShell(),
-          title: opts.title || incomingSnap?.title || 'Chat call',
+          title: initialTitle,
           isOutgoing: false,
           avatarUrl,
           viewerAvatarUrl,
-          peerUserId:
-            typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
-              ? opts.peerUserId.trim()
-              : incomingSnap?.fromUserId || null,
+          peerUserId: callerUserId,
           callStartedBy: call?.started_by ? String(call.started_by) : null,
           startMinimized: Boolean(opts.startMinimized),
           ...recordingFieldsFromCall(call),
@@ -777,6 +793,24 @@ export function ChatCallProvider({
         setActiveCall(next)
         setIncoming(null)
         if (opts.openRoom !== false) onOpenRoom?.(roomId)
+
+        if (callerUserId && (!avatarUrl || initialTitle === 'Chat call' || initialTitle === 'Incoming call')) {
+          void resolveCallerProfileAsync(roomId, callerUserId).then((profile) => {
+            if (!profile) return
+            setActiveCall((prev) => {
+              if (!prev || prev.callId !== resolvedCallId) return prev
+              return {
+                ...prev,
+                title: (!prev.title || prev.title === 'Chat call' || prev.title === 'Incoming call') ? profile.title : prev.title,
+                avatarUrl: prev.avatarUrl || profile.avatarUrl,
+                peerUserId: prev.peerUserId || callerUserId,
+              }
+            })
+            if (profile.avatarUrl) {
+              void preloadEdgeAvatar(profile.avatarUrl)
+            }
+          })
+        }
         return call || { id: resolvedCallId, chat_room_id: roomId }
       } catch (err) {
         if (isEdgeiOSShell()) {
@@ -930,6 +964,10 @@ export function ChatCallProvider({
   const declineIncoming = useCallback(async (opts = {}) => {
     const callId = String(opts.callId || incomingRef.current?.callId || incoming?.callId || '').trim()
     if (!supabaseClient || !callId) return
+    if (activeCallRef.current && activeCallRef.current.callId === callId) {
+      await hangupRef.current?.()
+      return
+    }
     const snap = incomingRef.current?.callId === callId ? incomingRef.current : incoming
     const roomId = String(opts.roomId || snap?.roomId || '').trim()
     const kind = snap?.kind === 'group_audio' ? 'group_audio' : 'dm_av'
@@ -967,6 +1005,7 @@ export function ChatCallProvider({
   declineIncomingRef.current = declineIncoming
   const joinCallRef = useRef(joinCall)
   joinCallRef.current = joinCall
+  const hangupRef = useRef(/** @type {(() => Promise<void>) | null} */ (null))
 
   useEffect(() => {
     return installEdgeCallKitListeners({
@@ -976,9 +1015,16 @@ export function ChatCallProvider({
         if (activeCallRef.current && activeCallRef.current.callId !== callId) return
         const snap = incomingRef.current
         if (snap?.callId && snap.callId !== callId) return
+        const callerName = String(detail?.callerName || '').trim()
+        const avatarUrl = String(detail?.avatarUrl || '').trim() || null
+        const initialTitle = (callerName && callerName !== 'Chat call')
+          ? callerName
+          : (snap?.title && snap.title !== 'Chat call')
+            ? snap.title
+            : 'Chat call'
         void joinCallRef.current?.(callId, {
-          title: snap?.title || 'Chat call',
-          avatarUrl: snap?.avatarUrl || null,
+          title: initialTitle,
+          avatarUrl: avatarUrl || snap?.avatarUrl || null,
           peerUserId: snap?.fromUserId || null,
           roomId: snap?.roomId || detail?.roomId || '',
           hasVideo: Boolean(detail?.hasVideo),
@@ -987,9 +1033,19 @@ export function ChatCallProvider({
           startMinimized: false,
         })
       },
+      onEnd: (detail) => {
+        const callId = String(detail?.callId || '').trim()
+        if (activeCallRef.current && (!callId || activeCallRef.current.callId === callId)) {
+          void hangupRef.current?.()
+        }
+      },
       onDecline: (detail) => {
         const callId = String(detail?.callId || '').trim()
         if (!callId) return
+        if (activeCallRef.current && activeCallRef.current.callId === callId) {
+          void hangupRef.current?.()
+          return
+        }
         void declineIncomingRef.current?.({
           callId,
           roomId: String(detail?.roomId || incomingRef.current?.roomId || ''),
@@ -1001,9 +1057,16 @@ export function ChatCallProvider({
         if (activeCallRef.current && activeCallRef.current.callId !== callId) return
         window.dispatchEvent(new CustomEvent('edge-native-call-expand', { detail: { callId } }))
         const snap = incomingRef.current
+        const callerName = String(detail?.callerName || '').trim()
+        const avatarUrl = String(detail?.avatarUrl || '').trim() || null
+        const initialTitle = (callerName && callerName !== 'Chat call')
+          ? callerName
+          : (snap?.title && snap.title !== 'Chat call')
+            ? snap.title
+            : 'Chat call'
         void joinCallRef.current?.(callId, {
-          title: snap?.title || 'Chat call',
-          avatarUrl: snap?.avatarUrl || null,
+          title: initialTitle,
+          avatarUrl: avatarUrl || snap?.avatarUrl || null,
           peerUserId: snap?.fromUserId || null,
           roomId: snap?.roomId || detail?.roomId || '',
           hasVideo: Boolean(detail?.hasVideo),
@@ -1051,6 +1114,7 @@ export function ChatCallProvider({
       void endEdgeNativeCall({ callId: current.callId })
     }
   }, [supabaseClient, ensureBroadcast])
+  hangupRef.current = hangup
 
   const startRecording = useCallback(async (featuredIdentity = null) => {
     const current = activeCallRef.current

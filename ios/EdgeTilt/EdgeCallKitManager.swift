@@ -593,6 +593,17 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     callController.request(CXTransaction(action: CXAnswerCallAction(call: uuid))) { _ in }
   }
 
+  func setMuted(muted: Bool) {
+    guard let uuid = resolveUUID(uuidString: nil, callId: nil) else { return }
+    let action = CXSetMutedCallAction(call: uuid, muted: muted)
+    let transaction = CXTransaction(action: action)
+    callController.request(transaction) { error in
+      if let error {
+        NSLog("EdgeCallKit setMuted failed: \(error.localizedDescription)")
+      }
+    }
+  }
+
   // MARK: - APNs alert path (foreground banner with chat_call_invite metadata)
 
   func handleCallInviteUserInfo(_ userInfo: [AnyHashable: Any]) {
@@ -781,6 +792,15 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     stopUnlockPoll()
     EdgeAudioSession.apply(mode: "default") { _ in }
     endCallBackgroundTask()
+    action.fulfill()
+  }
+
+  func provider(_ provider: CXProvider, perform action: CXSetMutedCallAction) {
+    EdgeLiveKitCallManager.shared.setMuted(action.isMuted)
+    dispatchToWeb(
+      event: "edge-native-call-state",
+      detail: ["micOn": !action.isMuted]
+    )
     action.fulfill()
   }
 

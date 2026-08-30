@@ -161,7 +161,11 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   func setMuted(_ muted: Bool) {
     state.micOn = !muted
     Task {
-      try? await room.localParticipant.setMicrophone(enabled: !muted)
+      do {
+        try await room.localParticipant.setMicrophone(enabled: !muted)
+      } catch {
+        NSLog("EdgeLiveKit setMicrophone failed: \(error.localizedDescription)")
+      }
       await MainActor.run { self.dispatchState() }
     }
   }

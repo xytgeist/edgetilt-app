@@ -174,6 +174,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     case "setNativeCallMute":
       let muted = (payload?["muted"] as? Bool) ?? false
       EdgeLiveKitCallManager.shared.setMuted(muted)
+      EdgeCallKitManager.shared.setMuted(muted: muted)
       completion(.success(["ok": true, "muted": muted]))
     case "setNativeCallCamera":
       let enabled = payload?["enabled"] as? Bool

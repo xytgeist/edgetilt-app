@@ -222,7 +222,7 @@ export function SyndicateApp() {
                     </span>
                     <span className="text-xs font-mono text-zinc-500">TRENCHES & EPA</span>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Rocco Vance</h3>
+                  <h3 className="text-lg font-bold text-white">Rocco</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
                     Line of scrimmage & offensive efficiency desk. Models Pass Block Win Rate (PBWR) vs Pass Rush Win Rate (PRWR) and net EPA per play disparities.
                   </p>
@@ -260,7 +260,7 @@ export function SyndicateApp() {
                     </span>
                     <span className="text-xs font-mono text-zinc-500">TOTALS & PACE</span>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Tank Malloy</h3>
+                  <h3 className="text-lg font-bold text-white">Tank</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
                     Over/Under totals and situational pace model. Integrates live atmospheric weather data, red zone efficiency, and rest/travel disparity.
                   </p>

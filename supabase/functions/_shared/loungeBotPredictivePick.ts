@@ -127,7 +127,7 @@ export function formatSoloPredictiveCaption(
  * 🎯 Tank: Over 47.5 (-110) Bills/Dolphins
  */
 export function formatSyndicateCardCaption(title: string, picks: SinglePickerPick[]): string {
-  const lines: string[] = [`${title || '🎯 Sharp Syndicate Card'}\n`]
+  const lines: string[] = [`${title || '🎯 Sharpe Syndicate Card'}\n`]
   for (const item of picks) {
     const pLine = formatPickLine(item.pick)
     const away = shortDisplayName(item.pick.awayTeam)
@@ -145,7 +145,7 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
  * 3. ⚔️ 2-2 House Divided / Splits
  */
 export function formatNflSlateCardCaption(card: NflSlateCard): string {
-  const lines: string[] = [`${card.cardTitle || '🏈 NFL Sharp Syndicate Slate'}\n`]
+  const lines: string[] = [`${card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'}\n`]
 
   if (card.hammers.length > 0) {
     lines.push('🔥 UNANIMOUS 4-0 HAMMERS:')
@@ -183,7 +183,7 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('')
   }
 
-  lines.push('📊 Full 16-game interactive grid & in-game edges in Scott\'s VIP Syndicate Club.')
+  lines.push('📊 Full 16-game interactive grid & in-game edges in the Sharpe VIP Syndicate.')
   return lines.join('\n').trim()
 }
 
@@ -297,7 +297,7 @@ export function buildSyndicateCard(
     return null // Not enough variety for a syndicate card
   }
 
-  const title = opts.cardTitle || '🎯 Sharp Syndicate Card'
+  const title = opts.cardTitle || '🎯 Sharpe Syndicate Card'
   return { cardTitle: title, picks: assignedPicks }
 }
 
@@ -536,7 +536,7 @@ export function buildNflAtsSlateCard(
 
   if (games.length === 0) return null
 
-  const title = opts.cardTitle || (opts.sportKey === 'americanfootball_ncaaf' ? '🏈 College Football Sharp Syndicate Slate' : '🏈 NFL Sharp Syndicate Slate')
+  const title = opts.cardTitle || (opts.sportKey === 'americanfootball_ncaaf' ? '🏈 College Football Sharpe Syndicate Slate' : '🏈 NFL Sharpe Syndicate Slate')
 
   return {
     cardTitle: title,
@@ -998,7 +998,7 @@ export async function gradePendingPicks(
           lines.push(`🎯 3-1 Consensus: ${consensusWins}-${consensusLosses}`)
         }
 
-        lines.push('\nNext slate & in-game alerts drop in the VIP Syndicate Club.')
+        lines.push('\nNext slate & in-game alerts drop in the Sharpe VIP Syndicate.')
 
         commentText = lines.join('\n')
       } else {

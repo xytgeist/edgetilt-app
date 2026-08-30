@@ -1886,6 +1886,10 @@ html.light [data-lounge-profile-edit] [data-profile-edit-display-name] {
 html.light [data-lounge-profile-edit] [data-profile-edit-handle] {
   color: var(--color-cyan-600) !important;
 }
+html.light [data-lounge-profile-website] a,
+html.light [data-lounge-profile-website] svg {
+  color: var(--color-cyan-600) !important;
+}
 
 /*
  * Profile collapsed chrome frost (hybrid C).

@@ -291,7 +291,7 @@ export async function findPrimetimeGameCandidate(
       marketKey: 'spreads',
       confidenceBadge: isHammer ? '🔥 SYNDICATE HAMMER' : '🎯 SYNDICATE CONSENSUS',
       consensusTitle: `${shortDisplayName(consensusTeam)} (${isHammer ? '3-0 Trench/Model Backed' : 'Syndicate Majority'})`,
-      summaryReason: trenchEpa?.summaryLine || splits.summaryLine || 'High-value situational alignment across the syndicate desk.',
+      summaryReason: trenchEpa?.summaryLine || splits.summaryLine || 'High-value situational alignment across all desks.',
     },
     personaLeans: {
       Scott: {

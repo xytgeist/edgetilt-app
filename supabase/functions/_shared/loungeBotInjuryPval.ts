@@ -4,7 +4,12 @@
  * Connects TheRundown inactive/injured player lists with real PVAL weights
  * to calculate objective, mathematically grounded team and matchup injury penalties.
  */
-import { lookupPlayerPval, type PlayerValueEntry } from './loungeSportsPlayerValues.ts'
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import {
+  lookupPlayerPval,
+  loadDbPlayerPvalMap,
+  type PlayerValueEntry,
+} from './loungeSportsPlayerValues.ts'
 import {
   injuryImpactPlayers,
   resolveRundownEventContext,
@@ -41,6 +46,7 @@ export type GameInjurySummary = {
 export function calculateTeamInjuryImpact(
   teamName: string,
   inactives: Array<{ name: string; status: string }>,
+  dynamicDbMap?: Map<string, PlayerValueEntry> | null,
 ): TeamInjuryReport {
   let totalPvalLost = 0
   let offensePvalLost = 0
@@ -48,7 +54,7 @@ export function calculateTeamInjuryImpact(
   const keyAbsences: TeamInjuryReport['keyAbsences'] = []
 
   for (const p of inactives) {
-    const valEntry = lookupPlayerPval(p.name)
+    const valEntry = lookupPlayerPval(p.name, dynamicDbMap)
     if (valEntry && valEntry.pval > 0) {
       totalPvalLost += valEntry.pval
       if (valEntry.side === 'offense') offensePvalLost += valEntry.pval
@@ -89,6 +95,7 @@ export async function fetchGameInjuryPval(
   homeTeam: string,
   awayTeam: string,
   commenceTimeIso: string,
+  admin?: SupabaseClient | null,
 ): Promise<GameInjurySummary | null> {
   const sportId = oddsSportKeyToRundownSportId(sportKey)
   if (!sportId) return null
@@ -100,6 +107,9 @@ export async function fetchGameInjuryPval(
     const allInactives = injuryImpactPlayers(ctx)
     if (!allInactives || allInactives.length === 0) return null
 
+    // Load dynamic DB overrides if admin client provided
+    const dynamicDbMap = admin ? await loadDbPlayerPvalMap(admin) : null
+
     // Separate home and away inactives by team ID if available, otherwise by name
     const homeTeamId = ctx.rawEvent?.teams_normalized?.find((t: any) => t.is_home)?.team_id
     const awayTeamId = ctx.rawEvent?.teams_normalized?.find((t: any) => t.is_away)?.team_id
@@ -107,8 +117,8 @@ export async function fetchGameInjuryPval(
     const homeInactives = allInactives.filter((p) => p.teamId === homeTeamId)
     const awayInactives = allInactives.filter((p) => p.teamId === awayTeamId)
 
-    const homeReport = calculateTeamInjuryImpact(homeTeam, homeInactives)
-    const awayReport = calculateTeamInjuryImpact(awayTeam, awayInactives)
+    const homeReport = calculateTeamInjuryImpact(homeTeam, homeInactives, dynamicDbMap)
+    const awayReport = calculateTeamInjuryImpact(awayTeam, awayInactives, dynamicDbMap)
 
     // Net spread impact: Away PVAL lost minus Home PVAL lost
     // (If Away lost 3.5 pts and Home lost 1.0 pt, Home has a +2.5 pt injury advantage)

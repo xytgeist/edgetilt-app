@@ -739,7 +739,7 @@ export async function publishAndRecordPicks(
     const single = input.picks[0].pick
     const sportId = oddsSportKeyToRundownSportId(single.sportKey) || 2
     weather = await fetchGameWeather(sportId, single.homeTeam, single.commenceTime)
-    injuries = await fetchGameInjuryPval(single.sportKey, single.homeTeam, single.awayTeam, single.commenceTime)
+    injuries = await fetchGameInjuryPval(single.sportKey, single.homeTeam, single.awayTeam, single.commenceTime, admin)
   }
 
   const caption = isSolo

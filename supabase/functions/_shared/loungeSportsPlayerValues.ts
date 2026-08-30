@@ -155,19 +155,37 @@ for (const p of NFL_PLAYER_PVAL_REGISTRY) {
   PLAYER_MAP.set(normalizePlayerNameKey(p.name), p)
 }
 
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+
 /**
  * Resolve a player's Point Spread Value (PVAL) by name.
+ * Checks dynamic DB overrides map first, falling back to static registry.
  * Returns the PlayerValueEntry if found, or null if unknown / replacement level (0.0).
  */
-export function lookupPlayerPval(name: string): PlayerValueEntry | null {
+export function lookupPlayerPval(
+  name: string,
+  dynamicDbMap?: Map<string, PlayerValueEntry> | null,
+): PlayerValueEntry | null {
   const key = normalizePlayerNameKey(name)
   if (!key) return null
 
-  // 1. Exact normalized key match
+  // 1. Check dynamic DB overrides map first if provided
+  if (dynamicDbMap) {
+    const fromDb = dynamicDbMap.get(key)
+    if (fromDb) return fromDb
+
+    for (const [k, entry] of dynamicDbMap) {
+      if (key.includes(k) || k.includes(key)) {
+        return entry
+      }
+    }
+  }
+
+  // 2. Exact normalized key match in static registry
   const direct = PLAYER_MAP.get(key)
   if (direct) return direct
 
-  // 2. Substring match for compound / hyphenated names
+  // 3. Substring match for compound / hyphenated names
   for (const [k, entry] of PLAYER_MAP) {
     if (key.includes(k) || k.includes(key)) {
       return entry
@@ -175,4 +193,33 @@ export function lookupPlayerPval(name: string): PlayerValueEntry | null {
   }
 
   return null
+}
+
+/**
+ * Load all custom and active PVAL values from the public.nfl_player_pvals DB table.
+ */
+export async function loadDbPlayerPvalMap(
+  admin: SupabaseClient,
+): Promise<Map<string, PlayerValueEntry>> {
+  const map = new Map<string, PlayerValueEntry>()
+
+  const { data, error } = await admin
+    .from('nfl_player_pvals')
+    .select('player_name, normalized_name, team_name, position, side, pval')
+
+  if (error || !data) {
+    return map
+  }
+
+  for (const row of data) {
+    map.set(row.normalized_name, {
+      name: row.player_name,
+      team: row.team_name,
+      pos: row.position as PlayerPosType,
+      pval: Number(row.pval) || 0,
+      side: row.side as 'offense' | 'defense',
+    })
+  }
+
+  return map
 }

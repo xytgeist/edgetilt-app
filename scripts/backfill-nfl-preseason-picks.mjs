@@ -464,21 +464,31 @@ async function run() {
   const hammerPicks = allPicksToInsert.filter((p) => p.metadata?.consensus_type === 'hammer')
   const consPicks = allPicksToInsert.filter((p) => p.metadata?.consensus_type === 'consensus')
 
-  const hw = hammerPicks.filter((p) => p.status === 'won').length
-  const hl = hammerPicks.filter((p) => p.status === 'lost').length
-  const hp = hammerPicks.filter((p) => p.status === 'push').length
-  const hu = hammerPicks.reduce((acc, x) => acc + x.units_net, 0)
-  const hwr = hw + hl > 0 ? ((hw / (hw + hl)) * 100).toFixed(1) : '0.0'
+  const hammerEvents = new Set(hammerPicks.map((p) => p.event_id))
+  const consEvents = new Set(consPicks.map((p) => p.event_id))
 
-  const cw = consPicks.filter((p) => p.status === 'won').length
-  const cl = consPicks.filter((p) => p.status === 'lost').length
-  const cp = consPicks.filter((p) => p.status === 'push').length
-  const cu = consPicks.reduce((acc, x) => acc + x.units_net, 0)
-  const cwr = cw + cl > 0 ? ((cw / (cw + cl)) * 100).toFixed(1) : '0.0'
+  // Calculate unique game records
+  let hGameWins = 0, hGameLosses = 0, hGamePushes = 0
+  for (const eid of hammerEvents) {
+    const p = hammerPicks.find((x) => x.event_id === eid)
+    if (p.status === 'won') hGameWins++
+    else if (p.status === 'lost') hGameLosses++
+    else if (p.status === 'push') hGamePushes++
+  }
+  const hGameWr = hGameWins + hGameLosses > 0 ? ((hGameWins / (hGameWins + hGameLosses)) * 100).toFixed(1) : '0.0'
 
-  console.log(`\n🔥 Consensus Signals Breakdown:`)
-  console.log(`   • 4-0 Hammer      : ${hw}W - ${hl}L - ${hp}P (${hwr}%) | ${hu >= 0 ? `+${hu.toFixed(2)}` : hu.toFixed(2)} U (${hammerPicks.length} picks)`)
-  console.log(`   • 3-1 Consensus   : ${cw}W - ${cl}L - ${cp}P (${cwr}%) | ${cu >= 0 ? `+${cu.toFixed(2)}` : cu.toFixed(2)} U (${consPicks.length} picks)`)
+  let cGameWins = 0, cGameLosses = 0, cGamePushes = 0
+  for (const eid of consEvents) {
+    const p = consPicks.find((x) => x.event_id === eid)
+    if (p.status === 'won') cGameWins++
+    else if (p.status === 'lost') cGameLosses++
+    else if (p.status === 'push') cGamePushes++
+  }
+  const cGameWr = cGameWins + cGameLosses > 0 ? ((cGameWins / (cGameWins + cGameLosses)) * 100).toFixed(1) : '0.0'
+
+  console.log(`\n🔥 Consensus Signals Breakdown (Game-Level Record):`)
+  console.log(`   • 4-0 Hammer      : ${hGameWins}W - ${hGameLosses}L - ${hGamePushes}P (${hGameWr}%) | ${hammerEvents.size} Games (${hammerPicks.length} desk ledger rows)`)
+  console.log(`   • 3-1 Consensus   : ${cGameWins}W - ${cGameLosses}L - ${cGamePushes}P (${cGameWr}%) | ${consEvents.size} Games (${consPicks.length} desk ledger rows)`)
 
   if (isDryRun) {
     console.log(`\n🔍 Dry run complete. No database records were modified.`)

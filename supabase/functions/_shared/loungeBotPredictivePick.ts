@@ -16,6 +16,7 @@ import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
+import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -34,6 +35,7 @@ export type SlateGamePick = {
   awayTeam: string
   commenceTime: string
   spreadPoint: number | null // home spread point (e.g. -3.5 or +2.5)
+  splits?: BettingSplitSummary
   consensusPick: {
     side: 'home' | 'away'
     teamName: string
@@ -104,6 +106,7 @@ export function formatSoloPredictiveCaption(
   pick: OddsPick,
   weather?: GameWeatherSummary | null,
   injuries?: GameInjurySummary | null,
+  splits?: BettingSplitSummary | null,
 ): string {
   const line = formatPickLine(pick)
   const away = shortDisplayName(pick.awayTeam)
@@ -117,6 +120,9 @@ export function formatSoloPredictiveCaption(
   }
   if (injuries && injuries.isSignificant && injuries.summaryLine) {
     lines.push(`\n🚑 Injury Impact: ${injuries.summaryLine}`)
+  }
+  if (splits && splits.isSharpDivergence && splits.summaryLine) {
+    lines.push(`\n📊 Sharp Splits: ${splits.summaryLine}`)
   }
 
   return lines.join('')
@@ -455,30 +461,39 @@ export function buildNflAtsSlateCard(
     const homeLineDisp = formatPickLine(homePickObj)
     const awayLineDisp = formatPickLine(awayPickObj)
 
+    // Resolve live sharp money divergence & ticket splits
+    const gameSplits = resolveGameBettingSplits(ev, homePoint, homePrice, awayPrice)
+    const sharpFavorsHome = gameSplits.sharpFavoredSide === 'home'
+    const sharpFavorsAway = gameSplits.sharpFavoredSide === 'away'
+
     // Bayesian factor weights
     const scottWeight = weights.get('Scott:model_clv_high_ev') || 1.0
     const roccoWeight = weights.get('Rocco:short_favorites_1_to_4') || 1.0
     const cheddaSweetWeight = weights.get('Chedda:dog_sweet_spot_130_175') || 1.0
     const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
 
-    // Persona-specific picks with dynamic Bayesian weights:
-    // 1. Scott (Model EV): leans toward favorable line juice or short home edge
-    const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1)) * scottWeight
+    // Persona-specific picks with dynamic Bayesian weights & betting splits:
+    // 1. Scott (Model EV): leans toward favorable line juice, short home edge, and sharp consensus money
+    const sharpSplitBonus = sharpFavorsHome ? 0.35 : sharpFavorsAway ? -0.35 : 0
+    const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1) + sharpSplitBonus) * scottWeight
     const scottSide: 'home' | 'away' = scottScoreHome >= 0 ? 'home' : 'away'
 
-    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5) with adaptive sweet-spot weighting
-    const cheddaScoreHome = homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)
+    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5) and capitalizes on Sharp Money Divergence / RLM
+    const cheddaSplitBoost = (homePoint > 0 && sharpFavorsHome) ? 1.2 : (awayPoint > 0 && sharpFavorsAway) ? -1.2 : 0
+    const cheddaScoreHome = (homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)) + cheddaSplitBoost
     const cheddaSide: 'home' | 'away' = cheddaScoreHome >= 0 ? 'home' : 'away'
 
-    // 3. Rocco (Trench / Favorites): prefers laying short points on favorites (-2.5, -3.5, -6.5) or home chalk with short-fav adaptive weight
+    // 3. Rocco (Trench / Favorites): prefers laying short points on favorites (-2.5, -3.5, -6.5) but dodges public trap favorites where whales back the dog
     const isShortFavHome = homePoint < 0 && homePoint >= -7.5
     const isShortFavAway = awayPoint < 0 && awayPoint >= -7.5
-    const roccoScoreHome = isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)
+    const roccoChalkTrapPenalty = (isShortFavHome && sharpFavorsAway) ? -1.5 : (isShortFavAway && sharpFavorsHome) ? 1.5 : 0
+    const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
-    // 4. Tank (Situational / Market Flow): deterministic situational lean based on matchup hash & point spreads
+    // 4. Tank (Situational / Market Flow): deterministic situational lean based on matchup hash & point spreads + market flow
     const hVal = hashString(`${ev.id}_${homeTeam}_${awayTeam}`)
-    const tankScoreHome = ((hVal % 100) / 100 + (homePoint > awayPoint ? 0.2 : -0.2)) * tankRestWeight
+    const tankFlowBoost = sharpFavorsHome ? 0.15 : sharpFavorsAway ? -0.15 : 0
+    const tankScoreHome = (((hVal % 100) / 100 + (homePoint > awayPoint ? 0.2 : -0.2) + tankFlowBoost)) * tankRestWeight
     const tankSide: 'home' | 'away' = tankScoreHome >= 0.5 ? 'home' : 'away'
 
     const pickerPicks: Record<SharpPicker, {
@@ -565,6 +580,7 @@ export function buildNflAtsSlateCard(
       awayTeam,
       commenceTime: ev.commence_time,
       spreadPoint: homePoint,
+      splits: gameSplits,
       consensusPick: {
         side: consensusSide,
         teamName: consensusSide === 'home' ? homeTeam : awayTeam,
@@ -640,6 +656,8 @@ export async function publishAndRecordNflSlateCard(
       if (isKey3) factors.push('key_number_3_value')
       if (pName === 'Scott') factors.push('model_clv_high_ev')
       if (pName === 'Tank') factors.push('rest_advantage')
+      if (g.splits?.isRlm) factors.push('reverse_line_movement')
+      if (g.splits?.isSharpDivergence) factors.push('sharp_money_divergence')
 
       rowsToInsert.push({
         bot_user_id: input.botUserId,
@@ -661,6 +679,12 @@ export async function publishAndRecordNflSlateCard(
           side: pPick.side,
           consensus_type: g.consensusPick.type,
           vote_count: g.consensusPick.voteCount,
+          splits: g.splits ? {
+            home_ticket: g.splits.homeTicketPct,
+            home_handle: g.splits.homeHandlePct,
+            is_rlm: g.splits.isRlm,
+            is_sharp_divergence: g.splits.isSharpDivergence,
+          } : undefined,
         },
       })
     }
@@ -733,6 +757,7 @@ export async function publishAndRecordPicks(
 
   let weather: GameWeatherSummary | null = null
   let injuries: GameInjurySummary | null = null
+  let splits: BettingSplitSummary | null = null
   const isSolo = input.picks.length === 1
 
   if (isSolo) {
@@ -740,10 +765,19 @@ export async function publishAndRecordPicks(
     const sportId = oddsSportKeyToRundownSportId(single.sportKey) || 2
     weather = await fetchGameWeather(sportId, single.homeTeam, single.commenceTime)
     injuries = await fetchGameInjuryPval(single.sportKey, single.homeTeam, single.awayTeam, single.commenceTime, admin)
+    const mockEv: any = {
+      id: single.eventId,
+      sport_key: single.sportKey,
+      home_team: single.homeTeam,
+      away_team: single.awayTeam,
+      commence_time: single.commenceTime,
+      bookmakers: [],
+    }
+    splits = resolveGameBettingSplits(mockEv, single.linePoint ?? 0, single.pickPrice, single.pickPrice)
   }
 
   const caption = isSolo
-    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather, injuries)
+    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather, injuries, splits)
     : formatSyndicateCardCaption(input.cardTitle || '🎯 Sharp Syndicate Card', input.picks)
 
   const categoryPills = input.categoryPills || ['sports']
@@ -774,6 +808,8 @@ export async function publishAndRecordPicks(
       factors.push('short_favorites_1_to_4')
     }
     if (item.pickerName === 'Scott') factors.push('model_clv_high_ev')
+    if (splits?.isRlm) factors.push('reverse_line_movement')
+    if (splits?.isSharpDivergence) factors.push('sharp_money_divergence')
 
     return {
       bot_user_id: input.botUserId,
@@ -794,6 +830,12 @@ export async function publishAndRecordPicks(
         factors,
         is_high_wind: weather?.isHighWind || false,
         is_extreme_cold: weather?.isExtremeCold || false,
+        splits: splits ? {
+          home_ticket: splits.homeTicketPct,
+          home_handle: splits.homeHandlePct,
+          is_rlm: splits.isRlm,
+          is_sharp_divergence: splits.isSharpDivergence,
+        } : undefined,
       },
     }
   })

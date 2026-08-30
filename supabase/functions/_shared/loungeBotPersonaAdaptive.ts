@@ -24,6 +24,8 @@ export type PersonaFactorKey =
   | 'home_favorite_dominance'
   | 'model_clv_high_ev'
   | 'market_consensus_edge'
+  | 'reverse_line_movement'
+  | 'sharp_money_divergence'
 
 export type PersonaWeightRecord = {
   picker_name: SharpPicker

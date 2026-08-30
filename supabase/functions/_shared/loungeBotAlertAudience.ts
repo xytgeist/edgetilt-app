@@ -56,11 +56,11 @@ export const DEFAULT_ALERT_ROUTES: Record<OddsAlertAudienceKey, AlertRouteConfig
   arb_watch: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
   sharp_report: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
   value_bet_radar: { lounge: true, sub_chat: false, lounge_teaser_pct: 0 },
-  starter_spotlight: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
-  confirmed_starters: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
-  injury_impact: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
-  rest_travel_edge: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
-  fade_the_public: { lounge: false, sub_chat: true, lounge_teaser_pct: 0 },
+  starter_spotlight: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
+  confirmed_starters: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
+  injury_impact: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
+  rest_travel_edge: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
+  fade_the_public: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
 }
 
 export const ALERT_AUDIENCE_LABELS: Record<OddsAlertAudienceKey, string> = {

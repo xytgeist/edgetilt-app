@@ -43,6 +43,7 @@ import {
   type ConfirmedStarters,
   type ResolvedRundownEvent,
 } from './loungeBotRundownContext.ts'
+import { resolveGameBettingSplits } from './loungeBotBettingSplits.ts'
 
 const CAPTION_MAX = 2000
 const CONTEXT_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
@@ -69,10 +70,14 @@ export type ContextAlertCandidate = {
   homeTeam: string
   commenceTime: string
   pick: OddsPick
-  rundown: ResolvedRundownEvent
+  rundown?: ResolvedRundownEvent | null
   starters?: ConfirmedStarters
   injuryPlayer?: { name: string; status: string }
   restTravel?: RestTravelMatchup
+  fadeDetails?: {
+    movedTeamLine: string
+    publicSideLine: string
+  }
 }
 
 function joinCaptionLines(lines: string[]): string {
@@ -86,9 +91,108 @@ function formatMatchupParen(awayTeam: string, homeTeam: string, commenceTime: st
   return when ? `${matchup} (${when})` : matchup
 }
 
-function formatPickInlineLine(pick: OddsPick): string {
-  const ev = Math.round(pick.edgePct * 10) / 10
-  return `${formatOddsPickLine(pick)} @ ${pick.bookTitle} (+${ev}% EV)`
+function formatPickInlineLine(pick: OddsPick | null): string {
+  if (!pick) return ''
+  return formatOddsPickLine(pick)
+}
+
+function resolveMarketLinePick(
+  events: OddsEvent[],
+  sportKey: string,
+  eventId: string,
+  preferredSideTeamName?: string,
+): OddsPick | null {
+  const ev = events.find((e) => e.id === eventId)
+  if (!ev) return null
+
+  // Search books for standard line
+  for (const b of ev.bookmakers || []) {
+    const sm = b.markets?.find((m) => m.key === 'spreads')
+    if (sm && sm.outcomes?.length) {
+      if (preferredSideTeamName) {
+        const out = sm.outcomes.find((o) => pickMatchesTeamName(o.name, preferredSideTeamName))
+        if (out) {
+          return {
+            eventId,
+            sportKey,
+            homeTeam: ev.home_team,
+            awayTeam: ev.away_team,
+            marketKey: 'spreads',
+            pickName: out.name,
+            pickPrice: out.price,
+            linePoint: out.point ?? null,
+            bookKey: b.key,
+            bookTitle: b.title,
+            edgePct: 0,
+            consensusPrice: out.price,
+            commenceTime: ev.commence_time,
+          }
+        }
+      }
+      const out = sm.outcomes[0]
+      if (out) {
+        return {
+          eventId,
+          sportKey,
+          homeTeam: ev.home_team,
+          awayTeam: ev.away_team,
+          marketKey: 'spreads',
+          pickName: out.name,
+          pickPrice: out.price,
+          linePoint: out.point ?? null,
+          bookKey: b.key,
+          bookTitle: b.title,
+          edgePct: 0,
+          consensusPrice: out.price,
+          commenceTime: ev.commence_time,
+        }
+      }
+    }
+
+    const hm = b.markets?.find((m) => m.key === 'h2h')
+    if (hm && hm.outcomes?.length) {
+      if (preferredSideTeamName) {
+        const out = hm.outcomes.find((o) => pickMatchesTeamName(o.name, preferredSideTeamName))
+        if (out) {
+          return {
+            eventId,
+            sportKey,
+            homeTeam: ev.home_team,
+            awayTeam: ev.away_team,
+            marketKey: 'h2h',
+            pickName: out.name,
+            pickPrice: out.price,
+            linePoint: null,
+            bookKey: b.key,
+            bookTitle: b.title,
+            edgePct: 0,
+            consensusPrice: out.price,
+            commenceTime: ev.commence_time,
+          }
+        }
+      }
+      const out = hm.outcomes[0]
+      if (out) {
+        return {
+          eventId,
+          sportKey,
+          homeTeam: ev.home_team,
+          awayTeam: ev.away_team,
+          marketKey: 'h2h',
+          pickName: out.name,
+          pickPrice: out.price,
+          linePoint: null,
+          bookKey: b.key,
+          bookTitle: b.title,
+          edgePct: 0,
+          consensusPrice: out.price,
+          commenceTime: ev.commence_time,
+        }
+      }
+    }
+  }
+
+  return null
 }
 
 function isSituationalLeanKind(kind: ContextAlertKind): boolean {
@@ -159,7 +263,7 @@ export function buildStarterSpotlightCaption(
   homeTeam: string,
   commenceTime: string,
   starters: ConfirmedStarters,
-  pick: OddsPick,
+  _pick?: OddsPick | null,
 ): string {
   const awayLabel = shortDisplayName(awayTeam)
   const homeLabel = shortDisplayName(homeTeam)
@@ -171,8 +275,6 @@ export function buildStarterSpotlightCaption(
     'Confirmed Starters:',
     `• ${awayLabel}: ${starters.away}`,
     `• ${homeLabel}: ${starters.home}`,
-    '',
-    formatPickInlineLine(pick),
   ])
 }
 
@@ -181,7 +283,7 @@ export function buildConfirmedStartersCaption(
   homeTeam: string,
   sportKey: string,
   starters: ConfirmedStarters,
-  pick: OddsPick,
+  _pick?: OddsPick | null,
 ): string {
   const awayLabel = shortDisplayName(awayTeam)
   const homeLabel = shortDisplayName(homeTeam)
@@ -192,8 +294,6 @@ export function buildConfirmedStartersCaption(
     '',
     `• ${awayLabel}: ${starters.away}`,
     `• ${homeLabel}: ${starters.home}`,
-    '',
-    formatPickInlineLine(pick),
   ])
 }
 
@@ -279,6 +379,13 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.commenceTime,
         candidate.restTravel!,
         candidate.pick,
+      )
+    case 'fade_the_public':
+      return buildFadeThePublicCaption(
+        candidate.awayTeam,
+        candidate.homeTeam,
+        candidate.fadeDetails?.movedTeamLine || candidate.pick.pickName,
+        candidate.fadeDetails?.publicSideLine || 'opposing side',
       )
     default:
       return ''
@@ -407,7 +514,7 @@ async function collectContextCandidates(
     if (!rundown) continue
 
     if (hasStarterInfo(rundown, sportKey)) {
-      const starterPick = bestPickForEvent(events, sportKey, eventId, minEvPct)
+      const starterPick = bestPickForEvent(events, sportKey, eventId, minEvPct) || resolveMarketLinePick(events, sportKey, eventId)
       if (starterPick) {
         const starters = confirmedStartersFromRundown(rundown, sportKey)!
         out.push({
@@ -435,7 +542,7 @@ async function collectContextCandidates(
       }
     }
 
-    const injuryPick = bestPickForEvent(events, sportKey, eventId, situationalEv)
+    const injuryPick = bestPickForEvent(events, sportKey, eventId, situationalEv) || resolveMarketLinePick(events, sportKey, eventId)
     if (injuryPick) {
       for (const player of injuryImpactPlayers(rundown)) {
         out.push({
@@ -495,7 +602,7 @@ async function collectContextCandidates(
           eventId,
           situationalEv,
           matchup.restedTeam,
-        )
+        ) || resolveMarketLinePick(events, sportKey, eventId, matchup.restedTeam)
         if (restedPick) {
           out.push({
             kind: 'rest_travel_edge',
@@ -512,6 +619,46 @@ async function collectContextCandidates(
       }
     }
 
+    // 4. Fade the Public / Sharp Money Divergence & RLM
+    let homePoint: number | null = null
+    let homePrice = -110
+    let awayPrice = -110
+    for (const b of ev.bookmakers || []) {
+      const sm = b.markets?.find((m) => m.key === 'spreads')
+      if (sm) {
+        const hOut = sm.outcomes?.find((o) => o.name === homeTeam)
+        const aOut = sm.outcomes?.find((o) => o.name === awayTeam)
+        if (hOut?.point != null) homePoint = hOut.point
+        if (hOut?.price != null) homePrice = hOut.price
+        if (aOut?.price != null) awayPrice = aOut.price
+        break
+      }
+    }
+
+    const splits = resolveGameBettingSplits(ev, homePoint, homePrice, awayPrice)
+    if (splits.isSharpDivergence && splits.sharpFavoredSide) {
+      const sharpSideName = splits.sharpFavoredSide === 'home' ? homeTeam : awayTeam
+      const publicSideName = splits.sharpFavoredSide === 'home' ? awayTeam : homeTeam
+      const sharpPick = bestPickForEvent(events, sportKey, eventId, 0.0) // Relaxed EV for pure sharp fade
+      if (sharpPick) {
+        const movedTeamLine = `${shortDisplayName(sharpSideName)} (${splits.sharpFavoredSide === 'home' ? (homePoint ?? 0) > 0 ? `+${homePoint}` : homePoint : (homePoint ?? 0) < 0 ? `+${Math.abs(homePoint ?? 0)}` : `-${homePoint}`})`
+        const publicSideLine = `${shortDisplayName(publicSideName)} (${splits.sharpFavoredSide === 'home' ? splits.awayTicketPct : splits.homeTicketPct}% tickets)`
+        out.push({
+          kind: 'fade_the_public',
+          eventId,
+          sportKey,
+          awayTeam,
+          homeTeam,
+          commenceTime,
+          pick: sharpPick,
+          fadeDetails: {
+            movedTeamLine,
+            publicSideLine,
+          },
+        })
+      }
+    }
+
     void ptDay
   }
 
@@ -524,11 +671,11 @@ function pickBestCandidate(
   onlyKind?: ContextAlertKind | null,
 ): ContextAlertCandidate | null {
   const priority: ContextAlertKind[] = [
+    'fade_the_public',
     'injury_impact',
     'starter_spotlight',
     'rest_travel_edge',
     'confirmed_starters',
-    'fade_the_public',
   ]
 
   let enabled = candidates.filter((c) => contextKindEnabled(c.kind, oddsCfg))

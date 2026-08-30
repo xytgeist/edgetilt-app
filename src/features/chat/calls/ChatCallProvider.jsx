@@ -31,7 +31,7 @@ import {
   peekPendingChatCallDeepLink,
 } from '../../../utils/pendingChatCallDeepLink.js'
 import { enterCallAudioSession } from './chatCallAudioSession.js'
-import { installChatCallAudioUnlock, unlockChatCallAudio } from './chatCallRingTone.js'
+import { installChatCallAudioUnlock, stopAllChatCallTones, unlockChatCallAudio } from './chatCallRingTone.js'
 import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
@@ -789,6 +789,7 @@ export function ChatCallProvider({
           startMinimized: Boolean(opts.startMinimized),
           ...recordingFieldsFromCall(call),
         }
+        stopAllChatCallTones()
         activeCallRef.current = next
         setActiveCall(next)
         setIncoming(null)
@@ -891,6 +892,7 @@ export function ChatCallProvider({
             /* optional */
           }
         }
+        stopAllChatCallTones()
         setActiveCall({
           callId: call.id,
           roomId,
@@ -944,6 +946,7 @@ export function ChatCallProvider({
   )
 
   const acceptIncoming = useCallback(async () => {
+    stopAllChatCallTones()
     if (!incoming) return
     const snap = incoming
     // Keep the incoming chrome up until joinCall mounts ChatCallSession...
@@ -962,6 +965,7 @@ export function ChatCallProvider({
    * DM only: optional `message` is sent as a normal chat text after decline.
    */
   const declineIncoming = useCallback(async (opts = {}) => {
+    stopAllChatCallTones()
     const callId = String(opts.callId || incomingRef.current?.callId || incoming?.callId || '').trim()
     if (!supabaseClient || !callId) return
     if (activeCallRef.current && activeCallRef.current.callId === callId) {
@@ -1010,6 +1014,7 @@ export function ChatCallProvider({
   useEffect(() => {
     return installEdgeCallKitListeners({
       onAnswer: (detail) => {
+        stopAllChatCallTones()
         const callId = String(detail?.callId || '').trim()
         if (!callId) return
         if (activeCallRef.current && activeCallRef.current.callId !== callId) return

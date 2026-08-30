@@ -57,6 +57,8 @@ export function installChatCallAudioUnlock() {
   void resumeAudioContext()
 }
 
+let activeHandles = new Set()
+
 /**
  * @param {'incoming' | 'ringback'} kind
  * @returns {ChatCallToneHandle | null}
@@ -150,10 +152,11 @@ export function startChatCallTone(kind) {
     }
   }
 
-  return {
+  const handle = {
     stop() {
       if (stopped) return
       stopped = true
+      activeHandles.delete(handle)
       if (timeoutId != null) {
         window.clearTimeout(timeoutId)
         timeoutId = null
@@ -168,6 +171,20 @@ export function startChatCallTone(kind) {
       }
     },
   }
+  activeHandles.add(handle)
+  return handle
+}
+
+/** Stop all active ringtones globally */
+export function stopAllChatCallTones() {
+  for (const h of activeHandles) {
+    try {
+      h.stop()
+    } catch {
+      /* ignore */
+    }
+  }
+  activeHandles.clear()
 }
 
 /** @param {ChatCallToneHandle | null | undefined} handle */

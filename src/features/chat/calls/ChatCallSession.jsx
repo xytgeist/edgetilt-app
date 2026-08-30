@@ -1004,7 +1004,7 @@ function CallChrome({
   }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording, canStopRecording])
 
   useEffect(() => {
-    if (!awaitingAnswer) return undefined
+    if (!awaitingAnswer || isEdgeiOSShell()) return undefined
     unlockChatCallAudio()
     const tone = startChatCallTone('ringback')
     return () => stopChatCallTone(tone)

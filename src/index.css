@@ -10824,4 +10824,8 @@ html.light [data-lounge-detail-pro-comment-pill] {
   color: #b45309 !important;
 }
 
+html.light [data-settings-build-info] div {
+  color: #71717a !important;
+}
+
 

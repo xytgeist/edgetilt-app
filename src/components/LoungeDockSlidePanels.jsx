@@ -72,6 +72,8 @@ import LoungeDockMenuLayoutHelp from './LoungeDockMenuLayoutHelp.jsx'
 import IosPwaInstallHelpDialog from './IosPwaInstallHelpDialog.jsx'
 import { getTheme, setTheme } from '../utils/theme.js'
 import { Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE } from '../constants/appZIndex.js'
+import { APP_BUILD_SHA } from '../utils/appBuildInfo.js'
+import { isEdgeiOSShell, edgeNativeInvoke } from '../utils/edgeNative.js'
 import {
   hasSeenLoungeIosPwaSetup,
   iosPwaInstallRequired,
@@ -285,6 +287,26 @@ export default function LoungeDockSlidePanels({
   const [passwordResetMessage, setPasswordResetMessage] = useState('')
   const [passwordResetError, setPasswordResetError] = useState('')
   const [supportEmailCopyMessage, setSupportEmailCopyMessage] = useState('')
+  const [nativeShellInfo, setNativeShellInfo] = useState(/** @type {{ shellVersion?: string, build?: string, environment?: string } | null} */ (null))
+
+  useEffect(() => {
+    if (!isEdgeiOSShell()) return
+    let cancelled = false
+    void edgeNativeInvoke('getInfo')
+      .then((info) => {
+        if (!cancelled && info) {
+          setNativeShellInfo({
+            shellVersion: typeof info.shellVersion === 'string' ? info.shellVersion : undefined,
+            build: typeof info.build === 'string' ? info.build : undefined,
+            environment: typeof info.environment === 'string' ? info.environment : undefined,
+          })
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const onCopySupportEmail = useCallback(async () => {
     setSupportEmailCopyMessage('')
@@ -2213,7 +2235,7 @@ export default function LoungeDockSlidePanels({
             ) : null}
 
             {typeof onLogout === 'function' ? (
-              <div className="mt-10 pb-3 text-center" data-settings-logout>
+              <div className="mt-10 pb-1 text-center" data-settings-logout>
                 <button
                   type="button"
                   onClick={() => void onLogout()}
@@ -2223,6 +2245,18 @@ export default function LoungeDockSlidePanels({
                 </button>
               </div>
             ) : null}
+
+            <div className="mt-6 pb-6 text-center select-none" data-settings-build-info>
+              <div className="font-mono text-[11px] tracking-tight text-zinc-500/80">
+                EdgeTilt v0.1.0{APP_BUILD_SHA && APP_BUILD_SHA !== 'unknown' ? ` (${APP_BUILD_SHA})` : ''}
+              </div>
+              {nativeShellInfo ? (
+                <div className="mt-0.5 font-mono text-[10.5px] tracking-tight text-zinc-500/70">
+                  iOS Shell v{nativeShellInfo.shellVersion || '0.1.0'} · Build {nativeShellInfo.build || '1'}
+                  {nativeShellInfo.environment ? ` (${nativeShellInfo.environment})` : ''}
+                </div>
+              ) : null}
+            </div>
           </div>
           )
         ) : (

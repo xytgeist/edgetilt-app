@@ -189,7 +189,7 @@ export function SyndicateApp() {
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">The 4-Desk Syndicate Architecture</h2>
                   <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                    Independent quantitative models operating across spread, totals, power ratings, and situational edges.
+                    Independent quantitative desks modeling across spread, totals, power ratings, and situational edges.
                   </p>
                 </div>
               </div>

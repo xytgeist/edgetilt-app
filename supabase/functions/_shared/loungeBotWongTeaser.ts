@@ -56,7 +56,7 @@ export function findQualifyingWongLegs(events: OddsEvent[]): WongTeaserLeg[] {
   const qualifying: WongTeaserLeg[] = []
 
   for (const ev of events) {
-    if (ev.sport_key !== 'americanfootball_nfl') continue
+    if (ev.sport_key !== 'americanfootball_nfl' && ev.sport_key !== 'americanfootball_nfl_preseason') continue
     const homeTeam = ev.home_team
     const awayTeam = ev.away_team
     if (!homeTeam || !awayTeam || !ev.commence_time) continue

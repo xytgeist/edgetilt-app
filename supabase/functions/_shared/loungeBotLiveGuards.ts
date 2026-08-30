@@ -17,6 +17,7 @@ export const MAX_GAME_ELAPSED_MINUTES: Record<string, number> = {
   basketball_ncaab: 180,
   basketball_wnba: 180,
   americanfootball_nfl: 210,
+  americanfootball_nfl_preseason: 210,
   americanfootball_ncaaf: 210,
   icehockey_nhl: 180,
 }

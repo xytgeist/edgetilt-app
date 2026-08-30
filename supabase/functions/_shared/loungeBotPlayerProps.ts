@@ -93,7 +93,7 @@ export async function findAnytimeTdCandidates(
   const candidates: AnytimeTdPick[] = []
 
   for (const ev of events) {
-    if (ev.sport_key !== 'americanfootball_nfl' || ev.completed) continue
+    if ((ev.sport_key !== 'americanfootball_nfl' && ev.sport_key !== 'americanfootball_nfl_preseason') || ev.completed) continue
     const homeTeam = ev.home_team
     const awayTeam = ev.away_team
 
@@ -159,7 +159,7 @@ export async function findAnytimeTdCandidates(
 
   // Fallback generation if The Odds API free plan doesn't have live player props for current event
   if (candidates.length === 0 && events.length > 0) {
-    const activeNfl = events.filter((e) => e.sport_key === 'americanfootball_nfl')
+    const activeNfl = events.filter((e) => e.sport_key === 'americanfootball_nfl' || e.sport_key === 'americanfootball_nfl_preseason')
     if (activeNfl.length > 0) {
       const targetEvent = activeNfl[0]
       const homeTeam = targetEvent.home_team

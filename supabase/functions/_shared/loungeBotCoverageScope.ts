@@ -27,6 +27,7 @@ export type CalendarCoverageInput = {
 
 const TIER1_EXACT = new Set([
   'americanfootball_nfl',
+  'americanfootball_nfl_preseason',
   'basketball_nba',
   'americanfootball_ncaaf',
   'baseball_mlb',
@@ -64,7 +65,6 @@ export function resolveSportKeyTier(sportKey: string): CoverageTier | null {
   }
   if (sk === 'basketball_wnba') return 3
   if (sk.startsWith('esports_')) return 3
-  if (sk === 'americanfootball_nfl_preseason') return 3
 
   // Tier 4 — completeness / arb
   if (sk.startsWith('cricket_')) return 4

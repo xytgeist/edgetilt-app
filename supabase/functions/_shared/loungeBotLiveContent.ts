@@ -93,6 +93,9 @@ const PERIOD_RULES: Record<string, PeriodMilestone[]> = {
   americanfootball_nfl: [
     { key: 'halftime', label: 'Halftime Report', minMinutes: 70, maxMinutes: 95 },
   ],
+  americanfootball_nfl_preseason: [
+    { key: 'halftime', label: 'Halftime Report', minMinutes: 70, maxMinutes: 95 },
+  ],
   americanfootball_ncaaf: [
     { key: 'halftime', label: 'Halftime Report', minMinutes: 70, maxMinutes: 95 },
   ],

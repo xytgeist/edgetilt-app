@@ -114,7 +114,7 @@ export async function findPrimetimeGameCandidate(
   events: OddsEvent[],
   targetType?: PrimetimeGameType,
 ): Promise<PrimetimeSpotlightGame | null> {
-  const nflEvents = events.filter((e) => e.sport_key === 'americanfootball_nfl' && !e.completed)
+  const nflEvents = events.filter((e) => (e.sport_key === 'americanfootball_nfl' || e.sport_key === 'americanfootball_nfl_preseason') && !e.completed)
   if (!nflEvents.length) return null
 
   // Sort by kickoff time

@@ -91,6 +91,7 @@ export function coffeeTennisSliceSortOrder(sportKey: string): number {
 /** Daily Best Lines thread sort — higher rank = earlier in thread. */
 const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {
   americanfootball_nfl: 1000,
+  americanfootball_nfl_preseason: 1000,
   americanfootball_ncaaf: 990,
   basketball_nba: 980,
   basketball_ncaab: 970,
@@ -117,7 +118,7 @@ const COFFEE_BEST_LINES_SPORT_RANK: Record<string, number> = {
 }
 
 const COFFEE_BEST_LINES_FAMILY_RANK: Array<{ test: (sk: string) => boolean; rank: number }> = [
-  { test: (sk) => sk.startsWith('americanfootball_nfl') && sk !== 'americanfootball_nfl_preseason', rank: 1000 },
+  { test: (sk) => sk.startsWith('americanfootball_nfl'), rank: 1000 },
   { test: (sk) => sk.startsWith('americanfootball_ncaaf') || sk.includes('ncaaf'), rank: 990 },
   { test: (sk) => sk === 'basketball_nba', rank: 980 },
   { test: (sk) => sk === 'basketball_ncaab', rank: 970 },
@@ -211,7 +212,7 @@ export function resolveCoffeeBestLinesTier(sportKey: string): CoffeeBestLinesTie
   if (!sk) return null
 
   if (
-    sk === 'americanfootball_nfl'
+    sk.startsWith('americanfootball_nfl')
     || sk.startsWith('americanfootball_ncaaf')
     || sk.includes('ncaaf')
     || sk === 'basketball_nba'
@@ -255,7 +256,6 @@ export function resolveCoffeeBestLinesTier(sportKey: string): CoffeeBestLinesTie
     || sk.startsWith('formula')
     || sk.includes('nascar')
     || sk.includes('indy')
-    || sk === 'americanfootball_nfl_preseason'
   ) {
     return 3
   }
@@ -379,7 +379,7 @@ export function aggregateCoffeeBestLinesSliceStats(
 export function isCoffeeHeavyBestLinesSlate(candidates: CoffeeBestLinesThreadCandidateMeta[]): boolean {
   const hasNfl = candidates.some((c) => {
     const sk = normalizeSportKey(c.sortKey)
-    return sk === 'americanfootball_nfl'
+    return sk === 'americanfootball_nfl' || sk === 'americanfootball_nfl_preseason'
   })
   const tier1Count = candidates.filter((c) => c.tier === 1).length
   return (hasNfl && tier1Count >= 4) || tier1Count >= 6

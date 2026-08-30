@@ -173,10 +173,17 @@ Deno.serve(async (req) => {
       } = await import('../_shared/loungeBotPredictivePick.ts')
       const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
 
-      const sportKey = String(body?.sportKey || 'americanfootball_nfl').trim()
+      let sportKey = String(body?.sportKey || 'americanfootball_nfl').trim()
       let oddsData: any
       try {
         oddsData = await fetchSportOdds(sportKey, ['us'], ['spreads'])
+        if ((!oddsData?.events || oddsData.events.length === 0) && sportKey === 'americanfootball_nfl') {
+          const preseasonData = await fetchSportOdds('americanfootball_nfl_preseason', ['us'], ['spreads']).catch(() => null)
+          if (preseasonData?.events && preseasonData.events.length > 0) {
+            oddsData = preseasonData
+            sportKey = 'americanfootball_nfl_preseason'
+          }
+        }
       } catch (e) {
         return adminOpsJson(500, { ok: false, error: `Failed to fetch odds for ${sportKey}: ${e}` })
       }

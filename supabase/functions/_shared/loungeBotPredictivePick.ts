@@ -859,7 +859,7 @@ export async function publishAndRecordPicks(
       bookmakers: [],
     }
     splits = resolveGameBettingSplits(mockEv, single.linePoint ?? 0, single.pickPrice, single.pickPrice)
-    if (single.sportKey === 'americanfootball_nfl') {
+    if (single.sportKey === 'americanfootball_nfl' || single.sportKey === 'americanfootball_nfl_preseason') {
       const teamMetricsMap = await loadDbTeamMetricsMap(admin)
       trenchEpa = calculateTrenchEpaMatchup(single.homeTeam, single.awayTeam, teamMetricsMap)
     } else if (single.sportKey === 'americanfootball_ncaaf') {

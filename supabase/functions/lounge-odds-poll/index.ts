@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, weekly_syndicate_recap, or calibrate_persona_models.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, or calibrate_persona_models.',
       })
     }
 
@@ -357,6 +357,50 @@ Deno.serve(async (req) => {
         ok: result.ok,
         action: 'nfl_halftime_pivot',
         pivot,
+        ...result,
+      })
+    }
+
+    if (action === 'nfl_live_middle_arb') {
+      const {
+        findLiveMiddleArbCandidates,
+        publishMiddleArbToVip,
+      } = await import('../_shared/loungeBotMiddleArb.ts')
+
+      const sportKeys = body?.sportKeys && Array.isArray(body.sportKeys)
+        ? body.sportKeys
+        : ['americanfootball_nfl', 'americanfootball_nfl_preseason', 'americanfootball_ncaaf', 'basketball_nba', 'baseball_mlb']
+
+      const opportunities = await findLiveMiddleArbCandidates(admin, sportKeys)
+
+      if (!opportunities.length) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'nfl_live_middle_arb',
+          message: 'No qualifying Live Middle or Arbitrage opportunities currently active across pending syndicate cards or books.',
+          sportKeys,
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          action: 'nfl_live_middle_arb',
+          totalOpportunities: opportunities.length,
+          opportunities,
+        })
+      }
+
+      // Publish top opportunity to Scott's VIP subscriber channel
+      const topOpp = opportunities[0]
+      const result = await publishMiddleArbToVip(admin, bot.user_id, topOpp)
+
+      return adminOpsJson(200, {
+        ok: result.ok,
+        action: 'nfl_live_middle_arb',
+        totalOpportunities: opportunities.length,
+        topOpportunity: topOpp,
         ...result,
       })
     }

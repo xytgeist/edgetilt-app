@@ -623,6 +623,26 @@ export async function invokeLoungeOddsAnytimeTd(supabaseClient, opts = {}) {
 }
 
 /**
+ * Trigger on-demand scanning and VIP drop for Live Middle & Arbitrage opportunities.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, dryRun?: boolean, sportKeys?: string[] }} [opts]
+ */
+export async function invokeLoungeOddsMiddleArb(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'nfl_live_middle_arb',
+      dryRun: opts.dryRun === true,
+      sportKeys: opts.sportKeys,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Live Middle/Arb scanner failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Publish one example Lounge post per Scott alert type (portal smoke pack).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

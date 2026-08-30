@@ -32,6 +32,21 @@ export const NFL_KEY_NUMBER_FREQUENCIES: Record<number, number> = {
   4: 5.1,
 }
 
+export const NFL_TOTAL_KEY_NUMBER_FREQUENCIES: Record<number, number> = {
+  41: 3.9,
+  44: 3.8,
+  47: 3.5,
+  51: 3.4,
+  37: 3.2,
+  40: 3.1,
+  43: 2.8,
+  54: 2.6,
+  48: 2.5,
+  50: 2.4,
+  45: 2.3,
+  38: 2.2,
+}
+
 /**
  * Analyze a football spread line for key number hooks and valuation.
  */

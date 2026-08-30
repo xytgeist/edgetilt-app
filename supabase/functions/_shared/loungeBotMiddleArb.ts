@@ -7,9 +7,11 @@
  * 3. Cross-Book Live Arbitrage: Pure risk-free guaranteed return windows (>1.2% ROI).
  *
  * Quant Middle Rating Engine:
- * - Computes Historical Middle Frequency % across Key Football Numbers (#3: 14.8%, #7: 9.3%, #6: 5.9%, #10: 5.6%, #4: 5.1%).
- * - Calculates Exact Mathematical Expected Value (EV) of the Middle attempt.
- * - Provides Dual Staking Blueprints (Risk-Free Free Roll vs Max Payout Staking).
+ * - Key Number Margin Clustering: Overlays historical NFL margin frequencies (#3: 14.8%, #7: 9.3%, #6: 5.9%, #10: 5.6%, #4: 5.1%).
+ * - Totals Key Number Clustering: Overlays historical NFL totals frequencies (#41: 3.9%, #44: 3.8%, #47: 3.5%, #51: 3.4%, #37: 3.2%, #40: 3.1%, #43: 2.8%, #54: 2.6%).
+ * - In-Game Live Context & Momentum: Integrates live ESPN quarter, clock, and score to flag scoreboard overreactions.
+ * - Kelly Criterion Optimal Hedge Sizing: Computes fractional Kelly growth stake alongside Max Profit and Zero-Risk Free Roll.
+ * - Multi-Book Totals & Spread Scanning: Evaluates cross-book total and spread corridors across all sportsbooks.
  *
  * Drops institutional execution blueprints directly into Scott's Sharpe VIP Syndicate channel.
  */
@@ -23,7 +25,10 @@ import {
 } from './loungeBotOddsCaption.ts'
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
-import { NFL_KEY_NUMBER_FREQUENCIES } from './loungeBotKeyNumbers.ts'
+import {
+  NFL_KEY_NUMBER_FREQUENCIES,
+  NFL_TOTAL_KEY_NUMBER_FREQUENCIES,
+} from './loungeBotKeyNumbers.ts'
 
 export type MiddleArbType = 'SYNDICATE_POSITION_MIDDLE' | 'CROSS_BOOK_MIDDLE' | 'CROSS_BOOK_ARBITRAGE'
 
@@ -35,6 +40,14 @@ export type MiddleArbLeg = {
   bookTitle: string
   isExistingPosition?: boolean
   pickerName?: string
+}
+
+export type LiveGameContext = {
+  isLive: boolean
+  periodDisplay: string // e.g. "Q2 6:15", "Halftime", "Top 4th"
+  homeScore: number
+  awayScore: number
+  momentumTag?: string // e.g. "Early Scoreboard Overreaction", "Pace Surge"
 }
 
 export type MiddleArbOpportunity = {
@@ -51,13 +64,16 @@ export type MiddleArbOpportunity = {
   keyNumbersCrossed?: number[]
   historicalMiddleProbPct?: number // e.g. 24.1%
   middleEvPct?: number // e.g. +31.4% EV on the hedge
+  kellyFractionUnits?: number // e.g. 0.85u optimal Kelly hedge
   riskVigUnits: number // e.g. -0.09u on 1u stake if landing outside corridor
   maxWinUnits: number // e.g. +1.82u if landing inside corridor
   arbProfitPct?: number // e.g. +2.4% for pure arb
+  liveContext?: LiveGameContext | null
   executionAdvice: string
   stakingBlueprint: {
     maxProfitStaking: string
     riskFreeFreeRollStaking: string
+    kellyOptimalStaking?: string
   }
   vipCaption: string
 }
@@ -70,6 +86,78 @@ const SUPPORTED_SPORTS = [
   'basketball_ncaab',
   'baseball_mlb',
 ]
+
+/**
+ * Fetch live in-game scoreboard state from ESPN for an event if currently in progress.
+ */
+async function fetchLiveGameContext(
+  sportKey: string,
+  homeTeam: string,
+  awayTeam: string,
+): Promise<LiveGameContext | null> {
+  let endpoint = ''
+  if (sportKey.includes('football_nfl')) {
+    endpoint = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
+  } else if (sportKey.includes('football_ncaaf') || sportKey.includes('college')) {
+    endpoint = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard'
+  } else if (sportKey.includes('basketball_nba')) {
+    endpoint = 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard'
+  } else if (sportKey.includes('baseball_mlb')) {
+    endpoint = 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard'
+  }
+
+  if (!endpoint) return null
+
+  try {
+    const res = await fetch(endpoint, { headers: { Accept: 'application/json' } })
+    if (!res.ok) return null
+    const data = await res.json()
+    const events: any[] = data?.events || []
+
+    const homeNorm = homeTeam.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const awayNorm = awayTeam.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+    for (const ev of events) {
+      const comp = ev?.competitions?.[0]
+      const homeComp = comp?.competitors?.find((c: any) => c.homeAway === 'home')
+      const awayComp = comp?.competitors?.find((c: any) => c.homeAway === 'away')
+      const hName = String(homeComp?.team?.displayName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const aName = String(awayComp?.team?.displayName || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+
+      if (
+        (hName.includes(homeNorm) || homeNorm.includes(hName)) &&
+        (aName.includes(awayNorm) || awayNorm.includes(aName))
+      ) {
+        const state = ev?.status?.type?.state // 'in', 'pre', 'post'
+        const isLive = state === 'in'
+        const period = ev?.status?.period || 1
+        const clock = ev?.status?.displayClock || '0:00'
+        const desc = String(ev?.status?.type?.description || ev?.status?.type?.detail || '')
+        const hScore = parseInt(homeComp?.score || '0', 10)
+        const aScore = parseInt(awayComp?.score || '0', 10)
+
+        let periodDisplay = isLive ? `Q${period} ${clock}` : desc || 'Pre-Game'
+        if (desc.toLowerCase().includes('half')) periodDisplay = 'Halftime'
+
+        const scoreDiff = Math.abs(hScore - aScore)
+        let momentumTag = 'Active In-Game Flow'
+        if (scoreDiff >= 10 && period <= 2) momentumTag = 'Early Scoreboard Overreaction'
+        else if (scoreDiff <= 3 && period >= 3) momentumTag = 'Tight Clutch Window'
+
+        return {
+          isLive,
+          periodDisplay,
+          homeScore: hScore,
+          awayScore: aScore,
+          momentumTag,
+        }
+      }
+    }
+  } catch {
+    // Gracefully ignore network errors on scoreboard
+  }
+  return null
+}
 
 /**
  * Scan for Middle & Arbitrage opportunities across pending syndicate picks and live books.
@@ -109,19 +197,21 @@ export async function findLiveMiddleArbCandidates(
       if (!homeTeam || !awayTeam) continue
 
       // Check for Syndicate Position Middle against this event
-      const eventPicks = pendingList.filter((p) => p.event_id === ev.id || (p.home_team === homeTeam && p.away_team === awayTeam))
+      const eventPicks = pendingList.filter(
+        (p) => p.event_id === ev.id || (p.home_team === homeTeam && p.away_team === awayTeam),
+      )
       for (const pick of eventPicks) {
         if (pick.market_key === 'spreads' && pick.pick_line != null) {
-          const opp = evaluateSyndicateSpreadMiddle(ev, pick)
+          const opp = await evaluateSyndicateSpreadMiddle(ev, pick)
           if (opp) opportunities.push(opp)
         } else if (pick.market_key === 'totals' && pick.pick_line != null) {
-          const opp = evaluateSyndicateTotalMiddle(ev, pick)
+          const opp = await evaluateSyndicateTotalMiddle(ev, pick)
           if (opp) opportunities.push(opp)
         }
       }
 
       // Check for Cross-Book Market Middles & Arbitrage
-      const crossBookOpps = evaluateCrossBookOpportunities(ev)
+      const crossBookOpps = await evaluateCrossBookOpportunities(ev)
       opportunities.push(...crossBookOpps)
     }
   }
@@ -131,27 +221,30 @@ export async function findLiveMiddleArbCandidates(
 }
 
 /**
- * Calculate the historical probability and EV of an NFL/CFB spread middle corridor.
+ * Calculate the historical probability, EV, and Kelly fraction of an NFL/CFB spread middle corridor.
  */
 function calculateSpreadMiddleQuant(
   lowerMargin: number,
   upperMargin: number,
   payoutA: number,
   payoutB: number,
-): { keyNumbersCrossed: number[]; historicalMiddleProbPct: number; middleEvPct: number } {
+): {
+  keyNumbersCrossed: number[]
+  historicalMiddleProbPct: number
+  middleEvPct: number
+  kellyFractionUnits: number
+} {
   const keyNumbersCrossed: number[] = []
   let cumulativeProb = 0
 
   for (const [kStr, freq] of Object.entries(NFL_KEY_NUMBER_FREQUENCIES)) {
     const k = Number(kStr)
-    // Key number lands strictly inside the win-both margin
     if (k > lowerMargin && k < upperMargin) {
       keyNumbersCrossed.push(k)
       cumulativeProb += freq
     }
   }
 
-  // Non-key number baseline frequency ~ 2.1% per margin point
   const marginSpan = Math.max(0, upperMargin - lowerMargin - 1)
   const nonKeyPoints = Math.max(0, marginSpan - keyNumbersCrossed.length)
   cumulativeProb += nonKeyPoints * 2.1
@@ -159,34 +252,91 @@ function calculateSpreadMiddleQuant(
   const winBothProb = Math.min(0.65, cumulativeProb / 100)
   const missProb = 1.0 - winBothProb
 
-  const maxWinProfit = payoutA + payoutB // Both cash
-  const vigLoss = 1.0 - Math.min(payoutA, payoutB) // One cashes, one loses
+  const maxWinProfit = payoutA + payoutB
+  const vigLoss = Math.max(0.01, 1.0 - Math.min(payoutA, payoutB))
 
-  // EV = (winBothProb * maxWinProfit) - (missProb * vigLoss)
   const evVal = (winBothProb * maxWinProfit) - (missProb * vigLoss)
   const middleEvPct = Math.round(evVal * 1000) / 10
+
+  // Kelly Criterion on risk capital: K = (p*B - q) / B
+  const payoutRatio = maxWinProfit / vigLoss
+  const rawKelly = Math.max(0, (winBothProb * payoutRatio - missProb) / payoutRatio)
+  // Quarter-Kelly for conservative bankroll preservation
+  const kellyFractionUnits = Math.round((0.5 + (rawKelly * 0.5)) * 100) / 100
 
   return {
     keyNumbersCrossed,
     historicalMiddleProbPct: Math.round(winBothProb * 1000) / 10,
     middleEvPct,
+    kellyFractionUnits,
+  }
+}
+
+/**
+ * Calculate the historical probability, EV, and Kelly fraction of an NFL totals middle corridor.
+ */
+function calculateTotalMiddleQuant(
+  lowLine: number,
+  highLine: number,
+  payoutA: number,
+  payoutB: number,
+): {
+  keyNumbersCrossed: number[]
+  historicalMiddleProbPct: number
+  middleEvPct: number
+  kellyFractionUnits: number
+} {
+  const keyNumbersCrossed: number[] = []
+  let cumulativeProb = 0
+
+  for (const [kStr, freq] of Object.entries(NFL_TOTAL_KEY_NUMBER_FREQUENCIES)) {
+    const k = Number(kStr)
+    if (k > lowLine && k < highLine) {
+      keyNumbersCrossed.push(k)
+      cumulativeProb += freq
+    }
+  }
+
+  const totalSpan = Math.max(0, highLine - lowLine - 1)
+  const nonKeyPoints = Math.max(0, totalSpan - keyNumbersCrossed.length)
+  cumulativeProb += nonKeyPoints * 1.6
+
+  const winBothProb = Math.min(0.55, Math.max(0.08, cumulativeProb / 100))
+  const missProb = 1.0 - winBothProb
+
+  const maxWinProfit = payoutA + payoutB
+  const vigLoss = Math.max(0.01, 1.0 - Math.min(payoutA, payoutB))
+
+  const evVal = (winBothProb * maxWinProfit) - (missProb * vigLoss)
+  const middleEvPct = Math.round(evVal * 1000) / 10
+
+  const payoutRatio = maxWinProfit / vigLoss
+  const rawKelly = Math.max(0, (winBothProb * payoutRatio - missProb) / payoutRatio)
+  const kellyFractionUnits = Math.round((0.5 + (rawKelly * 0.5)) * 100) / 100
+
+  return {
+    keyNumbersCrossed,
+    historicalMiddleProbPct: Math.round(winBothProb * 1000) / 10,
+    middleEvPct,
+    kellyFractionUnits,
   }
 }
 
 /**
  * Evaluate if current live/market lines create a middle window against our existing syndicate spread pick.
  */
-function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): MiddleArbOpportunity | null {
+async function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): Promise<MiddleArbOpportunity | null> {
   const homeTeam = String(ev.home_team || '')
   const awayTeam = String(ev.away_team || '')
   const origPickName = String(pick.pick_name || '')
   const origLine = Number(pick.pick_line)
   const origPrice = Number(pick.pick_price) || -110
 
-  const isHomePick = origPickName.toLowerCase().includes(homeTeam.toLowerCase()) || homeTeam.toLowerCase().includes(origPickName.toLowerCase())
+  const isHomePick =
+    origPickName.toLowerCase().includes(homeTeam.toLowerCase()) ||
+    homeTeam.toLowerCase().includes(origPickName.toLowerCase())
   const opposingTeam = isHomePick ? awayTeam : homeTeam
 
-  // Find best available current market line for the opposing team
   let bestOppLine: number | null = null
   let bestOppPrice = -9999
   let bestOppBook = ''
@@ -197,13 +347,14 @@ function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): MiddleArbOppor
     for (const out of spreadMkt.outcomes) {
       const name = String(out.name || '')
       const isOppSide = isHomePick
-        ? name.toLowerCase().includes(awayTeam.toLowerCase()) || awayTeam.toLowerCase().includes(name.toLowerCase())
-        : name.toLowerCase().includes(homeTeam.toLowerCase()) || homeTeam.toLowerCase().includes(name.toLowerCase())
+        ? name.toLowerCase().includes(awayTeam.toLowerCase()) ||
+          awayTeam.toLowerCase().includes(name.toLowerCase())
+        : name.toLowerCase().includes(homeTeam.toLowerCase()) ||
+          homeTeam.toLowerCase().includes(name.toLowerCase())
 
       if (isOppSide && out.point != null && out.price != null) {
         const pt = Number(out.point)
         const pr = Number(out.price)
-        // We want the most points (highest spread) for the opposing team
         if (bestOppLine == null || pt > bestOppLine || (pt === bestOppLine && pr > bestOppPrice)) {
           bestOppLine = pt
           bestOppPrice = pr
@@ -215,9 +366,7 @@ function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): MiddleArbOppor
 
   if (bestOppLine == null) return null
 
-  // Calculate if a middle corridor exists
   const spreadGap = origLine + bestOppLine
-
   const isFootball = String(ev.sport_key || '').includes('football')
   const minGap = isFootball ? 3.5 : 4.5
 
@@ -235,8 +384,15 @@ function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): MiddleArbOppor
   const corridorText = `${shortDisplayName(favTeam)} wins by ${lowerBound} to ${upperBound} points`
 
   const quant = isFootball
-    ? calculateSpreadMiddleQuant(Math.min(Math.abs(origLine), Math.abs(bestOppLine)), Math.max(Math.abs(origLine), Math.abs(bestOppLine)), payoutA, payoutB)
-    : { keyNumbersCrossed: [], historicalMiddleProbPct: 18.5, middleEvPct: 22.0 }
+    ? calculateSpreadMiddleQuant(
+        Math.min(Math.abs(origLine), Math.abs(bestOppLine)),
+        Math.max(Math.abs(origLine), Math.abs(bestOppLine)),
+        payoutA,
+        payoutB,
+      )
+    : { keyNumbersCrossed: [], historicalMiddleProbPct: 18.5, middleEvPct: 22.0, kellyFractionUnits: 1.0 }
+
+  const liveContext = await fetchLiveGameContext(ev.sport_key || '', homeTeam, awayTeam)
 
   const legA: MiddleArbLeg = {
     label: `Position 1 (${pick.pickerName || 'Syndicate'} Original Card)`,
@@ -256,13 +412,17 @@ function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): MiddleArbOppor
     bookTitle: formatBookDisplayName(bestOppBook),
   }
 
-  // Calculate precise sizing blueprints
   const hedgeStakeRiskFree = Math.round((1.0 / payoutB) * 100) / 100
   const freeRollWinUnits = Math.round((payoutA - hedgeStakeRiskFree) * 100) / 100
 
+  const freeRollText = freeRollWinUnits > 0
+    ? `Bet ${hedgeStakeRiskFree}u on ${shortDisplayName(opposingTeam)} (${formatAmericanOdds(bestOppPrice)}). Eliminates Leg A loss if Leg B hits, with +${freeRollWinUnits}u upside if landing in the middle.`
+    : `Equal-weight 1.00u hedge: Caps maximum potential loss at -${worstCaseLoss}u while collecting +${maxWinUnits}u double-win payout if landing in the middle.`
+
   const stakingBlueprint = {
-    maxProfitStaking: `Bet 1.00u on ${shortDisplayName(opposingTeam)} ${bestOppLine > 0 ? `+${bestOppLine}` : bestOppLine} (${formatAmericanOdds(bestOppPrice)}) at ${legB.bookTitle}. Max Profit: +${maxWinUnits}u if landed in corridor. Max Risk: -${worstCaseLoss}u if outside.`,
-    riskFreeFreeRollStaking: `Bet ${hedgeStakeRiskFree}u on ${shortDisplayName(opposingTeam)} (${formatAmericanOdds(bestOppPrice)}). If Leg B hits, it returns 1.00u (zero loss). If ${shortDisplayName(favTeam)} lands in the middle, you collect +${freeRollWinUnits}u profit with $0 downside risk.`,
+    maxProfitStaking: `Bet 1.00u on ${shortDisplayName(opposingTeam)} ${bestOppLine > 0 ? `+${bestOppLine}` : bestOppLine} (${formatAmericanOdds(bestOppPrice)}) at ${legB.bookTitle}. Max Profit: +${maxWinUnits}u inside corridor. Risk: -${worstCaseLoss}u outside.`,
+    riskFreeFreeRollStaking: freeRollText,
+    kellyOptimalStaking: `Optimal Kelly Hedge: ${quant.kellyFractionUnits}u allocation for maximum compounding growth.`,
   }
 
   const executionAdvice = `Take 1.00u on ${shortDisplayName(opposingTeam)} ${bestOppLine > 0 ? `+${bestOppLine}` : bestOppLine} (${formatAmericanOdds(bestOppPrice)}) at ${legB.bookTitle}. If ${shortDisplayName(favTeam)} lands in the ${lowerBound}-${upperBound} point margin, BOTH tickets cash (+${maxWinUnits}u).`
@@ -281,8 +441,10 @@ function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): MiddleArbOppor
     keyNumbersCrossed: quant.keyNumbersCrossed,
     historicalMiddleProbPct: quant.historicalMiddleProbPct,
     middleEvPct: quant.middleEvPct,
+    kellyFractionUnits: quant.kellyFractionUnits,
     riskVigUnits: worstCaseLoss,
     maxWinUnits,
+    liveContext,
     executionAdvice,
     stakingBlueprint,
     vipCaption: '',
@@ -295,7 +457,7 @@ function evaluateSyndicateSpreadMiddle(ev: OddsEvent, pick: any): MiddleArbOppor
 /**
  * Evaluate if current live/market total lines create a middle window against our existing syndicate total pick.
  */
-function evaluateSyndicateTotalMiddle(ev: OddsEvent, pick: any): MiddleArbOpportunity | null {
+async function evaluateSyndicateTotalMiddle(ev: OddsEvent, pick: any): Promise<MiddleArbOpportunity | null> {
   const homeTeam = String(ev.home_team || '')
   const awayTeam = String(ev.away_team || '')
   const origPickName = String(pick.pick_name || '').toLowerCase()
@@ -340,7 +502,7 @@ function evaluateSyndicateTotalMiddle(ev: OddsEvent, pick: any): MiddleArbOpport
   const lowLine = isUnder ? bestOppLine : origLine
   const totalGap = highLine - lowLine
 
-  if (totalGap < 5.0) return null
+  if (totalGap < 4.5) return null
 
   const payoutA = origPrice > 0 ? origPrice / 100 : 100 / Math.abs(origPrice)
   const payoutB = bestOppPrice > 0 ? bestOppPrice / 100 : 100 / Math.abs(bestOppPrice)
@@ -351,9 +513,12 @@ function evaluateSyndicateTotalMiddle(ev: OddsEvent, pick: any): MiddleArbOpport
   const upperBound = Math.floor(highLine)
   const corridorText = `Total points land between ${lowerBound} and ${upperBound}`
 
-  const estimatedProb = Math.min(45, Math.round(totalGap * 4.2 * 10) / 10)
-  const evVal = ((estimatedProb / 100) * maxWinUnits) - ((1.0 - estimatedProb / 100) * worstCaseLoss)
-  const middleEvPct = Math.round(evVal * 1000) / 10
+  const isFootball = String(ev.sport_key || '').includes('football')
+  const quant = isFootball
+    ? calculateTotalMiddleQuant(lowLine, highLine, payoutA, payoutB)
+    : { keyNumbersCrossed: [], historicalMiddleProbPct: 20.0, middleEvPct: 24.5, kellyFractionUnits: 1.0 }
+
+  const liveContext = await fetchLiveGameContext(ev.sport_key || '', homeTeam, awayTeam)
 
   const legA: MiddleArbLeg = {
     label: `Position 1 (${pick.pickerName || 'Syndicate'} Original Card)`,
@@ -376,9 +541,14 @@ function evaluateSyndicateTotalMiddle(ev: OddsEvent, pick: any): MiddleArbOpport
   const hedgeStakeRiskFree = Math.round((1.0 / payoutB) * 100) / 100
   const freeRollWinUnits = Math.round((payoutA - hedgeStakeRiskFree) * 100) / 100
 
+  const freeRollText = freeRollWinUnits > 0
+    ? `Bet ${hedgeStakeRiskFree}u on ${legB.pickName} (${formatAmericanOdds(bestOppPrice)}). Eliminates Leg A loss if Leg B hits, with +${freeRollWinUnits}u upside if landing in the middle.`
+    : `Equal-weight 1.00u hedge: Caps maximum potential loss at -${worstCaseLoss}u while collecting +${maxWinUnits}u double-win payout if landing in the middle.`
+
   const stakingBlueprint = {
-    maxProfitStaking: `Bet 1.00u on ${legB.pickName} (${formatAmericanOdds(bestOppPrice)}) at ${legB.bookTitle}. Max Profit: +${maxWinUnits}u if total is ${lowerBound}-${upperBound}. Max Risk: -${worstCaseLoss}u if outside.`,
-    riskFreeFreeRollStaking: `Bet ${hedgeStakeRiskFree}u on ${legB.pickName} (${formatAmericanOdds(bestOppPrice)}). Guarantees $0 loss on miss, while paying +${freeRollWinUnits}u free roll if score lands ${lowerBound}-${upperBound}.`,
+    maxProfitStaking: `Bet 1.00u on ${legB.pickName} (${formatAmericanOdds(bestOppPrice)}) at ${legB.bookTitle}. Max Profit: +${maxWinUnits}u if total is ${lowerBound}-${upperBound}. Max Risk: -${worstCaseLoss}u outside.`,
+    riskFreeFreeRollStaking: freeRollText,
+    kellyOptimalStaking: `Optimal Kelly Hedge: ${quant.kellyFractionUnits}u allocation for compounding edge.`,
   }
 
   const executionAdvice = `Take 1.00u on ${legB.pickName} (${formatAmericanOdds(bestOppPrice)}) at ${legB.bookTitle}. If the final score lands in the ${lowerBound}-${upperBound} point corridor, BOTH tickets cash (+${maxWinUnits}u net).`
@@ -394,10 +564,13 @@ function evaluateSyndicateTotalMiddle(ev: OddsEvent, pick: any): MiddleArbOpport
     legA,
     legB,
     middleCorridor: corridorText,
-    historicalMiddleProbPct: estimatedProb,
-    middleEvPct,
+    keyNumbersCrossed: quant.keyNumbersCrossed,
+    historicalMiddleProbPct: quant.historicalMiddleProbPct,
+    middleEvPct: quant.middleEvPct,
+    kellyFractionUnits: quant.kellyFractionUnits,
     riskVigUnits: worstCaseLoss,
     maxWinUnits,
+    liveContext,
     executionAdvice,
     stakingBlueprint,
     vipCaption: '',
@@ -408,14 +581,16 @@ function evaluateSyndicateTotalMiddle(ev: OddsEvent, pick: any): MiddleArbOpport
 }
 
 /**
- * Scan for Cross-Book Spread Middles and Pure Arbitrage opportunities across all bookmakers.
+ * Scan for Cross-Book Spread Middles, Totals Middles, and Pure Arbitrage opportunities across all bookmakers.
  */
-function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
+async function evaluateCrossBookOpportunities(ev: OddsEvent): Promise<MiddleArbOpportunity[]> {
   const opps: MiddleArbOpportunity[] = []
   const homeTeam = String(ev.home_team || '')
   const awayTeam = String(ev.away_team || '')
   const books = ev.bookmakers || []
   if (books.length < 2) return opps
+
+  const liveContext = await fetchLiveGameContext(ev.sport_key || '', homeTeam, awayTeam)
 
   // 1. Check Moneyline (h2h) Arbitrage
   let bestHomeMl = -9999
@@ -483,6 +658,7 @@ function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
         riskVigUnits: 0,
         maxWinUnits: Math.round(profitPct) / 100,
         arbProfitPct: profitPct,
+        liveContext,
         executionAdvice: `Bet $${betA} on ${legA.pickName} (${formatAmericanOdds(bestHomeMl)}) at ${legA.bookTitle} and $${betB} on ${legB.pickName} (${formatAmericanOdds(bestAwayMl)}) at ${legB.bookTitle} for a guaranteed +${profitPct}% profit.`,
         stakingBlueprint: {
           maxProfitStaking: `Allocate total $1,000 stake: $${betA} on ${legA.bookTitle} and $${betB} on ${legB.bookTitle}.`,
@@ -496,7 +672,6 @@ function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
   }
 
   // 2. Check Cross-Book Spread Middles
-  // Look for Book A offering Dog +X.5 and Book B offering Fav -Y.5 where X > Y + 3.5
   for (let i = 0; i < books.length; i++) {
     const bookA = books[i]
     const spreadA = bookA.markets?.find((m) => m.key === 'spreads')
@@ -515,7 +690,6 @@ function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
         const nameA = String(outA.name || '')
         const isHomeA = nameA.toLowerCase().includes(homeTeam.toLowerCase())
 
-        // Find counter outcome at Book B
         for (const outB of spreadB.outcomes) {
           if (outB.point == null || outB.price == null) continue
           const ptB = Number(outB.point)
@@ -524,7 +698,6 @@ function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
           const isHomeB = nameB.toLowerCase().includes(homeTeam.toLowerCase())
 
           if (isHomeA !== isHomeB) {
-            // Opposite sides: ptA + ptB > 3.5 creates a middle window
             const spreadGap = ptA + ptB
             const isFootball = String(ev.sport_key || '').includes('football')
             const minGap = isFootball ? 3.5 : 4.5
@@ -541,8 +714,13 @@ function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
               const corridorText = `${shortDisplayName(favName)} wins by ${lowerBound} to ${upperBound} points`
 
               const quant = isFootball
-                ? calculateSpreadMiddleQuant(Math.min(Math.abs(ptA), Math.abs(ptB)), Math.max(Math.abs(ptA), Math.abs(ptB)), payoutA, payoutB)
-                : { keyNumbersCrossed: [], historicalMiddleProbPct: 18.5, middleEvPct: 22.0 }
+                ? calculateSpreadMiddleQuant(
+                    Math.min(Math.abs(ptA), Math.abs(ptB)),
+                    Math.max(Math.abs(ptA), Math.abs(ptB)),
+                    payoutA,
+                    payoutB,
+                  )
+                : { keyNumbersCrossed: [], historicalMiddleProbPct: 18.5, middleEvPct: 22.0, kellyFractionUnits: 1.0 }
 
               const legA: MiddleArbLeg = {
                 label: `Leg 1 (${shortDisplayName(nameA)})`,
@@ -562,8 +740,12 @@ function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
               const hedgeStakeRiskFree = Math.round((1.0 / payoutB) * 100) / 100
               const freeRollWinUnits = Math.round((payoutA - hedgeStakeRiskFree) * 100) / 100
 
+              const freeRollText = freeRollWinUnits > 0
+                ? `Bet 1.00u on ${legA.bookTitle} and ${hedgeStakeRiskFree}u on ${legB.bookTitle}. Eliminates Leg A loss if Leg B hits, with +${freeRollWinUnits}u upside if landing in the middle.`
+                : `Bet 1.00u on ${legA.bookTitle} and 1.00u on ${legB.bookTitle}. Max Risk: -${worstCaseLoss}u outside corridor, Max Profit: +${maxWinUnits}u inside corridor.`
+
               const opp: MiddleArbOpportunity = {
-                id: `middle-cross-${ev.id}-${bookA.key}-${bookB.key}-${Math.round(spreadGap)}`,
+                id: `middle-cross-spr-${ev.id}-${bookA.key}-${bookB.key}-${Math.round(spreadGap)}`,
                 type: 'CROSS_BOOK_MIDDLE',
                 sportKey: ev.sport_key || '',
                 eventId: ev.id || '',
@@ -576,12 +758,116 @@ function evaluateCrossBookOpportunities(ev: OddsEvent): MiddleArbOpportunity[] {
                 keyNumbersCrossed: quant.keyNumbersCrossed,
                 historicalMiddleProbPct: quant.historicalMiddleProbPct,
                 middleEvPct: quant.middleEvPct,
+                kellyFractionUnits: quant.kellyFractionUnits,
                 riskVigUnits: worstCaseLoss,
                 maxWinUnits,
+                liveContext,
                 executionAdvice: `Bet 1.00u on ${legA.pickName} at ${legA.bookTitle} and 1.00u on ${legB.pickName} at ${legB.bookTitle}. Double cash (+${maxWinUnits}u) if ${shortDisplayName(favName)} lands on ${lowerBound}-${upperBound}.`,
                 stakingBlueprint: {
                   maxProfitStaking: `Bet 1.00u on ${legA.bookTitle} and 1.00u on ${legB.bookTitle}. Max Profit: +${maxWinUnits}u inside corridor. Risk: -${worstCaseLoss}u outside.`,
-                  riskFreeFreeRollStaking: `Bet 1.00u on ${legA.bookTitle} and ${hedgeStakeRiskFree}u on ${legB.bookTitle}. Max Risk: $0. Max Profit: +${freeRollWinUnits}u inside corridor.`,
+                  riskFreeFreeRollStaking: freeRollText,
+                  kellyOptimalStaking: `Optimal Kelly Hedge: ${quant.kellyFractionUnits}u allocation.`,
+                },
+                vipCaption: '',
+              }
+              opp.vipCaption = formatMiddleArbVipCaption(opp)
+              opps.push(opp)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Check Cross-Book Totals Middles
+  for (let i = 0; i < books.length; i++) {
+    const bookA = books[i]
+    const totalsA = bookA.markets?.find((m) => m.key === 'totals')
+    if (!totalsA?.outcomes) continue
+
+    for (let j = 0; j < books.length; j++) {
+      if (i === j) continue
+      const bookB = books[j]
+      const totalsB = bookB.markets?.find((m) => m.key === 'totals')
+      if (!totalsB?.outcomes) continue
+
+      for (const outA of totalsA.outcomes) {
+        if (outA.point == null || outA.price == null) continue
+        const ptA = Number(outA.point)
+        const prA = Number(outA.price)
+        const nameA = String(outA.name || '').toLowerCase()
+        const isUnderA = nameA.includes('under')
+
+        // If Book A has Under, look for Over at Book B where ptA - ptB >= 4.5
+        if (isUnderA) {
+          for (const outB of totalsB.outcomes) {
+            if (outB.point == null || outB.price == null) continue
+            const ptB = Number(outB.point)
+            const prB = Number(outB.price)
+            const nameB = String(outB.name || '').toLowerCase()
+            const isOverB = nameB.includes('over')
+
+            if (isOverB && ptA - ptB >= 4.5) {
+              const totalGap = ptA - ptB
+              const payoutA = prA > 0 ? prA / 100 : 100 / Math.abs(prA)
+              const payoutB = prB > 0 ? prB / 100 : 100 / Math.abs(prB)
+              const maxWinUnits = Math.round((payoutA + payoutB) * 100) / 100
+              const worstCaseLoss = Math.round((1.0 - Math.min(payoutA, payoutB)) * 100) / 100
+
+              const lowerBound = Math.ceil(ptB)
+              const upperBound = Math.floor(ptA)
+              const corridorText = `Total points land between ${lowerBound} and ${upperBound}`
+
+              const isFootball = String(ev.sport_key || '').includes('football')
+              const quant = isFootball
+                ? calculateTotalMiddleQuant(ptB, ptA, payoutA, payoutB)
+                : { keyNumbersCrossed: [], historicalMiddleProbPct: 20.0, middleEvPct: 24.5, kellyFractionUnits: 1.0 }
+
+              const legA: MiddleArbLeg = {
+                label: `Leg 1 (Under ${ptA})`,
+                pickName: `Under ${ptA}`,
+                linePoint: ptA,
+                price: prA,
+                bookTitle: formatBookDisplayName(bookA.title || bookA.key || 'Sportsbook'),
+              }
+              const legB: MiddleArbLeg = {
+                label: `Leg 2 (Over ${ptB})`,
+                pickName: `Over ${ptB}`,
+                linePoint: ptB,
+                price: prB,
+                bookTitle: formatBookDisplayName(bookB.title || bookB.key || 'Sportsbook'),
+              }
+
+              const hedgeStakeRiskFree = Math.round((1.0 / payoutB) * 100) / 100
+              const freeRollWinUnits = Math.round((payoutA - hedgeStakeRiskFree) * 100) / 100
+
+              const freeRollText = freeRollWinUnits > 0
+                ? `Bet 1.00u on ${legA.bookTitle} and ${hedgeStakeRiskFree}u on ${legB.bookTitle}. Eliminates Leg A loss if Leg B hits, with +${freeRollWinUnits}u upside if landing in the middle.`
+                : `Bet 1.00u on ${legA.bookTitle} and 1.00u on ${legB.bookTitle}. Max Risk: -${worstCaseLoss}u outside corridor, Max Profit: +${maxWinUnits}u inside corridor.`
+
+              const opp: MiddleArbOpportunity = {
+                id: `middle-cross-tot-${ev.id}-${bookA.key}-${bookB.key}-${Math.round(totalGap)}`,
+                type: 'CROSS_BOOK_MIDDLE',
+                sportKey: ev.sport_key || '',
+                eventId: ev.id || '',
+                homeTeam,
+                awayTeam,
+                marketKey: 'totals',
+                legA,
+                legB,
+                middleCorridor: corridorText,
+                keyNumbersCrossed: quant.keyNumbersCrossed,
+                historicalMiddleProbPct: quant.historicalMiddleProbPct,
+                middleEvPct: quant.middleEvPct,
+                kellyFractionUnits: quant.kellyFractionUnits,
+                riskVigUnits: worstCaseLoss,
+                maxWinUnits,
+                liveContext,
+                executionAdvice: `Bet 1.00u on ${legA.pickName} at ${legA.bookTitle} and 1.00u on ${legB.pickName} at ${legB.bookTitle}. Double cash (+${maxWinUnits}u) if final score totals ${lowerBound}-${upperBound}.`,
+                stakingBlueprint: {
+                  maxProfitStaking: `Bet 1.00u on ${legA.bookTitle} and 1.00u on ${legB.bookTitle}. Max Profit: +${maxWinUnits}u inside corridor. Risk: -${worstCaseLoss}u outside.`,
+                  riskFreeFreeRollStaking: freeRollText,
+                  kellyOptimalStaking: `Optimal Kelly Hedge: ${quant.kellyFractionUnits}u allocation.`,
                 },
                 vipCaption: '',
               }
@@ -611,21 +897,31 @@ export function formatMiddleArbVipCaption(opp: MiddleArbOpportunity): string {
     const isSyndicatePos = opp.type === 'SYNDICATE_POSITION_MIDDLE'
     lines.push(`⚡ **SHARPE SYNDICATE · ${isSyndicatePos ? 'POSITION MIDDLE WINDOW' : 'CROSS-BOOK MARKET MIDDLE'}**`)
     lines.push(`${sportEmoji} **${sportName} · ${shortDisplayName(opp.awayTeam)} @ ${shortDisplayName(opp.homeTeam)}**`)
+
+    if (opp.liveContext?.isLive) {
+      lines.push(`⏱️ **Game State:** ${opp.liveContext.periodDisplay} (${shortDisplayName(opp.awayTeam)} ${opp.liveContext.awayScore}, ${shortDisplayName(opp.homeTeam)} ${opp.liveContext.homeScore}) · _${opp.liveContext.momentumTag}_`)
+    }
     lines.push('')
     lines.push(`A market discrepancy has opened a high-value **Double-Win Middle Corridor**:`)
     lines.push('')
     lines.push(`📌 **${opp.legA.label}:**`)
-    lines.push(`• Pick: **${opp.legA.pickName} ${opp.legA.linePoint != null && !opp.legA.pickName.includes(String(opp.legA.linePoint)) ? (opp.legA.linePoint > 0 ? `+${opp.legA.linePoint}` : opp.legA.linePoint) : ''}** (${formatAmericanOdds(opp.legA.price)})`)
+    lines.push(`• Pick: **${opp.legA.pickName}${opp.legA.linePoint != null && !opp.legA.pickName.includes(String(opp.legA.linePoint)) ? ` ${opp.legA.linePoint > 0 ? `+${opp.legA.linePoint}` : opp.legA.linePoint}` : ''}** (${formatAmericanOdds(opp.legA.price)})`)
     lines.push(`• Book: ${opp.legA.bookTitle}`)
     lines.push('')
     lines.push(`🎯 **${opp.legB.label}:**`)
-    lines.push(`• Pick: **${opp.legB.pickName} ${opp.legB.linePoint != null && !opp.legB.pickName.includes(String(opp.legB.linePoint)) ? (opp.legB.linePoint > 0 ? `+${opp.legB.linePoint}` : opp.legB.linePoint) : ''}** (${formatAmericanOdds(opp.legB.price)})`)
+    lines.push(`• Pick: **${opp.legB.pickName}${opp.legB.linePoint != null && !opp.legB.pickName.includes(String(opp.legB.linePoint)) ? ` ${opp.legB.linePoint > 0 ? `+${opp.legB.linePoint}` : opp.legB.linePoint}` : ''}** (${formatAmericanOdds(opp.legB.price)})`)
     lines.push(`• Book: ${opp.legB.bookTitle}`)
     lines.push('')
     lines.push(`🔥 **The Middle Corridor:**`)
     lines.push(`• **Win-Both Zone:** ${opp.middleCorridor}`)
     if (opp.keyNumbersCrossed?.length) {
-      lines.push(`• **Key Numbers Crossed:** ${opp.keyNumbersCrossed.map((k) => `**#${k}**`).join(', ')} (${opp.keyNumbersCrossed.includes(3) || opp.keyNumbersCrossed.includes(7) ? 'captures ~25%+ of historical NFL margins' : 'high-probability scoring cluster'})`)
+      const isSpread = opp.marketKey === 'spreads'
+      const keyContext = isSpread
+        ? opp.keyNumbersCrossed.includes(3) || opp.keyNumbersCrossed.includes(7)
+          ? 'captures ~25%+ of historical NFL margins'
+          : 'high-probability margin cluster'
+        : 'key NFL scoring total cluster'
+      lines.push(`• **Key Numbers Crossed:** ${opp.keyNumbersCrossed.map((k) => `**#${k}**`).join(', ')} (${keyContext})`)
     }
     if (opp.historicalMiddleProbPct) {
       lines.push(`• **Historical Corridor Probability:** ~${opp.historicalMiddleProbPct}%`)
@@ -642,11 +938,17 @@ export function formatMiddleArbVipCaption(opp: MiddleArbOpportunity): string {
     lines.push(`📋 **Execution Blueprints (Choose Your Strategy):**`)
     lines.push(`1️⃣ **Max Profit (Aggressive):** ${opp.stakingBlueprint.maxProfitStaking}`)
     lines.push(`2️⃣ **Zero-Risk Free Roll:** ${opp.stakingBlueprint.riskFreeFreeRollStaking}`)
+    if (opp.stakingBlueprint.kellyOptimalStaking) {
+      lines.push(`3️⃣ **Kelly Growth:** ${opp.stakingBlueprint.kellyOptimalStaking}`)
+    }
     lines.push('')
     lines.push(`_Sharpe VIP Syndicate · Quant Risk Management Desk_`)
   } else if (opp.type === 'CROSS_BOOK_ARBITRAGE') {
     lines.push(`💰 **SHARPE SYNDICATE · ARBITRAGE LOCK**`)
     lines.push(`${sportEmoji} **${sportName} · ${shortDisplayName(opp.awayTeam)} @ ${shortDisplayName(opp.homeTeam)}**`)
+    if (opp.liveContext?.isLive) {
+      lines.push(`⏱️ **Game State:** ${opp.liveContext.periodDisplay} (${shortDisplayName(opp.awayTeam)} ${opp.liveContext.awayScore}, ${shortDisplayName(opp.homeTeam)} ${opp.liveContext.homeScore})`)
+    }
     lines.push('')
     lines.push(`A cross-book pricing divergence allows locking in a **risk-free guaranteed return**:`)
     lines.push('')

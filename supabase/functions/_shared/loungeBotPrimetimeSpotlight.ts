@@ -26,6 +26,7 @@ import {
   loadDbTeamMetricsMap,
   type TrenchEpaMatchupSummary,
 } from './loungeBotTeamMetrics.ts'
+import { analyzeFootballKeyNumbers } from './loungeBotKeyNumbers.ts'
 
 export type PrimetimeGameType = 'TNF' | 'SNF' | 'MNF' | 'PRIMETIME'
 
@@ -201,23 +202,32 @@ export async function findPrimetimeGameCandidate(
   const overDisp = `Over ${totalPoint}`
   const underDisp = `Under ${totalPoint}`
 
+  const homeKeyAnalysis = analyzeFootballKeyNumbers(spreadPoint)
+  const awayKeyAnalysis = analyzeFootballKeyNumbers(spreadPoint != null ? -spreadPoint : null)
+
   // 1. Scott (The Model / Net EPA)
   const epaFavorsHome = (trenchEpa?.netEpaDeltaHome ?? 0) >= 0.03
   const scottSide = epaFavorsHome ? 'home' : 'away'
   const scottTeam = scottSide === 'home' ? homeTeam : awayTeam
   const scottLineDisp = scottSide === 'home' ? homeSpreadDisp : awaySpreadDisp
+  const scottKeyTag = (scottSide === 'home' ? homeKeyAnalysis?.isKeyNumber : awayKeyAnalysis?.isKeyNumber)
+    ? ' [Key Margin]'
+    : ''
   const scottBullet = trenchEpa?.isEpaMismatch
-    ? `Net EPA/play favors ${shortDisplayName(scottTeam)} by +${Math.abs(trenchEpa.netEpaDeltaHome).toFixed(3)} pts/play (Model spread: ${trenchEpa.epaSpreadImpactHome > 0 ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)} ${Math.abs(trenchEpa.epaSpreadImpactHome).toFixed(1)}).`
-    : `Model rates ${shortDisplayName(scottTeam)} with an efficiency edge in high-leverage passing situations.`
+    ? `Net EPA/play favors ${shortDisplayName(scottTeam)} by +${Math.abs(trenchEpa.netEpaDeltaHome).toFixed(3)} pts/play (Model spread: ${trenchEpa.epaSpreadImpactHome > 0 ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)} ${Math.abs(trenchEpa.epaSpreadImpactHome).toFixed(1)}).${scottKeyTag}`
+    : `Model rates ${shortDisplayName(scottTeam)} with an efficiency edge in high-leverage passing situations.${scottKeyTag}`
 
   // 2. Rocco (Trenches & Pressure Rates)
   const trenchFavorsHome = (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0
   const roccoSide = trenchFavorsHome ? 'home' : 'away'
   const roccoTeam = roccoSide === 'home' ? homeTeam : awayTeam
   const roccoLineDisp = roccoSide === 'home' ? homeSpreadDisp : awaySpreadDisp
+  const roccoKeyTaxTag = (roccoSide === 'home' ? homeKeyAnalysis?.isHookTax : awayKeyAnalysis?.isHookTax)
+    ? ' [Hook Tax Alert]'
+    : ''
   const roccoBullet = trenchEpa?.isTrenchMismatch
-    ? `Trench Mismatch: ${shortDisplayName(roccoTeam)} holds a decisive edge in Pass Block Win Rate vs opponent pressure front.`
-    : `Offensive line protection grades higher in short-yardage and goal-to-go situations.`
+    ? `Trench Mismatch: ${shortDisplayName(roccoTeam)} holds a decisive edge in Pass Block Win Rate vs opponent pressure front.${roccoKeyTaxTag}`
+    : `Offensive line protection grades higher in short-yardage and goal-to-go situations.${roccoKeyTaxTag}`
 
   // 3. Tank (Climate, Pace & Totals)
   const isUnderLean = (weather?.isHighWind || weather?.isExtremeCold) || (totalPoint >= 47.0 && (trenchEpa?.awayNetEpa ?? 0) < 0)
@@ -235,9 +245,12 @@ export async function findPrimetimeGameCandidate(
       : (spreadPoint > 0 ? 'home' : 'away')
   const cheddaTeam = sharpDogSide === 'home' ? homeTeam : awayTeam
   const cheddaLineDisp = sharpDogSide === 'home' ? homeSpreadDisp : awaySpreadDisp
+  const cheddaGoldenTag = (cheddaTeam === homeTeam ? homeKeyAnalysis?.isHookGolden : awayKeyAnalysis?.isHookGolden)
+    ? ' [Golden Hook · Key #3/7 Cluster]'
+    : ''
   const cheddaBullet = splits.isSharpDivergence
-    ? `${splits.summaryLine}. Backing the live dog with pro money support.`
-    : `Taking points with ${shortDisplayName(cheddaTeam)} on key numbers against over-inflated chalk.`
+    ? `${splits.summaryLine}. Backing the live dog with pro money support.${cheddaGoldenTag}`
+    : `Taking points with ${shortDisplayName(cheddaTeam)} on key numbers against over-inflated chalk.${cheddaGoldenTag}`
 
   // Consensus Primary Recommendation
   const homeVotes = (scottSide === 'home' ? 1 : 0) + (roccoSide === 'home' ? 1 : 0) + (cheddaTeam === homeTeam ? 1 : 0)

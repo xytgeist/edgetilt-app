@@ -8,6 +8,7 @@ import {
   invokeLoungeOddsWongTeaser,
   invokeLoungeOddsPrimetimeSpotlight,
   invokeLoungeOddsWeeklyRecap,
+  invokeLoungeOddsHalftimePivot,
 } from './botPortalApi.js'
 import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
@@ -260,6 +261,33 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropHalftimePivot = async (dryRun = false) => {
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsHalftimePivot(supabaseClient, {
+        slug: botSlug,
+        dryRun,
+      })
+      if (error) {
+        setToast?.(`Halftime Pivot failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        const pv = data?.pivot
+        setToast?.(`[Dry Run] Halftime Pivot: ${pv?.awayTeam} @ ${pv?.homeTeam} (${pv?.awayScore}-${pv?.homeScore}) · Rec: ${pv?.pivotRecommendation}`)
+      } else if (data?.ok) {
+        setToast?.(`Published Halftime Pivot to Sharpe VIP chat!`)
+        await loadData()
+      } else {
+        setToast?.(data?.message || 'No live NFL game currently at halftime.')
+      }
+    } catch (err) {
+      setToast?.(`Halftime Pivot error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
 
@@ -480,6 +508,27 @@ export function BotSharpDeskPanel({
                     disabled={busy || dropping || loading}
                     onClick={() => handleDropWeeklyRecap(false)}
                     className="rounded bg-emerald-600/80 hover:bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                  >
+                    Publish
+                  </button>
+                </div>
+
+                {/* Halftime Pivot (VIP Sub-Chat) */}
+                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
+                  <span className="font-semibold text-cyan-300 text-[11px]">⚡ Halftime Pivot:</span>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropHalftimePivot(true)}
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropHalftimePivot(false)}
+                    className="rounded bg-cyan-600/80 hover:bg-cyan-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
                   >
                     Publish
                   </button>

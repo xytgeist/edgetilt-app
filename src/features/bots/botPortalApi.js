@@ -585,6 +585,25 @@ export async function invokeLoungeOddsWeeklyRecap(supabaseClient, opts = {}) {
 }
 
 /**
+ * Trigger on-demand generation and publishing of NFL Halftime Pivot into Scott's VIP Sub-Chat.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ */
+export async function invokeLoungeOddsHalftimePivot(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'nfl_halftime_pivot',
+      dryRun: opts.dryRun === true,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Halftime pivot failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Publish one example Lounge post per Scott alert type (portal smoke pack).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, weekly_syndicate_recap, or calibrate_persona_models.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, weekly_syndicate_recap, or calibrate_persona_models.',
       })
     }
 
@@ -317,6 +317,39 @@ Deno.serve(async (req) => {
         ok: true,
         action: 'nfl_primetime_spotlight',
         spotlight,
+        ...result,
+      })
+    }
+
+    if (action === 'nfl_halftime_pivot') {
+      const {
+        findHalftimePivotCandidate,
+        publishHalftimePivotToVip,
+      } = await import('../_shared/loungeBotHalftimePivot.ts')
+
+      const pivot = await findHalftimePivotCandidate(admin, 'americanfootball_nfl')
+      if (!pivot) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'nfl_halftime_pivot',
+          message: 'No active NFL game found for halftime pivot analysis.',
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          action: 'nfl_halftime_pivot',
+          pivot,
+        })
+      }
+
+      const result = await publishHalftimePivotToVip(admin, bot.user_id, pivot)
+      return adminOpsJson(200, {
+        ok: result.ok,
+        action: 'nfl_halftime_pivot',
+        pivot,
         ...result,
       })
     }

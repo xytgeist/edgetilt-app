@@ -147,6 +147,14 @@ export function formatSoloPredictiveCaption(
   if (cfbMatchup && cfbMatchup.summaryLine) {
     lines.push(`\n📈 ${cfbMatchup.summaryLine}`)
   }
+  if (pick.marketKey === 'spreads' && (pick.sportKey?.includes('nfl') || pick.sportKey?.includes('americanfootball'))) {
+    const keyAnalysis = analyzeFootballKeyNumbers(pick.linePoint)
+    if (keyAnalysis.isHookGolden && keyAnalysis.sharpRecommendation) {
+      lines.push(`\n⚡ Key Number Edge: ${keyAnalysis.sharpRecommendation}`)
+    } else if (keyAnalysis.isHookTax && keyAnalysis.hookWarning) {
+      lines.push(`\n⚠️ Key Margin Note: ${keyAnalysis.hookWarning}`)
+    }
+  }
 
   return lines.join('')
 }

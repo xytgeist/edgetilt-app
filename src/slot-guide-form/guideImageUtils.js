@@ -5,12 +5,14 @@ export function useBlobObjectUrl(file) {
   const [url, setUrl] = useState(null)
   useEffect(() => {
     if (!file) {
-      setUrl(null)
       return undefined
     }
     const objectUrl = URL.createObjectURL(file)
     setUrl(objectUrl)
-    return () => URL.revokeObjectURL(objectUrl)
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+      setUrl(null)
+    }
   }, [file])
   return url
 }

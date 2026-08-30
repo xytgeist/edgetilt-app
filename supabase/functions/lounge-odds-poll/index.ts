@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, or predictive_pick.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, or nfl_slate_card.',
       })
     }
 
@@ -160,6 +160,64 @@ Deno.serve(async (req) => {
       return adminOpsJson(200, { ok: true, action: 'grade_picks', ...gradeResult })
     }
 
+    if (action === 'nfl_slate_card') {
+      const {
+        buildNflAtsSlateCard,
+        publishAndRecordNflSlateCard,
+      } = await import('../_shared/loungeBotPredictivePick.ts')
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+
+      const sportKey = String(body?.sportKey || 'americanfootball_nfl').trim()
+      let oddsData: any
+      try {
+        oddsData = await fetchSportOdds(sportKey, ['us'], ['spreads'])
+      } catch (e) {
+        return adminOpsJson(500, { ok: false, error: `Failed to fetch odds for ${sportKey}: ${e}` })
+      }
+
+      const events = oddsData?.events || []
+      const card = buildNflAtsSlateCard(events, {
+        cardTitle: body?.cardTitle,
+        sportKey,
+      })
+
+      if (!card) {
+        return adminOpsJson(200, {
+          ok: false,
+          message: `No active games with spread markets found for ${sportKey}.`,
+          totalEvents: events.length,
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          totalGames: card.games.length,
+          hammersCount: card.hammers.length,
+          consensusCount: card.consensus.length,
+          splitsCount: card.splits.length,
+          card,
+        })
+      }
+
+      const result = await publishAndRecordNflSlateCard(admin, {
+        botUserId: bot.user_id,
+        card,
+        categoryPills: bot.category_pills_default || ['sports'],
+      })
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'nfl_slate_card',
+        totalGames: card.games.length,
+        hammersCount: card.hammers.length,
+        consensusCount: card.consensus.length,
+        splitsCount: card.splits.length,
+        ...result,
+      })
+    }
+
     if (action === 'predictive_pick') {
       const {
         buildSyndicateCard,
@@ -175,7 +233,14 @@ Deno.serve(async (req) => {
       const scanTargetsModule = await loadScanTargetsModules()
       const scanTargets = await scanTargetsModule.resolveScottScanTargets(admin, activeSports, sportTitles)
 
-      const targetSport = body?.sportKey ? [body.sportKey] : scanTargets.slice(0, 4).map((t) => t.sportKey)
+      // Priority sort scan targets so NFL and CFB are scanned first
+      const sortedTargets = [...scanTargets].sort((a, b) => {
+        const aIsFootball = a.sportKey.startsWith('americanfootball_') ? 1 : 0
+        const bIsFootball = b.sportKey.startsWith('americanfootball_') ? 1 : 0
+        return bIsFootball - aIsFootball
+      })
+
+      const targetSport = body?.sportKey ? [body.sportKey] : sortedTargets.slice(0, 5).map((t) => t.sportKey)
       const allCandidates: any[] = []
 
       for (const sk of targetSport) {

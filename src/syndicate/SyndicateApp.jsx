@@ -93,7 +93,7 @@ export function SyndicateApp() {
             ))}
 
             <a
-              href="https://edgetilt.com"
+              href="https://edgetilt.com/u/sharpesignal?subscribe=1"
               target="_blank"
               rel="noopener noreferrer"
               className="ml-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs sm:text-sm font-bold tracking-tight shadow-md shadow-emerald-500/20 transition-all active:scale-95"
@@ -140,12 +140,12 @@ export function SyndicateApp() {
                     View Audited Ledger
                   </button>
                   <a
-                    href="https://edgetilt.com"
+                    href="https://edgetilt.com/u/sharpesignal?subscribe=1"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-5 py-2.5 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-100 font-semibold text-sm transition-all"
                   >
-                    Enter Private VIP Channel on EdgeTilt →
+                    Enter Sharpe VIP Syndicate on EdgeTilt →
                   </a>
                 </div>
               </div>
@@ -287,12 +287,12 @@ export function SyndicateApp() {
                 </p>
               </div>
               <a
-                href="https://edgetilt.com"
+                href="https://edgetilt.com/u/sharpesignal?subscribe=1"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-sm tracking-tight shadow-lg shadow-emerald-500/20 transition-all shrink-0 active:scale-95"
               >
-                Access VIP Channel →
+                Join Sharpe VIP Syndicate →
               </a>
             </div>
           </div>
@@ -591,7 +591,7 @@ export function SyndicateApp() {
         <div>
           Official execution partner and VIP community hosted on{' '}
           <a
-            href="https://edgetilt.com"
+            href="https://edgetilt.com/u/sharpesignal"
             target="_blank"
             rel="noopener noreferrer"
             className="text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-4"

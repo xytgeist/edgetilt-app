@@ -771,6 +771,10 @@ export default function LoungeProfileFullScreen({
   onOpenFanSubscriptionSettings = null,
   /** One-shot: open Fan hub modal when own profile is visible (e.g. `?fanPortal=1`). */
   requestOpenFanPortal = false,
+  /** One-shot: auto-open creator fan subscribe modal (e.g. `?subscribe=1` from sharpesyndicate.com). */
+  requestAutoOpenSubscribe = false,
+  onRequestAutoOpenSubscribeConsumed = null,
+  onRequireAuth = null,
   /** Posts tab: more pages available (parent-owned list). */
   postsHasMore = false,
   postsLoadingMore = false,
@@ -1265,6 +1269,31 @@ export default function LoungeProfileFullScreen({
     if (!open || !isOwnProfile || !requestOpenFanPortal) return
     setFanPortalOpen(true)
   }, [open, isOwnProfile, requestOpenFanPortal, profileUserId])
+
+  useEffect(() => {
+    if (!open || !panelVisible || !requestAutoOpenSubscribe || isOwnProfile) return
+    if (!viewerUserId) {
+      onRequireAuth?.('create')
+      onRequestAutoOpenSubscribeConsumed?.()
+      return
+    }
+    if (creatorFanOffer) {
+      if (!hasCreatorFanSub) {
+        setFanSubscribeModalOpen(true)
+      }
+      onRequestAutoOpenSubscribeConsumed?.()
+    }
+  }, [
+    open,
+    panelVisible,
+    requestAutoOpenSubscribe,
+    isOwnProfile,
+    viewerUserId,
+    creatorFanOffer,
+    hasCreatorFanSub,
+    onRequireAuth,
+    onRequestAutoOpenSubscribeConsumed,
+  ])
 
   useEffect(() => {
     if (!ownProfileEditing || !isOwnProfile || profile?.user_id == null) return
@@ -2683,7 +2712,11 @@ export default function LoungeProfileFullScreen({
   }
 
   const supportCreatorFan = () => {
-    if (!viewerUserId || !profileUserId || isOwnProfile) return
+    if (!viewerUserId) {
+      onRequireAuth?.('create')
+      return
+    }
+    if (!profileUserId || isOwnProfile) return
     if (!creatorFanOffer) return
     setFanSubscribeModalOpen(true)
   }

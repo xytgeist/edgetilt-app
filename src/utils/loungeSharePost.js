@@ -102,7 +102,7 @@ export function stripLoungeProfileShareFromUrl() {
     u.pathname = '/'
     changed = true
   }
-  for (const key of ['u', 'profile']) {
+  for (const key of ['u', 'profile', 'subscribe', 'fan', 'join']) {
     if (u.searchParams.has(key)) {
       u.searchParams.delete(key)
       changed = true

@@ -507,6 +507,45 @@ export async function invokeLoungeOddsGradePicks(supabaseClient, opts = {}) {
 }
 
 /**
+ * Trigger on-demand generation and publishing of full ATS Slate Card (NFL or CFB).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, sportKey?: string, dryRun?: boolean }} [opts]
+ */
+export async function invokeLoungeOddsSlateCard(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'nfl_slate_card',
+      sportKey: opts.sportKey || 'americanfootball_nfl',
+      dryRun: opts.dryRun === true,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Slate card drop failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
+ * Trigger on-demand generation and publishing of NFL Wong 6-pt Teasers.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ */
+export async function invokeLoungeOddsWongTeaser(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'nfl_wong_teaser',
+      dryRun: opts.dryRun === true,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Wong teaser drop failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Publish one example Lounge post per Scott alert type (portal smoke pack).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

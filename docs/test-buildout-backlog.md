@@ -1069,6 +1069,11 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-30: **Sharp Desk Sub-Tabs & Specialty Slate Drop Triggers (`test`):**
+  - Consolidated the 4 large football management tables in `BotManagementPortal` into a clean tabbed workspace in `BotSharpDeskPanel` (`Scorecard & Drops` | `NFL PVALs` | `NFL Trenches` | `CFB Ratings`).
+  - Added dedicated manual drop controls for specialty betting engines: **NFL Full Slate Card** (ATS consensus), **CFB Full Slate Card** (Power ratings ATS), and **NFL 6-Pt Wong Teasers** with instant Preview (dry run) and Publish actions.
+  - Added frontend API helpers `invokeLoungeOddsSlateCard` and `invokeLoungeOddsWongTeaser` to `botPortalApi.js`. Verified build and linter checks pass.
+
 - 2026-08-28: **CallKit + PushKit + APNs full lifecycle & latency architecture documented (Mac).** Documented the four core rules/pitfalls in `docs/ios-native-bridge.md`: (1) PushKit VoIP strict 100% incoming reporting to prevent `callservicesd` blacklisting (cancellations/hang-ups stay on APNs); (2) direct sub-second APNs missed-call dispatch from `chat-calls` (`sendApnsToUser`) bypassing the 3-5s DB queue to dismiss CallKit pill instantly with `.unanswered`; (3) duplicate notification suppression (skip APNs alert when VoIP is active, deduplicate missed call notifications, fix profiles `user_id` query); (4) APNs sandbox/prod auto-retry between direct run and TestFlight. Redeployed `chat-calls` and `lounge-send-activity-push` on test.
 
 - 2026-08-28: **CallKit avatar setter parked off the VoIP report (Mac).** We cannot undo Apple's install blacklist in software. We can keep undocumented image code off the path before `reportNewIncomingCall`. Report is name / handle / video only. Prefetch after accept stays. This install if already silent still needs delete + reinstall. Rebuild owed.

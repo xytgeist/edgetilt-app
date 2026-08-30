@@ -496,6 +496,8 @@ function NativeIpaCallSession({
   const [minimized, setMinimized] = useState(Boolean(initialMinimized))
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(videoEnabled)
+  const [hasVideo, setHasVideo] = useState(Boolean(videoEnabled))
+  const [remoteHasVideo, setRemoteHasVideo] = useState(false)
   const [speakerOn, setSpeakerOn] = useState(() => Boolean(videoEnabled))
   const [remoteCount, setRemoteCount] = useState(0)
   const [connected, setConnected] = useState(false)
@@ -537,6 +539,8 @@ function NativeIpaCallSession({
       if (typeof detail.remoteCount === 'number') setRemoteCount(detail.remoteCount)
       if (typeof detail.micOn === 'boolean') setMicOn(detail.micOn)
       if (typeof detail.camOn === 'boolean') setCamOn(detail.camOn)
+      if (typeof detail.hasVideo === 'boolean') setHasVideo(detail.hasVideo)
+      if (typeof detail.remoteHasVideo === 'boolean') setRemoteHasVideo(detail.remoteHasVideo)
       if (typeof detail.speakerOn === 'boolean') setSpeakerOn(detail.speakerOn)
       if (typeof detail.connected === 'boolean') {
         setConnected(detail.connected)
@@ -572,8 +576,11 @@ function NativeIpaCallSession({
   }, [callId])
 
   useEffect(() => {
-    void setNativeCallChrome({ minimized, videoVisible: (videoEnabled || camOn) && !awaitingAnswer })
-  }, [minimized, videoEnabled, camOn, awaitingAnswer])
+    void setNativeCallChrome({
+      minimized,
+      videoVisible: (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer,
+    })
+  }, [minimized, videoEnabled, camOn, hasVideo, remoteHasVideo, awaitingAnswer])
 
   useEffect(() => {
     return () => {
@@ -646,6 +653,7 @@ function NativeIpaCallSession({
   }
   const setCameraEnabled = (next) => {
     setCamOn(next)
+    setHasVideo(next || remoteHasVideo)
     void setNativeCallCamera({ enabled: next })
     if (next) {
       applySpeaker(true)
@@ -668,6 +676,7 @@ function NativeIpaCallSession({
         <CallPillButton
           icon={<VideoIcon off={!camOn} />}
           active={camOn}
+          variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
           onClick={() => setCameraEnabled(!camOn)}
           ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
         />
@@ -687,7 +696,8 @@ function NativeIpaCallSession({
     )
   }
 
-  const showVideoHole = (videoEnabled || camOn) && !awaitingAnswer
+  const showVideoHole =
+    (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer
 
   useEffect(() => {
     const html = document.documentElement
@@ -745,6 +755,12 @@ function NativeIpaCallSession({
           {connectError ? (
             <p className="mt-1.5 text-[12px] font-semibold text-rose-300">{connectError}</p>
           ) : null}
+          {!camOn && remoteHasVideo ? (
+            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/70 px-3 py-0.5 text-[11px] font-bold tracking-wide text-emerald-200 backdrop-blur-md">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" aria-hidden />
+              {title} turned on video
+            </div>
+          ) : null}
           {recordingActive ? (
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/60 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-200 backdrop-blur-md">
               <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" aria-hidden />
@@ -796,6 +812,7 @@ function NativeIpaCallSession({
               icon={<VideoIcon off={!camOn} />}
               label="Video"
               active={camOn}
+              variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
               disabled={false}
               onClick={() => setCameraEnabled(!camOn)}
             />
@@ -830,7 +847,7 @@ function NativeIpaCallSession({
                 onClick={() => {}}
               />
             )}
-            {(videoEnabled || camOn) && !awaitingAnswer ? (
+            {(videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer ? (
               recordingActive ? (
                 <CallDockItem
                   icon={<RecordStopIcon />}

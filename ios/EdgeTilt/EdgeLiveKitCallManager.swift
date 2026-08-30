@@ -13,6 +13,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     var roomId: String = ""
     var connected: Bool = false
     var hasVideo: Bool = false
+    var remoteHasVideo: Bool = false
     var micOn: Bool = true
     var camOn: Bool = false
     var speakerOn: Bool = false
@@ -26,6 +27,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         "roomId": roomId,
         "connected": connected,
         "hasVideo": hasVideo,
+        "remoteHasVideo": remoteHasVideo,
         "micOn": micOn,
         "camOn": camOn,
         "speakerOn": speakerOn,
@@ -174,9 +176,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     if let enabled {
       wantsCamera = enabled
       state.camOn = enabled
-      if !enabled {
-        state.hasVideo = firstRemoteVideoTrack() != nil
-      }
+      state.hasVideo = enabled || (firstRemoteVideoTrack() != nil)
     }
     if flip {
       cameraPosition = cameraPosition == .front ? .back : .front
@@ -200,6 +200,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         try? await room.localParticipant.setCamera(enabled: false)
         await MainActor.run {
           self.localVideoView.track = nil
+          let remote = self.firstRemoteVideoTrack()
+          self.state.remoteHasVideo = remote != nil
+          self.state.hasVideo = remote != nil
           self.updateOverlayVisibility()
         }
       }
@@ -388,6 +391,11 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
   private func layoutVideoViews() {
     let bounds = overlay.bounds
+    let hasLocalTrack = localVideoView.track != nil
+    let hasRemoteTrack = remoteVideoView.track != nil
+    localVideoView.isHidden = !hasLocalTrack
+    remoteVideoView.isHidden = !hasRemoteTrack
+
     let pipWidth = min(128, max(96, bounds.width * 0.28))
     let pipHeight = pipWidth * 16 / 9
     let pipFrame = CGRect(
@@ -397,7 +405,17 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       height: pipHeight
     )
 
-    if isLocalMainStream {
+    if hasLocalTrack && !hasRemoteTrack {
+      localVideoView.frame = bounds
+      localVideoView.layer.cornerRadius = 0
+      localVideoView.layer.borderWidth = 0
+      overlay.bringSubviewToFront(localVideoView)
+    } else if hasRemoteTrack && !hasLocalTrack {
+      remoteVideoView.frame = bounds
+      remoteVideoView.layer.cornerRadius = 0
+      remoteVideoView.layer.borderWidth = 0
+      overlay.bringSubviewToFront(remoteVideoView)
+    } else if isLocalMainStream {
       localVideoView.frame = bounds
       localVideoView.layer.cornerRadius = 0
       localVideoView.layer.borderWidth = 0
@@ -462,10 +480,13 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private func bindExistingTracks() {
     if let local = room.localParticipant.firstCameraPublication?.track as? VideoTrack {
       localVideoView.track = local
+      state.camOn = true
     }
     if let remote = firstRemoteVideoTrack() {
       remoteVideoView.track = remote
+      state.remoteHasVideo = true
     }
+    state.hasVideo = state.camOn || state.remoteHasVideo
     layoutVideoViews()
   }
 
@@ -492,27 +513,65 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
   func room(_ room: Room, participantDidDisconnect participant: RemoteParticipant) {
     state.remoteCount = room.remoteParticipants.count
-    if remoteVideoView.track != nil {
-      DispatchQueue.main.async { [weak self] in
-        self?.remoteVideoView.track = self?.firstRemoteVideoTrack()
-      }
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      let remoteTrack = self.firstRemoteVideoTrack()
+      self.remoteVideoView.track = remoteTrack
+      self.state.remoteHasVideo = remoteTrack != nil
+      self.state.hasVideo = self.state.camOn || self.state.remoteHasVideo
+      self.updateOverlayVisibility()
+      self.dispatchState()
     }
-    dispatchState()
   }
 
   func room(_ room: Room, participant: LocalParticipant, didPublishTrack publication: LocalTrackPublication) {
     guard let track = publication.track as? VideoTrack else { return }
     DispatchQueue.main.async { [weak self] in
-      self?.localVideoView.track = track
-      self?.updateOverlayVisibility()
+      guard let self else { return }
+      self.localVideoView.track = track
+      self.state.camOn = true
+      self.state.hasVideo = true
+      self.updateOverlayVisibility()
+      self.dispatchState()
+    }
+  }
+
+  func room(_ room: Room, participant: LocalParticipant, didUnpublishTrack publication: LocalTrackPublication) {
+    guard publication.kind == .video else { return }
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.localVideoView.track = nil
+      self.state.camOn = false
+      self.state.hasVideo = self.state.remoteHasVideo
+      self.updateOverlayVisibility()
+      self.dispatchState()
     }
   }
 
   func room(_ room: Room, participant: RemoteParticipant, didSubscribeTrack publication: RemoteTrackPublication) {
     guard let track = publication.track as? VideoTrack else { return }
     DispatchQueue.main.async { [weak self] in
-      self?.remoteVideoView.track = track
-      self?.updateOverlayVisibility()
+      guard let self else { return }
+      self.remoteVideoView.track = track
+      self.state.remoteHasVideo = true
+      self.state.hasVideo = true
+      self.state.speakerOn = true
+      EdgeAudioSession.setOutputRoute(speaker: true) { _ in }
+      self.updateOverlayVisibility()
+      self.dispatchState()
+    }
+  }
+
+  func room(_ room: Room, participant: RemoteParticipant, didUnsubscribeTrack publication: RemoteTrackPublication) {
+    guard publication.kind == .video else { return }
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      let remoteTrack = self.firstRemoteVideoTrack()
+      self.remoteVideoView.track = remoteTrack
+      self.state.remoteHasVideo = remoteTrack != nil
+      self.state.hasVideo = self.state.camOn || self.state.remoteHasVideo
+      self.updateOverlayVisibility()
+      self.dispatchState()
     }
   }
 

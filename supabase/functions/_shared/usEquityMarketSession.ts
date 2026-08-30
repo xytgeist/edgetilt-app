@@ -77,6 +77,16 @@ export function isUsEquityRegularSessionOpen(now = new Date()): boolean {
   return mins >= 9 * 60 + 30 && mins < 16 * 60
 }
 
+/**
+ * Extended US equity active window: Mon–Fri 4:00 AM – 6:00 PM ET (pre-market + regular session + after-hours).
+ */
+export function isUsEquityExtendedActiveWindow(now = new Date()): boolean {
+  const p = etParts(now)
+  if (p.weekday < 1 || p.weekday > 5) return false
+  const mins = p.hour * 60 + p.minute
+  return mins >= 4 * 60 && mins < 18 * 60
+}
+
 /** Regular trading hours for a calendar day in ET. */
 export function regularSessionBoundsForDay(year: number, month: number, day: number) {
   const fromSec = Math.floor(etDateUtcMs(year, month, day, 9, 30) / 1000)

@@ -31,6 +31,7 @@ import {
   newsTextNearDuplicateOfAny,
   NEWS_NEAR_DUPE_LOOKBACK,
 } from '../_shared/loungeBotNewsDedupe.ts'
+import { isUsEquityExtendedActiveWindow } from '../_shared/usEquityMarketSession.ts'
 
 type BotAccount = {
   user_id: string
@@ -310,10 +311,31 @@ Deno.serve(async (req) => {
     const publishedHour = await countPublished(admin, account.user_id, hourStart)
     const publishedDay = await countPublished(admin, account.user_id, dayStart)
 
-    const hourCapRaw = account.max_posts_per_hour
-    const dayCapRaw = account.max_posts_per_day
-    const hourCap = hourCapRaw == null ? null : Number(hourCapRaw) || 4
-    const dayCap = dayCapRaw == null ? null : Number(dayCapRaw) || 12
+    // For market-profile bots (e.g. Market Edge), allow high volume during extended market hours (Mon-Fri 4am-6pm ET)
+    // and enforce tight caps outside those hours / on weekends.
+    const isMarketProfile = newsProfile === 'market' || account.slug === 'market-edge'
+    const isExtendedMarketOpen = isMarketProfile && isUsEquityExtendedActiveWindow()
+
+    let hourCap: number | null
+    let dayCap: number | null
+
+    if (isMarketProfile) {
+      if (isExtendedMarketOpen) {
+        // High volume during active market hours: unlimited or generous per-hour/per-day
+        hourCap = account.max_posts_per_hour == null ? null : Number(account.max_posts_per_hour) || 12
+        dayCap = account.max_posts_per_day == null ? null : Number(account.max_posts_per_day) || 100
+      } else {
+        // Strict off-hours & weekend cap: max 1 post per hour, max 6 per day
+        hourCap = 1
+        dayCap = 6
+      }
+    } else {
+      const hourCapRaw = account.max_posts_per_hour
+      const dayCapRaw = account.max_posts_per_day
+      hourCap = hourCapRaw == null ? null : Number(hourCapRaw) || 4
+      dayCap = dayCapRaw == null ? null : Number(dayCapRaw) || 12
+    }
+
     const roomHour = hourCap == null ? Number.POSITIVE_INFINITY : Math.max(0, hourCap - publishedHour)
     const roomDay = dayCap == null ? Number.POSITIVE_INFINITY : Math.max(0, dayCap - publishedDay)
     const publishBudget = Math.min(roomHour, roomDay)

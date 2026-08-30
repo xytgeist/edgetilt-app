@@ -43,36 +43,50 @@ export function SyndicateApp() {
   const clvBeats = gradedPicks.filter((p) => p.metadata?.clv_beat === true || p.metadata?.clv_beat === 'true').length
   const clvRate = gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '73.0'
 
-  // Hammer 4-0 & Consensus 3-1 metrics
+  // Hammer 4-0 & Consensus 3-1 metrics calculated per unique game/event
+  const groupConsensusGames = (pickList) => {
+    const gamesMap = new Map()
+    for (const p of pickList) {
+      const eventKey = p.event_id || `${p.home_team}_${p.away_team}_${p.commence_time}`
+      if (!gamesMap.has(eventKey)) {
+        const isWin = p.status === 'win' || p.status === 'won'
+        const isLoss = p.status === 'loss' || p.status === 'lost'
+        const isPush = p.status === 'push'
+        const units = isWin ? 1.0 : isLoss ? -1.1 : 0
+        gamesMap.set(eventKey, { isWin, isLoss, isPush, units })
+      }
+    }
+    const games = Array.from(gamesMap.values())
+    const gWins = games.filter((g) => g.isWin).length
+    const gLosses = games.filter((g) => g.isLoss).length
+    const gPushes = games.filter((g) => g.isPush).length
+    const gWinRate = gWins + gLosses > 0 ? ((gWins / (gWins + gLosses)) * 100).toFixed(1) : '75.0'
+    const gUnits = games.reduce((acc, g) => acc + g.units, 0)
+    const gDisplayUnits = gUnits >= 0 ? `+${gUnits.toFixed(2)}` : gUnits.toFixed(2)
+    return { gWins, gLosses, gPushes, gWinRate, gDisplayUnits, totalGames: games.length }
+  }
+
   const hammerPicks = gradedPicks.filter(
     (p) => p.metadata?.consensus_type === 'hammer' || p.metadata?.consensus_signal === 'hammer'
   )
-  const hammerWins = hammerPicks.filter((p) => p.status === 'win' || p.status === 'won').length
-  const hammerLosses = hammerPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
-  const hammerWinRate =
-    hammerWins + hammerLosses > 0
-      ? ((hammerWins / (hammerWins + hammerLosses)) * 100).toFixed(1)
-      : '75.0'
-  const hammerUnits = hammerPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
-  const hammerDisplayUnits =
-    hammerPicks.length > 0
-      ? (hammerUnits >= 0 ? `+${hammerUnits.toFixed(2)}` : hammerUnits.toFixed(2))
-      : '+18.50'
+  const {
+    gWins: hammerWins,
+    gLosses: hammerLosses,
+    gWinRate: hammerWinRate,
+    gDisplayUnits: hammerDisplayUnits,
+    totalGames: hammerTotalGames,
+  } = groupConsensusGames(hammerPicks)
 
   const consensusPicks = gradedPicks.filter(
     (p) => p.metadata?.consensus_type === 'consensus' || p.metadata?.consensus_signal === 'consensus'
   )
-  const consensusWins = consensusPicks.filter((p) => p.status === 'win' || p.status === 'won').length
-  const consensusLosses = consensusPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
-  const consensusWinRate =
-    consensusWins + consensusLosses > 0
-      ? ((consensusWins / (consensusWins + consensusLosses)) * 100).toFixed(1)
-      : '64.2'
-  const consensusUnits = consensusPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
-  const consensusDisplayUnits =
-    consensusPicks.length > 0
-      ? (consensusUnits >= 0 ? `+${consensusUnits.toFixed(2)}` : consensusUnits.toFixed(2))
-      : '+14.60'
+  const {
+    gWins: consensusWins,
+    gLosses: consensusLosses,
+    gWinRate: consensusWinRate,
+    gDisplayUnits: consensusDisplayUnits,
+    totalGames: consensusTotalGames,
+  } = groupConsensusGames(consensusPicks)
 
   const filteredPicks = picks.filter((p) => {
     if (deskFilter !== 'all' && (p.picker_name || 'Scott') !== deskFilter) {
@@ -287,7 +301,7 @@ export function SyndicateApp() {
                   {hammerWinRate}%
                 </div>
                 <div className="text-[10px] sm:text-[11px] text-amber-400/80 truncate">
-                  {hammerWins > 0 ? `${hammerWins}W - ${hammerLosses}L · ${hammerDisplayUnits}U` : 'Unanimous 4-0'}
+                  {hammerWins > 0 || hammerLosses > 0 ? `${hammerWins}W - ${hammerLosses}L · ${hammerDisplayUnits}U (${hammerTotalGames} Games)` : 'Unanimous 4-0'}
                 </div>
               </div>
 
@@ -307,7 +321,7 @@ export function SyndicateApp() {
                   {consensusWinRate}%
                 </div>
                 <div className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
-                  {consensusWins > 0 ? `${consensusWins}W - ${consensusLosses}L · ${consensusDisplayUnits}U` : 'Majority consensus'}
+                  {consensusWins > 0 || consensusLosses > 0 ? `${consensusWins}W - ${consensusLosses}L · ${consensusDisplayUnits}U (${consensusTotalGames} Games)` : 'Majority consensus'}
                 </div>
               </div>
 

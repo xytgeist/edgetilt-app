@@ -11,6 +11,8 @@ import {
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
+import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -88,19 +90,29 @@ export function formatPickLine(pick: OddsPick): string {
  * Format a solo predictive pick post.
  *
  * Example:
- * 🎯 Chedda's Pick
+ * 🎯 Tank's Pick
  *
- * Cardinals ML (+165)
- * Cardinals vs 49ers (1:05 PM PT)
+ * Under 43.5 (-110)
+ * Bills vs Dolphins (1:05 PM PT)
+ * 💨 Highmark Stadium · 38°F · Wind 19 mph
  */
-export function formatSoloPredictiveCaption(pickerName: SharpPicker, pick: OddsPick): string {
+export function formatSoloPredictiveCaption(
+  pickerName: SharpPicker,
+  pick: OddsPick,
+  weather?: GameWeatherSummary | null,
+): string {
   const line = formatPickLine(pick)
   const away = shortDisplayName(pick.awayTeam)
   const home = shortDisplayName(pick.homeTeam)
   const when = formatOddsCommenceTimeShort(pick.commenceTime)
   const matchup = `${away} vs ${home} (${when})`
 
-  return `🎯 ${pickerName}'s Pick\n\n${line}\n${matchup}`
+  const lines = [`🎯 ${pickerName}'s Pick\n\n${line}\n${matchup}`]
+  if (weather && !weather.isDome && (weather.isHighWind || weather.isExtremeCold || weather.isPrecipAlert)) {
+    lines.push(`\n📍 ${weather.summaryLine}`)
+  }
+
+  return lines.join('')
 }
 
 /**
@@ -639,9 +651,17 @@ export async function publishAndRecordPicks(
     return { success: false, pickIds: [], error: 'At least one pick required.' }
   }
 
+  let weather: GameWeatherSummary | null = null
   const isSolo = input.picks.length === 1
+
+  if (isSolo) {
+    const single = input.picks[0].pick
+    const sportId = oddsSportKeyToRundownSportId(single.sportKey) || 2
+    weather = await fetchGameWeather(sportId, single.homeTeam, single.commenceTime)
+  }
+
   const caption = isSolo
-    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick)
+    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather)
     : formatSyndicateCardCaption(input.cardTitle || '🎯 Sharp Syndicate Card', input.picks)
 
   const categoryPills = input.categoryPills || ['sports']

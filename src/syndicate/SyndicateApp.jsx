@@ -201,15 +201,15 @@ export function SyndicateApp() {
                     <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       DESK 01
                     </span>
-                    <span className="text-xs font-mono text-zinc-500">THE QUANT</span>
+                    <span className="text-xs font-mono text-zinc-500">HEAD OF TRADING</span>
                   </div>
                   <h3 className="text-lg font-bold text-white">Scott Sharpe</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Lead consensus model. Identifies pricing disparities against sharp offshore books (Pinnacle/Circa) and incorporates Bayesian confidence weights.
+                    Syndicate founder &amp; lead quantitative trader. Synthesizes sharp offshore pricing (Pinnacle/Circa), orchestrates syndicate consensus, and manages bankroll exposure.
                   </p>
                   <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                     <div>• Core: +EV Market Pricing</div>
-                    <div>• Factor: Key Number Clusters (3 & 7)</div>
+                    <div>• Edge: Key Number Clusters (3 &amp; 7)</div>
                     <div>• Signal: Syndicate Hammer 4-0</div>
                   </div>
                 </div>
@@ -220,11 +220,11 @@ export function SyndicateApp() {
                     <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       DESK 02
                     </span>
-                    <span className="text-xs font-mono text-zinc-500">TRENCHES & EPA</span>
+                    <span className="text-xs font-mono text-zinc-500">TRENCHES &amp; EPA</span>
                   </div>
                   <h3 className="text-lg font-bold text-white">Rocco</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Line of scrimmage & offensive efficiency desk. Models Pass Block Win Rate (PBWR) vs Pass Rush Win Rate (PRWR) and net EPA per play disparities.
+                    Trench &amp; offensive efficiency specialist. Breaks down line-of-scrimmage win rates (PBWR/PRWR), net EPA per play, and injury spread value (PVAL).
                   </p>
                   <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                     <div>• Core: PBWR / PRWR Line Ratings</div>
@@ -239,11 +239,11 @@ export function SyndicateApp() {
                     <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                       DESK 03
                     </span>
-                    <span className="text-xs font-mono text-zinc-500">DOGS & RLM</span>
+                    <span className="text-xs font-mono text-zinc-500">DOGS &amp; RLM</span>
                   </div>
                   <h3 className="text-lg font-bold text-white">Chedda</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Underdog value and moneyline specialist. Scans ticket vs handle splits to catch Reverse Line Movement (RLM) and sharp money divergence.
+                    Underdog value and market flow specialist. Tracks handle vs. ticket splits to catch Reverse Line Movement (RLM), sharp book divergence, and red zone TD targets.
                   </p>
                   <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                     <div>• Core: Live RLM / Sharp Money %</div>
@@ -258,16 +258,16 @@ export function SyndicateApp() {
                     <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
                       DESK 04
                     </span>
-                    <span className="text-xs font-mono text-zinc-500">TOTALS & PACE</span>
+                    <span className="text-xs font-mono text-zinc-500">TOTALS &amp; PACE</span>
                   </div>
                   <h3 className="text-lg font-bold text-white">Tank</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Over/Under totals and situational pace model. Integrates live atmospheric weather data, red zone efficiency, and rest/travel disparity.
+                    Over/Under totals and situational pace specialist. Evaluates seconds per play, atmospheric weather impacts (wind/cold), and rest/travel scheduling spots.
                   </p>
                   <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                    <div>• Core: Pace & Seconds Per Play</div>
+                    <div>• Core: Pace &amp; Seconds Per Play</div>
                     <div>• Factor: Wind (&gt;14mph) &amp; Cold Weather</div>
-                    <div>• Rest: Short Weeks & Cross-Country Spots</div>
+                    <div>• Rest: Short Weeks &amp; Cross-Country Spots</div>
                   </div>
                 </div>
               </div>

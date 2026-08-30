@@ -26,6 +26,8 @@ export type PersonaFactorKey =
   | 'market_consensus_edge'
   | 'reverse_line_movement'
   | 'sharp_money_divergence'
+  | 'trench_mismatch_advantage'
+  | 'epa_model_value'
 
 export type PersonaWeightRecord = {
   picker_name: SharpPicker

@@ -17,6 +17,12 @@ import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
+import {
+  calculateTrenchEpaMatchup,
+  loadDbTeamMetricsMap,
+  type TrenchEpaMatchupSummary,
+  type NflTeamMetrics,
+} from './loungeBotTeamMetrics.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -36,6 +42,7 @@ export type SlateGamePick = {
   commenceTime: string
   spreadPoint: number | null // home spread point (e.g. -3.5 or +2.5)
   splits?: BettingSplitSummary
+  trenchEpa?: TrenchEpaMatchupSummary | null
   consensusPick: {
     side: 'home' | 'away'
     teamName: string
@@ -107,6 +114,7 @@ export function formatSoloPredictiveCaption(
   weather?: GameWeatherSummary | null,
   injuries?: GameInjurySummary | null,
   splits?: BettingSplitSummary | null,
+  trenchEpa?: TrenchEpaMatchupSummary | null,
 ): string {
   const line = formatPickLine(pick)
   const away = shortDisplayName(pick.awayTeam)
@@ -123,6 +131,9 @@ export function formatSoloPredictiveCaption(
   }
   if (splits && splits.isSharpDivergence && splits.summaryLine) {
     lines.push(`\n📊 Sharp Splits: ${splits.summaryLine}`)
+  }
+  if (trenchEpa && (trenchEpa.isTrenchMismatch || trenchEpa.isEpaMismatch) && trenchEpa.summaryLine) {
+    lines.push(`\n⚔️ Matchup Edge: ${trenchEpa.summaryLine}`)
   }
 
   return lines.join('')
@@ -385,6 +396,7 @@ export function buildNflAtsSlateCard(
     cardTitle?: string
     sportKey?: string
     weightsMap?: Map<string, number>
+    teamMetricsMap?: Map<string, NflTeamMetrics>
   } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
@@ -394,6 +406,7 @@ export function buildNflAtsSlateCard(
   const consensus: SlateGamePick[] = []
   const splits: SlateGamePick[] = []
   const weights = opts.weightsMap || new Map<string, number>()
+  const teamMetrics = opts.teamMetricsMap
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -466,28 +479,34 @@ export function buildNflAtsSlateCard(
     const sharpFavorsHome = gameSplits.sharpFavoredSide === 'home'
     const sharpFavorsAway = gameSplits.sharpFavoredSide === 'away'
 
+    // Calculate EPA and Trench matchups
+    const trenchEpa = calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics)
+
     // Bayesian factor weights
     const scottWeight = weights.get('Scott:model_clv_high_ev') || 1.0
     const roccoWeight = weights.get('Rocco:short_favorites_1_to_4') || 1.0
     const cheddaSweetWeight = weights.get('Chedda:dog_sweet_spot_130_175') || 1.0
     const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
 
-    // Persona-specific picks with dynamic Bayesian weights & betting splits:
-    // 1. Scott (Model EV): leans toward favorable line juice, short home edge, and sharp consensus money
+    // Persona-specific picks with dynamic Bayesian weights, betting splits & EPA/trench modeling:
+    // 1. Scott (Model EV): evaluates model-projected spread vs market spread using Net EPA
     const sharpSplitBonus = sharpFavorsHome ? 0.35 : sharpFavorsAway ? -0.35 : 0
-    const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1) + sharpSplitBonus) * scottWeight
+    const epaBonus = trenchEpa ? Math.max(-1.5, Math.min(1.5, trenchEpa.epaSpreadImpactHome * 0.3)) : 0
+    const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1) + sharpSplitBonus + epaBonus) * scottWeight
     const scottSide: 'home' | 'away' = scottScoreHome >= 0 ? 'home' : 'away'
 
-    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5) and capitalizes on Sharp Money Divergence / RLM
+    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5), capitalizes on Sharp Money Divergence & live dogs with trench push
     const cheddaSplitBoost = (homePoint > 0 && sharpFavorsHome) ? 1.2 : (awayPoint > 0 && sharpFavorsAway) ? -1.2 : 0
-    const cheddaScoreHome = (homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)) + cheddaSplitBoost
+    const dogTrenchBoost = (homePoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0.5) ? 0.6 : (awayPoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) < -0.5) ? -0.6 : 0
+    const cheddaScoreHome = (homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)) + cheddaSplitBoost + dogTrenchBoost
     const cheddaSide: 'home' | 'away' = cheddaScoreHome >= 0 ? 'home' : 'away'
 
-    // 3. Rocco (Trench / Favorites): prefers laying short points on favorites (-2.5, -3.5, -6.5) but dodges public trap favorites where whales back the dog
+    // 3. Rocco (Trench / Favorites): prefers laying short points on favorites (-2.5, -3.5, -6.5), dodges trap chalk, and rides dominant offensive line protection
     const isShortFavHome = homePoint < 0 && homePoint >= -7.5
     const isShortFavAway = awayPoint < 0 && awayPoint >= -7.5
     const roccoChalkTrapPenalty = (isShortFavHome && sharpFavorsAway) ? -1.5 : (isShortFavAway && sharpFavorsHome) ? 1.5 : 0
-    const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty
+    const roccoTrenchBonus = trenchEpa ? Math.max(-1.8, Math.min(1.8, trenchEpa.netTrenchSpreadImpactHome * 0.8)) : 0
+    const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoTrenchBonus
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
     // 4. Tank (Situational / Market Flow): deterministic situational lean based on matchup hash & point spreads + market flow
@@ -581,6 +600,7 @@ export function buildNflAtsSlateCard(
       commenceTime: ev.commence_time,
       spreadPoint: homePoint,
       splits: gameSplits,
+      trenchEpa,
       consensusPick: {
         side: consensusSide,
         teamName: consensusSide === 'home' ? homeTeam : awayTeam,
@@ -658,6 +678,8 @@ export async function publishAndRecordNflSlateCard(
       if (pName === 'Tank') factors.push('rest_advantage')
       if (g.splits?.isRlm) factors.push('reverse_line_movement')
       if (g.splits?.isSharpDivergence) factors.push('sharp_money_divergence')
+      if (g.trenchEpa?.isTrenchMismatch) factors.push('trench_mismatch_advantage')
+      if (g.trenchEpa?.isEpaMismatch) factors.push('epa_model_value')
 
       rowsToInsert.push({
         bot_user_id: input.botUserId,
@@ -684,6 +706,13 @@ export async function publishAndRecordNflSlateCard(
             home_handle: g.splits.homeHandlePct,
             is_rlm: g.splits.isRlm,
             is_sharp_divergence: g.splits.isSharpDivergence,
+          } : undefined,
+          trench_epa: g.trenchEpa ? {
+            net_epa_delta: g.trenchEpa.netEpaDeltaHome,
+            epa_spread_impact: g.trenchEpa.epaSpreadImpactHome,
+            trench_spread_impact: g.trenchEpa.netTrenchSpreadImpactHome,
+            is_trench_mismatch: g.trenchEpa.isTrenchMismatch,
+            is_epa_mismatch: g.trenchEpa.isEpaMismatch,
           } : undefined,
         },
       })
@@ -758,6 +787,7 @@ export async function publishAndRecordPicks(
   let weather: GameWeatherSummary | null = null
   let injuries: GameInjurySummary | null = null
   let splits: BettingSplitSummary | null = null
+  let trenchEpa: TrenchEpaMatchupSummary | null = null
   const isSolo = input.picks.length === 1
 
   if (isSolo) {
@@ -774,10 +804,14 @@ export async function publishAndRecordPicks(
       bookmakers: [],
     }
     splits = resolveGameBettingSplits(mockEv, single.linePoint ?? 0, single.pickPrice, single.pickPrice)
+    if (single.sportKey.startsWith('americanfootball_')) {
+      const teamMetricsMap = await loadDbTeamMetricsMap(admin)
+      trenchEpa = calculateTrenchEpaMatchup(single.homeTeam, single.awayTeam, teamMetricsMap)
+    }
   }
 
   const caption = isSolo
-    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather, injuries, splits)
+    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather, injuries, splits, trenchEpa)
     : formatSyndicateCardCaption(input.cardTitle || '🎯 Sharp Syndicate Card', input.picks)
 
   const categoryPills = input.categoryPills || ['sports']
@@ -810,6 +844,8 @@ export async function publishAndRecordPicks(
     if (item.pickerName === 'Scott') factors.push('model_clv_high_ev')
     if (splits?.isRlm) factors.push('reverse_line_movement')
     if (splits?.isSharpDivergence) factors.push('sharp_money_divergence')
+    if (trenchEpa?.isTrenchMismatch) factors.push('trench_mismatch_advantage')
+    if (trenchEpa?.isEpaMismatch) factors.push('epa_model_value')
 
     return {
       bot_user_id: input.botUserId,
@@ -835,6 +871,13 @@ export async function publishAndRecordPicks(
           home_handle: splits.homeHandlePct,
           is_rlm: splits.isRlm,
           is_sharp_divergence: splits.isSharpDivergence,
+        } : undefined,
+        trench_epa: trenchEpa ? {
+          net_epa_delta: trenchEpa.netEpaDeltaHome,
+          epa_spread_impact: trenchEpa.epaSpreadImpactHome,
+          trench_spread_impact: trenchEpa.netTrenchSpreadImpactHome,
+          is_trench_mismatch: trenchEpa.isTrenchMismatch,
+          is_epa_mismatch: trenchEpa.isEpaMismatch,
         } : undefined,
       },
     }

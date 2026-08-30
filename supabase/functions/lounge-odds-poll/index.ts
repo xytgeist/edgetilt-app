@@ -183,12 +183,15 @@ Deno.serve(async (req) => {
 
       const events = oddsData?.events || []
       const { loadPersonaWeights } = await import('../_shared/loungeBotPersonaAdaptive.ts')
+      const { loadDbTeamMetricsMap } = await import('../_shared/loungeBotTeamMetrics.ts')
       const weightsMap = await loadPersonaWeights(admin)
+      const teamMetricsMap = await loadDbTeamMetricsMap(admin)
 
       const card = buildNflAtsSlateCard(events, {
         cardTitle: body?.cardTitle,
         sportKey,
         weightsMap,
+        teamMetricsMap,
       })
 
       if (!card) {

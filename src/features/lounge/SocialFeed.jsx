@@ -1024,6 +1024,7 @@ export default function SocialFeed({
   const [profileModalPostsLoadingMore, setProfileModalPostsLoadingMore] = useState(false)
   const [profileModalStartEditing, setProfileModalStartEditing] = useState(false)
   const [profileModalOpenFanPortal, setProfileModalOpenFanPortal] = useState(false)
+  const [profileModalAutoOpenSubscribe, setProfileModalAutoOpenSubscribe] = useState(false)
   const [profileModalFollowListTab, setProfileModalFollowListTab] = useState(null)
   const [profileModalHighlightFollowerIds, setProfileModalHighlightFollowerIds] = useState([])
   /** Profiles opened from feed/detail/profile without replacing the root sheet (back pops one layer). */
@@ -14666,6 +14667,7 @@ export default function SocialFeed({
       profileReturnDockPanelRef.current = opts?.returnDockPanel ?? null
       setProfileModalStartEditing(opts?.startEditing === true)
       setProfileModalOpenFanPortal(opts?.openFanPortal === true)
+      setProfileModalAutoOpenSubscribe(opts?.autoOpenSubscribe === true)
       setProfileModalFollowListTab(
         opts?.openFollowListTab === 'following' || opts?.openFollowListTab === 'followers'
           ? opts.openFollowListTab
@@ -15274,6 +15276,8 @@ export default function SocialFeed({
       const queryHandle = (params.get('u') || '').trim().replace(/^@/, '').toLowerCase()
       const legacyUserId = (params.get('profile') || '').trim()
       const handle = pathHandle || (isLoungeProfileHandleSlug(queryHandle) ? queryHandle : '')
+      const autoOpenSubscribe =
+        params.get('subscribe') === '1' || params.get('fan') === '1' || params.get('join') === '1'
 
       if (handle) {
         await new Promise((resolve) => {
@@ -15292,7 +15296,10 @@ export default function SocialFeed({
             stripLoungeProfileShareFromUrl()
             return
           }
-          await openProfileModal({ user_id: data.user_id, author_profile: data }, { fromPublicLink: true })
+          await openProfileModal(
+            { user_id: data.user_id, author_profile: data },
+            { fromPublicLink: true, autoOpenSubscribe },
+          )
           if (cancelled) return
           stripLoungeProfileShareFromUrl()
         } catch {
@@ -15308,7 +15315,7 @@ export default function SocialFeed({
         window.requestAnimationFrame(() => resolve(undefined))
       })
       if (cancelled) return
-      await openProfileModal({ user_id: legacyUserId }, { fromPublicLink: true })
+      await openProfileModal({ user_id: legacyUserId }, { fromPublicLink: true, autoOpenSubscribe })
       if (cancelled) return
       stripLoungeProfileShareFromUrl()
     }
@@ -18995,6 +19002,9 @@ export default function SocialFeed({
           onNavRestoreApplied={onProfileNavRestoreApplied}
           onOpenFanSubscriptionSettings={onOpenFanSubscriptionSettings}
           requestOpenFanPortal={profileModalOpenFanPortal}
+          requestAutoOpenSubscribe={profileModalAutoOpenSubscribe}
+          onRequestAutoOpenSubscribeConsumed={() => setProfileModalAutoOpenSubscribe(false)}
+          onRequireAuth={onRequireAuth}
         />
       ) : null}
 

@@ -180,7 +180,7 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
   return (
     <div
       ref={pillRef}
-      className="pointer-events-auto fixed flex max-w-[min(22rem,calc(100vw-1rem))] cursor-grab items-center justify-between gap-2.5 rounded-[30px] border border-white/10 bg-zinc-950/85 px-3 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl active:cursor-grabbing touch-none"
+      className="pointer-events-auto fixed flex max-w-[min(22rem,calc(100vw-1rem))] cursor-grab items-center justify-between gap-2.5 rounded-[30px] border border-white/20 bg-zinc-900/95 px-3 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.85),0_0_15px_rgba(255,255,255,0.05)] backdrop-blur-2xl active:cursor-grabbing touch-none"
       data-lounge-fab-obstacle=""
       style={{
         left: pos?.left ?? -9999,
@@ -841,6 +841,16 @@ function NativeIpaCallSession({
             recordingActive ? ' · REC' : recordingSaving ? ' · Saving recording…' : ''
           }`
 
+  const isAloneInGroupCall = Boolean(
+    isGroup && !awaitingAnswer && connected && remoteCount === 0 && elapsed >= 4,
+  )
+
+  useEffect(() => {
+    if (isAloneInGroupCall) {
+      onHangup?.()
+    }
+  }, [isAloneInGroupCall, onHangup])
+
   const setMicEnabled = (next) => {
     setMicOn(next)
     void setNativeCallMute(!next)
@@ -898,7 +908,14 @@ function NativeIpaCallSession({
           icon={<VideoIcon off={!camOn} />}
           active={camOn}
           variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
-          onClick={handleVideoDockClick}
+          onClick={() => {
+            setMinimized(false)
+            if (!camOn && !isVideoMode) {
+              setShowVideoConfirmModal(true)
+            } else {
+              setCameraEnabled(!camOn)
+            }
+          }}
           ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
         />
         <CallPillButton
@@ -1470,9 +1487,15 @@ function CallChrome({
     }
   }, [room])
 
-  // Apply earpiece/speakerphone only when the browser can actually switch.
-  // Do NOT re-run when remotes join/leave... that was restarting the mic mid-call
-  // and made group audio flaky (silent until someone dropped).
+  const isAloneInGroupCall = Boolean(
+    isGroup && !awaitingAnswer && room && room.remoteParticipants.size === 0 && elapsed >= 4,
+  )
+
+  useEffect(() => {
+    if (isAloneInGroupCall) {
+      hangup()
+    }
+  }, [isAloneInGroupCall])
   useEffect(() => {
     if (!room || !audioRouteSupported) return undefined
     let cancelled = false
@@ -1638,7 +1661,14 @@ function CallChrome({
         <CallPillButton
           icon={<VideoIcon off={!camOn} />}
           active={camOn}
-          onClick={handleVideoDockClick}
+          onClick={() => {
+            onExpand?.()
+            if (!camOn && !showVideoStage) {
+              setShowVideoConfirmModal(true)
+            } else {
+              void setCameraEnabled(!camOn)
+            }
+          }}
           ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
         />
         {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (

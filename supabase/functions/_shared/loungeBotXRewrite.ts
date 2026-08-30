@@ -48,6 +48,7 @@ export async function rewriteTweetForBot(opts: {
                 `Rules: output a single caption only. Do not copy the tweet verbatim. ` +
                 `No em dashes, en dashes, or middle dots (·) ... use commas, ellipses (...), or "-" for breaks. Max ${LOUNGE_BOT_CAPTION_MAX} chars. ` +
                 `Do not impersonate the original author; informational tone only. ` +
+                `Never use exclamation points (!) unless the voice explicitly demands high hype. Avoid corny punchlines, forced jokes, or repetitive phrasing. ` +
                 `Never start with a salutation or stock opener (Yo, Listen up, Alright, Check this, Hey, So, etc.). ` +
                 `Jump straight into the point. Do not reuse the same opening across posts.` +
                 linkRule,

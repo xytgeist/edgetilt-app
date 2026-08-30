@@ -964,6 +964,9 @@ export default function LoungeProfileFullScreen({
   const handle = profile?.handle ? `@${String(profile.handle).trim()}` : '@member'
   const aboutDisplay = String(profile?.about_me || profile?.bio || '').trim()
   const locationDisplay = normalizeProfileLocation(profile?.location)
+  const websiteDisplay =
+    String(profile?.website_url || '').trim() ||
+    (normalizeHandle(profile?.handle) === 'sharpesignal' ? 'https://sharpesyndicate.com' : '')
   const profileInterestPills = profileCategoryPills(profile)
   const profileTabsVisible = isOwnProfile ? PROFILE_TAB_IDS : PROFILE_TAB_IDS.slice(0, 2)
   const profileTabIndex = Math.max(0, profileTabsVisible.indexOf(tab))
@@ -3823,6 +3826,34 @@ export default function LoungeProfileFullScreen({
                     <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[14px] leading-snug text-zinc-400">
                       <ProfileLocationPinIcon />
                       <span className="min-w-0 truncate">{locationDisplay}</span>
+                    </div>
+                  ) : null}
+                  {websiteDisplay ? (
+                    <div
+                      data-lounge-profile-website=""
+                      className="mt-1 flex min-w-0 items-center gap-1.5 text-[14px] leading-snug"
+                    >
+                      <svg
+                        className="h-3.5 w-3.5 shrink-0 text-cyan-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      <a
+                        href={websiteDisplay.startsWith('http') ? websiteDisplay : `https://${websiteDisplay}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate font-semibold text-cyan-400 hover:text-cyan-300 hover:underline"
+                      >
+                        {websiteDisplay.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                      </a>
                     </div>
                   ) : null}
                   {profileInterestPills.length > 0 ? (

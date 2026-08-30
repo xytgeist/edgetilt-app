@@ -13,6 +13,7 @@ export function SyndicateApp() {
   const [trenchData, setTrenchData] = useState([])
   const [cfbData, setCfbData] = useState([])
   const [sportFilter, setSportFilter] = useState('all')
+  const [deskFilter, setDeskFilter] = useState('all')
 
   useEffect(() => {
     async function loadData() {
@@ -42,6 +43,9 @@ export function SyndicateApp() {
   const clvRate = gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '74.2'
 
   const filteredPicks = picks.filter((p) => {
+    if (deskFilter !== 'all' && (p.picker_name || 'Scott') !== deskFilter) {
+      return false
+    }
     if (sportFilter === 'all') return true
     if (sportFilter === 'nfl') return p.sport_key?.includes('nfl')
     if (sportFilter === 'cfb') return p.sport_key?.includes('ncaaf')
@@ -235,11 +239,11 @@ export function SyndicateApp() {
                 <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">Closing line value</div>
               </div>
               <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Execution Pipeline</div>
-                <div className="mt-1.5 sm:mt-2 text-base sm:text-2xl md:text-3xl font-mono font-extrabold text-amber-400 truncate">
+                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Benchmark Feed</div>
+                <div className="mt-1.5 sm:mt-2 text-base sm:text-xl md:text-2xl font-mono font-extrabold text-amber-400 whitespace-nowrap">
                   Pinnacle / Circa
                 </div>
-                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">Sharp weighted 3.0x</div>
+                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">3.0x sharp weighted consensus</div>
               </div>
             </div>
 
@@ -249,85 +253,137 @@ export function SyndicateApp() {
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">The 4-Desk Syndicate Architecture</h2>
                   <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                    Independent quantitative desks modeling across spread, totals, power ratings, and situational edges.
+                    Independent quantitative desks modeling across spread, totals, power ratings, and situational edges. Tap any desk to view its audited ledger.
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* Desk 1: Scott */}
-                <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      DESK 01
-                    </span>
-                    <span className="text-xs font-mono text-zinc-500">HEAD OF TRADING</span>
+                <div
+                  onClick={() => {
+                    setDeskFilter('Scott')
+                    setActiveTab('ledger')
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:border-emerald-500/60 hover:shadow-lg hover:shadow-emerald-500/10 group active:scale-[0.99] flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        DESK 01
+                      </span>
+                      <span className="text-xs font-mono text-zinc-500">HEAD OF TRADING</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Scott Sharpe</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Syndicate founder &amp; lead quantitative trader. Synthesizes sharp offshore pricing (Pinnacle/Circa), orchestrates syndicate consensus, and manages bankroll exposure.
+                    </p>
+                    <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
+                      <div>• Core: +EV Market Pricing</div>
+                      <div>• Edge: Key Number Clusters (3 &amp; 7)</div>
+                      <div>• Signal: Syndicate Hammer 4-0</div>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Scott Sharpe</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    Syndicate founder &amp; lead quantitative trader. Synthesizes sharp offshore pricing (Pinnacle/Circa), orchestrates syndicate consensus, and manages bankroll exposure.
-                  </p>
-                  <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                    <div>• Core: +EV Market Pricing</div>
-                    <div>• Edge: Key Number Clusters (3 &amp; 7)</div>
-                    <div>• Signal: Syndicate Hammer 4-0</div>
+                  <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:translate-x-0.5 transition-transform">
+                    <span>View Scott's Ledger</span>
+                    <span className="font-mono">→</span>
                   </div>
                 </div>
 
                 {/* Desk 2: Rocco */}
-                <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-b from-blue-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      DESK 02
-                    </span>
-                    <span className="text-xs font-mono text-zinc-500">TRENCHES &amp; EPA</span>
+                <div
+                  onClick={() => {
+                    setDeskFilter('Rocco')
+                    setActiveTab('ledger')
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="rounded-2xl border border-blue-500/20 bg-gradient-to-b from-blue-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:border-blue-500/60 hover:shadow-lg hover:shadow-blue-500/10 group active:scale-[0.99] flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        DESK 02
+                      </span>
+                      <span className="text-xs font-mono text-zinc-500">TRENCHES &amp; EPA</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">Rocco</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Trench &amp; offensive efficiency specialist. Breaks down line-of-scrimmage win rates (PBWR/PRWR), net EPA per play, and injury spread value (PVAL).
+                    </p>
+                    <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
+                      <div>• Core: PBWR / PRWR Line Ratings</div>
+                      <div>• Factor: Offensive/Defensive EPA</div>
+                      <div>• Penalty: -3.5 / -7.5 Hook Tax Traps</div>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Rocco</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    Trench &amp; offensive efficiency specialist. Breaks down line-of-scrimmage win rates (PBWR/PRWR), net EPA per play, and injury spread value (PVAL).
-                  </p>
-                  <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                    <div>• Core: PBWR / PRWR Line Ratings</div>
-                    <div>• Factor: Offensive/Defensive EPA</div>
-                    <div>• Penalty: -3.5 / -7.5 Hook Tax Traps</div>
+                  <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-blue-400 group-hover:translate-x-0.5 transition-transform">
+                    <span>View Rocco's Ledger</span>
+                    <span className="font-mono">→</span>
                   </div>
                 </div>
 
                 {/* Desk 3: Chedda */}
-                <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      DESK 03
-                    </span>
-                    <span className="text-xs font-mono text-zinc-500">DOGS &amp; RLM</span>
+                <div
+                  onClick={() => {
+                    setDeskFilter('Chedda')
+                    setActiveTab('ledger')
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10 group active:scale-[0.99] flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        DESK 03
+                      </span>
+                      <span className="text-xs font-mono text-zinc-500">DOGS &amp; RLM</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">Chedda</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Underdog value and market flow specialist. Tracks handle vs. ticket splits to catch Reverse Line Movement (RLM), sharp book divergence, and red zone TD targets.
+                    </p>
+                    <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
+                      <div>• Core: Live RLM / Sharp Money %</div>
+                      <div>• Boost: +3.5 / +7.5 Golden Hooks</div>
+                      <div>• Specialty: Plus-Money ATD Props</div>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Chedda</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    Underdog value and market flow specialist. Tracks handle vs. ticket splits to catch Reverse Line Movement (RLM), sharp book divergence, and red zone TD targets.
-                  </p>
-                  <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                    <div>• Core: Live RLM / Sharp Money %</div>
-                    <div>• Boost: +3.5 / +7.5 Golden Hooks</div>
-                    <div>• Specialty: Plus-Money ATD Props</div>
+                  <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-amber-400 group-hover:translate-x-0.5 transition-transform">
+                    <span>View Chedda's Ledger</span>
+                    <span className="font-mono">→</span>
                   </div>
                 </div>
 
                 {/* Desk 4: Tank */}
-                <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-b from-purple-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                      DESK 04
-                    </span>
-                    <span className="text-xs font-mono text-zinc-500">TOTALS &amp; PACE</span>
+                <div
+                  onClick={() => {
+                    setDeskFilter('Tank')
+                    setActiveTab('ledger')
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="rounded-2xl border border-purple-500/20 bg-gradient-to-b from-purple-950/20 via-zinc-900/60 to-zinc-950 p-5 space-y-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:border-purple-500/60 hover:shadow-lg hover:shadow-purple-500/10 group active:scale-[0.99] flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        DESK 04
+                      </span>
+                      <span className="text-xs font-mono text-zinc-500">TOTALS &amp; PACE</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">Tank</h3>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Over/Under totals and situational pace specialist. Evaluates seconds per play, atmospheric weather impacts (wind/cold), and rest/travel scheduling spots.
+                    </p>
+                    <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
+                      <div>• Core: Pace &amp; Seconds Per Play</div>
+                      <div>• Factor: Wind (&gt;14mph) &amp; Cold Weather</div>
+                      <div>• Rest: Short Weeks &amp; Cross-Country Spots</div>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Tank</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    Over/Under totals and situational pace specialist. Evaluates seconds per play, atmospheric weather impacts (wind/cold), and rest/travel scheduling spots.
-                  </p>
-                  <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                    <div>• Core: Pace &amp; Seconds Per Play</div>
-                    <div>• Factor: Wind (&gt;14mph) &amp; Cold Weather</div>
-                    <div>• Rest: Short Weeks &amp; Cross-Country Spots</div>
+                  <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-purple-400 group-hover:translate-x-0.5 transition-transform">
+                    <span>View Tank's Ledger</span>
+                    <span className="font-mono">→</span>
                   </div>
                 </div>
               </div>
@@ -361,35 +417,72 @@ export function SyndicateApp() {
         {/* Audited Ledger Tab */}
         {activeTab === 'ledger' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
               <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">Audited Pick Ledger</h2>
+                <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5 flex-wrap">
+                  <span>Audited Pick Ledger</span>
+                  {deskFilter !== 'all' && (
+                    <span className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                      deskFilter === 'Scott' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                      deskFilter === 'Rocco' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+                      deskFilter === 'Chedda' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                      'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                    }`}>
+                      {deskFilter} Desk
+                    </span>
+                  )}
+                </h2>
                 <p className="text-zinc-400 text-xs sm:text-sm mt-1">
                   Every syndicate pick is recorded, timestamped, and auto-graded against official closing boxscores.
                 </p>
               </div>
 
-              {/* Sport Filter */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                {[
-                  { id: 'all', label: 'All Action' },
-                  { id: 'nfl', label: 'NFL' },
-                  { id: 'cfb', label: 'CFB' },
-                  { id: 'mlb', label: 'MLB' },
-                  { id: 'nba', label: 'NBA' },
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setSportFilter(f.id)}
-                    className={`px-3 py-1 text-xs font-mono rounded-lg transition-all ${
-                      sportFilter === f.id
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 flex-wrap">
+                {/* Desk Filter Pills */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                  {[
+                    { id: 'all', label: 'All Desks' },
+                    { id: 'Scott', label: 'Scott' },
+                    { id: 'Rocco', label: 'Rocco' },
+                    { id: 'Chedda', label: 'Chedda' },
+                    { id: 'Tank', label: 'Tank' },
+                  ].map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => setDeskFilter(d.id)}
+                      className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-lg transition-all ${
+                        deskFilter === d.id
+                          ? 'bg-zinc-100 text-zinc-950 shadow-sm'
+                          : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200 hover:bg-zinc-800/60'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sport Filter */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                  {[
+                    { id: 'all', label: 'All Sports' },
+                    { id: 'nfl', label: 'NFL' },
+                    { id: 'cfb', label: 'CFB' },
+                    { id: 'mlb', label: 'MLB' },
+                    { id: 'nba', label: 'NBA' },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setSportFilter(f.id)}
+                      className={`px-2.5 py-1 text-xs font-mono rounded-lg transition-all ${
+                        sportFilter === f.id
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
+                          : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

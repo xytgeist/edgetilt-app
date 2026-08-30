@@ -6,6 +6,7 @@ import {
   invokeLoungeOddsPredictivePick,
   invokeLoungeOddsSlateCard,
   invokeLoungeOddsWongTeaser,
+  invokeLoungeOddsPrimetimeSpotlight,
 } from './botPortalApi.js'
 import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
@@ -201,6 +202,36 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropPrimetimeSpotlight = async (primetimeType, dryRun = false) => {
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    const label = primetimeType || 'Primetime'
+    try {
+      const { data, error } = await invokeLoungeOddsPrimetimeSpotlight(supabaseClient, {
+        slug: botSlug,
+        primetimeType,
+        dryRun,
+      })
+      if (error) {
+        setToast?.(`${label} Spotlight failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        const sp = data?.spotlight
+        setToast?.(`[Dry Run] ${sp?.primetimeLabel || label}: ${sp?.awayTeam} @ ${sp?.homeTeam} · Official: ${sp?.consensusPick?.lineDisplay}`)
+      } else if (data?.ok) {
+        const sp = data?.spotlight
+        setToast?.(`Published ${sp?.primetimeLabel || label} Spotlight: ${sp?.awayTeam} @ ${sp?.homeTeam}`)
+        await loadData()
+      } else {
+        setToast?.(data?.message || `No eligible ${label} game found on active board.`)
+      }
+    } catch (err) {
+      setToast?.(`${label} Spotlight error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
 
@@ -379,6 +410,27 @@ export function BotSharpDeskPanel({
                     disabled={busy || dropping || loading}
                     onClick={() => handleDropWongTeaser(false)}
                     className="rounded bg-emerald-600/80 hover:bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                  >
+                    Publish
+                  </button>
+                </div>
+
+                {/* Primetime Spotlights (TNF/SNF/MNF) */}
+                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
+                  <span className="font-semibold text-amber-300 text-[11px]">📺 Primetime:</span>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropPrimetimeSpotlight(undefined, true)}
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropPrimetimeSpotlight(undefined, false)}
+                    className="rounded bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
                   >
                     Publish
                   </button>

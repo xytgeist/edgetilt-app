@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'calibrate_persona_models'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'calibrate_persona_models'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, or calibrate_persona_models.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, or calibrate_persona_models.',
       })
     }
 
@@ -270,6 +270,53 @@ Deno.serve(async (req) => {
         ok: true,
         action: 'nfl_wong_teaser',
         pair,
+        ...result,
+      })
+    }
+
+    if (action === 'nfl_primetime_spotlight') {
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const {
+        findPrimetimeGameCandidate,
+        publishAndRecordPrimetimeSpotlight,
+      } = await import('../_shared/loungeBotPrimetimeSpotlight.ts')
+
+      const oddsData = await fetchSportOdds('americanfootball_nfl', ['us', 'us2'], ['spreads', 'totals'])
+      const spotlight = await findPrimetimeGameCandidate(
+        admin,
+        oddsData.events,
+        body?.primetimeType || undefined,
+      )
+
+      if (!spotlight) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'nfl_primetime_spotlight',
+          message: 'No eligible NFL primetime game (TNF/SNF/MNF) found on the active board.',
+          totalEvents: oddsData.events.length,
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          action: 'nfl_primetime_spotlight',
+          spotlight,
+        })
+      }
+
+      const result = await publishAndRecordPrimetimeSpotlight(
+        admin,
+        bot.user_id,
+        spotlight,
+        bot.category_pills_default || ['sports', 'nfl'],
+      )
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'nfl_primetime_spotlight',
+        spotlight,
         ...result,
       })
     }

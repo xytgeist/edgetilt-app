@@ -1069,6 +1069,14 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-30: **NFL Primetime Solo Spotlights Engine (TNF / SNF / MNF) (`test`):**
+  - Created `_shared/loungeBotPrimetimeSpotlight.ts` powering dedicated 4-man deep dive posts for standalone primetime NFL games.
+  - Generates comprehensive game breakdown covering Scott (Net EPA / Model Spread), Rocco (Trenches & Pressure Rates), Tank (Venue Climate & Weather Pace), Chedda (Sharp Money Divergence & Live Dogs), and the official Syndicate Consensus recommendation.
+  - Automatically posts private high-value breakdowns to Scott's VIP subscriber channel.
+  - Updated `lounge-odds-poll` Edge function with `nfl_primetime_spotlight` action.
+  - Added pg_cron migration `20260830180000_lounge_bot_nfl_primetime_spotlights.sql` scheduling automated primetime drops on Thursdays @ 3:30 PM PT (TNF), Sundays @ 3:30 PM PT (SNF), and Mondays @ 3:30 PM PT (MNF). Applied to test DB.
+  - Added frontend API helper `invokeLoungeOddsPrimetimeSpotlight` and portal drop controls (Preview/Publish) inside `BotSharpDeskPanel.jsx`. Verified build.
+
 - 2026-08-30: **Sharp Desk Sub-Tabs & Specialty Slate Drop Triggers (`test`):**
   - Consolidated the 4 large football management tables in `BotManagementPortal` into a clean tabbed workspace in `BotSharpDeskPanel` (`Scorecard & Drops` | `NFL PVALs` | `NFL Trenches` | `CFB Ratings`).
   - Added dedicated manual drop controls for specialty betting engines: **NFL Full Slate Card** (ATS consensus), **CFB Full Slate Card** (Power ratings ATS), and **NFL 6-Pt Wong Teasers** with instant Preview (dry run) and Publish actions.

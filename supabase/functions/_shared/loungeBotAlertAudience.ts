@@ -28,6 +28,9 @@ export type OddsAlertAudienceKey =
   | 'injury_impact'
   | 'rest_travel_edge'
   | 'fade_the_public'
+  | 'cfb_ranked_home_dog'
+  | 'cfb_service_academy_under'
+  | 'cfb_lookahead_trap'
 
 export const ODDS_ALERT_AUDIENCE_KEYS: OddsAlertAudienceKey[] = [
   'coffee_covers',
@@ -44,6 +47,9 @@ export const ODDS_ALERT_AUDIENCE_KEYS: OddsAlertAudienceKey[] = [
   'injury_impact',
   'rest_travel_edge',
   'fade_the_public',
+  'cfb_ranked_home_dog',
+  'cfb_service_academy_under',
+  'cfb_lookahead_trap',
 ]
 
 export const DEFAULT_ALERT_ROUTES: Record<OddsAlertAudienceKey, AlertRouteConfig> = {
@@ -61,6 +67,9 @@ export const DEFAULT_ALERT_ROUTES: Record<OddsAlertAudienceKey, AlertRouteConfig
   injury_impact: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
   rest_travel_edge: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
   fade_the_public: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
+  cfb_ranked_home_dog: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
+  cfb_service_academy_under: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
+  cfb_lookahead_trap: { lounge: true, sub_chat: true, lounge_teaser_pct: 0 },
 }
 
 export const ALERT_AUDIENCE_LABELS: Record<OddsAlertAudienceKey, string> = {
@@ -78,6 +87,9 @@ export const ALERT_AUDIENCE_LABELS: Record<OddsAlertAudienceKey, string> = {
   injury_impact: 'Situational Lean',
   rest_travel_edge: 'Situational Lean',
   fade_the_public: 'Fade the Public',
+  cfb_ranked_home_dog: 'Ranked Road Dog Alert',
+  cfb_service_academy_under: 'Service Academy Under',
+  cfb_lookahead_trap: 'CFB Lookahead Spot',
 }
 
 const LINE_KINDS = new Set(['line_movement', 'sharp_move', 'steam', 'rlm'])

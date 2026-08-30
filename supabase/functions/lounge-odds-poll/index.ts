@@ -644,6 +644,9 @@ Deno.serve(async (req) => {
                 | 'injury_impact'
                 | 'rest_travel_edge'
                 | 'fade_the_public'
+                | 'cfb_ranked_home_dog'
+                | 'cfb_service_academy_under'
+                | 'cfb_lookahead_trap'
                 | null },
             )
             if (contextResult.published || contextResult.scheduled) {

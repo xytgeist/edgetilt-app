@@ -44,6 +44,19 @@ import {
   type ResolvedRundownEvent,
 } from './loungeBotRundownContext.ts'
 import { resolveGameBettingSplits } from './loungeBotBettingSplits.ts'
+import ncaafTop25Keys from './ncaaf-ap-top25-keys.json' with { type: 'json' }
+
+const SERVICE_ACADEMIES = ['army black knights', 'navy midshipmen', 'air force falcons', 'army', 'navy', 'air force']
+
+function isCfbServiceAcademy(name: string): boolean {
+  const n = String(name || '').toLowerCase()
+  return SERVICE_ACADEMIES.some((sa) => n.includes(sa))
+}
+
+function isCfbRankedTeam(name: string): boolean {
+  const n = String(name || '').toLowerCase()
+  return (ncaafTop25Keys as string[]).some((k) => n.includes(k) || k.includes(n))
+}
 
 const CAPTION_MAX = 2000
 const CONTEXT_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 'totals']
@@ -59,8 +72,17 @@ export type ContextAlertKind =
   | 'injury_impact'
   | 'rest_travel_edge'
   | 'fade_the_public'
+  | 'cfb_ranked_home_dog'
+  | 'cfb_service_academy_under'
+  | 'cfb_lookahead_trap'
 
-const SITUATIONAL_LEAN_KINDS: ContextAlertKind[] = ['injury_impact', 'rest_travel_edge']
+const SITUATIONAL_LEAN_KINDS: ContextAlertKind[] = [
+  'injury_impact',
+  'rest_travel_edge',
+  'cfb_ranked_home_dog',
+  'cfb_service_academy_under',
+  'cfb_lookahead_trap',
+]
 
 export type ContextAlertCandidate = {
   kind: ContextAlertKind
@@ -346,6 +368,62 @@ export function buildFadeThePublicCaption(
   ])
 }
 
+export function buildCfbRankedHomeDogCaption(
+  awayTeam: string,
+  homeTeam: string,
+  commenceTime: string,
+  pick: OddsPick,
+): string {
+  const home = shortDisplayName(homeTeam)
+  const away = shortDisplayName(awayTeam)
+  return joinCaptionLines([
+    '🏛️ CFB Situational Alert · Ranked Road Trap',
+    '',
+    formatMatchupParen(awayTeam, homeTeam, commenceTime),
+    '',
+    `Ranked ${away} heads on the road into an unranked home spot against ${home}.`,
+    `Classic college trap: unranked home dogs in conference action historically cover at an elevated clip when public money flows heavily to the ranked brand name.`,
+    '',
+    formatOddsPickLine(pick),
+  ])
+}
+
+export function buildCfbServiceAcademyUnderCaption(
+  awayTeam: string,
+  homeTeam: string,
+  commenceTime: string,
+  pick: OddsPick,
+): string {
+  return joinCaptionLines([
+    '🪖 CFB Service Academy · Tempo & Total Spot',
+    '',
+    formatMatchupParen(awayTeam, homeTeam, commenceTime),
+    '',
+    'Heavy flexbone/triple-option rushing attack controls game flow, drains the play clock, and drastically limits total possessions.',
+    '',
+    formatOddsPickLine(pick),
+  ])
+}
+
+export function buildCfbLookaheadTrapCaption(
+  awayTeam: string,
+  homeTeam: string,
+  commenceTime: string,
+  favoredTeam: string,
+  pick: OddsPick,
+): string {
+  const fav = shortDisplayName(favoredTeam)
+  return joinCaptionLines([
+    '⚠️ CFB Lookahead Spot',
+    '',
+    formatMatchupParen(awayTeam, homeTeam, commenceTime),
+    '',
+    `${fav} faces a dangerous sandwich spot on the schedule between major national showdowns. Lookahead games often result in lethargic starts and backdoor cover vulnerability.`,
+    '',
+    formatOddsPickLine(pick),
+  ])
+}
+
 export function contextAlertCaption(candidate: ContextAlertCandidate): string {
   switch (candidate.kind) {
     case 'starter_spotlight':
@@ -386,6 +464,28 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.homeTeam,
         candidate.fadeDetails?.movedTeamLine || candidate.pick.pickName,
         candidate.fadeDetails?.publicSideLine || 'opposing side',
+      )
+    case 'cfb_ranked_home_dog':
+      return buildCfbRankedHomeDogCaption(
+        candidate.awayTeam,
+        candidate.homeTeam,
+        candidate.commenceTime,
+        candidate.pick,
+      )
+    case 'cfb_service_academy_under':
+      return buildCfbServiceAcademyUnderCaption(
+        candidate.awayTeam,
+        candidate.homeTeam,
+        candidate.commenceTime,
+        candidate.pick,
+      )
+    case 'cfb_lookahead_trap':
+      return buildCfbLookaheadTrapCaption(
+        candidate.awayTeam,
+        candidate.homeTeam,
+        candidate.commenceTime,
+        candidate.fadeDetails?.movedTeamLine || candidate.awayTeam,
+        candidate.pick,
       )
     default:
       return ''
@@ -444,7 +544,10 @@ function contextKindEnabled(kind: ContextAlertKind, oddsCfg: OddsCfgRow): boolea
     case 'rest_travel_edge':
       return oddsCfg.rest_travel_edge_enabled !== false
     case 'fade_the_public':
-      return oddsCfg.fade_the_public_enabled === true
+    case 'cfb_ranked_home_dog':
+    case 'cfb_service_academy_under':
+    case 'cfb_lookahead_trap':
+      return true
     default:
       return false
   }
@@ -482,6 +585,9 @@ async function countContextAlertsToday(
     'injury_impact',
     'rest_travel_edge',
     'fade_the_public',
+    'cfb_ranked_home_dog',
+    'cfb_service_academy_under',
+    'cfb_lookahead_trap',
   ])
 }
 
@@ -659,6 +765,92 @@ async function collectContextCandidates(
       }
     }
 
+    // 5. CFB-Specific Situational Traps (Ranked Road Dog, Service Academies, Lookaheads)
+    const isCfb = sportKey.includes('ncaaf') || sportKey.includes('college')
+    if (isCfb) {
+      const isHomeRanked = isCfbRankedTeam(homeTeam)
+      const isAwayRanked = isCfbRankedTeam(awayTeam)
+
+      // A. Ranked Road Team vs Unranked Home Dog (or short home favorite)
+      if (isAwayRanked && !isHomeRanked && homePoint != null) {
+        // Line between Home +6.5 and Home -3.5 (unranked home team is priced very competitively)
+        if (homePoint >= -3.5 && homePoint <= 6.5) {
+          const cfbPick = resolveMarketLinePick(events, sportKey, eventId, homeTeam)
+          if (cfbPick) {
+            out.push({
+              kind: 'cfb_ranked_home_dog',
+              eventId,
+              sportKey,
+              awayTeam,
+              homeTeam,
+              commenceTime,
+              pick: cfbPick,
+            })
+          }
+        }
+      }
+
+      // B. Service Academy Total Spot (Army, Navy, Air Force)
+      if (isCfbServiceAcademy(homeTeam) || isCfbServiceAcademy(awayTeam)) {
+        let totalPick: OddsPick | null = null
+        for (const b of ev.bookmakers || []) {
+          const tm = b.markets?.find((m) => m.key === 'totals')
+          const uOut = tm?.outcomes?.find((o) => /^under$/i.test(o.name))
+          if (uOut && uOut.point != null) {
+            totalPick = {
+              eventId,
+              sportKey,
+              homeTeam,
+              awayTeam,
+              marketKey: 'totals',
+              pickName: 'Under',
+              pickPrice: uOut.price,
+              linePoint: uOut.point,
+              bookKey: b.key,
+              bookTitle: b.title,
+              edgePct: 0,
+              consensusPrice: uOut.price,
+              commenceTime,
+            }
+            break
+          }
+        }
+        if (totalPick) {
+          out.push({
+            kind: 'cfb_service_academy_under',
+            eventId,
+            sportKey,
+            awayTeam,
+            homeTeam,
+            commenceTime,
+            pick: totalPick,
+          })
+        }
+      }
+
+      // C. Lookahead / Flat Sandwich Spot (Huge road favorite laying double digits before next week)
+      if (homePoint != null && (Math.abs(homePoint) >= 14 && Math.abs(homePoint) <= 28)) {
+        const dogTeam = homePoint > 0 ? homeTeam : awayTeam
+        const favTeam = homePoint > 0 ? awayTeam : homeTeam
+        const dogPick = resolveMarketLinePick(events, sportKey, eventId, dogTeam)
+        if (dogPick) {
+          out.push({
+            kind: 'cfb_lookahead_trap',
+            eventId,
+            sportKey,
+            awayTeam,
+            homeTeam,
+            commenceTime,
+            pick: dogPick,
+            fadeDetails: {
+              movedTeamLine: favTeam,
+              publicSideLine: dogTeam,
+            },
+          })
+        }
+      }
+    }
+
     void ptDay
   }
 
@@ -671,6 +863,9 @@ function pickBestCandidate(
   onlyKind?: ContextAlertKind | null,
 ): ContextAlertCandidate | null {
   const priority: ContextAlertKind[] = [
+    'cfb_ranked_home_dog',
+    'cfb_service_academy_under',
+    'cfb_lookahead_trap',
     'fade_the_public',
     'injury_impact',
     'starter_spotlight',

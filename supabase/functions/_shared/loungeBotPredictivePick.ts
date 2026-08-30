@@ -183,7 +183,7 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('')
   }
 
-  lines.push('📊 Individual records & live auto-grading tracked in the Sharp Desk.')
+  lines.push('📊 Full 16-game interactive grid & in-game edges in Scott\'s VIP Syndicate Club.')
   return lines.join('\n').trim()
 }
 
@@ -997,6 +997,8 @@ export async function gradePendingPicks(
         if (consensusWins > 0 || consensusLosses > 0) {
           lines.push(`🎯 3-1 Consensus: ${consensusWins}-${consensusLosses}`)
         }
+
+        lines.push('\nNext slate & in-game alerts drop in the VIP Syndicate Club.')
 
         commentText = lines.join('\n')
       } else {

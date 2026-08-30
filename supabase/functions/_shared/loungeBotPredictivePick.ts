@@ -23,6 +23,12 @@ import {
   type TrenchEpaMatchupSummary,
   type NflTeamMetrics,
 } from './loungeBotTeamMetrics.ts'
+import {
+  calculateCfbMatchupProjection,
+  loadDbCfbPowerRatingsMap,
+  type CfbMatchupProjection,
+  type CfbTeamPowerRating,
+} from './loungeBotCfbPowerRatings.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
@@ -116,6 +122,7 @@ export function formatSoloPredictiveCaption(
   injuries?: GameInjurySummary | null,
   splits?: BettingSplitSummary | null,
   trenchEpa?: TrenchEpaMatchupSummary | null,
+  cfbMatchup?: CfbMatchupProjection | null,
 ): string {
   const line = formatPickLine(pick)
   const away = shortDisplayName(pick.awayTeam)
@@ -135,6 +142,9 @@ export function formatSoloPredictiveCaption(
   }
   if (trenchEpa && (trenchEpa.isTrenchMismatch || trenchEpa.isEpaMismatch) && trenchEpa.summaryLine) {
     lines.push(`\n⚔️ Matchup Edge: ${trenchEpa.summaryLine}`)
+  }
+  if (cfbMatchup && cfbMatchup.summaryLine) {
+    lines.push(`\n📈 ${cfbMatchup.summaryLine}`)
   }
 
   return lines.join('')
@@ -398,6 +408,7 @@ export function buildNflAtsSlateCard(
     sportKey?: string
     weightsMap?: Map<string, number>
     teamMetricsMap?: Map<string, NflTeamMetrics>
+    cfbRatingsMap?: Map<string, CfbTeamPowerRating>
   } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
@@ -408,6 +419,7 @@ export function buildNflAtsSlateCard(
   const splits: SlateGamePick[] = []
   const weights = opts.weightsMap || new Map<string, number>()
   const teamMetrics = opts.teamMetricsMap
+  const cfbRatings = opts.cfbRatingsMap
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -480,8 +492,10 @@ export function buildNflAtsSlateCard(
     const sharpFavorsHome = gameSplits.sharpFavoredSide === 'home'
     const sharpFavorsAway = gameSplits.sharpFavoredSide === 'away'
 
-    // Calculate EPA and Trench matchups
-    const trenchEpa = calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics)
+    // Calculate EPA and Trench matchups (NFL) or Power Rating Projections (CFB)
+    const isCfb = ev.sport_key === 'americanfootball_ncaaf' || (opts.sportKey && opts.sportKey.includes('ncaaf'))
+    const trenchEpa = !isCfb ? calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics) : null
+    const cfbMatchup = isCfb ? calculateCfbMatchupProjection(homeTeam, awayTeam, homePoint, cfbRatings) : null
 
     // Bayesian factor weights
     const scottWeight = weights.get('Scott:model_clv_high_ev') || 1.0
@@ -489,24 +503,40 @@ export function buildNflAtsSlateCard(
     const cheddaSweetWeight = weights.get('Chedda:dog_sweet_spot_130_175') || 1.0
     const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
 
-    // Persona-specific picks with dynamic Bayesian weights, betting splits & EPA/trench modeling:
-    // 1. Scott (Model EV): evaluates model-projected spread vs market spread using Net EPA
+    // Persona-specific picks with dynamic Bayesian weights, betting splits, EPA/trench & CFB Power modeling:
+    // 1. Scott (Model EV): evaluates model-projected spread vs market spread using Net EPA (NFL) or Power Index (CFB)
     const sharpSplitBonus = sharpFavorsHome ? 0.35 : sharpFavorsAway ? -0.35 : 0
-    const epaBonus = trenchEpa ? Math.max(-1.5, Math.min(1.5, trenchEpa.epaSpreadImpactHome * 0.3)) : 0
+    const epaBonus = trenchEpa
+      ? Math.max(-1.5, Math.min(1.5, trenchEpa.epaSpreadImpactHome * 0.3))
+      : cfbMatchup && cfbMatchup.isValuePlay
+        ? (cfbMatchup.valueSide === 'home' ? 1.4 : -1.4)
+        : 0
     const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1) + sharpSplitBonus + epaBonus) * scottWeight
     const scottSide: 'home' | 'away' = scottScoreHome >= 0 ? 'home' : 'away'
 
-    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5), capitalizes on Sharp Money Divergence & live dogs with trench push
+    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5), capitalizes on Sharp Money Divergence & live dogs with trench/CFB power push
     const cheddaSplitBoost = (homePoint > 0 && sharpFavorsHome) ? 1.2 : (awayPoint > 0 && sharpFavorsAway) ? -1.2 : 0
-    const dogTrenchBoost = (homePoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0.5) ? 0.6 : (awayPoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) < -0.5) ? -0.6 : 0
+    const dogTrenchBoost = (homePoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0.5)
+      ? 0.6
+      : (awayPoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) < -0.5)
+        ? -0.6
+        : (homePoint > 0 && cfbMatchup?.valueSide === 'home')
+          ? 0.8
+          : (awayPoint > 0 && cfbMatchup?.valueSide === 'away')
+            ? -0.8
+            : 0
     const cheddaScoreHome = (homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)) + cheddaSplitBoost + dogTrenchBoost
     const cheddaSide: 'home' | 'away' = cheddaScoreHome >= 0 ? 'home' : 'away'
 
-    // 3. Rocco (Trench / Favorites): prefers laying short points on favorites (-2.5, -3.5, -6.5), dodges trap chalk, and rides dominant offensive line protection
+    // 3. Rocco (Trench / Favorites / Power Programs): prefers laying short points on favorites (-2.5, -3.5, -6.5), rides dominant offensive line protection & elite CFB power teams
     const isShortFavHome = homePoint < 0 && homePoint >= -7.5
     const isShortFavAway = awayPoint < 0 && awayPoint >= -7.5
     const roccoChalkTrapPenalty = (isShortFavHome && sharpFavorsAway) ? -1.5 : (isShortFavAway && sharpFavorsHome) ? 1.5 : 0
-    const roccoTrenchBonus = trenchEpa ? Math.max(-1.8, Math.min(1.8, trenchEpa.netTrenchSpreadImpactHome * 0.8)) : 0
+    const roccoTrenchBonus = trenchEpa
+      ? Math.max(-1.8, Math.min(1.8, trenchEpa.netTrenchSpreadImpactHome * 0.8))
+      : cfbMatchup
+        ? (cfbMatchup.homePower - cfbMatchup.awayPower > 10.0 && homePoint < 0 ? 1.2 : cfbMatchup.awayPower - cfbMatchup.homePower > 10.0 && awayPoint < 0 ? -1.2 : 0)
+        : 0
     const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoTrenchBonus
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
@@ -789,6 +819,7 @@ export async function publishAndRecordPicks(
   let injuries: GameInjurySummary | null = null
   let splits: BettingSplitSummary | null = null
   let trenchEpa: TrenchEpaMatchupSummary | null = null
+  let cfbMatchup: CfbMatchupProjection | null = null
   const isSolo = input.picks.length === 1
 
   if (isSolo) {
@@ -805,14 +836,17 @@ export async function publishAndRecordPicks(
       bookmakers: [],
     }
     splits = resolveGameBettingSplits(mockEv, single.linePoint ?? 0, single.pickPrice, single.pickPrice)
-    if (single.sportKey.startsWith('americanfootball_')) {
+    if (single.sportKey === 'americanfootball_nfl') {
       const teamMetricsMap = await loadDbTeamMetricsMap(admin)
       trenchEpa = calculateTrenchEpaMatchup(single.homeTeam, single.awayTeam, teamMetricsMap)
+    } else if (single.sportKey === 'americanfootball_ncaaf') {
+      const cfbRatingsMap = await loadDbCfbPowerRatingsMap(admin)
+      cfbMatchup = calculateCfbMatchupProjection(single.homeTeam, single.awayTeam, single.linePoint ?? null, cfbRatingsMap)
     }
   }
 
   const caption = isSolo
-    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather, injuries, splits, trenchEpa)
+    ? formatSoloPredictiveCaption(input.picks[0].pickerName, input.picks[0].pick, weather, injuries, splits, trenchEpa, cfbMatchup)
     : formatSyndicateCardCaption(input.cardTitle || '🎯 Sharp Syndicate Card', input.picks)
 
   const categoryPills = input.categoryPills || ['sports']
@@ -847,6 +881,7 @@ export async function publishAndRecordPicks(
     if (splits?.isSharpDivergence) factors.push('sharp_money_divergence')
     if (trenchEpa?.isTrenchMismatch) factors.push('trench_mismatch_advantage')
     if (trenchEpa?.isEpaMismatch) factors.push('epa_model_value')
+    if (cfbMatchup?.isValuePlay) factors.push('cfb_power_index_value')
 
     return {
       bot_user_id: input.botUserId,

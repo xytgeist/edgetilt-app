@@ -30,6 +30,7 @@ export type PersonaFactorKey =
   | 'epa_model_value'
   | 'wong_teaser_key_numbers_3_7'
   | 'nfl_basic_strategy'
+  | 'cfb_power_index_value'
 
 export type PersonaWeightRecord = {
   picker_name: SharpPicker

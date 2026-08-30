@@ -11,6 +11,7 @@ import BotSportsCalendarPanel from './BotSportsCalendarPanel.jsx'
 import { BotSharpDeskPanel } from './BotSharpDeskPanel.jsx'
 import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
+import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
 import {
   BOT_PIPELINE_LABELS,
   BOT_REVIEW_MODE_LABELS,
@@ -1337,6 +1338,10 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               setToast={setToast}
             />
             <BotTeamMetricsEditor
+              supabaseClient={supabaseClient}
+              setToast={setToast}
+            />
+            <BotCfbPowerRatingsEditor
               supabaseClient={supabaseClient}
               setToast={setToast}
             />

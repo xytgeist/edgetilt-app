@@ -566,6 +566,25 @@ export async function invokeLoungeOddsPrimetimeSpotlight(supabaseClient, opts = 
 }
 
 /**
+ * Trigger on-demand generation and publishing of Tuesday Morning Weekly Syndicate Ledger & Post-Mortem.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ */
+export async function invokeLoungeOddsWeeklyRecap(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'weekly_syndicate_recap',
+      dryRun: opts.dryRun === true,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Weekly recap failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Publish one example Lounge post per Scott alert type (portal smoke pack).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

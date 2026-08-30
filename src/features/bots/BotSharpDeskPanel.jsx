@@ -7,6 +7,7 @@ import {
   invokeLoungeOddsSlateCard,
   invokeLoungeOddsWongTeaser,
   invokeLoungeOddsPrimetimeSpotlight,
+  invokeLoungeOddsWeeklyRecap,
 } from './botPortalApi.js'
 import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
@@ -232,6 +233,33 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropWeeklyRecap = async (dryRun = false) => {
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsWeeklyRecap(supabaseClient, {
+        slug: botSlug,
+        dryRun,
+      })
+      if (error) {
+        setToast?.(`Weekly Recap failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        const rc = data?.recap
+        setToast?.(`[Dry Run] Weekly Recap: ${rc?.overall?.wins}-${rc?.overall?.losses} (${rc?.overall?.unitsNet > 0 ? `+${rc?.overall?.unitsNet}` : rc?.overall?.unitsNet}u) · Top: ${rc?.topPerformer?.pickerName || 'All'}`)
+      } else if (data?.ok) {
+        setToast?.('Published Tuesday Weekly Syndicate Ledger & Post-Mortem!')
+        await loadData()
+      } else {
+        setToast?.(data?.message || 'No graded picks over last 7 days.')
+      }
+    } catch (err) {
+      setToast?.(`Weekly Recap error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
 
@@ -431,6 +459,27 @@ export function BotSharpDeskPanel({
                     disabled={busy || dropping || loading}
                     onClick={() => handleDropPrimetimeSpotlight(undefined, false)}
                     className="rounded bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                  >
+                    Publish
+                  </button>
+                </div>
+
+                {/* Tuesday Ledger & Recap */}
+                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
+                  <span className="font-semibold text-emerald-300 text-[11px]">📊 Weekly Recap:</span>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropWeeklyRecap(true)}
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropWeeklyRecap(false)}
+                    className="rounded bg-emerald-600/80 hover:bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
                   >
                     Publish
                   </button>

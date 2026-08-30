@@ -1069,6 +1069,12 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-08-30: **Tuesday Morning Syndicate Ledger & Key Number Hook Intelligence (`test`):**
+  - Created `_shared/loungeBotKeyNumbers.ts` implementing NFL key scoring margin analysis (3, 7, 6, 10, 4), Hook Tax traps (-3.5, -7.5, +2.5), and Golden Hooks (+3.5, +7.5). Integrated into Rocco (penalizes -3.5/-7.5 hook tax) and Chedda (boosts +3.5/+7.5 golden hooks).
+  - Created `_shared/loungeBotLedgerRecap.ts` generating Tuesday Morning Syndicate Weekly Ledger & Post-Mortem posts. Completely removed artificial "model accuracy" jargon in favor of authentic sharp language: **Yardage Dominance** (+100 yds margin) vs **Turnover Variance** (bad beat boxscores).
+  - Added pg_cron migration `20260830190000_lounge_bot_weekly_ledger_recap.sql` scheduling Tuesday 7:30 AM PT (14:30 UTC) weekly recaps. Applied to test DB.
+  - Added `weekly_syndicate_recap` action to `lounge-odds-poll` Edge function, added frontend API helper `invokeLoungeOddsWeeklyRecap`, and added quick trigger button in `BotSharpDeskPanel.jsx`. Verified build.
+
 - 2026-08-30: **NFL Primetime Solo Spotlights Engine (TNF / SNF / MNF) (`test`):**
   - Created `_shared/loungeBotPrimetimeSpotlight.ts` powering dedicated 4-man deep dive posts for standalone primetime NFL games.
   - Generates comprehensive game breakdown covering Scott (Net EPA / Model Spread), Rocco (Trenches & Pressure Rates), Tank (Venue Climate & Weather Pace), Chedda (Sharp Money Divergence & Live Dogs), and the official Syndicate Consensus recommendation.

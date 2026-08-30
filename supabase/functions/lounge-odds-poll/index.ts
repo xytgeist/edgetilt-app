@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'calibrate_persona_models'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, or calibrate_persona_models.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, weekly_syndicate_recap, or calibrate_persona_models.',
       })
     }
 
@@ -317,6 +317,45 @@ Deno.serve(async (req) => {
         ok: true,
         action: 'nfl_primetime_spotlight',
         spotlight,
+        ...result,
+      })
+    }
+
+    if (action === 'weekly_syndicate_recap') {
+      const {
+        compileWeeklySyndicateRecap,
+        publishWeeklySyndicateRecap,
+      } = await import('../_shared/loungeBotLedgerRecap.ts')
+
+      const recap = await compileWeeklySyndicateRecap(admin, bot.user_id)
+      if (!recap) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'weekly_syndicate_recap',
+          message: 'No graded picks found over the last 7 days to compile weekly recap.',
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          action: 'weekly_syndicate_recap',
+          recap,
+        })
+      }
+
+      const result = await publishWeeklySyndicateRecap(
+        admin,
+        bot.user_id,
+        recap,
+        bot.category_pills_default || ['sports', 'recap'],
+      )
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'weekly_syndicate_recap',
+        recap,
         ...result,
       })
     }

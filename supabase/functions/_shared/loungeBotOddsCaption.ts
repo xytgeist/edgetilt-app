@@ -151,19 +151,22 @@ function impliedToAmerican(prob: number): number {
   return Math.round(100 * (1 - prob) / prob)
 }
 
-/** Weights assigned to books when computing consensus fair probability. Sharp market makers get 3.0x gravity. */
+/** Weights assigned to books when computing consensus fair probability.
+ * Pinnacle acts as the 5.5x primary sharp anchor (accounting for combined Pinnacle + Circa sharp block gravity).
+ * LowVig / BetOnline provide secondary sharp offshore weighting (2.5x).
+ */
 export function getBookmakerSharpWeight(bookKey?: string, bookTitle?: string): number {
   const k = String(bookKey || '').toLowerCase()
   const t = String(bookTitle || '').toLowerCase()
 
-  // Primary Sharp Market Makers: Pinnacle, LowVig, Bookmaker/CRIS, BetOnline, Circa
-  if (k.includes('pinnacle') || t.includes('pinnacle')) return 3.0
-  if (k.includes('lowvig') || t.includes('lowvig')) return 3.0
-  if (k.includes('bookmaker') || t.includes('bookmaker')) return 3.0
+  // Primary Sharp Anchor: Pinnacle / Circa (5.5x weight to anchor against 8-10 retail books)
+  if (k.includes('pinnacle') || t.includes('pinnacle')) return 5.5
+  if (k.includes('circa') || t.includes('circa')) return 5.5
+  if (k.includes('bookmaker') || t.includes('bookmaker')) return 5.0
+  if (k.includes('lowvig') || t.includes('lowvig')) return 2.5
   if (k.includes('betonline') || t.includes('betonline')) return 2.5
-  if (k.includes('circa') || t.includes('circa')) return 3.0
 
-  // Standard recreational / retail books
+  // Standard recreational / retail books (DraftKings, FanDuel, BetMGM, Caesars, etc.)
   return 1.0
 }
 

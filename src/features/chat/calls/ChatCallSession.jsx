@@ -225,6 +225,166 @@ function DraggableMinimizedCallPill({ avatarUrl, title, onExpand, children }) {
 }
 
 /**
+ * Floating mini video tile for minimized video calls (WhatsApp style).
+ */
+function DraggableMinimizedVideoTile({ onExpand, children }) {
+  const tileRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const [pos, setPos] = useState(() => readStoredPillPos())
+  const posRef = useRef(pos)
+  posRef.current = pos
+  const dragRef = useRef({
+    active: false,
+    moved: false,
+    pointerId: /** @type {number | null} */ (null),
+    startX: 0,
+    startY: 0,
+    origLeft: 0,
+    origTop: 0,
+  })
+
+  const placeDefaultIfNeeded = useCallback(() => {
+    const el = tileRef.current
+    if (!el) return
+    const width = el.offsetWidth || 112
+    const height = el.offsetHeight || 160
+    setPos((prev) => {
+      if (prev) return clampPillPos(prev.left, prev.top, width, height)
+      const next = defaultPillPos(width, height)
+      writeStoredPillPos(next)
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    placeDefaultIfNeeded()
+    const onResize = () => placeDefaultIfNeeded()
+    window.addEventListener('resize', onResize)
+    window.visualViewport?.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.visualViewport?.removeEventListener('resize', onResize)
+    }
+  }, [placeDefaultIfNeeded])
+
+  const onPointerDown = (event) => {
+    if (event.button != null && event.button !== 0) return
+    const el = tileRef.current
+    const current = posRef.current
+    if (!el || !current) return
+    dragRef.current = {
+      active: true,
+      moved: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      origLeft: current.left,
+      origTop: current.top,
+    }
+    el.setPointerCapture?.(event.pointerId)
+  }
+
+  const onPointerMove = (event) => {
+    const drag = dragRef.current
+    if (!drag.active) return
+    const el = tileRef.current
+    if (!el) return
+    const dx = event.clientX - drag.startX
+    const dy = event.clientY - drag.startY
+    if (!drag.moved && Math.hypot(dx, dy) < CALL_PILL_DRAG_THRESHOLD_PX) return
+    drag.moved = true
+    const width = el.offsetWidth || 112
+    const height = el.offsetHeight || 160
+    const next = clampPillPos(drag.origLeft + dx, drag.origTop + dy, width, height)
+    posRef.current = next
+    setPos(next)
+  }
+
+  const endDrag = () => {
+    const drag = dragRef.current
+    if (!drag.active) return
+    drag.active = false
+    const el = tileRef.current
+    if (el && drag.pointerId != null) {
+      try {
+        el.releasePointerCapture?.(drag.pointerId)
+      } catch {
+        /* ignore */
+      }
+    }
+    if (drag.moved && posRef.current) writeStoredPillPos(posRef.current)
+  }
+
+  const guardClick = (handler) => (event) => {
+    if (dragRef.current.moved) {
+      event.preventDefault()
+      event.stopPropagation()
+      dragRef.current.moved = false
+      return
+    }
+    handler?.(event)
+  }
+
+  return (
+    <div
+      ref={tileRef}
+      className="pointer-events-auto fixed flex h-40 w-28 cursor-grab items-center justify-center overflow-hidden rounded-2xl border-2 border-white/20 bg-zinc-950 shadow-[0_12px_40px_rgba(0,0,0,0.8)] backdrop-blur-xl active:cursor-grabbing touch-none select-none"
+      style={{
+        left: pos?.left ?? -9999,
+        top: pos?.top ?? -9999,
+        zIndex: CALL_MINIMIZED_Z,
+        visibility: pos ? 'visible' : 'hidden',
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onClick={guardClick(onExpand)}
+      role="button"
+      aria-label="Expand video call"
+    >
+      {children}
+    </div>
+  )
+}
+
+/**
+ * Confirmation modal before switching from audio to video (Image 1).
+ */
+function SwitchToVideoConfirmModal({ onCancel, onConfirm }) {
+  return (
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 px-6 backdrop-blur-md animate-fade-in"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-[20rem] rounded-[28px] border border-white/10 bg-zinc-900/95 p-6 shadow-2xl backdrop-blur-2xl text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-[19px] font-semibold tracking-tight text-white">
+          Switch to video call?
+        </h3>
+        <div className="mt-6 flex items-center gap-3">
+          <button
+            type="button"
+            className="flex-1 rounded-2xl border border-white/10 bg-zinc-800/90 py-3.5 text-[15px] font-semibold text-zinc-200 transition active:scale-95 touch-manipulation hover:bg-zinc-700/80"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="flex-1 rounded-2xl bg-white/15 py-3.5 text-[15px] font-semibold text-white shadow-lg transition active:scale-95 touch-manipulation hover:bg-white/20"
+            onClick={onConfirm}
+          >
+            Switch
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * @param {{
  *   token: string,
  *   serverUrl: string,
@@ -506,6 +666,9 @@ function NativeIpaCallSession({
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [isLocalMain, setIsLocalMain] = useState(false)
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
+  const [showVideoConfirmModal, setShowVideoConfirmModal] = useState(false)
+  const [controlsHidden, setControlsHidden] = useState(false)
+  const hideTimerRef = useRef(/** @type {number | null} */ (null))
   const hadRemoteRef = useRef(false)
   const didConnectRef = useRef(false)
   const recWarn60Ref = useRef(false)
@@ -516,7 +679,38 @@ function NativeIpaCallSession({
   const awaitingAnswer =
     Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0 && !connected
 
+  const isVideoMode = (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer
+
+  const resetControlsTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+    setControlsHidden(false)
+    if (isVideoMode) {
+      hideTimerRef.current = window.setTimeout(() => {
+        setControlsHidden(true)
+      }, 4500)
+    }
+  }, [isVideoMode])
+
+  useEffect(() => {
+    if (isVideoMode) {
+      resetControlsTimer()
+    } else {
+      setControlsHidden(false)
+      if (hideTimerRef.current) {
+        window.clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = null
+      }
+    }
+    return () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+    }
+  }, [isVideoMode, resetControlsTimer])
+
   const toggleStreamFocus = (forceLocal = null) => {
+    resetControlsTimer()
     const next = forceLocal !== null ? forceLocal : !isLocalMain
     setIsLocalMain(next)
     const nextPinned = next ? viewerUserId : (peerUserId || null)
@@ -578,9 +772,9 @@ function NativeIpaCallSession({
   useEffect(() => {
     void setNativeCallChrome({
       minimized,
-      videoVisible: (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer,
+      videoVisible: isVideoMode,
     })
-  }, [minimized, videoEnabled, camOn, hasVideo, remoteHasVideo, awaitingAnswer])
+  }, [minimized, isVideoMode])
 
   useEffect(() => {
     return () => {
@@ -664,7 +858,34 @@ function NativeIpaCallSession({
     void setNativeCallSpeaker(next)
   }
 
+  const handleVideoDockClick = () => {
+    resetControlsTimer()
+    if (!camOn && !isVideoMode) {
+      setShowVideoConfirmModal(true)
+    } else {
+      setCameraEnabled(!camOn)
+    }
+  }
+
+  const showVideoHole = isVideoMode && !minimized
+
+  useEffect(() => {
+    const html = document.documentElement
+    if (showVideoHole) {
+      html.setAttribute('data-edge-video-active', '1')
+    } else {
+      html.removeAttribute('data-edge-video-active')
+    }
+    return () => {
+      html.removeAttribute('data-edge-video-active')
+    }
+  }, [showVideoHole])
+
   if (minimized) {
+    if (isVideoMode) {
+      // In native iOS shell, the native LiveKit video PiP is brought to front and floating above the webview.
+      return null
+    }
     return (
       <DraggableMinimizedCallPill avatarUrl={avatarUrl} title={title} onExpand={() => setMinimized(false)}>
         <CallPillButton
@@ -677,7 +898,7 @@ function NativeIpaCallSession({
           icon={<VideoIcon off={!camOn} />}
           active={camOn}
           variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
-          onClick={() => setCameraEnabled(!camOn)}
+          onClick={handleVideoDockClick}
           ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
         />
         <CallPillButton
@@ -696,24 +917,9 @@ function NativeIpaCallSession({
     )
   }
 
-  const showVideoHole =
-    (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer
-
-  useEffect(() => {
-    const html = document.documentElement
-    if (showVideoHole && !minimized) {
-      html.setAttribute('data-edge-video-active', '1')
-    } else {
-      html.removeAttribute('data-edge-video-active')
-    }
-    return () => {
-      html.removeAttribute('data-edge-video-active')
-    }
-  }, [showVideoHole, minimized])
-
   return (
     <div
-      className={minimized ? 'pointer-events-none fixed inset-0' : 'fixed inset-0 flex flex-col'}
+      className="fixed inset-0 flex flex-col"
       style={{
         zIndex: 128,
         backgroundColor: showVideoHole ? 'transparent' : undefined,
@@ -736,8 +942,11 @@ function NativeIpaCallSession({
         </div>
       ) : null}
 
+      {/* Top Header - slides up when controlsHidden in video mode */}
       <div
-        className="relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2"
+        className={`relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2 transition-all duration-300 ease-in-out ${
+          controlsHidden ? '-translate-y-28 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+        }`}
         style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.75rem)' }}
       >
         <button
@@ -774,15 +983,22 @@ function NativeIpaCallSession({
         <div className="h-11 w-11 shrink-0" aria-hidden />
       </div>
 
+      {/* Main Stage */}
       <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoHole ? (
           <div className="relative h-full w-full">
-            {/* Full stage clickable to toggle stream focus between main / inset PiP */}
+            {/* Full stage clickable to toggle stream focus between main / inset PiP or reveal chrome */}
             <button
               type="button"
               className="absolute inset-0 h-full w-full cursor-pointer touch-manipulation bg-transparent border-0 outline-none"
               aria-label="Toggle main video stream focus"
-              onClick={() => toggleStreamFocus()}
+              onClick={() => {
+                if (controlsHidden) {
+                  resetControlsTimer()
+                } else {
+                  toggleStreamFocus()
+                }
+              }}
             />
           </div>
         ) : (
@@ -798,57 +1014,114 @@ function NativeIpaCallSession({
         )}
       </div>
 
+      {/* Bottom Controls - slides down when controlsHidden in video mode */}
       <div
-        className="relative z-[1] flex shrink-0 justify-center px-4 pt-2"
+        className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
+          controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+        }`}
         style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)' }}
       >
-        <div
-          data-chat-call-interactive=""
-          className="pointer-events-auto mx-auto w-full max-w-[22.5rem] rounded-[36px] border border-white/10 bg-zinc-950/80 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
-        >
-          <div className="grid grid-cols-3 gap-y-4 gap-x-3 place-items-center">
-            {/* Row 1 */}
+        {isVideoMode ? (
+          /* Single-line 1-row pill dock for video calls (Image 2) */
+          <div
+            data-chat-call-interactive=""
+            className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+          >
+            <CallDockItem
+              icon={<FlipCameraIcon />}
+              label="Flip"
+              disabled={!camOn}
+              onClick={() => {
+                resetControlsTimer()
+                void setNativeCallCamera({ flip: true })
+              }}
+            />
             <CallDockItem
               icon={<VideoIcon off={!camOn} />}
               label="Video"
               active={camOn}
               variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
               disabled={false}
-              onClick={() => setCameraEnabled(!camOn)}
+              onClick={handleVideoDockClick}
             />
             <CallDockItem
               icon={<SpeakerIcon />}
               label="Speaker"
               active={speakerOn}
               variant={speakerOn ? 'active-white' : 'default'}
-              onClick={() => applySpeaker(!speakerOn)}
+              onClick={() => {
+                resetControlsTimer()
+                applySpeaker(!speakerOn)
+              }}
             />
             <CallDockItem
               icon={<MicIcon muted={!micOn} />}
               label="Mute"
               active={!micOn}
               variant={!micOn ? 'danger' : 'default'}
-              onClick={() => setMicEnabled(!micOn)}
+              onClick={() => {
+                resetControlsTimer()
+                setMicEnabled(!micOn)
+              }}
             />
+            <CallDockItem
+              icon={<HangupIcon />}
+              label="End"
+              variant="danger"
+              onClick={() => {
+                resetControlsTimer()
+                onHangup?.()
+              }}
+            />
+          </div>
+        ) : (
+          /* Double-line 3x2 grid dock for audio calls */
+          <div
+            data-chat-call-interactive=""
+            className="pointer-events-auto mx-auto w-full max-w-[22.5rem] rounded-[36px] border border-white/10 bg-zinc-950/80 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+          >
+            <div className="grid grid-cols-3 gap-y-4 gap-x-3 place-items-center">
+              {/* Row 1 */}
+              <CallDockItem
+                icon={<VideoIcon off={!camOn} />}
+                label="Video"
+                active={camOn}
+                variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
+                disabled={false}
+                onClick={handleVideoDockClick}
+              />
+              <CallDockItem
+                icon={<SpeakerIcon />}
+                label="Speaker"
+                active={speakerOn}
+                variant={speakerOn ? 'active-white' : 'default'}
+                onClick={() => applySpeaker(!speakerOn)}
+              />
+              <CallDockItem
+                icon={<MicIcon muted={!micOn} />}
+                label="Mute"
+                active={!micOn}
+                variant={!micOn ? 'danger' : 'default'}
+                onClick={() => setMicEnabled(!micOn)}
+              />
 
-            {/* Row 2 */}
-            {camOn ? (
-              <CallDockItem
-                icon={<FlipCameraIcon />}
-                label="Flip"
-                disabled={!camOn}
-                onClick={() => void setNativeCallCamera({ flip: true })}
-              />
-            ) : (
-              <CallDockItem
-                icon={<RecordDotIcon />}
-                label="Record"
-                disabled={true}
-                onClick={() => {}}
-              />
-            )}
-            {(videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer ? (
-              recordingActive ? (
+              {/* Row 2 */}
+              {camOn ? (
+                <CallDockItem
+                  icon={<FlipCameraIcon />}
+                  label="Flip"
+                  disabled={!camOn}
+                  onClick={() => void setNativeCallCamera({ flip: true })}
+                />
+              ) : (
+                <CallDockItem
+                  icon={<RecordDotIcon />}
+                  label="Record"
+                  disabled={true}
+                  onClick={() => {}}
+                />
+              )}
+              {recordingActive ? (
                 <CallDockItem
                   icon={<RecordStopIcon />}
                   label="Stop"
@@ -868,28 +1141,33 @@ function NativeIpaCallSession({
                 <CallDockItem
                   icon={<RecordDotIcon />}
                   label="Record"
+                  disabled={!isVideoMode}
                   onClick={() => {
                     const featured = pinnedIdentity || (isLocalMain ? viewerUserId : peerUserId) || null
                     onStartRecording?.(featured)
                   }}
                 />
-              )
-            ) : (
+              )}
               <CallDockItem
-                icon={<MoreOptionsIcon />}
-                label="More"
-                onClick={() => {}}
+                icon={<HangupIcon />}
+                label="End"
+                variant="danger"
+                onClick={() => onHangup?.()}
               />
-            )}
-            <CallDockItem
-              icon={<HangupIcon />}
-              label="End"
-              variant="danger"
-              onClick={() => onHangup?.()}
-            />
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {showVideoConfirmModal ? (
+        <SwitchToVideoConfirmModal
+          onCancel={() => setShowVideoConfirmModal(false)}
+          onConfirm={() => {
+            setShowVideoConfirmModal(false)
+            setCameraEnabled(true)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -934,9 +1212,42 @@ function CallChrome({
   const pinnedParticipantRef = useRef(/** @type {any | null} */ (null))
   /** User manually toggled speaker... ignore cam-off / cam-on auto route flips. */
   const speakerManualOverrideRef = useRef(false)
+  const [showVideoConfirmModal, setShowVideoConfirmModal] = useState(false)
+  const [controlsHidden, setControlsHidden] = useState(false)
+  const hideTimerRef = useRef(/** @type {number | null} */ (null))
   const recWarn60Ref = useRef(false)
   const recWarn15Ref = useRef(false)
   const recAutoStopRef = useRef(false)
+
+  const isVideoMode = Boolean(showVideoStage)
+
+  const resetControlsTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+    setControlsHidden(false)
+    if (isVideoMode) {
+      hideTimerRef.current = window.setTimeout(() => {
+        setControlsHidden(true)
+      }, 4500)
+    }
+  }, [isVideoMode])
+
+  useEffect(() => {
+    if (isVideoMode) {
+      resetControlsTimer()
+    } else {
+      setControlsHidden(false)
+      if (hideTimerRef.current) {
+        window.clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = null
+      }
+    }
+    return () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+    }
+  }, [isVideoMode, resetControlsTimer])
 
   const recordingActive = recordingStatus === 'recording'
   const recordingSaving = recordingStatus === 'stopping'
@@ -1275,7 +1586,43 @@ function CallChrome({
     }
   }
 
+  const handleVideoDockClick = () => {
+    resetControlsTimer()
+    if (!camOn && !showVideoStage) {
+      setShowVideoConfirmModal(true)
+    } else {
+      void setCameraEnabled(!camOn)
+    }
+  }
+
   if (minimized) {
+    if (showVideoStage) {
+      const activeVideoParticipant = fullscreenParticipant || remotes[0] || localParticipant
+      const hasCam = participantHasLiveCamera(activeVideoParticipant)
+      return (
+        <DraggableMinimizedVideoTile onExpand={onExpand}>
+          {hasCam && activeVideoParticipant ? (
+            <div className="relative h-full w-full bg-black">
+              <VideoTrack
+                trackRef={{
+                  participant: activeVideoParticipant,
+                  source: Track.Source.Camera,
+                  publication: activeVideoParticipant.getTrackPublication?.(Track.Source.Camera),
+                }}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <CallAvatarCircle
+              avatarUrl={avatarUrl}
+              title={title}
+              sizeClass="h-16 w-16"
+              textClass="text-[20px]"
+            />
+          )}
+        </DraggableMinimizedVideoTile>
+      )
+    }
     return (
       <DraggableMinimizedCallPill
         avatarUrl={avatarUrl}
@@ -1291,7 +1638,7 @@ function CallChrome({
         <CallPillButton
           icon={<VideoIcon off={!camOn} />}
           active={camOn}
-          onClick={() => void setCameraEnabled(!camOn)}
+          onClick={handleVideoDockClick}
           ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
         />
         {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (
@@ -1312,7 +1659,61 @@ function CallChrome({
     )
   }
 
-  const controlPill = (
+  const controlPill = showVideoStage ? (
+    /* Single-line 1-row pill dock for video call (Image 2) */
+    <div
+      data-chat-call-interactive=""
+      className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+    >
+      <CallDockItem
+        icon={<FlipCameraIcon />}
+        label="Flip"
+        disabled={!camOn || cameraBusy}
+        onClick={() => {
+          resetControlsTimer()
+          void flipCamera()
+        }}
+      />
+      <CallDockItem
+        icon={<VideoIcon off={!camOn} />}
+        label="Video"
+        active={camOn}
+        disabled={false}
+        onClick={handleVideoDockClick}
+      />
+      <CallDockItem
+        icon={<SpeakerIcon />}
+        label="Speaker"
+        active={speakerOn}
+        variant={speakerOn ? 'active-white' : 'default'}
+        disabled={!audioRouteSupported && isIosDevice() && !isEdgeiOSShell()}
+        onClick={() => {
+          resetControlsTimer()
+          void applySpeakerSink(!speakerOn, { manual: true })
+        }}
+      />
+      <CallDockItem
+        icon={<MicIcon muted={!micOn} />}
+        label="Mute"
+        active={!micOn}
+        variant={!micOn ? 'danger' : 'default'}
+        onClick={() => {
+          resetControlsTimer()
+          void setMicEnabled(!micOn)
+        }}
+      />
+      <CallDockItem
+        icon={<HangupIcon />}
+        label="End"
+        variant="danger"
+        onClick={() => {
+          resetControlsTimer()
+          hangup()
+        }}
+      />
+    </div>
+  ) : (
+    /* Double-line 3x2 grid dock for audio call */
     <div
       data-chat-call-interactive=""
       className="pointer-events-auto mx-auto w-full max-w-[22.5rem] rounded-[36px] border border-white/10 bg-zinc-950/80 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
@@ -1324,7 +1725,7 @@ function CallChrome({
           label="Video"
           active={camOn}
           disabled={false}
-          onClick={() => void setCameraEnabled(!camOn)}
+          onClick={handleVideoDockClick}
         />
         <CallDockItem
           icon={<SpeakerIcon />}
@@ -1358,7 +1759,7 @@ function CallChrome({
             onClick={() => {}}
           />
         )}
-        {videoEnabled && !awaitingAnswer ? (
+        {showVideoStage && !awaitingAnswer ? (
           recordingActive ? (
             <CallDockItem
               icon={<RecordStopIcon />}
@@ -1391,8 +1792,9 @@ function CallChrome({
           )
         ) : (
           <CallDockItem
-            icon={<MoreOptionsIcon />}
-            label="More"
+            icon={<RecordDotIcon />}
+            label="Record"
+            disabled={true}
             onClick={() => {}}
           />
         )}
@@ -1418,8 +1820,11 @@ function CallChrome({
         />
       </div>
 
+      {/* Top Header - slides up when controlsHidden in video mode */}
       <div
-        className="relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2"
+        className={`relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2 transition-all duration-300 ease-in-out ${
+          controlsHidden ? '-translate-y-28 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+        }`}
         style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.75rem)' }}
       >
         <button
@@ -1452,7 +1857,15 @@ function CallChrome({
         <div className="h-11 w-11 shrink-0" aria-hidden />
       </div>
 
-      <div className="relative z-[1] min-h-0 flex-1 px-4">
+      <div
+        className="relative z-[1] min-h-0 flex-1 px-4 cursor-pointer"
+        onClick={() => {
+          if (showVideoStage) {
+            if (controlsHidden) resetControlsTimer()
+            else setControlsHidden(true)
+          }
+        }}
+      >
         {showVideoStage ? (
           <VideoCallStage
             fullscreenParticipant={fullscreenParticipant}
@@ -1461,6 +1874,7 @@ function CallChrome({
             cameraByIdentity={cameraByIdentity}
             pinnedIdentity={pinnedIdentity}
             onPinIdentity={(id) => {
+              resetControlsTimer()
               setPinnedIdentity((prev) => (prev === id ? null : id))
             }}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
@@ -1487,12 +1901,25 @@ function CallChrome({
         )}
       </div>
 
+      {/* Bottom Controls - slides down when controlsHidden in video mode */}
       <div
-        className="relative z-[1] flex shrink-0 justify-center px-4 pt-2"
+        className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
+          controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+        }`}
         style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)' }}
       >
         {controlPill}
       </div>
+
+      {showVideoConfirmModal ? (
+        <SwitchToVideoConfirmModal
+          onCancel={() => setShowVideoConfirmModal(false)}
+          onConfirm={() => {
+            setShowVideoConfirmModal(false)
+            void setCameraEnabled(true)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

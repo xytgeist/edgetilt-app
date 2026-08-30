@@ -350,6 +350,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     dispatchToWeb(event: "edge-native-call-state", detail: detail)
   }
 
+  func dispatchNativeCallEvent(event: String, detail: [String: Any]) {
+    dispatchToWeb(event: event, detail: detail)
+  }
+
   /// A new page load tears down the listeners, so stop dispatching until JS re-marks.
   func invalidateWebReady() {
     webReady = false

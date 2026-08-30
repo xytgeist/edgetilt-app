@@ -59,6 +59,10 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     return view
   }()
 
+  private lazy var overlayTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleOverlayTapped))
+  private lazy var overlayPanGesture = UIPanGestureRecognizer(target: self, action: #selector(handleOverlayPanned(_:)))
+  private var overlayMiniFrame: CGRect?
+
   private let remoteVideoView: VideoView = {
     let view = VideoView()
     view.contentMode = .scaleAspectFill
@@ -382,11 +386,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     if overlay.superview != parent {
       parent.insertSubview(overlay, belowSubview: webView)
       overlayInstalled = true
+      overlay.addGestureRecognizer(overlayTapGesture)
+      overlay.addGestureRecognizer(overlayPanGesture)
     }
-    overlay.translatesAutoresizingMaskIntoConstraints = true
-    overlay.frame = parent.bounds
-    overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    layoutVideoViews()
   }
 
   private func layoutVideoViews() {
@@ -395,6 +397,30 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     let hasRemoteTrack = remoteVideoView.track != nil
     localVideoView.isHidden = !hasLocalTrack
     remoteVideoView.isHidden = !hasRemoteTrack
+
+    if chromeMinimized {
+      // Minimized mini PiP layout
+      if hasRemoteTrack {
+        remoteVideoView.frame = bounds
+        remoteVideoView.layer.cornerRadius = 0
+        remoteVideoView.layer.borderWidth = 0
+
+        if hasLocalTrack {
+          localVideoView.frame = CGRect(x: bounds.width - 32 - 6, y: bounds.height - 46 - 6, width: 32, height: 46)
+          localVideoView.layer.cornerRadius = 6
+          localVideoView.layer.masksToBounds = true
+          localVideoView.layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
+          localVideoView.layer.borderWidth = 1
+          overlay.bringSubviewToFront(localVideoView)
+        }
+      } else if hasLocalTrack {
+        localVideoView.frame = bounds
+        localVideoView.layer.cornerRadius = 0
+        localVideoView.layer.borderWidth = 0
+        overlay.bringSubviewToFront(localVideoView)
+      }
+      return
+    }
 
     let pipWidth = min(128, max(96, bounds.width * 0.28))
     let pipHeight = pipWidth * 16 / 9
@@ -444,13 +470,91 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
   private func updateOverlayVisibility() {
     installOverlayIfNeeded()
-    let show = state.connected && state.hasVideo && videoVisible && !chromeMinimized
-    overlay.isHidden = !show
-    if show {
+    guard let webView, let parent = webView.superview else { return }
+
+    let isVideoCall = state.connected && state.hasVideo && videoVisible
+    if !isVideoCall {
+      overlay.isHidden = true
+      restoreWebViewBackground()
+      return
+    }
+
+    if chromeMinimized {
+      // Show as floating mini video in front of web view (WhatsApp style)
+      restoreWebViewBackground()
+      parent.bringSubviewToFront(overlay)
+      overlay.isHidden = false
+      overlay.isUserInteractionEnabled = true
+      overlay.layer.cornerRadius = 16
+      overlay.layer.masksToBounds = true
+      overlay.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
+      overlay.layer.borderWidth = 1.5
+      overlay.layer.shadowColor = UIColor.black.cgColor
+      overlay.layer.shadowOpacity = 0.6
+      overlay.layer.shadowRadius = 14
+      overlay.layer.shadowOffset = CGSize(width: 0, height: 8)
+
+      let width: CGFloat = 112
+      let height: CGFloat = 160
+      let bottomInset = parent.safeAreaInsets.bottom + 68 // comfortably above tab bar
+      let defaultFrame = CGRect(
+        x: 16,
+        y: parent.bounds.height - height - bottomInset,
+        width: width,
+        height: height
+      )
+      overlay.frame = overlayMiniFrame ?? defaultFrame
+      layoutVideoViews()
+    } else {
+      // Fullscreen video behind transparent web view hole
+      parent.insertSubview(overlay, belowSubview: webView)
+      overlay.frame = parent.bounds
+      overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+      overlay.layer.cornerRadius = 0
+      overlay.layer.borderWidth = 0
+      overlay.layer.shadowOpacity = 0
+      overlay.isUserInteractionEnabled = false
+      overlay.isHidden = false
       applyWebViewHole()
       layoutVideoViews()
-    } else if !state.connected || chromeMinimized {
-      restoreWebViewBackground()
+    }
+  }
+
+  @objc private func handleOverlayTapped() {
+    guard chromeMinimized else { return }
+    EdgeCallKitManager.shared.dispatchNativeCallEvent(
+      event: "edge-native-call-expand",
+      detail: ["callId": state.callId]
+    )
+  }
+
+  @objc private func handleOverlayPanned(_ gesture: UIPanGestureRecognizer) {
+    guard chromeMinimized, let parent = overlay.superview else { return }
+    let translation = gesture.translation(in: parent)
+    var center = overlay.center
+    center.x += translation.x
+    center.y += translation.y
+
+    let halfWidth = overlay.bounds.width / 2
+    let halfHeight = overlay.bounds.height / 2
+    let topMin = parent.safeAreaInsets.top + halfHeight + 8
+    let bottomMax = parent.bounds.height - parent.safeAreaInsets.bottom - halfHeight - 56
+    let leftMin = halfWidth + 12
+    let rightMax = parent.bounds.width - halfWidth - 12
+
+    center.x = min(rightMax, max(leftMin, center.x))
+    center.y = min(bottomMax, max(topMin, center.y))
+    overlay.center = center
+    gesture.setTranslation(.zero, in: parent)
+
+    if gesture.state == .ended || gesture.state == .cancelled {
+      let snapLeft = center.x < parent.bounds.width / 2
+      let targetX = snapLeft ? leftMin : rightMax
+      UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseOut]) {
+        self.overlay.center.x = targetX
+      } completion: { _ in
+        self.overlayMiniFrame = self.overlay.frame
+      }
     }
   }
 

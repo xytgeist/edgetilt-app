@@ -413,54 +413,26 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         return
       }
     }
-    // One invite reaches us up to three ways: web Realtime (`ChatCallProvider`), the
-    // foreground APNs alert banner (`willPresent`), and the PushKit VoIP ring.
-    // Dedupe only after CallKit accepted the first report. PushKit must still
-    // call reportNewIncomingCall on this wake if nothing was accepted yet.
+    // Clean up any stale previous calls before reporting this new one.
+    if !trimmedCallId.isEmpty {
+      for (staleUUID, staleMeta) in calls where staleMeta.callId != trimmedCallId {
+        NSLog("EdgeCallKit clearing stale call \(staleUUID.uuidString) callId=\(staleMeta.callId) before incoming call \(trimmedCallId)")
+        let wasAnswered = answeredUUIDs.contains(staleUUID)
+        provider.reportCall(with: staleUUID, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
+        calls.removeValue(forKey: staleUUID)
+        answeredUUIDs.remove(staleUUID)
+        acceptedIncomingUUIDs.remove(staleUUID)
+      }
+    }
+
+    // Dedupe multiple incoming delivery vectors (Realtime, APNs alert, PushKit VoIP).
     if !trimmedCallId.isEmpty,
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
-      if acceptedIncomingUUIDs.contains(existing) {
-        if fromPushKit {
-          // Same invite, already on CallKit. Still must call
-          // reportNewIncomingCall in this wake or iOS starts dropping VoIP.
-          NSLog("EdgeCallKit PushKit: re-report accepted callId=\(trimmedCallId) uuid=\(existing.uuidString)")
-          let replay = CXCallUpdate()
-          if let meta = calls[existing] {
-            replay.remoteHandle = CXHandle(type: .generic, value: meta.callerName)
-            replay.localizedCallerName = meta.callerName
-            replay.hasVideo = meta.hasVideo
-            replay.supportsDTMF = false
-            replay.supportsHolding = false
-            replay.supportsGrouping = false
-            replay.supportsUngrouping = false
-            // Avatar setter is parked. Anything before this report can
-            // blacklist the install if it throws.
-          }
-          provider.reportNewIncomingCall(with: existing, update: replay) { error in
-            if let error {
-              NSLog("EdgeCallKit PushKit re-report: \(error.localizedDescription)")
-            }
-            EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
-            completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
-          }
-          return
-        }
-        NSLog("EdgeCallKit dedupe accepted callId=\(trimmedCallId) uuid=\(existing.uuidString)")
-        EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
-        // Do not reportCall(updated:) here. That tore the live pill down.
-        EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
-        completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
-        return
-      }
-      if fromPushKit {
-        // JS/APNs inserted a row that CallKit never accepted. Completing this
-        // wake without a report is how iOS delays the next VoIP. Drop the
-        // leftover and report for real.
-        NSLog("EdgeCallKit PushKit: dropping unaccepted leftover \(existing.uuidString) for \(trimmedCallId)")
-        provider.reportCall(with: existing, endedAt: Date(), reason: .failed)
-        calls.removeValue(forKey: existing)
-        acceptedIncomingUUIDs.remove(existing)
-      }
+      EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
+      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+      NSLog("EdgeCallKit dedupe callId=\(trimmedCallId) uuid=\(existing.uuidString) fromPushKit=\(fromPushKit)")
+      completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
+      return
     }
     let uuid = Self.uuid(from: uuidString) ?? UUID()
     let callerName = Self.sanitizedCallerName(handle)
@@ -573,6 +545,16 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   /// Outgoing in-app IPA calls also go through CallKit so `didActivate` fires.
   func reportOutgoingCall(callId: String, roomId: String, handle: String, hasVideo: Bool) {
     let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedCallId.isEmpty {
+      for (staleUUID, staleMeta) in calls where staleMeta.callId != trimmedCallId {
+        NSLog("EdgeCallKit clearing stale call \(staleUUID.uuidString) callId=\(staleMeta.callId) before outgoing call \(trimmedCallId)")
+        let wasAnswered = answeredUUIDs.contains(staleUUID)
+        provider.reportCall(with: staleUUID, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
+        calls.removeValue(forKey: staleUUID)
+        answeredUUIDs.remove(staleUUID)
+        acceptedIncomingUUIDs.remove(staleUUID)
+      }
+    }
     if !trimmedCallId.isEmpty,
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
       answeredUUIDs.insert(existing)

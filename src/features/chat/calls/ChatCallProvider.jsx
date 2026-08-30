@@ -875,6 +875,7 @@ export function ChatCallProvider({
           callId: call.id,
           kind: call.kind,
           mediaMode: call.media_mode,
+          fromUserId: viewerUserId,
         })
         setIncoming(null)
         endingRef.current = false

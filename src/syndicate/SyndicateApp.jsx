@@ -243,7 +243,7 @@ export function SyndicateApp() {
                 <div className="mt-1.5 sm:mt-2 text-base sm:text-xl md:text-2xl font-mono font-extrabold text-amber-400 whitespace-nowrap">
                   Pinnacle / Circa
                 </div>
-                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">3.0x sharp weighted consensus</div>
+                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">5.5x sharp weighted consensus</div>
               </div>
             </div>
 

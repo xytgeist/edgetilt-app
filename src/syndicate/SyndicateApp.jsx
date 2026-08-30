@@ -31,12 +31,14 @@ export function SyndicateApp() {
 
   // Calculate live ledger stats
   const gradedPicks = picks.filter((p) => p.status && p.status !== 'pending')
-  const wins = gradedPicks.filter((p) => p.status === 'win').length
-  const losses = gradedPicks.filter((p) => p.status === 'loss').length
+  const wins = gradedPicks.filter((p) => p.status === 'win' || p.status === 'won').length
+  const losses = gradedPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
   const pushes = gradedPicks.filter((p) => p.status === 'push').length
   const netUnits = gradedPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
   const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '59.4'
   const displayUnits = gradedPicks.length > 0 ? (netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)) : '+28.45'
+  const clvBeats = gradedPicks.filter((p) => p.metadata?.clv_beat === true || p.metadata?.clv_beat === 'true').length
+  const clvRate = gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '74.2'
 
   const filteredPicks = picks.filter((p) => {
     if (sportFilter === 'all') return true
@@ -170,7 +172,7 @@ export function SyndicateApp() {
               <div className="p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
                 <div className="text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
                 <div className="mt-2 text-2xl sm:text-3xl font-mono font-extrabold text-cyan-400">
-                  74.2%
+                  {clvRate}%
                 </div>
                 <div className="mt-1 text-[11px] text-zinc-500">Closing line value captured</div>
               </div>
@@ -360,34 +362,84 @@ export function SyndicateApp() {
                   </thead>
                   <tbody className="divide-y divide-zinc-800/60 font-mono">
                     {filteredPicks.map((pick) => {
-                      const isWin = pick.status === 'win'
-                      const isLoss = pick.status === 'loss'
+                      const isWin = pick.status === 'win' || pick.status === 'won'
+                      const isLoss = pick.status === 'loss' || pick.status === 'lost'
                       const isPush = pick.status === 'push'
                       const isPending = !pick.status || pick.status === 'pending'
 
+                      const picker = pick.picker_name || 'Scott'
+                      const pickerBadgeClass =
+                        picker === 'Scott'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : picker === 'Rocco'
+                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          : picker === 'Chedda'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+
+                      const eventLabel =
+                        pick.away_team && pick.home_team
+                          ? `${pick.away_team} @ ${pick.home_team}`
+                          : pick.event_name || 'Game'
+
+                      const scoreText =
+                        pick.away_score != null && pick.home_score != null
+                          ? ` (${pick.away_score}-${pick.home_score})`
+                          : ''
+
+                      const pickDisplay =
+                        pick.pick_name ||
+                        pick.pick_label ||
+                        `${pick.selection || ''} ${pick.point ? (pick.point > 0 ? `+${pick.point}` : pick.point) : ''}`.trim()
+
+                      const priceDisplay =
+                        pick.pick_price != null
+                          ? pick.pick_price > 0
+                            ? `+${pick.pick_price}`
+                            : `${pick.pick_price}`
+                          : pick.price != null
+                          ? pick.price > 0
+                            ? `+${pick.price}`
+                            : `${pick.price}`
+                          : '-110'
+
+                      const postMortem = pick.metadata?.post_mortem
+
                       return (
                         <tr key={pick.id} className="hover:bg-zinc-800/30 transition-colors">
-                          <td className="py-3 px-4 text-zinc-400 text-xs">
-                            {new Date(pick.created_at).toLocaleDateString(undefined, {
+                          <td className="py-3 px-4 text-zinc-400 text-xs whitespace-nowrap">
+                            {new Date(pick.commence_time || pick.created_at).toLocaleDateString(undefined, {
                               month: 'short',
                               day: 'numeric',
                             })}
                           </td>
-                          <td className="py-3 px-4 text-white font-sans font-semibold">
-                            {pick.event_name || `${pick.home_team} vs ${pick.away_team}`}
+                          <td className="py-3 px-4 font-sans font-semibold text-white">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{eventLabel}</span>
+                              {scoreText && (
+                                <span className="text-[11px] font-mono text-zinc-400 font-normal">
+                                  {scoreText}
+                                </span>
+                              )}
+                            </div>
+                            {postMortem && (
+                              <div className="text-[11px] font-sans text-zinc-400 font-normal mt-0.5 line-clamp-1 italic">
+                                ↳ {postMortem}
+                              </div>
+                            )}
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded text-[11px] bg-zinc-800 text-zinc-300 border border-zinc-700">
-                              {pick.picker_name || 'Scott'}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${pickerBadgeClass}`}>
+                              {picker}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-zinc-200">
-                            {pick.pick_label || `${pick.selection} ${pick.point ? (pick.point > 0 ? `+${pick.point}` : pick.point) : ''}`}
+                          <td className="py-3 px-4 text-zinc-200 font-medium whitespace-nowrap">
+                            {pickDisplay}
                           </td>
-                          <td className="py-3 px-4 text-zinc-400">
-                            {pick.price ? (pick.price > 0 ? `+${pick.price}` : pick.price) : '-110'}
+                          <td className="py-3 px-4 text-zinc-400 whitespace-nowrap">
+                            {priceDisplay}
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 whitespace-nowrap">
                             {isWin && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                                 WIN
@@ -409,7 +461,7 @@ export function SyndicateApp() {
                               </span>
                             )}
                           </td>
-                          <td className={`py-3 px-4 text-right font-bold ${
+                          <td className={`py-3 px-4 text-right font-bold whitespace-nowrap ${
                             isWin ? 'text-emerald-400' : isLoss ? 'text-rose-400' : 'text-zinc-400'
                           }`}>
                             {pick.units_net ? (Number(pick.units_net) > 0 ? `+${Number(pick.units_net).toFixed(2)}` : Number(pick.units_net).toFixed(2)) : '-'}

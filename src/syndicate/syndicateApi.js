@@ -17,13 +17,13 @@ export const syndicateSupabase =
 /**
  * Fetch public picks ledger and overall records from Supabase
  */
-export async function fetchSyndicateLedger(limit = 60) {
+export async function fetchSyndicateLedger(limit = 250) {
   if (!syndicateSupabase) return { picks: [], error: null }
   try {
     const { data: picks, error } = await syndicateSupabase
       .from('lounge_bot_picks')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('commence_time', { ascending: false })
       .limit(limit)
 
     if (error) {

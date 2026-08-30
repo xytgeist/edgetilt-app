@@ -80,6 +80,26 @@ Follow normal git safety (no secrets, no force-push). Cursor rule: **`.cursor/ru
 
 ---
 
+## CRITICAL — REPO & APP VERSIONING PROTOCOL
+
+> **EdgeTilt uses Semantic Versioning (`MAJOR.MINOR.PATCH`) starting at `v1.4.0` (July 1, 2026 was `v1.0.0` live cutover).**
+
+- **Locations synced**:
+  - `package.json` (`"version"`)
+  - `src/utils/appBuildInfo.js` (`APP_VERSION`)
+  - `ios/EdgeTilt/AppConfig.swift` (`CFBundleShortVersionString` fallback)
+  - `ios/project.yml` (`MARKETING_VERSION`)
+  - `ios/EdgeTilt.xcodeproj/project.pbxproj` (`MARKETING_VERSION`)
+- **Rules when pushing changes**:
+  - **`PATCH` (e.g. `1.4.0` → `1.4.1`)**: Auto-bump for bug fixes, math calibrations, UI polish, minor tweaks.
+  - **`MINOR` (e.g. `1.4.0` → `1.5.0`)**: Bump when shipping a substantial new feature suite (e.g. Creator Fan Subs, StoreKit IAP, new tool suites).
+  - **`MAJOR` (e.g. `1.x.x` → `2.0.0`)**: Bump for massive milestones (e.g. full native Swift rewrite / multi-platform public App Store release).
+  - **`BUILD_NUMBER`**: Increments automatically on every build in Xcode Cloud (`CI_BUILD_NUMBER + 100`).
+
+`AGENT_RULE_VERSIONING_PROTOCOL` — searchability token.
+
+---
+
 ## CRITICAL — DUAL-MACHINE (Mac iOS shell + Windows web)
 
 > During the iOS shell sprint, Ryan runs **two Cursor chats** (Mac + Windows). They do **not** share memory. Continuity = **`git pull`/`push` on `test`** + **`WAKEUP`** + **`docs/ios-native-bridge.md`**.

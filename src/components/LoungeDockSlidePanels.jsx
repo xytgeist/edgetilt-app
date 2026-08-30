@@ -72,7 +72,7 @@ import LoungeDockMenuLayoutHelp from './LoungeDockMenuLayoutHelp.jsx'
 import IosPwaInstallHelpDialog from './IosPwaInstallHelpDialog.jsx'
 import { getTheme, setTheme } from '../utils/theme.js'
 import { Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE } from '../constants/appZIndex.js'
-import { APP_BUILD_SHA } from '../utils/appBuildInfo.js'
+import { APP_BUILD_SHA, APP_VERSION } from '../utils/appBuildInfo.js'
 import { isEdgeiOSShell, edgeNativeInvoke } from '../utils/edgeNative.js'
 import {
   hasSeenLoungeIosPwaSetup,
@@ -2248,11 +2248,11 @@ export default function LoungeDockSlidePanels({
 
             <div className="mt-6 pb-6 text-center select-none" data-settings-build-info>
               <div className="font-mono text-[11px] tracking-tight text-zinc-500/80">
-                EdgeTilt v0.1.0{APP_BUILD_SHA && APP_BUILD_SHA !== 'unknown' ? ` (${APP_BUILD_SHA})` : ''}
+                EdgeTilt v{APP_VERSION}{APP_BUILD_SHA && APP_BUILD_SHA !== 'unknown' ? ` (${APP_BUILD_SHA})` : ''}
               </div>
               {nativeShellInfo ? (
                 <div className="mt-0.5 font-mono text-[10.5px] tracking-tight text-zinc-500/70">
-                  iOS Shell v{nativeShellInfo.shellVersion || '0.1.0'} · Build {nativeShellInfo.build || '1'}
+                  iOS Shell v{nativeShellInfo.shellVersion || APP_VERSION} · Build {nativeShellInfo.build || '1'}
                   {nativeShellInfo.environment ? ` (${nativeShellInfo.environment})` : ''}
                 </div>
               ) : null}

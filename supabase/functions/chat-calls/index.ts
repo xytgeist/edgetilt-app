@@ -806,15 +806,21 @@ Deno.serve(async (req) => {
       }
       if (!inserted) throw new Error('Could not create call.')
 
-      const started = await finalizeOutgoingCall({
-        admin,
-        lk,
-        call: inserted,
-        userId: user.id,
-        displayName,
-        avatarUrl,
-        roomId,
-      })
+  let inviteCallerTitle = displayName
+  if (room.kind === 'group') {
+    const groupName = room.name ? String(room.name).trim() : 'Group Chat'
+    inviteCallerTitle = `${displayName} in ${groupName}`
+  }
+
+  const started = await finalizeOutgoingCall({
+    admin,
+    lk,
+    call: inserted,
+    userId: user.id,
+    displayName: inviteCallerTitle,
+    avatarUrl,
+    roomId,
+  })
       return json(200, started)
     }
 

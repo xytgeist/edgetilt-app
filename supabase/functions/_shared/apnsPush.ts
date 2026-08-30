@@ -167,6 +167,9 @@ export async function postApns(
     'apns-priority': '10',
     'content-type': 'application/json',
   }
+  if (notification.eventType === 'chat_call_invite') {
+    headers['apns-expiration'] = String(Math.floor(Date.now() / 1000) + 30)
+  }
   const cid = collapseId(notification)
   if (cid) headers['apns-collapse-id'] = cid
 
@@ -282,6 +285,7 @@ export async function postVoipApns(
     'apns-topic': topic,
     'apns-push-type': 'voip',
     'apns-priority': '10',
+    'apns-expiration': String(Math.floor(Date.now() / 1000) + 30),
     'content-type': 'application/json',
   }
   const body: Record<string, unknown> = {

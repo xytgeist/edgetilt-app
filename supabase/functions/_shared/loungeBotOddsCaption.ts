@@ -151,6 +151,33 @@ function impliedToAmerican(prob: number): number {
   return Math.round(100 * (1 - prob) / prob)
 }
 
+/** Weights assigned to books when computing consensus fair probability. Sharp market makers get 3.0x gravity. */
+export function getBookmakerSharpWeight(bookKey?: string, bookTitle?: string): number {
+  const k = String(bookKey || '').toLowerCase()
+  const t = String(bookTitle || '').toLowerCase()
+
+  // Primary Sharp Market Makers: Pinnacle, LowVig, Bookmaker/CRIS, BetOnline, Circa
+  if (k.includes('pinnacle') || t.includes('pinnacle')) return 3.0
+  if (k.includes('lowvig') || t.includes('lowvig')) return 3.0
+  if (k.includes('bookmaker') || t.includes('bookmaker')) return 3.0
+  if (k.includes('betonline') || t.includes('betonline')) return 2.5
+  if (k.includes('circa') || t.includes('circa')) return 3.0
+
+  // Standard recreational / retail books
+  return 1.0
+}
+
+function weightedAverage(samples: Array<{ prob: number; weight: number }>): number {
+  if (!samples.length) return 0
+  let totalWeight = 0
+  let weightedSum = 0
+  for (const s of samples) {
+    totalWeight += s.weight
+    weightedSum += s.prob * s.weight
+  }
+  return totalWeight > 0 ? weightedSum / totalWeight : 0
+}
+
 function average(nums: number[]): number {
   if (!nums.length) return 0
   return nums.reduce((a, b) => a + b, 0) / nums.length
@@ -415,7 +442,7 @@ export function findPlusEvOpportunities(
     if (!home || !away || !commenceTime) continue
 
     for (const marketKey of marketKeys) {
-      const fairByBook: { book: string; fair: Map<string, number> }[] = []
+      const fairByBook: { book: string; key?: string; weight: number; fair: Map<string, number> }[] = []
       const bestPriceByOutcome = new Map<string, { price: number; book: string; linePoint: number | null }>()
 
       for (const book of ev.bookmakers || []) {
@@ -426,7 +453,8 @@ export function findPlusEvOpportunities(
         if (!fair?.size) continue
 
         const bookLabel = formatBookDisplayName(String(book.title || ''), book.key)
-        fairByBook.push({ book: bookLabel, fair })
+        const weight = getBookmakerSharpWeight(book.key, book.title)
+        fairByBook.push({ book: bookLabel, key: book.key, weight, fair })
 
         for (const out of market.outcomes || []) {
           const name = String(out.name || '').trim()
@@ -451,12 +479,14 @@ export function findPlusEvOpportunities(
       }
 
       for (const name of outcomeNames) {
-        const fairSamples: number[] = []
+        const weightedFairSamples: Array<{ prob: number; weight: number }> = []
         for (const row of fairByBook) {
           const p = row.fair.get(name)
-          if (p != null && p > 0 && p < 1) fairSamples.push(p)
+          if (p != null && p > 0 && p < 1) {
+            weightedFairSamples.push({ prob: p, weight: row.weight })
+          }
         }
-        if (fairSamples.length < minBooks) continue
+        if (weightedFairSamples.length < minBooks) continue
 
         let best = bestPriceByOutcome.get(name)
         if (!best && (marketKey === 'spreads' || marketKey === 'totals')) {
@@ -469,7 +499,7 @@ export function findPlusEvOpportunities(
         }
         if (!best) continue
 
-        const consensusProb = average(fairSamples)
+        const consensusProb = weightedAverage(weightedFairSamples)
         const evDecimal = computeEvDecimal(consensusProb, best.price, 1)
         const evPct = Math.round(evDecimal * 1000) / 10
 
@@ -489,7 +519,7 @@ export function findPlusEvOpportunities(
           consensusPrice: impliedToAmerican(consensusProb),
           consensusProb: Math.round(consensusProb * 1000) / 1000,
           edgePct: evPct,
-          bookCount: fairSamples.length,
+          bookCount: weightedFairSamples.length,
         })
       }
     }

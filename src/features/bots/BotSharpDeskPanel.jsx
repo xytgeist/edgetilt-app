@@ -9,6 +9,7 @@ import {
   invokeLoungeOddsPrimetimeSpotlight,
   invokeLoungeOddsWeeklyRecap,
   invokeLoungeOddsHalftimePivot,
+  invokeLoungeOddsAnytimeTd,
 } from './botPortalApi.js'
 import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
@@ -288,6 +289,33 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropAnytimeTd = async (dryRun = false) => {
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsAnytimeTd(supabaseClient, {
+        slug: botSlug,
+        dryRun,
+      })
+      if (error) {
+        setToast?.(`Anytime TD drop failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        const feat = data?.card?.featuredPick
+        setToast?.(`[Dry Run] Chedda's TD of the Week: ${feat?.playerName} (${feat?.price > 0 ? `+${feat?.price}` : feat?.price}) · Edge: +${feat?.edgePct}%`)
+      } else if (data?.ok) {
+        setToast?.(`Published Chedda's TD of the Week & VIP 3-player slate!`)
+        await loadData()
+      } else {
+        setToast?.(data?.message || 'No active NFL games with Anytime TD candidates.')
+      }
+    } catch (err) {
+      setToast?.(`Anytime TD error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
 
@@ -529,6 +557,27 @@ export function BotSharpDeskPanel({
                     disabled={busy || dropping || loading}
                     onClick={() => handleDropHalftimePivot(false)}
                     className="rounded bg-cyan-600/80 hover:bg-cyan-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                  >
+                    Publish
+                  </button>
+                </div>
+
+                {/* Anytime TD / Player Props */}
+                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
+                  <span className="font-semibold text-rose-300 text-[11px]">🏈 Anytime TD:</span>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropAnytimeTd(true)}
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropAnytimeTd(false)}
+                    className="rounded bg-rose-600/80 hover:bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
                   >
                     Publish
                   </button>

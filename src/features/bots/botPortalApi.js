@@ -604,6 +604,25 @@ export async function invokeLoungeOddsHalftimePivot(supabaseClient, opts = {}) {
 }
 
 /**
+ * Trigger on-demand generation and publishing of NFL Anytime TD / Player Props card.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ */
+export async function invokeLoungeOddsAnytimeTd(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'nfl_anytime_td',
+      dryRun: opts.dryRun === true,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Anytime TD drop failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Publish one example Lounge post per Scott alert type (portal smoke pack).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

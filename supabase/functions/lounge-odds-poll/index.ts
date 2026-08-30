@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, weekly_syndicate_recap, or calibrate_persona_models.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, weekly_syndicate_recap, or calibrate_persona_models.',
       })
     }
 
@@ -350,6 +350,50 @@ Deno.serve(async (req) => {
         ok: result.ok,
         action: 'nfl_halftime_pivot',
         pivot,
+        ...result,
+      })
+    }
+
+    if (action === 'nfl_anytime_td') {
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const {
+        buildAnytimeTdCard,
+        publishAndRecordAnytimeTdCard,
+      } = await import('../_shared/loungeBotPlayerProps.ts')
+
+      // Fetch active NFL events
+      const oddsData = await fetchSportOdds('americanfootball_nfl', ['us', 'us2'], ['player_anytime_td', 'spreads', 'totals'])
+      const card = await buildAnytimeTdCard(admin, oddsData.events)
+
+      if (!card) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'nfl_anytime_td',
+          message: 'No qualifying Anytime TD plus-money picks found on active NFL board.',
+          totalEvents: oddsData.events.length,
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          action: 'nfl_anytime_td',
+          card,
+        })
+      }
+
+      const result = await publishAndRecordAnytimeTdCard(
+        admin,
+        bot.user_id,
+        oddsData.events,
+        bot.category_pills_default || ['sports', 'nfl', 'props'],
+      )
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'nfl_anytime_td',
+        card,
         ...result,
       })
     }

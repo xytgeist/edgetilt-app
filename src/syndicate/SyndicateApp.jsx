@@ -7,6 +7,7 @@ import {
 
 export function SyndicateApp() {
   const [activeTab, setActiveTab] = useState('overview')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [picks, setPicks] = useState([])
   const [loading, setLoading] = useState(true)
   const [trenchData, setTrenchData] = useState([])
@@ -50,30 +51,34 @@ export function SyndicateApp() {
   })
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-emerald-500/30 overflow-y-auto overflow-x-hidden">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-emerald-500/30">
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-[1px] shadow-lg shadow-emerald-950/50">
-              <div className="h-full w-full rounded-[11px] bg-zinc-950 flex items-center justify-center font-mono font-bold text-emerald-400 text-base tracking-tighter">
-                S⚡
-              </div>
+            {/* Sleek Institutional Logo */}
+            <div className="h-10 w-10 rounded-xl bg-zinc-900 border border-zinc-700/80 p-0.5 shadow-md flex items-center justify-center relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-transparent to-zinc-900 opacity-60" />
+              <svg className="h-5 w-5 text-emerald-400 relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3v18h18" />
+                <path d="m19 9-5 5-4-4-3 3" />
+              </svg>
             </div>
             <div>
-              <div className="font-bold text-base tracking-tight text-white flex items-center gap-2">
+              <div className="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
                 SHARPE SYNDICATE
-                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono tracking-wider uppercase font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
+                <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono tracking-wider uppercase font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md">
                   QUANT DESK
                 </span>
               </div>
-              <div className="text-[11px] text-zinc-400 hidden sm:block font-mono">
-                Algorithmic Consensus & Quantitative Sports Execution
+              <div className="text-[11px] text-zinc-400 hidden sm:block font-mono tracking-tight">
+                Algorithmic Consensus &amp; Quantitative Sports Execution
               </div>
             </div>
           </div>
 
-          <nav className="flex items-center gap-1 sm:gap-2">
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-1.5">
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'ledger', label: 'Audited Ledger' },
@@ -84,10 +89,10 @@ export function SyndicateApp() {
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   activeTab === t.id
                     ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
                 }`}
               >
                 {t.label}
@@ -98,13 +103,66 @@ export function SyndicateApp() {
               href="https://edgetilt.com/u/sharpesignal?subscribe=1"
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs sm:text-sm font-bold tracking-tight shadow-md shadow-emerald-500/20 transition-all active:scale-95"
+              className="ml-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold tracking-tight shadow-md shadow-emerald-500/20 transition-all active:scale-95"
             >
               <span>Join VIP</span>
               <span className="font-mono text-[11px]">→</span>
             </a>
           </nav>
+
+          {/* Mobile Menu Button */}
+          <div className="flex md:hidden items-center gap-2">
+            <a
+              href="https://edgetilt.com/u/sharpesignal?subscribe=1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg bg-emerald-500 text-zinc-950 text-xs font-bold tracking-tight shadow-sm"
+            >
+              Join VIP
+            </a>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white"
+              aria-label="Toggle navigation menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-zinc-800 bg-zinc-950/98 px-4 py-3 space-y-1.5 shadow-2xl">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'ledger', label: 'Audited Ledger' },
+              { id: 'trenches', label: 'Trench EPA' },
+              { id: 'cfb', label: 'CFB Power Index' },
+              { id: 'whitepapers', label: 'Methodology' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setActiveTab(t.id)
+                  setMobileMenuOpen(false)
+                }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === t.id
+                    ? 'bg-zinc-800 text-white font-bold ring-1 ring-zinc-700'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* Main Content Area */}
@@ -112,32 +170,32 @@ export function SyndicateApp() {
         {activeTab === 'overview' && (
           <div className="space-y-12">
             {/* Hero Section */}
-            <div className="relative rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/80 via-zinc-900/40 to-zinc-950 p-6 sm:p-12 overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-              <div className="relative z-10 max-w-3xl space-y-5">
+            <div className="relative rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/90 via-zinc-900/50 to-zinc-950 p-5 sm:p-10 md:p-12 overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 sm:w-96 h-80 sm:h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+              <div className="relative z-10 max-w-3xl space-y-4 sm:space-y-5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-medium">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                   </span>
-                  2026 ACTIVE FOOTBALL & MARKET CAMPAIGN
+                  2026 ACTIVE FOOTBALL &amp; MARKET CAMPAIGN
                 </div>
-                <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
                   Quantitative Sports Execution. <br />
                   <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
                     Audited. Unbiased. Scaled.
                   </span>
                 </h1>
-                <p className="text-zinc-300 text-sm sm:text-base leading-relaxed">
+                <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed">
                   The Sharpe Syndicate operates a 4-desk algorithmic architecture integrating real-time
                   Pinnacle/Circa sharp-weighted consensus, player injury spread valuation (PVAL), EPA per play trench
                   ratings, and reverse line movement detection.
                 </p>
 
-                <div className="pt-2 flex flex-wrap items-center gap-4">
+                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <button
                     onClick={() => setActiveTab('ledger')}
-                    className="px-5 py-2.5 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 font-bold text-sm tracking-tight shadow-lg transition-all active:scale-95"
+                    className="px-5 py-3 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 font-bold text-sm tracking-tight shadow-lg transition-all active:scale-95 text-center"
                   >
                     View Audited Ledger
                   </button>
@@ -145,7 +203,7 @@ export function SyndicateApp() {
                     href="https://edgetilt.com/u/sharpesignal?subscribe=1"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-5 py-2.5 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-100 font-semibold text-sm transition-all"
+                    className="px-5 py-3 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-100 font-semibold text-sm transition-all text-center"
                   >
                     Enter Sharpe VIP Syndicate on EdgeTilt →
                   </a>
@@ -154,34 +212,34 @@ export function SyndicateApp() {
             </div>
 
             {/* Live Syndicate Performance Ticker */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Performance</div>
-                <div className="mt-2 text-2xl sm:text-3xl font-mono font-extrabold text-emerald-400">
-                  {displayUnits} <span className="text-sm font-normal text-zinc-400">U</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
+                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Performance</div>
+                <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-mono font-extrabold text-emerald-400">
+                  {displayUnits} <span className="text-xs sm:text-sm font-normal text-zinc-400">U</span>
                 </div>
-                <div className="mt-1 text-[11px] text-zinc-500">Audited across all 4 desks</div>
+                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">Audited across all 4 desks</div>
               </div>
-              <div className="p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-xs font-mono text-zinc-400 uppercase tracking-wider">ATS Win Rate</div>
-                <div className="mt-2 text-2xl sm:text-3xl font-mono font-extrabold text-white">
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
+                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">ATS Win Rate</div>
+                <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-mono font-extrabold text-white">
                   {winRate}%
                 </div>
-                <div className="mt-1 text-[11px] text-zinc-500">{wins > 0 ? `${wins}W - ${losses}L - ${pushes}P` : 'Tracked on active campaign'}</div>
+                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500 truncate">{wins > 0 ? `${wins}W - ${losses}L - ${pushes}P` : 'Active campaign'}</div>
               </div>
-              <div className="p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
-                <div className="mt-2 text-2xl sm:text-3xl font-mono font-extrabold text-cyan-400">
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
+                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
+                <div className="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-mono font-extrabold text-cyan-400">
                   {clvRate}%
                 </div>
-                <div className="mt-1 text-[11px] text-zinc-500">Closing line value captured</div>
+                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">Closing line value</div>
               </div>
-              <div className="p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
-                <div className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Execution Pipeline</div>
-                <div className="mt-2 text-2xl sm:text-3xl font-mono font-extrabold text-amber-400">
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur">
+                <div className="text-[11px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Execution Pipeline</div>
+                <div className="mt-1.5 sm:mt-2 text-base sm:text-2xl md:text-3xl font-mono font-extrabold text-amber-400 truncate">
                   Pinnacle / Circa
                 </div>
-                <div className="mt-1 text-[11px] text-zinc-500">Sharp weighted 3.0x pricing</div>
+                <div className="mt-1 text-[10px] sm:text-[11px] text-zinc-500">Sharp weighted 3.0x</div>
               </div>
             </div>
 

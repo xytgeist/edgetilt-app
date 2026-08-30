@@ -160,6 +160,12 @@ Deno.serve(async (req) => {
       return adminOpsJson(200, { ok: true, action: 'grade_picks', ...gradeResult })
     }
 
+    if (action === 'calibrate_persona_models') {
+      const { runPersonaAdaptiveCalibration } = await import('../_shared/loungeBotPersonaAdaptive.ts')
+      const calibResult = await runPersonaAdaptiveCalibration(admin)
+      return adminOpsJson(200, { ok: true, action: 'calibrate_persona_models', ...calibResult })
+    }
+
     if (action === 'nfl_slate_card') {
       const {
         buildNflAtsSlateCard,
@@ -176,9 +182,13 @@ Deno.serve(async (req) => {
       }
 
       const events = oddsData?.events || []
+      const { loadPersonaWeights } = await import('../_shared/loungeBotPersonaAdaptive.ts')
+      const weightsMap = await loadPersonaWeights(admin)
+
       const card = buildNflAtsSlateCard(events, {
         cardTitle: body?.cardTitle,
         sportKey,
+        weightsMap,
       })
 
       if (!card) {

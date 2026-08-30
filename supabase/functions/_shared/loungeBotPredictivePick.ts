@@ -14,6 +14,7 @@ import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
+import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -369,7 +370,11 @@ export function buildNflAtsSlateCard(
       }>
     }>
   }>,
-  opts: { cardTitle?: string; sportKey?: string } = {},
+  opts: {
+    cardTitle?: string
+    sportKey?: string
+    weightsMap?: Map<string, number>
+  } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
 
@@ -377,6 +382,7 @@ export function buildNflAtsSlateCard(
   const hammers: SlateGamePick[] = []
   const consensus: SlateGamePick[] = []
   const splits: SlateGamePick[] = []
+  const weights = opts.weightsMap || new Map<string, number>()
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -444,20 +450,30 @@ export function buildNflAtsSlateCard(
     const homeLineDisp = formatPickLine(homePickObj)
     const awayLineDisp = formatPickLine(awayPickObj)
 
-    // Persona-specific picks:
+    // Bayesian factor weights
+    const scottWeight = weights.get('Scott:model_clv_high_ev') || 1.0
+    const roccoWeight = weights.get('Rocco:short_favorites_1_to_4') || 1.0
+    const cheddaSweetWeight = weights.get('Chedda:dog_sweet_spot_130_175') || 1.0
+    const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
+
+    // Persona-specific picks with dynamic Bayesian weights:
     // 1. Scott (Model EV): leans toward favorable line juice or short home edge
-    const scottScoreHome = (homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1)
+    const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1)) * scottWeight
     const scottSide: 'home' | 'away' = scottScoreHome >= 0 ? 'home' : 'away'
 
-    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5)
-    const cheddaSide: 'home' | 'away' = homePoint > 0 ? 'home' : awayPoint > 0 ? 'away' : (homePrice > awayPrice ? 'home' : 'away')
+    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5) with adaptive sweet-spot weighting
+    const cheddaScoreHome = homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)
+    const cheddaSide: 'home' | 'away' = cheddaScoreHome >= 0 ? 'home' : 'away'
 
-    // 3. Rocco (Trench / Favorites): prefers laying short points on favorites (-2.5, -3.5, -6.5) or home chalk
-    const roccoSide: 'home' | 'away' = homePoint < 0 && homePoint >= -7.5 ? 'home' : awayPoint < 0 && awayPoint >= -7.5 ? 'away' : (homePoint < 0 ? 'home' : 'away')
+    // 3. Rocco (Trench / Favorites): prefers laying short points on favorites (-2.5, -3.5, -6.5) or home chalk with short-fav adaptive weight
+    const isShortFavHome = homePoint < 0 && homePoint >= -7.5
+    const isShortFavAway = awayPoint < 0 && awayPoint >= -7.5
+    const roccoScoreHome = isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)
+    const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
     // 4. Tank (Situational / Market Flow): deterministic situational lean based on matchup hash & point spreads
     const hVal = hashString(`${ev.id}_${homeTeam}_${awayTeam}`)
-    const tankScoreHome = (hVal % 100) / 100 + (homePoint > awayPoint ? 0.2 : -0.2)
+    const tankScoreHome = ((hVal % 100) / 100 + (homePoint > awayPoint ? 0.2 : -0.2)) * tankRestWeight
     const tankSide: 'home' | 'away' = tankScoreHome >= 0.5 ? 'home' : 'away'
 
     const pickerPicks: Record<SharpPicker, {
@@ -607,6 +623,19 @@ export async function publishAndRecordNflSlateCard(
   for (const g of input.card.games) {
     for (const pName of SHARP_PICKERS) {
       const pPick = g.pickerPicks[pName]
+
+      // Situational factor tagging for Bayesian learning
+      const factors: string[] = []
+      const isShortFav = Number(pPick.pick.linePoint) <= -1 && Number(pPick.pick.linePoint) >= -4
+      const isSweetDog = Number(pPick.pickPrice) >= 130 && Number(pPick.pickPrice) <= 175
+      const isKey3 = Math.abs(Number(pPick.pick.linePoint)) === 3
+
+      if (isShortFav) factors.push('short_favorites_1_to_4')
+      if (isSweetDog) factors.push('dog_sweet_spot_130_175')
+      if (isKey3) factors.push('key_number_3_value')
+      if (pName === 'Scott') factors.push('model_clv_high_ev')
+      if (pName === 'Tank') factors.push('rest_advantage')
+
       rowsToInsert.push({
         bot_user_id: input.botUserId,
         picker_name: pName,
@@ -622,6 +651,12 @@ export async function publishAndRecordNflSlateCard(
         pick_price: pPick.pickPrice,
         book_title: pPick.pick.bookTitle || null,
         status: 'pending',
+        metadata: {
+          factors,
+          side: pPick.side,
+          consensus_type: g.consensusPick.type,
+          vote_count: g.consensusPick.voteCount,
+        },
       })
     }
   }
@@ -716,22 +751,45 @@ export async function publishAndRecordPicks(
     return { success: false, pickIds: [], error: postRes.error || 'Failed to publish post' }
   }
 
-  const rowsToInsert = input.picks.map((item) => ({
-    bot_user_id: input.botUserId,
-    picker_name: item.pickerName,
-    post_id: postRes.postId,
-    event_id: item.pick.eventId,
-    sport_key: item.pick.sportKey,
-    home_team: item.pick.homeTeam,
-    away_team: item.pick.awayTeam,
-    commence_time: item.pick.commenceTime,
-    market_key: item.pick.marketKey,
-    pick_name: item.pick.pickName,
-    pick_line: item.pick.linePoint ?? null,
-    pick_price: item.pick.pickPrice,
-    book_title: item.pick.bookTitle || null,
-    status: 'pending',
-  }))
+  const rowsToInsert = input.picks.map((item) => {
+    const factors: string[] = []
+    if (weather && !weather.isDome) {
+      if (weather.isHighWind) factors.push('wind_unders')
+      if (weather.isExtremeCold) factors.push('extreme_cold_unders')
+    }
+    if (Number(item.pick.pickPrice) >= 130 && Number(item.pick.pickPrice) <= 175) {
+      factors.push('dog_sweet_spot_130_175')
+    }
+    if (Number(item.pick.pickPrice) > 175) {
+      factors.push('dog_longshot_180_plus')
+    }
+    if (Number(item.pick.linePoint) <= -1 && Number(item.pick.linePoint) >= -4) {
+      factors.push('short_favorites_1_to_4')
+    }
+    if (item.pickerName === 'Scott') factors.push('model_clv_high_ev')
+
+    return {
+      bot_user_id: input.botUserId,
+      picker_name: item.pickerName,
+      post_id: postRes.postId,
+      event_id: item.pick.eventId,
+      sport_key: item.pick.sportKey,
+      home_team: item.pick.homeTeam,
+      away_team: item.pick.awayTeam,
+      commence_time: item.pick.commenceTime,
+      market_key: item.pick.marketKey,
+      pick_name: item.pick.pickName,
+      pick_line: item.pick.linePoint ?? null,
+      pick_price: item.pick.pickPrice,
+      book_title: item.pick.bookTitle || null,
+      status: 'pending',
+      metadata: {
+        factors,
+        is_high_wind: weather?.isHighWind || false,
+        is_extreme_cold: weather?.isExtremeCold || false,
+      },
+    }
+  })
 
   const { data: insertedRows, error: pickErr } = await admin
     .from('lounge_bot_picks')

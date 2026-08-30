@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Fallback to production Supabase URL & anon key for public read access
-const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').trim()
-const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
+const SUPABASE_URL = String(
+  import.meta.env.VITE_SUPABASE_URL || 'https://jtjgtucumuoswnbauxry.supabase.co'
+).trim()
+const SUPABASE_ANON_KEY = String(
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+    'sb_publishable_u3-GQGrZ_hswapkiWiPyLA_Ah3mxU8B'
+).trim()
 
 export const syndicateSupabase =
   SUPABASE_URL && SUPABASE_ANON_KEY

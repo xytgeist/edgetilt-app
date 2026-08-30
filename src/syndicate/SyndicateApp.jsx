@@ -17,7 +17,7 @@ export function SyndicateApp() {
     async function loadData() {
       setLoading(true)
       const [ledgerRes, trenchRes, cfbRes] = await Promise.all([
-        fetchSyndicateLedger(100),
+        fetchSyndicateLedger(250),
         fetchTrenchMetrics(),
         fetchCfbPowerRatings(),
       ])

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Settings2 } from 'lucide-react'
+import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Settings2, Send } from 'lucide-react'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
@@ -31,7 +31,9 @@ import {
 
 /**
  * Full-Screen Pro Composer with rich Markdown formatting & live 1:1 card preview.
- * Option 3: Top-Right Audience / Settings Button (direct instant Post button).
+ * Hybrid Mode (Option 2 + 3):
+ * - If user already interacted with the top-bar Audience/Settings button, "Post" is instant.
+ * - If user never opened the settings button, clicking "Post" presents the pre-post confirmation sheet.
  *
  * @param {{
  *   open: boolean,
@@ -108,6 +110,8 @@ export default function LoungeFullScreenComposerModal({
 }) {
   const [activeTab, setActiveTab] = useState('write') // 'write' | 'preview'
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState('settings') // 'settings' | 'pre_post'
+  const [hasConfiguredAudience, setHasConfiguredAudience] = useState(false)
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
@@ -140,6 +144,8 @@ export default function LoungeFullScreenComposerModal({
     if (!open) return
     setActiveTab('write')
     setSettingsModalOpen(false)
+    setModalMode('settings')
+    setHasConfiguredAudience(false)
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
     })
@@ -177,6 +183,39 @@ export default function LoungeFullScreenComposerModal({
 
   const isSubscribersAudience = composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
   const isCustomGated = isSubscribersAudience || composerReplyGateEdgePro
+
+  const handleOpenSettingsFromHeader = () => {
+    setModalMode('settings')
+    setHasConfiguredAudience(true)
+    setSettingsModalOpen(true)
+  }
+
+  const handlePostButtonClick = () => {
+    if (postBusy || isOverLimit || !hasContent) return
+    if (!hasConfiguredAudience) {
+      setModalMode('pre_post')
+      setSettingsModalOpen(true)
+    } else {
+      onSubmit()
+      onClose()
+    }
+  }
+
+  const handleConfirmPublish = () => {
+    setSettingsModalOpen(false)
+    onSubmit()
+    onClose()
+  }
+
+  const handleAudienceSelect = (audience) => {
+    setHasConfiguredAudience(true)
+    onAudienceChange?.(audience)
+  }
+
+  const handleReplyGateSelect = (gate) => {
+    setHasConfiguredAudience(true)
+    onReplyGateChange?.(gate)
+  }
 
   return createPortal(
     <div
@@ -236,12 +275,12 @@ export default function LoungeFullScreenComposerModal({
           </button>
         </div>
 
-        {/* ── Audience Settings Icon, Char Ring & Instant Post ── */}
+        {/* ── Audience Settings Icon, Char Ring & Post Action ── */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Audience & Reply Settings Trigger */}
           <button
             type="button"
-            onClick={() => setSettingsModalOpen(true)}
+            onClick={handleOpenSettingsFromHeader}
             className={`relative flex h-9 sm:h-10 items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs sm:text-sm font-bold transition-all touch-manipulation active:scale-95 ${
               isCustomGated
                 ? 'border-amber-500/50 bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/30'
@@ -267,10 +306,7 @@ export default function LoungeFullScreenComposerModal({
           <button
             type="button"
             disabled={postBusy || isOverLimit || !hasContent}
-            onClick={() => {
-              onSubmit()
-              onClose()
-            }}
+            onClick={handlePostButtonClick}
             className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 sm:px-5 py-2 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 touch-manipulation"
           >
             <span>{postBusy ? 'Posting…' : 'Post'}</span>
@@ -568,7 +604,7 @@ export default function LoungeFullScreenComposerModal({
         </footer>
       ) : null}
 
-      {/* ── Option 3: Audience & Reply Settings Modal ── */}
+      {/* ── Audience & Reply Settings / Pre-Post Modal ── */}
       {settingsModalOpen ? (
         <div
           role="dialog"
@@ -586,15 +622,19 @@ export default function LoungeFullScreenComposerModal({
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3.5">
               <div>
                 <h3 id="settings-modal-title" className="text-base sm:text-lg font-bold text-zinc-100">
-                  Post Audience & Reply Settings
+                  {modalMode === 'pre_post' ? 'Ready to Post?' : 'Post Audience & Reply Settings'}
                 </h3>
-                <p className="text-xs text-zinc-400">Configure who can view and participate in this thread</p>
+                <p className="text-xs text-zinc-400">
+                  {modalMode === 'pre_post'
+                    ? 'Choose who can see and reply to your post'
+                    : 'Configure who can view and participate in this thread'}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSettingsModalOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                aria-label="Close settings dialog"
+                aria-label="Close dialog"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -609,7 +649,7 @@ export default function LoungeFullScreenComposerModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_ALL)}
+                    onClick={() => handleAudienceSelect(LOUNGE_COMPOSER_AUDIENCE_ALL)}
                     className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL
                         ? 'border-sky-500/60 bg-sky-500/10 text-white shadow-sm ring-1 ring-sky-500/30'
@@ -632,7 +672,7 @@ export default function LoungeFullScreenComposerModal({
 
                   <button
                     type="button"
-                    onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_SUBS)}
+                    onClick={() => handleAudienceSelect(LOUNGE_COMPOSER_AUDIENCE_SUBS)}
                     className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
                         ? 'border-amber-500/60 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500/30'
@@ -663,7 +703,7 @@ export default function LoungeFullScreenComposerModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => onReplyGateChange?.(false)}
+                    onClick={() => handleReplyGateSelect(false)}
                     className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       !composerReplyGateEdgePro
                         ? 'border-sky-500/60 bg-sky-500/10 text-white shadow-sm ring-1 ring-sky-500/30'
@@ -686,7 +726,7 @@ export default function LoungeFullScreenComposerModal({
 
                   <button
                     type="button"
-                    onClick={() => onReplyGateChange?.(true)}
+                    onClick={() => handleReplyGateSelect(true)}
                     className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       composerReplyGateEdgePro
                         ? 'border-amber-500/60 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500/30'
@@ -710,16 +750,41 @@ export default function LoungeFullScreenComposerModal({
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="mt-6 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setSettingsModalOpen(false)}
-                className="w-full sm:w-auto rounded-2xl bg-zinc-800 px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
-              >
-                Done
-              </button>
-            </div>
+            {/* Action Buttons depending on Modal Mode */}
+            {modalMode === 'pre_post' ? (
+              <div className="mt-6 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSettingsModalOpen(false)}
+                  className="flex-1 rounded-2xl border border-zinc-700/80 bg-zinc-800/80 py-3 text-center text-sm font-bold text-zinc-200 transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                >
+                  Back to Edit
+                </button>
+
+                <button
+                  type="button"
+                  disabled={postBusy}
+                  onClick={handleConfirmPublish}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-3 text-center text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"
+                >
+                  <Send className="h-4 w-4" />
+                  <span>{postBusy ? 'Posting…' : 'Publish Now'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="mt-6 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasConfiguredAudience(true)
+                    setSettingsModalOpen(false)
+                  }}
+                  className="w-full sm:w-auto rounded-2xl bg-zinc-800 px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                >
+                  Done
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

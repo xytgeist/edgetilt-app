@@ -136,7 +136,7 @@ export default function LoungeMarkdownToolbar({
   return (
     <div
       data-lounge-markdown-toolbar=""
-      className={`relative z-20 flex w-full max-w-full items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 px-2 py-1.5 backdrop-blur-md touch-pan-x overscroll-x-contain ${className}`}
+      className={`relative z-20 flex w-full max-w-full items-center gap-0.5 sm:gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 px-2 py-1.5 backdrop-blur-md ${className}`}
     >
       {/* ── Heading Dropdown (H1 / H2 / H3) ── */}
       <div className="relative shrink-0">

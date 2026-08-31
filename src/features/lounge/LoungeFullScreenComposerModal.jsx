@@ -419,22 +419,24 @@ export default function LoungeFullScreenComposerModal({
       <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
-            {/* ── Row 1: Tribe Pills (Horizontal swipe, clean look) ── */}
-            <div className="w-full min-w-0 overflow-hidden">
-              <LoungePostCategoryPillPicker
-                value={composerCategoryPills}
-                onChange={onCategoryPillsChange}
-                disabled={postBusy}
-                size="lg"
-                hint=""
-                hideExpandCaret
-                onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
-                className="!mt-0 !mb-0"
-              />
-            </div>
+            {/* ── Row 1: Tribe Pills (Horizontal swipe, clean look - collapsed when typing to bring toolbar to header) ── */}
+            {!keyboardUp ? (
+              <div className="w-full min-w-0">
+                <LoungePostCategoryPillPicker
+                  value={composerCategoryPills}
+                  onChange={onCategoryPillsChange}
+                  disabled={postBusy}
+                  size="lg"
+                  hint=""
+                  hideExpandCaret
+                  onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
+                  className="!mt-0 !mb-0"
+                />
+              </div>
+            ) : null}
 
             {/* ── Markdown Formatting Toolbar ── */}
-            <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
+            <div ref={toolbarContainerRef} className="w-full min-w-0">
               <LoungeMarkdownToolbar
                 textareaRef={textareaRef}
                 onTextChange={handleTextChange}
@@ -443,7 +445,7 @@ export default function LoungeFullScreenComposerModal({
               />
             </div>
 
-            {/* ── Native Textarea with Mention/Cashtag Support ── */}
+            {/* ── Native Textarea with Mention/Cashtag Support + Attached Media in-line ── */}
             <div
               ref={anchorRef}
               onClick={() => textareaRef.current?.focus()}
@@ -466,7 +468,7 @@ export default function LoungeFullScreenComposerModal({
                 spellCheck
                 aria-label="Full screen post caption"
                 placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
-                className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
+                className="w-full min-h-[10rem] sm:min-h-[14rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
                   if (keyboardUp) scrollToToolbar()
                   else setTimeout(scrollToToolbar, 250)
@@ -510,57 +512,57 @@ export default function LoungeFullScreenComposerModal({
                   caretFieldRef={textareaRef}
                 />
               ) : null}
-            </div>
 
-            {/* ── Attached Market Charts Strip ── */}
-            {composerMarketSymbols.length > 0 ? (
-              <LoungeComposerMarketChartStrip
-                symbols={composerMarketSymbols}
-                onChange={onMarketSymbolsChange}
-                className="mt-2"
-              />
-            ) : null}
-
-            {/* ── Attached Images / GIFs Carousel ── */}
-            {carouselUrls.length > 0 ? (
-              <LoungeImageCarousel
-                urls={carouselUrls}
-                variant="composer"
-                firstMarginTopClass="mt-2"
-                regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
-                removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
-                onRemoveIndex={(i) => {
-                  if (i < nImg) {
-                    onRemoveImageIndex?.(i)
-                  } else {
-                    onRemoveGif?.()
-                  }
-                }}
-              />
-            ) : null}
-
-            {/* ── Attached Video ── */}
-            {composerVideoSlot?.preview ? (
-              <div className="relative mt-2 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                <video
-                  src={composerVideoSlot.preview}
-                  poster={composerVideoSlot.posterUrl || undefined}
-                  className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
-                  controls
-                  playsInline
-                  preload="metadata"
-                  aria-label="Video preview"
+              {/* ── Attached Market Charts Strip ── */}
+              {composerMarketSymbols.length > 0 ? (
+                <LoungeComposerMarketChartStrip
+                  symbols={composerMarketSymbols}
+                  onChange={onMarketSymbolsChange}
+                  className="mt-3 shrink-0"
                 />
-                <button
-                  type="button"
-                  onClick={onRemoveVideo}
-                  className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
-                  aria-label="Remove video"
-                >
-                  ×
-                </button>
-              </div>
-            ) : null}
+              ) : null}
+
+              {/* ── Attached Images / GIFs Carousel ── */}
+              {carouselUrls.length > 0 ? (
+                <LoungeImageCarousel
+                  urls={carouselUrls}
+                  variant="composer"
+                  firstMarginTopClass="mt-3 shrink-0"
+                  regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
+                  removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
+                  onRemoveIndex={(i) => {
+                    if (i < nImg) {
+                      onRemoveImageIndex?.(i)
+                    } else {
+                      onRemoveGif?.()
+                    }
+                  }}
+                />
+              ) : null}
+
+              {/* ── Attached Video ── */}
+              {composerVideoSlot?.preview ? (
+                <div className="relative mt-3 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                  <video
+                    src={composerVideoSlot.preview}
+                    poster={composerVideoSlot.posterUrl || undefined}
+                    className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    aria-label="Video preview"
+                  />
+                  <button
+                    type="button"
+                    onClick={onRemoveVideo}
+                    className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
+                    aria-label="Remove video"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           /* ── 1:1 Live Preview Card ── */

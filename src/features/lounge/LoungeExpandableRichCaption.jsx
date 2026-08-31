@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { renderRichCaption, truncateCaptionForDisplay } from './loungeCaption.jsx'
+import { truncateCaptionForDisplay } from './loungeCaption.jsx'
+import { renderLoungeMarkdown } from './loungeMarkdown.jsx'
 import { LOUNGE_CAPTION_DISPLAY_MAX, LOUNGE_CAPTION_DISPLAY_MAX_LINES } from '../../utils/loungeCommentLimits.js'
 import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
 
@@ -85,7 +86,7 @@ export default function LoungeExpandableRichCaption({
   }, [useCssClamp, expanded, source, collapsedLines, mergedCaptionOpts])
 
   if (useCssClamp) {
-    const rich = renderRichCaption(source, mergedCaptionOpts)
+    const rich = renderLoungeMarkdown(source, mergedCaptionOpts)
     if (!rich) return null
     const canTapExpand = expandOnTap && cssOverflows && !expanded
     const clampClass =
@@ -155,7 +156,7 @@ export default function LoungeExpandableRichCaption({
   // Char/line path stays collapsed in the feed … ellipsis is the only cue; open the post for full text.
   // `startExpanded` / lightbox CSS-clamp path above still expand in place.
   const displayText = isTruncated && !expanded ? preview : source
-  const rich = renderRichCaption(displayText, mergedCaptionOpts)
+  const rich = renderLoungeMarkdown(displayText, mergedCaptionOpts)
   if (!rich) return null
 
   return (

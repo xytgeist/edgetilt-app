@@ -158,6 +158,7 @@ import {
 } from '../legal/index.js'
 import LoungePostDraftsSheet from './LoungePostDraftsSheet.jsx'
 import LoungeThreadComposeSheet from './LoungeThreadComposeSheet.jsx'
+import LoungeFullScreenComposerModal from './LoungeFullScreenComposerModal.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import {
   countLoungePostDrafts,
@@ -886,6 +887,7 @@ export default function SocialFeed({
 
   const [postBusy, setPostBusy] = useState(false)
   const [postErr, setPostErr] = useState('')
+  const [fullScreenComposerOpen, setFullScreenComposerOpen] = useState(false)
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
   const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
   /** Thin composer-top seam for non-video feed posts only (caption / images / GIF). Never used for video. */
@@ -16667,6 +16669,21 @@ export default function SocialFeed({
                   />
                 </svg>
                 </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setFullScreenComposerOpen(true)}
+                  className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-amber-400 hover:text-amber-300 active:text-amber-200 [-webkit-tap-highlight-color:transparent]"
+                  title="Full-screen Pro composer & Markdown"
+                  aria-label="Full-screen Pro composer"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                </button>
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
                 <LoungeFeedComposerPostChrome
@@ -20005,6 +20022,55 @@ export default function SocialFeed({
           }}
         />
       ) : null}
+
+      <LoungeFullScreenComposerModal
+        open={fullScreenComposerOpen}
+        onClose={() => setFullScreenComposerOpen(false)}
+        postText={postText}
+        onTextChange={setFeedComposerCaptionImmediate}
+        onSubmit={() => void submitLoungePost()}
+        postBusy={postBusy}
+        isEdgePro={isViewerEdgePro}
+        isStaff={loungeStaffToolsEnabled}
+        onUpgradeClick={() => onOpenBillingManage?.()}
+        composerUserProfile={composerUserProfile}
+        composerImageItems={composerImageItems}
+        onRemoveImageIndex={(i) => {
+          setComposerImageItems((prev) => {
+            const item = prev[i]
+            if (item?.preview) {
+              try {
+                URL.revokeObjectURL(item.preview)
+              } catch {
+                // ignore
+              }
+            }
+            return prev.filter((_, j) => j !== i)
+          })
+        }}
+        composerVideoSlot={composerVideoSlot}
+        onRemoveVideo={() => cancelComposerMediaPrep()}
+        composerMediaUrl={composerMediaUrl}
+        onRemoveGif={() => setComposerMediaUrl('')}
+        composerMarketSymbols={composerMarketSymbols}
+        onMarketSymbolsChange={setComposerMarketSymbols}
+        composerCategoryPills={composerCategoryPills}
+        onCategoryPillsChange={setComposerCategoryPills}
+        composerReplyGateEdgePro={composerReplyGateEdgePro}
+        onReplyGateChange={setComposerReplyGateEdgePro}
+        composerAudience={composerAudience}
+        onAudienceChange={setComposerAudience}
+        composerFanMonetizationLive={composerFanMonetizationLive}
+        captionMax={loungeComposerCaptionMax}
+        cashtagComposer={cashtagComposer}
+        mentionComposer={mentionComposer}
+        onOpenGifPicker={() => openKlipyPicker('composer')}
+        onOpenMarketPicker={() => openMarketPicker('composer')}
+        imageInputId={LOUNGE_COMPOSER_IMAGE_INPUT_ID}
+        videoInputId={LOUNGE_COMPOSER_VIDEO_INPUT_ID}
+        onImagePointerDown={() => beginLoungeComposerMediaPicker('composer')}
+        onVideoPointerDown={() => beginLoungeComposerMediaPicker('composer')}
+      />
 
       <LoungeThreadComposeSheet
         key={threadComposeSessionKey}

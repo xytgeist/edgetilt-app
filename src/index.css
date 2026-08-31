@@ -10855,4 +10855,81 @@ html.light [data-settings-build-info] div {
   color: #71717a !important;
 }
 
+/* Lounge Markdown elements light mode styling */
+html.light [data-lounge-inline-code] {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  color: #0284c7 !important;
+}
+
+html.light [data-lounge-code-block] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0369a1 !important;
+}
+
+html.light [data-lounge-blockquote] {
+  background-color: rgba(254, 243, 199, 0.4) !important;
+  border-left-color: #f59e0b !important;
+  color: #4b5563 !important;
+}
+
+html.light [data-lounge-bold] {
+  color: #09090b !important;
+}
+
+html.light [data-lounge-em] {
+  color: #27272a !important;
+}
+
+html.light [data-lounge-del] {
+  color: #a1a1aa !important;
+}
+
+html.light [data-lounge-ul],
+html.light [data-lounge-ol] {
+  color: #27272a !important;
+}
+
+/* Lounge Full-Screen Pro Composer light mode styling */
+html.light [data-lounge-fullscreen-composer] {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+html.light [data-lounge-fullscreen-composer] header {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light [data-lounge-fullscreen-composer] footer {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light [data-lounge-fullscreen-composer] textarea {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  color: #09090b !important;
+}
+
+html.light [data-lounge-markdown-toolbar] {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light [data-lounge-markdown-toolbar] button {
+  color: #27272a !important;
+}
+
+html.light [data-lounge-markdown-toolbar] button:hover {
+  background-color: #e4e4e7 !important;
+}
+
+html.light [data-lounge-preview-card] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+
 

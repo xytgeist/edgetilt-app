@@ -157,7 +157,7 @@ export default function LoungeMarkdownToolbar({
         {headingPickerOpen ? (
           <div
             data-lounge-heading-picker-dropdown=""
-            className="absolute left-0 bottom-full z-50 mb-2 flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            className="absolute left-0 top-full z-50 mt-1.5 flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
             onMouseDown={(e) => e.preventDefault()}
           >
             <button
@@ -266,7 +266,7 @@ export default function LoungeMarkdownToolbar({
         {colorPickerOpen ? (
           <div
             data-lounge-color-picker-dropdown=""
-            className="absolute left-0 bottom-full z-50 mb-2 flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            className="absolute left-0 top-full z-50 mt-1.5 flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
             onMouseDown={(e) => e.preventDefault()}
           >
             <button

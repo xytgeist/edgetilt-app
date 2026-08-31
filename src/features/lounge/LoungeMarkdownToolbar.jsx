@@ -7,7 +7,7 @@ import { useCallback } from 'react'
  * @param {object} options
  * @param {string} options.prefix Prefix before selected text (e.g. '**')
  * @param {string} options.suffix Suffix after selected text (e.g. '**')
- * @param {string} options.defaultText Placeholder if no text is selected (e.g. 'bold text')
+ * @param {string} [options.defaultText] Placeholder if no text is selected (only highlighted for inline/block pairs)
  * @param {'inline' | 'linePrefix' | 'block'} [options.mode='inline']
  * @param {(nextText: string) => void} onUpdate Callback when text changes
  */
@@ -24,30 +24,36 @@ export function applyMarkdownFormatting(textarea, { prefix, suffix = '', default
   let nextEnd = end
 
   if (mode === 'linePrefix') {
-    // Prefix each line in the selection
-    const beforeSelection = val.slice(0, start)
-    const afterSelection = val.slice(end)
+    // Prefix at cursor or line start: simply insert character and place cursor immediately after
+    if (start === end && !selected) {
+      nextVal = val.slice(0, start) + prefix + val.slice(end)
+      nextStart = start + prefix.length
+      nextEnd = nextStart
+    } else {
+      const beforeSelection = val.slice(0, start)
+      const afterSelection = val.slice(end)
 
-    // Find the start of the first line in the selection
-    const lastNewlineBefore = beforeSelection.lastIndexOf('\n')
-    const lineStart = lastNewlineBefore === -1 ? 0 : lastNewlineBefore + 1
+      const lastNewlineBefore = beforeSelection.lastIndexOf('\n')
+      const lineStart = lastNewlineBefore === -1 ? 0 : lastNewlineBefore + 1
 
-    const textToModify = val.slice(lineStart, end)
-    const lines = textToModify.split('\n')
-    const modifiedLines = lines.map((l) => `${prefix}${l}`)
-    const joined = modifiedLines.join('\n')
+      const textToModify = val.slice(lineStart, end)
+      const lines = textToModify.split('\n')
+      const modifiedLines = lines.map((l) => `${prefix}${l}`)
+      const joined = modifiedLines.join('\n')
 
-    nextVal = val.slice(0, lineStart) + joined + afterSelection
-    nextStart = lineStart
-    nextEnd = lineStart + joined.length
+      nextVal = val.slice(0, lineStart) + joined + afterSelection
+      nextStart = lineStart + joined.length
+      nextEnd = nextStart
+    }
   } else if (mode === 'block') {
+    // Code block: highlights inner text
     const content = selected || defaultText
     const block = `\n${prefix}\n${content}\n${suffix}\n`
     nextVal = val.slice(0, start) + block + val.slice(end)
     nextStart = start + prefix.length + 2
     nextEnd = nextStart + content.length
   } else {
-    // Inline wrap: selects the inner text between prefix and suffix
+    // Inline wrap (bold, italic, strike, code): highlights the inner text between prefix and suffix
     const content = selected || defaultText
     const wrapped = `${prefix}${content}${suffix}`
     nextVal = val.slice(0, start) + wrapped + val.slice(end)
@@ -177,7 +183,7 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '> ', defaultText: 'quote', mode: 'linePrefix' })}
+        onClick={() => handleFormat({ prefix: '> ', mode: 'linePrefix' })}
         className={`${btnClass} text-[18px] sm:text-[19px] font-serif text-amber-400 hover:text-amber-300`}
         title="Blockquote (> quote)"
         aria-label="Blockquote"
@@ -188,7 +194,7 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '- ', defaultText: 'item', mode: 'linePrefix' })}
+        onClick={() => handleFormat({ prefix: '- ', mode: 'linePrefix' })}
         className={`${btnClass} text-[18px] sm:text-[19px] text-zinc-200`}
         title="Bulleted List (- item)"
         aria-label="Bulleted List"
@@ -199,7 +205,7 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '1. ', defaultText: 'item', mode: 'linePrefix' })}
+        onClick={() => handleFormat({ prefix: '1. ', mode: 'linePrefix' })}
         className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-bold text-zinc-200`}
         title="Numbered List (1. item)"
         aria-label="Numbered List"

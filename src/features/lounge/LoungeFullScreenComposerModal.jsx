@@ -146,7 +146,7 @@ export default function LoungeFullScreenComposerModal({
     if (!scrollContainerRef.current || !toolbarContainerRef.current) return
     const container = scrollContainerRef.current
     const toolbar = toolbarContainerRef.current
-    const toolbarTop = toolbar.offsetTop - 8 // small top buffer so it sits nicely right below header
+    const toolbarTop = toolbar.offsetTop - 4 // sits directly under fixed header
     container.scrollTo({
       top: Math.max(0, toolbarTop),
       behavior: 'smooth',
@@ -409,7 +409,7 @@ export default function LoungeFullScreenComposerModal({
             <div
               ref={anchorRef}
               onClick={() => textareaRef.current?.focus()}
-              className="relative flex min-h-[16rem] sm:min-h-[22rem] flex-1 flex-col cursor-text"
+              className="relative flex flex-1 min-h-0 flex-col cursor-text"
             >
               <textarea
                 ref={textareaRef}
@@ -423,7 +423,7 @@ export default function LoungeFullScreenComposerModal({
                 spellCheck
                 aria-label="Full screen post caption"
                 placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
-                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
+                className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
                   if (keyboardUp) scrollToToolbar()
                   else setTimeout(scrollToToolbar, 250)

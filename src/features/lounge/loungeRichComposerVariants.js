@@ -26,4 +26,10 @@ export const LOUNGE_RICH_COMPOSER_VARIANTS = {
       'min-h-[38px] max-h-[min(42vh,22rem)] py-1 text-[17px] leading-[1.3] [transform:translateZ(0)]',
     placeholderClass: 'py-1 text-[17px] leading-[1.3]',
   },
+  fullscreen: {
+    fieldClass:
+      'min-h-[14rem] sm:min-h-[20rem] p-3 sm:p-4 text-[17px] sm:text-[18px] leading-relaxed [overflow-wrap:anywhere]',
+    placeholderClass:
+      'p-3 sm:p-4 text-[17px] sm:text-[18px] leading-relaxed',
+  },
 }

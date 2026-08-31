@@ -18,7 +18,7 @@
 | `slots-edge-starter` | Slots Edge | EdgeTilt | 100% platform | **Shipped** |
 | `slots-edge` | Slots Edge Pro | EdgeTilt | 100% platform | **Shipped** |
 | `slots-edge-lifetime` | Slots Edge Lifetime | EdgeTilt | 100% platform | **Shipped** |
-| `edge-pro` | Edge Pro | EdgeTilt | 100% platform | **Shipped (Foundation)** ... platform social tier (badge, reply controls, get_my_entitlements) |
+| `edge-pro` | Edge Pro | EdgeTilt | 100% platform | **Shipped ($9.99/mo)** ... platform social tier (badge, reply controls, pro-only stream & comments filter, Stripe checkout) |
 | `creator-fan:{creator_user_id}` | Support @{handle} (working title) | Creator (via Connect) | **70% creator / 30% EdgeTilt** | **Planned** |
 | `addon:*` | Niche tool packs (e.g. future sports/crypto vertical tools) | EdgeTilt | 100% platform (TBD) | **Planned** |
 | `affiliate` | _(not a buyer product)_ | n/a | Commission on EdgeTilt subs | **Shipped** ... see `docs/affiliates.md` |
@@ -175,3 +175,4 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-07-21 | Feed teaser model for fan-only posts (visible in main feed, partial line + subscribe CTA, auto-follow on sub) added to product backlog; supersedes “hide fan-only from non-subs” for **timeline** only — full post detail policy TBD in backlog §3. |
 | 2026-08-28 | **Edge Pro Tier Phase 3 foundation landed:** `reply_gate_edge_pro` column + helper `has_edge_pro_entitlement()`, `feed_comments_insert_own` RLS reply-gate enforcement, composer reply gate picker, thread header indicator, comment footer gate message, `LoungeEdgeProBadge` on author headers & profile, expanded `get_my_entitlements()`. |
 | 2026-08-28 | **Edge Pro VIP feed & comment filter:** Global Pro preference in Lounge settings (`readLoungeProFilterEnabled` / `writeLoungeProFilterEnabled`) filters timeline to Pro authors and collapses non-Pro replies; post detail provides a one-tap override pill to reveal all comments for that thread while preserving OP continuity and staff visibility. |
+| 2026-08-30 | **Edge Pro $9.99/mo Stripe checkout & subscription tier live:** Added `edge-pro` to `subscription_products` (migration `20260830235000`), updated `sync_profile_has_active_subscription`, enabled direct Stripe Checkout routing via `STRIPE_PRICE_EDGE_PRO`, and wired in-app Upgrade to Edge Pro buttons in Settings and Membership management. |

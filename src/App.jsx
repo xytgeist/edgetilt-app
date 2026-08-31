@@ -628,6 +628,7 @@ function App() {
     hasSlotsEdgeLifetime: hasSlotsEdgeLifetimeFromRpc,
     hasSlotsEdgeStarter: hasSlotsEdgeStarterFromRpc,
     hasSlotsEdgePro: hasSlotsEdgeProFromRpc,
+    hasEdgePro: hasEdgeProFromRpc,
     starterPriceInterval,
     fullPriceInterval,
   } = useEdgeEntitlements(supabase, user?.id)
@@ -1566,6 +1567,7 @@ function App() {
   const hasSlotsEdgeStarterAccess = isStaffRole || hasSlotsEdgeStarterFromRpc
   const hasSlotsEdgeLifetimeAccess = isStaffRole || hasSlotsEdgeLifetimeFromRpc
   const hasSlotsEdgeProAccess = isStaffRole || hasSlotsEdgeProFromRpc
+  const hasEdgeProAccess = isStaffRole || hasEdgeProFromRpc || hasSlotsEdgeLifetimeAccess
 
   // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
   if (currentView === 'app') {
@@ -1576,6 +1578,9 @@ function App() {
           authSessionReady={!isChecking}
           hasActiveSubscription={hasSlotsEdgeAccess}
           hasSlotsEdgeStarter={hasSlotsEdgeStarterAccess}
+          hasSlotsEdgePro={hasSlotsEdgeProAccess}
+          hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeAccess}
+          hasEdgePro={hasEdgeProAccess}
           isStaff={isStaffRole}
           isAdmin={isAdminRole}
           contentAccessGatesMap={contentAccessGatesMap}
@@ -1618,6 +1623,7 @@ function App() {
           hasSlotsEdgeStarter={hasSlotsEdgeStarterFromRpc}
           hasSlotsEdgePro={hasSlotsEdgeProFromRpc}
           hasSlotsEdgeLifetime={hasSlotsEdgeLifetimeFromRpc}
+          hasEdgePro={hasEdgeProFromRpc}
           starterPriceInterval={starterPriceInterval}
           fullPriceInterval={fullPriceInterval}
           entitlements={entitlements}

@@ -1,8 +1,9 @@
 /**
- * Slots Edge MSRP list prices (USD) — product spec in docs/access-tiers.md §5.1.
+ * Edge MSRP list prices (USD) — product spec in docs/entitlements-matrix.md & docs/access-tiers.md.
  * Stripe Price IDs live in Supabase Edge secrets, not here.
  */
 
+export const EDGE_PRO_MONTHLY_USD = 9.99
 export const SLOTS_EDGE_STARTER_MONTHLY_USD = 19.99
 export const SLOTS_EDGE_STARTER_ANNUAL_USD = 219.99
 export const SLOTS_EDGE_FULL_MONTHLY_USD = 59.99

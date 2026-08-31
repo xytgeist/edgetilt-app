@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  PRODUCT_EDGE_PRO,
   PRODUCT_SLOTS_EDGE,
   PRODUCT_SLOTS_EDGE_LIFETIME,
   PRODUCT_SLOTS_EDGE_STARTER,
@@ -55,6 +56,7 @@ export default function BillingManageModal({
   hasSlotsEdgeStarter = false,
   hasSlotsEdgePro = false,
   hasSlotsEdgeLifetime = false,
+  hasEdgePro = false,
   starterPriceInterval = null,
   fullPriceInterval = null,
   entitlements = {},
@@ -70,14 +72,15 @@ export default function BillingManageModal({
     fullPriceInterval,
     hasSlotsEdgePro && !hasSlotsEdgeLifetime,
   )
-  const hasPaidPlan = hasSlotsEdgeLifetime || hasSlotsEdgePro || hasSlotsEdgeStarter
+  const hasPaidPlan = hasSlotsEdgeLifetime || hasSlotsEdgePro || hasSlotsEdgeStarter || hasEdgePro
 
   const activeEntitlement = useMemo(() => {
     if (hasSlotsEdgeLifetime) return entitlements[PRODUCT_SLOTS_EDGE_LIFETIME]
     if (hasSlotsEdgePro) return entitlements[PRODUCT_SLOTS_EDGE]
     if (hasSlotsEdgeStarter) return entitlements[PRODUCT_SLOTS_EDGE_STARTER]
+    if (hasEdgePro) return entitlements[PRODUCT_EDGE_PRO]
     return null
-  }, [entitlements, hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter])
+  }, [entitlements, hasEdgePro, hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter])
 
   const accessEndDate = useMemo(
     () => formatBillingAccessDate(activeEntitlement?.current_period_end),
@@ -159,7 +162,9 @@ export default function BillingManageModal({
       ? productDisplayName(PRODUCT_SLOTS_EDGE)
       : hasSlotsEdgeStarter
         ? productDisplayName(PRODUCT_SLOTS_EDGE_STARTER)
-        : 'Free'
+        : hasEdgePro
+          ? productDisplayName(PRODUCT_EDGE_PRO)
+          : 'Free'
 
   const currentIntervalLabel = hasSlotsEdgeLifetime
     ? null
@@ -167,7 +172,9 @@ export default function BillingManageModal({
       ? billingIntervalLabel(fullCurrentInterval || 'monthly')
       : hasSlotsEdgeStarter
         ? billingIntervalLabel(starterCurrentInterval || 'monthly')
-        : null
+        : hasEdgePro
+          ? 'Monthly'
+          : null
 
   return createPortal(
     <div className="fixed inset-0 z-[210] flex items-end justify-center p-0 sm:items-center sm:p-4 sm:pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] sm:pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">

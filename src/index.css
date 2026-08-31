@@ -957,6 +957,94 @@ html.light [data-lounge-post-interaction-bar] .text-emerald-400\/90 {
   color: #16a34a !important;
 }
 
+/*
+ * Markdown elements (data-lounge-*):
+ * Dark mode uses amber accents (amber-400 marker, amber-500/70 border, amber-950/10 bg).
+ * Light mode remaps lists and blockquotes to crisp, modern Slate tones for high legibility.
+ */
+html.light [data-lounge-ul] {
+  color: #334155;
+}
+html.light [data-lounge-ul] {
+  --tw-marker-text: #475569;
+}
+html.light [data-lounge-ul] li::marker {
+  color: #475569;
+}
+html.light [data-lounge-ol] {
+  color: #334155;
+}
+html.light [data-lounge-ol] li::marker {
+  color: #475569;
+}
+html.light [data-lounge-blockquote] {
+  border-left-color: #64748b;
+  background-color: rgba(241, 245, 249, 0.7);
+  color: #334155;
+}
+html.light [data-lounge-code-block] {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+html.light [data-lounge-inline-code] {
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+html.light [data-lounge-bold] {
+  color: #0f172a;
+}
+html.light [data-lounge-em] {
+  color: #334155;
+}
+html.light [data-lounge-del] {
+  color: #94a3b8;
+}
+html.light [data-lounge-highlight] {
+  background-color: #fef08a !important;
+  color: #713f12 !important;
+  border-bottom-color: #facc15 !important;
+}
+html.light [data-lounge-spoiler] {
+  background-color: #cbd5e1 !important;
+  color: transparent !important;
+}
+html.light [data-lounge-spoiler].\!text-zinc-100 {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
+}
+html.light [data-lounge-color-tag="green"] {
+  color: #047857 !important;
+}
+html.light [data-lounge-color-tag="red"] {
+  color: #dc2626 !important;
+}
+html.light [data-lounge-color-tag="gold"] {
+  color: #b45309 !important;
+}
+html.light [data-lounge-color-tag="blue"] {
+  color: #2563eb !important;
+}
+html.light [data-lounge-color-tag="purple"] {
+  color: #6d28d9 !important;
+}
+html.light [data-lounge-h1] {
+  color: #0f172a !important;
+}
+html.light [data-lounge-h2] {
+  color: #1e293b !important;
+}
+html.light [data-lounge-h3] {
+  color: #334155 !important;
+}
+html.light [data-lounge-hr] {
+  background-image: linear-gradient(to right, transparent, #cbd5e1, transparent) !important;
+}
+html.light [data-lounge-tasklist] li {
+  color: #334155 !important;
+}
+
 /* Subs-only unlocked post row — left tint (dark: cyan; light: blue below). */
 [data-lounge-fan-only-row-tint] {
   background-image: linear-gradient(
@@ -2583,11 +2671,29 @@ html.light .lounge-composer-post-text:hover:not(:disabled) {
 }
 
 /* Composer media/GIF icon buttons - match Post button blue in light mode */
-html.light .lounge-media-toolbar .text-sky-400 {
+html.light .lounge-media-toolbar .text-sky-400,
+html.light .lounge-media-toolbar label,
+html.light .lounge-media-toolbar button,
+html.light [data-lounge-media-toolbar] .text-sky-400,
+html.light [data-lounge-media-toolbar] label,
+html.light [data-lounge-media-toolbar] button {
   color: #2563eb !important;
 }
-html.light .lounge-media-toolbar svg rect {
-  fill-opacity: 0 !important;
+html.light .lounge-media-toolbar label:hover,
+html.light .lounge-media-toolbar button:hover,
+html.light [data-lounge-media-toolbar] label:hover,
+html.light [data-lounge-media-toolbar] button:hover {
+  color: #1d4ed8 !important;
+}
+html.light .lounge-media-toolbar svg,
+html.light [data-lounge-media-toolbar] svg {
+  color: #2563eb !important;
+}
+html.light .lounge-media-toolbar svg rect,
+html.light [data-lounge-media-toolbar] svg rect {
+  fill-opacity: 0.12 !important;
+  fill: #2563eb !important;
+  stroke: #2563eb !important;
 }
 
 /* Logo swap: white version in dark mode, inverted (black) version in light mode */
@@ -10854,5 +10960,204 @@ html.light [data-lounge-detail-pro-comment-pill] {
 html.light [data-settings-build-info] div {
   color: #71717a !important;
 }
+
+/* Lounge Markdown elements light mode styling */
+html.light [data-lounge-inline-code] {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  color: #0284c7 !important;
+}
+
+html.light [data-lounge-code-block] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0369a1 !important;
+}
+
+html.light [data-lounge-blockquote] {
+  background-color: rgba(254, 243, 199, 0.4) !important;
+  border-left-color: #f59e0b !important;
+  color: #4b5563 !important;
+}
+
+html.light [data-lounge-bold] {
+  color: #09090b !important;
+}
+
+html.light [data-lounge-em] {
+  color: #27272a !important;
+}
+
+html.light [data-lounge-del] {
+  color: #a1a1aa !important;
+}
+
+html.light [data-lounge-ul],
+html.light [data-lounge-ol] {
+  color: #27272a !important;
+}
+
+/* Lounge Full-Screen Pro Composer light mode styling */
+html.light [data-lounge-fullscreen-composer] {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+html.light [data-lounge-fullscreen-composer] header {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light [data-lounge-fullscreen-composer] #pro-composer-title span:first-child {
+  color: #09090b !important;
+}
+
+html.light [data-lounge-fullscreen-composer] [data-lounge-minimize-btn] {
+  color: #71717a !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-minimize-btn]:hover {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+}
+
+/* Write vs Preview Toggle */
+html.light [data-lounge-fullscreen-composer] [data-lounge-write-preview-toggle] {
+  background-color: #f4f4f5 !important;
+  border: 1px solid #e4e4e7 !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-write][data-active="true"] {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-write][data-active="false"] {
+  background-color: transparent !important;
+  color: #71717a !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-write][data-active="false"]:hover {
+  color: #18181b !important;
+}
+
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-preview][data-active="true"] {
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12) !important;
+  border: 1px solid #bfdbfe !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-preview][data-active="false"] {
+  background-color: transparent !important;
+  color: #71717a !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-preview][data-active="false"]:hover {
+  color: #18181b !important;
+}
+
+/* Audience settings header button */
+html.light [data-lounge-fullscreen-composer] [data-lounge-header-settings-btn] {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-header-settings-btn]:hover {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+}
+
+/* Post Button in Header - normal light mode blue */
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn] {
+  background-image: none !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:hover:not(:disabled) {
+  background-color: #1d4ed8 !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:active:not(:disabled) {
+  background-color: #1e40af !important;
+}
+
+/* Textarea & Caret - normal blue cursor */
+html.light [data-lounge-fullscreen-composer] textarea {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  caret-color: #2563eb !important;
+}
+html.light [data-lounge-fullscreen-composer] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Markdown Toolbar */
+html.light [data-lounge-markdown-toolbar] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+html.light [data-lounge-markdown-toolbar] button {
+  color: #334155 !important;
+}
+html.light [data-lounge-markdown-toolbar] button:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html.light [data-lounge-markdown-toolbar] .bg-zinc-800 {
+  background-color: #cbd5e1 !important;
+}
+html.light [data-lounge-heading-picker-dropdown],
+html.light [data-lounge-color-picker-dropdown] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light [data-lounge-heading-picker-dropdown] button {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+html.light [data-lounge-heading-picker-dropdown] button:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Footer & Media Toolbar */
+html.light [data-lounge-fullscreen-composer] footer {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #64748b !important;
+}
+html.light [data-lounge-fullscreen-composer] footer label,
+html.light [data-lounge-fullscreen-composer] footer button {
+  color: #2563eb !important;
+}
+html.light [data-lounge-fullscreen-composer] footer label:hover,
+html.light [data-lounge-fullscreen-composer] footer button:hover {
+  color: #1d4ed8 !important;
+}
+html.light [data-lounge-fullscreen-composer] footer svg {
+  color: #2563eb !important;
+}
+html.light [data-lounge-fullscreen-composer] footer svg rect {
+  fill-opacity: 0.12 !important;
+  fill: #2563eb !important;
+  stroke: #2563eb !important;
+}
+
+html.light [data-lounge-preview-card] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light [data-lounge-publish-modal] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #09090b !important;
+}
+
+html.light [data-lounge-publish-modal] button {
+  color: inherit;
+}
+
+
 
 

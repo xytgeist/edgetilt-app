@@ -40,6 +40,7 @@ const COMPILER_RULES_AS_WARNINGS = {
 export default defineConfig([
   globalIgnores([
     'dist',
+    'dist-syndicate',
     // Throwaway investigation scratch (vendor bundles pulled down to read, one-off
     // probes). Untracked and not shipped ... linting it buried real findings under
     // hundreds of minified-code complaints.

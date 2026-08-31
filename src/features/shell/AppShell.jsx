@@ -325,6 +325,7 @@ export default function AppShell({
   hasSlotsEdgeStarter = false,
   hasSlotsEdgePro = false,
   hasSlotsEdgeLifetime = false,
+  hasEdgePro = false,
   isStaff = false,
   isAdmin = false,
   contentAccessGatesMap = null,
@@ -2487,6 +2488,7 @@ export default function AppShell({
             hasSlotsEdgeStarter={hasSlotsEdgeStarter}
             hasSlotsEdgePro={hasSlotsEdgePro}
             hasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
+            hasEdgePro={hasEdgePro}
             isStaff={isStaff}
             loungeFeedScope={loungeFeedScope}
             onLoungeFeedScopeChange={onLoungeFeedScopeChange}

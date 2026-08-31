@@ -416,11 +416,11 @@ export default function LoungeFullScreenComposerModal({
       </header>
 
       {/* ── Main Content Area ── */}
-      <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3.5 py-3 sm:px-6 sm:py-4">
+      <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
-          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-3.5">
+          <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
             {/* ── Row 1: Tribe Pills (Horizontal swipe, clean look) ── */}
-            <div className="w-full">
+            <div className="w-full min-w-0 overflow-hidden">
               <LoungePostCategoryPillPicker
                 value={composerCategoryPills}
                 onChange={onCategoryPillsChange}
@@ -434,7 +434,7 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* ── Markdown Formatting Toolbar ── */}
-            <div ref={toolbarContainerRef} className="w-full">
+            <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
               <LoungeMarkdownToolbar
                 textareaRef={textareaRef}
                 onTextChange={handleTextChange}

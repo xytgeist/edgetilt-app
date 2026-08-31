@@ -16625,11 +16625,13 @@ export default function SocialFeed({
                 disabled={postBusy}
                 className="!mb-0"
               />
-              <LoungeComposerReplyGatePill
-                value={composerReplyGateEdgePro}
-                onChange={setComposerReplyGateEdgePro}
-                disabled={postBusy}
-              />
+              {isViewerEdgePro ? (
+                <LoungeComposerReplyGatePill
+                  value={composerReplyGateEdgePro}
+                  onChange={setComposerReplyGateEdgePro}
+                  disabled={postBusy}
+                />
+              ) : null}
             </div>
             <div
               className="mx-auto h-px w-[90%] bg-zinc-700/85"

@@ -1148,6 +1148,20 @@ html.light [data-chat-private-subs] .chat-private-subs-member-pill {
   background-color: rgb(219 234 254 / 0.95);
   color: rgb(29 78 216);
 }
+/* Chat new group - selected member chips in light mode */
+html.light [data-chat-group-member-chip] {
+  background-color: rgb(224 242 254 / 0.95) !important;
+  border-color: rgb(56 189 248 / 0.6) !important;
+  color: rgb(3 105 161) !important;
+  font-weight: 600;
+}
+html.light [data-chat-group-member-chip] [data-chat-group-chip-remove] {
+  color: rgb(2 132 199) !important;
+  font-weight: 700;
+}
+html.light [data-chat-group-member-chip] [data-chat-group-chip-remove]:hover {
+  color: rgb(3 105 161) !important;
+}
 html.light [data-creator-fan-private-subs-room] .text-white {
   color: rgb(24 24 27);
 }

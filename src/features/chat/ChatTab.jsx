@@ -1051,12 +1051,23 @@ export default function ChatTab({
 
           {/* Selected members chips */}
           {groupMembers.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5" data-chat-group-member-chips>
               {groupMembers.map(m => (
-                <span key={m.user_id} className="flex items-center gap-1 rounded-full bg-cyan-900/50 border border-cyan-700/40 px-2.5 py-1 text-[12px] text-cyan-200">
+                <span
+                  key={m.user_id}
+                  data-chat-group-member-chip
+                  className="flex items-center gap-1 rounded-full bg-cyan-900/50 border border-cyan-700/40 px-2.5 py-1 text-[12px] font-medium text-cyan-200"
+                >
                   @{m.handle}
-                  <button type="button" onClick={() => setGroupMembers(prev => prev.filter(x => x.user_id !== m.user_id))}
-                    className="text-cyan-400 touch-manipulation leading-none">×</button>
+                  <button
+                    type="button"
+                    onClick={() => setGroupMembers(prev => prev.filter(x => x.user_id !== m.user_id))}
+                    data-chat-group-chip-remove
+                    aria-label={`Remove @${m.handle}`}
+                    className="text-cyan-400 touch-manipulation leading-none hover:text-cyan-300"
+                  >
+                    ×
+                  </button>
                 </span>
               ))}
             </div>

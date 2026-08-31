@@ -101,6 +101,7 @@ export function SyndicateApp() {
     if (sportFilter === 'all') return true
     if (sportFilter === 'nfl') return p.sport_key?.includes('nfl')
     if (sportFilter === 'cfb') return p.sport_key?.includes('ncaaf')
+    if (sportFilter === 'ufc') return p.sport_key?.includes('mma') || p.sport_key?.includes('ufc')
     if (sportFilter === 'mlb') return p.sport_key?.includes('baseball')
     if (sportFilter === 'nba') return p.sport_key?.includes('basketball')
     return true
@@ -584,6 +585,7 @@ export function SyndicateApp() {
                     { id: 'all', label: 'All Sports' },
                     { id: 'nfl', label: 'NFL' },
                     { id: 'cfb', label: 'CFB' },
+                    { id: 'ufc', label: 'UFC' },
                     { id: 'mlb', label: 'MLB' },
                     { id: 'nba', label: 'NBA' },
                   ].map((f) => (
@@ -655,13 +657,18 @@ export function SyndicateApp() {
                           ? '🎯 3-1 Consensus'
                           : 'Solo Spot')
 
+                      const isMma = pick.sport_key?.includes('mma') || pick.sport_key?.includes('ufc')
                       const eventLabel =
                         pick.away_team && pick.home_team
-                          ? `${pick.away_team} @ ${pick.home_team}`
+                          ? isMma
+                            ? `${pick.home_team} vs ${pick.away_team}`
+                            : `${pick.away_team} @ ${pick.home_team}`
                           : pick.event_name || 'Game'
 
                       const scoreText =
-                        pick.away_score != null && pick.home_score != null
+                        pick.metadata?.method_result
+                          ? ` (${pick.metadata.method_result})`
+                          : pick.away_score != null && pick.home_score != null
                           ? ` (${pick.away_score}-${pick.home_score})`
                           : ''
 

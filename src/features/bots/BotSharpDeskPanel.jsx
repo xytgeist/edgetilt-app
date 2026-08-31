@@ -11,10 +11,12 @@ import {
   invokeLoungeOddsHalftimePivot,
   invokeLoungeOddsAnytimeTd,
   invokeLoungeOddsMiddleArb,
+  invokeLoungeOddsUfcCard,
 } from './botPortalApi.js'
 import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
 import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
+import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
 
 const PICKER_METAS = {
   Scott: {
@@ -47,6 +49,7 @@ const DESK_TABS = [
   { id: 'pvals', label: '🩹 NFL Injury PVALs', shortLabel: 'NFL PVALs' },
   { id: 'trench_epa', label: '🏈 NFL EPA & Trenches', shortLabel: 'NFL Trenches' },
   { id: 'cfb_power', label: '🎓 CFB Power Index', shortLabel: 'CFB Ratings' },
+  { id: 'ufc_metrics', label: '🥊 UFC Fighter Metrics', shortLabel: 'UFC Metrics' },
 ]
 
 export function BotSharpDeskPanel({
@@ -348,6 +351,33 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropUfcCard = async (dryRun = false) => {
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsUfcCard(supabaseClient, {
+        slug: botSlug,
+        dryRun,
+        cardTitle: 'UFC Main Card',
+      })
+      if (error) {
+        setToast?.(`UFC Slate Card failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        setToast?.(`[Dry Run] UFC Slate: ${data?.totalFights || 0} fights (${data?.hammersCount || 0} Hammers, ${data?.consensusCount || 0} Consensus)`)
+      } else if (data?.ok) {
+        setToast?.(`Published UFC Syndicate Card (${data?.totalPicksRecorded || 0} picks recorded)!`)
+        await loadData()
+      } else {
+        setToast?.(data?.message || 'No active UFC fight lines found on active boards.')
+      }
+    } catch (err) {
+      setToast?.(`UFC Card error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
 
@@ -635,6 +665,27 @@ export function BotSharpDeskPanel({
                     Publish
                   </button>
                 </div>
+
+                {/* UFC Slate Card */}
+                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
+                  <span className="font-semibold text-red-300 text-[11px]">🥊 UFC Slate:</span>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropUfcCard(true)}
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleDropUfcCard(false)}
+                    className="rounded bg-red-600/80 hover:bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                  >
+                    Publish
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -861,6 +912,16 @@ export function BotSharpDeskPanel({
       {activeTab === 'cfb_power' && (
         <div className="pt-2">
           <BotCfbPowerRatingsEditor
+            supabaseClient={supabaseClient}
+            setToast={setToast}
+          />
+        </div>
+      )}
+
+      {/* Tab 5: UFC Fighter Metrics */}
+      {activeTab === 'ufc_metrics' && (
+        <div className="pt-2">
+          <BotUfcMetricsEditor
             supabaseClient={supabaseClient}
             setToast={setToast}
           />

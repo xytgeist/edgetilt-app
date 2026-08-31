@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'calibrate_persona_models'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'calibrate_persona_models', 'ufc_slate_card'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, or calibrate_persona_models.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, calibrate_persona_models, or ufc_slate_card.',
       })
     }
 
@@ -445,6 +445,73 @@ Deno.serve(async (req) => {
         ok: true,
         action: 'nfl_anytime_td',
         card,
+        ...result,
+      })
+    }
+
+    if (action === 'ufc_slate_card') {
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const {
+        buildUfcSlateCard,
+        formatUfcCardCaption,
+        publishAndRecordUfcCard,
+      } = await import('../_shared/loungeBotUfcPredictive.ts')
+
+      const oddsData = await fetchSportOdds('mma_mixed_martial_arts', ['us', 'us2', 'eu'], ['h2h', 'totals'])
+      const card = await buildUfcSlateCard(oddsData.events, admin, body?.cardTitle || 'UFC Fight Night')
+
+      if (!card || card.totalFights === 0) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'ufc_slate_card',
+          message: 'No active UFC / MMA fight lines currently available on The Odds API.',
+          totalEvents: oddsData.events.length,
+        })
+      }
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          dryRun: true,
+          action: 'ufc_slate_card',
+          cardTitle: card.cardTitle,
+          totalFights: card.totalFights,
+          hammersCount: card.hammers.length,
+          consensusCount: card.consensus.length,
+          previewCaption: formatUfcCardCaption(card),
+          card,
+        })
+      }
+
+      // Publish post to lounge feed
+      const caption = formatUfcCardCaption(card)
+      const { data: post, error: postErr } = await admin
+        .from('community_feed_posts')
+        .insert({
+          user_id: bot.user_id,
+          caption,
+          category_pills: bot.category_pills_default || ['sports', 'ufc', 'mma'],
+        })
+        .select('id')
+        .single()
+
+      if (postErr) {
+        return adminOpsJson(500, { error: `Failed to create UFC post: ${postErr.message}` })
+      }
+
+      // Record picks and VIP sub-chat drops
+      const result = await publishAndRecordUfcCard(admin, {
+        botUserId: bot.user_id,
+        card,
+      })
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'ufc_slate_card',
+        postId: post.id,
+        totalFights: card.totalFights,
+        hammersCount: card.hammers.length,
+        consensusCount: card.consensus.length,
         ...result,
       })
     }

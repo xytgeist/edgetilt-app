@@ -49,7 +49,7 @@ function isEspnTeamMatch(espnName: string, targetName: string): boolean {
 }
 
 /**
- * Fetch and analyze ESPN boxscore summary for an NFL or CFB completed game.
+ * Fetch and analyze ESPN boxscore summary for an NFL, CFB, or UFC/MMA completed event.
  */
 export async function fetchEspnGameSummary(
   sportKey: string,
@@ -58,8 +58,53 @@ export async function fetchEspnGameSummary(
 ): Promise<EspnGameSummary | null> {
   const isNfl = sportKey.includes('nfl')
   const isCfb = sportKey.includes('ncaaf') || sportKey.includes('college')
+  const isMma = sportKey.includes('mma') || sportKey.includes('ufc')
 
-  if (!isNfl && !isCfb) return null
+  if (!isNfl && !isCfb && !isMma) return null
+
+  // MMA / UFC scoreboard parsing
+  if (isMma) {
+    try {
+      const ufcUrl = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard'
+      const res = await fetch(ufcUrl, { headers: { Accept: 'application/json' } })
+      if (!res.ok) return null
+      const data = await res.json()
+      const events: any[] = data?.events || []
+
+      for (const ev of events) {
+        const comps: any[] = ev?.competitions || []
+        for (const comp of comps) {
+          const competitors: any[] = comp?.competitors || []
+          if (competitors.length < 2) continue
+          const f1 = competitors[0]?.athlete?.displayName || ''
+          const f2 = competitors[1]?.athlete?.displayName || ''
+
+          if (
+            (isEspnTeamMatch(f1, homeTeam) && isEspnTeamMatch(f2, awayTeam)) ||
+            (isEspnTeamMatch(f1, awayTeam) && isEspnTeamMatch(f2, homeTeam))
+          ) {
+            const winnerComp = competitors.find((c: any) => c.winner === true)
+            const winnerName = winnerComp?.athlete?.displayName || 'Winner'
+            const statusDetail = comp?.status?.type?.detail || comp?.status?.type?.shortDetail || 'Final'
+
+            return {
+              eventId: comp.id || ev.id,
+              espnGameId: comp.id,
+              homeTeam,
+              awayTeam,
+              homeScore: winnerComp?.athlete?.displayName === f1 ? 1 : 0,
+              awayScore: winnerComp?.athlete?.displayName === f2 ? 1 : 0,
+              postMortemNote: `UFC Result: ${winnerName} def. by ${statusDetail}.`,
+            }
+          }
+        }
+      }
+      return null
+    } catch (err) {
+      console.warn(`ESPN MMA summary fetch failed for ${homeTeam} vs ${awayTeam}:`, err)
+      return null
+    }
+  }
 
   const league = isNfl ? 'football/nfl' : 'football/college-football'
   const scoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/${league}/scoreboard`

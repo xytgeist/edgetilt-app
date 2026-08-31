@@ -643,6 +643,26 @@ export async function invokeLoungeOddsMiddleArb(supabaseClient, opts = {}) {
 }
 
 /**
+ * Trigger on-demand generation and drop for UFC 4-Desk Syndicate card.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, dryRun?: boolean, cardTitle?: string }} [opts]
+ */
+export async function invokeLoungeOddsUfcCard(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'ufc_slate_card',
+      dryRun: opts.dryRun === true,
+      cardTitle: opts.cardTitle || 'UFC Fight Night',
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'UFC slate card failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Publish one example Lounge post per Scott alert type (portal smoke pack).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string }} [opts]

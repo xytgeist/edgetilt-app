@@ -101,6 +101,7 @@ export function SyndicateApp() {
     if (sportFilter === 'all') return true
     if (sportFilter === 'nfl') return p.sport_key?.includes('nfl')
     if (sportFilter === 'cfb') return p.sport_key?.includes('ncaaf')
+    if (sportFilter === 'ufc') return p.sport_key?.includes('mma') || p.sport_key?.includes('ufc')
     if (sportFilter === 'mlb') return p.sport_key?.includes('baseball')
     if (sportFilter === 'nba') return p.sport_key?.includes('basketball')
     return true
@@ -584,6 +585,7 @@ export function SyndicateApp() {
                     { id: 'all', label: 'All Sports' },
                     { id: 'nfl', label: 'NFL' },
                     { id: 'cfb', label: 'CFB' },
+                    { id: 'ufc', label: 'UFC' },
                     { id: 'mlb', label: 'MLB' },
                     { id: 'nba', label: 'NBA' },
                   ].map((f) => (

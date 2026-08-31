@@ -113,19 +113,47 @@ export default function LoungeFullScreenComposerModal({
   const [hasConfiguredAudience, setHasConfiguredAudience] = useState(false)
   const [tribeMaxAlertOpen, setTribeMaxAlertOpen] = useState(false)
   const [localText, setLocalText] = useState(() => postText || '')
+  const syncTimerRef = useRef(null)
+  const localTextRef = useRef(localText)
+  localTextRef.current = localText
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const toolbarContainerRef = useRef(null)
 
+  // Only sync down from props when opening the modal (isolates modal typing from feed re-renders)
   useEffect(() => {
-    setLocalText(postText || '')
-  }, [postText])
+    if (open) {
+      setLocalText(postText || '')
+      localTextRef.current = postText || ''
+    }
+  }, [open])
+
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current)
+        syncTimerRef.current = null
+      }
+    }
+  }, [])
+
+  const flushTextToParent = useCallback(() => {
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current)
+      syncTimerRef.current = null
+    }
+    onTextChange?.(localTextRef.current)
+  }, [onTextChange])
 
   const handleTextChange = useCallback(
     (val) => {
       setLocalText(val)
-      onTextChange?.(val)
+      localTextRef.current = val
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+      syncTimerRef.current = setTimeout(() => {
+        onTextChange?.(val)
+      }, 400)
     },
     [onTextChange],
   )
@@ -246,6 +274,7 @@ export default function LoungeFullScreenComposerModal({
   const handlePostButtonClick = () => {
     blurActiveInput()
     if (postBusy || isOverLimit || !hasContent) return
+    flushTextToParent()
     if (!hasConfiguredAudience) {
       setModalMode('pre_post')
       setSettingsModalOpen(true)
@@ -258,6 +287,7 @@ export default function LoungeFullScreenComposerModal({
   const handleConfirmPublish = () => {
     blurActiveInput()
     setSettingsModalOpen(false)
+    flushTextToParent()
     onSubmit()
     onClose()
   }
@@ -289,6 +319,7 @@ export default function LoungeFullScreenComposerModal({
             type="button"
             onClick={() => {
               blurActiveInput()
+              flushTextToParent()
               onClose()
             }}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation active:scale-95"
@@ -417,7 +448,12 @@ export default function LoungeFullScreenComposerModal({
                 autoFocus
                 rows={8}
                 value={localText}
-                onChange={(e) => handleTextChange(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  handleTextChange(val)
+                  cashtagComposer?.onCursorMove(e)
+                  mentionComposer?.onCursorMove(e)
+                }}
                 disabled={postBusy}
                 maxLength={captionMax}
                 spellCheck
@@ -432,13 +468,15 @@ export default function LoungeFullScreenComposerModal({
                   if (cashtagComposer?.onCashtagKeyDown(e, handleTextChange, textareaRef.current)) return
                   mentionComposer?.onMentionKeyDown(e, handleTextChange, textareaRef.current)
                 }}
-                onMouseUp={(e) => {
+                onClick={(e) => {
                   cashtagComposer?.onCursorMove(e)
                   mentionComposer?.onCursorMove(e)
                 }}
-                onInput={(e) => {
-                  cashtagComposer?.onCursorMove(e)
-                  mentionComposer?.onCursorMove(e)
+                onKeyUp={(e) => {
+                  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    cashtagComposer?.onCursorMove(e)
+                    mentionComposer?.onCursorMove(e)
+                  }
                 }}
               />
 

@@ -874,7 +874,7 @@ function MHBCalculator({ onBack, supabaseClient = null, onOpenLogbook = null, lo
                       onClick={(e) => e.currentTarget.select()}
                       onChange={handleMustHitByChange}
                       onBlur={handleMustHitByBlur}
-                      className="flex-1 w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
+                      className="calc-field-lg flex-1 w-full rounded-2xl bg-gray-800 p-4 text-center text-2xl font-bold text-white outline-none ring-cyan-500/0 focus:ring-2 focus:ring-cyan-500/35"
                     />
                   ) : (
                     <div className="flex-1 grid gap-1 p-1 bg-gray-800 rounded-2xl" style={{gridTemplateColumns: `repeat(${[500, manufacturer !== 'ainsworth' && 5000, manufacturer !== 'ags' && 10000].filter(Boolean).length}, 1fr)`}}>

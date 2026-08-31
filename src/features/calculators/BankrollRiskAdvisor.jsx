@@ -554,7 +554,7 @@ export default function BankrollRiskAdvisor({
 
   return (
     <>
-      <div className={cardClassName}>
+      <div className={cardClassName} data-bankroll-risk-advisor>
         {/* Header + risk % stepper */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1 min-w-0">
@@ -625,7 +625,10 @@ export default function BankrollRiskAdvisor({
 
             {/* Verdict */}
             {fullyFunded ? (
-              <div className="p-4 rounded-2xl text-center text-sm font-bold bg-green-900 text-green-300">
+              <div
+                data-bankroll-risk-fully-funded
+                className="p-4 rounded-2xl text-center text-sm font-bold bg-green-900 text-green-300"
+              >
                 ✓ You're fully funded for this play.
               </div>
             ) : (

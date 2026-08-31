@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Send } from 'lucide-react'
+import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Settings2 } from 'lucide-react'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
@@ -31,7 +31,7 @@ import {
 
 /**
  * Full-Screen Pro Composer with rich Markdown formatting & live 1:1 card preview.
- * Option 2: Pre-Post Modal on "Post" for Audience & Reply settings.
+ * Option 3: Top-Right Audience / Settings Button (direct instant Post button).
  *
  * @param {{
  *   open: boolean,
@@ -107,7 +107,7 @@ export default function LoungeFullScreenComposerModal({
   onVideoPointerDown,
 }) {
   const [activeTab, setActiveTab] = useState('write') // 'write' | 'preview'
-  const [publishModalOpen, setPublishModalOpen] = useState(false)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
@@ -139,7 +139,7 @@ export default function LoungeFullScreenComposerModal({
   useEffect(() => {
     if (!open) return
     setActiveTab('write')
-    setPublishModalOpen(false)
+    setSettingsModalOpen(false)
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
     })
@@ -176,17 +176,7 @@ export default function LoungeFullScreenComposerModal({
   const nImg = composerImageItems.length
 
   const isSubscribersAudience = composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
-
-  const handleOpenPublishModal = () => {
-    if (postBusy || isOverLimit || !hasContent) return
-    setPublishModalOpen(true)
-  }
-
-  const handleConfirmPublish = () => {
-    setPublishModalOpen(false)
-    onSubmit()
-    onClose()
-  }
+  const isCustomGated = isSubscribersAudience || composerReplyGateEdgePro
 
   return createPortal(
     <div
@@ -246,15 +236,42 @@ export default function LoungeFullScreenComposerModal({
           </button>
         </div>
 
-        {/* ── Post Action & Char Ring ── */}
-        <div className="flex items-center gap-3">
+        {/* ── Audience Settings Icon, Char Ring & Instant Post ── */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Audience & Reply Settings Trigger */}
+          <button
+            type="button"
+            onClick={() => setSettingsModalOpen(true)}
+            className={`relative flex h-9 sm:h-10 items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs sm:text-sm font-bold transition-all touch-manipulation active:scale-95 ${
+              isCustomGated
+                ? 'border-amber-500/50 bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/30'
+                : 'border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800'
+            }`}
+            title="Post audience and reply settings"
+            aria-label="Post audience and reply settings"
+          >
+            <Settings2 className="h-4 w-4" />
+            <span className="hidden md:inline">
+              {isSubscribersAudience ? 'Subs only' : composerReplyGateEdgePro ? 'Pro replies' : 'Public'}
+            </span>
+            {isCustomGated ? (
+              <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+              </span>
+            ) : null}
+          </button>
+
           <LoungeComposerCharRing len={len} max={captionMax} aria-live="polite" />
 
           <button
             type="button"
             disabled={postBusy || isOverLimit || !hasContent}
-            onClick={handleOpenPublishModal}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 px-5 py-2 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 touch-manipulation"
+            onClick={() => {
+              onSubmit()
+              onClose()
+            }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 sm:px-5 py-2 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 touch-manipulation"
           >
             <span>{postBusy ? 'Posting…' : 'Post'}</span>
           </button>
@@ -551,14 +568,14 @@ export default function LoungeFullScreenComposerModal({
         </footer>
       ) : null}
 
-      {/* ── Option 2: Pre-Post Modal (Audience & Reply Options Before Publish) ── */}
-      {publishModalOpen ? (
+      {/* ── Option 3: Audience & Reply Settings Modal ── */}
+      {settingsModalOpen ? (
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="publish-modal-title"
+          aria-labelledby="settings-modal-title"
           className="fixed inset-0 z-[240] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150"
-          onClick={() => setPublishModalOpen(false)}
+          onClick={() => setSettingsModalOpen(false)}
         >
           <div
             data-lounge-publish-modal=""
@@ -568,16 +585,16 @@ export default function LoungeFullScreenComposerModal({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-zinc-800 pb-3.5">
               <div>
-                <h3 id="publish-modal-title" className="text-base sm:text-lg font-bold text-zinc-100">
-                  Ready to Post?
+                <h3 id="settings-modal-title" className="text-base sm:text-lg font-bold text-zinc-100">
+                  Post Audience & Reply Settings
                 </h3>
-                <p className="text-xs text-zinc-400">Choose who can see and reply to your post</p>
+                <p className="text-xs text-zinc-400">Configure who can view and participate in this thread</p>
               </div>
               <button
                 type="button"
-                onClick={() => setPublishModalOpen(false)}
+                onClick={() => setSettingsModalOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                aria-label="Close publish dialog"
+                aria-label="Close settings dialog"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -694,23 +711,13 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-6 flex items-center gap-3">
+            <div className="mt-6 flex items-center justify-end">
               <button
                 type="button"
-                onClick={() => setPublishModalOpen(false)}
-                className="flex-1 rounded-2xl border border-zinc-700/80 bg-zinc-800/80 py-3 text-center text-sm font-bold text-zinc-200 transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                onClick={() => setSettingsModalOpen(false)}
+                className="w-full sm:w-auto rounded-2xl bg-zinc-800 px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
               >
-                Back to Edit
-              </button>
-
-              <button
-                type="button"
-                disabled={postBusy}
-                onClick={handleConfirmPublish}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-3 text-center text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"
-              >
-                <Send className="h-4 w-4" />
-                <span>{postBusy ? 'Posting…' : 'Publish Now'}</span>
+                Done
               </button>
             </div>
           </div>

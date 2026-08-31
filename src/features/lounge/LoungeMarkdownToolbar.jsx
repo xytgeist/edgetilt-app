@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 /**
  * Helper to wrap or insert markdown formatting at the current selection in a textarea.
@@ -53,7 +53,7 @@ export function applyMarkdownFormatting(textarea, { prefix, suffix = '', default
     nextStart = start + prefix.length + 2
     nextEnd = nextStart + content.length
   } else {
-    // Inline wrap (bold, italic, strike, code): highlights the inner text between prefix and suffix
+    // Inline wrap (bold, italic, strike, code, highlight, spoiler, colors): highlights the inner text between prefix and suffix
     const content = selected || defaultText
     const wrapped = `${prefix}${content}${suffix}`
     nextVal = val.slice(0, start) + wrapped + val.slice(end)
@@ -102,6 +102,8 @@ export default function LoungeMarkdownToolbar({
   onUpgradeClick,
   className = '',
 }) {
+  const [colorPickerOpen, setColorPickerOpen] = useState(false)
+
   const handleFormat = useCallback(
     (opts) => {
       if (!isEdgePro) {
@@ -114,13 +116,26 @@ export default function LoungeMarkdownToolbar({
   )
 
   const btnClass =
-    'flex h-9 min-w-[2.25rem] sm:h-10 sm:min-w-[2.5rem] items-center justify-center rounded-xl px-2 sm:px-2.5 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation'
+    'flex h-9 min-w-[2.1rem] sm:h-10 sm:min-w-[2.4rem] items-center justify-center rounded-xl px-2 sm:px-2.5 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation'
 
   return (
     <div
       data-lounge-markdown-toolbar=""
-      className={`flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 p-1.5 backdrop-blur-md ${className}`}
+      className={`relative flex flex-wrap items-center gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 p-1.5 backdrop-blur-md ${className}`}
     >
+      {/* ── Heading ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '## ', mode: 'linePrefix' })}
+        className={`${btnClass} text-[14px] sm:text-[15px] font-black text-zinc-200`}
+        title="Heading (## Title)"
+        aria-label="Heading"
+      >
+        <span>H</span>
+      </button>
+
+      {/* ── Bold ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
@@ -132,6 +147,7 @@ export default function LoungeMarkdownToolbar({
         <span className="font-extrabold">B</span>
       </button>
 
+      {/* ── Italic ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
@@ -143,6 +159,7 @@ export default function LoungeMarkdownToolbar({
         <span>I</span>
       </button>
 
+      {/* ── Strikethrough ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
@@ -154,8 +171,98 @@ export default function LoungeMarkdownToolbar({
         <span>S</span>
       </button>
 
+      {/* ── Highlight ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '==', suffix: '==', defaultText: 'highlighted' })}
+        className={`${btnClass} text-[13px] sm:text-[14px] font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20`}
+        title="Highlight (==text==)"
+        aria-label="Highlight"
+      >
+        <span>HL</span>
+      </button>
+
+      {/* ── Curated Colors Dropdown Button ── */}
+      <div className="relative">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setColorPickerOpen((prev) => !prev)}
+          className={`${btnClass} flex items-center gap-0.5 text-[13px] font-bold text-emerald-400 hover:text-emerald-300`}
+          title="Text Colors"
+          aria-label="Text Colors"
+        >
+          <span className="flex h-3 w-3 rounded-full bg-gradient-to-tr from-emerald-400 via-amber-300 to-cyan-400" />
+        </button>
+
+        {colorPickerOpen ? (
+          <div
+            className="absolute left-0 top-full z-50 mt-1 flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setColorPickerOpen(false)
+                handleFormat({ prefix: '[green]', suffix: '[/green]', defaultText: 'green text' })
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400"
+              title="Green text"
+            >
+              <span className="h-3 w-3 rounded-full bg-emerald-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setColorPickerOpen(false)
+                handleFormat({ prefix: '[red]', suffix: '[/red]', defaultText: 'red text' })
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-400"
+              title="Red text"
+            >
+              <span className="h-3 w-3 rounded-full bg-rose-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setColorPickerOpen(false)
+                handleFormat({ prefix: '[gold]', suffix: '[/gold]', defaultText: 'gold text' })
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-300"
+              title="Gold text"
+            >
+              <span className="h-3 w-3 rounded-full bg-amber-300" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setColorPickerOpen(false)
+                handleFormat({ prefix: '[blue]', suffix: '[/blue]', defaultText: 'blue text' })
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400"
+              title="Blue text"
+            >
+              <span className="h-3 w-3 rounded-full bg-cyan-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setColorPickerOpen(false)
+                handleFormat({ prefix: '[purple]', suffix: '[/purple]', defaultText: 'purple text' })
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-400"
+              title="Purple text"
+            >
+              <span className="h-3 w-3 rounded-full bg-purple-400" />
+            </button>
+          </div>
+        ) : null}
+      </div>
+
       <div className="mx-0.5 h-5 w-px bg-zinc-800" role="presentation" aria-hidden />
 
+      {/* ── Inline Code ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
@@ -167,19 +274,7 @@ export default function LoungeMarkdownToolbar({
         <span>&lt;/&gt;</span>
       </button>
 
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '```', suffix: '```', defaultText: 'code block', mode: 'block' })}
-        className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-semibold text-cyan-400 hover:text-cyan-300`}
-        title="Code Block (```code```)"
-        aria-label="Code Block"
-      >
-        <span>{'{ }'}</span>
-      </button>
-
-      <div className="mx-0.5 h-5 w-px bg-zinc-800" role="presentation" aria-hidden />
-
+      {/* ── Blockquote ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
@@ -191,6 +286,7 @@ export default function LoungeMarkdownToolbar({
         <span>&ldquo;</span>
       </button>
 
+      {/* ── Bulleted List ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
@@ -202,6 +298,7 @@ export default function LoungeMarkdownToolbar({
         <span>&bull;</span>
       </button>
 
+      {/* ── Numbered List ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
@@ -211,6 +308,42 @@ export default function LoungeMarkdownToolbar({
         aria-label="Numbered List"
       >
         <span>1.</span>
+      </button>
+
+      {/* ── Checklist / Task ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '- [ ] ', mode: 'linePrefix' })}
+        className={`${btnClass} text-[14px] sm:text-[15px] font-bold text-emerald-400`}
+        title="Checklist (- [ ] item)"
+        aria-label="Checklist"
+      >
+        <span>☑</span>
+      </button>
+
+      {/* ── Spoiler ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '||', suffix: '||', defaultText: 'spoiler' })}
+        className={`${btnClass} font-mono text-[12px] sm:text-[13px] font-semibold text-zinc-400 hover:text-zinc-200`}
+        title="Spoiler (||text||)"
+        aria-label="Spoiler"
+      >
+        <span>|| ||</span>
+      </button>
+
+      {/* ── Divider ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '\n---\n', mode: 'linePrefix' })}
+        className={`${btnClass} font-mono text-[13px] text-zinc-400 hover:text-zinc-200`}
+        title="Divider Line (---)"
+        aria-label="Divider Line"
+      >
+        <span>&mdash;</span>
       </button>
 
       {!isEdgePro ? (

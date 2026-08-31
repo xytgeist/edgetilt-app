@@ -1001,6 +1001,49 @@ html.light [data-lounge-em] {
 html.light [data-lounge-del] {
   color: #94a3b8;
 }
+html.light [data-lounge-highlight] {
+  background-color: #fef08a !important;
+  color: #713f12 !important;
+  border-bottom-color: #facc15 !important;
+}
+html.light [data-lounge-spoiler] {
+  background-color: #cbd5e1 !important;
+  color: transparent !important;
+}
+html.light [data-lounge-spoiler].\!text-zinc-100 {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
+}
+html.light [data-lounge-color-tag="green"] {
+  color: #047857 !important;
+}
+html.light [data-lounge-color-tag="red"] {
+  color: #dc2626 !important;
+}
+html.light [data-lounge-color-tag="gold"] {
+  color: #b45309 !important;
+}
+html.light [data-lounge-color-tag="blue"] {
+  color: #2563eb !important;
+}
+html.light [data-lounge-color-tag="purple"] {
+  color: #6d28d9 !important;
+}
+html.light [data-lounge-h1] {
+  color: #0f172a !important;
+}
+html.light [data-lounge-h2] {
+  color: #1e293b !important;
+}
+html.light [data-lounge-h3] {
+  color: #334155 !important;
+}
+html.light [data-lounge-hr] {
+  background-image: linear-gradient(to right, transparent, #cbd5e1, transparent) !important;
+}
+html.light [data-lounge-tasklist] li {
+  color: #334155 !important;
+}
 
 /* Subs-only unlocked post row — left tint (dark: cyan; light: blue below). */
 [data-lounge-fan-only-row-tint] {

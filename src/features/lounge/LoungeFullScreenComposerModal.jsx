@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Settings2, Send } from 'lucide-react'
+import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Settings2, Send, AlertCircle } from 'lucide-react'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
@@ -112,6 +112,7 @@ export default function LoungeFullScreenComposerModal({
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('settings') // 'settings' | 'pre_post'
   const [hasConfiguredAudience, setHasConfiguredAudience] = useState(false)
+  const [tribeMaxAlertOpen, setTribeMaxAlertOpen] = useState(false)
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
@@ -146,9 +147,7 @@ export default function LoungeFullScreenComposerModal({
     setSettingsModalOpen(false)
     setModalMode('settings')
     setHasConfiguredAudience(false)
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus()
-    })
+    setTribeMaxAlertOpen(false)
   }, [open])
 
   useEffect(() => {
@@ -318,7 +317,7 @@ export default function LoungeFullScreenComposerModal({
       <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-3.5">
-            {/* ── Row 1: Tribe Pills (Clean, uncluttered top) ── */}
+            {/* ── Row 1: Tribe Pills (Horizontal swipe, clean look) ── */}
             <div className="w-full">
               <LoungePostCategoryPillPicker
                 value={composerCategoryPills}
@@ -326,6 +325,8 @@ export default function LoungeFullScreenComposerModal({
                 disabled={postBusy}
                 size="lg"
                 hint=""
+                hideExpandCaret
+                onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
                 className="!mt-0 !mb-0"
               />
             </div>
@@ -785,6 +786,36 @@ export default function LoungeFullScreenComposerModal({
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Tribe Max Limit Alert Modal ── */}
+      {tribeMaxAlertOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[250] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          onClick={() => setTribeMaxAlertOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-900 p-5 text-center shadow-2xl animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-zinc-100">Three tribes max</h3>
+            <p className="mt-1.5 text-xs text-zinc-400">
+              Three tribes max. Deselect a tribe to select this one.
+            </p>
+            <button
+              type="button"
+              onClick={() => setTribeMaxAlertOpen(false)}
+              className="mt-4 w-full rounded-2xl bg-zinc-800 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+            >
+              Got it
+            </button>
           </div>
         </div>
       ) : null}

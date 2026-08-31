@@ -74,8 +74,8 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const onPasteImageFilesRef = useRef(onPasteImageFiles)
   onPasteImageFilesRef.current = onPasteImageFiles
   const preset = LOUNGE_RICH_COMPOSER_VARIANTS[variant] || LOUNGE_RICH_COMPOSER_VARIANTS.feed
-  /** iOS nested composers: native textarea avoids WebKit caret paint bugs in fixed/transformed footers. */
-  const iosNativeTextarea = LOUNGE_IOS && variant !== 'feed'
+  /** Native textarea: used for iOS nested composers and fullscreen Markdown composer to ensure clean OS keyboard focus boundaries. */
+  const useNativeTextarea = (LOUNGE_IOS && variant !== 'feed') || variant === 'fullscreen'
   /** Grow to a viewport cap, then scroll internally (feed contenteditable included). */
   const manageFieldHeight = true
   /** Android: DOM text can lead React value by a keystroke; do not overlay placeholder on typed chars. */
@@ -87,12 +87,12 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const syncPlaceholderFromDom = useCallback(() => {
     const el = rootRef.current
     const domLen = el
-      ? iosNativeTextarea
+      ? useNativeTextarea
         ? (el.value?.length ?? 0)
         : plainTextFromComposerRoot(el).length
       : 0
     setDomHasText(Boolean(String(value ?? '').length) || domLen > 0)
-  }, [value, iosNativeTextarea])
+  }, [value, useNativeTextarea])
 
   const notifyComposerInput = useCallback((el, text, caret, { sync = false } = {}) => {
     caretRef.current = caret
@@ -113,7 +113,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       richSyncTimerRef.current = 0
     }
     const el = rootRef.current
-    if (!el || composingRef.current || iosNativeTextarea) return
+    if (!el || composingRef.current || useNativeTextarea) return
     const caret = getCaretTextOffset(el)
     let text = plainTextFromComposerRoot(el)
     text = normalizeCashtagsInCaption(text)
@@ -123,7 +123,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     if (detectCashtagAtCursor(capped, nextCaret)?.query) return
     syncComposerHtml(el, capped, nextCaret, cashtagStyleContextRef.current)
     lastStyleCtxRef.current = cashtagStyleContextRef.current
-  }, [iosNativeTextarea, maxLength])
+  }, [useNativeTextarea, maxLength])
 
   const scheduleRichComposerSync = useCallback(() => {
     if (richSyncTimerRef.current) window.clearTimeout(richSyncTimerRef.current)
@@ -228,7 +228,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [syncPlaceholderFromDom])
 
   useLayoutEffect(() => {
-    if (iosNativeTextarea) return
+    if (useNativeTextarea) return
     const el = rootRef.current
     if (!el || composingRef.current) return
     const domText = plainTextFromComposerRoot(el)
@@ -302,7 +302,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     syncComposerHtml(el, value, caret, cashtagStyleContext)
     lastStyleCtxRef.current = cashtagStyleContext
     setDomHasText(value.length > 0)
-  }, [cashtagStyleContext, iosNativeTextarea, scheduleRichComposerSync, value])
+  }, [cashtagStyleContext, useNativeTextarea, scheduleRichComposerSync, value])
 
   useLayoutEffect(() => {
     if (!manageFieldHeight) return
@@ -316,7 +316,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [manageFieldHeight, value])
 
   useEffect(() => {
-    if (iosNativeTextarea) return undefined
+    if (useNativeTextarea) return undefined
     const el = rootRef.current
     if (!el || disabled) return undefined
     const onSelectionChange = () => {
@@ -337,7 +337,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
     }
     document.addEventListener('selectionchange', onSelectionChange)
     return () => document.removeEventListener('selectionchange', onSelectionChange)
-  }, [disabled, notifyComposerInput, iosNativeTextarea])
+  }, [disabled, notifyComposerInput, useNativeTextarea])
 
   const handleTextareaChange = useCallback(
     (e) => {
@@ -392,7 +392,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       if (!text) return
       const el = rootRef.current
       if (!el) return
-      if (iosNativeTextarea) {
+      if (useNativeTextarea) {
         const start = el.selectionStart ?? el.value.length
         const end = el.selectionEnd ?? start
         let next = el.value.slice(0, start) + text + el.value.slice(end)
@@ -415,7 +415,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       insertPlainTextAtSelection(el, text)
       readAndEmit()
     },
-    [iosNativeTextarea, maxLength, notifyComposerInput, onChange, readAndEmit, value],
+    [useNativeTextarea, maxLength, notifyComposerInput, onChange, readAndEmit, value],
   )
 
   const handlePaste = useCallback(
@@ -468,7 +468,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   const showPlaceholder =
     Boolean(placeholder) && !value && !domHasText && !isComposing
 
-  if (iosNativeTextarea) {
+  if (useNativeTextarea) {
     return (
       <div className="relative min-h-0 w-full">
         <textarea

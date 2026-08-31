@@ -23,6 +23,10 @@ export default function LoungePostCategoryPillPicker({
   collapsibleSingleRow = true,
   /** When true, list all pills A–Z by label (e.g. complete-your-profile gate). */
   sortAlphabetically = false,
+  /** When true, hide the expand/collapse caret and rely purely on horizontal swipe */
+  hideExpandCaret = false,
+  /** Callback fired when user attempts to select beyond maxPills */
+  onMaxPillsReached,
   size = 'md',
   className = '',
 }) {
@@ -90,13 +94,16 @@ export default function LoungePostCategoryPillPicker({
       onChange(cur.filter((s) => s !== slug))
       return
     }
-    if (atMax) return
+    if (atMax) {
+      onMaxPillsReached?.(cap)
+      return
+    }
     bumpLoungeCategoryPillUsage([slug])
     setUsageCounts(readLoungeCategoryPillUsageCounts())
     onChange([...cur, slug])
   }
 
-  const showExpandToggle = collapsibleSingleRow && (hasHiddenRows || expanded)
+  const showExpandToggle = !hideExpandCaret && collapsibleSingleRow && (hasHiddenRows || expanded)
   const collapsedSingleRow = collapsibleSingleRow && !expanded
   const caretSize = rowHeightPx ?? 24
 
@@ -161,7 +168,7 @@ export default function LoungePostCategoryPillPicker({
           >
             {sortedOptions.map(({ slug, label }) => {
               const on = selected.includes(slug)
-              const chipDisabled = disabled || (!on && atMax)
+              const chipDisabled = disabled || (!on && atMax && !onMaxPillsReached)
               return (
                 <button
                   key={slug}
@@ -177,8 +184,8 @@ export default function LoungePostCategoryPillPicker({
                   } ${
                     on
                       ? loungePostCategoryPillChipClass(slug, 'selected')
-                      : chipDisabled
-                        ? 'cursor-not-allowed border-zinc-700 bg-zinc-800 text-zinc-500'
+                      : !on && atMax
+                        ? 'border-zinc-800 bg-zinc-900/60 text-zinc-500'
                         : loungePostCategoryPillChipClass(slug, 'idle')
                   }`}
                 >

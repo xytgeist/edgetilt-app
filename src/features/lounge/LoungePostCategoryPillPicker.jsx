@@ -169,6 +169,8 @@ export default function LoungePostCategoryPillPicker({
                   data-lounge-category-slug={slug}
                   disabled={chipDisabled}
                   aria-pressed={on}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onPointerDown={(e) => e.preventDefault()}
                   onClick={() => toggle(slug)}
                   className={`lounge-category-pill inline-flex max-w-full shrink-0 touch-manipulation items-center truncate rounded-full border leading-none tracking-tight transition-colors [-webkit-tap-highlight-color:transparent] ${
                     isLg ? 'px-3 py-1 text-[13px] font-semibold' : 'px-2 py-0.5 text-[10px] font-semibold'

@@ -730,6 +730,7 @@ export default function SocialFeed({
   hasSlotsEdgeStarter = false,
   hasSlotsEdgePro = false,
   hasSlotsEdgeLifetime = false,
+  hasEdgePro = false,
   isStaff = false,
   loungeFeedScope = LOUNGE_FEED_SCOPE_ALL,
   onLoungeFeedScopeChange,
@@ -1679,6 +1680,7 @@ export default function SocialFeed({
   )
 
   const isViewerEdgePro = Boolean(
+    hasEdgePro ||
     hasActiveSubscription ||
     hasSlotsEdgePro ||
     hasSlotsEdgeLifetime ||
@@ -16064,6 +16066,7 @@ export default function SocialFeed({
       settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
       settingsHasSlotsEdgePro={hasSlotsEdgePro}
       settingsHasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
+      settingsHasEdgePro={hasEdgePro || isViewerEdgePro}
       settingsProFilterEnabled={proFilterEnabled}
       onSettingsProFilterChange={onProFilterChange}
       settingsOnOpenBillingManage={onOpenBillingManage}

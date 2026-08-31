@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { fetchMyEntitlements } from './stripeBillingApi.js'
 import {
   entitlementPriceInterval,
+  hasEdgePro,
   hasEntitlement,
   hasSlotsEdge,
   hasSlotsEdgeLifetime,
@@ -49,6 +50,7 @@ export function useEdgeEntitlements(supabaseClient, userId) {
     loading,
     refresh,
     hasEntitlement: checkEntitlement,
+    hasEdgePro: hasEdgePro(entitlements),
     hasSlotsEdge: hasSlotsEdge(entitlements),
     hasSlotsEdgeLifetime: hasSlotsEdgeLifetime(entitlements),
     hasSlotsEdgeStarter: hasSlotsEdgeStarter(entitlements),

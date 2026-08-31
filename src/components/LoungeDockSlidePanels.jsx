@@ -30,6 +30,8 @@ import SettingsFanMonetizationSection from '../features/creatorFanSubs/SettingsF
 import CreatorFanSupportedCreatorsPanel from '../features/creatorFanSubs/CreatorFanSupportedCreatorsPanel.jsx'
 import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembershipPanel.jsx'
 import SettingsAccountInfoScreen from '../features/profiles/SettingsAccountInfoScreen.jsx'
+import { startEdgeCheckout } from '../features/billing/stripeBillingApi.js'
+import { PRODUCT_EDGE_PRO } from '../features/billing/edgeProducts.js'
 import {
   formatLoungeSearchError,
   LOUNGE_SEARCH_MIN_CHARS,
@@ -211,6 +213,7 @@ export default function LoungeDockSlidePanels({
   settingsHasSlotsEdgeStarter = false,
   settingsHasSlotsEdgePro = false,
   settingsHasSlotsEdgeLifetime = false,
+  settingsHasEdgePro = false,
   settingsProFilterEnabled = false,
   onSettingsProFilterChange = null,
   settingsOnOpenBillingManage = null,
@@ -274,6 +277,8 @@ export default function LoungeDockSlidePanels({
   const [autoplaySettingsOpen, setAutoplaySettingsOpen] = useState(false)
   const [helpSupportSettingsOpen, setHelpSupportSettingsOpen] = useState(false)
   const [membershipsSettingsOpen, setMembershipsSettingsOpen] = useState(false)
+  const [edgeProCheckoutBusy, setEdgeProCheckoutBusy] = useState(false)
+  const [edgeProCheckoutError, setEdgeProCheckoutError] = useState('')
   const [subscriptionsSettingsOpen, setSubscriptionsSettingsOpen] = useState(false)
   const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
@@ -1582,7 +1587,7 @@ export default function LoungeDockSlidePanels({
 
               {proSettingsOpen ? (
                 <div data-settings-edge-pro className="mt-2 space-y-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 p-2">
-                  {settingsHasSlotsEdgePro || settingsHasSlotsEdgeLifetime || settingsHasActiveSubscription || settingsViewerIsStaff ? (
+                  {settingsHasEdgePro || settingsHasSlotsEdgeLifetime || settingsHasActiveSubscription || settingsViewerIsStaff ? (
                     <button
                       type="button"
                       role="switch"
@@ -1611,21 +1616,46 @@ export default function LoungeDockSlidePanels({
                     </button>
                   ) : (
                     <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-left">
-                      <div className="text-[13px] font-semibold text-amber-300">
-                        Unlock Edge Pro VIP Filtering
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[13px] font-semibold text-amber-300">
+                          Unlock Edge Pro VIP Filtering
+                        </div>
+                        <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-black text-amber-400">
+                          $9.99/mo
+                        </span>
                       </div>
-                      <p className="mt-1 text-[12px] leading-relaxed text-zinc-400">
-                        Edge Pro subscribers can filter the feed and comment threads to show only verified Pro subscribers and staff, with one-tap overrides on any post.
+                      <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-400">
+                        Edge Pro subscribers get a verified Pro badge, can reply on author-gated threads, and can filter the feed and comment threads to show only verified Pro subscribers and staff.
                       </p>
-                      {typeof settingsOnOpenBillingManage === 'function' ? (
-                        <button
-                          type="button"
-                          onClick={() => settingsOnOpenBillingManage()}
-                          className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 [-webkit-tap-highlight-color:transparent]"
-                        >
-                          <span>⚡ Upgrade to Edge Pro</span>
-                        </button>
+                      {edgeProCheckoutError ? (
+                        <p className="mt-1.5 text-[11px] text-rose-400">{edgeProCheckoutError}</p>
                       ) : null}
+                      <button
+                        type="button"
+                        disabled={edgeProCheckoutBusy}
+                        onClick={async () => {
+                          if (!settingsSupabaseClient) {
+                            if (typeof settingsOnOpenBillingManage === 'function') settingsOnOpenBillingManage()
+                            return
+                          }
+                          setEdgeProCheckoutBusy(true)
+                          setEdgeProCheckoutError('')
+                          try {
+                            await startEdgeCheckout(settingsSupabaseClient, PRODUCT_EDGE_PRO, {
+                              priceInterval: 'monthly',
+                              applyEarlyBird: false,
+                            })
+                          } catch (err) {
+                            const msg = err instanceof Error ? err.message : String(err || '')
+                            setEdgeProCheckoutError(msg || 'Could not start checkout.')
+                          } finally {
+                            setEdgeProCheckoutBusy(false)
+                          }
+                        }}
+                        className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                      >
+                        <span>{edgeProCheckoutBusy ? 'Connecting to Stripe…' : '⚡ Upgrade to Edge Pro ($9.99/mo)'}</span>
+                      </button>
                     </div>
                   )}
                 </div>

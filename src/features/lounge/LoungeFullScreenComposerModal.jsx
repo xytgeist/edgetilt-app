@@ -317,6 +317,7 @@ export default function LoungeFullScreenComposerModal({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
+            data-lounge-minimize-btn=""
             onClick={() => {
               blurActiveInput()
               flushTextToParent()
@@ -338,9 +339,11 @@ export default function LoungeFullScreenComposerModal({
         </div>
 
         {/* ── Write vs Preview Toggle ── */}
-        <div className="flex items-center rounded-2xl bg-zinc-950 p-1 ring-1 ring-zinc-800">
+        <div data-lounge-write-preview-toggle="" className="flex items-center rounded-2xl bg-zinc-950 p-1 ring-1 ring-zinc-800">
           <button
             type="button"
+            data-lounge-tab-write=""
+            data-active={activeTab === 'write' ? 'true' : 'false'}
             onClick={() => setActiveTab('write')}
             className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold transition-all touch-manipulation ${
               activeTab === 'write'
@@ -354,6 +357,8 @@ export default function LoungeFullScreenComposerModal({
 
           <button
             type="button"
+            data-lounge-tab-preview=""
+            data-active={activeTab === 'preview' ? 'true' : 'false'}
             onClick={() => {
               blurActiveInput()
               setActiveTab('preview')
@@ -374,6 +379,7 @@ export default function LoungeFullScreenComposerModal({
           {/* Audience & Reply Settings Trigger */}
           <button
             type="button"
+            data-lounge-header-settings-btn=""
             onClick={handleOpenSettingsFromHeader}
             className={`relative flex h-9 sm:h-10 items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 text-xs sm:text-sm font-bold transition-all touch-manipulation active:scale-95 ${
               isCustomGated
@@ -399,6 +405,7 @@ export default function LoungeFullScreenComposerModal({
 
           <button
             type="button"
+            data-lounge-fullscreen-post-btn=""
             disabled={postBusy || isOverLimit || !hasContent}
             onClick={handlePostButtonClick}
             className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 sm:px-5 py-2 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 touch-manipulation"

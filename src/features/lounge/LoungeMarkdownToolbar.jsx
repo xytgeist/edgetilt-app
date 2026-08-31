@@ -310,18 +310,6 @@ export default function LoungeMarkdownToolbar({
         <span>1.</span>
       </button>
 
-      {/* ── Checklist / Task ── */}
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '- [ ] ', mode: 'linePrefix' })}
-        className={`${btnClass} text-[14px] sm:text-[15px] font-bold text-emerald-400`}
-        title="Checklist (- [ ] item)"
-        aria-label="Checklist"
-      >
-        <span>☑</span>
-      </button>
-
       {/* ── Spoiler ── */}
       <button
         type="button"

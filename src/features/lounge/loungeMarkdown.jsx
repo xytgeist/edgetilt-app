@@ -315,46 +315,10 @@ export function renderLoungeMarkdown(raw, captionOpts = {}) {
       continue
     }
 
-    // 5. Checklist / Task list (- [ ] or - [x])
-    if (/^\s*[-*]\s+\[([ xX])\]\s+/.test(line)) {
-      const taskItems = []
-      while (i < lines.length && /^\s*[-*]\s+\[([ xX])\]\s+/.test(lines[i])) {
-        const matchTask = lines[i].match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/)
-        if (matchTask) {
-          taskItems.push({
-            checked: matchTask[1].toLowerCase() === 'x',
-            text: matchTask[2],
-          })
-        }
-        i++
-      }
-      elements.push(
-        <ul key={`lmd-tasklist-${elemKey++}`} data-lounge-tasklist="" className="my-2 space-y-1.5 pl-1">
-          {taskItems.map((task, idx) => (
-            <li key={`task-${idx}`} className="flex items-start gap-2 text-[15px] leading-snug text-zinc-200">
-              <span
-                className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                  task.checked
-                    ? 'border-emerald-500/80 bg-emerald-500/20 text-emerald-400'
-                    : 'border-zinc-600 bg-zinc-800 text-transparent'
-                }`}
-              >
-                ✓
-              </span>
-              <span className={task.checked ? 'text-zinc-400 line-through' : 'text-zinc-200'}>
-                {renderInlineMarkdown(task.text, captionOpts, `lmd-task-item-${elemKey}-${idx}`)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )
-      continue
-    }
-
-    // 6. Unordered list (- item or * item)
+    // 5. Unordered list (- item or * item)
     if (/^\s*[-*]\s+/.test(line)) {
       const items = []
-      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i]) && !/^\s*[-*]\s+\[([ xX])\]\s+/.test(lines[i])) {
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
         const itemText = lines[i].replace(/^\s*[-*]\s+/, '')
         items.push(itemText)
         i++

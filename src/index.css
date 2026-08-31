@@ -10990,28 +10990,119 @@ html.light [data-lounge-fullscreen-composer] header {
   border-color: #e4e4e7 !important;
 }
 
+html.light [data-lounge-fullscreen-composer] #pro-composer-title span:first-child {
+  color: #09090b !important;
+}
+
+html.light [data-lounge-fullscreen-composer] [data-lounge-minimize-btn] {
+  color: #71717a !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-minimize-btn]:hover {
+  background-color: #f4f4f5 !important;
+  color: #09090b !important;
+}
+
+/* Write vs Preview Toggle */
+html.light [data-lounge-fullscreen-composer] [data-lounge-write-preview-toggle] {
+  background-color: #f4f4f5 !important;
+  border: 1px solid #e4e4e7 !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-write][data-active="true"] {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-write][data-active="false"] {
+  background-color: transparent !important;
+  color: #71717a !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-write][data-active="false"]:hover {
+  color: #18181b !important;
+}
+
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-preview][data-active="true"] {
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12) !important;
+  border: 1px solid #bfdbfe !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-preview][data-active="false"] {
+  background-color: transparent !important;
+  color: #71717a !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-tab-preview][data-active="false"]:hover {
+  color: #18181b !important;
+}
+
+/* Audience settings header button */
+html.light [data-lounge-fullscreen-composer] [data-lounge-header-settings-btn] {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-header-settings-btn]:hover {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+}
+
+/* Post Button in Header - normal light mode blue */
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn] {
+  background-image: none !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:hover:not(:disabled) {
+  background-color: #1d4ed8 !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:active:not(:disabled) {
+  background-color: #1e40af !important;
+}
+
+/* Textarea & Caret - normal blue cursor */
+html.light [data-lounge-fullscreen-composer] textarea {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  caret-color: #2563eb !important;
+}
+html.light [data-lounge-fullscreen-composer] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Markdown Toolbar */
+html.light [data-lounge-markdown-toolbar] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+html.light [data-lounge-markdown-toolbar] button {
+  color: #334155 !important;
+}
+html.light [data-lounge-markdown-toolbar] button:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html.light [data-lounge-markdown-toolbar] .bg-zinc-800 {
+  background-color: #cbd5e1 !important;
+}
+
+/* Footer & Media Toolbar */
 html.light [data-lounge-fullscreen-composer] footer {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
 }
-
-html.light [data-lounge-fullscreen-composer] textarea {
-  background-color: #f4f4f5 !important;
-  border-color: #e4e4e7 !important;
-  color: #09090b !important;
+html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar label,
+html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar button {
+  color: #2563eb !important;
 }
-
-html.light [data-lounge-markdown-toolbar] {
-  background-color: #f4f4f5 !important;
-  border-color: #e4e4e7 !important;
+html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar label:hover,
+html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar button:hover {
+  color: #1d4ed8 !important;
 }
-
-html.light [data-lounge-markdown-toolbar] button {
-  color: #27272a !important;
-}
-
-html.light [data-lounge-markdown-toolbar] button:hover {
-  background-color: #e4e4e7 !important;
+html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar svg rect {
+  fill-opacity: 0 !important;
 }
 
 html.light [data-lounge-preview-card] {

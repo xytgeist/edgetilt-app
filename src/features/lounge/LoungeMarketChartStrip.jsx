@@ -11,6 +11,7 @@ import {
   loungeFeedCarouselMeasureLayout,
 } from './loungeFeedImageAttachment.js'
 import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
+import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
 
 /**
  * @param {{ post: object, onOpenChart?: (embed: object, allEmbeds: object[]) => void, className?: string, variant?: string }} props
@@ -25,6 +26,29 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
 
   const multi = embeds.length > 1
   const carouselFullBleed = multi && loungeFeedCarouselFullBleed(variant)
+
+  useLoungeFeedCarouselAxisLock(carouselScrollRef, multi)
+
+  useLayoutEffect(() => {
+    if (!multi) return undefined
+    const el = carouselScrollRef.current
+    if (!el) return undefined
+    const reset = () => {
+      el.scrollLeft = 0
+      try {
+        el.scrollTo({ left: 0, behavior: 'instant' })
+      } catch {
+        // ignore
+      }
+    }
+    reset()
+    const id0 = requestAnimationFrame(reset)
+    const id1 = requestAnimationFrame(reset)
+    return () => {
+      cancelAnimationFrame(id0)
+      cancelAnimationFrame(id1)
+    }
+  }, [embeds.length, multi])
 
   useLayoutEffect(() => {
     if (!multi) return undefined
@@ -61,7 +85,7 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
       {...(multi ? { 'data-lounge-feed-horizontal-scroll': true } : null)}
       className={
         multi
-          ? 'max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none] [touch-action:pan-x_pan-y] snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
+          ? 'max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain [-webkit-overflow-scrolling:touch] [overflow-anchor:none] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
           : 'w-full'
       }
       role={multi ? 'region' : undefined}
@@ -78,7 +102,7 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
               key={`${embed.symbol}-${embed.window_key}-${embed.kind}`}
               className={
                 multi
-                  ? 'relative shrink-0 snap-start'
+                  ? 'relative shrink-0'
                   : 'relative w-full max-w-full'
               }
               style={slideWidthStyle}

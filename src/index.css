@@ -2649,14 +2649,17 @@ html.light .lounge-dock-item-circle {
 .lounge-composer-post-btn:hover:not(:disabled) {
   background-color: #51dff9;
 }
-html.light .lounge-composer-post-btn {
+html.light .lounge-composer-post-btn,
+html.light button.lounge-composer-post-btn {
   background-color: #2563eb !important;
   color: #ffffff !important;
 }
-html.light .lounge-composer-post-btn span {
+html.light .lounge-composer-post-btn *,
+html.light button.lounge-composer-post-btn * {
   color: #ffffff !important;
 }
-html.light .lounge-composer-post-btn:hover:not(:disabled) {
+html.light .lounge-composer-post-btn:hover:not(:disabled),
+html.light button.lounge-composer-post-btn:hover:not(:disabled) {
   background-color: #3b82f6 !important;
   color: #ffffff !important;
 }
@@ -2677,16 +2680,16 @@ html.light .lounge-composer-post-text:hover:not(:disabled) {
 /* Composer media/GIF icon buttons - match Post button blue in light mode */
 html.light .lounge-media-toolbar .text-sky-400,
 html.light .lounge-media-toolbar label,
-html.light .lounge-media-toolbar button,
+html.light .lounge-media-toolbar button:not(.lounge-composer-post-btn),
 html.light [data-lounge-media-toolbar] .text-sky-400,
 html.light [data-lounge-media-toolbar] label,
-html.light [data-lounge-media-toolbar] button {
+html.light [data-lounge-media-toolbar] button:not(.lounge-composer-post-btn) {
   color: #2563eb !important;
 }
 html.light .lounge-media-toolbar label:hover,
-html.light .lounge-media-toolbar button:hover,
+html.light .lounge-media-toolbar button:not(.lounge-composer-post-btn):hover,
 html.light [data-lounge-media-toolbar] label:hover,
-html.light [data-lounge-media-toolbar] button:hover {
+html.light [data-lounge-media-toolbar] button:not(.lounge-composer-post-btn):hover {
   color: #1d4ed8 !important;
 }
 html.light .lounge-media-toolbar svg,

@@ -16664,7 +16664,7 @@ export default function SocialFeed({
             />
             <div
               data-lounge-fab-obstacle
-              className="lounge-media-toolbar mt-0.5 flex w-full items-center pr-1 py-0.5"
+              className="mt-0.5 flex w-full items-center pr-1 py-0.5"
             >
               <div className="inline-flex shrink-0 items-center gap-0.5">
                 <LoungeComposerMediaToolbar
@@ -19215,7 +19215,9 @@ export default function SocialFeed({
               onClick={() => void submitQuoteRepost()}
               className="lounge-composer-post-btn min-h-8 shrink-0 touch-manipulation rounded-full px-4 py-1.5 text-[14px] font-bold leading-tight disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent]"
             >
-              {quoteRepostBusy ? 'Posting…' : 'Post'}
+              <span className="text-white text-inherit font-inherit">
+                {quoteRepostBusy ? 'Posting…' : 'Post'}
+              </span>
             </button>
           </header>
 

@@ -145,7 +145,8 @@ export default function LoungeComposerMediaToolbar({
 
   return (
     <div
-      className={`inline-flex shrink-0 items-center ${isLg ? 'gap-1' : 'gap-0.5'}${className ? ` ${className}` : ''}`}
+      data-lounge-media-toolbar=""
+      className={`lounge-media-toolbar inline-flex shrink-0 items-center ${isLg ? 'gap-1' : 'gap-0.5'}${className ? ` ${className}` : ''}`}
     >
       <label
         htmlFor={imageInputId}

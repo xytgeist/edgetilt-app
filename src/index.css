@@ -2671,11 +2671,29 @@ html.light .lounge-composer-post-text:hover:not(:disabled) {
 }
 
 /* Composer media/GIF icon buttons - match Post button blue in light mode */
-html.light .lounge-media-toolbar .text-sky-400 {
+html.light .lounge-media-toolbar .text-sky-400,
+html.light .lounge-media-toolbar label,
+html.light .lounge-media-toolbar button,
+html.light [data-lounge-media-toolbar] .text-sky-400,
+html.light [data-lounge-media-toolbar] label,
+html.light [data-lounge-media-toolbar] button {
   color: #2563eb !important;
 }
-html.light .lounge-media-toolbar svg rect {
-  fill-opacity: 0 !important;
+html.light .lounge-media-toolbar label:hover,
+html.light .lounge-media-toolbar button:hover,
+html.light [data-lounge-media-toolbar] label:hover,
+html.light [data-lounge-media-toolbar] button:hover {
+  color: #1d4ed8 !important;
+}
+html.light .lounge-media-toolbar svg,
+html.light [data-lounge-media-toolbar] svg {
+  color: #2563eb !important;
+}
+html.light .lounge-media-toolbar svg rect,
+html.light [data-lounge-media-toolbar] svg rect {
+  fill-opacity: 0.12 !important;
+  fill: #2563eb !important;
+  stroke: #2563eb !important;
 }
 
 /* Logo swap: white version in dark mode, inverted (black) version in light mode */
@@ -11087,22 +11105,33 @@ html.light [data-lounge-markdown-toolbar] button:hover {
 html.light [data-lounge-markdown-toolbar] .bg-zinc-800 {
   background-color: #cbd5e1 !important;
 }
+html.light [data-lounge-color-picker-dropdown] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
 
 /* Footer & Media Toolbar */
 html.light [data-lounge-fullscreen-composer] footer {
   background-color: #ffffff !important;
   border-color: #e4e4e7 !important;
+  color: #64748b !important;
 }
-html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar label,
-html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar button {
+html.light [data-lounge-fullscreen-composer] footer label,
+html.light [data-lounge-fullscreen-composer] footer button {
   color: #2563eb !important;
 }
-html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar label:hover,
-html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar button:hover {
+html.light [data-lounge-fullscreen-composer] footer label:hover,
+html.light [data-lounge-fullscreen-composer] footer button:hover {
   color: #1d4ed8 !important;
 }
-html.light [data-lounge-fullscreen-composer] footer .lounge-media-toolbar svg rect {
-  fill-opacity: 0 !important;
+html.light [data-lounge-fullscreen-composer] footer svg {
+  color: #2563eb !important;
+}
+html.light [data-lounge-fullscreen-composer] footer svg rect {
+  fill-opacity: 0.12 !important;
+  fill: #2563eb !important;
+  stroke: #2563eb !important;
 }
 
 html.light [data-lounge-preview-card] {

@@ -1,4 +1,18 @@
 import { useCallback, useState } from 'react'
+import {
+  Bold,
+  Italic,
+  Strikethrough,
+  Heading2,
+  Highlighter,
+  Palette,
+  Quote,
+  List,
+  ListOrdered,
+  Code,
+  EyeOff,
+  Minus,
+} from 'lucide-react'
 
 /**
  * Helper to wrap or insert markdown formatting at the current selection in a textarea.
@@ -24,7 +38,7 @@ export function applyMarkdownFormatting(textarea, { prefix, suffix = '', default
   let nextEnd = end
 
   if (mode === 'linePrefix') {
-    // Prefix at cursor or line start: simply insert character and place cursor immediately after
+    // Prefix at cursor or line start: insert character and place cursor immediately after
     if (start === end && !selected) {
       nextVal = val.slice(0, start) + prefix + val.slice(end)
       nextStart = start + prefix.length
@@ -116,35 +130,37 @@ export default function LoungeMarkdownToolbar({
   )
 
   const btnClass =
-    'flex h-9 min-w-[2.1rem] sm:h-10 sm:min-w-[2.4rem] items-center justify-center rounded-xl px-2 sm:px-2.5 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation'
+    'flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation'
 
   return (
     <div
       data-lounge-markdown-toolbar=""
-      className={`relative flex flex-wrap items-center gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 p-1.5 backdrop-blur-md ${className}`}
+      className={`relative flex items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 px-2 py-1.5 backdrop-blur-md ${className}`}
     >
       {/* ── Heading ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '## ', mode: 'linePrefix' })}
-        className={`${btnClass} text-[14px] sm:text-[15px] font-black text-zinc-200`}
+        className={btnClass}
         title="Heading (## Title)"
         aria-label="Heading"
       >
-        <span>H</span>
+        <Heading2 className="h-4 w-4" />
       </button>
+
+      <div className="mx-0.5 h-4 w-px shrink-0 bg-zinc-800" role="presentation" aria-hidden />
 
       {/* ── Bold ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '**', suffix: '**', defaultText: 'bold text' })}
-        className={`${btnClass} text-[15px] sm:text-[16px] font-black text-zinc-200`}
+        className={btnClass}
         title="Bold (**text**)"
         aria-label="Bold"
       >
-        <span className="font-extrabold">B</span>
+        <Bold className="h-4 w-4" />
       </button>
 
       {/* ── Italic ── */}
@@ -152,11 +168,11 @@ export default function LoungeMarkdownToolbar({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '*', suffix: '*', defaultText: 'italic text' })}
-        className={`${btnClass} text-[15px] sm:text-[16px] italic font-serif text-zinc-200`}
+        className={btnClass}
         title="Italic (*text*)"
         aria-label="Italic"
       >
-        <span>I</span>
+        <Italic className="h-4 w-4" />
       </button>
 
       {/* ── Strikethrough ── */}
@@ -164,11 +180,11 @@ export default function LoungeMarkdownToolbar({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '~~', suffix: '~~', defaultText: 'strikethrough' })}
-        className={`${btnClass} text-[15px] sm:text-[16px] font-bold text-zinc-200 line-through`}
+        className={btnClass}
         title="Strikethrough (~~text~~)"
         aria-label="Strikethrough"
       >
-        <span>S</span>
+        <Strikethrough className="h-4 w-4" />
       </button>
 
       {/* ── Highlight ── */}
@@ -176,29 +192,30 @@ export default function LoungeMarkdownToolbar({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '==', suffix: '==', defaultText: 'highlighted' })}
-        className={`${btnClass} text-[13px] sm:text-[14px] font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20`}
+        className={`${btnClass} text-amber-400 hover:text-amber-300`}
         title="Highlight (==text==)"
         aria-label="Highlight"
       >
-        <span>HL</span>
+        <Highlighter className="h-4 w-4" />
       </button>
 
       {/* ── Curated Colors Dropdown Button ── */}
-      <div className="relative">
+      <div className="relative shrink-0">
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setColorPickerOpen((prev) => !prev)}
-          className={`${btnClass} flex items-center gap-0.5 text-[13px] font-bold text-emerald-400 hover:text-emerald-300`}
+          className={`${btnClass} text-emerald-400 hover:text-emerald-300`}
           title="Text Colors"
           aria-label="Text Colors"
         >
-          <span className="flex h-3 w-3 rounded-full bg-gradient-to-tr from-emerald-400 via-amber-300 to-cyan-400" />
+          <Palette className="h-4 w-4" />
         </button>
 
         {colorPickerOpen ? (
           <div
-            className="absolute left-0 top-full z-50 mt-1 flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            data-lounge-color-picker-dropdown=""
+            className="absolute left-0 top-full z-50 mt-1 flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
             onMouseDown={(e) => e.preventDefault()}
           >
             <button
@@ -207,7 +224,7 @@ export default function LoungeMarkdownToolbar({
                 setColorPickerOpen(false)
                 handleFormat({ prefix: '[green]', suffix: '[/green]', defaultText: 'green text' })
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 transition-colors"
               title="Green text"
             >
               <span className="h-3 w-3 rounded-full bg-emerald-400" />
@@ -218,7 +235,7 @@ export default function LoungeMarkdownToolbar({
                 setColorPickerOpen(false)
                 handleFormat({ prefix: '[red]', suffix: '[/red]', defaultText: 'red text' })
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-400"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 transition-colors"
               title="Red text"
             >
               <span className="h-3 w-3 rounded-full bg-rose-400" />
@@ -229,7 +246,7 @@ export default function LoungeMarkdownToolbar({
                 setColorPickerOpen(false)
                 handleFormat({ prefix: '[gold]', suffix: '[/gold]', defaultText: 'gold text' })
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-300"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 transition-colors"
               title="Gold text"
             >
               <span className="h-3 w-3 rounded-full bg-amber-300" />
@@ -240,7 +257,7 @@ export default function LoungeMarkdownToolbar({
                 setColorPickerOpen(false)
                 handleFormat({ prefix: '[blue]', suffix: '[/blue]', defaultText: 'blue text' })
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 transition-colors"
               title="Blue text"
             >
               <span className="h-3 w-3 rounded-full bg-cyan-400" />
@@ -251,7 +268,7 @@ export default function LoungeMarkdownToolbar({
                 setColorPickerOpen(false)
                 handleFormat({ prefix: '[purple]', suffix: '[/purple]', defaultText: 'purple text' })
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-400"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-400 transition-colors"
               title="Purple text"
             >
               <span className="h-3 w-3 rounded-full bg-purple-400" />
@@ -260,42 +277,18 @@ export default function LoungeMarkdownToolbar({
         ) : null}
       </div>
 
-      <div className="mx-0.5 h-5 w-px bg-zinc-800" role="presentation" aria-hidden />
-
-      {/* ── Inline Code ── */}
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '`', suffix: '`', defaultText: 'code' })}
-        className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-semibold text-cyan-400 hover:text-cyan-300`}
-        title="Inline Code (`code`)"
-        aria-label="Inline Code"
-      >
-        <span>&lt;/&gt;</span>
-      </button>
-
-      {/* ── Blockquote ── */}
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '> ', mode: 'linePrefix' })}
-        className={`${btnClass} text-[18px] sm:text-[19px] font-serif text-amber-400 hover:text-amber-300`}
-        title="Blockquote (> quote)"
-        aria-label="Blockquote"
-      >
-        <span>&ldquo;</span>
-      </button>
+      <div className="mx-0.5 h-4 w-px shrink-0 bg-zinc-800" role="presentation" aria-hidden />
 
       {/* ── Bulleted List ── */}
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '- ', mode: 'linePrefix' })}
-        className={`${btnClass} text-[18px] sm:text-[19px] text-zinc-200`}
+        className={btnClass}
         title="Bulleted List (- item)"
         aria-label="Bulleted List"
       >
-        <span>&bull;</span>
+        <List className="h-4 w-4" />
       </button>
 
       {/* ── Numbered List ── */}
@@ -303,11 +296,37 @@ export default function LoungeMarkdownToolbar({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '1. ', mode: 'linePrefix' })}
-        className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-bold text-zinc-200`}
+        className={btnClass}
         title="Numbered List (1. item)"
         aria-label="Numbered List"
       >
-        <span>1.</span>
+        <ListOrdered className="h-4 w-4" />
+      </button>
+
+      {/* ── Blockquote ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '> ', mode: 'linePrefix' })}
+        className={`${btnClass} text-amber-400 hover:text-amber-300`}
+        title="Blockquote (> quote)"
+        aria-label="Blockquote"
+      >
+        <Quote className="h-4 w-4" />
+      </button>
+
+      <div className="mx-0.5 h-4 w-px shrink-0 bg-zinc-800" role="presentation" aria-hidden />
+
+      {/* ── Inline Code ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '`', suffix: '`', defaultText: 'code' })}
+        className={`${btnClass} text-cyan-400 hover:text-cyan-300`}
+        title="Inline Code (`code`)"
+        aria-label="Inline Code"
+      >
+        <Code className="h-4 w-4" />
       </button>
 
       {/* ── Spoiler ── */}
@@ -315,11 +334,11 @@ export default function LoungeMarkdownToolbar({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '||', suffix: '||', defaultText: 'spoiler' })}
-        className={`${btnClass} font-mono text-[12px] sm:text-[13px] font-semibold text-zinc-400 hover:text-zinc-200`}
+        className={`${btnClass} text-zinc-400 hover:text-zinc-200`}
         title="Spoiler (||text||)"
         aria-label="Spoiler"
       >
-        <span>|| ||</span>
+        <EyeOff className="h-4 w-4" />
       </button>
 
       {/* ── Divider ── */}
@@ -327,11 +346,11 @@ export default function LoungeMarkdownToolbar({
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '\n---\n', mode: 'linePrefix' })}
-        className={`${btnClass} font-mono text-[13px] text-zinc-400 hover:text-zinc-200`}
+        className={`${btnClass} text-zinc-400 hover:text-zinc-200`}
         title="Divider Line (---)"
         aria-label="Divider Line"
       >
-        <span>&mdash;</span>
+        <Minus className="h-4 w-4" />
       </button>
 
       {!isEdgePro ? (
@@ -339,7 +358,7 @@ export default function LoungeMarkdownToolbar({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onUpgradeClick}
-          className="ml-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 hover:brightness-110 active:scale-95 touch-manipulation"
+          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 hover:brightness-110 active:scale-95 touch-manipulation"
         >
           <span>PRO</span>
         </button>

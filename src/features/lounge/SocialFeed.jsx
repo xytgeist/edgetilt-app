@@ -10070,7 +10070,7 @@ export default function SocialFeed({
         const { data } = await supabaseClient
           .from('profiles')
           .select(
-            'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og,has_active_subscription,is_bot',
+            'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,website_url,category_pills,created_at,role,handle_changed_at,is_og,has_active_subscription,is_bot',
           )
           .eq('user_id', uid)
           .maybeSingle()

@@ -123,6 +123,13 @@ import LoungeBackArrowIcon from './LoungeBackArrowIcon.jsx'
 
 const PROFILE_TAB_IDS = ['posts', 'replies', 'likes', 'bookmarks']
 
+function normalizeProfileWebsite(input) {
+  const raw = String(input || '').trim()
+  if (!raw) return ''
+  if (/^(javascript|data|vbscript):/i.test(raw)) return ''
+  return raw.slice(0, 120)
+}
+
 /** Positive Android UA … cheaper paint (no backdrop-blur) on classic title-chrome path. */
 const PROFILE_ANDROID_PERF =
   typeof navigator !== 'undefined' && /Android/i.test(String(navigator.userAgent || ''))
@@ -827,6 +834,7 @@ export default function LoungeProfileFullScreen({
   const [fanPortalOpen, setFanPortalOpen] = useState(false)
   const [aboutDraft, setAboutDraft] = useState('')
   const [locationDraft, setLocationDraft] = useState('')
+  const [websiteDraft, setWebsiteDraft] = useState('')
   const [categoryPillsDraft, setCategoryPillsDraft] = useState([])
   const [displayNameDraft, setDisplayNameDraft] = useState('')
   const [handleSlugDraft, setHandleSlugDraft] = useState('')
@@ -1308,14 +1316,16 @@ export default function LoungeProfileFullScreen({
     if (!open || !profileUserId) return
     setAboutDraft(String(profile?.about_me ?? profile?.bio ?? '').slice(0, 140))
     setLocationDraft(normalizeProfileLocation(profile?.location))
+    setWebsiteDraft(String(profile?.website_url ?? '').slice(0, 120))
     setCategoryPillsDraft(profileCategoryPills(profile))
-  }, [open, profileUserId, profile?.about_me, profile?.bio, profile?.location, profile?.category_pills])
+  }, [open, profileUserId, profile?.about_me, profile?.bio, profile?.location, profile?.website_url, profile?.category_pills])
 
   useEffect(() => {
     if (!ownProfileEditing || !isOwnProfile || profile?.user_id == null) return
     setLocationDraft(normalizeProfileLocation(profile?.location))
+    setWebsiteDraft(String(profile?.website_url ?? '').slice(0, 120))
     setCategoryPillsDraft(profileCategoryPills(profile))
-  }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location, profile?.category_pills])
+  }, [ownProfileEditing, isOwnProfile, profile?.user_id, profile?.location, profile?.website_url, profile?.category_pills])
 
   const beginProfileInteractionFetch = useCallback(
     (tabId) => {
@@ -2343,6 +2353,11 @@ export default function LoungeProfileFullScreen({
     } else {
       setLocationDraft(normalizeProfileLocation(profile?.location))
     }
+    if (opts?.nextWebsite !== undefined) {
+      setWebsiteDraft(normalizeProfileWebsite(opts.nextWebsite))
+    } else {
+      setWebsiteDraft(normalizeProfileWebsite(profile?.website_url))
+    }
     if (opts?.nextCategoryPills !== undefined) {
       setCategoryPillsDraft(normalizeLoungeProfileCategoryPills(opts.nextCategoryPills))
     } else {
@@ -2357,7 +2372,7 @@ export default function LoungeProfileFullScreen({
         // ignore
       }
     }
-  }, [profile?.about_me, profile?.bio, profile?.display_name, profile?.handle, profile?.location, profile?.category_pills])
+  }, [profile?.about_me, profile?.bio, profile?.display_name, profile?.handle, profile?.location, profile?.website_url, profile?.category_pills])
 
   const refreshSocial = useCallback(async () => {
     if (!profileUserId || !viewerUserId) {
@@ -2788,6 +2803,7 @@ export default function LoungeProfileFullScreen({
     if (!isOwnProfile || !viewerUserId || aboutBusy) return
     const nextAbout = String(aboutDraft || '').trim().slice(0, 140)
     const nextLocation = normalizeProfileLocation(locationDraft)
+    const nextWebsite = normalizeProfileWebsite(websiteDraft)
     const nextCategoryPills = normalizeLoungeProfileCategoryPills(categoryPillsDraft)
     const dn = String(displayNameDraft || '').trim().slice(0, 24)
     if (!dn) {
@@ -2891,12 +2907,13 @@ export default function LoungeProfileFullScreen({
         .update({
           about_me: nextAbout || null,
           location: nextLocation || null,
+          website_url: nextWebsite || null,
           category_pills: nextCategoryPills,
         })
         .eq('user_id', viewerUserId)
       if (upErr) {
         const raw = String(upErr.message || '')
-        if (/about_me|location|category_pills|schema cache/i.test(raw)) {
+        if (/about_me|location|website_url|category_pills|schema cache/i.test(raw)) {
           setAboutErr(
             'Profile fields need the latest SQL. In Supabase → SQL Editor, run supabase/profile_lounge_fullscreen.sql and supabase/profile_category_pills.sql, then save again.'
           )
@@ -2925,11 +2942,13 @@ export default function LoungeProfileFullScreen({
         ...identityRow,
         about_me: nextAbout || null,
         location: nextLocation || null,
+        website_url: nextWebsite || null,
         category_pills: nextCategoryPills,
       })
       exitOwnProfileEditing({
         nextAboutDraft: nextAbout,
         nextLocation: nextLocation || null,
+        nextWebsite: nextWebsite || null,
         nextCategoryPills: nextCategoryPills,
         nextDisplayName: identityRow.display_name,
         nextHandle: identityRow.handle,
@@ -3802,6 +3821,21 @@ export default function LoungeProfileFullScreen({
                         Clear location
                       </button>
                     ) : null}
+                  </label>
+                  <label className="block">
+                    <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Site</span>
+                    <input
+                      type="text"
+                      value={websiteDraft}
+                      onChange={(e) => setWebsiteDraft(e.target.value.slice(0, 120))}
+                      maxLength={120}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      data-profile-edit-website
+                      className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-[16px] text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-cyan-600/60 touch-manipulation sm:text-[17px]"
+                      placeholder="https://yoursite.com"
+                    />
                   </label>
                   <div className="block">
                     <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">Tribes</span>

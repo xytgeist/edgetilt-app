@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, SlidersHorizontal, Check, X } from 'lucide-react'
+import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Send } from 'lucide-react'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
@@ -31,6 +31,7 @@ import {
 
 /**
  * Full-Screen Pro Composer with rich Markdown formatting & live 1:1 card preview.
+ * Option 2: Pre-Post Modal on "Post" for Audience & Reply settings.
  *
  * @param {{
  *   open: boolean,
@@ -106,7 +107,7 @@ export default function LoungeFullScreenComposerModal({
   onVideoPointerDown,
 }) {
   const [activeTab, setActiveTab] = useState('write') // 'write' | 'preview'
-  const [audienceSheetOpen, setAudienceSheetOpen] = useState(false)
+  const [publishModalOpen, setPublishModalOpen] = useState(false)
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
@@ -138,6 +139,7 @@ export default function LoungeFullScreenComposerModal({
   useEffect(() => {
     if (!open) return
     setActiveTab('write')
+    setPublishModalOpen(false)
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
     })
@@ -174,7 +176,17 @@ export default function LoungeFullScreenComposerModal({
   const nImg = composerImageItems.length
 
   const isSubscribersAudience = composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
-  const isCustomGated = isSubscribersAudience || composerReplyGateEdgePro
+
+  const handleOpenPublishModal = () => {
+    if (postBusy || isOverLimit || !hasContent) return
+    setPublishModalOpen(true)
+  }
+
+  const handleConfirmPublish = () => {
+    setPublishModalOpen(false)
+    onSubmit()
+    onClose()
+  }
 
   return createPortal(
     <div
@@ -241,10 +253,7 @@ export default function LoungeFullScreenComposerModal({
           <button
             type="button"
             disabled={postBusy || isOverLimit || !hasContent}
-            onClick={() => {
-              onSubmit()
-              onClose()
-            }}
+            onClick={handleOpenPublishModal}
             className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 px-5 py-2 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 touch-manipulation"
           >
             <span>{postBusy ? 'Posting…' : 'Post'}</span>
@@ -516,81 +525,59 @@ export default function LoungeFullScreenComposerModal({
         )}
       </div>
 
-      {/* ── Bottom Bar: Sleek Audience Pill + Media Icons ── */}
+      {/* ── Bottom Bar: Clean Media Toolbar & Pro Status ── */}
       {activeTab === 'write' ? (
         <footer
           className="shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-4 pt-1.5 backdrop-blur-md sm:px-6 sm:pt-2"
           style={{ paddingBottom: footerPadBottom }}
         >
-          <div className="mx-auto flex max-w-3xl flex-col gap-1.5">
-            {/* ── X-Style Audience & Reply Gating Pill ── */}
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={() => setAudienceSheetOpen(true)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] sm:text-[12px] font-semibold transition-all touch-manipulation active:scale-95 ${
-                  isCustomGated
-                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-                    : 'border-zinc-700/80 bg-zinc-800/80 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
-                }`}
-              >
-                {isSubscribersAudience ? (
-                  <Users className="h-3.5 w-3.5 text-amber-400" />
-                ) : (
-                  <Globe className="h-3.5 w-3.5 text-sky-400" />
-                )}
-                <span>{isSubscribersAudience ? 'Subscribers only' : 'Everyone'}</span>
-                <span className="text-zinc-500">·</span>
-                {composerReplyGateEdgePro ? (
-                  <Lock className="h-3.5 w-3.5 text-amber-400" />
-                ) : null}
-                <span>{composerReplyGateEdgePro ? 'Pro replies' : 'Anyone can reply'}</span>
-                <SlidersHorizontal className="ml-0.5 h-3 w-3 text-zinc-400" />
-              </button>
+          <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[2.5rem]">
+            <LoungeComposerMediaToolbar
+              variant="feed"
+              size="lg"
+              className="!gap-3 sm:!gap-4"
+              imageInputId={imageInputId}
+              videoInputId={videoInputId}
+              onImagePointerDown={onImagePointerDown}
+              onVideoPointerDown={onVideoPointerDown}
+              onOpenGifPicker={onOpenGifPicker}
+              onOpenMarketPicker={onOpenMarketPicker}
+            />
 
-              <div className="text-[11px] sm:text-xs font-semibold text-zinc-400">
-                {isEdgePro || isStaff ? '✨ Markdown Enabled' : 'Edge Pro Markdown'}
-              </div>
-            </div>
-
-            {/* ── Media Action Buttons ── */}
-            <div className="flex items-center justify-between min-h-[2.5rem]">
-              <LoungeComposerMediaToolbar
-                variant="feed"
-                size="lg"
-                className="!gap-3 sm:!gap-4"
-                imageInputId={imageInputId}
-                videoInputId={videoInputId}
-                onImagePointerDown={onImagePointerDown}
-                onVideoPointerDown={onVideoPointerDown}
-                onOpenGifPicker={onOpenGifPicker}
-                onOpenMarketPicker={onOpenMarketPicker}
-              />
+            <div className="text-xs sm:text-sm font-semibold text-zinc-400">
+              {isEdgePro || isStaff ? '✨ Markdown Enabled' : 'Edge Pro Markdown'}
             </div>
           </div>
         </footer>
       ) : null}
 
-      {/* ── Audience & Reply Gating Bottom Sheet ── */}
-      {audienceSheetOpen ? (
+      {/* ── Option 2: Pre-Post Modal (Audience & Reply Options Before Publish) ── */}
+      {publishModalOpen ? (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[240] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
-          onClick={() => setAudienceSheetOpen(false)}
+          aria-labelledby="publish-modal-title"
+          className="fixed inset-0 z-[240] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150"
+          onClick={() => setPublishModalOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-t-3xl border-t border-zinc-700/80 bg-zinc-900 p-5 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            data-lounge-publish-modal=""
+            className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h3 className="text-base font-bold text-zinc-100">Post Audience & Replies</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3.5">
+              <div>
+                <h3 id="publish-modal-title" className="text-base sm:text-lg font-bold text-zinc-100">
+                  Ready to Post?
+                </h3>
+                <p className="text-xs text-zinc-400">Choose who can see and reply to your post</p>
+              </div>
               <button
                 type="button"
-                onClick={() => setAudienceSheetOpen(false)}
+                onClick={() => setPublishModalOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                aria-label="Close publish dialog"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -602,51 +589,51 @@ export default function LoungeFullScreenComposerModal({
                 <h4 className="text-[12px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
                   Display to
                 </h4>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_ALL)}
-                    className={`flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL
-                        ? 'border-sky-500/60 bg-sky-500/10 text-white'
+                        ? 'border-sky-500/60 bg-sky-500/10 text-white shadow-sm ring-1 ring-sky-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400">
-                        <Globe className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-[14px] font-bold">Everyone</div>
-                        <div className="text-[12px] text-zinc-400">Visible to all Lounge feed members</div>
-                      </div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400 mt-0.5">
+                      <Globe className="h-4 w-4" />
                     </div>
-                    {composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL ? (
-                      <Check className="h-5 w-5 text-sky-400" />
-                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[14px] font-bold">Everyone</span>
+                        {composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL ? (
+                          <Check className="h-4 w-4 text-sky-400" />
+                        ) : null}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Public to all Lounge members</div>
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_SUBS)}
-                    className={`flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
-                        ? 'border-amber-500/60 bg-amber-500/10 text-white'
+                        ? 'border-amber-500/60 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
-                        <Users className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-[14px] font-bold">Subscribers only</div>
-                        <div className="text-[12px] text-zinc-400">Subscribers see full content; others see teaser</div>
-                      </div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 mt-0.5">
+                      <Users className="h-4 w-4" />
                     </div>
-                    {composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS ? (
-                      <Check className="h-5 w-5 text-amber-400" />
-                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[14px] font-bold">Subscribers</span>
+                        {composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS ? (
+                          <Check className="h-4 w-4 text-amber-400" />
+                        ) : null}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Full post for subs, teaser for all</div>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -656,63 +643,76 @@ export default function LoungeFullScreenComposerModal({
                 <h4 className="text-[12px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
                   Who can reply
                 </h4>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => onReplyGateChange?.(false)}
-                    className={`flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       !composerReplyGateEdgePro
-                        ? 'border-sky-500/60 bg-sky-500/10 text-white'
+                        ? 'border-sky-500/60 bg-sky-500/10 text-white shadow-sm ring-1 ring-sky-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400">
-                        <Globe className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-[14px] font-bold">Everyone can reply</div>
-                        <div className="text-[12px] text-zinc-400">Anyone can join the conversation</div>
-                      </div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400 mt-0.5">
+                      <Globe className="h-4 w-4" />
                     </div>
-                    {!composerReplyGateEdgePro ? (
-                      <Check className="h-5 w-5 text-sky-400" />
-                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[14px] font-bold">Anyone</span>
+                        {!composerReplyGateEdgePro ? (
+                          <Check className="h-4 w-4 text-sky-400" />
+                        ) : null}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">All members can reply</div>
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => onReplyGateChange?.(true)}
-                    className={`flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
                       composerReplyGateEdgePro
-                        ? 'border-amber-500/60 bg-amber-500/10 text-white'
+                        ? 'border-amber-500/60 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
-                        <Lock className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="text-[14px] font-bold">Edge Pro only</div>
-                        <div className="text-[12px] text-zinc-400">Only verified Edge Pro members & staff can reply</div>
-                      </div>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 mt-0.5">
+                      <Lock className="h-4 w-4" />
                     </div>
-                    {composerReplyGateEdgePro ? (
-                      <Check className="h-5 w-5 text-amber-400" />
-                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[14px] font-bold">Edge Pro Only</span>
+                        {composerReplyGateEdgePro ? (
+                          <Check className="h-4 w-4 text-amber-400" />
+                        ) : null}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Verified Edge Pro & staff only</div>
+                    </div>
                   </button>
                 </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setAudienceSheetOpen(false)}
-              className="mt-5 w-full rounded-2xl bg-zinc-800 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
-            >
-              Done
-            </button>
+            {/* Action Buttons */}
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPublishModalOpen(false)}
+                className="flex-1 rounded-2xl border border-zinc-700/80 bg-zinc-800/80 py-3 text-center text-sm font-bold text-zinc-200 transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+              >
+                Back to Edit
+              </button>
+
+              <button
+                type="button"
+                disabled={postBusy}
+                onClick={handleConfirmPublish}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-3 text-center text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"
+              >
+                <Send className="h-4 w-4" />
+                <span>{postBusy ? 'Posting…' : 'Publish Now'}</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

@@ -10931,5 +10931,16 @@ html.light [data-lounge-preview-card] {
   border-color: #e2e8f0 !important;
 }
 
+html.light [data-lounge-publish-modal] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #09090b !important;
+}
+
+html.light [data-lounge-publish-modal] button {
+  color: inherit;
+}
+
+
 
 

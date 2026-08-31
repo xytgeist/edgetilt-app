@@ -465,7 +465,7 @@ export default function LoungeFullScreenComposerModal({
                 maxLength={captionMax}
                 spellCheck
                 aria-label="Full screen post caption"
-                placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
+                placeholder="Are ya winning, son?"
                 className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
                   if (keyboardUp) scrollToToolbar()

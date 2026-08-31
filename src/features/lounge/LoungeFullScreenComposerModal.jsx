@@ -174,7 +174,7 @@ export default function LoungeFullScreenComposerModal({
     if (!scrollContainerRef.current || !toolbarContainerRef.current) return
     const container = scrollContainerRef.current
     const toolbar = toolbarContainerRef.current
-    const toolbarTop = toolbar.offsetTop - 4 // sits directly under fixed header
+    const toolbarTop = toolbar.offsetTop // exact offset of toolbar from top of scroll container (fully scrolls past tribe pills)
     container.scrollTo({
       top: Math.max(0, toolbarTop),
       behavior: 'smooth',
@@ -699,7 +699,7 @@ export default function LoungeFullScreenComposerModal({
       {/* ── Bottom Bar: Clean Media Toolbar & Pro Status ── */}
       {activeTab === 'write' ? (
         <footer
-          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-4 pt-1.5 backdrop-blur-md sm:px-6 sm:pt-2"
+          className="relative z-10 shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-4 pt-1.5 backdrop-blur-md sm:px-6 sm:pt-2"
           style={{ paddingBottom: footerPadBottom }}
         >
           <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[2.5rem]">

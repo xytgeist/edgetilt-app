@@ -11,10 +11,7 @@ const MAX_DROPDOWN_WIDTH_PX = 360
 /** Keep dropdown fully on-screen horizontally and vertically (visualViewport-aware on mobile). */
 function measureMentionDropdownPos(anchorEl, caretFieldEl, dropdownEl) {
   const anchor = anchorEl.getBoundingClientRect()
-  const caret =
-    caretFieldEl && isRichComposerElement(caretFieldEl)
-      ? getComposerCaretClientRect(caretFieldEl)
-      : null
+  const caret = caretFieldEl ? getComposerCaretClientRect(caretFieldEl) : null
 
   const anchorTop = caret ? caret.bottom : anchor.bottom
   const flipTop = caret ? caret.top : anchor.top

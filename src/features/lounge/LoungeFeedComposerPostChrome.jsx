@@ -47,7 +47,9 @@ export default function LoungeFeedComposerPostChrome({
         disabled={postBusy || postBlocked || (!hasText && !hasNonCaptionContent)}
         className="lounge-composer-post-btn min-h-7 shrink-0 touch-manipulation rounded-md px-2 py-0.5 text-[13px] font-bold leading-tight disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {postBusy ? 'Posting…' : 'Post'}
+        <span className="text-white text-inherit font-inherit">
+          {postBusy ? 'Posting…' : 'Post'}
+        </span>
       </button>
     </div>
   )

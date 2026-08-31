@@ -171,16 +171,16 @@ export const LOUNGE_FEED_MEDIA_ONLY_TOP_CLASS = 'mt-0.5'
 /** Single ticker mini + lone feed photo share full content-column width (multi-image / multi-ticker stay capped). */
 export const LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS = 'w-full min-w-0 max-w-full'
 export const LOUNGE_FEED_ATTACHMENT_SINGLE_ROW_CLASS = 'w-full max-w-full'
-/** One mini per horizontal snap page when multiple tickers (narrower than column so next card peeks). */
+/** One mini per horizontal snap page when multiple tickers (spans full width of column). */
 export const LOUNGE_FEED_MARKET_MINI_SINGLE_CLASS = 'w-full max-w-none'
 export const LOUNGE_FEED_MARKET_MINI_SNAP_SLIDE_CLASS =
-  'w-[min(calc(100%-2.5rem),18rem)] min-w-[min(calc(100%-2.5rem),18rem)] max-w-[18rem] shrink-0 snap-start'
+  'w-full min-w-full max-w-full shrink-0 snap-start'
 
-/** Composer preview: full-width single, narrower multi with right peek. */
+/** Composer preview: full-width single, full-width multi carousel with snap. */
 export const LOUNGE_COMPOSER_MARKET_MINI_SINGLE_CLASS =
-  'min-w-[min(100vw-3.5rem,20.5rem)] max-w-[20.5rem] w-full'
+  'w-full min-w-full max-w-full'
 export const LOUNGE_COMPOSER_MARKET_MINI_MULTI_CLASS =
-  'w-[min(calc(100vw-4.5rem),17.5rem)] min-w-[min(calc(100vw-4.5rem),17.5rem)] max-w-[17.5rem] shrink-0 snap-start'
+  'w-full min-w-full max-w-full shrink-0 snap-start'
 
 /** Indents detail-thread body beside avatar (`LOUNGE_FEED_AVATAR_CLASS` width + `gap-3`). */
 export const LOUNGE_COMMENT_DETAIL_THREAD_PAD = 'pl-[3.75rem] sm:pl-[4.05rem]'

@@ -16664,9 +16664,9 @@ export default function SocialFeed({
             />
             <div
               data-lounge-fab-obstacle
-              className="lounge-media-toolbar mt-0.5 flex w-full items-center pr-1 py-0.5"
+              className="mt-0.5 flex w-full items-center pr-1 py-0.5"
             >
-              <div className="inline-flex shrink-0 items-center gap-0.5">
+              <div data-lounge-media-toolbar className="lounge-media-toolbar inline-flex shrink-0 items-center gap-0.5">
                 <LoungeComposerMediaToolbar
                   variant="feed"
                   imageInputId={LOUNGE_COMPOSER_IMAGE_INPUT_ID}
@@ -16681,28 +16681,28 @@ export default function SocialFeed({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => openThreadComposeSheet()}
                   className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-0.5 text-sky-400 hover:text-sky-300 active:text-sky-200 [-webkit-tap-highlight-color:transparent]"
-                title="Start a thread"
-                aria-label="Start a thread"
-              >
-                <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
-                  <rect
-                    x="3.75"
-                    y="3.75"
-                    width="12.5"
-                    height="12.5"
-                    rx="2"
-                    fill="currentColor"
-                    fillOpacity="0.14"
-                    stroke="currentColor"
-                    strokeWidth="1.35"
-                  />
-                  <path
-                    d="M10 6.75v6.5M6.75 10h6.5"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                  title="Start a thread"
+                  aria-label="Start a thread"
+                >
+                  <svg className="h-7 w-7" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <rect
+                      x="3.75"
+                      y="3.75"
+                      width="12.5"
+                      height="12.5"
+                      rx="2"
+                      fill="currentColor"
+                      fillOpacity="0.14"
+                      stroke="currentColor"
+                      strokeWidth="1.35"
+                    />
+                    <path
+                      d="M10 6.75v6.5M6.75 10h6.5"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </button>
                 {isViewerEdgePro ? (
                   <button
@@ -19215,7 +19215,9 @@ export default function SocialFeed({
               onClick={() => void submitQuoteRepost()}
               className="lounge-composer-post-btn min-h-8 shrink-0 touch-manipulation rounded-full px-4 py-1.5 text-[14px] font-bold leading-tight disabled:cursor-not-allowed disabled:opacity-40 [-webkit-tap-highlight-color:transparent]"
             >
-              {quoteRepostBusy ? 'Posting…' : 'Post'}
+              <span className="text-white text-inherit font-inherit">
+                {quoteRepostBusy ? 'Posting…' : 'Post'}
+              </span>
             </button>
           </header>
 

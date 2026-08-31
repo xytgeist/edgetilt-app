@@ -2649,14 +2649,17 @@ html.light .lounge-dock-item-circle {
 .lounge-composer-post-btn:hover:not(:disabled) {
   background-color: #51dff9;
 }
-html.light .lounge-composer-post-btn {
+html.light .lounge-composer-post-btn,
+html.light button.lounge-composer-post-btn {
   background-color: #2563eb !important;
   color: #ffffff !important;
 }
-html.light .lounge-composer-post-btn span {
+html.light .lounge-composer-post-btn *,
+html.light button.lounge-composer-post-btn * {
   color: #ffffff !important;
 }
-html.light .lounge-composer-post-btn:hover:not(:disabled) {
+html.light .lounge-composer-post-btn:hover:not(:disabled),
+html.light button.lounge-composer-post-btn:hover:not(:disabled) {
   background-color: #3b82f6 !important;
   color: #ffffff !important;
 }
@@ -2677,16 +2680,16 @@ html.light .lounge-composer-post-text:hover:not(:disabled) {
 /* Composer media/GIF icon buttons - match Post button blue in light mode */
 html.light .lounge-media-toolbar .text-sky-400,
 html.light .lounge-media-toolbar label,
-html.light .lounge-media-toolbar button,
+html.light .lounge-media-toolbar button:not(.lounge-composer-post-btn),
 html.light [data-lounge-media-toolbar] .text-sky-400,
 html.light [data-lounge-media-toolbar] label,
-html.light [data-lounge-media-toolbar] button {
+html.light [data-lounge-media-toolbar] button:not(.lounge-composer-post-btn) {
   color: #2563eb !important;
 }
 html.light .lounge-media-toolbar label:hover,
-html.light .lounge-media-toolbar button:hover,
+html.light .lounge-media-toolbar button:not(.lounge-composer-post-btn):hover,
 html.light [data-lounge-media-toolbar] label:hover,
-html.light [data-lounge-media-toolbar] button:hover {
+html.light [data-lounge-media-toolbar] button:not(.lounge-composer-post-btn):hover {
   color: #1d4ed8 !important;
 }
 html.light .lounge-media-toolbar svg,
@@ -2698,6 +2701,29 @@ html.light [data-lounge-media-toolbar] svg rect {
   fill-opacity: 0.12 !important;
   fill: #2563eb !important;
   stroke: #2563eb !important;
+}
+
+/* Lounge composer carets & selections: light mode uses standard blue (#2563eb) */
+html.light [data-lounge-feed-composer] textarea,
+html.light [data-lounge-feed-composer] [contenteditable="true"],
+html.light [data-lounge-fullscreen-composer] textarea,
+html.light [data-lounge-post-detail] textarea,
+html.light [data-lounge-post-detail] [contenteditable="true"],
+html.light [data-lounge-thread-sheet] textarea,
+html.light [data-lounge-thread-sheet] [contenteditable="true"],
+html.light [data-lounge-quote-repost-modal] textarea,
+html.light [data-lounge-quote-repost-modal] [contenteditable="true"],
+html.light [role="textbox"][contenteditable="true"] {
+  caret-color: #2563eb !important;
+}
+
+html.light [data-lounge-feed-composer] ::selection,
+html.light [data-lounge-fullscreen-composer] ::selection,
+html.light [data-lounge-post-detail] ::selection,
+html.light [data-lounge-thread-sheet] ::selection,
+html.light [data-lounge-quote-repost-modal] ::selection,
+html.light [role="textbox"][contenteditable="true"]::selection {
+  background-color: rgba(37, 99, 235, 0.25) !important;
 }
 
 /* Logo swap: white version in dark mode, inverted (black) version in light mode */

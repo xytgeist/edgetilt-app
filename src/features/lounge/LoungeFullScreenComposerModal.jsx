@@ -635,81 +635,81 @@ export default function LoungeFullScreenComposerModal({
         >
           <div
             data-lounge-publish-modal=""
-            className="w-full max-w-lg max-h-[min(82dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            className="w-full max-w-md max-h-[min(62dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-zinc-800 bg-zinc-900 p-3.5 sm:p-4 shadow-2xl animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 pb-3.5">
+            <div className="flex shrink-0 items-center justify-between border-b border-zinc-800/80 pb-2.5">
               <div>
-                <h3 id="settings-modal-title" className="text-base sm:text-lg font-bold text-zinc-100">
-                  {modalMode === 'pre_post' ? 'Ready to Post?' : 'Post Audience & Reply Settings'}
+                <h3 id="settings-modal-title" className="text-sm sm:text-base font-bold text-zinc-100">
+                  {modalMode === 'pre_post' ? 'Ready to Post?' : 'Audience & Replies'}
                 </h3>
-                <p className="text-xs text-zinc-400">
+                <p className="text-[11px] text-zinc-400">
                   {modalMode === 'pre_post'
-                    ? 'Choose who can see and reply to your post'
-                    : 'Configure who can view and participate in this thread'}
+                    ? 'Confirm audience & reply permissions'
+                    : 'Configure post visibility and reply gating'}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSettingsModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-800 hover:text-white"
                 aria-label="Close dialog"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-4 space-y-4 overflow-y-auto min-h-0 flex-1 pr-1 overscroll-contain">
+            <div className="mt-2.5 space-y-2.5 overflow-y-auto min-h-0 flex-1 pr-0.5 overscroll-contain">
               {/* Audience Section */}
               <div>
-                <h4 className="text-[12px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                   Display to
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => handleAudienceSelect(LOUNGE_COMPOSER_AUDIENCE_ALL)}
-                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-center gap-2 rounded-xl border p-2 sm:p-2.5 text-left transition-all ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL
                         ? 'border-sky-500/60 bg-sky-500/10 text-white shadow-sm ring-1 ring-sky-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400 mt-0.5">
-                      <Globe className="h-4 w-4" />
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400">
+                      <Globe className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[14px] font-bold">Everyone</span>
+                        <span className="text-[12px] sm:text-[13px] font-bold">Everyone</span>
                         {composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL ? (
-                          <Check className="h-4 w-4 text-sky-400" />
+                          <Check className="h-3.5 w-3.5 text-sky-400 shrink-0 ml-1" />
                         ) : null}
                       </div>
-                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Public to all Lounge members</div>
+                      <div className="text-[10px] text-zinc-400 truncate">Public to all</div>
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleAudienceSelect(LOUNGE_COMPOSER_AUDIENCE_SUBS)}
-                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-center gap-2 rounded-xl border p-2 sm:p-2.5 text-left transition-all ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
                         ? 'border-amber-500/60 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 mt-0.5">
-                      <Users className="h-4 w-4" />
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
+                      <Users className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[14px] font-bold">Subscribers</span>
+                        <span className="text-[12px] sm:text-[13px] font-bold">Subscribers</span>
                         {composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS ? (
-                          <Check className="h-4 w-4 text-amber-400" />
+                          <Check className="h-3.5 w-3.5 text-amber-400 shrink-0 ml-1" />
                         ) : null}
                       </div>
-                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Full post for subs, teaser for all</div>
+                      <div className="text-[10px] text-zinc-400 truncate">Subs full, teaser all</div>
                     </div>
                   </button>
                 </div>
@@ -717,53 +717,53 @@ export default function LoungeFullScreenComposerModal({
 
               {/* Reply Gating Section */}
               <div>
-                <h4 className="text-[12px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
                   Who can reply
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => handleReplyGateSelect(false)}
-                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-center gap-2 rounded-xl border p-2 sm:p-2.5 text-left transition-all ${
                       !composerReplyGateEdgePro
                         ? 'border-sky-500/60 bg-sky-500/10 text-white shadow-sm ring-1 ring-sky-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400 mt-0.5">
-                      <Globe className="h-4 w-4" />
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400">
+                      <Globe className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[14px] font-bold">Anyone</span>
+                        <span className="text-[12px] sm:text-[13px] font-bold">Anyone</span>
                         {!composerReplyGateEdgePro ? (
-                          <Check className="h-4 w-4 text-sky-400" />
+                          <Check className="h-3.5 w-3.5 text-sky-400 shrink-0 ml-1" />
                         ) : null}
                       </div>
-                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">All members can reply</div>
+                      <div className="text-[10px] text-zinc-400 truncate">All members</div>
                     </div>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleReplyGateSelect(true)}
-                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                    className={`flex items-center gap-2 rounded-xl border p-2 sm:p-2.5 text-left transition-all ${
                       composerReplyGateEdgePro
                         ? 'border-amber-500/60 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500/30'
                         : 'border-zinc-800 bg-zinc-950/50 text-zinc-300 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 mt-0.5">
-                      <Lock className="h-4 w-4" />
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
+                      <Lock className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[14px] font-bold">Edge Pro Only</span>
+                        <span className="text-[12px] sm:text-[13px] font-bold">Edge Pro</span>
                         {composerReplyGateEdgePro ? (
-                          <Check className="h-4 w-4 text-amber-400" />
+                          <Check className="h-3.5 w-3.5 text-amber-400 shrink-0 ml-1" />
                         ) : null}
                       </div>
-                      <div className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Verified Edge Pro & staff only</div>
+                      <div className="text-[10px] text-zinc-400 truncate">Pro & staff only</div>
                     </div>
                   </button>
                 </div>
@@ -771,13 +771,13 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* Action Buttons depending on Modal Mode */}
-            <div className="shrink-0 pt-4 border-t border-zinc-800/80">
+            <div className="shrink-0 pt-2.5 sm:pt-3 border-t border-zinc-800/80 mt-2">
               {modalMode === 'pre_post' ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setSettingsModalOpen(false)}
-                    className="flex-1 rounded-2xl border border-zinc-700/80 bg-zinc-800/80 py-3 text-center text-sm font-bold text-zinc-200 transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                    className="flex-1 rounded-xl border border-zinc-700/80 bg-zinc-800/80 py-2.5 text-center text-xs sm:text-sm font-bold text-zinc-200 transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
                   >
                     Back to Edit
                   </button>
@@ -786,9 +786,9 @@ export default function LoungeFullScreenComposerModal({
                     type="button"
                     disabled={postBusy}
                     onClick={handleConfirmPublish}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-3 text-center text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-2.5 text-center text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"
                   >
-                    <Send className="h-4 w-4" />
+                    <Send className="h-3.5 w-3.5" />
                     <span>{postBusy ? 'Posting…' : 'Publish Now'}</span>
                   </button>
                 </div>
@@ -800,7 +800,7 @@ export default function LoungeFullScreenComposerModal({
                       setHasConfiguredAudience(true)
                       setSettingsModalOpen(false)
                     }}
-                    className="w-full sm:w-auto rounded-2xl bg-zinc-800 px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                    className="w-full sm:w-auto rounded-xl bg-zinc-800 px-5 py-2 text-center text-xs sm:text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
                   >
                     Done
                   </button>

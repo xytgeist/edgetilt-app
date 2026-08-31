@@ -214,7 +214,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
 
   return createPortal(
     <div
-      className="fixed left-0 right-0 z-[220] flex items-end justify-center bg-black/45 px-2"
+      className="fixed left-0 right-0 z-[260] flex items-end justify-center bg-black/45 px-2"
       role="dialog"
       aria-modal="true"
       aria-label="Choose a GIF"

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { LOUNGE_MARKET_EMBED_MAX, parseCaptionMarketWindowClient } from '../../utils/loungeMarketCaptionParse.js'
 import { loungeMarketPreview, loungeMarketSearch } from '../../utils/loungeMarketApi.js'
 import { lockStableLayoutViewportHeight } from '../../utils/stableLayoutViewport.js'
@@ -157,10 +158,10 @@ export default function LoungeMarketSymbolPickerSheet({
     }
   }, [open])
 
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
 
-  return (
-    <div className="fixed inset-0 z-[220] flex flex-col justify-end bg-black/55 backdrop-blur-[2px]" role="dialog" aria-modal="true">
+  return createPortal(
+    <div className="fixed inset-0 z-[260] flex flex-col justify-end bg-black/65 backdrop-blur-[2px]" role="dialog" aria-modal="true">
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={onClose} />
       <div className="relative z-10 flex max-h-[82vh] flex-col rounded-t-3xl border border-zinc-700/80 bg-zinc-950 shadow-2xl">
         <div className="flex items-center gap-2 border-b border-zinc-800 px-4 pb-3 pt-4">
@@ -174,7 +175,7 @@ export default function LoungeMarketSymbolPickerSheet({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-full bg-zinc-800 px-3 py-1.5 text-sm font-semibold text-zinc-200 touch-manipulation"
+            className="shrink-0 rounded-full bg-zinc-800 px-3.5 py-1.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-700 touch-manipulation"
           >
             Done
           </button>
@@ -245,6 +246,7 @@ export default function LoungeMarketSymbolPickerSheet({
           </ul>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

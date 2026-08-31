@@ -800,7 +800,7 @@ export default function LoungeFullScreenComposerModal({
                       setHasConfiguredAudience(true)
                       setSettingsModalOpen(false)
                     }}
-                    className="w-full sm:w-auto rounded-xl bg-zinc-800 px-5 py-2 text-center text-xs sm:text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                    className="w-full sm:w-auto rounded-xl bg-zinc-800 px-8 py-2.5 sm:py-3 text-center text-sm font-bold text-white shadow-sm transition-colors hover:bg-zinc-700 active:bg-zinc-600 touch-manipulation active:scale-[0.98]"
                   >
                     Done
                   </button>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, Minimize2, Sparkles, X } from 'lucide-react'
+import { Eye, Edit3, Minimize2, Sparkles } from 'lucide-react'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
@@ -16,6 +16,13 @@ import { renderLoungeMarkdown } from './loungeMarkdown.jsx'
 import LoungeEdgeProBadge from './LoungeEdgeProBadge.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge.jsx'
 import { loungeFeedAuthorHasStaffBadge } from './loungeFeedAvatar.js'
+import {
+  useLoungeKeyboardOverlapPx,
+  useLoungeIosSafeBottomPx,
+  loungeComposerFooterPaddingBottom,
+  LOUNGE_IOS,
+  LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+} from './useLoungeKeyboardOverlapPx.js'
 
 /**
  * Full-Screen Pro Composer with rich Markdown formatting & live 1:1 card preview.
@@ -97,6 +104,18 @@ export default function LoungeFullScreenComposerModal({
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
 
+  // Mobile / iOS / Android keyboard lift
+  const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
+  const { overlapPx: kbOverlapPx, targetPx: kbOverlapTargetPx } = useLoungeKeyboardOverlapPx(open, {
+    smooth: LOUNGE_IOS,
+    smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
+  })
+  const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
+  const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
+  const footerPadBottom = keyboardUp
+    ? `${Math.round(kbFooterLiftPx + 6)}px`
+    : loungeComposerFooterPaddingBottom(0, Math.max(16, iosSafeBottomPx + 8))
+
   useEffect(() => {
     if (!open) return
     setActiveTab('write')
@@ -132,54 +151,54 @@ export default function LoungeFullScreenComposerModal({
       aria-modal="true"
       aria-labelledby="pro-composer-title"
       data-lounge-fullscreen-composer=""
-      className="fixed inset-0 z-[220] flex flex-col bg-zinc-950 text-zinc-100 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[220] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-950 text-zinc-100 animate-in fade-in duration-150"
     >
       {/* ── Top Bar ── */}
-      <header className="flex shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-3 py-2.5 backdrop-blur-md sm:px-5">
-        <div className="flex items-center gap-2">
+      <header className="flex shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-900/95 px-3.5 py-3 backdrop-blur-md sm:px-6 sm:py-3.5">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation active:scale-95"
             title="Minimize to inline composer"
             aria-label="Minimize composer"
           >
             <Minimize2 className="h-5 w-5" />
           </button>
 
-          <h2 id="pro-composer-title" className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-zinc-200">
+          <h2 id="pro-composer-title" className="hidden sm:inline-flex items-center gap-2 text-[15px] font-bold text-zinc-200">
             <span>Pro Composer</span>
-            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40">
+            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40">
               MARKDOWN
             </span>
           </h2>
         </div>
 
         {/* ── Write vs Preview Toggle ── */}
-        <div className="flex items-center rounded-xl bg-zinc-950 p-1 ring-1 ring-zinc-800">
+        <div className="flex items-center rounded-2xl bg-zinc-950 p-1 ring-1 ring-zinc-800">
           <button
             type="button"
             onClick={() => setActiveTab('write')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all touch-manipulation ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold transition-all touch-manipulation ${
               activeTab === 'write'
                 ? 'bg-zinc-800 text-white shadow-sm'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Edit3 className="h-3.5 w-3.5" />
+            <Edit3 className="h-4 w-4" />
             <span>Write</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('preview')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all touch-manipulation ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold transition-all touch-manipulation ${
               activeTab === 'preview'
                 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-sm'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
             <span>Preview</span>
           </button>
         </div>
@@ -195,7 +214,7 @@ export default function LoungeFullScreenComposerModal({
               onSubmit()
               onClose()
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 py-1.5 text-xs font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 touch-manipulation"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 px-5 py-2 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 touch-manipulation"
           >
             <span>{postBusy ? 'Posting…' : 'Post'}</span>
           </button>
@@ -203,32 +222,35 @@ export default function LoungeFullScreenComposerModal({
       </header>
 
       {/* ── Main Content Area ── */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 sm:px-6">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
-          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-3">
-            {/* ── Metadata Selectors (Category, Audience, Gating) ── */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                {composerFanMonetizationLive ? (
-                  <LoungeComposerAudiencePill
-                    value={composerAudience}
-                    onChange={onAudienceChange}
-                    disabled={postBusy}
-                  />
-                ) : null}
-
-                <LoungePostCategoryPillPicker
-                  value={composerCategoryPills}
-                  onChange={onCategoryPillsChange}
+          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-3.5">
+            {/* ── Row 1: Audience Dropdown (left) + Everyone can reply Dropdown (right) ── */}
+            <div className="flex w-full items-center justify-between gap-3 border-b border-zinc-800/80 pb-2.5">
+              <div className="min-w-0">
+                <LoungeComposerAudiencePill
+                  value={composerAudience}
+                  onChange={onAudienceChange}
                   disabled={postBusy}
-                  className="!mb-0"
                 />
               </div>
 
-              <LoungeComposerReplyGatePill
-                value={composerReplyGateEdgePro}
-                onChange={onReplyGateChange}
+              <div className="min-w-0">
+                <LoungeComposerReplyGatePill
+                  value={composerReplyGateEdgePro}
+                  onChange={onReplyGateChange}
+                  disabled={postBusy}
+                />
+              </div>
+            </div>
+
+            {/* ── Row 2: Category Pills ── */}
+            <div className="w-full">
+              <LoungePostCategoryPillPicker
+                value={composerCategoryPills}
+                onChange={onCategoryPillsChange}
                 disabled={postBusy}
+                className="!mb-0"
               />
             </div>
 
@@ -241,16 +263,16 @@ export default function LoungeFullScreenComposerModal({
             />
 
             {/* ── Textarea with Mention/Cashtag Support ── */}
-            <div ref={anchorRef} className="relative flex-1 flex flex-col min-h-[12rem]">
+            <div ref={anchorRef} className="relative flex min-h-[16rem] sm:min-h-[22rem] flex-1 flex-col">
               <LoungeRichComposerField
                 ref={textareaRef}
                 variant="feed"
                 value={postText}
                 onChange={onTextChange}
                 maxLength={captionMax}
-                placeholder="What's happening? Format with **bold**, *italic*, `code`, quotes, and lists..."
+                placeholder="What's on your mind? Format with **bold**, *italic*, `code`, quotes, and lists..."
                 ariaLabel="Full screen post caption"
-                className="flex-1 w-full resize-none rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3 text-base leading-relaxed text-zinc-100 placeholder-zinc-500 outline-none focus:border-cyan-500/50"
+                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500/50"
                 onKeyDown={(e) => {
                   if (cashtagComposer?.onCashtagKeyDown(e, onTextChange, textareaRef.current)) return
                   mentionComposer?.onMentionKeyDown(e, onTextChange, textareaRef.current)
@@ -343,18 +365,18 @@ export default function LoungeFullScreenComposerModal({
         ) : (
           /* ── 1:1 Live Preview Card ── */
           <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-start pt-2">
-            <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-zinc-400">
-              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+              <Sparkles className="h-4 w-4 text-amber-400" />
               <span>Live Post Preview</span>
             </div>
 
             <article
               data-lounge-preview-card=""
-              className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 shadow-xl"
+              className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 shadow-xl"
             >
               {/* Author Header */}
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-zinc-800">
+              <div className="flex items-center gap-3.5">
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-zinc-800">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -366,7 +388,7 @@ export default function LoungeFullScreenComposerModal({
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-[15px] font-bold text-zinc-100">{displayName}</span>
+                    <span className="truncate text-[16px] font-bold text-zinc-100">{displayName}</span>
                     {isStaffBadge ? <LoungeStaffRoleBadge role={role} size="feed" /> : null}
                     <LoungeEdgeProBadge isEdgePro={isEdgePro || isStaff} size="feed" />
                   </div>
@@ -374,14 +396,14 @@ export default function LoungeFullScreenComposerModal({
                 </div>
 
                 {composerReplyGateEdgePro ? (
-                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-400">
                     Pro replies only
                   </span>
                 ) : null}
               </div>
 
               {/* Rendered Markdown Body */}
-              <div className="mt-3 text-[15px] leading-relaxed text-zinc-200">
+              <div className="mt-3.5 text-[16px] sm:text-[17px] leading-relaxed text-zinc-200">
                 {postText?.trim() ? (
                   renderLoungeMarkdown(postText)
                 ) : (
@@ -394,17 +416,17 @@ export default function LoungeFullScreenComposerModal({
                 <LoungeImageCarousel
                   urls={carouselUrls}
                   variant="feed"
-                  firstMarginTopClass="mt-3"
+                  firstMarginTopClass="mt-3.5"
                   regionAriaLabel="Post images preview"
                 />
               ) : null}
 
               {composerVideoSlot?.preview ? (
-                <div className="mt-3 overflow-hidden rounded-xl border border-zinc-800 bg-black">
+                <div className="mt-3.5 overflow-hidden rounded-xl border border-zinc-800 bg-black">
                   <video
                     src={composerVideoSlot.preview}
                     poster={composerVideoSlot.posterUrl || undefined}
-                    className="max-h-72 w-full object-contain"
+                    className="max-h-80 w-full object-contain"
                     controls
                     playsInline
                   />
@@ -419,17 +441,20 @@ export default function LoungeFullScreenComposerModal({
               </div>
             </article>
 
-            <p className="mt-3 text-center text-xs text-zinc-500">
+            <p className="mt-3.5 text-center text-xs text-zinc-500">
               This card is a 1:1 preview of how your post with rich Markdown will render in the Lounge feed.
             </p>
           </div>
         )}
       </div>
 
-      {/* ── Bottom Bar (Media Controls in Write mode) ── */}
+      {/* ── Bottom Bar (Taller, Keyboard-Docked with Safe Area) ── */}
       {activeTab === 'write' ? (
-        <footer className="shrink-0 border-t border-zinc-800 bg-zinc-900/90 px-3 py-2 sm:px-5">
-          <div className="mx-auto flex max-w-3xl items-center justify-between">
+        <footer
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-4 pt-3 backdrop-blur-md sm:px-6 sm:pt-3.5"
+          style={{ paddingBottom: footerPadBottom }}
+        >
+          <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[3rem]">
             <LoungeComposerMediaToolbar
               variant="feed"
               imageInputId={imageInputId}
@@ -440,7 +465,7 @@ export default function LoungeFullScreenComposerModal({
               onOpenMarketPicker={onOpenMarketPicker}
             />
 
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs font-medium text-zinc-400">
               {isEdgePro || isStaff ? '✨ Markdown Enabled' : 'Upgrade to Edge Pro to unlock Markdown'}
             </div>
           </div>

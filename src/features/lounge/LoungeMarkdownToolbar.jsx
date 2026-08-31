@@ -93,15 +93,18 @@ export default function LoungeMarkdownToolbar({
     [isEdgePro, onTextChange, onUpgradeClick, textareaRef],
   )
 
+  const btnClass =
+    'flex h-9 min-w-[2.25rem] sm:h-10 sm:min-w-[2.5rem] items-center justify-center rounded-xl px-2 sm:px-2.5 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation'
+
   return (
     <div
       data-lounge-markdown-toolbar=""
-      className={`flex flex-wrap items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950/80 p-1 backdrop-blur-sm ${className}`}
+      className={`flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 p-1.5 backdrop-blur-md ${className}`}
     >
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '**', suffix: '**', defaultText: 'bold text' })}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-black text-zinc-200 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation"
+        className={`${btnClass} text-[15px] sm:text-[16px] font-black text-zinc-200`}
         title="Bold (**text**)"
         aria-label="Bold"
       >
@@ -111,7 +114,7 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '*', suffix: '*', defaultText: 'italic text' })}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[13px] italic font-serif text-zinc-200 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation"
+        className={`${btnClass} text-[15px] sm:text-[16px] italic font-serif text-zinc-200`}
         title="Italic (*text*)"
         aria-label="Italic"
       >
@@ -121,19 +124,19 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '~~', suffix: '~~', defaultText: 'strikethrough' })}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-bold text-zinc-200 line-through transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation"
+        className={`${btnClass} text-[15px] sm:text-[16px] font-bold text-zinc-200 line-through`}
         title="Strikethrough (~~text~~)"
         aria-label="Strikethrough"
       >
         <span>S</span>
       </button>
 
-      <div className="mx-0.5 h-4 w-px bg-zinc-800" role="presentation" aria-hidden />
+      <div className="mx-0.5 h-5 w-px bg-zinc-800" role="presentation" aria-hidden />
 
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '`', suffix: '`', defaultText: 'code' })}
-        className="flex h-8 px-2 items-center justify-center rounded-lg font-mono text-[11px] font-semibold text-cyan-400 transition-colors hover:bg-zinc-800 hover:text-cyan-300 active:scale-95 touch-manipulation"
+        className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-semibold text-cyan-400 hover:text-cyan-300`}
         title="Inline Code (`code`)"
         aria-label="Inline Code"
       >
@@ -143,19 +146,19 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '```', suffix: '```', defaultText: 'code block', mode: 'block' })}
-        className="flex h-8 px-2 items-center justify-center rounded-lg font-mono text-[10px] font-semibold text-cyan-400 transition-colors hover:bg-zinc-800 hover:text-cyan-300 active:scale-95 touch-manipulation"
+        className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-semibold text-cyan-400 hover:text-cyan-300`}
         title="Code Block (```code```)"
         aria-label="Code Block"
       >
         <span>{'{ }'}</span>
       </button>
 
-      <div className="mx-0.5 h-4 w-px bg-zinc-800" role="presentation" aria-hidden />
+      <div className="mx-0.5 h-5 w-px bg-zinc-800" role="presentation" aria-hidden />
 
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '> ', defaultText: 'quote', mode: 'linePrefix' })}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[14px] font-serif text-amber-400 transition-colors hover:bg-zinc-800 hover:text-amber-300 active:scale-95 touch-manipulation"
+        className={`${btnClass} text-[18px] sm:text-[19px] font-serif text-amber-400 hover:text-amber-300`}
         title="Blockquote (> quote)"
         aria-label="Blockquote"
       >
@@ -165,7 +168,7 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '- ', defaultText: 'item', mode: 'linePrefix' })}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-[14px] text-zinc-200 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation"
+        className={`${btnClass} text-[18px] sm:text-[19px] text-zinc-200`}
         title="Bulleted List (- item)"
         aria-label="Bulleted List"
       >
@@ -175,7 +178,7 @@ export default function LoungeMarkdownToolbar({
       <button
         type="button"
         onClick={() => handleFormat({ prefix: '1. ', defaultText: 'item', mode: 'linePrefix' })}
-        className="flex h-8 px-1.5 items-center justify-center rounded-lg font-mono text-[11px] font-bold text-zinc-200 transition-colors hover:bg-zinc-800 hover:text-white active:scale-95 touch-manipulation"
+        className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-bold text-zinc-200`}
         title="Numbered List (1. item)"
         aria-label="Numbered List"
       >
@@ -186,7 +189,7 @@ export default function LoungeMarkdownToolbar({
         <button
           type="button"
           onClick={onUpgradeClick}
-          className="ml-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 hover:brightness-110 active:scale-95 touch-manipulation"
+          className="ml-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 hover:brightness-110 active:scale-95 touch-manipulation"
         >
           <span>PRO</span>
         </button>

@@ -47,7 +47,7 @@ export function applyMarkdownFormatting(textarea, { prefix, suffix = '', default
     nextStart = start + prefix.length + 2
     nextEnd = nextStart + content.length
   } else {
-    // Inline wrap
+    // Inline wrap: selects the inner text between prefix and suffix
     const content = selected || defaultText
     const wrapped = `${prefix}${content}${suffix}`
     nextVal = val.slice(0, start) + wrapped + val.slice(end)
@@ -55,13 +55,27 @@ export function applyMarkdownFormatting(textarea, { prefix, suffix = '', default
     nextEnd = nextStart + content.length
   }
 
-  onUpdate(nextVal)
-
-  // Restore cursor and focus
-  requestAnimationFrame(() => {
-    textarea.focus()
+  // Update DOM directly and focus/select immediately
+  textarea.value = nextVal
+  textarea.focus()
+  if (typeof textarea.setSelectionRange === 'function') {
     textarea.setSelectionRange(nextStart, nextEnd)
-  })
+  }
+
+  onUpdate?.(nextVal)
+
+  // Re-assert selection range across next tick in case React controlled re-render adjusts it
+  const preserveSelection = () => {
+    if (textarea) {
+      textarea.focus()
+      if (typeof textarea.setSelectionRange === 'function') {
+        textarea.setSelectionRange(nextStart, nextEnd)
+      }
+    }
+  }
+  requestAnimationFrame(preserveSelection)
+  setTimeout(preserveSelection, 0)
+  setTimeout(preserveSelection, 40)
 }
 
 /**
@@ -103,6 +117,7 @@ export default function LoungeMarkdownToolbar({
     >
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '**', suffix: '**', defaultText: 'bold text' })}
         className={`${btnClass} text-[15px] sm:text-[16px] font-black text-zinc-200`}
         title="Bold (**text**)"
@@ -113,6 +128,7 @@ export default function LoungeMarkdownToolbar({
 
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '*', suffix: '*', defaultText: 'italic text' })}
         className={`${btnClass} text-[15px] sm:text-[16px] italic font-serif text-zinc-200`}
         title="Italic (*text*)"
@@ -123,6 +139,7 @@ export default function LoungeMarkdownToolbar({
 
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '~~', suffix: '~~', defaultText: 'strikethrough' })}
         className={`${btnClass} text-[15px] sm:text-[16px] font-bold text-zinc-200 line-through`}
         title="Strikethrough (~~text~~)"
@@ -135,6 +152,7 @@ export default function LoungeMarkdownToolbar({
 
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '`', suffix: '`', defaultText: 'code' })}
         className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-semibold text-cyan-400 hover:text-cyan-300`}
         title="Inline Code (`code`)"
@@ -145,6 +163,7 @@ export default function LoungeMarkdownToolbar({
 
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '```', suffix: '```', defaultText: 'code block', mode: 'block' })}
         className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-semibold text-cyan-400 hover:text-cyan-300`}
         title="Code Block (```code```)"
@@ -157,6 +176,7 @@ export default function LoungeMarkdownToolbar({
 
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '> ', defaultText: 'quote', mode: 'linePrefix' })}
         className={`${btnClass} text-[18px] sm:text-[19px] font-serif text-amber-400 hover:text-amber-300`}
         title="Blockquote (> quote)"
@@ -167,6 +187,7 @@ export default function LoungeMarkdownToolbar({
 
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '- ', defaultText: 'item', mode: 'linePrefix' })}
         className={`${btnClass} text-[18px] sm:text-[19px] text-zinc-200`}
         title="Bulleted List (- item)"
@@ -177,6 +198,7 @@ export default function LoungeMarkdownToolbar({
 
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => handleFormat({ prefix: '1. ', defaultText: 'item', mode: 'linePrefix' })}
         className={`${btnClass} font-mono text-[13px] sm:text-[14px] font-bold text-zinc-200`}
         title="Numbered List (1. item)"
@@ -188,6 +210,7 @@ export default function LoungeMarkdownToolbar({
       {!isEdgePro ? (
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={onUpgradeClick}
           className="ml-auto inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40 hover:brightness-110 active:scale-95 touch-manipulation"
         >

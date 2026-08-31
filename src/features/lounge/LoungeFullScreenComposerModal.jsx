@@ -112,10 +112,23 @@ export default function LoungeFullScreenComposerModal({
   const [modalMode, setModalMode] = useState('settings') // 'settings' | 'pre_post'
   const [hasConfiguredAudience, setHasConfiguredAudience] = useState(false)
   const [tribeMaxAlertOpen, setTribeMaxAlertOpen] = useState(false)
+  const [localText, setLocalText] = useState(() => postText || '')
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const toolbarContainerRef = useRef(null)
+
+  useEffect(() => {
+    setLocalText(postText || '')
+  }, [postText])
+
+  const handleTextChange = useCallback(
+    (val) => {
+      setLocalText(val)
+      onTextChange?.(val)
+    },
+    [onTextChange],
+  )
 
   // Mobile / iOS / Android keyboard lift
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
@@ -148,8 +161,8 @@ export default function LoungeFullScreenComposerModal({
     setHasConfiguredAudience(false)
     setTribeMaxAlertOpen(false)
 
-    // Focus composer textarea so cursor appears immediately
-    const t = setTimeout(() => {
+    // Focus composer textarea immediately when opening
+    const focusEl = () => {
       if (textareaRef.current) {
         const el = textareaRef.current
         el.focus()
@@ -158,13 +171,16 @@ export default function LoungeFullScreenComposerModal({
           el.setSelectionRange(end, end)
         }
       }
-    }, 60)
+    }
+    focusEl()
+    requestAnimationFrame(focusEl)
+    const t = setTimeout(focusEl, 30)
     return () => clearTimeout(t)
   }, [open])
 
   useEffect(() => {
     if (open && activeTab === 'write') {
-      const t = setTimeout(() => {
+      const focusEl = () => {
         if (textareaRef.current) {
           const el = textareaRef.current
           el.focus()
@@ -173,7 +189,10 @@ export default function LoungeFullScreenComposerModal({
             el.setSelectionRange(end, end)
           }
         }
-      }, 60)
+      }
+      focusEl()
+      requestAnimationFrame(focusEl)
+      const t = setTimeout(focusEl, 30)
       return () => clearTimeout(t)
     }
   }, [open, activeTab])
@@ -189,10 +208,10 @@ export default function LoungeFullScreenComposerModal({
 
   if (!open || typeof document === 'undefined') return null
 
-  const len = (postText || '').length
+  const len = (localText || '').length
   const isOverLimit = len > captionMax
   const hasContent =
-    Boolean(postText?.trim()) ||
+    Boolean(localText?.trim()) ||
     composerImageItems.length > 0 ||
     Boolean(composerVideoSlot?.preview) ||
     Boolean(composerMediaUrl)
@@ -380,7 +399,7 @@ export default function LoungeFullScreenComposerModal({
             <div ref={toolbarContainerRef} className="w-full">
               <LoungeMarkdownToolbar
                 textareaRef={textareaRef}
-                onTextChange={onTextChange}
+                onTextChange={handleTextChange}
                 isEdgePro={isEdgePro || isStaff}
                 onUpgradeClick={onUpgradeClick}
               />
@@ -395,22 +414,23 @@ export default function LoungeFullScreenComposerModal({
               <textarea
                 ref={textareaRef}
                 id="pro-composer-textarea"
+                autoFocus
                 rows={8}
-                value={postText}
-                onChange={(e) => onTextChange(e.target.value)}
+                value={localText}
+                onChange={(e) => handleTextChange(e.target.value)}
                 disabled={postBusy}
                 maxLength={captionMax}
                 spellCheck
                 aria-label="Full screen post caption"
                 placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
-                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500/50 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
+                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
                   if (keyboardUp) scrollToToolbar()
                   else setTimeout(scrollToToolbar, 250)
                 }}
                 onKeyDown={(e) => {
-                  if (cashtagComposer?.onCashtagKeyDown(e, onTextChange, textareaRef.current)) return
-                  mentionComposer?.onMentionKeyDown(e, onTextChange, textareaRef.current)
+                  if (cashtagComposer?.onCashtagKeyDown(e, handleTextChange, textareaRef.current)) return
+                  mentionComposer?.onMentionKeyDown(e, handleTextChange, textareaRef.current)
                 }}
                 onMouseUp={(e) => {
                   cashtagComposer?.onCursorMove(e)
@@ -429,7 +449,7 @@ export default function LoungeFullScreenComposerModal({
                   suggestions={cashtagComposer.suggestions}
                   activeIndex={cashtagComposer.activeIndex}
                   loading={cashtagComposer.loading}
-                  onSelect={(row) => cashtagComposer.onCashtagSelect(row, onTextChange, textareaRef.current)}
+                  onSelect={(row) => cashtagComposer.onCashtagSelect(row, handleTextChange, textareaRef.current)}
                   anchorRef={anchorRef}
                   caretFieldRef={textareaRef}
                 />
@@ -440,7 +460,7 @@ export default function LoungeFullScreenComposerModal({
                   suggestions={mentionComposer.suggestions}
                   activeIndex={mentionComposer.activeIndex}
                   loading={mentionComposer.loading}
-                  onSelect={(p) => mentionComposer.onMentionSelect(p, onTextChange, textareaRef.current)}
+                  onSelect={(p) => mentionComposer.onMentionSelect(p, handleTextChange, textareaRef.current)}
                   anchorRef={anchorRef}
                   caretFieldRef={textareaRef}
                 />
@@ -539,8 +559,8 @@ export default function LoungeFullScreenComposerModal({
 
               {/* Rendered Markdown Body */}
               <div className="mt-3.5 text-[16px] sm:text-[17px] leading-relaxed text-zinc-200">
-                {postText?.trim() ? (
-                  renderLoungeMarkdown(postText)
+                {localText?.trim() ? (
+                  renderLoungeMarkdown(localText)
                 ) : (
                   <span className="italic text-zinc-600">No caption written yet...</span>
                 )}

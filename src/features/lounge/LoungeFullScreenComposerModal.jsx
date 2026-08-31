@@ -7,7 +7,6 @@ import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
 import LoungeComposerMarketChartStrip from './LoungeComposerMarketChartStrip.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
 import LoungeMarkdownToolbar from './LoungeMarkdownToolbar.jsx'
-import LoungeRichComposerField from './LoungeRichComposerField.jsx'
 import LoungeCashtagDropdown from './LoungeCashtagDropdown.jsx'
 import LoungeMentionDropdown from './LoungeMentionDropdown.jsx'
 import { renderLoungeMarkdown } from './loungeMarkdown.jsx'
@@ -387,22 +386,24 @@ export default function LoungeFullScreenComposerModal({
               />
             </div>
 
-            {/* ── Textarea with Mention/Cashtag Support ── */}
+            {/* ── Native Textarea with Mention/Cashtag Support ── */}
             <div
               ref={anchorRef}
               onClick={() => textareaRef.current?.focus()}
               className="relative flex min-h-[16rem] sm:min-h-[22rem] flex-1 flex-col cursor-text"
             >
-              <LoungeRichComposerField
+              <textarea
                 ref={textareaRef}
-                variant="fullscreen"
+                id="pro-composer-textarea"
+                rows={8}
                 value={postText}
-                onChange={onTextChange}
+                onChange={(e) => onTextChange(e.target.value)}
                 disabled={postBusy}
                 maxLength={captionMax}
+                spellCheck
+                aria-label="Full screen post caption"
                 placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
-                ariaLabel="Full screen post caption"
-                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500/50"
+                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500/50 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
                   if (keyboardUp) scrollToToolbar()
                   else setTimeout(scrollToToolbar, 250)

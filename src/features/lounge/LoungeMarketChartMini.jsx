@@ -379,7 +379,7 @@ export default function LoungeMarketChartMini({
         e.stopPropagation()
         onOpen?.()
       }}
-      className={`relative flex ${cardHeightClass} min-w-0 shrink-0 snap-start flex-col justify-center gap-0.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 ${showRange ? 'pb-0 pt-1.5' : 'py-1.5'} text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
+      className={`relative flex ${cardHeightClass} w-full min-w-0 flex-col justify-center gap-0.5 overflow-hidden rounded-2xl border bg-gradient-to-br from-zinc-900/95 via-zinc-950 to-zinc-900/90 px-3 ${showRange ? 'pb-0 pt-1.5' : 'py-1.5'} text-left [touch-action:pan-x_pan-y] cursor-pointer active:opacity-90 [-webkit-tap-highlight-color:transparent] ${MINI_CARD_BORDER_CLASS} ${className}`}
       data-lounge-market-chart-mini
       data-asset-class={assetClass}
       data-wide-name={wideName ? '1' : '0'}

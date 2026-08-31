@@ -38,7 +38,7 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
       <div
         className={
           multi
-            ? 'overflow-x-auto overscroll-x-contain snap-x snap-mandatory [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
+            ? 'w-full max-w-full overflow-x-auto overscroll-x-contain snap-x snap-mandatory [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'
             : 'w-full'
         }
       >
@@ -46,14 +46,22 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
           {embeds.map((embed) => {
             const key = marketEmbedCacheKey(embed)
             return (
-              <LoungeMarketChartMini
+              <div
                 key={`${embed.symbol}-${embed.window_key}-${embed.kind}`}
-                embed={embed}
-                rollingLive={embed.kind === 'rolling' ? quotes[key] : null}
-                compareMode={multi}
-                onOpen={() => onOpenChart?.(embed, embeds)}
-                className={multi ? LOUNGE_FEED_MARKET_MINI_SNAP_SLIDE_CLASS : LOUNGE_FEED_MARKET_MINI_SINGLE_CLASS}
-              />
+                className={
+                  multi
+                    ? 'relative w-full min-w-full max-w-full shrink-0 snap-start'
+                    : 'relative w-full max-w-full'
+                }
+              >
+                <LoungeMarketChartMini
+                  embed={embed}
+                  rollingLive={embed.kind === 'rolling' ? quotes[key] : null}
+                  compareMode={multi}
+                  onOpen={() => onOpenChart?.(embed, embeds)}
+                  className="w-full max-w-full"
+                />
+              </div>
             )
           })}
         </div>

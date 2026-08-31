@@ -495,7 +495,7 @@ export default function LoungeFullScreenComposerModal({
                   activeIndex={cashtagComposer.activeIndex}
                   loading={cashtagComposer.loading}
                   onSelect={(row) => cashtagComposer.onCashtagSelect(row, handleTextChange, textareaRef.current)}
-                  anchorRef={anchorRef}
+                  anchorRef={textareaRef}
                   caretFieldRef={textareaRef}
                 />
               ) : null}
@@ -506,7 +506,7 @@ export default function LoungeFullScreenComposerModal({
                   activeIndex={mentionComposer.activeIndex}
                   loading={mentionComposer.loading}
                   onSelect={(p) => mentionComposer.onMentionSelect(p, handleTextChange, textareaRef.current)}
-                  anchorRef={anchorRef}
+                  anchorRef={textareaRef}
                   caretFieldRef={textareaRef}
                 />
               ) : null}

@@ -12,10 +12,7 @@ const MIN_DROPDOWN_WIDTH_PX = 300
 /** Keep dropdown fully on-screen: cap height to viewport band + scroll list body. */
 function measureCashtagDropdownPos(anchorEl, caretFieldEl) {
   const anchor = anchorEl.getBoundingClientRect()
-  const caret =
-    caretFieldEl && isRichComposerElement(caretFieldEl)
-      ? getComposerCaretClientRect(caretFieldEl)
-      : null
+  const caret = caretFieldEl ? getComposerCaretClientRect(caretFieldEl) : null
 
   const anchorTop = caret ? caret.bottom : anchor.bottom
   const flipTop = caret ? caret.top : anchor.top

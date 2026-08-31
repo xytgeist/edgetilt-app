@@ -541,9 +541,118 @@ export function insertComposerLineBreakAtSelection(root) {
   return true
 }
 
-/** Client rect for the current selection caret inside a composer root. */
+const TEXTAREA_CARET_STYLE_PROPERTIES = [
+  'direction',
+  'boxSizing',
+  'width',
+  'height',
+  'overflowX',
+  'overflowY',
+  'borderTopWidth',
+  'borderRightWidth',
+  'borderBottomWidth',
+  'borderLeftWidth',
+  'borderStyle',
+  'paddingTop',
+  'paddingRight',
+  'paddingBottom',
+  'paddingLeft',
+  'fontStyle',
+  'fontVariant',
+  'fontWeight',
+  'fontStretch',
+  'fontSize',
+  'fontSizeAdjust',
+  'lineHeight',
+  'fontFamily',
+  'textAlign',
+  'textTransform',
+  'textIndent',
+  'textDecoration',
+  'letterSpacing',
+  'wordSpacing',
+  'tabSize',
+  'MozTabSize',
+  'whiteSpace',
+  'wordBreak',
+  'wordWrap',
+  'overflowWrap',
+]
+
+/**
+ * Computes caret bounding client rect for `<textarea>` or `<input>` using an offscreen mirror element.
+ */
+export function getTextareaCaretClientRect(el) {
+  if (!el || typeof window === 'undefined' || typeof document === 'undefined') return null
+  const pos = typeof el.selectionStart === 'number' ? el.selectionStart : (el.value?.length ?? 0)
+  const isInput = el.tagName === 'INPUT'
+
+  const div = document.createElement('div')
+  div.setAttribute('data-textarea-caret-mirror', 'true')
+  document.body.appendChild(div)
+
+  const style = div.style
+  const computed = window.getComputedStyle(el)
+
+  style.whiteSpace = isInput ? 'nowrap' : 'pre-wrap'
+  if (!isInput) style.wordWrap = 'break-word'
+
+  style.position = 'fixed'
+  style.visibility = 'hidden'
+  style.top = '0px'
+  style.left = '-9999px'
+  style.pointerEvents = 'none'
+
+  for (const prop of TEXTAREA_CARET_STYLE_PROPERTIES) {
+    style[prop] = computed[prop]
+  }
+
+  if (computed.overflowY === 'scroll' || (computed.overflowY === 'auto' && el.scrollHeight > el.clientHeight)) {
+    style.overflowY = 'scroll'
+  } else {
+    style.overflow = 'hidden'
+  }
+
+  div.textContent = (el.value ?? '').substring(0, pos)
+  if (isInput) {
+    div.textContent = div.textContent.replace(/\s/g, '\u00a0')
+  }
+
+  const span = document.createElement('span')
+  span.textContent = (el.value ?? '').substring(pos) || '.'
+  div.appendChild(span)
+
+  const elRect = el.getBoundingClientRect()
+  const mirrorRect = div.getBoundingClientRect()
+  const spanRect = span.getBoundingClientRect()
+
+  const borderLeft = parseFloat(computed.borderLeftWidth) || 0
+  const borderTop = parseFloat(computed.borderTopWidth) || 0
+  const lineHeight = parseFloat(computed.lineHeight) || parseFloat(computed.fontSize) * 1.25 || 20
+
+  const spanRelativeTop = spanRect.top - mirrorRect.top
+  const spanRelativeLeft = spanRect.left - mirrorRect.left
+
+  const top = elRect.top + borderTop + spanRelativeTop - el.scrollTop
+  const left = elRect.left + borderLeft + spanRelativeLeft - el.scrollLeft
+  const height = spanRect.height || lineHeight
+
+  document.body.removeChild(div)
+
+  return {
+    top,
+    bottom: top + height,
+    left,
+    right: left + (spanRect.width || 0),
+  }
+}
+
+/** Client rect for the current selection caret inside a composer root or textarea/input. */
 export function getComposerCaretClientRect(root) {
   if (!root || typeof window === 'undefined') return null
+  if (root.tagName === 'TEXTAREA' || root.tagName === 'INPUT') {
+    return getTextareaCaretClientRect(root)
+  }
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || !sel.anchorNode || !root.contains(sel.anchorNode)) return null
 

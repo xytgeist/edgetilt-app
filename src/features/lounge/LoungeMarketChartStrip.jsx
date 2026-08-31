@@ -42,7 +42,7 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
             : 'w-full'
         }
       >
-        <div className={multi ? 'flex w-max min-w-full gap-2 pr-1' : 'w-full'}>
+        <div className={multi ? 'flex w-full min-w-full gap-2' : 'w-full'}>
           {embeds.map((embed) => {
             const key = marketEmbedCacheKey(embed)
             return (

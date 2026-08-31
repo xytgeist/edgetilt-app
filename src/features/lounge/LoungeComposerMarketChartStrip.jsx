@@ -41,23 +41,30 @@ export default function LoungeComposerMarketChartStrip({
             : undefined
         }
       >
-        <div className={multi ? 'flex w-max min-w-full gap-2 pr-1' : undefined}>
+        <div className={multi ? 'flex w-full min-w-full gap-2' : undefined}>
           {list.map((row) => {
             const key = marketSymbolDedupeKey(row)
             const embed = composerMarketRowEmbed(row)
             const ticker = String(row?.display_symbol || row?.symbol || '').trim().toUpperCase()
 
             return (
-              <div key={key} className="relative shrink-0 snap-start">
+              <div
+                key={key}
+                className={
+                  multi
+                    ? 'relative w-full min-w-full max-w-full shrink-0 snap-start'
+                    : 'relative w-full max-w-full shrink-0'
+                }
+              >
                 {embed ? (
                   <LoungeMarketChartMini
                     embed={embed}
-                    className={miniWidthClass}
+                    className="w-full max-w-full"
                     onOpen={() => onOpenChart?.(embed, embeds)}
                   />
                 ) : (
                   <div
-                    className={`flex h-[3.5rem] items-center gap-2 rounded-2xl border border-zinc-700/60 bg-zinc-900/80 px-2.5 py-0.5 ${miniWidthClass}`}
+                    className="flex h-[3.5rem] w-full max-w-full items-center gap-2 rounded-2xl border border-zinc-700/60 bg-zinc-900/80 px-2.5 py-0.5"
                     aria-busy="true"
                   >
                     <div className="h-7 w-7 shrink-0 animate-pulse rounded-full bg-zinc-800" />

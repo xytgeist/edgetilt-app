@@ -10,6 +10,7 @@ import {
   List,
   ListOrdered,
   Code,
+  SquareCode,
   EyeOff,
   Minus,
 } from 'lucide-react'
@@ -327,6 +328,18 @@ export default function LoungeMarkdownToolbar({
         aria-label="Inline Code"
       >
         <Code className="h-4 w-4" />
+      </button>
+
+      {/* ── Code Block ── */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => handleFormat({ prefix: '```', suffix: '```', defaultText: 'code block', mode: 'block' })}
+        className={`${btnClass} text-cyan-400 hover:text-cyan-300`}
+        title="Code Block (```block```)"
+        aria-label="Code Block"
+      >
+        <SquareCode className="h-4 w-4" />
       </button>
 
       {/* ── Spoiler ── */}

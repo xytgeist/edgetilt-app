@@ -2328,6 +2328,10 @@ export default function SocialFeed({
   )
 
   const openFullScreenComposer = useCallback(() => {
+    if (!isViewerEdgePro) {
+      onOpenBillingManage?.()
+      return
+    }
     try {
       composerFieldRef.current?.blur?.()
       if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
@@ -2337,7 +2341,7 @@ export default function SocialFeed({
       // ignore
     }
     setFullScreenComposerOpen(true)
-  }, [])
+  }, [isViewerEdgePro, onOpenBillingManage])
 
   const openMarketChartModal = useCallback(({ embed, embeds }) => {
     if (loungeReadOnly) {
@@ -16693,20 +16697,22 @@ export default function SocialFeed({
                   />
                 </svg>
                 </button>
-                <button
-                  type="button"
-                  onClick={openFullScreenComposer}
-                  className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-amber-400 hover:text-amber-300 active:text-amber-200 [-webkit-tap-highlight-color:transparent]"
-                  title="Full-screen Pro composer & Markdown"
-                  aria-label="Full-screen Pro composer"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <polyline points="15 3 21 3 21 9" />
-                    <polyline points="9 21 3 21 3 15" />
-                    <line x1="21" y1="3" x2="14" y2="10" />
-                    <line x1="3" y1="21" x2="10" y2="14" />
-                  </svg>
-                </button>
+                {isViewerEdgePro ? (
+                  <button
+                    type="button"
+                    onClick={openFullScreenComposer}
+                    className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-amber-400 hover:text-amber-300 active:text-amber-200 [-webkit-tap-highlight-color:transparent]"
+                    title="Full-screen Pro composer & Markdown"
+                    aria-label="Full-screen Pro composer"
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <polyline points="15 3 21 3 21 9" />
+                      <polyline points="9 21 3 21 3 15" />
+                      <line x1="21" y1="3" x2="14" y2="10" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
+                    </svg>
+                  </button>
+                ) : null}
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
                 <LoungeFeedComposerPostChrome

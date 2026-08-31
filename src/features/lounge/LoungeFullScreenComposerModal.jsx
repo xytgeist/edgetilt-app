@@ -883,6 +883,7 @@ export default function LoungeFullScreenComposerModal({
 
                   <button
                     type="button"
+                    data-lounge-publish-submit-btn=""
                     disabled={postBusy}
                     onClick={handleConfirmPublish}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-2.5 text-center text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"

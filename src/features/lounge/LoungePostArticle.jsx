@@ -365,11 +365,16 @@ function LoungePostArticle({
     viewerUserId && post.user_id === viewerUserId ? 'You reposted' : `${displayNameFor(post)} reposted`
 
   const richCaptionOpts = useMemo(() => {
-    const base = { onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }
+    const isEdgePro = Boolean(
+      displayEntity?.author_profile?.has_active_subscription === true ||
+      displayEntity?.author_profile?.role === 'admin' ||
+      displayEntity?.author_profile?.role === 'moderator'
+    )
+    const base = { onMentionClick, onHashtagClick, onCashtagClick, onLinkClick, isEdgePro }
     const hq = String(loungeSearchHighlightQuery || '').trim()
     if (hq.length >= 2) return { ...base, highlightQuery: hq }
     return base
-  }, [onMentionClick, onHashtagClick, onCashtagClick, onLinkClick, loungeSearchHighlightQuery])
+  }, [displayEntity?.author_profile, onMentionClick, onHashtagClick, onCashtagClick, onLinkClick, loungeSearchHighlightQuery])
 
   const captionOpensDetail = Boolean(onPostBodyClick || onOpenCommentDetail)
   const captionBlockClass = `${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200${

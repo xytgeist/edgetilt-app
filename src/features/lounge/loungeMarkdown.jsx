@@ -198,14 +198,15 @@ export function renderInlineMarkdown(text, captionOpts = {}, keyPrefix = 'im') {
  *
  * @param {string} raw Raw caption text
  * @param {object} captionOpts Options passed to renderRichCaption
+ * @param {boolean} [captionOpts.isEdgePro] Whether the author has Edge Pro / Staff markdown privileges
  * @returns {React.ReactNode}
  */
 export function renderLoungeMarkdown(raw, captionOpts = {}) {
   const s = String(raw ?? '').trimEnd()
   if (!s) return null
 
-  // Fast path: if the text has no newlines and no markdown special chars, pass straight to renderRichCaption
-  if (!s.includes('\n') && !/[`*_~>=|#\-\[\]]/.test(s)) {
+  // Fast path / Non-Edge Pro gating: if isEdgePro is explicitly false, do not parse markdown markup
+  if (captionOpts.isEdgePro === false || (!s.includes('\n') && !/[`*_~>=|#\-\[\]]/.test(s))) {
     return renderRichCaption(s, captionOpts)
   }
 

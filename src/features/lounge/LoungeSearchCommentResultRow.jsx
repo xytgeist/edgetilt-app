@@ -76,16 +76,22 @@ export default function LoungeSearchCommentResultRow({
   }
 
   const richCaptionOpts = useMemo(() => {
+    const isEdgePro = Boolean(
+      comment?.author_profile?.has_active_subscription === true ||
+      comment?.author_profile?.role === 'admin' ||
+      comment?.author_profile?.role === 'moderator'
+    )
     const base = {
       onMentionClick: pp.onMentionClick,
       onHashtagClick: pp.onHashtagClick,
       onCashtagClick: pp.onCashtagClick,
       onLinkClick: pp.onLinkClick,
+      isEdgePro,
     }
     const hq = String(searchHighlightQuery || '').trim()
     if (hq.length >= 2) return { ...base, highlightQuery: hq }
     return base
-  }, [pp.onCashtagClick, pp.onHashtagClick, pp.onLinkClick, pp.onMentionClick, searchHighlightQuery])
+  }, [comment?.author_profile, pp.onCashtagClick, pp.onHashtagClick, pp.onLinkClick, pp.onMentionClick, searchHighlightQuery])
 
   if (!comment?.id || !post?.id) return null
 

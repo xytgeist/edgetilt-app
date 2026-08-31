@@ -15554,8 +15554,13 @@ export default function SocialFeed({
       onHashtagClick: openSearchByHashtag,
       onCashtagClick: openSearchByCashtag,
       onLinkClick: openCaptionLink,
+      isEdgePro: Boolean(
+        loungePostDetail?.author_profile?.has_active_subscription === true ||
+        loungePostDetail?.author_profile?.role === 'admin' ||
+        loungePostDetail?.author_profile?.role === 'moderator'
+      ),
     }),
-    [openCaptionLink, openProfileByHandle, openSearchByHashtag, openSearchByCashtag],
+    [loungePostDetail?.author_profile, openCaptionLink, openProfileByHandle, openSearchByHashtag, openSearchByCashtag],
   )
 
   const onProfileScreenUpdated = useCallback((next) => {

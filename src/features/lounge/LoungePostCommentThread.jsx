@@ -262,7 +262,17 @@ export function LoungeCommentCard({
             >
               <LoungeExpandableRichCaption
                 text={bodyText}
-                captionOpts={{ onMentionClick, onHashtagClick, onCashtagClick, onLinkClick }}
+                captionOpts={{
+                  onMentionClick,
+                  onHashtagClick,
+                  onCashtagClick,
+                  onLinkClick,
+                  isEdgePro: Boolean(
+                    comment?.author_profile?.has_active_subscription === true ||
+                    comment?.author_profile?.role === 'admin' ||
+                    comment?.author_profile?.role === 'moderator'
+                  ),
+                }}
                 startExpanded
               />
             </div>

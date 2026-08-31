@@ -2652,7 +2652,11 @@ export default function LoungeProfileFullScreen({
   }, [open, panelVisible, isOwnProfile, measureProfileCollapseGeometry])
 
   const toggleFollow = async () => {
-    if (!viewerUserId || !profileUserId || isOwnProfile || socialBusy) return
+    if (!viewerUserId) {
+      onRequireAuth?.('create')
+      return
+    }
+    if (!profileUserId || isOwnProfile || socialBusy) return
     setSocialBusy(true)
     const wasFollowing = isFollowing
     try {
@@ -2678,7 +2682,11 @@ export default function LoungeProfileFullScreen({
   }
 
   const toggleSubscribe = async () => {
-    if (!viewerUserId || !profileUserId || isOwnProfile || socialBusy) return
+    if (!viewerUserId) {
+      onRequireAuth?.('create')
+      return
+    }
+    if (!profileUserId || isOwnProfile || socialBusy) return
     setSocialBusy(true)
     try {
       if (isSubscribed) {
@@ -3655,52 +3663,50 @@ export default function LoungeProfileFullScreen({
                     onOpenCreatorFanPortal={() => setFanPortalOpen(true)}
                   />
                 </div>
-              ) : !isOwnProfile && viewerUserId ? (
+              ) : !isOwnProfile ? (
                 <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                  {isFollowing ? (
-                    creatorFanOffer && hasCreatorFanSub ? (
-                      <ProfileFanSubPillButton
-                        disabled={socialBusy}
-                        subscribed
-                        onClick={() => supportCreatorFan()}
-                        title="View your fan subscription"
-                        aria-label="Fan subscription and post alerts"
-                      />
-                    ) : creatorFanOffer ? (
-                      <ProfileFanSubPillButton
-                        disabled={socialBusy}
-                        postAlertsOn={isSubscribed}
-                        onClick={() => supportCreatorFan()}
-                        title={
-                          isSubscribed
-                            ? 'Manage post alerts or subscribe'
-                            : `Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`
-                        }
-                        aria-label={
-                          isSubscribed ? 'Manage post alerts or subscribe' : 'Subscribe or turn on post alerts'
-                        }
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={socialBusy}
-                        onClick={() => void toggleSubscribe()}
-                        title={isSubscribed ? 'Turn off post alerts' : 'Notify me about their posts'}
-                        data-lounge-profile-alerts-btn
-                        data-profile-alerts-colored={isSubscribed ? 'active' : 'false'}
-                        className={profileSocialActionButtonClass(
-                          isSubscribed ? 'alertsActive' : 'neutral',
-                        )}
-                        aria-label={
-                          isSubscribed ? 'Turn off post alerts' : 'Subscribe to notifications'
-                        }
-                      >
-                        <ProfileSocialAlertsIcon active={isSubscribed} />
-                      </button>
-                    )
+                  {creatorFanOffer && hasCreatorFanSub ? (
+                    <ProfileFanSubPillButton
+                      disabled={socialBusy}
+                      subscribed
+                      onClick={() => supportCreatorFan()}
+                      title="View your fan subscription"
+                      aria-label="Fan subscription and post alerts"
+                    />
+                  ) : creatorFanOffer ? (
+                    <ProfileFanSubPillButton
+                      disabled={socialBusy}
+                      postAlertsOn={isSubscribed}
+                      onClick={() => supportCreatorFan()}
+                      title={
+                        isSubscribed
+                          ? 'Manage post alerts or subscribe'
+                          : `Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`
+                      }
+                      aria-label={
+                        isSubscribed ? 'Manage post alerts or subscribe' : 'Subscribe or turn on post alerts'
+                      }
+                    />
+                  ) : isFollowing ? (
+                    <button
+                      type="button"
+                      disabled={socialBusy}
+                      onClick={() => void toggleSubscribe()}
+                      title={isSubscribed ? 'Turn off post alerts' : 'Notify me about their posts'}
+                      data-lounge-profile-alerts-btn
+                      data-profile-alerts-colored={isSubscribed ? 'active' : 'false'}
+                      className={profileSocialActionButtonClass(
+                        isSubscribed ? 'alertsActive' : 'neutral',
+                      )}
+                      aria-label={
+                        isSubscribed ? 'Turn off post alerts' : 'Subscribe to notifications'
+                      }
+                    >
+                      <ProfileSocialAlertsIcon active={isSubscribed} />
+                    </button>
                   ) : null}
-                  {onOpenChatWithUser && profileUserId ? (
+                  {onOpenChatWithUser && profileUserId && viewerUserId ? (
                     <button
                       type="button"
                       disabled={socialBusy || !viewerCanUseLoungeChat || iBlockingThem || theyBlockMe}

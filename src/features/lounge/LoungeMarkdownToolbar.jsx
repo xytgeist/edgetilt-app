@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Bold,
   Italic,
@@ -118,6 +119,58 @@ export default function LoungeMarkdownToolbar({
 }) {
   const [headingPickerOpen, setHeadingPickerOpen] = useState(false)
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
+  const [headingPos, setHeadingPos] = useState({ top: 0, left: 0 })
+  const [colorPos, setColorPos] = useState({ top: 0, left: 0 })
+
+  const headingBtnRef = useRef(null)
+  const colorBtnRef = useRef(null)
+
+  const toggleHeadingPicker = () => {
+    setColorPickerOpen(false)
+    if (!headingPickerOpen) {
+      const rect = headingBtnRef.current?.getBoundingClientRect()
+      if (rect) {
+        setHeadingPos({
+          top: rect.bottom + 6,
+          left: Math.max(8, Math.min(rect.left, window.innerWidth - 170)),
+        })
+      }
+      setHeadingPickerOpen(true)
+    } else {
+      setHeadingPickerOpen(false)
+    }
+  }
+
+  const toggleColorPicker = () => {
+    setHeadingPickerOpen(false)
+    if (!colorPickerOpen) {
+      const rect = colorBtnRef.current?.getBoundingClientRect()
+      if (rect) {
+        setColorPos({
+          top: rect.bottom + 6,
+          left: Math.max(8, Math.min(rect.left, window.innerWidth - 220)),
+        })
+      }
+      setColorPickerOpen(true)
+    } else {
+      setColorPickerOpen(false)
+    }
+  }
+
+  // Close dropdowns on scroll or resize so portaled coordinates don't get detached
+  useEffect(() => {
+    if (!headingPickerOpen && !colorPickerOpen) return
+    const handleClose = () => {
+      setHeadingPickerOpen(false)
+      setColorPickerOpen(false)
+    }
+    window.addEventListener('resize', handleClose)
+    window.addEventListener('scroll', handleClose, true)
+    return () => {
+      window.removeEventListener('resize', handleClose)
+      window.removeEventListener('scroll', handleClose, true)
+    }
+  }, [headingPickerOpen, colorPickerOpen])
 
   const handleFormat = useCallback(
     (opts) => {
@@ -136,17 +189,15 @@ export default function LoungeMarkdownToolbar({
   return (
     <div
       data-lounge-markdown-toolbar=""
-      className={`relative z-20 flex w-full max-w-full items-center gap-0.5 sm:gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 px-2 py-1.5 backdrop-blur-md ${className}`}
+      className={`relative z-20 flex w-full max-w-full items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 px-2 py-1.5 backdrop-blur-md touch-pan-x overscroll-x-contain ${className}`}
     >
       {/* ── Heading Dropdown (H1 / H2 / H3) ── */}
       <div className="relative shrink-0">
         <button
+          ref={headingBtnRef}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            setColorPickerOpen(false)
-            setHeadingPickerOpen((prev) => !prev)
-          }}
+          onClick={toggleHeadingPicker}
           className={`${btnClass} font-black text-sm`}
           title="Headings (H1, H2, H3)"
           aria-label="Headings"
@@ -154,47 +205,60 @@ export default function LoungeMarkdownToolbar({
           <span>H</span>
         </button>
 
-        {headingPickerOpen ? (
-          <div
-            data-lounge-heading-picker-dropdown=""
-            className="absolute left-0 top-full z-50 mt-1.5 flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setHeadingPickerOpen(false)
-                handleFormat({ prefix: '# ', mode: 'linePrefix' })
-              }}
-              className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-black text-white transition-colors"
-              title="Heading 1 (# Title)"
-            >
-              H1
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setHeadingPickerOpen(false)
-                handleFormat({ prefix: '## ', mode: 'linePrefix' })
-              }}
-              className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition-colors"
-              title="Heading 2 (## Section)"
-            >
-              H2
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setHeadingPickerOpen(false)
-                handleFormat({ prefix: '### ', mode: 'linePrefix' })
-              }}
-              className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition-colors"
-              title="Heading 3 (### Subhead)"
-            >
-              H3
-            </button>
-          </div>
-        ) : null}
+        {headingPickerOpen && typeof document !== 'undefined'
+          ? createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-[290]"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    setHeadingPickerOpen(false)
+                  }}
+                />
+                <div
+                  data-lounge-heading-picker-dropdown=""
+                  style={{ top: `${headingPos.top}px`, left: `${headingPos.left}px` }}
+                  className="fixed z-[300] flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeadingPickerOpen(false)
+                      handleFormat({ prefix: '# ', mode: 'linePrefix' })
+                    }}
+                    className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-black text-white transition-colors"
+                    title="Heading 1 (# Title)"
+                  >
+                    H1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeadingPickerOpen(false)
+                      handleFormat({ prefix: '## ', mode: 'linePrefix' })
+                    }}
+                    className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition-colors"
+                    title="Heading 2 (## Section)"
+                  >
+                    H2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeadingPickerOpen(false)
+                      handleFormat({ prefix: '### ', mode: 'linePrefix' })
+                    }}
+                    className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition-colors"
+                    title="Heading 3 (### Subhead)"
+                  >
+                    H3
+                  </button>
+                </div>
+              </>,
+              document.body,
+            )
+          : null}
       </div>
 
       <div className="mx-0.5 h-4 w-px shrink-0 bg-zinc-800" role="presentation" aria-hidden />
@@ -250,12 +314,10 @@ export default function LoungeMarkdownToolbar({
       {/* ── Curated Colors Dropdown Button ── */}
       <div className="relative shrink-0">
         <button
+          ref={colorBtnRef}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            setHeadingPickerOpen(false)
-            setColorPickerOpen((prev) => !prev)
-          }}
+          onClick={toggleColorPicker}
           className={`${btnClass} text-emerald-400 hover:text-emerald-300`}
           title="Text Colors"
           aria-label="Text Colors"
@@ -263,69 +325,82 @@ export default function LoungeMarkdownToolbar({
           <Palette className="h-4 w-4" />
         </button>
 
-        {colorPickerOpen ? (
-          <div
-            data-lounge-color-picker-dropdown=""
-            className="absolute left-0 top-full z-50 mt-1.5 flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setColorPickerOpen(false)
-                handleFormat({ prefix: '[green]', suffix: '[/green]', defaultText: 'green text' })
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 transition-colors"
-              title="Green text"
-            >
-              <span className="h-3 w-3 rounded-full bg-emerald-400" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setColorPickerOpen(false)
-                handleFormat({ prefix: '[red]', suffix: '[/red]', defaultText: 'red text' })
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 transition-colors"
-              title="Red text"
-            >
-              <span className="h-3 w-3 rounded-full bg-rose-400" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setColorPickerOpen(false)
-                handleFormat({ prefix: '[gold]', suffix: '[/gold]', defaultText: 'gold text' })
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 transition-colors"
-              title="Gold text"
-            >
-              <span className="h-3 w-3 rounded-full bg-amber-300" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setColorPickerOpen(false)
-                handleFormat({ prefix: '[blue]', suffix: '[/blue]', defaultText: 'blue text' })
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 transition-colors"
-              title="Blue text"
-            >
-              <span className="h-3 w-3 rounded-full bg-cyan-400" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setColorPickerOpen(false)
-                handleFormat({ prefix: '[purple]', suffix: '[/purple]', defaultText: 'purple text' })
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-400 transition-colors"
-              title="Purple text"
-            >
-              <span className="h-3 w-3 rounded-full bg-purple-400" />
-            </button>
-          </div>
-        ) : null}
+        {colorPickerOpen && typeof document !== 'undefined'
+          ? createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-[290]"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    setColorPickerOpen(false)
+                  }}
+                />
+                <div
+                  data-lounge-color-picker-dropdown=""
+                  style={{ top: `${colorPos.top}px`, left: `${colorPos.left}px` }}
+                  className="fixed z-[300] flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setColorPickerOpen(false)
+                      handleFormat({ prefix: '[green]', suffix: '[/green]', defaultText: 'green text' })
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-400 transition-colors"
+                    title="Green text"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-emerald-400" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setColorPickerOpen(false)
+                      handleFormat({ prefix: '[red]', suffix: '[/red]', defaultText: 'red text' })
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 transition-colors"
+                    title="Red text"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-rose-400" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setColorPickerOpen(false)
+                      handleFormat({ prefix: '[gold]', suffix: '[/gold]', defaultText: 'gold text' })
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 transition-colors"
+                    title="Gold text"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-amber-300" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setColorPickerOpen(false)
+                      handleFormat({ prefix: '[blue]', suffix: '[/blue]', defaultText: 'blue text' })
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 transition-colors"
+                    title="Blue text"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-cyan-400" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setColorPickerOpen(false)
+                      handleFormat({ prefix: '[purple]', suffix: '[/purple]', defaultText: 'purple text' })
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 hover:bg-purple-500/40 text-purple-400 transition-colors"
+                    title="Purple text"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-purple-400" />
+                  </button>
+                </div>
+              </>,
+              document.body,
+            )
+          : null}
       </div>
 
       <div className="mx-0.5 h-4 w-px shrink-0 bg-zinc-800" role="presentation" aria-hidden />

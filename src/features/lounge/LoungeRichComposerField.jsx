@@ -113,7 +113,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       richSyncTimerRef.current = 0
     }
     const el = rootRef.current
-    if (!el || composingRef.current || useNativeTextarea) return
+    if (!el || composingRef.current || useNativeTextarea || disabled) return
     const caret = getCaretTextOffset(el)
     let text = plainTextFromComposerRoot(el)
     text = normalizeCashtagsInCaption(text)
@@ -228,7 +228,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }, [syncPlaceholderFromDom])
 
   useLayoutEffect(() => {
-    if (useNativeTextarea) return
+    if (useNativeTextarea || disabled) return
     const el = rootRef.current
     if (!el || composingRef.current) return
     const domText = plainTextFromComposerRoot(el)

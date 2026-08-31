@@ -16402,7 +16402,8 @@ export default function SocialFeed({
                     <LoungeRichComposerField
                       ref={composerFieldRef}
                       variant="feed"
-                      value={postText}
+                      value={fullScreenComposerOpen ? '' : postText}
+                      disabled={fullScreenComposerOpen || postBusy}
                       onChange={handleFeedComposerCaptionChange}
                       maxLength={loungeComposerCaptionMax}
                       placeholder="Are ya winning, son?"

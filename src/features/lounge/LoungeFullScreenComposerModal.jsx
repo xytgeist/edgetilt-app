@@ -365,6 +365,7 @@ export default function LoungeFullScreenComposerModal({
                 variant="fullscreen"
                 value={postText}
                 onChange={onTextChange}
+                disabled={postBusy || settingsModalOpen || tribeMaxAlertOpen}
                 maxLength={captionMax}
                 placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
                 ariaLabel="Full screen post caption"

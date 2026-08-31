@@ -23,6 +23,7 @@ export default function LoungePostCategoryPillPicker({
   collapsibleSingleRow = true,
   /** When true, list all pills A–Z by label (e.g. complete-your-profile gate). */
   sortAlphabetically = false,
+  size = 'md',
   className = '',
 }) {
   const uncapped = maxPills == null
@@ -130,10 +131,12 @@ export default function LoungePostCategoryPillPicker({
     </button>
   ) : null
 
+  const isLg = size === 'lg'
+
   return (
     <div className={`mt-2 ${className}`.trim()} data-lounge-composer-category="">
       {hint ? (
-        <p className="mb-1.5 text-[11px] leading-snug text-zinc-500">{hint}</p>
+        <p className={`mb-1.5 leading-snug text-zinc-500 ${isLg ? 'text-[13px]' : 'text-[11px]'}`}>{hint}</p>
       ) : null}
       <div className="relative min-w-0">
         <div
@@ -151,7 +154,7 @@ export default function LoungePostCategoryPillPicker({
         >
           <div
             ref={rowRef}
-            className={`lounge-pill-row flex gap-1.5 ${
+            className={`lounge-pill-row flex ${isLg ? 'gap-2' : 'gap-1.5'} ${
               collapsedSingleRow ? 'w-max min-w-full flex-nowrap' : 'flex-wrap'
             } ${collapsedSingleRow && showExpandToggle ? 'pr-8' : ''}`}
             data-lounge-category-picker=""
@@ -167,7 +170,9 @@ export default function LoungePostCategoryPillPicker({
                   disabled={chipDisabled}
                   aria-pressed={on}
                   onClick={() => toggle(slug)}
-                  className={`lounge-category-pill inline-flex max-w-full shrink-0 touch-manipulation items-center truncate rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-none tracking-tight transition-colors [-webkit-tap-highlight-color:transparent] ${
+                  className={`lounge-category-pill inline-flex max-w-full shrink-0 touch-manipulation items-center truncate rounded-full border leading-none tracking-tight transition-colors [-webkit-tap-highlight-color:transparent] ${
+                    isLg ? 'px-3 py-1 text-[13px] font-semibold' : 'px-2 py-0.5 text-[10px] font-semibold'
+                  } ${
                     on
                       ? loungePostCategoryPillChipClass(slug, 'selected')
                       : chipDisabled

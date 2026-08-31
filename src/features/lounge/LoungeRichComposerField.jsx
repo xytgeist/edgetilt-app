@@ -474,7 +474,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
         <textarea
           ref={rootRef}
           id={id}
-          rows={1}
+          rows={variant === 'fullscreen' ? 6 : 1}
           value={value}
           disabled={disabled}
           readOnly={disabled}
@@ -488,7 +488,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
           onPaste={handlePaste}
           onBlur={onBlur}
           onFocus={onFocus}
-          className={`w-full resize-none border-0 bg-transparent touch-manipulation whitespace-pre-wrap break-words px-0 text-left text-zinc-100 outline-none selection:bg-cyan-500/25 [-webkit-tap-highlight-color:transparent] ${preset.fieldClass} ${manageFieldHeight ? 'overflow-hidden' : 'overflow-y-auto'} ${className}`}
+          className={`w-full resize-none border-0 bg-transparent touch-manipulation whitespace-pre-wrap break-words text-left text-zinc-100 outline-none selection:bg-cyan-500/25 placeholder:text-zinc-500 [-webkit-tap-highlight-color:transparent] ${preset.fieldClass} ${manageFieldHeight && variant !== 'fullscreen' ? 'overflow-hidden' : 'overflow-y-auto'} ${className}`}
         />
       </div>
     )

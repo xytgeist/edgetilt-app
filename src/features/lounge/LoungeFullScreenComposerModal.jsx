@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, Minimize2, Sparkles } from 'lucide-react'
+import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock } from 'lucide-react'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
-import LoungeComposerReplyGatePill from './LoungeComposerReplyGatePill.jsx'
-import LoungeComposerAudiencePill from './LoungeComposerAudiencePill.jsx'
 import LoungeComposerMarketChartStrip from './LoungeComposerMarketChartStrip.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
 import LoungeMarkdownToolbar from './LoungeMarkdownToolbar.jsx'
@@ -16,6 +14,13 @@ import { renderLoungeMarkdown } from './loungeMarkdown.jsx'
 import LoungeEdgeProBadge from './LoungeEdgeProBadge.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge.jsx'
 import { loungeFeedAuthorHasStaffBadge } from './loungeFeedAvatar.js'
+import {
+  LOUNGE_COMPOSER_AUDIENCE_ALL,
+  LOUNGE_COMPOSER_AUDIENCE_SUBS,
+} from '../../utils/loungeFanOnlyPost.js'
+import LoungeFlameIcon from './LoungeFlameIcon.jsx'
+import { LOUNGE_COMMENT_BUBBLE_D, LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS } from './loungeCommentGlyph.js'
+import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import {
   useLoungeKeyboardOverlapPx,
   useLoungeIosSafeBottomPx,
@@ -113,8 +118,8 @@ export default function LoungeFullScreenComposerModal({
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
   const footerPadBottom = keyboardUp
-    ? `${Math.round(kbFooterLiftPx + 6)}px`
-    : loungeComposerFooterPaddingBottom(0, Math.max(16, iosSafeBottomPx + 8))
+    ? `${Math.round(kbFooterLiftPx + 8)}px`
+    : loungeComposerFooterPaddingBottom(0, Math.max(20, iosSafeBottomPx + 12))
 
   useEffect(() => {
     if (!open) return
@@ -224,33 +229,91 @@ export default function LoungeFullScreenComposerModal({
       {/* ── Main Content Area ── */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
-          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-3.5">
-            {/* ── Row 1: Audience Dropdown (left) + Everyone can reply Dropdown (right) ── */}
-            <div className="flex w-full items-center justify-between gap-3 border-b border-zinc-800/80 pb-2.5">
-              <div className="min-w-0">
-                <LoungeComposerAudiencePill
-                  value={composerAudience}
-                  onChange={onAudienceChange}
-                  disabled={postBusy}
-                />
+          <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-4">
+            {/* ── Row 1: Pill Tab Selectors for "Display to" and "Who can reply" ── */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+              {/* Display to selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-zinc-400 shrink-0">
+                  Display to:
+                </span>
+                <div className="inline-flex items-center rounded-xl bg-zinc-900/90 p-1 border border-zinc-800">
+                  <button
+                    type="button"
+                    disabled={postBusy}
+                    onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_ALL)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] sm:text-[13px] font-bold transition-all touch-manipulation ${
+                      composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL
+                        ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/50 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    <span>Everyone</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={postBusy}
+                    onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_SUBS)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] sm:text-[13px] font-bold transition-all touch-manipulation ${
+                      composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
+                        ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Subscribers</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <LoungeComposerReplyGatePill
-                  value={composerReplyGateEdgePro}
-                  onChange={onReplyGateChange}
-                  disabled={postBusy}
-                />
+              {/* Who can reply selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] sm:text-[13px] font-bold uppercase tracking-wider text-zinc-400 shrink-0">
+                  Who can reply:
+                </span>
+                <div className="inline-flex items-center rounded-xl bg-zinc-900/90 p-1 border border-zinc-800">
+                  <button
+                    type="button"
+                    disabled={postBusy}
+                    onClick={() => onReplyGateChange?.(false)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] sm:text-[13px] font-bold transition-all touch-manipulation ${
+                      !composerReplyGateEdgePro
+                        ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/50 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    <span>Everyone</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={postBusy}
+                    onClick={() => onReplyGateChange?.(true)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] sm:text-[13px] font-bold transition-all touch-manipulation ${
+                      composerReplyGateEdgePro
+                        ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                    <span>Edge Pro only</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* ── Row 2: Category Pills ── */}
+            {/* ── Row 2: Category / Tribe Pills (Larger Size) ── */}
             <div className="w-full">
               <LoungePostCategoryPillPicker
                 value={composerCategoryPills}
                 onChange={onCategoryPillsChange}
                 disabled={postBusy}
-                className="!mb-0"
+                size="lg"
+                hint="Optional - select tribes to help interested members discover your post:"
+                className="!mt-0 !mb-0"
               />
             </div>
 
@@ -266,7 +329,7 @@ export default function LoungeFullScreenComposerModal({
             <div ref={anchorRef} className="relative flex min-h-[16rem] sm:min-h-[22rem] flex-1 flex-col">
               <LoungeRichComposerField
                 ref={textareaRef}
-                variant="feed"
+                variant="fullscreen"
                 value={postText}
                 onChange={onTextChange}
                 maxLength={captionMax}
@@ -433,11 +496,59 @@ export default function LoungeFullScreenComposerModal({
                 </div>
               ) : null}
 
-              {/* Simulated Interaction Bar */}
-              <div className="mt-4 flex items-center justify-between border-t border-zinc-800/80 pt-3 text-xs text-zinc-500">
-                <span>💬 0 comments</span>
-                <span>🔁 0 reposts</span>
-                <span>❤️ 0 likes</span>
+              {/* Real Post Interaction Rail Icons */}
+              <div className="mt-4 flex w-full items-center justify-between border-t border-zinc-800/80 pt-3 text-zinc-500">
+                {/* Comment Icon */}
+                <div className="flex items-center gap-1 text-[13px] font-medium text-zinc-500">
+                  <svg
+                    className={`h-[19px] w-[19px] shrink-0 ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`}
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    aria-hidden
+                  >
+                    <path
+                      d={LOUNGE_COMMENT_BUBBLE_D}
+                      stroke="currentColor"
+                      strokeWidth="1.35"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>0</span>
+                </div>
+
+                {/* Repost Icon */}
+                <div className="flex items-center gap-1 text-[13px] font-medium text-zinc-500">
+                  <svg className="h-[19px] w-[19px] shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <path
+                      d={LOUNGE_REPOST_ARROWS_D}
+                      stroke="currentColor"
+                      strokeWidth="1.35"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>0</span>
+                </div>
+
+                {/* Flame / Like Icon */}
+                <div className="flex items-center gap-1 text-[13px] font-medium text-zinc-500">
+                  <LoungeFlameIcon filled={false} className="h-[19px] w-[19px] shrink-0" />
+                  <span>0</span>
+                </div>
+
+                {/* Bookmark Icon */}
+                <div className="flex items-center text-[13px] font-medium text-zinc-500">
+                  <svg className="h-[19px] w-[19px] shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <path
+                      d="M6 3.5h8a1.5 1.5 0 0 1 1.5 1.5v12l-5.5-3.5L4.5 17V5A1.5 1.5 0 0 1 6 3.5z"
+                      stroke="currentColor"
+                      strokeWidth="1.35"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
               </div>
             </article>
 
@@ -448,15 +559,17 @@ export default function LoungeFullScreenComposerModal({
         )}
       </div>
 
-      {/* ── Bottom Bar (Taller, Keyboard-Docked with Safe Area) ── */}
+      {/* ── Bottom Bar (Taller, Keyboard-Docked, Spaced & Larger Media Icons) ── */}
       {activeTab === 'write' ? (
         <footer
-          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-4 pt-3 backdrop-blur-md sm:px-6 sm:pt-3.5"
+          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-4 pt-3.5 backdrop-blur-md sm:px-6 sm:pt-4"
           style={{ paddingBottom: footerPadBottom }}
         >
-          <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[3rem]">
+          <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[3.25rem]">
             <LoungeComposerMediaToolbar
               variant="feed"
+              size="lg"
+              className="!gap-3 sm:!gap-4"
               imageInputId={imageInputId}
               videoInputId={videoInputId}
               onImagePointerDown={onImagePointerDown}
@@ -465,7 +578,7 @@ export default function LoungeFullScreenComposerModal({
               onOpenMarketPicker={onOpenMarketPicker}
             />
 
-            <div className="text-xs font-medium text-zinc-400">
+            <div className="text-xs sm:text-sm font-semibold text-zinc-400">
               {isEdgePro || isStaff ? '✨ Markdown Enabled' : 'Upgrade to Edge Pro to unlock Markdown'}
             </div>
           </div>

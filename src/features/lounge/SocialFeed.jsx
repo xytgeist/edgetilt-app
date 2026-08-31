@@ -2327,6 +2327,18 @@ export default function SocialFeed({
     [openProfileGateIfNeeded],
   )
 
+  const openFullScreenComposer = useCallback(() => {
+    try {
+      composerFieldRef.current?.blur?.()
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+    } catch {
+      // ignore
+    }
+    setFullScreenComposerOpen(true)
+  }, [])
+
   const openMarketChartModal = useCallback(({ embed, embeds }) => {
     if (loungeReadOnly) {
       requireLoungeAuth()
@@ -16397,84 +16409,90 @@ export default function SocialFeed({
                         className="mb-1.5"
                       />
                     ) : null}
-                    <LoungeRichComposerField
-                      ref={composerFieldRef}
-                      variant="feed"
-                      value={fullScreenComposerOpen ? '' : postText}
-                      disabled={fullScreenComposerOpen || postBusy}
-                      onChange={handleFeedComposerCaptionChange}
-                      maxLength={loungeComposerCaptionMax}
-                      placeholder="Are ya winning, son?"
-                      ariaLabel="Lounge post caption"
-                      cashtagStyleContext={composerCashtagStyleContext}
-                      onPasteImageFiles={enqueueComposerPastedImages}
-                      onKeyDown={(e) => {
-                        if (
-                          cashtagComposer.onCashtagKeyDown(
-                            e,
-                            // Immediate flush … idle-deferred postText was leaving the caret at
-                            // `$TS|LA` after dropdown/Enter completion.
-                            setFeedComposerCaptionImmediate,
-                            composerFieldRef.current,
-                          )
-                        )
-                          return
-                        mentionComposer.onMentionKeyDown(
-                          e,
-                          setFeedComposerCaptionImmediate,
-                          composerFieldRef.current,
-                        )
-                      }}
-                      onMouseUp={(e) => {
-                        cashtagComposer.onCursorMove(e)
-                        mentionComposer.onCursorMove(e)
-                      }}
-                      onInput={(e) => {
-                        // onInput only … onKeyUp duplicated this and re-rendered SocialFeed twice/key.
-                        cashtagComposer.onCursorMove(e)
-                        mentionComposer.onCursorMove(e)
-                      }}
-                      onBlur={() => {
-                        flushFeedComposerCaptionToState()
-                        window.setTimeout(() => {
-                          if (shouldKeepCashtagAutocompleteAfterBlur(composerFieldRef.current)) return
-                          cashtagComposer.clearCashtag()
-                          mentionComposer.clearMention()
-                        }, 150)
-                      }}
-                    />
-                    {cashtagComposer.isOpen ? (
-                      <LoungeCashtagDropdown
-                        open
-                        query={cashtagComposer.cashtag?.query ?? ''}
-                        suggestions={cashtagComposer.suggestions}
-                        activeIndex={cashtagComposer.activeIndex}
-                        loading={cashtagComposer.loading}
-                        onSelect={(row) =>
-                          cashtagComposer.onCashtagSelect(
-                            row,
-                            setFeedComposerCaptionImmediate,
-                            composerFieldRef.current,
-                          )
-                        }
-                        anchorRef={mentionComposerAnchorRef}
-                        caretFieldRef={composerFieldRef}
-                      />
-                    ) : null}
-                    <LoungeMentionDropdown
-                      suggestions={mentionComposer.suggestions}
-                      activeIndex={mentionComposer.activeIndex}
-                      loading={mentionComposer.loading}
-                      onSelect={(p) =>
-                        mentionComposer.onMentionSelect(
-                          p,
-                          setFeedComposerCaptionImmediate,
-                          composerFieldRef.current,
-                        )
-                      }
-                      anchorRef={mentionComposerAnchorRef}
-                      caretFieldRef={composerFieldRef}
-                    />
+                    {!fullScreenComposerOpen ? (
+                      <>
+                        <LoungeRichComposerField
+                          ref={composerFieldRef}
+                          variant="feed"
+                          value={postText}
+                          disabled={postBusy}
+                          onChange={handleFeedComposerCaptionChange}
+                          maxLength={loungeComposerCaptionMax}
+                          placeholder="Are ya winning, son?"
+                          ariaLabel="Lounge post caption"
+                          cashtagStyleContext={composerCashtagStyleContext}
+                          onPasteImageFiles={enqueueComposerPastedImages}
+                          onKeyDown={(e) => {
+                            if (
+                              cashtagComposer.onCashtagKeyDown(
+                                e,
+                                // Immediate flush … idle-deferred postText was leaving the caret at
+                                // `$TS|LA` after dropdown/Enter completion.
+                                setFeedComposerCaptionImmediate,
+                                composerFieldRef.current,
+                              )
+                            )
+                              return
+                            mentionComposer.onMentionKeyDown(
+                              e,
+                              setFeedComposerCaptionImmediate,
+                              composerFieldRef.current,
+                            )
+                          }}
+                          onMouseUp={(e) => {
+                            cashtagComposer.onCursorMove(e)
+                            mentionComposer.onCursorMove(e)
+                          }}
+                          onInput={(e) => {
+                            // onInput only … onKeyUp duplicated this and re-rendered SocialFeed twice/key.
+                            cashtagComposer.onCursorMove(e)
+                            mentionComposer.onCursorMove(e)
+                          }}
+                          onBlur={() => {
+                            flushFeedComposerCaptionToState()
+                            window.setTimeout(() => {
+                              if (shouldKeepCashtagAutocompleteAfterBlur(composerFieldRef.current)) return
+                              cashtagComposer.clearCashtag()
+                              mentionComposer.clearMention()
+                            }, 150)
+                          }}
+                        />
+                        {cashtagComposer.isOpen ? (
+                          <LoungeCashtagDropdown
+                            open
+                            query={cashtagComposer.cashtag?.query ?? ''}
+                            suggestions={cashtagComposer.suggestions}
+                            activeIndex={cashtagComposer.activeIndex}
+                            loading={cashtagComposer.loading}
+                            onSelect={(row) =>
+                              cashtagComposer.onCashtagSelect(
+                                row,
+                                setFeedComposerCaptionImmediate,
+                                composerFieldRef.current,
+                              )
+                            }
+                            anchorRef={mentionComposerAnchorRef}
+                            caretFieldRef={composerFieldRef}
+                          />
+                        ) : null}
+                        <LoungeMentionDropdown
+                          suggestions={mentionComposer.suggestions}
+                          activeIndex={mentionComposer.activeIndex}
+                          loading={mentionComposer.loading}
+                          onSelect={(p) =>
+                            mentionComposer.onMentionSelect(
+                              p,
+                              setFeedComposerCaptionImmediate,
+                              composerFieldRef.current,
+                            )
+                          }
+                          anchorRef={mentionComposerAnchorRef}
+                          caretFieldRef={composerFieldRef}
+                        />
+                      </>
+                    ) : (
+                      <div className="min-h-[2.75rem] sm:min-h-[3rem]" aria-hidden="true" />
+                    )}
                     <LoungeComposerMarketChartStrip
                       symbols={composerMarketSymbols}
                       onChange={setComposerMarketSymbols}
@@ -16677,8 +16695,7 @@ export default function SocialFeed({
                 </button>
                 <button
                   type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => setFullScreenComposerOpen(true)}
+                  onClick={openFullScreenComposer}
                   className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1 text-amber-400 hover:text-amber-300 active:text-amber-200 [-webkit-tap-highlight-color:transparent]"
                   title="Full-screen Pro composer & Markdown"
                   aria-label="Full-screen Pro composer"
@@ -20033,7 +20050,7 @@ export default function SocialFeed({
         open={fullScreenComposerOpen}
         onClose={() => setFullScreenComposerOpen(false)}
         postText={postText}
-        onTextChange={setFeedComposerCaptionImmediate}
+        onTextChange={handleFeedComposerCaptionChange}
         onSubmit={() => void submitLoungePost()}
         postBusy={postBusy}
         isEdgePro={isViewerEdgePro}

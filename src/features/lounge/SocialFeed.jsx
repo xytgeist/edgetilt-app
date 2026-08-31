@@ -888,6 +888,10 @@ export default function SocialFeed({
   const [postBusy, setPostBusy] = useState(false)
   const [postErr, setPostErr] = useState('')
   const [fullScreenComposerOpen, setFullScreenComposerOpen] = useState(false)
+  const fullScreenComposerOpenRef = useRef(false)
+  useEffect(() => {
+    fullScreenComposerOpenRef.current = fullScreenComposerOpen
+  }, [fullScreenComposerOpen])
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
   const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
   /** Thin composer-top seam for non-video feed posts only (caption / images / GIF). Never used for video. */
@@ -2202,6 +2206,7 @@ export default function SocialFeed({
         return composerFieldRef.current
       }
       const isBlocked = () => {
+        if (fullScreenComposerOpenRef.current) return true
         if (klipyPickerOpenRef.current) return true
         if (target === 'detailComment') return !loungePostDetail
         if (target === 'detailEdit') return !loungeDetailEditing
@@ -2467,6 +2472,7 @@ export default function SocialFeed({
   useEffect(() => {
     if (
       threadComposeOpen ||
+      fullScreenComposerOpen ||
       !composerExpanded ||
       composerFoldReveal < 0.88 ||
       loungeDockPanel ||
@@ -2482,6 +2488,7 @@ export default function SocialFeed({
     composerExpanded,
     composerFoldReveal,
     composerFocusToken,
+    fullScreenComposerOpen,
     klipyPickerOpen,
     loungeDockPanel,
     scrollLoungeFeedToTopInstant,

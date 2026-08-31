@@ -183,13 +183,21 @@ export default function LoungeFullScreenComposerModal({
   const isSubscribersAudience = composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
   const isCustomGated = isSubscribersAudience || composerReplyGateEdgePro
 
+  const blurActiveInput = () => {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+  }
+
   const handleOpenSettingsFromHeader = () => {
+    blurActiveInput()
     setModalMode('settings')
     setHasConfiguredAudience(true)
     setSettingsModalOpen(true)
   }
 
   const handlePostButtonClick = () => {
+    blurActiveInput()
     if (postBusy || isOverLimit || !hasContent) return
     if (!hasConfiguredAudience) {
       setModalMode('pre_post')
@@ -201,17 +209,20 @@ export default function LoungeFullScreenComposerModal({
   }
 
   const handleConfirmPublish = () => {
+    blurActiveInput()
     setSettingsModalOpen(false)
     onSubmit()
     onClose()
   }
 
   const handleAudienceSelect = (audience) => {
+    blurActiveInput()
     setHasConfiguredAudience(true)
     onAudienceChange?.(audience)
   }
 
   const handleReplyGateSelect = (gate) => {
+    blurActiveInput()
     setHasConfiguredAudience(true)
     onReplyGateChange?.(gate)
   }
@@ -229,7 +240,10 @@ export default function LoungeFullScreenComposerModal({
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              blurActiveInput()
+              onClose()
+            }}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation active:scale-95"
             title="Minimize to inline composer"
             aria-label="Minimize composer"
@@ -262,7 +276,10 @@ export default function LoungeFullScreenComposerModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('preview')}
+            onClick={() => {
+              blurActiveInput()
+              setActiveTab('preview')
+            }}
             className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs sm:text-sm font-bold transition-all touch-manipulation ${
               activeTab === 'preview'
                 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-sm'

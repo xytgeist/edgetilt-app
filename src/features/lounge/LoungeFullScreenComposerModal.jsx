@@ -369,7 +369,7 @@ export default function LoungeFullScreenComposerModal({
                 maxLength={captionMax}
                 placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
                 ariaLabel="Full screen post caption"
-                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500/50"
+                className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500/50"
                 onFocus={() => {
                   if (keyboardUp) scrollToToolbar()
                   else setTimeout(scrollToToolbar, 250)

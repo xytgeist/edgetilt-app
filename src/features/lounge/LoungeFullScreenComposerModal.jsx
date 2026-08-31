@@ -365,7 +365,7 @@ export default function LoungeFullScreenComposerModal({
                 variant="fullscreen"
                 value={postText}
                 onChange={onTextChange}
-                disabled={postBusy || settingsModalOpen || tribeMaxAlertOpen}
+                disabled={postBusy}
                 maxLength={captionMax}
                 placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
                 ariaLabel="Full screen post caption"
@@ -630,15 +630,16 @@ export default function LoungeFullScreenComposerModal({
           aria-modal="true"
           aria-labelledby="settings-modal-title"
           className="fixed inset-0 z-[240] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150"
+          style={{ paddingBottom: keyboardUp ? `${Math.round(kbFooterLiftPx)}px` : undefined }}
           onClick={() => setSettingsModalOpen(false)}
         >
           <div
             data-lounge-publish-modal=""
-            className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            className="w-full max-w-lg max-h-[min(82dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3.5">
+            <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 pb-3.5">
               <div>
                 <h3 id="settings-modal-title" className="text-base sm:text-lg font-bold text-zinc-100">
                   {modalMode === 'pre_post' ? 'Ready to Post?' : 'Post Audience & Reply Settings'}
@@ -659,7 +660,7 @@ export default function LoungeFullScreenComposerModal({
               </button>
             </div>
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 space-y-4 overflow-y-auto min-h-0 flex-1 pr-1 overscroll-contain">
               {/* Audience Section */}
               <div>
                 <h4 className="text-[12px] font-bold uppercase tracking-wider text-zinc-400 mb-2">
@@ -770,40 +771,42 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* Action Buttons depending on Modal Mode */}
-            {modalMode === 'pre_post' ? (
-              <div className="mt-6 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSettingsModalOpen(false)}
-                  className="flex-1 rounded-2xl border border-zinc-700/80 bg-zinc-800/80 py-3 text-center text-sm font-bold text-zinc-200 transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
-                >
-                  Back to Edit
-                </button>
+            <div className="shrink-0 pt-4 border-t border-zinc-800/80">
+              {modalMode === 'pre_post' ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSettingsModalOpen(false)}
+                    className="flex-1 rounded-2xl border border-zinc-700/80 bg-zinc-800/80 py-3 text-center text-sm font-bold text-zinc-200 transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                  >
+                    Back to Edit
+                  </button>
 
-                <button
-                  type="button"
-                  disabled={postBusy}
-                  onClick={handleConfirmPublish}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-3 text-center text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"
-                >
-                  <Send className="h-4 w-4" />
-                  <span>{postBusy ? 'Posting…' : 'Publish Now'}</span>
-                </button>
-              </div>
-            ) : (
-              <div className="mt-6 flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHasConfiguredAudience(true)
-                    setSettingsModalOpen(false)
-                  }}
-                  className="w-full sm:w-auto rounded-2xl bg-zinc-800 px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
-                >
-                  Done
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    disabled={postBusy}
+                    onClick={handleConfirmPublish}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-cyan-600 py-3 text-center text-sm font-bold text-zinc-950 shadow-md transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40 touch-manipulation"
+                  >
+                    <Send className="h-4 w-4" />
+                    <span>{postBusy ? 'Posting…' : 'Publish Now'}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasConfiguredAudience(true)
+                      setSettingsModalOpen(false)
+                    }}
+                    className="w-full sm:w-auto rounded-2xl bg-zinc-800 px-6 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-zinc-700 touch-manipulation active:scale-[0.98]"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : null}
@@ -814,6 +817,7 @@ export default function LoungeFullScreenComposerModal({
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-[250] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          style={{ paddingBottom: keyboardUp ? `${Math.round(kbFooterLiftPx)}px` : undefined }}
           onClick={() => setTribeMaxAlertOpen(false)}
         >
           <div

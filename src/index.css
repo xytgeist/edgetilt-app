@@ -11105,10 +11105,19 @@ html.light [data-lounge-markdown-toolbar] button:hover {
 html.light [data-lounge-markdown-toolbar] .bg-zinc-800 {
   background-color: #cbd5e1 !important;
 }
+html.light [data-lounge-heading-picker-dropdown],
 html.light [data-lounge-color-picker-dropdown] {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light [data-lounge-heading-picker-dropdown] button {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+html.light [data-lounge-heading-picker-dropdown] button:hover {
+  background-color: #e2e8f0 !important;
 }
 
 /* Footer & Media Toolbar */

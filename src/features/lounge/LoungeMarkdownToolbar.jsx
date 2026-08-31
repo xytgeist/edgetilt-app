@@ -3,7 +3,6 @@ import {
   Bold,
   Italic,
   Strikethrough,
-  Heading2,
   Highlighter,
   Palette,
   Quote,
@@ -117,6 +116,7 @@ export default function LoungeMarkdownToolbar({
   onUpgradeClick,
   className = '',
 }) {
+  const [headingPickerOpen, setHeadingPickerOpen] = useState(false)
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
 
   const handleFormat = useCallback(
@@ -136,19 +136,66 @@ export default function LoungeMarkdownToolbar({
   return (
     <div
       data-lounge-markdown-toolbar=""
-      className={`relative flex items-center overflow-x-auto no-scrollbar gap-0.5 sm:gap-1 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 px-2 py-1.5 backdrop-blur-md ${className}`}
+      className={`relative z-20 flex items-center rounded-2xl border border-zinc-800/90 bg-zinc-950/90 px-2 py-1.5 backdrop-blur-md ${className}`}
     >
-      {/* ── Heading ── */}
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => handleFormat({ prefix: '## ', mode: 'linePrefix' })}
-        className={btnClass}
-        title="Heading (## Title)"
-        aria-label="Heading"
-      >
-        <Heading2 className="h-4 w-4" />
-      </button>
+      {/* ── Heading Dropdown (H1 / H2 / H3) ── */}
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setColorPickerOpen(false)
+            setHeadingPickerOpen((prev) => !prev)
+          }}
+          className={`${btnClass} font-black text-sm`}
+          title="Headings (H1, H2, H3)"
+          aria-label="Headings"
+        >
+          <span>H</span>
+        </button>
+
+        {headingPickerOpen ? (
+          <div
+            data-lounge-heading-picker-dropdown=""
+            className="absolute left-0 bottom-full z-50 mb-2 flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setHeadingPickerOpen(false)
+                handleFormat({ prefix: '# ', mode: 'linePrefix' })
+              }}
+              className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-black text-white transition-colors"
+              title="Heading 1 (# Title)"
+            >
+              H1
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHeadingPickerOpen(false)
+                handleFormat({ prefix: '## ', mode: 'linePrefix' })
+              }}
+              className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition-colors"
+              title="Heading 2 (## Section)"
+            >
+              H2
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setHeadingPickerOpen(false)
+                handleFormat({ prefix: '### ', mode: 'linePrefix' })
+              }}
+              className="flex h-8 px-2.5 items-center justify-center rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition-colors"
+              title="Heading 3 (### Subhead)"
+            >
+              H3
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       <div className="mx-0.5 h-4 w-px shrink-0 bg-zinc-800" role="presentation" aria-hidden />
 
@@ -205,7 +252,10 @@ export default function LoungeMarkdownToolbar({
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setColorPickerOpen((prev) => !prev)}
+          onClick={() => {
+            setHeadingPickerOpen(false)
+            setColorPickerOpen((prev) => !prev)
+          }}
           className={`${btnClass} text-emerald-400 hover:text-emerald-300`}
           title="Text Colors"
           aria-label="Text Colors"
@@ -216,7 +266,7 @@ export default function LoungeMarkdownToolbar({
         {colorPickerOpen ? (
           <div
             data-lounge-color-picker-dropdown=""
-            className="absolute left-0 top-full z-50 mt-1 flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            className="absolute left-0 bottom-full z-50 mb-2 flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-900/95 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
             onMouseDown={(e) => e.preventDefault()}
           >
             <button

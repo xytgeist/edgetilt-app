@@ -470,7 +470,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
 
   if (useNativeTextarea) {
     return (
-      <div className={`relative min-h-0 w-full ${variant === 'fullscreen' ? 'flex-1 h-full flex flex-col' : ''}`}>
+      <div className="relative min-h-0 w-full">
         <textarea
           ref={rootRef}
           id={id}
@@ -495,7 +495,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
   }
 
   return (
-    <div className={`relative min-h-0 w-full ${variant === 'fullscreen' ? 'flex-1 h-full flex flex-col' : ''}`}>
+    <div className="relative min-h-0 w-full">
       {showPlaceholder ? (
         <span
           aria-hidden

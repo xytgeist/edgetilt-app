@@ -148,7 +148,36 @@ export default function LoungeFullScreenComposerModal({
     setModalMode('settings')
     setHasConfiguredAudience(false)
     setTribeMaxAlertOpen(false)
+
+    // Focus composer textarea so cursor appears immediately
+    const t = setTimeout(() => {
+      if (textareaRef.current) {
+        const el = textareaRef.current
+        el.focus()
+        const end = el.value?.length ?? 0
+        if (typeof el.setSelectionRange === 'function') {
+          el.setSelectionRange(end, end)
+        }
+      }
+    }, 60)
+    return () => clearTimeout(t)
   }, [open])
+
+  useEffect(() => {
+    if (open && activeTab === 'write') {
+      const t = setTimeout(() => {
+        if (textareaRef.current) {
+          const el = textareaRef.current
+          el.focus()
+          const end = el.value?.length ?? 0
+          if (typeof el.setSelectionRange === 'function') {
+            el.setSelectionRange(end, end)
+          }
+        }
+      }, 60)
+      return () => clearTimeout(t)
+    }
+  }, [open, activeTab])
 
   useEffect(() => {
     if (keyboardUp && activeTab === 'write') {
@@ -359,7 +388,11 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* ── Textarea with Mention/Cashtag Support ── */}
-            <div ref={anchorRef} className="relative flex min-h-[16rem] sm:min-h-[22rem] flex-1 flex-col">
+            <div
+              ref={anchorRef}
+              onClick={() => textareaRef.current?.focus()}
+              className="relative flex min-h-[16rem] sm:min-h-[22rem] flex-1 flex-col cursor-text"
+            >
               <LoungeRichComposerField
                 ref={textareaRef}
                 variant="fullscreen"

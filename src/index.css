@@ -2653,8 +2653,12 @@ html.light .lounge-composer-post-btn {
   background-color: #2563eb !important;
   color: #ffffff !important;
 }
+html.light .lounge-composer-post-btn span {
+  color: #ffffff !important;
+}
 html.light .lounge-composer-post-btn:hover:not(:disabled) {
   background-color: #3b82f6 !important;
+  color: #ffffff !important;
 }
 
 .lounge-composer-post-text {
@@ -11065,18 +11069,29 @@ html.light [data-lounge-fullscreen-composer] [data-lounge-header-settings-btn]:h
   color: #18181b !important;
 }
 
-/* Post Button in Header - normal light mode blue */
-html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn] {
+/* Post Button in Header & Modal - normal light mode blue with crisp white text */
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn],
+html.light [data-lounge-fullscreen-composer] [data-lounge-publish-submit-btn] {
   background-image: none !important;
   background-color: #2563eb !important;
   color: #ffffff !important;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
 }
-html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:hover:not(:disabled) {
-  background-color: #1d4ed8 !important;
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn] span,
+html.light [data-lounge-fullscreen-composer] [data-lounge-publish-submit-btn] span,
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn] svg,
+html.light [data-lounge-fullscreen-composer] [data-lounge-publish-submit-btn] svg {
+  color: #ffffff !important;
 }
-html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:active:not(:disabled) {
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:hover:not(:disabled),
+html.light [data-lounge-fullscreen-composer] [data-lounge-publish-submit-btn]:hover:not(:disabled) {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-fullscreen-post-btn]:active:not(:disabled),
+html.light [data-lounge-fullscreen-composer] [data-lounge-publish-submit-btn]:active:not(:disabled) {
   background-color: #1e40af !important;
+  color: #ffffff !important;
 }
 
 /* Textarea & Caret - normal blue cursor */

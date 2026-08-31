@@ -652,6 +652,11 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
                       onHashtagClick: pp.onHashtagClick,
                       onCashtagClick: pp.onCashtagClick,
                       onLinkClick: pp.onLinkClick,
+                      isEdgePro: Boolean(
+                        post?.author_profile?.has_active_subscription === true ||
+                        post?.author_profile?.role === 'admin' ||
+                        post?.author_profile?.role === 'moderator'
+                      ),
                     }}
                   />
                 </div>
